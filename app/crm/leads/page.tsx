@@ -7,20 +7,31 @@ export default async function LeadsPage() {
     .order("created_at", { ascending: false })
 
   if (error) {
-    return <div>Erro ao carregar leads</div>
+    return (
+      <div style={{ padding: 20 }}>
+        Erro ao carregar leads
+      </div>
+    )
   }
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>Leads</h1>
+      <h1>CRM - Leads</h1>
 
-      {leads?.map((lead) => (
-        <div key={lead.id} style={{ marginBottom: 10 }}>
-          <p><strong>Nome:</strong> {lead.name}</p>
-          <p><strong>Telefone:</strong> {lead.phone}</p>
-          <p><strong>Status:</strong> {lead.status}</p>
-        </div>
-      ))}
+      <div style={{ marginTop: 20 }}>
+        {leads?.map((lead) => (
+          <div key={lead.id} style={{
+            padding: 12,
+            border: "1px solid #ddd",
+            marginBottom: 10,
+            borderRadius: 8
+          }}>
+            <h3>{lead.name}</h3>
+            <p>{lead.phone}</p>
+            <p>Status: {lead.status}</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
