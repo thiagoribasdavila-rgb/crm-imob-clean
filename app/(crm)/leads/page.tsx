@@ -1,12 +1,10 @@
 import { LeadsContainer } from "@/components/crm/leads/LeadsContainer";
 
-/**
- * LEADS PAGE (CRM)
- * Entry point do módulo de leads
- */
 export default function LeadsPage() {
   return (
-    <main className="page">
+    <main style={{ padding: 24 }}>
+      <h1>Leads CRM</h1>
+
       <LeadsContainer />
     </main>
   );
