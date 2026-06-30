@@ -1,5 +1,3 @@
-import React from "react";
-
 type StatCardProps = {
   title: string;
   value: string | number;
@@ -13,13 +11,12 @@ export default function StatCard({
   description,
   trend,
 }: StatCardProps) {
-  const isPositive = trend !== undefined ? trend >= 0 : null;
+  const isPositive = trend !== undefined ? trend >= 0 : true;
 
   return (
-    <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-all">
+    <div className="bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition">
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <span className="text-sm text-gray-500 font-medium">
           {title}
         </span>
@@ -30,19 +27,18 @@ export default function StatCard({
               isPositive ? "text-green-600" : "text-red-500"
             }`}
           >
-            {isPositive ? "+" : "-"}{Math.abs(trend)}%
+            {isPositive ? "+" : ""}
+            {trend}%
           </span>
         )}
       </div>
 
-      {/* VALUE */}
-      <div className="mt-2 text-3xl font-bold text-gray-900">
+      <div className="text-3xl font-bold text-gray-900 mt-2">
         {value}
       </div>
 
-      {/* DESCRIPTION */}
       {description && (
-        <div className="mt-1 text-xs text-gray-400">
+        <div className="text-xs text-gray-400 mt-1">
           {description}
         </div>
       )}
