@@ -1,13 +1,12 @@
-import "./globals.css";
+import { NextResponse } from "next/server";
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="pt-BR">
-      <body>{children}</body>
-    </html>
-  );
+export async function GET() {
+  return NextResponse.json([
+    {
+      id: 1,
+      name: "João Silva",
+      email: "joao@email.com",
+      status: "Novo",
+    },
+  ]);
 }
