@@ -1,9 +1,8 @@
-export default function LeadsPage() {
+export default function Home() {
   return (
     <div style={{ padding: 24 }}>
-      <h1>Leads CRM</h1>
-
-      <p>Página funcionando ✔</p>
+      <h1>CRM Rodando ✔</h1>
+      <p>Home funcionando</p>
     </div>
   );
 }
