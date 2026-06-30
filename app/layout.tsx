@@ -12,9 +12,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body style={{ margin: 0, fontFamily: "Arial" }}>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
