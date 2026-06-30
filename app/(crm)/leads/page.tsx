@@ -1,29 +1,18 @@
-import { supabase } from "@/lib/supabase"
+import LeadsTable from "./components/LeadsTable";
 
-export default async function Leads() {
-  const { data: leads, error } = await supabase
-    .from("leads")
-    .select("*")
-
-  if (error) {
-    return <p>Erro ao carregar leads</p>
-  }
-
+export default function LeadsPage() {
   return (
-    <div style={{ padding: 30 }}>
-      <h1>Leads</h1>
+    <div className="p-6 bg-gray-50 min-h-screen">
 
-      {leads?.length === 0 ? (
-        <p>Nenhum lead encontrado</p>
-      ) : (
-        <ul>
-          {leads?.map((lead: any) => (
-            <li key={lead.id}>
-              {lead.nome} - {lead.telefone}
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* HEADER */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Leads</h1>
+        <p className="text-gray-500 text-sm">
+          Gerencie todos os seus leads em um só lugar
+        </p>
+      </div>
+
+      <LeadsTable />
     </div>
-  )
+  );
 }
