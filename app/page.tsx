@@ -1,13 +1,8 @@
-import Link from "next/link";
-
 export default function Home() {
   return (
-    <div style={{ padding: 24 }}>
-      <h1>CRM Imobiliário</h1>
-
-      <Link href="/crm/leads">
-        Ir para Leads
-      </Link>
+    <div style={{ padding: 40 }}>
+      <h1>CRM IMOB CLEAN</h1>
+      <p>Sistema rodando com sucesso 🚀</p>
     </div>
-  );
+  )
 }
