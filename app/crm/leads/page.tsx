@@ -1,11 +1,17 @@
-import { supabase } from "@/lib/supabase";
+import { createSupabaseServer } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function LeadsPage() {
-  const { data: leads } = await supabase
+  const supabase = createSupabaseServer();
+
+  const { data: leads, error } = await supabase
     .from("leads")
     .select("*");
+
+  if (error) {
+    console.error(error);
+  }
 
   return (
     <div style={{ padding: 20 }}>
@@ -14,7 +20,7 @@ export default async function LeadsPage() {
 
       {leads?.map((lead: any) => (
         <div key={lead.id}>
-          <p>{lead.name}</p>
+          {lead.name}
         </div>
       ))}
     </div>
