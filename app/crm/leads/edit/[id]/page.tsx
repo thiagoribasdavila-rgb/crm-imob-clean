@@ -1,21 +1,12 @@
+import { notFound } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 
 interface Props {
-  params: {
-    id: string;
-  };
+  params: { id: string };
 }
 
 export default async function EditLeadPage({ params }: Props) {
-  const id = params?.id;
-
-  if (!id) {
-    return (
-      <div style={{ padding: 20 }}>
-        <h1>Lead não encontrado</h1>
-      </div>
-    );
-  }
+  const id = String(params.id);
 
   const { data: lead, error } = await supabaseServer
     .from("leads")
@@ -24,14 +15,8 @@ export default async function EditLeadPage({ params }: Props) {
     .single();
 
   if (error || !lead) {
-    console.error("Erro Supabase:", error);
-
-    return (
-      <div style={{ padding: 20 }}>
-        <h1>Lead não encontrado</h1>
-        <p>Verifique se o ID existe no banco.</p>
-      </div>
-    );
+    console.error("Lead not found:", error);
+    return notFound();
   }
 
   return (
@@ -46,9 +31,9 @@ export default async function EditLeadPage({ params }: Props) {
           borderRadius: 10,
         }}
       >
-        <p><strong>Nome:</strong> {lead.name}</p>
-        <p><strong>Email:</strong> {lead.email}</p>
-        <p><strong>Status:</strong> {lead.status}</p>
+        <p><b>Nome:</b> {lead.name}</p>
+        <p><b>Email:</b> {lead.email}</p>
+        <p><b>Status:</b> {lead.status}</p>
       </div>
     </div>
   );
