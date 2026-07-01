@@ -10,7 +10,9 @@ interface Props {
 export const dynamic = "force-dynamic";
 
 export default async function EditLeadPage({ params }: Props) {
-  const id = String(params.id);
+  const id = params.id;
+
+  if (!id) return notFound();
 
   const { data: lead, error } = await supabaseServer
     .from("leads")
@@ -19,7 +21,7 @@ export default async function EditLeadPage({ params }: Props) {
     .single();
 
   if (error || !lead) {
-    console.error("Erro Supabase:", error);
+    console.error(error);
     return notFound();
   }
 
@@ -27,14 +29,7 @@ export default async function EditLeadPage({ params }: Props) {
     <div style={{ padding: 20 }}>
       <h1>Editar Lead</h1>
 
-      <div
-        style={{
-          marginTop: 20,
-          padding: 20,
-          background: "#f5f5f5",
-          borderRadius: 10,
-        }}
-      >
+      <div style={{ marginTop: 20 }}>
         <p><b>Nome:</b> {lead.name}</p>
         <p><b>Email:</b> {lead.email}</p>
         <p><b>Status:</b> {lead.status}</p>
