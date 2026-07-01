@@ -13,21 +13,13 @@ export default async function EditLeadPage({
     .eq("id", params.id)
     .single()
 
-  if (!lead) {
-    return (
-      <div style={{ padding: 40 }}>
-        Lead não encontrado
-      </div>
-    )
-  }
-
   return (
     <div style={{ padding: 40 }}>
       <h1>Editar Lead</h1>
 
-      <p>Nome: {lead.name}</p>
-      <p>Email: {lead.email}</p>
-      <p>Status: {lead.status}</p>
+      <p>{lead?.name}</p>
+      <p>{lead?.phone}</p>
+      <p>Status: {lead?.status}</p>
     </div>
   )
 }
