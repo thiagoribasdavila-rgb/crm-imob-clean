@@ -1,14 +1,19 @@
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 import { createSupabaseServer } from "@/lib/supabase/server";
 
-export default async function LeadsPage() {
+async function getLeads() {
   const supabase = createSupabaseServer();
 
-  const { data: leads } = await supabase
+  return supabase
     .from("leads")
     .select("*")
     .order("created_at", { ascending: false });
+}
+
+export default async function LeadsPage() {
+  const { data: leads } = await getLeads();
 
   return (
     <div>
