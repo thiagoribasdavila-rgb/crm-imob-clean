@@ -1,26 +1,35 @@
-export const dynamic = "force-dynamic";
-
 import { supabaseServer } from "@/lib/supabase/server";
 
-export default async function EditLeadPage({
-  params
-}: {
-  params: { id: string };
-}) {
-  const { data: lead, error } = await supabaseServer
-    .from("leads")
-    .select("*")
-    .eq("id", params.id)
-    .single();
+interface Props {
+  params: {
+    id: string;
+  };
+}
 
-  if (error) {
-    console.error(error);
-  }
+export default async function EditLeadPage({ params }: Props) {
+  const id = params?.id;
 
-  if (!lead) {
+  if (!id) {
     return (
       <div style={{ padding: 20 }}>
         <h1>Lead não encontrado</h1>
+      </div>
+    );
+  }
+
+  const { data: lead, error } = await supabaseServer
+    .from("leads")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !lead) {
+    console.error("Erro Supabase:", error);
+
+    return (
+      <div style={{ padding: 20 }}>
+        <h1>Lead não encontrado</h1>
+        <p>Verifique se o ID existe no banco.</p>
       </div>
     );
   }
@@ -29,16 +38,17 @@ export default async function EditLeadPage({
     <div style={{ padding: 20 }}>
       <h1>Editar Lead</h1>
 
-      <div style={{
-        marginTop: 20,
-        padding: 20,
-        background: "#f5f5f5",
-        borderRadius: 10
-      }}>
-        <p><b>ID:</b> {lead.id}</p>
-        <p><b>Nome:</b> {lead.name}</p>
-        <p><b>Email:</b> {lead.email}</p>
-        <p><b>Status:</b> {lead.status}</p>
+      <div
+        style={{
+          marginTop: 20,
+          padding: 20,
+          background: "#f5f5f5",
+          borderRadius: 10,
+        }}
+      >
+        <p><strong>Nome:</strong> {lead.name}</p>
+        <p><strong>Email:</strong> {lead.email}</p>
+        <p><strong>Status:</strong> {lead.status}</p>
       </div>
     </div>
   );
