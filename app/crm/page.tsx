@@ -1,26 +1,31 @@
+import { createSupabaseServer } from "@/lib/supabase/server";
+
 export const dynamic = "force-dynamic";
 
-import { supabaseServer } from "@/lib/supabase/server";
-
 export default async function CRMPage() {
-  const { data: leads, error } = await supabaseServer
+  const supabase = createSupabaseServer();
+
+  const { data: leads, error } = await supabase
     .from("leads")
     .select("*");
 
-  const total = leads?.length ?? 0;
+  if (error) {
+    console.error("Supabase error:", error);
+  }
 
   return (
     <div style={{ padding: 20 }}>
       <h1>CRM Dashboard</h1>
 
-      <div style={{
-        marginTop: 20,
-        padding: 20,
-        background: "#f5f5f5",
-        borderRadius: 10
-      }}>
-        <h2>Total de Leads: {total}</h2>
-      </div>
+      <h2>Total leads: {leads?.length ?? 0}</h2>
+
+      <ul>
+        {leads?.map((lead: any) => (
+          <li key={lead.id}>
+            {lead.name} - {lead.email}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
