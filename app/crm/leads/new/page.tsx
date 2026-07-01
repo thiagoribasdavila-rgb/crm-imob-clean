@@ -17,11 +17,12 @@ export default function NewLead() {
     })
 
     if (error) {
-      alert("Erro ao criar lead")
+      alert("Erro ao salvar")
       return
     }
 
     alert("Lead criado!")
+    window.location.href = "/crm/leads"
   }
 
   return (
