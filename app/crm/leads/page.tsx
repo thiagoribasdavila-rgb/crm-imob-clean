@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { createSupabaseServer } from "@/lib/supabase/server"
 
 export default async function LeadsPage() {
@@ -12,13 +13,30 @@ export default async function LeadsPage() {
     <div style={{ padding: 40 }}>
       <h1>Leads</h1>
 
-      <ul>
+      <Link href="/crm/leads/new">+ Novo Lead</Link>
+
+      <div style={{ marginTop: 20, display: "grid", gap: 10 }}>
         {leads?.map((lead) => (
-          <li key={lead.id}>
-            {lead.name} - {lead.email}
-          </li>
+          <div
+            key={lead.id}
+            style={{
+              padding: 15,
+              border: "1px solid #ddd",
+              borderRadius: 8,
+            }}
+          >
+            <strong>{lead.name}</strong>
+            <p>{lead.phone}</p>
+            <small>Status: {lead.status}</small>
+
+            <br />
+
+            <Link href={`/crm/leads/edit/${lead.id}`}>
+              Editar
+            </Link>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   )
 }
