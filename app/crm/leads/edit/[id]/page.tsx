@@ -2,13 +2,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-type Props = {
-  params: {
-    id: string;
-  };
-};
-
-export default async function EditLead({ params }: Props) {
+export default async function Page({ params }: any) {
   const { id } = params;
 
   const { data: lead, error } = await supabaseServer
@@ -18,22 +12,14 @@ export default async function EditLead({ params }: Props) {
     .single();
 
   if (error) {
-    console.error("Erro Supabase:", error);
-  }
-
-  if (!lead) {
-    return <div>Lead não encontrado</div>;
+    console.error(error);
   }
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Editar Lead</h1>
 
-      <div style={{ marginTop: 20 }}>
-        <p><b>Nome:</b> {lead.name}</p>
-        <p><b>Email:</b> {lead.email}</p>
-        <p><b>Status:</b> {lead.status}</p>
-      </div>
+      <pre>{JSON.stringify(lead, null, 2)}</pre>
     </div>
   );
 }
