@@ -1,4 +1,4 @@
-import supabase from "@/lib/supabase"
+import { createClient } from "@supabase/supabase-js"
 
 type Props = {
   params: {
@@ -6,13 +6,16 @@ type Props = {
   }
 }
 
-export default async function EditLead({ params }: Props) {
-  const id = params?.id
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
+export default async function EditLead({ params }: Props) {
   const { data: lead, error } = await supabase
     .from("leads")
     .select("*")
-    .eq("id", id)
+    .eq("id", params.id)
     .single()
 
   if (error || !lead) {
