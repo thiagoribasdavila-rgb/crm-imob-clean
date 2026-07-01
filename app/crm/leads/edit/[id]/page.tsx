@@ -1,57 +1,46 @@
-"use client"
-
 import { useEffect, useState } from "react"
 import supabase from "@/lib/supabase"
 
-export default function EditLead({ params }) {
-  const [lead, setLead] = useState(null)
+interface PageProps {
+  params: {
+    id: string
+  }
+}
+
+export default function EditLead({ params }: PageProps) {
+  const [lead, setLead] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function load() {
-      const { data } = await supabase
+    async function loadLead() {
+      const { data, error } = await supabase
         .from("leads")
         .select("*")
         .eq("id", params.id)
         .single()
 
+      if (error) {
+        console.log("ERROR:", error)
+      }
+
       setLead(data)
+      setLoading(false)
     }
 
-    load()
-  }, [])
+    loadLead()
+  }, [params.id])
 
-  async function updateLead() {
-    await supabase
-      .from("leads")
-      .update(lead)
-      .eq("id", params.id)
+  if (loading) return <p>Carregando...</p>
 
-    alert("Atualizado!")
-  }
-
-  if (!lead) return <p>Carregando...</p>
+  if (!lead) return <p>Lead não encontrado</p>
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Editar Lead</h1>
 
-      <input
-        value={lead.name}
-        onChange={(e) =>
-          setLead({ ...lead, name: e.target.value })
-        }
-      />
-
-      <input
-        value={lead.phone}
-        onChange={(e) =>
-          setLead({ ...lead, phone: e.target.value })
-        }
-      />
-
-      <button onClick={updateLead}>
-        Atualizar
-      </button>
+      <p><b>Nome:</b> {lead.name}</p>
+      <p><b>Telefone:</b> {lead.phone}</p>
+      <p><b>Status:</b> {lead.status}</p>
     </div>
   )
 }
