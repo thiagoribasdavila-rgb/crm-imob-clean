@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import supabase from "@/lib/supabase"
 
-interface PageProps {
+type PageProps = {
   params: {
     id: string
   }
@@ -20,7 +20,7 @@ export default function EditLead({ params }: PageProps) {
         .single()
 
       if (error) {
-        console.log("ERROR:", error)
+        console.error(error)
       }
 
       setLead(data)
@@ -31,7 +31,6 @@ export default function EditLead({ params }: PageProps) {
   }, [params.id])
 
   if (loading) return <p>Carregando...</p>
-
   if (!lead) return <p>Lead não encontrado</p>
 
   return (
