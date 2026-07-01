@@ -1,39 +1,29 @@
-import { notFound } from "next/navigation";
-import { supabaseServer } from "@/lib/supabase/server";
-
-interface Props {
-  params: {
-    id: string;
-  };
-}
+import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditLeadPage({ params }: Props) {
+export default async function Page({ params }: any) {
   const id = params.id;
 
-  if (!id) return notFound();
-
-  const { data: lead, error } = await supabaseServer
+  const { data: lead } = await supabase
     .from("leads")
     .select("*")
     .eq("id", id)
     .single();
 
-  if (error || !lead) {
-    console.error(error);
-    return notFound();
+  if (!lead) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h1>Lead não encontrado</h1>
+      </div>
+    );
   }
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Editar Lead</h1>
-
-      <div style={{ marginTop: 20 }}>
-        <p><b>Nome:</b> {lead.name}</p>
-        <p><b>Email:</b> {lead.email}</p>
-        <p><b>Status:</b> {lead.status}</p>
-      </div>
+      <p>{lead.name}</p>
+      <p>{lead.email}</p>
     </div>
   );
 }
