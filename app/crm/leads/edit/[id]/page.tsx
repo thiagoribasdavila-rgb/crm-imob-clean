@@ -1,33 +1,33 @@
-import { createSupabaseServer } from "@/lib/supabase/server";
-
-export const dynamic = "force-dynamic";
+import { createSupabaseServer } from "@/lib/supabase/server"
 
 export default async function EditLeadPage({
   params,
 }: {
-  params: { id: string };
+  params: { id: string }
 }) {
-  const supabase = createSupabaseServer();
+  const supabase = createSupabaseServer()
 
   const { data: lead } = await supabase
     .from("leads")
     .select("*")
     .eq("id", params.id)
-    .maybeSingle();
+    .single()
 
   if (!lead) {
     return (
-      <div style={{ padding: 20 }}>
-        <h1>Lead não encontrado</h1>
+      <div style={{ padding: 40 }}>
+        Lead não encontrado
       </div>
-    );
+    )
   }
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ padding: 40 }}>
       <h1>Editar Lead</h1>
-      <p>{lead.name}</p>
-      <p>{lead.email}</p>
+
+      <p>Nome: {lead.name}</p>
+      <p>Email: {lead.email}</p>
+      <p>Status: {lead.status}</p>
     </div>
-  );
+  )
 }
