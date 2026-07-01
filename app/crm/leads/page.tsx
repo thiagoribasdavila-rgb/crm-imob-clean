@@ -3,23 +3,21 @@ export const revalidate = 0;
 
 import { createSupabaseServer } from "@/lib/supabase/server";
 
-export default async function LeadsPage() {
+export default async function Page() {
   const supabase = createSupabaseServer();
 
-  const { data: leads, error } = await supabase
+  const { data: leads } = await supabase
     .from("leads")
     .select("*")
     .order("created_at", { ascending: false });
-
-  if (error) return <div>Erro</div>;
 
   return (
     <div>
       <h1>Leads</h1>
 
-      {leads?.map((lead) => (
-        <div key={lead.id}>
-          {lead.name} - {lead.email}
+      {leads?.map((l) => (
+        <div key={l.id}>
+          {l.name} - {l.email}
         </div>
       ))}
     </div>
