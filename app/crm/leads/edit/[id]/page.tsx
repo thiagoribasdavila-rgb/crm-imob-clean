@@ -3,28 +3,38 @@ export const revalidate = 0;
 
 import { createSupabaseServer } from "@/lib/supabase/server";
 
-export default async function Page({
+export default async function EditLeadPage({
   params,
 }: {
   params: { id: string };
 }) {
   const supabase = createSupabaseServer();
 
-  const { data: lead } = await supabase
+  const { data: lead, error } = await supabase
     .from("leads")
     .select("*")
     .eq("id", params.id)
     .single();
 
-  if (!lead) {
-    return <div>Lead não encontrado</div>;
+  if (error || !lead) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h1>Lead não encontrado</h1>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <h1>Editar</h1>
-      <p>{lead.name}</p>
-      <p>{lead.email}</p>
+    <div style={{ padding: 20 }}>
+      <h1>Editar Lead</h1>
+
+      <p>
+        <strong>Nome:</strong> {lead.name}
+      </p>
+
+      <p>
+        <strong>Email:</strong> {lead.email}
+      </p>
     </div>
   );
 }
