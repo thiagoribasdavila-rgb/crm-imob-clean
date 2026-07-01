@@ -1,7 +1,5 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
+module.exports = {
+  experimental: {
+    serverComponentsExternalPackages: ["@supabase/supabase-js"],
+  },
 };
-
-export default nextConfig;
