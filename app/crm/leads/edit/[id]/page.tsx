@@ -1,19 +1,21 @@
 import supabase from "@/lib/supabase"
 
-type PageProps = {
+type Props = {
   params: {
     id: string
   }
 }
 
-export default async function EditLead({ params }: PageProps) {
+export default async function EditLead({ params }: Props) {
+  const id = params?.id
+
   const { data: lead, error } = await supabase
     .from("leads")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .single()
 
-  if (!lead || error) {
+  if (error || !lead) {
     return <div>Lead não encontrado</div>
   }
 
