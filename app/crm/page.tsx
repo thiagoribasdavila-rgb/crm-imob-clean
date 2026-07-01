@@ -5,11 +5,7 @@ export default async function Dashboard() {
     .from("leads")
     .select("*");
 
-  if (error) {
-    console.error("Erro Supabase:", error);
-  }
-
-  const total = leads?.length || 0;
+  const total = leads?.length ?? 0;
 
   return (
     <div style={{ padding: 20 }}>
@@ -26,28 +22,22 @@ export default async function Dashboard() {
         <h2>Total de Leads: {total}</h2>
       </div>
 
-      {/* LISTA DE LEADS */}
       <div style={{ marginTop: 20 }}>
-        {leads && leads.length > 0 ? (
-          leads.map((lead: any) => (
-            <div
-              key={lead.id}
-              style={{
-                padding: 10,
-                marginBottom: 10,
-                background: "white",
-                borderRadius: 8,
-                border: "1px solid #ddd",
-              }}
-            >
-              <p><strong>Nome:</strong> {lead.nome || "Sem nome"}</p>
-              <p><strong>Email:</strong> {lead.email || "Sem email"}</p>
-              <p><strong>Status:</strong> {lead.status || "Novo"}</p>
-            </div>
-          ))
-        ) : (
-          <p>Nenhum lead encontrado</p>
-        )}
+        {leads?.map((lead: any) => (
+          <div
+            key={lead.id}
+            style={{
+              padding: 10,
+              marginBottom: 10,
+              border: "1px solid #ddd",
+              borderRadius: 8,
+            }}
+          >
+            <p><b>Nome:</b> {lead.name}</p>
+            <p><b>Telefone:</b> {lead.phone}</p>
+            <p><b>Status:</b> {lead.status}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
