@@ -3,7 +3,7 @@ export const revalidate = 0;
 
 import { createSupabaseServer } from "@/lib/supabase/server";
 
-export default async function Page() {
+export default async function CRMPage() {
   const supabase = createSupabaseServer();
 
   const { data: leads, error } = await supabase
@@ -11,13 +11,17 @@ export default async function Page() {
     .select("*");
 
   if (error) {
-    return <div>Erro CRM</div>;
+    return (
+      <div>
+        <h1>Erro ao carregar CRM</h1>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <h1>CRM</h1>
-      <p>Total: {leads?.length ?? 0}</p>
+    <div style={{ padding: 20 }}>
+      <h1>Dashboard CRM</h1>
+      <h2>Total de leads: {leads?.length ?? 0}</h2>
     </div>
   );
 }
