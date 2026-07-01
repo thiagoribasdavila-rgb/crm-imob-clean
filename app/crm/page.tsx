@@ -1,18 +1,18 @@
-export const dynamic = "force-dynamic";
+import Link from "next/link"
 
-import { createSupabaseServer } from "@/lib/supabase/server";
-
-export default async function CRMPage() {
-  const supabase = createSupabaseServer();
-
-  const { data: leads } = await supabase
-    .from("leads")
-    .select("*");
-
+export default function CRMPage() {
   return (
-    <div>
-      <h1>CRM</h1>
-      <p>Total: {leads?.length ?? 0}</p>
+    <div style={{ padding: 40 }}>
+      <h1>CRM Imobiliário</h1>
+
+      <ul>
+        <li>
+          <Link href="/crm/leads">Leads</Link>
+        </li>
+        <li>
+          <Link href="/crm/leads/new">Novo Lead</Link>
+        </li>
+      </ul>
     </div>
-  );
+  )
 }
