@@ -1,8 +1,10 @@
-import { supabase } from "@/lib/supabase";
+import { createSupabaseServer } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page({ params }: any) {
+  const supabase = createSupabaseServer();
+
   const id = params.id;
 
   const { data: lead } = await supabase
@@ -12,11 +14,7 @@ export default async function Page({ params }: any) {
     .single();
 
   if (!lead) {
-    return (
-      <div style={{ padding: 20 }}>
-        <h1>Lead não encontrado</h1>
-      </div>
-    );
+    return <div>Lead não encontrado</div>;
   }
 
   return (
