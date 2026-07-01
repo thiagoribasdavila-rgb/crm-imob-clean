@@ -6,5 +6,5 @@ export default function CRMLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return children;
 }
