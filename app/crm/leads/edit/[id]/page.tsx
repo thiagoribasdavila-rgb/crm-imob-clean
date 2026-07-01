@@ -2,8 +2,12 @@ import { notFound } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 
 interface Props {
-  params: { id: string };
+  params: {
+    id: string;
+  };
 }
+
+export const dynamic = "force-dynamic";
 
 export default async function EditLeadPage({ params }: Props) {
   const id = String(params.id);
@@ -15,7 +19,7 @@ export default async function EditLeadPage({ params }: Props) {
     .single();
 
   if (error || !lead) {
-    console.error("Lead not found:", error);
+    console.error("Erro Supabase:", error);
     return notFound();
   }
 
