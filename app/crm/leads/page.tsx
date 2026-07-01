@@ -1,4 +1,4 @@
-import { supabaseServer } from "@/lib/supabase-server";
+import { supabaseServer } from "@/lib/supabase/server";
 
 export default async function Dashboard() {
   const { data: leads, error } = await supabaseServer
