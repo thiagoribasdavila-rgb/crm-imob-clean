@@ -1,7 +1,6 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export default async function LeadsPage() {
   const supabase = createSupabaseServer();
@@ -11,17 +10,21 @@ export default async function LeadsPage() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  const leads = data ?? []; // 🔥 nunca quebra
+  const leads = data ?? [];
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Leads</h1>
 
-      {leads.map((lead: any) => (
-        <div key={lead.id}>
-          {lead.name} - {lead.email}
-        </div>
-      ))}
+      {leads.length === 0 ? (
+        <p>Nenhum lead encontrado</p>
+      ) : (
+        leads.map((lead: any) => (
+          <div key={lead.id}>
+            {lead.name} - {lead.email}
+          </div>
+        ))
+      )}
     </div>
   );
 }
