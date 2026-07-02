@@ -20,14 +20,14 @@ export default function LeadEditClient({ id }: { id: string }) {
     load()
   }, [id])
 
-  if (!lead) return <p>Carregando...</p>
+  if (!lead) return <p>Carregando lead...</p>
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Editar Lead</h1>
 
-      <input value={lead.name || ""} readOnly />
-      <input value={lead.status || ""} readOnly />
+      <p>Nome: {lead.name}</p>
+      <p>Status: {lead.status}</p>
     </div>
   )
 }
