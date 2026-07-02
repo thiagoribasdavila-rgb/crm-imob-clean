@@ -2,28 +2,33 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase/client"
+import { useUser } from "@/lib/auth/useUser"
 import KanbanBoard from "@/components/crm/KanbanBoard"
-import ProtectedRoute from "@/components/ui/ProtectedRoute"
 
 export default function CRM() {
+  const user = useUser()
   const [leads, setLeads] = useState<any[]>([])
 
   async function load() {
-    const { data } = await supabase.from("leads").select("*")
+    if (!user) return
+
+    const { data } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("user_id", user.id)
+
     setLeads(data || [])
   }
 
   useEffect(() => {
     load()
-  }, [])
+  }, [user])
 
   return (
-    <ProtectedRoute>
-      <div style={{ padding: 20 }}>
-        <h1>CRM SaaS</h1>
+    <div style={{ padding: 20 }}>
+      <h1>CRM Empresa</h1>
 
-        <KanbanBoard leads={leads} refresh={load} />
-      </div>
-    </ProtectedRoute>
+      <KanbanBoard leads={leads} refresh={load} />
+    </div>
   )
 }
