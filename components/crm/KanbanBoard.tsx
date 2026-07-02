@@ -14,7 +14,11 @@ export default function KanbanBoard({ leads, refresh }: any) {
           {leads
             .filter((l: any) => l.status === status)
             .map((lead: any) => (
-              <LeadCard key={lead.id} lead={lead} refresh={refresh} />
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                refresh={refresh}
+              />
             ))}
         </div>
       ))}
