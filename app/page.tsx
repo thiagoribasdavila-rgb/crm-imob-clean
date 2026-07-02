@@ -6,8 +6,12 @@ export default function Home() {
       <h1>CRM Imobiliário</h1>
 
       <ul>
-        <li><Link href="/crm/leads">Leads</Link></li>
-        <li><Link href="/crm/leads/new">Novo Lead</Link></li>
+        <li>
+          <Link href="/crm/leads">Leads</Link>
+        </li>
+        <li>
+          <Link href="/crm/leads/new">Novo Lead</Link>
+        </li>
       </ul>
     </main>
   )
