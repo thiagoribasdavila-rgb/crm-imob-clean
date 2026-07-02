@@ -1,8 +1,6 @@
 export type Lead = {
-  id: number;
-  name: string;
-  email: string;
-  status: "Novo" | "Contato" | "Negociando" | "Ganho" | "Perdido";
-  source: string;
-  createdAt: string;
-};
+  id: string
+  name: string
+  status: "novo" | "contato" | "proposta" | "fechado"
+  created_at: string
+}
