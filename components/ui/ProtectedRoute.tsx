@@ -4,20 +4,14 @@ import { useEffect } from "react"
 import { supabase } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
-export default function ProtectedRoute({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function ProtectedRoute({ children }: any) {
   const router = useRouter()
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        router.push("/auth/login")
-      }
+      if (!data.user) router.push("/auth/login")
     })
   }, [])
 
-  return <>{children}</>
+  return children
 }
