@@ -2,14 +2,14 @@
 
 import { supabase } from "@/lib/supabase/client"
 
-export default function LeadCard({ lead, onMove }: any) {
+export default function LeadCard({ lead, refresh }: any) {
   async function move(status: string) {
     await supabase
       .from("leads")
       .update({ status })
       .eq("id", lead.id)
 
-    onMove()
+    refresh()
   }
 
   return (
