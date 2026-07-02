@@ -1,21 +1,28 @@
-import { createSupabaseClient } from "@/lib/supabase/client"
+import { createSupabaseServer } from "@/lib/supabase/server"
 
 export default async function LeadsPage() {
-  const supabase = createSupabaseClient()
+  const supabase = createSupabaseServer()
 
-  const { data } = await supabase
+  const { data: leads, error } = await supabase
     .from("leads")
     .select("*")
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    return <p>Erro ao carregar leads</p>
+  }
 
   return (
-    <div>
+    <div style={{ padding: 40 }}>
       <h1>Leads</h1>
 
-      {data?.map((lead) => (
-        <div key={lead.id}>
-          {lead.name}
-        </div>
-      ))}
+      <ul>
+        {leads?.map((lead) => (
+          <li key={lead.id}>
+            {lead.name} - {lead.phone}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
