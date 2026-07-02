@@ -1,28 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { createSupabaseClient } from "@/lib/supabase/client"
+import { createSupabaseBrowser } from "@/lib/supabase/client"
 
-export default function NewLead() {
-  const supabase = createSupabaseClient()
+export default function NewLeadPage() {
+  const supabase = createSupabaseBrowser()
 
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
 
   async function handleSubmit() {
-    const { error } = await supabase.from("leads").insert({
+    await supabase.from("leads").insert({
       name,
       phone,
-      status: "novo",
     })
 
-    if (error) {
-      alert("Erro ao salvar")
-      return
-    }
-
     alert("Lead criado!")
-    window.location.href = "/crm/leads"
   }
 
   return (
@@ -31,21 +24,17 @@ export default function NewLead() {
 
       <input
         placeholder="Nome"
+        value={name}
         onChange={(e) => setName(e.target.value)}
       />
 
-      <br />
-
       <input
         placeholder="Telefone"
+        value={phone}
         onChange={(e) => setPhone(e.target.value)}
       />
 
-      <br />
-
-      <button onClick={handleSubmit}>
-        Salvar
-      </button>
+      <button onClick={handleSubmit}>Salvar</button>
     </div>
   )
 }
