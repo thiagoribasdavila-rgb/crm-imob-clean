@@ -4,22 +4,28 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase/client"
 import { Lead } from "@/types/lead"
+import StatusBadge from "@/components/crm/StatusBadge"
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
 
+  async function load() {
+    const { data } = await supabase
+      .from("leads")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    setLeads(data || [])
+  }
+
   useEffect(() => {
-    async function load() {
-      const { data } = await supabase
-        .from("leads")
-        .select("*")
-        .order("created_at", { ascending: false })
-
-      setLeads(data || [])
-    }
-
     load()
   }, [])
+
+  async function deleteLead(id: string) {
+    await supabase.from("leads").delete().eq("id", id)
+    load()
+  }
 
   return (
     <main style={{ padding: 40 }}>
@@ -29,9 +35,26 @@ export default function LeadsPage() {
 
       <div style={{ marginTop: 20 }}>
         {leads.map((lead) => (
-          <div key={lead.id} style={{ padding: 10 }}>
-            <strong>{lead.name}</strong> — {lead.status}{" "}
-            <Link href={`/crm/leads/edit/${lead.id}`}>editar</Link>
+          <div
+            key={lead.id}
+            style={{
+              display: "flex",
+              gap: 10,
+              padding: 10,
+              borderBottom: "1px solid #eee",
+            }}
+          >
+            <strong>{lead.name}</strong>
+
+            <StatusBadge status={lead.status} />
+
+            <Link href={`/crm/leads/edit/${lead.id}`}>
+              Editar
+            </Link>
+
+            <button onClick={() => deleteLead(lead.id)}>
+              Remover
+            </button>
           </div>
         ))}
       </div>
