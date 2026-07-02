@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase/client"
 import KanbanBoard from "@/components/crm/KanbanBoard"
+import ProtectedRoute from "@/components/ui/ProtectedRoute"
 
 export default function CRM() {
   const [leads, setLeads] = useState<any[]>([])
@@ -17,10 +18,12 @@ export default function CRM() {
   }, [])
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>CRM SaaS</h1>
+    <ProtectedRoute>
+      <div style={{ padding: 20 }}>
+        <h1>CRM SaaS</h1>
 
-      <KanbanBoard leads={leads} onMove={load} />
-    </div>
+        <KanbanBoard leads={leads} refresh={load} />
+      </div>
+    </ProtectedRoute>
   )
 }
