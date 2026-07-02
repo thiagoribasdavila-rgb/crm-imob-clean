@@ -5,12 +5,12 @@ import { supabase } from "@/lib/supabase/client"
 import ProtectedRoute from "@/components/ui/ProtectedRoute"
 
 export default function Dashboard() {
-  const [count, setCount] = useState(0)
+  const [total, setTotal] = useState(0)
 
   useEffect(() => {
     async function load() {
       const { data } = await supabase.from("leads").select("*")
-      setCount(data?.length || 0)
+      setTotal(data?.length || 0)
     }
 
     load()
@@ -20,8 +20,7 @@ export default function Dashboard() {
     <ProtectedRoute>
       <div style={{ padding: 40 }}>
         <h1>Dashboard</h1>
-
-        <div>Total de Leads: {count}</div>
+        <h2>Total de Leads: {total}</h2>
       </div>
     </ProtectedRoute>
   )
