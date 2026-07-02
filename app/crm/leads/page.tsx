@@ -1,42 +1,16 @@
-import Link from "next/link"
-import { createSupabaseServer } from "@/lib/supabase/server"
+import { getSupabaseBrowser } from "@/lib/supabase/client"
 
 export default async function LeadsPage() {
-  const supabase = createSupabaseServer()
+  const supabase = getSupabaseBrowser()
 
-  const { data: leads } = await supabase
-    .from("leads")
-    .select("*")
-    .order("created_at", { ascending: false })
+  const { data } = await supabase.from("leads").select("*")
 
   return (
-    <div style={{ padding: 40 }}>
+    <div>
       <h1>Leads</h1>
-
-      <Link href="/crm/leads/new">+ Novo Lead</Link>
-
-      <div style={{ marginTop: 20, display: "grid", gap: 10 }}>
-        {leads?.map((lead) => (
-          <div
-            key={lead.id}
-            style={{
-              padding: 15,
-              border: "1px solid #ddd",
-              borderRadius: 8,
-            }}
-          >
-            <strong>{lead.name}</strong>
-            <p>{lead.phone}</p>
-            <small>Status: {lead.status}</small>
-
-            <br />
-
-            <Link href={`/crm/leads/edit/${lead.id}`}>
-              Editar
-            </Link>
-          </div>
-        ))}
-      </div>
+      {data?.map((lead) => (
+        <div key={lead.id}>{lead.name}</div>
+      ))}
     </div>
   )
 }
