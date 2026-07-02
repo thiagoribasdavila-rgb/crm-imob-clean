@@ -15,23 +15,17 @@ export default function Login() {
       password,
     })
 
-    if (!error) router.push("/dashboard")
+    if (!error) {
+      router.push("/dashboard")
+    }
   }
 
   return (
     <div style={{ padding: 40 }}>
-      <h1>Login CRM</h1>
+      <h1>Login CRM SaaS</h1>
 
-      <input
-        placeholder="email"
-        onChange={(e) => setEmail(e.target.value)}
-      />
-
-      <input
-        type="password"
-        placeholder="senha"
-        onChange={(e) => setPassword(e.target.value)}
-      />
+      <input placeholder="email" onChange={(e) => setEmail(e.target.value)} />
+      <input placeholder="senha" type="password" onChange={(e) => setPassword(e.target.value)} />
 
       <button onClick={login}>Entrar</button>
     </div>
