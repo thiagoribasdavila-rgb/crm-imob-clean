@@ -1,17 +1,8 @@
-import { createClient } from "@supabase/supabase-js"
+import { createBrowserClient } from "@supabase/ssr"
 
-let supabaseInstance: any = null
-
-export function getSupabase() {
-  if (supabaseInstance) return supabaseInstance
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!url || !key) {
-    throw new Error("Supabase ENV não carregada")
-  }
-
-  supabaseInstance = createClient(url, key)
-  return supabaseInstance
+export function createSupabaseBrowser() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 }
