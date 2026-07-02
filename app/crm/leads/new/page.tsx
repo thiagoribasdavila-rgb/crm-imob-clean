@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { supabase } from "@/lib/supabase/client"
 
-export default function NewLead() {
+export default function NewLeadPage() {
   const [name, setName] = useState("")
 
   async function createLead() {
@@ -13,16 +13,17 @@ export default function NewLead() {
     })
 
     alert("Lead criado!")
+    setName("")
   }
 
   return (
-    <div>
+    <div style={{ padding: 40 }}>
       <h1>Novo Lead</h1>
 
       <input
-        placeholder="Nome"
         value={name}
         onChange={(e) => setName(e.target.value)}
+        placeholder="Nome"
       />
 
       <button onClick={createLead}>Salvar</button>
