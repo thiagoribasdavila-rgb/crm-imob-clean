@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useParams, useRouter } from "next/navigation";
 
-export default function EditLead() {
+export default function LeadEditClient() {
   const { id } = useParams();
   const router = useRouter();
 
@@ -13,13 +13,13 @@ export default function EditLead() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("leads")
         .select("*")
         .eq("id", id)
         .single();
 
-      if (data) {
+      if (!error && data) {
         setName(data.name);
         setStatus(data.status);
       }
@@ -28,7 +28,7 @@ export default function EditLead() {
     load();
   }, [id]);
 
-  async function update() {
+  async function save() {
     await supabase
       .from("leads")
       .update({ name, status })
@@ -41,19 +41,10 @@ export default function EditLead() {
     <div>
       <h1>Editar Lead</h1>
 
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
+      <input value={name} onChange={(e) => setName(e.target.value)} />
+      <input value={status} onChange={(e) => setStatus(e.target.value)} />
 
-      <input
-        value={status}
-        onChange={(e) => setStatus(e.target.value)}
-      />
-
-      <button onClick={update}>
-        Atualizar
-      </button>
+      <button onClick={save}>Salvar</button>
     </div>
   );
 }
