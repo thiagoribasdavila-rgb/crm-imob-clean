@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
 
-export default function EditLeadPage() {
+export default function EditLead() {
   const { id } = useParams()
   const [lead, setLead] = useState<any>(null)
 
@@ -22,10 +22,13 @@ export default function EditLeadPage() {
     load()
   }, [id])
 
-  async function updateLead() {
+  async function save() {
     await supabase
       .from("leads")
-      .update({ status: lead.status })
+      .update({
+        name: lead.name,
+        status: lead.status,
+      })
       .eq("id", id)
 
     alert("Atualizado!")
@@ -37,7 +40,12 @@ export default function EditLeadPage() {
     <div style={{ padding: 40 }}>
       <h1>Editar Lead</h1>
 
-      <p>{lead.name}</p>
+      <input
+        value={lead.name}
+        onChange={(e) =>
+          setLead({ ...lead, name: e.target.value })
+        }
+      />
 
       <select
         value={lead.status}
@@ -51,7 +59,7 @@ export default function EditLeadPage() {
         <option value="fechado">Fechado</option>
       </select>
 
-      <button onClick={updateLead}>Salvar</button>
+      <button onClick={save}>Salvar</button>
     </div>
   )
 }
