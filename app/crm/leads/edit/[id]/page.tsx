@@ -1,60 +1,37 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSupabase } from "@/lib/hooks/useSupabase"
-import { useRouter, useParams } from "next/navigation"
+import { supabase } from "@/lib/supabase/client"
+import { useParams, useRouter } from "next/navigation"
 
-export default function EditLeadPage() {
-  const supabase = useSupabase()
+export default function EditLead() {
+  const { id } = useParams()
   const router = useRouter()
-  const params = useParams()
 
   const [lead, setLead] = useState<any>(null)
 
-  // 🔵 CARREGAR LEAD
   useEffect(() => {
-    async function load() {
-      if (!supabase) return
-
-      const { data } = await supabase
-        .from("leads")
-        .select("*")
-        .eq("id", params.id)
-        .single()
-
-      setLead(data)
-    }
-
     load()
-  }, [supabase, params.id])
+  }, [])
 
-  // 🟢 UPDATE LEAD
-  async function updateLead() {
-    if (!supabase) return
+  async function load() {
+    const { data } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("id", id)
+      .single()
 
+    setLead(data)
+  }
+
+  async function save() {
     await supabase
       .from("leads")
       .update({
         name: lead.name,
         status: lead.status,
       })
-      .eq("id", params.id)
-
-    router.push("/crm/leads")
-  }
-
-  // 🔴 DELETE LEAD (SEU ITEM 6)
-  async function deleteLead() {
-    if (!supabase) return
-
-    const confirmDelete = confirm("Tem certeza que quer deletar esse lead?")
-
-    if (!confirmDelete) return
-
-    await supabase
-      .from("leads")
-      .delete()
-      .eq("id", params.id)
+      .eq("id", id)
 
     router.push("/crm/leads")
   }
@@ -66,41 +43,25 @@ export default function EditLeadPage() {
       <h1>Editar Lead</h1>
 
       <input
-        value={lead.name || ""}
+        value={lead.name}
         onChange={(e) =>
           setLead({ ...lead, name: e.target.value })
         }
       />
 
       <select
-        value={lead.status || "novo"}
+        value={lead.status}
         onChange={(e) =>
           setLead({ ...lead, status: e.target.value })
         }
       >
         <option value="novo">Novo</option>
         <option value="contato">Contato</option>
-        <option value="ganho">Ganho</option>
-        <option value="perdido">Perdido</option>
+        <option value="proposta">Proposta</option>
+        <option value="fechado">Fechado</option>
       </select>
 
-      <div style={{ marginTop: 20 }}>
-        <button onClick={updateLead}>
-          Salvar
-        </button>
-
-        {/* 🔴 DELETE BUTTON */}
-        <button
-          onClick={deleteLead}
-          style={{
-            marginLeft: 10,
-            background: "red",
-            color: "white",
-          }}
-        >
-          Deletar
-        </button>
-      </div>
+      <button onClick={save}>Salvar</button>
     </div>
   )
 }
