@@ -1,11 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
 
-export default function LeadEditClient() {
-  const { id } = useParams()
+export default function LeadEditClient({ id }: { id: string }) {
   const [lead, setLead] = useState<any>(null)
 
   useEffect(() => {
@@ -25,11 +23,11 @@ export default function LeadEditClient() {
   if (!lead) return <p>Carregando...</p>
 
   return (
-    <div style={{ padding: 40 }}>
+    <div style={{ padding: 20 }}>
       <h1>Editar Lead</h1>
 
-      <p>Nome: {lead.name}</p>
-      <p>Status: {lead.status}</p>
+      <input value={lead.name || ""} readOnly />
+      <input value={lead.status || ""} readOnly />
     </div>
   )
 }
