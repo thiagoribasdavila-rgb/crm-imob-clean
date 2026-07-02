@@ -30,8 +30,6 @@ export default function EditLead() {
         status: lead.status,
       })
       .eq("id", id)
-
-    alert("Atualizado!")
   }
 
   if (!lead) return <p>Carregando...</p>
