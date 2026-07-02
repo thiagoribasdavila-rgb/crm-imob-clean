@@ -1,27 +1,23 @@
-import { createSupabaseServer } from "@/lib/supabase/server"
+"use client"
 
-export default async function EditLeadPage({
-  params,
-}: {
-  params: { id: string }
-}) {
-  const supabase = createSupabaseServer()
+import { useEffect } from "react"
+import { getSupabase } from "@/lib/supabase/client"
 
-  const { data: lead } = await supabase
-    .from("leads")
-    .select("*")
-    .eq("id", params.id)
-    .single()
+export default function Page({ params }) {
+  useEffect(() => {
+    const supabase = getSupabase()
 
-  if (!lead) return <p>Lead não encontrado</p>
+    async function load() {
+      const { data } = await supabase
+        .from("leads")
+        .select("*")
+        .eq("id", params.id)
 
-  return (
-    <div style={{ padding: 40 }}>
-      <h1>Editar Lead</h1>
+      console.log(data)
+    }
 
-      <p>{lead.name}</p>
-      <p>{lead.phone}</p>
-      <p>{lead.status}</p>
-    </div>
-  )
+    load()
+  }, [])
+
+  return <div>Lead</div>
 }
