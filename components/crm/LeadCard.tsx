@@ -13,16 +13,10 @@ export default function LeadCard({ lead, onMove }: any) {
   }
 
   return (
-    <div
-      style={{
-        padding: 10,
-        border: "1px solid #ccc",
-        marginBottom: 10,
-      }}
-    >
+    <div style={{ padding: 10, border: "1px solid #ccc" }}>
       <strong>{lead.name}</strong>
 
-      <div style={{ marginTop: 10 }}>
+      <div>
         <button onClick={() => move("novo")}>Novo</button>
         <button onClick={() => move("contato")}>Contato</button>
         <button onClick={() => move("proposta")}>Proposta</button>
