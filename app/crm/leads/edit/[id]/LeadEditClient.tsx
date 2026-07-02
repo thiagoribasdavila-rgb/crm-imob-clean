@@ -1,12 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase/client"
+import { useSupabase } from "@/lib/hooks/useSupabase"
 
 export default function LeadEditClient({ id }: { id: string }) {
+  const supabase = useSupabase()
   const [lead, setLead] = useState<any>(null)
 
   useEffect(() => {
+    if (!supabase) return
+
     async function load() {
       const { data } = await supabase
         .from("leads")
@@ -18,16 +21,16 @@ export default function LeadEditClient({ id }: { id: string }) {
     }
 
     load()
-  }, [id])
+  }, [supabase, id])
 
-  if (!lead) return <p>Carregando lead...</p>
+  if (!lead) return <p>Carregando...</p>
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Editar Lead</h1>
 
-      <p>Nome: {lead.name}</p>
-      <p>Status: {lead.status}</p>
+      <input value={lead.name || ""} readOnly />
+      <input value={lead.status || ""} readOnly />
     </div>
   )
 }
