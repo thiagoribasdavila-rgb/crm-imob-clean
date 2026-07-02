@@ -1,40 +1,40 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { supabase } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useState } from "react"
+import { useSupabase } from "@/lib/hooks/useSupabase"
+import { useRouter } from "next/navigation"
 
 export default function NewLead() {
-  const [name, setName] = useState("");
-  const [status, setStatus] = useState("novo");
-  const router = useRouter();
+  const supabase = useSupabase()
+  const router = useRouter()
 
-  async function handleSubmit() {
-    await supabase.from("leads").insert({
-      name,
-      status,
-    });
+  const [name, setName] = useState("")
+  const [status, setStatus] = useState("novo")
 
-    router.push("/crm/leads");
+  async function createLead() {
+    if (!supabase) return
+
+    await supabase.from("leads").insert([
+      { name, status }
+    ])
+
+    router.push("/crm/leads")
   }
 
   return (
-    <div>
+    <div style={{ padding: 20 }}>
       <h1>Novo Lead</h1>
 
-      <input
-        placeholder="Nome"
-        onChange={(e) => setName(e.target.value)}
-      />
+      <input placeholder="Nome" onChange={(e) => setName(e.target.value)} />
+      
+      <select onChange={(e) => setStatus(e.target.value)}>
+        <option value="novo">Novo</option>
+        <option value="contato">Contato</option>
+        <option value="ganho">Ganho</option>
+        <option value="perdido">Perdido</option>
+      </select>
 
-      <input
-        placeholder="Status"
-        onChange={(e) => setStatus(e.target.value)}
-      />
-
-      <button onClick={handleSubmit}>
-        Salvar
-      </button>
+      <button onClick={createLead}>Salvar</button>
     </div>
-  );
+  )
 }
