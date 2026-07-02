@@ -1,50 +1,66 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react"
+import { useSupabase } from "@/lib/hooks/useSupabase"
+import { useRouter, useParams } from "next/navigation"
 
-export default function LeadEditClient() {
-  const { id } = useParams();
-  const router = useRouter();
+export default function EditLead() {
+  const supabase = useSupabase()
+  const router = useRouter()
+  const params = useParams()
 
-  const [name, setName] = useState("");
-  const [status, setStatus] = useState("");
+  const [lead, setLead] = useState<any>(null)
 
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase
+      if (!supabase) return
+
+      const { data } = await supabase
         .from("leads")
         .select("*")
-        .eq("id", id)
-        .single();
+        .eq("id", params.id)
+        .single()
 
-      if (!error && data) {
-        setName(data.name);
-        setStatus(data.status);
-      }
+      setLead(data)
     }
 
-    load();
-  }, [id]);
+    load()
+  }, [supabase])
 
-  async function save() {
+  async function updateLead() {
     await supabase
       .from("leads")
-      .update({ name, status })
-      .eq("id", id);
+      .update({
+        name: lead.name,
+        status: lead.status
+      })
+      .eq("id", params.id)
 
-    router.push("/crm/leads");
+    router.push("/crm/leads")
   }
 
+  if (!lead) return <p>Carregando...</p>
+
   return (
-    <div>
+    <div style={{ padding: 20 }}>
       <h1>Editar Lead</h1>
 
-      <input value={name} onChange={(e) => setName(e.target.value)} />
-      <input value={status} onChange={(e) => setStatus(e.target.value)} />
+      <input
+        value={lead.name}
+        onChange={(e) => setLead({ ...lead, name: e.target.value })}
+      />
 
-      <button onClick={save}>Salvar</button>
+      <select
+        value={lead.status}
+        onChange={(e) => setLead({ ...lead, status: e.target.value })}
+      >
+        <option value="novo">Novo</option>
+        <option value="contato">Contato</option>
+        <option value="ganho">Ganho</option>
+        <option value="perdido">Perdido</option>
+      </select>
+
+      <button onClick={updateLead}>Salvar alterações</button>
     </div>
-  );
+  )
 }
