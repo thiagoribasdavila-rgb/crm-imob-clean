@@ -1,12 +1,15 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
-import { supabase } from "@/lib/supabase/client"
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
+import { useParams, useRouter } from "next/navigation";
 
 export default function EditLead() {
-  const { id } = useParams()
-  const [lead, setLead] = useState<any>(null)
+  const { id } = useParams();
+  const router = useRouter();
+
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -14,50 +17,43 @@ export default function EditLead() {
         .from("leads")
         .select("*")
         .eq("id", id)
-        .single()
+        .single();
 
-      setLead(data)
+      if (data) {
+        setName(data.name);
+        setStatus(data.status);
+      }
     }
 
-    load()
-  }, [id])
+    load();
+  }, [id]);
 
-  async function save() {
+  async function update() {
     await supabase
       .from("leads")
-      .update({
-        name: lead.name,
-        status: lead.status,
-      })
-      .eq("id", id)
+      .update({ name, status })
+      .eq("id", id);
+
+    router.push("/crm/leads");
   }
 
-  if (!lead) return <p>Carregando...</p>
-
   return (
-    <div style={{ padding: 40 }}>
+    <div>
       <h1>Editar Lead</h1>
 
       <input
-        value={lead.name}
-        onChange={(e) =>
-          setLead({ ...lead, name: e.target.value })
-        }
+        value={name}
+        onChange={(e) => setName(e.target.value)}
       />
 
-      <select
-        value={lead.status}
-        onChange={(e) =>
-          setLead({ ...lead, status: e.target.value })
-        }
-      >
-        <option value="novo">Novo</option>
-        <option value="contato">Contato</option>
-        <option value="proposta">Proposta</option>
-        <option value="fechado">Fechado</option>
-      </select>
+      <input
+        value={status}
+        onChange={(e) => setStatus(e.target.value)}
+      />
 
-      <button onClick={save}>Salvar</button>
+      <button onClick={update}>
+        Atualizar
+      </button>
     </div>
-  )
+  );
 }
