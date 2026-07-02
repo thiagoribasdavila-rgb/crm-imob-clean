@@ -27,14 +27,14 @@ export default function LeadsPage() {
 
       <Link href="/crm/leads/new">+ Novo Lead</Link>
 
-      <ul>
+      <div style={{ marginTop: 20 }}>
         {leads.map((lead) => (
-          <li key={lead.id}>
-            {lead.name} - {lead.status}{" "}
-            <Link href={`/crm/leads/edit/${lead.id}`}>Editar</Link>
-          </li>
+          <div key={lead.id} style={{ padding: 10 }}>
+            <strong>{lead.name}</strong> — {lead.status}{" "}
+            <Link href={`/crm/leads/edit/${lead.id}`}>editar</Link>
+          </div>
         ))}
-      </ul>
+      </div>
     </main>
   )
 }
