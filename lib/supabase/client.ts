@@ -1,11 +1,11 @@
 import { createClient } from "@supabase/supabase-js"
 
-export function getSupabase() {
+export function getSupabaseBrowser() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!url || !key) {
-    throw new Error("ENV Supabase não carregado")
+    throw new Error("❌ Supabase ENV não encontrado")
   }
 
   return createClient(url, key)
