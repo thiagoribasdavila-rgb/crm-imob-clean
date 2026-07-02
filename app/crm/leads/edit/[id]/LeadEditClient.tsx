@@ -3,13 +3,16 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase/client"
 
-export default function LeadsClient() {
+export default function LeadEditClient() {
   const [leads, setLeads] = useState<any[]>([])
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from("leads").select("*")
-      setLeads(data || [])
+      const { data, error } = await supabase.from("leads").select("*")
+
+      if (!error) {
+        setLeads(data || [])
+      }
     }
 
     load()
@@ -27,3 +30,4 @@ export default function LeadsClient() {
     </div>
   )
 }
+
