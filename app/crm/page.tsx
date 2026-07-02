@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase/client"
 import KanbanBoard from "@/components/crm/KanbanBoard"
 
-export default function CrmPage() {
+export default function CRM() {
   const [leads, setLeads] = useState<any[]>([])
 
   async function load() {
@@ -18,7 +18,7 @@ export default function CrmPage() {
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>CRM Dashboard</h1>
+      <h1>CRM SaaS</h1>
 
       <KanbanBoard leads={leads} onMove={load} />
     </div>
