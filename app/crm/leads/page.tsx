@@ -1,25 +1,20 @@
-import { createSupabaseServer } from "@/lib/supabase/server"
+import Link from "next/link"
+import { supabase } from "@/lib/supabase/client"
 
 export default async function LeadsPage() {
-  const supabase = createSupabaseServer()
-
-  const { data: leads, error } = await supabase
-    .from("leads")
-    .select("*")
-    .order("created_at", { ascending: false })
-
-  if (error) {
-    return <p>Erro ao carregar leads</p>
-  }
+  const { data } = await supabase.from("leads").select("*")
 
   return (
-    <div style={{ padding: 40 }}>
+    <div>
       <h1>Leads</h1>
 
+      <Link href="/crm/leads/new">+ Novo Lead</Link>
+
       <ul>
-        {leads?.map((lead) => (
+        {data?.map((lead: any) => (
           <li key={lead.id}>
-            {lead.name} - {lead.phone}
+            {lead.name} - {lead.status}{" "}
+            <Link href={`/crm/leads/edit/${lead.id}`}>editar</Link>
           </li>
         ))}
       </ul>
