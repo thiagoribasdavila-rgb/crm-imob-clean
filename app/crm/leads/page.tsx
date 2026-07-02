@@ -1,37 +1,34 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
-import { Lead } from "@/types/lead";
-import Link from "next/link";
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase/client"
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<any[]>([])
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from("leads").select("*");
-      setLeads(data || []);
+      const { data, error } = await supabase
+        .from("leads")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (!error) setLeads(data || [])
     }
 
-    load();
-  }, []);
+    load()
+  }, [])
 
   return (
-    <div>
+    <div style={{ padding: 20 }}>
       <h1>Leads</h1>
 
-      <Link href="/crm/leads/new">Novo Lead</Link>
-
       {leads.map((lead) => (
-        <div key={lead.id}>
-          {lead.name} - {lead.status}
-
-          <Link href={`/crm/leads/edit/${lead.id}`}>
-            Editar
-          </Link>
+        <div key={lead.id} style={{ padding: 10, borderBottom: "1px solid #ddd" }}>
+          <strong>{lead.name}</strong>
+          <div>{lead.status}</div>
         </div>
       ))}
     </div>
-  );
+  )
 }
