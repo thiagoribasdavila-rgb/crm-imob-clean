@@ -1,16 +1,14 @@
 import { createClient } from "@supabase/supabase-js"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
 
-// 🔥 NÃO deixa o app quebrar silenciosamente
+// ⚠️ NÃO quebra SSR
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("❌ ENV não carregado:", {
-    supabaseUrl,
-    supabaseAnonKey,
-  })
-
-  throw new Error("Supabase env não configurado")
+  console.warn("Supabase ainda não carregado no SSR")
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : null
