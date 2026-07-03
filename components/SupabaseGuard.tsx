@@ -7,9 +7,24 @@ export function SupabaseGuard({
 }: {
   children: React.ReactNode
 }) {
-  if (!supabase) {
-    return <p>Erro: Supabase não configurado (.env)</p>
+  // 🔒 estado seguro
+  if (supabase === null) {
+    return (
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          fontFamily: "system-ui",
+        }}
+      >
+        <h2>CRM indisponível</h2>
+        <p>Supabase não configurado corretamente (.env)</p>
+      </div>
+    )
   }
 
-  return children
+  return <>{children}</>
 }
