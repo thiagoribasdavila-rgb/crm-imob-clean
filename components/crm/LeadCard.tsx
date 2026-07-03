@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabase/client"
 
 export default function LeadCard({ lead, refresh }: any) {
+
   async function move(status: string) {
     await supabase
       .from("leads")
@@ -12,28 +13,40 @@ export default function LeadCard({ lead, refresh }: any) {
     refresh()
   }
 
+  async function remove() {
+    await supabase
+      .from("leads")
+      .delete()
+      .eq("id", lead.id)
+
+    refresh()
+  }
+
   return (
     <div
       draggable
-      onDragStart={(e) => {
+      onDragStart={(e) =>
         e.dataTransfer.setData("leadId", lead.id)
-      }}
+      }
       style={{
         padding: 10,
-        background: "#fff",
-        border: "1px solid #ddd",
+        border: "1px solid #ccc",
         marginBottom: 10,
-        cursor: "grab",
+        background: "#fff"
       }}
     >
       <strong>{lead.name}</strong>
 
-      <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 10 }}>
         <button onClick={() => move("novo")}>Novo</button>
         <button onClick={() => move("contato")}>Contato</button>
         <button onClick={() => move("proposta")}>Proposta</button>
         <button onClick={() => move("fechado")}>Fechado</button>
       </div>
+
+      <button onClick={remove} style={{ color: "red" }}>
+        Deletar
+      </button>
     </div>
   )
 }
