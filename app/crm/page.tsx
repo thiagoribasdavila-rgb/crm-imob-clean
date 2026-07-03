@@ -26,7 +26,7 @@ export default function CRM() {
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>CRM Empresa SaaS</h1>
+      <h1>CRM SaaS Final</h1>
 
       <KanbanBoard leads={leads} refresh={load} />
     </div>
