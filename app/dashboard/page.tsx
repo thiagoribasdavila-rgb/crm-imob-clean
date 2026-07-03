@@ -25,9 +25,9 @@ export default function Dashboard() {
 
   return (
     <div style={{ padding: 40 }}>
-      <h1>Dashboard Empresa</h1>
+      <h1>Dashboard SaaS</h1>
 
-      <h2>Total de Leads: {total}</h2>
+      <h2>Total Leads: {total}</h2>
     </div>
   )
 }
