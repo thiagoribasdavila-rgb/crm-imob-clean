@@ -1,27 +1,32 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { getSupabase } from "@/lib/supabase/client"
 
 export default function NewLeadPage() {
+  const supabase = getSupabase()
   const router = useRouter()
 
   const [name, setName] = useState("")
-  const [status] = useState("novo")
+  const [status, setStatus] = useState("novo")
 
   async function handleCreate() {
     if (!supabase) return
 
-    await supabase.from("leads").insert([
+    const { error } = await supabase.from("leads").insert([
       { name, status }
     ])
 
-    router.push("/crm/leads")
+    if (!error) {
+      router.push("/crm/leads")
+    }
   }
 
+  if (!supabase) return <p>Carregando...</p>
+
   return (
-    <div>
+    <div style={{ padding: 20 }}>
       <h1>Novo Lead</h1>
 
       <input
