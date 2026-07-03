@@ -2,33 +2,39 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase/client"
-import { useUser } from "@/lib/auth/useUser"
-import KanbanBoard from "@/components/crm/KanbanBoard"
+import { Loading } from "@/components/core/Loading"
 
-export default function CRM() {
-  const user = useUser()
-  const [leads, setLeads] = useState<any[]>([])
-
-  async function load() {
-    if (!user) return
-
-    const { data } = await supabase
-      .from("leads")
-      .select("*")
-      .eq("user_id", user.id)
-
-    setLeads(data || [])
-  }
+export default function CRMPage() {
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<any>({})
 
   useEffect(() => {
+    async function load() {
+      if (!supabase) return
+
+      const { data: leads } = await supabase
+        .from("leads")
+        .select("*")
+
+      setStats({
+        total: leads?.length || 0,
+      })
+
+      setLoading(false)
+    }
+
     load()
-  }, [user])
+  }, [])
+
+  if (loading) return <Loading />
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>CRM SaaS Final</h1>
+    <div style={{ padding: 40 }}>
+      <h1>CRM Dashboard</h1>
 
-      <KanbanBoard leads={leads} refresh={load} />
+      <div>
+        <h2>Total de Leads: {stats.total}</h2>
+      </div>
     </div>
   )
 }
