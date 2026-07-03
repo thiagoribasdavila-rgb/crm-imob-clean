@@ -8,20 +8,28 @@ export default function LeadsPage() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from("leads").select("*")
-      setLeads(data || [])
+      // 🔥 PASSO 2: proteção obrigatória
+      if (!supabase) return
+
+      const { data, error } = await supabase
+        .from("leads")
+        .select("*")
+
+      if (!error) {
+        setLeads(data || [])
+      }
     }
 
     load()
   }, [])
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ padding: 40 }}>
       <h1>Leads</h1>
 
-      {leads.map((l) => (
-        <div key={l.id}>
-          {l.name} - {l.status}
+      {leads.map((lead) => (
+        <div key={lead.id}>
+          {lead.name} - {lead.status}
         </div>
       ))}
     </div>
