@@ -7,7 +7,7 @@ export default function CRMLayout({
 }) {
   return (
     <AppProviders>
-      <div style={{ minHeight: "100vh" }}>
+      <div style={{ minHeight: "100vh", padding: 20 }}>
         {children}
       </div>
     </AppProviders>
