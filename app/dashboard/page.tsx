@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase/client"
 import { useUser } from "@/lib/auth/useUser"
 
-export default function Dashboard() {
+export default function DashboardPage() {
   const user = useUser()
   const [total, setTotal] = useState(0)
 
@@ -12,12 +12,14 @@ export default function Dashboard() {
     if (!user) return
 
     async function load() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("leads")
         .select("*")
         .eq("user_id", user.id)
 
-      setTotal(data?.length || 0)
+      if (!error) {
+        setTotal(data?.length || 0)
+      }
     }
 
     load()
@@ -25,9 +27,17 @@ export default function Dashboard() {
 
   return (
     <div style={{ padding: 40 }}>
-      <h1>Dashboard SaaS</h1>
+      <h1>📊 Dashboard CRM</h1>
 
-      <h2>Total Leads: {total}</h2>
+      <div style={{
+        marginTop: 20,
+        padding: 20,
+        border: "1px solid #ddd",
+        borderRadius: 8
+      }}>
+        <h2>Total de Leads</h2>
+        <p style={{ fontSize: 24 }}>{total}</p>
+      </div>
     </div>
   )
 }
