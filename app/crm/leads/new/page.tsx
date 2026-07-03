@@ -8,22 +8,20 @@ export default function NewLeadPage() {
   const router = useRouter()
 
   const [name, setName] = useState("")
-  const [status, setStatus] = useState("novo")
+  const [status] = useState("novo")
 
   async function handleCreate() {
     if (!supabase) return
 
-    const { error } = await supabase.from("leads").insert([
-      { name, status },
+    await supabase.from("leads").insert([
+      { name, status }
     ])
 
-    if (!error) {
-      router.push("/crm/leads")
-    }
+    router.push("/crm/leads")
   }
 
   return (
-    <div style={{ padding: 40 }}>
+    <div>
       <h1>Novo Lead</h1>
 
       <input
@@ -33,7 +31,7 @@ export default function NewLeadPage() {
       />
 
       <button onClick={handleCreate}>
-        Criar
+        Criar Lead
       </button>
     </div>
   )
