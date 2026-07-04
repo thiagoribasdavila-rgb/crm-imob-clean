@@ -1,43 +1,34 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { getSupabase } from "@/lib/supabase/client"
+import { useState } from "react";
+import { supabase } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function NewLeadPage() {
-  const supabase = getSupabase()
-  const router = useRouter()
-
-  const [name, setName] = useState("")
-  const [status, setStatus] = useState("novo")
+  const [name, setName] = useState("");
+  const router = useRouter();
 
   async function handleCreate() {
-    if (!supabase) return
+    await supabase.from("leads").insert([
+      { name, status: "novo" },
+    ]);
 
-    const { error } = await supabase.from("leads").insert([
-      { name, status }
-    ])
-
-    if (!error) {
-      router.push("/crm/leads")
-    }
+    router.push("/crm/leads");
   }
-
-  if (!supabase) return <p>Carregando...</p>
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Novo Lead</h1>
 
       <input
-        placeholder="Nome"
         value={name}
         onChange={(e) => setName(e.target.value)}
+        placeholder="Nome"
       />
 
       <button onClick={handleCreate}>
-        Criar Lead
+        Salvar
       </button>
     </div>
-  )
+  );
 }
