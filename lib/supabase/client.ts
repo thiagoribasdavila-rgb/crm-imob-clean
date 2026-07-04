@@ -1,9 +1,9 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-let supabaseInstance: SupabaseClient | null = null;
+let instance: SupabaseClient | null = null;
 
 function getClient(): SupabaseClient {
-  if (!supabaseInstance) {
+  if (!instance) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -13,21 +13,17 @@ function getClient(): SupabaseClient {
       );
     }
 
-    supabaseInstance = createClient(url, key);
+    instance = createClient(url, key);
   }
-  return supabaseInstance;
+  return instance;
 }
 
-// Uso recomendado (lazy, explícito):
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getClient() as object, prop, receiver);
+  },
+});
+
 export function getSupabase(): SupabaseClient {
   return getClient();
 }
-
-// Compatibilidade com código existente que faz `import { supabase } from "..."`.
-// Só inicializa de verdade quando alguma propriedade é acessada.
-export const supabase = new Proxy({} as SupabaseClient, {
-  get(_target, prop, receiver) {
-    const client = getClient();
-    return Reflect.get(client as object, prop, receiver);
-  },
-});
