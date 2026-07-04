@@ -1,35 +1,35 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { getSupabase } from "@/lib/supabase/client"
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function LeadsPage() {
-  const supabase = getSupabase()
-  const [leads, setLeads] = useState<any[]>([])
+  const [leads, setLeads] = useState<any[]>([]);
+  const router = useRouter();
 
   useEffect(() => {
     async function load() {
-      if (!supabase) return
-
-      const { data } = await supabase.from("leads").select("*")
-      setLeads(data || [])
+      const { data } = await supabase.from("leads").select("*");
+      setLeads(data || []);
     }
 
-    load()
-  }, [supabase])
-
-  if (!supabase) return <p>Carregando leads...</p>
+    load();
+  }, []);
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Leads</h1>
 
+      <button onClick={() => router.push("/crm/leads/new")}>
+        Novo Lead
+      </button>
+
       {leads.map((lead) => (
-        <div key={lead.id} style={{ borderBottom: "1px solid #ddd" }}>
-          <p><b>{lead.name}</b></p>
-          <p>Status: {lead.status}</p>
+        <div key={lead.id}>
+          {lead.name} - {lead.status}
         </div>
       ))}
     </div>
-  )
+  );
 }
