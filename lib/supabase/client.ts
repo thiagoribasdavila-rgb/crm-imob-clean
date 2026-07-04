@@ -1,10 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+let supabaseInstance: ReturnType<typeof createClient> | null = null;
 
-if (!url || !key) {
-  throw new Error("Missing Supabase ENV");
+export function getSupabase() {
+  if (supabaseInstance) return supabaseInstance;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    throw new Error("Supabase ENV não carregado no runtime");
+  }
+
+  supabaseInstance = createClient(url, key);
+
+  return supabaseInstance;
 }
-
-export const supabase = createClient(url, key);
