@@ -1,46 +1,39 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { getSupabase } from "@/lib/supabase/client"
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
+import { useParams, useRouter } from "next/navigation";
 
 export default function EditLeadPage() {
-  const { id } = useParams()
-  const router = useRouter()
-  const supabase = getSupabase()
+  const { id } = useParams();
+  const router = useRouter();
 
-  const [lead, setLead] = useState<any>(null)
+  const [lead, setLead] = useState<any>(null);
 
   useEffect(() => {
     async function load() {
-      if (!supabase) return
-
       const { data } = await supabase
         .from("leads")
         .select("*")
         .eq("id", id)
-        .single()
+        .single();
 
-      setLead(data)
+      setLead(data);
     }
 
-    load()
-  }, [id, supabase])
+    load();
+  }, [id]);
 
-  async function updateLead() {
-    if (!supabase) return
-
+  async function save() {
     await supabase
       .from("leads")
-      .update(lead)
-      .eq("id", id)
+      .update({ name: lead.name })
+      .eq("id", id);
 
-    router.push("/crm/leads")
+    router.push("/crm/leads");
   }
 
-  if (!supabase) return <p>Carregando...</p>
-
-  if (!lead) return <p>Carregando lead...</p>
+  if (!lead) return <p>Carregando...</p>;
 
   return (
     <div style={{ padding: 20 }}>
@@ -53,9 +46,9 @@ export default function EditLeadPage() {
         }
       />
 
-      <button onClick={updateLead}>
+      <button onClick={save}>
         Salvar
       </button>
     </div>
-  )
+  );
 }
