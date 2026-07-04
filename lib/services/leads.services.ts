@@ -1,9 +1,9 @@
 import { getSupabase } from "@/lib/supabase/client";
 
-const supabase = getSupabase();
-
 export const LeadsService = {
   async list() {
+    const supabase = getSupabase();
+
     const { data, error } = await supabase
       .from("leads")
       .select("*")
@@ -14,6 +14,8 @@ export const LeadsService = {
   },
 
   async create(payload: any) {
+    const supabase = getSupabase();
+
     const { data, error } = await supabase
       .from("leads")
       .insert(payload)
@@ -25,6 +27,8 @@ export const LeadsService = {
   },
 
   async update(id: string, payload: any) {
+    const supabase = getSupabase();
+
     const { data, error } = await supabase
       .from("leads")
       .update(payload)
@@ -36,7 +40,9 @@ export const LeadsService = {
     return data;
   },
 
-  async remove(id: string) {
+  async delete(id: string) {
+    const supabase = getSupabase();
+
     const { error } = await supabase
       .from("leads")
       .delete()
