@@ -1,44 +1,23 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { getSupabase } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation";
 
 export default function CRMPage() {
-  const supabase = getSupabase()
-  const [leads, setLeads] = useState<any[]>([])
-
-  useEffect(() => {
-    async function load() {
-      if (!supabase) return
-
-      const { data } = await supabase
-        .from("leads")
-        .select("*")
-        .order("created_at", { ascending: false })
-
-      setLeads(data || [])
-    }
-
-    load()
-  }, [supabase])
-
-  if (!supabase) {
-    return <p>Carregando CRM...</p>
-  }
+  const router = useRouter();
 
   return (
     <div style={{ padding: 20 }}>
-      <h1>CRM Dashboard</h1>
-
-      <p>Total de leads: {leads.length}</p>
+      <h1>CRM Imobiliário</h1>
 
       <ul>
-        {leads.map((lead) => (
-          <li key={lead.id}>
-            {lead.name} - {lead.status}
-          </li>
-        ))}
+        <li onClick={() => router.push("/crm/leads")}>
+          Leads
+        </li>
+
+        <li onClick={() => router.push("/crm/leads/new")}>
+          Novo Lead
+        </li>
       </ul>
     </div>
-  )
+  );
 }
