@@ -5,7 +5,7 @@ export function getSupabase() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !key) {
-    throw new Error("ENV do Supabase não carregada");
+    throw new Error("ENV não carregada no runtime");
   }
 
   return createClient(url, key);
