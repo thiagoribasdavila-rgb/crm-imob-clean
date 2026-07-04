@@ -1,7 +1,7 @@
 "use client"
 
 import { ReactNode } from "react"
-import SupabaseGuard from "@/components/core/SupabaseGuard"
+import { SupabaseGuard } from "@/components/SupabaseGuard"
 
 export default function AppProviders({
   children,
