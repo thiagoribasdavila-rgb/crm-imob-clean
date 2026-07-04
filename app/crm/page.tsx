@@ -1,23 +1,12 @@
-"use client";
+import { createClient } from "@supabase/supabase-js";
 
-import { useRouter } from "next/navigation";
+export function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export default function CRMPage() {
-  const router = useRouter();
+  if (!url || !key) {
+    throw new Error("ENV não carregada");
+  }
 
-  return (
-    <div style={{ padding: 20 }}>
-      <h1>CRM Imobiliário</h1>
-
-      <ul>
-        <li onClick={() => router.push("/crm/leads")}>
-          Leads
-        </li>
-
-        <li onClick={() => router.push("/crm/leads/new")}>
-          Novo Lead
-        </li>
-      </ul>
-    </div>
-  );
+  return createClient(url, key);
 }
