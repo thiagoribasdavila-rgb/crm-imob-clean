@@ -1,4 +1,4 @@
-import { LeadService } from "@/services/lead.service";
+import { LeadService } from "@/lib/services/leads.services";
 
 export default async function LeadsPage() {
   const service = new LeadService();
