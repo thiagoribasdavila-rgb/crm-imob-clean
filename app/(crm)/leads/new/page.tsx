@@ -5,9 +5,10 @@ import { LeadService } from "@/lib/services/leads.services";
 
 export default function NewLeadPage() {
   const service = new LeadService();
+
   const [name, setName] = useState("");
 
-  async function handleCreate() {
+  async function create() {
     await service.createLead({ name });
   }
 
@@ -16,7 +17,8 @@ export default function NewLeadPage() {
       <h1>Novo Lead</h1>
 
       <input onChange={(e) => setName(e.target.value)} />
-      <button onClick={handleCreate}>Criar</button>
+
+      <button onClick={create}>Criar</button>
     </div>
   );
 }
