@@ -6,15 +6,13 @@ export default async function KanbanPage() {
 
   return (
     <div>
-      <h1>Kanban</h1>
+      <h1>Kanban CRM</h1>
 
-      <div>
-        {leads?.map((lead: any) => (
-          <div key={lead.id}>
-            {lead.name} - {lead.status}
-          </div>
-        ))}
-      </div>
+      {leads?.map((lead: any) => (
+        <div key={lead.id}>
+          {lead.name} → {lead.status}
+        </div>
+      ))}
     </div>
   );
 }
