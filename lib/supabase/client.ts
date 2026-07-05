@@ -1,12 +1,28 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-export function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+let instance: SupabaseClient | null = null;
 
-  if (!url || !key) {
-    throw new Error("ENV do Supabase não carregada");
+function getClient(): SupabaseClient {
+  if (!instance) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!url || !key) {
+      throw new Error(
+        "Missing Supabase env vars (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)"
+      );
+    }
+
+    instance = createClient(url, key);
   }
-
-  return createClient(url, key);
+  return instance;
 }
+
+const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getClient() as object, prop, receiver);
+  },
+});
+
+export default supabase;
+export { getClient as getSupabase };
