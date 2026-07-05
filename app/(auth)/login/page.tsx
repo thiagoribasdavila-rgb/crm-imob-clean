@@ -1,12 +1,8 @@
 export default function LoginPage() {
   return (
-    <div style={{ padding: 40 }}>
+    <div>
       <h1>Login CRM</h1>
-
-      <input placeholder="Email" />
-      <input placeholder="Senha" type="password" />
-
-      <button>Entrar</button>
+      <p>Entrar no sistema</p>
     </div>
   );
 }
