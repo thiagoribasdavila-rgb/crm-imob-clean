@@ -1,12 +1,30 @@
-import { createClient } from "@supabase/supabase-js";
+import { redirect } from "next/navigation";
+import { getSupabase } from "@/lib/supabase/client";
 
-export function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+export default function CRMPage() {
+  const supabase = getSupabase();
 
-  if (!url || !key) {
-    throw new Error("ENV não carregada");
+  // 🔥 Proteção contra ENV quebrado
+  if (!supabase) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h1>CRM inicializando...</h1>
+        <p>Variáveis de ambiente não carregadas</p>
+      </div>
+    );
   }
 
-  return createClient(url, key);
+  // 🔥 Aqui futuramente vamos validar sessão
+  // const { data } = await supabase.auth.getUser()
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h1>CRM Dashboard</h1>
+
+      <div style={{ marginTop: 20 }}>
+        <h2>Leads</h2>
+        <p>Sistema carregando corretamente</p>
+      </div>
+    </div>
+  );
 }
