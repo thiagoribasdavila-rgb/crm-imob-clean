@@ -10,7 +10,7 @@ export default async function PipelinePage() {
 
       {leads?.map((lead: any) => (
         <div key={lead.id}>
-          {lead.name} → {lead.status}
+          {lead.name} - {lead.status}
         </div>
       ))}
     </div>
