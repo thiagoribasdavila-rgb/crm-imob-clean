@@ -1,14 +1,25 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { LeadService } from "@/lib/services/leads.services";
 
-export default async function LeadDetail({ params }: any) {
+export default function EditLead({ params }: any) {
   const service = new LeadService();
-  const lead = await service.getLeadById(params.id);
+  const [lead, setLead] = useState<any>(null);
+
+  useEffect(() => {
+    service.getLeadById(params.id).then(setLead);
+  }, []);
 
   return (
     <div>
-      <h1>{lead.name}</h1>
-      <p>Status: {lead.status}</p>
-      <p>Score: {lead.score}</p>
+      <h1>Editar Lead</h1>
+
+      {lead && (
+        <div>
+          <input defaultValue={lead.name} />
+        </div>
+      )}
     </div>
   );
 }
