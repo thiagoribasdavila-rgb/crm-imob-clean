@@ -1,18 +1,8 @@
-import { LeadService } from "@/lib/services/leads.services";
-
-export default async function LeadsPage() {
-  const service = new LeadService();
-  const leads = await service.getLeads();
-
+export default function LeadsPage() {
   return (
     <div>
       <h1>Leads</h1>
-
-      {leads?.map((lead: any) => (
-        <div key={lead.id}>
-          {lead.name} - {lead.status}
-        </div>
-      ))}
+      <p>Lista principal do CRM</p>
     </div>
   );
 }
