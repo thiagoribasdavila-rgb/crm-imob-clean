@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -10,6 +11,12 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 let instance: SupabaseClient | null = null;
 
+=======
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+
+let instance: SupabaseClient | null = null;
+
+>>>>>>> Stashed changes
 function getClient(): SupabaseClient {
   if (!instance) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -34,4 +41,7 @@ const supabase = new Proxy({} as SupabaseClient, {
 
 export default supabase;
 export { getClient as getSupabase };
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
