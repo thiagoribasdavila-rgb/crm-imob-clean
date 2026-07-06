@@ -1,10 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true,
-
-  // ✅ NOVO PADRÃO (NÃO experimental)
-  serverExternalPackages: []
+  reactStrictMode: true
 };
 
 export default nextConfig;
