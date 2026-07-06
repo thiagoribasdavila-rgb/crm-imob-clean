@@ -4,10 +4,7 @@ export default function ChatPage() {
   return (
     <div>
       <h1>Chat CRM</h1>
-
-      <div>
-        <p>Mensagens com leads aqui</p>
-      </div>
+      <p>Conversas com leads</p>
     </div>
   );
 }
