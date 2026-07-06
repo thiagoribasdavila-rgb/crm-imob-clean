@@ -1,24 +1,18 @@
-import { NextResponse } from "next/server";
+let leads: any[] = [];
 
 export async function GET() {
-  const leads = [
-    {
-      id: 1,
-      name: "João Silva",
-      email: "joao@email.com",
-      status: "Novo",
-      source: "Meta Ads",
-      createdAt: "2026-06-29",
-    },
-    {
-      id: 2,
-      name: "Maria Souza",
-      email: "maria@email.com",
-      status: "Contato",
-      source: "Google Ads",
-      createdAt: "2026-06-28",
-    },
-  ];
+  return Response.json(leads);
+}
 
-  return NextResponse.json(leads);
+export async function POST(req: Request) {
+  const body = await req.json();
+
+  const newLead = {
+    id: Date.now(),
+    ...body,
+  };
+
+  leads.push(newLead);
+
+  return Response.json(newLead);
 }
