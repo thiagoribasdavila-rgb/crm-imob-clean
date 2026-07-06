@@ -1,13 +1,13 @@
-export default function AnalyticsDashboard() {
+export default function DashboardAnalytics() {
   return (
-    <div style={{ padding: 20 }}>
-      <h1>📊 Analytics Dashboard</h1>
+    <div style={{ padding: 24 }}>
+      <h1>📊 Dashboard</h1>
 
       <div>
-        <p>Leads: 120</p>
-        <p>Conversão: 18%</p>
+        <p>Leads: 142</p>
+        <p>Conversão: 19%</p>
         <p>CAC: R$ 650</p>
-        <p>Hot Leads: 80</p>
+        <p>Hot Leads: 84</p>
       </div>
     </div>
   );
