@@ -1,21 +1,37 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+
 export default function LeadsPage() {
-  const leads = [
-    { name: "João Silva", status: "Hot", value: "R$ 650k" },
-    { name: "Maria Souza", status: "Warm", value: "R$ 420k" },
-    { name: "Carlos Lima", status: "Cold", value: "R$ 300k" },
-  ];
+  const [leads, setLeads] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase
+        .from("leads")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      setLeads(data || []);
+    }
+
+    load();
+  }, []);
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>📋 Leads CRM</h1>
+    <div style={{ padding: 20 }}>
+      <h1>CRM - Leads</h1>
 
-      {leads.map((lead, idx) => (
-        <div key={idx} style={{ marginBottom: 12 }}>
-          <h3>{lead.name}</h3>
-          <p>Status: {lead.status}</p>
-          <p>Valor: {lead.value}</p>
-        </div>
-      ))}
+      <a href="/crm/leads/new">+ Novo Lead</a>
+
+      <ul>
+        {leads.map((lead) => (
+          <li key={lead.id}>
+            <strong>{lead.name}</strong> — {lead.status}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
