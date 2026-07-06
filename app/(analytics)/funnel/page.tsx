@@ -1,9 +1,9 @@
 export default function FunnelPage() {
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ padding: 24 }}>
       <h1>📉 Funnel</h1>
 
-      <p>Entrada → Qualificação → Visita → Proposta → Venda</p>
+      <p>Lead → Qualificação → Visita → Proposta → Venda</p>
     </div>
   );
 }
