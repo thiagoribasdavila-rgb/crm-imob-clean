@@ -1,7 +1,8 @@
 export default function ActivityPage() {
   return (
     <div>
-      <h1>Atividades do CRM</h1>
+      <h1>Atividades</h1>
+      <p>Histórico do CRM</p>
     </div>
   );
 }
