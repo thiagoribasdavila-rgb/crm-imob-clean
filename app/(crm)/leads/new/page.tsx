@@ -1,24 +1,13 @@
-"use client";
-
-import { useState } from "react";
-import { LeadService } from "@/lib/services/leads.services";
-
 export default function NewLeadPage() {
-  const service = new LeadService();
-
-  const [name, setName] = useState("");
-
-  async function create() {
-    await service.createLead({ name });
-  }
-
   return (
-    <div>
-      <h1>Novo Lead</h1>
+    <div style={{ padding: 24 }}>
+      <h1>➕ Novo Lead</h1>
 
-      <input onChange={(e) => setName(e.target.value)} />
+      <input placeholder="Nome" />
+      <input placeholder="Telefone" />
+      <input placeholder="Interesse" />
 
-      <button onClick={create}>Criar</button>
+      <button>Criar Lead</button>
     </div>
   );
 }
