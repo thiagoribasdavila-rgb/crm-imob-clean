@@ -1,46 +1,91 @@
-export default function EnterpriseAnalyticsPage(){
+export default function EnterprisePage(){
+
+const data=[
+{
+title:"VGV Carteira",
+value:"R$ 250 milhões"
+},
+{
+title:"Empreendimentos",
+value:"18"
+},
+{
+title:"Unidades Estoque",
+value:"426"
+},
+{
+title:"Corretores",
+value:"85"
+}
+];
+
 
 return(
 
-<main className="min-h-screen bg-gray-950 text-white p-8">
+<main className="min-h-screen bg-slate-950 text-white p-8">
 
-<h1 className="text-3xl font-bold">
+<h1 className="text-4xl font-bold">
 Enterprise Analytics
 </h1>
 
-<p className="text-gray-400 mt-2">
-Visão estratégica da operação imobiliária
+<p className="text-slate-400 mt-2">
+Visão executiva da operação imobiliária
 </p>
 
 
-<div className="grid md:grid-cols-3 gap-6 mt-8">
+<div className="grid md:grid-cols-4 gap-6 mt-8">
 
 
-<Card title="VGV Carteira" value="R$ 250M"/>
+{data.map(item=>(
 
-<Card title="Empreendimentos" value="18"/>
+<div
+key={item.title}
+className="bg-slate-900 rounded-xl p-6"
+>
 
-<Card title="Estoque" value="426 unidades"/>
+<p className="text-slate-400">
+{item.title}
+</p>
+
+<h2 className="text-2xl font-bold mt-3">
+{item.value}
+</h2>
+
+
+</div>
+
+))}
 
 
 </div>
 
 
 
-<div className="bg-gray-900 p-6 rounded-xl mt-8">
+<div className="bg-slate-900 rounded-xl p-6 mt-8">
+
 
 <h2 className="text-xl font-bold mb-4">
-Ranking Produtos
+Produtos
 </h2>
 
 
 <ul className="space-y-3">
 
-<li>1º Arvo - Kallas</li>
+<li>
+Arvo - Kallas
+</li>
 
-<li>2º Inside Perdizes</li>
+<li>
+Inside Perdizes - Teixeira Duarte
+</li>
 
-<li>3º R2V Paulista</li>
+<li>
+R2V Paulista
+</li>
+
+<li>
+Infinity Perdizes
+</li>
 
 </ul>
 
@@ -49,34 +94,6 @@ Ranking Produtos
 
 
 </main>
-
-)
-
-}
-
-
-
-function Card({
-title,
-value
-}:{
-title:string;
-value:string
-}){
-
-return(
-
-<div className="bg-gray-900 rounded-xl p-6">
-
-<p className="text-gray-400">
-{title}
-</p>
-
-<h2 className="text-3xl font-bold mt-3">
-{value}
-</h2>
-
-</div>
 
 )
 
