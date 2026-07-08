@@ -1,43 +1,25 @@
-import CRMStats 
-from "@/components/crm/CRMStats";
+import CRMHeader from "@/components/crm/CRMHeader";
+import LeadFilters from "@/components/crm/LeadFilters";
+import PipelineBoard from "@/components/crm/PipelineBoard";
 
 
-import {
-leadQuery
-}
-from "@/application/lead/LeadQueryService";
-
-
-
-export default async function CRMPage(){
-
-
-const data =
-await leadQuery.getDashboard();
-
+export default function CRMPage(){
 
 
 return (
 
 <div className="
-p-8 space-y-8
+p-8
 ">
 
 
-<h1 className="
-text-5xl font-bold
-">
-
-Atlas Neural CRM
-
-</h1>
+<CRMHeader/>
 
 
-<CRMStats
+<LeadFilters/>
 
-data={data}
 
-/>
+<PipelineBoard/>
 
 
 </div>
