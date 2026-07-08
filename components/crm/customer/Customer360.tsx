@@ -7,19 +7,23 @@ import CustomerTimeline from "./CustomerTimeline";
 import CustomerDeals from "./CustomerDeals";
 import CustomerProperties from "./CustomerProperties";
 import CustomerActions from "./CustomerActions";
+import CustomerFinancialProfile from "./CustomerFinancialProfile";
+import CustomerCommunication from "./CustomerCommunication";
+import CustomerBehavior from "./CustomerBehavior";
+import CustomerPrediction from "./CustomerPrediction";
 
 
 export default function Customer360(){
 
-return (
+return(
 
-<div className="space-y-6">
+<div className="space-y-8">
 
 <CustomerHeader/>
 
-<div className="grid grid-cols-3 gap-6">
+<div className="grid grid-cols-12 gap-6">
 
-<div className="col-span-2 space-y-6">
+<div className="col-span-8 space-y-6">
 
 <CustomerProfileCard/>
 
@@ -29,21 +33,28 @@ return (
 
 <CustomerDeals/>
 
+<CustomerFinancialProfile/>
+
+<CustomerCommunication/>
+
 </div>
 
 
-<div className="space-y-6">
+<div className="col-span-4 space-y-6">
 
 <CustomerScore/>
 
 <CustomerAIInsights/>
 
+<CustomerPrediction/>
+
 <CustomerProperties/>
+
+<CustomerBehavior/>
 
 <CustomerActions/>
 
 </div>
-
 
 </div>
 
