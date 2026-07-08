@@ -1,34 +1,29 @@
 export type LeadStatus =
-| "novo"
-| "contato"
-| "qualificado"
-| "visita"
-| "proposta"
-| "negociacao"
-| "vendido"
-| "perdido"
-
+ | "novo"
+ | "contato"
+ | "qualificado"
+ | "visita"
+ | "proposta"
+ | "negociacao"
+ | "vendido"
+ | "perdido"
 
 
 export type LeadTemperature =
-| "frio"
-| "morno"
-| "quente"
-| "vip"
+ | "frio"
+ | "morno"
+ | "quente"
+ | "vip"
 
 
 
 export interface Lead {
 
-
 id:string
-
 
 name:string
 
-
 email?:string
-
 
 phone?:string
 
@@ -40,6 +35,9 @@ campaign?:string
 
 
 product?:string
+
+
+enterprise?:string
 
 
 budget?:number
@@ -57,16 +55,16 @@ scoreIA:number
 temperature:LeadTemperature
 
 
+assignedTo?:string
+
+
 lastContact?:Date
 
 
 nextAction?:string
 
 
-assignedTo?:string
-
-
-createdAt:Date
+createdAt:string
 
 
 }
