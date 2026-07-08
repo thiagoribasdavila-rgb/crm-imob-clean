@@ -1,53 +1,25 @@
+import Sidebar from "@/components/Sidebar"
+
+
 export default function AtlasLayout({
-children,
+  children,
 }: {
-children: React.ReactNode
+  children: React.ReactNode
 }) {
 
-return (
+  return (
 
-<div className="min-h-screen bg-zinc-950 text-white flex">
+    <div className="flex min-h-screen bg-zinc-950 text-white">
 
-<aside className="w-72 border-r border-zinc-800 p-6">
+      <Sidebar />
 
-<h1 className="text-3xl font-bold">
-ATLAS AI
-</h1>
+      <main className="flex-1 p-8">
 
-<p className="text-gray-400 mb-10">
-Operating System
-</p>
+        {children}
 
+      </main>
 
-<nav className="space-y-5">
+    </div>
 
-<div>🏠 Dashboard</div>
-
-<div>👥 CRM</div>
-
-<div>🏢 Empreendimentos</div>
-
-<div>🤖 Inteligência IA</div>
-
-<div>📊 Analytics</div>
-
-<div>⚙ Configurações</div>
-
-
-</nav>
-
-</aside>
-
-
-<section className="flex-1">
-
-{children}
-
-</section>
-
-
-</div>
-
-)
-
+  )
 }
