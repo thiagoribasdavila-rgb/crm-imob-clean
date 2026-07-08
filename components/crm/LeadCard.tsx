@@ -1,27 +1,68 @@
-<div>
+import {Lead} from "@/domain"
 
-<h3>{lead.nome}</h3>
+
+interface Props{
+
+lead:Lead
+
+}
+
+
+export default function LeadCard({
+lead
+}:Props){
+
+
+return(
+
+<div className="
+rounded-xl
+border
+p-4
+bg-white
+shadow
+">
+
+
+<h3 className="font-bold">
+
+{lead.name}
+
+</h3>
+
 
 <p>
-Produto:
-{lead.produto}
+🏠 {lead.product}
 </p>
 
 
-<div>
+<p>
+Origem:
+{lead.source}
+</p>
 
+
+<p>
 Score IA:
 <strong>
 {lead.scoreIA}
 </strong>
+</p>
 
-</div>
+
+<p>
+🔥 {lead.temperature}
+</p>
 
 
 <p>
 Próxima ação:
-{lead.proximaAcao}
+{lead.nextAction}
 </p>
 
 
 </div>
+
+)
+
+}
