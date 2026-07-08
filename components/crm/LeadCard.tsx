@@ -1,64 +1,80 @@
-import {Lead} from "@/domain"
+"use client"
 
 
-interface Props{
+import LeadScore from "./LeadScore"
 
-lead:Lead
+import AIRecommendation from "./AIRecommendation"
 
-}
 
 
 export default function LeadCard({
+
 lead
-}:Props){
+
+}:any){
 
 
-return(
+
+return (
 
 <div className="
-rounded-xl
+rounded-2xl
 border
-p-4
-bg-white
-shadow
+bg-zinc-950
+text-white
+p-5
+space-y-4
 ">
 
 
-<h3 className="font-bold">
+<div>
+
+<h2 className="
+text-xl
+font-bold
+">
 
 {lead.name}
 
-</h3>
+</h2>
 
 
-<p>
-🏠 {lead.product}
+<p className="
+text-zinc-400
+">
+
+{lead.product}
+
 </p>
 
 
-<p>
-Origem:
-{lead.source}
-</p>
+</div>
 
 
-<p>
-Score IA:
-<strong>
-{lead.scoreIA}
-</strong>
-</p>
+
+<LeadScore
+
+score={lead.scoreIA || 0}
+
+temperature={lead.temperature || "frio"}
+
+/>
 
 
-<p>
-🔥 {lead.temperature}
-</p>
 
+{
+lead.ai &&
 
-<p>
-Próxima ação:
-{lead.nextAction}
-</p>
+<AIRecommendation
+
+action={lead.ai.action}
+
+priority={lead.ai.priority}
+
+/>
+
+}
+
 
 
 </div>
