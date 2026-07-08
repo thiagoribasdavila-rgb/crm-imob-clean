@@ -1,7 +1,7 @@
 import { Lead } from "@/domain"
 
 
-export const leads:Lead[]=[
+export const leads: Lead[] = [
 
 {
 id:"1",
@@ -24,8 +24,7 @@ temperature:"quente",
 
 assignedTo:"Thiago",
 
-nextAction:
-"Ligar hoje",
+nextAction:"Ligação comercial hoje",
 
 createdAt:new Date()
 
@@ -47,14 +46,13 @@ product:"Inside Perdizes",
 
 status:"visita",
 
-scoreIA:70,
+scoreIA:72,
 
 temperature:"morno",
 
 assignedTo:"Diego",
 
-nextAction:
-"Confirmar visita",
+nextAction:"Confirmar visita",
 
 createdAt:new Date()
 
@@ -76,9 +74,13 @@ product:"Infinity",
 
 status:"novo",
 
-scoreIA:20,
+scoreIA:25,
 
 temperature:"frio",
+
+assignedTo:"Luciano",
+
+nextAction:"Primeiro contato",
 
 createdAt:new Date()
 
