@@ -11,81 +11,120 @@ let score=0
 
 
 
+// origem
+
 if(
 lead.source==="Meta Ads"
-){
+)
 score+=20
-}
 
 
+
+if(
+lead.source==="Google"
+)
+score+=25
+
+
+
+// produto
 
 if(
 lead.product
-){
+)
+score+=15
+
+
+
+// orçamento
+
+if(
+lead.budget &&
+lead.budget>500000
+)
 score+=20
-}
 
 
 
-if(
-lead.status==="qualificado"
-){
-score+=30
-}
+// estágio comercial
+
+switch(lead.status){
+
+
+case "contato":
+
+score+=20
+
+break
 
 
 
-if(
-lead.status==="visita"
-){
-score+=50
-}
+case "qualificado":
+
+score+=40
+
+break
 
 
 
-if(
-lead.status==="proposta"
-){
-score+=70
-}
+case "visita":
+
+score+=60
+
+break
 
 
 
-if(
-lead.status==="negociacao"
-){
-score+=85
+case "proposta":
+
+score+=80
+
+break
+
+
+
+case "negociacao":
+
+score+=90
+
+break
+
+
 }
 
 
 
 return score
 
-
-
 }
 
 
 
-export function classifyLead(
+
+export function getTemperature(
 score:number
 ){
 
 
-if(score>=80)
+if(score>=85)
 
-return "Quente"
-
-
-
-if(score>=50)
-
-return "Morno"
+return "vip"
 
 
 
-return "Frio"
+if(score>=60)
 
+return "quente"
+
+
+
+if(score>=30)
+
+return "morno"
+
+
+
+return "frio"
 
 
 }
