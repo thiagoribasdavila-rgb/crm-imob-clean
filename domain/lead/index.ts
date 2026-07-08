@@ -1,18 +1,7 @@
-export *
+export * from "./Lead"
 
-from "./Lead"
+export * from "./LeadScoring"
 
+export * from "./LeadAI"
 
-export *
-
-from "./LeadScoring"
-
-
-export *
-
-from "./LeadAI"
-
-
-export *
-
-from "./LeadPipeline"
+export * from "./LeadPipeline"
