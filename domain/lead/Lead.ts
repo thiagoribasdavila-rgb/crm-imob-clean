@@ -1,70 +1,158 @@
 export type LeadStatus =
- | "novo"
- | "contato"
- | "qualificado"
- | "visita"
- | "proposta"
- | "negociacao"
- | "vendido"
- | "perdido"
+| "novo"
+| "contato"
+| "qualificado"
+| "visita"
+| "proposta"
+| "negociacao"
+| "vendido"
+| "perdido";
 
 
 export type LeadTemperature =
- | "frio"
- | "morno"
- | "quente"
- | "vip"
+| "frio"
+| "morno"
+| "quente"
+| "vip";
+
+
+export type LeadIntent =
+| "curiosidade"
+| "pesquisa"
+| "interesse"
+| "compra"
+| "urgente";
+
+
+export type LeadSource =
+| "meta"
+| "google"
+| "whatsapp"
+| "site"
+| "indicacao"
+| "incorporadora";
+
+
+export interface LeadAIProfile {
+
+
+score:number;
+
+
+temperature:LeadTemperature;
+
+
+intent:LeadIntent;
+
+
+probability:number;
+
+
+buyingSignal:string[];
+
+
+recommendedAction:string;
+
+
+nextBestAction:string;
+
+
+lastAnalysis?:Date;
+
+
+}
+
+
+
+export interface LeadCommercial {
+
+
+productInterest?:string;
+
+
+budget?:number;
+
+
+locationPreference?:string;
+
+
+unitType?:string;
+
+
+financing?:boolean;
+
+
+investor?:boolean;
+
+
+}
+
+
+
+export interface LeadJourney {
+
+
+firstContact?:Date;
+
+
+lastContact?:Date;
+
+
+touchpoints:number;
+
+
+visits:number;
+
+
+proposals:number;
+
+
+}
 
 
 
 export interface Lead {
 
-id:string
 
-name:string
-
-email?:string
-
-phone?:string
+id:string;
 
 
-source:string
+name:string;
 
 
-campaign?:string
+email?:string;
 
 
-product?:string
+phone?:string;
 
 
-enterprise?:string
+
+source:LeadSource;
 
 
-budget?:number
+campaign?:string;
 
 
-city?:string
+status:LeadStatus;
 
 
-status:LeadStatus
+
+commercial:LeadCommercial;
 
 
-scoreIA:number
+
+ai:LeadAIProfile;
 
 
-temperature:LeadTemperature
+
+journey:LeadJourney;
 
 
-assignedTo?:string
+
+created_at?:Date;
 
 
-lastContact?:Date
-
-
-nextAction?:string
-
-
-createdAt:string
+updated_at?:Date;
 
 
 }
