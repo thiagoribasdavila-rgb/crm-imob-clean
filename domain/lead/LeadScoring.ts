@@ -16,39 +16,41 @@ let score=0
 if(
 lead.source==="Meta Ads"
 )
-score+=20
-
+score +=20
 
 
 if(
-lead.source==="Google"
+lead.source==="Google Ads"
 )
-score+=25
+score +=25
 
 
 
-// produto
+// interesse
 
 if(
 lead.product
 )
-score+=15
+score +=15
 
 
 
-// orçamento
+// poder compra
 
 if(
-lead.budget &&
-lead.budget>500000
+lead.budget
+&&
+lead.budget > 500000
 )
-score+=20
+score +=20
 
 
 
-// estágio comercial
+// estágio
 
-switch(lead.status){
+switch(
+lead.status
+){
 
 
 case "contato":
@@ -93,11 +95,10 @@ break
 }
 
 
-
 return score
 
-}
 
+}
 
 
 
@@ -106,22 +107,16 @@ score:number
 ){
 
 
-if(score>=85)
-
+if(score>=90)
 return "vip"
 
 
-
 if(score>=60)
-
 return "quente"
 
 
-
 if(score>=30)
-
 return "morno"
-
 
 
 return "frio"
