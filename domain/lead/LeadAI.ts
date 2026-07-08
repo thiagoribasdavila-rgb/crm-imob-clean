@@ -16,7 +16,7 @@ return {
 priority:"alta",
 
 action:
-"Realizar primeiro contato em até 5 minutos"
+"Entrar em contato imediatamente"
 
 }
 
@@ -33,7 +33,7 @@ return {
 priority:"urgente",
 
 action:
-"Agendar visita imediatamente"
+"Agendar visita e enviar proposta"
 
 }
 
@@ -50,7 +50,7 @@ return {
 priority:"alta",
 
 action:
-"Enviar simulação financeira e fazer follow-up"
+"Realizar follow-up comercial"
 
 }
 
@@ -60,13 +60,42 @@ action:
 
 return {
 
-
 priority:"normal",
 
 action:
-"Manter nutrição automática"
+"Nutrir automaticamente"
 
 }
 
+
+}
+
+
+export function generateLeadSummary(
+lead:Lead
+){
+
+
+return `
+
+Lead ${lead.name}
+
+Origem:
+${lead.source}
+
+
+Produto:
+${lead.product || "não informado"}
+
+
+Status:
+${lead.status}
+
+
+Score IA:
+${lead.scoreIA}
+
+
+`
 
 }
