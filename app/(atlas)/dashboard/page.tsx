@@ -1,11 +1,40 @@
+"use client"
+
+import {
+Users,
+Brain,
+TrendingUp,
+DollarSign
+} from "lucide-react"
+
+
+
 export default function Dashboard(){
 
+
 const cards=[
-["Leads","12.540"],
-["VGV Pipeline","R$85M"],
-["Conversão IA","18%"],
-["Previsão","32 vendas"]
+{
+title:"Leads",
+value:"12.540",
+icon:Users
+},
+{
+title:"VGV Pipeline",
+value:"R$85M",
+icon:DollarSign
+},
+{
+title:"Score IA Médio",
+value:"78%",
+icon:Brain
+},
+{
+title:"Previsão Venda",
+value:"32",
+icon:TrendingUp
+}
 ]
+
 
 
 return (
@@ -13,35 +42,55 @@ return (
 <div className="p-10">
 
 
-<h1 className="text-4xl font-bold">
-Dashboard Executivo
+<h1 className="text-5xl font-bold">
+ATLAS AI
 </h1>
 
 
-<p className="text-gray-400 mt-2">
-Inteligência comercial em tempo real
+<p className="text-zinc-400 mt-2">
+Real Estate Operating System 2040
 </p>
 
 
 
-<div className="grid grid-cols-4 gap-6 mt-10">
+<div className="
+grid 
+grid-cols-4 
+gap-6 
+mt-10
+">
 
 
 {
-cards.map((c)=>(
-<div className="bg-zinc-900 rounded-2xl p-6">
+cards.map((card)=>{
 
-<p className="text-gray-400">
-{c[0]}
+const Icon=card.icon
+
+return(
+
+<div className="card">
+
+
+<Icon size={32}/>
+
+
+<p className="text-zinc-400 mt-5">
+{card.title}
 </p>
 
-<h2 className="text-3xl font-bold mt-3">
-{c[1]}
+
+<h2 className="text-4xl font-bold mt-2">
+{card.value}
 </h2>
 
 
 </div>
-))
+
+
+)
+
+})
+
 }
 
 
@@ -49,17 +98,51 @@ cards.map((c)=>(
 
 
 
-<div className="grid grid-cols-2 gap-6 mt-10">
 
 
-<div className="bg-zinc-900 rounded-2xl p-8">
+<div className="
+grid grid-cols-2 gap-6 mt-10
+">
 
-<h2 className="text-xl font-bold">
-Funil Comercial
+
+<div className="card">
+
+<h2 className="text-2xl font-bold">
+🤖 Atlas Intelligence
 </h2>
 
 
-<p className="mt-5">
+<p className="mt-5 text-zinc-300">
+
+42 leads possuem alta probabilidade
+de compra.
+
+</p>
+
+
+<p className="mt-3">
+
+Campanha Arvo possui melhor conversão.
+
+</p>
+
+
+</div>
+
+
+
+
+<div className="card">
+
+<h2 className="text-2xl font-bold">
+Pipeline Comercial
+</h2>
+
+
+<div className="mt-5 space-y-3">
+
+
+<p>
 🟢 Novo Lead — 8500
 </p>
 
@@ -83,30 +166,16 @@ Funil Comercial
 </div>
 
 
-
-<div className="bg-zinc-900 rounded-2xl p-8">
-
-<h2 className="text-xl font-bold">
-🤖 Atlas Copilot
-</h2>
-
-
-<p className="mt-5 text-gray-300">
-
-"Thiago, encontrei 42 leads com
-probabilidade alta de compra."
-
-</p>
-
-
 </div>
 
 
 </div>
+
 
 
 </div>
 
 )
+
 
 }
