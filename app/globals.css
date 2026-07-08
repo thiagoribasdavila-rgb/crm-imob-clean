@@ -1,6 +1,27 @@
-.page {
-  padding: 24px;
-  background: #f9fafb;
-  min-height: 100vh;
-  font-family: Arial, sans-serif;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+body{
+background:#09090b;
+color:white;
+font-family:Inter,Arial;
+}
+
+
+.card{
+background:#18181b;
+border:1px solid #27272a;
+border-radius:20px;
+padding:24px;
+}
+
+
+.gradient{
+background:linear-gradient(
+135deg,
+#2563eb,
+#7c3aed
+);
 }
