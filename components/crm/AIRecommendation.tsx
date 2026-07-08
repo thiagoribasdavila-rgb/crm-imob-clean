@@ -1,33 +1,68 @@
-export default function AIRecommendation(){
+"use client"
+
+
+interface Props {
+
+action:string
+
+priority:string
+
+}
+
+
+
+export default function AIRecommendation({
+
+action,
+
+priority
+
+}:Props){
+
 
 return (
 
 <div className="
 rounded-xl
-bg-zinc-900
+border
+bg-black
 text-white
-p-6
+p-4
 ">
 
-<h2>
-Atlas AI Insights
-</h2>
+
+<h3 className="
+font-bold
+">
+
+🤖 Atlas AI Recommendation
+
+</h3>
 
 
-<p>
-🤖 12 leads possuem alta intenção de compra
+
+<p className="
+mt-3
+">
+
+{action}
+
 </p>
 
 
-<p>
-📞 8 leads precisam contato hoje
-</p>
 
+<span className="
+text-sm
+text-yellow-400
+">
 
-<p>
-🏠 Melhor produto:
-Arvo Paraíso
-</p>
+Prioridade:
+
+{" "}
+
+{priority}
+
+</span>
 
 
 </div>
