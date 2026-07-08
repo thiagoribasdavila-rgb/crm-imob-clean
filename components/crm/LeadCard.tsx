@@ -1,52 +1,66 @@
-"use client"
+export default function LeadCard({
+nome,
+produto,
+score,
+status
+}:{
+nome:string
+produto:string
+score:number
+status:string
+}){
 
-import { supabase } from "@/lib/supabase/client"
 
-export default function LeadCard({ lead, refresh }: any) {
+return (
 
-  async function move(status: string) {
-    await supabase
-      .from("leads")
-      .update({ status })
-      .eq("id", lead.id)
+<div className="
+bg-zinc-900
+border
+border-zinc-800
+rounded-xl
+p-4
+hover:border-blue-500
+transition
+">
 
-    refresh()
-  }
 
-  async function remove() {
-    await supabase
-      .from("leads")
-      .delete()
-      .eq("id", lead.id)
+<h3 className="
+font-bold
+text-lg
+">
+{nome}
+</h3>
 
-    refresh()
-  }
 
-  return (
-    <div
-      draggable
-      onDragStart={(e) =>
-        e.dataTransfer.setData("leadId", lead.id)
-      }
-      style={{
-        padding: 10,
-        border: "1px solid #ccc",
-        marginBottom: 10,
-        background: "#fff"
-      }}
-    >
-      <strong>{lead.name}</strong>
+<p className="text-zinc-400 text-sm mt-2">
+{produto}
+</p>
 
-      <div style={{ marginTop: 10 }}>
-        <button onClick={() => move("novo")}>Novo</button>
-        <button onClick={() => move("contato")}>Contato</button>
-        <button onClick={() => move("proposta")}>Proposta</button>
-        <button onClick={() => move("fechado")}>Fechado</button>
-      </div>
 
-      <button onClick={remove} style={{ color: "red" }}>
-        Deletar
-      </button>
-    </div>
-  )
+<div className="
+flex
+justify-between
+mt-4
+">
+
+
+<span>
+{status}
+</span>
+
+
+<strong className="
+text-green-400
+">
+{score}%
+</strong>
+
+
+</div>
+
+
+</div>
+
+)
+
 }
