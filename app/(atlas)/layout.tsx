@@ -1,25 +1,21 @@
-import Sidebar from "@/components/Sidebar"
-
+import Sidebar from "@/components/layout/Sidebar"
 
 export default function AtlasLayout({
-  children,
-}: {
-  children: React.ReactNode
+children
 }) {
 
-  return (
+return (
 
-    <div className="flex min-h-screen bg-zinc-950 text-white">
+<div className="flex">
 
-      <Sidebar />
+<Sidebar />
 
-      <main className="flex-1 p-8">
+<main>
+{children}
+</main>
 
-        {children}
+</div>
 
-      </main>
+)
 
-    </div>
-
-  )
 }
