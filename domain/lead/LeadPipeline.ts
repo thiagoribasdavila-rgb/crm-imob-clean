@@ -23,17 +23,21 @@ export const pipeline:LeadStatus[]=[
 ]
 
 
-export function nextStage(
+
+export function getNextStatus(
 status:LeadStatus
 ){
 
 
-const index=
+const position =
 pipeline.indexOf(status)
 
 
 
-return pipeline[index+1] || status
-
+return (
+pipeline[position+1]
+||
+status
+)
 
 }
