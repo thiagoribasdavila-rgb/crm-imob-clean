@@ -1,18 +1,57 @@
-export default function LeadScore({
-score
-}:{
+"use client"
+
+
+interface Props {
+
 score:number
-}){
+
+temperature:string
+
+}
 
 
-let nivel="Baixo"
+
+export default function LeadScore({
+
+score,
+
+temperature
+
+}:Props){
 
 
-if(score>80)
-nivel="Quente"
 
-else if(score>50)
-nivel="Médio"
+function color(){
+
+
+if(
+temperature==="vip"
+)
+
+return "🔥"
+
+
+
+if(
+temperature==="quente"
+)
+
+return "🟢"
+
+
+
+if(
+temperature==="morno"
+)
+
+return "🟡"
+
+
+
+return "⚪"
+
+
+}
 
 
 
@@ -20,14 +59,35 @@ return (
 
 <div className="
 rounded-xl
+border
 bg-zinc-900
-p-5
+p-4
+text-white
+">
+
+
+<div className="
+flex
+justify-between
 ">
 
 
 <h3>
+
 Score IA
+
 </h3>
+
+
+<span>
+
+{color()}
+
+</span>
+
+
+</div>
+
 
 
 <div className="
@@ -35,13 +95,56 @@ text-4xl
 font-bold
 mt-3
 ">
-{score}%
+
+{score}
+
 </div>
 
 
-<p>
-Classificação: {nivel}
+
+<p className="
+text-sm
+text-zinc-400
+mt-2
+">
+
+Classificação:
+
+{" "}
+
+{temperature}
+
 </p>
+
+
+
+<div className="
+mt-3
+h-2
+bg-zinc-700
+rounded
+">
+
+
+<div
+
+className="
+h-2
+rounded
+bg-green-500
+"
+
+style={{
+
+width:`${Math.min(score,100)}%`
+
+}}
+
+/>
+
+
+</div>
+
 
 
 </div>
