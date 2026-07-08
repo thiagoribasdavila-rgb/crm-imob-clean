@@ -1,50 +1,47 @@
-"use client"
+import CRMStats 
+from "@/components/crm/CRMStats";
 
 
-import KanbanBoard
-from "@/components/crm/KanbanBoard"
-
-
-import CRMStats
-from "@/components/crm/CRMStats"
-
-
-import AIRecommendation
-from "@/components/crm/AIRecommendation"
-
-
-import {leads}
-from "@/lib/data/leads"
+import {
+leadQuery
+}
+from "@/application/lead/LeadQueryService";
 
 
 
-export default function CRMPage(){
+export default async function CRMPage(){
+
+
+const data =
+await leadQuery.getDashboard();
 
 
 
-return(
+return (
+
+<div className="
+p-8 space-y-8
+">
 
 
-<div className="space-y-8">
+<h1 className="
+text-5xl font-bold
+">
+
+Atlas Neural CRM
+
+</h1>
 
 
-<CRMStats/>
+<CRMStats
 
-
-<AIRecommendation/>
-
-
-<KanbanBoard
-
-leads={leads}
+data={data}
 
 />
 
 
 </div>
 
-
 )
-
 
 }
