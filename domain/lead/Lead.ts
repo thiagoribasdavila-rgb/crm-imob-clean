@@ -1,28 +1,20 @@
 export type LeadStatus =
-|
-"novo"
-|
-"qualificado"
-|
-"visita"
-|
-"proposta"
-|
-"negociacao"
-|
-"vendido"
-|
-"perdido"
+| "novo"
+| "contato"
+| "qualificado"
+| "visita"
+| "proposta"
+| "negociacao"
+| "vendido"
+| "perdido"
 
 
 
 export type LeadTemperature =
-|
-"frio"
-|
-"morno"
-|
-"quente"
+| "frio"
+| "morno"
+| "quente"
+| "vip"
 
 
 
@@ -35,16 +27,25 @@ id:string
 name:string
 
 
-email:string
+email?:string
 
 
-phone:string
+phone?:string
 
 
 source:string
 
 
-product:string
+campaign?:string
+
+
+product?:string
+
+
+budget?:number
+
+
+city?:string
 
 
 status:LeadStatus
@@ -56,10 +57,13 @@ scoreIA:number
 temperature:LeadTemperature
 
 
-assignedTo:string
+lastContact?:Date
 
 
-nextAction:string
+nextAction?:string
+
+
+assignedTo?:string
 
 
 createdAt:Date
