@@ -6,50 +6,63 @@ import CustomerAIInsights from "./CustomerAIInsights";
 
 import CustomerJourney from "./CustomerJourney";
 import CustomerTimeline from "./CustomerTimeline";
+import CustomerMemoryTimeline from "./CustomerMemoryTimeline";
 
 import CustomerDeals from "./CustomerDeals";
 import CustomerProperties from "./CustomerProperties";
 
 import CustomerActions from "./CustomerActions";
 
-import CustomerFinancialProfile 
-from "./CustomerFinancialProfile";
-
-import CustomerCommunication 
-from "./CustomerCommunication";
-
-import CustomerBehavior 
-from "./CustomerBehavior";
-
-import CustomerPrediction 
-from "./CustomerPrediction";
+import CustomerFinancialProfile from "./CustomerFinancialProfile";
+import CustomerCommunication from "./CustomerCommunication";
+import CustomerBehavior from "./CustomerBehavior";
+import CustomerPrediction from "./CustomerPrediction";
 
 
-// NOVOS MÓDULOS IA
-
-import CustomerDigitalTwin 
-from "./intelligence/CustomerDigitalTwin";
-
-import CustomerAutonomousAgent 
-from "./intelligence/CustomerAutonomousAgent";
-
-import NextBestAction 
-from "./intelligence/NextBestAction";
-
-import SmartPropertyMatch 
-from "./intelligence/SmartPropertyMatch";
-
-import DealSimulator 
-from "./intelligence/DealSimulator";
-
-import SalesCopilot 
-from "./intelligence/SalesCopilot";
+// INTELLIGENCE LAYER
 
 import CustomerCommandCenter 
 from "./intelligence/CustomerCommandCenter";
 
+import CustomerDigitalTwin 
+from "./intelligence/CustomerDigitalTwin";
+
+import CustomerMemory 
+from "./intelligence/CustomerMemory";
+
+import CustomerMemoryScore 
+from "./intelligence/CustomerMemoryScore";
+
+import CustomerRelationshipGraph 
+from "./intelligence/CustomerRelationshipGraph";
+
+import CustomerEmotionAI 
+from "./intelligence/CustomerEmotionAI";
+
+import CustomerAutonomousAgent 
+from "./intelligence/CustomerAutonomousAgent";
+
+import CustomerAgent 
+from "./intelligence/CustomerAgent";
+
+import CustomerWealthProfile 
+from "./intelligence/CustomerWealthProfile";
+
 import CustomerLifetime 
 from "./intelligence/CustomerLifetime";
+
+import DealSimulator 
+from "./intelligence/DealSimulator";
+
+import NextBestAction 
+from "./intelligence/NextBestAction";
+
+import SalesCopilot 
+from "./intelligence/SalesCopilot";
+
+import SmartPropertyMatch 
+from "./intelligence/SmartPropertyMatch";
+
 
 
 export default function Customer360(){
@@ -62,18 +75,19 @@ space-y-8
 ">
 
 
-{/* HEADER */}
+{/* HEADER DO CLIENTE */}
 
 <CustomerHeader />
 
 
-{/* CENTRAL DE COMANDO */}
+
+{/* CENTRAL EXECUTIVA */}
 
 <CustomerCommandCenter />
 
 
 
-{/* PERFIL PRINCIPAL */}
+{/* PERFIL 360 */}
 
 <div className="
 grid
@@ -88,25 +102,32 @@ space-y-6
 ">
 
 
-<CustomerProfileCard/>
+<CustomerProfileCard />
 
 
-<CustomerJourney/>
+<CustomerJourney />
 
 
-<CustomerTimeline/>
+<CustomerTimeline />
 
 
-<CustomerDeals/>
+<CustomerMemoryTimeline />
 
 
-<CustomerProperties/>
+<CustomerDeals />
 
 
-<CustomerCommunication/>
+<CustomerProperties />
+
+
+<CustomerCommunication />
+
+
+<CustomerActions />
 
 
 </div>
+
 
 
 
@@ -116,19 +137,22 @@ space-y-6
 ">
 
 
-<CustomerScore/>
+<CustomerScore />
 
 
-<CustomerAIInsights/>
+<CustomerAIInsights />
 
 
-<CustomerPrediction/>
+<CustomerPrediction />
 
 
-<CustomerFinancialProfile/>
+<CustomerFinancialProfile />
 
 
-<CustomerBehavior/>
+<CustomerBehavior />
+
+
+<CustomerMemoryScore />
 
 
 </div>
@@ -138,8 +162,9 @@ space-y-6
 
 
 
-{/* INTELIGÊNCIA ARTIFICIAL */}
 
+
+{/* CAMADA DE INTELIGÊNCIA ATLAS */}
 
 <div className="
 space-y-6
@@ -147,47 +172,62 @@ space-y-6
 
 
 <h2 className="
-text-2xl
+text-3xl
 font-bold
 ">
 
-Atlas Intelligence Layer
+🧠 Atlas Customer Intelligence
 
 </h2>
 
 
 
-<CustomerDigitalTwin/>
+<CustomerDigitalTwin />
 
 
-<CustomerAutonomousAgent/>
+<CustomerMemory />
 
 
-<NextBestAction/>
+<CustomerRelationshipGraph />
 
 
-<SmartPropertyMatch/>
+<CustomerEmotionAI />
 
 
-<DealSimulator/>
+
+<CustomerAutonomousAgent />
 
 
-<SalesCopilot/>
+<CustomerAgent />
 
 
-<CustomerLifetime/>
+<NextBestAction />
+
+
+
+<SmartPropertyMatch />
+
+
+
+<CustomerWealthProfile />
+
+
+
+<DealSimulator />
+
+
+<SalesCopilot />
+
+
+<CustomerLifetime />
+
 
 
 </div>
 
 
-
-{/* AÇÕES */}
-
-<CustomerActions/>
-
-
 </div>
+
 
 )
 
