@@ -1,33 +1,61 @@
-import CRMHeader from "@/components/crm/CRMHeader";
-import ExecutiveDashboard from "@/components/crm/ExecutiveDashboard";
-import AIControlCenter from "@/components/crm/AIControlCenter";
-import PipelineBoard from "@/components/crm/PipelineBoard";
+CRM COMMAND CENTER
+
+--------------------------------
+
+HEADER
+
+Olá Thiago
+Hoje o Atlas identificou:
+
+🔥 32 leads quentes
+⚠️ 18 follow-ups atrasados
+💰 R$18,4M pipeline
 
 
-export default function CRMPage(){
-
-return (
-
-<div className="
-p-8
-space-y-10
-">
+--------------------------------
 
 
-<CRMHeader/>
+EXECUTIVE DASHBOARD
 
 
-<ExecutiveDashboard/>
+[ Leads ]
+[ Conversão ]
+[ VGV ]
+[ Receita Prevista ]
 
 
-<AIControlCenter/>
+--------------------------------
 
 
-<PipelineBoard/>
+AI CONTROL CENTER
 
 
-</div>
+"Thiago, estas são as 10 ações
+mais importantes de hoje"
 
-)
 
-}
+--------------------------------
+
+
+PIPELINE COMERCIAL
+
+
+Novo Lead
+ ↓
+Contato
+ ↓
+Visita
+ ↓
+Proposta
+ ↓
+Contrato
+ ↓
+Venda
+
+
+--------------------------------
+
+
+REVENUE FORECAST
+
+Previsão próximos 90 dias
