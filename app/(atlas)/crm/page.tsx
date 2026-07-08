@@ -1,49 +1,25 @@
-"use client"
-
-import {
-Brain,
-Phone,
-DollarSign
-} from "lucide-react"
+import KanbanColumn from "@/components/crm/KanbanColumn"
 
 
-
-const etapas=[
-"Novo Lead",
-"Qualificado IA",
-"Visita",
-"Proposta",
-"Negociação",
-"Venda"
-]
-
-
-const leads=[
+const dados=[
 
 {
 nome:"Carlos Mendes",
 produto:"Arvo Paraíso",
-score:92,
-valor:"R$850 mil",
-etapa:"Qualificado IA"
+score:95
 },
 
 {
-nome:"Mariana Silva",
+nome:"Maria Silva",
 produto:"Inside Perdizes",
-score:78,
-valor:"R$620 mil",
-etapa:"Visita"
+score:88
 },
 
 {
-nome:"Thiago Teste",
-produto:"Atlas Demo",
-score:40,
-valor:"R$450 mil",
-etapa:"Novo Lead"
+nome:"João Oliveira",
+produto:"Infinity",
+score:76
 }
-
 
 ]
 
@@ -53,105 +29,60 @@ export default function CRM(){
 
 return (
 
-<div className="p-8">
+<div>
 
 
-<h1 className="text-4xl font-bold">
-Atlas AI CRM
+<h1 className="
+text-5xl
+font-bold
+mb-8
+">
+CRM Inteligente
 </h1>
-
-
-<p className="text-zinc-400">
-Gestão comercial inteligente
-</p>
 
 
 
 <div className="
-grid grid-cols-6 gap-4 mt-10
+grid
+grid-cols-6
+gap-5
 ">
 
 
-{
-etapas.map(etapa=>(
-
-<div 
-className="
-bg-zinc-900 
-rounded-xl 
-p-4
-min-h-[500px]
-">
+<KanbanColumn
+titulo="Novo Lead"
+leads={dados}
+/>
 
 
-<h2 className="font-bold mb-5">
-{etapa}
-</h2>
+<KanbanColumn
+titulo="Qualificado IA"
+leads={[]}
+/>
 
 
-
-{
-leads
-.filter(
-lead=>lead.etapa===etapa
-)
-.map(lead=>(
+<KanbanColumn
+titulo="Visita"
+leads={[]}
+/>
 
 
-<div 
-className="
-bg-zinc-800
-rounded-xl
-p-4
-mb-4
-">
+<KanbanColumn
+titulo="Proposta"
+leads={[]}
+/>
 
 
-<h3 className="font-bold">
-{lead.nome}
-</h3>
+<KanbanColumn
+titulo="Negociação"
+leads={[]}
+/>
 
 
-<p className="text-sm">
-{lead.produto}
-</p>
-
-
-<div className="mt-3 flex gap-2">
-
-<Brain size={16}/>
-
-Score:
-{lead.score}
-
-</div>
-
-
-
-<div className="flex gap-2">
-
-<DollarSign size={16}/>
-
-{lead.valor}
-
-</div>
-
-
-
-</div>
-
-
-))
-
-}
-
-
-
-</div>
-
-))
-
-}
+<KanbanColumn
+titulo="Venda"
+leads={[]}
+/>
 
 
 </div>
