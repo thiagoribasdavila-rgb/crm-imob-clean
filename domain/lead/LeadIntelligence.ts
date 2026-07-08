@@ -11,200 +11,96 @@ export interface LeadIntelligenceResult {
   score: number;
 
   temperature:
-    | "frio"
-    | "morno"
-    | "quente"
-    | "vip";
+  | "frio"
+  | "morno"
+  | "quente"
+  | "vip";
 
   intent:
-    | "curiosidade"
-    | "pesquisa"
-    | "interesse"
-    | "compra"
-    | "urgente";
+  | "curiosidade"
+  | "pesquisa"
+  | "interesse"
+  | "compra"
+  | "urgente";
+
 
   probability: number;
 
-  recommendedAction: string;
+  priority:
+  | "baixa"
+  | "media"
+  | "alta"
+  | "critica";
 
-  nextStage: string;
 
-  aiSummary: string;
+  nextAction: string;
+
+  pipelineStage: string;
+
+
+  summary: string;
+
+
+  insights: string[];
 
 }
 
 
 
-export function analyzeLeadIntelligence(
+export function analyzeLead(
   lead: Lead
 ): LeadIntelligenceResult {
 
 
-  // =========================
-  // SCORE INTELIGENTE
-  // =========================
-
-  const score = calculateLeadScore(lead);
+  const score =
+    calculateLeadScore(lead);
 
 
-
-  // =========================
-  // TEMPERATURA
-  // =========================
-
-  let temperature:
-    | "frio"
-    | "morno"
-    | "quente"
-    | "vip";
-
-
-  if(score >= 90){
-
-    temperature = "vip";
-
-  } else if(score >= 60){
-
-    temperature = "quente";
-
-  } else if(score >= 30){
-
-    temperature = "morno";
-
-  } else {
-
-    temperature = "frio";
-
-  }
-
-
-
-  // =========================
-  // INTENÇÃO DE COMPRA
-  // =========================
-
-  let intent:
-    | "curiosidade"
-    | "pesquisa"
-    | "interesse"
-    | "compra"
-    | "urgente";
-
-
-  if(score >= 90){
-
-    intent = "urgente";
-
-  } else if(score >= 70){
-
-    intent = "compra";
-
-  } else if(score >= 40){
-
-    intent = "interesse";
-
-  } else if(score >= 20){
-
-    intent = "pesquisa";
-
-  } else {
-
-    intent = "curiosidade";
-
-  }
-
-
-
-  // =========================
-  // PROBABILIDADE IA
-  // =========================
-
-  const probability =
-    Math.min(score + 10, 100);
-
-
-
-  // =========================
-  // AÇÃO RECOMENDADA IA
-  // =========================
-
-  const aiAction =
+  const action =
     generateAIAction(lead);
 
 
 
-  // =========================
-  // PRÓXIMA ETAPA FUNIL
-  // =========================
-
-  let nextStage =
-    pipeline[0];
-
-
-  if(score >= 90){
-
-    nextStage = "negociacao";
-
-  }
-
-  else if(score >= 70){
-
-    nextStage = "proposta";
-
-  }
-
-  else if(score >= 40){
-
-    nextStage = "qualificado";
-
-  }
+  const temperature =
+    getTemperature(score);
 
 
 
-  // =========================
-  // RESUMO INTELIGENTE
-  // =========================
+  const intent =
+    detectIntent(lead);
 
-  const aiSummary =
 
-  `
-  Lead analisado pela IA Atlas.
 
-  Score atual: ${score}
+  const probability =
+    calculateProbability(score);
 
-  Temperatura: ${temperature}
 
-  Intenção: ${intent}
 
-  Probabilidade estimada:
-  ${probability}%
+  const priority =
+    calculatePriority(score);
 
-  Próxima ação:
-  ${aiAction.action}
-  `;
+
+
+  const stage =
+    pipeline.includes(lead.status)
+      ? lead.status
+      : "novo";
 
 
 
   return {
 
+
     leadId: lead.id,
+
 
     score,
 
+
     temperature,
+
 
     intent,
 
+
     probability,
-
-    recommendedAction:
-      aiAction.action,
-
-    nextStage,
-
-    aiSummary
-
-  };
-
-
-}
