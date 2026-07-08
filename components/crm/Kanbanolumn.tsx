@@ -1,37 +1,54 @@
-"use client"
-
 import LeadCard from "./LeadCard"
-import { supabase } from "@/lib/supabase/client"
 
-export default function KanbanColumn({ status, leads, refresh }: any) {
 
-  async function handleDrop(e: any) {
-    const leadId = e.dataTransfer.getData("leadId")
+export default function KanbanColumn({
+titulo,
+leads
+}:any){
 
-    await supabase
-      .from("leads")
-      .update({ status })
-      .eq("id", leadId)
 
-    refresh()
-  }
+return (
 
-  return (
-    <div
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={handleDrop}
-      style={{
-        flex: 1,
-        minHeight: 400,
-        border: "1px solid #ddd",
-        padding: 10
-      }}
-    >
-      <h3>{status.toUpperCase()}</h3>
+<div className="
+bg-zinc-950
+rounded-xl
+p-4
+min-h-[500px]
+">
 
-      {leads.map((lead: any) => (
-        <LeadCard key={lead.id} lead={lead} refresh={refresh} />
-      ))}
-    </div>
-  )
+
+<h2 className="
+font-bold
+mb-5
+">
+{titulo}
+</h2>
+
+
+
+<div className="space-y-4">
+
+
+{
+leads.map((lead:any)=>(
+
+<LeadCard
+key={lead.nome}
+nome={lead.nome}
+produto={lead.produto}
+score={lead.score}
+status={titulo}
+/>
+
+))
+}
+
+
+</div>
+
+
+</div>
+
+)
+
 }
