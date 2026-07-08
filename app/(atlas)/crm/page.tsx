@@ -1,18 +1,50 @@
-import AIRecommendation from
-"@/components/crm/AIRecommendation"
+"use client"
 
 
-export default function CRM(){
+import KanbanBoard
+from "@/components/crm/KanbanBoard"
 
-return (
 
-<div>
+import CRMStats
+from "@/components/crm/CRMStats"
+
+
+import AIRecommendation
+from "@/components/crm/AIRecommendation"
+
+
+import {leads}
+from "@/lib/data/leads"
+
+
+
+export default function CRMPage(){
+
+
+
+return(
+
+
+<div className="space-y-8">
+
+
+<CRMStats/>
+
 
 <AIRecommendation/>
 
 
+<KanbanBoard
+
+leads={leads}
+
+/>
+
+
 </div>
 
+
 )
+
 
 }
