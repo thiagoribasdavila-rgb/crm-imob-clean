@@ -1,11 +1,40 @@
-Cliente:
-João
+export interface CognitiveState {
 
-Objetivo:
-Comprar apartamento
+    id:string;
 
-Intenção:
-Alta
+    entityType:
+    | "customer"
+    | "lead"
+    | "property"
+    | "business"
+    | "market";
 
-Prioridade:
-Urgente
+
+    objective:string;
+
+
+    attention:{
+        priority:number;
+        focus:string;
+    };
+
+
+    context:Record<string,unknown>;
+
+
+    confidence:number;
+
+
+    status:
+    | "idle"
+    | "processing"
+    | "deciding"
+    | "executing"
+    | "learning";
+
+
+    createdAt:Date;
+
+    updatedAt:Date;
+
+}
