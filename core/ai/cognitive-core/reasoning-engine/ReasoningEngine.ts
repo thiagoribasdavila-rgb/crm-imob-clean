@@ -1,71 +1,85 @@
-import {DecisionPlanner} from "./DecisionPlanner";
-import {ScenarioSimulator} from "./ScenarioSimulator";
-import {PredictionEngine} from "./PredictionEngine";
+import {GoalPlanner} from "./planning/GoalPlanner";
+import {DecisionEngine} from "./decision/DecisionEngine";
+import {PredictionEngine} from "./prediction/PredictionEngine";
+import {ScenarioSimulator} from "./simulation/ScenarioSimulator";
+import {SelfEvaluation} from "./reflection/SelfEvaluation";
 
 
-export class ReasoningEngine{
+export class ReasoningEngine {
 
 
-planner:DecisionPlanner;
-
-simulator:ScenarioSimulator;
-
+planner:GoalPlanner;
+decision:DecisionEngine;
 prediction:PredictionEngine;
+simulation:ScenarioSimulator;
+reflection:SelfEvaluation;
 
 
 
 constructor(){
 
+this.planner=new GoalPlanner();
 
-this.planner=new DecisionPlanner();
-
-this.simulator=new ScenarioSimulator();
+this.decision=new DecisionEngine();
 
 this.prediction=new PredictionEngine();
 
+this.simulation=new ScenarioSimulator();
+
+this.reflection=new SelfEvaluation();
 
 }
 
 
 
-reason(context:any){
+execute(objective:any){
 
 
 const plan =
-this.planner.createPlan(
-context.objective
-);
-
-
-
-const simulation =
-this.simulator.simulate(context);
-
+this.planner.create(objective);
 
 
 const prediction =
-this.prediction.predict(context);
+this.prediction.analyze(objective);
+
+
+const scenarios =
+this.simulation.run(objective);
+
+
+const decision =
+this.decision.select({
+
+plan,
+prediction,
+scenarios
+
+});
+
+
+const evaluation =
+this.reflection.review(decision);
 
 
 
 return {
 
-
 plan,
-
-simulation,
 
 prediction,
 
+scenarios,
 
-confidence:0.85,
+decision,
 
+evaluation,
+
+confidence:
+evaluation.score,
 
 timestamp:new Date()
 
-
 };
-
 
 
 }
