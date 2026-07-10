@@ -1,108 +1,96 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-
+import Link from "next/link";
 
 const menu = [
-{
-nome:"Dashboard",
-rota:"/atlas/dashboard"
-},
-{
-nome:"CRM Inteligente",
-rota:"/atlas/crm"
-},
-{
-nome:"Leads IA",
-rota:"/atlas/leads"
-},
-{
-nome:"Pipeline",
-rota:"/atlas/pipeline"
-},
-{
-nome:"IA Engine",
-rota:"/atlas/ia"
-},
-{
-nome:"Analytics",
-rota:"/atlas/analytics"
-},
-{
-nome:"Andromeda Meta",
-rota:"/atlas/andromeda"
-},
-{
-nome:"Portal Incorporadora",
-rota:"/atlas/portal"
-}
-]
+  {
+    title: "Operação",
+    items: [
+      { name: "Dashboard", href: "/crm/dashboard" },
+      { name: "Leads", href: "/crm/leads" },
+      { name: "Pipeline", href: "/crm/pipeline" },
+      { name: "Clientes", href: "/crm/clients" },
+    ],
+  },
+  {
+    title: "Imobiliário",
+    items: [
+      { name: "Empreendimentos", href: "/crm/developments" },
+      { name: "Imóveis", href: "/crm/properties" },
+      { name: "Vendas", href: "/crm/sales" },
+    ],
+  },
+  {
+    title: "Gestão",
+    items: [
+      { name: "Marketing", href: "/crm/marketing" },
+      { name: "Relatórios", href: "/crm/reports" },
+      { name: "Integrações", href: "/crm/integrations" },
+    ],
+  },
+  {
+    title: "Inteligência",
+    items: [
+      { name: "Atlas AI", href: "/crm/ai" },
+      { name: "Market Intelligence", href: "/crm/intelligence" },
+    ],
+  },
+];
+
+export default function Sidebar() {
+  return (
+    <aside className="w-72 min-h-screen bg-zinc-950 border-r border-zinc-800 p-6">
+
+      <div className="mb-10">
+        <h1 className="text-2xl font-bold text-white">
+          ATLAS AI
+        </h1>
+
+        <p className="text-xs text-zinc-400">
+          Real Estate Operating System
+        </p>
+      </div>
 
 
-export default function Sidebar(){
+      <nav className="space-y-8">
+
+        {menu.map((section)=>(
+          <div key={section.title}>
+
+            <p className="text-xs uppercase text-zinc-500 mb-3">
+              {section.title}
+            </p>
 
 
-return (
+            <div className="space-y-2">
 
-<aside className="
-w-72
-min-h-screen
-bg-black
-border-r
-border-zinc-800
-p-6
-">
+              {section.items.map(item=>(
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="
+                  block
+                  rounded-xl
+                  px-4
+                  py-3
+                  text-sm
+                  text-zinc-300
+                  hover:bg-zinc-800
+                  hover:text-white
+                  transition
+                  "
+                >
+                  {item.name}
+                </Link>
+              ))}
 
+            </div>
 
-<h1 className="
-text-3xl
-font-bold
-mb-2
-">
-ATLAS AI
-</h1>
+          </div>
+        ))}
 
+      </nav>
 
-<p className="
-text-zinc-400
-text-sm
-mb-10
-">
-Real Estate Operating System 2040
-</p>
-
-
-<nav className="space-y-3">
-
-
-{
-menu.map((item)=>(
-
-<Link
-key={item.rota}
-href={item.rota}
-className="
-block
-rounded-lg
-p-3
-hover:bg-zinc-800
-transition
-"
->
-
-{item.nome}
-
-</Link>
-
-))
-}
-
-
-</nav>
-
-
-</aside>
-
-)
-
+    </aside>
+  );
 }
