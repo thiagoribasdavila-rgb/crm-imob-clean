@@ -1,12 +1,26 @@
-import { SupabaseGuard } from "@/components/ui/SupabaseGuard";
+import Sidebar from "@/components/crm/sidebar";
+import { ReactNode } from "react";
 
-export default function CRMLayout({ children }) {
+
+export default function CRMLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+
   return (
-    <SupabaseGuard>
-      <div style={{ display: "flex" }}>
-        <aside style={{ width: 250 }}>Menu CRM</aside>
-        <main style={{ flex: 1 }}>{children}</main>
-      </div>
-    </SupabaseGuard>
+
+    <div className="flex min-h-screen bg-zinc-950 text-white">
+
+      <Sidebar />
+
+      <main className="flex-1 p-8">
+
+        {children}
+
+      </main>
+
+    </div>
+
   );
 }
