@@ -1,26 +1,13 @@
-import Sidebar from "@/components/crm/sidebar";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
+import Sidebar from "@/components/Sidebar";
 
-
-export default function CRMLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
-
+export default function CRMLayout({ children }: { children: ReactNode }) {
   return (
-
-    <div className="flex min-h-screen bg-zinc-950 text-white">
-
+    <div className="min-h-screen bg-zinc-950 text-white lg:flex">
       <Sidebar />
-
-      <main className="flex-1 p-8">
-
-        {children}
-
+      <main className="min-w-0 flex-1 px-4 pb-10 pt-24 sm:px-6 lg:px-8 lg:py-8">
+        <div className="mx-auto w-full max-w-[1600px]">{children}</div>
       </main>
-
     </div>
-
   );
 }
