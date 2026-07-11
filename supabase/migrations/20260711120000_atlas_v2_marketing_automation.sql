@@ -153,7 +153,7 @@ alter table public.creative_assets enable row level security;
 alter table public.campaign_events enable row level security;
 alter table public.approval_requests enable row level security;
 
--- Reuse the organization membership model established by the Atlas V3 foundation.
+-- Reuse the stable tenant helper from the Atlas foundation to avoid recursive profile policies.
 do $$
 declare
   table_name text;
@@ -164,8 +164,8 @@ begin
     execute format($policy$
       create policy atlas_org_isolation on public.%I
       for all to authenticated
-      using (organization_id in (select organization_id from public.profiles where id = auth.uid()))
-      with check (organization_id in (select organization_id from public.profiles where id = auth.uid()))
+      using (organization_id = public.current_organization_id())
+      with check (organization_id = public.current_organization_id())
     $policy$, table_name);
   end loop;
 end $$;
