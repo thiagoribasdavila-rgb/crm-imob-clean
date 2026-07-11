@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -61,6 +62,7 @@ function LoginExperience() {
             <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
               <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">E-mail corporativo</span><input required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full px-4 py-3.5" placeholder="voce@empresa.com" /></label>
               <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Senha</span><input required type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full px-4 py-3.5" placeholder="••••••••" /></label>
+              <div className="flex justify-end"><Link href="/forgot-password" className="text-xs font-medium text-sky-300 transition hover:text-sky-200">Esqueci minha senha</Link></div>
               {error ? <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
               <button type="submit" disabled={loading} className="atlas-button-primary w-full py-3.5 disabled:cursor-not-allowed disabled:opacity-60">{loading ? "Autenticando ambiente..." : "Entrar no Atlas OS →"}</button>
             </form>
