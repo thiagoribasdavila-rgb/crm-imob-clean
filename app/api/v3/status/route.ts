@@ -6,13 +6,19 @@ import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
 
-async function count(
-  table: string,
-  configure?: (query: ReturnType<ReturnType<typeof getSupabaseAdmin>["from"]>) => ReturnType<ReturnType<typeof getSupabaseAdmin>["from"]>,
-): Promise<number> {
+type CountFilter =
+  | { kind: "eq"; column: string; value: string }
+  | { kind: "in"; column: string; values: string[] }
+  | { kind: "notIn"; column: string; values: string[] };
+
+async function count(table: string, filter?: CountFilter): Promise<number> {
   const admin = getSupabaseAdmin();
   let query = admin.from(table).select("id", { count: "exact", head: true });
-  if (configure) query = configure(query);
+
+  if (filter?.kind === "eq") query = query.eq(filter.column, filter.value);
+  if (filter?.kind === "in") query = query.in(filter.column, filter.values);
+  if (filter?.kind === "notIn") query = query.not(filter.column, "in", `(${filter.values.join(",")})`);
+
   const { count: total, error } = await query;
   if (error) throw error;
   return total ?? 0;
@@ -46,14 +52,14 @@ export async function GET(request: Request) {
       count("customers"),
       count("properties"),
       count("opportunities"),
-      count("tasks", (query) => query.not("status", "in", "(done,concluida)")),
+      count("tasks", { kind: "notIn", column: "status", values: ["done", "concluida"] }),
       count("campaigns"),
-      count("conversations", (query) => query.eq("status", "open")),
-      count("approval_requests", (query) => query.eq("status", "pending")),
-      count("integration_outbox", (query) => query.in("status", ["pending", "processing"])),
-      count("integration_outbox", (query) => query.in("status", ["failed", "dead_letter"])),
-      count("atlas_decisions", (query) => query.eq("status", "proposed")),
-      count("atlas_agent_runs", (query) => query.in("status", ["queued", "running", "waiting_approval"])),
+      count("conversations", { kind: "eq", column: "status", value: "open" }),
+      count("approval_requests", { kind: "eq", column: "status", value: "pending" }),
+      count("integration_outbox", { kind: "in", column: "status", values: ["pending", "processing"] }),
+      count("integration_outbox", { kind: "in", column: "status", values: ["failed", "dead_letter"] }),
+      count("atlas_decisions", { kind: "eq", column: "status", value: "proposed" }),
+      count("atlas_agent_runs", { kind: "in", column: "status", values: ["queued", "running", "waiting_approval"] }),
       count("digital_twin_snapshots"),
       count("ai_insights"),
     ]);
