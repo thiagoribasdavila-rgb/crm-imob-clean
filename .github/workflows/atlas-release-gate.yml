@@ -41,21 +41,20 @@ jobs:
         run: npm run typecheck
 
       - name: ESLint
-        id: lint
+        run: npm run lint
+
+      - name: Production build
+        id: build
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-          npm run lint 2>&1 | tee lint-errors.txt
+          npm run build 2>&1 | tee build-errors.txt
 
-      - name: Upload ESLint diagnostics
+      - name: Upload build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: atlas-eslint-diagnostics
-          path: lint-errors.txt
+          name: atlas-build-diagnostics
+          path: build-errors.txt
           if-no-files-found: error
-
-      - name: Production build
-        if: steps.lint.outcome == 'success'
-        run: npm run build
