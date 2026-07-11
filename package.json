@@ -1,12 +1,16 @@
 {
-  "name": "crm-imob-clean",
-  "version": "0.1.0",
+  "name": "atlas-ai-real-estate-os",
+  "version": "3.0.0-rc.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && npm run lint && npm run build",
+    "release:check": "npm run validate",
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^7.8.0",
