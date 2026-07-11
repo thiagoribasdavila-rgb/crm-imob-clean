@@ -18,10 +18,26 @@ type FeedbackDraft = {
 function readDrafts(): FeedbackDraft[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as FeedbackDraft[];
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as unknown;
+    return Array.isArray(parsed) ? (parsed as FeedbackDraft[]) : [];
   } catch {
     return [];
   }
+}
+
+function buildDiagnostics(pathname: string): Record<string, string | number | boolean> {
+  if (typeof window === "undefined") return {};
+
+  return {
+    path: pathname,
+    url: window.location.href,
+    online: navigator.onLine,
+    language: navigator.language,
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    userAgent: navigator.userAgent,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown",
+    timestamp: new Date().toISOString(),
+  };
 }
 
 export default function AtlasFeedbackCenter() {
@@ -52,26 +68,21 @@ export default function AtlasFeedbackCenter() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const diagnostics = useMemo<Record<string, string | number | boolean>>(() => {
-    if (typeof window === "undefined") return {};
-    return {
-      path: pathname,
-      url: window.location.href,
-      online: navigator.onLine,
-      language: navigator.language,
-      viewport: `${window.innerWidth}x${window.innerHeight}`,
-      userAgent: navigator.userAgent,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      timestamp: new Date().toISOString(),
-    };
-  }, [pathname, open]);
+  const diagnostics = useMemo<Record<string, string | number | boolean>>(
+    () => buildDiagnostics(pathname),
+    [pathname, open],
+  );
 
   function persist(next: FeedbackDraft[]) {
     setDrafts(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Local storage may be unavailable in restricted browser modes.
+    }
   }
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
     if (description.trim().length < 8) return;
 
@@ -82,7 +93,7 @@ export default function AtlasFeedbackCenter() {
       description: description.trim(),
       path: pathname,
       createdAt: new Date().toISOString(),
-      diagnostics,
+      diagnostics: buildDiagnostics(pathname),
     };
 
     persist([draft, ...drafts].slice(0, 50));
