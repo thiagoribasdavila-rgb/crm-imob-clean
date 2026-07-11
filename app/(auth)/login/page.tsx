@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -11,7 +11,7 @@ const capabilities = [
   "Agentes, forecast e Digital Twin",
 ];
 
-export default function LoginPage() {
+function LoginExperience() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -23,12 +23,14 @@ export default function LoginPage() {
     event.preventDefault();
     setLoading(true);
     setError("");
+
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError) {
       setError("E-mail ou senha inválidos. Verifique os dados e tente novamente.");
       setLoading(false);
       return;
     }
+
     router.replace(searchParams.get("next") || "/dashboard");
     router.refresh();
   }
@@ -67,5 +69,13 @@ export default function LoginPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[#050812]" />}>
+      <LoginExperience />
+    </Suspense>
   );
 }
