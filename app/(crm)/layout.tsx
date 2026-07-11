@@ -3,6 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import SupabaseGuard from "@/components/SupabaseGuard";
 import AtlasTopbar from "@/components/AtlasTopbar";
 import CommandPalette from "@/components/CommandPalette";
+import AtlasCopilotDock from "@/components/AtlasCopilotDock";
 
 export default function CRMLayout({ children }: { children: ReactNode }) {
   return (
@@ -10,10 +11,11 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
       <div className="atlas-shell">
         <Sidebar />
         <AtlasTopbar />
-        <CommandPalette />
         <main className="atlas-main">
           <div className="atlas-content">{children}</div>
         </main>
+        <CommandPalette />
+        <AtlasCopilotDock />
       </div>
     </SupabaseGuard>
   );
