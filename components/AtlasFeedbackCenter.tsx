@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const STORAGE_KEY = "atlas:feedback:drafts";
@@ -67,11 +67,6 @@ export default function AtlasFeedbackCenter() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-
-  const diagnostics = useMemo<Record<string, string | number | boolean>>(
-    () => buildDiagnostics(pathname),
-    [pathname, open],
-  );
 
   function persist(next: FeedbackDraft[]) {
     setDrafts(next);
