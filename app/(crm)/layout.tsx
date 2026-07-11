@@ -6,6 +6,7 @@ import CommandPalette from "@/components/CommandPalette";
 import AtlasCopilotDock from "@/components/AtlasCopilotDock";
 import AtlasSystemPulse from "@/components/AtlasSystemPulse";
 import AtlasNotificationCenter from "@/components/AtlasNotificationCenter";
+import AtlasQuickCreate from "@/components/AtlasQuickCreate";
 
 export default function CRMLayout({ children }: { children: ReactNode }) {
   return (
@@ -20,6 +21,7 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
         <AtlasCopilotDock />
         <AtlasSystemPulse />
         <AtlasNotificationCenter />
+        <AtlasQuickCreate />
       </div>
     </SupabaseGuard>
   );
