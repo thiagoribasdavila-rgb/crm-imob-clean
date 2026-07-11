@@ -1,96 +1,115 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-const menu = [
+const sections = [
   {
     title: "Operação",
     items: [
-      { name: "Dashboard", href: "/crm/dashboard" },
-      { name: "Leads", href: "/crm/leads" },
-      { name: "Pipeline", href: "/crm/pipeline" },
-      { name: "Clientes", href: "/crm/clients" },
+      { name: "Dashboard", href: "/dashboard" },
+      { name: "Leads", href: "/leads" },
+      { name: "Pipeline", href: "/pipeline" },
+      { name: "Tarefas", href: "/tasks" },
     ],
   },
   {
     title: "Imobiliário",
     items: [
-      { name: "Empreendimentos", href: "/crm/developments" },
-      { name: "Imóveis", href: "/crm/properties" },
-      { name: "Vendas", href: "/crm/sales" },
+      { name: "Imóveis", href: "/properties" },
+      { name: "Vendas", href: "/sales" },
     ],
   },
   {
     title: "Gestão",
     items: [
-      { name: "Marketing", href: "/crm/marketing" },
-      { name: "Relatórios", href: "/crm/reports" },
-      { name: "Integrações", href: "/crm/integrations" },
-    ],
-  },
-  {
-    title: "Inteligência",
-    items: [
-      { name: "Atlas AI", href: "/crm/ai" },
-      { name: "Market Intelligence", href: "/crm/intelligence" },
+      { name: "Marketing", href: "/marketing" },
+      { name: "Relatórios", href: "/reports" },
+      { name: "Integrações", href: "/integrations" },
+      { name: "Usuários", href: "/users" },
+      { name: "Configurações", href: "/settings" },
     ],
   },
 ];
 
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export default function Sidebar() {
+  const pathname = usePathname();
+
   return (
-    <aside className="w-72 min-h-screen bg-zinc-950 border-r border-zinc-800 p-6">
+    <>
+      <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-zinc-800 bg-zinc-950/95 px-4 backdrop-blur lg:hidden">
+        <Link href="/dashboard" className="font-black tracking-tight">
+          ATLAS <span className="text-blue-400">AI</span>
+        </Link>
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
+          V1 + V2
+        </span>
+      </header>
 
-      <div className="mb-10">
-        <h1 className="text-2xl font-bold text-white">
-          ATLAS AI
-        </h1>
+      <aside className="hidden min-h-screen w-72 shrink-0 border-r border-zinc-800 bg-zinc-950 p-6 lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto">
+        <div className="mb-8">
+          <Link href="/dashboard" className="text-2xl font-black tracking-tight text-white">
+            ATLAS <span className="text-blue-400">AI</span>
+          </Link>
+          <p className="mt-1 text-xs text-zinc-500">Real Estate Operating System</p>
+        </div>
 
-        <p className="text-xs text-zinc-400">
-          Real Estate Operating System
-        </p>
-      </div>
-
-
-      <nav className="space-y-8">
-
-        {menu.map((section)=>(
-          <div key={section.title}>
-
-            <p className="text-xs uppercase text-zinc-500 mb-3">
-              {section.title}
-            </p>
-
-
-            <div className="space-y-2">
-
-              {section.items.map(item=>(
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="
-                  block
-                  rounded-xl
-                  px-4
-                  py-3
-                  text-sm
-                  text-zinc-300
-                  hover:bg-zinc-800
-                  hover:text-white
-                  transition
-                  "
-                >
-                  {item.name}
-                </Link>
-              ))}
-
-            </div>
-
+        <div className="mb-8 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">Construção</p>
+          <p className="mt-2 text-sm font-semibold text-white">Base V1 pronta para V2 e V3</p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-800">
+            <div className="h-full w-[28%] rounded-full bg-gradient-to-r from-blue-500 to-violet-500" />
           </div>
-        ))}
+          <p className="mt-2 text-xs text-zinc-400">Fases estruturais: 28%</p>
+        </div>
 
+        <nav className="space-y-7" aria-label="Navegação principal">
+          {sections.map((section) => (
+            <section key={section.title}>
+              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                {section.title}
+              </p>
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const active = isActive(pathname, item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`block rounded-xl px-3 py-2.5 text-sm transition ${
+                        active
+                          ? "bg-white text-zinc-950 shadow-sm"
+                          : "text-zinc-300 hover:bg-zinc-900 hover:text-white"
+                      }`}
+                    >
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </nav>
+      </aside>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-zinc-800 bg-zinc-950/95 p-2 backdrop-blur lg:hidden">
+        {sections[0].items.slice(0, 4).map((item) => {
+          const active = isActive(pathname, item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`rounded-lg px-2 py-2 text-center text-xs ${active ? "bg-white text-zinc-950" : "text-zinc-400"}`}
+            >
+              {item.name}
+            </Link>
+          );
+        })}
       </nav>
-
-    </aside>
+    </>
   );
 }
