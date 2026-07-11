@@ -81,7 +81,7 @@ export default function DevelopmentCommandPage() {
 
       <section className="grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
         <AtlasCard>
-          <AtlasCardHeader eyebrow="Inventory intelligence" title="Saúde do estoque" description="Distribuição das unidades e velocidade de absorção do empreendimento." action={<Link href="/properties" className="text-xs font-semibold text-sky-300">Abrir inventário →</Link>} />
+          <AtlasCardHeader eyebrow="Inventory intelligence" title="Saúde do estoque" description="Distribuição das unidades e velocidade de absorção do empreendimento." action={<Link href={`/developments/${id}/inventory`} className="text-xs font-semibold text-sky-300">Abrir controle de unidades →</Link>} />
           <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4 sm:p-6">
             {[{ label: "Disponíveis", value: m.available, tone: "text-sky-300" }, { label: "Reservadas", value: m.reserved + m.activeReservations, tone: "text-amber-300" }, { label: "Vendidas", value: m.sold, tone: "text-emerald-300" }, { label: "Total", value: m.inventoryTotal, tone: "text-white" }].map((metric) => <div key={metric.label} className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5 text-center"><p className={`text-3xl font-semibold ${metric.tone}`}>{metric.value}</p><p className="mt-2 text-xs uppercase tracking-wider text-slate-500">{metric.label}</p></div>)}
           </div>
