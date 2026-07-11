@@ -51,7 +51,7 @@ export default function AtlasV3Page() {
         supabase.from("conversations").select("id", { count: "exact", head: true }).eq("status", "open"),
         supabase.from("approval_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
         supabase.from("atlas_decisions").select("id", { count: "exact", head: true }).eq("status", "proposed"),
-        supabase.from("ai_insights").select("id", { count: "exact", head: true),
+        supabase.from("ai_insights").select("id", { count: "exact", head: true }),
       ]);
 
       if (!active) return;
