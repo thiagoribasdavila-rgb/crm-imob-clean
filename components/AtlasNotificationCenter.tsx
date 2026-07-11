@@ -37,11 +37,9 @@ type DlqItem = {
   created_at: string;
 };
 
-function timeLabel(value?: string | null) {
+function timeLabel(value: string | null | undefined, now: number) {
   if (!value) return "Sem prazo";
-  const date = new Date(value);
-  const now = new Date();
-  const diff = date.getTime() - now.getTime();
+  const diff = new Date(value).getTime() - now;
   const hours = Math.round(diff / 3_600_000);
   if (hours < -24) return `${Math.abs(Math.round(hours / 24))}d atrasado`;
   if (hours < 0) return `${Math.abs(hours)}h atrasado`;
@@ -56,9 +54,11 @@ export default function AtlasNotificationCenter() {
   const [decisions, setDecisions] = useState<DecisionItem[]>([]);
   const [insights, setInsights] = useState<InsightItem[]>([]);
   const [failures, setFailures] = useState<DlqItem[]>([]);
+  const [referenceTime, setReferenceTime] = useState(0);
 
   async function load() {
     setLoading(true);
+    setReferenceTime(Date.now());
     const [taskRes, decisionRes, insightRes, failureRes] = await Promise.all([
       supabase
         .from("tasks")
@@ -114,10 +114,10 @@ export default function AtlasNotificationCenter() {
   }, []);
 
   const criticalCount = useMemo(() => {
-    const overdue = tasks.filter((task) => task.due_at && new Date(task.due_at).getTime() < Date.now()).length;
+    const overdue = tasks.filter((task) => task.due_at && new Date(task.due_at).getTime() < referenceTime).length;
     const highPriority = decisions.filter((decision) => ["high", "critical"].includes((decision.priority ?? "").toLowerCase())).length;
     return overdue + highPriority + failures.length;
-  }, [decisions, failures.length, tasks]);
+  }, [decisions, failures.length, referenceTime, tasks]);
 
   if (!open) return null;
 
@@ -156,7 +156,7 @@ export default function AtlasNotificationCenter() {
               {loading ? <div className="atlas-skeleton h-20 rounded-2xl" /> : tasks.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-white/10 p-4 text-sm text-slate-500">Nenhuma tarefa pendente.</div>
               ) : tasks.slice(0, 5).map((task) => {
-                const overdue = task.due_at && new Date(task.due_at).getTime() < Date.now();
+                const overdue = Boolean(task.due_at && new Date(task.due_at).getTime() < referenceTime);
                 return (
                   <Link key={task.id} href="/tasks" className="block rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 transition hover:border-sky-400/20 hover:bg-sky-400/[0.04]">
                     <div className="flex items-start justify-between gap-4">
@@ -164,7 +164,7 @@ export default function AtlasNotificationCenter() {
                         <p className="text-sm font-medium text-white">{task.title}</p>
                         <p className="mt-1 text-xs text-slate-500">Prioridade {task.priority || "média"}</p>
                       </div>
-                      <span className={`text-xs font-semibold ${overdue ? "text-rose-300" : "text-amber-200"}`}>{timeLabel(task.due_at)}</span>
+                      <span className={`text-xs font-semibold ${overdue ? "text-rose-300" : "text-amber-200"}`}>{timeLabel(task.due_at, referenceTime)}</span>
                     </div>
                   </Link>
                 );
