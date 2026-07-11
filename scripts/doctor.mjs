@@ -18,6 +18,14 @@ function warn(label, value) {
   console.log(`⚠️  ${label}: ${value}`);
 }
 
+function report(condition, label, successValue, warningValue) {
+  if (condition) {
+    ok(label, successValue);
+    return;
+  }
+  warn(label, warningValue);
+}
+
 console.log("\nATLAS AI — Diagnóstico local\n");
 
 const packagePath = new URL("../package.json", import.meta.url);
@@ -32,14 +40,14 @@ const hasSupabaseUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const hasSupabaseKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 ok("Projeto", `${packageJson.name}@${packageJson.version}`);
-branch === "atlas-v3-auth" ? ok("Branch", branch) : warn("Branch", `${branch} — esperado: atlas-v3-auth`);
+report(branch === "atlas-v3-auth", "Branch", branch, `${branch} — esperado: atlas-v3-auth`);
 ok("Remote", remote);
 ok("Node", nodeVersion);
 ok("npm", npmVersion);
-hasReleaseCheck ? ok("Script release:check", "disponível") : warn("Script release:check", "ausente");
-hasEnvFile ? ok("Arquivo .env.local", "encontrado") : warn("Arquivo .env.local", "não encontrado");
-hasSupabaseUrl ? ok("NEXT_PUBLIC_SUPABASE_URL", "carregada no processo") : warn("NEXT_PUBLIC_SUPABASE_URL", "não carregada no processo atual");
-hasSupabaseKey ? ok("NEXT_PUBLIC_SUPABASE_ANON_KEY", "carregada no processo") : warn("NEXT_PUBLIC_SUPABASE_ANON_KEY", "não carregada no processo atual");
+report(hasReleaseCheck, "Script release:check", "disponível", "ausente");
+report(hasEnvFile, "Arquivo .env.local", "encontrado", "não encontrado");
+report(hasSupabaseUrl, "NEXT_PUBLIC_SUPABASE_URL", "carregada no processo", "não carregada no processo atual");
+report(hasSupabaseKey, "NEXT_PUBLIC_SUPABASE_ANON_KEY", "carregada no processo", "não carregada no processo atual");
 
 console.log("\nSequência recomendada:\n");
 console.log("git fetch origin");
