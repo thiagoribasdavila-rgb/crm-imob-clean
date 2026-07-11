@@ -31,6 +31,10 @@ export default function AtlasCopilotDock() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [copilotAnswer, setCopilotAnswer] = useState("");
+  const [copilotLoading, setCopilotLoading] = useState(false);
+  const [copilotError, setCopilotError] = useState("");
 
   useEffect(() => {
     const handleOpen = () => setOpen(true);
@@ -88,6 +92,55 @@ export default function AtlasCopilotDock() {
     return "Cadastre novos leads para o Atlas começar a priorizar ações.";
   }, [insights, tasks]);
 
+  async function askCopilot() {
+    const question = prompt.trim();
+    if (!question) return;
+
+    setCopilotLoading(true);
+    setCopilotError("");
+    setCopilotAnswer("");
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Sessão expirada. Entre novamente para usar o Atlas Copilot.");
+
+      const response = await fetch("/api/ai/copilot", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          prompt: question,
+          context: {
+            nextAction,
+            insights: insights.map((insight) => ({
+              title: insight.title,
+              recommendation: insight.recommendation,
+              score: insight.score,
+              confidence: insight.confidence,
+            })),
+            tasks: tasks.map((task) => ({
+              title: task.title,
+              priority: task.priority,
+              status: task.status,
+              due_at: task.due_at,
+            })),
+          },
+        }),
+      });
+
+      const payload = (await response.json()) as { answer?: string; error?: string };
+      if (!response.ok) throw new Error(payload.error || "Falha ao consultar o Atlas Copilot.");
+      setCopilotAnswer(payload.answer || "Sem resposta do modelo.");
+    } catch (error) {
+      setCopilotError(error instanceof Error ? error.message : "Falha ao consultar o Atlas Copilot.");
+    } finally {
+      setCopilotLoading(false);
+    }
+  }
+
   return (
     <>
       <button
@@ -130,6 +183,32 @@ export default function AtlasCopilotDock() {
                 <Link href="/decision-center" onClick={() => setOpen(false)} className="atlas-button-primary">Abrir decisão</Link>
                 <Link href="/tasks" onClick={() => setOpen(false)} className="atlas-button-secondary">Ver tarefas</Link>
               </div>
+            </section>
+
+            <section className="mt-6 rounded-3xl border border-white/[0.08] bg-white/[0.025] p-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white">Perguntar ao ChatGPT</h3>
+                <span className="text-[10px] font-bold uppercase tracking-[.18em] text-slate-500">AI Gateway</span>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-500">Use para transformar contexto do CRM em próximos passos, riscos e mensagens operacionais.</p>
+              <textarea
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                maxLength={2000}
+                rows={4}
+                className="mt-4 w-full resize-none rounded-2xl border border-white/[0.08] bg-slate-950/70 px-4 py-3 text-sm text-slate-200 outline-none transition placeholder:text-slate-600 focus:border-sky-400/40"
+                placeholder="Ex.: o que devo priorizar hoje para converter mais leads?"
+              />
+              {copilotError ? <p className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs leading-5 text-amber-100">{copilotError}</p> : null}
+              {copilotAnswer ? <div className="mt-3 rounded-2xl border border-sky-400/15 bg-sky-400/10 px-4 py-3 text-sm leading-6 text-sky-50 whitespace-pre-wrap">{copilotAnswer}</div> : null}
+              <button
+                type="button"
+                onClick={askCopilot}
+                disabled={copilotLoading || !prompt.trim()}
+                className="atlas-button-primary mt-4 w-full disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {copilotLoading ? "Consultando o Atlas Copilot..." : "Perguntar"}
+              </button>
             </section>
 
             <section className="mt-6">
