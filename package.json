@@ -1,12 +1,29 @@
 {
-  "name": "crm-imob-clean",
-  "version": "0.1.0",
+  "name": "atlas-ai-real-estate-os",
+  "version": "3.0.0-rc.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/build.mjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "enterprise:check": "node scripts/enterprise-check.mjs",
+    "validate": "npm run enterprise:check && npm run typecheck && npm run lint && npm run build",
+    "release:check": "npm run validate",
+    "v1-v2:check": "npm run release:check",
+    "v3:check": "npm run release:check",
+    "smoke:v1-v2": "node scripts/smoke-v1-v2.mjs",
+    "smoke:v3": "node scripts/smoke-v3.mjs",
+    "smoke:all": "npm run smoke:v1-v2 && npm run smoke:v3",
+    "prepare:test": "node scripts/prepare-real-test.mjs",
+    "routes:real": "node --env-file=.env.local scripts/test-real-routes.mjs",
+    "preflight:production": "node scripts/preflight-production.mjs",
+    "test:real": "npm run release:check && npm run smoke:all && npm run routes:real && npm run preflight:production",
+    "prisma:generate": "prisma generate",
+    "doctor": "node scripts/doctor.mjs",
+    "bootstrap:admin": "node --env-file=.env.local scripts/bootstrap-admin.mjs",
+    "setup:atlas": "npm ci && npm run prisma:generate && npm run doctor && npm run release:check"
   },
   "dependencies": {
     "@prisma/client": "^7.8.0",

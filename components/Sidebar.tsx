@@ -4,35 +4,61 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const sections = [
-  {
-    title: "Operação",
-    items: [
-      { name: "Dashboard", href: "/dashboard" },
-      { name: "Leads", href: "/leads" },
-      { name: "Pipeline", href: "/pipeline" },
-      { name: "Tarefas", href: "/tasks" },
-    ],
-  },
-  {
-    title: "Imobiliário",
-    items: [
-      { name: "Imóveis", href: "/properties" },
-      { name: "Vendas", href: "/sales" },
-    ],
-  },
-  {
-    title: "Gestão",
-    items: [
-      { name: "Marketing", href: "/marketing" },
-      { name: "Relatórios", href: "/reports" },
-      { name: "Integrações", href: "/integrations" },
-      { name: "Usuários", href: "/users" },
-      { name: "Configurações", href: "/settings" },
-    ],
-  },
+  { title: "Operação", items: [
+    { name: "Command Center", href: "/dashboard", icon: "◫" },
+    { name: "Leads", href: "/leads", icon: "◎" },
+    { name: "Pipeline", href: "/pipeline", icon: "⌁" },
+    { name: "Clientes", href: "/customers", icon: "◇" },
+    { name: "Tarefas", href: "/tasks", icon: "✓" },
+    { name: "Agenda", href: "/calendar", icon: "□" },
+  ]},
+  { title: "Imobiliário", items: [
+    { name: "Imóveis", href: "/properties", icon: "⌂" },
+    { name: "Empreendimentos", href: "/developments", icon: "▥" },
+    { name: "Vendas & VGV", href: "/sales", icon: "↗" },
+  ]},
+  { title: "Atlas V2 · Growth Layer", items: [
+    { name: "V2 Overview", href: "/atlas-v2", icon: "✺" },
+    { name: "Marketing AI", href: "/marketing", icon: "◉" },
+    { name: "Conversas", href: "/conversations", icon: "◍" },
+    { name: "Criativos", href: "/creatives", icon: "✣" },
+    { name: "Automações", href: "/automations", icon: "⚡" },
+    { name: "Aprovações", href: "/approvals", icon: "✓" },
+    { name: "Integrações", href: "/integrations", icon: "⊕" },
+  ]},
+  { title: "Intelligence Layer", items: [
+    { name: "Centro de decisão", href: "/decision-center", icon: "✦" },
+    { name: "Atlas Intelligence", href: "/intelligence", icon: "◈" },
+    { name: "Analytics", href: "/reports", icon: "⌁" },
+  ]},
+  { title: "Atlas OS V3", items: [
+    { name: "V3 Overview", href: "/atlas-v3", icon: "✧" },
+    { name: "Digital Twin", href: "/atlas-v3/digital-twin", icon: "◌" },
+    { name: "Agentes", href: "/atlas-v3/agents", icon: "⬡" },
+    { name: "Market Intelligence", href: "/atlas-v3/market", icon: "⌖" },
+    { name: "Forecast", href: "/atlas-v3/forecast", icon: "∿" },
+    { name: "Marketplace", href: "/atlas-v3/marketplace", icon: "◧" },
+    { name: "Investor", href: "/atlas-v3/investor", icon: "△" },
+    { name: "Incorporadoras", href: "/atlas-v3/developer", icon: "▤" },
+    { name: "Governança", href: "/atlas-v3/governance", icon: "◐" },
+    { name: "Auditoria", href: "/atlas-v3/audit", icon: "≡" },
+    { name: "Data Quality", href: "/atlas-v3/data-quality", icon: "◆" },
+    { name: "Cenários", href: "/atlas-v3/scenarios", icon: "∞" },
+  ]},
+  { title: "Atlas 2030 · Platform Layer", items: [
+    { name: "2030 Command Center", href: "/atlas-2030", icon: "✹" },
+    { name: "Launch Commerce", href: "/atlas-v3/developer", icon: "⬢" },
+    { name: "Simulações", href: "/atlas-v3/scenarios", icon: "∞" },
+    { name: "Knowledge Graph", href: "/atlas-2030", icon: "⌘" },
+  ]},
+  { title: "Administração", items: [
+    { name: "Usuários", href: "/users", icon: "◍" },
+    { name: "Configurações", href: "/settings", icon: "⚙" },
+  ]},
 ];
 
 function isActive(pathname: string, href: string) {
+  if (href === "/atlas-v2" || href === "/atlas-v3" || href === "/atlas-2030") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -41,74 +67,32 @@ export default function Sidebar() {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-zinc-800 bg-zinc-950/95 px-4 backdrop-blur lg:hidden">
-        <Link href="/dashboard" className="font-black tracking-tight">
-          ATLAS <span className="text-blue-400">AI</span>
-        </Link>
-        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
-          V1 + V2
-        </span>
-      </header>
-
-      <aside className="hidden min-h-screen w-72 shrink-0 border-r border-zinc-800 bg-zinc-950 p-6 lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto">
-        <div className="mb-8">
-          <Link href="/dashboard" className="text-2xl font-black tracking-tight text-white">
-            ATLAS <span className="text-blue-400">AI</span>
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[292px] border-r border-white/[0.07] bg-[#060a14]/95 lg:flex lg:flex-col lg:backdrop-blur-2xl">
+        <div className="border-b border-white/[0.07] px-6 py-6">
+          <Link href="/dashboard" className="group flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl border border-sky-400/20 bg-gradient-to-br from-sky-400/20 to-violet-500/15 text-lg font-black text-sky-300 shadow-[0_0_28px_rgba(56,189,248,.12)]">A</span>
+            <span><span className="block text-xl font-black tracking-[-.04em] text-white">ATLAS <span className="text-sky-400">AI</span></span><span className="block text-[9px] font-semibold uppercase tracking-[.22em] text-slate-500">Real Estate OS</span></span>
           </Link>
-          <p className="mt-1 text-xs text-zinc-500">Real Estate Operating System</p>
         </div>
 
-        <div className="mb-8 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">Construção</p>
-          <p className="mt-2 text-sm font-semibold text-white">Base V1 pronta para V2 e V3</p>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-800">
-            <div className="h-full w-[28%] rounded-full bg-gradient-to-r from-blue-500 to-violet-500" />
+        <div className="mx-4 mt-4 rounded-2xl border border-cyan-400/15 bg-gradient-to-br from-cyan-500/[.09] via-blue-500/[.08] to-violet-500/[.08] p-4">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[.18em] text-cyan-300">Atlas 2030</span><span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[9px] font-bold text-emerald-300">ACTIVE</span></div>
+          <p className="mt-3 text-sm font-semibold text-white">Launch & Intelligence Platform</p>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full w-[96%] rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 shadow-[0_0_14px_rgba(59,130,246,.7)]" /></div>
+          <div className="mt-2 flex justify-between text-[10px] text-slate-500"><span>Technical foundation</span><span>96%</span></div>
+        </div>
+
+        <nav className="mt-4 flex-1 overflow-y-auto px-3 pb-8" aria-label="Navegação principal">
+          <div className="space-y-6">
+            {sections.map((section) => <section key={section.title}><p className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[.2em] text-slate-600">{section.title}</p><div className="space-y-1">{section.items.map((item) => { const active = isActive(pathname, item.href); return <Link key={`${section.title}-${item.href}-${item.name}`} href={item.href} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-all ${active ? "border border-sky-400/15 bg-gradient-to-r from-sky-400/15 to-blue-500/[.06] text-white shadow-[inset_3px_0_0_#38bdf8]" : "border border-transparent text-slate-400 hover:border-white/[0.05] hover:bg-white/[0.035] hover:text-slate-100"}`}><span className={`grid h-7 w-7 place-items-center rounded-lg text-xs ${active ? "bg-sky-400/15 text-sky-300" : "bg-white/[0.03] text-slate-500 group-hover:text-slate-300"}`}>{item.icon}</span><span className="truncate">{item.name}</span></Link>; })}</div></section>)}
           </div>
-          <p className="mt-2 text-xs text-zinc-400">Fases estruturais: 28%</p>
-        </div>
-
-        <nav className="space-y-7" aria-label="Navegação principal">
-          {sections.map((section) => (
-            <section key={section.title}>
-              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                {section.title}
-              </p>
-              <div className="space-y-1">
-                {section.items.map((item) => {
-                  const active = isActive(pathname, item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`block rounded-xl px-3 py-2.5 text-sm transition ${
-                        active
-                          ? "bg-white text-zinc-950 shadow-sm"
-                          : "text-zinc-300 hover:bg-zinc-900 hover:text-white"
-                      }`}
-                    >
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
         </nav>
+
+        <div className="border-t border-white/[0.07] p-4"><div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-3"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-sky-400/20 to-violet-500/20 text-xs font-bold text-sky-200">OS</span><div className="min-w-0"><p className="truncate text-xs font-semibold text-slate-200">Atlas Cloud</p><p className="text-[10px] text-slate-500">Secure multi-tenant</p></div><span className="ml-auto h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,.7)]" /></div></div></div>
       </aside>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-zinc-800 bg-zinc-950/95 p-2 backdrop-blur lg:hidden">
-        {sections[0].items.slice(0, 4).map((item) => {
-          const active = isActive(pathname, item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`rounded-lg px-2 py-2 text-center text-xs ${active ? "bg-white text-zinc-950" : "text-zinc-400"}`}
-            >
-              {item.name}
-            </Link>
-          );
-        })}
+      <nav className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-white/[0.08] bg-[#060a14]/95 p-2 backdrop-blur-2xl lg:hidden">
+        {sections[0].items.slice(0, 5).map((item) => { const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} className={`flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[9px] ${active ? "bg-sky-400/10 text-sky-300" : "text-slate-500"}`}><span className="text-sm">{item.icon}</span><span className="max-w-full truncate">{item.name}</span></Link>; })}
       </nav>
     </>
   );

@@ -1,0 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+
+type Development={id:string;name:string;developer_name:string|null;status:string;city:string|null;delivery_date:string|null};
+export default function DeveloperPage(){const[data,setData]=useState<Development[]>([]);useEffect(()=>{void(async()=>{const{data}=await supabase.from("developments").select("id,name,developer_name,status,city,delivery_date").order("created_at",{ascending:false});setData((data??[])as Development[])})();},[]);return <div className="space-y-6"><header><p className="text-sm uppercase tracking-[.2em] text-orange-400">Developer Intelligence</p><h1 className="mt-2 text-3xl font-black">Portal incorporadora</h1><p className="mt-2 text-zinc-400">Produtos, estoque, campanhas e performance em uma visão única.</p></header><section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.map(d=><article key={d.id} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5"><div className="flex justify-between gap-3"><h2 className="font-bold">{d.name}</h2><span className="text-xs text-orange-300">{d.status}</span></div><p className="mt-2 text-sm text-zinc-500">{d.developer_name||'Incorporadora não informada'}</p><p className="mt-4 text-sm">{d.city||'Cidade não informada'}</p><p className="mt-1 text-xs text-zinc-500">Entrega: {d.delivery_date?new Date(d.delivery_date).toLocaleDateString('pt-BR'):'não informada'}</p></article>)}{data.length===0&&<p className="text-zinc-500">Nenhum empreendimento cadastrado.</p>}</section></div>}
