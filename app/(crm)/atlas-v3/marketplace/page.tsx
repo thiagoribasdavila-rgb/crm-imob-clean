@@ -1,0 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+
+type Property={id:string;title:string|null;price:number|null;city:string|null;bedrooms:number|null;area:number|null;status:string|null};
+export default function MarketplacePage(){const[data,setData]=useState<Property[]>([]);useEffect(()=>{void(async()=>{const{data}=await supabase.from("properties").select("id,title,price,city,bedrooms,area,status").in("status",['ativo','available']).limit(30);setData((data??[])as Property[])})();},[]);return <div className="space-y-6"><header><p className="text-sm uppercase tracking-[.2em] text-pink-400">Marketplace</p><h1 className="mt-2 text-3xl font-black">Inventário inteligente</h1><p className="mt-2 text-zinc-400">Base para distribuição, matching, parceiros e portais.</p></header><section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.map(p=><article key={p.id} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5"><div className="flex justify-between gap-3"><h2 className="font-bold">{p.title||'Imóvel'}</h2><span className="text-xs text-emerald-300">{p.status}</span></div><p className="mt-2 text-sm text-zinc-500">{p.city||'Local não informado'}</p><p className="mt-4 text-2xl font-black">{p.price?Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(p.price):'Sob consulta'}</p><p className="mt-2 text-xs text-zinc-500">{p.bedrooms??0} dorm. · {p.area??0} m²</p></article>)}{data.length===0&&<p className="text-zinc-500">Nenhum imóvel ativo.</p>}</section></div>}
