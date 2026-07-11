@@ -73,6 +73,10 @@ export default function AtlasTopbar() {
     window.dispatchEvent(new Event("atlas:open-workspace-memory"));
   }
 
+  function openFeedback() {
+    window.dispatchEvent(new Event("atlas:open-feedback"));
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -102,6 +106,7 @@ export default function AtlasTopbar() {
           {online ? "Sistema online" : "Sem conexão"}
         </button>
         <button onClick={openSystemPulse} className="atlas-icon-button md:hidden" aria-label="Abrir status do sistema">◉</button>
+        <button onClick={openFeedback} className="atlas-icon-button" aria-label="Registrar feedback de produção">⚑</button>
         <button onClick={openWorkspaceMemory} className="atlas-icon-button" aria-label="Abrir recentes e favoritos">◴</button>
         <button onClick={openNotifications} className="atlas-icon-button relative" aria-label="Abrir central de notificações">
           <span>⌁</span>
