@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "validate": "npm run typecheck && npm run lint && npm run build",
     "release:check": "npm run validate",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "doctor": "node scripts/doctor.mjs",
+    "setup:atlas": "npm ci && npm run prisma:generate && npm run doctor && npm run release:check"
   },
   "dependencies": {
     "@prisma/client": "^7.8.0",
