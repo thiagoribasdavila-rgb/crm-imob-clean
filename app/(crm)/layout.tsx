@@ -8,6 +8,7 @@ import AtlasSystemPulse from "@/components/AtlasSystemPulse";
 import AtlasNotificationCenter from "@/components/AtlasNotificationCenter";
 import AtlasQuickCreate from "@/components/AtlasQuickCreate";
 import AtlasWorkspaceMemory from "@/components/AtlasWorkspaceMemory";
+import AtlasFeedbackCenter from "@/components/AtlasFeedbackCenter";
 
 export default function CRMLayout({ children }: { children: ReactNode }) {
   return (
@@ -24,6 +25,7 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
         <AtlasNotificationCenter />
         <AtlasQuickCreate />
         <AtlasWorkspaceMemory />
+        <AtlasFeedbackCenter />
       </div>
     </SupabaseGuard>
   );
