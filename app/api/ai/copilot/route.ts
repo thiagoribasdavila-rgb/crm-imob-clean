@@ -24,13 +24,6 @@ export async function POST(request: Request) {
   try {
     const identity = await requireApiIdentity(request);
 
-    if (!process.env.AI_GATEWAY_API_KEY) {
-      return NextResponse.json(
-        { error: "AI Gateway não configurado. Defina AI_GATEWAY_API_KEY no ambiente do projeto." },
-        { status: 503 },
-      );
-    }
-
     const body = (await request.json()) as CopilotRequest;
     const prompt = text(body.prompt);
 
