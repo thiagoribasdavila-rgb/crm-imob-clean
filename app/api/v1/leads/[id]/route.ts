@@ -132,7 +132,6 @@ export async function POST(request: Request, context: RouteContext) {
         stage: "qualificacao",
         probability: 25,
         value: propertyPrice ?? lead.budget_max ?? null,
-        owner_id: identity.userId,
       }).select("id,stage,value,probability,expected_close_at,property_id,created_at").single();
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
       return NextResponse.json({ opportunity: data }, { status: 201 });
