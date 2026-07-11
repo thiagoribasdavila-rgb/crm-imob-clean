@@ -10,6 +10,7 @@ const sections = [
       { name: "Dashboard", href: "/dashboard" },
       { name: "Leads", href: "/leads" },
       { name: "Pipeline", href: "/pipeline" },
+      { name: "Clientes", href: "/customers" },
       { name: "Tarefas", href: "/tasks" },
     ],
   },
@@ -17,14 +18,21 @@ const sections = [
     title: "Imobiliário",
     items: [
       { name: "Imóveis", href: "/properties" },
+      { name: "Empreendimentos", href: "/developments" },
       { name: "Vendas", href: "/sales" },
     ],
   },
   {
-    title: "Gestão",
+    title: "Inteligência",
     items: [
+      { name: "Atlas Intelligence", href: "/intelligence" },
       { name: "Marketing", href: "/marketing" },
       { name: "Relatórios", href: "/reports" },
+    ],
+  },
+  {
+    title: "Administração",
+    items: [
       { name: "Integrações", href: "/integrations" },
       { name: "Usuários", href: "/users" },
       { name: "Configurações", href: "/settings" },
@@ -45,47 +53,31 @@ export default function Sidebar() {
         <Link href="/dashboard" className="font-black tracking-tight">
           ATLAS <span className="text-blue-400">AI</span>
         </Link>
-        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
-          V1 + V2
-        </span>
+        <span className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-3 py-1 text-xs text-fuchsia-300">V3 Build</span>
       </header>
 
       <aside className="hidden min-h-screen w-72 shrink-0 border-r border-zinc-800 bg-zinc-950 p-6 lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto">
         <div className="mb-8">
-          <Link href="/dashboard" className="text-2xl font-black tracking-tight text-white">
-            ATLAS <span className="text-blue-400">AI</span>
-          </Link>
+          <Link href="/dashboard" className="text-2xl font-black tracking-tight text-white">ATLAS <span className="text-blue-400">AI</span></Link>
           <p className="mt-1 text-xs text-zinc-500">Real Estate Operating System</p>
         </div>
 
-        <div className="mb-8 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">Construção</p>
-          <p className="mt-2 text-sm font-semibold text-white">Base V1 pronta para V2 e V3</p>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-800">
-            <div className="h-full w-[28%] rounded-full bg-gradient-to-r from-blue-500 to-violet-500" />
-          </div>
-          <p className="mt-2 text-xs text-zinc-400">Fases estruturais: 28%</p>
+        <div className="mb-8 rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-300">Construção V3</p>
+          <p className="mt-2 text-sm font-semibold text-white">Core operacional + inteligência</p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-800"><div className="h-full w-[52%] rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-fuchsia-500" /></div>
+          <p className="mt-2 text-xs text-zinc-400">Fundação estrutural: 52%</p>
         </div>
 
         <nav className="space-y-7" aria-label="Navegação principal">
           {sections.map((section) => (
             <section key={section.title}>
-              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                {section.title}
-              </p>
+              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">{section.title}</p>
               <div className="space-y-1">
                 {section.items.map((item) => {
                   const active = isActive(pathname, item.href);
                   return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`block rounded-xl px-3 py-2.5 text-sm transition ${
-                        active
-                          ? "bg-white text-zinc-950 shadow-sm"
-                          : "text-zinc-300 hover:bg-zinc-900 hover:text-white"
-                      }`}
-                    >
+                    <Link key={item.href} href={item.href} className={`block rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-300 hover:bg-zinc-900 hover:text-white"}`}>
                       {item.name}
                     </Link>
                   );
@@ -99,15 +91,7 @@ export default function Sidebar() {
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-zinc-800 bg-zinc-950/95 p-2 backdrop-blur lg:hidden">
         {sections[0].items.slice(0, 4).map((item) => {
           const active = isActive(pathname, item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`rounded-lg px-2 py-2 text-center text-xs ${active ? "bg-white text-zinc-950" : "text-zinc-400"}`}
-            >
-              {item.name}
-            </Link>
-          );
+          return <Link key={item.href} href={item.href} className={`rounded-lg px-2 py-2 text-center text-xs ${active ? "bg-white text-zinc-950" : "text-zinc-400"}`}>{item.name}</Link>;
         })}
       </nav>
     </>
