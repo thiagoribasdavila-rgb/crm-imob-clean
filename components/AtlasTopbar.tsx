@@ -23,7 +23,9 @@ const titles: Record<string, string> = {
   "/integrations": "Integrações",
   "/users": "Usuários",
   "/settings": "Configurações",
+  "/atlas-v2": "Atlas V2 · Growth Layer",
   "/atlas-v3": "Atlas OS V3",
+  "/atlas-2030": "Atlas 2030 · Platform Layer",
 };
 
 export default function AtlasTopbar() {
@@ -51,6 +53,10 @@ export default function AtlasTopbar() {
     return match ? titles[match] : "Atlas AI";
   }, [pathname]);
 
+  function openCommandPalette() {
+    window.dispatchEvent(new Event("atlas:open-command-palette"));
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -64,6 +70,11 @@ export default function AtlasTopbar() {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        <button onClick={openCommandPalette} className="hidden min-w-48 items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-slate-400 transition hover:border-sky-400/20 hover:bg-sky-400/[0.06] hover:text-slate-200 xl:flex" aria-label="Abrir busca global">
+          <span className="flex items-center gap-2"><span className="text-sky-300">⌕</span> Buscar no Atlas</span>
+          <kbd className="rounded-md border border-white/10 bg-black/20 px-1.5 py-0.5 text-[9px] text-slate-500">⌘K</kbd>
+        </button>
+        <button onClick={openCommandPalette} className="atlas-icon-button xl:hidden" aria-label="Abrir busca global">⌕</button>
         <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-300 md:flex">
           <span className={`h-2 w-2 rounded-full ${online ? "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.7)]" : "bg-rose-400"}`} />
           {online ? "Sistema online" : "Sem conexão"}
