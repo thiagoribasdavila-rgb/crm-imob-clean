@@ -25,7 +25,9 @@ const sections = [
   {
     title: "Inteligência",
     items: [
+      { name: "Centro de decisão", href: "/decision-center" },
       { name: "Atlas Intelligence", href: "/intelligence" },
+      { name: "Automações", href: "/automations" },
       { name: "Marketing", href: "/marketing" },
       { name: "Relatórios", href: "/reports" },
     ],
@@ -46,13 +48,10 @@ function isActive(pathname: string, href: string) {
 
 export default function Sidebar() {
   const pathname = usePathname();
-
   return (
     <>
       <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-zinc-800 bg-zinc-950/95 px-4 backdrop-blur lg:hidden">
-        <Link href="/dashboard" className="font-black tracking-tight">
-          ATLAS <span className="text-blue-400">AI</span>
-        </Link>
+        <Link href="/dashboard" className="font-black tracking-tight">ATLAS <span className="text-blue-400">AI</span></Link>
         <span className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-3 py-1 text-xs text-fuchsia-300">V3 Build</span>
       </header>
 
@@ -64,9 +63,9 @@ export default function Sidebar() {
 
         <div className="mb-8 rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-300">Construção V3</p>
-          <p className="mt-2 text-sm font-semibold text-white">Core operacional + inteligência</p>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-800"><div className="h-full w-[52%] rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-fuchsia-500" /></div>
-          <p className="mt-2 text-xs text-zinc-400">Fundação estrutural: 52%</p>
+          <p className="mt-2 text-sm font-semibold text-white">Operação + decisão + automação</p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-800"><div className="h-full w-[70%] rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-fuchsia-500" /></div>
+          <p className="mt-2 text-xs text-zinc-400">Fundação estrutural: 70%</p>
         </div>
 
         <nav className="space-y-7" aria-label="Navegação principal">
@@ -76,11 +75,7 @@ export default function Sidebar() {
               <div className="space-y-1">
                 {section.items.map((item) => {
                   const active = isActive(pathname, item.href);
-                  return (
-                    <Link key={item.href} href={item.href} className={`block rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-300 hover:bg-zinc-900 hover:text-white"}`}>
-                      {item.name}
-                    </Link>
-                  );
+                  return <Link key={item.href} href={item.href} className={`block rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-300 hover:bg-zinc-900 hover:text-white"}`}>{item.name}</Link>;
                 })}
               </div>
             </section>
