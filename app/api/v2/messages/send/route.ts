@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         channel: payload.channel,
         recipient: payload.recipient,
         content: payload.content.trim(),
-        status: requiresApproval ? "queued" : "queued",
+        status: "queued",
       })
       .select("id")
       .single();
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     } else {
       const { error: outboxError } = await admin.from("integration_outbox").insert({
         organization_id: identity.organizationId,
-        event_type: "message.send",
+        topic: "message.send",
         aggregate_type: "message",
         aggregate_id: message.id,
         payload: { messageId: message.id, channel: payload.channel },
