@@ -4,6 +4,7 @@ import SupabaseGuard from "@/components/SupabaseGuard";
 import AtlasTopbar from "@/components/AtlasTopbar";
 import CommandPalette from "@/components/CommandPalette";
 import AtlasCopilotDock from "@/components/AtlasCopilotDock";
+import AtlasSystemPulse from "@/components/AtlasSystemPulse";
 
 export default function CRMLayout({ children }: { children: ReactNode }) {
   return (
@@ -16,6 +17,7 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
         </main>
         <CommandPalette />
         <AtlasCopilotDock />
+        <AtlasSystemPulse />
       </div>
     </SupabaseGuard>
   );
