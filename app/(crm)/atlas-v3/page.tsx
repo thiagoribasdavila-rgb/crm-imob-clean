@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 const modules = [
+  ["Integration Hub", "/atlas-v3/integration-hub", "Consolidação de V1, V2, V3 e Atlas 2030 para teste real e operação."],
   ["Digital Twin", "/atlas-v3/digital-twin", "Modelos vivos de comprador, imóvel, mercado e campanha."],
   ["Agentes", "/atlas-v3/agents", "Especialistas governados para vendas, marketing, gestão e investimento."],
   ["Market Intelligence", "/atlas-v3/market", "Sinais de preço, liquidez, demanda e oportunidade."],
@@ -89,6 +90,7 @@ export default function AtlasV3Page() {
         <div className="mt-7 flex flex-wrap gap-3">
           <Link href="/dashboard" className="atlas-button-secondary">Abrir operação V1</Link>
           <Link href="/atlas-v2" className="atlas-button-secondary">Abrir Growth Layer V2</Link>
+          <Link href="/atlas-v3/integration-hub" className="atlas-button-secondary">Ver integrações</Link>
           <Link href="/decision-center" className="atlas-button-primary">Abrir Centro de decisão →</Link>
         </div>
       </header>
