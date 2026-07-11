@@ -16,6 +16,8 @@
     "smoke:v1-v2": "node scripts/smoke-v1-v2.mjs",
     "smoke:v3": "node scripts/smoke-v3.mjs",
     "smoke:all": "npm run smoke:v1-v2 && npm run smoke:v3",
+    "preflight:production": "node scripts/preflight-production.mjs",
+    "test:real": "npm run release:check && npm run smoke:all && npm run preflight:production",
     "prisma:generate": "prisma generate",
     "doctor": "node scripts/doctor.mjs",
     "bootstrap:admin": "node --env-file=.env.local scripts/bootstrap-admin.mjs",
