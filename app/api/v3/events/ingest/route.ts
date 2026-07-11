@@ -18,7 +18,8 @@ type EventPayload = {
 export async function POST(request: Request) {
   const rate = checkRateLimit(clientKey(request, "v3-event-ingest"), { limit: 120, windowMs: 60_000 });
   if (!rate.allowed) {
-    return NextResponse.json({ error: "Limite de eventos excedido." }, { status: 429, headers: { "Retry-After": String(Math.ceil(rate.retryAfterMs / 1000)) } });
+    const retryAfterSeconds = Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000));
+    return NextResponse.json({ error: "Limite de eventos excedido." }, { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } });
   }
 
   try {
