@@ -17,7 +17,16 @@ type Payload = {
 export async function POST(request: Request) {
   const rate = checkRateLimit(clientKey(request, "v2-message-send"), { limit: 30, windowMs: 60_000 });
   if (!rate.allowed) {
-    return NextResponse.json({ error: "Limite de envio excedido." }, { status: 429 });
+    return NextResponse.json(
+      { error: "Limite de envio excedido." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000))),
+          "X-RateLimit-Remaining": String(rate.remaining),
+        },
+      },
+    );
   }
 
   try {
@@ -78,10 +87,21 @@ export async function POST(request: Request) {
       if (outboxError) throw outboxError;
     }
 
-    logger.info("message.queued", { messageId: message.id, organizationId: identity.organizationId, channel: payload.channel });
-    return NextResponse.json({ id: message.id, status: requiresApproval ? "pending_approval" : "queued" }, { status: 202 });
+    logger.info("message.queued", {
+      messageId: message.id,
+      organizationId: identity.organizationId,
+      channel: payload.channel,
+      requiresApproval,
+    });
+
+    return NextResponse.json(
+      { id: message.id, status: requiresApproval ? "pending_approval" : "queued" },
+      { status: 202, headers: { "X-RateLimit-Remaining": String(rate.remaining) } },
+    );
   } catch (error) {
     logger.error("message.queue_failed", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao preparar mensagem." }, { status: 401 });
+    const message = error instanceof Error ? error.message : "Falha ao preparar mensagem.";
+    const unauthorized = /token|sessão|autoriz/i.test(message);
+    return NextResponse.json({ error: message }, { status: unauthorized ? 401 : 500 });
   }
 }
