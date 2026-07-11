@@ -1,44 +1,154 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { calculateLeadScore } from "@/lib/atlas/scoring";
 
-export default function NewLead() {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    status: "novo",
-  });
+const initialForm = {
+  name: "",
+  email: "",
+  phone: "",
+  source: "Meta Ads",
+  purpose: "moradia",
+  budget_min: "",
+  budget_max: "",
+  bedrooms: "",
+  preferred_regions: "",
+  notes: "",
+};
 
-  async function handleSubmit() {
-    await supabase.from("leads").insert([form]);
-    alert("Lead criado!");
+export default function NewLeadPage() {
+  const router = useRouter();
+  const [form, setForm] = useState(initialForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [duplicateLeadId, setDuplicateLeadId] = useState<string | null>(null);
+
+  const preferredRegions = useMemo(
+    () => form.preferred_regions.split(",").map((value) => value.trim()).filter(Boolean),
+    [form.preferred_regions],
+  );
+
+  const scorePreview = useMemo(
+    () => calculateLeadScore({
+      email: form.email || null,
+      phone: form.phone || null,
+      source: form.source,
+      purpose: form.purpose,
+      budgetMax: form.budget_max ? Number(form.budget_max) : null,
+      bedrooms: form.bedrooms ? Number(form.bedrooms) : null,
+      preferredRegions,
+      status: "novo",
+    }),
+    [form, preferredRegions],
+  );
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving) return;
+
+    setSaving(true);
+    setError("");
+    setDuplicateLeadId(null);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Sua sessão expirou. Entre novamente.");
+
+      const response = await fetch("/api/v1/leads", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email || undefined,
+          phone: form.phone || undefined,
+          source: form.source,
+          purpose: form.purpose,
+          budgetMin: form.budget_min ? Number(form.budget_min) : null,
+          budgetMax: form.budget_max ? Number(form.budget_max) : null,
+          bedrooms: form.bedrooms ? Number(form.bedrooms) : null,
+          preferredRegions,
+          notes: form.notes || undefined,
+        }),
+      });
+
+      const result = (await response.json()) as {
+        error?: string;
+        duplicateLeadId?: string;
+        lead?: { id: string };
+      };
+
+      if (!response.ok) {
+        setDuplicateLeadId(result.duplicateLeadId ?? null);
+        throw new Error(result.error || "Não foi possível criar o lead.");
+      }
+
+      router.push(result.lead?.id ? `/leads/${result.lead.id}` : "/leads");
+      router.refresh();
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Falha ao criar lead.");
+    } finally {
+      setSaving(false);
+    }
   }
 
+  const fieldClass =
+    "w-full rounded-xl border border-white/[0.08] bg-[#080d18] px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-sky-400/60 focus:ring-4 focus:ring-sky-400/10";
+
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Novo Lead</h1>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-300">Entrada comercial</p>
+          <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-white">Novo lead</h1>
+          <p className="mt-2 max-w-2xl text-slate-400">Cadastro seguro, deduplicado e conectado ao pipeline, histórico, eventos e inteligência do Atlas.</p>
+        </div>
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Score previsto</p>
+          <div className="mt-1 flex items-center gap-3">
+            <span className="text-2xl font-black text-white">{scorePreview.score}</span>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${scorePreview.temperature === "quente" ? "bg-rose-400/10 text-rose-300" : scorePreview.temperature === "morno" ? "bg-amber-400/10 text-amber-300" : "bg-sky-400/10 text-sky-300"}`}>{scorePreview.temperature}</span>
+          </div>
+        </div>
+      </div>
 
-      <input
-        placeholder="Nome"
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-      />
-      <br />
+      <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-white/[0.08] bg-[#0a101d]/80 p-6 shadow-2xl shadow-black/20 md:p-8">
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-2 text-sm text-slate-300"><span>Nome *</span><input required autoFocus autoComplete="name" className={fieldClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+          <label className="space-y-2 text-sm text-slate-300"><span>Telefone</span><input inputMode="tel" autoComplete="tel" className={fieldClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
+          <label className="space-y-2 text-sm text-slate-300"><span>E-mail</span><input type="email" autoComplete="email" className={fieldClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+          <label className="space-y-2 text-sm text-slate-300"><span>Origem</span><select className={fieldClass} value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })}><option>Meta Ads</option><option>Google</option><option>WhatsApp</option><option>Indicação</option><option>Portal</option><option>Orgânico</option><option>Manual</option></select></label>
+          <label className="space-y-2 text-sm text-slate-300"><span>Objetivo</span><select className={fieldClass} value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })}><option value="moradia">Moradia</option><option value="investimento">Investimento</option><option value="locacao">Locação</option></select></label>
+          <label className="space-y-2 text-sm text-slate-300"><span>Dormitórios</span><input type="number" min="0" max="20" className={fieldClass} value={form.bedrooms} onChange={(e) => setForm({ ...form, bedrooms: e.target.value })} /></label>
+          <label className="space-y-2 text-sm text-slate-300"><span>Orçamento mínimo</span><input type="number" min="0" step="1000" className={fieldClass} value={form.budget_min} onChange={(e) => setForm({ ...form, budget_min: e.target.value })} /></label>
+          <label className="space-y-2 text-sm text-slate-300"><span>Orçamento máximo</span><input type="number" min="0" step="1000" className={fieldClass} value={form.budget_max} onChange={(e) => setForm({ ...form, budget_max: e.target.value })} /></label>
+        </div>
 
-      <input
-        placeholder="Email"
-        onChange={(e) => setForm({ ...form, email: e.target.value })}
-      />
-      <br />
+        <label className="block space-y-2 text-sm text-slate-300"><span>Regiões preferidas</span><input className={fieldClass} placeholder="Perdizes, Pinheiros, Vila Madalena" value={form.preferred_regions} onChange={(e) => setForm({ ...form, preferred_regions: e.target.value })} /><span className="block text-xs text-slate-600">Separe as regiões por vírgulas.</span></label>
+        <label className="block space-y-2 text-sm text-slate-300"><span>Observações</span><textarea rows={5} className={fieldClass} placeholder="Contexto, prazo de compra, condições especiais..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></label>
 
-      <input
-        placeholder="Telefone"
-        onChange={(e) => setForm({ ...form, phone: e.target.value })}
-      />
-      <br />
+        {error && (
+          <div role="alert" className="rounded-2xl border border-red-400/25 bg-red-400/10 p-4 text-sm text-red-100">
+            <p>{error}</p>
+            {duplicateLeadId && <button type="button" onClick={() => router.push(`/leads/${duplicateLeadId}`)} className="mt-3 font-bold text-white underline underline-offset-4">Abrir lead existente</button>}
+          </div>
+        )}
 
-      <button onClick={handleSubmit}>Salvar</button>
+        <div className="rounded-2xl border border-sky-400/15 bg-sky-400/[0.06] p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-300">Inteligência inicial</p>
+          <p className="mt-2 text-sm text-slate-300">{scorePreview.reasons.length ? scorePreview.reasons.join(" · ") : "Preencha contato, orçamento, objetivo e região para aumentar a qualidade do lead."}</p>
+        </div>
+
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button type="button" disabled={saving} onClick={() => router.back()} className="rounded-xl border border-white/[0.1] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.04] disabled:opacity-50">Cancelar</button>
+          <button disabled={saving} className="rounded-xl bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-sky-100 disabled:cursor-wait disabled:opacity-60">{saving ? "Criando e sincronizando..." : "Criar lead"}</button>
+        </div>
+      </form>
     </div>
   );
 }

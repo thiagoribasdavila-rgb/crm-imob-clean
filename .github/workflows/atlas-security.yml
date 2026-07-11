@@ -1,0 +1,63 @@
+name: Atlas Security Gate
+
+on:
+  pull_request:
+    branches:
+      - atlas-v3-build
+      - main
+  push:
+    branches:
+      - atlas-v3-auth
+      - atlas-v3-build
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Scan tracked files for real secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          PATTERN='(BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|SUPABASE_SERVICE_ROLE_KEY[[:space:]]*=[[:space:]]*["'"'][^"'"']{16,}["'"'])'
+          if git grep -nEI "$PATTERN" -- ':!package-lock.json' ':!.github/workflows/atlas-security.yml' ':!docs/**'; then
+            echo 'Potential real secret detected in tracked files.'
+            exit 1
+          fi
+          echo 'No obvious tracked secrets detected.'
+
+      - name: Verify production guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f app/api/health/route.ts
+          test -f app/api/ready/route.ts
+          test -f supabase/migrations/20260711040000_atlas_v3_foundation.sql
+          test -f supabase/migrations/20260711060000_atlas_level6_resilience.sql
+          test -f docs/ATLAS_ENGINEERING_STANDARD.md
+          test -f lib/security/webhook-signature.ts
+          test -f lib/security/api-auth.ts
+          echo 'Core guardrails are present.'

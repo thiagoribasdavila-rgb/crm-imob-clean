@@ -1,0 +1,11 @@
+-- Applied to Supabase project crm-imob-clean (pvvdfqbkqhfifylzgbkq).
+-- Canonical schema is managed through Supabase migrations.
+-- Tables introduced/enhanced: organizations, profiles, leads, pipeline,
+-- properties, customers, developments, units, opportunities, activities,
+-- tasks, campaigns, ai_insights and audit_logs.
+-- RLS is enabled on all operational tables. During the build phase,
+-- authenticated users have full access; organization-scoped policies
+-- will replace these before production multi-tenant launch.
+
+-- This file documents the migration applied remotely. See Supabase migration:
+-- atlas_v3_foundation_schema

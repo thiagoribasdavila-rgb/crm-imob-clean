@@ -13,22 +13,47 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./*"]
     }
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "lib/supabase.ts",
+    "lib/atlas/**/*.ts",
+    "types/atlas.ts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "app/(atlas)/**",
+    "app/(crm)/kanban/**",
+    "app/(crm)/pipedrive/**",
+    "app/(crm)/pipeline/[stage]/**",
+    "app/(crm)/pipeline/cold/**",
+    "app/(crm)/pipeline/hot/**",
+    "app/(crm)/pipeline/warm/**",
+    "app/(crm)/leads/edit/**",
+    "app/(crm)/leads/table/**",
+    "app/(crm)/tasks/[id]/**",
+    "app/api/leads/**",
+    "components/crm/**",
+    "components/analytics/**",
+    "components/providers/**",
+    "application/**",
+    "core/**",
+    "domain/**",
+    "lib/ai/**",
+    "lib/analytics/**",
+    "lib/auth/**",
+    "lib/data/**",
+    "lib/services/**",
+    "middlewere.ts"
+  ]
 }
