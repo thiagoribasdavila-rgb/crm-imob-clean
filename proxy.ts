@@ -1,13 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export function middleware(req: any) {
+export function proxy(req: NextRequest) {
   const isLoginPage = req.nextUrl.pathname.startsWith("/login");
 
   if (isLoginPage) {
     return NextResponse.next();
   }
 
-  // 🔥 futuro: validar cookie Supabase aqui
   return NextResponse.next();
 }
 
