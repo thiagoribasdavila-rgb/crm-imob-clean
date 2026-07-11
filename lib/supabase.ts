@@ -1,20 +1,14 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getSupabasePublicConfig } from "@/utils/supabase/env";
 
 let instance: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient {
   if (instance) return instance;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const { url, key } = getSupabasePublicConfig();
 
-  if (!url || !anonKey) {
-    throw new Error(
-      "Supabase não configurado. Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY."
-    );
-  }
-
-  instance = createClient(url, anonKey, {
+  instance = createClient(url, key, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
