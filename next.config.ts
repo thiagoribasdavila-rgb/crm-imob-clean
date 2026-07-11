@@ -1,11 +1,8 @@
-cat > next.config.ts <<'EOF'
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: [
-    "@supabase/supabase-js",
-  ],
+  serverExternalPackages: ["@supabase/supabase-js"],
+  reactStrictMode: true,
 };
 
 export default nextConfig;
-EOF
