@@ -11,6 +11,8 @@
     "enterprise:check": "node scripts/enterprise-check.mjs",
     "validate": "npm run enterprise:check && npm run typecheck && npm run lint && npm run build",
     "release:check": "npm run validate",
+    "v1-v2:check": "npm run release:check",
+    "smoke:v1-v2": "node scripts/smoke-v1-v2.mjs",
     "prisma:generate": "prisma generate",
     "doctor": "node scripts/doctor.mjs",
     "setup:atlas": "npm ci && npm run prisma:generate && npm run doctor && npm run release:check"
