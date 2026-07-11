@@ -25,9 +25,21 @@ function LoginExperience() {
     setLoading(true);
     setError("");
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const normalizedEmail = email.trim().toLowerCase();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
+
     if (signInError) {
-      setError("E-mail ou senha inválidos. Verifique os dados e tente novamente.");
+      const message = signInError.message.toLowerCase();
+      if (message.includes("email not confirmed")) {
+        setError("Seu e-mail ainda não foi confirmado.");
+      } else if (message.includes("invalid login credentials")) {
+        setError("E-mail ou senha inválidos. Redefina a senha caso não tenha certeza da credencial criada.");
+      } else {
+        setError("Não foi possível autenticar agora. Tente novamente em instantes.");
+      }
       setLoading(false);
       return;
     }
@@ -61,7 +73,7 @@ function LoginExperience() {
             <div><p className="atlas-eyebrow">Secure workspace</p><h2 className="mt-3 text-3xl font-semibold tracking-[-.035em]">Bem-vindo ao Atlas.</h2><p className="mt-3 text-sm leading-6 text-slate-400">Acesse sua operação e continue exatamente de onde parou.</p></div>
             <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
               <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">E-mail corporativo</span><input required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full px-4 py-3.5" placeholder="voce@empresa.com" /></label>
-              <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Senha</span><input required type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full px-4 py-3.5" placeholder="••••••••" /></label>
+              <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Senha</span><input required type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full px-4 py-3.5" placeholder="••••••••••••" /></label>
               <div className="flex justify-end"><Link href="/forgot-password" className="text-xs font-medium text-sky-300 transition hover:text-sky-200">Esqueci minha senha</Link></div>
               {error ? <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
               <button type="submit" disabled={loading} className="atlas-button-primary w-full py-3.5 disabled:cursor-not-allowed disabled:opacity-60">{loading ? "Autenticando ambiente..." : "Entrar no Atlas OS →"}</button>
