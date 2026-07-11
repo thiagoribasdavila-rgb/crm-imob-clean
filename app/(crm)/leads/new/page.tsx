@@ -30,14 +30,20 @@ export default function NewLeadPage() {
     setError("");
 
     const budgetMax = form.budget_max ? Number(form.budget_max) : null;
+    const preferredRegions = form.preferred_regions
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
     const scoreResult = calculateLeadScore({
-      hasPhone: Boolean(form.phone),
-      hasEmail: Boolean(form.email),
-      budgetDefined: Boolean(budgetMax),
-      purposeDefined: Boolean(form.purpose),
-      regionsDefined: Boolean(form.preferred_regions.trim()),
-      bedroomsDefined: Boolean(form.bedrooms),
+      email: form.email || null,
+      phone: form.phone || null,
       source: form.source,
+      purpose: form.purpose,
+      budgetMax,
+      bedrooms: form.bedrooms ? Number(form.bedrooms) : null,
+      preferredRegions,
+      status: "novo",
     });
 
     const { data, error } = await supabase
@@ -51,7 +57,7 @@ export default function NewLeadPage() {
         budget_min: form.budget_min ? Number(form.budget_min) : null,
         budget_max: budgetMax,
         bedrooms: form.bedrooms ? Number(form.bedrooms) : null,
-        preferred_regions: form.preferred_regions.split(",").map((value) => value.trim()).filter(Boolean),
+        preferred_regions: preferredRegions,
         notes: form.notes || null,
         status: "novo",
         score: scoreResult.score,
@@ -70,7 +76,8 @@ export default function NewLeadPage() {
     router.refresh();
   }
 
-  const fieldClass = "w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-blue-500";
+  const fieldClass =
+    "w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-blue-500";
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
