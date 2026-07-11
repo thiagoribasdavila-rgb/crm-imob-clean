@@ -45,6 +45,12 @@ const sections = [
     { name: "Data Quality", href: "/atlas-v3/data-quality", icon: "◆" },
     { name: "Cenários", href: "/atlas-v3/scenarios", icon: "∞" },
   ]},
+  { title: "Atlas 2030 · Platform Layer", items: [
+    { name: "2030 Command Center", href: "/atlas-2030", icon: "✹" },
+    { name: "Launch Commerce", href: "/atlas-v3/developer", icon: "⬢" },
+    { name: "Simulações", href: "/atlas-v3/scenarios", icon: "∞" },
+    { name: "Knowledge Graph", href: "/atlas-2030", icon: "⌘" },
+  ]},
   { title: "Administração", items: [
     { name: "Usuários", href: "/users", icon: "◍" },
     { name: "Configurações", href: "/settings", icon: "⚙" },
@@ -52,7 +58,7 @@ const sections = [
 ];
 
 function isActive(pathname: string, href: string) {
-  if (href === "/atlas-v2" || href === "/atlas-v3") return pathname === href;
+  if (href === "/atlas-v2" || href === "/atlas-v3" || href === "/atlas-2030") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -69,16 +75,16 @@ export default function Sidebar() {
           </Link>
         </div>
 
-        <div className="mx-4 mt-4 rounded-2xl border border-violet-400/15 bg-gradient-to-br from-blue-500/[.09] to-violet-500/[.08] p-4">
-          <div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-300">Atlas V2 + V3</span><span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[9px] font-bold text-emerald-300">ACTIVE</span></div>
-          <p className="mt-3 text-sm font-semibold text-white">Growth & Intelligence Platform</p>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full w-[90%] rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 shadow-[0_0_14px_rgba(59,130,246,.7)]" /></div>
-          <div className="mt-2 flex justify-between text-[10px] text-slate-500"><span>Core foundation</span><span>90%</span></div>
+        <div className="mx-4 mt-4 rounded-2xl border border-cyan-400/15 bg-gradient-to-br from-cyan-500/[.09] via-blue-500/[.08] to-violet-500/[.08] p-4">
+          <div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[.18em] text-cyan-300">Atlas 2030</span><span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 text-[9px] font-bold text-emerald-300">ACTIVE</span></div>
+          <p className="mt-3 text-sm font-semibold text-white">Launch & Intelligence Platform</p>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full w-[96%] rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 shadow-[0_0_14px_rgba(59,130,246,.7)]" /></div>
+          <div className="mt-2 flex justify-between text-[10px] text-slate-500"><span>Technical foundation</span><span>96%</span></div>
         </div>
 
         <nav className="mt-4 flex-1 overflow-y-auto px-3 pb-8" aria-label="Navegação principal">
           <div className="space-y-6">
-            {sections.map((section) => <section key={section.title}><p className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[.2em] text-slate-600">{section.title}</p><div className="space-y-1">{section.items.map((item) => { const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-all ${active ? "border border-sky-400/15 bg-gradient-to-r from-sky-400/15 to-blue-500/[.06] text-white shadow-[inset_3px_0_0_#38bdf8]" : "border border-transparent text-slate-400 hover:border-white/[0.05] hover:bg-white/[0.035] hover:text-slate-100"}`}><span className={`grid h-7 w-7 place-items-center rounded-lg text-xs ${active ? "bg-sky-400/15 text-sky-300" : "bg-white/[0.03] text-slate-500 group-hover:text-slate-300"}`}>{item.icon}</span><span className="truncate">{item.name}</span></Link>; })}</div></section>)}
+            {sections.map((section) => <section key={section.title}><p className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[.2em] text-slate-600">{section.title}</p><div className="space-y-1">{section.items.map((item) => { const active = isActive(pathname, item.href); return <Link key={`${section.title}-${item.href}-${item.name}`} href={item.href} className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-all ${active ? "border border-sky-400/15 bg-gradient-to-r from-sky-400/15 to-blue-500/[.06] text-white shadow-[inset_3px_0_0_#38bdf8]" : "border border-transparent text-slate-400 hover:border-white/[0.05] hover:bg-white/[0.035] hover:text-slate-100"}`}><span className={`grid h-7 w-7 place-items-center rounded-lg text-xs ${active ? "bg-sky-400/15 text-sky-300" : "bg-white/[0.03] text-slate-500 group-hover:text-slate-300"}`}>{item.icon}</span><span className="truncate">{item.name}</span></Link>; })}</div></section>)}
           </div>
         </nav>
 
