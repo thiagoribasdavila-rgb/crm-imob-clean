@@ -47,8 +47,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (!validId(id)) return apiError("INVALID_LEAD_ID", "ID do lead inválido.", access.meta, { status: 400, headers: rate.headers });
 
   let body: Record<string, unknown>;
-  try { body = (await request.json()) as Record<string, unknown>; }
-  catch { return apiError("INVALID_JSON", "Payload JSON inválido.", access.meta, { status: 400, headers: rate.headers }); }
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return apiError("INVALID_JSON", "Payload JSON inválido.", access.meta, { status: 400, headers: rate.headers });
+  }
 
   const before = await access.supabase.from("leads").select("*").eq("id", id).eq("organization_id", access.access.organization.id).maybeSingle();
   if (before.error) return apiError("LEAD_QUERY_FAILED", "Não foi possível consultar o lead.", access.meta, { status: 500, headers: rate.headers });
@@ -56,6 +59,23 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const changes = normalizePatch(body);
   if (Object.keys(changes).length <= 1) return apiError("NO_PATCH_FIELDS", "Nenhum campo permitido foi enviado.", access.meta, { status: 422, headers: rate.headers });
+
+  if (Object.prototype.hasOwnProperty.call(changes, "assigned_to")) {
+    const assignedTo = changes.assigned_to;
+    if (typeof assignedTo !== "string" || !validId(assignedTo)) {
+      return apiError("INVALID_ASSIGNEE", "Corretor responsável inválido.", access.meta, { status: 422, headers: rate.headers });
+    }
+
+    const { data: assignee, error: assigneeError } = await access.supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", assignedTo)
+      .eq("organization_id", access.access.organization.id)
+      .eq("active", true)
+      .maybeSingle();
+    if (assigneeError) return apiError("ASSIGNEE_LOOKUP_FAILED", "Não foi possível validar o corretor responsável.", access.meta, { status: 500, headers: rate.headers });
+    if (!assignee) return apiError("INVALID_ASSIGNEE", "O corretor responsável não pertence à organização ou está inativo.", access.meta, { status: 422, headers: rate.headers });
+  }
 
   const { data, error } = await access.supabase.from("leads").update(changes).eq("id", id).eq("organization_id", access.access.organization.id).select("*").single();
   if (error) {
