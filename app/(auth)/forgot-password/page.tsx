@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -13,7 +13,7 @@ const recoveryMessages: Record<string, string> = {
   missing_auth_token: "O link de recuperação está incompleto. Solicite um novo link.",
 };
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordExperience() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,25 +38,31 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError("");
 
-    const origin = window.location.origin;
-    const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/reset-password")}`;
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-      redirectTo,
-    });
+    try {
+      const origin = window.location.origin;
+      const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/reset-password")}`;
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo,
+      });
 
-    if (resetError) {
-      const message = resetError.message.toLowerCase();
-      if (message.includes("rate") || message.includes("too many")) {
-        setError("Muitas solicitações em sequência. Aguarde alguns minutos antes de tentar novamente.");
-      } else {
-        setError("Não foi possível iniciar a recuperação. Confira o e-mail e tente novamente.");
+      if (resetError) {
+        const message = resetError.message.toLowerCase();
+        if (message.includes("rate") || message.includes("too many")) {
+          setError("Muitas solicitações em sequência. Aguarde alguns minutos antes de tentar novamente.");
+        } else if (message.includes("network") || message.includes("fetch")) {
+          setError("Não foi possível conectar ao Atlas. Verifique sua internet e tente novamente.");
+        } else {
+          setError("Não foi possível iniciar a recuperação. Confira o e-mail e tente novamente.");
+        }
+        return;
       }
-      setLoading(false);
-      return;
-    }
 
-    setSent(true);
-    setLoading(false);
+      setSent(true);
+    } catch {
+      setError("Ocorreu uma falha inesperada. Verifique sua conexão e tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -100,5 +106,13 @@ export default function ForgotPasswordPage() {
         )}
       </section>
     </main>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[#050812]" />}>
+      <ForgotPasswordExperience />
+    </Suspense>
   );
 }
