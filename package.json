@@ -25,7 +25,8 @@
     "doctor": "node scripts/doctor.mjs",
     "bootstrap:admin": "node --env-file=.env.local scripts/bootstrap-admin.mjs",
     "bootstrap:diagnose": "node --env-file=.env.local scripts/diagnose-bootstrap.mjs",
-    "setup:atlas": "npm ci && npm run prisma:generate && npm run doctor && npm run release:check"
+    "setup:atlas": "npm ci && npm run prisma:generate && npm run doctor && npm run release:check",
+    "smoke:auth": "node scripts/smoke-authenticated.mjs"
   },
   "dependencies": {
     "@prisma/client": "^7.8.0",

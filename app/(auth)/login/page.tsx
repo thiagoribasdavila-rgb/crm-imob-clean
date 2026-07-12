@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { trackAtlasEvent } from "@/lib/analytics/events";
 
 const REMEMBERED_EMAIL_KEY = "atlas.remembered-email";
 
@@ -108,6 +109,7 @@ function LoginExperience() {
 
       if (signInError) {
         const message = signInError.message.toLowerCase();
+        trackAtlasEvent("atlas_login_failed", { reason: message.includes("invalid login credentials") ? "invalid_credentials" : message.includes("email not confirmed") ? "email_not_confirmed" : message.includes("rate limit") || message.includes("too many") ? "rate_limited" : "other" });
         if (message.includes("email not confirmed")) {
           setError("Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.");
         } else if (message.includes("invalid login credentials")) {
@@ -134,12 +136,14 @@ function LoginExperience() {
         .maybeSingle();
 
       if (profileError || !profile?.organization_id) {
+        trackAtlasEvent("atlas_login_blocked", { reason: "missing_organization" });
         await supabase.auth.signOut();
         setError("Usuário sem organização vinculada. Peça ao administrador para concluir o cadastro do perfil.");
         return;
       }
 
       if (profile.active === false) {
+        trackAtlasEvent("atlas_login_blocked", { reason: "inactive_profile" });
         await supabase.auth.signOut();
         setError("Usuário inativo. Peça ao administrador para reativar o acesso.");
         return;
@@ -151,6 +155,7 @@ function LoginExperience() {
         window.localStorage.removeItem(REMEMBERED_EMAIL_KEY);
       }
 
+      trackAtlasEvent("atlas_login_success", { destination });
       router.replace(destination);
       router.refresh();
     } catch {

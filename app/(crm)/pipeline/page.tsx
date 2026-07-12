@@ -5,6 +5,7 @@ import { DragEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
+import { trackAtlasEvent } from "@/lib/analytics/events";
 
 const stages = [
   { key: "novo", label: "Novos", probability: 5 },
@@ -89,7 +90,9 @@ export default function PipelinePage() {
       const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Falha ao mover lead.");
+      trackAtlasEvent("atlas_lead_status_updated", { stage });
     } catch (moveError) {
+      trackAtlasEvent("atlas_lead_status_update_failed", { stage });
       setLeads(previous);
       setError(moveError instanceof Error ? moveError.message : "Falha ao mover lead.");
     } finally {
