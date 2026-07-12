@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, Suspense, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 const recoveryMessages: Record<string, string> = {
@@ -13,17 +12,21 @@ const recoveryMessages: Record<string, string> = {
   missing_auth_token: "O link de recuperação está incompleto. Solicite um novo link.",
 };
 
-function ForgotPasswordExperience() {
-  const searchParams = useSearchParams();
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [routeError, setRouteError] = useState("");
   const [sent, setSent] = useState(false);
 
-  const routeError = useMemo(() => {
-    const code = searchParams.get("error");
-    return code ? recoveryMessages[code] || "Não foi possível concluir a recuperação. Solicite um novo link." : "";
-  }, [searchParams]);
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("error");
+    if (code) {
+      setRouteError(
+        recoveryMessages[code] || "Não foi possível concluir a recuperação. Solicite um novo link.",
+      );
+    }
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,8 +42,7 @@ function ForgotPasswordExperience() {
     setError("");
 
     try {
-      const origin = window.location.origin;
-      const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/reset-password")}`;
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent("/reset-password")}`;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
         redirectTo,
       });
@@ -52,7 +54,7 @@ function ForgotPasswordExperience() {
         } else if (message.includes("network") || message.includes("fetch")) {
           setError("Não foi possível conectar ao Atlas. Verifique sua internet e tente novamente.");
         } else {
-          setError("Não foi possível iniciar a recuperação. Confira o e-mail e tente novamente.");
+          setError(`Não foi possível enviar o link agora. ${resetError.message}`);
         }
         return;
       }
@@ -79,14 +81,14 @@ function ForgotPasswordExperience() {
 
         <p className="atlas-eyebrow">Identity recovery</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-[-.035em]">Recupere seu acesso.</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-400">Enviaremos um link temporário para redefinir a senha da sua conta Atlas.</p>
+        <p className="mt-3 text-sm leading-6 text-slate-400">Enviaremos um link temporário para redefinir sua senha. A senha atual nunca pode ser exibida pelo sistema.</p>
 
         {routeError ? <div role="alert" className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-4 text-sm leading-6 text-amber-100">{routeError}</div> : null}
 
         {sent ? (
           <div className="mt-8 space-y-5">
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-4 text-sm leading-6 text-emerald-100">
-              Solicitação recebida. Caso o e-mail esteja cadastrado, o link será enviado em instantes. Use somente o e-mail mais recente e verifique Spam, Outros e Lixo Eletrônico.
+              Solicitação processada. Verifique Caixa de Entrada, Spam, Outros e Lixo Eletrônico. Use somente o e-mail mais recente.
             </div>
             <button type="button" onClick={() => { setSent(false); setError(""); }} className="atlas-button-secondary block w-full py-3.5 text-center">Enviar novamente</button>
             <Link href="/login" className="atlas-button-primary block w-full py-3.5 text-center">Voltar ao login</Link>
@@ -106,13 +108,5 @@ function ForgotPasswordExperience() {
         )}
       </section>
     </main>
-  );
-}
-
-export default function ForgotPasswordPage() {
-  return (
-    <Suspense fallback={<main className="min-h-screen bg-[#050812]" />}>
-      <ForgotPasswordExperience />
-    </Suspense>
   );
 }
