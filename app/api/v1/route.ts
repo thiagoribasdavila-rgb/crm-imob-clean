@@ -11,7 +11,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const resources = {
-  system: ["/api/v1", "/api/v1/health", "/api/v1/ready"],
+  system: ["/api/v1", "/api/v1/health", "/api/v1/ready", "/api/v1/openapi"],
   auth: ["/api/v1/auth/me"],
   crm: ["/api/v1/crm/leads", "/api/v1/crm/leads/:id", "/api/v1/crm/leads/:id/360"],
   pipeline: ["/api/v1/pipeline", "/api/v1/pipeline/move"],
@@ -33,8 +33,13 @@ export async function GET(request: NextRequest) {
       status: "operational",
       architecture: "api-first",
       documentation: {
-        openapi: "/api/v1/openapi.json",
+        openapi: "/api/v1/openapi",
         docs: "/api/docs",
+      },
+      standards: {
+        tracing: ["X-Request-Id", "X-Correlation-Id"],
+        writeSafety: ["Idempotency-Key"],
+        rateLimit: ["RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset"],
       },
       resources,
     },
