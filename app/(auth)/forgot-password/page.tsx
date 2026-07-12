@@ -1,42 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const recoveryMessages: Record<string, string> = {
-  recovery_link_invalid: "O link de recuperação é inválido ou expirou. Solicite um novo link abaixo.",
-  session_exchange_failed: "Não foi possível validar o link. Solicite uma nova recuperação de senha.",
-  token_verification_failed: "O token de recuperação já foi usado ou expirou. Gere um novo link.",
-  missing_auth_token: "O link recebido está incompleto. Solicite um novo e-mail de recuperação.",
+  recovery_link_invalid: "O link de recuperação é inválido ou expirou. Solicite um novo link.",
+  missing_auth_code: "O link de recuperação não trouxe um código válido. Solicite um novo link.",
+  session_exchange_failed: "Não foi possível validar sua sessão de recuperação. Solicite um novo link.",
+  token_verification_failed: "Não foi possível validar o token de recuperação. Use somente o e-mail mais recente.",
+  missing_auth_token: "O link de recuperação está incompleto. Solicite um novo link.",
 };
 
 export default function ForgotPasswordPage() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
 
-  useEffect(() => {
-    const reason = new URLSearchParams(window.location.search).get("error");
-    if (reason) setError(recoveryMessages[reason] ?? "Não foi possível validar o link de recuperação.");
-  }, []);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = window.setInterval(() => setCooldown((value) => Math.max(0, value - 1)), 1000);
-    return () => window.clearInterval(timer);
-  }, [cooldown]);
+  const routeError = useMemo(() => {
+    const code = searchParams.get("error");
+    return code ? recoveryMessages[code] || "Não foi possível concluir a recuperação. Solicite um novo link." : "";
+  }, [searchParams]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (cooldown > 0) return;
+    if (loading) return;
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
+      setError("Digite um e-mail válido para continuar.");
+      return;
+    }
 
     setLoading(true);
     setError("");
 
-    const normalizedEmail = email.trim().toLowerCase();
     const origin = window.location.origin;
     const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/reset-password")}`;
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
@@ -44,18 +45,17 @@ export default function ForgotPasswordPage() {
     });
 
     if (resetError) {
-      const rateLimited = resetError.status === 429 || resetError.message.toLowerCase().includes("rate");
-      setError(
-        rateLimited
-          ? "Muitas solicitações em pouco tempo. Aguarde alguns minutos antes de tentar novamente."
-          : "Não foi possível iniciar a recuperação. Confira o e-mail e tente novamente.",
-      );
+      const message = resetError.message.toLowerCase();
+      if (message.includes("rate") || message.includes("too many")) {
+        setError("Muitas solicitações em sequência. Aguarde alguns minutos antes de tentar novamente.");
+      } else {
+        setError("Não foi possível iniciar a recuperação. Confira o e-mail e tente novamente.");
+      }
       setLoading(false);
       return;
     }
 
     setSent(true);
-    setCooldown(60);
     setLoading(false);
   }
 
@@ -75,26 +75,29 @@ export default function ForgotPasswordPage() {
         <h1 className="mt-3 text-3xl font-semibold tracking-[-.035em]">Recupere seu acesso.</h1>
         <p className="mt-3 text-sm leading-6 text-slate-400">Enviaremos um link temporário para redefinir a senha da sua conta Atlas.</p>
 
-        <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-          <label className="block">
-            <span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">E-mail corporativo</span>
-            <input required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="w-full px-4 py-3.5" placeholder="voce@empresa.com" />
-          </label>
+        {routeError ? <div role="alert" className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-4 text-sm leading-6 text-amber-100">{routeError}</div> : null}
 
-          {error ? <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm leading-6 text-rose-200">{error}</p> : null}
-
-          {sent ? (
+        {sent ? (
+          <div className="mt-8 space-y-5">
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-4 text-sm leading-6 text-emerald-100">
-              Solicitação aceita. Verifique Caixa de Entrada, Lixo Eletrônico, Spam e Outros. Use somente o e-mail mais recente.
+              Solicitação recebida. Caso o e-mail esteja cadastrado, o link será enviado em instantes. Use somente o e-mail mais recente e verifique Spam, Outros e Lixo Eletrônico.
             </div>
-          ) : null}
-
-          <button type="submit" disabled={loading || cooldown > 0} className="atlas-button-primary w-full py-3.5 disabled:cursor-not-allowed disabled:opacity-60">
-            {loading ? "Enviando link seguro..." : cooldown > 0 ? `Reenviar em ${cooldown}s` : sent ? "Reenviar link" : "Enviar link de recuperação"}
-          </button>
-
-          <Link href="/login" className="block text-center text-sm text-sky-300 transition hover:text-sky-200">Voltar ao login</Link>
-        </form>
+            <button type="button" onClick={() => { setSent(false); setError(""); }} className="atlas-button-secondary block w-full py-3.5 text-center">Enviar novamente</button>
+            <Link href="/login" className="atlas-button-primary block w-full py-3.5 text-center">Voltar ao login</Link>
+          </div>
+        ) : (
+          <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
+            <label className="block">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">E-mail corporativo</span>
+              <input required type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); if (error) setError(""); }} className="w-full px-4 py-3.5" placeholder="voce@empresa.com" />
+            </label>
+            {error ? <p role="alert" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
+            <button type="submit" disabled={loading} className="atlas-button-primary w-full py-3.5 disabled:cursor-not-allowed disabled:opacity-60">
+              {loading ? "Enviando link seguro..." : "Enviar link de recuperação"}
+            </button>
+            <Link href="/login" className="block text-center text-sm text-sky-300 transition hover:text-sky-200">Voltar ao login</Link>
+          </form>
+        )}
       </section>
     </main>
   );
