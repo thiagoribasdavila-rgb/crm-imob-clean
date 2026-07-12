@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { apiError, createRequestContext, getClientAddress } from "@/lib/api/core";
 import { createClient } from "@/utils/supabase/server";
+import { getSupabasePublicConfig } from "@/utils/supabase/env";
 
 type RateBucket = { count: number; resetAt: number };
 
@@ -71,8 +73,34 @@ export function enforceRateLimit(
   return { ok: true as const, headers };
 }
 
+function readBearerToken(request: NextRequest): string | null {
+  const authorization = request.headers.get("authorization")?.trim() ?? "";
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
 export async function requireAuthenticatedUser(request: NextRequest) {
   const meta = createRequestContext(request);
+  const bearerToken = readBearerToken(request);
+
+  if (bearerToken) {
+    const { url, key } = getSupabasePublicConfig();
+    const supabase = createSupabaseClient(url, key, {
+      global: { headers: { Authorization: `Bearer ${bearerToken}` } },
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+    const { data, error } = await supabase.auth.getUser(bearerToken);
+
+    if (error || !data.user) {
+      return {
+        ok: false as const,
+        response: apiError("UNAUTHENTICATED", "Token de acesso inválido ou expirado.", meta, { status: 401 }),
+      };
+    }
+
+    return { ok: true as const, user: data.user, supabase, meta, authMode: "bearer" as const };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
 
@@ -83,7 +111,7 @@ export async function requireAuthenticatedUser(request: NextRequest) {
     };
   }
 
-  return { ok: true as const, user: data.user, supabase, meta };
+  return { ok: true as const, user: data.user, supabase, meta, authMode: "cookie" as const };
 }
 
 export async function requireAccessContext(
@@ -185,6 +213,7 @@ export async function requireAccessContext(
     user: auth.user,
     supabase: auth.supabase,
     meta: auth.meta,
+    authMode: auth.authMode,
     access,
   };
 }
