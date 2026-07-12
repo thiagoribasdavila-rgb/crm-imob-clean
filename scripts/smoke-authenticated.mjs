@@ -72,7 +72,15 @@ else console.log("PASS Identity API returned 200");
 
 const listBefore = await request("/api/v1/crm/leads?limit=5", token);
 if (listBefore.response.status !== 200) fail(`/api/v1/crm/leads list expected 200, got ${listBefore.response.status}`);
-else console.log("PASS CRM leads list returned 200");
+else {
+  const items = listBefore.body?.data?.items;
+  if (!Array.isArray(items)) fail("CRM leads list did not return data.items array");
+  else console.log("PASS CRM leads list returned 200 with data.items array");
+}
+
+const filteredList = await request("/api/v1/crm/leads?limit=5&q=atlas-smoke", token);
+if (filteredList.response.status !== 200) fail(`/api/v1/crm/leads filtered list expected 200, got ${filteredList.response.status}`);
+else console.log("PASS CRM leads filtered search returned 200");
 
 if (writeEnabled) {
   const runId = Date.now();
@@ -112,7 +120,7 @@ if (writeEnabled) {
   else console.log("PASS Duplicate contact returned 409");
 
   const search = await request(`/api/v1/crm/leads?limit=10&q=${encodeURIComponent(leadEmail)}`, token);
-  const items = search.body?.data?.items || search.body?.items || [];
+  const items = search.body?.data?.items || [];
   if (search.response.status !== 200 || !Array.isArray(items) || !items.some((lead) => lead.email === leadEmail)) {
     fail("created lead was not found in CRM leads search");
   } else {
