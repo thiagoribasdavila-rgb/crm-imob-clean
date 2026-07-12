@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-import { requireApiIdentity } from "@/lib/security/api-auth";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { NextResponse, type NextRequest } from "next/server";
+import { requireAccessContext } from "@/lib/api/security";
 import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 
@@ -21,7 +20,7 @@ function developmentRef(row: AnyRow) {
   return textValue(row.development_id || row.developmentId || row.project_id || row.projectId);
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const rate = checkRateLimit(clientKey(request, "launch-os-read"), { limit: 60, windowMs: 60_000 });
   if (!rate.allowed) {
     return NextResponse.json(
@@ -31,15 +30,16 @@ export async function GET(request: Request) {
   }
 
   try {
-    const identity = await requireApiIdentity(request);
-    const admin = getSupabaseAdmin();
+    const access = await requireAccessContext(request, { roles: ["admin", "manager", "broker", "viewer"] });
+    if (!access.ok) return access.response;
+    const organizationId = access.access.organization.id;
 
     const [developmentResult, propertyResult, opportunityResult, campaignResult, reservationResult] = await Promise.all([
-      admin.from("developments").select("*").eq("organization_id", identity.organizationId).order("created_at", { ascending: false }),
-      admin.from("properties").select("*").eq("organization_id", identity.organizationId).limit(2000),
-      admin.from("opportunities").select("*").eq("organization_id", identity.organizationId).limit(2000),
-      admin.from("campaigns").select("*").eq("organization_id", identity.organizationId).limit(500),
-      admin.from("atlas_inventory_reservations").select("*").eq("organization_id", identity.organizationId).limit(1000),
+      access.supabase.from("developments").select("*").eq("organization_id", organizationId).order("created_at", { ascending: false }),
+      access.supabase.from("properties").select("*").eq("organization_id", organizationId).limit(2000),
+      access.supabase.from("opportunities").select("*").eq("organization_id", organizationId).limit(2000),
+      access.supabase.from("campaigns").select("*").eq("organization_id", organizationId).limit(500),
+      access.supabase.from("atlas_inventory_reservations").select("*").eq("organization_id", organizationId).limit(1000),
     ]);
 
     if (developmentResult.error) throw developmentResult.error;
@@ -109,8 +109,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ portfolio, developments, generatedAt: new Date().toISOString() });
   } catch (error) {
     logger.error("launch_os.read_failed", error);
-    const message = error instanceof Error ? error.message : "Falha ao carregar Launch OS.";
-    const status = /token|sessão|organização|autoriz/i.test(message) ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: "Falha ao carregar Launch OS." }, { status: 500 });
   }
 }
