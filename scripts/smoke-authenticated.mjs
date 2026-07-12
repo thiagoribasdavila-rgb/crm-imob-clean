@@ -103,21 +103,40 @@ if (writeEnabled) {
   if (create.response.status !== 201) fail(`lead create expected 201, got ${create.response.status}: ${JSON.stringify(create.body).slice(0, 300)}`);
   else console.log("PASS Lead creation returned 201");
 
+  const createdLeadId = create.body?.data?.lead?.id;
+  if (!createdLeadId) fail("lead create response did not include data.lead.id");
+
   const replay = await request("/api/v1/crm/leads", token, {
     method: "POST",
     headers: { "Idempotency-Key": idempotencyKey },
     body: JSON.stringify(leadPayload),
   });
   if (replay.response.status !== 201 && replay.response.status !== 200) fail(`idempotency replay expected 200/201, got ${replay.response.status}`);
-  else console.log("PASS Reusing the same Idempotency-Key did not duplicate the request");
+  else if (replay.body?.data?.lead?.id !== createdLeadId) fail("idempotency replay returned a different lead id");
+  else console.log("PASS Reusing the same Idempotency-Key returned the original lead");
+
+  const changedPayload = { ...leadPayload, name: `${leadPayload.name} Alterado` };
+  const reusedWithDifferentPayload = await request("/api/v1/crm/leads", token, {
+    method: "POST",
+    headers: { "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify(changedPayload),
+  });
+  if (reusedWithDifferentPayload.response.status !== 409 || reusedWithDifferentPayload.body?.error?.code !== "IDEMPOTENCY_KEY_REUSED") {
+    fail(`same key with different payload expected 409 IDEMPOTENCY_KEY_REUSED, got ${reusedWithDifferentPayload.response.status}`);
+  } else {
+    console.log("PASS Reusing the same Idempotency-Key with another payload returned 409");
+  }
 
   const duplicate = await request("/api/v1/crm/leads", token, {
     method: "POST",
     headers: { "Idempotency-Key": `atlas-smoke-duplicate-${runId}` },
     body: JSON.stringify(leadPayload),
   });
-  if (duplicate.response.status !== 409) fail(`duplicate contact expected 409, got ${duplicate.response.status}`);
-  else console.log("PASS Duplicate contact returned 409");
+  if (duplicate.response.status !== 409 || duplicate.body?.error?.code !== "LEAD_CONFLICT") {
+    fail(`duplicate contact expected 409 LEAD_CONFLICT, got ${duplicate.response.status}`);
+  } else {
+    console.log("PASS Duplicate contact returned 409 LEAD_CONFLICT");
+  }
 
   const search = await request(`/api/v1/crm/leads?limit=10&q=${encodeURIComponent(leadEmail)}`, token);
   const items = search.body?.data?.items || [];
@@ -126,8 +145,25 @@ if (writeEnabled) {
   } else {
     console.log("PASS Created lead appears in CRM leads search");
   }
+
+  if (createdLeadId) {
+    const byId = await request(`/api/v1/crm/leads/${createdLeadId}`, token);
+    if (byId.response.status !== 200) fail(`lead by id expected 200, got ${byId.response.status}`);
+    else console.log("PASS Lead by id returned 200");
+
+    const update = await request(`/api/v1/crm/leads/${createdLeadId}`, token, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "em_atendimento" }),
+    });
+    if (update.response.status !== 200) fail(`lead update expected 200, got ${update.response.status}`);
+    else console.log("PASS Lead update returned 200");
+
+    const lead360 = await request(`/api/v1/crm/leads/${createdLeadId}/360`, token);
+    if (lead360.response.status !== 200) fail(`lead 360 expected 200, got ${lead360.response.status}`);
+    else console.log("PASS Lead 360 returned 200");
+  }
 } else {
-  console.log("SKIP Lead mutation tests. Set ATLAS_SMOKE_WRITE=true to create a disposable test lead and validate duplicate handling.");
+  console.log("SKIP Lead mutation tests. Set ATLAS_SMOKE_WRITE=true to validate creation, idempotency, conflicts, update and Lead 360.");
 }
 
 await supabase.auth.signOut();
