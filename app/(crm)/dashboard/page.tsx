@@ -12,6 +12,20 @@ type Campaign = { id: string; name: string; spend: number; revenue: number; lead
 type Insight = { id: string; title: string; recommendation: string | null; confidence: number | null; score: number | null; status: string; created_at: string };
 type Task = { id: string; title: string; priority: string; status: string; due_at: string | null };
 type Property = { id: string; status: string | null; price: number | null };
+type DashboardApiResponse = {
+  ok?: boolean;
+  data?: {
+    leads?: Lead[];
+    opportunities?: Opportunity[];
+    campaigns?: Campaign[];
+    insights?: Insight[];
+    tasks?: Task[];
+    properties?: Property[];
+    partial?: boolean;
+    errors?: Array<{ table: string; message: string }>;
+  };
+  error?: { message?: string };
+};
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -38,24 +52,40 @@ export default function DashboardPage() {
     let active = true;
     async function load() {
       setLoading(true);
-      const [leadRes, opportunityRes, campaignRes, insightRes, taskRes, propertyRes] = await Promise.all([
-        supabase.from("leads").select("id,name,status,score,temperature,source,created_at,next_action_at").order("created_at", { ascending: false }).limit(100),
-        supabase.from("opportunities").select("id,stage,value,probability,expected_close_at,lead_id").limit(100),
-        supabase.from("campaigns").select("id,name,spend,revenue,leads_count,status").order("created_at", { ascending: false }).limit(20),
-        supabase.from("ai_insights").select("id,title,recommendation,confidence,score,status,created_at").order("created_at", { ascending: false }).limit(8),
-        supabase.from("tasks").select("id,title,priority,status,due_at").order("due_at", { ascending: true }).limit(20),
-        supabase.from("properties").select("id,status,price").limit(500),
-      ]);
-      if (!active) return;
-      const firstError = leadRes.error || opportunityRes.error || campaignRes.error || insightRes.error || taskRes.error || propertyRes.error;
-      if (firstError) setError(firstError.message); else setError(null);
-      setLeads((leadRes.data ?? []) as Lead[]);
-      setOpportunities((opportunityRes.data ?? []) as Opportunity[]);
-      setCampaigns((campaignRes.data ?? []) as Campaign[]);
-      setInsights((insightRes.data ?? []) as Insight[]);
-      setTasks((taskRes.data ?? []) as Task[]);
-      setProperties((propertyRes.data ?? []) as Property[]);
-      setLoading(false);
+      setError(null);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) throw new Error("Sessão expirada. Entre novamente.");
+
+        const response = await fetch("/api/v1/crm/dashboard", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        const payload = (await response.json()) as DashboardApiResponse;
+        if (!response.ok) throw new Error(payload.error?.message || "Não foi possível carregar o dashboard.");
+        if (!active) return;
+
+        const data = payload.data;
+        setLeads(data?.leads ?? []);
+        setOpportunities(data?.opportunities ?? []);
+        setCampaigns(data?.campaigns ?? []);
+        setInsights(data?.insights ?? []);
+        setTasks(data?.tasks ?? []);
+        setProperties(data?.properties ?? []);
+        setError(data?.partial ? `Algumas tabelas não carregaram: ${data.errors?.map((item) => item.table).join(", ")}` : null);
+      } catch (loadError) {
+        if (!active) return;
+        setError(loadError instanceof Error ? loadError.message : "Falha ao carregar dashboard.");
+        setLeads([]);
+        setOpportunities([]);
+        setCampaigns([]);
+        setInsights([]);
+        setTasks([]);
+        setProperties([]);
+      } finally {
+        if (active) setLoading(false);
+      }
     }
     load();
     return () => { active = false; };

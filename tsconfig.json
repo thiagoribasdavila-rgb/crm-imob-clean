@@ -42,7 +42,6 @@
     "app/(crm)/leads/edit/**",
     "app/(crm)/leads/table/**",
     "app/(crm)/tasks/[id]/**",
-    "app/api/leads/**",
     "components/crm/**",
     "components/analytics/**",
     "components/providers/**",
