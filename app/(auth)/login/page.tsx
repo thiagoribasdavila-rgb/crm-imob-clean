@@ -230,27 +230,23 @@ function LoginExperience() {
 
               <div className="flex items-center justify-between gap-4">
                 <label className="flex cursor-pointer items-center gap-2.5 text-xs text-slate-400">
-                  <input type="checkbox" checked={rememberEmail} onChange={(event) => setRememberEmail(event.target.checked)} className="h-4 w-4 rounded border-white/15 bg-white/5 accent-sky-400" />
+                  <input type="checkbox" checked={rememberEmail} onChange={(event) => setRememberEmail(event.target.checked)} className="h-4 w-4 rounded border-white/20 bg-white/5 text-sky-400" />
                   Lembrar meu e-mail
                 </label>
-                <Link href="/forgot-password" className="text-xs font-semibold text-sky-300 transition hover:text-sky-200">Esqueci minha senha</Link>
+                <Link href="/forgot-password" className="text-xs font-medium text-sky-300 transition hover:text-sky-200">Esqueci minha senha</Link>
               </div>
 
-              {error ? <div role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3.5 text-sm leading-6 text-rose-100"><p className="font-semibold">Não foi possível entrar</p><p className="mt-0.5 text-rose-200/80">{error}</p></div> : null}
+              {error ? <div role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"><p className="font-semibold">Não foi possível entrar</p><p className="mt-1 leading-5 text-rose-200/90">{error}</p></div> : null}
 
-              <button type="submit" disabled={loading} className="atlas-button-primary relative w-full overflow-hidden py-3.5 disabled:cursor-not-allowed disabled:opacity-60">
-                <span className="inline-flex items-center justify-center gap-2">
-                  {loading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/25 border-t-white" aria-hidden="true" /> : null}
-                  {loading ? "Validando acesso seguro..." : "Entrar no Atlas OS →"}
-                </span>
+              <button type="submit" disabled={loading} className="atlas-button-primary flex w-full items-center justify-center gap-2 py-3.5 disabled:cursor-not-allowed disabled:opacity-60">
+                {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" /> Autenticando com segurança...</> : <>Entrar no Atlas OS <span aria-hidden="true">→</span></>}
               </button>
             </form>
 
             <div className="mt-7 border-t border-white/[0.07] pt-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500"><span className="inline-flex items-center gap-2"><span aria-hidden="true">🔒</span> Sessão protegida e criptografada</span><span>Atlas V3 · 2026</span></div>
+              <div className="flex items-center justify-between gap-4 text-xs text-slate-500"><span>Sessão criptografada</span><span>Atlas V3 · acesso restrito</span></div>
             </div>
           </div>
-          <p className="mt-5 text-center text-[11px] leading-5 text-slate-600">Acesso restrito a usuários autorizados. Nunca compartilhe sua senha.</p>
         </section>
       </div>
     </main>
