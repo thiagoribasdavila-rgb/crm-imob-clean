@@ -4,6 +4,28 @@ import { createClient } from "@/utils/supabase/server";
 
 type RateBucket = { count: number; resetAt: number };
 
+type AtlasRole = "admin" | "manager" | "broker" | "viewer" | string;
+
+type AccessContext = {
+  user: {
+    id: string;
+    email: string | null;
+  };
+  profile: {
+    id: string;
+    organizationId: string;
+    role: AtlasRole;
+    active: boolean;
+  };
+  organization: {
+    id: string;
+    name: string;
+    slug: string | null;
+    plan: string | null;
+    active: boolean;
+  };
+};
+
 const globalBuckets = globalThis as typeof globalThis & {
   __atlasRateBuckets?: Map<string, RateBucket>;
 };
@@ -62,6 +84,103 @@ export async function requireAuthenticatedUser(request: NextRequest) {
   }
 
   return { ok: true as const, user: data.user, supabase, meta };
+}
+
+export async function requireAccessContext(
+  request: NextRequest,
+  options: { roles?: AtlasRole[] } = {},
+) {
+  const auth = await requireAuthenticatedUser(request);
+  if (!auth.ok) return auth;
+
+  const { data: profile, error: profileError } = await auth.supabase
+    .from("profiles")
+    .select("id, organization_id, role, active")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    return {
+      ok: false as const,
+      response: apiError("PROFILE_LOOKUP_FAILED", "Não foi possível validar o perfil do usuário.", auth.meta, {
+        status: 500,
+      }),
+    };
+  }
+
+  if (!profile || !profile.organization_id) {
+    return {
+      ok: false as const,
+      response: apiError("PROFILE_REQUIRED", "Perfil organizacional não configurado.", auth.meta, {
+        status: 403,
+      }),
+    };
+  }
+
+  if (!profile.active) {
+    return {
+      ok: false as const,
+      response: apiError("PROFILE_INACTIVE", "Este usuário está inativo.", auth.meta, { status: 403 }),
+    };
+  }
+
+  const { data: organization, error: organizationError } = await auth.supabase
+    .from("organizations")
+    .select("id, name, slug, plan, active")
+    .eq("id", profile.organization_id)
+    .maybeSingle();
+
+  if (organizationError) {
+    return {
+      ok: false as const,
+      response: apiError("ORGANIZATION_LOOKUP_FAILED", "Não foi possível validar a organização.", auth.meta, {
+        status: 500,
+      }),
+    };
+  }
+
+  if (!organization) {
+    return {
+      ok: false as const,
+      response: apiError("ORGANIZATION_REQUIRED", "Organização não encontrada.", auth.meta, { status: 403 }),
+    };
+  }
+
+  if (!organization.active) {
+    return {
+      ok: false as const,
+      response: apiError("ORGANIZATION_INACTIVE", "A organização está inativa.", auth.meta, { status: 403 }),
+    };
+  }
+
+  if (options.roles?.length && !options.roles.includes(profile.role)) {
+    return {
+      ok: false as const,
+      response: apiError("FORBIDDEN", "Permissão insuficiente para esta operação.", auth.meta, { status: 403 }),
+    };
+  }
+
+  const access: AccessContext = {
+    user: {
+      id: auth.user.id,
+      email: auth.user.email ?? null,
+    },
+    profile: {
+      id: profile.id,
+      organizationId: profile.organization_id,
+      role: profile.role,
+      active: profile.active,
+    },
+    organization: {
+      id: organization.id,
+      name: organization.name,
+      slug: organization.slug,
+      plan: organization.plan,
+      active: organization.active,
+    },
+  };
+
+  return { ok: true as const, ...auth, access };
 }
 
 export function readIdempotencyKey(request: NextRequest): string | null {
