@@ -13,13 +13,17 @@ function clampLimit(raw: string | null) {
   return Math.min(100, Math.max(1, Math.trunc(parsed)));
 }
 
+function validId(id: string) {
+  return /^[0-9a-f-]{36}$/i.test(id);
+}
+
 function decodeCursor(raw: string | null): { createdAt: string; id: string } | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(Buffer.from(raw, "base64url").toString("utf8")) as { createdAt?: unknown; id?: unknown };
     if (typeof parsed.createdAt !== "string" || typeof parsed.id !== "string") return null;
     if (!/^\d{4}-\d{2}-\d{2}T/.test(parsed.createdAt)) return null;
-    if (!/^[0-9a-f-]{36}$/i.test(parsed.id)) return null;
+    if (!validId(parsed.id)) return null;
     return { createdAt: parsed.createdAt, id: parsed.id };
   } catch {
     return null;
@@ -148,14 +152,30 @@ export async function POST(request: NextRequest) {
   const duplicate = await duplicateQuery.maybeSingle();
   if (duplicate.data?.id) return apiError("LEAD_CONFLICT", "Já existe um lead com este contato.", access.meta, { status: 409, headers: rate.headers, details: { leadId: duplicate.data.id } });
 
+  const requestedAssignee = stringOrNull(body.assigned_to);
+  const assignedTo = requestedAssignee ?? access.access.user.id;
+  if (!validId(assignedTo)) {
+    return apiError("INVALID_ASSIGNEE", "Corretor responsável inválido.", access.meta, { status: 422, headers: rate.headers });
+  }
+
+  const { data: assignee, error: assigneeError } = await access.supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", assignedTo)
+    .eq("organization_id", access.access.organization.id)
+    .eq("active", true)
+    .maybeSingle();
+  if (assigneeError) return apiError("ASSIGNEE_LOOKUP_FAILED", "Não foi possível validar o corretor responsável.", access.meta, { status: 500, headers: rate.headers });
+  if (!assignee) return apiError("INVALID_ASSIGNEE", "O corretor responsável não pertence à organização ou está inativo.", access.meta, { status: 422, headers: rate.headers });
+
   const record = {
     organization_id: access.access.organization.id,
-    assigned_to: stringOrNull(body.assigned_to) ?? access.access.user.id,
+    assigned_to: assignedTo,
     name,
     email,
     phone,
     status: stringOrNull(body.status) ?? "novo",
-    source: stringOrNull(body.source) ?? "atlas_e2e",
+    source: stringOrNull(body.source) ?? "manual",
     purpose: stringOrNull(body.purpose),
     budget_min: numberOrNull(body.budget_min ?? body.budgetMin),
     budget_max: numberOrNull(body.budget_max ?? body.budgetMax),
