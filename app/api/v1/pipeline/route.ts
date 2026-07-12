@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-import { requireApiIdentity } from "@/lib/security/api-auth";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { NextResponse, type NextRequest } from "next/server";
+import { requireAccessContext } from "@/lib/api/security";
 import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 
@@ -8,21 +7,15 @@ export const dynamic = "force-dynamic";
 
 const allowedStages = new Set(["novo", "contato", "qualificacao", "visita", "proposta", "contrato", "ganho", "perdido"]);
 
-function authError(error: unknown) {
-  const message = error instanceof Error ? error.message : "Não autorizado.";
-  const status = /sessão|token|autenticação|organização/i.test(message) ? 401 : 400;
-  return NextResponse.json({ error: message }, { status });
-}
-
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const identity = await requireApiIdentity(request);
-    const admin = getSupabaseAdmin();
+    const access = await requireAccessContext(request, { roles: ["admin", "manager", "broker", "viewer"] });
+    if (!access.ok) return access.response;
 
-    const { data, error } = await admin
+    const { data, error } = await access.supabase
       .from("leads")
       .select("id,name,phone,email,status,score,temperature,budget_max,next_action_at,created_at,updated_at,assigned_to")
-      .eq("organization_id", identity.organizationId)
+      .eq("organization_id", access.access.organization.id)
       .order("score", { ascending: false })
       .limit(500);
 
@@ -31,11 +24,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ leads: data ?? [] });
   } catch (error) {
     logger.warn("pipeline.read_failed", { error: error instanceof Error ? error.message : String(error) });
-    return authError(error);
+    return NextResponse.json({ error: "Falha ao carregar pipeline." }, { status: 500 });
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   const rate = checkRateLimit(clientKey(request, "v1-pipeline-move"), { limit: 120, windowMs: 60_000 });
   if (!rate.allowed) {
     return NextResponse.json(
@@ -45,7 +38,9 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const identity = await requireApiIdentity(request);
+    const access = await requireAccessContext(request, { roles: ["admin", "manager", "broker"] });
+    if (!access.ok) return access.response;
+
     const body = await request.json();
     const leadId = String(body.leadId || "");
     const stage = String(body.stage || "").toLowerCase();
@@ -54,52 +49,51 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Lead ou etapa inválida." }, { status: 400 });
     }
 
-    const admin = getSupabaseAdmin();
-    const { data: current } = await admin
+    const { data: current } = await access.supabase
       .from("leads")
       .select("id,name,status")
       .eq("id", leadId)
-      .eq("organization_id", identity.organizationId)
+      .eq("organization_id", access.access.organization.id)
       .single();
 
     if (!current) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
 
     const previousStage = current.status || "novo";
-    const { data, error } = await admin
+    const { data, error } = await access.supabase
       .from("leads")
       .update({ status: stage, updated_at: new Date().toISOString() })
       .eq("id", leadId)
-      .eq("organization_id", identity.organizationId)
+      .eq("organization_id", access.access.organization.id)
       .select("id,name,status,score,temperature,budget_max,next_action_at,created_at,updated_at")
       .single();
 
     if (error || !data) throw error || new Error("Falha ao mover lead.");
 
     await Promise.allSettled([
-      admin.from("activities").insert({
-        organization_id: identity.organizationId,
+      access.supabase.from("activities").insert({
+        organization_id: access.access.organization.id,
         lead_id: leadId,
-        user_id: identity.userId,
+        user_id: access.access.user.id,
         type: "pipeline_stage_changed",
         title: `Etapa alterada para ${stage}`,
         description: `${previousStage} → ${stage}`,
         occurred_at: new Date().toISOString(),
       }),
-      admin.from("atlas_events").insert({
-        organization_id: identity.organizationId,
+      access.supabase.from("atlas_events").insert({
+        organization_id: access.access.organization.id,
         event_type: "lead.stage_changed",
         source: "atlas-v1",
         aggregate_type: "lead",
         aggregate_id: leadId,
-        payload: { previousStage, stage, userId: identity.userId },
+        payload: { previousStage, stage, userId: access.access.user.id },
         correlation_id: crypto.randomUUID(),
       }),
     ]);
 
-    logger.info("pipeline.stage_changed", { leadId, previousStage, stage, organizationId: identity.organizationId });
+    logger.info("pipeline.stage_changed", { leadId, previousStage, stage, organizationId: access.access.organization.id });
     return NextResponse.json({ lead: data });
   } catch (error) {
     logger.warn("pipeline.move_failed", { error: error instanceof Error ? error.message : String(error) });
-    return authError(error);
+    return NextResponse.json({ error: "Falha ao mover lead." }, { status: 500 });
   }
 }

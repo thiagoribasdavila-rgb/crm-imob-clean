@@ -27,7 +27,6 @@ const legacyPaths = [
   "app/(crm)/leads/edit",
   "app/(crm)/leads/table",
   "app/(crm)/tasks/[id]",
-  "app/api/leads",
 ];
 
 const moved = [];

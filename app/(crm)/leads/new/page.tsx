@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { calculateLeadScore } from "@/lib/atlas/scoring";
+import { trackAtlasEvent } from "@/lib/analytics/events";
 
 const initialForm = {
   name: "",
@@ -52,16 +53,19 @@ export default function NewLeadPage() {
     setError("");
     setDuplicateLeadId(null);
 
+    let failureTracked = false;
+
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("Sua sessão expirou. Entre novamente.");
 
-      const response = await fetch("/api/v1/leads", {
+      const response = await fetch("/api/v1/crm/leads", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "Idempotency-Key": crypto.randomUUID(),
         },
         body: JSON.stringify({
           name: form.name,
@@ -69,28 +73,37 @@ export default function NewLeadPage() {
           phone: form.phone || undefined,
           source: form.source,
           purpose: form.purpose,
-          budgetMin: form.budget_min ? Number(form.budget_min) : null,
-          budgetMax: form.budget_max ? Number(form.budget_max) : null,
+          budget_min: form.budget_min ? Number(form.budget_min) : null,
+          budget_max: form.budget_max ? Number(form.budget_max) : null,
           bedrooms: form.bedrooms ? Number(form.bedrooms) : null,
-          preferredRegions,
+          preferred_regions: preferredRegions,
           notes: form.notes || undefined,
         }),
       });
 
       const result = (await response.json()) as {
-        error?: string;
-        duplicateLeadId?: string;
-        lead?: { id: string };
+        ok?: boolean;
+        data?: { lead?: { id: string } };
+        error?: { code?: string; message?: string; details?: { leadId?: string } };
       };
 
       if (!response.ok) {
-        setDuplicateLeadId(result.duplicateLeadId ?? null);
-        throw new Error(result.error || "Não foi possível criar o lead.");
+        const duplicateId = result.error?.details?.leadId ?? null;
+        const isDuplicate = response.status === 409 || result.error?.code === "LEAD_CONFLICT";
+        trackAtlasEvent("atlas_lead_create_failed", { reason: isDuplicate ? "duplicate" : "api_error", status: response.status, source: form.source });
+        failureTracked = true;
+        setDuplicateLeadId(duplicateId);
+        throw new Error(result.error?.message || "Não foi possível criar o lead.");
       }
 
-      router.push(result.lead?.id ? `/leads/${result.lead.id}` : "/leads");
+      const createdLeadId = result.data?.lead?.id;
+      trackAtlasEvent("atlas_lead_created", { source: form.source, hasEmail: Boolean(form.email), hasPhone: Boolean(form.phone), score: scorePreview.score, temperature: scorePreview.temperature });
+      router.push(createdLeadId ? `/leads/${createdLeadId}` : "/leads");
       router.refresh();
     } catch (submitError) {
+      if (!failureTracked) {
+        trackAtlasEvent("atlas_lead_create_failed", { reason: "client_error", source: form.source });
+      }
       setError(submitError instanceof Error ? submitError.message : "Falha ao criar lead.");
     } finally {
       setSaving(false);
