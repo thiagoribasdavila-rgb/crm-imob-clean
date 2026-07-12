@@ -180,7 +180,13 @@ export async function requireAccessContext(
     },
   };
 
-  return { ok: true as const, ...auth, access };
+  return {
+    ok: true as const,
+    user: auth.user,
+    supabase: auth.supabase,
+    meta: auth.meta,
+    access,
+  };
 }
 
 export function readIdempotencyKey(request: NextRequest): string | null {
