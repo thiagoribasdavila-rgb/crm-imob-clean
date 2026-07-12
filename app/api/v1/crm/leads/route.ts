@@ -137,13 +137,17 @@ export async function POST(request: NextRequest) {
   if (!name) return apiError("VALIDATION_ERROR", "Nome é obrigatório.", access.meta, { status: 422, headers: rate.headers });
   if (!email && !phone) return apiError("VALIDATION_ERROR", "Informe e-mail ou telefone.", access.meta, { status: 422, headers: rate.headers });
 
-  const duplicateByKey = await access.supabase
-    .from("leads")
-    .select("id")
+  const idempotencyScope = "crm.leads.create";
+  const existingKey = await access.supabase
+    .from("idempotency_keys")
+    .select("response_status,response_body")
     .eq("organization_id", access.access.organization.id)
-    .eq("metadata->>idempotencyKey", idempotencyKey)
+    .eq("scope", idempotencyScope)
+    .eq("key", idempotencyKey)
     .maybeSingle();
-  if (duplicateByKey.data?.id) return apiSuccess({ id: duplicateByKey.data.id, reused: true }, access.meta, { status: 200, headers: rate.headers });
+  if (existingKey.error) return apiError("IDEMPOTENCY_LOOKUP_FAILED", "Não foi possível validar a chave de idempotência.", access.meta, { status: 500, headers: rate.headers });
+  if (existingKey.data?.response_body) return apiSuccess(existingKey.data.response_body, access.meta, { status: existingKey.data.response_status ?? 200, headers: rate.headers });
+  if (existingKey.data) return apiError("IDEMPOTENCY_IN_PROGRESS", "Esta chave de idempotência já está em processamento.", access.meta, { status: 409, headers: rate.headers });
 
   let duplicateQuery = access.supabase.from("leads").select("id").eq("organization_id", access.access.organization.id).limit(1);
   if (email && phone) duplicateQuery = duplicateQuery.or(`email.eq.${email},phone.eq.${phone}`);
@@ -168,6 +172,14 @@ export async function POST(request: NextRequest) {
   if (assigneeError) return apiError("ASSIGNEE_LOOKUP_FAILED", "Não foi possível validar o corretor responsável.", access.meta, { status: 500, headers: rate.headers });
   if (!assignee) return apiError("INVALID_ASSIGNEE", "O corretor responsável não pertence à organização ou está inativo.", access.meta, { status: 422, headers: rate.headers });
 
+  const reservedKey = await access.supabase.from("idempotency_keys").insert({
+    organization_id: access.access.organization.id,
+    scope: idempotencyScope,
+    key: idempotencyKey,
+    locked_until: new Date(Date.now() + 60_000).toISOString(),
+  });
+  if (reservedKey.error) return apiError("IDEMPOTENCY_RESERVATION_FAILED", "Não foi possível reservar a chave de idempotência.", access.meta, { status: 409, headers: rate.headers });
+
   const record = {
     organization_id: access.access.organization.id,
     assigned_to: assignedTo,
@@ -182,16 +194,29 @@ export async function POST(request: NextRequest) {
     bedrooms: numberOrNull(body.bedrooms),
     preferred_regions: Array.isArray(body.preferred_regions) ? body.preferred_regions : [],
     notes: stringOrNull(body.notes),
-    metadata: { ...(typeof body.metadata === "object" && body.metadata ? body.metadata : {}), idempotencyKey },
   };
 
   const { data, error } = await access.supabase.from("leads").insert(record).select("*").single();
   if (error) {
+    await access.supabase
+      .from("idempotency_keys")
+      .delete()
+      .eq("organization_id", access.access.organization.id)
+      .eq("scope", idempotencyScope)
+      .eq("key", idempotencyKey);
     structuredApiLog("error", "crm.leads.create_failed", request, access.meta, { organizationId: access.access.organization.id, message: error.message });
     return apiError("LEAD_CREATE_FAILED", "Não foi possível criar o lead.", access.meta, { status: 500, headers: rate.headers });
   }
 
+  const responseBody = { lead: data };
+  await access.supabase
+    .from("idempotency_keys")
+    .update({ response_status: 201, response_body: responseBody, locked_until: null, updated_at: new Date().toISOString() })
+    .eq("organization_id", access.access.organization.id)
+    .eq("scope", idempotencyScope)
+    .eq("key", idempotencyKey);
+
   await access.supabase.from("atlas_events").insert({ organization_id: access.access.organization.id, event_type: "lead.created", source: "api.v1.crm.leads", aggregate_type: "lead", aggregate_id: data.id, payload: { idempotencyKey }, correlation_id: access.meta.correlationId });
 
-  return apiSuccess({ lead: data }, access.meta, { status: 201, headers: rate.headers });
+  return apiSuccess(responseBody, access.meta, { status: 201, headers: rate.headers });
 }
