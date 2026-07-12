@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase";
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [ready, setReady] = useState(false);
   const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -105,8 +107,20 @@ export default function ResetPasswordPage() {
           </div>
         ) : (
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-            <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Nova senha</span><input required minLength={12} type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full px-4 py-3.5" placeholder="Mínimo de 12 caracteres" /></label>
-            <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Confirmar senha</span><input required minLength={12} type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="w-full px-4 py-3.5" placeholder="Repita a nova senha" /></label>
+            <label className="block">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Nova senha</span>
+              <div className="relative">
+                <input required minLength={12} type={showPassword ? "text" : "password"} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full px-4 py-3.5 pr-16" placeholder="Mínimo de 12 caracteres" />
+                <button type="button" onClick={() => setShowPassword((current) => !current)} className="absolute inset-y-0 right-0 px-4 text-xs font-semibold text-sky-300" aria-label={showPassword ? "Ocultar nova senha" : "Mostrar nova senha"}>{showPassword ? "Ocultar" : "Mostrar"}</button>
+              </div>
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Confirmar senha</span>
+              <div className="relative">
+                <input required minLength={12} type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="w-full px-4 py-3.5 pr-16" placeholder="Repita a nova senha" />
+                <button type="button" onClick={() => setShowConfirmPassword((current) => !current)} className="absolute inset-y-0 right-0 px-4 text-xs font-semibold text-sky-300" aria-label={showConfirmPassword ? "Ocultar confirmação de senha" : "Mostrar confirmação de senha"}>{showConfirmPassword ? "Ocultar" : "Mostrar"}</button>
+              </div>
+            </label>
             {error ? <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
             <button type="submit" disabled={loading} className="atlas-button-primary w-full py-3.5 disabled:cursor-not-allowed disabled:opacity-60">{loading ? "Atualizando credencial..." : "Salvar nova senha"}</button>
           </form>
