@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, readIdempotencyKey, requireAccessContext } from "@/lib/api/security";
@@ -51,6 +52,16 @@ function numberOrNull(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function hashPayload(payload: Record<string, unknown>) {
+  const stable = Object.keys(payload)
+    .sort()
+    .reduce<Record<string, unknown>>((result, key) => {
+      result[key] = payload[key];
+      return result;
+    }, {});
+  return createHash("sha256").update(JSON.stringify(stable)).digest("hex");
 }
 
 export async function GET(request: NextRequest) {
@@ -137,25 +148,6 @@ export async function POST(request: NextRequest) {
   if (!name) return apiError("VALIDATION_ERROR", "Nome é obrigatório.", access.meta, { status: 422, headers: rate.headers });
   if (!email && !phone) return apiError("VALIDATION_ERROR", "Informe e-mail ou telefone.", access.meta, { status: 422, headers: rate.headers });
 
-  const idempotencyScope = "crm.leads.create";
-  const existingKey = await access.supabase
-    .from("idempotency_keys")
-    .select("response_status,response_body")
-    .eq("organization_id", access.access.organization.id)
-    .eq("scope", idempotencyScope)
-    .eq("key", idempotencyKey)
-    .maybeSingle();
-  if (existingKey.error) return apiError("IDEMPOTENCY_LOOKUP_FAILED", "Não foi possível validar a chave de idempotência.", access.meta, { status: 500, headers: rate.headers });
-  if (existingKey.data?.response_body) return apiSuccess(existingKey.data.response_body, access.meta, { status: existingKey.data.response_status ?? 200, headers: rate.headers });
-  if (existingKey.data) return apiError("IDEMPOTENCY_IN_PROGRESS", "Esta chave de idempotência já está em processamento.", access.meta, { status: 409, headers: rate.headers });
-
-  let duplicateQuery = access.supabase.from("leads").select("id").eq("organization_id", access.access.organization.id).limit(1);
-  if (email && phone) duplicateQuery = duplicateQuery.or(`email.eq.${email},phone.eq.${phone}`);
-  else if (email) duplicateQuery = duplicateQuery.eq("email", email);
-  else duplicateQuery = duplicateQuery.eq("phone", phone);
-  const duplicate = await duplicateQuery.maybeSingle();
-  if (duplicate.data?.id) return apiError("LEAD_CONFLICT", "Já existe um lead com este contato.", access.meta, { status: 409, headers: rate.headers, details: { leadId: duplicate.data.id } });
-
   const requestedAssignee = stringOrNull(body.assigned_to);
   const assignedTo = requestedAssignee ?? access.access.user.id;
   if (!validId(assignedTo)) {
@@ -172,14 +164,6 @@ export async function POST(request: NextRequest) {
   if (assigneeError) return apiError("ASSIGNEE_LOOKUP_FAILED", "Não foi possível validar o corretor responsável.", access.meta, { status: 500, headers: rate.headers });
   if (!assignee) return apiError("INVALID_ASSIGNEE", "O corretor responsável não pertence à organização ou está inativo.", access.meta, { status: 422, headers: rate.headers });
 
-  const reservedKey = await access.supabase.from("idempotency_keys").insert({
-    organization_id: access.access.organization.id,
-    scope: idempotencyScope,
-    key: idempotencyKey,
-    locked_until: new Date(Date.now() + 60_000).toISOString(),
-  });
-  if (reservedKey.error) return apiError("IDEMPOTENCY_RESERVATION_FAILED", "Não foi possível reservar a chave de idempotência.", access.meta, { status: 409, headers: rate.headers });
-
   const record = {
     organization_id: access.access.organization.id,
     assigned_to: assignedTo,
@@ -195,6 +179,54 @@ export async function POST(request: NextRequest) {
     preferred_regions: Array.isArray(body.preferred_regions) ? body.preferred_regions : [],
     notes: stringOrNull(body.notes),
   };
+
+  const idempotencyScope = "crm.leads.create";
+  const requestHash = hashPayload(record);
+  const existingKey = await access.supabase
+    .from("idempotency_keys")
+    .select("request_hash,response_status,response_body")
+    .eq("organization_id", access.access.organization.id)
+    .eq("scope", idempotencyScope)
+    .eq("key", idempotencyKey)
+    .maybeSingle();
+
+  if (existingKey.error) return apiError("IDEMPOTENCY_LOOKUP_FAILED", "Não foi possível validar a chave de idempotência.", access.meta, { status: 500, headers: rate.headers });
+  if (existingKey.data?.request_hash && existingKey.data.request_hash !== requestHash) {
+    return apiError("IDEMPOTENCY_KEY_REUSED", "Esta Idempotency-Key já foi usada com outro payload.", access.meta, { status: 409, headers: rate.headers });
+  }
+  if (existingKey.data?.response_body) return apiSuccess(existingKey.data.response_body, access.meta, { status: existingKey.data.response_status ?? 200, headers: rate.headers });
+  if (existingKey.data) return apiError("IDEMPOTENCY_IN_PROGRESS", "Esta chave de idempotência já está em processamento.", access.meta, { status: 409, headers: rate.headers });
+
+  let duplicateQuery = access.supabase.from("leads").select("id").eq("organization_id", access.access.organization.id).limit(1);
+  if (email && phone) duplicateQuery = duplicateQuery.or(`email.eq.${email},phone.eq.${phone}`);
+  else if (email) duplicateQuery = duplicateQuery.eq("email", email);
+  else duplicateQuery = duplicateQuery.eq("phone", phone);
+  const duplicate = await duplicateQuery.maybeSingle();
+  if (duplicate.data?.id) return apiError("LEAD_CONFLICT", "Já existe um lead com este contato.", access.meta, { status: 409, headers: rate.headers, details: { leadId: duplicate.data.id } });
+
+  const reservedKey = await access.supabase.from("idempotency_keys").insert({
+    organization_id: access.access.organization.id,
+    scope: idempotencyScope,
+    key: idempotencyKey,
+    request_hash: requestHash,
+    locked_until: new Date(Date.now() + 60_000).toISOString(),
+  });
+
+  if (reservedKey.error) {
+    const race = await access.supabase
+      .from("idempotency_keys")
+      .select("request_hash,response_status,response_body")
+      .eq("organization_id", access.access.organization.id)
+      .eq("scope", idempotencyScope)
+      .eq("key", idempotencyKey)
+      .maybeSingle();
+
+    if (race.data?.request_hash && race.data.request_hash !== requestHash) {
+      return apiError("IDEMPOTENCY_KEY_REUSED", "Esta Idempotency-Key já foi usada com outro payload.", access.meta, { status: 409, headers: rate.headers });
+    }
+    if (race.data?.response_body) return apiSuccess(race.data.response_body, access.meta, { status: race.data.response_status ?? 200, headers: rate.headers });
+    return apiError("IDEMPOTENCY_IN_PROGRESS", "Esta chave de idempotência já está em processamento.", access.meta, { status: 409, headers: rate.headers });
+  }
 
   const { data, error } = await access.supabase.from("leads").insert(record).select("*").single();
   if (error) {
