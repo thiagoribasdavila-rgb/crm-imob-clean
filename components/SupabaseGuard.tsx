@@ -17,7 +17,22 @@ export default function SupabaseGuard({ children }: { children: ReactNode }) {
 
       if (!active) return;
 
-      if (!data.session) {
+      if (!data.session?.user) {
+        const next = pathname ? `?next=${encodeURIComponent(pathname)}` : "";
+        router.replace(`/login${next}`);
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("organization_id,active")
+        .eq("id", data.session.user.id)
+        .maybeSingle();
+
+      if (!active) return;
+
+      if (profileError || !profile?.organization_id || profile.active === false) {
+        await supabase.auth.signOut();
         const next = pathname ? `?next=${encodeURIComponent(pathname)}` : "";
         router.replace(`/login${next}`);
         return;

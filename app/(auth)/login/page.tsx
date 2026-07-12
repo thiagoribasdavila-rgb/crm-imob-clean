@@ -122,8 +122,26 @@ function LoginExperience() {
         return;
       }
 
-      if (!data.session) {
+      if (!data.session?.user) {
         setError("A sessão não foi criada corretamente. Atualize a página e tente novamente.");
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("organization_id,active")
+        .eq("id", data.session.user.id)
+        .maybeSingle();
+
+      if (profileError || !profile?.organization_id) {
+        await supabase.auth.signOut();
+        setError("Usuário sem organização vinculada. Peça ao administrador para concluir o cadastro do perfil.");
+        return;
+      }
+
+      if (profile.active === false) {
+        await supabase.auth.signOut();
+        setError("Usuário inativo. Peça ao administrador para reativar o acesso.");
         return;
       }
 
