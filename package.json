@@ -17,6 +17,7 @@
     "smoke:v3": "node scripts/smoke-v3.mjs",
     "smoke:all": "npm run smoke:v1-v2 && npm run smoke:v3",
     "smoke:auth:preview": "node --env-file=.env.local scripts/smoke-auth-preview.mjs",
+    "smoke:auth": "node --env-file=.env.local scripts/smoke-authenticated.mjs",
     "prepare:test": "node scripts/prepare-real-test.mjs",
     "routes:real": "node --env-file=.env.local scripts/test-real-routes.mjs",
     "preflight:production": "node scripts/preflight-production.mjs",
@@ -25,8 +26,7 @@
     "doctor": "node scripts/doctor.mjs",
     "bootstrap:admin": "node --env-file=.env.local scripts/bootstrap-admin.mjs",
     "bootstrap:diagnose": "node --env-file=.env.local scripts/diagnose-bootstrap.mjs",
-    "setup:atlas": "npm ci && npm run prisma:generate && npm run doctor && npm run release:check",
-    "smoke:auth": "node scripts/smoke-authenticated.mjs"
+    "setup:atlas": "npm ci && npm run prisma:generate && npm run doctor && npm run release:check"
   },
   "dependencies": {
     "@prisma/client": "^7.8.0",
