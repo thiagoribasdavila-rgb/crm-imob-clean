@@ -10,6 +10,7 @@ const fallback = readFileSync(resolve(root, "lib/ai/real-estate-fallback.ts"), "
 const statusRoute = readFileSync(resolve(root, "app/api/ai/status/route.ts"), "utf8");
 const qualification = readFileSync(resolve(root, "lib/ai/lead-qualification.ts"), "utf8");
 const qualificationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/qualify/route.ts"), "utf8");
+const briefingRoute = readFileSync(resolve(root, "app/api/ai/briefing/route.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -32,6 +33,8 @@ const checks = [
   ["score com risco temporal", qualification.includes("Próxima ação atrasada") && qualification.includes("Lead antigo sem interação")],
   ["qualificação protegida por escopo", qualificationRoute.includes("requireLeadAccess")],
   ["qualificação auditável", qualificationRoute.includes("ai_qualification") && qualificationRoute.includes("activities")],
+  ["briefing hierárquico", briefingRoute.includes("requireAccessContext") && briefingRoute.includes("buildRealEstateContext")],
+  ["fila de decisão", briefingRoute.includes("overdue-actions") && briefingRoute.includes("expired-materials") && briefingRoute.includes("low-absorption")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
