@@ -1,0 +1,25 @@
+:root {
+  --atlas-bg: #070a12;
+  --atlas-surface: #0d1220;
+  --atlas-surface-raised: #121a2b;
+  --atlas-surface-soft: rgba(255, 255, 255, 0.035);
+  --atlas-border: rgba(148, 163, 184, 0.14);
+  --atlas-border-strong: rgba(148, 163, 184, 0.24);
+  --atlas-text: #f8fafc;
+  --atlas-text-muted: #94a3b8;
+  --atlas-accent: #38bdf8;
+  --atlas-accent-strong: #2563eb;
+  --atlas-success: #34d399;
+  --atlas-warning: #fbbf24;
+  --atlas-danger: #fb7185;
+  --atlas-info: #60a5fa;
+  --atlas-violet: #a78bfa;
+  --atlas-sidebar-width: 272px;
+  --atlas-sidebar-collapsed-width: 84px;
+  --atlas-topbar-height: 76px;
+  --atlas-radius-sm: 10px;
+  --atlas-radius-md: 14px;
+  --atlas-radius-lg: 20px;
+  --atlas-shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.24);
+  --atlas-transition: 180ms ease;
+}
