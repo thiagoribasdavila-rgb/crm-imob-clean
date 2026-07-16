@@ -61,6 +61,9 @@ const checks = [
   ["feedback recalibra matching", matching.includes('feedback === "rejected"') && matching.includes("Cliente já demonstrou interesse")],
   ["feedback exige apresentação", matchingStudio.includes("presentedProperties.has(property.id)")],
   ["feedback sincroniza Lead 360", leadIntelligencePage.includes("feedbackByProperty") && leadIntelligencePage.includes("property_feedback")],
+  ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
+  ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
+  ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

@@ -16,6 +16,15 @@ type Signal = {
   impact: number;
 };
 
+type ProductLearning = {
+  propertyId: string;
+  title: string;
+  presentations: number;
+  interested: number;
+  rejected: number;
+  interestRate: number;
+};
+
 export async function GET(request: NextRequest) {
   const access = await requireAccessContext(request);
   if (!access.ok) return access.response;
@@ -25,6 +34,39 @@ export async function GET(request: NextRequest) {
     supabase: access.supabase,
   };
   const context = await buildRealEstateContext(identity);
+  const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: learningActivities } = await access.supabase
+    .from("activities")
+    .select("type,metadata,occurred_at")
+    .in("type", ["property_presentation", "property_feedback"])
+    .gte("occurred_at", since)
+    .order("occurred_at", { ascending: false })
+    .limit(2_000);
+  const learning = new Map<string, Omit<ProductLearning, "title" | "interestRate">>();
+  for (const activity of learningActivities ?? []) {
+    const metadata = activity.metadata && typeof activity.metadata === "object" ? activity.metadata as Record<string, unknown> : {};
+    const propertyIds = activity.type === "property_presentation" && Array.isArray(metadata.propertyIds)
+      ? metadata.propertyIds.filter((value): value is string => typeof value === "string")
+      : activity.type === "property_feedback" && typeof metadata.propertyId === "string" ? [metadata.propertyId] : [];
+    for (const propertyId of propertyIds) {
+      const current = learning.get(propertyId) ?? { propertyId, presentations: 0, interested: 0, rejected: 0 };
+      if (activity.type === "property_presentation") current.presentations += 1;
+      if (activity.type === "property_feedback" && metadata.signal === "interested") current.interested += 1;
+      if (activity.type === "property_feedback" && metadata.signal === "rejected") current.rejected += 1;
+      learning.set(propertyId, current);
+    }
+  }
+  const propertyIds = [...learning.keys()];
+  const { data: learningProperties } = propertyIds.length
+    ? await access.supabase.from("properties").select("id,title").in("id", propertyIds)
+    : { data: [] as Array<{ id: string; title: string | null }> };
+  const titles = new Map((learningProperties ?? []).map((property) => [property.id, property.title || "Imóvel sem título"]));
+  const allProductLearning: ProductLearning[] = [...learning.values()].filter((item) => titles.has(item.propertyId)).map((item) => {
+    const responses = item.interested + item.rejected;
+    return { ...item, title: titles.get(item.propertyId)!, interestRate: responses ? Math.round(item.interested / responses * 100) : 0 };
+  }).sort((a, b) => (b.interested + b.rejected) - (a.interested + a.rejected) || b.presentations - a.presentations);
+  const learningSummary = allProductLearning.reduce((total, item) => ({ presentations: total.presentations + item.presentations, interested: total.interested + item.interested, rejected: total.rejected + item.rejected }), { presentations: 0, interested: 0, rejected: 0 });
+  const productLearning = allProductLearning.slice(0, 8);
   const signals: Signal[] = [];
   const commercial = context.commercial;
   const portfolio = context.portfolio;
@@ -36,6 +78,8 @@ export async function GET(request: NextRequest) {
   if (materials.expired > 0) signals.push({ id: "expired-materials", severity: "critical", area: "materials", title: "Material comercial vencido", evidence: `${materials.expired} arquivos vigentes estão fora da validade.`, action: "Substituir tabela, espelho ou book antes do próximo compartilhamento.", href: "/developments/materials", impact: 95 + materials.expired });
   if (portfolio.inventory > 0 && portfolio.absorptionPercent < 20) signals.push({ id: "low-absorption", severity: "attention", area: "inventory", title: "Absorção abaixo de 20%", evidence: `O portfólio visível registra ${portfolio.absorptionPercent}% de absorção.`, action: "Revisar distribuição de leads, aderência de produto e posicionamento comercial.", href: "/developments", impact: 85 - portfolio.absorptionPercent });
   if (commercial.pipelineValue > 0) signals.push({ id: "forecast-gap", severity: commercial.weightedForecast < commercial.pipelineValue * 0.35 ? "attention" : "healthy", area: "forecast", title: "Qualidade do pipeline", evidence: `Forecast ponderado de ${Math.round(commercial.pipelineValue ? commercial.weightedForecast / commercial.pipelineValue * 100 : 0)}% sobre o pipeline bruto.`, action: "Revisar probabilidade, etapa e data prevista das oportunidades abertas.", href: "/pipeline", impact: 60 });
+  const responses = learningSummary.interested + learningSummary.rejected;
+  if (responses >= 3 && learningSummary.rejected / responses >= 0.5) signals.push({ id: "product-rejection", severity: "attention", area: "inventory", title: "Rejeição elevada nas apresentações", evidence: `${learningSummary.rejected} de ${responses} retornos recentes indicaram baixa aderência.`, action: "Revisar produto, faixa de preço e perfil dos leads antes de novas apresentações.", href: "/properties/mtching", impact: 75 + learningSummary.rejected });
   if (!signals.length) signals.push({ id: "data-start", severity: "healthy", area: "data", title: "Operação sem alertas críticos", evidence: "Não foram encontrados gargalos suficientes no snapshot atual.", action: "Mantenha dados, cadência e materiais atualizados para ampliar a precisão.", href: "/dashboard", impact: 10 });
 
   const order = { critical: 4, attention: 3, opportunity: 2, healthy: 1 };
@@ -44,6 +88,7 @@ export async function GET(request: NextRequest) {
     generatedAt: new Date().toISOString(),
     status: signals.some((signal) => signal.severity === "critical") ? "critical" : signals.some((signal) => signal.severity === "attention") ? "attention" : "healthy",
     context,
+    productLearning: { periodDays: 90, summary: learningSummary, items: productLearning },
     signals,
     model: {
       generativeReady: Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN),
