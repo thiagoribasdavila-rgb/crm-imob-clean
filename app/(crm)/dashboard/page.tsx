@@ -230,6 +230,7 @@ export default function DashboardPage() {
     const metaLeads = activeLeads.filter((lead) => stringValue(lead, "source") === "Meta Lead Ads");
     const metaQualified = metaLeads.filter((lead) => ["qualificacao", "visita", "proposta", "contrato"].includes(normalized(lead.status)) || numberValue(lead, "score") >= 60).length;
     const metaLearning = metaLeads.filter((lead) => { const metadata = lead.metadata && typeof lead.metadata === "object" ? lead.metadata as DataRow : {}; const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as DataRow : {}; return meta.dataSharingConsent === true; }).length;
+    const metaAwaitingContact = metaLeads.filter((lead) => !dateValue(lead, "last_interaction_at")).length;
     return {
       active: activeLeads.length,
       hot: hot.length,
@@ -240,6 +241,7 @@ export default function DashboardPage() {
       metaActive: metaLeads.length,
       metaQualified,
       metaLearning,
+      metaAwaitingContact,
     };
   }, [leads, opportunities, referenceTime, tasks]);
 
@@ -441,6 +443,7 @@ export default function DashboardPage() {
         <MetricCard label="Pipeline estimado" value={loading ? "—" : brl.format(metrics.pipeline)} detail="Potencial comercial aberto" trend="VGV" tone="violet" />
         <MetricCard label="Leads Meta ativos" value={loading ? "—" : metrics.metaActive} detail={`${metrics.metaQualified} já qualificados`} trend="META" tone="violet" />
         <MetricCard label="Meta com aprendizado" value={loading ? "—" : metrics.metaLearning} detail="Consentimento e sinal habilitados" trend="CAPI" tone="success" />
+        <MetricCard label="Meta sem contato" value={loading ? "—" : metrics.metaAwaitingContact} detail="Precisam de primeira resposta" trend="SPEED" tone="warning" />
       </section>
 
       <section className="atlas-command-grid atlas-command-grid-main">

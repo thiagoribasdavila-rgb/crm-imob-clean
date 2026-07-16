@@ -87,7 +87,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('progress: 96') && evolutionPhases.includes("100 controles calibrados")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('progress: 96') && evolutionPhases.includes("103 controles calibrados")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -145,6 +145,9 @@ const checks = [
   ["lista permite foco em leads Meta", leadsPortfolioPage.includes('value="Meta Lead Ads"') && leadsPortfolioPage.includes("META · APRENDENDO")],
   ["API entrega contexto Meta sob escopo", leadsPortfolioRoute.includes("metadata") && leadsPortfolioRoute.includes("requireAccessContext")],
   ["dashboard conecta CRM e Meta", crmDashboard.includes("Leads Meta ativos") && crmDashboard.includes("Meta com aprendizado")],
+  ["primeiro contato é medido automaticamente", leadIntelligenceRoute.includes("response_minutes") && leadIntelligenceRoute.includes("first-response-${id}")],
+  ["ranking considera velocidade comercial", campaignIntelligence.includes("averageResponseMinutes") && campaignIntelligence.includes("responseScore")],
+  ["dashboard alerta leads Meta sem contato", crmDashboard.includes("Meta sem contato") && crmDashboard.includes("metaAwaitingContact")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

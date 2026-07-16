@@ -111,13 +111,14 @@ export async function POST(request: Request, context: RouteContext) {
     const body = await request.json();
     const admin = getSupabaseAdmin();
 
-    const { data: lead } = await admin.from("leads").select("id,budget_max").eq("id", id).eq("organization_id", identity.organizationId).single();
+    const { data: lead } = await admin.from("leads").select("id,budget_max,source,metadata,created_at,last_interaction_at").eq("id", id).eq("organization_id", identity.organizationId).single();
     if (!lead) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
 
     if (body.action === "activity") {
       const title = String(body.title || "").trim();
       const description = String(body.description || "").trim().slice(0, 4000);
       if (!title) return NextResponse.json({ error: "Informe a atividade." }, { status: 400 });
+      const occurredAt = new Date().toISOString();
       const { data, error } = await admin.from("activities").insert({
         organization_id: identity.organizationId,
         lead_id: id,
@@ -125,10 +126,17 @@ export async function POST(request: Request, context: RouteContext) {
         title,
         description: description || null,
         type: body.type || "note",
-        occurred_at: new Date().toISOString(),
+        occurred_at: occurredAt,
       }).select("id,title,description,type,occurred_at").single();
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-      await Promise.allSettled([recordFollowUpIntelligence({ organizationId: identity.organizationId, leadId: id, activityId: data.id, description, occurredAt: data.occurred_at })]);
+      const firstResponse = !lead.last_interaction_at;
+      const meta = lead.metadata && typeof lead.metadata === "object" ? (lead.metadata as { meta?: Record<string, unknown> }).meta || {} : {};
+      const responseMinutes = lead.created_at ? Math.max(0, Math.round((new Date(occurredAt).getTime() - new Date(lead.created_at).getTime()) / 60_000)) : null;
+      await Promise.allSettled([
+        admin.from("leads").update({ last_interaction_at: occurredAt, updated_at: occurredAt }).eq("id", id).eq("organization_id", identity.organizationId),
+        recordFollowUpIntelligence({ organizationId: identity.organizationId, leadId: id, activityId: data.id, description, occurredAt: data.occurred_at }),
+        ...(firstResponse && lead.source === "Meta Lead Ads" ? [admin.from("campaign_events").upsert({ organization_id: identity.organizationId, lead_id: id, event_type: "first_response", source: "crm-response", external_event_id: `first-response-${id}`, payload: { response_minutes: responseMinutes, campaign_id: meta.campaignId || null }, occurred_at: occurredAt }, { onConflict: "organization_id,source,external_event_id", ignoreDuplicates: true })] : []),
+      ]);
       return NextResponse.json({ activity: data }, { status: 201 });
     }
 

@@ -1,4 +1,4 @@
-type LeadSignal = { status?: string | null; score?: number | null; metadata?: unknown; created_at?: string | null };
+type LeadSignal = { status?: string | null; score?: number | null; metadata?: unknown; created_at?: string | null; last_interaction_at?: string | null };
 type PaidInsight = { campaignId: string; campaignName?: string; spend: number; impressions: number; clicks: number };
 
 const STAGE_RANK: Record<string, number> = { novo: 0, contato: 1, qualificacao: 2, visita: 3, proposta: 4, contrato: 5, ganho: 6, comprou_outro: 6 };
@@ -25,6 +25,9 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[], paidInsights:
     const converted = items.filter((lead) => lead.status === "ganho").length;
     const buyersElsewhere = items.filter((lead) => lead.status === "comprou_outro").length;
     const averageScore = total ? Math.round(items.reduce((sum, lead) => sum + Number(lead.score || 0), 0) / total) : 0;
+    const responseTimes = items.filter((lead) => lead.created_at && lead.last_interaction_at).map((lead) => Math.max(0, (new Date(lead.last_interaction_at!).getTime() - new Date(lead.created_at!).getTime()) / 60_000));
+    const averageResponseMinutes = responseTimes.length ? Math.round(responseTimes.reduce((sum, value) => sum + value, 0) / responseTimes.length) : null;
+    const responseCoverage = total ? Math.round((responseTimes.length / total) * 100) : 0;
     const percent = (value: number) => total ? Math.round((value / total) * 100) : 0;
     const sampleStatus = total >= 50 ? "reliable" : total >= 20 ? "learning" : "insufficient";
     const qualityRate = percent(qualified);
@@ -32,7 +35,8 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[], paidInsights:
     const visitRate = percent(visits);
     const proposalRate = percent(proposals);
     const confidenceFactor = sampleStatus === "reliable" ? 1 : sampleStatus === "learning" ? 0.75 : 0.4;
-    const performanceScore = Math.round(Math.min(100, (qualityRate * 0.35 + conversionRate * 3 * 0.3 + visitRate * 0.15 + proposalRate * 0.1 + averageScore * 0.1) * confidenceFactor));
+    const responseScore = averageResponseMinutes === null ? 0 : averageResponseMinutes <= 5 ? 100 : averageResponseMinutes <= 15 ? 80 : averageResponseMinutes <= 60 ? 60 : averageResponseMinutes <= 240 ? 30 : 10;
+    const performanceScore = Math.round(Math.min(100, (qualityRate * 0.3 + conversionRate * 3 * 0.3 + visitRate * 0.12 + proposalRate * 0.08 + averageScore * 0.1 + responseScore * 0.1) * confidenceFactor));
     const paid = paidInsights.find((insight) => insight.campaignId === campaignId);
     const spend = paid?.spend ?? null;
     const cpl = spend !== null && total ? Math.round((spend / total) * 100) / 100 : null;
@@ -49,7 +53,7 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[], paidInsights:
             : conversionRate >= 5
               ? "Candidata a escala controlada após validação de custo."
               : "Manter aprendizado e revisar objeções de proposta e fechamento.";
-    return { campaignId, campaignName: paid?.campaignName || campaignId, total, contacted, qualified, visits, proposals, converted, buyersElsewhere, averageScore, qualityRate, visitRate, proposalRate, conversionRate, performanceScore, spend, cpl, costPerQualifiedLead, ctr, sampleStatus, recommendation };
+    return { campaignId, campaignName: paid?.campaignName || campaignId, total, contacted, qualified, visits, proposals, converted, buyersElsewhere, averageScore, averageResponseMinutes, responseCoverage, qualityRate, visitRate, proposalRate, conversionRate, performanceScore, spend, cpl, costPerQualifiedLead, ctr, sampleStatus, recommendation };
   });
   const paidCosts = base.map((campaign) => campaign.costPerQualifiedLead).filter((value): value is number => value !== null && value > 0);
   const bestCost = paidCosts.length ? Math.min(...paidCosts) : null;
@@ -58,7 +62,7 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[], paidInsights:
     const efficiencyScore = Math.min(100, (bestCost / campaign.costPerQualifiedLead) * 100);
     return { ...campaign, performanceScore: Math.round(campaign.performanceScore * 0.8 + efficiencyScore * 0.2) };
   }).sort((a, b) => b.performanceScore - a.performanceScore || b.total - a.total);
-  return ranked.map((campaign, index) => ({ ...campaign, rank: index + 1, rankingBasis: "qualidade, conversão, visita, proposta, score, eficiência e maturidade da amostra" }));
+  return ranked.map((campaign, index) => ({ ...campaign, rank: index + 1, rankingBasis: "qualidade, conversão, visita, proposta, velocidade, score, eficiência e maturidade da amostra" }));
 }
 
 function atLeastLead(lead: LeadSignal, rank: number) {

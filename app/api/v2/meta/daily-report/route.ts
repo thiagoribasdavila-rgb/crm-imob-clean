@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     try {
       const since = new Date(Date.now() - 86_400_000).toISOString();
       const [{ data: leads }, { data: recentEvents }, { data: followUps }] = await Promise.all([
-        admin.from("leads").select("status,score,metadata,created_at").eq("organization_id", organization.id).eq("source", "Meta Lead Ads").limit(5000),
+        admin.from("leads").select("status,score,metadata,created_at,last_interaction_at").eq("organization_id", organization.id).eq("source", "Meta Lead Ads").limit(5000),
         admin.from("meta_conversion_events").select("status,event_name").eq("organization_id", organization.id).gte("created_at", since).limit(1000),
         admin.from("campaign_events").select("payload").eq("organization_id", organization.id).in("source", ["crm-funnel", "crm-followup"]).gte("occurred_at", since).limit(1000),
       ]);
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       for (const event of followUps ?? []) { const payload = event.payload && typeof event.payload === "object" ? event.payload as Record<string, unknown> : {}; for (const signal of Array.isArray(payload.decision_signals) ? payload.decision_signals : []) if (typeof signal === "string" && signal !== "motivo_nao_classificado") signalCounts[signal] = (signalCounts[signal] || 0) + 1; }
       const recommendations = campaigns.filter((campaign) => campaign.sampleStatus !== "insufficient").slice(0, 10).map((campaign) => ({ campaignId: campaign.campaignId, recommendation: campaign.recommendation, qualityRate: campaign.qualityRate, conversionRate: campaign.conversionRate, decisionRequired: true }));
       const topSignals = Object.entries(signalCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([signal, count]) => ({ signal, count }));
-      const anonymousEvidence = { periods: Object.fromEntries(Object.entries(periods).map(([key, rows]) => [key, rows.slice(0, 10).map((row, index) => ({ campaign: `campaign_${index + 1}`, total: row.total, qualityRate: row.qualityRate, conversionRate: row.conversionRate, performanceScore: row.performanceScore, sampleStatus: row.sampleStatus }))])), topSignals };
+      const anonymousEvidence = { periods: Object.fromEntries(Object.entries(periods).map(([key, rows]) => [key, rows.slice(0, 10).map((row, index) => ({ campaign: `campaign_${index + 1}`, total: row.total, qualityRate: row.qualityRate, conversionRate: row.conversionRate, averageResponseMinutes: row.averageResponseMinutes, responseCoverage: row.responseCoverage, performanceScore: row.performanceScore, sampleStatus: row.sampleStatus }))])), topSignals };
       const aiInput = JSON.stringify(anonymousEvidence);
       const analyses = await Promise.allSettled([
         generateAIText({ task: "reasoning", organizationId: organization.id, feature: "meta_daily_director_report", system: "Você é um estrategista sênior de mídia imobiliária. Analise somente agregados. Diferencie fatos, hipóteses e testes. Não recomende mudanças automáticas e nunca invente custo, ROAS ou causalidade.", prompt: `Produza recomendações executivas curtas para decisão do diretor, comparando dia, semana e mês: ${aiInput}`, containsPersonalData: false, timeoutMs: 25_000 }),
