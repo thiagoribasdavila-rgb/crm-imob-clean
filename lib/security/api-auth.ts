@@ -1,9 +1,10 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export type ApiIdentity = {
   userId: string;
   organizationId: string;
+  supabase: SupabaseClient;
 };
 
 export async function requireApiIdentity(request: Request): Promise<ApiIdentity> {
@@ -33,5 +34,15 @@ export async function requireApiIdentity(request: Request): Promise<ApiIdentity>
     throw new Error("Usuário sem organização vinculada.");
   }
 
-  return { userId: userData.user.id, organizationId: profile.organization_id };
+  return { userId: userData.user.id, organizationId: profile.organization_id, supabase: client };
+}
+
+export async function requireLeadAccess(identity: ApiIdentity, leadId: string) {
+  const { data, error } = await identity.supabase
+    .from("leads")
+    .select("id")
+    .eq("id", leadId)
+    .eq("organization_id", identity.organizationId)
+    .maybeSingle();
+  if (error || !data) throw new Error("Lead fora do seu escopo comercial.");
 }

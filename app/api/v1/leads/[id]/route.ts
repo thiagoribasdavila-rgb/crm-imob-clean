@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiIdentity } from "@/lib/security/api-auth";
+import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 
@@ -17,6 +17,7 @@ export async function GET(request: Request, context: RouteContext) {
   try {
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;
+    await requireLeadAccess(identity, id);
     const admin = getSupabaseAdmin();
 
     const [leadResult, activityResult, propertyResult, opportunityResult] = await Promise.all([
@@ -46,6 +47,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;
+    await requireLeadAccess(identity, id);
     const body = await request.json();
     const admin = getSupabaseAdmin();
 
@@ -97,6 +99,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;
+    await requireLeadAccess(identity, id);
     const body = await request.json();
     const admin = getSupabaseAdmin();
 

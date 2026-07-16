@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
   if (!rate.ok) return rate.response;
 
   const access = await requireAccessContext(request, {
-    roles: ["admin", "manager", "broker", "viewer"],
+    roles: ["admin", "director", "superintendent", "manager", "broker", "viewer"],
   });
   if (!access.ok) return access.response;
 

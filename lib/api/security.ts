@@ -6,7 +6,7 @@ import { getSupabasePublicConfig } from "@/utils/supabase/env";
 
 type RateBucket = { count: number; resetAt: number };
 
-type AtlasRole = "admin" | "manager" | "broker" | "viewer" | string;
+type AtlasRole = "admin" | "director" | "superintendent" | "manager" | "broker" | "viewer" | string;
 
 type AccessContext = {
   user: {
@@ -17,6 +17,8 @@ type AccessContext = {
     id: string;
     organizationId: string;
     role: AtlasRole;
+    commercialRole: "director" | "superintendent" | "manager" | "broker" | null;
+    reportsTo: string | null;
     active: boolean;
   };
   organization: {
@@ -123,7 +125,7 @@ export async function requireAccessContext(
 
   const { data: profile, error: profileError } = await auth.supabase
     .from("profiles")
-    .select("id, organization_id, role, active")
+    .select("id, organization_id, role, commercial_role, reports_to, active")
     .eq("id", auth.user.id)
     .maybeSingle();
 
@@ -197,6 +199,8 @@ export async function requireAccessContext(
       id: profile.id,
       organizationId: profile.organization_id,
       role: profile.role,
+      commercialRole: profile.commercial_role,
+      reportsTo: profile.reports_to,
       active: profile.active,
     },
     organization: {

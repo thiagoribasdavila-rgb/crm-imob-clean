@@ -32,6 +32,8 @@ type Profile = {
   id: string;
   full_name: string | null;
   role: string;
+  commercial_role: string | null;
+  reports_to: string | null;
   active: boolean;
 };
 
@@ -130,6 +132,13 @@ export default function LeadsPage() {
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [referenceTime, setReferenceTime] = useState(0);
+  const [currentRole, setCurrentRole] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [transferTarget, setTransferTarget] = useState("");
+  const [transferReason, setTransferReason] = useState("");
+  const [transferring, setTransferring] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -143,15 +152,17 @@ export default function LeadsPage() {
     let active = true;
 
     async function loadReferences() {
-      const [profileResult, campaignResult, developmentResult] = await Promise.all([
-        supabase.from("profiles").select("id,full_name,role,active").eq("active", true).order("full_name"),
+      const [profileResult, campaignResult, developmentResult, meResult] = await Promise.all([
+        supabase.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").eq("active", true).order("full_name"),
         supabase.from("campaigns").select("*").limit(500),
         supabase.from("developments").select("*").order("name").limit(100),
+        fetch("/api/v1/auth/me").then((response) => response.json()),
       ]);
       if (!active) return;
       setProfiles((profileResult.data ?? []) as Profile[]);
       setCampaigns((campaignResult.data ?? []) as ReferenceRow[]);
       setDevelopments((developmentResult.data ?? []) as ReferenceRow[]);
+      setCurrentRole(meResult?.data?.profile?.commercialRole || meResult?.data?.profile?.role || "");
       const referenceError = profileResult.error || campaignResult.error || developmentResult.error;
       if (referenceError) setError(`Referências: ${referenceError.message}`);
       setReferencesLoading(false);
@@ -221,6 +232,7 @@ export default function LeadsPage() {
           throw new Error(message || "Não foi possível carregar os leads.");
         }
         setItems(payload.data.items);
+        setSelected(new Set());
         setTotal(payload.data.page.total ?? payload.data.items.length);
         setPages(payload.data.page.pages ?? 1);
         setReferenceTime(Date.now());
@@ -235,7 +247,7 @@ export default function LeadsPage() {
 
     void loadLeads();
     return () => controller.abort();
-  }, [broker, campaignIds, debouncedSearch, direction, page, project, score, sort, status]);
+  }, [broker, campaignIds, debouncedSearch, direction, page, project, reloadKey, score, sort, status]);
 
   const profileMap = useMemo(
     () => new Map(profiles.map((profile) => [profile.id, profile.full_name || "Usuário Atlas"])),
@@ -267,6 +279,36 @@ export default function LeadsPage() {
   }), [items, referenceTime]);
 
   const hasFilters = Boolean(search || status || project || broker || score);
+  const canTransfer = ["admin", "director", "superintendent", "manager"].includes(currentRole);
+  const transferTargets = profiles.filter((profile) => {
+    const role = profile.commercial_role || profile.role;
+    return ["manager", "broker"].includes(role);
+  });
+
+  async function transferSelected() {
+    if (!selected.size || !transferTarget) return;
+    setTransferring(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/v1/crm/leads/bulk-transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds: [...selected], targetOwnerId: transferTarget, reason: transferReason }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.error?.message || "Não foi possível transferir os leads.");
+      setNotice(`${selected.size} lead(s) transferido(s) com histórico registrado.`);
+      setSelected(new Set());
+      setTransferTarget("");
+      setTransferReason("");
+      setReloadKey((current) => current + 1);
+    } catch (transferError) {
+      setError(transferError instanceof Error ? transferError.message : "Falha na transferência.");
+    } finally {
+      setTransferring(false);
+    }
+  }
 
   function resetFilters() {
     setSearch("");
@@ -295,7 +337,7 @@ export default function LeadsPage() {
             <StatusBadge tone="violet">LEAD 360</StatusBadge>
           </div>
           <h1>Concentre a operação nos leads com maior chance de avançar.</h1>
-          <p>Pesquisa, score, projeto, corretor, próxima ação e histórico em uma visão operacional conectada ao Lead 360.</p>
+          <p>{currentRole === "broker" ? "Sua carteira, prioridades e próximas ações em uma visão simples para vender mais e perder menos tempo." : "Visibilidade respeitando a hierarquia, distribuição em massa e histórico completo para conduzir o time comercial."}</p>
           <div className="atlas-command-actions">
             <Link href="/leads/new" className="atlas-button-primary">+ Novo lead</Link>
             <Link href="/pipeline" className="atlas-button-secondary">Abrir pipeline</Link>
@@ -311,7 +353,7 @@ export default function LeadsPage() {
         <div className="atlas-leads-total">
           <span>Base filtrada</span>
           <strong>{loading ? "—" : total}</strong>
-          <small>{hasFilters ? "resultado dos filtros atuais" : "leads visíveis para sua organização"}</small>
+          <small>{hasFilters ? "resultado dos filtros atuais" : currentRole === "broker" ? "somente a sua carteira" : "somente seu escopo comercial"}</small>
         </div>
       </section>
 
@@ -340,11 +382,11 @@ export default function LeadsPage() {
         <select value={status} onChange={(event) => updateFilter(setStatus, event.target.value)} aria-label="Filtrar por status">
           {statuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
-        <select value={broker} onChange={(event) => updateFilter(setBroker, event.target.value)} aria-label="Filtrar por corretor" disabled={referencesLoading}>
+        {currentRole !== "broker" ? <select value={broker} onChange={(event) => updateFilter(setBroker, event.target.value)} aria-label="Filtrar por corretor" disabled={referencesLoading}>
           <option value="">Todos os corretores</option>
           <option value="unassigned">Sem responsável</option>
-          {profiles.filter((profile) => ["broker", "manager", "admin"].includes(profile.role)).map((profile) => <option key={profile.id} value={profile.id}>{profile.full_name || "Usuário sem nome"}</option>)}
-        </select>
+          {profiles.filter((profile) => ["broker", "manager"].includes(profile.commercial_role || profile.role)).map((profile) => <option key={profile.id} value={profile.id}>{profile.full_name || "Usuário sem nome"}</option>)}
+        </select> : null}
         <select value={score} onChange={(event) => updateFilter(setScore, event.target.value)} aria-label="Filtrar por score">
           <option value="">Todos os scores</option>
           <option value="hot">Quente · 70–100</option>
@@ -366,6 +408,20 @@ export default function LeadsPage() {
       </section>
 
       {error ? <ErrorState description={error} action={<button type="button" className="atlas-button-secondary" onClick={resetFilters}>Limpar e tentar novamente</button>} /> : null}
+      {notice ? <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-200">{notice}</div> : null}
+
+      {canTransfer && selected.size ? (
+        <section className="sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border border-cyan-400/30 bg-slate-950/95 p-4 shadow-2xl backdrop-blur md:flex-row md:items-center">
+          <div className="min-w-44"><strong className="block text-white">{selected.size} lead(s) selecionado(s)</strong><span className="text-xs text-slate-400">Transferência segura com rastreabilidade</span></div>
+          <select className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white" value={transferTarget} onChange={(event) => setTransferTarget(event.target.value)}>
+            <option value="">Escolha gerente ou corretor</option>
+            {transferTargets.map((profile) => <option key={profile.id} value={profile.id}>{profile.full_name || "Usuário sem nome"} · {profile.commercial_role || profile.role}</option>)}
+          </select>
+          <input className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white" value={transferReason} onChange={(event) => setTransferReason(event.target.value)} placeholder="Motivo (opcional)" maxLength={500} />
+          <button type="button" className="atlas-button-primary" disabled={!transferTarget || transferring} onClick={transferSelected}>{transferring ? "Transferindo..." : "Confirmar transferência"}</button>
+          <button type="button" className="atlas-button-secondary" onClick={() => setSelected(new Set())}>Cancelar</button>
+        </section>
+      ) : null}
 
       {!error ? (
         <section className="atlas-leads-table-panel">
@@ -383,12 +439,13 @@ export default function LeadsPage() {
             <>
               <div className="atlas-leads-desktop">
                 <table>
-                  <thead><tr><th>Lead</th><th>Projeto e origem</th><th>Status</th><th>Score</th><th>Corretor</th><th>Último contato</th><th>Próxima ação</th><th><span className="sr-only">Abrir</span></th></tr></thead>
+                  <thead><tr>{canTransfer ? <th><input type="checkbox" aria-label="Selecionar página" checked={items.length > 0 && items.every((lead) => selected.has(lead.id))} onChange={(event) => setSelected(event.target.checked ? new Set(items.map((lead) => lead.id)) : new Set())} /></th> : null}<th>Lead</th><th>Projeto e origem</th><th>Status</th><th>Score</th><th>Corretor</th><th>Último contato</th><th>Próxima ação</th><th><span className="sr-only">Abrir</span></th></tr></thead>
                   <tbody>
                     {items.map((lead) => {
                       const due = dueLabel(lead.next_action_at, referenceTime);
                       return (
                         <tr key={lead.id}>
+                          {canTransfer ? <td><input type="checkbox" aria-label={`Selecionar ${lead.name || "lead"}`} checked={selected.has(lead.id)} onChange={(event) => setSelected((current) => { const next = new Set(current); if (event.target.checked) next.add(lead.id); else next.delete(lead.id); return next; })} /></td> : null}
                           <td><Link href={`/leads/${lead.id}`}><span className="atlas-lead-avatar">{(lead.name || "L").slice(0, 2).toUpperCase()}</span><span><strong>{lead.name || "Lead sem nome"}</strong><small>{lead.email || lead.phone || "Contato não informado"}</small></span></Link></td>
                           <td><strong>{projectName(lead)}</strong><small>{lead.source || "Origem não informada"}</small></td>
                           <td><StatusBadge tone={statusTone(lead.status)}>{lead.status || "novo"}</StatusBadge></td>
