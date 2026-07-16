@@ -122,12 +122,17 @@ const checks = [
   ["painel orienta Advantage Plus", metaSettingsPage.includes("Automação ampla, sinais comerciais precisos") && metaSettingsPage.includes("preferências comerciais entram como sugestões")],
   ["campanhas são avaliadas pelo pós-lead", campaignIntelligence.includes("qualityRate") && campaignIntelligence.includes("conversionRate") && metaSettings.includes("campaignIntelligence")],
   ["escala exige amostra mínima", campaignIntelligence.includes("total >= 50") && campaignIntelligence.includes("total >= 20") && campaignIntelligence.includes("Coletar mais dados")],
-  ["cockpit compara campanhas sem PII", metaSettingsPage.includes("Qualidade real por campanha") && !campaignIntelligence.includes("email") && !campaignIntelligence.includes("phone")],
+  ["cockpit compara campanhas sem PII", metaSettingsPage.includes("Ranking de performance comercial") && !campaignIntelligence.includes("email") && !campaignIntelligence.includes("phone")],
   ["relatório diário roda na Hostinger", metaDailyReport.includes("windowHours: 24") && hostingerDeployment.includes("run-daily-meta-report.mjs")],
   ["relatório diário é idempotente", dailyReportMigration.includes("unique (organization_id, report_date)") && metaDailyReport.includes('onConflict: "organization_id,report_date"')],
   ["relatório decisório é exclusivo do diretor", dailyReportMigration.includes("meta_daily_reports_director_select") && dailyReportMigration.includes("commercial_role")],
   ["campanhas não mudam automaticamente", metaDailyReport.includes("automaticCampaignChanges: false") && metaSettingsPage.includes("Somente o diretor")],
   ["aprovação Meta exige diretoria", approvalRoute.includes("Decisões de campanha pertencem exclusivamente ao diretor")],
+  ["relatório compara dia semana e mês", metaDailyReport.includes("day: period(1)") && metaDailyReport.includes("week: period(7)") && metaDailyReport.includes("month: period(30)")],
+  ["ranking pondera performance comercial", campaignIntelligence.includes("performanceScore") && campaignIntelligence.includes("confidenceFactor") && campaignIntelligence.includes("rankingBasis")],
+  ["sugestão diária usa múltiplas IAs", metaDailyReport.includes('task: "reasoning"') && metaDailyReport.includes('task: "research"') && metaDailyReport.includes("aiConsensus")],
+  ["multi IA recebe apenas agregados anônimos", metaDailyReport.includes("anonymousEvidence") && metaDailyReport.includes("campaign_${index + 1}")],
+  ["IA não inventa custo ou causalidade", metaDailyReport.includes("nunca invente custo, ROAS ou causalidade") && metaSettingsPage.includes("sem inventar custo ou ROAS")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

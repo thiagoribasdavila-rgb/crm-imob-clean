@@ -1,4 +1,4 @@
-type LeadSignal = { status?: string | null; score?: number | null; metadata?: unknown };
+type LeadSignal = { status?: string | null; score?: number | null; metadata?: unknown; created_at?: string | null };
 
 const STAGE_RANK: Record<string, number> = { novo: 0, contato: 1, qualificacao: 2, visita: 3, proposta: 4, contrato: 5, ganho: 6, comprou_outro: 6 };
 
@@ -14,7 +14,7 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[]) {
     const campaignId = String(metaRecord(lead.metadata).campaignId || "sem-campanha");
     groups.set(campaignId, [...(groups.get(campaignId) || []), lead]);
   }
-  return [...groups.entries()].map(([campaignId, items]) => {
+  const ranked = [...groups.entries()].map(([campaignId, items]) => {
     const total = items.length;
     const atLeast = (rank: number) => items.filter((lead) => (STAGE_RANK[String(lead.status || "novo").toLowerCase()] ?? 0) >= rank).length;
     const contacted = atLeast(1);
@@ -28,6 +28,10 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[]) {
     const sampleStatus = total >= 50 ? "reliable" : total >= 20 ? "learning" : "insufficient";
     const qualityRate = percent(qualified);
     const conversionRate = percent(converted);
+    const visitRate = percent(visits);
+    const proposalRate = percent(proposals);
+    const confidenceFactor = sampleStatus === "reliable" ? 1 : sampleStatus === "learning" ? 0.75 : 0.4;
+    const performanceScore = Math.round(Math.min(100, (qualityRate * 0.35 + conversionRate * 3 * 0.3 + visitRate * 0.15 + proposalRate * 0.1 + averageScore * 0.1) * confidenceFactor));
     const recommendation = sampleStatus === "insufficient"
       ? "Coletar mais dados antes de alterar público ou orçamento."
       : qualityRate < 20
@@ -39,8 +43,9 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[]) {
             : conversionRate >= 5
               ? "Candidata a escala controlada após validação de custo."
               : "Manter aprendizado e revisar objeções de proposta e fechamento.";
-    return { campaignId, total, contacted, qualified, visits, proposals, converted, buyersElsewhere, averageScore, qualityRate, conversionRate, sampleStatus, recommendation };
-  }).sort((a, b) => b.qualityRate - a.qualityRate || b.total - a.total);
+    return { campaignId, total, contacted, qualified, visits, proposals, converted, buyersElsewhere, averageScore, qualityRate, visitRate, proposalRate, conversionRate, performanceScore, sampleStatus, recommendation };
+  }).sort((a, b) => b.performanceScore - a.performanceScore || b.total - a.total);
+  return ranked.map((campaign, index) => ({ ...campaign, rank: index + 1, rankingBasis: "qualidade, conversão, visita, proposta, score e maturidade da amostra" }));
 }
 
 function atLeastLead(lead: LeadSignal, rank: number) {
