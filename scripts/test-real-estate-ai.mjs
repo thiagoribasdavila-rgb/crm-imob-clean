@@ -17,6 +17,7 @@ const matching = readFileSync(resolve(root, "lib/atlas/matching.ts"), "utf8");
 const matchingStudio = readFileSync(resolve(root, "app/(crm)/properties/mtching/page.tsx"), "utf8");
 const presentationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/presentation-draft/route.ts"), "utf8");
 const presentationSafety = readFileSync(resolve(root, "lib/ai/property-presentation.ts"), "utf8");
+const leadIntelligenceRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/route.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -52,6 +53,9 @@ const checks = [
   ["apresentação protegida por escopo", presentationRoute.includes("requireLeadAccess") && presentationRoute.includes("organization_id")],
   ["comparativo limita seleção", presentationRoute.includes("slice(0, 3)") && matchingStudio.includes("current.length < 3")],
   ["apresentação sem promessas", presentationSafety.includes("Garantia de preço") && presentationSafety.includes("Promessa de rentabilidade") && presentationRoute.includes("Nunca garanta preço")],
+  ["apresentação tem aprovação humana", matchingStudio.includes("Abrir no WhatsApp") && matchingStudio.includes("Registrar no histórico")],
+  ["apresentação alimenta memória comercial", leadIntelligenceRoute.includes("property_presentation") && leadIntelligenceRoute.includes("ai_matching_studio")],
+  ["registro valida portfólio", leadIntelligenceRoute.includes("properties?.length !== propertyIds.length") && leadIntelligenceRoute.includes("organization_id")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

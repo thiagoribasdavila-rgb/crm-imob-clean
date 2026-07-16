@@ -140,6 +140,34 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ opportunity: data }, { status: 201 });
     }
 
+    if (body.action === "property_presentation") {
+      const idPattern = /^[0-9a-f-]{36}$/i;
+      const propertyIds = Array.isArray(body.propertyIds)
+        ? [...new Set(body.propertyIds.filter((value: unknown): value is string => typeof value === "string" && idPattern.test(value)))].slice(0, 3)
+        : [];
+      if (!propertyIds.length) return NextResponse.json({ error: "Selecione de um a três imóveis." }, { status: 400 });
+      const { data: properties, error: propertyError } = await admin
+        .from("properties")
+        .select("id,title,status")
+        .eq("organization_id", identity.organizationId)
+        .in("id", propertyIds);
+      if (propertyError || properties?.length !== propertyIds.length) return NextResponse.json({ error: "Um ou mais imóveis não pertencem ao portfólio acessível." }, { status: 400 });
+      const channel = body.channel === "email" ? "email" : "whatsapp";
+      const titles = propertyIds.map((propertyId) => properties.find((property) => property.id === propertyId)?.title || "Imóvel sem título");
+      const { data, error } = await admin.from("activities").insert({
+        organization_id: identity.organizationId,
+        lead_id: id,
+        user_id: identity.userId,
+        title: `Apresentação de ${properties.length} ${properties.length === 1 ? "imóvel" : "imóveis"}`,
+        description: `Opções apresentadas via ${channel}: ${titles.join(", ")}.`,
+        type: "property_presentation",
+        metadata: { propertyIds, channel, source: "ai_matching_studio", requiresHumanApproval: true },
+        occurred_at: new Date().toISOString(),
+      }).select("id,title,description,type,occurred_at").single();
+      if (error) return NextResponse.json({ error: "Não foi possível registrar a apresentação." }, { status: 400 });
+      return NextResponse.json({ activity: data }, { status: 201 });
+    }
+
     return NextResponse.json({ error: "Ação inválida." }, { status: 400 });
   } catch (error) {
     logger.warn("lead.intelligence.action_failed", { error: error instanceof Error ? error.message : String(error) });
