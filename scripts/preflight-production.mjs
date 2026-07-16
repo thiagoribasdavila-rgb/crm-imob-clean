@@ -33,6 +33,11 @@ check("NEXT_PUBLIC_SUPABASE_URL", Boolean(value("NEXT_PUBLIC_SUPABASE_URL")), "c
 check("NEXT_PUBLIC_SUPABASE_ANON_KEY", Boolean(value("NEXT_PUBLIC_SUPABASE_ANON_KEY")), "configurada");
 check("SUPABASE_SERVICE_ROLE_KEY", Boolean(value("SUPABASE_SERVICE_ROLE_KEY")), "configurada");
 check("ATLAS_CRON_SECRET", Boolean(value("ATLAS_CRON_SECRET")), "configurada");
+const aiCredential = Boolean(
+  value("AI_GATEWAY_API_KEY")
+  || value("VERCEL_OIDC_TOKEN"),
+);
+check("Credencial da IA", aiCredential, aiCredential ? "AI Gateway disponível" : "configure AI_GATEWAY_API_KEY ou VERCEL_OIDC_TOKEN");
 check("ATLAS_BOOTSTRAP_SECRET", Boolean(value("ATLAS_BOOTSTRAP_SECRET")), "necessária somente até criar o primeiro admin", false);
 check("META_APP_SECRET", Boolean(value("META_APP_SECRET")), "opcional para teste inicial", false);
 check("WHATSAPP_ACCESS_TOKEN", Boolean(value("WHATSAPP_ACCESS_TOKEN")), "opcional para teste inicial", false);

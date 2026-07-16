@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { MessageResponse } from "@/components/ai-elements/message";
 
 type Insight = {
   id: string;
@@ -25,6 +26,21 @@ type OpenCopilotDetail = {
   context?: Record<string, unknown>;
 };
 
+type CopilotSource = {
+  id: string;
+  title: string;
+  publisher: string;
+  url: string;
+  verifiedAt: string;
+};
+
+const suggestedQuestions = [
+  "Quais leads devo priorizar hoje e por quê?",
+  "Onde o funil comercial está perdendo velocidade?",
+  "Quais projetos precisam de atualização de tabela ou espelho?",
+  "Como o cenário de juros afeta os argumentos de venda?",
+];
+
 function confidenceLabel(value: number | null) {
   const normalized = Number(value ?? 0);
   const percentage = normalized <= 1 ? normalized * 100 : normalized;
@@ -40,6 +56,7 @@ export default function AtlasCopilotDock() {
   const [copilotAnswer, setCopilotAnswer] = useState("");
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [copilotError, setCopilotError] = useState("");
+  const [copilotSources, setCopilotSources] = useState<CopilotSource[]>([]);
   const [externalContext, setExternalContext] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
@@ -110,6 +127,7 @@ export default function AtlasCopilotDock() {
     setCopilotLoading(true);
     setCopilotError("");
     setCopilotAnswer("");
+    setCopilotSources([]);
 
     try {
       const { data } = await supabase.auth.getSession();
@@ -143,9 +161,10 @@ export default function AtlasCopilotDock() {
         }),
       });
 
-      const payload = (await response.json()) as { answer?: string; error?: string };
+      const payload = (await response.json()) as { answer?: string; sources?: CopilotSource[]; error?: string };
       if (!response.ok) throw new Error(payload.error || "Falha ao consultar o Atlas Copilot.");
       setCopilotAnswer(payload.answer || "Sem resposta do modelo.");
+      setCopilotSources(payload.sources ?? []);
     } catch (error) {
       setCopilotError(error instanceof Error ? error.message : "Falha ao consultar o Atlas Copilot.");
     } finally {
@@ -179,8 +198,8 @@ export default function AtlasCopilotDock() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[.22em] text-sky-300">Atlas Intelligence</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-[-.03em] text-white">Copilot operacional</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">Decisões, riscos e próximas ações reunidos em uma única camada.</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-.03em] text-white">Especialista imobiliário</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-400">Estoque, leads, projetos, materiais, crédito e mercado em uma leitura operacional.</p>
               </div>
               <button type="button" onClick={() => setOpen(false)} className="atlas-icon-button" aria-label="Fechar copilot">×</button>
             </div>
@@ -200,9 +219,12 @@ export default function AtlasCopilotDock() {
             <section className="mt-6 rounded-3xl border border-white/[0.08] bg-white/[0.025] p-5">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">Perguntar ao Atlas Copilot</h3>
-                <span className="text-[10px] font-bold uppercase tracking-[.18em] text-slate-500">AI Gateway</span>
+                <span className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-400">CALIBRADO · JUL/26</span>
               </div>
-              <p className="mt-2 text-xs leading-5 text-slate-500">Use o contexto seguro do CRM para transformar indicadores em próximos passos, riscos e mensagens operacionais.</p>
+              <p className="mt-2 text-xs leading-5 text-slate-500">O Atlas consulta somente seu escopo comercial e diferencia dados internos, referências externas e recomendações.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {suggestedQuestions.map((question) => <button key={question} type="button" onClick={() => setPrompt(question)} className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-left text-[10px] text-slate-400 transition hover:border-sky-400/25 hover:text-sky-200">{question}</button>)}
+              </div>
               <textarea
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
@@ -212,7 +234,12 @@ export default function AtlasCopilotDock() {
                 placeholder="Ex.: o que devo priorizar hoje para converter mais leads?"
               />
               {copilotError ? <p className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs leading-5 text-amber-100">{copilotError}</p> : null}
-              {copilotAnswer ? <div className="mt-3 rounded-2xl border border-sky-400/15 bg-sky-400/10 px-4 py-3 text-sm leading-6 text-sky-50 whitespace-pre-wrap">{copilotAnswer}</div> : null}
+              {copilotAnswer ? (
+                <div className="mt-3 rounded-2xl border border-sky-400/15 bg-sky-400/10 px-4 py-3 text-sm leading-6 text-sky-50">
+                  <MessageResponse>{copilotAnswer}</MessageResponse>
+                  {copilotSources.length ? <div className="mt-4 border-t border-sky-200/10 pt-3"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-sky-300">Referências consultadas</p><div className="mt-2 space-y-2">{copilotSources.map((source) => <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-white/[0.06] bg-slate-950/30 px-3 py-2 text-xs text-slate-300 transition hover:border-sky-400/25"><strong className="block text-sky-200">{source.publisher}</strong><span>{source.title} · verificado em {new Date(`${source.verifiedAt}T12:00:00`).toLocaleDateString("pt-BR")}</span></a>)}</div></div> : null}
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={askCopilot}
