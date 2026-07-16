@@ -19,6 +19,7 @@ const presentationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/pres
 const presentationSafety = readFileSync(resolve(root, "lib/ai/property-presentation.ts"), "utf8");
 const leadIntelligenceRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/route.ts"), "utf8");
 const leadIntelligencePage = readFileSync(resolve(root, "app/(crm)/leads/[id]/page.tsx"), "utf8");
+const evolutionPhases = readFileSync(resolve(root, "lib/atlas/evolution-phases.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -64,6 +65,8 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('progress: 92') && evolutionPhases.includes("42 controles calibrados")],
+  ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
