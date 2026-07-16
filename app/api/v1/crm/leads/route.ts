@@ -13,6 +13,28 @@ function clampLimit(raw: string | null) {
   return Math.min(100, Math.max(1, Math.trunc(parsed)));
 }
 
+function clampPage(raw: string | null) {
+  const parsed = Number(raw ?? "1");
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.max(1, Math.trunc(parsed));
+}
+
+function scoreFilter(raw: string | null) {
+  if (!raw) return null;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.min(100, Math.max(0, Math.trunc(parsed)));
+}
+
+function campaignFilters(raw: string | null) {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => /^[0-9a-f-]{36}$/i.test(value))
+    .slice(0, 50);
+}
+
 function decodeCursor(raw: string | null): { createdAt: string; id: string } | null {
   if (!raw) return null;
   try {
@@ -45,9 +67,13 @@ export async function GET(request: NextRequest) {
 
   const params = request.nextUrl.searchParams;
   const limit = clampLimit(params.get("limit"));
+  const page = clampPage(params.get("page"));
   const status = params.get("status")?.trim() || null;
   const source = params.get("source")?.trim() || null;
   const assignedTo = params.get("assigned_to")?.trim() || null;
+  const minScore = scoreFilter(params.get("min_score"));
+  const maxScore = scoreFilter(params.get("max_score"));
+  const campaignIds = campaignFilters(params.get("campaign_ids"));
   const search = params.get("q")?.trim() || null;
   const sort = allowedSorts.has(params.get("sort") ?? "") ? params.get("sort")! : "created_at";
   const direction = allowedDirections.has(params.get("direction") ?? "")
@@ -62,32 +88,42 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  const usePagePagination = params.has("page");
+  const offset = (page - 1) * limit;
   let query = access.supabase
     .from("leads")
     .select(
       "id, name, email, phone, status, source, organization_id, assigned_to, campaign_id, temperature, score, budget_min, budget_max, preferred_regions, bedrooms, purpose, last_interaction_at, next_action_at, created_at, updated_at",
+      { count: usePagePagination ? "exact" : undefined },
     )
     .eq("organization_id", access.access.organization.id)
     .order(sort, { ascending: direction === "asc" })
-    .order("id", { ascending: direction === "asc" })
-    .limit(limit + 1);
+    .order("id", { ascending: direction === "asc" });
+
+  query = usePagePagination
+    ? query.range(offset, offset + limit - 1)
+    : query.limit(limit + 1);
 
   if (status) query = query.eq("status", status);
   if (source) query = query.eq("source", source);
-  if (assignedTo) query = query.eq("assigned_to", assignedTo);
+  if (assignedTo === "unassigned") query = query.is("assigned_to", null);
+  else if (assignedTo) query = query.eq("assigned_to", assignedTo);
+  if (minScore !== null) query = query.gte("score", minScore);
+  if (maxScore !== null) query = query.lte("score", maxScore);
+  if (campaignIds.length) query = query.in("campaign_id", campaignIds);
   if (search) {
     const escaped = search.replace(/[,%()]/g, " ").trim();
     if (escaped) query = query.or(`name.ilike.%${escaped}%,email.ilike.%${escaped}%,phone.ilike.%${escaped}%`);
   }
 
-  if (cursor && sort === "created_at") {
+  if (!usePagePagination && cursor && sort === "created_at") {
     const operator = direction === "desc" ? "lt" : "gt";
     query = query.or(
       `created_at.${operator}.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.${operator}.${cursor.id})`,
     );
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
 
   if (error) {
     structuredApiLog("error", "crm.leads.list_failed", request, access.meta, {
@@ -101,9 +137,15 @@ export async function GET(request: NextRequest) {
   }
 
   const rows = data ?? [];
-  const hasMore = rows.length > limit;
-  const items = hasMore ? rows.slice(0, limit) : rows;
-  const nextCursor = hasMore && sort === "created_at" ? encodeCursor(items[items.length - 1]) : null;
+  const hasMore = usePagePagination
+    ? offset + rows.length < (count ?? 0)
+    : rows.length > limit;
+  const items = !usePagePagination && hasMore ? rows.slice(0, limit) : rows;
+  const nextCursor = !usePagePagination && hasMore && sort === "created_at"
+    ? encodeCursor(items[items.length - 1])
+    : null;
+  const total = usePagePagination ? count ?? 0 : null;
+  const pages = total === null ? null : Math.max(1, Math.ceil(total / limit));
 
   structuredApiLog("info", "crm.leads.list_success", request, access.meta, {
     organizationId: access.access.organization.id,
@@ -116,6 +158,9 @@ export async function GET(request: NextRequest) {
       items,
       page: {
         limit,
+        number: usePagePagination ? page : null,
+        total,
+        pages,
         hasMore,
         nextCursor,
       },
@@ -123,6 +168,9 @@ export async function GET(request: NextRequest) {
         status,
         source,
         assignedTo,
+        minScore,
+        maxScore,
+        campaignIds,
         search,
         sort,
         direction,

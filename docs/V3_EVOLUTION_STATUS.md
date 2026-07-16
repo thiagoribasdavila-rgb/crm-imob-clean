@@ -11,7 +11,7 @@ O avanço geral é calculado pela soma do percentual comprovado de cada fase mul
 |---|---:|---:|---|---|
 | Auditoria técnica | 10% | 95% | Doctor, enterprise check, typecheck, lint, build e smoke | Bateria autenticada real |
 | Segurança, banco e multi-tenant | 15% | 78% | Guard, RLS, organização, auditoria e rate limit | Teste entre dois tenants |
-| Paridade CRM com V2 | 15% | 82% | Command Center, Lead 360, pipeline, tarefas e agenda | Filtros avançados e revisão das telas legadas |
+| Paridade CRM com V2 | 15% | 88% | Command Center, Leads Intelligence, Lead 360, pipeline, tarefas e agenda | Revisão visual das telas operacionais restantes |
 | Projetos e dados reais | 12% | 52% | Launch OS, inventário e indicadores por projeto | Validar ARVO, INSIDE PERDIZES e SPIN MOOD |
 | Operação comercial | 10% | 48% | Pipeline, histórico, fila e SLA | Capacidade e distribuição homologadas |
 | IA funcional | 10% | 75% | Copilot contextual, insights e Decision Center | Gateway real, score explicável e fallback |
@@ -22,8 +22,8 @@ O avanço geral é calculado pela soma do percentual comprovado de cada fase mul
 
 ## Percentuais consolidados
 
-- Evolução geral ponderada: **64%**
-- Execução técnica até homologação isolada: **73%**
+- Evolução geral ponderada: **65%**
+- Execução técnica até homologação isolada: **74%**
 - Homologação operacional: **0%**
 
 ## Gates aprovados
