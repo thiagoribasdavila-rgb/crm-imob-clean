@@ -105,6 +105,7 @@ export async function POST(request: Request) {
             assigned_to: sourceResult.data?.default_owner_id || null,
             metadata: { meta: { externalLeadId: metaEvent.external_lead_id, pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id, sourceName: sourceResult.data?.name || null, dataSharingConsent: sourceResult.data?.conversion_sharing_enabled === true, consentBasis: sourceResult.data?.consent_basis || null } },
             created_at: leadData.created_time || now,
+            next_action_at: new Date(Date.now() + 5 * 60_000).toISOString(),
           }).select("id").single();
           const { data: lead, error: leadError } = leadInsert;
           if (leadError || !lead) throw leadError ?? new Error("Falha ao criar lead Meta.");

@@ -87,7 +87,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('progress: 96') && evolutionPhases.includes("103 controles calibrados")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('progress: 96') && evolutionPhases.includes("107 controles calibrados")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -148,6 +148,10 @@ const checks = [
   ["primeiro contato é medido automaticamente", leadIntelligenceRoute.includes("response_minutes") && leadIntelligenceRoute.includes("first-response-${id}")],
   ["ranking considera velocidade comercial", campaignIntelligence.includes("averageResponseMinutes") && campaignIntelligence.includes("responseScore")],
   ["dashboard alerta leads Meta sem contato", crmDashboard.includes("Meta sem contato") && crmDashboard.includes("metaAwaitingContact")],
+  ["novo lead Meta recebe SLA automático", outboxWorker.includes("next_action_at") && outboxWorker.includes("5 * 60_000")],
+  ["primeiro contato encerra prazo", leadIntelligenceRoute.includes("next_action_at: null") && leadIntelligenceRoute.includes("last_interaction_at: occurredAt")],
+  ["relatório mede SLA por campanha", campaignIntelligence.includes("sla5Rate") && campaignIntelligence.includes("sla15Rate") && metaSettingsPage.includes("SLA 15 min")],
+  ["campanha não é culpada antes da operação", campaignIntelligence.includes("Corrigir distribuição e primeiro atendimento antes de alterar a campanha")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

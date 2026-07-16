@@ -28,6 +28,10 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[], paidInsights:
     const responseTimes = items.filter((lead) => lead.created_at && lead.last_interaction_at).map((lead) => Math.max(0, (new Date(lead.last_interaction_at!).getTime() - new Date(lead.created_at!).getTime()) / 60_000));
     const averageResponseMinutes = responseTimes.length ? Math.round(responseTimes.reduce((sum, value) => sum + value, 0) / responseTimes.length) : null;
     const responseCoverage = total ? Math.round((responseTimes.length / total) * 100) : 0;
+    const responseWithin5Minutes = responseTimes.filter((value) => value <= 5).length;
+    const responseWithin15Minutes = responseTimes.filter((value) => value <= 15).length;
+    const sla5Rate = total ? Math.round((responseWithin5Minutes / total) * 100) : 0;
+    const sla15Rate = total ? Math.round((responseWithin15Minutes / total) * 100) : 0;
     const percent = (value: number) => total ? Math.round((value / total) * 100) : 0;
     const sampleStatus = total >= 50 ? "reliable" : total >= 20 ? "learning" : "insufficient";
     const qualityRate = percent(qualified);
@@ -35,7 +39,7 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[], paidInsights:
     const visitRate = percent(visits);
     const proposalRate = percent(proposals);
     const confidenceFactor = sampleStatus === "reliable" ? 1 : sampleStatus === "learning" ? 0.75 : 0.4;
-    const responseScore = averageResponseMinutes === null ? 0 : averageResponseMinutes <= 5 ? 100 : averageResponseMinutes <= 15 ? 80 : averageResponseMinutes <= 60 ? 60 : averageResponseMinutes <= 240 ? 30 : 10;
+    const responseScore = responseCoverage ? Math.round(sla15Rate * 0.7 + responseCoverage * 0.3) : 0;
     const performanceScore = Math.round(Math.min(100, (qualityRate * 0.3 + conversionRate * 3 * 0.3 + visitRate * 0.12 + proposalRate * 0.08 + averageScore * 0.1 + responseScore * 0.1) * confidenceFactor));
     const paid = paidInsights.find((insight) => insight.campaignId === campaignId);
     const spend = paid?.spend ?? null;
@@ -44,16 +48,18 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[], paidInsights:
     const ctr = paid?.impressions ? Math.round((paid.clicks / paid.impressions) * 10_000) / 100 : null;
     const recommendation = sampleStatus === "insufficient"
       ? "Coletar mais dados antes de alterar público ou orçamento."
+      : responseCoverage < 60
+        ? "Corrigir distribuição e primeiro atendimento antes de alterar a campanha."
       : qualityRate < 20
-        ? "Revisar promessa, formulário e aderência entre anúncio e produto."
-        : contacted < Math.ceil(total * 0.6)
-          ? "Priorizar velocidade e cadência do primeiro atendimento."
-          : visits < Math.ceil(qualified * 0.35)
-            ? "Testar criativos e abordagem orientados a visita."
-            : conversionRate >= 5
-              ? "Candidata a escala controlada após validação de custo."
-              : "Manter aprendizado e revisar objeções de proposta e fechamento.";
-    return { campaignId, campaignName: paid?.campaignName || campaignId, total, contacted, qualified, visits, proposals, converted, buyersElsewhere, averageScore, averageResponseMinutes, responseCoverage, qualityRate, visitRate, proposalRate, conversionRate, performanceScore, spend, cpl, costPerQualifiedLead, ctr, sampleStatus, recommendation };
+          ? "Revisar promessa, formulário e aderência entre anúncio e produto."
+          : contacted < Math.ceil(total * 0.6)
+            ? "Priorizar velocidade e cadência do primeiro atendimento."
+            : visits < Math.ceil(qualified * 0.35)
+              ? "Testar criativos e abordagem orientados a visita."
+              : conversionRate >= 5
+                ? "Candidata a escala controlada após validação de custo."
+                : "Manter aprendizado e revisar objeções de proposta e fechamento.";
+    return { campaignId, campaignName: paid?.campaignName || campaignId, total, contacted, qualified, visits, proposals, converted, buyersElsewhere, averageScore, averageResponseMinutes, responseCoverage, sla5Rate, sla15Rate, qualityRate, visitRate, proposalRate, conversionRate, performanceScore, spend, cpl, costPerQualifiedLead, ctr, sampleStatus, recommendation };
   });
   const paidCosts = base.map((campaign) => campaign.costPerQualifiedLead).filter((value): value is number => value !== null && value > 0);
   const bestCost = paidCosts.length ? Math.min(...paidCosts) : null;

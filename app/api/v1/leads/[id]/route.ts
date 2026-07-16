@@ -133,7 +133,7 @@ export async function POST(request: Request, context: RouteContext) {
       const meta = lead.metadata && typeof lead.metadata === "object" ? (lead.metadata as { meta?: Record<string, unknown> }).meta || {} : {};
       const responseMinutes = lead.created_at ? Math.max(0, Math.round((new Date(occurredAt).getTime() - new Date(lead.created_at).getTime()) / 60_000)) : null;
       await Promise.allSettled([
-        admin.from("leads").update({ last_interaction_at: occurredAt, updated_at: occurredAt }).eq("id", id).eq("organization_id", identity.organizationId),
+        admin.from("leads").update({ last_interaction_at: occurredAt, next_action_at: null, updated_at: occurredAt }).eq("id", id).eq("organization_id", identity.organizationId),
         recordFollowUpIntelligence({ organizationId: identity.organizationId, leadId: id, activityId: data.id, description, occurredAt: data.occurred_at }),
         ...(firstResponse && lead.source === "Meta Lead Ads" ? [admin.from("campaign_events").upsert({ organization_id: identity.organizationId, lead_id: id, event_type: "first_response", source: "crm-response", external_event_id: `first-response-${id}`, payload: { response_minutes: responseMinutes, campaign_id: meta.campaignId || null }, occurred_at: occurredAt }, { onConflict: "organization_id,source,external_event_id", ignoreDuplicates: true })] : []),
       ]);
