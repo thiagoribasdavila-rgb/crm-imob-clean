@@ -19,6 +19,7 @@ type DashboardData = {
   tasks: DataRow[];
   insights: DataRow[];
   developments: DataRow[];
+  profiles: DataRow[];
 };
 
 const emptyData: DashboardData = {
@@ -27,6 +28,7 @@ const emptyData: DashboardData = {
   tasks: [],
   insights: [],
   developments: [],
+  profiles: [],
 };
 
 const stageOrder = [
@@ -129,6 +131,7 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState<Period>("30");
   const [project, setProject] = useState("all");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [viewerId, setViewerId] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -138,9 +141,10 @@ export default function DashboardPage() {
       supabase.from("tasks").select("*").order("due_at", { ascending: true, nullsFirst: false }).limit(300),
       supabase.from("ai_insights").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("developments").select("*").order("name", { ascending: true }).limit(100),
+      supabase.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").eq("active", true).limit(300),
     ]);
 
-    const labels = ["Leads", "Pipeline", "Tarefas", "Inteligência", "Projetos"];
+    const labels = ["Leads", "Pipeline", "Tarefas", "Inteligência", "Projetos", "Equipe"];
     setWarnings(
       results.flatMap((result, index) =>
         result.error ? [`${labels[index]}: ${result.error.message}`] : [],
@@ -152,7 +156,10 @@ export default function DashboardPage() {
       tasks: (results[2].data ?? []) as DataRow[],
       insights: (results[3].data ?? []) as DataRow[],
       developments: (results[4].data ?? []) as DataRow[],
+      profiles: (results[5].data ?? []) as DataRow[],
     });
+    const { data: authData } = await supabase.auth.getUser();
+    setViewerId(authData.user?.id || "");
     setLastUpdated(new Date());
     setLoading(false);
   }, []);
@@ -172,6 +179,10 @@ export default function DashboardPage() {
     [data.developments],
   );
   const referenceTime = lastUpdated?.getTime() ?? 0;
+  const viewer = data.profiles.find((profile) => String(profile.id) === viewerId);
+  const viewerRole = stringValue(viewer ?? {}, "commercial_role", "role") || "broker";
+  const isDirector = viewerRole === "director" || stringValue(viewer ?? {}, "role") === "admin";
+  const isManager = viewerRole === "manager";
 
   const leads = useMemo(
     () =>
@@ -261,6 +272,18 @@ export default function DashboardPage() {
     .map((item) => ({ row: item, due: dateValue(item, "commission_due_at"), remaining: Math.max(0, numberValue(item, "commission_net") - numberValue(item, "commission_received_amount")) }))
     .sort((a, b) => (a.due?.getTime() ?? Number.MAX_SAFE_INTEGER) - (b.due?.getTime() ?? Number.MAX_SAFE_INTEGER))
     .slice(0, 6), [opportunities]);
+
+  const teamPerformance = useMemo(() => data.profiles
+    .filter((profile) => stringValue(profile, "commercial_role", "role") === "broker")
+    .map((profile) => {
+      const id = String(profile.id);
+      const portfolio = leads.filter((lead) => ownerId(lead) === id);
+      const won = portfolio.filter((lead) => normalized(lead.status) === "ganho").length;
+      const hot = portfolio.filter((lead) => normalized(lead.temperature) === "quente" || numberValue(lead, "score") >= 70).length;
+      const overdue = portfolio.filter((lead) => { const due = dateValue(lead, "next_action_at"); return due && due.getTime() < referenceTime; }).length;
+      return { id, name: displayName(profile, "Corretor"), total: portfolio.length, active: portfolio.filter((lead) => !["ganho", "perdido", "comprou_outro"].includes(normalized(lead.status))).length, won, hot, overdue, conversion: portfolio.length ? Math.round(won / portfolio.length * 100) : 0 };
+    })
+    .sort((a, b) => b.won - a.won || b.hot - a.hot || b.total - a.total), [data.profiles, leads, referenceTime]);
 
   const funnel = useMemo(() => {
     const rows = stageOrder.map((stage) => ({
@@ -370,17 +393,13 @@ export default function DashboardPage() {
       <section className="atlas-command-hero">
         <div className="atlas-command-hero-copy">
           <div className="flex flex-wrap gap-2">
-            <StatusBadge tone="info">COMMAND CENTER</StatusBadge>
+            <StatusBadge tone="info">{isDirector ? "COMMAND CENTER DIRETORIA" : isManager ? "COMMAND CENTER DO TIME" : "MINHA OPERAÇÃO"}</StatusBadge>
             <StatusBadge tone="success">DADOS REAIS</StatusBadge>
             <StatusBadge tone="violet">ATLAS COPILOT</StatusBadge>
           </div>
-          <h1>
-            Sua operação, prioridades e IA em{" "}
-            <span className="atlas-gradient-text">uma única visão.</span>
-          </h1>
+          <h1>{isDirector ? <>Toda a empresa, decisões e IA em <span className="atlas-gradient-text">uma única visão.</span></> : isManager ? <>Seu time, carteira e conversão em <span className="atlas-gradient-text">tempo real.</span></> : <>Suas prioridades comerciais em <span className="atlas-gradient-text">uma única visão.</span></>}</h1>
           <p>
-            Acompanhe conversão, gargalos, tarefas e projetos. O Atlas organiza o
-            contexto real para transformar sinais comerciais em próximas ações.
+            {isDirector ? "Acompanhe equipes, conversão, campanhas, projetos, recebíveis e decisões estratégicas." : isManager ? "Acompanhe todos os corretores sob sua gestão, gargalos, SLA, tarefas e oportunidades do time." : "Organize seus leads, tarefas, próximos contatos e oportunidades prioritárias."}
           </p>
           <div className="atlas-command-actions">
             <button
@@ -470,9 +489,7 @@ export default function DashboardPage() {
         <MetricCard label="Leads Meta ativos" value={loading ? "—" : metrics.metaActive} detail={`${metrics.metaQualified} já qualificados`} trend="META" tone="violet" />
         <MetricCard label="Meta com aprendizado" value={loading ? "—" : metrics.metaLearning} detail="Consentimento e sinal habilitados" trend="CAPI" tone="success" />
         <MetricCard label="Meta sem contato" value={loading ? "—" : metrics.metaAwaitingContact} detail="Precisam de primeira resposta" trend="SPEED" tone="warning" />
-        <MetricCard label="Comissões a receber" value={loading ? "—" : brl.format(metrics.commissionReceivable)} detail={`${metrics.commissionDueSoon} vencem em até 7 dias`} trend="CAIXA" tone="success" />
-        <MetricCard label="Comissões atrasadas" value={loading ? "—" : metrics.commissionOverdue} detail="Exigem cobrança da incorporadora" trend="SLA" tone="danger" />
-        <MetricCard label="Vendas sem comissão" value={loading ? "—" : metrics.commissionUnconfigured} detail="Precisam de configuração financeira" trend="AÇÃO" tone="warning" />
+        {isDirector ? <><MetricCard label="Comissões a receber" value={loading ? "—" : brl.format(metrics.commissionReceivable)} detail={`${metrics.commissionDueSoon} vencem em até 7 dias`} trend="CAIXA" tone="success" /><MetricCard label="Comissões atrasadas" value={loading ? "—" : metrics.commissionOverdue} detail="Exigem cobrança da incorporadora" trend="SLA" tone="danger" /><MetricCard label="Vendas sem comissão" value={loading ? "—" : metrics.commissionUnconfigured} detail="Precisam de configuração financeira" trend="AÇÃO" tone="warning" /></> : null}
       </section>
 
       <section className="atlas-command-grid atlas-command-grid-main">
@@ -606,7 +623,19 @@ export default function DashboardPage() {
         </article>
       </section>
 
-      <section className="atlas-command-panel">
+      {(isDirector || isManager) ? <section className="atlas-command-panel">
+        <PageHeader eyebrow={isDirector ? "Performance comercial" : "Gestão do time"} title={isDirector ? "Corretores e carteiras" : "Números de cada corretor"} description="Carteira, leads quentes, atrasos e conversão dentro do seu escopo hierárquico." actions={<Link href="/brokers">Abrir equipe →</Link>} />
+        {loading ? <LoadingState rows={4} /> : teamPerformance.length === 0 ? <EmptyState title="Nenhum corretor visível" description="Vincule corretores à hierarquia para acompanhar o desempenho." /> : <div className="atlas-team-performance">
+          {teamPerformance.map((broker, index) => <Link href={`/leads?assigned_to=${broker.id}`} key={broker.id}>
+            <span className="atlas-priority-rank">{String(index + 1).padStart(2, "0")}</span>
+            <p><strong>{broker.name}</strong><small>{broker.active} ativos · {broker.hot} quentes · {broker.overdue} atrasados</small></p>
+            <div><b>{broker.won}</b><span>vendas</span></div>
+            <div><b>{broker.conversion}%</b><span>conversão</span></div>
+          </Link>)}
+        </div>}
+      </section> : null}
+
+      {isDirector ? <section className="atlas-command-panel">
         <PageHeader eyebrow="Recebíveis" title="Comissões sob atenção" description="Prioridade financeira por vencimento, saldo e incorporadora." actions={<Link href="/sales">Abrir vendas →</Link>} />
         {loading ? <LoadingState rows={4} /> : commissionQueue.length === 0 ? (
           <EmptyState title="Nenhuma comissão pendente" description="Vendas ganhas com valores a receber aparecerão nesta fila." />
@@ -623,7 +652,7 @@ export default function DashboardPage() {
             })}
           </div>
         )}
-      </section>
+      </section> : null}
 
       <section className="atlas-command-grid atlas-command-grid-bottom">
         <article className="atlas-command-panel">

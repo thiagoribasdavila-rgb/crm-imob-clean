@@ -2,18 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 const navigation = [
-  { label: "Command Center", href: "/dashboard", icon: "⌘" },
-  { label: "Leads", href: "/leads", icon: "◎" },
-  { label: "Pipeline", href: "/pipeline", icon: "⌁" },
-  { label: "Tarefas", href: "/tasks", icon: "✓" },
-  { label: "Agenda", href: "/calendar", icon: "□" },
-  { label: "Corretores", href: "/brokers", icon: "◇" },
-  { label: "Projetos", href: "/developments", icon: "▥" },
-  { label: "Copilot", href: "/ai-dashboard", icon: "✦" },
-  { label: "Evolução V3", href: "/atlas-v3", icon: "◈" },
-  { label: "Configurações", href: "/settings", icon: "⚙" },
+  { label: "Command Center", href: "/dashboard", icon: "⌘", roles: ["director","superintendent","manager","broker"] },
+  { label: "Leads", href: "/leads", icon: "◎", roles: ["director","superintendent","manager","broker"] },
+  { label: "Pipeline", href: "/pipeline", icon: "⌁", roles: ["director","superintendent","manager","broker"] },
+  { label: "Tarefas", href: "/tasks", icon: "✓", roles: ["director","superintendent","manager","broker"] },
+  { label: "Agenda", href: "/calendar", icon: "□", roles: ["director","superintendent","manager","broker"] },
+  { label: "Corretores", href: "/brokers", icon: "◇", roles: ["director","superintendent","manager"] },
+  { label: "Vendas", href: "/sales", icon: "◌", roles: ["director","superintendent","manager"] },
+  { label: "Relatórios", href: "/reports", icon: "↗", roles: ["director","superintendent","manager"] },
+  { label: "Projetos", href: "/developments", icon: "▥", roles: ["director","superintendent","manager","broker"] },
+  { label: "Copilot", href: "/ai-dashboard", icon: "✦", roles: ["director","superintendent","manager","broker"] },
+  { label: "Integrações", href: "/integrations", icon: "∞", roles: ["director"] },
+  { label: "Evolução V3", href: "/atlas-v3", icon: "◈", roles: ["director"] },
+  { label: "Configurações", href: "/settings", icon: "⚙", roles: ["director","superintendent","manager"] },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -34,6 +39,16 @@ export function Sidebar({
   onToggle,
 }: SidebarProps) {
   const pathname = usePathname();
+  const [role, setRole] = useState("broker");
+
+  useEffect(() => {
+    void (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      const { data } = await supabase.from("profiles").select("role,commercial_role").eq("id", auth.user.id).maybeSingle();
+      setRole(data?.commercial_role || (data?.role === "admin" ? "director" : data?.role) || "broker");
+    })();
+  }, []);
 
   return (
     <>
@@ -69,7 +84,7 @@ export function Sidebar({
 
         <nav className="atlas-sidebar-nav" aria-label="Navegação principal">
           <p className="atlas-sidebar-section atlas-sidebar-label">Operação</p>
-          {navigation.map((item) => {
+          {navigation.filter((item) => item.roles.includes(role)).map((item) => {
             const active = isActive(pathname, item.href);
             return (
               <Link
