@@ -22,6 +22,9 @@ const leadIntelligencePage = readFileSync(resolve(root, "app/(crm)/leads/[id]/pa
 const evolutionPhases = readFileSync(resolve(root, "lib/atlas/evolution-phases.ts"), "utf8");
 const homologationRoute = readFileSync(resolve(root, "app/api/v1/homologation/route.ts"), "utf8");
 const homologationMigration = readFileSync(resolve(root, "supabase/migrations/20260716221959_homologation_checklist.sql"), "utf8");
+const metaWebhook = readFileSync(resolve(root, "app/api/webhooks/meta/route.ts"), "utf8");
+const outboxWorker = readFileSync(resolve(root, "app/api/v2/outbox/process/route.ts"), "utf8");
+const metaMigration = readFileSync(resolve(root, "supabase/migrations/20260716222643_meta_lead_closed_loop.sql"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -72,6 +75,11 @@ const checks = [
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
   ["aceite pertence ao usuário", homologationMigration.includes("verified_by = (select auth.uid())")],
+  ["Meta valida assinatura", metaWebhook.includes("verifyWebhookSignature") && metaWebhook.includes("x-hub-signature-256")],
+  ["Meta deduplica lead real", metaMigration.includes("external_lead_id text not null unique") && metaWebhook.includes('insertError.code === "23505"')],
+  ["Meta usa processamento resiliente", metaWebhook.includes('topic: "meta.lead.fetch"') && outboxWorker.includes('event.topic === "meta.lead.fetch"')],
+  ["Meta não expõe credencial", outboxWorker.includes("META_LEAD_ACCESS_TOKEN") && !metaWebhook.includes("META_LEAD_ACCESS_TOKEN")],
+  ["Meta cria memória de campanha", outboxWorker.includes("campaign_events") && outboxWorker.includes('event_type: "lead_created"')],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
