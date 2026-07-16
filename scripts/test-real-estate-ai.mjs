@@ -38,6 +38,7 @@ const campaignIntelligence = readFileSync(resolve(root, "lib/meta/campaign-intel
 const metaDailyReport = readFileSync(resolve(root, "app/api/v2/meta/daily-report/route.ts"), "utf8");
 const dailyReportMigration = readFileSync(resolve(root, "supabase/migrations/20260716235900_meta_director_daily_reports.sql"), "utf8");
 const approvalRoute = readFileSync(resolve(root, "app/api/v2/approvals/[id]/route.ts"), "utf8");
+const metaInsights = readFileSync(resolve(root, "lib/meta/insights.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -128,11 +129,15 @@ const checks = [
   ["relatório decisório é exclusivo do diretor", dailyReportMigration.includes("meta_daily_reports_director_select") && dailyReportMigration.includes("commercial_role")],
   ["campanhas não mudam automaticamente", metaDailyReport.includes("automaticCampaignChanges: false") && metaSettingsPage.includes("Somente o diretor")],
   ["aprovação Meta exige diretoria", approvalRoute.includes("Decisões de campanha pertencem exclusivamente ao diretor")],
-  ["relatório compara dia semana e mês", metaDailyReport.includes("day: period(1)") && metaDailyReport.includes("week: period(7)") && metaDailyReport.includes("month: period(30)")],
+  ["relatório compara dia semana e mês", metaDailyReport.includes("day: period(1, paid[0])") && metaDailyReport.includes("week: period(7, paid[1])") && metaDailyReport.includes("month: period(30, paid[2])")],
   ["ranking pondera performance comercial", campaignIntelligence.includes("performanceScore") && campaignIntelligence.includes("confidenceFactor") && campaignIntelligence.includes("rankingBasis")],
   ["sugestão diária usa múltiplas IAs", metaDailyReport.includes('task: "reasoning"') && metaDailyReport.includes('task: "research"') && metaDailyReport.includes("aiConsensus")],
   ["multi IA recebe apenas agregados anônimos", metaDailyReport.includes("anonymousEvidence") && metaDailyReport.includes("campaign_${index + 1}")],
   ["IA não inventa custo ou causalidade", metaDailyReport.includes("nunca invente custo, ROAS ou causalidade") && metaSettingsPage.includes("sem inventar custo ou ROAS")],
+  ["Meta Insights é somente leitura", metaInsights.includes('/insights?${params}') && !metaInsights.includes('method: "POST"')],
+  ["ranking incorpora eficiência real", campaignIntelligence.includes("costPerQualifiedLead") && campaignIntelligence.includes("ctr") && campaignIntelligence.includes("spend")],
+  ["relatórios financeiros cobrem três períodos", metaDailyReport.includes("fetchMetaCampaignInsights(1)") && metaDailyReport.includes("fetchMetaCampaignInsights(7)") && metaDailyReport.includes("fetchMetaCampaignInsights(30)")],
+  ["painel diferencia ausência de custo", metaSettingsPage.includes("Insights financeiros ainda não conectados")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

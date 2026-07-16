@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { buildMetaCampaignIntelligence } from "@/lib/meta/campaign-intelligence";
 import { logger } from "@/lib/observability/logger";
 import { generateAIText } from "@/lib/ai/provider-router";
+import { fetchMetaCampaignInsights } from "@/lib/meta/insights";
 
 export const dynamic = "force-dynamic";
 function authorized(request: Request) { const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, ""); return Boolean(process.env.ATLAS_CRON_SECRET && token === process.env.ATLAS_CRON_SECRET); }
@@ -23,8 +24,10 @@ export async function POST(request: Request) {
         admin.from("campaign_events").select("payload").eq("organization_id", organization.id).in("source", ["crm-funnel", "crm-followup"]).gte("occurred_at", since).limit(1000),
       ]);
       const now = Date.now();
-      const period = (days: number) => buildMetaCampaignIntelligence((leads ?? []).filter((lead) => lead.created_at && new Date(lead.created_at).getTime() >= now - days * 86_400_000));
-      const periods = { day: period(1), week: period(7), month: period(30) };
+      const paidResults = await Promise.allSettled([fetchMetaCampaignInsights(1), fetchMetaCampaignInsights(7), fetchMetaCampaignInsights(30)]);
+      const paid = paidResults.map((result) => result.status === "fulfilled" ? result.value : []);
+      const period = (days: number, insights: typeof paid[number]) => buildMetaCampaignIntelligence((leads ?? []).filter((lead) => lead.created_at && new Date(lead.created_at).getTime() >= now - days * 86_400_000), insights);
+      const periods = { day: period(1, paid[0]), week: period(7, paid[1]), month: period(30, paid[2]) };
       const campaigns = periods.month;
       const signalCounts: Record<string, number> = {};
       for (const event of followUps ?? []) { const payload = event.payload && typeof event.payload === "object" ? event.payload as Record<string, unknown> : {}; for (const signal of Array.isArray(payload.decision_signals) ? payload.decision_signals : []) if (typeof signal === "string" && signal !== "motivo_nao_classificado") signalCounts[signal] = (signalCounts[signal] || 0) + 1; }
