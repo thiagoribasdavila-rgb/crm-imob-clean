@@ -22,7 +22,7 @@ O núcleo CRM, hierarquia comercial, Meta, materiais e IA possui base funcional.
 | Homologação técnica | 40% | Checklist persistente e scripts de release | Ambiente isolado e migrações ainda pendentes | Alto | Release de homologação com evidências anexadas |
 | Homologação operacional | 0% | Roteiro disponível | Nenhum aceite real registrado | Crítico | Todos os perfis aprovam seus critérios |
 | Substituição controlada | 5% | Rollback planejado e V2 preservado | Backup, sincronização e rollback não ensaiados | Crítico | Ensaio completo aprovado pela direção |
-| Comissões | 55% | SLA por incorporadora, vencimento e estados financeiros | Baixa real, comprovante e conciliação ainda sem API operacional | Alto | Financeiro valida venda, parcial, divergência e recebimento |
+| Comissões | 65% | SLA por incorporadora, vencimento, API de baixa e histórico financeiro | Upload de comprovante e conciliação real ainda pendentes | Alto | Financeiro valida venda, parcial, divergência e recebimento |
 | Integrações omnichannel | 46% | Meta real, outbox, catálogo e contrato genérico | Google/TikTok/portais ainda não possuem OAuth/sincronização real | Alto | Cada conector passa teste, sync, idempotência e falha controlada |
 
 ## Superfície do produto
@@ -39,6 +39,7 @@ O núcleo CRM, hierarquia comercial, Meta, materiais e IA possui base funcional.
 - Detecção recursiva de segredos e limite de tamanho na configuração de integrações.
 - Auditoria de configuração de conectores em eventos do Atlas.
 - Comissão ampliada com valor bruto/líquido, divisão, recebido parcial, comprovante, notas, divergência e histórico.
+- API financeira com configuração e baixa parcial/total exclusiva da diretoria, isolada por organização.
 - Estado de vencimento recalculado na interface para não depender de uma gravação posterior.
 - Checklist de homologação ampliado para recuperação, comissão, integrações e primeiro contato.
 - Percentuais recalibrados para remover otimismo sem evidência.
