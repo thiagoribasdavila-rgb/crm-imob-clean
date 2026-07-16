@@ -34,6 +34,7 @@ const metaSettingsPage = readFileSync(resolve(root, "app/(crm)/integrations/meta
 const pipelineRoute = readFileSync(resolve(root, "app/api/v1/pipeline/route.ts"), "utf8");
 const funnelLearning = readFileSync(resolve(root, "lib/atlas/funnel-learning.ts"), "utf8");
 const followUpIntelligence = readFileSync(resolve(root, "lib/atlas/follow-up-intelligence.ts"), "utf8");
+const campaignIntelligence = readFileSync(resolve(root, "lib/meta/campaign-intelligence.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -116,6 +117,9 @@ const checks = [
   ["acompanhamento alimenta inteligência agregada", followUpIntelligence.includes('source: "crm-followup"') && metaSettings.includes("audienceRecommendations")],
   ["corretor recebe atalhos de aprendizado", leadIntelligencePage.includes("Financiamento") && leadIntelligencePage.includes("Salvar acompanhamento e aprendizado")],
   ["painel orienta Advantage Plus", metaSettingsPage.includes("Automação ampla, sinais comerciais precisos") && metaSettingsPage.includes("preferências comerciais entram como sugestões")],
+  ["campanhas são avaliadas pelo pós-lead", campaignIntelligence.includes("qualityRate") && campaignIntelligence.includes("conversionRate") && metaSettings.includes("campaignIntelligence")],
+  ["escala exige amostra mínima", campaignIntelligence.includes("total >= 50") && campaignIntelligence.includes("total >= 20") && campaignIntelligence.includes("Coletar mais dados")],
+  ["cockpit compara campanhas sem PII", metaSettingsPage.includes("Qualidade real por campanha") && !campaignIntelligence.includes("email") && !campaignIntelligence.includes("phone")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
