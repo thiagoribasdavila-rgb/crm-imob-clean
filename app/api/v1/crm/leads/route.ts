@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
   let query = access.supabase
     .from("leads")
     .select(
-      "id, name, email, phone, status, source, organization_id, assigned_to, campaign_id, temperature, score, budget_min, budget_max, preferred_regions, bedrooms, purpose, metadata, last_interaction_at, next_action_at, created_at, updated_at",
+      "id, name, email, phone, status, source, organization_id, assigned_to, campaign_id, development_id, temperature, score, budget_min, budget_max, preferred_regions, bedrooms, purpose, metadata, last_interaction_at, next_action_at, created_at, updated_at",
       { count: usePagePagination ? "exact" : undefined },
     )
     .eq("organization_id", access.access.organization.id)

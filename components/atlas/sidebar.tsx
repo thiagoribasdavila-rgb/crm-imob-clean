@@ -12,6 +12,7 @@ const navigation = [
   { label: "Tarefas", href: "/tasks", icon: "✓", roles: ["director","superintendent","manager","broker"] },
   { label: "Agenda", href: "/calendar", icon: "□", roles: ["director","superintendent","manager","broker"] },
   { label: "Corretores", href: "/brokers", icon: "◇", roles: ["director","superintendent","manager"] },
+  { label: "Distribuição", href: "/distribution", icon: "⇄", roles: ["director","superintendent","manager"] },
   { label: "Vendas", href: "/sales", icon: "◌", roles: ["director","superintendent","manager"] },
   { label: "Relatórios", href: "/reports", icon: "↗", roles: ["director","superintendent","manager"] },
   { label: "Projetos", href: "/developments", icon: "▥", roles: ["director","superintendent","manager","broker"] },

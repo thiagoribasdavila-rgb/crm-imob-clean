@@ -18,6 +18,7 @@ type CreateLeadPayload = {
   bedrooms?: number | null;
   preferredRegions?: string[];
   notes?: string;
+  developmentId?: string | null;
 };
 
 function normalizePhone(value?: string) {
@@ -52,8 +53,15 @@ export async function POST(request: Request) {
     if (body.budgetMin && body.budgetMax && body.budgetMin > body.budgetMax) {
       return NextResponse.json({ error: "O orçamento mínimo não pode superar o máximo." }, { status: 400 });
     }
+    if (body.developmentId && !/^[0-9a-f-]{36}$/i.test(body.developmentId)) {
+      return NextResponse.json({ error: "Projeto inválido." }, { status: 400 });
+    }
 
     const admin = getSupabaseAdmin();
+    if (body.developmentId) {
+      const { data: development } = await admin.from("developments").select("id").eq("id", body.developmentId).eq("organization_id", identity.organizationId).maybeSingle();
+      if (!development) return NextResponse.json({ error: "Projeto não encontrado nesta organização." }, { status: 400 });
+    }
     let duplicateQuery = admin
       .from("leads")
       .select("id,name,email,phone")
@@ -88,6 +96,7 @@ export async function POST(request: Request) {
       .from("leads")
       .insert({
         organization_id: identity.organizationId,
+        development_id: body.developmentId || null,
         assigned_to: identity.userId,
         name,
         email,

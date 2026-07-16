@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { calculateLeadScore } from "@/lib/atlas/scoring";
@@ -16,6 +16,7 @@ const initialForm = {
   bedrooms: "",
   preferred_regions: "",
   notes: "",
+  development_id: "",
 };
 
 export default function NewLeadPage() {
@@ -24,6 +25,11 @@ export default function NewLeadPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [duplicateLeadId, setDuplicateLeadId] = useState<string | null>(null);
+  const [developments, setDevelopments] = useState<Array<{ id: string; name: string; developer_name: string | null }>>([]);
+
+  useEffect(() => {
+    void supabase.from("developments").select("id,name,developer_name").order("name").then(({ data }) => setDevelopments(data ?? []));
+  }, []);
 
   const preferredRegions = useMemo(
     () => form.preferred_regions.split(",").map((value) => value.trim()).filter(Boolean),
@@ -74,6 +80,7 @@ export default function NewLeadPage() {
           bedrooms: form.bedrooms ? Number(form.bedrooms) : null,
           preferredRegions,
           notes: form.notes || undefined,
+          developmentId: form.development_id || undefined,
         }),
       });
 
@@ -123,6 +130,7 @@ export default function NewLeadPage() {
           <label className="space-y-2 text-sm text-slate-300"><span>Telefone</span><input inputMode="tel" autoComplete="tel" className={fieldClass} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
           <label className="space-y-2 text-sm text-slate-300"><span>E-mail</span><input type="email" autoComplete="email" className={fieldClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
           <label className="space-y-2 text-sm text-slate-300"><span>Origem</span><select className={fieldClass} value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })}><option>Meta Ads</option><option>Google</option><option>WhatsApp</option><option>Indicação</option><option>Portal</option><option>Orgânico</option><option>Manual</option></select></label>
+          <label className="space-y-2 text-sm text-slate-300 md:col-span-2"><span>Projeto de interesse</span><select className={fieldClass} value={form.development_id} onChange={(e) => setForm({ ...form, development_id: e.target.value })}><option value="">Ainda não identificado</option>{developments.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.developer_name || "Incorporadora"}</option>)}</select><span className="block text-xs text-slate-600">Ao informar o projeto, a lead entra na fila equilibrada da equipe.</span></label>
           <label className="space-y-2 text-sm text-slate-300"><span>Objetivo</span><select className={fieldClass} value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })}><option value="moradia">Moradia</option><option value="investimento">Investimento</option><option value="locacao">Locação</option></select></label>
           <label className="space-y-2 text-sm text-slate-300"><span>Dormitórios</span><input type="number" min="0" max="20" className={fieldClass} value={form.bedrooms} onChange={(e) => setForm({ ...form, bedrooms: e.target.value })} /></label>
           <label className="space-y-2 text-sm text-slate-300"><span>Orçamento mínimo</span><input type="number" min="0" step="1000" className={fieldClass} value={form.budget_min} onChange={(e) => setForm({ ...form, budget_min: e.target.value })} /></label>
