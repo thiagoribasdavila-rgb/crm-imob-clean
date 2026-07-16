@@ -3,7 +3,7 @@
   "version": "3.0.0-rc.2",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",

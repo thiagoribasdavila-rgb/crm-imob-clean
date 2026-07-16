@@ -12,6 +12,7 @@ const navigation = [
   { label: "Corretores", href: "/brokers", icon: "◇" },
   { label: "Projetos", href: "/developments", icon: "▥" },
   { label: "Copilot", href: "/ai-dashboard", icon: "✦" },
+  { label: "Evolução V3", href: "/atlas-v3", icon: "◈" },
   { label: "Configurações", href: "/settings", icon: "⚙" },
 ];
 

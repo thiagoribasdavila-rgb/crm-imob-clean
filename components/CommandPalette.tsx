@@ -19,7 +19,7 @@ const commands = [
   { label: "Marketing AI", href: "/marketing", group: "Growth", keywords: "meta criativos campanhas roi" },
   { label: "Conversas", href: "/conversations", group: "Growth", keywords: "whatsapp instagram atendimento" },
   { label: "Centro de Decisão", href: "/decision-center", group: "Intelligence", keywords: "decisoes alertas aprovacoes" },
-  { label: "Atlas V3", href: "/atlas-v3", group: "Intelligence", keywords: "agentes digital twin inteligencia" },
+  { label: "Evolução e homologação V3", href: "/atlas-v3", group: "Intelligence", keywords: "fases percentual progresso agentes digital twin inteligencia homologacao" },
   { label: "Atlas 2030", href: "/atlas-2030", group: "Platform", keywords: "knowledge graph simulacoes plataforma" },
   { label: "Configurações", href: "/settings", group: "Administração", keywords: "empresa preferencias integracoes" },
 ];

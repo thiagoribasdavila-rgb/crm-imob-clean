@@ -3,10 +3,10 @@
 ## 1. Atualizar o projeto
 
 ```bash
-cd /Users/thiagoribasdavila/crm-imob-clean
+cd /Users/thiagoribasdavila/atlas-v3
 git fetch origin
-git switch atlas-v3-auth
-git pull --ff-only origin atlas-v3-auth
+git switch develop/atlas-v3
+git pull --ff-only origin develop/atlas-v3
 npm ci
 npm run prisma:generate
 ```
