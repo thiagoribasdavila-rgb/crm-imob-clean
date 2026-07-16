@@ -13,7 +13,7 @@ export async function recordFunnelLearning(input: { organizationId: string; lead
   const stageRank = STAGE_RANK[stage] ?? -1;
   const buyerElsewhere = stage === "comprou_outro";
   const direction = buyerElsewhere ? "buyer_elsewhere" : stage === "perdido" ? "lost" : stageRank > previousRank ? "forward" : "backward";
-  const followUpSignals = buyerElsewhere ? extractFollowUpSignals(input.description || "") : null;
+  const followUpSignals = buyerElsewhere ? extractFollowUpSignals(input.description || "", { externalPurchase: true }) : null;
   const admin = getSupabaseAdmin();
   const externalEventId = `funnel-${input.leadId}-${previousStage}-${stage}`;
   const { error } = await admin.from("campaign_events").upsert({

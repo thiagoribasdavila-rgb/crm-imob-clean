@@ -3,6 +3,7 @@ import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
+import { recordFollowUpIntelligence } from "@/lib/atlas/follow-up-intelligence";
 
 export const dynamic = "force-dynamic";
 
@@ -115,17 +116,19 @@ export async function POST(request: Request, context: RouteContext) {
 
     if (body.action === "activity") {
       const title = String(body.title || "").trim();
+      const description = String(body.description || "").trim().slice(0, 4000);
       if (!title) return NextResponse.json({ error: "Informe a atividade." }, { status: 400 });
       const { data, error } = await admin.from("activities").insert({
         organization_id: identity.organizationId,
         lead_id: id,
         user_id: identity.userId,
         title,
-        description: body.description || null,
+        description: description || null,
         type: body.type || "note",
         occurred_at: new Date().toISOString(),
       }).select("id,title,description,type,occurred_at").single();
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+      await Promise.allSettled([recordFollowUpIntelligence({ organizationId: identity.organizationId, leadId: id, activityId: data.id, description, occurredAt: data.occurred_at })]);
       return NextResponse.json({ activity: data }, { status: 201 });
     }
 

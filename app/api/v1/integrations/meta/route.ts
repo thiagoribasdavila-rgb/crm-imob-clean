@@ -17,21 +17,29 @@ export async function GET(request: NextRequest) {
     access.supabase.from("meta_lead_events").select("id,status,received_at,processed_at,last_error").order("received_at", { ascending: false }).limit(100),
     access.supabase.from("meta_conversion_configs").select("dataset_id,mode,enabled,test_event_code,consent_required").maybeSingle(),
     access.supabase.from("meta_conversion_events").select("status,event_name").order("created_at", { ascending: false }).limit(100),
-    access.supabase.from("campaign_events").select("event_type,payload").eq("source", "crm-funnel").order("occurred_at", { ascending: false }).limit(500),
+    access.supabase.from("campaign_events").select("event_type,source,payload").in("source", ["crm-funnel", "crm-followup"]).order("occurred_at", { ascending: false }).limit(500),
   ]);
   if (error) return NextResponse.json({ error: "Aplique a migração Meta Lead Ads para configurar fontes." }, { status: 503 });
   const summary = (events ?? []).reduce((total, event) => ({ ...total, [event.status]: (total[event.status] || 0) + 1 }), {} as Record<string, number>);
   const conversionSummary = (conversionEvents ?? []).reduce((total, event) => ({ ...total, [event.status]: (total[event.status] || 0) + 1 }), {} as Record<string, number>);
   const conversionFunnel = (conversionEvents ?? []).reduce((total, event) => ({ ...total, [event.event_name]: (total[event.event_name] || 0) + 1 }), {} as Record<string, number>);
   const internalFunnel = (learningEvents ?? []).reduce((total, event) => {
+    if (event.source !== "crm-funnel") return total;
     const payload = event.payload && typeof event.payload === "object" ? event.payload as Record<string, unknown> : {};
     const stage = String(payload.stage || "desconhecido");
     return { ...total, [stage]: (total[stage] || 0) + 1 };
   }, {} as Record<string, number>);
+  const audienceSignals = (learningEvents ?? []).reduce((total, event) => {
+    const payload = event.payload && typeof event.payload === "object" ? event.payload as Record<string, unknown> : {};
+    const signals = Array.isArray(payload.decision_signals) ? payload.decision_signals : [];
+    for (const signal of signals) if (typeof signal === "string" && signal !== "motivo_nao_classificado") total[signal] = (total[signal] || 0) + 1;
+    return total;
+  }, {} as Record<string, number>);
+  const audienceRecommendations = Object.entries(audienceSignals).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([signal, count]) => ({ signal, count }));
   const leads = conversionFunnel.Lead || 0;
   const rate = (value: number) => leads > 0 ? Math.round((value / leads) * 100) : 0;
   const funnelInsights = { qualifiedRate: rate(conversionFunnel.QualifiedLead || 0), visitRate: rate(conversionFunnel.Schedule || 0), proposalRate: rate(conversionFunnel.SubmitApplication || 0), convertedRate: rate(conversionFunnel.ConvertedLead || 0), lost: internalFunnel.perdido || 0, buyerProfiles: internalFunnel.comprou_outro || 0 };
-  return NextResponse.json({ sources: sources ?? [], summary, conversionConfig, conversionSummary, conversionFunnel, internalFunnel, funnelInsights, readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role) });
+  return NextResponse.json({ sources: sources ?? [], summary, conversionConfig, conversionSummary, conversionFunnel, internalFunnel, funnelInsights, audienceRecommendations, readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role) });
 }
 
 export async function POST(request: NextRequest) {

@@ -47,6 +47,7 @@ export default function LeadDetailPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [activityTitle, setActivityTitle] = useState("");
+  const [activityDescription, setActivityDescription] = useState("");
   const [activityType, setActivityType] = useState("note");
   const [qualification, setQualification] = useState<Qualification | null>(null);
   const [qualifying, setQualifying] = useState(false);
@@ -142,8 +143,9 @@ export default function LeadDetailPage() {
     const title = activityTitle.trim();
     if (!title) return;
     try {
-      await api(`/api/v1/leads/${leadId}`, { method: "POST", body: JSON.stringify({ action: "activity", title, type: activityType }) });
+      await api(`/api/v1/leads/${leadId}`, { method: "POST", body: JSON.stringify({ action: "activity", title, description: activityDescription, type: activityType }) });
       setActivityTitle("");
+      setActivityDescription("");
       setMessage("Interação registrada no histórico.");
       await load();
     } catch (error) {
@@ -248,7 +250,7 @@ export default function LeadDetailPage() {
         <div className="space-y-6">
           <AtlasCard>
             <AtlasCardHeader eyebrow="Atlas AI" title="Próxima ação recomendada" description="Orientação calculada a partir do perfil, histórico e pipeline." />
-            <div className="p-5 sm:p-6"><div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.06] p-5"><p className="text-sm font-medium text-violet-100">{intelligence.nextAction}</p><p className="mt-2 text-xs leading-5 text-slate-400">Risco atual: {intelligence.risk}. Atualize o histórico após cada contato para melhorar as recomendações.</p></div><form onSubmit={addActivity} className="mt-4 space-y-3"><div className="grid gap-3 sm:grid-cols-[1fr_150px]"><input className={inputClass} value={activityTitle} onChange={(e) => setActivityTitle(e.target.value)} placeholder="Registrar ligação, mensagem ou visita" /><select className={inputClass} value={activityType} onChange={(e) => setActivityType(e.target.value)}><option value="note">Nota</option><option value="call">Ligação</option><option value="whatsapp">WhatsApp</option><option value="visit">Visita</option><option value="email">E-mail</option></select></div><button className="atlas-button-secondary w-full">Adicionar à timeline</button></form></div>
+            <div className="p-5 sm:p-6"><div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.06] p-5"><p className="text-sm font-medium text-violet-100">{intelligence.nextAction}</p><p className="mt-2 text-xs leading-5 text-slate-400">Risco atual: {intelligence.risk}. Atualize o histórico após cada contato para melhorar as recomendações.</p></div><form onSubmit={addActivity} className="mt-4 space-y-3"><div className="grid gap-3 sm:grid-cols-[1fr_150px]"><input className={inputClass} value={activityTitle} onChange={(e) => setActivityTitle(e.target.value)} placeholder="Registrar ligação, mensagem ou visita" /><select className={inputClass} value={activityType} onChange={(e) => setActivityType(e.target.value)}><option value="note">Nota</option><option value="call">Ligação</option><option value="whatsapp">WhatsApp</option><option value="visit">Visita</option><option value="email">E-mail</option></select></div><textarea className={`${inputClass} min-h-24 resize-y`} value={activityDescription} onChange={(e) => setActivityDescription(e.target.value)} placeholder="O que o cliente falou? Ex.: achou o preço alto, prefere outro bairro, precisa financiar ou quer entrega imediata." /><div className="flex flex-wrap gap-2">{["Preço", "Localização", "Financiamento", "Prazo", "Produto", "Concorrência"].map((signal) => <button key={signal} type="button" onClick={() => setActivityDescription((current) => `${current}${current ? " · " : ""}${signal}: `)} className="rounded-full border border-white/10 bg-white/[.03] px-3 py-1.5 text-[11px] text-slate-300 hover:border-violet-400/30">+ {signal}</button>)}</div><p className="text-[11px] leading-5 text-slate-500">A descrição fica protegida no CRM. A inteligência usa somente categorias anônimas para indicar melhorias de público e criativo.</p><button className="atlas-button-secondary w-full">Salvar acompanhamento e aprendizado</button></form></div>
           </AtlasCard>
 
           <AtlasCard>

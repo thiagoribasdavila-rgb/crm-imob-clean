@@ -113,6 +113,9 @@ const checks = [
   ["descrição livre não é enviada à Meta", followUpIntelligence.includes("decision_signals") && funnelLearning.includes("customData: followUpSignals") && !funnelLearning.includes("customData: input.description")],
   ["perfil comprador exige acompanhamento", pipelineRoute.includes("followUpDescription.length < 10")],
   ["inteligência reconhece motivos imobiliários", followUpIntelligence.includes('"financiamento"') && followUpIntelligence.includes('"localizacao"') && followUpIntelligence.includes('"produto"')],
+  ["acompanhamento alimenta inteligência agregada", followUpIntelligence.includes('source: "crm-followup"') && metaSettings.includes("audienceRecommendations")],
+  ["corretor recebe atalhos de aprendizado", leadIntelligencePage.includes("Financiamento") && leadIntelligencePage.includes("Salvar acompanhamento e aprendizado")],
+  ["painel orienta Advantage Plus", metaSettingsPage.includes("Automação ampla, sinais comerciais precisos") && metaSettingsPage.includes("preferências comerciais entram como sugestões")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
