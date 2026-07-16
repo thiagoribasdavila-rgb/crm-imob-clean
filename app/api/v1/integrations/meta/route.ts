@@ -16,12 +16,13 @@ export async function GET(request: NextRequest) {
     access.supabase.from("meta_lead_sources").select("id,page_id,form_id,name,active,default_owner_id,conversion_sharing_enabled,consent_basis,created_at,updated_at").order("created_at", { ascending: false }),
     access.supabase.from("meta_lead_events").select("id,status,received_at,processed_at,last_error").order("received_at", { ascending: false }).limit(100),
     access.supabase.from("meta_conversion_configs").select("dataset_id,mode,enabled,test_event_code,consent_required").maybeSingle(),
-    access.supabase.from("meta_conversion_events").select("status").order("created_at", { ascending: false }).limit(100),
+    access.supabase.from("meta_conversion_events").select("status,event_name").order("created_at", { ascending: false }).limit(100),
   ]);
   if (error) return NextResponse.json({ error: "Aplique a migração Meta Lead Ads para configurar fontes." }, { status: 503 });
   const summary = (events ?? []).reduce((total, event) => ({ ...total, [event.status]: (total[event.status] || 0) + 1 }), {} as Record<string, number>);
   const conversionSummary = (conversionEvents ?? []).reduce((total, event) => ({ ...total, [event.status]: (total[event.status] || 0) + 1 }), {} as Record<string, number>);
-  return NextResponse.json({ sources: sources ?? [], summary, conversionConfig, conversionSummary, readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role) });
+  const conversionFunnel = (conversionEvents ?? []).reduce((total, event) => ({ ...total, [event.event_name]: (total[event.event_name] || 0) + 1 }), {} as Record<string, number>);
+  return NextResponse.json({ sources: sources ?? [], summary, conversionConfig, conversionSummary, conversionFunnel, readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role) });
 }
 
 export async function POST(request: NextRequest) {

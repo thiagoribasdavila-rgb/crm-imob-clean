@@ -3,6 +3,7 @@ import { requireApiIdentity } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
+import { queueMetaStageConversion } from "@/lib/meta/conversions";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,7 @@ export async function PATCH(request: Request) {
 
     if (error || !data) throw error || new Error("Falha ao mover lead.");
 
+    const occurredAt = new Date().toISOString();
     await Promise.allSettled([
       admin.from("activities").insert({
         organization_id: identity.organizationId,
@@ -83,7 +85,7 @@ export async function PATCH(request: Request) {
         type: "pipeline_stage_changed",
         title: `Etapa alterada para ${stage}`,
         description: `${previousStage} → ${stage}`,
-        occurred_at: new Date().toISOString(),
+        occurred_at: occurredAt,
       }),
       admin.from("atlas_events").insert({
         organization_id: identity.organizationId,
@@ -94,6 +96,7 @@ export async function PATCH(request: Request) {
         payload: { previousStage, stage, userId: identity.userId },
         correlation_id: crypto.randomUUID(),
       }),
+      queueMetaStageConversion({ organizationId: identity.organizationId, leadId, previousStage, stage, occurredAt }),
     ]);
 
     logger.info("pipeline.stage_changed", { leadId, previousStage, stage, organizationId: identity.organizationId });

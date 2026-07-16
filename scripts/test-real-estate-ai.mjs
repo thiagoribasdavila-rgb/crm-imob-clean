@@ -31,6 +31,7 @@ const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
 const metaSettingsPage = readFileSync(resolve(root, "app/(crm)/integrations/meta/page.tsx"), "utf8");
+const pipelineRoute = readFileSync(resolve(root, "app/api/v1/pipeline/route.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -99,6 +100,9 @@ const checks = [
   ["conversão envia identificadores protegidos", outboxWorker.includes("hashMetaValue(lead.email)") && outboxWorker.includes("hashMetaValue(phone)")],
   ["worker entrega conversões de forma resiliente", outboxWorker.includes('event.topic === "meta.conversion.send"') && outboxWorker.includes('status: terminal ? "dead_letter" : "failed"')],
   ["evento inicial de lead é deduplicado", outboxWorker.includes("meta-lead-${metaEvent.external_lead_id}") && metaConversions.includes('ignoreDuplicates: true')],
+  ["avanços do funil alimentam aprendizado", metaConversions.includes('qualificacao: "QualifiedLead"') && metaConversions.includes('ganho: "ConvertedLead"')],
+  ["movimentação do pipeline gera sinal seguro", pipelineRoute.includes("queueMetaStageConversion") && metaConversions.includes("dataSharingConsent !== true")],
+  ["painel mostra funil de sinais", metaSettingsPage.includes("conversionFunnel") && metaSettingsPage.includes("SubmitApplication")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

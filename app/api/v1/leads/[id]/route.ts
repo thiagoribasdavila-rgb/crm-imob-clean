@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { queueMetaStageConversion } from "@/lib/meta/conversions";
 
 export const dynamic = "force-dynamic";
 
@@ -50,13 +51,15 @@ export async function PATCH(request: Request, context: RouteContext) {
     await requireLeadAccess(identity, id);
     const body = await request.json();
     const admin = getSupabaseAdmin();
+    const { data: currentLead } = await admin.from("leads").select("status").eq("id", id).eq("organization_id", identity.organizationId).single();
+    if (!currentLead) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
 
     const allowed = {
       name: body.name ?? null,
       email: body.email || null,
       phone: body.phone || null,
       source: body.source || null,
-      status: body.status || "novo",
+      status: body.status || currentLead.status || "novo",
       temperature: body.temperature || "frio",
       score: Number.isFinite(Number(body.score)) ? Number(body.score) : 0,
       budget_min: body.budget_min === null || body.budget_min === "" ? null : Number(body.budget_min),
@@ -87,6 +90,8 @@ export async function PATCH(request: Request, context: RouteContext) {
       type: "system",
       occurred_at: new Date().toISOString(),
     });
+
+    await Promise.allSettled([queueMetaStageConversion({ organizationId: identity.organizationId, leadId: id, previousStage: currentLead.status || "novo", stage: data.status || "novo", occurredAt: allowed.updated_at })]);
 
     return NextResponse.json({ lead: data });
   } catch (error) {

@@ -20,3 +20,26 @@ export async function queueMetaConversion(input: { organizationId: string; leadI
   await admin.from("integration_outbox").insert({ organization_id: input.organizationId, topic: "meta.conversion.send", aggregate_type: "meta_conversion_event", aggregate_id: event.id, payload: { eventId: input.eventId } });
   return { queued: true, eventId: event.id };
 }
+
+const STAGE_EVENTS: Record<string, string> = {
+  contato: "Contact",
+  qualificacao: "QualifiedLead",
+  visita: "Schedule",
+  proposta: "SubmitApplication",
+  ganho: "ConvertedLead",
+};
+
+export async function queueMetaStageConversion(input: { organizationId: string; leadId: string; previousStage: string; stage: string; occurredAt?: string }) {
+  const normalizedStage = input.stage.trim().toLowerCase();
+  const normalizedPrevious = input.previousStage.trim().toLowerCase();
+  const eventName = STAGE_EVENTS[normalizedStage];
+  if (!eventName || normalizedPrevious === normalizedStage) return { queued: false, reason: "stage_not_eligible" };
+  return queueMetaConversion({
+    organizationId: input.organizationId,
+    leadId: input.leadId,
+    eventName,
+    eventId: `crm-stage-${input.leadId}-${normalizedStage}`,
+    occurredAt: input.occurredAt,
+    customData: { crm_stage: normalizedStage, previous_crm_stage: normalizedPrevious },
+  });
+}
