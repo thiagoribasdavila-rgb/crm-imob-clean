@@ -3,7 +3,6 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
 
 function authorized(request: Request): boolean {
   const secret = process.env.ATLAS_CRON_SECRET;
@@ -47,7 +46,7 @@ function metaField(fields: Array<{ name: string; values?: string[] }> | undefine
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
 
-  const workerId = `vercel-${crypto.randomUUID()}`;
+  const workerId = `hostinger-${crypto.randomUUID()}`;
   const admin = getSupabaseAdmin();
   const { data: events, error } = await admin
     .from("integration_outbox")

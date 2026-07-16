@@ -51,6 +51,9 @@ export async function POST(request: Request) {
       const result = await generateAIText({
       task: "reasoning",
       containsPersonalData: true,
+      organizationId: identity.organizationId,
+      userId: identity.userId,
+      feature: "copilot",
       system: [
         "Você é o Atlas Copilot Imobiliário, especialista no mercado imobiliário brasileiro e na operação de lançamentos.",
         "Seu público inclui corretores, gerentes, superintendentes, diretores e incorporadoras.",

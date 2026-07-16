@@ -27,6 +27,7 @@ const outboxWorker = readFileSync(resolve(root, "app/api/v2/outbox/process/route
 const metaMigration = readFileSync(resolve(root, "supabase/migrations/20260716222643_meta_lead_closed_loop.sql"), "utf8");
 const providerRouter = readFileSync(resolve(root, "lib/ai/provider-router.ts"), "utf8");
 const hostingerDeployment = readFileSync(resolve(root, "docs/HOSTINGER_DEPLOYMENT.md"), "utf8");
+const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -85,6 +86,10 @@ const checks = [
   ["roteamento independente de Vercel", providerRouter.includes("api.openai.com/v1/responses") && providerRouter.includes("api.perplexity.ai")],
   ["pesquisa externa bloqueia PII", providerRouter.includes("containsPersonalData") && providerRouter.includes("Pesquisa externa bloqueada")],
   ["Hostinger possui worker próprio", hostingerDeployment.includes("scripts/run-workers.mjs") && hostingerDeployment.includes("pm2")],
+  ["uso de IA é mensurável", providerRouter.includes("ai_usage_events") && providerRouter.includes("totalTokens")],
+  ["custo preserva isolamento", costConversionMigration.includes("ai_usage_events_select_org") && costConversionMigration.includes("current_organization_id")],
+  ["conversões Meta começam pausadas", costConversionMigration.includes("meta_conversion_configs") && costConversionMigration.includes("enabled boolean not null default false")],
+  ["conversão Meta é idempotente", costConversionMigration.includes("unique (organization_id, event_id)")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

@@ -35,6 +35,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const result = await generateAIText({
         task: "fast",
         containsPersonalData: true,
+        organizationId: identity.organizationId,
+        userId: identity.userId,
+        feature: "lead_message_draft",
         system: [
           "Você redige rascunhos comerciais para corretores de imóveis no Brasil.",
           "Entregue somente o texto final, sem markdown e sem comentários.",

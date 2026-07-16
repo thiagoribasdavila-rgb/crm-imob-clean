@@ -46,6 +46,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const result = await generateAIText({
         task: "fast",
         containsPersonalData: true,
+        organizationId: identity.organizationId,
+        userId: identity.userId,
+        feature: "property_presentation_draft",
         system: [
           "Você cria uma mensagem comparativa de imóveis para um corretor enviar por WhatsApp no Brasil.",
           "Entregue apenas a mensagem final em texto simples, com no máximo 1.200 caracteres.",
