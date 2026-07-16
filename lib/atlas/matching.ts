@@ -3,7 +3,7 @@ import type { AtlasLead, AtlasProperty } from "@/types/atlas";
 export type MatchConfidence = "alta" | "média" | "baixa";
 
 export interface MatchDimension {
-  key: "availability" | "budget" | "location" | "typology" | "profile";
+  key: "availability" | "budget" | "location" | "typology" | "profile" | "feedback";
   label: string;
   score: number;
   maximum: number;
@@ -31,7 +31,7 @@ function dimension(key: MatchDimension["key"], label: string, score: number, max
   return { key, label, score, maximum, detail };
 }
 
-export function matchLeadToProperty(lead: Partial<AtlasLead>, property: AtlasProperty): MatchResult {
+export function matchLeadToProperty(lead: Partial<AtlasLead>, property: AtlasProperty, feedback?: "interested" | "rejected" | null): MatchResult {
   const reasons: string[] = [];
   const risks: string[] = [];
   const dimensions: MatchDimension[] = [];
@@ -103,10 +103,20 @@ export function matchLeadToProperty(lead: Partial<AtlasLead>, property: AtlasPro
   if (!profileScore) risks.push("Cadastre a área útil para uma comparação completa.");
   else knownSignals += 1;
 
+  if (feedback === "interested") {
+    dimensions.push(dimension("feedback", "Retorno do cliente", 5, 5, "Cliente demonstrou interesse nesta opção."));
+    reasons.unshift("Cliente já demonstrou interesse");
+    knownSignals += 1;
+  } else if (feedback === "rejected") {
+    dimensions.push(dimension("feedback", "Retorno do cliente", 0, 5, "Cliente informou que esta opção não aderiu ao perfil."));
+    risks.unshift("Cliente já recusou esta opção; não reapresentar sem novo contexto.");
+    knownSignals += 1;
+  }
+
   const rawScore = dimensions.reduce((total, item) => total + item.score, 0);
-  const score = isBlocked ? 0 : Math.min(rawScore, 100);
+  const score = isBlocked || feedback === "rejected" ? 0 : Math.min(rawScore, 100);
   const confidence: MatchConfidence = knownSignals >= 5 ? "alta" : knownSignals >= 3 ? "média" : "baixa";
-  const recommendation = !isAvailable || score < 45 ? "não recomendar" : score >= 75 ? "priorizar" : "avaliar";
+  const recommendation = !isAvailable || feedback === "rejected" || score < 45 ? "não recomendar" : score >= 75 ? "priorizar" : "avaliar";
 
   return { propertyId: property.id, score, confidence, reasons, risks, dimensions, recommendation };
 }

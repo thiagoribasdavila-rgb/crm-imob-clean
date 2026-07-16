@@ -10,7 +10,8 @@ import type { AtlasLead, AtlasProperty } from "@/types/atlas";
 
 type LeadRow = { id: string; name: string | null; phone: string | null; budget_min: number | null; budget_max: number | null; preferred_regions: string[] | null; bedrooms: number | null; score: number | null };
 type PropertyRow = { id: string; title: string | null; price: number | null; city: string | null; state: string | null; bedrooms: number | null; bathrooms: number | null; parking_spaces: number | null; area: number | null; status: string | null };
-type LeadPayload = { lead: LeadRow; properties: PropertyRow[] };
+type ActivityRow = { id: string; type: string; metadata: { propertyId?: string; propertyIds?: string[]; signal?: "interested" | "rejected" } | null };
+type LeadPayload = { lead: LeadRow; properties: PropertyRow[]; activities: ActivityRow[] };
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -26,6 +27,7 @@ export default function PropertyMatching() {
   const [copied, setCopied] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [registered, setRegistered] = useState(false);
+  const [feedbackSaving, setFeedbackSaving] = useState<string | null>(null);
 
   async function api(path: string) {
     const { data } = await supabase.auth.getSession();
@@ -87,9 +89,43 @@ export default function PropertyMatching() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Falha ao registrar apresentação.");
       setRegistered(true);
+      const refreshed = await api(`/api/v1/leads/${selectedId}`) as LeadPayload;
+      setPayload(refreshed);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao registrar apresentação."); }
     finally { setRegistering(false); }
   }
+
+  async function saveFeedback(propertyId: string, signal: "interested" | "rejected") {
+    setFeedbackSaving(propertyId); setError(null);
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session?.access_token) throw new Error("Sessão expirada. Entre novamente.");
+      const response = await fetch(`/api/v1/leads/${selectedId}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` }, body: JSON.stringify({ action: "property_feedback", propertyId, signal }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Falha ao registrar retorno.");
+      const refreshed = await api(`/api/v1/leads/${selectedId}`) as LeadPayload;
+      setPayload(refreshed);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao registrar retorno."); }
+    finally { setFeedbackSaving(null); }
+  }
+
+  const feedbackByProperty = useMemo(() => {
+    const feedback = new Map<string, "interested" | "rejected">();
+    for (const activity of payload?.activities ?? []) {
+      const propertyId = activity.metadata?.propertyId;
+      const signal = activity.metadata?.signal;
+      if (activity.type === "property_feedback" && propertyId && signal && !feedback.has(propertyId)) feedback.set(propertyId, signal);
+    }
+    return feedback;
+  }, [payload?.activities]);
+
+  const presentedProperties = useMemo(() => {
+    const ids = new Set<string>();
+    for (const activity of payload?.activities ?? []) {
+      if (activity.type === "property_presentation") for (const propertyId of activity.metadata?.propertyIds ?? []) ids.add(propertyId);
+    }
+    return ids;
+  }, [payload?.activities]);
 
   async function copyDraft() {
     if (!draft) return;
@@ -102,9 +138,9 @@ export default function PropertyMatching() {
     const lead: Partial<AtlasLead> = { budgetMin: payload.lead.budget_min, budgetMax: payload.lead.budget_max, bedrooms: payload.lead.bedrooms, preferredRegions: payload.lead.preferred_regions ?? [] };
     return payload.properties.map((property) => {
       const model: AtlasProperty = { id: property.id, title: property.title, price: property.price, city: property.city, state: property.state, bedrooms: property.bedrooms, bathrooms: property.bathrooms, parkingSpaces: property.parking_spaces, area: property.area, status: property.status };
-      return { property, match: matchLeadToProperty(lead, model) };
+      return { property, match: matchLeadToProperty(lead, model, feedbackByProperty.get(property.id)) };
     }).sort((a, b) => b.match.score - a.match.score).slice(0, 12);
-  }, [payload]);
+  }, [feedbackByProperty, payload]);
 
   const whatsappUrl = (() => {
     if (!draft || !payload?.lead.phone) return null;
@@ -140,6 +176,7 @@ export default function PropertyMatching() {
             <div className="mt-5"><AtlasProgress value={match.score} label={`Confiança ${match.confidence}`} /></div>
             <div className="mt-5 flex flex-wrap gap-2 text-xs text-slate-300"><span>{property.price ? money.format(property.price) : "Preço pendente"}</span><span>·</span><span>{property.bedrooms ?? "—"} dorm.</span><span>·</span><span>{property.area ?? "—"} m²</span></div>
             <div className="mt-5 space-y-2">{match.reasons.slice(0, 3).map((reason) => <p key={reason} className="text-xs text-emerald-300">✓ {reason}</p>)}{match.risks.slice(0, 2).map((risk) => <p key={risk} className="text-xs text-amber-300">! {risk}</p>)}</div>
+            {presentedProperties.has(property.id) ? <div className="mt-5 border-t border-white/[.07] pt-4"><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Retorno do cliente</p><div className="grid grid-cols-2 gap-2"><button disabled={feedbackSaving === property.id} onClick={() => void saveFeedback(property.id, "interested")} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${feedbackByProperty.get(property.id) === "interested" ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-200" : "border-white/10 text-slate-300"}`}>Gostou</button><button disabled={feedbackSaving === property.id} onClick={() => void saveFeedback(property.id, "rejected")} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${feedbackByProperty.get(property.id) === "rejected" ? "border-rose-400/40 bg-rose-400/15 text-rose-200" : "border-white/10 text-slate-300"}`}>Não aderiu</button></div></div> : null}
             <button disabled={match.recommendation === "não recomendar"} className="atlas-button-primary mt-5 w-full disabled:cursor-not-allowed disabled:opacity-40" onClick={() => window.location.href = `/leads/${payload.lead.id}`}>Apresentar pelo Lead 360</button>
           </article>)}
         </div>

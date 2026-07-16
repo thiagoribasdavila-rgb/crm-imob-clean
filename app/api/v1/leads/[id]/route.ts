@@ -22,7 +22,7 @@ export async function GET(request: Request, context: RouteContext) {
 
     const [leadResult, activityResult, propertyResult, opportunityResult] = await Promise.all([
       admin.from("leads").select("*").eq("id", id).eq("organization_id", identity.organizationId).single(),
-      admin.from("activities").select("id,title,description,type,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(50),
+      admin.from("activities").select("id,title,description,type,metadata,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
       admin.from("properties").select("id,title,price,city,state,bedrooms,bathrooms,parking_spaces,area,status").eq("organization_id", identity.organizationId).limit(150),
       admin.from("opportunities").select("id,stage,value,probability,expected_close_at,property_id,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
     ]);
@@ -165,6 +165,27 @@ export async function POST(request: Request, context: RouteContext) {
         occurred_at: new Date().toISOString(),
       }).select("id,title,description,type,occurred_at").single();
       if (error) return NextResponse.json({ error: "Não foi possível registrar a apresentação." }, { status: 400 });
+      return NextResponse.json({ activity: data }, { status: 201 });
+    }
+
+    if (body.action === "property_feedback") {
+      const propertyId = typeof body.propertyId === "string" && /^[0-9a-f-]{36}$/i.test(body.propertyId) ? body.propertyId : null;
+      const signal = body.signal === "interested" || body.signal === "rejected" ? body.signal : null;
+      if (!propertyId || !signal) return NextResponse.json({ error: "Retorno de imóvel inválido." }, { status: 400 });
+      const { data: property } = await admin.from("properties").select("id,title").eq("id", propertyId).eq("organization_id", identity.organizationId).maybeSingle();
+      if (!property) return NextResponse.json({ error: "Imóvel fora do portfólio acessível." }, { status: 404 });
+      const interested = signal === "interested";
+      const { data, error } = await admin.from("activities").insert({
+        organization_id: identity.organizationId,
+        lead_id: id,
+        user_id: identity.userId,
+        title: interested ? "Cliente demonstrou interesse" : "Imóvel sem aderência para o cliente",
+        description: `${property.title || "Imóvel"}: ${interested ? "manter entre as prioridades" : "não reapresentar sem mudança de contexto"}.`,
+        type: "property_feedback",
+        metadata: { propertyId, signal, source: "ai_matching_studio" },
+        occurred_at: new Date().toISOString(),
+      }).select("id,title,description,type,metadata,occurred_at").single();
+      if (error) return NextResponse.json({ error: "Não foi possível registrar o retorno." }, { status: 400 });
       return NextResponse.json({ activity: data }, { status: 201 });
     }
 

@@ -16,7 +16,7 @@ type LeadRow = {
   preferred_regions: string[] | null; bedrooms: number | null; purpose: string | null;
   notes: string | null; created_at: string | null;
 };
-type ActivityRow = { id: string; title: string; description: string | null; type: string; occurred_at: string };
+type ActivityRow = { id: string; title: string; description: string | null; type: string; metadata?: { propertyId?: string; signal?: "interested" | "rejected" } | null; occurred_at: string };
 type PropertyRow = { id: string; title: string | null; price: number | null; city: string | null; state: string | null; bedrooms: number | null; bathrooms: number | null; parking_spaces: number | null; area: number | null; status: string | null };
 type OpportunityRow = { id: string; stage: string; value: number | null; probability: number; expected_close_at: string | null; property_id: string | null; created_at: string };
 
@@ -82,14 +82,24 @@ export default function LeadDetailPage() {
 
   useEffect(() => { void load(); }, [leadId]);
 
+  const feedbackByProperty = useMemo(() => {
+    const feedback = new Map<string, "interested" | "rejected">();
+    for (const activity of activities) {
+      const propertyId = activity.metadata?.propertyId;
+      const signal = activity.metadata?.signal;
+      if (activity.type === "property_feedback" && propertyId && signal && !feedback.has(propertyId)) feedback.set(propertyId, signal);
+    }
+    return feedback;
+  }, [activities]);
+
   const matches = useMemo(() => {
     if (!lead) return [];
     const atlasLead: Partial<AtlasLead> = { id: lead.id, budgetMax: lead.budget_max, bedrooms: lead.bedrooms, preferredRegions: lead.preferred_regions ?? [] };
     return properties.map((property) => {
       const atlasProperty: AtlasProperty = { id: property.id, title: property.title, price: property.price, city: property.city, state: property.state, bedrooms: property.bedrooms, bathrooms: property.bathrooms, parkingSpaces: property.parking_spaces, area: property.area, status: property.status };
-      return { property, match: matchLeadToProperty(atlasLead, atlasProperty) };
+      return { property, match: matchLeadToProperty(atlasLead, atlasProperty, feedbackByProperty.get(property.id)) };
     }).filter((item) => item.match.score > 0).sort((a, b) => b.match.score - a.match.score).slice(0, 6);
-  }, [lead, properties]);
+  }, [feedbackByProperty, lead, properties]);
 
   const intelligence = useMemo(() => {
     if (!lead) return { readiness: 0, nextAction: "Carregando contexto...", risk: "unknown", summary: "" };

@@ -18,6 +18,7 @@ const matchingStudio = readFileSync(resolve(root, "app/(crm)/properties/mtching/
 const presentationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/presentation-draft/route.ts"), "utf8");
 const presentationSafety = readFileSync(resolve(root, "lib/ai/property-presentation.ts"), "utf8");
 const leadIntelligenceRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/route.ts"), "utf8");
+const leadIntelligencePage = readFileSync(resolve(root, "app/(crm)/leads/[id]/page.tsx"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -46,7 +47,7 @@ const checks = [
   ["mensagem protegida por escopo", messageDraft.includes("requireLeadAccess")],
   ["mensagem sem promessas comerciais", messageSafety.includes("aprovação de crédito") && messageSafety.includes("Promessa de rentabilidade") && messageDraft.includes("Nunca prometa preço")],
   ["matching imobiliário explicável", matching.includes("dimensions") && matching.includes("confidence") && matching.includes("recommendation")],
-  ["matching bloqueia indisponíveis", matching.includes("BLOCKED_STATUSES") && matching.includes("score = isBlocked ? 0")],
+  ["matching bloqueia indisponíveis", matching.includes("BLOCKED_STATUSES") && matching.includes('score = isBlocked || feedback === "rejected" ? 0')],
   ["matching tolera orçamento com alerta", matching.includes("ratio <= 1.1") && matching.includes("validar flexibilidade")],
   ["studio usa dados sob escopo", matchingStudio.includes("/api/v1/crm/leads") && matchingStudio.includes("/api/v1/leads/${selectedId}")],
   ["apresentação exige aprovação humana", presentationRoute.includes("requiresHumanApproval: true")],
@@ -56,6 +57,10 @@ const checks = [
   ["apresentação tem aprovação humana", matchingStudio.includes("Abrir no WhatsApp") && matchingStudio.includes("Registrar no histórico")],
   ["apresentação alimenta memória comercial", leadIntelligenceRoute.includes("property_presentation") && leadIntelligenceRoute.includes("ai_matching_studio")],
   ["registro valida portfólio", leadIntelligenceRoute.includes("properties?.length !== propertyIds.length") && leadIntelligenceRoute.includes("organization_id")],
+  ["feedback comercial auditável", leadIntelligenceRoute.includes("property_feedback") && leadIntelligenceRoute.includes("Cliente demonstrou interesse")],
+  ["feedback recalibra matching", matching.includes('feedback === "rejected"') && matching.includes("Cliente já demonstrou interesse")],
+  ["feedback exige apresentação", matchingStudio.includes("presentedProperties.has(property.id)")],
+  ["feedback sincroniza Lead 360", leadIntelligencePage.includes("feedbackByProperty") && leadIntelligencePage.includes("property_feedback")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
