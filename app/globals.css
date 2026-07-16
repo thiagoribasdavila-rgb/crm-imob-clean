@@ -545,6 +545,14 @@ input:focus, select:focus, textarea:focus {
 .atlas-task-list strong { overflow: hidden; color: #e8edf5; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .atlas-task-list small { margin-top: 4px; color: #718096; font-size: 9px; }
 .atlas-project-grid { display: grid; gap: 10px; }
+.atlas-commission-grid { display: grid; gap: 10px; }
+.atlas-commission-grid > a { padding: 15px; border: 1px solid rgba(255,255,255,.06); border-radius: 16px; background: rgba(255,255,255,.022); transition: all var(--atlas-transition); }
+.atlas-commission-grid > a:hover { border-color: rgba(52,211,153,.2); background: rgba(52,211,153,.035); transform: translateY(-2px); }
+.atlas-commission-grid > a > div, .atlas-commission-grid > a > p { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.atlas-commission-grid > a > div > span:last-child { color: #607087; font-size: 9px; }
+.atlas-commission-grid strong { display: block; overflow: hidden; margin-top: 14px; color: #edf4fd; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.atlas-commission-grid p { margin: 10px 0 0; color: #607087; font-size: 9px; }
+.atlas-commission-grid b { color: #a7f3d0; font-size: 11px; }
 .atlas-project-grid > a { padding: 16px; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; background: rgba(255, 255, 255, 0.022); transition: all var(--atlas-transition); }
 .atlas-project-grid > a:hover { border-color: rgba(56, 189, 248, 0.22); background: rgba(56, 189, 248, 0.04); transform: translateY(-2px); }
 .atlas-project-grid > a > div, .atlas-project-grid > a > p { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -563,6 +571,7 @@ input:focus, select:focus, textarea:focus {
 @media (min-width: 760px) {
   .atlas-command-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .atlas-project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .atlas-commission-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 1180px) {
   .atlas-command-hero { grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.55fr); align-items: end; }
@@ -573,6 +582,7 @@ input:focus, select:focus, textarea:focus {
 @media (min-width: 1440px) {
   .atlas-command-metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .atlas-project-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .atlas-commission-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 639px) {
   .atlas-command-metrics { grid-template-columns: 1fr; }

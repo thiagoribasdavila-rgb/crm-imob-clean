@@ -232,6 +232,12 @@ export default function DashboardPage() {
     const metaQualified = metaLeads.filter((lead) => ["qualificacao", "visita", "proposta", "contrato"].includes(normalized(lead.status)) || numberValue(lead, "score") >= 60).length;
     const metaLearning = metaLeads.filter((lead) => { const metadata = lead.metadata && typeof lead.metadata === "object" ? lead.metadata as DataRow : {}; const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as DataRow : {}; return meta.dataSharingConsent === true; }).length;
     const metaAwaitingContact = metaLeads.filter((lead) => !dateValue(lead, "last_interaction_at")).length;
+    const wonOpportunities = opportunities.filter((item) => Boolean(dateValue(item, "won_at")) || ["ganho", "won", "fechado"].includes(normalized(item.stage)));
+    const commissionOpen = wonOpportunities.filter((item) => !dateValue(item, "commission_received_at"));
+    const commissionOverdue = commissionOpen.filter((item) => { const due = dateValue(item, "commission_due_at"); return due && due.getTime() < referenceTime; });
+    const commissionDueSoon = commissionOpen.filter((item) => { const due = dateValue(item, "commission_due_at"); if (!due) return false; const remaining = due.getTime() - referenceTime; return remaining >= 0 && remaining <= 7 * 86_400_000; });
+    const commissionReceivable = commissionOpen.reduce((sum, item) => sum + Math.max(0, numberValue(item, "commission_net") - numberValue(item, "commission_received_amount")), 0);
+    const commissionUnconfigured = wonOpportunities.filter((item) => numberValue(item, "commission_net") <= 0).length;
     return {
       active: activeLeads.length,
       hot: hot.length,
@@ -243,8 +249,18 @@ export default function DashboardPage() {
       metaQualified,
       metaLearning,
       metaAwaitingContact,
+      commissionOverdue: commissionOverdue.length,
+      commissionDueSoon: commissionDueSoon.length,
+      commissionReceivable,
+      commissionUnconfigured,
     };
   }, [leads, opportunities, referenceTime, tasks]);
+
+  const commissionQueue = useMemo(() => opportunities
+    .filter((item) => (Boolean(dateValue(item, "won_at")) || ["ganho", "won", "fechado"].includes(normalized(item.stage))) && !dateValue(item, "commission_received_at"))
+    .map((item) => ({ row: item, due: dateValue(item, "commission_due_at"), remaining: Math.max(0, numberValue(item, "commission_net") - numberValue(item, "commission_received_amount")) }))
+    .sort((a, b) => (a.due?.getTime() ?? Number.MAX_SAFE_INTEGER) - (b.due?.getTime() ?? Number.MAX_SAFE_INTEGER))
+    .slice(0, 6), [opportunities]);
 
   const funnel = useMemo(() => {
     const rows = stageOrder.map((stage) => ({
@@ -454,6 +470,9 @@ export default function DashboardPage() {
         <MetricCard label="Leads Meta ativos" value={loading ? "—" : metrics.metaActive} detail={`${metrics.metaQualified} já qualificados`} trend="META" tone="violet" />
         <MetricCard label="Meta com aprendizado" value={loading ? "—" : metrics.metaLearning} detail="Consentimento e sinal habilitados" trend="CAPI" tone="success" />
         <MetricCard label="Meta sem contato" value={loading ? "—" : metrics.metaAwaitingContact} detail="Precisam de primeira resposta" trend="SPEED" tone="warning" />
+        <MetricCard label="Comissões a receber" value={loading ? "—" : brl.format(metrics.commissionReceivable)} detail={`${metrics.commissionDueSoon} vencem em até 7 dias`} trend="CAIXA" tone="success" />
+        <MetricCard label="Comissões atrasadas" value={loading ? "—" : metrics.commissionOverdue} detail="Exigem cobrança da incorporadora" trend="SLA" tone="danger" />
+        <MetricCard label="Vendas sem comissão" value={loading ? "—" : metrics.commissionUnconfigured} detail="Precisam de configuração financeira" trend="AÇÃO" tone="warning" />
       </section>
 
       <section className="atlas-command-grid atlas-command-grid-main">
@@ -585,6 +604,25 @@ export default function DashboardPage() {
             </div>
           )}
         </article>
+      </section>
+
+      <section className="atlas-command-panel">
+        <PageHeader eyebrow="Recebíveis" title="Comissões sob atenção" description="Prioridade financeira por vencimento, saldo e incorporadora." actions={<Link href="/sales">Abrir vendas →</Link>} />
+        {loading ? <LoadingState rows={4} /> : commissionQueue.length === 0 ? (
+          <EmptyState title="Nenhuma comissão pendente" description="Vendas ganhas com valores a receber aparecerão nesta fila." />
+        ) : (
+          <div className="atlas-commission-grid">
+            {commissionQueue.map((item) => {
+              const overdue = item.due ? item.due.getTime() < referenceTime : false;
+              const unconfigured = numberValue(item.row, "commission_net") <= 0;
+              return <Link href="/sales" key={String(item.row.id)}>
+                <div><StatusBadge tone={unconfigured || overdue ? "danger" : "warning"}>{unconfigured ? "CONFIGURAR" : overdue ? "ATRASADA" : "A RECEBER"}</StatusBadge><span>{item.due ? item.due.toLocaleDateString("pt-BR") : "Sem vencimento"}</span></div>
+                <strong>{displayName(item.row, "Venda ganha")}</strong>
+                <p><span>Saldo</span><b>{unconfigured ? "Não informado" : brl.format(item.remaining)}</b></p>
+              </Link>;
+            })}
+          </div>
+        )}
       </section>
 
       <section className="atlas-command-grid atlas-command-grid-bottom">
