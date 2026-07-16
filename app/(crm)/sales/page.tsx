@@ -15,7 +15,9 @@ type Opportunity = {
   commission_sla_days: number | null;
   commission_due_at: string | null;
   commission_received_at: string | null;
-  commission_status: "not_applicable" | "pending" | "overdue" | "received";
+  commission_status: "not_applicable" | "pending" | "due_soon" | "overdue" | "partial" | "received" | "divergent";
+  commission_net: number | null;
+  commission_received_amount: number;
   leads: { name: string | null } | null;
   properties: { title: string | null } | null;
 };
@@ -24,15 +26,17 @@ export default function SalesPage() {
   const [items, setItems] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [referenceTime, setReferenceTime] = useState(0);
 
   useEffect(() => {
     async function load() {
       const { data, error } = await supabase
         .from("opportunities")
-        .select("id,stage,value,probability,expected_close_at,won_at,lost_at,commission_sla_days,commission_due_at,commission_received_at,commission_status,leads(name),properties(title)")
+        .select("id,stage,value,probability,expected_close_at,won_at,lost_at,commission_sla_days,commission_due_at,commission_received_at,commission_status,commission_net,commission_received_amount,leads(name),properties(title)")
         .order("created_at", { ascending: false });
       if (error) setError(error.message);
       setItems((data ?? []) as unknown as Opportunity[]);
+      setReferenceTime(Date.now());
       setLoading(false);
     }
     void load();
@@ -49,6 +53,15 @@ export default function SalesPage() {
   }, [items]);
 
   const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value);
+
+  function liveCommissionStatus(item: Opportunity) {
+    if (item.commission_status === "received" || item.commission_status === "partial" || item.commission_status === "divergent") return item.commission_status;
+    if (!item.commission_due_at) return "pending";
+    const remaining = new Date(item.commission_due_at).getTime() - referenceTime;
+    if (remaining < 0) return "overdue";
+    if (remaining <= 7 * 86_400_000) return "due_soon";
+    return "pending";
+  }
 
   return (
     <div className="space-y-6">
@@ -82,7 +95,7 @@ export default function SalesPage() {
                   <td className="px-4 py-4">{money(Number(item.value ?? 0))}</td>
                   <td className="px-4 py-4">{item.probability}%</td>
                   <td className="px-4 py-4 text-zinc-400">{item.expected_close_at ? new Date(item.expected_close_at).toLocaleDateString("pt-BR") : "—"}</td>
-                  <td className="px-4 py-4">{item.won_at ? <div><span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase ${item.commission_status === "received" ? "bg-emerald-500/10 text-emerald-300" : item.commission_status === "overdue" ? "bg-rose-500/10 text-rose-300" : "bg-amber-500/10 text-amber-300"}`}>{item.commission_status === "received" ? "Recebida" : item.commission_status === "overdue" ? "Atrasada" : "A receber"}</span><p className="mt-2 whitespace-nowrap text-xs text-zinc-500">{item.commission_sla_days ?? 30} dias · {item.commission_due_at ? new Date(item.commission_due_at).toLocaleDateString("pt-BR") : "calculando"}</p></div> : <span className="text-zinc-600">Após a venda</span>}</td>
+                  <td className="px-4 py-4">{item.won_at ? (() => { const status = liveCommissionStatus(item); const label = { received: "Recebida", overdue: "Atrasada", due_soon: "Vence em breve", partial: "Parcial", divergent: "Divergente", pending: "A receber", not_applicable: "A receber" }[status]; return <div><span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase ${status === "received" ? "bg-emerald-500/10 text-emerald-300" : ["overdue", "divergent"].includes(status) ? "bg-rose-500/10 text-rose-300" : "bg-amber-500/10 text-amber-300"}`}>{label}</span><p className="mt-2 whitespace-nowrap text-xs text-zinc-500">{item.commission_sla_days ?? 30} dias · {item.commission_due_at ? new Date(item.commission_due_at).toLocaleDateString("pt-BR") : "calculando"}</p>{item.commission_net ? <p className="mt-1 text-xs text-zinc-500">{money(item.commission_received_amount || 0)} de {money(item.commission_net)}</p> : null}</div>; })() : <span className="text-zinc-600">Após a venda</span>}</td>
                 </tr>
               ))}
               {!items.length && <tr><td colSpan={7} className="px-4 py-10 text-center text-zinc-500">Nenhuma oportunidade registrada.</td></tr>}

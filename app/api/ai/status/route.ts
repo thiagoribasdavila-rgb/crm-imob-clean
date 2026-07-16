@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const gatewayConfigured = providers.openai;
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data: usageRows } = await access.supabase.from("ai_usage_events").select("provider,total_tokens,latency_ms").gte("created_at", since).limit(5_000);
-  const usage = (usageRows ?? []).reduce((total, row) => ({ calls: total.calls + 1, tokens: total.tokens + Number(row.total_tokens || 0), latencyMs: total.latencyMs + Number(row.latency_ms || 0), openaiCalls: total.openaiCalls + (row.provider === "openai" ? 1 : 0), perplexityCalls: total.perplexityCalls + (row.provider === "perplexity" ? 1 : 0) }), { calls: 0, tokens: 0, latencyMs: 0, openaiCalls: 0, perplexityCalls: 0 });
+  const usage = (usageRows ?? []).reduce((total, row) => ({ calls: total.calls + 1, tokens: total.tokens + Number(row.total_tokens || 0), latencyMs: total.latencyMs + Number(row.latency_ms || 0), openaiCalls: total.openaiCalls + (row.provider === "openai" ? 1 : 0), perplexityCalls: total.perplexityCalls + (row.provider === "perplexity" ? 1 : 0), localCalls: total.localCalls + (row.provider === "local" ? 1 : 0) }), { calls: 0, tokens: 0, latencyMs: 0, openaiCalls: 0, perplexityCalls: 0, localCalls: 0 });
   return NextResponse.json({
     status: gatewayConfigured ? "ready" : "degraded",
     gatewayConfigured,

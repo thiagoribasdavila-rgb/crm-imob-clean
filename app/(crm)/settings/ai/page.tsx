@@ -14,7 +14,7 @@ type AIStatus = {
   marketSources: Array<{ id: string; title: string; publisher: string; url: string; verifiedAt: string }>;
   controls: Record<string, boolean>;
   providers: { openai: boolean; perplexity: boolean; localFallback: boolean; host: "hostinger" };
-  usage: { calls: number; tokens: number; averageLatencyMs: number; openaiCalls: number; perplexityCalls: number; periodDays: number };
+  usage: { calls: number; tokens: number; averageLatencyMs: number; openaiCalls: number; perplexityCalls: number; localCalls: number; periodDays: number };
 };
 
 const controlLabels: Record<string, string> = {
@@ -66,7 +66,7 @@ export default function AISettings() {
         <AtlasMetric label="Controles ativos" value={!data ? "—" : `${enabledControls}/${Object.keys(data.controls).length}`} detail="Privacidade, hierarquia e segurança" trend="GUARDRAILS" tone="violet" />
         <AtlasMetric label="Pesquisa atualizada" value={!data ? "—" : data.providers.perplexity ? "Ativa" : "Pendente"} detail="Perplexity sem envio de PII" trend="SONAR" tone={data?.providers.perplexity ? "green" : "amber"} />
       </section>
-      <section className="grid gap-4 sm:grid-cols-3"><AtlasMetric label="Chamadas de IA · 30 dias" value={data?.usage.calls ?? "—"} detail={`${data?.usage.openaiCalls ?? 0} OpenAI · ${data?.usage.perplexityCalls ?? 0} Perplexity`} trend="USO" tone="blue" /><AtlasMetric label="Tokens processados" value={data?.usage.tokens?.toLocaleString("pt-BR") ?? "—"} detail="Base para apuração de custo" trend="CUSTO" tone="amber" /><AtlasMetric label="Latência média" value={data ? `${data.usage.averageLatencyMs} ms` : "—"} detail="Tempo dos provedores externos" trend="SLA" tone="green" /></section>
+      <section className="grid gap-4 sm:grid-cols-3"><AtlasMetric label="Chamadas de IA · 30 dias" value={data?.usage.calls ?? "—"} detail={`${data?.usage.openaiCalls ?? 0} OpenAI · ${data?.usage.perplexityCalls ?? 0} Perplexity · ${data?.usage.localCalls ?? 0} fallback`} trend="USO" tone="blue" /><AtlasMetric label="Tokens processados" value={data?.usage.tokens?.toLocaleString("pt-BR") ?? "—"} detail="Base para apuração de custo" trend="CUSTO" tone="amber" /><AtlasMetric label="Latência média" value={data ? `${data.usage.averageLatencyMs} ms` : "—"} detail="Tempo dos provedores externos" trend="SLA" tone="green" /></section>
 
       <section className="grid gap-6 xl:grid-cols-2">
         <AtlasCard>

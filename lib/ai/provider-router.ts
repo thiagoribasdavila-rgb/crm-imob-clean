@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export type AITask = "fast" | "commercial" | "reasoning" | "research";
 type GenerateInput = { task: AITask; system: string; prompt: string; containsPersonalData?: boolean; timeoutMs?: number; organizationId: string; userId?: string; feature: string };
-export type AIProviderResult = { text: string; provider: "openai" | "perplexity"; model: string; latencyMs: number; citations: string[]; usage: { inputTokens: number; outputTokens: number; totalTokens: number } };
+export type AIProviderResult = { text: string; provider: "openai" | "perplexity" | "local"; model: string; latencyMs: number; citations: string[]; usage: { inputTokens: number; outputTokens: number; totalTokens: number } };
 
 async function recordUsage(input: GenerateInput, result: AIProviderResult) {
   try {
@@ -57,7 +57,19 @@ export function aiProviderReadiness() {
   return { openai: Boolean(process.env.OPENAI_API_KEY), perplexity: Boolean(process.env.PERPLEXITY_API_KEY), localFallback: true, host: "hostinger" as const };
 }
 
+function localFallback(input: GenerateInput): AIProviderResult {
+  const text = input.task === "research"
+    ? "Pesquisa atualizada indisponível neste momento. Não use esta resposta como evidência de mercado; tente novamente quando o provedor de pesquisa estiver disponível."
+    : "A IA generativa está temporariamente indisponível. Preserve os indicadores determinísticos do CRM, não execute ações externas e encaminhe a decisão para revisão humana.";
+  return { text, provider: "local", model: "deterministic-safe-fallback", latencyMs: 0, citations: [], usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } };
+}
+
 export async function generateAIText(input: GenerateInput): Promise<AIProviderResult> {
-  const result = input.task === "research" ? await generatePerplexity(input) : await generateOpenAI(input);
+  let result: AIProviderResult;
+  try {
+    result = input.task === "research" ? await generatePerplexity(input) : await generateOpenAI(input);
+  } catch (error) {
+    result = localFallback(input);
+  }
   return recordUsage(input, result);
 }
