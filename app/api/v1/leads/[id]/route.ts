@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
-import { queueMetaStageConversion } from "@/lib/meta/conversions";
+import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +91,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       occurred_at: new Date().toISOString(),
     });
 
-    await Promise.allSettled([queueMetaStageConversion({ organizationId: identity.organizationId, leadId: id, previousStage: currentLead.status || "novo", stage: data.status || "novo", occurredAt: allowed.updated_at })]);
+    await Promise.allSettled([recordFunnelLearning({ organizationId: identity.organizationId, leadId: id, previousStage: currentLead.status || "novo", stage: data.status || "novo", occurredAt: allowed.updated_at })]);
 
     return NextResponse.json({ lead: data });
   } catch (error) {

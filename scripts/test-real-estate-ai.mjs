@@ -32,6 +32,7 @@ const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
 const metaSettingsPage = readFileSync(resolve(root, "app/(crm)/integrations/meta/page.tsx"), "utf8");
 const pipelineRoute = readFileSync(resolve(root, "app/api/v1/pipeline/route.ts"), "utf8");
+const funnelLearning = readFileSync(resolve(root, "lib/atlas/funnel-learning.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -101,8 +102,12 @@ const checks = [
   ["worker entrega conversões de forma resiliente", outboxWorker.includes('event.topic === "meta.conversion.send"') && outboxWorker.includes('status: terminal ? "dead_letter" : "failed"')],
   ["evento inicial de lead é deduplicado", outboxWorker.includes("meta-lead-${metaEvent.external_lead_id}") && metaConversions.includes('ignoreDuplicates: true')],
   ["avanços do funil alimentam aprendizado", metaConversions.includes('qualificacao: "QualifiedLead"') && metaConversions.includes('ganho: "ConvertedLead"')],
-  ["movimentação do pipeline gera sinal seguro", pipelineRoute.includes("queueMetaStageConversion") && metaConversions.includes("dataSharingConsent !== true")],
+  ["movimentação do pipeline gera sinal seguro", pipelineRoute.includes("recordFunnelLearning") && funnelLearning.includes("queueMetaStageConversion") && metaConversions.includes("dataSharingConsent !== true")],
   ["painel mostra funil de sinais", metaSettingsPage.includes("conversionFunnel") && metaSettingsPage.includes("SubmitApplication")],
+  ["regressão não contamina a Meta", metaConversions.includes("stageRank <= previousRank") && funnelLearning.includes('"backward"')],
+  ["perdas ficam somente no aprendizado interno", funnelLearning.includes('"negative_signal_internal_only"') && funnelLearning.includes('event_type: stage === "perdido" ? "lead_lost"')],
+  ["aprendizado do funil é idempotente", funnelLearning.includes("ignoreDuplicates: true") && funnelLearning.includes("externalEventId")],
+  ["gestão acompanha taxas do funil", metaSettings.includes("convertedRate") && metaSettingsPage.includes("% dos leads")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

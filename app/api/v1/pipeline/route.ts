@@ -3,7 +3,7 @@ import { requireApiIdentity } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
-import { queueMetaStageConversion } from "@/lib/meta/conversions";
+import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +96,7 @@ export async function PATCH(request: Request) {
         payload: { previousStage, stage, userId: identity.userId },
         correlation_id: crypto.randomUUID(),
       }),
-      queueMetaStageConversion({ organizationId: identity.organizationId, leadId, previousStage, stage, occurredAt }),
+      recordFunnelLearning({ organizationId: identity.organizationId, leadId, previousStage, stage, occurredAt }),
     ]);
 
     logger.info("pipeline.stage_changed", { leadId, previousStage, stage, organizationId: identity.organizationId });

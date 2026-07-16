@@ -29,17 +29,22 @@ const STAGE_EVENTS: Record<string, string> = {
   ganho: "ConvertedLead",
 };
 
+const STAGE_RANK: Record<string, number> = { novo: 0, contato: 1, qualificacao: 2, visita: 3, proposta: 4, contrato: 5, ganho: 6 };
+
 export async function queueMetaStageConversion(input: { organizationId: string; leadId: string; previousStage: string; stage: string; occurredAt?: string }) {
   const normalizedStage = input.stage.trim().toLowerCase();
   const normalizedPrevious = input.previousStage.trim().toLowerCase();
   const eventName = STAGE_EVENTS[normalizedStage];
   if (!eventName || normalizedPrevious === normalizedStage) return { queued: false, reason: "stage_not_eligible" };
+  const previousRank = STAGE_RANK[normalizedPrevious];
+  const stageRank = STAGE_RANK[normalizedStage];
+  if (previousRank === undefined || stageRank === undefined || stageRank <= previousRank) return { queued: false, reason: "not_forward_progression" };
   return queueMetaConversion({
     organizationId: input.organizationId,
     leadId: input.leadId,
     eventName,
     eventId: `crm-stage-${input.leadId}-${normalizedStage}`,
     occurredAt: input.occurredAt,
-    customData: { crm_stage: normalizedStage, previous_crm_stage: normalizedPrevious },
+    customData: { crm_stage: normalizedStage, previous_crm_stage: normalizedPrevious, stage_rank: stageRank },
   });
 }
