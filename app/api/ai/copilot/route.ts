@@ -36,11 +36,13 @@ export async function POST(request: Request) {
     }
 
     const { text: answer } = await generateText({
-      model: process.env.ATLAS_AI_MODEL || "openai/gpt-5.5",
+      model: process.env.ATLAS_AI_MODEL || "openai/gpt-5",
       system: [
         "Você é o Atlas Copilot do Atlas AI Real Estate Operating System.",
         "Responda em português do Brasil, de forma objetiva e operacional.",
         "Priorize estabilidade, produção, teste real, segurança e dados do CRM imobiliário.",
+        "Quando receber um snapshot do dashboard, ordene ações por impacto comercial e urgência.",
+        "Separe claramente fatos observados, inferências e recomendações.",
         "Não invente dados ausentes; quando faltar contexto, diga qual dado precisa ser validado.",
         "Nunca solicite ou revele secrets, tokens, cookies, service role keys ou senhas.",
       ].join("\n"),

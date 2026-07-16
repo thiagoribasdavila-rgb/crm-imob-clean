@@ -20,6 +20,11 @@ type Task = {
   due_at: string | null;
 };
 
+type OpenCopilotDetail = {
+  prompt?: string;
+  context?: Record<string, unknown>;
+};
+
 function confidenceLabel(value: number | null) {
   const normalized = Number(value ?? 0);
   const percentage = normalized <= 1 ? normalized * 100 : normalized;
@@ -35,9 +40,15 @@ export default function AtlasCopilotDock() {
   const [copilotAnswer, setCopilotAnswer] = useState("");
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [copilotError, setCopilotError] = useState("");
+  const [externalContext, setExternalContext] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
-    const handleOpen = () => setOpen(true);
+    const handleOpen = (event: Event) => {
+      const detail = (event as CustomEvent<OpenCopilotDetail>).detail;
+      if (detail?.prompt) setPrompt(detail.prompt);
+      if (detail?.context) setExternalContext(detail.context);
+      setOpen(true);
+    };
     const handleShortcut = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j") {
         event.preventDefault();
@@ -114,6 +125,7 @@ export default function AtlasCopilotDock() {
         body: JSON.stringify({
           prompt: question,
           context: {
+            dashboard: externalContext,
             nextAction,
             insights: insights.map((insight) => ({
               title: insight.title,
@@ -187,10 +199,10 @@ export default function AtlasCopilotDock() {
 
             <section className="mt-6 rounded-3xl border border-white/[0.08] bg-white/[0.025] p-5">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-white">Perguntar ao ChatGPT</h3>
+                <h3 className="text-sm font-semibold text-white">Perguntar ao Atlas Copilot</h3>
                 <span className="text-[10px] font-bold uppercase tracking-[.18em] text-slate-500">AI Gateway</span>
               </div>
-              <p className="mt-2 text-xs leading-5 text-slate-500">Use para transformar contexto do CRM em próximos passos, riscos e mensagens operacionais.</p>
+              <p className="mt-2 text-xs leading-5 text-slate-500">Use o contexto seguro do CRM para transformar indicadores em próximos passos, riscos e mensagens operacionais.</p>
               <textarea
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
