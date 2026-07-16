@@ -35,6 +35,9 @@ const pipelineRoute = readFileSync(resolve(root, "app/api/v1/pipeline/route.ts")
 const funnelLearning = readFileSync(resolve(root, "lib/atlas/funnel-learning.ts"), "utf8");
 const followUpIntelligence = readFileSync(resolve(root, "lib/atlas/follow-up-intelligence.ts"), "utf8");
 const campaignIntelligence = readFileSync(resolve(root, "lib/meta/campaign-intelligence.ts"), "utf8");
+const metaDailyReport = readFileSync(resolve(root, "app/api/v2/meta/daily-report/route.ts"), "utf8");
+const dailyReportMigration = readFileSync(resolve(root, "supabase/migrations/20260716235900_meta_director_daily_reports.sql"), "utf8");
+const approvalRoute = readFileSync(resolve(root, "app/api/v2/approvals/[id]/route.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -120,6 +123,11 @@ const checks = [
   ["campanhas são avaliadas pelo pós-lead", campaignIntelligence.includes("qualityRate") && campaignIntelligence.includes("conversionRate") && metaSettings.includes("campaignIntelligence")],
   ["escala exige amostra mínima", campaignIntelligence.includes("total >= 50") && campaignIntelligence.includes("total >= 20") && campaignIntelligence.includes("Coletar mais dados")],
   ["cockpit compara campanhas sem PII", metaSettingsPage.includes("Qualidade real por campanha") && !campaignIntelligence.includes("email") && !campaignIntelligence.includes("phone")],
+  ["relatório diário roda na Hostinger", metaDailyReport.includes("windowHours: 24") && hostingerDeployment.includes("run-daily-meta-report.mjs")],
+  ["relatório diário é idempotente", dailyReportMigration.includes("unique (organization_id, report_date)") && metaDailyReport.includes('onConflict: "organization_id,report_date"')],
+  ["relatório decisório é exclusivo do diretor", dailyReportMigration.includes("meta_daily_reports_director_select") && dailyReportMigration.includes("commercial_role")],
+  ["campanhas não mudam automaticamente", metaDailyReport.includes("automaticCampaignChanges: false") && metaSettingsPage.includes("Somente o diretor")],
+  ["aprovação Meta exige diretoria", approvalRoute.includes("Decisões de campanha pertencem exclusivamente ao diretor")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

@@ -19,7 +19,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const admin = getSupabaseAdmin();
     const { data: profile } = await admin
       .from("profiles")
-      .select("role")
+      .select("role,commercial_role")
       .eq("id", identity.userId)
       .eq("organization_id", identity.organizationId)
       .single();
@@ -30,13 +30,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const { data: approval, error } = await admin
       .from("approval_requests")
-      .select("id,status,entity_type,entity_id,organization_id")
+      .select("id,status,request_type,entity_type,entity_id,organization_id")
       .eq("id", id)
       .eq("organization_id", identity.organizationId)
       .single();
 
     if (error || !approval) return NextResponse.json({ error: "Aprovação não encontrada." }, { status: 404 });
     if (approval.status !== "pending") return NextResponse.json({ error: "Aprovação já decidida." }, { status: 409 });
+    if (["meta_campaign_optimization", "meta_audience_change", "meta_budget_change", "meta_creative_change"].includes(approval.request_type) && profile.commercial_role !== "director" && profile.role !== "admin") return NextResponse.json({ error: "Decisões de campanha pertencem exclusivamente ao diretor." }, { status: 403 });
 
     const decidedAt = new Date().toISOString();
     const { error: updateError } = await admin

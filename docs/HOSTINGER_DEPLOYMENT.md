@@ -22,6 +22,14 @@ Configure um cron por minuto com o mesmo ambiente da aplicação:
 
 Teste manualmente com `npm run worker:run`. Mantenha a saída durante a homologação para comprovar execução e falhas.
 
+Configure também o relatório diário da diretoria às 08:00 no horário do servidor:
+
+```text
+0 8 * * * cd /caminho/atlas-v3 && /caminho/node scripts/run-daily-meta-report.mjs
+```
+
+Teste com `npm run reports:meta-daily`. O processo é idempotente: gera um relatório por organização e dia.
+
 ## Variáveis mínimas
 
 - `ATLAS_HOSTING_PROVIDER=hostinger`

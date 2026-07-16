@@ -21,6 +21,7 @@
     "routes:real": "node --env-file=.env.local scripts/test-real-routes.mjs",
     "preflight:production": "node scripts/preflight-production.mjs",
     "worker:run": "node scripts/run-workers.mjs",
+    "reports:meta-daily": "node scripts/run-daily-meta-report.mjs",
     "test:real": "npm run release:check && npm run smoke:all && npm run routes:real && npm run preflight:production",
     "prisma:generate": "prisma generate",
     "doctor": "node scripts/doctor.mjs",
