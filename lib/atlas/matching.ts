@@ -1,41 +1,112 @@
 import type { AtlasLead, AtlasProperty } from "@/types/atlas";
 
+export type MatchConfidence = "alta" | "média" | "baixa";
+
+export interface MatchDimension {
+  key: "availability" | "budget" | "location" | "typology" | "profile";
+  label: string;
+  score: number;
+  maximum: number;
+  detail: string;
+}
+
 export interface MatchResult {
   propertyId: string;
   score: number;
+  confidence: MatchConfidence;
   reasons: string[];
+  risks: string[];
+  dimensions: MatchDimension[];
+  recommendation: "priorizar" | "avaliar" | "não recomendar";
+}
+
+const AVAILABLE_STATUSES = new Set(["ativo", "available", "disponivel", "disponível", "livre", "em estoque"]);
+const BLOCKED_STATUSES = new Set(["vendido", "sold", "reservado", "reserved", "indisponivel", "indisponível", "inativo"]);
+
+function normalize(value: string | null | undefined) {
+  return (value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+function dimension(key: MatchDimension["key"], label: string, score: number, maximum: number, detail: string): MatchDimension {
+  return { key, label, score, maximum, detail };
 }
 
 export function matchLeadToProperty(lead: Partial<AtlasLead>, property: AtlasProperty): MatchResult {
-  let score = 0;
   const reasons: string[] = [];
+  const risks: string[] = [];
+  const dimensions: MatchDimension[] = [];
+  let knownSignals = 0;
+
+  const rawStatus = normalize(property.status);
+  const isAvailable = AVAILABLE_STATUSES.has(rawStatus);
+  const isBlocked = BLOCKED_STATUSES.has(rawStatus);
+  if (isAvailable) {
+    dimensions.push(dimension("availability", "Disponibilidade", 15, 15, "Unidade indicada como disponível no estoque."));
+    reasons.push("Unidade indicada como disponível");
+    knownSignals += 1;
+  } else {
+    dimensions.push(dimension("availability", "Disponibilidade", 0, 15, isBlocked ? "Unidade indisponível no estoque." : "Status precisa ser confirmado."));
+    risks.push(isBlocked ? "Unidade indisponível; não apresentar ao cliente." : "Confirme a disponibilidade antes de apresentar.");
+    if (property.status) knownSignals += 1;
+  }
 
   const maxBudget = lead.budgetMax ?? null;
-  if (maxBudget && property.price && property.price <= maxBudget) {
-    score += 35;
-    reasons.push("Dentro do orçamento máximo");
+  const minBudget = lead.budgetMin ?? null;
+  if (maxBudget && property.price) {
+    const ratio = property.price / maxBudget;
+    if (ratio <= 1) {
+      const budgetScore = minBudget && property.price < minBudget * 0.7 ? 25 : 35;
+      dimensions.push(dimension("budget", "Orçamento", budgetScore, 35, `Preço dentro do teto de ${maxBudget.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}.`));
+      reasons.push("Preço dentro do orçamento informado");
+    } else if (ratio <= 1.1) {
+      dimensions.push(dimension("budget", "Orçamento", 18, 35, `${Math.round((ratio - 1) * 100)}% acima do teto informado.`));
+      risks.push("Preço até 10% acima do orçamento; validar flexibilidade.");
+    } else {
+      dimensions.push(dimension("budget", "Orçamento", 0, 35, `${Math.round((ratio - 1) * 100)}% acima do teto informado.`));
+      risks.push("Preço incompatível com o orçamento atual.");
+    }
+    knownSignals += 1;
+  } else {
+    dimensions.push(dimension("budget", "Orçamento", 8, 35, "Preço ou orçamento ainda não informado."));
+    risks.push("Complete preço e orçamento para validar a capacidade de compra.");
   }
 
-  if (lead.bedrooms && property.bedrooms && property.bedrooms >= lead.bedrooms) {
-    score += 20;
-    reasons.push("Quantidade de dormitórios compatível");
+  const regions = (lead.preferredRegions ?? []).map(normalize).filter(Boolean);
+  const propertyLocation = normalize([property.city, property.state].filter(Boolean).join(" "));
+  if (regions.length && propertyLocation) {
+    const propertyCity = normalize(property.city);
+    const matchedRegion = regions.find((region) => propertyLocation.includes(region) || (propertyCity && region.includes(propertyCity)));
+    const locationScore = matchedRegion ? 25 : 0;
+    dimensions.push(dimension("location", "Localização", locationScore, 25, matchedRegion ? "Região alinhada à preferência do cliente." : "Fora das regiões preferidas."));
+    if (matchedRegion) reasons.push("Localização alinhada à preferência");
+    else risks.push("Localização fora das preferências registradas.");
+    knownSignals += 1;
+  } else {
+    dimensions.push(dimension("location", "Localização", 8, 25, "Preferência ou endereço incompleto."));
+    risks.push("Registre a região desejada para melhorar o matching.");
   }
 
-  const regions = lead.preferredRegions ?? [];
-  if (property.city && regions.some((region) => property.city?.toLowerCase().includes(region.toLowerCase()))) {
-    score += 25;
-    reasons.push("Localização compatível");
+  if (lead.bedrooms && property.bedrooms) {
+    const difference = property.bedrooms - lead.bedrooms;
+    const typologyScore = difference === 0 ? 20 : difference === 1 ? 14 : difference > 1 ? 8 : 0;
+    dimensions.push(dimension("typology", "Tipologia", typologyScore, 20, difference === 0 ? "Dormitórios exatamente como solicitado." : difference > 0 ? "Possui mais dormitórios que o solicitado." : "Possui menos dormitórios que o solicitado."));
+    if (difference === 0) reasons.push("Tipologia exata para o perfil");
+    else if (difference > 0) reasons.push("Quantidade de dormitórios atende ao perfil");
+    else risks.push("Quantidade de dormitórios abaixo do solicitado.");
+    knownSignals += 1;
+  } else {
+    dimensions.push(dimension("typology", "Tipologia", 5, 20, "Dormitórios não informados em um dos registros."));
   }
 
-  if (property.status === "ativo" || property.status === "available") {
-    score += 10;
-    reasons.push("Imóvel disponível");
-  }
+  const profileScore = property.area && property.area > 0 ? 5 : 0;
+  dimensions.push(dimension("profile", "Qualidade dos dados", profileScore, 5, profileScore ? "Área útil disponível para comparação." : "Área útil não informada."));
+  if (!profileScore) risks.push("Cadastre a área útil para uma comparação completa.");
+  else knownSignals += 1;
 
-  if (property.area && property.area >= 30) {
-    score += 10;
-    reasons.push("Área útil relevante");
-  }
+  const rawScore = dimensions.reduce((total, item) => total + item.score, 0);
+  const score = isBlocked ? 0 : Math.min(rawScore, 100);
+  const confidence: MatchConfidence = knownSignals >= 5 ? "alta" : knownSignals >= 3 ? "média" : "baixa";
+  const recommendation = !isAvailable || score < 45 ? "não recomendar" : score >= 75 ? "priorizar" : "avaliar";
 
-  return { propertyId: property.id, score: Math.min(score, 100), reasons };
+  return { propertyId: property.id, score, confidence, reasons, risks, dimensions, recommendation };
 }

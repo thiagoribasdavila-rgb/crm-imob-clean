@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -43,8 +44,9 @@ export default function PropertiesPage() {
           <h1 className="mt-2 text-3xl font-black">Imóveis</h1>
           <p className="mt-2 text-zinc-400">Estoque conectado ao matching inteligente do Atlas.</p>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-300">
-          {items.length} imóveis no portfólio
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/properties/mtching" className="atlas-button-primary">✦ Abrir Matching IA</Link>
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-300">{items.length} imóveis no portfólio</div>
         </div>
       </div>
 
