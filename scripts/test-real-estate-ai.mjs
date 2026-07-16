@@ -11,6 +11,8 @@ const statusRoute = readFileSync(resolve(root, "app/api/ai/status/route.ts"), "u
 const qualification = readFileSync(resolve(root, "lib/ai/lead-qualification.ts"), "utf8");
 const qualificationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/qualify/route.ts"), "utf8");
 const briefingRoute = readFileSync(resolve(root, "app/api/ai/briefing/route.ts"), "utf8");
+const messageDraft = readFileSync(resolve(root, "app/api/v1/leads/[id]/message-draft/route.ts"), "utf8");
+const messageSafety = readFileSync(resolve(root, "lib/ai/real-estate-message.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -35,6 +37,9 @@ const checks = [
   ["qualificação auditável", qualificationRoute.includes("ai_qualification") && qualificationRoute.includes("activities")],
   ["briefing hierárquico", briefingRoute.includes("requireAccessContext") && briefingRoute.includes("buildRealEstateContext")],
   ["fila de decisão", briefingRoute.includes("overdue-actions") && briefingRoute.includes("expired-materials") && briefingRoute.includes("low-absorption")],
+  ["mensagem exige aprovação humana", messageDraft.includes("requiresHumanApproval: true")],
+  ["mensagem protegida por escopo", messageDraft.includes("requireLeadAccess")],
+  ["mensagem sem promessas comerciais", messageSafety.includes("aprovação de crédito") && messageSafety.includes("Promessa de rentabilidade") && messageDraft.includes("Nunca prometa preço")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

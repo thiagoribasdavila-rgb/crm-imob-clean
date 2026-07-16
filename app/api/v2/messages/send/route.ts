@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiIdentity } from "@/lib/security/api-auth";
+import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const admin = getSupabaseAdmin();
     const { data: conversation, error: conversationError } = await admin
       .from("conversations")
-      .select("id,organization_id")
+      .select("id,organization_id,lead_id")
       .eq("id", payload.conversationId)
       .eq("organization_id", identity.organizationId)
       .single();
@@ -48,6 +48,7 @@ export async function POST(request: Request) {
     if (conversationError || !conversation) {
       return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 });
     }
+    if (conversation.lead_id) await requireLeadAccess(identity, conversation.lead_id);
 
     const requiresApproval = payload.channel !== "email";
     const { data: message, error: messageError } = await admin
