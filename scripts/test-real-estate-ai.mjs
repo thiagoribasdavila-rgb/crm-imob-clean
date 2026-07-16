@@ -19,6 +19,9 @@ const presentationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/pres
 const presentationSafety = readFileSync(resolve(root, "lib/ai/property-presentation.ts"), "utf8");
 const leadIntelligenceRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/route.ts"), "utf8");
 const leadIntelligencePage = readFileSync(resolve(root, "app/(crm)/leads/[id]/page.tsx"), "utf8");
+const leadsPortfolioPage = readFileSync(resolve(root, "app/(crm)/leads/page.tsx"), "utf8");
+const leadsPortfolioRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/route.ts"), "utf8");
+const crmDashboard = readFileSync(resolve(root, "app/(crm)/dashboard/page.tsx"), "utf8");
 const evolutionPhases = readFileSync(resolve(root, "lib/atlas/evolution-phases.ts"), "utf8");
 const homologationRoute = readFileSync(resolve(root, "app/api/v1/homologation/route.ts"), "utf8");
 const homologationMigration = readFileSync(resolve(root, "supabase/migrations/20260716221959_homologation_checklist.sql"), "utf8");
@@ -84,7 +87,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('progress: 92') && evolutionPhases.includes("42 controles calibrados")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('progress: 96') && evolutionPhases.includes("100 controles calibrados")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -138,6 +141,10 @@ const checks = [
   ["ranking incorpora eficiência real", campaignIntelligence.includes("costPerQualifiedLead") && campaignIntelligence.includes("ctr") && campaignIntelligence.includes("spend")],
   ["relatórios financeiros cobrem três períodos", metaDailyReport.includes("fetchMetaCampaignInsights(1)") && metaDailyReport.includes("fetchMetaCampaignInsights(7)") && metaDailyReport.includes("fetchMetaCampaignInsights(30)")],
   ["painel diferencia ausência de custo", metaSettingsPage.includes("Insights financeiros ainda não conectados")],
+  ["carteira identifica origem Meta", leadIntelligencePage.includes("Meta campaign context") && leadIntelligencePage.includes("dataSharingConsent")],
+  ["lista permite foco em leads Meta", leadsPortfolioPage.includes('value="Meta Lead Ads"') && leadsPortfolioPage.includes("META · APRENDENDO")],
+  ["API entrega contexto Meta sob escopo", leadsPortfolioRoute.includes("metadata") && leadsPortfolioRoute.includes("requireAccessContext")],
+  ["dashboard conecta CRM e Meta", crmDashboard.includes("Leads Meta ativos") && crmDashboard.includes("Meta com aprendizado")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

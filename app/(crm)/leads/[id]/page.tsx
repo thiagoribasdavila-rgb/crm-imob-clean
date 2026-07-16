@@ -15,6 +15,7 @@ type LeadRow = {
   score: number | null; budget_min: number | null; budget_max: number | null;
   preferred_regions: string[] | null; bedrooms: number | null; purpose: string | null;
   notes: string | null; created_at: string | null;
+  metadata: { meta?: { campaignId?: string; adsetId?: string; adId?: string; formId?: string; sourceName?: string; dataSharingConsent?: boolean } } | null;
 };
 type ActivityRow = { id: string; title: string; description: string | null; type: string; metadata?: { propertyId?: string; signal?: "interested" | "rejected" } | null; occurred_at: string };
 type PropertyRow = { id: string; title: string | null; price: number | null; city: string | null; state: string | null; bedrooms: number | null; bathrooms: number | null; parking_spaces: number | null; area: number | null; status: string | null };
@@ -201,6 +202,8 @@ export default function LeadDetailPage() {
       </section>
 
       {message ? <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 p-4 text-sm text-sky-100">{message}</div> : null}
+
+      {lead.source === "Meta Lead Ads" ? <AtlasCard><AtlasCardHeader eyebrow="Meta campaign context" title="Origem e aprendizado do lead" description="Informações de campanha preservadas automaticamente para atribuição, qualidade e otimização posterior." /><div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-5">{[["Origem", lead.metadata?.meta?.sourceName || "Meta Lead Ads"], ["Campanha", lead.metadata?.meta?.campaignId || "Não identificada"], ["Conjunto", lead.metadata?.meta?.adsetId || "Não identificado"], ["Anúncio", lead.metadata?.meta?.adId || "Não identificado"], ["Aprendizado", lead.metadata?.meta?.dataSharingConsent ? "Autorizado" : "Sem autorização"]].map(([label, value]) => <div key={label} className="rounded-2xl border border-white/[.06] bg-white/[.025] p-4"><span className="text-[10px] uppercase tracking-wider text-slate-500">{label}</span><strong className="mt-2 block break-all text-sm text-white">{value}</strong></div>)}</div><div className="border-t border-white/[.06] px-5 py-4 text-xs leading-5 text-slate-400 sm:px-6">O corretor só precisa manter o estágio e o acompanhamento atualizados. O CRM transforma essas ações em sinais estruturados; textos livres e dados pessoais não são exibidos nos relatórios de campanha.</div></AtlasCard> : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <AtlasMetric label="Score Atlas" value={lead.score ?? 0} detail="Qualificação atual" trend="AI" tone="blue" />

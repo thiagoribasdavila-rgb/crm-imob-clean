@@ -227,6 +227,9 @@ export default function DashboardPage() {
       (sum, item) => sum + numberValue(item, "budget_max", "budget"),
       0,
     );
+    const metaLeads = activeLeads.filter((lead) => stringValue(lead, "source") === "Meta Lead Ads");
+    const metaQualified = metaLeads.filter((lead) => ["qualificacao", "visita", "proposta", "contrato"].includes(normalized(lead.status)) || numberValue(lead, "score") >= 60).length;
+    const metaLearning = metaLeads.filter((lead) => { const metadata = lead.metadata && typeof lead.metadata === "object" ? lead.metadata as DataRow : {}; const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as DataRow : {}; return meta.dataSharingConsent === true; }).length;
     return {
       active: activeLeads.length,
       hot: hot.length,
@@ -234,6 +237,9 @@ export default function DashboardPage() {
       overdue: overdue.length,
       visits: visits.length,
       pipeline: pipeline || leadPipeline,
+      metaActive: metaLeads.length,
+      metaQualified,
+      metaLearning,
     };
   }, [leads, opportunities, referenceTime, tasks]);
 
@@ -433,6 +439,8 @@ export default function DashboardPage() {
         <MetricCard label="Tarefas atrasadas" value={loading ? "—" : metrics.overdue} detail="Follow-ups fora do prazo" trend="SLA" tone="danger" />
         <MetricCard label="Visitas" value={loading ? "—" : metrics.visits} detail="Visitas pendentes no período" trend="AGENDA" tone="success" />
         <MetricCard label="Pipeline estimado" value={loading ? "—" : brl.format(metrics.pipeline)} detail="Potencial comercial aberto" trend="VGV" tone="violet" />
+        <MetricCard label="Leads Meta ativos" value={loading ? "—" : metrics.metaActive} detail={`${metrics.metaQualified} já qualificados`} trend="META" tone="violet" />
+        <MetricCard label="Meta com aprendizado" value={loading ? "—" : metrics.metaLearning} detail="Consentimento e sinal habilitados" trend="CAPI" tone="success" />
       </section>
 
       <section className="atlas-command-grid atlas-command-grid-main">

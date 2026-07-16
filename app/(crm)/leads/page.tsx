@@ -26,6 +26,7 @@ type Lead = {
   next_action_at: string | null;
   created_at: string | null;
   updated_at: string | null;
+  metadata: { meta?: { campaignId?: string; formId?: string; dataSharingConsent?: boolean; sourceName?: string } } | null;
 };
 
 type Profile = {
@@ -125,6 +126,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [source, setSource] = useState("");
   const [project, setProject] = useState("");
   const [broker, setBroker] = useState("");
   const [score, setScore] = useState("");
@@ -205,6 +207,7 @@ export default function LeadsPage() {
         });
         if (debouncedSearch) params.set("q", debouncedSearch);
         if (status) params.set("status", status);
+        if (source) params.set("source", source);
         if (broker) params.set("assigned_to", broker);
         if (project) {
           if (campaignIds.length) params.set("campaign_ids", campaignIds.join(","));
@@ -249,7 +252,7 @@ export default function LeadsPage() {
 
     void loadLeads();
     return () => controller.abort();
-  }, [broker, campaignIds, debouncedSearch, direction, page, project, reloadKey, score, sort, status]);
+  }, [broker, campaignIds, debouncedSearch, direction, page, project, reloadKey, score, sort, source, status]);
 
   const profileMap = useMemo(
     () => new Map(profiles.map((profile) => [profile.id, profile.full_name || "Usuário Atlas"])),
@@ -280,7 +283,7 @@ export default function LeadsPage() {
     }).length,
   }), [items, referenceTime]);
 
-  const hasFilters = Boolean(search || status || project || broker || score);
+  const hasFilters = Boolean(search || status || source || project || broker || score);
   const canTransfer = ["admin", "director", "superintendent", "manager"].includes(currentRole);
   const transferTargets = profiles.filter((profile) => {
     const role = profile.commercial_role || profile.role;
@@ -316,6 +319,7 @@ export default function LeadsPage() {
     setSearch("");
     setDebouncedSearch("");
     setStatus("");
+    setSource("");
     setProject("");
     setBroker("");
     setScore("");
@@ -384,6 +388,10 @@ export default function LeadsPage() {
         <select value={status} onChange={(event) => updateFilter(setStatus, event.target.value)} aria-label="Filtrar por status">
           {statuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
+        <select value={source} onChange={(event) => updateFilter(setSource, event.target.value)} aria-label="Filtrar por origem">
+          <option value="">Todas as origens</option>
+          <option value="Meta Lead Ads">Meta Lead Ads</option>
+        </select>
         {currentRole !== "broker" ? <select value={broker} onChange={(event) => updateFilter(setBroker, event.target.value)} aria-label="Filtrar por corretor" disabled={referencesLoading}>
           <option value="">Todos os corretores</option>
           <option value="unassigned">Sem responsável</option>
@@ -449,7 +457,7 @@ export default function LeadsPage() {
                         <tr key={lead.id}>
                           {canTransfer ? <td><input type="checkbox" aria-label={`Selecionar ${lead.name || "lead"}`} checked={selected.has(lead.id)} onChange={(event) => setSelected((current) => { const next = new Set(current); if (event.target.checked) next.add(lead.id); else next.delete(lead.id); return next; })} /></td> : null}
                           <td><Link href={`/leads/${lead.id}`}><span className="atlas-lead-avatar">{(lead.name || "L").slice(0, 2).toUpperCase()}</span><span><strong>{lead.name || "Lead sem nome"}</strong><small>{lead.email || lead.phone || "Contato não informado"}</small></span></Link></td>
-                          <td><strong>{projectName(lead)}</strong><small>{lead.source || "Origem não informada"}</small></td>
+                          <td><strong>{projectName(lead)}</strong><small>{lead.source || "Origem não informada"}</small>{lead.source === "Meta Lead Ads" ? <span className="mt-1 flex flex-wrap gap-1"><StatusBadge tone="info">META</StatusBadge><StatusBadge tone={lead.metadata?.meta?.dataSharingConsent ? "success" : "warning"}>{lead.metadata?.meta?.dataSharingConsent ? "APRENDENDO" : "SEM SINAL"}</StatusBadge>{lead.metadata?.meta?.campaignId ? <small>Campanha {lead.metadata.meta.campaignId}</small> : <small>Campanha não identificada</small>}</span> : null}</td>
                           <td><StatusBadge tone={statusTone(lead.status)}>{lead.status || "novo"}</StatusBadge></td>
                           <td><span className="atlas-score-cell" data-tone={scoreTone(lead.score)}>{lead.score ?? 0}</span></td>
                           <td>{lead.assigned_to ? <span className="atlas-broker-name">{profileMap.get(lead.assigned_to) || "Responsável vinculado"}</span> : <StatusBadge tone="warning">Sem responsável</StatusBadge>}</td>
@@ -468,7 +476,7 @@ export default function LeadsPage() {
                   return (
                     <Link href={`/leads/${lead.id}`} key={lead.id}>
                       <div className="atlas-mobile-lead-head"><span className="atlas-lead-avatar">{(lead.name || "L").slice(0, 2).toUpperCase()}</span><span><strong>{lead.name || "Lead sem nome"}</strong><small>{projectName(lead)}</small></span><span className="atlas-score-cell" data-tone={scoreTone(lead.score)}>{lead.score ?? 0}</span></div>
-                      <div className="atlas-mobile-lead-meta"><StatusBadge tone={statusTone(lead.status)}>{lead.status || "novo"}</StatusBadge>{lead.assigned_to ? <span>{profileMap.get(lead.assigned_to) || "Responsável vinculado"}</span> : <StatusBadge tone="warning">Sem responsável</StatusBadge>}</div>
+                      <div className="atlas-mobile-lead-meta"><StatusBadge tone={statusTone(lead.status)}>{lead.status || "novo"}</StatusBadge>{lead.source === "Meta Lead Ads" ? <StatusBadge tone={lead.metadata?.meta?.dataSharingConsent ? "success" : "warning"}>{lead.metadata?.meta?.dataSharingConsent ? "META · APRENDENDO" : "META · SEM SINAL"}</StatusBadge> : null}{lead.assigned_to ? <span>{profileMap.get(lead.assigned_to) || "Responsável vinculado"}</span> : <StatusBadge tone="warning">Sem responsável</StatusBadge>}</div>
                       <div className="atlas-mobile-lead-footer"><span>{formatDate(lead.last_interaction_at || lead.updated_at)}</span><span className="atlas-next-action" data-overdue={due.overdue ? "true" : "false"}>{due.label}</span></div>
                     </Link>
                   );
