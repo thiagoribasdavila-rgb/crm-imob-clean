@@ -30,7 +30,7 @@ export async function GET() {
     status: ready ? "ready" : "not_ready",
     service: "atlas-ai-os",
     version: process.env.npm_package_version || "unknown",
-    environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
+    environment: process.env.ATLAS_ENV || process.env.NODE_ENV || "unknown",
     latencyMs: Date.now() - startedAt,
     checks,
     features: featureSnapshot(),

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { generateText } from "ai";
 import { requireApiIdentity } from "@/lib/security/api-auth";
 import { logger } from "@/lib/observability/logger";
 import { buildRealEstateContext } from "@/lib/ai/real-estate-context";
@@ -9,9 +8,9 @@ import {
   relevantMarketSources,
 } from "@/lib/ai/real-estate-knowledge";
 import { buildFallbackRealEstateAnswer } from "@/lib/ai/real-estate-fallback";
+import { generateAIText } from "@/lib/ai/provider-router";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
 
 type CopilotRequest = {
   prompt?: unknown;
@@ -49,8 +48,9 @@ export async function POST(request: Request) {
     let answer = "";
     let mode: "generative" | "local-fallback" = "generative";
     try {
-      const result = await generateText({
-      model: process.env.ATLAS_AI_MODEL || "openai/gpt-5.6-terra",
+      const result = await generateAIText({
+      task: "reasoning",
+      containsPersonalData: true,
       system: [
         "Você é o Atlas Copilot Imobiliário, especialista no mercado imobiliário brasileiro e na operação de lançamentos.",
         "Seu público inclui corretores, gerentes, superintendentes, diretores e incorporadoras.",
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       calibration: {
         domain: "mercado-imobiliario-brasileiro",
         verifiedAt: "2026-07-16",
-        model: process.env.ATLAS_AI_MODEL || "openai/gpt-5.6-terra",
+        model: process.env.ATLAS_AI_MODEL || "gpt-5.2",
         operationalContext: true,
         mode,
       },

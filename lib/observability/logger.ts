@@ -31,7 +31,7 @@ function write(level: LogLevel, event: string, metadata: Metadata = {}) {
     level,
     event,
     service: "atlas-ai-os",
-    environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
+    environment: process.env.ATLAS_ENV || process.env.NODE_ENV || "unknown",
     metadata: redact(metadata),
   });
 

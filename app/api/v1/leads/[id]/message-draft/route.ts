@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { generateText } from "ai";
+import { generateAIText } from "@/lib/ai/provider-router";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { auditMessageDraft, fallbackMessageDraft } from "@/lib/ai/real-estate-message";
@@ -32,8 +32,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     let content = fallback;
     let mode: "generative" | "local-fallback" = "generative";
     try {
-      const result = await generateText({
-        model: process.env.ATLAS_AI_MODEL || "openai/gpt-5.6-terra",
+      const result = await generateAIText({
+        task: "fast",
+        containsPersonalData: true,
         system: [
           "Você redige rascunhos comerciais para corretores de imóveis no Brasil.",
           "Entregue somente o texto final, sem markdown e sem comentários.",

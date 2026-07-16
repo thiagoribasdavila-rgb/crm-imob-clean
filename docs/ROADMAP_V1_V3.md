@@ -78,7 +78,7 @@ Branch de desenvolvimento: `develop/atlas-v3`
 
 - [x] Repositório acessível com permissão administrativa.
 - [x] Branch segura `develop/atlas-v3` criada a partir de `main`.
-- [x] Vercel conectado à branch `main` e deploy de produção ativo.
+- [x] Hostinger conectada ao deploy de produção atual; V3 seguirá em ambiente isolado.
 - [ ] Auditoria automatizada consolidada.
 - [ ] Banco de dados definitivo versionado.
 - [ ] Fase 1 concluída.

@@ -12,7 +12,7 @@ type Integration = {
 
 const integrations: Integration[] = [
   { name: "Supabase", description: "Banco, autenticação, RLS e realtime.", status: "connected", env: ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"] },
-  { name: "Vercel", description: "Deploy, previews, logs e produção.", status: "connected" },
+  { name: "Hostinger", description: "Deploy, processos Node, logs e cron operacional.", status: "connected" },
   { name: "GitHub", description: "Código, auditoria, CI e pull requests.", status: "connected" },
   { name: "Meta Ads", description: "Leads, campanhas, criativos, públicos e atribuição.", status: "ready", env: ["META_ACCESS_TOKEN", "META_AD_ACCOUNT_ID", "META_PIXEL_ID"] },
   { name: "WhatsApp Cloud API", description: "Pré-atendimento, follow-up e notificações.", status: "ready", env: ["WHATSAPP_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"] },

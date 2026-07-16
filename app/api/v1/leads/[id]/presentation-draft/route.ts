@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { generateText } from "ai";
+import { generateAIText } from "@/lib/ai/provider-router";
 import { auditPropertyPresentation, fallbackPropertyPresentation } from "@/lib/ai/property-presentation";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
@@ -43,8 +43,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     let mode: "generative" | "local-fallback" = "generative";
 
     try {
-      const result = await generateText({
-        model: process.env.ATLAS_AI_MODEL || "openai/gpt-5.6-terra",
+      const result = await generateAIText({
+        task: "fast",
+        containsPersonalData: true,
         system: [
           "Você cria uma mensagem comparativa de imóveis para um corretor enviar por WhatsApp no Brasil.",
           "Entregue apenas a mensagem final em texto simples, com no máximo 1.200 caracteres.",

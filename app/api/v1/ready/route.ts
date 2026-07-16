@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   const data = {
     service: "atlas-api-platform",
     status: ready ? "ready" : "not_ready",
-    environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
+    environment: process.env.ATLAS_ENV || process.env.NODE_ENV || "unknown",
     latencyMs: Date.now() - startedAt,
     checks,
     features: featureSnapshot(),

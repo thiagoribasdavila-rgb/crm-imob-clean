@@ -25,6 +25,8 @@ const homologationMigration = readFileSync(resolve(root, "supabase/migrations/20
 const metaWebhook = readFileSync(resolve(root, "app/api/webhooks/meta/route.ts"), "utf8");
 const outboxWorker = readFileSync(resolve(root, "app/api/v2/outbox/process/route.ts"), "utf8");
 const metaMigration = readFileSync(resolve(root, "supabase/migrations/20260716222643_meta_lead_closed_loop.sql"), "utf8");
+const providerRouter = readFileSync(resolve(root, "lib/ai/provider-router.ts"), "utf8");
+const hostingerDeployment = readFileSync(resolve(root, "docs/HOSTINGER_DEPLOYMENT.md"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -80,6 +82,9 @@ const checks = [
   ["Meta usa processamento resiliente", metaWebhook.includes('topic: "meta.lead.fetch"') && outboxWorker.includes('event.topic === "meta.lead.fetch"')],
   ["Meta não expõe credencial", outboxWorker.includes("META_LEAD_ACCESS_TOKEN") && !metaWebhook.includes("META_LEAD_ACCESS_TOKEN")],
   ["Meta cria memória de campanha", outboxWorker.includes("campaign_events") && outboxWorker.includes('event_type: "lead_created"')],
+  ["roteamento independente de Vercel", providerRouter.includes("api.openai.com/v1/responses") && providerRouter.includes("api.perplexity.ai")],
+  ["pesquisa externa bloqueia PII", providerRouter.includes("containsPersonalData") && providerRouter.includes("Pesquisa externa bloqueada")],
+  ["Hostinger possui worker próprio", hostingerDeployment.includes("scripts/run-workers.mjs") && hostingerDeployment.includes("pm2")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

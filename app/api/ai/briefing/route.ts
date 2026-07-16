@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireAccessContext } from "@/lib/api/security";
 import { buildRealEstateContext } from "@/lib/ai/real-estate-context";
+import { aiProviderReadiness } from "@/lib/ai/provider-router";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
     productLearning: { periodDays: 90, summary: learningSummary, items: productLearning },
     signals,
     model: {
-      generativeReady: Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN),
+      generativeReady: aiProviderReadiness().openai,
       localIntelligenceReady: true,
       calibrationVerifiedAt: "2026-07-16",
     },

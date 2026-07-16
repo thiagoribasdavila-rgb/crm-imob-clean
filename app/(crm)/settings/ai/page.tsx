@@ -13,6 +13,7 @@ type AIStatus = {
   calibrationVerifiedAt: string;
   marketSources: Array<{ id: string; title: string; publisher: string; url: string; verifiedAt: string }>;
   controls: Record<string, boolean>;
+  providers: { openai: boolean; perplexity: boolean; localFallback: boolean; host: "hostinger" };
 };
 
 const controlLabels: Record<string, string> = {
@@ -58,10 +59,11 @@ export default function AISettings() {
 
       {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
 
-      <section className="grid gap-4 sm:grid-cols-3">
-        <AtlasMetric label="Provedor generativo" value={!data ? "—" : data.gatewayConfigured ? "Ativo" : "Pendente"} detail={data?.gatewayConfigured ? "AI Gateway configurado" : "Credencial necessária em homologação"} trend={data?.gatewayConfigured ? "ONLINE" : "CONFIG"} tone={data?.gatewayConfigured ? "green" : "amber"} />
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <AtlasMetric label="Provedor generativo" value={!data ? "—" : data.gatewayConfigured ? "Ativo" : "Pendente"} detail={data?.gatewayConfigured ? "OpenAI direta no servidor" : "Credencial necessária em homologação"} trend={data?.gatewayConfigured ? "ONLINE" : "CONFIG"} tone={data?.gatewayConfigured ? "green" : "amber"} />
         <AtlasMetric label="Contingência local" value={!data ? "—" : data.fallbackAvailable ? "Ativa" : "Inativa"} detail="Resposta operacional mesmo sem provedor" trend="RESILIENTE" tone="blue" />
         <AtlasMetric label="Controles ativos" value={!data ? "—" : `${enabledControls}/${Object.keys(data.controls).length}`} detail="Privacidade, hierarquia e segurança" trend="GUARDRAILS" tone="violet" />
+        <AtlasMetric label="Pesquisa atualizada" value={!data ? "—" : data.providers.perplexity ? "Ativa" : "Pendente"} detail="Perplexity sem envio de PII" trend="SONAR" tone={data?.providers.perplexity ? "green" : "amber"} />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
