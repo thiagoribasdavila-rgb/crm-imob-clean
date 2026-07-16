@@ -15,6 +15,8 @@ const messageDraft = readFileSync(resolve(root, "app/api/v1/leads/[id]/message-d
 const messageSafety = readFileSync(resolve(root, "lib/ai/real-estate-message.ts"), "utf8");
 const matching = readFileSync(resolve(root, "lib/atlas/matching.ts"), "utf8");
 const matchingStudio = readFileSync(resolve(root, "app/(crm)/properties/mtching/page.tsx"), "utf8");
+const presentationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/presentation-draft/route.ts"), "utf8");
+const presentationSafety = readFileSync(resolve(root, "lib/ai/property-presentation.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -46,6 +48,10 @@ const checks = [
   ["matching bloqueia indisponíveis", matching.includes("BLOCKED_STATUSES") && matching.includes("score = isBlocked ? 0")],
   ["matching tolera orçamento com alerta", matching.includes("ratio <= 1.1") && matching.includes("validar flexibilidade")],
   ["studio usa dados sob escopo", matchingStudio.includes("/api/v1/crm/leads") && matchingStudio.includes("/api/v1/leads/${selectedId}")],
+  ["apresentação exige aprovação humana", presentationRoute.includes("requiresHumanApproval: true")],
+  ["apresentação protegida por escopo", presentationRoute.includes("requireLeadAccess") && presentationRoute.includes("organization_id")],
+  ["comparativo limita seleção", presentationRoute.includes("slice(0, 3)") && matchingStudio.includes("current.length < 3")],
+  ["apresentação sem promessas", presentationSafety.includes("Garantia de preço") && presentationSafety.includes("Promessa de rentabilidade") && presentationRoute.includes("Nunca garanta preço")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
