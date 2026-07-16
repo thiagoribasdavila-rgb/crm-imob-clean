@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
     const { data, error } = await admin
       .from("leads")
-      .select("id,name,phone,email,status,score,temperature,budget_max,next_action_at,created_at,updated_at,assigned_to")
+      .select("id,name,phone,email,status,score,temperature,budget_min,budget_max,source,campaign_id,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,created_at,updated_at,assigned_to,metadata")
       .eq("organization_id", identity.organizationId)
       .order("score", { ascending: false })
       .limit(500);
@@ -72,7 +72,7 @@ export async function PATCH(request: Request) {
       .update({ status: stage, updated_at: new Date().toISOString() })
       .eq("id", leadId)
       .eq("organization_id", identity.organizationId)
-      .select("id,name,status,score,temperature,budget_max,next_action_at,created_at,updated_at")
+      .select("id,name,status,score,temperature,budget_min,budget_max,source,campaign_id,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,created_at,updated_at,assigned_to,metadata")
       .single();
 
     if (error || !data) throw error || new Error("Falha ao mover lead.");

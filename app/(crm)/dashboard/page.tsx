@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { EmptyState } from "@/components/atlas/empty-state";
@@ -253,6 +254,14 @@ export default function DashboardPage() {
     return { rows, max: Math.max(1, ...rows.map((item) => item.count)) };
   }, [leads]);
 
+  const chartPoints = useMemo(() =>
+    funnel.rows.map((stage, index) => ({
+      ...stage,
+      x: funnel.rows.length === 1 ? 50 : 4 + (index / (funnel.rows.length - 1)) * 92,
+      y: 88 - (stage.count / funnel.max) * 70,
+    })), [funnel]);
+  const chartLine = chartPoints.map((point) => `${point.x},${point.y}`).join(" ");
+
   const priorities = useMemo(
     () =>
       leads
@@ -376,7 +385,8 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
-        <div className="atlas-command-pulse">
+        <div className="atlas-command-pulse atlas-command-pulse-with-robot">
+          <Image className="atlas-dashboard-robot" src="/brand/atlas-robot-assistant.png" alt="Assistente Atlas, robô de inteligência comercial" width={240} height={360} priority />
           <div className="atlas-command-pulse-head">
             <div>
               <span>Saúde comercial</span>
@@ -452,7 +462,29 @@ export default function DashboardPage() {
           {loading ? <LoadingState rows={4} /> : leads.length === 0 ? (
             <EmptyState title="Sem leads no período" description="Amplie o período ou cadastre o primeiro lead para iniciar o funil." />
           ) : (
-            <div className="atlas-funnel">
+            <div>
+            <div className="atlas-modern-chart" aria-label="Gráfico moderno da evolução dos leads por etapa">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img">
+                <defs>
+                  <linearGradient id="atlasChartFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#60a5fa" stopOpacity=".42" />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+                  </linearGradient>
+                  <linearGradient id="atlasChartLine" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#67e8f9" />
+                    <stop offset="100%" stopColor="#a78bfa" />
+                  </linearGradient>
+                </defs>
+                {[24, 48, 72].map((y) => <line key={y} x1="0" y1={y} x2="100" y2={y} className="atlas-chart-gridline" />)}
+                <polygon points={`4,92 ${chartLine} 96,92`} fill="url(#atlasChartFill)" />
+                <polyline points={chartLine} fill="none" stroke="url(#atlasChartLine)" strokeWidth="2.2" vectorEffect="non-scaling-stroke" />
+                {chartPoints.map((point) => <circle key={point.key} cx={point.x} cy={point.y} r="1.8" className="atlas-chart-dot" vectorEffect="non-scaling-stroke" />)}
+              </svg>
+              <div className="atlas-chart-labels">
+                {chartPoints.map((point) => <span key={point.key}><strong>{point.count}</strong>{point.label}</span>)}
+              </div>
+            </div>
+            <div className="atlas-funnel atlas-funnel-compact">
               {funnel.rows.map((stage) => (
                 <div key={stage.key} className="atlas-funnel-row">
                   <span>{stage.label}</span>
@@ -461,12 +493,13 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+            </div>
           )}
         </article>
 
         <article className="atlas-command-panel atlas-ai-panel">
           <PageHeader eyebrow="Atlas Intelligence" title="Copilot operacional" description="Insights persistidos e análise sob demanda." />
-          <div className="atlas-ai-orb" aria-hidden="true"><span>✦</span></div>
+          <div className="atlas-ai-orb atlas-ai-robot-orb" aria-hidden="true"><Image src="/brand/atlas-robot-assistant.png" alt="" width={74} height={111} /></div>
           <button
             type="button"
             className="atlas-ai-primary-action"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
 type Opportunity = {
@@ -11,6 +12,10 @@ type Opportunity = {
   expected_close_at: string | null;
   won_at: string | null;
   lost_at: string | null;
+  commission_sla_days: number | null;
+  commission_due_at: string | null;
+  commission_received_at: string | null;
+  commission_status: "not_applicable" | "pending" | "overdue" | "received";
   leads: { name: string | null } | null;
   properties: { title: string | null } | null;
 };
@@ -24,7 +29,7 @@ export default function SalesPage() {
     async function load() {
       const { data, error } = await supabase
         .from("opportunities")
-        .select("id,stage,value,probability,expected_close_at,won_at,lost_at,leads(name),properties(title)")
+        .select("id,stage,value,probability,expected_close_at,won_at,lost_at,commission_sla_days,commission_due_at,commission_received_at,commission_status,leads(name),properties(title)")
         .order("created_at", { ascending: false });
       if (error) setError(error.message);
       setItems((data ?? []) as unknown as Opportunity[]);
@@ -47,7 +52,8 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="relative overflow-hidden rounded-[26px] border border-white/[.08] bg-white/[.025] p-6 pr-40">
+        <Image src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas" width={120} height={180} className="pointer-events-none absolute -bottom-12 right-5 h-auto w-28 drop-shadow-[0_18px_18px_rgba(0,0,0,.42)]" />
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">Revenue engine</p>
         <h1 className="mt-2 text-3xl font-black">Vendas e oportunidades</h1>
         <p className="mt-2 text-zinc-400">Visão consolidada do VGV, previsão ponderada e negócios em andamento.</p>
@@ -66,7 +72,7 @@ export default function SalesPage() {
       {loading ? <p className="text-zinc-400">Carregando oportunidades...</p> : (
         <div className="overflow-x-auto rounded-2xl border border-zinc-800">
           <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="bg-zinc-900 text-zinc-400"><tr><th className="px-4 py-3">Lead</th><th className="px-4 py-3">Imóvel</th><th className="px-4 py-3">Etapa</th><th className="px-4 py-3">Valor</th><th className="px-4 py-3">Probabilidade</th><th className="px-4 py-3">Fechamento</th></tr></thead>
+            <thead className="bg-zinc-900 text-zinc-400"><tr><th className="px-4 py-3">Lead</th><th className="px-4 py-3">Imóvel</th><th className="px-4 py-3">Etapa</th><th className="px-4 py-3">Valor</th><th className="px-4 py-3">Probabilidade</th><th className="px-4 py-3">Fechamento</th><th className="px-4 py-3">SLA comissão</th></tr></thead>
             <tbody className="divide-y divide-zinc-800 bg-zinc-950">
               {items.map((item) => (
                 <tr key={item.id}>
@@ -76,9 +82,10 @@ export default function SalesPage() {
                   <td className="px-4 py-4">{money(Number(item.value ?? 0))}</td>
                   <td className="px-4 py-4">{item.probability}%</td>
                   <td className="px-4 py-4 text-zinc-400">{item.expected_close_at ? new Date(item.expected_close_at).toLocaleDateString("pt-BR") : "—"}</td>
+                  <td className="px-4 py-4">{item.won_at ? <div><span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase ${item.commission_status === "received" ? "bg-emerald-500/10 text-emerald-300" : item.commission_status === "overdue" ? "bg-rose-500/10 text-rose-300" : "bg-amber-500/10 text-amber-300"}`}>{item.commission_status === "received" ? "Recebida" : item.commission_status === "overdue" ? "Atrasada" : "A receber"}</span><p className="mt-2 whitespace-nowrap text-xs text-zinc-500">{item.commission_sla_days ?? 30} dias · {item.commission_due_at ? new Date(item.commission_due_at).toLocaleDateString("pt-BR") : "calculando"}</p></div> : <span className="text-zinc-600">Após a venda</span>}</td>
                 </tr>
               ))}
-              {!items.length && <tr><td colSpan={6} className="px-4 py-10 text-center text-zinc-500">Nenhuma oportunidade registrada.</td></tr>}
+              {!items.length && <tr><td colSpan={7} className="px-4 py-10 text-center text-zinc-500">Nenhuma oportunidade registrada.</td></tr>}
             </tbody>
           </table>
         </div>

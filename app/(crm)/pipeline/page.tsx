@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { DragEvent, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { DragEvent, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
@@ -26,10 +27,19 @@ type Lead = {
   status: string | null;
   score: number | null;
   temperature: string | null;
+  budget_min: number | null;
   budget_max: number | null;
+  source: string | null;
+  campaign_id: string | null;
+  preferred_regions: string[] | null;
+  bedrooms: number | null;
+  purpose: string | null;
+  last_interaction_at: string | null;
   next_action_at: string | null;
   created_at: string | null;
   updated_at: string | null;
+  assigned_to: string | null;
+  metadata: Record<string, unknown> | null;
 };
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -47,6 +57,26 @@ function riskTone(risk: string): "success" | "warning" | "danger" {
   if (risk === "alto") return "danger";
   if (risk === "medio") return "warning";
   return "success";
+}
+
+function metaCampaign(lead: Lead) {
+  const meta = lead.metadata?.meta;
+  if (!meta || typeof meta !== "object") return lead.campaign_id;
+  const record = meta as Record<string, unknown>;
+  return String(record.campaignName || record.campaignId || lead.campaign_id || "");
+}
+
+function relativeTime(value: string | null) {
+  if (!value) return "Sem contato";
+  const hours = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 3_600_000));
+  if (hours < 1) return "Agora";
+  if (hours < 24) return `${hours}h atrás`;
+  return `${Math.floor(hours / 24)}d atrás`;
+}
+
+function dateLabel(value: string | null) {
+  if (!value) return "Não agendado";
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
 export default function PipelinePage() {
@@ -113,7 +143,7 @@ export default function PipelinePage() {
   const visibleLeads = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return leads;
-    return leads.filter((lead) => [lead.name, lead.email, lead.phone, lead.temperature].some((value) => value?.toLowerCase().includes(normalized)));
+    return leads.filter((lead) => [lead.name, lead.email, lead.phone, lead.temperature, lead.source, lead.purpose, metaCampaign(lead), ...(lead.preferred_regions ?? [])].some((value) => value?.toLowerCase().includes(normalized)));
   }, [leads, query]);
 
   const metrics = useMemo(() => {
@@ -137,15 +167,16 @@ export default function PipelinePage() {
 
   return (
     <div className="space-y-6 pb-8">
-      <section className="atlas-grid-glow overflow-hidden rounded-[28px] border border-sky-400/10 bg-gradient-to-br from-sky-500/[.12] via-blue-500/[.05] to-violet-500/[.1] p-6 shadow-[0_30px_100px_rgba(2,8,23,.35)] sm:p-8">
+      <section className="atlas-pipeline-hero atlas-grid-glow">
+        <Image className="atlas-pipeline-robot" src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas acompanhando o pipeline comercial" width={210} height={315} priority />
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="flex flex-wrap gap-2"><AtlasBadge tone="info">SALES ENGINE</AtlasBadge><AtlasBadge tone="violet">PIPELINE INTELLIGENCE</AtlasBadge><AtlasBadge tone="success">LIVE</AtlasBadge></div>
-            <h2 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">Venda com <span className="atlas-gradient-text">prioridade, risco e forecast.</span></h2>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">Movimente leads, identifique negócios parados e concentre o time nas oportunidades com maior probabilidade de conversão.</p>
+            <h2 className="mt-5 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Seu funil. <span className="atlas-gradient-text">Mais claro, mais inteligente.</span></h2>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">Uma visão limpa para avançar negócios, antecipar riscos e manter cada próximo passo visível para o time.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead..." className="min-w-56 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead, região, origem ou campanha..." className="min-w-72 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
             <Link href="/leads/new" className="atlas-button-primary">+ Novo lead</Link>
           </div>
         </div>
@@ -162,12 +193,22 @@ export default function PipelinePage() {
         <AtlasMetric label="Perfis compradores" value={loading ? "—" : metrics.buyerProfiles} detail="Compraram em outro lugar" trend="LEARN" tone="green" />
       </section>
 
+      <section className="atlas-pipeline-flow" aria-label="Resumo visual das etapas do pipeline">
+        {stageData.map((stage, index) => (
+          <div key={stage.key} style={{ "--flow": `${stage.probability}%` } as CSSProperties}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <p><strong>{stage.label}</strong><small>{stage.items.length} leads · {brl.format(stage.value)}</small></p>
+            <i><b /></i>
+          </div>
+        ))}
+      </section>
+
       <AtlasCard>
         <AtlasCardHeader eyebrow="Conversion system" title="Fluxo comercial" description="Arraste os cards entre as etapas ou use o seletor. Cada movimentação gera histórico e evento no Atlas." />
         <div className="overflow-x-auto p-4 sm:p-6">
-          <div className="grid min-w-[1500px] grid-cols-7 gap-4">
+          <div className="grid min-w-[1750px] grid-cols-7 gap-4">
             {stageData.map((stage) => (
-              <section key={stage.key} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className="min-h-[520px] rounded-2xl border border-white/[0.07] bg-white/[0.018] p-3 transition hover:border-sky-400/15">
+              <section key={stage.key} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className="atlas-pipeline-column">
                 <div className="mb-4 border-b border-white/[0.06] pb-3">
                   <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white">{stage.label}</h3><span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-slate-300">{stage.items.length}</span></div>
                   <p className="mt-2 text-xs text-slate-500">{brl.format(stage.value)}</p>
@@ -178,16 +219,23 @@ export default function PipelinePage() {
                   {stage.items.map((lead) => {
                     const risk = leadRisk(lead);
                     return (
-                      <article key={lead.id} draggable onDragStart={(event) => { setDraggedId(lead.id); event.dataTransfer.setData("text/lead-id", lead.id); }} className={`group cursor-grab rounded-2xl border border-white/[0.07] bg-[#070d1b]/90 p-4 shadow-lg transition hover:-translate-y-0.5 hover:border-sky-400/20 ${savingId === lead.id ? "opacity-60" : ""}`}>
+                      <article key={lead.id} draggable onDragStart={(event) => { setDraggedId(lead.id); event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-1 truncate text-[11px] text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
                           <AtlasBadge tone={riskTone(risk)}>Risco {risk}</AtlasBadge>
                         </div>
-                        <div className="mt-4 grid grid-cols-2 gap-2">
+                        <div className="atlas-lead-origin"><span>{lead.source || "Origem não informada"}</span>{metaCampaign(lead) ? <small>{metaCampaign(lead)}</small> : null}</div>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
                           <div className="rounded-xl border border-white/[0.05] bg-white/[0.025] p-2"><p className="text-[9px] uppercase tracking-wider text-slate-600">Score</p><p className="mt-1 text-sm font-semibold text-white">{lead.score ?? 0}</p></div>
                           <div className="rounded-xl border border-white/[0.05] bg-white/[0.025] p-2"><p className="text-[9px] uppercase tracking-wider text-slate-600">Temperatura</p><p className="mt-1 text-sm font-semibold capitalize text-white">{lead.temperature || "frio"}</p></div>
                         </div>
                         <p className="mt-3 text-sm font-semibold text-slate-200">{lead.budget_max ? brl.format(lead.budget_max) : "Valor não informado"}</p>
+                        <div className="atlas-lead-details">
+                          <p><span>Interesse</span><strong>{lead.purpose || "A definir"}{lead.bedrooms ? ` · ${lead.bedrooms} dorm.` : ""}</strong></p>
+                          <p><span>Região</span><strong>{lead.preferred_regions?.join(", ") || "Não informada"}</strong></p>
+                          <p><span>Último contato</span><strong>{relativeTime(lead.last_interaction_at)}</strong></p>
+                          <p><span>Próxima ação</span><strong>{dateLabel(lead.next_action_at)}</strong></p>
+                        </div>
                         <select value={lead.status ?? "novo"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="mt-4 w-full rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-slate-300 outline-none focus:border-sky-400/30">
                           {destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
                         </select>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   FormEvent,
   KeyboardEvent,
@@ -177,6 +178,7 @@ function LoginExperience() {
             {capabilities.map((item, index) => <div key={item} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 backdrop-blur"><div className="mb-3 grid h-8 w-8 place-items-center rounded-xl bg-sky-400/10 text-xs text-sky-300">0{index + 1}</div><p className="text-sm font-medium text-slate-200">{item}</p></div>)}
           </div>
           <div className="mt-10 flex items-center gap-6 text-xs text-slate-500"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,.7)]" /> Ambiente operacional</span><span>Hostinger</span><span>Multiempresa</span><span>LGPD-ready</span></div>
+          <Image src="/brand/atlas-robot-assistant.png" alt="Robô assistente Atlas" width={250} height={375} priority className="pointer-events-none absolute bottom-0 left-[46%] w-[230px] drop-shadow-[0_28px_28px_rgba(0,0,0,.45)]" />
         </section>
 
         <section className="mx-auto w-full max-w-lg">
