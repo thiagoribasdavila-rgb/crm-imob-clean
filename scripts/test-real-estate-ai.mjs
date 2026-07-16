@@ -8,6 +8,8 @@ const context = readFileSync(resolve(root, "lib/ai/real-estate-context.ts"), "ut
 const ui = readFileSync(resolve(root, "components/AtlasCopilotDock.tsx"), "utf8");
 const fallback = readFileSync(resolve(root, "lib/ai/real-estate-fallback.ts"), "utf8");
 const statusRoute = readFileSync(resolve(root, "app/api/ai/status/route.ts"), "utf8");
+const qualification = readFileSync(resolve(root, "lib/ai/lead-qualification.ts"), "utf8");
+const qualificationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/qualify/route.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -26,6 +28,10 @@ const checks = [
   ["fallback operacional", route.includes("buildFallbackRealEstateAnswer") && fallback.includes("motor imobiliário local")],
   ["modo da resposta visível", ui.includes("Motor local seguro") && ui.includes("IA generativa")],
   ["diagnóstico sem segredos", statusRoute.includes("gatewayConfigured") && !statusRoute.includes("AI_GATEWAY_API_KEY:" )],
+  ["score explicável", qualification.includes("dimensions") && qualification.includes("confidence") && qualification.includes("missingData")],
+  ["score com risco temporal", qualification.includes("Próxima ação atrasada") && qualification.includes("Lead antigo sem interação")],
+  ["qualificação protegida por escopo", qualificationRoute.includes("requireLeadAccess")],
+  ["qualificação auditável", qualificationRoute.includes("ai_qualification") && qualificationRoute.includes("activities")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

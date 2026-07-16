@@ -21,6 +21,11 @@ type PropertyRow = { id: string; title: string | null; price: number | null; cit
 type OpportunityRow = { id: string; stage: string; value: number | null; probability: number; expected_close_at: string | null; property_id: string | null; created_at: string };
 
 type Payload = { lead: LeadRow; activities: ActivityRow[]; properties: PropertyRow[]; opportunities: OpportunityRow[] };
+type Qualification = {
+  score: number; temperature: "frio" | "morno" | "quente"; confidence: number;
+  dimensions: Array<{ key: string; label: string; score: number; maximum: number; reasons: string[] }>;
+  strengths: string[]; missingData: string[]; risks: string[]; nextBestAction: string; recalculatedAt: string;
+};
 
 const inputClass = "w-full rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-400/40 focus:bg-sky-400/[0.035]";
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -43,6 +48,8 @@ export default function LeadDetailPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [activityTitle, setActivityTitle] = useState("");
   const [activityType, setActivityType] = useState("note");
+  const [qualification, setQualification] = useState<Qualification | null>(null);
+  const [qualifying, setQualifying] = useState(false);
 
   async function api(path: string, init?: RequestInit) {
     const { data } = await supabase.auth.getSession();
@@ -144,6 +151,21 @@ export default function LeadDetailPage() {
     }
   }
 
+  async function qualifyLead() {
+    setQualifying(true);
+    setMessage(null);
+    try {
+      const data = await api(`/api/v1/leads/${leadId}/qualify`, { method: "POST" }) as { qualification: Qualification };
+      setQualification(data.qualification);
+      setLead((current) => current ? { ...current, score: data.qualification.score, temperature: data.qualification.temperature } : current);
+      setMessage("Qualificação recalibrada e registrada na timeline.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Falha ao recalibrar o lead.");
+    } finally {
+      setQualifying(false);
+    }
+  }
+
   if (loading) return <div className="space-y-5"><AtlasSkeleton className="h-36 w-full" /><div className="grid gap-4 md:grid-cols-3"><AtlasSkeleton className="h-28 w-full" /><AtlasSkeleton className="h-28 w-full" /><AtlasSkeleton className="h-28 w-full" /></div><AtlasSkeleton className="h-96 w-full" /></div>;
   if (!lead) return <AtlasEmpty title="Lead não encontrado" description={message || "O registro pode ter sido removido ou você não possui acesso."} action={<Link href="/leads" className="atlas-button-secondary">Voltar para leads</Link>} />;
 
@@ -156,7 +178,7 @@ export default function LeadDetailPage() {
             <div className="mt-4 flex flex-wrap items-center gap-2"><AtlasBadge tone="info">LEAD INTELLIGENCE 360</AtlasBadge><AtlasBadge tone={temperatureTone(lead.temperature)}>{lead.temperature || "não classificado"}</AtlasBadge><AtlasBadge tone="violet">{lead.status || "novo"}</AtlasBadge></div>
             <h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">{lead.name || "Lead sem nome"}</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400">{intelligence.summary}</p>
-            <div className="mt-6 flex flex-wrap gap-3"><button onClick={() => void createOpportunity()} className="atlas-button-primary">Criar oportunidade</button><a href={lead.phone ? `https://wa.me/${lead.phone.replace(/\D/g, "")}` : "#"} className="atlas-button-secondary">Abrir WhatsApp</a><a href={lead.email ? `mailto:${lead.email}` : "#"} className="atlas-button-secondary">Enviar e-mail</a></div>
+            <div className="mt-6 flex flex-wrap gap-3"><button onClick={() => void qualifyLead()} disabled={qualifying} className="atlas-button-primary">{qualifying ? "Recalibrando..." : "✦ Recalibrar com IA"}</button><button onClick={() => void createOpportunity()} className="atlas-button-secondary">Criar oportunidade</button><a href={lead.phone ? `https://wa.me/${lead.phone.replace(/\D/g, "")}` : "#"} className="atlas-button-secondary">Abrir WhatsApp</a><a href={lead.email ? `mailto:${lead.email}` : "#"} className="atlas-button-secondary">Enviar e-mail</a></div>
           </div>
           <div className="min-w-full rounded-3xl border border-white/[0.08] bg-[#070d1b]/75 p-5 backdrop-blur-xl xl:min-w-80">
             <div className="flex items-center justify-between"><div><p className="atlas-eyebrow">Readiness</p><p className="mt-2 text-xl font-semibold text-white">Prontidão comercial</p></div><span className="text-3xl font-semibold text-emerald-300">{intelligence.readiness}</span></div>
@@ -175,6 +197,22 @@ export default function LeadDetailPage() {
         <AtlasMetric label="Matches" value={matches.length} detail="Imóveis recomendados" trend="MATCH" tone="amber" />
         <AtlasMetric label="Risco" value={intelligence.risk} detail="Risco de inércia" trend="SLA" tone={intelligence.risk === "alto" ? "rose" : "green"} />
       </section>
+
+      {qualification ? (
+        <AtlasCard>
+          <AtlasCardHeader eyebrow="Explainable AI" title="Como o Atlas chegou a esta qualificação" description={`Confiança de ${qualification.confidence}% · recalculado em ${new Date(qualification.recalculatedAt).toLocaleString("pt-BR")}.`} action={<AtlasBadge tone={temperatureTone(qualification.temperature)}>{qualification.score}/100 · {qualification.temperature}</AtlasBadge>} />
+          <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-[1.2fr_.8fr]">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {qualification.dimensions.map((dimension) => <div key={dimension.key} className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4"><div className="flex items-center justify-between"><strong className="text-sm text-white">{dimension.label}</strong><span className="text-xs font-semibold text-sky-300">{dimension.score}/{dimension.maximum}</span></div><div className="mt-3"><AtlasProgress value={Math.round(dimension.score / dimension.maximum * 100)} /></div><p className="mt-3 text-xs leading-5 text-slate-500">{dimension.reasons.slice(0, 2).join(" · ") || "Ainda sem sinais suficientes"}</p></div>)}
+            </div>
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.06] p-4"><p className="atlas-eyebrow">Próxima melhor ação</p><p className="mt-2 text-sm leading-6 text-violet-100">{qualification.nextBestAction}</p></div>
+              {qualification.risks.length ? <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[0.06] p-4"><p className="text-xs font-bold uppercase tracking-[.14em] text-rose-300">Riscos</p><ul className="mt-2 space-y-1 text-xs text-slate-300">{qualification.risks.map((risk) => <li key={risk}>• {risk}</li>)}</ul></div> : null}
+              {qualification.missingData.length ? <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.06] p-4"><p className="text-xs font-bold uppercase tracking-[.14em] text-amber-300">Dados que aumentam a confiança</p><p className="mt-2 text-xs leading-5 text-slate-300">{qualification.missingData.join(" · ")}</p></div> : null}
+            </div>
+          </div>
+        </AtlasCard>
+      ) : null}
 
       <section className="grid gap-6 2xl:grid-cols-[1.15fr_.85fr]">
         <AtlasCard>
