@@ -108,7 +108,7 @@ export const evolutionPhases: EvolutionPhase[] = [
     status: "bloqueada",
     evidence: ["Roteiro funcional documentado"],
     next: "Executar piloto de 5 a 10 dias com admin, gestor e corretor.",
-    href: "/users",
+    href: "/atlas-v3/homologation",
   },
   {
     id: 10,

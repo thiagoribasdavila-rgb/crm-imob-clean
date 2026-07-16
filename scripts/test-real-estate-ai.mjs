@@ -20,6 +20,8 @@ const presentationSafety = readFileSync(resolve(root, "lib/ai/property-presentat
 const leadIntelligenceRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/route.ts"), "utf8");
 const leadIntelligencePage = readFileSync(resolve(root, "app/(crm)/leads/[id]/page.tsx"), "utf8");
 const evolutionPhases = readFileSync(resolve(root, "lib/atlas/evolution-phases.ts"), "utf8");
+const homologationRoute = readFileSync(resolve(root, "app/api/v1/homologation/route.ts"), "utf8");
+const homologationMigration = readFileSync(resolve(root, "supabase/migrations/20260716221959_homologation_checklist.sql"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -67,6 +69,9 @@ const checks = [
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
   ["roadmap registra evolução da IA", evolutionPhases.includes('progress: 92') && evolutionPhases.includes("42 controles calibrados")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
+  ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
+  ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
+  ["aceite pertence ao usuário", homologationMigration.includes("verified_by = (select auth.uid())")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

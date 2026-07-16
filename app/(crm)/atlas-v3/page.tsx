@@ -115,6 +115,7 @@ export default function AtlasV3Page() {
           <div className="atlas-command-actions">
             <Link href="/dashboard" className="atlas-button-primary">Abrir Command Center</Link>
             <Link href="/atlas-v3/audit" className="atlas-button-secondary">Auditoria técnica</Link>
+            <Link href="/atlas-v3/homologation" className="atlas-button-secondary">Roteiro de homologação</Link>
             <Link href="/decision-center" className="atlas-button-secondary">Decisões e IA</Link>
           </div>
         </div>
