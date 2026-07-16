@@ -7,7 +7,7 @@ import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 
 export const dynamic = "force-dynamic";
 
-const allowedStages = new Set(["novo", "contato", "qualificacao", "visita", "proposta", "contrato", "ganho", "perdido"]);
+const allowedStages = new Set(["novo", "contato", "qualificacao", "visita", "proposta", "contrato", "ganho", "perdido", "comprou_outro"]);
 
 function authError(error: unknown) {
   const message = error instanceof Error ? error.message : "Não autorizado.";
@@ -50,8 +50,9 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const leadId = String(body.leadId || "");
     const stage = String(body.stage || "").toLowerCase();
+    const followUpDescription = String(body.followUpDescription || "").trim().slice(0, 4000);
 
-    if (!leadId || !allowedStages.has(stage)) {
+    if (!leadId || !allowedStages.has(stage) || (stage === "comprou_outro" && followUpDescription.length < 10)) {
       return NextResponse.json({ error: "Lead ou etapa inválida." }, { status: 400 });
     }
 
@@ -84,7 +85,7 @@ export async function PATCH(request: Request) {
         user_id: identity.userId,
         type: "pipeline_stage_changed",
         title: `Etapa alterada para ${stage}`,
-        description: `${previousStage} → ${stage}`,
+        description: stage === "comprou_outro" ? `Comprou em outro lugar. ${followUpDescription}` : `${previousStage} → ${stage}`,
         occurred_at: occurredAt,
       }),
       admin.from("atlas_events").insert({
@@ -96,7 +97,7 @@ export async function PATCH(request: Request) {
         payload: { previousStage, stage, userId: identity.userId },
         correlation_id: crypto.randomUUID(),
       }),
-      recordFunnelLearning({ organizationId: identity.organizationId, leadId, previousStage, stage, occurredAt }),
+      recordFunnelLearning({ organizationId: identity.organizationId, leadId, previousStage, stage, occurredAt, description: followUpDescription }),
     ]);
 
     logger.info("pipeline.stage_changed", { leadId, previousStage, stage, organizationId: identity.organizationId });

@@ -204,7 +204,7 @@ export default function DashboardPage() {
 
   const metrics = useMemo(() => {
     const activeLeads = leads.filter(
-      (lead) => !["ganho", "perdido", "arquivado"].includes(normalized(lead.status)),
+      (lead) => !["ganho", "perdido", "arquivado", "comprou_outro"].includes(normalized(lead.status)),
     );
     const hot = activeLeads.filter(
       (lead) =>
@@ -248,7 +248,7 @@ export default function DashboardPage() {
   const priorities = useMemo(
     () =>
       leads
-        .filter((lead) => !["ganho", "perdido"].includes(normalized(lead.status)))
+        .filter((lead) => !["ganho", "perdido", "comprou_outro"].includes(normalized(lead.status)))
         .sort((a, b) => leadPriority(b, referenceTime) - leadPriority(a, referenceTime))
         .slice(0, 6),
     [leads, referenceTime],

@@ -53,6 +53,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     const admin = getSupabaseAdmin();
     const { data: currentLead } = await admin.from("leads").select("status").eq("id", id).eq("organization_id", identity.organizationId).single();
     if (!currentLead) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
+    const followUpDescription = String(body.notes || "").trim().slice(0, 4000);
+    if (body.status === "comprou_outro" && followUpDescription.length < 10) return NextResponse.json({ error: "Descreva o acompanhamento da compra em outro lugar no campo de observações." }, { status: 400 });
 
     const allowed = {
       name: body.name ?? null,
@@ -91,7 +93,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       occurred_at: new Date().toISOString(),
     });
 
-    await Promise.allSettled([recordFunnelLearning({ organizationId: identity.organizationId, leadId: id, previousStage: currentLead.status || "novo", stage: data.status || "novo", occurredAt: allowed.updated_at })]);
+    await Promise.allSettled([recordFunnelLearning({ organizationId: identity.organizationId, leadId: id, previousStage: currentLead.status || "novo", stage: data.status || "novo", occurredAt: allowed.updated_at, description: followUpDescription })]);
 
     return NextResponse.json({ lead: data });
   } catch (error) {

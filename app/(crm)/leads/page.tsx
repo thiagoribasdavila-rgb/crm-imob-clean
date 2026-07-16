@@ -65,6 +65,7 @@ const statuses = [
   { value: "negociacao", label: "Negociação" },
   { value: "ganho", label: "Venda" },
   { value: "perdido", label: "Perdido" },
+  { value: "comprou_outro", label: "Comprou em outro lugar" },
 ] as const;
 
 function text(row: ReferenceRow, ...keys: string[]) {
@@ -83,6 +84,7 @@ function statusTone(value: string | null) {
   const normalized = (value ?? "").toLowerCase();
   if (["ganho", "venda"].includes(normalized)) return "success";
   if (["perdido"].includes(normalized)) return "danger";
+  if (normalized === "comprou_outro") return "success";
   if (["visita", "proposta", "negociacao"].includes(normalized)) return "violet";
   if (["contato", "qualificacao"].includes(normalized)) return "warning";
   return "info";

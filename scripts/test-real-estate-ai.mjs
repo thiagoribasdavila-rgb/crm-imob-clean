@@ -33,6 +33,7 @@ const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/ro
 const metaSettingsPage = readFileSync(resolve(root, "app/(crm)/integrations/meta/page.tsx"), "utf8");
 const pipelineRoute = readFileSync(resolve(root, "app/api/v1/pipeline/route.ts"), "utf8");
 const funnelLearning = readFileSync(resolve(root, "lib/atlas/funnel-learning.ts"), "utf8");
+const followUpIntelligence = readFileSync(resolve(root, "lib/atlas/follow-up-intelligence.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -105,9 +106,13 @@ const checks = [
   ["movimentação do pipeline gera sinal seguro", pipelineRoute.includes("recordFunnelLearning") && funnelLearning.includes("queueMetaStageConversion") && metaConversions.includes("dataSharingConsent !== true")],
   ["painel mostra funil de sinais", metaSettingsPage.includes("conversionFunnel") && metaSettingsPage.includes("SubmitApplication")],
   ["regressão não contamina a Meta", metaConversions.includes("stageRank <= previousRank") && funnelLearning.includes('"backward"')],
-  ["perdas ficam somente no aprendizado interno", funnelLearning.includes('"negative_signal_internal_only"') && funnelLearning.includes('event_type: stage === "perdido" ? "lead_lost"')],
+  ["perdas ficam somente no aprendizado interno", funnelLearning.includes('"negative_signal_internal_only"') && funnelLearning.includes('stage === "perdido" ? "lead_lost"')],
   ["aprendizado do funil é idempotente", funnelLearning.includes("ignoreDuplicates: true") && funnelLearning.includes("externalEventId")],
   ["gestão acompanha taxas do funil", metaSettings.includes("convertedRate") && metaSettingsPage.includes("% dos leads")],
+  ["comprador externo não vira venda própria", funnelLearning.includes('eventName: "BuyerProfile"') && !funnelLearning.includes('eventName: "ConvertedLead"')],
+  ["descrição livre não é enviada à Meta", followUpIntelligence.includes("decision_signals") && funnelLearning.includes("customData: followUpSignals") && !funnelLearning.includes("customData: input.description")],
+  ["perfil comprador exige acompanhamento", pipelineRoute.includes("followUpDescription.length < 10")],
+  ["inteligência reconhece motivos imobiliários", followUpIntelligence.includes('"financiamento"') && followUpIntelligence.includes('"localizacao"') && followUpIntelligence.includes('"produto"')],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

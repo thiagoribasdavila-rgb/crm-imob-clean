@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   }, {} as Record<string, number>);
   const leads = conversionFunnel.Lead || 0;
   const rate = (value: number) => leads > 0 ? Math.round((value / leads) * 100) : 0;
-  const funnelInsights = { qualifiedRate: rate(conversionFunnel.QualifiedLead || 0), visitRate: rate(conversionFunnel.Schedule || 0), proposalRate: rate(conversionFunnel.SubmitApplication || 0), convertedRate: rate(conversionFunnel.ConvertedLead || 0), lost: internalFunnel.perdido || 0 };
+  const funnelInsights = { qualifiedRate: rate(conversionFunnel.QualifiedLead || 0), visitRate: rate(conversionFunnel.Schedule || 0), proposalRate: rate(conversionFunnel.SubmitApplication || 0), convertedRate: rate(conversionFunnel.ConvertedLead || 0), lost: internalFunnel.perdido || 0, buyerProfiles: internalFunnel.comprou_outro || 0 };
   return NextResponse.json({ sources: sources ?? [], summary, conversionConfig, conversionSummary, conversionFunnel, internalFunnel, funnelInsights, readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role) });
 }
 

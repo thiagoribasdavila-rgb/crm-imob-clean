@@ -16,7 +16,8 @@ const stages = [
   { key: "ganho", label: "Ganhos", probability: 100 },
 ] as const;
 
-type StageKey = (typeof stages)[number]["key"];
+type StageKey = (typeof stages)[number]["key"] | "perdido" | "comprou_outro";
+const destinationOptions: Array<{ key: StageKey; label: string }> = [...stages, { key: "perdido", label: "Perdido" }, { key: "comprou_outro", label: "Comprou em outro lugar" }];
 type Lead = {
   id: string;
   name: string | null;
@@ -81,12 +82,17 @@ export default function PipelinePage() {
   useEffect(() => { void load(); }, []);
 
   async function moveLead(id: string, stage: StageKey) {
+    let followUpDescription = "";
+    if (stage === "comprou_outro") {
+      followUpDescription = window.prompt("Descreva o que pesou na compra: projeto, região, preço, prazo, financiamento ou atendimento. Essa descrição ficará protegida no CRM.")?.trim() || "";
+      if (followUpDescription.length < 10) { setError("Registre um acompanhamento com pelo menos 10 caracteres para preservar o aprendizado comercial."); return; }
+    }
     const previous = leads;
     setSavingId(id);
     setError("");
     setLeads((current) => current.map((lead) => (lead.id === id ? { ...lead, status: stage, updated_at: new Date().toISOString() } : lead)));
     try {
-      const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage }) });
+      const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, followUpDescription }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Falha ao mover lead.");
     } catch (moveError) {
@@ -111,7 +117,7 @@ export default function PipelinePage() {
   }, [leads, query]);
 
   const metrics = useMemo(() => {
-    const open = leads.filter((lead) => !["ganho", "perdido"].includes(lead.status ?? "novo"));
+    const open = leads.filter((lead) => !["ganho", "perdido", "comprou_outro"].includes(lead.status ?? "novo"));
     const pipeline = open.reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0);
     const forecast = open.reduce((sum, lead) => {
       const stage = stages.find((item) => item.key === (lead.status ?? "novo"));
@@ -120,7 +126,8 @@ export default function PipelinePage() {
     const hot = open.filter((lead) => lead.temperature === "quente" || Number(lead.score ?? 0) >= 70).length;
     const highRisk = open.filter((lead) => leadRisk(lead) === "alto").length;
     const won = leads.filter((lead) => lead.status === "ganho").reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0);
-    return { open: open.length, pipeline, forecast, hot, highRisk, won };
+    const buyerProfiles = leads.filter((lead) => lead.status === "comprou_outro").length;
+    return { open: open.length, pipeline, forecast, hot, highRisk, won, buyerProfiles };
   }, [leads]);
 
   const stageData = useMemo(() => stages.map((stage) => {
@@ -152,7 +159,7 @@ export default function PipelinePage() {
         <AtlasMetric label="Forecast" value={loading ? "—" : brl.format(metrics.forecast)} detail="Ponderado por etapa" trend="AI" tone="green" />
         <AtlasMetric label="Leads quentes" value={loading ? "—" : metrics.hot} detail="Prioridade imediata" trend="HOT" tone="rose" />
         <AtlasMetric label="Risco alto" value={loading ? "—" : metrics.highRisk} detail="Negócios exigindo ação" trend="RISK" tone="amber" />
-        <AtlasMetric label="VGV ganho" value={loading ? "—" : brl.format(metrics.won)} detail="Conversões concluídas" trend="WON" tone="green" />
+        <AtlasMetric label="Perfis compradores" value={loading ? "—" : metrics.buyerProfiles} detail="Compraram em outro lugar" trend="LEARN" tone="green" />
       </section>
 
       <AtlasCard>
@@ -182,7 +189,7 @@ export default function PipelinePage() {
                         </div>
                         <p className="mt-3 text-sm font-semibold text-slate-200">{lead.budget_max ? brl.format(lead.budget_max) : "Valor não informado"}</p>
                         <select value={lead.status ?? "novo"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="mt-4 w-full rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-slate-300 outline-none focus:border-sky-400/30">
-                          {stages.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
+                          {destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
                         </select>
                       </article>
                     );
@@ -192,6 +199,10 @@ export default function PipelinePage() {
             ))}
           </div>
         </div>
+      </AtlasCard>
+      <AtlasCard>
+        <AtlasCardHeader eyebrow="Inteligência de compradores" title="Compraram em outro lugar" description="Base separada do funil ativo: compradores reais que ajudam a entender público, produto, preço e concorrência sem contar como venda da empresa." />
+        <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">{leads.filter((lead) => lead.status === "comprou_outro").length ? leads.filter((lead) => lead.status === "comprou_outro").map((lead) => <article key={lead.id} className="rounded-2xl border border-emerald-400/10 bg-emerald-400/[.035] p-4"><div className="flex items-start justify-between gap-3"><div><Link href={`/leads/${lead.id}`} className="font-semibold text-white hover:text-emerald-300">{lead.name || "Cliente comprador"}</Link><p className="mt-1 text-xs text-slate-500">{lead.phone || lead.email || "Contato protegido"}</p></div><AtlasBadge tone="success">COMPRADOR</AtlasBadge></div><p className="mt-3 text-xs leading-5 text-slate-400">Perfil preservado para inteligência comercial e futuras estratégias de público.</p><select value={lead.status ?? "comprou_outro"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="mt-4 w-full rounded-xl border border-white/10 bg-white/[.035] px-3 py-2 text-xs text-slate-300">{destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select></article>) : <div className="sm:col-span-2 xl:col-span-3"><AtlasEmpty title="Nenhum perfil comprador separado" description="Ao registrar uma compra em outro lugar, o cliente aparecerá aqui com seu aprendizado preservado." /></div>}</div>
       </AtlasCard>
     </div>
   );
