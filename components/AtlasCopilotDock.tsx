@@ -34,6 +34,11 @@ type CopilotSource = {
   verifiedAt: string;
 };
 
+type CopilotCalibration = {
+  mode?: "generative" | "local-fallback";
+  model?: string;
+};
+
 const suggestedQuestions = [
   "Quais leads devo priorizar hoje e por quê?",
   "Onde o funil comercial está perdendo velocidade?",
@@ -57,6 +62,7 @@ export default function AtlasCopilotDock() {
   const [copilotLoading, setCopilotLoading] = useState(false);
   const [copilotError, setCopilotError] = useState("");
   const [copilotSources, setCopilotSources] = useState<CopilotSource[]>([]);
+  const [copilotCalibration, setCopilotCalibration] = useState<CopilotCalibration | null>(null);
   const [externalContext, setExternalContext] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
@@ -128,6 +134,7 @@ export default function AtlasCopilotDock() {
     setCopilotError("");
     setCopilotAnswer("");
     setCopilotSources([]);
+    setCopilotCalibration(null);
 
     try {
       const { data } = await supabase.auth.getSession();
@@ -161,10 +168,11 @@ export default function AtlasCopilotDock() {
         }),
       });
 
-      const payload = (await response.json()) as { answer?: string; sources?: CopilotSource[]; error?: string };
+      const payload = (await response.json()) as { answer?: string; sources?: CopilotSource[]; calibration?: CopilotCalibration; error?: string };
       if (!response.ok) throw new Error(payload.error || "Falha ao consultar o Atlas Copilot.");
       setCopilotAnswer(payload.answer || "Sem resposta do modelo.");
       setCopilotSources(payload.sources ?? []);
+      setCopilotCalibration(payload.calibration ?? null);
     } catch (error) {
       setCopilotError(error instanceof Error ? error.message : "Falha ao consultar o Atlas Copilot.");
     } finally {
@@ -236,6 +244,10 @@ export default function AtlasCopilotDock() {
               {copilotError ? <p className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs leading-5 text-amber-100">{copilotError}</p> : null}
               {copilotAnswer ? (
                 <div className="mt-3 rounded-2xl border border-sky-400/15 bg-sky-400/10 px-4 py-3 text-sm leading-6 text-sky-50">
+                  <div className="mb-3 flex items-center justify-between gap-3 border-b border-sky-200/10 pb-3">
+                    <span className="text-[10px] font-bold uppercase tracking-[.16em] text-sky-300">Resposta imobiliária</span>
+                    <span className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[.12em] ${copilotCalibration?.mode === "local-fallback" ? "bg-amber-400/10 text-amber-200" : "bg-emerald-400/10 text-emerald-200"}`}>{copilotCalibration?.mode === "local-fallback" ? "Motor local seguro" : "IA generativa"}</span>
+                  </div>
                   <MessageResponse>{copilotAnswer}</MessageResponse>
                   {copilotSources.length ? <div className="mt-4 border-t border-sky-200/10 pt-3"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-sky-300">Referências consultadas</p><div className="mt-2 space-y-2">{copilotSources.map((source) => <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-white/[0.06] bg-slate-950/30 px-3 py-2 text-xs text-slate-300 transition hover:border-sky-400/25"><strong className="block text-sky-200">{source.publisher}</strong><span>{source.title} · verificado em {new Date(`${source.verifiedAt}T12:00:00`).toLocaleDateString("pt-BR")}</span></a>)}</div></div> : null}
                 </div>

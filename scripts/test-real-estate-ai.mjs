@@ -6,6 +6,8 @@ const route = readFileSync(resolve(root, "app/api/ai/copilot/route.ts"), "utf8")
 const knowledge = readFileSync(resolve(root, "lib/ai/real-estate-knowledge.ts"), "utf8");
 const context = readFileSync(resolve(root, "lib/ai/real-estate-context.ts"), "utf8");
 const ui = readFileSync(resolve(root, "components/AtlasCopilotDock.tsx"), "utf8");
+const fallback = readFileSync(resolve(root, "lib/ai/real-estate-fallback.ts"), "utf8");
+const statusRoute = readFileSync(resolve(root, "app/api/ai/status/route.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -21,6 +23,9 @@ const checks = [
   ["modelo configurável", route.includes("ATLAS_AI_MODEL")],
   ["suíte mínima de cenários", Array.isArray(evals) && evals.length >= 10],
   ["cenários de segurança", evals.some((item) => item.id === "privacy") && evals.some((item) => item.id === "off-domain")],
+  ["fallback operacional", route.includes("buildFallbackRealEstateAnswer") && fallback.includes("motor imobiliário local")],
+  ["modo da resposta visível", ui.includes("Motor local seguro") && ui.includes("IA generativa")],
+  ["diagnóstico sem segredos", statusRoute.includes("gatewayConfigured") && !statusRoute.includes("AI_GATEWAY_API_KEY:" )],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

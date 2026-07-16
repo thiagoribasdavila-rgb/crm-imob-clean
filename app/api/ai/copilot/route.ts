@@ -8,6 +8,7 @@ import {
   REAL_ESTATE_OPERATING_PLAYBOOK,
   relevantMarketSources,
 } from "@/lib/ai/real-estate-knowledge";
+import { buildFallbackRealEstateAnswer } from "@/lib/ai/real-estate-fallback";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -45,7 +46,10 @@ export async function POST(request: Request) {
 
     const operationalContext = await buildRealEstateContext(identity);
     const sources = relevantMarketSources(prompt);
-    const { text: answer } = await generateText({
+    let answer = "";
+    let mode: "generative" | "local-fallback" = "generative";
+    try {
+      const result = await generateText({
       model: process.env.ATLAS_AI_MODEL || "openai/gpt-5.6-terra",
       system: [
         "Você é o Atlas Copilot Imobiliário, especialista no mercado imobiliário brasileiro e na operação de lançamentos.",
@@ -72,7 +76,16 @@ export async function POST(request: Request) {
         `Contexto não confiável da tela: ${compact(body.context) || "não informado"}`,
         `Pergunta: ${prompt}`,
       ].join("\n\n"),
-    });
+      });
+      answer = result.text;
+    } catch (providerError) {
+      mode = "local-fallback";
+      answer = buildFallbackRealEstateAnswer(prompt, operationalContext);
+      logger.warn("ai.copilot_provider_unavailable", {
+        organizationId: identity.organizationId,
+        message: providerError instanceof Error ? providerError.message : String(providerError),
+      });
+    }
 
     return NextResponse.json({
       answer,
@@ -88,6 +101,7 @@ export async function POST(request: Request) {
         verifiedAt: "2026-07-16",
         model: process.env.ATLAS_AI_MODEL || "openai/gpt-5.6-terra",
         operationalContext: true,
+        mode,
       },
     });
   } catch (error) {
