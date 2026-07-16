@@ -28,6 +28,9 @@ const metaMigration = readFileSync(resolve(root, "supabase/migrations/2026071622
 const providerRouter = readFileSync(resolve(root, "lib/ai/provider-router.ts"), "utf8");
 const hostingerDeployment = readFileSync(resolve(root, "docs/HOSTINGER_DEPLOYMENT.md"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
+const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
+const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
+const metaSettingsPage = readFileSync(resolve(root, "app/(crm)/integrations/meta/page.tsx"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -90,6 +93,12 @@ const checks = [
   ["custo preserva isolamento", costConversionMigration.includes("ai_usage_events_select_org") && costConversionMigration.includes("current_organization_id")],
   ["conversões Meta começam pausadas", costConversionMigration.includes("meta_conversion_configs") && costConversionMigration.includes("enabled boolean not null default false")],
   ["conversão Meta é idempotente", costConversionMigration.includes("unique (organization_id, event_id)")],
+  ["conversão exige consentimento explícito", metaConversions.includes("dataSharingConsent !== true") && outboxWorker.includes("consentimento não registrado")],
+  ["consentimento é isolado por origem", costConversionMigration.includes("conversion_sharing_enabled") && metaSettings.includes("consentBasis")],
+  ["produção Meta permanece bloqueada", costConversionMigration.includes("check (mode = 'test')") && metaSettings.includes('mode: "test"') && metaSettingsPage.includes("Modo produção bloqueado")],
+  ["conversão envia identificadores protegidos", outboxWorker.includes("hashMetaValue(lead.email)") && outboxWorker.includes("hashMetaValue(phone)")],
+  ["worker entrega conversões de forma resiliente", outboxWorker.includes('event.topic === "meta.conversion.send"') && outboxWorker.includes('status: terminal ? "dead_letter" : "failed"')],
+  ["evento inicial de lead é deduplicado", outboxWorker.includes("meta-lead-${metaEvent.external_lead_id}") && metaConversions.includes('ignoreDuplicates: true')],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

@@ -1,5 +1,9 @@
 begin;
 
+alter table public.meta_lead_sources
+  add column if not exists conversion_sharing_enabled boolean not null default false,
+  add column if not exists consent_basis text;
+
 create table if not exists public.ai_usage_events (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
@@ -19,7 +23,7 @@ create table if not exists public.meta_conversion_configs (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null unique references public.organizations(id) on delete cascade,
   dataset_id text not null,
-  mode text not null default 'test' check (mode in ('test','live')),
+  mode text not null default 'test' check (mode = 'test'),
   enabled boolean not null default false,
   test_event_code text,
   consent_required boolean not null default true,
