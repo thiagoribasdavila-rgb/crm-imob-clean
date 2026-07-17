@@ -24,6 +24,7 @@ type DashboardData = {
 };
 type SuperintendentSummary = { scope: { role: "superintendent"; directManagersOnly: boolean; parallelStructuresExcluded: boolean; unassignedExcluded: boolean }; totals: { managers: number; brokers: number; leads: number; activeLeads: number; hotLeads: number; overdueLeads: number; won: number; potentialVgv: number }; managers: Array<{ managerId: string; managerName: string; brokers: number; leads: number; activeLeads: number; hotLeads: number; overdueLeads: number; won: number; conversionRate: number; potentialVgv: number }>; reconciliation: { managerLeadSum: number; scopedLeadCount: number; matches: boolean }; generatedAt: string };
 type TeamSlaSummary = { scope: { role: "manager"; directBrokersOnly: boolean }; totals: { alerts: number; firstContactOverdue: number; followUpOverdue: number; brokersWithAlerts: number }; alerts: Array<{ kind: "first_contact" | "follow_up"; dueAt: string; overdueMinutes: number; leadId: string; leadName: string; brokerId: string; brokerName: string }>; byBroker: Array<{ brokerId: string; brokerName: string; firstContactOverdue: number; followUpOverdue: number }>; generatedAt: string };
+type PredictiveBriefing = { status: "critical" | "attention" | "healthy"; signals: Array<{ id: string; severity: "critical" | "attention" | "opportunity" | "healthy"; title: string; evidence: string; action: string; href: string }>; model: { generativeReady: boolean; localIntelligenceReady: boolean } };
 
 const emptyData: DashboardData = {
   leads: [],
@@ -138,6 +139,7 @@ export default function DashboardPage() {
   const [viewerId, setViewerId] = useState("");
   const [superintendentSummary, setSuperintendentSummary] = useState<SuperintendentSummary | null>(null);
   const [teamSla, setTeamSla] = useState<TeamSlaSummary | null>(null);
+  const [predictiveBriefing, setPredictiveBriefing] = useState<PredictiveBriefing | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -212,6 +214,18 @@ export default function DashboardPage() {
     });
     return () => { active = false; };
   }, [viewerRole]);
+
+  useEffect(() => {
+    if (!viewerId) return;
+    let active = true;
+    void supabase.auth.getSession().then(async ({ data: session }) => {
+      const response = await fetch("/api/ai/briefing", { headers: { Authorization: `Bearer ${session.session?.access_token || ""}` }, cache: "no-store" });
+      if (!response.ok) return;
+      const body = await response.json();
+      if (active) setPredictiveBriefing(body as PredictiveBriefing);
+    });
+    return () => { active = false; };
+  }, [viewerId]);
 
   const leads = useMemo(
     () =>
@@ -453,12 +467,15 @@ export default function DashboardPage() {
   }, [isManager, priorities, referenceTime, teamSla]);
 
   const selectedDecisionReport = decisionReports[decisionPeriod];
+  const predictiveSignal = predictiveBriefing?.signals[0];
   const aiDecision = isManager
     ? (teamSla?.totals.alerts ?? 0) > 0
       ? `Comece pelos ${teamSla?.totals.brokersWithAlerts ?? 0} corretores com SLA vencido. Combine responsável e prazo ainda hoje.`
-      : "O time está sem alertas críticos. Use o dia para revisar conversão, qualidade das próximas ações e coaching."
+      : predictiveSignal ? `${predictiveSignal.evidence} ${predictiveSignal.action}` : "O time está sem alertas críticos. Use o dia para revisar conversão, qualidade das próximas ações e coaching."
     : selectedDecisionReport.relationship > 0
       ? `${selectedDecisionReport.relationship} novos leads vieram de relacionamento neste período. Priorize resposta pessoal, peça contexto da indicação e planeje o próximo contato.`
+    : predictiveSignal
+      ? `${predictiveSignal.evidence} ${predictiveSignal.action}`
     : metrics.overdue > 0
       ? `Resolva primeiro os ${metrics.overdue} itens atrasados e depois avance os leads quentes. Registre cada resultado para melhorar a próxima recomendação.`
       : "Sua operação está em dia. Priorize leads quentes e confirme uma próxima ação com data em cada atendimento.";
@@ -591,8 +608,9 @@ export default function DashboardPage() {
             <div className="mt-4 grid grid-cols-2 gap-3">
               {[{ label: "Novos leads", value: selectedDecisionReport.created }, { label: "Leads movimentados", value: selectedDecisionReport.moved }, { label: "Vendas ganhas", value: selectedDecisionReport.won }, { label: "Indicação e recompra", value: selectedDecisionReport.relationship }].map((metric) => <div key={metric.label} className="rounded-xl border border-white/[.06] bg-white/[.025] p-3"><strong className="text-xl text-white">{metric.value}</strong><p className="mt-1 text-[11px] text-slate-500">{metric.label}</p></div>)}
             </div>
-            <div className="mt-4 rounded-xl border border-violet-400/15 bg-violet-500/[.07] p-4"><p className="text-xs font-bold text-violet-200">✦ Recomendação Atlas</p><p className="mt-2 text-sm leading-6 text-slate-300">{aiDecision}</p></div>
-            <p className="mt-3 text-[10px] leading-4 text-slate-600">Visão agent-first: menos administração, mais tempo com o cliente. Resumo calculado com dados reais do CRM; a IA orienta e a decisão continua humana.</p>
+            <div className="mt-4 rounded-xl border border-violet-400/15 bg-violet-500/[.07] p-4"><div className="flex items-center justify-between gap-2"><p className="text-xs font-bold text-violet-200">✦ Recomendação preditiva Atlas</p>{predictiveSignal ? <StatusBadge tone={predictiveSignal.severity === "critical" ? "danger" : predictiveSignal.severity === "attention" ? "warning" : "success"}>{predictiveSignal.severity === "critical" ? "RISCO" : predictiveSignal.severity === "attention" ? "ATENÇÃO" : "OPORTUNIDADE"}</StatusBadge> : null}</div><p className="mt-2 text-sm leading-6 text-slate-300">{aiDecision}</p>{predictiveSignal ? <Link href={predictiveSignal.href} className="mt-3 inline-flex text-xs font-semibold text-violet-200 hover:text-white">Preparar ação sugerida →</Link> : null}</div>
+            <div className="mt-3 flex flex-wrap gap-2"><StatusBadge tone="info">ROTINAS ASSISTIDAS</StatusBadge><StatusBadge tone="violet">PREVISÃO EXPLICÁVEL</StatusBadge><StatusBadge tone="success">APROVAÇÃO HUMANA</StatusBadge></div>
+            <p className="mt-3 text-[10px] leading-4 text-slate-600">Visão agent-first: menos administração, mais tempo com o cliente. A automação prepara prioridades, cadências e decisões; mensagens, transferências e mudanças sensíveis permanecem governadas.</p>
           </aside>
         </div>
       </section>
