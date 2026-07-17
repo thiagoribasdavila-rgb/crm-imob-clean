@@ -1,10 +1,10 @@
 :root {
-  --atlas-bg: #070a12;
-  --atlas-surface: #0d1220;
-  --atlas-surface-raised: #121a2b;
+  --atlas-bg: #05070d;
+  --atlas-surface: #0a101c;
+  --atlas-surface-raised: #101827;
   --atlas-surface-soft: rgba(255, 255, 255, 0.035);
-  --atlas-border: rgba(148, 163, 184, 0.14);
-  --atlas-border-strong: rgba(148, 163, 184, 0.24);
+  --atlas-border: rgba(148, 163, 184, 0.12);
+  --atlas-border-strong: rgba(148, 163, 184, 0.22);
   --atlas-text: #f8fafc;
   --atlas-text-muted: #94a3b8;
   --atlas-accent: #38bdf8;
@@ -14,12 +14,12 @@
   --atlas-danger: #fb7185;
   --atlas-info: #60a5fa;
   --atlas-violet: #a78bfa;
-  --atlas-sidebar-width: 272px;
-  --atlas-sidebar-collapsed-width: 84px;
-  --atlas-topbar-height: 76px;
+  --atlas-sidebar-width: 264px;
+  --atlas-sidebar-collapsed-width: 78px;
+  --atlas-topbar-height: 72px;
   --atlas-radius-sm: 10px;
   --atlas-radius-md: 14px;
-  --atlas-radius-lg: 20px;
-  --atlas-shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.24);
-  --atlas-transition: 180ms ease;
+  --atlas-radius-lg: 22px;
+  --atlas-shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.22);
+  --atlas-transition: 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }

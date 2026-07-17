@@ -8,7 +8,7 @@ export function AtlasCard({
   className?: string;
 }) {
   return (
-    <section className={`atlas-panel atlas-surface-card ${className}`.trim()}>
+    <section className={`atlas-panel atlas-panel-hover atlas-surface-card ${className}`.trim()}>
       {children}
     </section>
   );

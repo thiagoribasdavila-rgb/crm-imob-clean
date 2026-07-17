@@ -10,7 +10,7 @@ type PageHeaderProps = {
 export function PageHeader({ eyebrow, title, description, actions }: PageHeaderProps) {
   return (
     <header className="atlas-page-header">
-      <div>
+      <div className="atlas-page-heading">
         {eyebrow ? <p className="atlas-page-eyebrow">{eyebrow}</p> : null}
         <h1>{title}</h1>
         {description ? <p className="atlas-page-description">{description}</p> : null}
