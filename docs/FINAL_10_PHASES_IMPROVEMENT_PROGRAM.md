@@ -24,9 +24,11 @@ Dividir telas grandes, adotar carregamento progressivo, próxima melhor ação, 
 
 Entrega: `FINAL_PHASE_4_CRM_LEAD_360.md`, contexto de filtros preservado, barra operacional e verificação automática `final-crm:check`.
 
-## 5. Pipeline, Kanban e produtividade
+## 5. Pipeline, Kanban e produtividade — concluída
 
 Evoluir drag-and-drop, atualização otimista, virtualização, SLAs, tarefas e agenda. Aceite: movimentações instantâneas com rollback visual e nenhuma perda de estado.
+
+Entrega: `FINAL_PHASE_5_PIPELINE_PRODUCTIVITY.md`, movimentação serializada, preferências preservadas e verificação automática `final-pipeline:check`.
 
 ## 6. Projetos e incorporadoras
 

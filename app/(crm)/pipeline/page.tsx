@@ -12,6 +12,13 @@ const defaultStages = DEFAULT_PIPELINE_STAGES.filter((stage) => stage.visible &&
 type StageKey = PipelineStageKey;
 type FocusKey = "prioridade" | "sla" | "atrasadas" | "sem_acao" | "quentes" | "todas";
 type SortKey = "prioridade" | "score" | "valor" | "recente";
+type PipelinePreferences = {
+  focus?: FocusKey;
+  sort?: SortKey;
+  compact?: boolean;
+  hideEmpty?: boolean;
+  mobileStage?: StageKey;
+};
 type Lead = {
   id: string;
   name: string | null;
@@ -41,6 +48,7 @@ type Lead = {
 };
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const PIPELINE_PREFERENCES_KEY = "atlas:pipeline-preferences:v1";
 
 function leadRisk(lead: Lead) {
   const score = Number(lead.score ?? 0);
@@ -141,6 +149,33 @@ export default function PipelinePage() {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<StageKey | null>(null);
   const [lastMove, setLastMove] = useState<{ moveId: string; leadId: string; leadName: string; from: StageKey; to: StageKey } | null>(null);
+  const [preferencesHydrated, setPreferencesHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem(PIPELINE_PREFERENCES_KEY);
+      if (saved) {
+        const preferences = JSON.parse(saved) as PipelinePreferences;
+        if (preferences.focus) setFocus(preferences.focus);
+        if (preferences.sort) setSort(preferences.sort);
+        if (typeof preferences.compact === "boolean") setCompact(preferences.compact);
+        if (typeof preferences.hideEmpty === "boolean") setHideEmpty(preferences.hideEmpty);
+        if (preferences.mobileStage) setMobileStage(preferences.mobileStage);
+      }
+    } catch {
+      window.sessionStorage.removeItem(PIPELINE_PREFERENCES_KEY);
+    } finally {
+      setPreferencesHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesHydrated) return;
+    window.sessionStorage.setItem(
+      PIPELINE_PREFERENCES_KEY,
+      JSON.stringify({ focus, sort, compact, hideEmpty, mobileStage }),
+    );
+  }, [compact, focus, hideEmpty, mobileStage, preferencesHydrated, sort]);
 
   async function authenticatedFetch(input: RequestInfo, init?: RequestInit) {
     const { data } = await supabase.auth.getSession();
@@ -169,6 +204,10 @@ export default function PipelinePage() {
   useEffect(() => { void load(); }, []);
 
   async function moveLead(id: string, stage: StageKey, reversalOf?: string) {
+    if (savingId) {
+      setError("Aguarde a movimentação atual ser confirmada antes de mover outra lead.");
+      return;
+    }
     const currentLead = leads.find((lead) => lead.id === id);
     const previousStage = (currentLead?.status || "novo") as StageKey;
     if (previousStage === stage) { setDraggedId(null); setDragOverStage(null); return; }
@@ -294,7 +333,8 @@ export default function PipelinePage() {
         </div>
       </section>
 
-      {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
+      {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200" role="alert">{error}</div> : null}
+      {savingId ? <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status" aria-live="polite">Confirmando movimentação e registrando o histórico…</div> : null}
       {lastMove ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.07] px-4 py-3 text-sm text-sky-100" role="status"><span><strong>{lastMove.leadName}</strong> avançou para {destinationOptions.find((item) => item.key === lastMove.to)?.label}.</span><button type="button" onClick={() => void undoLastMove()} disabled={Boolean(savingId)} className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs font-semibold hover:bg-sky-300/15 disabled:opacity-50">Desfazer movimentação</button></div> : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
@@ -349,7 +389,7 @@ export default function PipelinePage() {
         </div>
         <div className="atlas-kanban-mobile-nav" role="tablist" aria-label="Escolher etapa no celular">{boardStages.map((stage) => <button key={stage.key} type="button" role="tab" aria-selected={activeMobileStage === stage.key} onClick={() => setMobileStage(stage.key)} className={activeMobileStage === stage.key ? "is-active" : ""}><span>{stage.label}</span><b>{stage.items.length}</b></button>)}</div>
         <div className="atlas-kanban-scroll p-4 sm:p-6" tabIndex={0} aria-label="Quadro Kanban com rolagem horizontal">
-          <div className={`atlas-kanban-board ${compact ? "is-compact" : ""}`} style={{ "--kanban-columns": boardStages.length } as CSSProperties} aria-busy={loading}>
+          <div className={`atlas-kanban-board ${compact ? "is-compact" : ""}`} style={{ "--kanban-columns": boardStages.length } as CSSProperties} aria-busy={loading || Boolean(savingId)}>
             {boardStages.map((stage) => (
               <section key={stage.key} role="tabpanel" aria-label={`${stage.label}: ${stage.items.length} leads`} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""} ${activeMobileStage !== stage.key ? "is-mobile-hidden" : ""}`}>
                 <div className="atlas-pipeline-column-header mb-4 border-b border-white/[0.06] pb-3">
@@ -365,7 +405,7 @@ export default function PipelinePage() {
                     const guidance = brokerGuidance(lead);
                     const contact = phoneLinks(lead.phone);
                     return (
-                      <article key={lead.id} draggable tabIndex={0} aria-label={`${lead.name || "Lead sem nome"}, etapa ${stage.label}. Alt mais seta move entre etapas.`} onKeyDown={(event) => { if (event.altKey && event.key === "ArrowLeft") { event.preventDefault(); moveByKeyboard(lead, -1); } if (event.altKey && event.key === "ArrowRight") { event.preventDefault(); moveByKeyboard(lead, 1); } }} onDragEnd={() => { setDraggedId(null); setDragOverStage(null); }} onDragStart={(event) => { setDraggedId(lead.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""}`}>
+                      <article key={lead.id} draggable={!savingId} tabIndex={0} aria-disabled={Boolean(savingId)} aria-label={`${lead.name || "Lead sem nome"}, etapa ${stage.label}. Alt mais seta move entre etapas.`} onKeyDown={(event) => { if (event.altKey && event.key === "ArrowLeft") { event.preventDefault(); moveByKeyboard(lead, -1); } if (event.altKey && event.key === "ArrowRight") { event.preventDefault(); moveByKeyboard(lead, 1); } }} onDragEnd={() => { setDraggedId(null); setDragOverStage(null); }} onDragStart={(event) => { if (savingId) { event.preventDefault(); return; } setDraggedId(lead.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-1 truncate text-[11px] text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
                           <AtlasBadge tone={riskTone(risk)}>Risco {risk}</AtlasBadge>
