@@ -804,7 +804,17 @@ Pendência externa: aplicar migration, configurar credenciais e redirects na Hos
 
 Pendência externa: validar quatro perfis, dois tenants, empates, atualização após ações e uso móvel com corretores reais.
 
-Próxima fase: **Fase 49 — Revisão semanal assistida**, consolidando resultados, pendências e plano da próxima semana sem ranking simplista.
+## Fase 49 — Revisão semanal assistida
+
+**Estado:** 100% implementada e aprovada localmente; aferição com semanas e usuários reais permanece para homologação.
+
+**Evolução:** resultados, pendências e até cinco focos da próxima semana aparecem no relatório pessoal. A tela separa entregas de backlog e explica cada recomendação.
+
+**Qualidade:** custo LLM zero, carteira própria, nenhum ranking de pessoas e percentual oculto em amostra menor que cinco. O contrato está em `config/weekly-productivity-review.json`, o gate em `npm run weekly-productivity:check` e o roteiro em `docs/WEEKLY_PRODUCTIVITY_REVIEW_PHASE_49.md`.
+
+Pendência externa: validar quatro perfis, dois tenants, semana vazia, virada do período e comportamento móvel.
+
+Próxima fase: **Fase 50 — Fechamento do bloco de produtividade**, auditando adoção, acessibilidade, desempenho e prontidão de homologação das fases 41–49.
 
 ## Painel das 100 fases
 

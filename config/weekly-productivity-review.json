@@ -1,0 +1,1 @@
+{"phase":49,"api":"app/api/v1/productivity/weekly/route.ts","page":"app/(crm)/reports/page.tsx","periodDays":7,"maximumPlanItems":5,"minimumSample":5,"requires":["personalOnly","organizationScope","hierarchicalRls","smallSampleGuard","zeroLlmCost","noPeopleRanking","humanDecision"]}
