@@ -1266,6 +1266,18 @@ Pendência externa: aplicar migration, ligar credenciais oficiais e conciliar um
 
 Próxima fase: **Fase 92 — Loop Meta/Andromeda governado**, transformando resultados consentidos do CRM em sinais de conversão e recomendações auditáveis, sempre sob decisão da diretoria.
 
+## Fase 92 — Loop Meta/Andromeda governado
+
+**Estado:** 100% implementada localmente; migration, dataset, credenciais e ensaio Meta oficial permanecem para homologação.
+
+**Evolução:** o CRM agora fecha ciclos de 30 dias com métricas de entrega, identidade, feedback profundo, atribuição, duplicidade e atualidade. Cada ciclo preserva evidência agregada, score, bloqueadores e hipóteses de teste.
+
+**Governança:** somente a diretoria aprova ou rejeita; aprovação não executa mudança externa. Sinais negativos permanecem internos, consentimento é obrigatório e público/verba nunca são alterados automaticamente. O contrato está em `config/meta-andromeda-learning-loop.json`, o gate em `npm run andromeda-loop:check` e o roteiro em `docs/META_ANDROMEDA_LEARNING_LOOP_PHASE_92.md`.
+
+Pendência externa: aplicar migration, confirmar eventos no dataset de teste, validar dois tenants e executar experimento controlado sem ativação automática.
+
+Próxima fase: **Fase 93 — Laboratório de experimentos de mídia**, formalizando hipótese, controle, orçamento máximo, janela, critério de parada e leitura causal prudente.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
