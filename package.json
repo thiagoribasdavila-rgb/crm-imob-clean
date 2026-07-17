@@ -121,6 +121,7 @@
     "routes:real": "node --env-file=.env.local scripts/test-real-routes.mjs",
     "preflight:production": "node scripts/preflight-production.mjs",
     "package:hostinger": "node scripts/package-hostinger.mjs && node scripts/verify-hostinger-package.mjs",
+    "package:hostinger:clean-build": "node scripts/test-hostinger-package-build.mjs",
     "final-release:check": "node scripts/check-final-hostinger-release.mjs",
     "final-improvement:check": "node scripts/check-final-improvement-program.mjs",
     "final-design-system:check": "node scripts/check-final-design-system.mjs",

@@ -32,6 +32,7 @@ for (const required of [
   "package-lock.json",
   "ecosystem.config.cjs",
   "lib/auth/safe-redirect.ts",
+  "components/crm/lead-operational-bar.tsx",
   "docs/HOSTINGER_FINAL_RELEASE_PHASE_100.md",
 ])
   if (!entries.includes(required))

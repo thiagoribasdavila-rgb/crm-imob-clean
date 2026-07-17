@@ -19,3 +19,5 @@ O artefato é um candidato final de homologação. Produção continua bloqueada
 ## Verificação
 
 Execute `npm run package:hostinger`. O comando gera e valida o ZIP e o checksum em `dist/hostinger`. Depois do upload em homologação, execute `ATLAS_SMOKE_BASE_URL=https://seu-dominio npm run smoke:hostinger`.
+
+Antes do upload, execute também `npm run package:hostinger:clean-build`. Esse ensaio extrai o ZIP em uma pasta temporária, executa instalação limpa e build com o ambiente local apenas durante o teste; o `.env.local` nunca entra no artefato.
