@@ -1302,6 +1302,18 @@ Pendência externa: aplicar migration, anexar arquivos oficiais, importar fatos 
 
 Próxima fase: **Fase 95 — Orquestração de orçamento e portfólio**, recomendando alocação entre projetos e canais com limites, caixa, capacidade comercial e decisão explícita da diretoria.
 
+## Fase 95 — Orquestração de orçamento e portfólio
+
+**Estado:** 100% implementada localmente; migration, fatos reais e conciliação financeira permanecem para homologação.
+
+**Evolução:** cenários usam performance CRM, confiança, estoque e capacidade comercial. Projetos inviáveis são bloqueados; mínimos, máximos, exploração e saldo não alocado ficam explicáveis.
+
+**Governança:** diretor decide e superintendência acompanha. Não há ranking de pessoas nem movimentação automática de verba. Contrato em `config/governed-budget-orchestration.json`, gate `npm run budget-orchestration:check` e roteiro `docs/GOVERNED_BUDGET_ORCHESTRATION_PHASE_95.md`.
+
+Pendência externa: aplicar migrations, importar fatos por projeto, conciliar caixa/plataformas e validar dois tenants.
+
+Próxima fase: **Fase 96 — Relatórios executivos multicanal**, consolidando dia, semana e mês por campanha, projeto e incorporadora com alertas e decisões rastreáveis.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
