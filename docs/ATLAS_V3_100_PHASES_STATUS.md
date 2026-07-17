@@ -143,6 +143,42 @@ Evidências: `lib/atlas/data-contracts.ts` e `npm run contracts:data`.
 
 Próxima fase: **Fase 5 — Arquitetura modular**, consolidando fronteiras entre CRM, projetos, marketing, IA, integrações, governança e relatórios.
 
+## Fase 5 — Arquitetura modular
+
+Status: **Testada**.
+
+Percentual antes: **80%** — diretórios funcionais existiam, mas propriedade de entidades e dependências não estava formalizada.
+
+Percentual depois: **100%** — oito módulos definidos, entidades com responsável único e fronteiras verificadas no release gate.
+
+### Módulos oficiais
+
+| Módulo | Responsabilidade |
+|---|---|
+| CRM | leads, clientes, usuários, tarefas, timeline, pipeline e conversas |
+| Projetos | incorporadoras, empreendimentos, unidades, estoque e materiais |
+| Marketing | campanhas, atribuição, criativos e aquisição |
+| IA | copiloto, score, matching, previsão, modelos e aprovação humana |
+| Integrações | conectores, webhooks, outbox e serviços externos |
+| Governança | eventos, auditoria, saúde, homologação, backup e rollback |
+| Relatórios | leituras agregadas e decisões por perfil, sem possuir dados transacionais |
+| Plataforma | Supabase, API core, contratos, rate limit, flags e utilitários compartilhados |
+
+### Regras
+
+- Cada entidade canônica possui exatamente um módulo responsável.
+- Relatórios leem os domínios, mas não se tornam fonte dos dados.
+- IA produz recomendações e memória governada, mas não duplica lead, projeto ou campanha.
+- Integrações transportam eventos; o estado comercial continua no módulo de origem.
+- Plataforma não contém regra comercial própria.
+- Fluxo esperado: interface → API → domínio → dados.
+- Service role e segredos permanecem exclusivamente no servidor.
+- Raízes de UI, API e biblioteca não podem ser declaradas por dois módulos.
+
+Evidências: `config/module-boundaries.json` e `npm run architecture:modules`.
+
+Próxima fase: **Fase 6 — Configuração de ambientes**, separando desenvolvimento, homologação e produção sem misturar credenciais ou bancos.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
