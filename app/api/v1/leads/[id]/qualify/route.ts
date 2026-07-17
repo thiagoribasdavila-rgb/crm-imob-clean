@@ -19,7 +19,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     await requireLeadAccess(identity, id);
     const admin = getSupabaseAdmin();
     const [leadResult, activitiesResult, opportunitiesResult, propertiesResult] = await Promise.all([
-      admin.from("leads").select("id,email,phone,status,source,budget_min,budget_max,preferred_regions,bedrooms,purpose,next_action_at,last_interaction_at,created_at,metadata").eq("id", id).eq("organization_id", identity.organizationId).single(),
+      admin.from("leads").select("id,email,phone,status,source,score,temperature,budget_min,budget_max,preferred_regions,bedrooms,purpose,next_action_at,last_interaction_at,created_at,metadata").eq("id", id).eq("organization_id", identity.organizationId).single(),
       admin.from("activities").select("id", { count: "exact", head: true }).eq("lead_id", id).eq("organization_id", identity.organizationId),
       admin.from("opportunities").select("id", { count: "exact", head: true }).eq("lead_id", id).eq("organization_id", identity.organizationId),
       admin.from("properties").select("id,price,city,bedrooms,status").eq("organization_id", identity.organizationId).limit(500),
@@ -29,10 +29,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const lead = leadResult.data;
     const metadata = typeof lead.metadata === "object" && lead.metadata ? lead.metadata as Record<string, unknown> : {};
     const existingAnswers = metadata.qualificationAnswers && typeof metadata.qualificationAnswers === "object" ? metadata.qualificationAnswers as Record<string, string> : {};
-    const allowedAnswerKeys = new Set(["purpose", "timeline", "financing"]);
-    const newAnswers = Object.fromEntries(Object.entries(body.answers ?? {}).filter(([key, value]) => allowedAnswerKeys.has(key) && typeof value === "string").map(([key, value]) => [key, String(value).slice(0, 50)]));
+    const allowedAnswers: Record<string, Set<string>> = { purpose: new Set(["moradia","investimento"]), timeline: new Set(["ate_3_meses","3_a_6_meses","6_a_12_meses","sem_prazo"]), financing: new Set(["financiamento","recursos_proprios","permuta","nao_definido"]) };
+    const newAnswers = Object.fromEntries(Object.entries(body.answers ?? {}).filter(([key, value]) => typeof value === "string" && allowedAnswers[key]?.has(value)).map(([key,value])=>[key,String(value)])) as Record<string,string>;
     const answers = { ...existingAnswers, ...newAnswers };
-    if (answers.purpose && !lead.purpose) lead.purpose = answers.purpose;
+    if (answers.purpose) lead.purpose = answers.purpose;
     const matches = (propertiesResult.data ?? []).filter((property) => {
       const available = ["available", "ativo", "disponivel", "disponível"].includes(String(property.status ?? "").toLowerCase());
       const budgetFit = !lead.budget_max || !property.price || Number(property.price) <= Number(lead.budget_max) * 1.1;
@@ -67,8 +67,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       metadata: { score: qualification.score, confidence: qualification.confidence, temperature: qualification.temperature, answered: Object.keys(newAnswers) },
       occurred_at: new Date().toISOString(),
     });
-    if (Object.keys(newAnswers).length) await admin.from("campaign_events").upsert({ organization_id: identity.organizationId, lead_id: id, event_type: "qualification_signal", source: "crm-qualification", external_event_id: `qualification-${id}-${Object.keys(answers).sort().join("-")}`, payload: { decision_signals: Object.entries(newAnswers).map(([key, value]) => `${key}:${value}`) }, occurred_at: new Date().toISOString() }, { onConflict: "organization_id,source,external_event_id", ignoreDuplicates: true });
-    return NextResponse.json({ qualification });
+    if (Object.keys(newAnswers).length) { const answerSignature = Object.entries(answers).sort(([a],[b]) => a.localeCompare(b)).map(([key,value]) => `${key}-${value}`).join("-"); await admin.from("campaign_events").upsert({ organization_id: identity.organizationId, lead_id: id, event_type: "qualification_signal", source: "crm-qualification", external_event_id: `qualification-${id}-${answerSignature}`, payload: { decision_signals: Object.entries(newAnswers).map(([key, value]) => `${key}:${value}`) }, occurred_at: new Date().toISOString() }, { onConflict: "organization_id,source,external_event_id", ignoreDuplicates: true }); }
+    return NextResponse.json({ qualification: { ...qualification, progress: { answered: Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length, total: 3, percent: Math.round(Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length / 3 * 100) }, scoreChange: { previous: Number(lead.score || 0), current: qualification.score, delta: qualification.score - Number(lead.score || 0) } } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha na qualificação.";
     const status = /sessão|token|autenticação/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
