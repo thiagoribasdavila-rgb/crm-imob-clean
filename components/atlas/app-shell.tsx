@@ -29,6 +29,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       className="atlas-app-shell"
       data-sidebar-collapsed={collapsed ? "true" : "false"}
     >
+      <div className="atlas-ambient" aria-hidden="true">
+        <span className="atlas-ambient-orb atlas-ambient-orb-one" />
+        <span className="atlas-ambient-orb atlas-ambient-orb-two" />
+      </div>
       <a className="atlas-skip-link" href="#atlas-main-content">
         Ir para o conteúdo
       </a>
