@@ -1242,6 +1242,18 @@ Pendência externa: aplicar migration e homologar API oficial, templates, qualid
 
 Próxima fase: **Fase 90 — Copiloto noturno governado**, conduzindo abordagem após 20h, qualificação, simulação e proposta com limites e handoff humano.
 
+## Fase 90 — Copiloto noturno governado
+
+**Estado:** 100% implementada e aprovada localmente; migration, cron e ensaio oficial permanecem para homologação.
+
+**Evolução:** entre 20h e 22h59, o worker prepara abordagem somente com consentimento, template, API oficial, corretor, projeto e materiais válidos. A jornada organiza descoberta e qualificação; pela manhã, o corretor recebe resumo e próxima decisão.
+
+**Governança:** cada saída exige aprovação, a autonomia termina na qualificação, simulação é rascunho e proposta/compromisso ficam bloqueados. Resposta volta ao corretor exclusivo e opt-out interrompe tudo. O contrato está em `config/governed-nightly-copilot.json`, o gate em `npm run nightly-copilot:check` e o roteiro em `docs/GOVERNED_NIGHTLY_COPILOT_PHASE_90.md`.
+
+Pendência externa: aplicar migration e homologar cron noturno/manhã, API oficial, aprovação, resposta, quatro perfis e dois tenants.
+
+Próxima fase: **Fase 91 — Inteligência de campanhas multicanal**, unificando Meta, Google, TikTok, YouTube e portais com atribuição e custos comparáveis.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
