@@ -18,9 +18,11 @@ Otimizar shell, menu por perfil, busca global, atalhos, breadcrumbs, safe areas,
 
 Entrega: `FINAL_PHASE_3_NAVIGATION_MOBILE.md`, dock diário móvel, busca global responsiva e verificação automática `final-navigation:check`.
 
-## 4. CRM e Lead 360
+## 4. CRM e Lead 360 — concluída
 
 Dividir telas grandes, adotar carregamento progressivo, próxima melhor ação, filtros persistentes, seleção em massa e histórico rápido. Aceite: carteira e lead abrem com conteúdo prioritário antes dos blocos secundários.
+
+Entrega: `FINAL_PHASE_4_CRM_LEAD_360.md`, contexto de filtros preservado, barra operacional e verificação automática `final-crm:check`.
 
 ## 5. Pipeline, Kanban e produtividade
 

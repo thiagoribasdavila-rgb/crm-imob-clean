@@ -17,6 +17,7 @@ import {
   AtlasCardHeader,
   AtlasMetric,
 } from "@/components/ui/AtlasCard";
+import { LeadOperationalBar } from "@/components/crm/lead-operational-bar";
 
 type LeadRow = {
   id: string;
@@ -695,7 +696,7 @@ export default function LeadDetailPage() {
 
   return (
     <div className="space-y-6 pb-10" data-phase="26-lead-360">
-      <section className="atlas-grid-glow overflow-hidden rounded-[28px] border border-sky-400/10 bg-gradient-to-br from-sky-500/[.12] via-blue-500/[.05] to-violet-500/[.1] p-6 sm:p-8">
+      <section id="lead-overview" className="atlas-grid-glow overflow-hidden rounded-[28px] border border-sky-400/10 bg-gradient-to-br from-sky-500/[.12] via-blue-500/[.05] to-violet-500/[.1] p-6 sm:p-8">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <Link href="/leads" className="text-xs font-semibold text-sky-300">
@@ -816,6 +817,16 @@ export default function LeadDetailPage() {
           </div>
         </div>
       </section>
+
+      <LeadOperationalBar
+        leadId={lead.id}
+        leadName={lead.name || "Lead sem nome"}
+        phone={lead.phone}
+        nextAction={intelligence.nextAction}
+        risk={intelligence.risk}
+        openTasks={contactBriefing?.openTasks ?? 0}
+        unreadMessages={contactBriefing?.unreadMessages ?? 0}
+      />
 
       {message ? (
         <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 p-4 text-sm text-sky-100">
@@ -1924,8 +1935,9 @@ export default function LeadDetailPage() {
         </div>
       </section>
 
-      <AtlasCard>
-        <AtlasCardHeader
+      <div id="matching">
+        <AtlasCard>
+          <AtlasCardHeader
           eyebrow="Matching Atlas"
           title="Imóveis recomendados"
           description="Ranking de aderência entre perfil, orçamento, tipologia e localização."
@@ -1937,8 +1949,8 @@ export default function LeadDetailPage() {
               Ver estoque →
             </Link>
           }
-        />
-        <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3 sm:p-6">
+          />
+          <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3 sm:p-6">
           {matches.length === 0 ? (
             <div className="md:col-span-2 xl:col-span-3">
               <AtlasEmpty
@@ -2002,8 +2014,9 @@ export default function LeadDetailPage() {
               </article>
             ))
           )}
-        </div>
-      </AtlasCard>
+          </div>
+        </AtlasCard>
+      </div>
     </div>
   );
 }

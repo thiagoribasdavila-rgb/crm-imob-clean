@@ -50,6 +50,19 @@ type ReferenceRow = Record<string, unknown>;
 type SortDirection = "asc" | "desc";
 type AttentionFilter = "" | "overdue" | "no_action" | "hot" | "unassigned";
 type NextActionFilter = "" | "today" | "next_7_days" | "scheduled";
+type SavedLeadFilters = {
+  search?: string;
+  status?: string;
+  source?: string;
+  project?: string;
+  broker?: string;
+  score?: string;
+  attention?: AttentionFilter;
+  nextAction?: NextActionFilter;
+  sort?: string;
+  direction?: SortDirection;
+  filtersOpen?: boolean;
+};
 
 type LeadsPayload = {
   ok: true;
@@ -66,6 +79,7 @@ type LeadsPayload = {
 };
 
 const PAGE_SIZE = 25;
+const FILTER_STORAGE_KEY = "atlas:leads-filters:v1";
 const statuses = [
   { value: "", label: "Todos os status" },
   { value: "novo", label: "Novo" },
@@ -169,6 +183,63 @@ export default function LeadsPage() {
   const [notice, setNotice] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersHydrated, setFiltersHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem(FILTER_STORAGE_KEY);
+      if (saved) {
+        const filters = JSON.parse(saved) as SavedLeadFilters;
+        setSearch(filters.search || "");
+        setDebouncedSearch((filters.search || "").trim());
+        setStatus(filters.status || "");
+        setSource(filters.source || "");
+        setProject(filters.project || "");
+        setBroker(filters.broker || "");
+        setScore(filters.score || "");
+        setAttention(filters.attention || "");
+        setNextAction(filters.nextAction || "");
+        setSort(filters.sort || "created_at");
+        setDirection(filters.direction === "asc" ? "asc" : "desc");
+        setFiltersOpen(Boolean(filters.filtersOpen));
+      }
+    } catch {
+      window.sessionStorage.removeItem(FILTER_STORAGE_KEY);
+    } finally {
+      setFiltersHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!filtersHydrated) return;
+    const snapshot: SavedLeadFilters = {
+      search,
+      status,
+      source,
+      project,
+      broker,
+      score,
+      attention,
+      nextAction,
+      sort,
+      direction,
+      filtersOpen,
+    };
+    window.sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(snapshot));
+  }, [
+    attention,
+    broker,
+    direction,
+    filtersHydrated,
+    filtersOpen,
+    nextAction,
+    project,
+    score,
+    search,
+    sort,
+    source,
+    status,
+  ]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -219,6 +290,7 @@ export default function LeadsPage() {
     const controller = new AbortController();
 
     async function loadLeads() {
+      if (!filtersHydrated) return;
       setLoading(true);
       setError("");
       try {
@@ -303,6 +375,7 @@ export default function LeadsPage() {
     sort,
     source,
     status,
+    filtersHydrated,
   ]);
 
   const profileMap = useMemo(
