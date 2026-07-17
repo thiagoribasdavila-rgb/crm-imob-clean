@@ -11,6 +11,7 @@
     { "name": "NEXT_PUBLIC_SUPABASE_URL", "scope": "public", "requirement": "required", "secret": false, "purpose": "URL pública do projeto Supabase." },
     { "name": "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "scope": "public", "requirement": "alternative", "group": "supabaseBrowserKey", "secret": false, "purpose": "Chave publishable do Supabase para o navegador." },
     { "name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "scope": "public", "requirement": "alternative", "group": "supabaseBrowserKey", "secret": false, "purpose": "Chave anon legada do Supabase para o navegador." },
+    { "name": "ATLAS_PACKAGE_ENV_FILE", "scope": "server", "requirement": "optional", "secret": false, "purpose": "Arquivo de ambiente alternativo usado somente na validação limpa do pacote Hostinger." },
     { "name": "NEXT_PUBLIC_APP_URL", "scope": "public", "requirement": "optional", "secret": false, "purpose": "URL pública canônica da interface." },
 
     { "name": "SUPABASE_SERVICE_ROLE_KEY", "scope": "server", "requirement": "required", "secret": true, "purpose": "Acesso administrativo do servidor ao Supabase." },

@@ -41,7 +41,7 @@ const npmVersion = run("npm --version");
 const hasReleaseCheck = Boolean(packageJson.scripts?.["release:check"]);
 const hasEnvFile = existsSync(envPath);
 const hasSupabaseUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
-const hasSupabaseKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+const hasSupabaseKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 ok("Projeto", `${packageJson.name}@${packageJson.version}`);
 report(branch === "develop/atlas-v3", "Branch", branch, `${branch} — esperado: develop/atlas-v3`);
@@ -51,7 +51,7 @@ ok("npm", npmVersion);
 report(hasReleaseCheck, "Script release:check", "disponível", "ausente");
 report(hasEnvFile, "Arquivo .env.local", "encontrado", "não encontrado");
 report(hasSupabaseUrl, "NEXT_PUBLIC_SUPABASE_URL", "carregada no processo", "não carregada no processo atual");
-report(hasSupabaseKey, "NEXT_PUBLIC_SUPABASE_ANON_KEY", "carregada no processo", "não carregada no processo atual");
+report(hasSupabaseKey, "Chave pública Supabase", "publishable/anon carregada", "configure NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
 console.log("\nSequência recomendada:\n");
 console.log("git fetch origin");

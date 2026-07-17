@@ -16,6 +16,7 @@
     "architecture:modules": "node scripts/check-module-boundaries.mjs",
     "environments:check": "node scripts/check-environments.mjs",
     "environment:variables": "node scripts/check-environment-variables.mjs",
+    "audit:runtime-schema": "node --env-file=.env.local scripts/audit-runtime-schema.mjs",
     "security:governance": "node scripts/check-secret-governance.mjs",
     "security:dependencies": "npm audit --omit=dev --audit-level=high",
     "observability:check": "node scripts/check-observability.mjs",

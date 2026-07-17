@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "mission": "Corrigir falhas e entregar um Atlas V3 moderno, seguro e rápido.",
+  "automaticProductionDeploy": false,
+  "phases": [
+    { "phase": 1, "name": "Diagnóstico reproduzível", "status": "completed", "gate": "doctor, ambiente, segredos, dependências e inventário de rotas" },
+    { "phase": 2, "name": "Banco e migrations", "status": "blocked", "gate": "8/8 superfícies do schema real aprovadas" },
+    { "phase": 3, "name": "Login e hierarquia", "status": "code_ready", "gate": "admin, diretor, superintendente, gerente e corretor em teste real" },
+    { "phase": 4, "name": "APIs resilientes", "status": "code_ready", "gate": "autorização, limites, idempotência e erros seguros" },
+    { "phase": 5, "name": "CRM e pipeline", "status": "pending_runtime", "gate": "lead real percorre o funil com ownership único" },
+    { "phase": 6, "name": "Projetos e materiais", "status": "pending_runtime", "gate": "incorporadora, projeto, storage privado e materiais vigentes" },
+    { "phase": 7, "name": "Desempenho", "status": "pending", "gate": "latência, consultas, bundles e navegação medidos" },
+    { "phase": 8, "name": "Design e acessibilidade", "status": "pending", "gate": "desktop e mobile com fluxos críticos em até três interações" },
+    { "phase": 9, "name": "Segurança e recuperação", "status": "pending_runtime", "gate": "backup, restore, observabilidade e resposta a incidentes comprovados" },
+    { "phase": 10, "name": "Homologação Hostinger", "status": "pending", "gate": "build limpo, smoke real, quatro perfis e aprovação humana" }
+  ],
+  "criticalFindings": [
+    "Banco de homologação não possui toda a estrutura operacional V3.",
+    "ATLAS_ENVIRONMENT_ID e ATLAS_DATABASE_ENVIRONMENT não estão configurados.",
+    "ATLAS_BASE_URL ainda aponta para domínio placeholder e impede smoke real.",
+    "Custos atuais dos modelos de IA não estão preenchidos.",
+    "Meta Conversions e WhatsApp ainda não fecham o ciclo operacional real."
+  ]
+}
