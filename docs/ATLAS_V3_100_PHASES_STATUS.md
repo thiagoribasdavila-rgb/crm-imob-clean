@@ -1098,6 +1098,18 @@ Pendência externa: maturar dataset, construir candidato, aferir Brier/ECE e hom
 
 Próxima fase: **Fase 78 — Explicabilidade preditiva operacional**, traduzindo probabilidade, confiança e fatores em ações claras para corretor e gestão.
 
+## Fase 78 — Explicabilidade preditiva operacional
+
+**Estado:** 100% implementada e aprovada localmente; sinais e ações reais permanecem para homologação com a equipe.
+
+**Evolução:** cada lead recebe probabilidade bruta e calibrada, confiança explícita, fatores positivos, riscos, sinais ausentes e próxima melhor ação. A explicação expira em 24 horas e pode ser atualizada por corretor ou liderança autorizada.
+
+**Eficiência e governança:** cálculo determinístico com custo zero de LLM, chaves controladas e tradução clara na interface. Score continua separado da probabilidade; não há decisão automática, troca de responsável ou ranking de pessoas. O contrato está em `config/operational-prediction-explainability.json`, o gate em `npm run prediction-explainability:check` e o roteiro em `docs/OPERATIONAL_PREDICTION_EXPLAINABILITY_PHASE_78.md`.
+
+Pendência externa: aplicar migrations, comparar perfis de leads reais e validar compreensão por corretor, gerente e diretor em dois tenants.
+
+Próxima fase: **Fase 79 — Monitoramento de drift e qualidade**, detectando mudança de público, queda de calibração e envelhecimento do modelo sem reação automática.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
