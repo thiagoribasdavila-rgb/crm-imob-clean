@@ -111,6 +111,38 @@ Evidências: `config/canonical-entities.json` e `npm run architecture:canonical`
 
 Próxima fase: **Fase 4 — Contratos de dados**, padronizando estados, datas, dinheiro, telefone, e-mail e identificadores nas fronteiras das APIs.
 
+## Fase 4 — Contratos de dados
+
+Status: **Testada**.
+
+Percentual antes: **76%** — formatos existiam, mas e-mail e telefone eram normalizados de maneiras diferentes em cada API.
+
+Percentual depois: **100%** — contrato central, validação no release gate e adoção inicial nas fronteiras de autenticação e mensagens.
+
+### Padrões canônicos
+
+| Dado | Padrão interno |
+|---|---|
+| Identificador | UUID minúsculo válido; entrada inválida retorna `null` |
+| E-mail | minúsculo, sem espaços laterais, formato válido, máximo de 254 caracteres |
+| Telefone | dígitos E.164, 10–15 dígitos; números brasileiros locais recebem DDI 55 |
+| Data/hora | ISO 8601 em UTC produzido por `toISOString()` |
+| Dinheiro | cálculo em centavos inteiros seguros; apresentação converte para decimal BRL |
+| CPF/CNPJ | somente dígitos e comprimento 11/14; dado continua protegido e não vai para IA econômica |
+| Etapa da lead | `novo`, `contato`, `qualificacao`, `visita`, `proposta`, `contrato`, `ganho`, `perdido`, `comprou_outro` |
+
+### Adoção comprovada
+
+- Recuperação de senha usa o normalizador canônico de e-mail.
+- Envio de WhatsApp bloqueia telefone fora do contrato antes de gravar ou criar aprovação.
+- Envio de e-mail bloqueia destinatário inválido antes de criar mensagem.
+- Valores monetários rejeitam negativos, infinito, `NaN` e estouro de inteiro seguro.
+- Documento é apenas normalizado/validado; esta fase não amplia coleta nem exposição.
+
+Evidências: `lib/atlas/data-contracts.ts` e `npm run contracts:data`.
+
+Próxima fase: **Fase 5 — Arquitetura modular**, consolidando fronteiras entre CRM, projetos, marketing, IA, integrações, governança e relatórios.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |

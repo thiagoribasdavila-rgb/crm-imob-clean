@@ -3,6 +3,7 @@ import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { normalizeEmail, normalizePhoneE164 } from "@/lib/atlas/data-contracts";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,8 @@ export async function POST(request: Request) {
     }
     if (conversation.lead_id) await requireLeadAccess(identity, conversation.lead_id);
 
-    const normalizedRecipient = payload.recipient.replace(/\D/g, "");
+    const normalizedRecipient = payload.channel === "whatsapp" ? normalizePhoneE164(payload.recipient) : payload.channel === "email" ? normalizeEmail(payload.recipient) : payload.recipient.trim();
+    if (!normalizedRecipient) return NextResponse.json({ error: "Destinatário inválido para o canal selecionado." }, { status: 400 });
     if (payload.channel === "whatsapp") {
       const { data: suppression } = await admin.from("messaging_suppressions").select("id").eq("organization_id", identity.organizationId).eq("channel", "whatsapp").eq("recipient", normalizedRecipient).maybeSingle();
       if (suppression) return NextResponse.json({ error: "Este contato solicitou a interrupção das mensagens no WhatsApp." }, { status: 409 });
@@ -64,7 +66,7 @@ export async function POST(request: Request) {
         conversation_id: payload.conversationId,
         direction: "outbound",
         channel: payload.channel,
-        recipient: payload.channel === "whatsapp" ? normalizedRecipient : payload.recipient,
+        recipient: normalizedRecipient,
         content: payload.content.trim(),
         status: "queued",
       })
