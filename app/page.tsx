@@ -8,6 +8,12 @@ const capabilities = [
 ];
 
 const operatingSignals = ["Leads", "Pipeline", "Projetos", "Campanhas", "Inteligência"];
+const journey = ["Captura", "Qualificação", "Atendimento", "Visita", "Proposta", "Venda"];
+const roleViews = [
+  { role: "Diretoria", focus: "Decisão", detail: "Operação, receita, campanhas e riscos em uma visão executiva." },
+  { role: "Gestão", focus: "Ritmo", detail: "Equipe, distribuição, SLA e gargalos para agir todos os dias." },
+  { role: "Corretor", focus: "Conversão", detail: "Prioridades, contexto e próxima ação para cada cliente." },
+];
 
 export default function Home() {
   return (
@@ -97,6 +103,63 @@ export default function Home() {
             </article>
           ))}
         </section>
+
+        <section className="border-x border-white/[.08] bg-[#050a10]/95 px-5 py-20 sm:px-10 lg:px-14 lg:py-28">
+          <div className="mx-auto max-w-6xl">
+            <div className="grid items-end gap-8 lg:grid-cols-2">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[.24em] text-sky-400">Do sinal à venda</p>
+                <h2 className="mt-4 max-w-xl text-4xl font-semibold leading-[1.02] tracking-[-.055em] sm:text-5xl">Um fluxo contínuo.<br /><span className="text-slate-500">Nenhum contexto perdido.</span></h2>
+              </div>
+              <p className="max-w-lg text-sm leading-7 text-slate-500 lg:justify-self-end">Cada avanço comercial alimenta a próxima decisão. O Atlas mantém cliente, produto, atendimento e origem conectados do primeiro contato ao fechamento.</p>
+            </div>
+
+            <div className="mt-14 overflow-hidden rounded-[28px] border border-white/[.08] bg-[#03070b] p-5 sm:p-8">
+              <div className="flex items-center justify-between gap-4 border-b border-white/[.07] pb-5">
+                <div><p className="text-xs font-semibold text-white">Jornada comercial</p><p className="mt-1 text-[10px] uppercase tracking-[.18em] text-slate-600">Aprendizado conectado ao funil</p></div>
+                <span className="rounded-full border border-emerald-400/15 bg-emerald-400/[.06] px-3 py-1 text-[9px] font-bold uppercase tracking-[.15em] text-emerald-300">Fluxo ativo</span>
+              </div>
+              <div className="relative mt-8 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                <div className="absolute left-[7%] right-[7%] top-5 hidden h-px bg-gradient-to-r from-sky-400/20 via-sky-300/70 to-blue-500/20 lg:block" />
+                {journey.map((stage, index) => <div key={stage} className="relative z-10 rounded-2xl border border-white/[.07] bg-white/[.025] p-4 lg:border-0 lg:bg-transparent lg:p-0 lg:text-center"><span className="inline-grid h-10 w-10 place-items-center rounded-full border border-sky-300/20 bg-[#07111b] text-[10px] font-bold text-sky-300">{String(index + 1).padStart(2, "0")}</span><p className="mt-3 text-xs font-semibold text-slate-300">{stage}</p></div>)}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-x border-t border-white/[.08] bg-[#03070b] px-5 py-20 sm:px-10 lg:px-14 lg:py-28">
+          <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[.24em] text-sky-400">Uma plataforma. Cada visão.</p>
+              <h2 className="mt-4 text-4xl font-semibold leading-[1.03] tracking-[-.055em] sm:text-5xl">Clareza para quem decide. Foco para quem vende.</h2>
+              <p className="mt-6 max-w-md text-sm leading-7 text-slate-500">O mesmo dado assume a forma certa para cada responsabilidade, sem quebrar a fonte única da verdade.</p>
+            </div>
+
+            <div className="grid gap-3">
+              {roleViews.map((item, index) => (
+                <article key={item.role} className="group grid gap-4 rounded-2xl border border-white/[.07] bg-white/[.025] p-5 transition hover:border-sky-300/15 hover:bg-sky-300/[.035] sm:grid-cols-[110px_110px_1fr] sm:items-center">
+                  <p className="text-[10px] font-bold uppercase tracking-[.17em] text-slate-500">{String(index + 1).padStart(2, "0")} · {item.role}</p>
+                  <p className="text-lg font-semibold tracking-[-.03em] text-white">{item.focus}</p>
+                  <p className="text-sm leading-6 text-slate-500">{item.detail}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden rounded-b-[32px] border border-white/[.08] bg-gradient-to-br from-[#07121d] to-[#03070b] px-6 py-20 text-center sm:px-10 lg:py-28">
+          <div className="pointer-events-none absolute left-1/2 top-0 h-56 w-96 -translate-x-1/2 rounded-full bg-sky-400/[.08] blur-[90px]" />
+          <div className="relative mx-auto max-w-3xl">
+            <p className="text-[10px] font-bold uppercase tracking-[.24em] text-sky-400">Atlas AI Real Estate OS</p>
+            <h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] sm:text-6xl">Sua operação começa com uma decisão clara.</h2>
+            <p className="mx-auto mt-6 max-w-xl text-sm leading-7 text-slate-500">Entre no command center e transforme informação em execução comercial.</p>
+            <Link href="/login" className="group mt-9 inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-white px-8 text-sm font-bold !text-slate-950 transition hover:-translate-y-0.5 hover:bg-sky-100">Acessar o Atlas <span className="transition group-hover:translate-x-1" aria-hidden="true">→</span></Link>
+          </div>
+        </section>
+
+        <footer className="flex flex-col items-center justify-between gap-3 py-8 text-[10px] uppercase tracking-[.16em] text-slate-700 sm:flex-row">
+          <span>Atlas AI · Real Estate Intelligence</span><span>CRM · Projetos · Marketing · IA</span>
+        </footer>
       </div>
     </main>
   );
