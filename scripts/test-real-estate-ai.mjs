@@ -84,6 +84,10 @@ const secretsRoute = readFileSync(resolve(root, "app/api/v1/governance/secrets/r
 const secretsPage = readFileSync(resolve(root, "app/(crm)/atlas-v3/governance/page.tsx"), "utf8");
 const secretsScanner = readFileSync(resolve(root, "scripts/scan-secrets.mjs"), "utf8");
 const packageConfig = readFileSync(resolve(root, "package.json"), "utf8");
+const systemHealthRoute = readFileSync(resolve(root, "app/api/v1/governance/system-health/route.ts"), "utf8");
+const systemHealthPage = readFileSync(resolve(root, "app/(crm)/atlas-v3/developer/health/page.tsx"), "utf8");
+const publicHealthRoute = readFileSync(resolve(root, "app/api/v1/health/route.ts"), "utf8");
+const legacyReadyRoute = readFileSync(resolve(root, "app/api/ready/route.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -132,7 +136,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("192 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("198 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -206,7 +210,7 @@ const checks = [
   ["venda externa é exclusiva da diretoria", experienceMigration.includes("external_sales_director_scope") && experienceMigration.includes("commercial_role")],
   ["regra de pagamento preserva versões", paymentRuleMigration.includes("developer_payment_flow_rules") && paymentRuleMigration.includes("version integer") && paymentRuleMigration.includes("where active")],
   ["simulação fotografa regra vigente", commercialSimulation.includes("rule_snapshot") && commercialSimulation.includes("Simulação preliminar") && commercialSimulation.includes("valid_until")],
-  ["preflight cobre APIs da Hostinger", readinessRoute.includes("metaConversions") && readinessRoute.includes("nightlyTemplate") && readinessRoute.includes('=== "hostinger"')],
+  ["preflight cobre APIs da Hostinger", systemHealthRoute.includes("hostinger") && systemHealthRoute.includes("workerSecret") && systemHealthRoute.includes("openai") && systemHealthRoute.includes("meta") && systemHealthRoute.includes("whatsapp")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],
@@ -279,6 +283,12 @@ const checks = [
   ["scanner bloqueia tokens conhecidos", secretsScanner.includes("PRIVATE KEY") && secretsScanner.includes("OpenAI") && secretsScanner.includes("GitHub")],
   ["scanner bloqueia variável pública indevida", secretsScanner.includes("allowedPublic") && secretsScanner.includes("variável pública não aprovada")],
   ["scanner antecede build de produção", packageConfig.includes('"validate": "npm run security:secrets && npm run enterprise:check')],
+  ["health mede somente vida do processo", publicHealthRoute.includes('status: "ok"') && publicHealthRoute.includes('status: 200') && !publicHealthRoute.includes("SUPABASE_SERVICE_ROLE_KEY")],
+  ["ready testa banco com credencial de servidor", readinessRoute.includes("getSupabaseAdmin") && readinessRoute.includes('status: ready ? 200 : 503')],
+  ["ready público não revela erro interno", !readinessRoute.includes("error.message") && !readinessRoute.includes("featureSnapshot")],
+  ["rotas legadas usam contrato canônico", legacyReadyRoute.includes('@/app/api/v1/ready/route') && legacyReadyRoute.includes("canonicalReady")],
+  ["diagnóstico detalhado exige diretoria", systemHealthRoute.includes("exclusivo da diretoria") && systemHealthRoute.includes("commercialRole")],
+  ["Command Center separa obrigatório de opcional", systemHealthPage.includes("Dependências obrigatórias") && systemHealthPage.includes("Integrações opcionais") && systemHealthPage.includes("Vivo é diferente de pronto")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
