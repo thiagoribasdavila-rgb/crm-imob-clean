@@ -1909,6 +1909,13 @@ textarea:focus {
   }
 }
 
+/* Performance mode — mesma profundidade visual com menos custo de composição */
+.atlas-ambient-orb { animation: none; opacity: .085; filter: blur(82px); transform: translateZ(0); }
+.atlas-panel { content-visibility: auto; contain-intrinsic-block-size: auto 420px; backdrop-filter: none; }
+.atlas-app-topbar, .atlas-sidebar { backdrop-filter: blur(18px) saturate(125%); }
+@media (hover: none) { .atlas-panel-hover:hover, .atlas-metric:hover { transform: none; } }
+@media (max-width: 639px) { .atlas-ambient-orb-two { display: none; } .atlas-ambient-orb-one { opacity: .06; filter: blur(62px); } .atlas-app-topbar, .atlas-sidebar { backdrop-filter: blur(12px); } }
+
 /* Lead 360 — prioridade visual para a ação que move a venda */
 .atlas-lead-primary-actions { display: flex; flex-wrap: wrap; gap: 9px; }
 .atlas-lead-more-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; max-width: 760px; margin-top: 10px; padding: 10px; border: 1px solid rgba(255,255,255,.07); border-radius: 16px; background: rgba(3,8,18,.42); animation: atlas-filter-reveal .2s ease both; }

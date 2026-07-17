@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useEffect } from "react";
 
 const navigation = [
   {
@@ -129,6 +128,7 @@ type SidebarProps = {
   mobileOpen: boolean;
   onCloseMobile: () => void;
   onToggle: () => void;
+  role: string;
 };
 
 export function Sidebar({
@@ -136,26 +136,9 @@ export function Sidebar({
   mobileOpen,
   onCloseMobile,
   onToggle,
+  role,
 }: SidebarProps) {
   const pathname = usePathname();
-  const [role, setRole] = useState("broker");
-
-  useEffect(() => {
-    void (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) return;
-      const { data } = await supabase
-        .from("profiles")
-        .select("role,commercial_role")
-        .eq("id", auth.user.id)
-        .maybeSingle();
-      setRole(
-        data?.commercial_role ||
-          (data?.role === "admin" ? "director" : data?.role) ||
-          "broker",
-      );
-    })();
-  }, []);
 
   useEffect(() => onCloseMobile(), [pathname, onCloseMobile]);
 

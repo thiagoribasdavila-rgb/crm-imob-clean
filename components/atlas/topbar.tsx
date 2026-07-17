@@ -1,21 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-
-type Identity = {
-  name: string;
-  email: string;
-  organization: string;
-};
-
-const initialIdentity: Identity = {
-  name: "Usuário Atlas",
-  email: "",
-  organization: "Organização atual",
-};
+import type { ShellIdentity } from "./shell-types";
 
 const sectionLabels: Record<string, string> = {
   dashboard: "Command Center",
@@ -34,54 +22,19 @@ const sectionLabels: Record<string, string> = {
   "ai-dashboard": "Copilot",
 };
 
-export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
+export function Topbar({
+  identity,
+  onOpenMenu,
+}: {
+  identity: ShellIdentity;
+  onOpenMenu: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
-  const [identity, setIdentity] = useState<Identity>(initialIdentity);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadIdentity() {
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name,organization_id")
-        .eq("id", auth.user.id)
-        .maybeSingle();
-
-      let organization = initialIdentity.organization;
-      if (profile?.organization_id) {
-        const { data } = await supabase
-          .from("organizations")
-          .select("name")
-          .eq("id", profile.organization_id)
-          .maybeSingle();
-        organization = data?.name || organization;
-      }
-
-      if (active) {
-        setIdentity({
-          name:
-            profile?.full_name ||
-            auth.user.email?.split("@")[0] ||
-            initialIdentity.name,
-          email: auth.user.email || "",
-          organization,
-        });
-      }
-    }
-
-    loadIdentity();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   async function signOut() {
     await supabase.auth.signOut({ scope: "local" });
+    window.sessionStorage.removeItem("atlas:shell-identity");
     router.replace("/login");
   }
 
