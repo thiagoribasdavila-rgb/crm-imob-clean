@@ -75,8 +75,14 @@ export async function POST(request: Request) {
     const { data: duplicate, error: duplicateError } = await duplicateQuery.maybeSingle();
     if (duplicateError) throw duplicateError;
     if (duplicate) {
+      const { data: visibleDuplicate } = await identity.supabase
+        .from("leads")
+        .select("id")
+        .eq("id", duplicate.id)
+        .eq("organization_id", identity.organizationId)
+        .maybeSingle();
       return NextResponse.json(
-        { error: "Já existe um lead com este contato.", duplicateLeadId: duplicate.id },
+        { error: "Já existe um lead com este contato.", ...(visibleDuplicate ? { duplicateLeadId: duplicate.id } : {}) },
         { status: 409 },
       );
     }

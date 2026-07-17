@@ -11,7 +11,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 function unauthorized(error: unknown) {
   const message = error instanceof Error ? error.message : "Não autorizado.";
-  const status = /sessão|token|autenticação/i.test(message) ? 401 : 400;
+  const status = /sessão|token|autenticação/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   return NextResponse.json({ error: message }, { status });
 }
 
@@ -22,17 +22,17 @@ export async function GET(request: Request, context: RouteContext) {
     await requireLeadAccess(identity, id);
     const admin = getSupabaseAdmin();
 
-    const [leadResult, activityResult, propertyResult, opportunityResult, experienceResult] = await Promise.all([
-      admin.from("leads").select("*").eq("id", id).eq("organization_id", identity.organizationId).single(),
-      admin.from("activities").select("id,title,description,type,metadata,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
-      admin.from("properties").select("id,title,price,city,state,bedrooms,bathrooms,parking_spaces,area,status").eq("organization_id", identity.organizationId).limit(150),
-      admin.from("opportunities").select("id,stage,value,probability,expected_close_at,property_id,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
-      admin.from("lead_experience_signals").select("id,signal_type,severity,confidence,evidence,recommendation,suggested_reply,status,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
-    ]);
-
+    const leadResult = await identity.supabase.from("leads").select("*").eq("id", id).eq("organization_id", identity.organizationId).maybeSingle();
     if (leadResult.error || !leadResult.data) {
-      return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
+      return NextResponse.json({ error: "Lead fora do seu escopo comercial." }, { status: 403 });
     }
+
+    const [activityResult, propertyResult, opportunityResult, experienceResult] = await Promise.all([
+      identity.supabase.from("activities").select("id,title,description,type,metadata,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
+      admin.from("properties").select("id,title,price,city,state,bedrooms,bathrooms,parking_spaces,area,status").eq("organization_id", identity.organizationId).limit(150),
+      identity.supabase.from("opportunities").select("id,stage,value,probability,expected_close_at,property_id,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
+      identity.supabase.from("lead_experience_signals").select("id,signal_type,severity,confidence,evidence,recommendation,suggested_reply,status,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
+    ]);
 
     return NextResponse.json({
       lead: leadResult.data,

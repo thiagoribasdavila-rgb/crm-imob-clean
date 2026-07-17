@@ -33,5 +33,5 @@ export async function POST(request: NextRequest, context: Context) {
     if (error) return NextResponse.json({ error: "Não foi possível registrar a simulação." }, { status: 400 });
     await admin.from("activities").insert({ organization_id: identity.organizationId, lead_id: id, user_id: identity.userId, type: "commercial_simulation", title: `Simulação criada para ${property.title || "unidade"}`, description: `Regra ${rule.rule_name}, versão ${rule.version}. Valores sujeitos à confirmação.`, metadata: { simulationId: data.id, paymentRuleId: rule.id, requiresHumanApproval: true }, occurred_at: new Date().toISOString() });
     return NextResponse.json({ simulation: data, property: { id: property.id, title: property.title }, disclaimer: "Simulação preliminar. Preço, estoque, crédito e condições devem ser reconfirmados antes da proposta." }, { status: 201 });
-  } catch (error) { const message = error instanceof Error ? error.message : "Falha na simulação."; return NextResponse.json({ error: message }, { status: /sessão|token/i.test(message) ? 401 : 500 }); }
+  } catch (error) { const message = error instanceof Error ? error.message : "Falha na simulação."; return NextResponse.json({ error: message }, { status: /sessão|token/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500 }); }
 }

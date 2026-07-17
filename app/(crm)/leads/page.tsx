@@ -353,6 +353,7 @@ export default function LeadsPage() {
             <StatusBadge tone="info">LEADS INTELLIGENCE</StatusBadge>
             <StatusBadge tone="success">TENANT-SAFE</StatusBadge>
             <StatusBadge tone="violet">LEAD 360</StatusBadge>
+            {currentRole === "broker" ? <StatusBadge tone="success">CARTEIRA EXCLUSIVA</StatusBadge> : null}
             {currentRole === "manager" ? <StatusBadge tone="success">MEU TIME · {teamBrokers.length} CORRETORES</StatusBadge> : null}
           </div>
           <h1>Concentre a operação nos leads com maior chance de avançar.</h1>

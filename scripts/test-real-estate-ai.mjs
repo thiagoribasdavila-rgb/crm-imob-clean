@@ -58,6 +58,9 @@ const crmLeadsRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/route.ts"
 const bulkTransferRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/bulk-transfer/route.ts"), "utf8");
 const teamTransferMigration = readFileSync(resolve(root, "supabase/migrations/20260717004248_atomic_team_bulk_transfer.sql"), "utf8");
 const managerTransferMigration = readFileSync(resolve(root, "supabase/migrations/20260717004752_manager_direct_team_bulk_transfer.sql"), "utf8");
+const leadCreateRoute = readFileSync(resolve(root, "app/api/v1/leads/route.ts"), "utf8");
+const commercialSimulationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/commercial-simulation/route.ts"), "utf8");
+const brokerLeadScopeMigration = readFileSync(resolve(root, "supabase/migrations/20260717005110_broker_lead_360_related_scope.sql"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -106,7 +109,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("137 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("143 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -198,6 +201,12 @@ const checks = [
   ["gerente transfere somente ao subordinado direto", managerTransferMigration.includes("target_reports_to is distinct from p_actor_id")],
   ["destinos do gerente são somente corretores diretos", leadsPortfolioPage.includes('role === "broker" && profile.reports_to === currentProfileId') && leadsPortfolioPage.includes("corretor do meu time")],
   ["motivo da transferência é protegido no banco", managerTransferMigration.includes("char_length(trim(coalesce(p_reason, ''))) < 5")],
+  ["Lead 360 relê a lead sob RLS", leadIntelligenceRoute.includes('identity.supabase.from("leads")') && leadIntelligenceRoute.includes("Lead fora do seu escopo comercial")],
+  ["acesso lateral retorna bloqueio correto", leadIntelligenceRoute.includes('/escopo/i.test(message) ? 403') && commercialSimulationRoute.includes('/escopo/i.test(message) ? 403')],
+  ["duplicidade não revela carteira alheia", leadCreateRoute.includes("visibleDuplicate") && leadCreateRoute.includes("...(visibleDuplicate ?")],
+  ["corretor reconhece carteira exclusiva", leadsPortfolioPage.includes("CARTEIRA EXCLUSIVA") && leadsPortfolioPage.includes("somente a sua carteira")],
+  ["timeline acompanha o escopo atual da lead", brokerLeadScopeMigration.includes("activities_commercial_select") && brokerLeadScopeMigration.includes("private.can_access_commercial_lead")],
+  ["Lead 360 consulta relacionados sob RLS", leadIntelligenceRoute.includes('identity.supabase.from("activities")') && leadIntelligenceRoute.includes('identity.supabase.from("lead_experience_signals")')],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
