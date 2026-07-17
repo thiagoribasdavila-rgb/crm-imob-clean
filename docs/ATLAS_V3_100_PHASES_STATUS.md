@@ -1360,6 +1360,14 @@ Pendência externa: aplicar migration, concluir os testes com quatro usuários r
 
 Próxima fase: **Fase 100 — Pacote final Hostinger e encerramento do V3**, gerando artefato reproduzível, manifesto, checksum, runbook, smoke pós-publicação e procedimento de retorno.
 
+## Fase 100 — Pacote final Hostinger e encerramento do V3
+
+**Entregue:** empacotamento determinístico a partir do commit aprovado, manifesto de release, inventário SHA-256 interno, checksum externo, verificador independente, smoke HTTPS pós-publicação e runbook de instalação/retorno. Arquivos locais, segredos, dados pessoais, planilhas, PDFs, caches e dependências são rejeitados.
+
+**Governança:** o ZIP é candidato técnico e nunca publica automaticamente. Promoção exige GO da Fase 99; upload, variáveis, migrations, DNS, cron e smoke continuam sob controle humano. Contrato em `config/final-hostinger-release.json`, gate `npm run final-release:check`, empacotamento `npm run package:hostinger` e roteiro `docs/HOSTINGER_FINAL_RELEASE_PHASE_100.md`.
+
+Estado do programa: **100/100 fases implementadas localmente**. Homologação e produção continuam bloqueadas até que as evidências externas descritas nas fases 97–100 sejam concluídas no ambiente Hostinger real.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
