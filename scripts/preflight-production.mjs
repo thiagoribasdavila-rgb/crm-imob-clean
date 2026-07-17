@@ -20,6 +20,7 @@ function loadLocalEnv() {
 const localEnv = loadLocalEnv();
 const value = (key) => process.env[key] || localEnv[key] || "";
 const baseUrl = (value("ATLAS_BASE_URL") || "http://localhost:3000").replace(/\/$/, "");
+const atlasEnvironment = value("ATLAS_ENV");
 const results = [];
 
 function check(name, ok, detail, required = true) {
@@ -28,6 +29,15 @@ function check(name, ok, detail, required = true) {
 }
 
 console.log("\nATLAS AI — Production Preflight\n");
+
+check("Ambiente Atlas", ["development", "homologation", "production"].includes(atlasEnvironment), atlasEnvironment || "configure ATLAS_ENV");
+check("Identidade do ambiente", Boolean(value("ATLAS_ENVIRONMENT_ID")), value("ATLAS_ENVIRONMENT_ID") ? "configurada" : "configure um identificador exclusivo");
+check("Banco isolado", value("ATLAS_DATABASE_ENVIRONMENT") === atlasEnvironment, value("ATLAS_DATABASE_ENVIRONMENT") ? `banco marcado como ${value("ATLAS_DATABASE_ENVIRONMENT")}` : "configure ATLAS_DATABASE_ENVIRONMENT");
+check("URL segura", atlasEnvironment === "development" ? /^http:\/\/localhost(?::\d+)?$/i.test(baseUrl) : /^https:\/\//i.test(baseUrl), atlasEnvironment === "development" ? "localhost permitido somente em desenvolvimento" : "HTTPS obrigatório fora do desenvolvimento");
+if (atlasEnvironment === "production") {
+  check("Bootstrap removido", !value("ATLAS_BOOTSTRAP_SECRET"), value("ATLAS_BOOTSTRAP_SECRET") ? "remova ATLAS_BOOTSTRAP_SECRET" : "não configurado");
+  check("Credenciais de teste removidas", !value("ATLAS_TEST_EMAIL") && !value("ATLAS_TEST_PASSWORD"), "produção não usa conta automatizada");
+}
 
 check("NEXT_PUBLIC_SUPABASE_URL", Boolean(value("NEXT_PUBLIC_SUPABASE_URL")), "configurada");
 const publicSupabaseKey = value("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") || value("NEXT_PUBLIC_SUPABASE_ANON_KEY");
@@ -42,7 +52,7 @@ check("IAs econômicas", economyProviders.length > 0, economyProviders.length ? 
 check("Roteamento de modelos", Boolean(value("ATLAS_AI_FAST_MODEL") && value("ATLAS_AI_MODEL") && value("ATLAS_RESEARCH_MODEL")), "modelos rápido, comercial e pesquisa definidos");
 const pricingReady = ["FAST", "COMMERCIAL", "REASONING", "RESEARCH"].every((tier) => Number(value(`ATLAS_AI_${tier}_INPUT_USD_PER_MILLION`)) > 0 && Number(value(`ATLAS_AI_${tier}_OUTPUT_USD_PER_MILLION`)) > 0);
 check("Custos de IA", pricingReady, pricingReady ? "preços por milhão configurados" : "configure preços atuais para medir custo real", false);
-check("Ambiente Hostinger", value("ATLAS_HOSTING_PROVIDER") === "hostinger", "ATLAS_HOSTING_PROVIDER=hostinger");
+check("Ambiente Hostinger", atlasEnvironment === "development" || value("ATLAS_HOSTING_PROVIDER") === "hostinger", atlasEnvironment === "development" ? "não exigido no desenvolvimento" : "ATLAS_HOSTING_PROVIDER=hostinger");
 check("ATLAS_BOOTSTRAP_SECRET", Boolean(value("ATLAS_BOOTSTRAP_SECRET")), "necessária somente até criar o primeiro admin", false);
 check("META_APP_SECRET", Boolean(value("META_APP_SECRET")), "opcional para teste inicial", false);
 check("Meta Conversions", Boolean(value("META_CONVERSIONS_ACCESS_TOKEN") && value("META_AD_ACCOUNT_ID")), "necessária para fechar o ciclo CRM → Andromeda", false);

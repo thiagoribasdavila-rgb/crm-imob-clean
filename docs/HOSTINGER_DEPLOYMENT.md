@@ -42,6 +42,8 @@ Teste com `npm run reports:meta-daily`. O processo é idempotente: gera um relat
 
 - `ATLAS_HOSTING_PROVIDER=hostinger`
 - `ATLAS_ENV=homologation`
+- `ATLAS_ENVIRONMENT_ID=atlas-v3-hostinger-homolog` (use outro identificador exclusivo em produção)
+- `ATLAS_DATABASE_ENVIRONMENT=homologation` (deve coincidir com `ATLAS_ENV`)
 - `ATLAS_BASE_URL=https://homolog.seu-dominio.com.br`
 - No Supabase Auth, configure `Site URL` com esse mesmo domínio e adicione `https://homolog.seu-dominio.com.br/auth/callback` às Redirect URLs. O template de recuperação deve usar `{{ .RedirectTo }}`.
 - Supabase público e service role somente no servidor.
@@ -51,6 +53,8 @@ Teste com `npm run reports:meta-daily`. O processo é idempotente: gera um relat
 - `DEEPSEEK_API_KEY` + `ATLAS_DEEPSEEK_MODEL`, `QWEN_API_KEY` + `ATLAS_QWEN_MODEL`, `KIMI_API_KEY` + `ATLAS_KIMI_MODEL` e `GLM_API_KEY` + `ATLAS_GLM_MODEL` são rotas econômicas opcionais. Homologue uma por vez; não copie credenciais de planos gratuitos de aplicativos.
 - `ATLAS_AI_FAST_PROVIDER_ORDER`, `ATLAS_AI_COMMERCIAL_PROVIDER_ORDER` e `ATLAS_AI_REASONING_PROVIDER_ORDER` controlam a ordem de fallback. Requisições com dados pessoais ignoram essas rotas e permanecem na OpenAI.
 - Credenciais Meta quando Lead Ads estiver em teste.
+
+Produção deve usar `ATLAS_ENV=production`, `ATLAS_DATABASE_ENVIRONMENT=production`, outro projeto Supabase e outro `ATLAS_ENVIRONMENT_ID`. Remova `ATLAS_BOOTSTRAP_SECRET`, `ATLAS_TEST_EMAIL` e `ATLAS_TEST_PASSWORD` antes da promoção.
 
 ## Publicação segura
 

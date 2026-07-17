@@ -70,6 +70,8 @@ const dataContracts = readFileSync(resolve(root, "lib/atlas/data-contracts.ts"),
 const passwordRecoveryRoute = readFileSync(resolve(root, "app/api/auth/password-recovery/route.ts"), "utf8");
 const moduleBoundaries = readFileSync(resolve(root, "config/module-boundaries.json"), "utf8");
 const moduleBoundaryCheck = readFileSync(resolve(root, "scripts/check-module-boundaries.mjs"), "utf8");
+const environmentContract = readFileSync(resolve(root, "config/environments.json"), "utf8");
+const environmentCheck = readFileSync(resolve(root, "scripts/check-environments.mjs"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
@@ -487,6 +489,7 @@ const checks = [
   ["fonte única da verdade possui contrato verificável", canonicalEntities.includes('"table": "leads"') && canonicalEntities.includes('"table": "atlas_events"') && canonicalEntityCheck.includes("tabela canônica duplicada") && hundredPhaseStatus.includes("Fase 3 — Fonte única da verdade")],
   ["contratos de dados normalizam fronteiras sensíveis", dataContracts.includes("normalizePhoneE164") && dataContracts.includes("moneyToCents") && passwordRecoveryRoute.includes("normalizeEmail") && messageSendRoute.includes("normalizePhoneE164") && hundredPhaseStatus.includes("Fase 4 — Contratos de dados")],
   ["arquitetura modular atribui dono único aos dados", moduleBoundaries.includes('"key": "crm"') && moduleBoundaries.includes('"key": "governance"') && moduleBoundaryCheck.includes("entidade canônica sem módulo responsável") && hundredPhaseStatus.includes("Fase 5 — Arquitetura modular")],
+  ["ambientes não misturam banco e credenciais temporárias", environmentContract.includes('"production"') && environmentContract.includes('"allowsBootstrap": false') && productionPreflight.includes("ATLAS_DATABASE_ENVIRONMENT") && environmentCheck.includes("Node.js 24.x") && hundredPhaseStatus.includes("Fase 6 — Configuração de ambientes")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],

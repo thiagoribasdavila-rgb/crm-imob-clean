@@ -179,6 +179,33 @@ Evidências: `config/module-boundaries.json` e `npm run architecture:modules`.
 
 Próxima fase: **Fase 6 — Configuração de ambientes**, separando desenvolvimento, homologação e produção sem misturar credenciais ou bancos.
 
+## Fase 6 — Configuração de ambientes
+
+Status: **Testada**.
+
+Percentual antes: **72%** — Hostinger e homologação estavam documentadas, mas o arquivo de exemplo simulava Hostinger localmente e não identificava explicitamente o banco.
+
+Percentual depois: **100%** — três ambientes contratados, identidade exclusiva, banco marcado e bloqueios de produção incorporados ao preflight.
+
+### Contrato
+
+- `development`: localhost permitido, provider local, integrações externas desativadas por padrão.
+- `homologation`: Hostinger e HTTPS obrigatórios, conta de teste e bootstrap temporário permitidos, banco exclusivo.
+- `production`: Hostinger e HTTPS obrigatórios, banco exclusivo, sem bootstrap e sem credenciais automatizadas de teste.
+
+### Variáveis de identidade
+
+- `ATLAS_ENV`: `development`, `homologation` ou `production`.
+- `ATLAS_ENVIRONMENT_ID`: nome exclusivo da instalação.
+- `ATLAS_DATABASE_ENVIRONMENT`: deve coincidir com `ATLAS_ENV`.
+- `ATLAS_BASE_URL`: localhost somente em desenvolvimento; HTTPS nos demais ambientes.
+
+O `.env.example` agora nasce em desenvolvimento e não finge estar na Hostinger. O PM2 continua explicitamente em homologação, Node.js 24 e Hostinger. Produção exige outro projeto Supabase e remoção das credenciais temporárias.
+
+Evidências: `config/environments.json`, `npm run environments:check` e `npm run preflight:production`.
+
+Próxima fase: **Fase 7 — Variáveis de ambiente**, classificando obrigatórias, opcionais, públicas, privadas e temporárias.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |

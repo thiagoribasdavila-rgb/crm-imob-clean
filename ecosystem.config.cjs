@@ -12,6 +12,6 @@ module.exports = {
     log_date_format: "YYYY-MM-DD HH:mm:ss Z",
     out_file: "./logs/atlas-v3-out.log",
     error_file: "./logs/atlas-v3-error.log",
-    env: { NODE_ENV: "production", ATLAS_ENV: "homologation", ATLAS_HOSTING_PROVIDER: "hostinger" },
+    env: { NODE_ENV: "production", ATLAS_ENV: "homologation", ATLAS_ENVIRONMENT_ID: "atlas-v3-hostinger-homolog", ATLAS_DATABASE_ENVIRONMENT: "homologation", ATLAS_HOSTING_PROVIDER: "hostinger" },
   }],
 };
