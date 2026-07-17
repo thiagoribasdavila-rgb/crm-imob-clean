@@ -28,13 +28,14 @@ export async function GET(request: NextRequest) {
   if (!identity.ok) return identity.response;
   const admin = getSupabaseAdmin();
   const org = identity.access.organization.id;
-  const [profilesResult, batchesResult, contactsResult, projectsResult] = await Promise.all([
+  const [profilesResult, batchesResult, contactsResult, projectsResult, experienceResult] = await Promise.all([
     admin.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").eq("organization_id", org).eq("active", true),
     admin.from("lead_reactivation_batches").select("*").eq("organization_id", org).order("created_at", { ascending: false }).limit(100),
     admin.from("lead_reactivation_contacts").select("batch_id,status").eq("organization_id", org),
     admin.from("developments").select("id,name,developer_name").eq("organization_id", org).order("name"),
+    admin.from("lead_experience_signals").select("id,lead_id,broker_id,signal_type,severity,confidence,evidence,recommendation,suggested_reply,status,created_at").eq("organization_id", org).eq("status", "pending").order("created_at", { ascending: false }).limit(100),
   ]);
-  const failed = [profilesResult, batchesResult, contactsResult, projectsResult].find((item) => item.error);
+  const failed = [profilesResult, batchesResult, contactsResult, projectsResult, experienceResult].find((item) => item.error);
   if (failed?.error) return apiError("REACTIVATION_LOOKUP_FAILED", "Não foi possível carregar a central de reativação.", identity.meta, { status: 500, details: failed.error.message });
   const profiles = profilesResult.data ?? [];
   const role = roleOf(identity.access.profile.role, identity.access.profile.commercialRole);
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
     targets: profiles.filter((item) => visible.has(item.id) && (item.commercial_role || item.role) === "broker"),
     projects: projectsResult.data ?? [],
     batches: batches.map((batch) => ({ ...batch, summary: contacts.filter((item) => item.batch_id === batch.id).reduce((sum, item) => ({ ...sum, [item.status]: (sum[item.status] || 0) + 1 }), {} as Record<string, number>) })),
+    experiences: (experienceResult.data ?? []).filter((item) => item.broker_id && visible.has(item.broker_id)),
   }, identity.meta, { headers: rate.headers });
 }
 
@@ -54,10 +56,24 @@ export async function POST(request: NextRequest) {
   if (!rate.ok) return rate.response;
   const identity = await requireAccessContext(request);
   if (!identity.ok) return identity.response;
-  const body = await request.json().catch(() => null) as { action?: string; name?: string; ownerId?: string; developmentId?: string; sourceType?: string; consentBasis?: string; consentConfirmed?: boolean; rows?: ImportRow[]; batchId?: string; templateName?: string; templateLanguage?: string; dailyCap?: number; intervalSeconds?: number; command?: "pause" | "resume" } | null;
+  const body = await request.json().catch(() => null) as { action?: string; name?: string; ownerId?: string; developmentId?: string; sourceType?: string; consentBasis?: string; consentConfirmed?: boolean; rows?: ImportRow[]; batchId?: string; templateName?: string; templateLanguage?: string; dailyCap?: number; intervalSeconds?: number; command?: "pause" | "resume"; signalId?: string; experienceDecision?: "keep" | "change_requested"; reason?: string } | null;
   const admin = getSupabaseAdmin();
   const org = identity.access.organization.id;
   const role = roleOf(identity.access.profile.role, identity.access.profile.commercialRole);
+
+  if (body?.action === "experience_decision" && body.signalId && ["keep", "change_requested"].includes(body.experienceDecision || "")) {
+    const { data: signal } = await admin.from("lead_experience_signals").select("id,lead_id,broker_id,recommendation").eq("id", body.signalId).eq("organization_id", org).eq("status", "pending").single();
+    if (!signal) return apiError("SIGNAL_NOT_FOUND", "Alerta de experiência não encontrado.", identity.meta, { status: 404 });
+    const { data: profiles } = await admin.from("profiles").select("id,reports_to").eq("organization_id", org).eq("active", true);
+    const allowed = role === "director" ? new Set((profiles ?? []).map((item) => item.id)) : descendants(profiles ?? [], identity.access.profile.id);
+    if (!signal.broker_id || !allowed.has(signal.broker_id)) return apiError("FORBIDDEN", "Alerta fora da sua estrutura.", identity.meta, { status: 403 });
+    const decision = body.experienceDecision!;
+    await admin.from("lead_experience_signals").update({ status: decision, decision_by: identity.access.profile.id, decision_reason: String(body.reason || "").trim().slice(0, 500) || null, decided_at: new Date().toISOString() }).eq("id", signal.id);
+    if (decision === "change_requested") {
+      await admin.from("approval_requests").insert({ organization_id: org, request_type: "lead_broker_change", entity_type: "lead_experience_signal", entity_id: signal.id, payload: { leadId: signal.lead_id, currentBrokerId: signal.broker_id, recommendation: signal.recommendation }, requested_by: identity.access.profile.id });
+    }
+    return apiSuccess({ signalId: signal.id, decision, requiresNewBrokerSelection: decision === "change_requested" }, identity.meta, { headers: rate.headers });
+  }
 
   if (body?.action === "control" && body.batchId && ["pause", "resume"].includes(body.command || "")) {
     const { data: batch } = await admin.from("lead_reactivation_batches").select("id,owner_id,status").eq("id", body.batchId).eq("organization_id", org).single();

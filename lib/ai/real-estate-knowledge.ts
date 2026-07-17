@@ -74,6 +74,45 @@ export const REAL_ESTATE_MARKET_SOURCES: MarketSource[] = [
   },
 ];
 
+export const CUSTOMER_EXPERIENCE_SOURCES: MarketSource[] = [
+  {
+    id: "meta-whatsapp-template-pacing-2026",
+    title: "Template pacing",
+    publisher: "Meta for Developers",
+    url: "https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/template-pacing",
+    verifiedAt: "2026-07-16",
+    facts: ["A Meta usa sinais iniciais de qualidade para controlar a velocidade de entrega de templates.", "Feedback negativo e baixa qualidade devem interromper escala e provocar revisão do template, público e consentimento."],
+    useFor: ["WhatsApp", "reativação", "pacing", "qualidade", "campanha"],
+  },
+  {
+    id: "twilio-whatsapp-best-practices-2026",
+    title: "WhatsApp best practices and FAQs",
+    publisher: "Twilio Docs",
+    url: "https://www.twilio.com/docs/whatsapp/best-practices-and-faqs",
+    verifiedAt: "2026-07-16",
+    facts: ["Mensagens iniciadas pela empresa devem usar templates aprovados e respeitar opt-in.", "Conteúdo esperado, relevante e com saída clara protege experiência e qualidade."],
+    useFor: ["WhatsApp", "consentimento", "opt-out", "template", "experiência"],
+  },
+  {
+    id: "microsoft-conversation-best-practices-2026",
+    title: "Conversational language understanding best practices",
+    publisher: "Microsoft Learn",
+    url: "https://learn.microsoft.com/en-us/azure/ai-services/language-service/conversational-language-understanding/concepts/best-practices",
+    verifiedAt: "2026-07-16",
+    facts: ["Modelos conversacionais devem ser testados com variações reais de linguagem e monitorados após publicação.", "Classes ambíguas e dados desequilibrados reduzem a qualidade das decisões."],
+    useFor: ["experiência", "classificação", "monitoramento", "calibração", "linguagem"],
+  },
+  {
+    id: "google-dialogflow-best-practices-2026",
+    title: "Dialogflow service use best practices",
+    publisher: "Google Cloud",
+    url: "https://cloud.google.com/dialogflow/es/docs/best-practices",
+    verifiedAt: "2026-07-16",
+    facts: ["Fluxos conversacionais devem tratar falhas e ambiguidades de forma explícita.", "A experiência deve oferecer recuperação e encaminhamento humano quando a automação não tem confiança suficiente."],
+    useFor: ["experiência", "fallback", "encaminhamento humano", "confiança"],
+  },
+];
+
 export const REAL_ESTATE_OPERATING_PLAYBOOK = [
   "Lead sem próxima ação deve ser tratado como risco operacional, não como lead perdido.",
   "Priorização comercial combina intenção, aderência financeira, recência, resposta e disponibilidade real de produto.",
@@ -83,10 +122,12 @@ export const REAL_ESTATE_OPERATING_PLAYBOOK = [
   "Para corretores, responda com uma próxima ação executável, argumento de atendimento e dado que ainda precisa ser confirmado.",
   "Recomendação de preço ou investimento deve separar dado interno, referência externa, hipótese e risco.",
   "Dados pessoais de leads não devem aparecer em respostas agregadas nem ser enviados sem necessidade.",
+  "Em reativação, detectar atrito não autoriza troca automática: explique o sinal, ofereça recuperação ou troca e preserve a decisão humana.",
+  "Escalar WhatsApp exige opt-in, template aprovado, pacing, monitoramento de qualidade e pausa rápida diante de falhas ou feedback negativo.",
 ];
 
 export function marketKnowledgeForPrompt() {
-  return REAL_ESTATE_MARKET_SOURCES.map((source) => [
+  return [...REAL_ESTATE_MARKET_SOURCES, ...CUSTOMER_EXPERIENCE_SOURCES].map((source) => [
     `[${source.id}] ${source.publisher} - ${source.title}`,
     `Verificado em ${source.verifiedAt}.`,
     ...source.facts.map((fact) => `- ${fact}`),
@@ -96,7 +137,8 @@ export function marketKnowledgeForPrompt() {
 
 export function relevantMarketSources(question: string) {
   const terms = question.toLowerCase().split(/\W+/).filter((term) => term.length > 3);
-  const ranked = REAL_ESTATE_MARKET_SOURCES.map((source) => ({
+  const allSources = [...REAL_ESTATE_MARKET_SOURCES, ...CUSTOMER_EXPERIENCE_SOURCES];
+  const ranked = allSources.map((source) => ({
     source,
     score: terms.filter((term) => `${source.title} ${source.useFor.join(" ")} ${source.facts.join(" ")}`.toLowerCase().includes(term)).length,
   })).sort((a, b) => b.score - a.score);

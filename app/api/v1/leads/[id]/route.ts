@@ -22,11 +22,12 @@ export async function GET(request: Request, context: RouteContext) {
     await requireLeadAccess(identity, id);
     const admin = getSupabaseAdmin();
 
-    const [leadResult, activityResult, propertyResult, opportunityResult] = await Promise.all([
+    const [leadResult, activityResult, propertyResult, opportunityResult, experienceResult] = await Promise.all([
       admin.from("leads").select("*").eq("id", id).eq("organization_id", identity.organizationId).single(),
       admin.from("activities").select("id,title,description,type,metadata,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
       admin.from("properties").select("id,title,price,city,state,bedrooms,bathrooms,parking_spaces,area,status").eq("organization_id", identity.organizationId).limit(150),
       admin.from("opportunities").select("id,stage,value,probability,expected_close_at,property_id,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
+      admin.from("lead_experience_signals").select("id,signal_type,severity,confidence,evidence,recommendation,suggested_reply,status,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
     ]);
 
     if (leadResult.error || !leadResult.data) {
@@ -38,6 +39,7 @@ export async function GET(request: Request, context: RouteContext) {
       activities: activityResult.data ?? [],
       properties: propertyResult.data ?? [],
       opportunities: opportunityResult.data ?? [],
+      experienceSignals: experienceResult.data ?? [],
     });
   } catch (error) {
     logger.warn("lead.intelligence.read_failed", { error: error instanceof Error ? error.message : String(error) });

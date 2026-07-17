@@ -73,7 +73,8 @@ export async function POST(request: Request) {
 
   for (const event of events ?? []) {
     const attempts = Number(event.attempts || 0) + 1;
-    await admin.from("integration_outbox").update({ status: "processing", attempts, locked_at: new Date().toISOString(), locked_by: workerId }).eq("id", event.id);
+    const { data: claimed } = await admin.from("integration_outbox").update({ status: "processing", attempts, locked_at: new Date().toISOString(), locked_by: workerId }).eq("id", event.id).in("status", ["pending", "failed"]).select("id").maybeSingle();
+    if (!claimed) continue;
 
     try {
       const now = new Date().toISOString();

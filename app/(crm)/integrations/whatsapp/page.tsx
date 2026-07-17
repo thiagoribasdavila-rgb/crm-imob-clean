@@ -1,8 +1,14 @@
+"use client";
+import { useEffect, useState } from "react";
+import { AtlasBadge, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
+import { supabase } from "@/lib/supabase";
+
+type Status = { connected: boolean; reason?: string; error?: string; phone?: { displayNumber?: string; verifiedName?: string; qualityRating?: string; messagingLimitTier?: string; throughput?: { level?: string } | string; verificationStatus?: string }; checkedAt?: string };
 export default function WhatsAppIntegration() {
-  return (
-    <div>
-      <h1>WhatsApp</h1>
-      <p>Integração com WhatsApp Business</p>
-    </div>
-  );
+  const [data, setData] = useState<Status | null>(null); const [loading, setLoading] = useState(true);
+  async function load() { setLoading(true); const token = (await supabase.auth.getSession()).data.session?.access_token || ""; const response = await fetch("/api/v1/integrations/whatsapp", { headers: { Authorization: `Bearer ${token}` } }); setData(await response.json()); setLoading(false); }
+  useEffect(() => { void load(); }, []);
+  const quality = String(data?.phone?.qualityRating || "UNKNOWN").toUpperCase();
+  return <div className="space-y-6 pb-10"><section className="atlas-grid-glow rounded-[30px] border border-emerald-400/10 bg-gradient-to-br from-emerald-500/[.11] via-cyan-500/[.06] to-blue-500/[.08] p-6 sm:p-8"><div className="flex flex-wrap gap-2"><AtlasBadge tone={data?.connected ? "success" : "danger"}>{data?.connected ? "API OFICIAL CONECTADA" : "CONFIGURAÇÃO PENDENTE"}</AtlasBadge><AtlasBadge tone={quality === "GREEN" ? "success" : quality === "YELLOW" ? "warning" : "danger"}>QUALIDADE {quality}</AtlasBadge></div><h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">Saúde do <span className="atlas-gradient-text">WhatsApp Business.</span></h1><p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400">Leitura direta da Graph API, cadência protegida, templates oficiais, telemetria por webhook e controle de experiência do cliente.</p><button onClick={() => void load()} className="atlas-button-primary mt-6">Atualizar diagnóstico</button></section>{loading ? <AtlasSkeleton className="h-48 w-full" /> : <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><AtlasMetric label="Número" value={String(data?.phone?.displayNumber || "Não conectado")} detail={String(data?.phone?.verifiedName || data?.reason || "") } trend="BUSINESS" tone="green" /><AtlasMetric label="Qualidade Meta" value={quality} detail="Avaliação oficial do número" trend="QUALITY" tone={quality === "GREEN" ? "green" : "amber"} /><AtlasMetric label="Limite de mensagens" value={String(data?.phone?.messagingLimitTier || "Não informado")} detail="Tier retornado pela Meta" trend="LIMIT" tone="blue" /><AtlasMetric label="Throughput" value={typeof data?.phone?.throughput === "object" ? String(data.phone.throughput.level || "Ativo") : String(data?.phone?.throughput || "Padrão")} detail="Capacidade oficial da conta" trend="API" tone="violet" /></section>}<AtlasCard><AtlasCardHeader eyebrow="Estratégia operacional" title="Proteções ativas" description="Camadas que reduzem risco e preservam a experiência — sem mascarar limites definidos pela Meta." /><div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">{["Templates previamente aprovados", "Opt-out verificado antes de cada envio", "Pacing e teto diário por campanha", "Worker com tomada atômica do evento", "Webhook de entrega, leitura e falha", "IA detecta atrito e pede decisão humana"].map((item) => <div key={item} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4 text-sm text-slate-300"><span className="mr-2 text-emerald-300">✓</span>{item}</div>)}</div></AtlasCard></div>;
 }

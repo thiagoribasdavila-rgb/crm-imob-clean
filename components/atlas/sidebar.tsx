@@ -15,6 +15,7 @@ const navigation = [
   { label: "Corretores", href: "/brokers", icon: "◇", roles: ["director","superintendent","manager"] },
   { label: "Distribuição", href: "/distribution", icon: "⇄", roles: ["director","superintendent","manager"] },
   { label: "Vendas", href: "/sales", icon: "◌", roles: ["director","superintendent","manager"] },
+  { label: "Vendas externas", href: "/external-sales", icon: "↙", roles: ["director"] },
   { label: "Relatórios", href: "/reports", icon: "↗", roles: ["director","superintendent","manager"] },
   { label: "Projetos", href: "/developments", icon: "▥", roles: ["director","superintendent","manager","broker"] },
   { label: "Copilot", href: "/ai-dashboard", icon: "✦", roles: ["director","superintendent","manager","broker"] },

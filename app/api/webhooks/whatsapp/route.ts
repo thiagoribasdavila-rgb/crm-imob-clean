@@ -3,6 +3,7 @@ import { verifyWebhookSignature } from "@/lib/security/webhook-signature";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { assessCustomerExperience } from "@/lib/atlas/customer-experience";
 
 export const dynamic = "force-dynamic";
 
@@ -89,13 +90,15 @@ export async function POST(request: Request) {
           }
           const { data: conversation } = await admin
             .from("conversations")
-            .select("id")
+            .select("id,lead_id,assigned_to")
             .eq("organization_id", integration.organization_id)
             .eq("channel", "whatsapp")
             .eq("external_thread_id", sender)
             .maybeSingle();
 
           let conversationId = conversation?.id;
+          const conversationLeadId = conversation?.lead_id || null;
+          const conversationOwnerId = conversation?.assigned_to || null;
           if (!conversationId) {
             const { data: created, error: createError } = await admin
               .from("conversations")
@@ -118,7 +121,7 @@ export async function POST(request: Request) {
               .eq("id", conversationId);
           }
 
-          const { error: messageError } = await admin.from("messages").insert({
+          const { data: inboundMessage, error: messageError } = await admin.from("messages").insert({
             organization_id: integration.organization_id,
             conversation_id: conversationId,
             direction: "inbound",
@@ -128,13 +131,23 @@ export async function POST(request: Request) {
             status: "received",
             external_message_id: incoming.id,
             created_at: incoming.timestamp ? new Date(Number(incoming.timestamp) * 1000).toISOString() : new Date().toISOString(),
-          });
+          }).select("id").single();
           if (messageError) throw messageError;
           await admin.from("lead_reactivation_contacts").update({ status: "replied" }).eq("organization_id", integration.organization_id).eq("phone", sender).in("status", ["queued", "sent"]);
           const { data: repliedContacts } = await admin.from("lead_reactivation_contacts").select("batch_id").eq("organization_id", integration.organization_id).eq("phone", sender).eq("status", "replied");
           for (const batchId of new Set((repliedContacts ?? []).map((contact) => contact.batch_id))) {
             const { count } = await admin.from("lead_reactivation_contacts").select("id", { count: "exact", head: true }).eq("batch_id", batchId).eq("status", "replied");
             await admin.from("lead_reactivation_batches").update({ replied_count: count || 0 }).eq("id", batchId);
+          }
+          if (conversationLeadId && incomingText) {
+            const assessment = assessCustomerExperience(incomingText);
+            if (assessment.friction) {
+              const { data: signal } = await admin.from("lead_experience_signals").upsert({ organization_id: integration.organization_id, lead_id: conversationLeadId, broker_id: conversationOwnerId, conversation_id: conversationId, message_id: inboundMessage?.id || null, signal_type: assessment.signalType, severity: assessment.severity, confidence: assessment.confidence, evidence: assessment.evidence, recommendation: assessment.recommendation, suggested_reply: assessment.suggestedReply }, { onConflict: "message_id", ignoreDuplicates: true }).select("id").maybeSingle();
+              await Promise.allSettled([
+                admin.from("activities").insert({ organization_id: integration.organization_id, lead_id: conversationLeadId, user_id: conversationOwnerId, type: "experience_alert", title: assessment.recommendation === "offer_broker_change" ? "IA recomenda oferecer troca de corretor" : "IA detectou atrito no atendimento", description: `${assessment.evidence} Recomendação: ${assessment.recommendation}.`, metadata: { experienceSignalId: signal?.id || null, severity: assessment.severity, confidence: assessment.confidence }, occurred_at: new Date().toISOString() }),
+                admin.from("atlas_events").insert({ organization_id: integration.organization_id, event_type: "customer.experience_friction", source: "whatsapp", aggregate_type: "lead", aggregate_id: conversationLeadId, payload: { signalType: assessment.signalType, severity: assessment.severity, recommendation: assessment.recommendation, confidence: assessment.confidence }, correlation_id: incoming.id }),
+              ]);
+            }
           }
           accepted += 1;
         }

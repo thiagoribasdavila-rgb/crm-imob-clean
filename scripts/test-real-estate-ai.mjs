@@ -42,6 +42,10 @@ const metaDailyReport = readFileSync(resolve(root, "app/api/v2/meta/daily-report
 const dailyReportMigration = readFileSync(resolve(root, "supabase/migrations/20260716235900_meta_director_daily_reports.sql"), "utf8");
 const approvalRoute = readFileSync(resolve(root, "app/api/v2/approvals/[id]/route.ts"), "utf8");
 const metaInsights = readFileSync(resolve(root, "lib/meta/insights.ts"), "utf8");
+const customerExperience = readFileSync(resolve(root, "lib/atlas/customer-experience.ts"), "utf8");
+const whatsappWebhook = readFileSync(resolve(root, "app/api/webhooks/whatsapp/route.ts"), "utf8");
+const whatsappHealth = readFileSync(resolve(root, "app/api/v1/integrations/whatsapp/route.ts"), "utf8");
+const experienceMigration = readFileSync(resolve(root, "supabase/migrations/20260717001011_whatsapp_experience_and_external_sales_control.sql"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -152,6 +156,13 @@ const checks = [
   ["primeiro contato encerra prazo", leadIntelligenceRoute.includes("next_action_at: null") && leadIntelligenceRoute.includes("last_interaction_at: occurredAt")],
   ["relatório mede SLA por campanha", campaignIntelligence.includes("sla5Rate") && campaignIntelligence.includes("sla15Rate") && metaSettingsPage.includes("SLA 15 min")],
   ["campanha não é culpada antes da operação", campaignIntelligence.includes("Corrigir distribuição e primeiro atendimento antes de alterar a campanha")],
+  ["IA detecta rejeição explícita do corretor", customerExperience.includes("brokerRejection") && customerExperience.includes("offer_broker_change")],
+  ["troca de corretor exige decisão humana", customerExperience.includes("Qual opção prefere?") && experienceMigration.includes("decision_by")],
+  ["atrito de atendimento é auditável", whatsappWebhook.includes("lead_experience_signals") && whatsappWebhook.includes("customer.experience_friction")],
+  ["WhatsApp consulta qualidade oficial", whatsappHealth.includes("quality_rating") && whatsappHealth.includes("messaging_limit_tier")],
+  ["worker impede tomada duplicada", outboxWorker.includes('.in("status", ["pending", "failed"])') && outboxWorker.includes("if (!claimed) continue")],
+  ["compra externa não infla receita própria", experienceMigration.includes("external_sales_records") && experienceMigration.includes("status = 'comprou_outro'")],
+  ["venda externa é exclusiva da diretoria", experienceMigration.includes("external_sales_director_scope") && experienceMigration.includes("commercial_role")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
