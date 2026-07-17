@@ -208,7 +208,11 @@ export default function LeadsPage() {
         if (debouncedSearch) params.set("q", debouncedSearch);
         if (status) params.set("status", status);
         if (source) params.set("source", source);
-        if (broker) params.set("assigned_to", broker);
+        if (broker) {
+          const selectedProfile = profiles.find((profile) => profile.id === broker);
+          if ((selectedProfile?.commercial_role || selectedProfile?.role) === "manager") params.set("team_owner", broker);
+          else params.set("assigned_to", broker);
+        }
         if (project) {
           if (campaignIds.length) params.set("campaign_ids", campaignIds.join(","));
           else {
@@ -252,7 +256,7 @@ export default function LeadsPage() {
 
     void loadLeads();
     return () => controller.abort();
-  }, [broker, campaignIds, debouncedSearch, direction, page, project, reloadKey, score, sort, source, status]);
+  }, [broker, campaignIds, debouncedSearch, direction, page, profiles, project, reloadKey, score, sort, source, status]);
 
   const profileMap = useMemo(
     () => new Map(profiles.map((profile) => [profile.id, profile.full_name || "Usuário Atlas"])),

@@ -34,6 +34,12 @@ function campaignFilters(raw: string | null) {
     .filter((value) => /^[0-9a-f-]{36}$/i.test(value))
     .slice(0, 50);
 }
+const uuidPattern = /^[0-9a-f-]{36}$/i;
+function descendantIds(profiles: Array<{ id: string; reports_to: string | null }>, root: string) {
+  const ids = new Set([root]); let changed = true;
+  while (changed) { changed = false; for (const profile of profiles) if (profile.reports_to && ids.has(profile.reports_to) && !ids.has(profile.id)) { ids.add(profile.id); changed = true; } }
+  return [...ids];
+}
 
 function decodeCursor(raw: string | null): { createdAt: string; id: string } | null {
   if (!raw) return null;
@@ -71,6 +77,7 @@ export async function GET(request: NextRequest) {
   const status = params.get("status")?.trim() || null;
   const source = params.get("source")?.trim() || null;
   const assignedTo = params.get("assigned_to")?.trim() || null;
+  const teamOwner = params.get("team_owner")?.trim() || null;
   const minScore = scoreFilter(params.get("min_score"));
   const maxScore = scoreFilter(params.get("max_score"));
   const campaignIds = campaignFilters(params.get("campaign_ids"));
@@ -106,7 +113,13 @@ export async function GET(request: NextRequest) {
 
   if (status) query = query.eq("status", status);
   if (source) query = query.eq("source", source);
-  if (assignedTo === "unassigned") query = query.is("assigned_to", null);
+  if (teamOwner) {
+    if (!uuidPattern.test(teamOwner)) return apiError("INVALID_TEAM", "Gerente inválido.", access.meta, { status: 400, headers: rate.headers });
+    const { data: visibleProfiles } = await access.supabase.from("profiles").select("id,reports_to,commercial_role,role").eq("organization_id", access.access.organization.id).eq("active", true);
+    const manager = (visibleProfiles ?? []).find((profile) => profile.id === teamOwner && (profile.commercial_role || profile.role) === "manager");
+    if (!manager) return apiError("TEAM_OUT_OF_SCOPE", "Equipe fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });
+    query = query.in("assigned_to", descendantIds(visibleProfiles ?? [], manager.id));
+  } else if (assignedTo === "unassigned") query = query.is("assigned_to", null);
   else if (assignedTo) query = query.eq("assigned_to", assignedTo);
   if (minScore !== null) query = query.gte("score", minScore);
   if (maxScore !== null) query = query.lte("score", maxScore);
@@ -168,6 +181,7 @@ export async function GET(request: NextRequest) {
         status,
         source,
         assignedTo,
+        teamOwner,
         minScore,
         maxScore,
         campaignIds,
