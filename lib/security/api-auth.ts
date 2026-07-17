@@ -24,11 +24,11 @@ export async function requireApiIdentity(request: Request): Promise<ApiIdentity>
   const token = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) deny(request, "Supabase público não configurado.");
+  const publicKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !publicKey) deny(request, "Supabase público não configurado.");
   if (!token) deny(request, "Token de autenticação ausente.");
 
-  const client = createClient(url, anonKey, {
+  const client = createClient(url, publicKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
