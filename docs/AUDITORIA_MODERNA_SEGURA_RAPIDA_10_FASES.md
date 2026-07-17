@@ -14,7 +14,7 @@ O código compila e os contratos de login, sessão, RLS, hierarquia, APIs e segr
 6. **Projetos e materiais** - contratos locais aprovados para incorporadora canônica, projetos, tipologias, espelho, importação XLSX/CSV, vigência, materiais, dossiê regional e homologação. Uploads exigem autenticação e assinatura válida, versões são preservadas e links privados expiram em 15 minutos. Falta validar storage e material real depois das migrations e da URL pública.
 7. **Desempenho** - o gate `npm run performance:check` mede cada build de produção e bloqueia excesso de chunks, chunk individual, gzip individual e JavaScript total. Latência de banco/API, navegação móvel autenticada e Core Web Vitals continuam pendentes da URL pública de homologação; não são estimados localmente.
 8. **Design e acessibilidade** - contratos locais aprovados para componentes canônicos, foco visível, redução de movimento, estados de status/progresso, navegação por perfil, dock móvel, safe area e contenção de foco no Command Center. A inspeção visual de desktop/mobile, contraste e fluxos autenticados permanece pendente da homologação pública.
-9. **Segurança e recuperação** - executar backup, restore, revogação de sessão, logs, alertas e rollback.
+9. **Segurança e recuperação** - contratos locais aprovados: zero segredos rastreados, zero vulnerabilidades altas/críticas, recuperação com validade de 15 minutos, revogação global, evidência de backup exclusiva da diretoria, restore obrigatório para rollback e publicação automática bloqueada. Backup, restore e rollback reais não foram simulados e permanecem bloqueadores de homologação.
 10. **Homologação Hostinger** - gerar ZIP somente após smoke real, testar os perfis e exigir aprovação humana.
 
 ## Bloqueios atuais
