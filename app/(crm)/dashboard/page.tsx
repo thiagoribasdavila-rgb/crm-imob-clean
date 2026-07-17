@@ -18,6 +18,7 @@ type DataRow = Record<string, unknown>;
 type Period = "7" | "30" | "90" | "all";
 type DecisionPeriod = "day" | "week" | "month";
 type CommandMode = "focus" | "complete";
+type ModuleHealth = { label: string; status: "operational" | "syncing" | "unavailable"; detail: string; href: string };
 const DASHBOARD_PERIOD_KEY = "atlas:dashboard-periods:v1";
 const COMMAND_MODE_KEY = "atlas:command-mode:v1";
 type DashboardData = {
@@ -141,6 +142,12 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData>(emptyData);
   const [loading, setLoading] = useState(true);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [moduleHealth, setModuleHealth] = useState<ModuleHealth[]>([
+    { label: "Pipeline", status: "syncing", detail: "Conectando dados", href: "/pipeline" },
+    { label: "Tarefas", status: "syncing", detail: "Conectando prazos", href: "/tasks" },
+    { label: "Projetos", status: "syncing", detail: "Sincronizando base", href: "/developments" },
+    { label: "Inteligência", status: "syncing", detail: "Preparando sinais", href: "/intelligence" },
+  ]);
   const [period, setPeriod] = useState<Period>("30");
   const [decisionPeriod, setDecisionPeriod] = useState<DecisionPeriod>("day");
   const [commandMode, setCommandMode] = useState<CommandMode>("focus");
@@ -196,19 +203,19 @@ export default function DashboardPage() {
       : ((opportunityResult.data ?? []) as DataRow[]);
     const tasks = (((legacyTasks?.data ?? taskResult.data) ?? []) as DataRow[]).map(mapLegacyTask);
     const developments = (((legacyProjects?.data ?? developmentResult.data) ?? []) as DataRow[]).map(mapLegacyProject);
-    const compatibility = [
-      opportunityResult.error && isMissingRelation(opportunityResult.error) ? "Pipeline adaptado à base atual" : "",
-      legacyTasks ? "Prazos de tarefas compatibilizados" : "",
-      insightResult.error && isMissingRelation(insightResult.error) ? "Inteligência pronta para ativação" : "",
-      legacyProjects ? "Projetos conectados ao cadastro atual" : "",
-    ].filter(Boolean);
     const unavailable = [
       leadResult.error ? "Leads" : "",
       taskResult.error && !legacyTasks ? "Tarefas" : "",
       developmentResult.error && !legacyProjects ? "Projetos" : "",
       profileResult.error ? "Equipe" : "",
     ].filter(Boolean);
-    setWarnings([...compatibility, ...unavailable.map((module) => `${module} temporariamente indisponível. Tente atualizar.`)]);
+    setWarnings(unavailable.map((module) => `${module} temporariamente indisponível. Tente atualizar.`));
+    setModuleHealth([
+      { label: "Pipeline", status: leadResult.error ? "unavailable" : "operational", detail: opportunityResult.error && isMissingRelation(opportunityResult.error) ? "Base atual conectada" : "Contrato V3 ativo", href: "/pipeline" },
+      { label: "Tarefas", status: taskResult.error && !legacyTasks ? "unavailable" : "operational", detail: legacyTasks ? "Prazos compatibilizados" : "Agenda sincronizada", href: "/tasks" },
+      { label: "Projetos", status: developmentResult.error && !legacyProjects ? "unavailable" : "operational", detail: legacyProjects ? "Cadastro atual conectado" : "Portfólio sincronizado", href: "/developments" },
+      { label: "Inteligência", status: insightResult.error && !isMissingRelation(insightResult.error) ? "unavailable" : "operational", detail: insightResult.error ? "Sinais locais ativos" : "Insights persistidos", href: "/intelligence" },
+    ]);
     setData({
       leads,
       opportunities,
@@ -253,7 +260,7 @@ export default function DashboardPage() {
       const body = await response.json();
       if (!active) return;
       if (response.ok) setDirectorDaily(body.data as DirectorDaily);
-      else setWarnings((current) => [...current, body.error?.message || "Command Center executivo indisponível."]);
+      else setWarnings((current) => [...current, "Visão executiva temporariamente indisponível."]);
     });
     return () => { active = false; };
   }, [isDirector]);
@@ -264,7 +271,7 @@ export default function DashboardPage() {
     void supabase.auth.getSession().then(async ({ data: session }) => {
       const response = await fetch("/api/v1/analytics/dashboard", { headers: { Authorization: `Bearer ${session.session?.access_token || ""}` }, cache: "no-store" });
       const body = await response.json();
-      if (active) { if (response.ok) setSuperintendentSummary(body.data); else setWarnings((current) => [...current, body.error?.message || "Painel da superintendência indisponível."]); }
+      if (active) { if (response.ok) setSuperintendentSummary(body.data); else setWarnings((current) => [...current, "Painel da superintendência temporariamente indisponível."]); }
     });
     return () => { active = false; };
   }, [viewerRole]);
@@ -277,7 +284,7 @@ export default function DashboardPage() {
       const body = await response.json();
       if (!active) return;
       if (response.ok) setManagerDaily(body.data as ManagerDaily);
-      else setWarnings((current) => [...current, body.error?.message || "Cockpit diário do gerente indisponível."]);
+      else setWarnings((current) => [...current, "Cockpit diário do gerente temporariamente indisponível."]);
     });
     return () => { active = false; };
   }, [viewerRole]);
@@ -288,7 +295,7 @@ export default function DashboardPage() {
     void supabase.auth.getSession().then(async ({ data: session }) => {
       const response = await fetch("/api/v1/analytics/team-sla", { headers: { Authorization: `Bearer ${session.session?.access_token || ""}` }, cache: "no-store" });
       const body = await response.json();
-      if (active) { if (response.ok) setTeamSla(body.data); else setWarnings((current) => [...current, body.error?.message || "Fila de SLA indisponível."]); }
+      if (active) { if (response.ok) setTeamSla(body.data); else setWarnings((current) => [...current, "Fila de SLA temporariamente indisponível."]); }
     });
     return () => { active = false; };
   }, [viewerRole]);
@@ -313,7 +320,7 @@ export default function DashboardPage() {
       const body = await response.json();
       if (!active) return;
       if (response.ok) setBrokerDaily(body.data as BrokerDaily);
-      else setWarnings((current) => [...current, body.error?.message || "Sua agenda diária está indisponível."]);
+      else setWarnings((current) => [...current, "Sua agenda diária está temporariamente indisponível."]);
     });
     return () => { active = false; };
   }, [isBroker]);
@@ -678,6 +685,10 @@ export default function DashboardPage() {
           <button type="button" aria-pressed={commandMode === "focus"} onClick={() => setCommandMode("focus")}>Foco diário</button>
           <button type="button" aria-pressed={commandMode === "complete"} onClick={() => setCommandMode("complete")}>Análise completa</button>
         </div>
+      </section>
+
+      <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" aria-label="Saúde dos módulos">
+        {moduleHealth.map((module) => <Link key={module.label} href={module.href} className="group flex items-center gap-3 rounded-2xl border border-white/[.06] bg-white/[.018] px-4 py-3 transition hover:border-sky-300/20 hover:bg-white/[.035]"><span className={`h-2.5 w-2.5 rounded-full ${module.status === "operational" ? "bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,.7)]" : module.status === "syncing" ? "bg-amber-300" : "bg-rose-400"}`} /><div className="min-w-0"><p className="text-xs font-semibold text-white">{module.label}</p><p className="truncate text-[10px] text-slate-500">{module.detail}</p></div><span className="ml-auto text-xs text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-sky-300">→</span></Link>)}
       </section>
 
       {warnings.length ? (
