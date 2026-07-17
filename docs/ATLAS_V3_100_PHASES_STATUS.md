@@ -1314,6 +1314,18 @@ Pendência externa: aplicar migrations, importar fatos por projeto, conciliar ca
 
 Próxima fase: **Fase 96 — Relatórios executivos multicanal**, consolidando dia, semana e mês por campanha, projeto e incorporadora com alertas e decisões rastreáveis.
 
+## Fase 96 — Relatórios executivos multicanal
+
+**Estado:** 100% implementada localmente; migration, agendamento e conciliação real permanecem para homologação.
+
+**Evolução:** relatórios de dia, semana e mês consolidam campanha, projeto e incorporadora com custo, funil CRM, alertas e amostra.
+
+**Governança:** diretor gera/revisa e superintendência acompanha; fatos e alertas são separados, sem PII ou decisão automática. Contrato em `config/multichannel-executive-reports.json`, gate `npm run executive-marketing-reports:check` e roteiro `docs/MULTICHANNEL_EXECUTIVE_REPORTS_PHASE_96.md`.
+
+Pendência externa: aplicar migrations, conciliar fontes, agendar geração e validar dois tenants.
+
+Próxima fase: **Fase 97 — Centro de integrações e saúde operacional**, unificando credenciais mascaradas, conectividade, filas, webhooks, custos e testes de prontidão para Hostinger.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
