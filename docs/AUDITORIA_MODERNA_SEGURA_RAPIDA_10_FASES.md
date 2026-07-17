@@ -9,7 +9,7 @@ O código compila e os contratos de login, sessão, RLS, hierarquia, APIs e segr
 1. **Diagnóstico reproduzível** - concluída. Corrigidos o falso alerta da chave pública Supabase e a classificação de `ATLAS_PACKAGE_ENV_FILE`.
 2. **Banco e migrations** - bloqueadora. Aplicar migrations em homologação, executar `npm run audit:runtime-schema` e exigir 8/8 superfícies.
 3. **Login e hierarquia** - contratos locais aprovados. O auditor real `npm run audit:auth-hierarchy` está pronto para validar os cinco níveis (admin, diretor, superintendente, gerente e corretor), contas sem perfil, perfis sem autenticação e vínculos de liderança. A execução completa depende da fase 2.
-4. **APIs resilientes** - testar autorização, rate limit, idempotência, timeout e respostas sem detalhes privados.
+4. **APIs resilientes** - controles locais aprovados para 135 rotas: autenticação, RLS, rate limit, assinatura de webhooks, deduplicação, idempotência e proteção de segredos. O upload de materiais agora rejeita o corpo pelo `Content-Length` antes do parsing e limita documentos a 50 MB e vídeos a 200 MB. Falta o smoke no endereço público de homologação.
 5. **CRM e pipeline** - provar cadastro, deduplicação, distribuição, transferência e ownership único de uma lead real.
 6. **Projetos e materiais** - provar incorporadora, projeto, kit vigente, storage privado, vídeo e versionamento.
 7. **Desempenho** - medir banco, API, renderização, bundle e navegação; otimizar apenas com evidência.

@@ -20,8 +20,9 @@ const allowedMimeTypes = new Set([
   "video/mp4",
   "video/quicktime",
 ]);
-const MAX_DOCUMENT_SIZE = 50 * 1024 * 1024;
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 200 * 1024 * 1024;
+const MAX_REQUEST_SIZE = MAX_VIDEO_SIZE + 1024 * 1024;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function validDate(value: string | null) {
@@ -112,6 +113,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (!development) return NextResponse.json({ error: "Empreendimento não encontrado." }, { status: 404 });
   if (!development.developer_name?.trim()) return NextResponse.json({ error: "Informe a incorporadora do empreendimento antes de publicar materiais." }, { status: 409 });
 
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_SIZE) {
+    return NextResponse.json({ error: "O envio ultrapassa o limite máximo de 200 MB." }, { status: 413 });
+  }
+
   const form = await request.formData();
   const file = form.get("file");
   const materialType = String(form.get("materialType") || "");
@@ -123,7 +129,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (!(file instanceof File) || !allowedTypes.has(materialType) || title.length < 2) {
     return NextResponse.json({ error: "Informe tipo, título e arquivo do material." }, { status: 400 });
   }
-  const maximumSize = file.type.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_DOCUMENT_SIZE;
+  const maximumSize = file.type.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_FILE_SIZE;
   if (!allowedMimeTypes.has(file.type) || file.size < 1 || file.size > maximumSize) {
     return NextResponse.json({ error: "Use PDF, Excel ou imagem com até 50 MB, ou vídeo MP4/MOV com até 200 MB." }, { status: 400 });
   }
