@@ -784,7 +784,17 @@ Pendência externa: aplicar migration após a Fase 44 e validar duas sessões, r
 
 Pendência externa: validar quatro perfis, dois tenants, fuso, virada mensal, eventos simultâneos, reconexão e volume real.
 
-Próxima fase: **Fase 47 — Sincronização externa de calendário**, preparando conexões opt-in sem expor dados comerciais.
+## Fase 47 — Sincronização externa de calendário
+
+**Estado:** 100% da base segura implementada e aprovada localmente; OAuth e entrega real permanecem para homologação com credenciais.
+
+**Evolução:** Google Calendar e Microsoft Outlook ganharam preferências pessoais, opt-in explícito, direção única Atlas → externo e fila auditável. O padrão oculta nomes e contexto comercial.
+
+**Segurança e verdade operacional:** tokens não passam pelo navegador nem ficam no banco comum. Desconectar remove a referência de acesso; a tela não afirma conexão antes do OAuth real. O contrato está em `config/external-calendar-sync.json`, o gate em `npm run external-calendar:check` e o roteiro em `docs/EXTERNAL_CALENDAR_SYNC_PHASE_47.md`.
+
+Pendência externa: aplicar migration, configurar credenciais e redirects na Hostinger, implementar callbacks dos provedores e validar revogação e entrega reais.
+
+Próxima fase: **Fase 48 — Assistente diário de produtividade**, transformando agenda e tarefas em uma sequência curta e explicável.
 
 ## Painel das 100 fases
 
