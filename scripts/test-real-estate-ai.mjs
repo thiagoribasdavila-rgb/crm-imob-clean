@@ -85,6 +85,9 @@ const commandCenterOverview = readFileSync(resolve(root, "app/(crm)/atlas-v3/Com
 const loginContract = readFileSync(resolve(root, "config/login-experience.json"), "utf8");
 const loginCheck = readFileSync(resolve(root, "scripts/check-login.mjs"), "utf8");
 const safeAuthRedirect = readFileSync(resolve(root, "lib/auth/safe-redirect.ts"), "utf8");
+const passwordRecoveryContract = readFileSync(resolve(root, "config/password-recovery.json"), "utf8");
+const passwordRecoveryCheck = readFileSync(resolve(root, "scripts/check-password-recovery.mjs"), "utf8");
+const passwordResetRoute = readFileSync(resolve(root, "app/api/auth/password-reset/route.ts"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
@@ -508,6 +511,7 @@ const checks = [
   ["observabilidade correlaciona e sanitiza erros", observabilityContract.includes('"X-Correlation-Id"') && observabilityContract.includes('"providerCostUsd"') && observabilityCheck.includes("log canônico da API não usa sanitização") && apiCore.includes("sanitizeLogMetadata") && hundredPhaseStatus.includes("Fase 9 — Observabilidade")],
   ["Command Center decide por evidência real", commandCenterContract.includes('"missingEvidence": "pending"') && commandCenterCheck.includes("falha de consulta pode estar virando sucesso") && commandCenterRoute.includes("realTestRequired: true") && commandCenterOverview.includes("Gates críticos") && hundredPhaseStatus.includes("Fase 10 — Command Center")],
   ["login é seguro acessível e resiliente", loginContract.includes('"canonicalPath": "/login"') && loginCheck.includes("login sem limite de espera") && safeAuthRedirect.includes("AUTH_PATHS.has(pathname)") && proxySource.includes("auth.proxy.session_refresh_failed") && hundredPhaseStatus.includes("Fase 11 — Login")],
+  ["recuperação exige intenção curta e revoga sessões", passwordRecoveryContract.includes('"maxAgeSeconds": 900') && passwordRecoveryCheck.includes("troca não exige recuperação validada") && passwordResetRoute.includes('scope: "global"') && authCallback.includes("atlas-recovery-intent") && hundredPhaseStatus.includes("Fase 12 — Recuperação de senha")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],

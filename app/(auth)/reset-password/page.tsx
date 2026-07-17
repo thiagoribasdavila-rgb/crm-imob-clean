@@ -1,10 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
-
-const supabase = createClient();
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
@@ -19,41 +16,31 @@ export default function ResetPasswordPage() {
     let active = true;
 
     async function verifyRecoverySession() {
-      const { data, error: sessionError } = await supabase.auth.getSession();
+      const response = await fetch("/api/auth/password-reset", { cache: "no-store" });
       if (!active) return;
-
-      if (sessionError) {
-        setError("Não foi possível validar o link de recuperação.");
-      }
-
-      setReady(Boolean(data.session));
+      setReady(response.ok);
+      if (!response.ok) setError("O link expirou, já foi utilizado ou não criou uma sessão de recuperação.");
       setChecking(false);
     }
 
-    void verifyRecoverySession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!active) return;
-      if (event === "PASSWORD_RECOVERY" || session) {
-        setReady(true);
-        setChecking(false);
-      }
-    });
+    void verifyRecoverySession().catch(() => { if (active) { setError("Não foi possível validar o link de recuperação."); setChecking(false); } });
 
     return () => {
       active = false;
-      subscription.unsubscribe();
     };
   }, []);
+
+  const strength = useMemo(() => {
+    const categories = [/[a-z]/.test(password), /[A-Z]/.test(password), /\d/.test(password), /[^A-Za-z0-9]/.test(password)].filter(Boolean).length;
+    return { categories, valid: password.length >= 12 && password.length <= 128 && categories >= 3 };
+  }, [password]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
-    if (password.length < 12) {
-      setError("A nova senha deve ter pelo menos 12 caracteres.");
+    if (!strength.valid) {
+      setError("Use 12 a 128 caracteres e combine ao menos três tipos: maiúsculas, minúsculas, números e símbolos.");
       return;
     }
 
@@ -63,15 +50,14 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-
-    if (updateError) {
-      setError("O link expirou ou já foi utilizado. Solicite uma nova recuperação de senha.");
+    const response = await fetch("/api/auth/password-reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+    const body = await response.json();
+    if (!response.ok) {
+      setError(body.error || "O link expirou ou já foi utilizado. Solicite uma nova recuperação de senha.");
       setLoading(false);
       return;
     }
-
-    await supabase.auth.signOut({ scope: "local" });
+    setPassword(""); setConfirmPassword("");
     setUpdated(true);
     setLoading(false);
   }
@@ -90,7 +76,7 @@ export default function ResetPasswordPage() {
 
         <p className="atlas-eyebrow">Secure credential update</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-[-.035em]">Defina uma nova senha.</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-400">Use uma senha exclusiva, com no mínimo 12 caracteres.</p>
+        <p className="mt-3 text-sm leading-6 text-slate-400">Use uma senha exclusiva, com 12 a 128 caracteres e ao menos três tipos de caractere.</p>
 
         {updated ? (
           <div className="mt-8 space-y-5">
@@ -107,9 +93,9 @@ export default function ResetPasswordPage() {
           </div>
         ) : (
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-            <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Nova senha</span><input required minLength={12} type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full px-4 py-3.5" placeholder="Mínimo de 12 caracteres" /></label>
+            <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Nova senha</span><input required minLength={12} maxLength={128} type="password" autoComplete="new-password" value={password} onChange={(event) => { setPassword(event.target.value); if(error)setError(""); }} className="w-full px-4 py-3.5" placeholder="12+ caracteres e 3 tipos" aria-describedby="password-strength" /><span id="password-strength" className={`mt-2 block text-xs ${strength.valid?"text-emerald-300":"text-slate-500"}`}>{strength.valid?"Senha atende à política.":`${password.length}/12+ caracteres · ${strength.categories}/3 tipos`}</span></label>
             <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Confirmar senha</span><input required minLength={12} type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="w-full px-4 py-3.5" placeholder="Repita a nova senha" /></label>
-            {error ? <p className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
+            {error ? <p role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
             <button type="submit" disabled={loading} className="atlas-button-primary w-full py-3.5 disabled:cursor-not-allowed disabled:opacity-60">{loading ? "Atualizando credencial..." : "Salvar nova senha"}</button>
           </form>
         )}

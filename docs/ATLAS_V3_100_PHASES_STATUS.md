@@ -332,6 +332,32 @@ Pendência externa: homologar com usuário válido, senha inválida, perfil inat
 
 Próxima fase: **Fase 12 — Recuperação de senha**, validando envio, callback, troca, expiração e domínio público.
 
+## Fase 12 — Recuperação de senha
+
+Status: **Testada**.
+
+Percentual antes: **84%** — envio e callback existiam, mas a tela de troca aceitava qualquer sessão autenticada e atualizava a senha diretamente no navegador.
+
+Percentual depois: **100%** — intenção de recuperação `HttpOnly` com 15 minutos, validação de usuário no servidor, senha forte, uso único e revogação global das sessões após sucesso.
+
+### Fluxo protegido
+
+- A solicitação sempre responde de forma neutra e não revela se o e-mail está cadastrado.
+- Há limite de cinco solicitações e cinco tentativas de troca por janela de 15 minutos.
+- O domínio canônico prioriza `ATLAS_BASE_URL`; produção exige HTTPS.
+- Callback aceita PKCE ou OTP suportado, recusa token inválido e cria uma intenção `HttpOnly`, `SameSite=Strict`, segura em produção e válida por 15 minutos.
+- A tela apenas consulta e envia para a API do servidor; uma sessão comum não autoriza redefinição.
+- A senha exige 12 a 128 caracteres e ao menos três categorias entre maiúsculas, minúsculas, números e símbolos.
+- O indicador de força é acessível e a confirmação precisa coincidir.
+- Após sucesso, a intenção é apagada e todas as sessões do usuário são revogadas, exigindo novo login.
+- Link expirado, usado ou incompleto retorna à solicitação de um novo e-mail.
+
+Evidências: `config/password-recovery.json`, `/api/auth/password-reset`, `/auth/callback`, `app/(auth)/reset-password/page.tsx` e `npm run password-recovery:check`.
+
+Pendência externa: comprovar entrega real, link mais recente, expiração, reuso, domínio Hostinger e revogação em outro dispositivo usando uma conta exclusiva de homologação.
+
+Próxima fase: **Fase 13 — Sessões**, testando renovação, logout, expiração, múltiplos dispositivos e revogação.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |

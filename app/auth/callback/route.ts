@@ -21,7 +21,7 @@ function authFailureUrl(origin: string, reason: string) {
 }
 
 function publicOrigin(request: NextRequest) {
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
+  const configured = (process.env.ATLAS_BASE_URL || process.env.NEXT_PUBLIC_APP_URL)?.trim().replace(/\/$/, "");
   if (configured) return configured;
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const protocol = request.headers.get("x-forwarded-proto") || "https";
@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
   const errorDescription = requestUrl.searchParams.get("error_description");
   const fallback = rawType === "recovery" ? "/reset-password" : "/dashboard";
   const next = safeAuthDestination(requestUrl.searchParams.get("next"), fallback);
+  const recoveryFlow = rawType === "recovery" || next === "/reset-password";
 
   if (errorCode || errorDescription) {
     return NextResponse.redirect(authFailureUrl(origin, "recovery_link_invalid"));
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(new URL(next, origin));
     response.headers.set("Cache-Control", "no-store");
+    if (recoveryFlow) response.cookies.set("atlas-recovery-intent", crypto.randomUUID(), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/", maxAge: 15 * 60 });
     return response;
   }
 
@@ -72,6 +74,7 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(new URL(next, origin));
     response.headers.set("Cache-Control", "no-store");
+    if (recoveryFlow) response.cookies.set("atlas-recovery-intent", crypto.randomUUID(), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/", maxAge: 15 * 60 });
     return response;
   }
 
