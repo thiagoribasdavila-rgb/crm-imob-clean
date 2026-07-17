@@ -1158,6 +1158,18 @@ Pendência externa: aplicar migration e comparar pacotes agregado/lead, hierarqu
 
 Próxima fase: **Fase 83 — Memória comercial segura**, estruturando aprendizado longitudinal da lead sem guardar conversa bruta nem misturar clientes.
 
+## Fase 83 — Memória comercial segura
+
+**Estado:** 100% implementada e aprovada localmente; aplicação da migration e testes com usuários reais permanecem para homologação.
+
+**Evolução:** cada lead passa a ter uma memória longitudinal exclusiva, versionada e composta somente por intenção, prazo, pagamento, objeções, sinais, etapa e próxima ação. O Copiloto deixou de gravar perguntas e respostas brutas; registros legados são limpos na migração.
+
+**Governança:** a propriedade acompanha transferências de corretor, o acesso respeita hierarquia e tenant, o contexto expirado após 180 dias não volta à IA e o reinício exige justificativa do corretor responsável ou da diretoria. O contrato está em `config/safe-commercial-memory.json`, o gate em `npm run commercial-memory:check` e o roteiro em `docs/SAFE_COMMERCIAL_MEMORY_PHASE_83.md`.
+
+Pendência externa: aplicar migration e homologar criação, continuidade, transferência, reinício, expiração, quatro perfis e dois tenants.
+
+Próxima fase: **Fase 84 — Guardrails de instrução e saída**, bloqueando prompt injection, vazamento e ações indevidas antes de ampliar a autonomia.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |

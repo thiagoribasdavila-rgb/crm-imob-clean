@@ -11,6 +11,7 @@ import {
 import { buildFallbackRealEstateAnswer } from "@/lib/ai/real-estate-fallback";
 import { generateAIText, selectCopilotTask } from "@/lib/ai/provider-router";
 import { assessAIComplexity } from "@/lib/ai/complexity";
+import { structuredMemoryFromGovernedContext } from "@/lib/ai/structured-commercial-memory";
 
 export const dynamic = "force-dynamic";
 
@@ -48,13 +49,15 @@ export async function POST(request: Request) {
     }
 
     let persistentCopilot: { id: string; copilot_key: string; broker_id: string; interaction_count: number; learning_version: number } | null = null;
+    let leadDevelopmentId: string | null = null;
     if (leadId) {
       if (!/^[0-9a-f-]{36}$/i.test(leadId)) return NextResponse.json({ error: "Lead inválida." }, { status: 400 });
       await requireLeadAccess(identity, leadId);
       const [{ data: lead }, { data: copilot }] = await Promise.all([
-        identity.supabase.from("leads").select("id,assigned_to").eq("id", leadId).single(),
+        identity.supabase.from("leads").select("id,assigned_to,development_id").eq("id", leadId).single(),
         identity.supabase.from("lead_copilots").select("id,copilot_key,broker_id,interaction_count,learning_version").eq("organization_id", identity.organizationId).eq("lead_id", leadId).maybeSingle(),
       ]);
+      leadDevelopmentId = lead?.development_id ?? null;
       persistentCopilot = copilot && copilot.broker_id === lead?.assigned_to ? copilot : null;
     }
 
@@ -66,6 +69,10 @@ export async function POST(request: Request) {
     const complexity = assessAIComplexity(prompt);
     const task = selectCopilotTask(prompt);
     const contextPackage = await buildGovernedRealEstateAIContext(identity, { task, purpose: "commercial-copilot", leadId: leadId || undefined, prompt });
+    if (leadId) {
+      const { data: memory } = await identity.supabase.from("lead_commercial_memory_states").select("interaction_count,memory_version,intent_key,timeline_key,financing_key,objection_keys,signal_keys,stage_key,recommended_action_key,last_interaction_at,expires_at").eq("lead_id", leadId).gt("expires_at", new Date().toISOString()).maybeSingle();
+      if (memory) contextPackage.sections.continuity = { interactionCount: memory.interaction_count, memoryVersion: memory.memory_version, intent: memory.intent_key, timeline: memory.timeline_key, financing: memory.financing_key, objections: memory.objection_keys, signals: memory.signal_keys, stage: memory.stage_key, recommendedAction: memory.recommended_action_key, lastInteractionAt: memory.last_interaction_at, expiresAt: memory.expires_at, previousConversationTextIncluded: false };
+    }
     const operationalContext = contextPackage.sections.operation;
     try {
       const result = await generateAIText({
@@ -117,14 +124,17 @@ export async function POST(request: Request) {
     }
 
     if (leadId && persistentCopilot) {
-      const { error: memoryError } = await getSupabaseAdmin().rpc("append_lead_copilot_interaction", {
+      const memory = structuredMemoryFromGovernedContext(contextPackage.sections);
+      const { error: memoryError } = await getSupabaseAdmin().rpc("record_structured_copilot_memory", {
         p_organization_id: identity.organizationId,
         p_lead_id: leadId,
         p_broker_id: persistentCopilot.broker_id,
-        p_question: prompt.slice(0, 500),
-        p_answer: answer.slice(0, 1500),
+        p_intent_key: memory.intentKey, p_timeline_key: memory.timelineKey,
+        p_financing_key: memory.financingKey, p_objection_keys: memory.objectionKeys,
+        p_signal_keys: memory.signalKeys, p_stage_key: memory.stageKey,
+        p_action_key: memory.actionKey, p_development_id: leadDevelopmentId,
       });
-      if (memoryError) logger.warn("ai.copilot_memory_append_failed", { organizationId: identity.organizationId, leadId, error: memoryError.message });
+      if (memoryError) logger.warn("ai.copilot_structured_memory_failed", { organizationId: identity.organizationId, leadId, error: memoryError.message });
     }
 
     return NextResponse.json({
@@ -146,7 +156,7 @@ export async function POST(request: Request) {
         operationalContext: true,
         mode,
       },
-      copilot: persistentCopilot ? { id: persistentCopilot.id, key: persistentCopilot.copilot_key, leadId, brokerId: persistentCopilot.broker_id, learningVersion: persistentCopilot.learning_version, persistent: true, exclusive: true } : null,
+      copilot: persistentCopilot ? { id: persistentCopilot.id, key: persistentCopilot.copilot_key, leadId, brokerId: persistentCopilot.broker_id, learningVersion: persistentCopilot.learning_version, persistent: true, exclusive: true, memoryMode: "structured", rawConversationStored: false } : null,
     });
   } catch (error) {
     logger.warn("ai.copilot_failed", { error: error instanceof Error ? error.message : String(error) });
