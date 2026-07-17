@@ -75,11 +75,22 @@ export default function DistributionPage() {
     await load(true); setWorking(false);
   }
 
+  async function configureMember(profileId: string, enabled: boolean, weight: number) {
+    if (!projectId) return;
+    setWorking(true); setError(""); setNotice("");
+    const response = await fetch("/api/v1/crm/distribution", { method: "POST", headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "configure_member", developmentId: projectId, profileId, enabled, weight }) });
+    const result = await response.json();
+    if (!response.ok) setError(result.error?.message || "Não foi possível atualizar a elegibilidade.");
+    else setNotice(`Elegibilidade atualizada somente para ${selectedProject?.name || "o projeto selecionado"}.`);
+    await load(true); setWorking(false);
+  }
+
   const presenceMap = useMemo(() => new Map((data?.presence ?? []).map((item) => [item.profile_id, item])), [data]);
   const loadMap = useMemo(() => new Map((data?.loads ?? []).map((item) => [item.profile_id, item])), [data]);
   const stateMap = useMemo(() => new Map((data?.queue ?? []).filter((item) => item.development_id === projectId).map((item) => [item.profile_id, item])), [data, projectId]);
   const profilesMap = useMemo(() => new Map((data?.profiles ?? []).map((item) => [item.id, item])), [data]);
   const managers = (data?.profiles ?? []).filter((item) => item.resolved_role === "manager" && (data?.viewer.role !== "superintendent" || item.reports_to === data.viewer.id) && presenceMap.get(item.id)?.online);
+  const teamBrokers = (data?.profiles ?? []).filter((item) => item.resolved_role === "broker" && (data?.viewer.role !== "manager" || item.reports_to === data.viewer.id));
   const brokers = (data?.profiles ?? []).filter((item) => item.resolved_role === "broker" && presenceMap.get(item.id)?.online && presenceMap.get(item.id)?.availability === "available" && stateMap.get(item.id)?.enabled !== false).sort((a, b) => {
     const aLoad = (loadMap.get(a.id)?.by_project[projectId] ?? 0) / (stateMap.get(a.id)?.weight || 1);
     const bLoad = (loadMap.get(b.id)?.by_project[projectId] ?? 0) / (stateMap.get(b.id)?.weight || 1);
@@ -110,6 +121,8 @@ export default function DistributionPage() {
     </section>
 
     {data?.viewer.role === "manager" ? <section className="rounded-[24px] border border-cyan-400/15 bg-gradient-to-r from-cyan-400/[.07] to-blue-400/[.04] p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="atlas-eyebrow">Fase 38 · Distribuição equilibrada</p><h2 className="mt-2 text-xl font-semibold text-white">Fila do meu time reconciliada com o motor</h2><p className="mt-2 text-sm text-slate-400">Projeto, presença de 90 segundos, disponibilidade, peso e última atribuição definem a ordem. A operação é atômica.</p></div><div className="flex flex-wrap gap-2"><AtlasBadge tone={balanceGap <= 1 ? "success" : "warning"}>DESVIO {balanceGap}</AtlasBadge><AtlasBadge tone="info">{brokers.length} ELEGÍVEIS</AtlasBadge><AtlasBadge tone="violet">MESMO PROJETO</AtlasBadge></div></div></section> : null}
+
+    {data?.viewer.role === "manager" ? <AtlasCard><AtlasCardHeader eyebrow="Fase 39 · Equilíbrio por projeto" title="Elegibilidade do time neste empreendimento" description="Ativar, pausar e ponderar um corretor aqui não altera nenhum outro projeto." /><div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">{teamBrokers.map((broker) => { const state = stateMap.get(broker.id); const enabled = state?.enabled !== false; const online = presenceMap.get(broker.id)?.online && presenceMap.get(broker.id)?.availability === "available"; return <article key={broker.id} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-white">{broker.full_name || "Corretor"}</p><p className={`mt-1 text-xs ${online ? "text-emerald-300" : "text-slate-500"}`}>{online ? "Online e disponível" : "Fora da fila agora"}</p></div><AtlasBadge tone={enabled ? "success" : "neutral"}>{enabled ? "ATIVO NO PROJETO" : "PAUSADO"}</AtlasBadge></div><div className="mt-4 flex items-end gap-3"><label className="flex-1 text-[10px] uppercase tracking-wider text-slate-500">Peso<select value={state?.weight || 1} disabled={working} onChange={(event) => void configureMember(broker.id, enabled, Number(event.target.value))} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{[1,2,3,4,5,6,7,8,9,10].map((weight) => <option key={weight} value={weight}>{weight}</option>)}</select></label><button disabled={working} onClick={() => void configureMember(broker.id, !enabled, state?.weight || 1)} className={enabled ? "atlas-button-secondary" : "atlas-button-primary"}>{enabled ? "Pausar" : "Ativar"}</button></div></article>; })}{!teamBrokers.length ? <div className="sm:col-span-2 xl:col-span-3"><AtlasEmpty title="Nenhum corretor direto" description="Vincule corretores ao gerente antes de configurar projetos." /></div> : null}</div></AtlasCard> : null}
 
     <section className="flex flex-col gap-4 rounded-[24px] border border-white/[.07] bg-white/[.025] p-4 sm:flex-row sm:items-center sm:justify-between">
       <div><p className="atlas-eyebrow">Minha disponibilidade</p><p className="mt-1 text-sm text-slate-400">O status atualiza a fila em até 15 segundos. Somente “Disponível” participa da distribuição.</p></div>

@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   if (!limited.ok) return limited.response;
   const identity = await requireAccessContext(request);
   if (!identity.ok) return identity.response;
-  const body = await request.json().catch(() => null) as { action?: string; availability?: string; developmentId?: string; limit?: number } | null;
+  const body = await request.json().catch(() => null) as { action?: string; availability?: string; developmentId?: string; limit?: number; profileId?: string; enabled?: boolean; weight?: number } | null;
   if (!body?.action) return apiError("INVALID_REQUEST", "Ação não informada.", identity.meta, { status: 400 });
   const admin = getSupabaseAdmin();
 
@@ -92,6 +92,21 @@ export async function POST(request: NextRequest) {
 
   const role = identity.access.profile.commercialRole || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
   if (!managerRoles.has(role)) return apiError("FORBIDDEN", "Perfil sem permissão para distribuir leads.", identity.meta, { status: 403 });
+  if (body.action === "configure_member" && body.developmentId && body.profileId) {
+    const weight = Math.min(10, Math.max(1, Math.floor(body.weight ?? 1)));
+    const [{ data: project }, { data: profiles }] = await Promise.all([
+      admin.from("developments").select("id").eq("id", body.developmentId).eq("organization_id", identity.access.organization.id).maybeSingle(),
+      admin.from("profiles").select("id,role,commercial_role,reports_to").eq("organization_id", identity.access.organization.id).eq("active", true),
+    ]);
+    if (!project) return apiError("INVALID_PROJECT", "Projeto fora da sua organização.", identity.meta, { status: 400 });
+    const target = (profiles ?? []).find((profile) => profile.id === body.profileId);
+    const allowed = role === "director" ? new Set((profiles ?? []).map((profile) => profile.id)) : descendants(profiles ?? [], identity.access.profile.id);
+    const directManagerScope = role !== "manager" || target?.reports_to === identity.access.profile.id;
+    if (!target || roleOf(target) !== "broker" || !allowed.has(target.id) || !directManagerScope) return apiError("BROKER_OUT_OF_SCOPE", "Selecione um corretor direto do seu time.", identity.meta, { status: 403 });
+    const { data, error } = await admin.from("project_distribution_members").upsert({ organization_id: identity.access.organization.id, development_id: project.id, profile_id: target.id, enabled: body.enabled !== false, weight, updated_at: new Date().toISOString() }, { onConflict: "development_id,profile_id" }).select("development_id,profile_id,enabled,weight,assignments_count,last_assigned_at").single();
+    if (error) return apiError("MEMBER_CONFIG_FAILED", "Não foi possível atualizar a elegibilidade deste projeto.", identity.meta, { status: 500 });
+    return apiSuccess({ member: data, projectIsolation: true }, identity.meta, { headers: limited.headers });
+  }
   if (body.action !== "distribute" || !body.developmentId) return apiError("INVALID_REQUEST", "Projeto ou ação inválida.", identity.meta, { status: 400 });
   const limit = Math.min(100, Math.max(1, Math.floor(body.limit ?? 1)));
   const { data, error } = await admin.rpc("distribute_project_leads", {
