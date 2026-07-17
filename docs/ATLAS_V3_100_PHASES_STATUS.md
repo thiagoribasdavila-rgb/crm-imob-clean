@@ -74,6 +74,43 @@ Encerramento forçado pelo sistema operacional (`SIGKILL`) não permite executar
 
 Próxima fase: **Fase 3 — Fonte única da verdade**, documentando entidades e destinos canônicos sem criar tabelas paralelas.
 
+## Fase 3 — Fonte única da verdade
+
+Status: **Testada**.
+
+Percentual antes: **86%** — o código convergia para tabelas centrais, mas a decisão estava distribuída entre migrations, APIs e documentação.
+
+Percentual depois: **100%** — contrato canônico versionado, validado automaticamente e incorporado ao release gate.
+
+### Entidades centrais
+
+| Conceito | Fonte canônica | Regra |
+|---|---|---|
+| Lead | `leads` | oportunidade comercial, funil, score e corretor único |
+| Cliente | `customers` | relacionamento convertido/pós-venda; não duplica o estado da lead |
+| Usuário | `profiles` | perfil, hierarquia e organização; autenticação continua em Supabase Auth |
+| Projeto | `developments` | empreendimento; `projects` é alias histórico proibido |
+| Imóvel/unidade | `properties` | ativo comercializável vinculado ao projeto |
+| Tarefa | `tasks` | próxima ação, compromisso e SLA; não recriar `followups` |
+| Campanha | `campaigns` | visão normalizada dos canais de mídia |
+| Atividade comercial | `activities` | timeline legível da lead |
+| Evento técnico | `atlas_events` | auditoria imutável e integração; não substitui a timeline |
+| Material | `project_materials` | documento versionado por projeto e incorporadora |
+| Conversa | `conversations` | thread; conteúdo individual permanece em `messages` |
+| Integração | `integrations` | configuração por organização, sem exposição de segredos |
+
+### Proteções adicionadas
+
+- Uma entidade não pode apontar para a mesma tabela de outra entidade.
+- Aliases históricos não podem virar novas fontes concorrentes.
+- `organization_id` é a chave tenant obrigatória do contrato.
+- O release falha se uma entidade essencial desaparecer ou ficar ambígua.
+- APIs primárias são registradas quando já existe contrato canônico; `null` significa acesso atual sob RLS ainda sem API exclusiva, e não autorização para criar uma tabela paralela.
+
+Evidências: `config/canonical-entities.json` e `npm run architecture:canonical`.
+
+Próxima fase: **Fase 4 — Contratos de dados**, padronizando estados, datas, dinheiro, telefone, e-mail e identificadores nas fronteiras das APIs.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
