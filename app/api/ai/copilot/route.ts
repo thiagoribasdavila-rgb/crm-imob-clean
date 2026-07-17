@@ -51,11 +51,12 @@ export async function POST(request: Request) {
     if (leadId) {
       if (!/^[0-9a-f-]{36}$/i.test(leadId)) return NextResponse.json({ error: "Lead inválida." }, { status: 400 });
       await requireLeadAccess(identity, leadId);
-      const [{ data: lead }, { data: copilot }] = await Promise.all([
+      const [{ data: lead }, { data: copilot }, { data: sourceMemories }] = await Promise.all([
         identity.supabase.from("leads").select("id,name,status,source,score,temperature,assigned_to,development_id,next_action_at,metadata").eq("id", leadId).single(),
         identity.supabase.from("lead_copilots").select("id,copilot_key,broker_id,memory,interaction_count,learning_version").eq("organization_id", identity.organizationId).eq("lead_id", leadId).maybeSingle(),
+        identity.supabase.from("lead_source_memories").select("commercial_facts,source_file,source_sheet,memory_role,created_at").eq("organization_id", identity.organizationId).eq("lead_id", leadId).eq("ai_eligible", true).order("created_at", { ascending: false }).limit(20),
       ]);
-      leadContext = lead as Record<string, unknown> | null;
+      leadContext = lead ? { ...lead, historicalCommercialMemory: sourceMemories ?? [], memorySafety: "Somente fatos comerciais permitidos; campos sensíveis foram excluídos na preparação." } as Record<string, unknown> : null;
       persistentCopilot = copilot && copilot.broker_id === lead?.assigned_to ? copilot : null;
     }
 

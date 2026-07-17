@@ -28,7 +28,7 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Lead fora do seu escopo comercial." }, { status: 403 });
     }
 
-    const [activityResult, propertyResult, opportunityResult, experienceResult, conversationResult, taskResult, campaignResult] = await Promise.all([
+    const [activityResult, propertyResult, opportunityResult, experienceResult, conversationResult, taskResult, campaignResult, sourceMemoryResult] = await Promise.all([
       identity.supabase.from("activities").select("id,user_id,title,description,type,metadata,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
       admin.from("properties").select("id,title,price,city,state,bedrooms,bathrooms,parking_spaces,area,status").eq("organization_id", identity.organizationId).limit(150),
       identity.supabase.from("opportunities").select("id,stage,value,probability,expected_close_at,property_id,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
@@ -36,6 +36,7 @@ export async function GET(request: Request, context: RouteContext) {
       identity.supabase.from("conversations").select("id,status,channel,last_message_at,unread_count").eq("lead_id", id).eq("organization_id", identity.organizationId).order("last_message_at", { ascending: false }).limit(50),
       identity.supabase.from("tasks").select("id,status,due_at,priority").eq("lead_id", id).eq("organization_id", identity.organizationId).limit(100),
       identity.supabase.from("campaign_events").select("id,event_type,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
+      identity.supabase.from("lead_source_memories").select("id,source_file,source_sheet,source_row,commercial_facts,excluded_sensitive_fields,memory_role,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(100),
     ]);
 
     const lead = leadResult.data;
@@ -75,7 +76,7 @@ export async function GET(request: Request, context: RouteContext) {
       properties: propertyResult.data ?? [],
       opportunities: opportunityResult.data ?? [],
       experienceSignals: experienceResult.data ?? [],
-      unifiedProfile: { conversations: conversationResult.data ?? [], tasks: taskResult.data ?? [], campaignEvents: campaignResult.data ?? [], sources: ["CRM", ...(conversationResult.data?.length ? ["Atendimento"] : []), ...(campaignResult.data?.length ? ["Marketing"] : []), ...(opportunityResult.data?.length ? ["Vendas"] : [])] },
+      unifiedProfile: { conversations: conversationResult.data ?? [], tasks: taskResult.data ?? [], campaignEvents: campaignResult.data ?? [], historicalMemories: sourceMemoryResult.data ?? [], sources: ["CRM", ...(sourceMemoryResult.data?.length ? ["Bases históricas"] : []), ...(conversationResult.data?.length ? ["Atendimento"] : []), ...(campaignResult.data?.length ? ["Marketing"] : []), ...(opportunityResult.data?.length ? ["Vendas"] : [])] },
       dataQuality: { completeness: Math.round(completedFields / fields.length * 100), completedFields, totalFields: fields.length, missing: fields.filter((field) => !field.complete).map(({ key, label }) => ({ key, label })), inconsistencies, status: inconsistencies.length ? "review" : completedFields === fields.length ? "complete" : "enrich", recommendation: inconsistencies[0] || (fields.find((field) => !field.complete)?.label ? `Coletar ${fields.find((field) => !field.complete)!.label} no próximo contato.` : "Perfil consistente e pronto para personalização.") },
       contactBriefing: { unreadMessages, openTasks: openTasks.length, activeOpportunities: activeOpportunities.length, lastInteractionAt: activities[0]?.occurred_at || null, context: activities[0]?.description || activities[0]?.title || "Ainda não há interação registrada com este cliente.", actions: briefingActions.length ? briefingActions : ["Validar interesse atual e combinar a próxima ação com data."], generatedBy: "Atlas Intelligence local", requiresApproval: true },
     });

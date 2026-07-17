@@ -34,6 +34,7 @@ const reactivationRoute = readFileSync(resolve(root, "app/api/v1/crm/reactivatio
 const reactivationPage = readFileSync(resolve(root, "app/(crm)/leads/import/page.tsx"), "utf8");
 const reactivationMigration = readFileSync(resolve(root, "supabase/migrations/20260716235515_lead_reactivation_center.sql"), "utf8");
 const phoneQualityMigration = readFileSync(resolve(root, "supabase/migrations/20260717035100_legacy_base_phone_quality_suppression.sql"), "utf8");
+const sourceMemoryMigration = readFileSync(resolve(root, "supabase/migrations/20260717035803_lead_source_memory_import.sql"), "utf8");
 const evolutionPhases = readFileSync(resolve(root, "lib/atlas/evolution-phases.ts"), "utf8");
 const homologationRoute = readFileSync(resolve(root, "app/api/v1/homologation/route.ts"), "utf8");
 const homologationMigration = readFileSync(resolve(root, "supabase/migrations/20260716221959_homologation_checklist.sql"), "utf8");
@@ -230,6 +231,10 @@ const checks = [
   ["limpeza de telefone preserva histórico", phoneQualityMigration.includes("contact_quality_history") && phoneQualityMigration.includes("hit_count") && phoneQualityMigration.includes("register_invalid_lead_phone")],
   ["mensagem não sai para telefone inválido", phoneQualityMigration.includes("block_bad_quality_whatsapp_message") && phoneQualityMigration.includes("invalid_phone_suppressed")],
   ["oferta ativa combina corretor e IA", reactivationPage.includes("Oferta ativa · Corretor + IA") && reactivationRoute.includes("aiSuggestion") && reactivationPage.includes("Telefone inválido")],
+  ["memória histórica preserva a fonte", sourceMemoryMigration.includes("source_fingerprint") && sourceMemoryMigration.includes("source_file") && sourceMemoryMigration.includes("source_sheet")],
+  ["memória histórica exclui campos sensíveis", sourceMemoryMigration.includes("sensitive_fact_not_allowed") && sourceMemoryMigration.includes("excluded_sensitive_fields")],
+  ["duplicidade histórica não transfere carteira", sourceMemoryMigration.includes("select id into lead_ref") && !sourceMemoryMigration.includes("update public.leads set assigned_to")],
+  ["copiloto usa memória histórica sob RLS", route.includes('identity.supabase.from("lead_source_memories")') && route.includes("historicalCommercialMemory")],
   ["opt-out é revalidado antes da ativação", reactivationRoute.includes("latestSuppressions") && reactivationRoute.includes("opt_out_before_activation") && reactivationRoute.includes("NO_ELIGIBLE_CONTACTS")],
   ["reativação exige aprovação humana", reactivationRoute.includes('request_type: "whatsapp_reactivation"') && reactivationRoute.includes('status: "pending_approval"') && reactivationPage.includes("Enviar para aprovação")],
   ["proteções da fase 36 ficam auditáveis", reactivationMigration.includes("block_reason text") && reactivationPage.includes("Fase 36 · Proteção comprovada") && reactivationPage.includes("Nenhuma lead existente é transferida silenciosamente")],

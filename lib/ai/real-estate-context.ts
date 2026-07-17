@@ -18,6 +18,7 @@ export async function buildRealEstateContext(identity: ApiIdentity) {
     identity.supabase.from("leads").select("status,score,temperature,source,assigned_to,next_action_at,created_at").limit(2000),
     identity.supabase.from("opportunities").select("stage,value,probability,expected_close_at,created_at").limit(2000),
     identity.supabase.from("project_materials").select("development_id,material_type,title,version,valid_until").eq("is_current", true).limit(500),
+    identity.supabase.from("lead_source_memories").select("lead_id,memory_role,created_at").eq("ai_eligible", true).limit(5000),
   ]);
 
   const rows = (index: number): Row[] => {
@@ -30,6 +31,7 @@ export async function buildRealEstateContext(identity: ApiIdentity) {
   const leads = rows(2);
   const opportunities = rows(3);
   const materials = rows(4);
+  const historicalMemories = rows(5);
   const now = Date.now();
 
   const available = properties.filter((item) => ["available", "ativo", "disponivel", "disponível"].includes(status(item.status)));
@@ -62,6 +64,8 @@ export async function buildRealEstateContext(identity: ApiIdentity) {
       openOpportunities: openOpportunities.length,
       pipelineValue: pipeline,
       weightedForecast: forecast,
+      historicalMemories: historicalMemories.length,
+      leadsWithHistoricalMemory: new Set(historicalMemories.map((item) => String(item.lead_id))).size,
     },
     materials: {
       current: materials.length,
@@ -78,4 +82,3 @@ export async function buildRealEstateContext(identity: ApiIdentity) {
     })),
   };
 }
-
