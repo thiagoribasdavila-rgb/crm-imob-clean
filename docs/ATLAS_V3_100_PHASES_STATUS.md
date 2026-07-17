@@ -734,7 +734,17 @@ Pendência externa: aferir coortes, saltos, retornos, reversões, durações e i
 
 Pendência externa: validar tarefas próprias, subordinadas, laterais, sem lead, concorrência e isolamento com usuários reais.
 
-Próxima fase: **Fase 42 — Criação rápida de tarefas**, reduzindo passos sem perder vínculo, responsável e prazo.
+## Fase 42 — Criação rápida de tarefas
+
+**Estado:** 100% implementada e aprovada localmente; criação multiusuário real permanece para homologação.
+
+**Evolução:** a tarefa nasce dentro da Central com título, prazo, prioridade, lead opcional e responsável. A seleção de lead preserva automaticamente o corretor único; sem lead, o responsável precisa estar visível na hierarquia.
+
+**Segurança:** a API valida prazo futuro, limites, prioridades permitidas, organização, lead, responsável e RLS. A criação é humana, autenticada e limitada. O contrato está em `config/task-quick-create.json`, o gate em `npm run task-quick-create:check` e o roteiro em `docs/TASK_QUICK_CREATE_PHASE_42.md`.
+
+Pendência externa: validar lead e responsável laterais, corretor próprio, liderança, datas e dois tenants com banco de homologação.
+
+Próxima fase: **Fase 43 — Tarefas recorrentes**, com repetição segura, limite e encerramento explícito.
 
 ## Painel das 100 fases
 
