@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiIdentity } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       while (changed) { changed = false; for (const member of team ?? []) if (member.reports_to && allowed.has(member.reports_to) && !allowed.has(member.id)) { allowed.add(member.id); changed = true; } }
       if (!batch || !allowed.has(batch.owner_id)) return NextResponse.json({ error: "Esta campanha pertence a outra estrutura comercial." }, { status: 403 });
     }
+    if (body.decision === "approved" && approval.entity_type === "commercial_simulation" && approval.entity_id) {
+      const { data: simulation } = await admin.from("commercial_simulations").select("lead_id,property_id,payment_rule_id,property_price,valid_until").eq("id", approval.entity_id).eq("organization_id", identity.organizationId).single();
+      if (!simulation || new Date(simulation.valid_until).getTime() < Date.now()) return NextResponse.json({ error: "A simulação venceu. Recalcule antes de aprovar." }, { status: 409 });
+      const [{ data: property }, { data: rule }] = await Promise.all([
+        admin.from("properties").select("price,status").eq("id", simulation.property_id).eq("organization_id", identity.organizationId).single(),
+        admin.from("developer_payment_flow_rules").select("active,valid_from,valid_until").eq("id", simulation.payment_rule_id).eq("organization_id", identity.organizationId).single(),
+      ]);
+      const available = property && ["available", "ativo", "disponivel", "disponível"].includes(String(property.status).toLowerCase());
+      const today = new Date().toISOString().slice(0, 10);
+      const ruleValid = rule?.active && (!rule.valid_from || rule.valid_from <= today) && (!rule.valid_until || rule.valid_until >= today);
+      if (!available || Number(property?.price) !== Number(simulation.property_price) || !ruleValid) return NextResponse.json({ error: "Preço, estoque ou regra mudou. Gere uma nova simulação antes da proposta." }, { status: 409 });
+    }
 
     const decidedAt = new Date().toISOString();
     const { error: updateError } = await admin
@@ -87,7 +100,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (approval.entity_type === "commercial_simulation" && approval.entity_id) {
       await admin.from("commercial_simulations").update({ status: body.decision, updated_at: decidedAt }).eq("id", approval.entity_id).eq("organization_id", identity.organizationId);
       const { data: simulation } = await admin.from("commercial_simulations").select("lead_id").eq("id", approval.entity_id).eq("organization_id", identity.organizationId).single();
-      if (simulation) await admin.from("activities").insert({ organization_id: identity.organizationId, lead_id: simulation.lead_id, user_id: identity.userId, type: "commercial_proposal_decision", title: body.decision === "approved" ? "Proposta comercial aprovada" : "Proposta comercial devolvida", description: body.reason || (body.decision === "approved" ? "Preço, estoque e regra revisados pela gestão." : "Requer ajuste antes do envio ao cliente."), metadata: { simulationId: approval.entity_id, decision: body.decision }, occurred_at: decidedAt });
+      if (simulation) {
+        await admin.from("activities").insert({ organization_id: identity.organizationId, lead_id: simulation.lead_id, user_id: identity.userId, type: "commercial_proposal_decision", title: body.decision === "approved" ? "Proposta comercial aprovada" : "Proposta comercial devolvida", description: body.reason || (body.decision === "approved" ? "Preço, estoque e regra revisados pela gestão." : "Requer ajuste antes do envio ao cliente."), metadata: { simulationId: approval.entity_id, decision: body.decision }, occurred_at: decidedAt });
+        if (body.decision === "approved") {
+          const { data: lead } = await admin.from("leads").select("status").eq("id", simulation.lead_id).eq("organization_id", identity.organizationId).single();
+          const previousStage = lead?.status || "qualificacao";
+          await admin.from("leads").update({ status: "proposta", updated_at: decidedAt }).eq("id", simulation.lead_id).eq("organization_id", identity.organizationId);
+          await recordFunnelLearning({ organizationId: identity.organizationId, leadId: simulation.lead_id, previousStage, stage: "proposta", occurredAt: decidedAt, description: "Proposta aprovada após validação de preço, estoque e regra." });
+        }
+      }
     }
 
     if (approval.entity_type === "reactivation_batch" && approval.entity_id) {
