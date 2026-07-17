@@ -77,7 +77,15 @@ export async function PATCH(request: Request) {
     const previousStage = canonicalPipelineStage(current.status) || "novo";
     if (previousStage !== expectedFromStage) return NextResponse.json({ error: "A lead foi movimentada por outra pessoa. Atualize o Kanban antes de tentar novamente.", code: "PIPELINE_STAGE_CONFLICT", currentStage: previousStage }, { status: 409 });
     const { data: move, error: moveError } = await admin.rpc("move_pipeline_lead", { p_actor_id: identity.userId, p_organization_id: identity.organizationId, p_lead_id: leadId, p_to_stage: stage, p_expected_from_stage: expectedFromStage, p_reason: followUpDescription || null, p_reversal_of: reversalOf });
-    if (moveError) { const conflict = /conflict|undo_stale|already_reversed/i.test(moveError.message); return NextResponse.json({ error: conflict ? "A movimentação mudou e não pode mais ser desfeita sem atualizar o Kanban." : "Não foi possível movimentar a lead com segurança.", code: conflict ? "PIPELINE_STAGE_CONFLICT" : "PIPELINE_MOVE_FAILED" }, { status: conflict ? 409 : 400 }); }
+    if (moveError) {
+      if (/function .*move_pipeline_lead|schema cache|PGRST202/i.test(`${moveError.code||""} ${moveError.message}`) && process.env.ATLAS_ENV === "homologation") {
+        const legacy = await admin.from("leads").update({ status: stage }).eq("id", leadId).eq("organization_id", identity.organizationId).select("*").single();
+        if (legacy.error || !legacy.data) return NextResponse.json({ error: "Não foi possível movimentar a lead com segurança.", code: "PIPELINE_MOVE_FAILED" }, { status: 400 });
+        logger.info("pipeline.legacy_stage_changed", { leadId, previousStage, stage, organizationId: identity.organizationId, actorId: identity.userId });
+        return NextResponse.json({ lead: mapLegacyLead(legacy.data as Record<string, unknown>), move: { fromStage: previousStage, toStage: stage, compatibility: "legacy-v2", auditableInApplicationLog: true } });
+      }
+      const conflict = /conflict|undo_stale|already_reversed/i.test(moveError.message); return NextResponse.json({ error: conflict ? "A movimentação mudou e não pode mais ser desfeita sem atualizar o Kanban." : "Não foi possível movimentar a lead com segurança.", code: conflict ? "PIPELINE_STAGE_CONFLICT" : "PIPELINE_MOVE_FAILED" }, { status: conflict ? 409 : 400 });
+    }
     const { data } = await identity.supabase.from("leads").select("id,name,status,score,temperature,budget_min,budget_max,source,campaign_id,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,first_contact_due_at,first_contacted_at,first_contact_sla_minutes,first_response_minutes,first_contact_sla_met,created_at,updated_at,assigned_to,metadata").eq("id",leadId).eq("organization_id",identity.organizationId).single();
     if (!data) throw new Error("Lead fora do escopo após movimentação.");
     const occurredAt = String((move as { occurredAt?: string })?.occurredAt || new Date().toISOString());

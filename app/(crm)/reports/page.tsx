@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { isMissingRelation, leadAsOpportunity, mapLegacyLead } from "@/lib/compat/legacy-v2";
 
 type Period = "day" | "week" | "month" | "all";
 type Lead = { id: string; status: string | null; source: string | null; score: number | null; created_at: string };
@@ -28,15 +29,16 @@ export default function ReportsPage() {
   useEffect(() => {
     async function load() {
       const [leadResult, opportunityResult, campaignResult] = await Promise.all([
-        supabase.from("leads").select("id,status,source,score,created_at"),
+        supabase.from("leads").select("*"),
         supabase.from("opportunities").select("id,stage,value,probability,created_at,won_at"),
         supabase.from("campaigns").select("id,name,spend,revenue,leads_count,sales_count,created_at"),
       ]);
-      const firstError = leadResult.error ?? opportunityResult.error ?? campaignResult.error;
-      if (firstError) setError(firstError.message);
-      setLeads((leadResult.data as Lead[] | null) ?? []);
-      setOpportunities((opportunityResult.data as Opportunity[] | null) ?? []);
-      setCampaigns((campaignResult.data as Campaign[] | null) ?? []);
+      const mappedLeads = ((leadResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead);
+      const firstError = leadResult.error ?? (opportunityResult.error && !isMissingRelation(opportunityResult.error) ? opportunityResult.error : null) ?? (campaignResult.error && !isMissingRelation(campaignResult.error) ? campaignResult.error : null);
+      if (firstError) setError("Parte dos relatórios está temporariamente indisponível.");
+      setLeads(mappedLeads as Lead[]);
+      setOpportunities((opportunityResult.error && isMissingRelation(opportunityResult.error) ? mappedLeads.map(leadAsOpportunity) : opportunityResult.data ?? []) as Opportunity[]);
+      setCampaigns((campaignResult.error && isMissingRelation(campaignResult.error) ? [] : campaignResult.data ?? []) as Campaign[]);
       setReferenceTime(Date.now());
       const { data: session } = await supabase.auth.getSession();
       if (session.session?.access_token) {

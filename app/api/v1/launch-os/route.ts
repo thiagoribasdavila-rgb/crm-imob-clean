@@ -3,7 +3,7 @@ import { requireApiIdentity } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
-import { isMissingRelation, leadAsOpportunity, mapLegacyProject } from "@/lib/compat/legacy-v2";
+import { isMissingColumn, isMissingRelation, leadAsOpportunity, mapLegacyProject } from "@/lib/compat/legacy-v2";
 
 export const dynamic = "force-dynamic";
 
@@ -44,9 +44,12 @@ export async function GET(request: Request) {
       admin.from("project_intelligence_profiles").select("development_id,onboarding_status,readiness_percent,missing_information").eq("organization_id", identity.organizationId),
     ]);
 
-    const legacyProjects = developmentResult.error && isMissingRelation(developmentResult.error)
+    let legacyProjects = developmentResult.error && isMissingRelation(developmentResult.error)
       ? await admin.from("projects").select("*").eq("organization_id", identity.organizationId).order("created_at", { ascending: false })
       : null;
+    if (legacyProjects?.error && isMissingColumn(legacyProjects.error) && process.env.ATLAS_ENV === "homologation" && identity.organizationId === process.env.ATLAS_DEFAULT_ORGANIZATION_ID) {
+      legacyProjects = await admin.from("projects").select("*").order("created_at", { ascending: false });
+    }
     if ((developmentResult.error && !legacyProjects) || legacyProjects?.error) throw developmentResult.error || legacyProjects?.error;
     const legacyLeads = opportunityResult.error && isMissingRelation(opportunityResult.error)
       ? await admin.from("leads").select("*").eq("organization_id", identity.organizationId).limit(2000)

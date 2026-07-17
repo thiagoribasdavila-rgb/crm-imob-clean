@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/observability/logger";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export type ApiIdentity = {
   userId: string;
@@ -8,7 +9,11 @@ export type ApiIdentity = {
   role?: string;
   commercialRole?: string | null;
   supabase: SupabaseClient;
+  fallbackOrganizationApplied?: boolean;
 };
+
+const uuid = (value: unknown) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value) ? value : "";
+const normalized = (value: unknown) => String(value ?? "").trim().toLowerCase();
 
 function routePath(request: Request) {
   try { return new URL(request.url).pathname; } catch { return "unknown"; }
@@ -38,20 +43,31 @@ export async function requireApiIdentity(request: Request): Promise<ApiIdentity>
 
   const { data: profile, error: profileError } = await client
     .from("profiles")
-    .select("organization_id,role,commercial_role,active")
+    .select("*")
     .eq("id", userData.user.id)
-    .single();
+    .maybeSingle();
 
-  if (profileError || !profile?.organization_id) deny(request, "Usuário sem organização vinculada.");
-  if (!profile.active) deny(request, "Perfil inativo.");
+  if (profileError || !profile) deny(request, "Perfil comercial não encontrado.");
+  if (profile.active === false) deny(request, "Perfil inativo.");
+  let organizationId = uuid(profile.organization_id);
+  let fallbackOrganizationApplied = false;
+  if (!organizationId && process.env.ATLAS_ENV === "homologation") {
+    organizationId = uuid(process.env.ATLAS_DEFAULT_ORGANIZATION_ID);
+    fallbackOrganizationApplied = Boolean(organizationId);
+  }
+  if (!organizationId) deny(request, "Usuário sem organização vinculada.");
 
-  const { data: organization, error: organizationError } = await client
+  const organizationClient = fallbackOrganizationApplied ? getSupabaseAdmin() : client;
+  const { data: organization, error: organizationError } = await organizationClient
     .from("organizations")
-    .select("id,active")
-    .eq("id", profile.organization_id)
+    .select("*")
+    .eq("id", organizationId)
     .maybeSingle();
   if (organizationError || !organization) deny(request, "Organização não encontrada.");
-  if (!organization.active) deny(request, "Organização inativa.");
+  const organizationActive = organization.active === true || (organization.active !== false && ["active", "ativo", "enabled"].includes(normalized(organization.status)));
+  if (!organizationActive) deny(request, "Organização inativa.");
+
+  if (fallbackOrganizationApplied) logger.warn("fallback organization applied", { path: routePath(request), userId: userData.user.id, organizationId });
 
   logger.info("api.access_granted", {
     path: routePath(request),
@@ -61,10 +77,11 @@ export async function requireApiIdentity(request: Request): Promise<ApiIdentity>
 
   return {
     userId: userData.user.id,
-    organizationId: profile.organization_id,
-    role: profile.role,
-    commercialRole: profile.commercial_role,
+    organizationId,
+    role: typeof profile.role === "string" ? normalized(profile.role) : "broker",
+    commercialRole: typeof profile.commercial_role === "string" ? normalized(profile.commercial_role) : null,
     supabase: client,
+    fallbackOrganizationApplied,
   };
 }
 

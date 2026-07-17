@@ -4,6 +4,7 @@ import { apiError, createRequestContext, getClientAddress } from "@/lib/api/core
 import { createClient } from "@/utils/supabase/server";
 import { getSupabasePublicConfig } from "@/utils/supabase/env";
 import { logger } from "@/lib/observability/logger";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type RateBucket = { count: number; resetAt: number };
 
@@ -204,10 +205,16 @@ export async function requireAccessContext(
     };
   }
 
-  const organizationId = typeof profileRecord.organization_id === "string" ? profileRecord.organization_id : "";
+  let organizationId = typeof profileRecord.organization_id === "string" ? profileRecord.organization_id : "";
+  let fallbackOrganizationApplied = false;
+  if (!organizationId && process.env.ATLAS_ENV === "homologation" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(process.env.ATLAS_DEFAULT_ORGANIZATION_ID || "")) {
+    organizationId = process.env.ATLAS_DEFAULT_ORGANIZATION_ID!;
+    fallbackOrganizationApplied = true;
+  }
   if (!organizationId) return { ok: false as const, response: apiError("PROFILE_ORGANIZATION_REQUIRED", "O perfil não possui uma organização vinculada.", auth.meta, { status: 403 }) };
 
-  const { data: organization, error: organizationError } = await auth.supabase
+  const organizationClient = fallbackOrganizationApplied ? getSupabaseAdmin() : auth.supabase;
+  const { data: organization, error: organizationError } = await organizationClient
     .from("organizations")
     .select("*")
     .eq("id", organizationId)
@@ -297,6 +304,7 @@ export async function requireAccessContext(
     role: effectiveRole,
     authMode: auth.authMode,
   });
+  if (fallbackOrganizationApplied) logger.warn("fallback organization applied", { path: request.nextUrl.pathname, userId: auth.user.id, organizationId });
 
   return {
     ok: true as const,

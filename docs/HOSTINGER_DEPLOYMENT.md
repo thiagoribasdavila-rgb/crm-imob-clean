@@ -42,6 +42,7 @@ Teste com `npm run reports:meta-daily`. O processo é idempotente: gera um relat
 
 - `ATLAS_HOSTING_PROVIDER=hostinger`
 - `ATLAS_ENV=homologation`
+- `ATLAS_DEFAULT_ORGANIZATION_ID=8523bec1-1bef-4395-92ee-7458becc9b3f` (somente homologação legada; remover em produção)
 - `ATLAS_ENVIRONMENT_ID=atlas-v3-hostinger-homolog` (use outro identificador exclusivo em produção)
 - `ATLAS_DATABASE_ENVIRONMENT=homologation` (deve coincidir com `ATLAS_ENV`)
 - `ATLAS_BASE_URL=https://homolog.seu-dominio.com.br`

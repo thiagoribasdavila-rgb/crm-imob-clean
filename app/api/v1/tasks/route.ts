@@ -45,6 +45,11 @@ export async function POST(request: NextRequest) {
     return apiSuccess({ task: { id: recurring.data?.taskId }, recurrence: recurring.data, ownerPreservedFromLead: Boolean(leadId), auditable: true }, identity.meta, { status: 201, headers: rate.headers });
   }
   const result = await identity.supabase.from("tasks").insert({ organization_id: identity.access.organization.id, title, description: description || null, due_at: dueAt.toISOString(), priority, status: "pendente", lead_id: leadId, assigned_to: assigneeId }).select("id,title,due_at,priority,status,lead_id,assigned_to").single();
+  if (result.error && isMissingColumn(result.error) && process.env.ATLAS_ENV === "homologation") {
+    const legacy = await getSupabaseAdmin().from("tasks").insert({ organization_id: identity.access.organization.id, title, description: description || null, due_date: dueAt.toISOString(), priority, status: "pendente", lead_id: leadId, user_id: assigneeId }).select("*").single();
+    if (legacy.error) return apiError("TASK_CREATE_FAILED", "Não foi possível criar a tarefa.", identity.meta, { status: 400 });
+    return apiSuccess({ task: mapLegacyTask(legacy.data as Record<string, unknown>), ownerPreservedFromLead: Boolean(leadId), auditable: true, compatibility: "legacy-v2" }, identity.meta, { status: 201, headers: rate.headers });
+  }
   if (result.error) return apiError("TASK_CREATE_FAILED", "Não foi possível criar a tarefa.", identity.meta, { status: 400 });
   return apiSuccess({ task: result.data, ownerPreservedFromLead: Boolean(leadId), auditable: true }, identity.meta, { status: 201, headers: rate.headers });
 }

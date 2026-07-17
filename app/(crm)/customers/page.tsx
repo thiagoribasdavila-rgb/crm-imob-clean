@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/atlas/page-header";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import { AtlasBadge, AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { isMissingRelation } from "@/lib/compat/legacy-v2";
 
 type Customer = {
   id: string;
@@ -34,8 +35,14 @@ export default function CustomersPage() {
         .select("id, full_name, email, phone, profile_type, income, created_at")
         .order("created_at", { ascending: false });
       if (!active) return;
-      if (loadError) setError("Não foi possível carregar a visão unificada de clientes.");
-      setItems((data as Customer[]) ?? []);
+      if (loadError && isMissingRelation(loadError)) {
+        const leads = await supabase.from("leads").select("*").order("created_at", { ascending: false }).limit(5000);
+        if (leads.error) setError("Não foi possível carregar a visão unificada de clientes.");
+        else setItems(((leads.data ?? []) as Record<string, unknown>[]).map((lead) => ({ id:String(lead.id), full_name:String(lead.name||"Cliente sem nome"), email:typeof lead.email==="string"?lead.email:null, phone:typeof lead.phone==="string"?lead.phone:null, profile_type:typeof lead.profile_type==="string"?lead.profile_type:"Comprador", income:Number(lead.monthly_income||0)||null, created_at:String(lead.created_at) })));
+      } else {
+        if (loadError) setError("Não foi possível carregar a visão unificada de clientes.");
+        setItems((data as Customer[]) ?? []);
+      }
       setLoading(false);
     })();
     return () => { active = false; };
