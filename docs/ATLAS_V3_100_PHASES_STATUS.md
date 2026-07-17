@@ -822,7 +822,17 @@ Pendência externa: validar quatro perfis, dois tenants, semana vazia, virada do
 
 **Verdade operacional:** o painel separa “engenharia local” de “evidência real”. Quatro perfis, dois tenants, mobile, fuso, cron, Realtime, OAuth, acessibilidade e volume real continuam obrigatórios. O contrato está em `config/productivity-block-closure.json`, o gate em `npm run productivity-block:check` e o roteiro em `docs/PRODUCTIVITY_BLOCK_CLOSURE_PHASE_50.md`.
 
-Próxima fase: **Fase 51 — Motor de distribuição por disponibilidade**, iniciando o bloco de distribuição e carteiras com atribuição atômica e explicável.
+## Fase 51 — Motor de distribuição por disponibilidade
+
+**Estado:** 100% implementada e aprovada localmente; concorrência e presença reais permanecem para homologação.
+
+**Evolução:** a versão 2 preserva responsável único e registra carga anterior, peso, carga ponderada, última atribuição e critérios. A liderança visualiza a justificativa das atribuições dentro da própria hierarquia.
+
+**Atomicidade:** trava por organização/projeto, `SKIP LOCKED` e atualização condicionada a lead ainda não atribuída impedem colisões. O contrato está em `config/explainable-lead-distribution.json`, o gate em `npm run explainable-distribution:check` e o roteiro em `docs/EXPLAINABLE_LEAD_DISTRIBUTION_PHASE_51.md`.
+
+Pendência externa: aplicar migration e testar concorrência, presença, pesos, projetos e dois tenants com equipe real.
+
+Próxima fase: **Fase 52 — Fila de leads sem responsável**, dando visibilidade e recuperação governada sem atribuição silenciosa.
 
 ## Painel das 100 fases
 

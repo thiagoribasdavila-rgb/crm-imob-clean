@@ -31,14 +31,15 @@ export async function GET(request: NextRequest) {
 
   const admin = getSupabaseAdmin();
   const organizationId = identity.access.organization.id;
-  const [profilesResult, projectsResult, presenceResult, leadsResult, queueResult] = await Promise.all([
+  const [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult] = await Promise.all([
     admin.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").eq("organization_id", organizationId).eq("active", true),
     admin.from("developments").select("id,name,developer_name,status").eq("organization_id", organizationId).order("name"),
     admin.from("commercial_presence").select("profile_id,availability,last_seen_at").eq("organization_id", organizationId),
     admin.from("leads").select("id,development_id,assigned_to").eq("organization_id", organizationId),
     admin.from("project_distribution_members").select("development_id,profile_id,enabled,weight,assignments_count,last_assigned_at").eq("organization_id", organizationId),
+    admin.from("lead_distribution_events").select("id,development_id,lead_id,assigned_to,actor_id,score_snapshot,created_at").eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(50),
   ]);
-  const failure = [profilesResult, projectsResult, presenceResult, leadsResult, queueResult].find((result) => result.error);
+  const failure = [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult].find((result) => result.error);
   if (failure?.error) return apiError("DISTRIBUTION_LOOKUP_FAILED", "Não foi possível carregar a fila comercial.", identity.meta, { status: 500, details: failure.error.message });
 
   const allProfiles = profilesResult.data ?? [];
@@ -55,11 +56,12 @@ export async function GET(request: NextRequest) {
 
   return apiSuccess({
     viewer: { id: identity.access.profile.id, role },
-    rules: { algorithm: "online_project_load_v1", presenceWindowSeconds: 90, onlineOnly: true, projectScoped: true, weightedLoad: true, atomicLock: true },
+    rules: { algorithm: "online_project_weighted_load_v2", presenceWindowSeconds: 90, onlineOnly: true, projectScoped: true, weightedLoad: true, atomicLock: true, singleOwner: true, explainable: true },
     projects: projectsResult.data ?? [],
     profiles: profiles.map((profile) => ({ ...profile, resolved_role: roleOf(profile) })),
     presence,
     queue,
+    recentAssignments: (eventsResult.data ?? []).filter((item) => profileIds.has(item.assigned_to)).slice(0, 20),
     loads: profiles.map((profile) => ({
       profile_id: profile.id,
       total: leads.filter((lead) => lead.assigned_to === profile.id).length,
@@ -109,7 +111,7 @@ export async function POST(request: NextRequest) {
   }
   if (body.action !== "distribute" || !body.developmentId) return apiError("INVALID_REQUEST", "Projeto ou ação inválida.", identity.meta, { status: 400 });
   const limit = Math.min(100, Math.max(1, Math.floor(body.limit ?? 1)));
-  const { data, error } = await admin.rpc("distribute_project_leads", {
+  const { data, error } = await admin.rpc("distribute_project_leads_v2", {
     p_actor_id: identity.access.profile.id,
     p_organization_id: identity.access.organization.id,
     p_development_id: body.developmentId,

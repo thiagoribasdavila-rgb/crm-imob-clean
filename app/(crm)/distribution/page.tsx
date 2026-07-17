@@ -10,7 +10,8 @@ type Presence = { profile_id: string; availability: string; last_seen_at: string
 type Project = { id: string; name: string; developer_name: string | null; status: string | null };
 type Load = { profile_id: string; total: number; by_project: Record<string, number> };
 type QueueState = { profile_id: string; development_id: string; enabled: boolean; weight: number; assignments_count: number; last_assigned_at: string | null };
-type Payload = { viewer: { id: string; role: string }; rules: { algorithm: string; presenceWindowSeconds: number; onlineOnly: boolean; projectScoped: boolean; weightedLoad: boolean; atomicLock: boolean }; projects: Project[]; profiles: Profile[]; presence: Presence[]; loads: Load[]; queue: QueueState[]; unassigned: Record<string, number>; generatedAt: string };
+type Assignment = { id:string;development_id:string;lead_id:string;assigned_to:string;created_at:string;score_snapshot:{algorithm?:string;projectLoadBefore?:number;weight?:number;weightedLoadBefore?:number} };
+type Payload = { viewer: { id: string; role: string }; rules: { algorithm: string; presenceWindowSeconds: number; onlineOnly: boolean; projectScoped: boolean; weightedLoad: boolean; atomicLock: boolean;singleOwner:boolean;explainable:boolean }; projects: Project[]; profiles: Profile[]; presence: Presence[]; loads: Load[]; queue: QueueState[];recentAssignments:Assignment[]; unassigned: Record<string, number>; generatedAt: string };
 
 async function accessToken() {
   const { data } = await supabase.auth.getSession();
@@ -71,7 +72,7 @@ export default function DistributionPage() {
     });
     const result = await response.json();
     if (!response.ok) setError(result.error?.message || "Não foi possível distribuir.");
-    else setNotice(`${result.data.distributed} lead${result.data.distributed === 1 ? "" : "s"} distribuída${result.data.distributed === 1 ? "" : "s"} com equilíbrio de carga.`);
+    else setNotice(`${result.data.distributed} lead${result.data.distributed === 1 ? "" : "s"} distribuída${result.data.distributed === 1 ? "" : "s"}. Responsável único preservado; escolha explicada por carga ponderada e última atribuição.`);
     await load(true); setWorking(false);
   }
 
@@ -102,7 +103,7 @@ export default function DistributionPage() {
   const weightedLoads = brokers.map((broker) => (loadMap.get(broker.id)?.by_project[projectId] ?? 0) / (stateMap.get(broker.id)?.weight || 1));
   const balanceGap = weightedLoads.length > 1 ? Math.round((Math.max(...weightedLoads) - Math.min(...weightedLoads)) * 10) / 10 : 0;
 
-  return <div className="space-y-6 pb-10">
+  return <div className="space-y-6 pb-10" data-phase="51-explainable-distribution">
     <section className="atlas-grid-glow overflow-hidden rounded-[30px] border border-cyan-400/10 bg-gradient-to-br from-cyan-500/[.12] via-blue-500/[.06] to-violet-500/[.1] p-6 shadow-[0_34px_120px_rgba(2,8,23,.42)] sm:p-8">
       <div className="flex flex-col gap-7 xl:flex-row xl:items-end xl:justify-between">
         <div><div className="flex flex-wrap gap-2"><AtlasBadge tone="success">FILA AO VIVO</AtlasBadge><AtlasBadge tone="info">PROJETO + CARGA</AtlasBadge><AtlasBadge tone="violet">HIERARQUIA ATIVA</AtlasBadge></div><h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">Leads no corretor certo, <span className="atlas-gradient-text">no momento certo.</span></h1><p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400 sm:text-base">O Atlas considera disponibilidade, projeto, carteira atual e tempo desde a última atribuição. Gerentes enxergam apenas sua estrutura; o diretor acompanha toda a operação.</p></div>
@@ -112,6 +113,7 @@ export default function DistributionPage() {
 
     {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
     {notice ? <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-200">{notice}</div> : null}
+    <AtlasCard><AtlasCardHeader eyebrow="Fase 51 · Evidência de distribuição" title="Por que cada lead foi atribuída" description="Cada evento preserva projeto, responsável único, carga anterior, peso e algoritmo usado." /><div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-2">{data?.recentAssignments.filter(item=>!projectId||item.development_id===projectId).slice(0,8).map(item=>{const broker=profilesMap.get(item.assigned_to);return <article key={item.id} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><div className="flex items-start justify-between gap-3"><div><strong className="text-sm text-white">{broker?.full_name||"Corretor"}</strong><p className="mt-1 text-xs text-slate-500">Lead {item.lead_id.slice(0,8)} · {new Date(item.created_at).toLocaleString("pt-BR")}</p></div><AtlasBadge tone="success">ÚNICO RESPONSÁVEL</AtlasBadge></div><p className="mt-3 text-xs leading-5 text-slate-400">Carga anterior {item.score_snapshot?.projectLoadBefore??"—"} ÷ peso {item.score_snapshot?.weight??1} = carga ponderada {item.score_snapshot?.weightedLoadBefore??"—"}.</p></article>})}{!data?.recentAssignments.length?<div className="lg:col-span-2"><AtlasEmpty title="Sem atribuições recentes" description="As próximas distribuições terão justificativa auditável."/></div>:null}</div></AtlasCard>
 
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <AtlasMetric label="Leads aguardando" value={loading ? "—" : String(unassigned)} detail={selectedProject?.name || "Selecione o projeto"} trend="FILA" tone="amber" />
