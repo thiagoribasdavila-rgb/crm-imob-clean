@@ -2512,6 +2512,19 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
     linear-gradient(145deg, rgba(15, 23, 42, 0.86), rgba(7, 12, 24, 0.94));
   box-shadow: 0 24px 70px rgba(2, 8, 23, 0.22);
 }
+.atlas-pipeline-hero.is-focus-mode {
+  min-height: auto;
+  padding-block: 22px;
+  background: linear-gradient(135deg, rgba(15,23,42,.72), rgba(7,12,23,.9));
+}
+.atlas-pipeline-hero.is-focus-mode .atlas-pipeline-robot {
+  width: 64px;
+  opacity: .28;
+  transform: translateY(22%);
+}
+.atlas-pipeline-hero.is-focus-mode h2 {
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+}
 .atlas-pipeline-robot {
   position: absolute;
   right: clamp(18px, 3vw, 42px);
@@ -2584,6 +2597,17 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
   transition:
     border-color 0.2s ease,
     background 0.2s ease;
+}
+.atlas-kanban-board.is-compact .atlas-pipeline-column-header {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+}
+.atlas-kanban-board.is-compact .atlas-pipeline-column-header .atlas-progress-track {
+  height: 3px;
+}
+.atlas-kanban-board.is-compact .atlas-pipeline-lead {
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
 }
 .atlas-pipeline-column-header {
   position: sticky;

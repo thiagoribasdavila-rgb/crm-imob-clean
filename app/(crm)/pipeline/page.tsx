@@ -16,6 +16,7 @@ type PipelinePreferences = {
   focus?: FocusKey;
   sort?: SortKey;
   compact?: boolean;
+  focusMode?: boolean;
   hideEmpty?: boolean;
   mobileStage?: StageKey;
 };
@@ -144,7 +145,8 @@ export default function PipelinePage() {
   const [query, setQuery] = useState("");
   const [focus, setFocus] = useState<FocusKey>("prioridade");
   const [sort, setSort] = useState<SortKey>("prioridade");
-  const [compact, setCompact] = useState(false);
+  const [compact, setCompact] = useState(true);
+  const [focusMode, setFocusMode] = useState(true);
   const [hideEmpty, setHideEmpty] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<StageKey | null>(null);
@@ -159,6 +161,7 @@ export default function PipelinePage() {
         if (preferences.focus) setFocus(preferences.focus);
         if (preferences.sort) setSort(preferences.sort);
         if (typeof preferences.compact === "boolean") setCompact(preferences.compact);
+        if (typeof preferences.focusMode === "boolean") setFocusMode(preferences.focusMode);
         if (typeof preferences.hideEmpty === "boolean") setHideEmpty(preferences.hideEmpty);
         if (preferences.mobileStage) setMobileStage(preferences.mobileStage);
       }
@@ -173,9 +176,9 @@ export default function PipelinePage() {
     if (!preferencesHydrated) return;
     window.sessionStorage.setItem(
       PIPELINE_PREFERENCES_KEY,
-      JSON.stringify({ focus, sort, compact, hideEmpty, mobileStage }),
+      JSON.stringify({ focus, sort, compact, focusMode, hideEmpty, mobileStage }),
     );
-  }, [compact, focus, hideEmpty, mobileStage, preferencesHydrated, sort]);
+  }, [compact, focus, focusMode, hideEmpty, mobileStage, preferencesHydrated, sort]);
 
   async function authenticatedFetch(input: RequestInfo, init?: RequestInit) {
     const { data } = await supabase.auth.getSession();
@@ -317,16 +320,17 @@ export default function PipelinePage() {
 
   return (
     <div className="space-y-6 pb-8">
-      <section className="atlas-pipeline-hero atlas-grid-glow">
+      <section className={`atlas-pipeline-hero atlas-grid-glow ${focusMode ? "is-focus-mode" : ""}`}>
         <Image className="atlas-pipeline-robot" src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas acompanhando o pipeline comercial" width={210} height={315} priority />
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <div className="flex flex-wrap gap-2"><AtlasBadge tone="info">SALES ENGINE</AtlasBadge><AtlasBadge tone="violet">PIPELINE INTELLIGENCE</AtlasBadge><AtlasBadge tone="success">LIVE</AtlasBadge></div>
-            <h2 className="mt-5 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Seu funil. <span className="atlas-gradient-text">Mais claro, mais inteligente.</span></h2>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">Uma visão limpa para avançar negócios, antecipar riscos e manter cada próximo passo visível para o time.</p>
+            <div className="flex flex-wrap gap-2"><AtlasBadge tone="success">PIPELINE AO VIVO</AtlasBadge><AtlasBadge tone="info">{metrics.open} NEGÓCIOS</AtlasBadge></div>
+            <h2 className="mt-4 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Pipeline comercial</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Avance oportunidades, proteja SLAs e mantenha a próxima ação visível.</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead, região, origem ou campanha..." className="min-w-72 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
+            <button type="button" onClick={() => setFocusMode((value) => !value)} aria-pressed={focusMode} className={`atlas-button-secondary ${focusMode ? "border-sky-400/20 !text-sky-200" : ""}`}>{focusMode ? "Expandir inteligência" : "✦ Ativar modo foco"}</button>
             {canConfigureStages ? <Link href="/pipeline/settings" className="atlas-button-secondary">Configurar etapas</Link> : null}
             <Link href="/leads/new" className="atlas-button-primary">+ Novo lead</Link>
           </div>
@@ -337,14 +341,14 @@ export default function PipelinePage() {
       {savingId ? <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status" aria-live="polite">Confirmando movimentação e registrando o histórico…</div> : null}
       {lastMove ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.07] px-4 py-3 text-sm text-sky-100" role="status"><span><strong>{lastMove.leadName}</strong> avançou para {destinationOptions.find((item) => item.key === lastMove.to)?.label}.</span><button type="button" onClick={() => void undoLastMove()} disabled={Boolean(savingId)} className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs font-semibold hover:bg-sky-300/15 disabled:opacity-50">Desfazer movimentação</button></div> : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      {!focusMode ? <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <AtlasMetric label="Negócios abertos" value={loading ? "—" : metrics.open} detail="Oportunidades em andamento" trend="LIVE" tone="blue" />
         <AtlasMetric label="Pipeline bruto" value={loading ? "—" : brl.format(metrics.pipeline)} detail="Potencial comercial total" trend="VGV" tone="violet" />
         <AtlasMetric label="Forecast" value={loading ? "—" : brl.format(metrics.forecast)} detail="Ponderado por etapa" trend="AI" tone="green" />
         <AtlasMetric label="Leads quentes" value={loading ? "—" : metrics.hot} detail="Prioridade imediata" trend="HOT" tone="rose" />
         <AtlasMetric label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} trend="RISK" tone="amber" />
         <AtlasMetric label="Perfis compradores" value={loading ? "—" : metrics.buyerProfiles} detail="Compraram em outro lugar" trend="LEARN" tone="green" />
-      </section>
+      </section> : null}
 
       <section className="rounded-[24px] border border-white/[0.07] bg-white/[0.018] p-4 sm:p-5" aria-label="Fila de foco comercial">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -355,15 +359,15 @@ export default function PipelinePage() {
         </div>
       </section>
 
-      <section className="atlas-broker-focus" aria-label="Plano de ação recomendado para o corretor">
+      {!focusMode ? <section className="atlas-broker-focus" aria-label="Plano de ação recomendado para o corretor">
         <div className="atlas-broker-focus-heading"><div><p>Copiloto comercial</p><h3>Comece por aqui</h3><span>As três ações com maior impacto agora, explicadas em linguagem simples.</span></div><Link href="/tasks" className="atlas-kanban-toggle">Ver minhas tarefas</Link></div>
         <div className="grid gap-3 lg:grid-cols-3">
           {dailyFocus.map((lead, index) => { const guidance = brokerGuidance(lead); const contact = phoneLinks(lead.phone); return <article key={lead.id} className="atlas-broker-action"><div className="flex items-start justify-between gap-3"><span className="atlas-broker-rank">{String(index + 1).padStart(2, "0")}</span><AtlasBadge tone={guidance.tone}>{lead.score ?? 0} SCORE</AtlasBadge></div><Link href={`/leads/${lead.id}`} className="mt-4 block truncate text-sm font-semibold text-white hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-3 text-sm font-semibold text-sky-200">{guidance.action}</p><p className="mt-1 min-h-10 text-xs leading-5 text-slate-500">{guidance.reason}</p><div className="mt-4 grid grid-cols-3 gap-2"><Link href={`/leads/${lead.id}`} className="atlas-broker-shortcut">Abrir</Link><Link href={`/leads/${lead.id}/messages`} className="atlas-broker-shortcut">IA</Link>{contact ? <a href={contact.call} className="atlas-broker-shortcut">Ligar</a> : <span className="atlas-broker-shortcut is-disabled">Sem fone</span>}</div></article>; })}
           {!loading && dailyFocus.length === 0 ? <div className="lg:col-span-3"><AtlasEmpty title="Tudo em dia" description="Nenhuma oportunidade aberta exige ação neste momento." /></div> : null}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="atlas-pipeline-flow" aria-label="Resumo visual das etapas do pipeline">
+      {!focusMode ? <section className="atlas-pipeline-flow" aria-label="Resumo visual das etapas do pipeline">
         {stageData.map((stage, index) => (
           <div key={stage.key} style={{ "--flow": `${stage.probability}%` } as CSSProperties}>
             <span>{String(index + 1).padStart(2, "0")}</span>
@@ -371,10 +375,10 @@ export default function PipelinePage() {
             <i><b /></i>
           </div>
         ))}
-      </section>
+      </section> : null}
 
       <AtlasCard>
-        <AtlasCardHeader eyebrow="Conversion system" title="Fluxo comercial" description="Arraste os cards entre as etapas ou use o seletor. Cada movimentação gera histórico e evento no Atlas." />
+        <AtlasCardHeader eyebrow="Fluxo comercial" title="Oportunidades por etapa" description="Arraste os cards ou use o seletor. Toda movimentação permanece registrada." action={<div className="flex gap-2"><AtlasBadge tone="info">{visibleLeads.length} VISÍVEIS</AtlasBadge><AtlasBadge tone="violet">{brl.format(metrics.forecast)} FORECAST</AtlasBadge></div>} />
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-4 sm:px-6 xl:flex-row xl:items-center xl:justify-between" aria-label="Controles do Kanban">
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500" htmlFor="pipeline-sort">Ordenar</label>
@@ -438,10 +442,10 @@ export default function PipelinePage() {
         </div>
         <div className="border-t border-white/[.06] px-5 py-3 text-[10px] text-slate-500 sm:px-6">Arraste, use o seletor ou pressione <kbd className="rounded border border-white/10 px-1.5 py-0.5 text-slate-300">Alt + ←/→</kbd> com o card em foco. A movimentação continua registrada na timeline.</div>
       </AtlasCard>
-      <AtlasCard>
+      {!focusMode ? <AtlasCard>
         <AtlasCardHeader eyebrow="Inteligência de compradores" title="Compraram em outro lugar" description="Base separada do funil ativo: compradores reais que ajudam a entender público, produto, preço e concorrência sem contar como venda da empresa." />
         <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">{leads.filter((lead) => lead.status === "comprou_outro").length ? leads.filter((lead) => lead.status === "comprou_outro").map((lead) => <article key={lead.id} className="rounded-2xl border border-emerald-400/10 bg-emerald-400/[.035] p-4"><div className="flex items-start justify-between gap-3"><div><Link href={`/leads/${lead.id}`} className="font-semibold text-white hover:text-emerald-300">{lead.name || "Cliente comprador"}</Link><p className="mt-1 text-xs text-slate-500">{lead.phone || lead.email || "Contato protegido"}</p></div><AtlasBadge tone="success">COMPRADOR</AtlasBadge></div><p className="mt-3 text-xs leading-5 text-slate-400">Perfil preservado para inteligência comercial e futuras estratégias de público.</p><select value={lead.status ?? "comprou_outro"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="mt-4 w-full rounded-xl border border-white/10 bg-white/[.035] px-3 py-2 text-xs text-slate-300">{destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select></article>) : <div className="sm:col-span-2 xl:col-span-3"><AtlasEmpty title="Nenhum perfil comprador separado" description="Ao registrar uma compra em outro lugar, o cliente aparecerá aqui com seu aprendizado preservado." /></div>}</div>
-      </AtlasCard>
+      </AtlasCard> : null}
     </div>
   );
 }
