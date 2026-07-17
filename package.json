@@ -21,6 +21,7 @@
     "prepare:test": "node scripts/prepare-real-test.mjs",
     "routes:real": "node --env-file=.env.local scripts/test-real-routes.mjs",
     "preflight:production": "node scripts/preflight-production.mjs",
+    "package:hostinger": "node scripts/package-hostinger.mjs",
     "worker:run": "node scripts/run-workers.mjs",
     "reports:meta-daily": "node scripts/run-daily-meta-report.mjs",
     "test:real": "npm run release:check && npm run smoke:all && npm run routes:real && npm run preflight:production",
