@@ -440,7 +440,19 @@ Evidências: `config/hierarchy-enforcement.json`, `lib/api/security.ts`, `/api/v
 
 Pendência externa: após aplicar as migrations em homologação, executar a matriz com quatro contas e duas organizações nas seis camadas, comparar contagens e tentar acessos laterais manuais. Nenhum dado foi exportado pelos testes locais.
 
-Próxima fase: **Fase 17 — RLS**, auditando tabela por tabela o isolamento por empresa, usuário, equipe, carteira e função.
+## Fase 17 — RLS
+
+**Estado:** 100% implementada e aprovada localmente; aplicação e teste multiusuário no Supabase de homologação pendentes.
+
+**Evolução desta fase:** antes, tarefas, campanhas e insights de IA ainda herdavam políticas genéricas por organização e filas internas mantinham privilégios desnecessários. Agora, as sete superfícies críticas declaram RLS explicitamente; tarefas seguem a lead ou o responsável dentro da cadeia comercial; campanhas têm leitura organizacional e escrita de liderança; insights são somente leitura no cliente; e quatro tabelas internas ficaram restritas ao backend.
+
+**Proteções adicionadas:** contrato automático em `config/rls-audit.json`, gate `npm run rls:check`, helper privilegiado mínimo em schema privado, revogação de acesso direto às filas e índices para organização, hierarquia, carteira e lead vinculada. A matriz e o roteiro de homologação estão em `docs/RLS_AUDIT_PHASE_17.md`.
+
+**Validação local:** o gate verifica RLS nas superfícies críticas, evidência de política por dimensão, revogações de tabelas internas e ausência de `auth.role()` obsoleto. A migration foi criada pelo CLI oficial do Supabase e não foi aplicada remotamente nesta fase.
+
+Pendência externa: aplicar a migration em homologação e testar diretor, superintendente, gerente, corretores de equipes distintas e usuário de outra organização; em seguida executar os advisors de segurança e desempenho.
+
+Próxima fase: **Fase 18 — APIs protegidas**, endurecendo autenticação, autorização, validação, rate limit e auditoria das rotas de servidor.
 
 ## Painel das 100 fases
 
