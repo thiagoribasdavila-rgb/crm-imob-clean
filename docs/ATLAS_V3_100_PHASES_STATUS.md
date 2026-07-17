@@ -1030,7 +1030,17 @@ Pendência externa: aplicar migrations 61–70 e validar portfólio real, oito g
 
 Pendência externa: aplicar migration e validar contatos, duplicidades, dez dimensões, quatro perfis, base real e dois tenants.
 
-Próxima fase: **Fase 72 — Deduplicação e identidade única**, consolidando contatos sem perder histórico, responsável ou consentimento.
+## Fase 72 — Deduplicação e identidade única
+
+**Estado:** 100% implementada e aprovada localmente; duplicidades reais permanecem para homologação.
+
+**Evolução:** contatos normalizados idênticos formam grupos com identidade mascarada e recomendação explicável da lead principal. A gestão escolhe qual registro permanecerá ativo.
+
+**Governança:** nenhuma união é automática e nenhum registro é apagado. Origem, status e responsável anteriores permanecem em snapshot; a operação é atômica, auditável e isolada por organização. O contrato está em `config/unique-lead-identity.json`, o gate em `npm run lead-identity:check` e o roteiro em `docs/UNIQUE_LEAD_IDENTITY_PHASE_72.md`.
+
+Pendência externa: aplicar migration e validar duplicidades reais, concorrência, históricos, perfis e dois tenants.
+
+Próxima fase: **Fase 73 — Consentimento e preferência de contato**, centralizando autorização, opt-out, canal e horário antes de automações.
 
 ## Painel das 100 fases
 

@@ -359,6 +359,7 @@ export default function LeadsPage() {
             <Link href="/leads/new" className="atlas-button-primary">+ Novo lead</Link>
             <Link href="/pipeline" className="atlas-button-secondary">Abrir pipeline</Link>
             <Link href="/leads/data-quality" className="atlas-button-secondary">Qualidade dos dados</Link>
+            <Link href="/leads/deduplication" className="atlas-button-secondary">Duplicidades</Link>
             <button
               type="button"
               className="atlas-button-secondary"
