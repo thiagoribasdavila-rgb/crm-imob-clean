@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { evaluateReactivationPlan } from "@/lib/commercial/consented-reactivation-policy";
 
 type ImportRow = { name?: string; phone?: string; email?: string };
 function normalizePhone(value: string) {
@@ -157,7 +158,9 @@ export async function POST(request: NextRequest) {
     const { data: profiles } = await admin.from("profiles").select("id,reports_to").eq("organization_id", org).eq("active", true);
     const allowed = role === "director" ? new Set((profiles ?? []).map((item) => item.id)) : descendants(profiles ?? [], identity.access.profile.id);
     if (!allowed.has(batch.owner_id)) return apiError("FORBIDDEN", "Base fora da sua estrutura.", identity.meta, { status: 403 });
+    const {data:approvedTemplate}=await admin.from("message_templates").select("id").eq("organization_id",org).eq("channel","whatsapp").eq("name",templateName).eq("language",language).eq("status","approved").maybeSingle();
     const { data: contacts } = await admin.from("lead_reactivation_contacts").select("id,lead_id,phone,status").eq("batch_id", batch.id).eq("status", "imported").limit(500);
+    const plan=evaluateReactivationPlan({quality:batch.quality_status||"unknown",requestedDailyCap:dailyCap,requestedIntervalSeconds:intervalSeconds,consentBasis:batch.consent_basis,approvedTemplate:Boolean(approvedTemplate),eligibleContacts:(contacts??[]).length,officialApiReady:Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID&&process.env.WHATSAPP_ACCESS_TOKEN)});if(!plan.eligible)return apiError("REACTIVATION_POLICY_BLOCKED","O plano não passou nos controles de consentimento, qualidade, template e API oficial.",identity.meta,{status:409,details:plan.blockers});
     const activationPhones = (contacts ?? []).map((contact) => contact.phone);
     const [{ data: latestSuppressions }, { data: badQuality }] = activationPhones.length ? await Promise.all([admin.from("messaging_suppressions").select("recipient").eq("organization_id", org).eq("channel", "whatsapp").in("recipient", activationPhones), admin.from("contact_quality_suppressions").select("id,normalized_contact").eq("organization_id", org).eq("channel", "whatsapp").eq("active", true).in("normalized_contact", activationPhones)]) : [{ data: [] }, { data: [] }];
     const suppressedNow = new Set((latestSuppressions ?? []).map((item) => item.recipient));
@@ -178,9 +181,9 @@ export async function POST(request: NextRequest) {
       prepared += 1;
     }
     if (!prepared) return apiError("NO_ELIGIBLE_CONTACTS", "Nenhum contato permaneceu elegível após a nova verificação de opt-out.", identity.meta, { status: 409 });
-    const { error: approvalError } = await admin.from("approval_requests").insert({ organization_id: org, request_type: "whatsapp_reactivation", entity_type: "reactivation_batch", entity_id: batch.id, payload: { batchId: batch.id, templateName, language, prepared, ownerId: batch.owner_id }, requested_by: identity.access.profile.id });
+    const { error: approvalError } = await admin.from("approval_requests").insert({ organization_id: org, request_type: "whatsapp_reactivation", entity_type: "reactivation_batch", entity_id: batch.id, payload: { batchId: batch.id, templateName, language, prepared, ownerId: batch.owner_id,policy:plan }, requested_by: identity.access.profile.id });
     if (approvalError) return apiError("APPROVAL_FAILED", "Não foi possível enviar a campanha para aprovação.", identity.meta, { status: 500 });
-    await admin.from("lead_reactivation_batches").update({ status: "pending_approval", template_name: templateName, template_language: language, daily_cap: dailyCap, interval_seconds: intervalSeconds, queued_count: prepared, updated_at: new Date().toISOString() }).eq("id", batch.id);
+    await admin.from("lead_reactivation_batches").update({ status: "pending_approval", template_name: templateName, template_language: language, daily_cap: plan.dailyCap, interval_seconds: plan.intervalSeconds,maximum_attempts:plan.maximumAttempts,cooling_off_hours:plan.coolingOffHours,stop_on_reply:true,stop_on_opt_out:true,official_api_only:true,policy_version:1, queued_count: prepared, updated_at: new Date().toISOString() }).eq("id", batch.id);await admin.from("reactivation_governance_events").insert({organization_id:org,batch_id:batch.id,actor_id:identity.access.profile.id,event_type:"approval_requested",policy_snapshot:plan});
     return apiSuccess({ batchId: batch.id, prepared, dailyCap, intervalSeconds, status: "pending_approval" }, identity.meta, { status: 202, headers: rate.headers });
   }
   return apiError("INVALID_ACTION", "Ação inválida.", identity.meta, { status: 400 });

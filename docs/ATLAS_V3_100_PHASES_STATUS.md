@@ -1230,6 +1230,18 @@ Pendência externa: aplicar migration e homologar visita presencial/vídeo, resu
 
 Próxima fase: **Fase 89 — Reativação inteligente e consentida**, escolhendo base, corretor, cadência, mensagem e interrupção com WhatsApp oficial.
 
+## Fase 89 — Reativação inteligente e consentida
+
+**Estado:** 100% implementada e aprovada localmente; migration, credenciais e ensaio oficial permanecem para homologação.
+
+**Evolução:** a ativação agora exige consentimento, template aprovado, base elegível, qualidade aceitável e API oficial. Cadência, limite diário, horário, tentativas e intervalo se adaptam à qualidade do número.
+
+**Governança:** resposta, opt-out e telefone inválido interrompem a fila; experiência ruim permite escolher manter ou trocar corretor. Toda ativação passa por aprovação humana, preserva uma lead/um corretor e registra a política aplicada. O contrato está em `config/consented-reactivation-governance.json`, o gate em `npm run reactivation-governance:check` e o roteiro em `docs/CONSENTED_REACTIVATION_GOVERNANCE_PHASE_89.md`.
+
+Pendência externa: aplicar migration e homologar API oficial, templates, qualidade, janela, opt-out, troca de corretor, dois tenants e números autorizados.
+
+Próxima fase: **Fase 90 — Copiloto noturno governado**, conduzindo abordagem após 20h, qualificação, simulação e proposta com limites e handoff humano.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
