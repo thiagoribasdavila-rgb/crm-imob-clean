@@ -20,13 +20,16 @@ export async function GET(request: NextRequest) {
   const fallbackTasks = tasks.error && isMissingColumn(tasks.error)
     ? await identity.supabase.from("tasks").select("*").eq("organization_id", organizationId).order("created_at", { ascending: true }).limit(2000)
     : null;
-  if ((tasks.error && !fallbackTasks) || fallbackTasks?.error || profiles.error || leads.error) return apiError("TASK_CENTER_LOAD_FAILED", "Módulo de tarefas temporariamente indisponível. Tente novamente.", identity.meta, { status: 503 });
+  const fallbackLeads = leads.error && isMissingColumn(leads.error)
+    ? await identity.supabase.from("leads").select("*").eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(1000)
+    : null;
+  if ((tasks.error && !fallbackTasks) || fallbackTasks?.error || profiles.error || (leads.error && !fallbackLeads) || fallbackLeads?.error) return apiError("TASK_CENTER_LOAD_FAILED", "Módulo de tarefas temporariamente indisponível. Tente novamente.", identity.meta, { status: 503 });
   const profileRows = ((profiles.data ?? []) as Record<string, unknown>[]).map(mapLegacyProfile);
-  const leadRows = ((leads.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead);
+  const leadRows = (((fallbackLeads?.data ?? leads.data) ?? []) as Record<string, unknown>[]).map(mapLegacyLead);
   const leadMap = new Map(leadRows.map((lead) => [String(lead.id), lead]));
   const taskRows = (((fallbackTasks?.data ?? tasks.data) ?? []) as Record<string, unknown>[]).map(mapLegacyTask).map((task) => ({ ...task, lead: task.lead || (task.lead_id ? leadMap.get(String(task.lead_id)) : null) }));
   const center = buildTaskCenter(taskRows as never[], profileRows as never[], identity.access.profile.id);
-  return apiSuccess({ scope: { organizationId, role: identity.access.profile.commercialRole || identity.access.profile.role, actorId: identity.access.profile.id, hierarchicalRls: true }, ...center, compatibility: fallbackTasks ? "safe-v2-v3" : "canonical-v3", creationOptions: { leads: leadRows, assignees: profileRows, defaults: { assigneeId: identity.access.profile.id, priority: "media" } }, generatedAt: new Date().toISOString() }, identity.meta, { headers: { ...rate.headers, "Cache-Control": "no-store" } });
+  return apiSuccess({ scope: { organizationId, role: identity.access.profile.commercialRole || identity.access.profile.role, actorId: identity.access.profile.id, hierarchicalRls: true }, ...center, compatibility: fallbackTasks || fallbackLeads ? "safe-v2-v3" : "canonical-v3", creationOptions: { leads: leadRows, assignees: profileRows, defaults: { assigneeId: identity.access.profile.id, priority: "media" } }, generatedAt: new Date().toISOString() }, identity.meta, { headers: { ...rate.headers, "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: NextRequest) {

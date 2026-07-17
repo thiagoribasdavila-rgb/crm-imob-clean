@@ -41,7 +41,8 @@ export async function requireApiIdentity(request: Request): Promise<ApiIdentity>
   const { data: userData, error: userError } = await client.auth.getUser(token);
   if (userError || !userData.user) deny(request, "Sessão inválida ou expirada.");
 
-  const { data: profile, error: profileError } = await client
+  const admin = getSupabaseAdmin();
+  const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("*")
     .eq("id", userData.user.id)
@@ -57,8 +58,7 @@ export async function requireApiIdentity(request: Request): Promise<ApiIdentity>
   }
   if (!organizationId) deny(request, "Usuário sem organização vinculada.");
 
-  const organizationClient = fallbackOrganizationApplied ? getSupabaseAdmin() : client;
-  const { data: organization, error: organizationError } = await organizationClient
+  const { data: organization, error: organizationError } = await admin
     .from("organizations")
     .select("*")
     .eq("id", organizationId)

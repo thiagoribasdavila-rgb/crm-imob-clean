@@ -173,7 +173,8 @@ export async function requireAccessContext(
   const auth = await requireAuthenticatedUser(request);
   if (!auth.ok) return auth;
 
-  const { data: profile, error: profileError } = await auth.supabase
+  const admin = getSupabaseAdmin();
+  const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("*")
     .eq("id", auth.user.id)
@@ -213,8 +214,7 @@ export async function requireAccessContext(
   }
   if (!organizationId) return { ok: false as const, response: apiError("PROFILE_ORGANIZATION_REQUIRED", "O perfil não possui uma organização vinculada.", auth.meta, { status: 403 }) };
 
-  const organizationClient = fallbackOrganizationApplied ? getSupabaseAdmin() : auth.supabase;
-  const { data: organization, error: organizationError } = await organizationClient
+  const { data: organization, error: organizationError } = await admin
     .from("organizations")
     .select("*")
     .eq("id", organizationId)

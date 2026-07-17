@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/atlas/page-header";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import { AtlasBadge, AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { isMissingRelation, leadAsOpportunity, mapLegacyLead } from "@/lib/compat/legacy-v2";
 
 type Opportunity = {
   id: string; stage: string; value: number | null; probability: number; expected_close_at: string | null;
@@ -34,8 +35,21 @@ export default function SalesPage() {
     const { data, error: loadError } = await supabase.from("opportunities")
       .select("id,stage,value,probability,expected_close_at,won_at,lost_at,commission_sla_days,commission_due_at,commission_received_at,commission_status,commission_gross,commission_percentage,commission_split_percentage,commission_net,commission_received_amount,leads(id,name),properties(title)")
       .order("created_at", { ascending: false });
-    if (loadError) setError("Não foi possível carregar as oportunidades.");
-    setItems((data ?? []) as unknown as Opportunity[]); setReferenceTime(Date.now()); setLoading(false);
+    if (loadError && isMissingRelation(loadError)) {
+      const legacy = await supabase.from("leads").select("*").neq("status", "arquivado").order("created_at", { ascending: false }).limit(2000);
+      if (legacy.error) setError("Não foi possível carregar as oportunidades.");
+      else setItems(((legacy.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead).map(leadAsOpportunity).map((item) => ({
+        ...item, expected_close_at: null, won_at: ["ganho", "won", "fechado"].includes(String(item.stage).toLowerCase()) ? String(item.updated_at || item.created_at) : null,
+        lost_at: ["perdido", "lost"].includes(String(item.stage).toLowerCase()) ? String(item.updated_at || item.created_at) : null,
+        commission_sla_days: null, commission_due_at: null, commission_received_at: null, commission_status: "not_applicable",
+        commission_net: null, commission_gross: null, commission_percentage: null, commission_split_percentage: null, commission_received_amount: 0,
+        leads: { id: String(item.lead_id), name: String(item.name || "Lead sem nome") }, properties: null,
+      })) as Opportunity[]);
+    } else {
+      if (loadError) setError("Não foi possível carregar as oportunidades.");
+      setItems((data ?? []) as unknown as Opportunity[]);
+    }
+    setReferenceTime(Date.now()); setLoading(false);
   }, []);
 
   useEffect(() => {
