@@ -1326,6 +1326,18 @@ Pendência externa: aplicar migrations, conciliar fontes, agendar geração e va
 
 Próxima fase: **Fase 97 — Centro de integrações e saúde operacional**, unificando credenciais mascaradas, conectividade, filas, webhooks, custos e testes de prontidão para Hostinger.
 
+## Fase 97 — Centro de integrações e saúde operacional
+
+**Estado:** 100% implementada localmente; migration e testes oficiais na Hostinger permanecem para homologação.
+
+**Evolução:** ambiente, cadastro, teste, evidência recente, filas, DLQ, custo IA e saúde dos conectores passam a ter estados independentes e snapshots auditáveis.
+
+**Governança:** acesso exclusivo da diretoria, sem retorno/armazenamento de segredos e sem promoção automática de status. Contrato em `config/integration-operational-health.json`, gate `npm run integration-health:check` e roteiro `docs/INTEGRATION_OPERATIONAL_HEALTH_PHASE_97.md`.
+
+Pendência externa: aplicar migration, testar cada provedor oficial, domínio HTTPS, workers, filas e dois tenants.
+
+Próxima fase: **Fase 98 — Segurança, desempenho e observabilidade final**, fechando limites, índices, logs, métricas, alertas e recuperação antes do pacote Hostinger.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
