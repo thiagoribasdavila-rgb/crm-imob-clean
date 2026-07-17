@@ -7,8 +7,8 @@ if (!url || !key) throw new Error("Configure NEXT_PUBLIC_SUPABASE_URL e SUPABASE
 const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 const surfaces = [
   ["organizations", "id,name"],
-  ["profiles", "id,organization_id,role,commercial_role,reports_to,active"],
-  ["leads", "id,organization_id,assigned_to,status"],
+  ["profiles", "id,organization_id,full_name,role,commercial_role,reports_to,active,avatar_url,phone,creci,bio,updated_at"],
+  ["leads", "id,organization_id,assigned_to,development_id,status,score,temperature,bedrooms,preferred_regions,purpose,next_action_at,last_interaction_at,metadata,updated_at"],
   ["tasks", "id,organization_id"],
   ["developers", "id,organization_id,trade_name,status"],
   ["developments", "id,organization_id,developer_id,name,status"],

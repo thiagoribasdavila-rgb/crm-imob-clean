@@ -15,7 +15,7 @@
     { "phase": 10, "name": "Homologação Hostinger", "status": "pending", "gate": "build limpo, smoke real, quatro perfis e aprovação humana" }
   ],
   "criticalFindings": [
-    "Banco de homologação não possui toda a estrutura operacional V3.",
+    "Banco de homologação possui somente 2/8 superfícies operacionais V3 aprovadas.",
     "ATLAS_ENVIRONMENT_ID e ATLAS_DATABASE_ENVIRONMENT não estão configurados.",
     "ATLAS_BASE_URL ainda aponta para domínio placeholder e impede smoke real.",
     "Custos atuais dos modelos de IA não estão preenchidos.",
