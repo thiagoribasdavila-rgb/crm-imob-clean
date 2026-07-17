@@ -44,6 +44,8 @@ const followUpIntelligence = readFileSync(resolve(root, "lib/atlas/follow-up-int
 const campaignIntelligence = readFileSync(resolve(root, "lib/meta/campaign-intelligence.ts"), "utf8");
 const metaDailyReport = readFileSync(resolve(root, "app/api/v2/meta/daily-report/route.ts"), "utf8");
 const dailyReportMigration = readFileSync(resolve(root, "supabase/migrations/20260716235900_meta_director_daily_reports.sql"), "utf8");
+const dailyReportClaimMigration = readFileSync(resolve(root, "supabase/migrations/20260717012200_idempotent_daily_report_claim.sql"), "utf8");
+const dailyReportTest = readFileSync(resolve(root, "app/api/v1/integrations/meta/daily-report-test/route.ts"), "utf8");
 const approvalRoute = readFileSync(resolve(root, "app/api/v2/approvals/[id]/route.ts"), "utf8");
 const metaInsights = readFileSync(resolve(root, "lib/meta/insights.ts"), "utf8");
 const customerExperience = readFileSync(resolve(root, "lib/atlas/customer-experience.ts"), "utf8");
@@ -148,7 +150,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("252 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("258 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -207,8 +209,14 @@ const checks = [
   ["escala exige amostra mínima", campaignIntelligence.includes("total >= 50") && campaignIntelligence.includes("total >= 20") && campaignIntelligence.includes("Coletar mais dados")],
   ["cockpit compara campanhas sem PII", metaSettingsPage.includes("Ranking de performance comercial") && !campaignIntelligence.includes("email") && !campaignIntelligence.includes("phone")],
   ["relatório diário roda na Hostinger", metaDailyReport.includes("windowHours: 24") && hostingerDeployment.includes("run-daily-meta-report.mjs")],
-  ["relatório diário é idempotente", dailyReportMigration.includes("unique (organization_id, report_date)") && metaDailyReport.includes('onConflict: "organization_id,report_date"')],
+  ["relatório diário é idempotente", dailyReportMigration.includes("unique (organization_id, report_date)") && metaDailyReport.includes("claim_meta_daily_report")],
   ["relatório decisório é exclusivo do diretor", dailyReportMigration.includes("meta_daily_reports_director_select") && dailyReportMigration.includes("commercial_role")],
+  ["cron diário possui reserva atômica", dailyReportClaimMigration.includes("claim_meta_daily_report") && dailyReportClaimMigration.includes("pg_advisory_xact_lock")],
+  ["segunda execução evita custo de IA", metaDailyReport.includes("if (!claim?.claimed") && metaDailyReport.includes("skipped += 1") && metaDailyReport.includes("continue")],
+  ["relatório falho pode ser retomado", dailyReportClaimMigration.includes("current_report.status = 'failed'") && dailyReportClaimMigration.includes("interval '10 minutes'")],
+  ["ensaio diário executa cron duas vezes", dailyReportTest.includes("const first = await execute()") && dailyReportTest.includes("const second = await execute()")],
+  ["ensaio diário exige um relatório", dailyReportTest.includes("count !== 1") && dailyReportTest.includes("duplicateWorkPrevented")],
+  ["painel comprova fase 32", metaSettingsPage.includes("Fase 32 · Cron das 08h") && metaSettingsPage.includes("Trabalho duplicado evitado")],
   ["campanhas não mudam automaticamente", metaDailyReport.includes("automaticCampaignChanges: false") && metaSettingsPage.includes("Somente o diretor")],
   ["aprovação Meta exige diretoria", approvalRoute.includes("Decisões de campanha pertencem exclusivamente ao diretor")],
   ["relatório compara dia semana e mês", metaDailyReport.includes("day: period(1, paid[0])") && metaDailyReport.includes("week: period(7, paid[1])") && metaDailyReport.includes("month: period(30, paid[2])")],

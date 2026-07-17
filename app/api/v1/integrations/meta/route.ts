@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     access.supabase.from("meta_conversion_events").select("status,event_name").order("created_at", { ascending: false }).limit(100),
     access.supabase.from("campaign_events").select("event_type,source,payload").in("source", ["crm-funnel", "crm-followup", "crm-qualification"]).order("occurred_at", { ascending: false }).limit(1000),
     access.supabase.from("leads").select("status,score,metadata,created_at,last_interaction_at").eq("source", "Meta Lead Ads").order("created_at", { ascending: false }).limit(2000),
-    access.supabase.from("meta_daily_reports").select("id,report_date,status,payload,created_at,updated_at").order("report_date", { ascending: false }).limit(7),
+    access.supabase.from("meta_daily_reports").select("id,report_date,status,payload,created_at,updated_at").in("status", ["ready", "reviewed"]).order("report_date", { ascending: false }).limit(7),
   ]);
   if (error) return NextResponse.json({ error: "Aplique a migração Meta Lead Ads para configurar fontes." }, { status: 503 });
   const summary = (events ?? []).reduce((total, event) => ({ ...total, [event.status]: (total[event.status] || 0) + 1 }), {} as Record<string, number>);
