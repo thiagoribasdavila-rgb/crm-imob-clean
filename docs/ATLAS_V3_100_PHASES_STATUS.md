@@ -358,6 +358,32 @@ Pendência externa: comprovar entrega real, link mais recente, expiração, reus
 
 Próxima fase: **Fase 13 — Sessões**, testando renovação, logout, expiração, múltiplos dispositivos e revogação.
 
+## Fase 13 — Sessões
+
+Status: **Testada**.
+
+Percentual antes: **80%** — cookies eram renovados pelo middleware e a interface reagia ao logout, mas “Sair” usava escopo implícito e não existia gestão clara de outros dispositivos.
+
+Percentual depois: **100%** — renovação e validação contratadas, três escopos explícitos de revogação, painel no perfil, limite de ações e política sem exposição de tokens ou fingerprint de aparelho.
+
+### Controles de sessão
+
+- Middleware valida claims e renova cookies do Supabase durante a navegação.
+- Guard da interface reage à expiração e retorna ao login.
+- “Sair” no topo encerra somente o dispositivo atual (`local`).
+- O perfil oferece “encerrar outros dispositivos” (`others`) mantendo o atual.
+- “Encerrar todos” usa revogação global e exige novo login também no aparelho atual.
+- Ações destrutivas exigem confirmação e têm limite de dez por 15 minutos.
+- A API valida o usuário no servidor e informa expiração aproximada sem devolver access token ou refresh token.
+- O Atlas não cria fingerprint, localização ou nomes fictícios de aparelhos.
+- Como o provedor não entrega uma lista confiável neste fluxo, a interface declara a limitação em vez de inventar quantidade de dispositivos.
+
+Evidências: `config/session-management.json`, `/api/auth/sessions`, `app/(crm)/settings/profile/SessionSecurityPanel.tsx` e `npm run sessions:check`.
+
+Pendência externa: comprovar renovação, expiração natural e os três escopos usando dois navegadores/dispositivos reais na Hostinger.
+
+Próxima fase: **Fase 14 — Primeiro administrador**, tornando o bootstrap temporário, auditável e removível.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |

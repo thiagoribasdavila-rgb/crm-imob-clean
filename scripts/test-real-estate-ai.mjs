@@ -88,6 +88,10 @@ const safeAuthRedirect = readFileSync(resolve(root, "lib/auth/safe-redirect.ts")
 const passwordRecoveryContract = readFileSync(resolve(root, "config/password-recovery.json"), "utf8");
 const passwordRecoveryCheck = readFileSync(resolve(root, "scripts/check-password-recovery.mjs"), "utf8");
 const passwordResetRoute = readFileSync(resolve(root, "app/api/auth/password-reset/route.ts"), "utf8");
+const sessionContract = readFileSync(resolve(root, "config/session-management.json"), "utf8");
+const sessionCheck = readFileSync(resolve(root, "scripts/check-sessions.mjs"), "utf8");
+const sessionRoute = readFileSync(resolve(root, "app/api/auth/sessions/route.ts"), "utf8");
+const sessionPanel = readFileSync(resolve(root, "app/(crm)/settings/profile/SessionSecurityPanel.tsx"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
@@ -512,6 +516,7 @@ const checks = [
   ["Command Center decide por evidência real", commandCenterContract.includes('"missingEvidence": "pending"') && commandCenterCheck.includes("falha de consulta pode estar virando sucesso") && commandCenterRoute.includes("realTestRequired: true") && commandCenterOverview.includes("Gates críticos") && hundredPhaseStatus.includes("Fase 10 — Command Center")],
   ["login é seguro acessível e resiliente", loginContract.includes('"canonicalPath": "/login"') && loginCheck.includes("login sem limite de espera") && safeAuthRedirect.includes("AUTH_PATHS.has(pathname)") && proxySource.includes("auth.proxy.session_refresh_failed") && hundredPhaseStatus.includes("Fase 11 — Login")],
   ["recuperação exige intenção curta e revoga sessões", passwordRecoveryContract.includes('"maxAgeSeconds": 900') && passwordRecoveryCheck.includes("troca não exige recuperação validada") && passwordResetRoute.includes('scope: "global"') && authCallback.includes("atlas-recovery-intent") && hundredPhaseStatus.includes("Fase 12 — Recuperação de senha")],
+  ["sessões renovam e revogam por escopo explícito", sessionContract.includes('"current": "local"') && sessionCheck.includes("logout rápido não está limitado") && sessionRoute.includes('action === "others"') && sessionPanel.includes("Encerrar todos") && hundredPhaseStatus.includes("Fase 13 — Sessões")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],
