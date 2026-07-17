@@ -794,7 +794,17 @@ Pendência externa: validar quatro perfis, dois tenants, fuso, virada mensal, ev
 
 Pendência externa: aplicar migration, configurar credenciais e redirects na Hostinger, implementar callbacks dos provedores e validar revogação e entrega reais.
 
-Próxima fase: **Fase 48 — Assistente diário de produtividade**, transformando agenda e tarefas em uma sequência curta e explicável.
+## Fase 48 — Assistente diário de produtividade
+
+**Estado:** 100% implementada e aprovada localmente; ordenação, adoção e experiência móvel reais permanecem para homologação.
+
+**Evolução:** a Central de Tarefas ganhou uma sequência pessoal de até sete passos. Cada item explica o motivo e a próxima ação usando SLA, tarefa, visita, prioridade, temperatura e score.
+
+**Eficiência e governança:** a ordenação tem custo LLM zero, exige carteira própria e não usa ranking de pessoas. O assistente orienta e abre o destino; nunca executa ou conclui sozinho. O contrato está em `config/daily-productivity-assistant.json`, o gate em `npm run daily-productivity:check` e o roteiro em `docs/DAILY_PRODUCTIVITY_ASSISTANT_PHASE_48.md`.
+
+Pendência externa: validar quatro perfis, dois tenants, empates, atualização após ações e uso móvel com corretores reais.
+
+Próxima fase: **Fase 49 — Revisão semanal assistida**, consolidando resultados, pendências e plano da próxima semana sem ranking simplista.
 
 ## Painel das 100 fases
 
