@@ -9,7 +9,7 @@ import {
   relevantMarketSources,
 } from "@/lib/ai/real-estate-knowledge";
 import { buildFallbackRealEstateAnswer } from "@/lib/ai/real-estate-fallback";
-import { generateAIText } from "@/lib/ai/provider-router";
+import { generateAIText, selectCopilotTask } from "@/lib/ai/provider-router";
 
 export const dynamic = "force-dynamic";
 
@@ -63,9 +63,12 @@ export async function POST(request: Request) {
     const sources = relevantMarketSources(prompt);
     let answer = "";
     let mode: "generative" | "local-fallback" = "generative";
+    let provider = "local";
+    let model = "deterministic-safe-fallback";
+    const task = selectCopilotTask(prompt);
     try {
       const result = await generateAIText({
-      task: "reasoning",
+      task,
       containsPersonalData: true,
       organizationId: identity.organizationId,
       userId: identity.userId,
@@ -100,6 +103,9 @@ export async function POST(request: Request) {
       ].join("\n\n"),
       });
       answer = result.text;
+      provider = result.provider;
+      model = result.model;
+      mode = result.provider === "local" ? "local-fallback" : "generative";
     } catch (providerError) {
       mode = "local-fallback";
       answer = buildFallbackRealEstateAnswer(prompt, operationalContext);
@@ -132,7 +138,9 @@ export async function POST(request: Request) {
       calibration: {
         domain: "mercado-imobiliario-brasileiro",
         verifiedAt: "2026-07-16",
-        model: process.env.ATLAS_AI_MODEL || "gpt-5.2",
+        model,
+        provider,
+        task,
         operationalContext: true,
         mode,
       },

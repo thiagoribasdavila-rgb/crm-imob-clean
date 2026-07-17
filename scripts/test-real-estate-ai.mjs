@@ -139,7 +139,7 @@ const checks = [
   ["fontes oficiais", knowledge.includes("Banco Central do Brasil") && knowledge.includes("IBGE") && knowledge.includes("Ministério das Cidades")],
   ["fontes na interface", ui.includes("Referências consultadas")],
   ["renderização AI Elements", ui.includes("MessageResponse")],
-  ["modelo configurável", route.includes("ATLAS_AI_MODEL")],
+  ["modelo configurável", providerRouter.includes("ATLAS_AI_FAST_MODEL") && providerRouter.includes("ATLAS_AI_COMMERCIAL_MODEL") && providerRouter.includes("ATLAS_AI_REASONING_MODEL")],
   ["suíte mínima de cenários", Array.isArray(evals) && evals.length >= 10],
   ["cenários de segurança", evals.some((item) => item.id === "privacy") && evals.some((item) => item.id === "off-domain")],
   ["fallback operacional", route.includes("buildFallbackRealEstateAnswer") && fallback.includes("motor imobiliário local")],

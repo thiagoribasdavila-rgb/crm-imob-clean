@@ -28,6 +28,24 @@ export type AIProviderResult = {
   };
 };
 
+export function aiModelProfiles() {
+  return {
+    fast: process.env.ATLAS_AI_FAST_MODEL || "gpt-5.6-luna",
+    commercial: process.env.ATLAS_AI_COMMERCIAL_MODEL || "gpt-5.6-terra",
+    reasoning: process.env.ATLAS_AI_REASONING_MODEL || process.env.ATLAS_AI_MODEL || "gpt-5.6-sol",
+    research: process.env.ATLAS_RESEARCH_MODEL || "sonar",
+  } as const;
+}
+
+export function selectCopilotTask(prompt: string): Exclude<AITask, "research"> {
+  const normalized = prompt.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const complexSignals = ["forecast", "cenario", "estrateg", "projecao", "compar", "causal", "risco financeiro", "plano diretor"];
+  const fastSignals = ["resuma", "resumo", "proxima acao", "prioridade", "o que fazer agora", "checklist"];
+  if (complexSignals.some((signal) => normalized.includes(signal))) return "reasoning";
+  if (prompt.length <= 420 && fastSignals.some((signal) => normalized.includes(signal))) return "fast";
+  return "commercial";
+}
+
 function pricingFor(task: AITask) {
   const prefix =
     task === "fast"
@@ -124,26 +142,24 @@ function openAIText(output: unknown) {
 async function generateOpenAI(input: GenerateInput): Promise<AIProviderResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY não configurada.");
+  const models = aiModelProfiles();
   const profile =
     input.task === "fast"
       ? {
-          model: process.env.ATLAS_AI_FAST_MODEL || "gpt-5.6-luna",
+          model: models.fast,
           effort: "none",
           verbosity: "low",
           maxOutputTokens: 600,
         }
       : input.task === "commercial"
         ? {
-            model: process.env.ATLAS_AI_COMMERCIAL_MODEL || "gpt-5.6-terra",
+            model: models.commercial,
             effort: "low",
             verbosity: "low",
             maxOutputTokens: 1200,
           }
         : {
-            model:
-              process.env.ATLAS_AI_REASONING_MODEL ||
-              process.env.ATLAS_AI_MODEL ||
-              "gpt-5.6-sol",
+            model: models.reasoning,
             effort: "medium",
             verbosity: "medium",
             maxOutputTokens: 2400,
@@ -208,7 +224,7 @@ async function generatePerplexity(
     );
   const apiKey = process.env.PERPLEXITY_API_KEY;
   if (!apiKey) throw new Error("PERPLEXITY_API_KEY não configurada.");
-  const model = process.env.ATLAS_RESEARCH_MODEL || "sonar";
+  const model = aiModelProfiles().research;
   const startedAt = Date.now();
   const response = await fetch("https://api.perplexity.ai/v1/sonar", {
     method: "POST",

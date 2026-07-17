@@ -14,6 +14,8 @@ type AIStatus = {
   gatewayConfigured: boolean;
   fallbackAvailable: boolean;
   model: string;
+  models: { fast: string; commercial: string; reasoning: string; research: string };
+  pricing: { fast: boolean; commercial: boolean; reasoning: boolean; research: boolean };
   domain: string;
   calibrationVerifiedAt: string;
   marketSources: Array<{
@@ -208,13 +210,9 @@ export default function AISettings() {
             </p>
           </div>
           <div className="rounded-3xl border border-white/[0.08] bg-[#070d1b]/75 p-5">
-            <p className="atlas-eyebrow">Modelo preferencial</p>
-            <p className="mt-2 break-all text-lg font-semibold text-white">
-              {data?.model || "Carregando..."}
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              Configurável por ambiente, sem expor credenciais.
-            </p>
+            <p className="atlas-eyebrow">Roteamento eficiente</p>
+            <div className="mt-3 space-y-2 text-xs">{data ? [["Rápida", data.models.fast], ["Comercial", data.models.commercial], ["Complexa", data.models.reasoning], ["Pesquisa", data.models.research]].map(([label, value]) => <div key={label} className="flex items-center justify-between gap-3"><span className="text-slate-500">{label}</span><strong className="text-right text-slate-200">{value}</strong></div>) : <p className="text-slate-500">Carregando rotas...</p>}</div>
+            <p className="mt-3 text-[10px] leading-4 text-slate-600">O Atlas escolhe a menor rota capaz de executar cada tarefa e registra latência, tokens e custo.</p>
           </div>
         </div>
       </section>
