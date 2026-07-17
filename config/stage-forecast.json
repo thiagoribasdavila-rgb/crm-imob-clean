@@ -1,0 +1,11 @@
+{
+  "phase": 38,
+  "engine": "lib/analytics/stage-forecast.ts",
+  "api": "app/api/v1/analytics/forecast/route.ts",
+  "page": "app/(crm)/atlas-v3/forecast/page.tsx",
+  "method": "canonical_stage_probability_v1",
+  "dimensions": ["pipelineGross", "forecastWeighted", "stageProbability", "expectedClose", "confidence"],
+  "confidenceSignals": ["sample", "valueCoverage", "closeDateCoverage", "canonicalStage"],
+  "timeBuckets": ["overdue", "30d", "31_60d", "61_90d", "later", "no_date"],
+  "governance": ["hierarchicalRls", "probabilistic", "humanReview", "noGuaranteedRevenue", "noTrendWithoutSnapshot"]
+}

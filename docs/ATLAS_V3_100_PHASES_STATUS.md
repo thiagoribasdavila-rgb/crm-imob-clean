@@ -692,7 +692,19 @@ Pendência externa: aplicar migration e validar presencial, vídeo, concorrênci
 
 Pendência externa: aplicar migration e validar aprovação, envio, retorno, vencimento, concorrência e isolamento em homologação.
 
-Próxima fase: **Fase 38 — Forecast por etapa**, consolidando probabilidade, valor, prazo e confiança da previsão.
+## Fase 38 — Forecast por etapa
+
+**Estado:** 100% implementada e aprovada localmente; reconciliação financeira com oportunidades reais permanece para homologação.
+
+**Evolução:** a página demonstrativa foi substituída por um forecast hierárquico e explicável. O motor usa valor e probabilidade da etapa canônica da organização, excluindo resultados terminais e compradores externos.
+
+**Prazo e confiança:** a previsão é distribuída entre vencido, 30, 60, 90 dias, prazo posterior e sem data. Confiança considera amostra, valor, data prevista e etapa válida; lacunas ficam explícitas.
+
+**Governança:** a API aplica sessão, organização e RLS. Forecast não garante receita nem declara tendência sem snapshot anterior. O contrato está em `config/stage-forecast.json`, o gate em `npm run stage-forecast:check` e o roteiro em `docs/STAGE_FORECAST_PHASE_38.md`.
+
+Pendência externa: conferir somas por etapa e escopo com oportunidades reais, quatro papéis e dois tenants.
+
+Próxima fase: **Fase 39 — Aging do pipeline**, medindo tempo por etapa, estagnação e velocidade de avanço.
 
 ## Painel das 100 fases
 
