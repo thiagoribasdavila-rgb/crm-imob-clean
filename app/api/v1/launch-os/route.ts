@@ -50,6 +50,10 @@ export async function GET(request: Request) {
     if (legacyProjects?.error && isMissingColumn(legacyProjects.error) && process.env.ATLAS_ENV === "homologation" && identity.organizationId === process.env.ATLAS_DEFAULT_ORGANIZATION_ID) {
       legacyProjects = await admin.from("projects").select("*").order("created_at", { ascending: false });
     }
+    if (legacyProjects?.error && isMissingColumn(legacyProjects.error)) {
+      const { count: activeOrganizations } = await admin.from("organizations").select("id", { count: "exact", head: true }).eq("status", "ACTIVE");
+      if ((activeOrganizations ?? 0) === 1) legacyProjects = await admin.from("projects").select("*").order("created_at", { ascending: false });
+    }
     if ((developmentResult.error && !legacyProjects) || legacyProjects?.error) throw developmentResult.error || legacyProjects?.error;
     const legacyLeads = opportunityResult.error && isMissingRelation(opportunityResult.error)
       ? await admin.from("leads").select("*").eq("organization_id", identity.organizationId).limit(2000)

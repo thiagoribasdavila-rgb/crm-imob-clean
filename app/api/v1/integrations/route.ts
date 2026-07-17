@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { integrationCatalog, integrationProviders } from "@/lib/integrations/catalog";
+import { isMissingRelation } from "@/lib/compat/legacy-v2";
 
 export const dynamic = "force-dynamic";
 
@@ -36,9 +37,9 @@ export async function GET(request: NextRequest) {
   const access = await requireAccessContext(request);
   if (!access.ok) return access.response;
   const { data, error } = await access.supabase.from("integrations").select("id,provider,name,status,external_account_id,config,last_sync_at,last_error,updated_at").order("provider");
-  if (error) return NextResponse.json({ error: "Não foi possível ler as integrações." }, { status: 500 });
+  if (error && !isMissingRelation(error)) return NextResponse.json({ error: "Não foi possível ler as integrações." }, { status: 500 });
   const connections = (data ?? []).map((item) => ({ ...item, config: sanitizeForResponse(item.config) }));
-  return NextResponse.json({ catalog: integrationCatalog.map((item) => ({ ...item, environmentReady: environmentReadiness(item.provider) })), connections, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role), policy: { secretsInDatabase: false, connectedRequiresVerifiedTest: true, humanApprovalForExternalActions: true } });
+  return NextResponse.json({ catalog: integrationCatalog.map((item) => ({ ...item, environmentReady: environmentReadiness(item.provider) })), connections, compatibility: error ? "catalog_only" : "canonical_v3", canManage: canManage(access.access.profile.commercialRole, access.access.profile.role), policy: { secretsInDatabase: false, connectedRequiresVerifiedTest: true, humanApprovalForExternalActions: true } });
 }
 
 export async function POST(request: NextRequest) {

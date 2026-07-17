@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { mapLegacyLead, mapLegacyProfile, mapLegacyProject } from "@/lib/compat/legacy-v2";
 
 const managerRoles = new Set(["director", "superintendent", "manager"]);
 
@@ -43,7 +44,31 @@ export async function GET(request: NextRequest) {
     admin.rpc("get_portfolio_audit_ledger",{p_actor_id:identity.access.profile.id,p_organization_id:organizationId,p_limit:100}),
   ]);
   const failure = [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult, capacityResult, priorityResult, auditResult].find((result) => result.error);
-  if (failure?.error) return apiError("DISTRIBUTION_LOOKUP_FAILED", "Não foi possível carregar a fila comercial.", identity.meta, { status: 500, details: failure.error.message });
+  if (failure?.error) {
+    const [legacyProfiles, legacyLeads, legacyProjects] = await Promise.all([
+      admin.from("profiles").select("*").eq("organization_id", organizationId).eq("active", true),
+      admin.from("leads").select("*").eq("organization_id", organizationId).limit(10000),
+      admin.from("projects").select("*").order("name"),
+    ]);
+    if (legacyProfiles.error || legacyLeads.error || legacyProjects.error) return apiError("DISTRIBUTION_LOOKUP_FAILED", "Não foi possível carregar a fila comercial.", identity.meta, { status: 500 });
+    const allProfiles = (legacyProfiles.data ?? []).map((item) => mapLegacyProfile(item));
+    const allowed = role === "director" ? new Set(allProfiles.map((profile) => String(profile.id))) : descendants(allProfiles.map((profile) => ({ id: String(profile.id), reports_to: profile.reports_to ? String(profile.reports_to) : null })), identity.access.profile.id);
+    const profiles = allProfiles.filter((profile) => allowed.has(String(profile.id)));
+    const leads = (legacyLeads.data ?? []).map((item) => mapLegacyLead(item)).filter((lead) => !["arquivado", "archived"].includes(String(lead.status || "").toLowerCase()));
+    const projects = (legacyProjects.data ?? []).map((item) => mapLegacyProject(item));
+    const presence = profiles.map((profile) => ({ profile_id: profile.id, availability: profile.availability_status || "offline", last_seen_at: null, online: false }));
+    const unassignedQueue = leads.filter((lead) => !lead.assigned_to).sort((a, b) => new Date(String(a.created_at)).getTime() - new Date(String(b.created_at)).getTime()).slice(0, 100).map((lead) => ({ id: lead.id, developmentId: lead.development_id, source: lead.source || "não informada", status: lead.status || "novo", createdAt: lead.created_at, waitingMinutes: Math.max(0, Math.floor((Date.now() - new Date(String(lead.created_at)).getTime()) / 60_000)) }));
+    return apiSuccess({
+      viewer: { id: identity.access.profile.id, role }, compatibility: "legacy-read-safe",
+      rules: { algorithm: "legacy_manual_queue", presenceWindowSeconds: 90, onlineOnly: true, projectScoped: true, weightedLoad: false, atomicLock: false, singleOwner: true, explainable: true },
+      projects, profiles: profiles.map((profile) => ({ ...profile, resolved_role: roleOf(profile) })), presence, queue: [], capacity: [], priorityRules: [], recentAssignments: [],
+      leadSources: [...new Set(leads.map((lead) => String(lead.source || "não informada").trim().toLowerCase()))].sort().slice(0, 100),
+      portfolioAudit: { events: [], summary: { total: 0, distributions: 0, transfers: 0, reservations: 0, returns: 0, absences: 0, capacityChanges: 0 }, maximum: 100, hierarchicalScope: true, piiExposed: false, immutableSources: true, generatedAt: new Date().toISOString() },
+      unassignedQueue, unassignedPolicy: { metadataOnly: true, piiExposed: false, automaticAssignment: false, explicitLeadershipAction: true, maximumVisible: 100 },
+      loads: profiles.map((profile) => ({ profile_id: profile.id, total: leads.filter((lead) => String(lead.assigned_to || "") === String(profile.id)).length, by_project: Object.fromEntries(projects.map((project) => [String(project.id), leads.filter((lead) => String(lead.assigned_to || "") === String(profile.id) && String(lead.development_id || "") === String(project.id)).length])) })),
+      unassigned: Object.fromEntries(projects.map((project) => [String(project.id), leads.filter((lead) => !lead.assigned_to && String(lead.development_id || "") === String(project.id)).length])), generatedAt: new Date().toISOString(),
+    }, identity.meta, { headers: limited.headers });
+  }
 
   const allProfiles = profilesResult.data ?? [];
   const allowed = role === "director" ? new Set(allProfiles.map((profile) => profile.id)) : descendants(allProfiles, identity.access.profile.id);

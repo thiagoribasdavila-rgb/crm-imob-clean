@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { isMissingRelation, mapLegacyLead, mapLegacyTask } from "@/lib/compat/legacy-v2";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +28,12 @@ export async function GET(request: NextRequest) {
   if (!identity.ok) return identity.response;
   const organizationId = identity.access.organization.id;
   const now = Date.now();
+  const admin = getSupabaseAdmin();
 
   const [tasks, visits, leads] = await Promise.all([
-    identity.supabase.from("tasks").select("*").eq("organization_id", organizationId).limit(2000),
-    identity.supabase.from("lead_visits").select("*").eq("organization_id", organizationId).limit(2000),
-    identity.supabase.from("leads").select("*").eq("organization_id", organizationId).limit(2000),
+    admin.from("tasks").select("*").eq("organization_id", organizationId).limit(2000),
+    admin.from("lead_visits").select("*").eq("organization_id", organizationId).limit(2000),
+    admin.from("leads").select("*").eq("organization_id", organizationId).limit(2000),
   ]);
   if (tasks.error || leads.error || (visits.error && !isMissingRelation(visits.error))) return apiError("CALENDAR_LOAD_FAILED", "Não foi possível carregar a agenda comercial.", identity.meta, { status: 500 });
   const leadRows = ((leads.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead);

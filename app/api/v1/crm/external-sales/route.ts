@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { isMissingColumn, isMissingRelation, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
 
 function isDirector(role: string, commercialRole: string | null) { return role === "admin" || commercialRole === "director"; }
 function resolvedRole(role: string, commercialRole: string | null) { return commercialRole || (role === "admin" ? "director" : role); }
@@ -15,17 +16,24 @@ export async function GET(request: NextRequest) {
   if (!["director","superintendent","manager"].includes(role)) return apiError("FORBIDDEN", "Controle disponível para a liderança comercial.", identity.meta, { status: 403 });
   const admin = getSupabaseAdmin();
   const org = identity.access.organization.id;
-  const [records, leads, profiles, candidates] = await Promise.all([
+  const [records, leads, initialProfiles, initialCandidates] = await Promise.all([
     admin.from("external_sales_records").select("*").eq("organization_id", org).order("created_at", { ascending: false }).limit(1000),
     admin.from("leads").select("id,name,phone,source,status,created_at").eq("organization_id", org).eq("status", "comprou_outro").limit(1000),
     admin.from("profiles").select("id,full_name").eq("organization_id", org).limit(500),
     admin.from("leads").select("id,name,assigned_to,status").eq("organization_id", org).not("assigned_to","is",null).limit(2000),
   ]);
-  const error = records.error || leads.error || profiles.error || candidates.error;
+  let profiles = initialProfiles;
+  let candidates = initialCandidates;
+  const missingRecordsTable = records.error && isMissingRelation(records.error);
+  if (profiles.error && isMissingColumn(profiles.error)) profiles = await admin.from("profiles").select("*").eq("organization_id", org).limit(500);
+  if (candidates.error && isMissingColumn(candidates.error)) candidates = await admin.from("leads").select("*").eq("organization_id", org).limit(2000);
+  const error = (missingRecordsTable ? null : records.error) || leads.error || profiles.error || candidates.error;
   if (error) return apiError("EXTERNAL_SALES_FAILED", "Não foi possível carregar vendas externas.", identity.meta, { status: 500, details: error.message });
   const directBrokerIds = role === "manager" ? new Set((await admin.from("profiles").select("id").eq("organization_id",org).eq("reports_to",identity.access.profile.id).eq("active",true)).data?.map((item)=>item.id) ?? []) : null;
-  const visibleRecords = (records.data ?? []).filter((item)=>!directBrokerIds || (item.broker_id && directBrokerIds.has(item.broker_id))).map((item)=>isDirector(identity.access.profile.role,identity.access.profile.commercialRole)?item:{...item,estimated_value:null,director_notes:null,reviewed_by:null});
-  return apiSuccess({ viewer:{role,canReviewFinancial:isDirector(identity.access.profile.role,identity.access.profile.commercialRole)}, records: visibleRecords, leads: (leads.data ?? []).filter((item)=>!directBrokerIds || visibleRecords.some((record)=>record.lead_id===item.id)), profiles: profiles.data ?? [], candidates:(candidates.data??[]).filter((item)=>!directBrokerIds||directBrokerIds.has(item.assigned_to)).filter((item)=>!["ganho","comprou_outro"].includes(item.status)) }, identity.meta, { headers: rate.headers });
+  const visibleRecords = (missingRecordsTable ? [] : records.data ?? []).filter((item)=>!directBrokerIds || (item.broker_id && directBrokerIds.has(item.broker_id))).map((item)=>isDirector(identity.access.profile.role,identity.access.profile.commercialRole)?item:{...item,estimated_value:null,director_notes:null,reviewed_by:null});
+  const compatibleProfiles = (profiles.data ?? []).map((item) => mapLegacyProfile(item));
+  const compatibleCandidates = (candidates.data ?? []).map((item) => mapLegacyLead(item));
+  return apiSuccess({ viewer:{role,canReviewFinancial:isDirector(identity.access.profile.role,identity.access.profile.commercialRole)}, records: visibleRecords, leads: (leads.data ?? []).filter((item)=>!directBrokerIds || visibleRecords.some((record)=>record.lead_id===item.id)), profiles: compatibleProfiles, candidates:compatibleCandidates.filter((item)=>!directBrokerIds||directBrokerIds.has(String(item.assigned_to||""))).filter((item)=>!["ganho","comprou_outro"].includes(String(item.status))) }, identity.meta, { headers: rate.headers });
 }
 
 export async function POST(request: NextRequest) {

@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { evaluateReactivationPlan } from "@/lib/commercial/consented-reactivation-policy";
+import { mapLegacyProfile, mapLegacyProject } from "@/lib/compat/legacy-v2";
 
 type ImportRow = { name?: string; phone?: string; email?: string };
 function normalizePhone(value: string) {
@@ -37,7 +38,26 @@ export async function GET(request: NextRequest) {
     admin.from("lead_experience_signals").select("id,lead_id,broker_id,signal_type,severity,confidence,evidence,recommendation,suggested_reply,status,created_at").eq("organization_id", org).eq("status", "pending").order("created_at", { ascending: false }).limit(100),
   ]);
   const failed = [profilesResult, batchesResult, contactsResult, projectsResult, experienceResult].find((item) => item.error);
-  if (failed?.error) return apiError("REACTIVATION_LOOKUP_FAILED", "Não foi possível carregar a central de reativação.", identity.meta, { status: 500, details: failed.error.message });
+  if (failed?.error) {
+    const [legacyProfiles, archivedLeads, activeOrganizations] = await Promise.all([
+      admin.from("profiles").select("*").eq("organization_id", org).eq("active", true),
+      admin.from("leads").select("id", { count: "exact", head: true }).eq("organization_id", org).in("status", ["arquivado", "archived"]),
+      admin.from("organizations").select("id", { count: "exact", head: true }).eq("status", "ACTIVE"),
+    ]);
+    if (legacyProfiles.error || archivedLeads.error) return apiError("REACTIVATION_LOOKUP_FAILED", "Não foi possível carregar a central de reativação.", identity.meta, { status: 500 });
+    const projectResult = (activeOrganizations.count ?? 0) === 1 ? await admin.from("projects").select("*").order("name") : { data: [] };
+    const profiles = (legacyProfiles.data ?? []).map((item) => mapLegacyProfile(item));
+    const role = roleOf(identity.access.profile.role, identity.access.profile.commercialRole);
+    const visible = role === "director" ? new Set(profiles.map((item) => String(item.id))) : descendants(profiles.map((item) => ({ id: String(item.id), reports_to: item.reports_to ? String(item.reports_to) : null })), identity.access.profile.id);
+    const coldCount = archivedLeads.count ?? 0;
+    return apiSuccess({
+      viewer: { id: identity.access.profile.id, role }, compatibility: "protected-memory-read-only",
+      targets: profiles.filter((item) => visible.has(String(item.id)) && String(item.commercial_role || item.role) === "broker"),
+      projects: (projectResult.data ?? []).map((item) => mapLegacyProject(item)),
+      batches: coldCount ? [{ id: "protected-cold-memory", name: "Memória histórica protegida", owner_id: identity.access.profile.id, development_id: null, source_type: "protected_memory", status: "memory_only", quality_status: "protected", imported_count: coldCount, eligible_count: 0, queued_count: 0, delivered_count: 0, read_count: 0, replied_count: 0, failed_count: 0, created_at: new Date().toISOString(), summary: {} }] : [],
+      offers: [], experiences: [], governance: { automaticActivation: false, piiExposed: false, consentRequired: true, coldMemoryCount: coldCount },
+    }, identity.meta, { headers: rate.headers });
+  }
   const profiles = profilesResult.data ?? [];
   const role = roleOf(identity.access.profile.role, identity.access.profile.commercialRole);
   const visible = role === "director" ? new Set(profiles.map((item) => item.id)) : descendants(profiles, identity.access.profile.id);
