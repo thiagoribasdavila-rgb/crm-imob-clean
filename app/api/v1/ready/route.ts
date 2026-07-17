@@ -38,6 +38,13 @@ export async function GET(request: NextRequest) {
     latencyMs: Date.now() - startedAt,
     checks,
     features: featureSnapshot(),
+    integrations: {
+      hostinger: process.env.ATLAS_HOSTING_PROVIDER === "hostinger", publicUrl: Boolean(process.env.ATLAS_BASE_URL), cron: Boolean(process.env.ATLAS_CRON_SECRET),
+      openai: Boolean(process.env.OPENAI_API_KEY), perplexity: Boolean(process.env.PERPLEXITY_API_KEY),
+      metaLeads: Boolean(process.env.META_APP_SECRET && process.env.META_LEAD_ACCESS_TOKEN), metaConversions: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN),
+      metaInsights: Boolean(process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID), whatsapp: Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID),
+      nightlyTemplate: Boolean(process.env.WHATSAPP_NIGHTLY_APPROACH_TEMPLATE),
+    },
   };
 
   structuredApiLog(ready ? "info" : "warn", "api.readiness.checked", request, meta, {

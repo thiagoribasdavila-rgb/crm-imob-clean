@@ -84,6 +84,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       await admin.from("messages").update({ status: "failed", error: body.reason || "Envio rejeitado na governança." }).eq("id", approval.entity_id);
     }
 
+    if (approval.entity_type === "commercial_simulation" && approval.entity_id) {
+      await admin.from("commercial_simulations").update({ status: body.decision, updated_at: decidedAt }).eq("id", approval.entity_id).eq("organization_id", identity.organizationId);
+      const { data: simulation } = await admin.from("commercial_simulations").select("lead_id").eq("id", approval.entity_id).eq("organization_id", identity.organizationId).single();
+      if (simulation) await admin.from("activities").insert({ organization_id: identity.organizationId, lead_id: simulation.lead_id, user_id: identity.userId, type: "commercial_proposal_decision", title: body.decision === "approved" ? "Proposta comercial aprovada" : "Proposta comercial devolvida", description: body.reason || (body.decision === "approved" ? "Preço, estoque e regra revisados pela gestão." : "Requer ajuste antes do envio ao cliente."), metadata: { simulationId: approval.entity_id, decision: body.decision }, occurred_at: decidedAt });
+    }
+
     if (approval.entity_type === "reactivation_batch" && approval.entity_id) {
       const [{ data: contacts }, { data: batchConfig }] = await Promise.all([
         admin.from("lead_reactivation_contacts").select("id,message_id").eq("batch_id", approval.entity_id).eq("status", "pending_approval"),

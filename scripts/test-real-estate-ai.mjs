@@ -46,6 +46,9 @@ const customerExperience = readFileSync(resolve(root, "lib/atlas/customer-experi
 const whatsappWebhook = readFileSync(resolve(root, "app/api/webhooks/whatsapp/route.ts"), "utf8");
 const whatsappHealth = readFileSync(resolve(root, "app/api/v1/integrations/whatsapp/route.ts"), "utf8");
 const experienceMigration = readFileSync(resolve(root, "supabase/migrations/20260717001011_whatsapp_experience_and_external_sales_control.sql"), "utf8");
+const paymentRuleMigration = readFileSync(resolve(root, "supabase/migrations/20260717002702_developer_payment_flow_rules.sql"), "utf8");
+const commercialSimulation = readFileSync(resolve(root, "app/api/v1/leads/[id]/commercial-simulation/route.ts"), "utf8");
+const readinessRoute = readFileSync(resolve(root, "app/api/v1/ready/route.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -94,7 +97,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("117 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("120 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -166,6 +169,9 @@ const checks = [
   ["worker impede tomada duplicada", outboxWorker.includes('.in("status", ["pending", "failed"])') && outboxWorker.includes("if (!claimed) continue")],
   ["compra externa não infla receita própria", experienceMigration.includes("external_sales_records") && experienceMigration.includes("status = 'comprou_outro'")],
   ["venda externa é exclusiva da diretoria", experienceMigration.includes("external_sales_director_scope") && experienceMigration.includes("commercial_role")],
+  ["regra de pagamento preserva versões", paymentRuleMigration.includes("developer_payment_flow_rules") && paymentRuleMigration.includes("version integer") && paymentRuleMigration.includes("where active")],
+  ["simulação fotografa regra vigente", commercialSimulation.includes("rule_snapshot") && commercialSimulation.includes("Simulação preliminar") && commercialSimulation.includes("valid_until")],
+  ["preflight cobre APIs da Hostinger", readinessRoute.includes("metaConversions") && readinessRoute.includes("nightlyTemplate") && readinessRoute.includes('=== "hostinger"')],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

@@ -54,6 +54,7 @@ export default function LeadDetailPage() {
   const [activityType, setActivityType] = useState("note");
   const [qualification, setQualification] = useState<Qualification | null>(null);
   const [qualifying, setQualifying] = useState(false);
+  const [simulation, setSimulation] = useState<{ id: string; property_price: number; down_payment: number | null; financed_balance: number | null; installment_amount: number | null; installments_count: number | null; valid_until: string; rule_snapshot: { ruleName: string; version: number; paymentFlow: string } } | null>(null);
 
   async function api(path: string, init?: RequestInit) {
     const { data } = await supabase.auth.getSession();
@@ -167,6 +168,22 @@ export default function LeadDetailPage() {
     }
   }
 
+  async function simulate(propertyId: string) {
+    setMessage(null);
+    try {
+      const data = await api(`/api/v1/leads/${leadId}/commercial-simulation`, { method: "POST", body: JSON.stringify({ action: "simulate", propertyId }) }) as { simulation: typeof simulation; disclaimer: string };
+      setSimulation(data.simulation); setMessage(data.disclaimer);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao simular."); }
+  }
+
+  async function requestProposal() {
+    if (!simulation) return;
+    try {
+      await api(`/api/v1/leads/${leadId}/commercial-simulation`, { method: "POST", body: JSON.stringify({ action: "proposal", simulationId: simulation.id }) });
+      setMessage("Proposta enviada para revisão humana de preço, estoque e condição de pagamento.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Falha ao preparar proposta."); }
+  }
+
   async function qualifyLead(answers?: Record<string, string>) {
     setQualifying(true);
     setMessage(null);
@@ -235,6 +252,8 @@ export default function LeadDetailPage() {
         </AtlasCard>
       ) : null}
 
+      {simulation ? <AtlasCard><AtlasCardHeader eyebrow="Simulação comercial" title={`${simulation.rule_snapshot.ruleName} · versão ${simulation.rule_snapshot.version}`} description="A regra foi fotografada nesta simulação; alterações futuras não modificam este histórico." action={<AtlasBadge tone="warning">VÁLIDA ATÉ {new Date(simulation.valid_until).toLocaleString("pt-BR")}</AtlasBadge>} /><div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-4">{[["Preço vigente", brl.format(simulation.property_price)], ["Entrada estimada", simulation.down_payment === null ? "Conforme fluxo" : brl.format(simulation.down_payment)], ["Saldo estimado", simulation.financed_balance === null ? "A definir" : brl.format(simulation.financed_balance)], ["Parcelas lineares", simulation.installment_amount === null ? "Conforme regra" : `${simulation.installments_count} × ${brl.format(simulation.installment_amount)}`]].map(([label, value]) => <div key={label} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><span className="text-xs text-slate-500">{label}</span><strong className="mt-2 block text-lg text-white">{value}</strong></div>)}</div><div className="border-t border-white/[.06] p-5 sm:p-6"><p className="whitespace-pre-line text-xs leading-5 text-slate-400">{simulation.rule_snapshot.paymentFlow}</p><button onClick={() => void requestProposal()} className="atlas-button-primary mt-4">Enviar proposta para revisão</button></div></AtlasCard> : null}
+
       <section className="grid gap-6 2xl:grid-cols-[1.15fr_.85fr]">
         <AtlasCard>
           <AtlasCardHeader eyebrow="Customer profile" title="Dados e qualificação" description="Perfil comercial, preferências e capacidade financeira do comprador." />
@@ -271,7 +290,7 @@ export default function LeadDetailPage() {
 
       <AtlasCard>
         <AtlasCardHeader eyebrow="Matching Atlas" title="Imóveis recomendados" description="Ranking de aderência entre perfil, orçamento, tipologia e localização." action={<Link href="/properties" className="text-xs font-semibold text-sky-300">Ver estoque →</Link>} />
-        <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3 sm:p-6">{matches.length === 0 ? <div className="md:col-span-2 xl:col-span-3"><AtlasEmpty title="Nenhum match encontrado" description="Complete orçamento, dormitórios e regiões para melhorar o matching." /></div> : matches.map(({ property, match }) => <article key={property.id} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 transition hover:-translate-y-1 hover:border-sky-400/20"><div className="flex items-start justify-between gap-3"><div><p className="atlas-eyebrow">Aderência comercial</p><h3 className="mt-2 font-semibold text-white">{property.title || "Imóvel sem título"}</h3></div><AtlasBadge tone={match.score >= 75 ? "success" : match.score >= 50 ? "warning" : "info"}>{match.score}%</AtlasBadge></div><p className="mt-2 text-sm text-slate-400">{property.city || "Localização não informada"}{property.state ? ` · ${property.state}` : ""}</p><p className="mt-4 text-xl font-semibold text-white">{property.price ? brl.format(property.price) : "Preço sob consulta"}</p><ul className="mt-4 space-y-1.5 text-xs text-slate-400">{match.reasons.slice(0, 3).map((reason) => <li key={reason}>• {reason}</li>)}</ul><button onClick={() => void createOpportunity(property.id)} className="atlas-button-secondary mt-5 w-full">Criar oportunidade</button></article>)}</div>
+        <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3 sm:p-6">{matches.length === 0 ? <div className="md:col-span-2 xl:col-span-3"><AtlasEmpty title="Nenhum match encontrado" description="Complete orçamento, dormitórios e regiões para melhorar o matching." /></div> : matches.map(({ property, match }) => <article key={property.id} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 transition hover:-translate-y-1 hover:border-sky-400/20"><div className="flex items-start justify-between gap-3"><div><p className="atlas-eyebrow">Aderência comercial</p><h3 className="mt-2 font-semibold text-white">{property.title || "Imóvel sem título"}</h3></div><AtlasBadge tone={match.score >= 75 ? "success" : match.score >= 50 ? "warning" : "info"}>{match.score}%</AtlasBadge></div><p className="mt-2 text-sm text-slate-400">{property.city || "Localização não informada"}{property.state ? ` · ${property.state}` : ""}</p><p className="mt-4 text-xl font-semibold text-white">{property.price ? brl.format(property.price) : "Preço sob consulta"}</p><ul className="mt-4 space-y-1.5 text-xs text-slate-400">{match.reasons.slice(0, 3).map((reason) => <li key={reason}>• {reason}</li>)}</ul><div className="mt-5 grid grid-cols-2 gap-2"><button onClick={() => void createOpportunity(property.id)} className="atlas-button-secondary">Oportunidade</button><button onClick={() => void simulate(property.id)} className="atlas-button-primary">Simular fluxo</button></div></article>)}</div>
       </AtlasCard>
     </div>
   );
