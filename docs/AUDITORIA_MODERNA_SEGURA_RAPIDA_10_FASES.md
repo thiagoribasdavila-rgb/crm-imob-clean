@@ -8,7 +8,7 @@ O código compila e os contratos de login, sessão, RLS, hierarquia, APIs e segr
 
 1. **Diagnóstico reproduzível** - concluída. Corrigidos o falso alerta da chave pública Supabase e a classificação de `ATLAS_PACKAGE_ENV_FILE`.
 2. **Banco e migrations** - bloqueadora. Aplicar migrations em homologação, executar `npm run audit:runtime-schema` e exigir 8/8 superfícies.
-3. **Login e hierarquia** - validar em runtime os cinco níveis: admin, diretor, superintendente, gerente e corretor.
+3. **Login e hierarquia** - contratos locais aprovados. O auditor real `npm run audit:auth-hierarchy` está pronto para validar os cinco níveis (admin, diretor, superintendente, gerente e corretor), contas sem perfil, perfis sem autenticação e vínculos de liderança. A execução completa depende da fase 2.
 4. **APIs resilientes** - testar autorização, rate limit, idempotência, timeout e respostas sem detalhes privados.
 5. **CRM e pipeline** - provar cadastro, deduplicação, distribuição, transferência e ownership único de uma lead real.
 6. **Projetos e materiais** - provar incorporadora, projeto, kit vigente, storage privado, vídeo e versionamento.
@@ -24,6 +24,7 @@ O código compila e os contratos de login, sessão, RLS, hierarquia, APIs e segr
 - `ATLAS_BASE_URL` aponta para `https://crm.seudominio.com.br`.
 - O auditor aprofundado encontrou 2/8 superfícies prontas. `profiles` e `leads` ainda não têm o contrato canônico completo (`42703`), enquanto `developers`, `developments`, `project_materials` e `properties` não estão disponíveis no schema REST conectado (`PGRST205`).
 - O banco ainda usa campos legados (`profiles.name`, `assigned_user_id`, `project_id`, `score_ia`). A migration `20260717213000_v3_legacy_runtime_schema_bridge.sql` faz a transição de forma aditiva e preserva esses campos.
+- A auditoria real de autenticação para de forma segura enquanto `profiles` não possuir `commercial_role` e `reports_to`; ela não cria, bloqueia, exclui ou altera usuários.
 - Integrações externas ainda não têm evidência ponta a ponta.
 
 Produção permanece bloqueada até todas as dez fases passarem com evidência real.

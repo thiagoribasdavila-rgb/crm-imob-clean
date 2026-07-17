@@ -17,6 +17,7 @@
     "environments:check": "node scripts/check-environments.mjs",
     "environment:variables": "node scripts/check-environment-variables.mjs",
     "audit:runtime-schema": "node --env-file=.env.local scripts/audit-runtime-schema.mjs",
+    "audit:auth-hierarchy": "node --env-file=.env.local scripts/audit-auth-hierarchy-runtime.mjs",
     "security:governance": "node scripts/check-secret-governance.mjs",
     "security:dependencies": "npm audit --omit=dev --audit-level=high",
     "observability:check": "node scripts/check-observability.mjs",
