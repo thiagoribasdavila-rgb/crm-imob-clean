@@ -29,7 +29,7 @@
 
 ## Fase 50 — Publicação Hostinger
 
-1. Enviar `atlas-v3-hostinger.zip` para uma pasta nova, separada do V2.
+1. Enviar `atlas-v3-hostinger-final.zip` para uma instalação limpa do V3.
 2. Conferir o SHA-256 com o arquivo `.sha256`.
 3. Extrair o ZIP e criar `.env.local` a partir de `.env.example`, sem copiar o arquivo local de desenvolvimento.
 4. Usar Node.js 24 e executar `npm ci && npm run prisma:generate && npm run validate`.

@@ -7,7 +7,7 @@ import { legacyRoutePaths } from "./legacy-route-paths.mjs";
 const root = process.cwd();
 const outputRoot = resolve(root, "dist/hostinger");
 const stage = join(outputRoot, "atlas-v3");
-const zipPath = join(outputRoot, "atlas-v3-hostinger.zip");
+const zipPath = join(outputRoot, "atlas-v3-hostinger-final.zip");
 const checksumPath = `${zipPath}.sha256`;
 const trackedChanges = execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: root, encoding: "utf8" }).trim();
 if (trackedChanges) throw new Error("Existem alterações versionadas sem commit. Registre-as antes de gerar o pacote Hostinger.");
@@ -31,6 +31,9 @@ writeFileSync(join(stage, "HOSTINGER_PACKAGE.json"), `${JSON.stringify({
   commit,
   generatedAt: new Date().toISOString(),
   target: "Hostinger Node.js 24",
+  releaseChannel: "final-homologation-candidate",
+  cleanInstall: true,
+  dependsOnV2: false,
   startCommand: "npm start",
   processManager: "pm2 start ecosystem.config.cjs",
   privateDataIncluded: false,
@@ -47,6 +50,6 @@ for (const required of ["package.json", "package-lock.json", "ecosystem.config.c
 }
 const bytes = readFileSync(zipPath);
 const checksum = createHash("sha256").update(bytes).digest("hex");
-writeFileSync(checksumPath, `${checksum}  atlas-v3-hostinger.zip\n`);
+writeFileSync(checksumPath, `${checksum}  atlas-v3-hostinger-final.zip\n`);
 if (!existsSync(zipPath)) throw new Error("ZIP Hostinger não foi criado.");
 console.log(JSON.stringify({ ok: true, zipPath, checksumPath, commit, files: entries.length, bytes: bytes.length, checksum }));

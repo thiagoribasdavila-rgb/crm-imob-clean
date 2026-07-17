@@ -548,7 +548,7 @@ const checks = [
   ["rollback exige backup restaurado", rollbackMigration.includes("enforce_rollback_backup_evidence") && rollbackMigration.includes("restore_status = 'passed'")],
   ["ensaio mede tempo e saúde do V2", rollbackRoute.includes("duration_minutes") && rollbackRoute.includes("health_check_status") && rollbackPanel.includes("Resposta HTTP")],
   ["evidência de rollback é exclusiva da diretoria", rollbackMigration.includes("enable row level security") && rollbackMigration.includes("commercial_role = 'director'") && rollbackRoute.includes("Somente a diretoria")],
-  ["Hostinger possui roteiro reversível", hostingerDeployment.includes("Ensaio de rollback V3 → V2") && hostingerDeployment.includes("Não apague a aplicação")],
+  ["Hostinger possui roteiro reversível", hostingerDeployment.includes("Ensaio de rollback entre releases do V3") && hostingerDeployment.includes("Não apague banco")],
   ["saúde Hostinger não expõe segredos", hostingerHealthRoute.includes("memoryMb") && hostingerHealthRoute.includes("cronConfigured") && !hostingerHealthRoute.includes("ATLAS_CRON_SECRET:")],
   ["reinício exige nova inicialização", hostingerHealthRoute.includes("before_boot_id !== current.bootId") && hostingerHealthMigration.includes("before_boot_id <> after_boot_id")],
   ["retorno exige banco saudável", hostingerHealthRoute.includes('current.status === "healthy"') && hostingerHealthRoute.includes("ready_after_restart")],

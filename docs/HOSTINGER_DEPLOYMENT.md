@@ -6,7 +6,7 @@
 - Supabase como banco, autenticação e storage externos.
 - OpenAI e Perplexity acessados diretamente pelo servidor.
 - Worker de outbox acionado por cron da Hostinger.
-- V2 permanece isolado até o aceite operacional do V3.
+- O V3 é uma implantação limpa. O ZIP histórico do V2 é somente referência documental e não participa da execução.
 
 ## Aplicação
 
@@ -54,22 +54,22 @@ Teste com `npm run reports:meta-daily`. O processo é idempotente: gera um relat
 
 ## Publicação segura
 
-1. Criar subdomínio e aplicação separados do V2.
+1. Criar a aplicação V3 no domínio ou subdomínio escolhido, sem reutilizar arquivos da instalação removida do V2.
 2. Aplicar migrações somente no projeto Supabase de homologação.
 3. Executar preflight, rotas reais e roteiro por perfil.
 4. Criar snapshot/backup antes de qualquer promoção.
-5. Manter rollback para o V2 até o piloto ser aprovado.
+5. Manter o ZIP e o commit da última versão V3 aprovada para rollback.
 
-## Ensaio de rollback V3 → V2
+## Ensaio de rollback entre releases do V3
 
-O rollback troca somente o destino do tráfego. Não apague a aplicação, banco, storage ou variáveis do V3 durante o ensaio.
+Como o V2 foi removido, o rollback restaura a última release V3 aprovada. Não apague banco, storage, backups ou variáveis durante o ensaio.
 
 1. Confirme no Command Center que há um backup com restauração aprovada.
 2. Pause temporariamente entradas no V3 e anote o horário inicial.
-3. Na Hostinger, altere o domínio público para a aplicação V2 preservada; mantenha o V3 no subdomínio interno de homologação.
-4. Valide no V2: HTTPS, login, leitura de leads, pipeline e integrações essenciais.
+3. Restaure o ZIP da última release V3 aprovada e reinstale as dependências com `npm ci`.
+4. Valide no V3 restaurado: HTTPS, login, recuperação de senha, leitura de leads, pipeline e integrações essenciais.
 5. Registre o código HTTP, o horário final e a referência da evidência em `/atlas-v3/audit`.
-6. Se o ensaio falhar, reverta o apontamento ao V3 e registre a falha; não tente corrigir durante a janela.
+6. Se o ensaio falhar, restaure a release atual e registre a falha; não tente corrigir durante a janela.
 # Armazenamento privado dos materiais
 
 O Atlas pode manter os materiais no Supabase Storage ou usar qualquer serviço compatível com S3 (incluindo Cloudflare R2). A aplicação continua na Hostinger; somente os arquivos pesados saem do processo web.
