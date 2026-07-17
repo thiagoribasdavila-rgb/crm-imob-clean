@@ -36,6 +36,16 @@ const globalBuckets = globalThis as typeof globalThis & {
 
 const buckets = globalBuckets.__atlasRateBuckets ?? new Map<string, RateBucket>();
 globalBuckets.__atlasRateBuckets = buckets;
+const MAX_RATE_BUCKETS = 10_000;
+
+function pruneRateBuckets(now: number) {
+  if (buckets.size < MAX_RATE_BUCKETS) return;
+  for (const [key, bucket] of buckets) if (bucket.resetAt <= now) buckets.delete(key);
+  if (buckets.size < MAX_RATE_BUCKETS) return;
+  const overflow = buckets.size - MAX_RATE_BUCKETS + Math.ceil(MAX_RATE_BUCKETS * 0.1);
+  const oldest = [...buckets.entries()].sort((a, b) => a[1].resetAt - b[1].resetAt).slice(0, overflow);
+  for (const [key] of oldest) buckets.delete(key);
+}
 
 export function enforceRateLimit(
   request: NextRequest,
@@ -45,6 +55,7 @@ export function enforceRateLimit(
   const windowMs = options.windowMs ?? 60_000;
   const scope = options.scope ?? request.nextUrl.pathname;
   const now = Date.now();
+  pruneRateBuckets(now);
   const key = `${scope}:${getClientAddress(request)}`;
   const current = buckets.get(key);
   const bucket = !current || current.resetAt <= now

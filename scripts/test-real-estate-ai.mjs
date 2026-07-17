@@ -48,6 +48,9 @@ const messageSendRoute = readFileSync(resolve(root, "app/api/v2/messages/send/ro
 const metaMigration = readFileSync(resolve(root, "supabase/migrations/20260716222643_meta_lead_closed_loop.sql"), "utf8");
 const providerRouter = readFileSync(resolve(root, "lib/ai/provider-router.ts"), "utf8");
 const apiCore = readFileSync(resolve(root, "lib/api/core.ts"), "utf8");
+const apiSecurity = readFileSync(resolve(root, "lib/api/security.ts"), "utf8");
+const supabaseMiddleware = readFileSync(resolve(root, "utils/supabase/middleware.ts"), "utf8");
+const nextConfig = readFileSync(resolve(root, "next.config.ts"), "utf8");
 const complexityRouter = readFileSync(resolve(root, "lib/ai/complexity.ts"), "utf8");
 const conversionPredictor = readFileSync(resolve(root, "lib/ai/conversion-predictor.ts"), "utf8");
 const aiCostMigration = readFileSync(resolve(root, "supabase/migrations/20260717012700_ai_usage_cost_tracking.sql"), "utf8");
@@ -320,6 +323,10 @@ const checks = [
   ["WhatsApp nunca repete envio automaticamente", outboxWorker.includes('retries: 0, operation: "WhatsApp"')],
   ["APIs críticas usam transporte resiliente", providerRouter.includes("resilientFetch") && metaInsights.includes("resilientFetch") && outboxWorker.includes("resilientFetch")],
   ["respostas canônicas expõem duração segura", apiCore.includes("Server-Timing") && apiCore.includes("X-Response-Time")],
+  ["middleware valida JWT com caminho rápido seguro", supabaseMiddleware.includes("auth.getClaims()") && supabaseMiddleware.includes('claimsData?.claims?.sub')],
+  ["páginas autenticadas não vazam por cache compartilhado", supabaseMiddleware.includes('Cache-Control", "private, no-store') && supabaseMiddleware.includes('Vary", "Cookie')],
+  ["limitador canônico controla crescimento de memória", apiSecurity.includes("MAX_RATE_BUCKETS") && apiSecurity.includes("pruneRateBuckets")],
+  ["cabeçalhos reduzem superfícies legadas do navegador", nextConfig.includes("X-Permitted-Cross-Domain-Policies") && nextConfig.includes("Origin-Agent-Cluster")],
   ["evento inicial de lead é deduplicado", outboxWorker.includes("meta-lead-${metaEvent.external_lead_id}") && metaConversions.includes('ignoreDuplicates: true')],
   ["avanços do funil alimentam aprendizado", metaConversions.includes('qualificacao: "QualifiedLead"') && metaConversions.includes('ganho: "ConvertedLead"')],
   ["movimentação do pipeline gera sinal seguro", pipelineRoute.includes("recordFunnelLearning") && funnelLearning.includes("queueMetaStageConversion") && metaConversions.includes("dataSharingConsent !== true")],
