@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
+import { createRequestContext } from "@/lib/api/core";
+import { logger } from "@/lib/observability/logger";
 
 const allowedOtpTypes = new Set<EmailOtpType>([
   "signup",
@@ -34,6 +36,7 @@ function publicOrigin(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const meta = createRequestContext(request);
   const requestUrl = new URL(request.url);
   const origin = publicOrigin(request);
   const code = requestUrl.searchParams.get("code");
@@ -54,11 +57,7 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
-      console.error("[atlas.auth.callback] code exchange failed", {
-        message: error.message,
-        status: error.status,
-        code: error.code,
-      });
+      logger.warn("auth.callback.code_exchange_failed", { requestId: meta.requestId, correlationId: meta.correlationId, status: error.status, errorCode: error.code });
       return NextResponse.redirect(authFailureUrl(origin, "session_exchange_failed"));
     }
 
@@ -74,12 +73,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (error) {
-      console.error("[atlas.auth.callback] token verification failed", {
-        message: error.message,
-        status: error.status,
-        code: error.code,
-        type: rawType,
-      });
+      logger.warn("auth.callback.token_verification_failed", { requestId: meta.requestId, correlationId: meta.correlationId, status: error.status, errorCode: error.code, otpType: rawType });
       return NextResponse.redirect(authFailureUrl(origin, "token_verification_failed"));
     }
 

@@ -6,7 +6,6 @@ import Link from "next/link";
 export default function CRMError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error("atlas.crm_error", {
-      message: error.message,
       digest: error.digest,
       path: window.location.pathname,
       timestamp: new Date().toISOString(),

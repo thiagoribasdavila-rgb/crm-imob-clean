@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { sanitizeLogMetadata } from "@/lib/observability/logger";
 
 export const ATLAS_API_VERSION = "v1";
 export const ATLAS_API_SERVICE = "atlas-api-platform";
@@ -125,7 +126,7 @@ export function structuredApiLog(
     path: request.nextUrl.pathname,
     clientAddress: getClientAddress(request),
     timestamp: new Date().toISOString(),
-    ...data,
+    ...(sanitizeLogMetadata(data ?? {}) as Record<string, unknown>),
   };
 
   if (level === "error") console.error(JSON.stringify(payload));

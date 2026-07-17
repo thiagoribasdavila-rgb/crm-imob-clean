@@ -76,6 +76,8 @@ const environmentVariables = readFileSync(resolve(root, "config/environment-vari
 const environmentVariablesCheck = readFileSync(resolve(root, "scripts/check-environment-variables.mjs"), "utf8");
 const secretGovernance = readFileSync(resolve(root, "config/secret-governance.json"), "utf8");
 const secretGovernanceCheck = readFileSync(resolve(root, "scripts/check-secret-governance.mjs"), "utf8");
+const observabilityContract = readFileSync(resolve(root, "config/observability.json"), "utf8");
+const observabilityCheck = readFileSync(resolve(root, "scripts/check-observability.mjs"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
@@ -496,6 +498,7 @@ const checks = [
   ["ambientes não misturam banco e credenciais temporárias", environmentContract.includes('"production"') && environmentContract.includes('"allowsBootstrap": false') && productionPreflight.includes("ATLAS_DATABASE_ENVIRONMENT") && environmentCheck.includes("Node.js 24.x") && hundredPhaseStatus.includes("Fase 6 — Configuração de ambientes")],
   ["variáveis possuem inventário único sem segredo público", environmentVariables.includes('"requirement": "temporary"') && environmentVariables.includes('"scope": "runtime"') && environmentVariablesCheck.includes("variável usada no código sem classificação") && secretsRoute.includes('source: "config/environment-variables.json"') && hundredPhaseStatus.includes("Fase 7 — Variáveis de ambiente")],
   ["segredos permanecem no servidor com dono e rotação", secretGovernance.includes('"browser bundle"') && secretGovernance.includes('"rotationDays"') && secretGovernanceCheck.includes("componente cliente referencia segredo privado") && secretsRoute.includes("governanceSource") && hundredPhaseStatus.includes("Fase 8 — Gestão de segredos")],
+  ["observabilidade correlaciona e sanitiza erros", observabilityContract.includes('"X-Correlation-Id"') && observabilityContract.includes('"providerCostUsd"') && observabilityCheck.includes("log canônico da API não usa sanitização") && apiCore.includes("sanitizeLogMetadata") && hundredPhaseStatus.includes("Fase 9 — Observabilidade")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],

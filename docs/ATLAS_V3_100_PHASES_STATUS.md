@@ -255,6 +255,31 @@ Pendência externa: a rotação real das chaves só pode ser comprovada depois q
 
 Próxima fase: **Fase 9 — Observabilidade**, estruturando correlação, logs seguros, métricas, erros e trilha operacional.
 
+## Fase 9 — Observabilidade
+
+Status: **Testada**.
+
+Percentual antes: **78%** — APIs já retornavam IDs e latência, mas existiam logs de autenticação fora do logger central e a sanitização dependia de poucos nomes exatos.
+
+Percentual depois: **100%** — contrato único de observabilidade, correlação ponta a ponta, logs JSON sanitizados por chave e conteúdo, métricas oficiais e verificação automática no release.
+
+### Padrão operacional
+
+- Toda API canônica propaga `X-Request-Id` e `X-Correlation-Id` e mede duração sem expor detalhes internos.
+- Logs estruturados possuem serviço, ambiente, evento, nível, horário e correlação.
+- Senhas, tokens, cookies, chaves, e-mails, telefones, CPF/CNPJ, mensagens, conteúdo de lead e prompts são censurados.
+- Recuperação de senha e callback deixaram de registrar mensagens brutas do provedor.
+- O erro visual do CRM registra somente digest, rota e horário, sem o texto potencialmente sensível.
+- Saúde operacional mede aplicação, banco, memória, uptime e integrações; IA mantém latência, tokens e custo medidos.
+- PM2 separa saída e erro. Retenção recomendada é 14 dias e 50 MB por arquivo, ainda dependente da configuração real de rotação na Hostinger.
+- Alertas críticos ficam reservados para indisponibilidade de banco ou falha de readiness; validações comerciais isoladas não geram falso incidente.
+
+Evidências: `config/observability.json`, `lib/observability/logger.ts`, `lib/api/core.ts` e `npm run observability:check`.
+
+Pendência externa: ativar e comprovar a rotação dos arquivos de log no painel/PM2 da Hostinger durante a homologação.
+
+Próxima fase: **Fase 10 — Command Center**, consolidando saúde, integrações, filas, backups, custos, segurança e homologação.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
