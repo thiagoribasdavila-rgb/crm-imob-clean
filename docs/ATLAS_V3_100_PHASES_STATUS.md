@@ -744,7 +744,17 @@ Pendência externa: validar tarefas próprias, subordinadas, laterais, sem lead,
 
 Pendência externa: validar lead e responsável laterais, corretor próprio, liderança, datas e dois tenants com banco de homologação.
 
-Próxima fase: **Fase 43 — Tarefas recorrentes**, com repetição segura, limite e encerramento explícito.
+## Fase 43 — Tarefas recorrentes
+
+**Estado:** 100% implementada e aprovada localmente; migration, cron e ciclos reais permanecem para homologação.
+
+**Evolução:** tarefas repetem diariamente, semanalmente ou mensalmente, sempre com data final e limite entre 2 e 100 ocorrências. A primeira tarefa e a regra nascem atomicamente.
+
+**Segurança:** o worker Hostinger usa segredo, trava concorrente e chave única por ocorrência. A regra encerra ao atingir prazo ou quantidade, mantém o corretor único da lead e nunca nasce por decisão autônoma da IA. O contrato está em `config/recurring-tasks.json`, o gate em `npm run recurring-tasks:check` e o roteiro em `docs/RECURRING_TASKS_PHASE_43.md`.
+
+Pendência externa: aplicar migration e validar cadências, virada mensal, concorrência, encerramento e isolamento real.
+
+Próxima fase: **Fase 44 — Lembretes inteligentes**, antecipando tarefas sem criar ruído ou contato automático.
 
 ## Painel das 100 fases
 
