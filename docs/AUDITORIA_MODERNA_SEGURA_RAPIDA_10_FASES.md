@@ -23,6 +23,7 @@ O código compila e os contratos de login, sessão, RLS, hierarquia, APIs e segr
 - `ATLAS_DATABASE_ENVIRONMENT` ausente.
 - `ATLAS_BASE_URL` aponta para `https://crm.seudominio.com.br`.
 - `DATABASE_URL` ainda não foi fornecida; migrations e backup não podem ser executados com segurança sem a conexão Postgres de homologação.
+- Depois de preencher a conexão, `npm run database:connection:check` executa somente `SELECT 1`, exige ambiente `homologation`, não imprime a URL e não altera o banco.
 - Por causa da URL placeholder, login, health, readiness, status V1/V2, status V3 e proteção das áreas autenticadas não podem ser comprovados na Hostinger.
 - O pré-flight não transforma essa dependência em sete falsos erros: enquanto o domínio for placeholder, informa os testes HTTP como não executados e mantém o domínio como bloqueio-raiz.
 - O auditor aprofundado encontrou 2/8 superfícies prontas. `profiles` e `leads` ainda não têm o contrato canônico completo (`42703`), enquanto `developers`, `developments`, `project_materials` e `properties` não estão disponíveis no schema REST conectado (`PGRST205`).

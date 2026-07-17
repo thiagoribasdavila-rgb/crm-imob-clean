@@ -19,6 +19,7 @@
     "audit:runtime-schema": "node --env-file=.env.local scripts/audit-runtime-schema.mjs",
     "audit:auth-hierarchy": "node --env-file=.env.local scripts/audit-auth-hierarchy-runtime.mjs",
     "performance:check": "node scripts/check-performance-budget.mjs",
+    "database:connection:check": "node --env-file=.env.local scripts/check-database-connection.mjs",
     "security:governance": "node scripts/check-secret-governance.mjs",
     "security:dependencies": "npm audit --omit=dev --audit-level=high",
     "observability:check": "node scripts/check-observability.mjs",
