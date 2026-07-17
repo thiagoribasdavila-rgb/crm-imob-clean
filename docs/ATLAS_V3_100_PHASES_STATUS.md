@@ -832,7 +832,17 @@ Pendência externa: validar quatro perfis, dois tenants, semana vazia, virada do
 
 Pendência externa: aplicar migration e testar concorrência, presença, pesos, projetos e dois tenants com equipe real.
 
-Próxima fase: **Fase 52 — Fila de leads sem responsável**, dando visibilidade e recuperação governada sem atribuição silenciosa.
+## Fase 52 — Fila de leads sem responsável
+
+**Estado:** 100% implementada e aprovada localmente; volume, concorrência e inspeção de rede reais permanecem para homologação.
+
+**Evolução:** a liderança vê até 100 leads sem responsável por projeto, origem, etapa e tempo de espera. Nome, contato, CPF, notas e metadata não saem na fila.
+
+**Governança:** a fila é ordenada pela criação e depende do comando “Distribuir próxima”, projeto escolhido e corretor elegível. A atomicidade da Fase 51 reconfirma que a lead ainda está livre. O contrato está em `config/unassigned-lead-queue.json`, o gate em `npm run unassigned-queue:check` e o roteiro em `docs/UNASSIGNED_LEAD_QUEUE_PHASE_52.md`.
+
+Pendência externa: validar liderança, dois tenants, concorrência, fila acima de 100 e resposta sem PII na rede.
+
+Próxima fase: **Fase 53 — Transferência individual governada**, preservando histórico, motivo e responsável único.
 
 ## Painel das 100 fases
 

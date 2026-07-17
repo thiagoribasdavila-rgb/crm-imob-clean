@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     admin.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").eq("organization_id", organizationId).eq("active", true),
     admin.from("developments").select("id,name,developer_name,status").eq("organization_id", organizationId).order("name"),
     admin.from("commercial_presence").select("profile_id,availability,last_seen_at").eq("organization_id", organizationId),
-    admin.from("leads").select("id,development_id,assigned_to").eq("organization_id", organizationId),
+    admin.from("leads").select("id,development_id,assigned_to,source,status,created_at").eq("organization_id", organizationId).limit(10000),
     admin.from("project_distribution_members").select("development_id,profile_id,enabled,weight,assignments_count,last_assigned_at").eq("organization_id", organizationId),
     admin.from("lead_distribution_events").select("id,development_id,lead_id,assigned_to,actor_id,score_snapshot,created_at").eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(50),
   ]);
@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
   }));
   const leads = leadsResult.data ?? [];
   const queue = (queueResult.data ?? []).filter((item) => profileIds.has(item.profile_id));
+  const unassignedQueue = leads.filter((lead) => !lead.assigned_to).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).slice(0, 100).map((lead) => ({ id: lead.id, developmentId: lead.development_id, source: lead.source || "não informada", status: lead.status || "novo", createdAt: lead.created_at, waitingMinutes: Math.max(0, Math.floor((Date.now() - new Date(lead.created_at).getTime()) / 60_000)) }));
 
   return apiSuccess({
     viewer: { id: identity.access.profile.id, role },
@@ -62,6 +63,8 @@ export async function GET(request: NextRequest) {
     presence,
     queue,
     recentAssignments: (eventsResult.data ?? []).filter((item) => profileIds.has(item.assigned_to)).slice(0, 20),
+    unassignedQueue,
+    unassignedPolicy: { metadataOnly: true, piiExposed: false, automaticAssignment: false, explicitLeadershipAction: true, maximumVisible: 100 },
     loads: profiles.map((profile) => ({
       profile_id: profile.id,
       total: leads.filter((lead) => lead.assigned_to === profile.id).length,
