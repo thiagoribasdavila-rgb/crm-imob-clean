@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   const targetOwnerId = typeof body.targetOwnerId === "string" ? body.targetOwnerId : "";
   const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 500) : "";
 
-  if (!leadIds.length || leadIds.length > 200 || !UUID.test(targetOwnerId) || reason.length < 5) {
+  if (!leadIds.length || leadIds.length > 200 || !UUID.test(targetOwnerId) || reason.length < 10) {
     return apiError("INVALID_TRANSFER", "Selecione de 1 a 200 leads, um destino válido e informe o motivo.", access.meta, {
       status: 400,
       headers: rate.headers,
@@ -37,13 +37,18 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin.rpc("bulk_transfer_leads", {
+  const target = await admin.from("profiles").select("id,commercial_role,role").eq("id", targetOwnerId).eq("organization_id", access.access.organization.id).eq("active", true).maybeSingle();
+  if (target.error || !target.data) return apiError("TRANSFER_TARGET_INVALID", "Destino fora da organização ou inativo.", access.meta, { status: 400, headers: rate.headers });
+  const targetRole = target.data.commercial_role || target.data.role;
+  const rpc = targetRole === "manager" ? "transfer_leads_to_team" : "bulk_transfer_leads";
+  const params = targetRole === "manager" ? { p_actor_id: access.access.profile.id, p_organization_id: access.access.organization.id, p_lead_ids: leadIds, p_target_manager_id: targetOwnerId, p_reason: reason } : {
     p_actor_id: access.access.profile.id,
     p_organization_id: access.access.organization.id,
     p_lead_ids: leadIds,
     p_target_owner_id: targetOwnerId,
     p_reason: reason,
-  });
+  };
+  const { data, error } = await admin.rpc(rpc, params);
 
   if (error) {
     structuredApiLog("warn", "crm.leads.bulk_transfer_rejected", request, access.meta, {

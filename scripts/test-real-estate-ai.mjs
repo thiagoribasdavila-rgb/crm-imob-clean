@@ -544,7 +544,7 @@ const checks = [
   ["filtro individual preserva corretor", leadIntelligencePage.includes("assigned_to") || leadsPortfolioPage.includes('params.set("assigned_to", broker)')],
   ["transferência de equipe mantém corretor único", teamTransferMigration.includes("actual_target") && teamTransferMigration.includes("O gerente de destino não possui corretores ativos")],
   ["transferência em massa é atômica", teamTransferMigration.includes("for update") && teamTransferMigration.includes("accessible_count <> requested_count")],
-  ["transferência exige motivo auditável", bulkTransferRoute.includes("reason.length < 5") && teamTransferMigration.includes("lead_transfer_items")],
+  ["transferência exige motivo auditável", bulkTransferRoute.includes("reason.length < 10") && teamTransferMigration.includes("lead_transfer_items")],
   ["gerente consulta somente corretor visível", crmLeadsRoute.includes("OWNER_OUT_OF_SCOPE") && crmLeadsRoute.includes('profile.id === assignedTo')],
   ["filtros de equipe são não ambíguos", crmLeadsRoute.includes("AMBIGUOUS_OWNER_FILTER") && crmLeadsRoute.includes("teamOwner && assignedTo")],
   ["tela identifica o escopo do gerente", leadsPortfolioPage.includes("MEU TIME") && leadsPortfolioPage.includes("Todo o meu time")],

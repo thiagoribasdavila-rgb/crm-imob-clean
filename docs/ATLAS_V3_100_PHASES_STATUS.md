@@ -852,7 +852,17 @@ Pendência externa: validar liderança, dois tenants, concorrência, fila acima 
 
 Pendência externa: aplicar migration e validar gestor, diretor, dois tenants, conflito, tarefas, conversa e copiloto reais.
 
-Próxima fase: **Fase 54 — Transferência entre equipes**, permitindo mover carteira para outro gerente com redistribuição controlada aos corretores elegíveis.
+## Fase 54 — Transferência controlada entre equipes
+
+**Estado:** 100% implementada e aprovada localmente; pesos, volume e concorrência reais permanecem para homologação.
+
+**Evolução:** diretor ou superintendente escolhe o gerente de destino, mas cada lead vai diretamente para um corretor ativo e elegível da equipe. O gerente nunca se torna proprietário da lead.
+
+**Equilíbrio e auditoria:** a decisão usa projeto, habilitação, peso, carga ponderada e última atribuição. Lote, itens, timeline e tarefas abertas acompanham a operação atômica. O contrato está em `config/controlled-team-transfer.json`, o gate em `npm run team-transfer:check` e o roteiro em `docs/CONTROLLED_TEAM_TRANSFER_PHASE_54.md`.
+
+Pendência externa: aplicar migration e validar dois tenants, equipe real, projetos, pesos, concorrência, tarefas e lote de até 200 leads.
+
+Próxima fase: **Fase 55 — Redistribuição por ausência**, protegendo atendimento e SLA quando um corretor ficar indisponível.
 
 ## Painel das 100 fases
 

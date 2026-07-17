@@ -305,7 +305,7 @@ export default function LeadsPage() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error?.message || "Não foi possível transferir os leads.");
-      setNotice(`${selected.size} lead(s) transferido(s) com histórico registrado.`);
+      setNotice(payload.data?.teamTargetId ? `${selected.size} lead(s) distribuído(s) aos corretores elegíveis da equipe escolhida. O gerente não virou proprietário.` : `${selected.size} lead(s) transferido(s) com histórico registrado.`);
       setSelected(new Set());
       setTransferTarget("");
       setTransferReason("");
@@ -462,14 +462,14 @@ export default function LeadsPage() {
       {notice ? <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-200">{notice}</div> : null}
 
       {canTransfer && selected.size ? (
-        <section className="sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border border-cyan-400/30 bg-slate-950/95 p-4 shadow-2xl backdrop-blur md:flex-row md:items-center">
-          <div className="min-w-44"><strong className="block text-white">{selected.size} lead(s) selecionado(s)</strong><span className="text-xs text-slate-400">Transferência segura com rastreabilidade</span></div>
+        <section data-phase="54-team-transfer" className="sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border border-cyan-400/30 bg-slate-950/95 p-4 shadow-2xl backdrop-blur md:flex-row md:items-center">
+          <div className="min-w-52"><strong className="block text-white">{selected.size} lead(s) selecionado(s)</strong><span className="block text-xs text-slate-400">Transferência segura com rastreabilidade</span><span className="block text-xs text-cyan-200">Ao escolher um gerente, as leads são equilibradas entre os corretores elegíveis. O gerente não se torna responsável.</span></div>
           <select className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white" value={transferTarget} onChange={(event) => setTransferTarget(event.target.value)}>
             <option value="">{currentRole === "manager" ? "Escolha um corretor do meu time" : "Escolha gerente ou corretor"}</option>
             {transferTargets.map((profile) => <option key={profile.id} value={profile.id}>{profile.full_name || "Usuário sem nome"} · {profile.commercial_role || profile.role}</option>)}
           </select>
-          <input className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white" value={transferReason} onChange={(event) => setTransferReason(event.target.value)} placeholder="Motivo da transferência" minLength={5} maxLength={500} />
-          <button type="button" className="atlas-button-primary" disabled={!transferTarget || transferReason.trim().length < 5 || transferring} onClick={transferSelected}>{transferring ? "Transferindo..." : "Confirmar transferência"}</button>
+          <input className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white" value={transferReason} onChange={(event) => setTransferReason(event.target.value)} placeholder="Motivo obrigatório da transferência" minLength={10} maxLength={500} />
+          <button type="button" className="atlas-button-primary" disabled={!transferTarget || transferReason.trim().length < 10 || transferring} onClick={transferSelected}>{transferring ? "Transferindo..." : "Confirmar transferência"}</button>
           <button type="button" className="atlas-button-secondary" onClick={() => setSelected(new Set())}>Cancelar</button>
         </section>
       ) : null}
