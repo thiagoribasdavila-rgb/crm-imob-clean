@@ -46,6 +46,8 @@ Teste com `npm run reports:meta-daily`. O processo é idempotente: gera um relat
 - `ATLAS_CRON_SECRET`
 - `OPENAI_API_KEY`
 - `PERPLEXITY_API_KEY` quando a pesquisa externa estiver habilitada.
+- `DEEPSEEK_API_KEY` + `ATLAS_DEEPSEEK_MODEL`, `QWEN_API_KEY` + `ATLAS_QWEN_MODEL`, `KIMI_API_KEY` + `ATLAS_KIMI_MODEL` e `GLM_API_KEY` + `ATLAS_GLM_MODEL` são rotas econômicas opcionais. Homologue uma por vez; não copie credenciais de planos gratuitos de aplicativos.
+- `ATLAS_AI_FAST_PROVIDER_ORDER`, `ATLAS_AI_COMMERCIAL_PROVIDER_ORDER` e `ATLAS_AI_REASONING_PROVIDER_ORDER` controlam a ordem de fallback. Requisições com dados pessoais ignoram essas rotas e permanecem na OpenAI.
 - Credenciais Meta quando Lead Ads estiver em teste.
 
 ## Publicação segura

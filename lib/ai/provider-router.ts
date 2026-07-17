@@ -14,7 +14,7 @@ type GenerateInput = {
 };
 export type AIProviderResult = {
   text: string;
-  provider: "openai" | "perplexity" | "local";
+  provider: "openai" | "perplexity" | "deepseek" | "qwen" | "kimi" | "glm" | "local";
   model: string;
   latencyMs: number;
   citations: string[];
@@ -26,6 +26,14 @@ export type AIProviderResult = {
     estimatedUsd: number;
     pricingConfigured: boolean;
   };
+};
+
+type EconomyProvider = "deepseek" | "qwen" | "kimi" | "glm";
+const economyProviders: Record<EconomyProvider, { key: string; model: string; baseUrl: string }> = {
+  deepseek: { key: "DEEPSEEK_API_KEY", model: "ATLAS_DEEPSEEK_MODEL", baseUrl: "https://api.deepseek.com/chat/completions" },
+  qwen: { key: "QWEN_API_KEY", model: "ATLAS_QWEN_MODEL", baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions" },
+  kimi: { key: "KIMI_API_KEY", model: "ATLAS_KIMI_MODEL", baseUrl: "https://api.moonshot.ai/v1/chat/completions" },
+  glm: { key: "GLM_API_KEY", model: "ATLAS_GLM_MODEL", baseUrl: "https://open.bigmodel.cn/api/paas/v4/chat/completions" },
 };
 
 export function aiModelProfiles() {
@@ -276,10 +284,53 @@ async function generatePerplexity(
   };
 }
 
+async function generateEconomyProvider(input: GenerateInput, provider: EconomyProvider): Promise<AIProviderResult> {
+  if (input.containsPersonalData) throw new Error(`${provider} bloqueado para dados pessoais.`);
+  const config = economyProviders[provider];
+  const apiKey = process.env[config.key];
+  const model = process.env[config.model];
+  if (!apiKey || !model) throw new Error(`${provider} não configurado.`);
+  const startedAt = Date.now();
+  const response = await fetch(process.env[`ATLAS_${provider.toUpperCase()}_BASE_URL`] || config.baseUrl, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "system", content: input.system }, { role: "user", content: input.prompt }],
+      temperature: input.task === "fast" ? 0.1 : 0.2,
+      max_tokens: input.task === "fast" ? 600 : input.task === "commercial" ? 1200 : 2400,
+      stream: false,
+    }),
+    signal: withTimeout(input.timeoutMs ?? 30_000),
+  });
+  const body = await response.json() as {
+    id?: string; error?: { message?: string };
+    choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+  };
+  if (!response.ok) throw new Error(body.error?.message || `${provider} HTTP ${response.status}`);
+  const text = body.choices?.[0]?.message?.content?.trim();
+  if (!text) throw new Error(`${provider} retornou resposta vazia.`);
+  return {
+    text, provider, model, latencyMs: Date.now() - startedAt, citations: [],
+    providerRequestId: body.id || response.headers.get("x-request-id") || undefined,
+    usage: { inputTokens: body.usage?.prompt_tokens ?? 0, outputTokens: body.usage?.completion_tokens ?? 0, totalTokens: body.usage?.total_tokens ?? 0 },
+  };
+}
+
+function configuredEconomyProvider(provider: EconomyProvider) {
+  const config = economyProviders[provider];
+  return Boolean(process.env[config.key] && process.env[config.model]);
+}
+
 export function aiProviderReadiness() {
   return {
     openai: Boolean(process.env.OPENAI_API_KEY),
     perplexity: Boolean(process.env.PERPLEXITY_API_KEY),
+    deepseek: configuredEconomyProvider("deepseek"),
+    qwen: configuredEconomyProvider("qwen"),
+    kimi: configuredEconomyProvider("kimi"),
+    glm: configuredEconomyProvider("glm"),
     localFallback: true,
     host: "hostinger" as const,
   };
@@ -304,13 +355,24 @@ export async function generateAIText(
   input: GenerateInput,
 ): Promise<AIProviderResult> {
   let result: AIProviderResult;
-  try {
-    result =
-      input.task === "research"
-        ? await generatePerplexity(input)
-        : await generateOpenAI(input);
-  } catch (error) {
-    result = localFallback(input);
+  if (input.task === "research") {
+    try { result = await generatePerplexity(input); } catch { result = localFallback(input); }
+    return recordUsage(input, result);
+  }
+  const defaults: Record<Exclude<AITask, "research">, Array<"openai" | EconomyProvider>> = {
+    fast: ["qwen", "deepseek", "openai"],
+    commercial: ["openai", "qwen", "kimi"],
+    reasoning: ["openai", "deepseek", "glm", "kimi"],
+  };
+  const configuredOrder = String(process.env[`ATLAS_AI_${input.task.toUpperCase()}_PROVIDER_ORDER`] || "")
+    .split(",").map((value) => value.trim().toLowerCase()).filter((value): value is "openai" | EconomyProvider => value === "openai" || value in economyProviders);
+  const order = input.containsPersonalData ? ["openai" as const] : configuredOrder.length ? configuredOrder : defaults[input.task];
+  result = localFallback(input);
+  for (const provider of order) {
+    try {
+      result = provider === "openai" ? await generateOpenAI(input) : await generateEconomyProvider(input, provider);
+      break;
+    } catch { /* tenta a próxima rota homologada */ }
   }
   return recordUsage(input, result);
 }

@@ -29,6 +29,10 @@ type AIStatus = {
   providers: {
     openai: boolean;
     perplexity: boolean;
+    deepseek: boolean;
+    qwen: boolean;
+    kimi: boolean;
+    glm: boolean;
     localFallback: boolean;
     host: "hostinger";
   };
@@ -39,6 +43,7 @@ type AIStatus = {
     averageLatencyMs: number;
     openaiCalls: number;
     perplexityCalls: number;
+    economyCalls: number;
     localCalls: number;
     periodDays: number;
   };
@@ -265,7 +270,7 @@ export default function AISettings() {
         <AtlasMetric
           label="Chamadas de IA · 30 dias"
           value={data?.usage.calls ?? "—"}
-          detail={`${data?.usage.openaiCalls ?? 0} OpenAI · ${data?.usage.perplexityCalls ?? 0} Perplexity · ${data?.usage.localCalls ?? 0} fallback`}
+          detail={`${data?.usage.openaiCalls ?? 0} OpenAI · ${data?.usage.perplexityCalls ?? 0} pesquisa · ${data?.usage.economyCalls ?? 0} econômicas · ${data?.usage.localCalls ?? 0} fallback`}
           trend="USO"
           tone="blue"
         />
@@ -291,6 +296,27 @@ export default function AISettings() {
           tone="violet"
         />
       </section>
+
+      <AtlasCard>
+        <AtlasCardHeader
+          eyebrow="Orquestração final · V3"
+          title="Cada IA no trabalho em que entrega mais valor"
+          description="As rotas econômicas só ficam ativas com chave e modelo homologados na Hostinger. Dados pessoais permanecem exclusivamente na rota OpenAI."
+        />
+        <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4 sm:p-6">
+          {[
+            ["Qwen", "Resumos e tarefas rápidas", data?.providers.qwen],
+            ["DeepSeek", "Raciocínio econômico e fallback", data?.providers.deepseek],
+            ["Kimi", "Documentos e contexto extenso", data?.providers.kimi],
+            ["GLM", "Agentes e segunda opinião", data?.providers.glm],
+          ].map(([name, role, ready]) => (
+            <div key={String(name)} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4">
+              <div className="flex items-center justify-between gap-2"><span className="font-medium text-white">{String(name)}</span><AtlasBadge tone={ready ? "success" : "neutral"}>{ready ? "PRONTA" : "OPCIONAL"}</AtlasBadge></div>
+              <p className="mt-2 text-xs leading-5 text-slate-400">{String(role)}</p>
+            </div>
+          ))}
+        </div>
+      </AtlasCard>
 
       <AtlasCard>
         <AtlasCardHeader

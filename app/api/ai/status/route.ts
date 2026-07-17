@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
       openaiCalls: total.openaiCalls + (row.provider === "openai" ? 1 : 0),
       perplexityCalls:
         total.perplexityCalls + (row.provider === "perplexity" ? 1 : 0),
+      economyCalls: total.economyCalls + (["deepseek", "qwen", "kimi", "glm"].includes(row.provider) ? 1 : 0),
       localCalls: total.localCalls + (row.provider === "local" ? 1 : 0),
     }),
     {
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
       latencyMs: 0,
       openaiCalls: 0,
       perplexityCalls: 0,
+      economyCalls: 0,
       localCalls: 0,
     },
   );
