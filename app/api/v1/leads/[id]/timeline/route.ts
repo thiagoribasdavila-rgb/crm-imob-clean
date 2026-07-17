@@ -8,7 +8,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 type TimelineCategory = "change" | "contact" | "transfer" | "ai" | "proposal" | "external";
 type TimelineEvent = { id: string; category: TimelineCategory; title: string; description: string | null; occurredAt: string; actorName: string; source: string; status?: string | null };
 
-const proposalTypes = new Set(["commercial_simulation", "commercial_proposal_decision", "property_presentation", "property_feedback"]);
+const proposalTypes = new Set(["commercial_simulation", "commercial_proposal_decision", "commercial_proposal_lifecycle", "property_presentation", "property_feedback"]);
 const aiTypes = new Set(["ai", "ai_qualification", "experience_alert", "qualification", "score_recalibrated"]);
 const contactTypes = new Set(["call", "email", "message", "note", "meeting", "visit", "whatsapp_opt_out"]);
 function categoryForActivity(type: string): TimelineCategory {

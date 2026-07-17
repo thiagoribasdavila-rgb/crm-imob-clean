@@ -29,7 +29,7 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Lead fora do seu escopo comercial." }, { status: 403 });
     }
 
-    const [activityResult, propertyResult, opportunityResult, experienceResult, conversationResult, taskResult, campaignResult, sourceMemoryResult] = await Promise.all([
+    const [activityResult, propertyResult, opportunityResult, experienceResult, conversationResult, taskResult, campaignResult, sourceMemoryResult, proposalResult] = await Promise.all([
       identity.supabase.from("activities").select("id,user_id,title,description,type,metadata,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
       admin.from("properties").select("id,title,price,city,state,bedrooms,bathrooms,parking_spaces,area,status").eq("organization_id", identity.organizationId).limit(150),
       identity.supabase.from("opportunities").select("id,stage,value,probability,expected_close_at,property_id,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
@@ -38,6 +38,7 @@ export async function GET(request: Request, context: RouteContext) {
       identity.supabase.from("tasks").select("id,status,due_at,priority").eq("lead_id", id).eq("organization_id", identity.organizationId).limit(100),
       identity.supabase.from("campaign_events").select("id,event_type,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
       identity.supabase.from("lead_source_memories").select("id,source_file,source_sheet,source_row,commercial_facts,excluded_sensitive_fields,memory_role,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(100),
+      identity.supabase.from("commercial_simulations").select("id,status,property_price,valid_until,review_requested_at,approved_at,sent_at,responded_at,expired_at,preparation_minutes,review_minutes,response_minutes,response_note,rule_snapshot,updated_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(10),
     ]);
 
     const lead = leadResult.data;
@@ -76,6 +77,7 @@ export async function GET(request: Request, context: RouteContext) {
       properties: propertyResult.data ?? [],
       opportunities: opportunityResult.data ?? [],
       experienceSignals: experienceResult.data ?? [],
+      proposals: proposalResult.data ?? [],
       unifiedProfile: { conversations: conversationResult.data ?? [], tasks: taskResult.data ?? [], campaignEvents: campaignResult.data ?? [], historicalMemories: sourceMemoryResult.data ?? [], sources: ["CRM", ...(sourceMemoryResult.data?.length ? ["Bases históricas"] : []), ...(conversationResult.data?.length ? ["Atendimento"] : []), ...(campaignResult.data?.length ? ["Marketing"] : []), ...(opportunityResult.data?.length ? ["Vendas"] : [])] },
       relationshipContext: { owner: ownerResult.data, development: developmentResult.data, campaign: campaignLookupResult.data, communications: { conversations: conversationResult.data?.length ?? 0, messages: messageResult.data?.length ?? 0, inbound: (messageResult.data ?? []).filter((message) => message.direction === "inbound").length, outbound: (messageResult.data ?? []).filter((message) => message.direction === "outbound").length, unread: unreadMessages, channels: [...new Set((messageResult.data ?? []).map((message) => message.channel).filter(Boolean))], lastMessageAt: messageResult.data?.[0]?.created_at || null }, origin: { source: lead.source || "Não informada", createdAt: lead.created_at, campaignEvents: campaignResult.data?.length ?? 0, historicalMemories: sourceMemoryResult.data?.length ?? 0 } },
       dataQuality: { completeness: completeness.completeness, completedFields, totalFields: completeness.totalFields, missing: fields.filter((field) => !field.complete).map(({ key, label }) => ({ key, label })), inconsistencies, status: inconsistencies.length ? "review" : completedFields === completeness.totalFields ? "complete" : "enrich", recommendation: inconsistencies[0] || completeness.nextQuestion?.question || "Perfil consistente e pronto para personalização.", nextQuestion: completeness.nextQuestion, questions: completeness.questions, calculation: "weighted_commercial_completeness_v1" },

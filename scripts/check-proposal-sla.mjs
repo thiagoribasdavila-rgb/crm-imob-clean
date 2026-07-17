@@ -1,0 +1,10 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+const read=(path)=>readFileSync(resolve(process.cwd(),path),"utf8");const contract=JSON.parse(read("config/proposal-sla.json"));const sql=read(contract.migration).toLowerCase();const api=read(contract.api);const leadApi=read(contract.leadApi);const page=read(contract.leadPage);const failures=[];
+for(const state of contract.states)if(!sql.includes(`'${state}'`))failures.push(`estado ausente: ${state}`);
+for(const metric of contract.measurements)if(!sql.includes(metric)||!leadApi.includes(metric)||!page.includes(metric))failures.push(`medição incompleta: ${metric}`);
+for(const marker of ["transition_commercial_proposal","for update","proposal_not_sendable","proposal_response_invalid","proposal_not_expired","proposal_decline_reason_required","valid_until","proposal_out_of_scope"])if(!sql.includes(marker))failures.push(`controle de ciclo ausente: ${marker}`);
+for(const marker of ["proposal_lifecycle","transition_commercial_proposal","requireLeadAccess"])if(!api.includes(marker))failures.push(`API incompleta: ${marker}`);
+for(const marker of ["Fase 37 · SLA de proposta","Registrar envio ao cliente","Cliente aceitou","Cliente recusou"])if(!page.includes(marker))failures.push(`experiência incompleta: ${marker}`);
+if(!sql.includes("commercial_proposal_lifecycle")||!sql.includes("next_action_at"))failures.push("timeline ou próxima ação não acompanha a proposta");
+if(failures.length){console.error("SLA DE PROPOSTA Fase 37: REPROVADO");for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}console.log(`SLA DE PROPOSTA Fase 37: aprovado — ${contract.states.length} estados, ${contract.measurements.length} tempos e ${contract.safeguards.length} proteções.`);

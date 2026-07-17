@@ -11,9 +11,14 @@ export async function POST(request: NextRequest, context: Context) {
   if (!rate.allowed) return NextResponse.json({ error: "Aguarde antes de criar outra simulação." }, { status: 429 });
   try {
     const identity = await requireApiIdentity(request); const { id } = await context.params; await requireLeadAccess(identity, id);
-    const body = await request.json() as { propertyId?: string; action?: "simulate" | "proposal"; simulationId?: string };
-    if (!body.action || !["simulate", "proposal"].includes(body.action)) return NextResponse.json({ error: "Ação de simulação inválida." }, { status: 400 });
+    const body = await request.json() as { propertyId?: string; action?: "simulate" | "proposal" | "proposal_lifecycle"; simulationId?: string; status?: "sent" | "accepted" | "declined" | "expired"; note?: string };
+    if (!body.action || !["simulate", "proposal", "proposal_lifecycle"].includes(body.action)) return NextResponse.json({ error: "Ação de simulação inválida." }, { status: 400 });
     const admin = getSupabaseAdmin();
+    if (body.action === "proposal_lifecycle" && body.simulationId && body.status) {
+      const { data, error } = await admin.rpc("transition_commercial_proposal", { p_actor_id: identity.userId, p_organization_id: identity.organizationId, p_lead_id: id, p_simulation_id: body.simulationId, p_status: body.status, p_note: String(body.note || "").slice(0, 1000) });
+      if (error) return NextResponse.json({ error: "A proposta mudou, venceu ou esta transição não é permitida." }, { status: 409 });
+      return NextResponse.json({ proposal: data });
+    }
     if (body.action === "proposal" && body.simulationId) {
       const { data, error } = await admin.rpc("request_commercial_proposal_review", { p_actor_id: identity.userId, p_organization_id: identity.organizationId, p_simulation_id: body.simulationId, p_lead_id: id });
       if (error) return NextResponse.json({ error: "Preço, estoque ou regra mudou, a simulação venceu ou já existe revisão pendente. Recalcule antes de continuar." }, { status: 409 });

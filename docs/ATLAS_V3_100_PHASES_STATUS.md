@@ -680,7 +680,19 @@ Pendência externa: aplicar migration e aferir conclusão, reagendamento, cancel
 
 Pendência externa: aplicar migration e validar presencial, vídeo, concorrência, escopo lateral e dois tenants em homologação.
 
-Próxima fase: **Fase 37 — SLA de proposta**, medindo preparação, envio, retorno e validade comercial.
+## Fase 37 — SLA de proposta
+
+**Estado:** 100% implementada e aprovada localmente; migration e ciclo real com aprovação permanecem para homologação.
+
+**Evolução:** a proposta deixa de terminar na aprovação interna. O sistema acompanha preparação, revisão, envio, aceite, recusa e vencimento, mantendo a simulação e a regra financeira originais.
+
+**Medição:** tempo de preparação, revisão e resposta do cliente ficam visíveis no Lead 360. O envio abre próxima ação dentro da validade; a resposta encerra o ciclo e registra timeline.
+
+**Segurança:** apenas proposta aprovada e válida pode ser enviada. Resposta exige envio anterior, concorrência é bloqueada e preço, estoque, regra de pagamento, escopo comercial e revisão humana permanecem obrigatórios. O contrato está em `config/proposal-sla.json`, o gate em `npm run proposal-sla:check` e o roteiro em `docs/PROPOSAL_SLA_PHASE_37.md`.
+
+Pendência externa: aplicar migration e validar aprovação, envio, retorno, vencimento, concorrência e isolamento em homologação.
+
+Próxima fase: **Fase 38 — Forecast por etapa**, consolidando probabilidade, valor, prazo e confiança da previsão.
 
 ## Painel das 100 fases
 
