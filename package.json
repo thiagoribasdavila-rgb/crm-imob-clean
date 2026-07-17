@@ -130,6 +130,7 @@
     "final-projects:check": "node scripts/check-final-projects.mjs",
     "final-dashboards:check": "node scripts/check-final-dashboards.mjs",
     "final-ai:check": "node scripts/check-final-ai-integrations.mjs",
+    "final-reliability:check": "node scripts/check-final-reliability-homologation.mjs",
     "smoke:hostinger": "node scripts/smoke-hostinger-release.mjs",
     "worker:run": "node scripts/run-workers.mjs",
     "reports:meta-daily": "node scripts/run-daily-meta-report.mjs",

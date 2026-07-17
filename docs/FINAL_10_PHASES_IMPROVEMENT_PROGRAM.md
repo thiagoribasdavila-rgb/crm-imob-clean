@@ -48,9 +48,11 @@ Aplicar streaming, cancelamento, cache seguro, fallback econômico, filas, saúd
 
 Entrega: `FINAL_PHASE_8_AI_AUTOMATIONS_INTEGRATIONS.md`, cancelamento ponta a ponta, transparência de provedor/custo e verificação automática `final-ai:check`. O streaming permanece condicionado à homologação específica do proxy Hostinger.
 
-## 9. Confiabilidade, desempenho e homologação
+## 9. Confiabilidade, desempenho e homologação — concluída
 
 Medir banco, APIs, filas, renderização, acessibilidade, mobile, dois tenants e quatro perfis. Aceite: zero bloqueio crítico, restore e rollback comprovados, snapshots 97–99 atualizados.
+
+Entrega: `FINAL_PHASE_9_RELIABILITY_HOMOLOGATION.md`, evidência ausente bloqueante, consultas operacionais limitadas e verificação automática `final-reliability:check`. Evidências reais de restore, rollback, dois tenants, quatro perfis e HTTPS permanecem obrigatórias no ambiente.
 
 ## 10. Regressão e pacote Hostinger final
 
