@@ -18,6 +18,7 @@ type Lead = {
   source: string | null;
   assigned_to: string | null;
   campaign_id: string | null;
+  development_id: string | null;
   temperature: string | null;
   score: number | null;
   budget_min: number | null;
@@ -41,6 +42,7 @@ type Profile = {
 type ReferenceRow = Record<string, unknown>;
 type SortDirection = "asc" | "desc";
 type AttentionFilter = "" | "overdue" | "no_action" | "hot" | "unassigned";
+type NextActionFilter = "" | "today" | "next_7_days" | "scheduled";
 
 type LeadsPayload = {
   ok: true;
@@ -132,6 +134,7 @@ export default function LeadsPage() {
   const [broker, setBroker] = useState("");
   const [score, setScore] = useState("");
   const [attention, setAttention] = useState<AttentionFilter>("");
+  const [nextAction, setNextAction] = useState<NextActionFilter>("");
   const [sort, setSort] = useState("created_at");
   const [direction, setDirection] = useState<SortDirection>("desc");
   const [page, setPage] = useState(1);
@@ -182,16 +185,6 @@ export default function LeadsPage() {
     };
   }, []);
 
-  const campaignIds = useMemo(
-    () =>
-      project
-        ? campaigns
-            .filter((campaign) => developmentRef(campaign) === project)
-            .map((campaign) => String(campaign.id))
-        : [],
-    [campaigns, project],
-  );
-
   useEffect(() => {
     const controller = new AbortController();
 
@@ -217,17 +210,7 @@ export default function LeadsPage() {
           if ((selectedProfile?.commercial_role || selectedProfile?.role) === "manager") params.set("team_owner", broker);
           else params.set("assigned_to", broker);
         }
-        if (project) {
-          if (campaignIds.length) params.set("campaign_ids", campaignIds.join(","));
-          else {
-            setItems([]);
-            setTotal(0);
-            setPages(1);
-            setReferenceTime(Date.now());
-            setLoading(false);
-            return;
-          }
-        }
+        if (project) params.set("development_id", project);
         if (score === "hot") params.set("min_score", "70");
         if (score === "warm") {
           params.set("min_score", "40");
@@ -235,6 +218,7 @@ export default function LeadsPage() {
         }
         if (score === "cold") params.set("max_score", "39");
         if (attention) params.set("attention", attention);
+        if (nextAction) params.set("next_action", nextAction);
 
         const response = await fetch(`/api/v1/crm/leads?${params}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -261,7 +245,7 @@ export default function LeadsPage() {
 
     void loadLeads();
     return () => controller.abort();
-  }, [attention, broker, campaignIds, debouncedSearch, direction, page, profiles, project, reloadKey, score, sort, source, status]);
+  }, [attention, broker, debouncedSearch, direction, nextAction, page, profiles, project, reloadKey, score, sort, source, status]);
 
   const profileMap = useMemo(
     () => new Map(profiles.map((profile) => [profile.id, profile.full_name || "Usuário Atlas"])),
@@ -279,7 +263,7 @@ export default function LeadsPage() {
   );
 
   const projectName = (lead: Lead) => {
-    const developmentId = lead.campaign_id ? campaignMap.get(lead.campaign_id) : "";
+    const developmentId = lead.development_id || (lead.campaign_id ? campaignMap.get(lead.campaign_id) : "");
     return developmentId ? developmentMap.get(developmentId) || "Projeto não identificado" : "Sem projeto";
   };
 
@@ -297,7 +281,7 @@ export default function LeadsPage() {
     [profiles],
   );
 
-  const hasFilters = Boolean(search || status || source || project || broker || score || attention);
+  const hasFilters = Boolean(search || status || source || project || broker || score || attention || nextAction);
   const canTransfer = ["admin", "director", "superintendent", "manager"].includes(currentRole);
   const transferTargets = profiles.filter((profile) => {
     const role = profile.commercial_role || profile.role;
@@ -342,6 +326,7 @@ export default function LeadsPage() {
     setBroker("");
     setScore("");
     setAttention("");
+    setNextAction("");
     setSort("created_at");
     setDirection("desc");
     setPage(1);
@@ -360,7 +345,7 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6 pb-10">
       <section className="atlas-leads-hero">
-        <div>
+        <div className="atlas-leads-source-filter">
           <div className="flex flex-wrap gap-2">
             <StatusBadge tone="info">LEADS INTELLIGENCE</StatusBadge>
             <StatusBadge tone="success">TENANT-SAFE</StatusBadge>
@@ -376,7 +361,7 @@ export default function LeadsPage() {
             <button
               type="button"
               className="atlas-button-secondary"
-              onClick={() => window.dispatchEvent(new CustomEvent("atlas:open-copilot", { detail: { prompt: "Analise a carteira de leads atual e recomende critérios de priorização para o time comercial.", context: { total, filters: { status, project, broker, score }, pageMetrics } } }))}
+              onClick={() => window.dispatchEvent(new CustomEvent("atlas:open-copilot", { detail: { prompt: "Analise a carteira de leads atual e recomende critérios de priorização para o time comercial.", context: { total, filters: { status, source, project, broker, score, attention, nextAction }, pageMetrics } } }))}
             >
               ✦ Analisar carteira
             </button>
@@ -430,10 +415,18 @@ export default function LeadsPage() {
         <select value={status} onChange={(event) => updateFilter(setStatus, event.target.value)} aria-label="Filtrar por status">
           {statuses.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
-        <select value={source} onChange={(event) => updateFilter(setSource, event.target.value)} aria-label="Filtrar por origem">
-          <option value="">Todas as origens</option>
-          <option value="Meta Lead Ads">Meta Lead Ads</option>
-        </select>
+        <div>
+          <input list="atlas-lead-sources" value={source} onChange={(event) => updateFilter(setSource, event.target.value)} placeholder="Todas as origens" aria-label="Filtrar por origem" />
+          <datalist id="atlas-lead-sources">
+            <option value="Meta Lead Ads" />
+            <option value="WhatsApp" />
+            <option value="Google Ads" />
+            <option value="TikTok Ads" />
+            <option value="Portal imobiliário" />
+            <option value="Indicação" />
+            <option value="Oferta ativa" />
+          </datalist>
+        </div>
         {currentRole !== "broker" ? <select value={broker} onChange={(event) => updateFilter(setBroker, event.target.value)} aria-label="Filtrar por corretor" disabled={referencesLoading}>
           <option value="">{currentRole === "manager" ? "Todo o meu time" : "Todos os corretores"}</option>
           {currentRole !== "manager" ? <option value="unassigned">Sem responsável</option> : null}
@@ -444,6 +437,12 @@ export default function LeadsPage() {
           <option value="hot">Quente · 70–100</option>
           <option value="warm">Morno · 40–69</option>
           <option value="cold">Frio · 0–39</option>
+        </select>
+        <select value={nextAction} onChange={(event) => updateFilter((value) => setNextAction(value as NextActionFilter), event.target.value)} aria-label="Filtrar por próxima ação">
+          <option value="">Qualquer próxima ação</option>
+          <option value="today">Agendada para hoje</option>
+          <option value="next_7_days">Próximos 7 dias</option>
+          <option value="scheduled">Todas as agendadas</option>
         </select>
         <div className="atlas-leads-sort">
           <select value={sort} onChange={(event) => updateFilter(setSort, event.target.value)} aria-label="Ordenar leads">

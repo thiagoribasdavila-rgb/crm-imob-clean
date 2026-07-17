@@ -1,11 +1,5 @@
-export default function LeadFiltersPage() {
-  return (
-    <div>
-      <h1>Filtros de Leads</h1>
+import { redirect } from "next/navigation";
 
-      <button>Hot</button>
-      <button>Warm</button>
-      <button>Cold</button>
-    </div>
-  );
+export default function LeadFiltersPage() {
+  redirect("/leads");
 }

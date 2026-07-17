@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 const allowedSorts = new Set(["created_at", "updated_at", "score", "name"]);
 const allowedDirections = new Set(["asc", "desc"]);
 const allowedAttentionFilters = new Set(["overdue", "no_action", "hot", "unassigned"]);
+const allowedNextActionFilters = new Set(["today", "next_7_days", "scheduled"]);
 
 function clampLimit(raw: string | null) {
   const parsed = Number(raw ?? "25");
@@ -78,6 +79,7 @@ export async function GET(request: NextRequest) {
   const status = params.get("status")?.trim() || null;
   const source = params.get("source")?.trim() || null;
   const assignedTo = params.get("assigned_to")?.trim() || null;
+  const developmentId = params.get("development_id")?.trim() || null;
   const teamOwner = params.get("team_owner")?.trim() || null;
   const minScore = scoreFilter(params.get("min_score"));
   const maxScore = scoreFilter(params.get("max_score"));
@@ -91,6 +93,9 @@ export async function GET(request: NextRequest) {
   const attention = allowedAttentionFilters.has(params.get("attention") ?? "")
     ? params.get("attention")
     : null;
+  const nextAction = allowedNextActionFilters.has(params.get("next_action") ?? "")
+    ? params.get("next_action")
+    : null;
 
   if (teamOwner && assignedTo) {
     return apiError("AMBIGUOUS_OWNER_FILTER", "Escolha uma equipe ou um corretor, não os dois ao mesmo tempo.", access.meta, {
@@ -100,6 +105,9 @@ export async function GET(request: NextRequest) {
   }
   if (assignedTo && assignedTo !== "unassigned" && !uuidPattern.test(assignedTo)) {
     return apiError("INVALID_OWNER", "Corretor inválido.", access.meta, { status: 400, headers: rate.headers });
+  }
+  if (developmentId && !uuidPattern.test(developmentId)) {
+    return apiError("INVALID_DEVELOPMENT", "Projeto inválido.", access.meta, { status: 400, headers: rate.headers });
   }
 
   if (params.has("cursor") && !cursor) {
@@ -127,6 +135,7 @@ export async function GET(request: NextRequest) {
 
   if (status) query = query.eq("status", status);
   if (source) query = query.eq("source", source);
+  if (developmentId) query = query.eq("development_id", developmentId);
   if (teamOwner || (assignedTo && assignedTo !== "unassigned")) {
     const { data: visibleProfiles, error: profilesError } = await access.supabase
       .from("profiles")
@@ -154,6 +163,20 @@ export async function GET(request: NextRequest) {
     if (attention === "no_action") query = query.is("next_action_at", null);
     if (attention === "hot") query = query.or("temperature.eq.quente,score.gte.70");
     if (attention === "unassigned") query = query.is("assigned_to", null);
+  }
+  if (nextAction) {
+    query = query.not("status", "in", "(ganho,perdido,comprou_outro)").not("next_action_at", "is", null);
+    const now = new Date();
+    if (nextAction === "scheduled") query = query.gte("next_action_at", now.toISOString());
+    if (nextAction === "today") {
+      const end = new Date(now);
+      end.setHours(23, 59, 59, 999);
+      query = query.gte("next_action_at", now.toISOString()).lte("next_action_at", end.toISOString());
+    }
+    if (nextAction === "next_7_days") {
+      const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      query = query.gte("next_action_at", now.toISOString()).lte("next_action_at", end.toISOString());
+    }
   }
   if (campaignIds.length) query = query.in("campaign_id", campaignIds);
   if (search) {
@@ -213,6 +236,7 @@ export async function GET(request: NextRequest) {
         status,
         source,
         assignedTo,
+        developmentId,
         teamOwner,
         minScore,
         maxScore,
@@ -221,6 +245,7 @@ export async function GET(request: NextRequest) {
         sort,
         direction,
         attention,
+        nextAction,
       },
     },
     access.meta,

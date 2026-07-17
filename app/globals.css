@@ -794,6 +794,8 @@ input:focus, select:focus, textarea:focus {
 }
 .atlas-leads-filter-panel select, .atlas-leads-search { min-height: 44px; border: 1px solid var(--atlas-border); border-radius: 12px; background: #0a1120; }
 .atlas-leads-filter-panel select { min-width: 0; padding: 0 34px 0 12px; color: #cdd7e5; font-size: 11px; }
+.atlas-leads-source-filter input { width: 100%; min-height: 44px; border: 1px solid var(--atlas-border); border-radius: 12px; background: #0a1120; padding: 0 12px; color: #cdd7e5; font-size: 11px; outline: none; }
+.atlas-leads-source-filter input:focus { border-color: rgba(56,189,248,.4); box-shadow: 0 0 0 3px rgba(56,189,248,.08); }
 .atlas-leads-filter-panel select:disabled { cursor: wait; opacity: .55; }
 .atlas-leads-search { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 0 13px; }
 .atlas-leads-search > span { color: #38bdf8; }

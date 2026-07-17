@@ -1,0 +1,9 @@
+{
+  "phase": 28,
+  "page": "app/(crm)/leads/page.tsx",
+  "endpoint": "app/api/v1/crm/leads/route.ts",
+  "quickFilters": ["overdue", "no_action", "hot", "unassigned"],
+  "dimensions": ["source", "development_id", "assigned_to", "team_owner", "next_action", "score", "status"],
+  "nextActionWindows": ["today", "next_7_days", "scheduled"],
+  "scopeControls": ["requireAccessContext", "organization_id", "hierarchical_profiles", "rls"]
+}

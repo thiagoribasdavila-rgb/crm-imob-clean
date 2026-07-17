@@ -572,7 +572,19 @@ Pendência externa: testar lead própria e lateral, reconciliar projeto, respons
 
 Pendência externa: testar termos reais, acentos, telefone, projeto, corretor e intenção com quatro perfis e duas organizações; medir precisão dos dez primeiros resultados e tempo até abrir a lead correta.
 
-Próxima fase: **Fase 28 — filtros comerciais**, criando atalhos rápidos para atrasos, calor, origem, projeto, responsável e próxima ação.
+## Fase 28 — Filtros comerciais
+
+**Estado:** 100% implementada e aprovada localmente; conferência de datas, origens e hierarquia com dados reais permanece para homologação.
+
+**Evolução:** a carteira ganhou atalhos de um toque para atrasos, ausência de próxima ação, calor e falta de responsável, além de filtros por origem, projeto, responsável, status, score e agenda. Próximas ações podem ser separadas entre hoje, sete dias e todas as futuras.
+
+**Precisão operacional:** projeto agora usa diretamente o vínculo canônico da lead e não depende da existência de campanha. A rota antiga de filtros foi consolidada na carteira principal, eliminando uma tela duplicada e incompleta. O copiloto recebe o contexto dos filtros ativos.
+
+**Escopo:** filtros passam pelo contexto autenticado, organização, RLS e validação da hierarquia antes de consultar dados. O contrato está em `config/commercial-filters.json`, o gate em `npm run commercial-filters:check` e o roteiro em `docs/COMMERCIAL_FILTERS_PHASE_28.md`.
+
+Pendência externa: conferir janelas de data no fuso oficial, origens reais, projeto sem campanha e isolamento com quatro perfis e duas organizações.
+
+Próxima fase: **Fase 29 — timeline**, registrando mudanças, contatos, transferências, IA, propostas e eventos externos.
 
 ## Painel das 100 fases
 
