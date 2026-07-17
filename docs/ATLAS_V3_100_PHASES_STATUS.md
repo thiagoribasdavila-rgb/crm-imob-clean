@@ -920,7 +920,17 @@ Pendência externa: aplicar migration e validar três níveis de liderança, doi
 
 **Pendências externas:** quatro perfis, dois tenants, equipe online, concorrência, cron de reservas, capacidade, mobile e 10 mil leads. O contrato está em `config/distribution-block-closure.json`, o gate em `npm run distribution-block:check` e o roteiro em `docs/DISTRIBUTION_BLOCK_CLOSURE_PHASE_60.md`.
 
-Próxima fase: **Fase 61 — Cadastro completo de incorporadoras**, iniciando o bloco de projetos e incorporadoras com fonte única da verdade.
+## Fase 61 — Cadastro canônico de incorporadoras
+
+**Estado:** 100% implementada e aprovada localmente; migração e cadastros reais permanecem para homologação.
+
+**Evolução:** incorporadora passa a ser entidade única com razão social, nome comercial, CNPJ, contatos, sede, status e SLA padrão de comissão. Projetos ganham vínculo por ID e nomes antigos são migrados automaticamente.
+
+**Governança:** diretoria/superintendência escrevem, RLS isola empresas e eventos auditam mudanças. O contrato está em `config/canonical-developers.json`, o gate em `npm run canonical-developers:check` e o roteiro em `docs/CANONICAL_DEVELOPERS_PHASE_61.md`.
+
+Pendência externa: aplicar migration e validar incorporadoras reais, dois tenants, CNPJ, permissões e vínculos migrados.
+
+Próxima fase: **Fase 62 — Cadastro completo de empreendimentos**, vinculando dados comerciais, localização, tipologia e ciclo de vendas à incorporadora canônica.
 
 ## Painel das 100 fases
 
