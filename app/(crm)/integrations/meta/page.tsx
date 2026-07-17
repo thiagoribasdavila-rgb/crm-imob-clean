@@ -133,6 +133,15 @@ type Payload = {
   audienceRecommendations: Array<{ signal: string; count: number }>;
   campaignIntelligence: CampaignIntelligence[];
   dailyReports: DailyReport[];
+  andromedaReadiness: {
+    score: number;
+    eligibleLeads: number;
+    deliveryRate: number;
+    dualIdentifierRate: number;
+    feedbackCoverage: number;
+    recommendations: string[];
+    privacy: string;
+  };
   readiness: {
     webhookSecret: boolean;
     graphToken: boolean;
@@ -1102,6 +1111,13 @@ export default function MetaIntegration() {
           </div>
         </AtlasCard>
       </section>
+      <AtlasCard>
+        <AtlasCardHeader eyebrow="Andromeda signal loop" title="Qualidade da conexão CRM → Meta" description="Mede se o Andromeda está recebendo eventos confiáveis e profundos. É diagnóstico; nenhuma campanha é alterada automaticamente." />
+        <div className="grid gap-4 p-5 sm:p-6 lg:grid-cols-[220px_1fr]">
+          <div className="grid place-items-center rounded-3xl border border-sky-400/15 bg-sky-400/[.05] p-6 text-center"><span className="text-[10px] font-semibold uppercase tracking-[.14em] text-sky-300">Prontidão do sinal</span><strong className="mt-3 text-5xl font-semibold tracking-[-.06em] text-white">{data?.andromedaReadiness.score ?? 0}%</strong><small className="mt-2 text-xs text-slate-500">{data?.andromedaReadiness.eligibleLeads ?? 0} leads elegíveis</small></div>
+          <div><div className="grid gap-3 sm:grid-cols-3">{[["Entrega confirmada", data?.andromedaReadiness.deliveryRate ?? 0], ["Telefone + e-mail", data?.andromedaReadiness.dualIdentifierRate ?? 0], ["Feedback profundo", data?.andromedaReadiness.feedbackCoverage ?? 0]].map(([label,value]) => <div key={String(label)} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><span className="text-xs text-slate-500">{label}</span><strong className="mt-2 block text-2xl text-white">{value}%</strong></div>)}</div><div className="mt-3 rounded-2xl border border-violet-400/10 bg-violet-400/[.04] p-4"><p className="text-[10px] font-semibold uppercase tracking-wider text-violet-300">Próximas melhorias</p>{data?.andromedaReadiness.recommendations.length ? <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-400">{data.andromedaReadiness.recommendations.map((item) => <li key={item}>• {item}</li>)}</ul> : <p className="mt-2 text-xs text-emerald-300">Sinal saudável para continuar a homologação controlada.</p>}<p className="mt-3 text-[10px] text-slate-600">{data?.andromedaReadiness.privacy}</p></div></div>
+        </div>
+      </AtlasCard>
       <AtlasCard>
         <AtlasCardHeader
           eyebrow="Audience intelligence"

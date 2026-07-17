@@ -162,24 +162,26 @@ export async function POST(request: Request) {
         if (!config.enabled || config.mode !== "test" || !config.test_event_code) throw new Error("Conversões Meta permanecem bloqueadas fora do modo de teste.");
         const accessToken = process.env.META_CONVERSIONS_ACCESS_TOKEN;
         if (!accessToken) throw new Error("META_CONVERSIONS_ACCESS_TOKEN não configurado.");
-        const { data: lead, error: leadError } = await admin.from("leads").select("email,phone,metadata").eq("id", conversion.lead_id).eq("organization_id", conversion.organization_id).single();
+        const { data: lead, error: leadError } = await admin.from("leads").select("id,email,phone,metadata").eq("id", conversion.lead_id).eq("organization_id", conversion.organization_id).single();
         if (leadError || !lead) throw leadError ?? new Error("Lead da conversão não encontrado.");
         const metadata = lead.metadata && typeof lead.metadata === "object" ? lead.metadata as Record<string, unknown> : {};
         const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as Record<string, unknown> : {};
         if (config.consent_required && meta.dataSharingConsent !== true) throw new Error("Compartilhamento bloqueado: consentimento não registrado.");
-        const userData: { em?: string[]; ph?: string[] } = {};
+        const userData: { em?: string[]; ph?: string[]; external_id: string[]; fbc?: string; fbp?: string } = { external_id: [hashMetaValue(`atlas:${conversion.organization_id}:${lead.id}`)] };
         if (lead.email) userData.em = [hashMetaValue(lead.email)];
         if (lead.phone) {
           const phone = normalizeMetaPhone(lead.phone);
           if (phone) userData.ph = [hashMetaValue(phone)];
         }
-        if (!userData.em && !userData.ph) throw new Error("Conversão sem identificador elegível para correspondência.");
+        if (typeof meta.fbc === "string" && /^fb\.1\.\d{10,}\.\w+$/i.test(meta.fbc)) userData.fbc = meta.fbc.slice(0, 255);
+        if (typeof meta.fbp === "string" && /^fb\.1\.\d{10,}\.\w+$/i.test(meta.fbp)) userData.fbp = meta.fbp.slice(0, 255);
+        if (!userData.em && !userData.ph) throw new Error("Conversão sem e-mail ou telefone consentido para correspondência.");
         await admin.from("meta_conversion_events").update({ status: "processing", attempts: Number(conversion.attempts || 0) + 1, last_error: null }).eq("id", conversion.id);
         const apiVersion = process.env.META_GRAPH_API_VERSION || "v23.0";
         const response = await fetch(`https://graph.facebook.com/${apiVersion}/${encodeURIComponent(config.dataset_id)}/events`, {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ data: [{ event_name: conversion.event_name, event_time: Math.floor(new Date(conversion.occurred_at).getTime() / 1000), event_id: conversion.event_id, action_source: conversion.action_source, user_data: userData, custom_data: conversion.custom_data }], test_event_code: config.test_event_code }),
+          body: JSON.stringify({ data: [{ event_name: conversion.event_name, event_time: Math.floor(new Date(conversion.occurred_at).getTime() / 1000), event_id: conversion.event_id, action_source: conversion.action_source, user_data: userData, custom_data: { ...conversion.custom_data, atlas_signal_version: "andromeda-v1" } }], test_event_code: config.test_event_code }),
         });
         const metaResponse = await response.json() as Record<string, unknown>;
         if (!response.ok) throw new Error(typeof metaResponse.error === "object" && metaResponse.error ? String((metaResponse.error as { message?: unknown }).message || `Meta HTTP ${response.status}`) : `Meta HTTP ${response.status}`);
