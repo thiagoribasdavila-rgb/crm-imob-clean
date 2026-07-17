@@ -13,6 +13,7 @@ import { StatusBadge } from "@/components/atlas/status-badge";
 
 type DataRow = Record<string, unknown>;
 type Period = "7" | "30" | "90" | "all";
+type DecisionPeriod = "day" | "week" | "month";
 type DashboardData = {
   leads: DataRow[];
   opportunities: DataRow[];
@@ -131,6 +132,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [period, setPeriod] = useState<Period>("30");
+  const [decisionPeriod, setDecisionPeriod] = useState<DecisionPeriod>("day");
   const [project, setProject] = useState("all");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [viewerId, setViewerId] = useState("");
@@ -397,6 +399,67 @@ export default function DashboardPage() {
     [data.insights],
   );
 
+  const decisionReports = useMemo(() => {
+    const windows: Array<{ key: DecisionPeriod; label: string; days: number }> = [
+      { key: "day", label: "Hoje", days: 1 },
+      { key: "week", label: "7 dias", days: 7 },
+      { key: "month", label: "30 dias", days: 30 },
+    ];
+    return Object.fromEntries(windows.map(({ key, label, days }) => {
+      const since = referenceTime - days * 86_400_000;
+      const createdLeads = data.leads.filter((lead) => (dateValue(lead, "created_at")?.getTime() ?? 0) >= since);
+      const movedLeads = data.leads.filter((lead) => (dateValue(lead, "updated_at")?.getTime() ?? 0) >= since);
+      const won = data.opportunities.filter((opportunity) => normalized(opportunity.stage) === "ganho" && (dateValue(opportunity, "won_at", "updated_at", "created_at")?.getTime() ?? 0) >= since);
+      const completedTasks = data.tasks.filter((task) => isDone(task) && (dateValue(task, "updated_at", "created_at")?.getTime() ?? 0) >= since);
+      const conversion = createdLeads.length ? Math.round((won.length / createdLeads.length) * 1000) / 10 : 0;
+      return [key, { label, created: createdLeads.length, moved: movedLeads.length, won: won.length, completed: completedTasks.length, conversion }];
+    })) as Record<DecisionPeriod, { label: string; created: number; moved: number; won: number; completed: number; conversion: number }>;
+  }, [data.leads, data.opportunities, data.tasks, referenceTime]);
+
+  const roleActions = useMemo(() => {
+    if (isManager) {
+      const alerts = teamSla?.byBroker.slice(0, 3).map((broker) => ({
+        title: broker.brokerName,
+        detail: `${broker.firstContactOverdue} sem primeiro contato · ${broker.followUpOverdue} follow-ups atrasados`,
+        action: "Cobrar plano de recuperação e acompanhar até concluir",
+        href: "/brokers",
+        priority: "Intervir",
+      })) ?? [];
+      return {
+        eyebrow: "Rotina do gerente",
+        title: "Onde o time precisa de você",
+        mission: "Remover gargalos, garantir SLA e orientar os corretores — sem assumir o atendimento deles.",
+        items: alerts,
+      };
+    }
+    const items = priorities.slice(0, 3).map((lead) => {
+      const nextAction = dateValue(lead, "next_action_at");
+      const overdue = Boolean(nextAction && nextAction.getTime() < referenceTime);
+      return {
+        title: displayName(lead, "Lead"),
+        detail: `${stringValue(lead, "status") || "novo"} · score ${numberValue(lead, "score", "score_ia")}`,
+        action: overdue ? "Fazer o follow-up vencido agora" : "Executar e registrar a próxima ação",
+        href: `/leads/${String(lead.id)}`,
+        priority: overdue ? "Agora" : "Prioridade",
+      };
+    });
+    return {
+      eyebrow: "Rotina do corretor",
+      title: "O que fazer agora",
+      mission: "Atender, qualificar, avançar a próxima ação e registrar o resultado para a IA aprender.",
+      items,
+    };
+  }, [isManager, priorities, referenceTime, teamSla]);
+
+  const selectedDecisionReport = decisionReports[decisionPeriod];
+  const aiDecision = isManager
+    ? (teamSla?.totals.alerts ?? 0) > 0
+      ? `Comece pelos ${teamSla?.totals.brokersWithAlerts ?? 0} corretores com SLA vencido. Combine responsável e prazo ainda hoje.`
+      : "O time está sem alertas críticos. Use o dia para revisar conversão, qualidade das próximas ações e coaching."
+    : metrics.overdue > 0
+      ? `Resolva primeiro os ${metrics.overdue} itens atrasados e depois avance os leads quentes. Registre cada resultado para melhorar a próxima recomendação.`
+      : "Sua operação está em dia. Priorize leads quentes e confirme uma próxima ação com data em cada atendimento.";
+
   const aiContext = {
     period,
     project: project === "all" ? "Todos os projetos" : projectMap.get(project),
@@ -505,6 +568,31 @@ export default function DashboardPage() {
           action={<button type="button" className="atlas-button-secondary" onClick={() => void load()}>Tentar novamente</button>}
         />
       ) : null}
+
+      <section className="rounded-[28px] border border-cyan-400/15 bg-gradient-to-br from-cyan-500/[.08] via-slate-950/70 to-violet-500/[.07] p-5 sm:p-6">
+        <div className="grid gap-6 xl:grid-cols-[1.35fr_.9fr]">
+          <div>
+            <PageHeader eyebrow={roleActions.eyebrow} title={roleActions.title} description={roleActions.mission} />
+            {roleActions.items.length ? <div className="mt-4 grid gap-3">
+              {roleActions.items.map((item) => <Link key={`${item.title}-${item.href}`} href={item.href} className="group flex flex-col gap-3 rounded-2xl border border-white/[.07] bg-white/[.025] p-4 transition hover:border-cyan-300/25 hover:bg-white/[.045] sm:flex-row sm:items-center sm:justify-between">
+                <div><div className="flex items-center gap-2"><StatusBadge tone={item.priority === "Agora" || item.priority === "Intervir" ? "danger" : "info"}>{item.priority.toUpperCase()}</StatusBadge><strong className="text-white">{item.title}</strong></div><p className="mt-2 text-xs text-slate-400">{item.detail}</p></div>
+                <span className="text-sm font-semibold text-cyan-200 group-hover:text-white">{item.action} →</span>
+              </Link>)}
+            </div> : <EmptyState title={isManager ? "Time sem exceções críticas" : "Fila de prioridades concluída"} description={isManager ? "Nenhum corretor direto exige intervenção agora." : "Não há lead ativo exigindo ação imediata neste recorte."} />}
+          </div>
+          <aside className="rounded-2xl border border-white/[.08] bg-slate-950/55 p-4 sm:p-5" aria-label="Relatório simples para decisão">
+            <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[.18em] text-violet-300">Relatório para decisão</p><h2 className="mt-1 text-lg font-bold text-white">Resumo simples da operação</h2></div><StatusBadge tone="violet">IA OPERACIONAL</StatusBadge></div>
+            <div className="mt-4 flex gap-2" role="group" aria-label="Período do relatório">
+              {(["day", "week", "month"] as DecisionPeriod[]).map((key) => <button key={key} type="button" aria-pressed={decisionPeriod === key} onClick={() => setDecisionPeriod(key)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${decisionPeriod === key ? "bg-white text-slate-950" : "border border-white/10 text-slate-400 hover:text-white"}`}>{decisionReports[key].label}</button>)}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {[{ label: "Novos leads", value: selectedDecisionReport.created }, { label: "Leads movimentados", value: selectedDecisionReport.moved }, { label: "Vendas ganhas", value: selectedDecisionReport.won }, { label: "Tarefas concluídas", value: selectedDecisionReport.completed }].map((metric) => <div key={metric.label} className="rounded-xl border border-white/[.06] bg-white/[.025] p-3"><strong className="text-xl text-white">{metric.value}</strong><p className="mt-1 text-[11px] text-slate-500">{metric.label}</p></div>)}
+            </div>
+            <div className="mt-4 rounded-xl border border-violet-400/15 bg-violet-500/[.07] p-4"><p className="text-xs font-bold text-violet-200">✦ Recomendação Atlas</p><p className="mt-2 text-sm leading-6 text-slate-300">{aiDecision}</p></div>
+            <p className="mt-3 text-[10px] leading-4 text-slate-600">Resumo calculado com dados reais visíveis no CRM. A IA orienta; decisões e alterações continuam sob responsabilidade humana.</p>
+          </aside>
+        </div>
+      </section>
 
       {isSuperintendent ? (
         <section className="rounded-[28px] border border-sky-400/15 bg-gradient-to-br from-sky-500/[.09] to-violet-500/[.05] p-5 sm:p-6">
