@@ -1020,7 +1020,17 @@ Pendência externa: aplicar migration e validar fontes reais, expiração, aprov
 
 Pendência externa: aplicar migrations 61–70 e validar portfólio real, oito gates, quatro perfis, expiração, dois tenants e renovação do aceite.
 
-Próxima fase: **Fase 71 — Contrato canônico de dados da lead**, iniciando o bloco de dados, score e predição com qualidade mensurável.
+## Fase 71 — Contrato canônico de dados da lead
+
+**Estado:** 100% implementada e aprovada localmente; base real permanece para homologação.
+
+**Evolução:** e-mail, telefone, origem e identidade passam a ter representação normalizada. Dez dimensões formam uma qualidade de 0–100, com status e lacunas acionáveis em uma fila de saneamento.
+
+**Governança:** qualidade é determinística, custa zero em LLM e permanece separada do score de compra. O painel respeita a hierarquia e não retorna contatos, notas ou documentos. O contrato está em `config/canonical-lead-data-contract.json`, o gate em `npm run lead-contract:check` e o roteiro em `docs/CANONICAL_LEAD_DATA_CONTRACT_PHASE_71.md`.
+
+Pendência externa: aplicar migration e validar contatos, duplicidades, dez dimensões, quatro perfis, base real e dois tenants.
+
+Próxima fase: **Fase 72 — Deduplicação e identidade única**, consolidando contatos sem perder histórico, responsável ou consentimento.
 
 ## Painel das 100 fases
 
