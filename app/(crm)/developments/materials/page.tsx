@@ -43,6 +43,10 @@ const materialLabels: Record<string, { label: string; icon: string; description:
   sales_mirror: { label: "Espelho de vendas", icon: "▥", description: "Disponibilidade atualizada das unidades" },
   floor_plan: { label: "Plantas", icon: "⌑", description: "Tipologias e materiais técnicos" },
   presentation: { label: "Apresentação", icon: "▤", description: "Material de apoio para atendimento" },
+  technical_memorial: { label: "Memorial técnico", icon: "≣", description: "Especificações, acabamentos e escopo técnico" },
+  registration_form: { label: "Ficha cadastral", icon: "▧", description: "Formulário oficial para cadastro do cliente" },
+  video: { label: "Vídeos comerciais", icon: "▶", description: "Decorado, facilidades, proximidades e campanha" },
+  site_plan: { label: "Implantação", icon: "⌗", description: "Posição das unidades, orientação solar e acessos" },
   other: { label: "Outros materiais", icon: "◇", description: "Documentos complementares" },
 };
 const essentialTypes = ["book", "price_table", "sales_mirror"] as const;
@@ -95,7 +99,10 @@ export default function ProjectMaterialsPage() {
         setDevelopments(items);
         setCoverage(portfolio.coverageByDeveloper ?? []);
         setPortfolioSummary(portfolio.summary ?? null);
-        const preferred = new URLSearchParams(window.location.search).get("project");
+        const parameters = new URLSearchParams(window.location.search);
+        const preferred = parameters.get("project");
+        const preferredDeveloper = parameters.get("developer");
+        if (preferredDeveloper) setDeveloper(preferredDeveloper);
         if (items.length) setSelectedId(items.some((item) => item.id === preferred) ? preferred! : items[0].id);
       }
       setCurrentRole(me?.data?.profile?.commercialRole || me?.data?.profile?.role || "");
@@ -273,7 +280,7 @@ export default function ProjectMaterialsPage() {
             <label className="space-y-2 text-xs text-slate-400">Vigência inicial<input type="date" value={form.validFrom} onChange={(event) => setForm({ ...form, validFrom: event.target.value })} className="block w-full rounded-xl border border-white/10 bg-[#0a1120] px-4 py-3 text-sm text-white" /></label>
             <label className="space-y-2 text-xs text-slate-400">Válido até<input type="date" value={form.validUntil} onChange={(event) => setForm({ ...form, validUntil: event.target.value })} className="block w-full rounded-xl border border-white/10 bg-[#0a1120] px-4 py-3 text-sm text-white" /></label>
             <label className="space-y-2 text-xs text-slate-400 lg:col-span-2">Descrição<input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Observação rápida para o time" className="block w-full rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm text-white" /></label>
-            <label className="space-y-2 text-xs text-slate-400">Arquivo<input required type="file" accept=".pdf,.xls,.xlsx,.jpg,.jpeg,.png,.webp" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="block w-full rounded-xl border border-dashed border-sky-400/30 bg-sky-400/[0.06] px-4 py-2.5 text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-sky-400/15 file:px-3 file:py-1.5 file:text-sky-200" /></label>
+            <label className="space-y-2 text-xs text-slate-400">Arquivo<input required type="file" accept=".pdf,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.mp4,.mov" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="block w-full rounded-xl border border-dashed border-sky-400/30 bg-sky-400/[0.06] px-4 py-2.5 text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-sky-400/15 file:px-3 file:py-1.5 file:text-sky-200" /></label>
             <div className="flex items-end"><button type="submit" disabled={!file || uploading} className="atlas-button-primary w-full">{uploading ? "Publicando..." : "Publicar nova versão"}</button></div>
           </form>
         </AtlasCard>

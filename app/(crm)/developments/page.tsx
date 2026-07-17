@@ -89,6 +89,11 @@ export default function DevelopmentsPage() {
 
   useEffect(() => { void load(); }, []);
 
+  useEffect(() => {
+    const developer = new URLSearchParams(window.location.search).get("developer");
+    if (developer) setQuery(developer);
+  }, []);
+
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return data?.developments ?? [];
