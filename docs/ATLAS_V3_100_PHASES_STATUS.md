@@ -452,7 +452,19 @@ Pendência externa: após aplicar as migrations em homologação, executar a mat
 
 Pendência externa: aplicar a migration em homologação e testar diretor, superintendente, gerente, corretores de equipes distintas e usuário de outra organização; em seguida executar os advisors de segurança e desempenho.
 
-Próxima fase: **Fase 18 — APIs protegidas**, endurecendo autenticação, autorização, validação, rate limit e auditoria das rotas de servidor.
+## Fase 18 — APIs protegidas
+
+**Estado:** 100% implementada e aprovada localmente; testes negativos no ambiente de homologação pendentes.
+
+**Evolução desta fase:** as 77 rotas foram classificadas em APIs autenticadas, públicas mínimas, fluxos de autenticação, webhooks assinados e workers protegidos por segredo. A rota legada `/api/leads`, que mantinha uma lista em memória e aceitava acesso anônimo, foi eliminada como implementação paralela e passou a reutilizar o endpoint canônico protegido.
+
+**Proteções adicionadas:** o autenticador legado agora valida token, perfil ativo, organização ativa e escopo RLS; concessões e bloqueios geram auditoria estruturada sem credenciais; o status operacional V1/V2 deixou de revelar prontidão sem segredo; mutações declaram validação de entrada ou ausência intencional de corpo; webhooks comprovam assinatura e limite; workers comprovam `ATLAS_CRON_SECRET`.
+
+**Validação local:** `npm run api-security:check` inventaria todas as rotas e bloqueia uma nova API sem classe ou proteção. O contrato auditável está em `config/api-security-contract.json` e o roteiro completo em `docs/API_SECURITY_PHASE_18.md`.
+
+Pendência externa: em homologação, comprovar 401 sem sessão, 403 fora da função/carteira, 400 para entrada inválida, 429 após limite e isolamento entre duas organizações; conferir os registros por correlação sem tokens ou dados pessoais.
+
+Próxima fase: **Fase 19 — proteção contra abuso**, consolidando rate limit distribuído, deduplicação, idempotência e endurecimento adicional dos webhooks.
 
 ## Painel das 100 fases
 

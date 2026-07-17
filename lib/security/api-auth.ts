@@ -1,11 +1,23 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/observability/logger";
 
 export type ApiIdentity = {
   userId: string;
   organizationId: string;
+  role?: string;
+  commercialRole?: string | null;
   supabase: SupabaseClient;
 };
+
+function routePath(request: Request) {
+  try { return new URL(request.url).pathname; } catch { return "unknown"; }
+}
+
+function deny(request: Request, reason: string): never {
+  logger.warn("api.access_denied", { path: routePath(request), reason });
+  throw new Error(reason);
+}
 
 export async function requireApiIdentity(request: Request): Promise<ApiIdentity> {
   const authorization = request.headers.get("authorization");
@@ -13,8 +25,8 @@ export async function requireApiIdentity(request: Request): Promise<ApiIdentity>
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) throw new Error("Supabase público não configurado.");
-  if (!token) throw new Error("Token de autenticação ausente.");
+  if (!url || !anonKey) deny(request, "Supabase público não configurado.");
+  if (!token) deny(request, "Token de autenticação ausente.");
 
   const client = createClient(url, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -22,19 +34,38 @@ export async function requireApiIdentity(request: Request): Promise<ApiIdentity>
   });
 
   const { data: userData, error: userError } = await client.auth.getUser(token);
-  if (userError || !userData.user) throw new Error("Sessão inválida ou expirada.");
+  if (userError || !userData.user) deny(request, "Sessão inválida ou expirada.");
 
   const { data: profile, error: profileError } = await client
     .from("profiles")
-    .select("organization_id")
+    .select("organization_id,role,commercial_role,active")
     .eq("id", userData.user.id)
     .single();
 
-  if (profileError || !profile?.organization_id) {
-    throw new Error("Usuário sem organização vinculada.");
-  }
+  if (profileError || !profile?.organization_id) deny(request, "Usuário sem organização vinculada.");
+  if (!profile.active) deny(request, "Perfil inativo.");
 
-  return { userId: userData.user.id, organizationId: profile.organization_id, supabase: client };
+  const { data: organization, error: organizationError } = await client
+    .from("organizations")
+    .select("id,active")
+    .eq("id", profile.organization_id)
+    .maybeSingle();
+  if (organizationError || !organization) deny(request, "Organização não encontrada.");
+  if (!organization.active) deny(request, "Organização inativa.");
+
+  logger.info("api.access_granted", {
+    path: routePath(request),
+    organizationId: profile.organization_id,
+    role: profile.commercial_role || profile.role,
+  });
+
+  return {
+    userId: userData.user.id,
+    organizationId: profile.organization_id,
+    role: profile.role,
+    commercialRole: profile.commercial_role,
+    supabase: client,
+  };
 }
 
 export async function requireLeadAccess(identity: ApiIdentity, leadId: string) {

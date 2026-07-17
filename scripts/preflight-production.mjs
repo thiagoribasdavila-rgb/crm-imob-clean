@@ -63,7 +63,7 @@ const routes = [
   ["Login", "/login", [200]],
   ["Health", "/api/health", [200]],
   ["Readiness", "/api/ready", [200]],
-  ["V1/V2 status", "/api/v1-v2/status", [200, 503]],
+  ["V1/V2 status", "/api/v1-v2/status", [200, 401, 503]],
   ["V3 status", "/api/v3/status", [200, 401, 503]],
   ["Dashboard protection", "/dashboard", [200, 307, 308]],
   ["Launch OS protection", "/developments", [200, 307, 308]],

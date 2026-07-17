@@ -3,6 +3,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { apiError, createRequestContext, getClientAddress } from "@/lib/api/core";
 import { createClient } from "@/utils/supabase/server";
 import { getSupabasePublicConfig } from "@/utils/supabase/env";
+import { logger } from "@/lib/observability/logger";
 
 type RateBucket = { count: number; resetAt: number };
 
@@ -207,6 +208,12 @@ export async function requireAccessContext(
 
   const effectiveRole = resolveCommercialRole({ role: profile.role, commercial_role: profile.commercial_role });
   if (options.roles?.length && !options.roles.includes(effectiveRole)) {
+    logger.warn("api.access_denied", {
+      path: request.nextUrl.pathname,
+      organizationId: profile.organization_id,
+      role: effectiveRole,
+      reason: "role_not_allowed",
+    });
     return {
       ok: false as const,
       response: apiError("FORBIDDEN", "Permissão insuficiente para esta operação.", auth.meta, { status: 403 }),
@@ -234,6 +241,13 @@ export async function requireAccessContext(
       active: organization.active,
     },
   };
+
+  logger.info("api.access_granted", {
+    path: request.nextUrl.pathname,
+    organizationId: profile.organization_id,
+    role: effectiveRole,
+    authMode: auth.authMode,
+  });
 
   return {
     ok: true as const,

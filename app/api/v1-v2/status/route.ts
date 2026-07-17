@@ -3,9 +3,15 @@ import { featureSnapshot } from "@/lib/platform/feature-flags";
 
 export const dynamic = "force-dynamic";
 
+function authorized(request: Request) {
+  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  return Boolean(process.env.ATLAS_CRON_SECRET && token === process.env.ATLAS_CRON_SECRET);
+}
+
 const configured = (name: string) => Boolean(process.env[name]);
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!authorized(request)) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   const checks = {
     supabasePublic: configured("NEXT_PUBLIC_SUPABASE_URL") && configured("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
     supabaseAdmin: configured("SUPABASE_SERVICE_ROLE_KEY"),
