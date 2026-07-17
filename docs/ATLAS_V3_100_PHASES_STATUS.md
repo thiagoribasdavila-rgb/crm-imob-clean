@@ -280,6 +280,32 @@ Pendência externa: ativar e comprovar a rotação dos arquivos de log no painel
 
 Próxima fase: **Fase 10 — Command Center**, consolidando saúde, integrações, filas, backups, custos, segurança e homologação.
 
+## Fase 10 — Command Center
+
+Status: **Testada**.
+
+Percentual antes: **82%** — os módulos de saúde, segurança, IA, backup e homologação existiam, mas exigiam navegação separada e não produziam um gate executivo único.
+
+Percentual depois: **100%** — sete áreas consolidadas, cinco gates críticos, acesso exclusivo da diretoria e política explícita que impede ausência ou erro de consulta de virar aprovação.
+
+### Visão executiva consolidada
+
+- Saúde: banco, latência, uptime, ambiente e Hostinger.
+- Segurança: governança de segredos e confirmação de que valores não são retornados.
+- Integrações: OpenAI, Perplexity, Meta e WhatsApp aparecem como configuradas ou pendentes; configuração ainda exige teste real.
+- Filas: tarefas, aprovações, outbox pendente e dead letters.
+- Resiliência: restaurações aprovadas, pendentes ou reprovadas.
+- IA: chamadas, tokens, latência e custo medido dos últimos 30 dias.
+- Homologação: evidências aprovadas e reprovadas por perfil.
+
+O status geral só fica `ready` quando todos os gates possuem evidência positiva. Banco, HTTPS, segredo dos workers, ausência de falhas na outbox e restauração comprovada são bloqueios independentes. Falha de consulta aparece como `unknown`; integração apenas configurada não aparece como homologada.
+
+Evidências: `config/command-center.json`, `/api/v1/governance/command-center`, `app/(crm)/atlas-v3/CommandCenterOverview.tsx` e `npm run command-center:check`.
+
+Pendências externas: popular o painel com dados da Hostinger/Supabase reais, executar restauração, testar conectores e concluir evidências por perfil.
+
+Próxima fase: **Fase 11 — Login**, validando acesso, mensagens, carregamento, responsividade e experiência minimalista.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |

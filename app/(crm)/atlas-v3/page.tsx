@@ -10,6 +10,7 @@ import {
   type EvolutionPhase,
 } from "@/lib/atlas/evolution-phases";
 import { StatusBadge } from "@/components/atlas/status-badge";
+import { CommandCenterOverview } from "./CommandCenterOverview";
 
 type Metrics = {
   leads: number;
@@ -136,6 +137,8 @@ export default function AtlasV3Page() {
           A estrutura foi carregada, mas alguns indicadores reais estão indisponíveis: {warnings.join(" · ")}
         </div>
       ) : null}
+
+      <CommandCenterOverview />
 
       <section className="atlas-runtime-strip">
         {[
