@@ -1218,6 +1218,18 @@ Pendência externa: aplicar migration e homologar três cenários, limites, expi
 
 Próxima fase: **Fase 88 — Assistente de visita e proposta**, preparando agenda, roteiro, confirmação, feedback e próximo passo com aprovação humana.
 
+## Fase 88 — Assistente de visita e proposta
+
+**Estado:** 100% implementada e aprovada localmente; migration e jornada com visitas reais permanecem para homologação.
+
+**Evolução:** checklist pré-visita combina qualificação, materiais, estoque e simulação. Após o compromisso, o corretor registra resultado, objeções e próximo passo estruturados, preservando contexto para o Copiloto e para o funil.
+
+**Governança:** somente o corretor responsável registra, e interesse alto apenas recomenda revisão. Nenhuma proposta ou mensagem é criada ou enviada automaticamente. O contrato está em `config/visit-proposal-assistant.json`, o gate em `npm run visit-proposal:check` e o roteiro em `docs/VISIT_PROPOSAL_ASSISTANT_PHASE_88.md`.
+
+Pendência externa: aplicar migration e homologar visita presencial/vídeo, resultados, bloqueadores, proposta revisada, quatro perfis e dois tenants.
+
+Próxima fase: **Fase 89 — Reativação inteligente e consentida**, escolhendo base, corretor, cadência, mensagem e interrupção com WhatsApp oficial.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
