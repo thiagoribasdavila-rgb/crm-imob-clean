@@ -18,7 +18,10 @@ const archive = execFileSync("git", ["archive", "--format=tar", "HEAD"], { cwd: 
 execFileSync("tar", ["-xf", "-", "-C", stage], { input: archive });
 
 for (const relativePath of legacyRoutePaths) rmSync(join(stage, relativePath), { recursive: true, force: true });
-for (const relativePath of ["AGENTS.md", "CLAUDE.md", ".github"]) rmSync(join(stage, relativePath), { recursive: true, force: true });
+for (const relativePath of [
+  "AGENTS.md", "CLAUDE.md", ".github", "core", "logs",
+  "public/file.svg", "public/globe.svg", "public/next.svg", "public/vercel.svg", "public/window.svg",
+]) rmSync(join(stage, relativePath), { recursive: true, force: true });
 
 const commit = execFileSync("git", ["rev-parse", "--short=12", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 writeFileSync(join(stage, "HOSTINGER_PACKAGE.json"), `${JSON.stringify({
@@ -30,6 +33,7 @@ writeFileSync(join(stage, "HOSTINGER_PACKAGE.json"), `${JSON.stringify({
   processManager: "pm2 start ecosystem.config.cjs",
   privateDataIncluded: false,
   legacyPrototypeRoutesIncluded: false,
+  unusedConceptualCoreIncluded: false,
 }, null, 2)}\n`);
 
 execFileSync("zip", ["-qr", zipPath, "."], { cwd: stage });
