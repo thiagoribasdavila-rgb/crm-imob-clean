@@ -49,6 +49,7 @@ const metaInsights = readFileSync(resolve(root, "lib/meta/insights.ts"), "utf8")
 const customerExperience = readFileSync(resolve(root, "lib/atlas/customer-experience.ts"), "utf8");
 const whatsappWebhook = readFileSync(resolve(root, "app/api/webhooks/whatsapp/route.ts"), "utf8");
 const whatsappHealth = readFileSync(resolve(root, "app/api/v1/integrations/whatsapp/route.ts"), "utf8");
+const whatsappHealthPage = readFileSync(resolve(root, "app/(crm)/integrations/whatsapp/page.tsx"), "utf8");
 const experienceMigration = readFileSync(resolve(root, "supabase/migrations/20260717001011_whatsapp_experience_and_external_sales_control.sql"), "utf8");
 const paymentRuleMigration = readFileSync(resolve(root, "supabase/migrations/20260717002702_developer_payment_flow_rules.sql"), "utf8");
 const commercialSimulation = readFileSync(resolve(root, "app/api/v1/leads/[id]/commercial-simulation/route.ts"), "utf8");
@@ -143,7 +144,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("228 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("234 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -230,6 +231,12 @@ const checks = [
   ["troca de corretor exige decisão humana", customerExperience.includes("Qual opção prefere?") && experienceMigration.includes("decision_by")],
   ["atrito de atendimento é auditável", whatsappWebhook.includes("lead_experience_signals") && whatsappWebhook.includes("customer.experience_friction")],
   ["WhatsApp consulta qualidade oficial", whatsappHealth.includes("quality_rating") && whatsappHealth.includes("messaging_limit_tier")],
+  ["diagnóstico WhatsApp exige diretoria", whatsappHealth.includes('commercialRole === "director"') && whatsappHealth.includes("whatsapp-health")],
+  ["diagnóstico WhatsApp possui timeout", whatsappHealth.includes("AbortSignal.timeout(30_000)") && whatsappHealth.includes('cache: "no-store"')],
+  ["diagnóstico WhatsApp não expõe credencial", whatsappHealth.includes("idMasked") && whatsappHealth.includes("credentialsExposed: false") && !whatsappHealth.includes("accessToken," )],
+  ["diagnóstico WhatsApp confirma campos essenciais", whatsappHealth.includes("numberConfirmed") && whatsappHealth.includes("qualityConfirmed") && whatsappHealth.includes("limitConfirmed")],
+  ["diagnóstico WhatsApp é somente leitura", whatsappHealth.includes("readOnly: true") && !whatsappHealth.includes('method: "POST"')],
+  ["painel WhatsApp mostra evidência", whatsappHealthPage.includes("Fase 27 · Evidência") && whatsappHealthPage.includes("Executar diagnóstico oficial")],
   ["worker impede tomada duplicada", outboxWorker.includes('.in("status", ["pending", "failed"])') && outboxWorker.includes("if (!claimed) continue")],
   ["compra externa não infla receita própria", experienceMigration.includes("external_sales_records") && experienceMigration.includes("status = 'comprou_outro'")],
   ["venda externa é exclusiva da diretoria", experienceMigration.includes("external_sales_director_scope") && experienceMigration.includes("commercial_role")],
