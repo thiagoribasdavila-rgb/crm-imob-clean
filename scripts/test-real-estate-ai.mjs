@@ -72,6 +72,8 @@ const moduleBoundaries = readFileSync(resolve(root, "config/module-boundaries.js
 const moduleBoundaryCheck = readFileSync(resolve(root, "scripts/check-module-boundaries.mjs"), "utf8");
 const environmentContract = readFileSync(resolve(root, "config/environments.json"), "utf8");
 const environmentCheck = readFileSync(resolve(root, "scripts/check-environments.mjs"), "utf8");
+const environmentVariables = readFileSync(resolve(root, "config/environment-variables.json"), "utf8");
+const environmentVariablesCheck = readFileSync(resolve(root, "scripts/check-environment-variables.mjs"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
@@ -490,6 +492,7 @@ const checks = [
   ["contratos de dados normalizam fronteiras sensíveis", dataContracts.includes("normalizePhoneE164") && dataContracts.includes("moneyToCents") && passwordRecoveryRoute.includes("normalizeEmail") && messageSendRoute.includes("normalizePhoneE164") && hundredPhaseStatus.includes("Fase 4 — Contratos de dados")],
   ["arquitetura modular atribui dono único aos dados", moduleBoundaries.includes('"key": "crm"') && moduleBoundaries.includes('"key": "governance"') && moduleBoundaryCheck.includes("entidade canônica sem módulo responsável") && hundredPhaseStatus.includes("Fase 5 — Arquitetura modular")],
   ["ambientes não misturam banco e credenciais temporárias", environmentContract.includes('"production"') && environmentContract.includes('"allowsBootstrap": false') && productionPreflight.includes("ATLAS_DATABASE_ENVIRONMENT") && environmentCheck.includes("Node.js 24.x") && hundredPhaseStatus.includes("Fase 6 — Configuração de ambientes")],
+  ["variáveis possuem inventário único sem segredo público", environmentVariables.includes('"requirement": "temporary"') && environmentVariables.includes('"scope": "runtime"') && environmentVariablesCheck.includes("variável usada no código sem classificação") && secretsRoute.includes('source: "config/environment-variables.json"') && hundredPhaseStatus.includes("Fase 7 — Variáveis de ambiente")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],
@@ -574,7 +577,7 @@ const checks = [
   ["PM2 possui logs separados e datados", pm2Config.includes("log_date_format") && pm2Config.includes("atlas-v3-out.log") && pm2Config.includes("atlas-v3-error.log")],
   ["Command Center mede recuperação", hostingerHealthPage.includes("recovery_seconds") && hostingerHealthPage.includes("Comprovar retorno") && hostingerHealthPage.includes("Nenhum reinício real comprovado")],
   ["auditoria de segredos nunca retorna valores", secretsRoute.includes("valuesReturned: false") && secretsPage.includes("Valores invisíveis")],
-  ["inventário diferencia público e servidor", secretsRoute.includes('scope: "public"') && secretsRoute.includes('scope: "server"')],
+  ["inventário diferencia público e servidor", environmentVariables.includes('"scope": "public"') && environmentVariables.includes('"scope": "server"')],
   ["segredos são exclusivos da diretoria", secretsRoute.includes("exclusiva da diretoria") && secretsRoute.includes("commercialRole")],
   ["scanner bloqueia tokens conhecidos", secretsScanner.includes("PRIVATE KEY") && secretsScanner.includes("OpenAI") && secretsScanner.includes("GitHub")],
   ["scanner bloqueia variável pública indevida", secretsScanner.includes("allowedPublic") && secretsScanner.includes("variável pública não aprovada")],

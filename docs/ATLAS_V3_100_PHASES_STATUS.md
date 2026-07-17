@@ -206,6 +206,31 @@ Evidências: `config/environments.json`, `npm run environments:check` e `npm run
 
 Próxima fase: **Fase 7 — Variáveis de ambiente**, classificando obrigatórias, opcionais, públicas, privadas e temporárias.
 
+## Fase 7 — Variáveis de ambiente
+
+Status: **Testada**.
+
+Percentual antes: **70%** — o exemplo cobria o núcleo, mas o painel da diretoria repetia uma lista menor e variáveis novas podiam surgir sem classificação.
+
+Percentual depois: **100%** — inventário único, cinco políticas explícitas e verificação automática de todo uso estático no release gate.
+
+### Políticas aplicadas
+
+| Classe | Regra |
+|---|---|
+| Obrigatória | O ambiente não está pronto sem ela; segredos permanecem somente no servidor. |
+| Alternativa | Uma chave pública Supabase publishable ou anon deve existir, sem exigir as duas. |
+| Condicional | Torna-se obrigatória somente ao ativar o respectivo provedor ou integração. |
+| Opcional | Ajusta modelo, preço, conta ou storage sem impedir o núcleo do CRM. |
+| Temporária | Permitida apenas durante bootstrap, homologação ou importação supervisionada. |
+| Gerenciada | Pertence ao Node.js, Next.js ou PM2 e não deve ser preenchida manualmente. |
+
+O painel de segredos agora consome o mesmo contrato usado pelo release, informa apenas se cada item está configurado e nunca devolve valores. O gate falha quando uma variável aparece no código ou no `.env.example` sem classificação, quando um segredo recebe prefixo público ou quando as chaves alternativas ficam inconsistentes.
+
+Evidências: `config/environment-variables.json`, `npm run environment:variables` e `/api/v1/governance/secrets`.
+
+Próxima fase: **Fase 8 — Gestão de segredos**, definindo rotação, responsáveis, validade e resposta a incidente sem registrar valores sensíveis.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
