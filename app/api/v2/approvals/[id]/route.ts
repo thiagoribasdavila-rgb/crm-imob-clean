@@ -51,6 +51,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (error || !approval) return NextResponse.json({ error: "Aprovação não encontrada." }, { status: 404 });
     if (approval.status !== "pending") return NextResponse.json({ error: "Aprovação já decidida." }, { status: 409 });
     if (["meta_campaign_optimization", "meta_audience_change", "meta_budget_change", "meta_creative_change"].includes(approval.request_type) && profile.commercial_role !== "director" && profile.role !== "admin") return NextResponse.json({ error: "Decisões de campanha pertencem exclusivamente ao diretor." }, { status: 403 });
+    if (approval.entity_type === "message") {
+      const reason = String(body.reason || "").trim();
+      if (body.decision === "rejected" && reason.length < 5) return NextResponse.json({ error: "Informe o motivo da rejeição." }, { status: 400 });
+      const { data, error: decisionError } = await admin.rpc("decide_message_approval", { p_actor_id: identity.userId, p_organization_id: identity.organizationId, p_approval_id: approval.id, p_decision: body.decision, p_reason: reason.slice(0, 500) });
+      if (decisionError) return NextResponse.json({ error: "Aprovação fora do seu time ou já decidida." }, { status: 409 });
+      logger.info("approval.message_decided", { approvalId: id, decision: body.decision, userId: identity.userId });
+      return NextResponse.json(data);
+    }
     if (approval.entity_type === "reactivation_batch" && approval.entity_id && profile.commercial_role !== "director" && profile.role !== "admin") {
       const [{ data: batch }, { data: team }] = await Promise.all([
         admin.from("lead_reactivation_batches").select("owner_id").eq("id", approval.entity_id).eq("organization_id", identity.organizationId).single(),
@@ -80,22 +88,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       .update({ status: body.decision, decision_reason: body.reason ?? null, decided_by: identity.userId, decided_at: decidedAt })
       .eq("id", id);
     if (updateError) throw updateError;
-
-    if (body.decision === "approved" && approval.entity_type === "message" && approval.entity_id) {
-      const { data: message } = await admin.from("messages").select("channel").eq("id", approval.entity_id).single();
-      const { error: outboxError } = await admin.from("integration_outbox").insert({
-        organization_id: identity.organizationId,
-        topic: "message.send",
-        aggregate_type: "message",
-        aggregate_id: approval.entity_id,
-        payload: { messageId: approval.entity_id, channel: message?.channel },
-      });
-      if (outboxError) throw outboxError;
-    }
-
-    if (body.decision === "rejected" && approval.entity_type === "message" && approval.entity_id) {
-      await admin.from("messages").update({ status: "failed", error: body.reason || "Envio rejeitado na governança." }).eq("id", approval.entity_id);
-    }
 
     if (approval.entity_type === "commercial_simulation" && approval.entity_id) {
       await admin.from("commercial_simulations").update({ status: body.decision, updated_at: decidedAt }).eq("id", approval.entity_id).eq("organization_id", identity.organizationId);

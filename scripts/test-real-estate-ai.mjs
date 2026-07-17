@@ -57,6 +57,9 @@ const dailyReportMigration = readFileSync(resolve(root, "supabase/migrations/202
 const dailyReportClaimMigration = readFileSync(resolve(root, "supabase/migrations/20260717012200_idempotent_daily_report_claim.sql"), "utf8");
 const dailyReportTest = readFileSync(resolve(root, "app/api/v1/integrations/meta/daily-report-test/route.ts"), "utf8");
 const approvalRoute = readFileSync(resolve(root, "app/api/v2/approvals/[id]/route.ts"), "utf8");
+const approvalsListRoute = readFileSync(resolve(root, "app/api/v2/approvals/route.ts"), "utf8");
+const approvalsPage = readFileSync(resolve(root, "app/(crm)/approvals/page.tsx"), "utf8");
+const atomicMessageApprovalMigration = readFileSync(resolve(root, "supabase/migrations/20260717013400_atomic_message_approval.sql"), "utf8");
 const metaInsights = readFileSync(resolve(root, "lib/meta/insights.ts"), "utf8");
 const customerExperience = readFileSync(resolve(root, "lib/atlas/customer-experience.ts"), "utf8");
 const whatsappWebhook = readFileSync(resolve(root, "app/api/webhooks/whatsapp/route.ts"), "utf8");
@@ -161,7 +164,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("312 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("318 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["painel comparativo é exclusivo da superintendência", superintendentDashboardRoute.includes('actorRole !== "superintendent"') && superintendentDashboardRoute.includes('scope: "superintendent-dashboard"')],
   ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('roleOf(profile) === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
   ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && superintendentDashboardRoute.match(/\.eq\("organization_id", identity\.access\.organization\.id\)/g)?.length >= 2],
@@ -307,6 +310,12 @@ const checks = [
   ["solicitação nunca transfere a lead", atomicExperienceMigration.includes("'leadReassigned', false") && reactivationPage.includes("não altera o responsável atual")],
   ["motivo humano é obrigatório e auditado", reactivationRoute.includes("REASON_REQUIRED") && atomicExperienceMigration.includes("decision_reason = left(trim(p_reason), 500)") && reactivationPage.includes("Motivo da decisão (obrigatório)")],
   ["fase 41 diferencia IA de decisão humana", reactivationPage.includes("Fase 41 · Decisão humana") && reactivationPage.includes("A IA explica o atrito, mas nunca troca o corretor") && reactivationRoute.includes("humanDecisionRequired: true")],
+  ["gerente vê somente abordagens do time direto", approvalsListRoute.includes("directTeamOnly") && approvalsListRoute.includes("p.reports_to === identity.access.profile.id") && approvalsListRoute.includes('scope: "manager-message-approvals"')],
+  ["tela decide pela API governada", approvalsPage.includes('fetch(`/api/v2/approvals/${id}`') && !approvalsPage.includes('.from("approval_requests").update')],
+  ["aprovação e outbox são atômicas", atomicMessageApprovalMigration.includes("for update") && atomicMessageApprovalMigration.includes("insert into public.integration_outbox") && atomicMessageApprovalMigration.includes("update public.approval_requests")],
+  ["rejeição nunca entra na outbox", atomicMessageApprovalMigration.includes("if p_decision = 'approved'") && atomicMessageApprovalMigration.includes("update public.messages set status = 'failed'")],
+  ["rejeição exige motivo auditável", atomicMessageApprovalMigration.includes("approval_rejection_reason_required") && approvalsPage.includes("Motivo obrigatório para rejeitar")],
+  ["fase 42 deixa o efeito explícito", approvalsPage.includes("Fase 42 · Human-in-the-loop") && approvalsPage.includes("Somente mensagens aprovadas entram na outbox") && approvalsPage.includes("Aprovar e enfileirar")],
   ["WhatsApp consulta qualidade oficial", whatsappHealth.includes("quality_rating") && whatsappHealth.includes("messaging_limit_tier")],
   ["diagnóstico WhatsApp exige diretoria", whatsappHealth.includes('commercialRole === "director"') && whatsappHealth.includes("whatsapp-health")],
   ["diagnóstico WhatsApp possui timeout", whatsappHealth.includes("AbortSignal.timeout(30_000)") && whatsappHealth.includes('cache: "no-store"')],
