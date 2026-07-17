@@ -1040,7 +1040,17 @@ Pendência externa: aplicar migration e validar contatos, duplicidades, dez dime
 
 Pendência externa: aplicar migration e validar duplicidades reais, concorrência, históricos, perfis e dois tenants.
 
-Próxima fase: **Fase 73 — Consentimento e preferência de contato**, centralizando autorização, opt-out, canal e horário antes de automações.
+## Fase 73 — Consentimento e preferência de contato
+
+**Estado:** 100% implementada e aprovada localmente; consentimentos e canais reais permanecem para homologação.
+
+**Evolução:** cada lead passa a ter uma fonte única por canal com autorização, base, evidência, preferência, dias, horário, fuso e validade. Corretor visualiza claramente se pode contatar agora.
+
+**Governança:** opt-out sincroniza supressão imediatamente. Rascunho de IA e envio consultam a mesma elegibilidade; atalhos externos foram removidos. O contrato está em `config/contact-consent-preferences.json`, o gate em `npm run contact-consent:check` e o roteiro em `docs/CONTACT_CONSENT_PREFERENCES_PHASE_73.md`.
+
+Pendência externa: aplicar migration e validar autorização, expiração, horários, opt-out, quatro perfis, canais reais e dois tenants.
+
+Próxima fase: **Fase 74 — Histórico de origem e atribuição**, preservando campanha, canal, formulário e mudanças sem sobrescrever a primeira origem.
 
 ## Painel das 100 fases
 

@@ -21,6 +21,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const objective = String(body.objective || "retomar contato").slice(0, 200);
     const tone = ["consultivo", "direto", "acolhedor", "executivo"].includes(String(body.tone)) ? String(body.tone) : "consultivo";
     const admin = getSupabaseAdmin();
+    const { data: eligibility, error: eligibilityError } = await admin.rpc("check_lead_contact_eligibility", { p_organization_id: identity.organizationId, p_lead_id: id, p_channel: channel });
+    const contactDecision = eligibility as { eligible?: boolean; reason?: string } | null;
+    if (eligibilityError || !contactDecision?.eligible) return NextResponse.json({ error: "A IA não pode preparar contato sem consentimento e horário válidos.", reason: contactDecision?.reason || "eligibility_unavailable" }, { status: 409 });
     const [leadResult, activityResult, projectResult] = await Promise.all([
       admin.from("leads").select("id,name,status,source,budget_min,budget_max,preferred_regions,bedrooms,purpose,next_action_at").eq("id", id).eq("organization_id", identity.organizationId).single(),
       admin.from("activities").select("title,type,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(5),

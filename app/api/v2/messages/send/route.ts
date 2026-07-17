@@ -57,6 +57,12 @@ export async function POST(request: Request) {
     }
     if (conversation.lead_id) await requireLeadAccess(identity, conversation.lead_id);
 
+    if (conversation.lead_id && ["whatsapp", "email"].includes(payload.channel)) {
+      const { data: eligibility, error: eligibilityError } = await admin.rpc("check_lead_contact_eligibility", { p_organization_id: identity.organizationId, p_lead_id: conversation.lead_id, p_channel: payload.channel });
+      const decision = eligibility as { eligible?: boolean; reason?: string } | null;
+      if (eligibilityError || !decision?.eligible) return NextResponse.json({ error: "Contato bloqueado pela preferência ou consentimento da lead.", reason: decision?.reason || "eligibility_unavailable" }, { status: 409 });
+    }
+
     const normalizedRecipient = payload.channel === "whatsapp" ? normalizePhoneE164(payload.recipient) : payload.channel === "email" ? normalizeEmail(payload.recipient) : payload.recipient.trim();
     if (!normalizedRecipient) return NextResponse.json({ error: "Destinatário inválido para o canal selecionado." }, { status: 400 });
     if (payload.channel === "whatsapp") {
