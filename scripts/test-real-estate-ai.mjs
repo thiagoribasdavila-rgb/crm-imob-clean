@@ -23,6 +23,7 @@ const leadsPortfolioPage = readFileSync(resolve(root, "app/(crm)/leads/page.tsx"
 const leadsPortfolioRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/route.ts"), "utf8");
 const crmDashboard = readFileSync(resolve(root, "app/(crm)/dashboard/page.tsx"), "utf8");
 const superintendentDashboardRoute = readFileSync(resolve(root, "app/api/v1/analytics/dashboard/route.ts"), "utf8");
+const teamSlaRoute = readFileSync(resolve(root, "app/api/v1/analytics/team-sla/route.ts"), "utf8");
 const distributionPage = readFileSync(resolve(root, "app/(crm)/distribution/page.tsx"), "utf8");
 const distributionRoute = readFileSync(resolve(root, "app/api/v1/crm/distribution/route.ts"), "utf8");
 const distributionMigration = readFileSync(resolve(root, "supabase/migrations/20260716234729_balanced_project_lead_distribution.sql"), "utf8");
@@ -159,7 +160,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("300 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("306 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["painel comparativo é exclusivo da superintendência", superintendentDashboardRoute.includes('actorRole !== "superintendent"') && superintendentDashboardRoute.includes('scope: "superintendent-dashboard"')],
   ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('roleOf(profile) === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
   ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && superintendentDashboardRoute.match(/\.eq\("organization_id", identity\.access\.organization\.id\)/g)?.length >= 2],
@@ -184,6 +185,12 @@ const checks = [
   ["pausa de um projeto não afeta os demais", distributionRoute.includes("projectIsolation: true") && distributionPage.includes("não altera nenhum outro projeto")],
   ["projeto e disponibilidade compõem elegibilidade", distributionPage.includes("ATIVO NO PROJETO") && distributionPage.includes("Online e disponível") && distributionMigration.includes("cp.availability = 'available'")],
   ["fase 39 permite ativar pausar e ponderar", distributionPage.includes("Fase 39 · Equilíbrio por projeto") && distributionPage.includes("configureMember") && distributionPage.includes("Pausar") && distributionPage.includes("Ativar")],
+  ["fila de SLA é exclusiva do gerente", teamSlaRoute.includes('role !== "manager"') && teamSlaRoute.includes('scope: "manager-team-sla"')],
+  ["SLA considera somente corretores diretos", teamSlaRoute.includes('.eq("reports_to", identity.access.profile.id)') && teamSlaRoute.includes("directBrokersOnly: true")],
+  ["SLA preserva isolamento da organização", teamSlaRoute.includes("organizationId = identity.access.organization.id") && teamSlaRoute.match(/\.eq\("organization_id", organizationId\)/g)?.length >= 2],
+  ["primeiro contato e follow-up são separados", teamSlaRoute.includes('kind: "first_contact"') && teamSlaRoute.includes('kind: "follow_up"') && teamSlaRoute.includes("first_contacted_at")],
+  ["alerta leva à lead e ao corretor", crmDashboard.includes('href={`/leads/${alert.leadId}`}') && crmDashboard.includes("Responsável: {alert.brokerName}") && crmDashboard.includes("abrir Lead 360")],
+  ["fase 40 mostra fila priorizada", teamSlaRoute.includes("b.overdueMinutes - a.overdueMinutes") && crmDashboard.includes("Fase 40 · SLA do time") && crmDashboard.includes("Sem primeiro contato")],
   ["reativação exige consentimento declarado", reactivationRoute.includes("CONSENT_REQUIRED") && reactivationPage.includes("autorização válida para contato")],
   ["duplicados são bloqueados sem transferir lead", reactivationRoute.includes("duplicado_no_arquivo") && reactivationRoute.includes("lead_ja_existente") && !reactivationRoute.includes('leads").update({ assigned_to: ownerId')],
   ["opt-out é verificado na importação", reactivationRoute.includes('from("messaging_suppressions")') && reactivationRoute.includes('reason: string | null = blocked.has(item.phone) ? "opt_out"')],

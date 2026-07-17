@@ -22,6 +22,7 @@ type DashboardData = {
   profiles: DataRow[];
 };
 type SuperintendentSummary = { scope: { role: "superintendent"; directManagersOnly: boolean; parallelStructuresExcluded: boolean; unassignedExcluded: boolean }; totals: { managers: number; brokers: number; leads: number; activeLeads: number; hotLeads: number; overdueLeads: number; won: number; potentialVgv: number }; managers: Array<{ managerId: string; managerName: string; brokers: number; leads: number; activeLeads: number; hotLeads: number; overdueLeads: number; won: number; conversionRate: number; potentialVgv: number }>; reconciliation: { managerLeadSum: number; scopedLeadCount: number; matches: boolean }; generatedAt: string };
+type TeamSlaSummary = { scope: { role: "manager"; directBrokersOnly: boolean }; totals: { alerts: number; firstContactOverdue: number; followUpOverdue: number; brokersWithAlerts: number }; alerts: Array<{ kind: "first_contact" | "follow_up"; dueAt: string; overdueMinutes: number; leadId: string; leadName: string; brokerId: string; brokerName: string }>; byBroker: Array<{ brokerId: string; brokerName: string; firstContactOverdue: number; followUpOverdue: number }>; generatedAt: string };
 
 const emptyData: DashboardData = {
   leads: [],
@@ -134,6 +135,7 @@ export default function DashboardPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [viewerId, setViewerId] = useState("");
   const [superintendentSummary, setSuperintendentSummary] = useState<SuperintendentSummary | null>(null);
+  const [teamSla, setTeamSla] = useState<TeamSlaSummary | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -194,6 +196,17 @@ export default function DashboardPage() {
       const response = await fetch("/api/v1/analytics/dashboard", { headers: { Authorization: `Bearer ${session.session?.access_token || ""}` }, cache: "no-store" });
       const body = await response.json();
       if (active) { if (response.ok) setSuperintendentSummary(body.data); else setWarnings((current) => [...current, body.error?.message || "Painel da superintendência indisponível."]); }
+    });
+    return () => { active = false; };
+  }, [viewerRole]);
+
+  useEffect(() => {
+    if (viewerRole !== "manager") { setTeamSla(null); return; }
+    let active = true;
+    void supabase.auth.getSession().then(async ({ data: session }) => {
+      const response = await fetch("/api/v1/analytics/team-sla", { headers: { Authorization: `Bearer ${session.session?.access_token || ""}` }, cache: "no-store" });
+      const body = await response.json();
+      if (active) { if (response.ok) setTeamSla(body.data); else setWarnings((current) => [...current, body.error?.message || "Fila de SLA indisponível."]); }
     });
     return () => { active = false; };
   }, [viewerRole]);
@@ -499,6 +512,8 @@ export default function DashboardPage() {
           {!superintendentSummary ? <LoadingState rows={3} /> : <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><MetricCard label="Gerentes" value={superintendentSummary.totals.managers} detail={`${superintendentSummary.totals.brokers} corretores subordinados`} trend="ESCOPO" tone="violet" /><MetricCard label="Leads das equipes" value={superintendentSummary.totals.leads} detail={`${superintendentSummary.totals.activeLeads} ativos · ${superintendentSummary.totals.hotLeads} quentes`} trend="CARTEIRA" /><MetricCard label="Vendas ganhas" value={superintendentSummary.totals.won} detail="Somente equipes subordinadas" trend="CONVERSÃO" tone="success" /><MetricCard label="VGV potencial" value={brl.format(superintendentSummary.totals.potentialVgv)} detail={`${superintendentSummary.totals.overdueLeads} leads atrasados`} trend="PIPELINE" tone={superintendentSummary.totals.overdueLeads ? "warning" : "success"} /></div><div className="overflow-x-auto rounded-2xl border border-white/[.07]"><table className="w-full min-w-[760px] text-left text-xs"><thead className="bg-white/[.035] text-slate-500"><tr><th className="p-3">Gerente</th><th className="p-3">Corretores</th><th className="p-3">Leads</th><th className="p-3">Quentes</th><th className="p-3">Atrasados</th><th className="p-3">Ganhos</th><th className="p-3">Conversão</th><th className="p-3">VGV potencial</th></tr></thead><tbody>{superintendentSummary.managers.map((manager) => <tr key={manager.managerId} className="border-t border-white/[.06]"><td className="p-3 font-semibold text-white">{manager.managerName}</td><td className="p-3 text-slate-300">{manager.brokers}</td><td className="p-3 text-slate-300">{manager.leads}</td><td className="p-3 text-amber-200">{manager.hotLeads}</td><td className="p-3 text-rose-200">{manager.overdueLeads}</td><td className="p-3 text-emerald-200">{manager.won}</td><td className="p-3 text-slate-300">{manager.conversionRate}%</td><td className="p-3 text-slate-300">{brl.format(manager.potentialVgv)}</td></tr>)}</tbody></table></div><div className="flex flex-wrap gap-2"><StatusBadge tone={superintendentSummary.reconciliation.matches ? "success" : "danger"}>{superintendentSummary.reconciliation.matches ? "TOTAIS CONFEREM" : "REVISAR TOTAIS"}</StatusBadge><StatusBadge tone="info">ESTRUTURAS PARALELAS EXCLUÍDAS</StatusBadge><StatusBadge tone="info">SEM NÚMEROS DA DIRETORIA INTEIRA</StatusBadge></div></div>}
         </section>
       ) : null}
+
+      {isManager ? <section className="rounded-[28px] border border-rose-400/15 bg-gradient-to-br from-rose-500/[.08] to-amber-500/[.04] p-5 sm:p-6"><PageHeader eyebrow="Fase 40 · SLA do time" title="Alertas que levam ao responsável" description="Primeiro contato e follow-up vencidos, somente dos corretores diretamente subordinados." />{!teamSla ? <LoadingState rows={3} /> : <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><MetricCard label="Alertas de SLA" value={teamSla.totals.alerts} detail="Fila operacional do time" trend="AÇÃO" tone="danger" /><MetricCard label="Sem primeiro contato" value={teamSla.totals.firstContactOverdue} detail="SLA inicial vencido" trend="URGENTE" tone="danger" /><MetricCard label="Follow-ups atrasados" value={teamSla.totals.followUpOverdue} detail="Próxima ação vencida" trend="RECUPERAR" tone="warning" /><MetricCard label="Corretores com alerta" value={teamSla.totals.brokersWithAlerts} detail="Somente meu time direto" trend="ESCOPO" tone="violet" /></div>{teamSla.alerts.length ? <div className="grid gap-3 lg:grid-cols-2">{teamSla.alerts.slice(0, 12).map((alert) => <a key={`${alert.kind}-${alert.leadId}`} href={`/leads/${alert.leadId}`} className="group rounded-2xl border border-white/[.07] bg-white/[.025] p-4 transition hover:border-rose-300/25 hover:bg-white/[.04]"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-white group-hover:text-rose-100">{alert.leadName}</p><p className="mt-1 text-xs text-slate-500">Responsável: {alert.brokerName}</p></div><StatusBadge tone={alert.kind === "first_contact" ? "danger" : "warning"}>{alert.kind === "first_contact" ? "SEM CONTATO" : "FOLLOW-UP"}</StatusBadge></div><p className="mt-3 text-xs text-rose-200">Atrasado há {alert.overdueMinutes < 60 ? `${alert.overdueMinutes} min` : `${Math.floor(alert.overdueMinutes / 60)}h`} · abrir Lead 360 →</p></a>)}</div> : <EmptyState title="SLAs do time em dia" description="Nenhum primeiro contato ou follow-up está vencido agora." />}</div>}</section> : null}
 
       <section className="atlas-command-metrics">
         <MetricCard label="Leads ativos" value={loading ? "—" : metrics.active} detail="Base em atendimento" trend="LIVE" />

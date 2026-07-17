@@ -1,0 +1,37 @@
+import { type NextRequest } from "next/server";
+import { apiError, apiSuccess } from "@/lib/api/core";
+import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
+  const limited = enforceRateLimit(request, { limit: 60, scope: "manager-team-sla" });
+  if (!limited.ok) return limited.response;
+  const identity = await requireAccessContext(request);
+  if (!identity.ok) return identity.response;
+  const role = identity.access.profile.commercialRole || identity.access.profile.role;
+  if (role !== "manager") return apiError("FORBIDDEN", "A fila operacional de SLA é exclusiva do gerente.", identity.meta, { status: 403 });
+
+  const admin = getSupabaseAdmin();
+  const organizationId = identity.access.organization.id;
+  const { data: brokers, error: brokerError } = await admin.from("profiles").select("id,full_name").eq("organization_id", organizationId).eq("reports_to", identity.access.profile.id).eq("active", true).or("commercial_role.eq.broker,and(commercial_role.is.null,role.eq.broker)");
+  if (brokerError) return apiError("TEAM_LOOKUP_FAILED", "Não foi possível carregar os corretores diretos.", identity.meta, { status: 500 });
+  const brokerIds = (brokers ?? []).map((broker) => broker.id);
+  const { data: leads, error: leadError } = brokerIds.length ? await admin.from("leads").select("id,name,assigned_to,status,first_contact_due_at,first_contacted_at,next_action_at").eq("organization_id", organizationId).in("assigned_to", brokerIds).limit(5000) : { data: [], error: null };
+  if (leadError) return apiError("SLA_LOOKUP_FAILED", "Não foi possível consolidar os SLAs do time.", identity.meta, { status: 500 });
+  const brokerMap = new Map((brokers ?? []).map((broker) => [broker.id, broker.full_name || "Corretor"]));
+  const terminal = new Set(["ganho", "perdido", "arquivado", "comprou_outro"]);
+  const now = Date.now();
+  const alerts = (leads ?? []).flatMap((lead) => {
+    if (terminal.has(String(lead.status || "").toLowerCase())) return [];
+    const firstDue = lead.first_contact_due_at ? new Date(lead.first_contact_due_at).getTime() : null;
+    const nextDue = lead.next_action_at ? new Date(lead.next_action_at).getTime() : null;
+    const rows = [];
+    if (firstDue && firstDue < now && !lead.first_contacted_at) rows.push({ kind: "first_contact" as const, dueAt: lead.first_contact_due_at, overdueMinutes: Math.max(1, Math.floor((now - firstDue) / 60_000)) });
+    if (nextDue && nextDue < now) rows.push({ kind: "follow_up" as const, dueAt: lead.next_action_at, overdueMinutes: Math.max(1, Math.floor((now - nextDue) / 60_000)) });
+    return rows.map((row) => ({ ...row, leadId: lead.id, leadName: lead.name || "Lead", brokerId: lead.assigned_to!, brokerName: brokerMap.get(lead.assigned_to!) || "Corretor" }));
+  }).sort((a, b) => b.overdueMinutes - a.overdueMinutes).slice(0, 100);
+  const byBroker = (brokers ?? []).map((broker) => ({ brokerId: broker.id, brokerName: broker.full_name || "Corretor", firstContactOverdue: alerts.filter((alert) => alert.brokerId === broker.id && alert.kind === "first_contact").length, followUpOverdue: alerts.filter((alert) => alert.brokerId === broker.id && alert.kind === "follow_up").length })).filter((broker) => broker.firstContactOverdue + broker.followUpOverdue > 0).sort((a, b) => (b.firstContactOverdue + b.followUpOverdue) - (a.firstContactOverdue + a.followUpOverdue));
+  return apiSuccess({ scope: { role: "manager", directBrokersOnly: true, organizationId }, totals: { alerts: alerts.length, firstContactOverdue: alerts.filter((alert) => alert.kind === "first_contact").length, followUpOverdue: alerts.filter((alert) => alert.kind === "follow_up").length, brokersWithAlerts: byBroker.length }, alerts, byBroker, generatedAt: new Date().toISOString() }, identity.meta, { headers: limited.headers });
+}
