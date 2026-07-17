@@ -1206,6 +1206,18 @@ Pendência externa: aplicar migration e homologar oito perguntas, alteração, t
 
 Próxima fase: **Fase 87 — Assistente de simulação comercial**, montando cenários explicáveis com regras vigentes da incorporadora e validação humana.
 
+## Fase 87 — Assistente de simulação comercial
+
+**Estado:** 100% implementada e aprovada localmente; migration e cenários com regras reais permanecem para homologação.
+
+**Evolução:** o corretor compara regra padrão, entrada maior e prazo menor usando unidade disponível, pacote comercial aprovado e regra ativa. Fórmula, premissas, versões e validade ficam visíveis e preservadas.
+
+**Governança:** parâmetros nunca flexibilizam a regra vigente; simulação não é proposta, não aprova crédito e exige reconfirmação e revisão humana. O contrato está em `config/explainable-commercial-simulation.json`, o gate em `npm run commercial-simulation:check` e o roteiro em `docs/EXPLAINABLE_COMMERCIAL_SIMULATION_PHASE_87.md`.
+
+Pendência externa: aplicar migration e homologar três cenários, limites, expiração, mudanças de preço/estoque/regra, aprovação e dois tenants.
+
+Próxima fase: **Fase 88 — Assistente de visita e proposta**, preparando agenda, roteiro, confirmação, feedback e próximo passo com aprovação humana.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
