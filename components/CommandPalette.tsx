@@ -78,10 +78,11 @@ export default function CommandPalette() {
     if (!open || safeQuery.length < 2) { setLeadCommands([]); setSearching(false); return; }
     const timer = window.setTimeout(async () => {
       setSearching(true);
-      const digits = safeQuery.replace(/\D/g, "");
-      const filter = digits.length >= 4 ? `name.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%,phone.ilike.%${digits}%` : `name.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%`;
-      const { data } = await supabase.from("leads").select("id,name,status,phone").or(filter).order("updated_at", { ascending: false }).limit(6);
-      setLeadCommands((data ?? []).map((lead) => ({ label: lead.name || "Lead sem nome", href: `/leads/${lead.id}`, group: "Leads da minha carteira", keywords: `${lead.status || ""} ${String(lead.phone || "").slice(-4)}` })));
+      const { data: session } = await supabase.auth.getSession();
+      const response = await fetch(`/api/v1/search?q=${encodeURIComponent(safeQuery)}`, { headers: { Authorization: `Bearer ${session.session?.access_token || ""}` }, cache: "no-store" });
+      const body = await response.json();
+      const results = response.ok ? body.data.results.slice(0, 6) as Array<{ title: string; href: string; reason: string; nextAction: string }> : [];
+      setLeadCommands(results.map((lead) => ({ label: lead.title, href: lead.href, group: "Leads da minha carteira", keywords: `${lead.reason} ${lead.nextAction}` })));
       setSearching(false);
       setSelected(0);
     }, 220);
@@ -106,7 +107,7 @@ export default function CommandPalette() {
       <div className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/10 bg-[#090d18]/95 shadow-[0_30px_100px_rgba(0,0,0,.65)]" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center gap-3 border-b border-white/[0.08] px-5 py-4">
           <span className="text-sky-300">⌕</span>
-          <input ref={inputRef} value={query} onChange={(event) => { setQuery(event.target.value); setSelected(0); }} onKeyDown={handleInputKeyDown} placeholder="Buscar lead, telefone, módulo ou ação..." className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500" role="combobox" aria-expanded="true" aria-controls="atlas-command-results" aria-activedescendant={filtered[selected] ? `atlas-command-${selected}` : undefined} />
+          <input ref={inputRef} value={query} onChange={(event) => { setQuery(event.target.value); setSelected(0); }} onKeyDown={handleInputKeyDown} placeholder="Buscar nome, telefone, projeto, corretor ou intenção..." className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500" role="combobox" aria-expanded="true" aria-controls="atlas-command-results" aria-activedescendant={filtered[selected] ? `atlas-command-${selected}` : undefined} />
           <kbd className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-slate-500">ESC</kbd>
         </div>
         <div id="atlas-command-results" role="listbox" className="max-h-[58vh] overflow-y-auto p-3">
@@ -125,7 +126,7 @@ export default function CommandPalette() {
           ) : (
             <div className="px-4 py-12 text-center">
               <p className="text-sm font-semibold text-slate-300">Nenhum comando encontrado</p>
-              <p className="mt-2 text-xs text-slate-600">{searching ? "Consultando sua carteira..." : "Tente buscar por nome, telefone, lançamento, campanha ou decisão."}</p>
+              <p className="mt-2 text-xs text-slate-600">{searching ? "Consultando sua carteira..." : "Tente nome, telefone, e-mail, projeto, corretor, origem ou intenção."}</p>
             </div>
           )}
         </div>

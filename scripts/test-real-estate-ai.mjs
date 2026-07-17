@@ -125,6 +125,7 @@ const immediateOptOutMigration = readFileSync(resolve(root, "supabase/migrations
 const nightlyReplyMigration = readFileSync(resolve(root, "supabase/migrations/20260717014600_nightly_reply_broker_routing.sql"), "utf8");
 const conversationsPage = readFileSync(resolve(root, "app/(crm)/conversations/page.tsx"), "utf8");
 const commandPalette = readFileSync(resolve(root, "components/CommandPalette.tsx"), "utf8");
+const smartSearchRoute = readFileSync(resolve(root, "app/api/v1/search/route.ts"), "utf8");
 const quickCreate = readFileSync(resolve(root, "components/AtlasQuickCreate.tsx"), "utf8");
 const metaInsights = readFileSync(resolve(root, "lib/meta/insights.ts"), "utf8");
 const customerExperience = readFileSync(resolve(root, "lib/atlas/customer-experience.ts"), "utf8");
@@ -478,7 +479,7 @@ const checks = [
   ["opt-out não reativa jornada noturna", whatsappWebhook.includes("if (!optedOut && inboundMessage?.id)") && immediateOptOutMigration.includes("status='opted_out'")],
   ["conversas respeitam carteira comercial", nightlyReplyMigration.includes("conversations_commercial_scope") && nightlyReplyMigration.includes("messages_commercial_scope") && nightlyReplyMigration.includes("can_access_commercial_lead")],
   ["fase 49 mostra próxima ação", conversationsPage.includes("Fase 49 · Resposta noturna") && conversationsPage.includes("RESPONDER AGORA") && conversationsPage.includes("continuar a descoberta")],
-  ["busca global encontra leads sob RLS", commandPalette.includes('.from("leads")') && commandPalette.includes("Leads da minha carteira") && commandPalette.includes("/leads/${lead.id}")],
+  ["busca global encontra leads sob RLS", commandPalette.includes("/api/v1/search?q=") && commandPalette.includes("Leads da minha carteira") && smartSearchRoute.includes("const db = access.supabase") && smartSearchRoute.includes("/leads/${lead.id}")],
   ["busca é tolerante a acentos", commandPalette.includes('normalize("NFD")') && commandPalette.includes("[\\u0300-\\u036f]")],
   ["paleta opera inteiramente pelo teclado", commandPalette.includes('event.key === "ArrowDown"') && commandPalette.includes('event.key === "ArrowUp"') && commandPalette.includes('event.key === "Enter"')],
   ["busca rápida evita consultas excessivas", commandPalette.includes("window.setTimeout") && commandPalette.includes("220") && commandPalette.includes("window.clearTimeout")],

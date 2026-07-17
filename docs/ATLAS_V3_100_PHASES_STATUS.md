@@ -560,7 +560,19 @@ Pendência externa: aplicar a migration em homologação, testar contatos simult
 
 Pendência externa: testar lead própria e lateral, reconciliar projeto, responsável, campanha, mensagens e pipeline, e medir se o corretor encontra contexto e próxima ação em menos de um minuto.
 
-Próxima fase: **Fase 27 — busca inteligente**, encontrando rapidamente leads por nome, telefone, e-mail, projeto, origem e contexto permitido.
+## Fase 27 — Busca inteligente
+
+**Estado:** 100% implementada e aprovada localmente; aferição de relevância com carteiras reais permanece para homologação.
+
+**Evolução:** a busca deixou de ser uma tela vazia e ganhou endpoint canônico compartilhado com a paleta global. Agora encontra leads por nome, telefone, e-mail, projeto, incorporadora, corretor, origem e intenção, explica o motivo do resultado e sugere a próxima ação.
+
+**Relevância:** resultados são ordenados por correspondência exata, quantidade de campos encontrados, score e urgência de follow-up. Texto é normalizado, acentos são tolerados e telefone pode ser localizado por trecho a partir de quatro dígitos. Consultas possuem debounce, limite e cancelamento no navegador.
+
+**Escopo:** todas as leituras usam o cliente autenticado, organização e RLS hierárquico. Resultados ocultos não aparecem nem alteram contagens. O contrato está em `config/smart-search.json`, o gate em `npm run smart-search:check` e o roteiro em `docs/SMART_SEARCH_PHASE_27.md`.
+
+Pendência externa: testar termos reais, acentos, telefone, projeto, corretor e intenção com quatro perfis e duas organizações; medir precisão dos dez primeiros resultados e tempo até abrir a lead correta.
+
+Próxima fase: **Fase 28 — filtros comerciais**, criando atalhos rápidos para atrasos, calor, origem, projeto, responsável e próxima ação.
 
 ## Painel das 100 fases
 
