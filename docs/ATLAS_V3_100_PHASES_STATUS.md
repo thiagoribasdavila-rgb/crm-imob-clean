@@ -488,7 +488,19 @@ Pendência externa: verificar duplicidades antigas de IDs do WhatsApp, aplicar a
 
 Pendência externa: aplicar migrations 17–19 em homologação, executar Supabase Security/Performance Advisors, testar diretor/superintendente/gerente/corretores em duas organizações, validar uploads maliciosos e executar carga/replay controlados.
 
-Próxima fase: **Fase 21 — dashboard do corretor**, unificando prioridades, leads quentes, tarefas, SLA, agenda e próximas melhores ações em uma experiência diária simples.
+## Fase 21 — Dashboard do corretor
+
+**Estado:** 100% implementada e aprovada localmente; validação com carteiras reais de dois corretores pendente em homologação.
+
+**Evolução:** o corretor agora recebe uma visão diária exclusiva, curta e explicável, separada das visões gerenciais. O resumo apresenta carteira ativa, leads quentes, primeiro contato vencido, follow-ups, tarefas e agenda dos próximos sete dias. A fila “Comece por aqui” informa por que cada lead subiu e qual é a próxima melhor ação.
+
+**Inteligência aplicada:** a prioridade combina score, SLA inicial, follow-up, tarefa atrasada, temperatura e ausência de próxima ação. O ranking não cria urgência inventada, não executa contato e não altera o CRM: a decisão final permanece com o corretor.
+
+**Escopo:** endpoint exclusivo de `broker`, cliente autenticado com RLS, filtro explícito pelo `assigned_to` do próprio perfil, sem `service_role`, limite por rota e resposta sem cache compartilhado. O contrato está em `config/broker-dashboard.json`, o gate em `npm run broker-dashboard:check` e o roteiro em `docs/BROKER_DASHBOARD_PHASE_21.md`.
+
+Pendência externa: testar dois corretores de equipes diferentes, confirmar isolamento, validar a ordenação com casos reais de SLA/follow-up/tarefa e medir se o corretor encontra sua primeira ação em menos de um minuto.
+
+Próxima fase: **Fase 22 — dashboard do gerente**, reunindo equipe, filas, SLA, conversão, atrasos, distribuição e intervenções necessárias.
 
 ## Painel das 100 fases
 

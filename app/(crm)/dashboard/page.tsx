@@ -25,6 +25,7 @@ type DashboardData = {
 type SuperintendentSummary = { scope: { role: "superintendent"; directManagersOnly: boolean; parallelStructuresExcluded: boolean; unassignedExcluded: boolean }; totals: { managers: number; brokers: number; leads: number; activeLeads: number; hotLeads: number; overdueLeads: number; won: number; potentialVgv: number }; managers: Array<{ managerId: string; managerName: string; brokers: number; leads: number; activeLeads: number; hotLeads: number; overdueLeads: number; won: number; conversionRate: number; potentialVgv: number }>; reconciliation: { managerLeadSum: number; scopedLeadCount: number; matches: boolean }; generatedAt: string };
 type TeamSlaSummary = { scope: { role: "manager"; directBrokersOnly: boolean }; totals: { alerts: number; firstContactOverdue: number; followUpOverdue: number; brokersWithAlerts: number }; alerts: Array<{ kind: "first_contact" | "follow_up"; dueAt: string; overdueMinutes: number; leadId: string; leadName: string; brokerId: string; brokerName: string }>; byBroker: Array<{ brokerId: string; brokerName: string; firstContactOverdue: number; followUpOverdue: number }>; generatedAt: string };
 type PredictiveBriefing = { status: "critical" | "attention" | "healthy"; signals: Array<{ id: string; severity: "critical" | "attention" | "opportunity" | "healthy"; title: string; evidence: string; action: string; href: string }>; model: { generativeReady: boolean; localIntelligenceReady: boolean } };
+type BrokerDaily = { scope: { role: "broker"; ownPortfolioOnly: true; brokerId: string }; summary: { activeLeads: number; hotLeads: number; openTasks: number; overdueTasks: number; firstContactOverdue: number; followUpOverdue: number; agendaNext7Days: number }; priorities: Array<{ leadId: string; leadName: string; status: string; score: number; priorityScore: number; reason: string; nextBestAction: string; dueAt: string | null; hot: boolean; source: string | null; developmentId: string | null }>; agenda: Array<{ id: string; title: string; dueAt: string; priority: string; leadId: string | null; overdue: boolean }>; ranking: { explainable: true; signals: string[]; humanApprovalRequired: true }; generatedAt: string };
 
 const emptyData: DashboardData = {
   leads: [],
@@ -140,6 +141,7 @@ export default function DashboardPage() {
   const [superintendentSummary, setSuperintendentSummary] = useState<SuperintendentSummary | null>(null);
   const [teamSla, setTeamSla] = useState<TeamSlaSummary | null>(null);
   const [predictiveBriefing, setPredictiveBriefing] = useState<PredictiveBriefing | null>(null);
+  const [brokerDaily, setBrokerDaily] = useState<BrokerDaily | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -226,6 +228,19 @@ export default function DashboardPage() {
     });
     return () => { active = false; };
   }, [viewerId]);
+
+  useEffect(() => {
+    if (viewerRole !== "broker") { setBrokerDaily(null); return; }
+    let active = true;
+    void supabase.auth.getSession().then(async ({ data: session }) => {
+      const response = await fetch("/api/v1/analytics/broker-daily", { headers: { Authorization: `Bearer ${session.session?.access_token || ""}` }, cache: "no-store" });
+      const body = await response.json();
+      if (!active) return;
+      if (response.ok) setBrokerDaily(body.data as BrokerDaily);
+      else setWarnings((current) => [...current, body.error?.message || "Sua agenda diária está indisponível."]);
+    });
+    return () => { active = false; };
+  }, [viewerRole]);
 
   const leads = useMemo(
     () =>
@@ -587,6 +602,29 @@ export default function DashboardPage() {
           description={warnings.join(" · ")}
           action={<button type="button" className="atlas-button-secondary" onClick={() => void load()}>Tentar novamente</button>}
         />
+      ) : null}
+
+      {!isDirector && !isSuperintendent && !isManager ? (
+        <section className="rounded-[28px] border border-sky-400/15 bg-gradient-to-br from-sky-500/[.09] via-slate-950/75 to-cyan-500/[.05] p-5 sm:p-6" data-phase="21-broker-daily">
+          <PageHeader eyebrow="Fase 21 · Meu dia" title="Seu plano comercial em 60 segundos" description="Somente sua carteira: quem atender agora, por que entrou na fila e qual é a próxima melhor ação." actions={<Link href="/pipeline">Abrir meu pipeline →</Link>} />
+          {!brokerDaily ? <LoadingState rows={4} /> : <div className="mt-5 space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+              <MetricCard label="Leads ativos" value={brokerDaily.summary.activeLeads} detail="Somente minha carteira" trend="CARTEIRA" />
+              <MetricCard label="Leads quentes" value={brokerDaily.summary.hotLeads} detail="Alta intenção ou score ≥ 70" trend="ATENDER" tone="danger" />
+              <MetricCard label="Sem primeiro contato" value={brokerDaily.summary.firstContactOverdue} detail="SLA inicial vencido" trend="AGORA" tone={brokerDaily.summary.firstContactOverdue ? "danger" : "success"} />
+              <MetricCard label="Follow-ups vencidos" value={brokerDaily.summary.followUpOverdue} detail="Próxima ação atrasada" trend="RECUPERAR" tone={brokerDaily.summary.followUpOverdue ? "warning" : "success"} />
+              <MetricCard label="Tarefas abertas" value={brokerDaily.summary.openTasks} detail={`${brokerDaily.summary.overdueTasks} atrasadas`} trend="EXECUÇÃO" tone={brokerDaily.summary.overdueTasks ? "warning" : "success"} />
+              <MetricCard label="Agenda 7 dias" value={brokerDaily.summary.agendaNext7Days} detail="Compromissos próximos" trend="AGENDA" tone="violet" />
+            </div>
+            <div className="grid gap-5 xl:grid-cols-[1.35fr_.8fr]">
+              <div className="rounded-2xl border border-white/[.07] bg-slate-950/45 p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[.18em] text-cyan-300">Fila explicável</p><h2 className="mt-1 text-lg font-bold text-white">Comece por aqui</h2></div><StatusBadge tone="info">PRÓXIMA MELHOR AÇÃO</StatusBadge></div>
+                {brokerDaily.priorities.length ? <div className="mt-4 grid gap-3">{brokerDaily.priorities.map((item, index) => <Link href={`/leads/${item.leadId}`} key={item.leadId} className="group rounded-2xl border border-white/[.06] bg-white/[.025] p-4 transition hover:border-cyan-300/25 hover:bg-white/[.045]"><div className="flex items-start gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-cyan-400/10 text-xs font-black text-cyan-200">{index + 1}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="text-white">{item.leadName}</strong><StatusBadge tone={item.reason.includes("SLA") || item.reason.includes("vencido") || item.reason.includes("atrasada") ? "danger" : item.hot ? "warning" : "info"}>{item.reason}</StatusBadge></div><p className="mt-2 text-sm text-slate-300">{item.nextBestAction}</p><p className="mt-2 text-[11px] text-slate-500">Score {item.score} · etapa {item.status}{item.dueAt ? ` · prazo ${new Date(item.dueAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : ""}</p></div><span className="text-cyan-200 transition group-hover:translate-x-1">→</span></div></Link>)}</div> : <EmptyState title="Prioridades concluídas" description="Sua carteira não possui ação urgente neste momento." />}
+              </div>
+              <aside className="rounded-2xl border border-white/[.07] bg-slate-950/45 p-4 sm:p-5"><div className="flex items-center justify-between gap-2"><div><p className="text-[11px] font-bold uppercase tracking-[.18em] text-violet-300">Agenda prática</p><h2 className="mt-1 text-lg font-bold text-white">Próximos 7 dias</h2></div><Link href="/calendar" className="text-xs font-semibold text-violet-200">Calendário →</Link></div>{brokerDaily.agenda.length ? <div className="mt-4 grid gap-3">{brokerDaily.agenda.map((item) => <Link href={item.leadId ? `/leads/${item.leadId}` : "/tasks"} key={item.id} className="rounded-xl border border-white/[.06] bg-white/[.025] p-3"><div className="flex items-center justify-between gap-2"><strong className="text-sm text-white">{item.title}</strong>{item.overdue ? <StatusBadge tone="danger">ATRASADA</StatusBadge> : <StatusBadge tone="violet">AGENDADA</StatusBadge>}</div><p className="mt-2 text-xs text-slate-500">{new Date(item.dueAt).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</p></Link>)}</div> : <EmptyState title="Agenda livre" description="Nenhuma tarefa com prazo nos próximos sete dias." />}<div className="mt-4 rounded-xl border border-cyan-400/10 bg-cyan-500/[.05] p-3"><p className="text-xs font-semibold text-cyan-100">Como a IA priorizou</p><p className="mt-1 text-[11px] leading-5 text-slate-400">Score, SLA do primeiro contato, follow-up, tarefa atrasada, temperatura e ausência de próxima ação. A decisão final continua com você.</p></div></aside>
+            </div>
+          </div>}
+        </section>
       ) : null}
 
       <section className="rounded-[28px] border border-cyan-400/15 bg-gradient-to-br from-cyan-500/[.08] via-slate-950/70 to-violet-500/[.07] p-5 sm:p-6">
