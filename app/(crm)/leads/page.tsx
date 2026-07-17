@@ -137,6 +137,7 @@ export default function LeadsPage() {
   const [pages, setPages] = useState(1);
   const [referenceTime, setReferenceTime] = useState(0);
   const [currentRole, setCurrentRole] = useState("");
+  const [currentProfileId, setCurrentProfileId] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [transferTarget, setTransferTarget] = useState("");
   const [transferReason, setTransferReason] = useState("");
@@ -167,6 +168,7 @@ export default function LeadsPage() {
       setCampaigns((campaignResult.data ?? []) as ReferenceRow[]);
       setDevelopments((developmentResult.data ?? []) as ReferenceRow[]);
       setCurrentRole(meResult?.data?.profile?.commercialRole || meResult?.data?.profile?.role || "");
+      setCurrentProfileId(meResult?.data?.profile?.id || "");
       const referenceError = profileResult.error || campaignResult.error || developmentResult.error;
       if (referenceError) setError(`Referências: ${referenceError.message}`);
       setReferencesLoading(false);
@@ -296,6 +298,7 @@ export default function LeadsPage() {
   const canTransfer = ["admin", "director", "superintendent", "manager"].includes(currentRole);
   const transferTargets = profiles.filter((profile) => {
     const role = profile.commercial_role || profile.role;
+    if (currentRole === "manager") return role === "broker" && profile.reports_to === currentProfileId;
     return ["manager", "broker"].includes(role);
   });
 
@@ -436,7 +439,7 @@ export default function LeadsPage() {
         <section className="sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border border-cyan-400/30 bg-slate-950/95 p-4 shadow-2xl backdrop-blur md:flex-row md:items-center">
           <div className="min-w-44"><strong className="block text-white">{selected.size} lead(s) selecionado(s)</strong><span className="text-xs text-slate-400">Transferência segura com rastreabilidade</span></div>
           <select className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white" value={transferTarget} onChange={(event) => setTransferTarget(event.target.value)}>
-            <option value="">Escolha gerente ou corretor</option>
+            <option value="">{currentRole === "manager" ? "Escolha um corretor do meu time" : "Escolha gerente ou corretor"}</option>
             {transferTargets.map((profile) => <option key={profile.id} value={profile.id}>{profile.full_name || "Usuário sem nome"} · {profile.commercial_role || profile.role}</option>)}
           </select>
           <input className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white" value={transferReason} onChange={(event) => setTransferReason(event.target.value)} placeholder="Motivo da transferência" minLength={5} maxLength={500} />

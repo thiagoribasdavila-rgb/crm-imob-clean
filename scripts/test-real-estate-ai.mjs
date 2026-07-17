@@ -57,6 +57,7 @@ const forgotPassword = readFileSync(resolve(root, "app/(auth)/forgot-password/pa
 const crmLeadsRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/route.ts"), "utf8");
 const bulkTransferRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/bulk-transfer/route.ts"), "utf8");
 const teamTransferMigration = readFileSync(resolve(root, "supabase/migrations/20260717004248_atomic_team_bulk_transfer.sql"), "utf8");
+const managerTransferMigration = readFileSync(resolve(root, "supabase/migrations/20260717004752_manager_direct_team_bulk_transfer.sql"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -105,7 +106,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("134 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("137 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -194,6 +195,9 @@ const checks = [
   ["gerente consulta somente corretor visível", crmLeadsRoute.includes("OWNER_OUT_OF_SCOPE") && crmLeadsRoute.includes('profile.id === assignedTo')],
   ["filtros de equipe são não ambíguos", crmLeadsRoute.includes("AMBIGUOUS_OWNER_FILTER") && crmLeadsRoute.includes("teamOwner && assignedTo")],
   ["tela identifica o escopo do gerente", leadsPortfolioPage.includes("MEU TIME") && leadsPortfolioPage.includes("Todo o meu time")],
+  ["gerente transfere somente ao subordinado direto", managerTransferMigration.includes("target_reports_to is distinct from p_actor_id")],
+  ["destinos do gerente são somente corretores diretos", leadsPortfolioPage.includes('role === "broker" && profile.reports_to === currentProfileId') && leadsPortfolioPage.includes("corretor do meu time")],
+  ["motivo da transferência é protegido no banco", managerTransferMigration.includes("char_length(trim(coalesce(p_reason, ''))) < 5")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
