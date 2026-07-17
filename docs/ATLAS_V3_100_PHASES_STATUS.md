@@ -724,7 +724,17 @@ Pendência externa: aferir idades, reversões, limites e cobertura com históric
 
 Pendência externa: aferir coortes, saltos, retornos, reversões, durações e isolamento com histórico real.
 
-Próxima fase: **Fase 41 — Central de tarefas**, consolidando prioridades, responsáveis, prazos e execução diária.
+## Fase 41 — Central de tarefas
+
+**Estado:** 100% implementada e aprovada localmente; jornada multiusuário real permanece para homologação.
+
+**Evolução:** uma fila canônica reúne prioridade explicável, tarefas vencidas e de hoje, itens sem prazo, responsáveis e leads relacionadas. A liderança recebe somente o consolidado visível da própria cadeia.
+
+**Segurança:** conclusão e reagendamento passam por API autenticada, ações permitidas e reconfirmação de organização e RLS. Não existe atribuição automática nem ranking de pessoas. O contrato está em `config/task-center.json`, o gate em `npm run task-center:check` e o roteiro em `docs/TASK_CENTER_PHASE_41.md`.
+
+Pendência externa: validar tarefas próprias, subordinadas, laterais, sem lead, concorrência e isolamento com usuários reais.
+
+Próxima fase: **Fase 42 — Criação rápida de tarefas**, reduzindo passos sem perder vínculo, responsável e prazo.
 
 ## Painel das 100 fases
 

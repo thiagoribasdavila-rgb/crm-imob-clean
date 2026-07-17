@@ -6,65 +6,26 @@ import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 
-type Task = {
-  id: string;
-  title: string;
-  description: string | null;
-  due_at: string | null;
-  priority: string;
-  status: string;
-  lead_id: string | null;
-  lead?: { id: string; name: string | null; purpose: string | null } | null;
-};
+type Task={id:string;title:string;description:string|null;due_at:string|null;priority:string;status:string;lead_id:string|null;assigned_to:string|null;assigneeName:string;mine:boolean;overdue:boolean;today:boolean;priorityScore:number;lead?:{id:string;name:string|null;purpose:string|null}|null};
+type Center={scope:{role:string;actorId:string};summary:{open:number;overdue:number;today:number;high:number;withoutDueDate:number;unassigned:number;mine:number};tasks:Task[];byOwner:Array<{id:string;name:string;open:number;overdue:number;today:number;high:number}>};
+type View="priority"|"overdue"|"today"|"mine"|"team"|"no_due";
+const dateLabel=(value:string|null)=>value?new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short"}).format(new Date(value)):"Sem prazo";
 
-function overdue(value: string | null) { return Boolean(value && new Date(value).getTime() < Date.now()); }
-function dateLabel(value: string | null) { return value ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)) : "Sem prazo"; }
-function completed(status: string) { return ["concluida", "concluído", "concluido", "done", "completed"].includes(status.toLowerCase()); }
-
-export default function TasksPage() {
-  const [items, setItems] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [view, setView] = useState<"prioridade" | "vencidas" | "todas">("prioridade");
-
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
-    const { data, error: loadError } = await supabase.from("tasks").select("id,title,description,due_at,priority,status,lead_id,lead:leads(id,name,purpose)").order("due_at", { ascending: true, nullsFirst: false }).limit(500);
-    if (loadError) setError("Não foi possível carregar sua operação diária.");
-    setItems((data as unknown as Task[]) ?? []); setLoading(false);
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
-  async function finish(task: Task) {
-    setSavingId(task.id); setError("");
-    const { error: updateError } = await supabase.from("tasks").update({ status: "concluida" }).eq("id", task.id);
-    if (updateError) setError("Não foi possível concluir a tarefa.");
-    else setItems((current) => current.map((item) => item.id === task.id ? { ...item, status: "concluida" } : item));
-    setSavingId(null);
-  }
-
-  async function postpone(task: Task) {
-    setSavingId(task.id); setError("");
-    const dueAt = new Date(Date.now() + 86_400_000).toISOString();
-    const { error: updateError } = await supabase.from("tasks").update({ due_at: dueAt }).eq("id", task.id);
-    if (updateError) setError("Não foi possível reagendar a tarefa.");
-    else setItems((current) => current.map((item) => item.id === task.id ? { ...item, due_at: dueAt } : item));
-    setSavingId(null);
-  }
-
-  const open = useMemo(() => items.filter((item) => !completed(item.status)), [items]);
-  const metrics = useMemo(() => ({ open: open.length, overdue: open.filter((item) => overdue(item.due_at)).length, high: open.filter((item) => item.priority.toLowerCase() === "alta").length, today: open.filter((item) => item.due_at && new Date(item.due_at).toDateString() === new Date().toDateString()).length }), [open]);
-  const visible = useMemo(() => [...open].filter((item) => view !== "vencidas" || overdue(item.due_at)).sort((a, b) => {
-    const weight = (item: Task) => (overdue(item.due_at) ? 300 : 0) + (item.priority.toLowerCase() === "alta" ? 100 : 0) + (item.due_at ? Math.max(0, 80 - Math.floor((new Date(item.due_at).getTime() - Date.now()) / 3_600_000)) : 0);
-    return view === "todas" ? new Date(a.due_at || "2999").getTime() - new Date(b.due_at || "2999").getTime() : weight(b) - weight(a);
-  }), [open, view]);
-
-  return <div className="space-y-6 pb-8">
-    <section><AtlasBadge tone="info">OPERAÇÃO DIÁRIA</AtlasBadge><h1 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-white sm:text-4xl">Tarefas e próximos passos</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Uma fila simples para cumprir combinados, recuperar atrasos e manter cada lead avançando.</p></section>
-    {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><AtlasMetric label="Pendentes" value={loading ? "—" : metrics.open} detail="Ações em aberto" trend="LIVE" tone="blue"/><AtlasMetric label="Vencidas" value={loading ? "—" : metrics.overdue} detail="Resolver primeiro" trend="SLA" tone="rose"/><AtlasMetric label="Para hoje" value={loading ? "—" : metrics.today} detail="Compromissos do dia" trend="HOJE" tone="amber"/><AtlasMetric label="Alta prioridade" value={loading ? "—" : metrics.high} detail="Maior impacto" trend="FOCO" tone="violet"/></section>
-    <AtlasCard><AtlasCardHeader eyebrow="Daily execution" title="Minha fila comercial" description="Vencimentos e prioridades aparecem primeiro. Concluir e reagendar preservam a operação no padrão atual do V3." action={<button type="button" onClick={() => void load()} className="atlas-button-secondary">Atualizar</button>}/><div className="flex gap-2 overflow-x-auto border-t border-white/[.06] p-4 sm:px-6">{([['prioridade','Prioridade inteligente'],['vencidas','Somente vencidas'],['todas','Por prazo']] as const).map(([key,label]) => <button key={key} onClick={() => setView(key)} className={`atlas-kanban-toggle shrink-0 ${view === key ? "is-active" : ""}`}>{label}</button>)}</div><div className="grid gap-3 p-4 sm:p-6 lg:grid-cols-2">{loading ? [1,2,3,4].map((item) => <AtlasSkeleton key={item} className="h-44"/>) : visible.length ? visible.map((task) => <article key={task.id} className={`rounded-2xl border p-4 ${overdue(task.due_at) ? "border-rose-400/18 bg-rose-400/[.04]" : "border-white/[.07] bg-white/[.02]"}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate text-sm font-semibold text-white">{task.title || "Tarefa comercial"}</h2><p className="mt-1 truncate text-xs text-slate-500">{task.lead?.name || "Sem lead vinculada"}{task.lead?.purpose ? ` · ${task.lead.purpose}` : ""}</p></div><AtlasBadge tone={overdue(task.due_at) ? "danger" : task.priority.toLowerCase() === "alta" ? "warning" : "neutral"}>{overdue(task.due_at) ? "VENCIDA" : task.priority || "NORMAL"}</AtlasBadge></div><p className="mt-4 text-xs leading-5 text-slate-400">{task.description || "Execute a ação e registre o resultado na timeline da lead."}</p><p className={`mt-3 text-xs font-semibold ${overdue(task.due_at) ? "text-rose-300" : "text-sky-300"}`}>{dateLabel(task.due_at)}</p><div className="mt-4 flex flex-wrap gap-2">{task.lead_id ? <Link href={`/leads/${task.lead_id}`} className="atlas-button-secondary">Abrir lead</Link> : null}<button type="button" disabled={savingId === task.id} onClick={() => void postpone(task)} className="atlas-button-secondary disabled:opacity-50">+1 dia</button><button type="button" disabled={savingId === task.id} onClick={() => void finish(task)} className="atlas-button-primary disabled:opacity-50">Concluir</button></div></article>) : <div className="lg:col-span-2"><AtlasEmpty title="Fila em dia" description="Nenhuma tarefa aberta neste filtro."/></div>}</div></AtlasCard>
+export default function TasksPage(){
+  const[data,setData]=useState<Center|null>(null),[loading,setLoading]=useState(true),[savingId,setSavingId]=useState<string|null>(null),[error,setError]=useState(""),[view,setView]=useState<View>("priority");
+  const sessionToken=useCallback(async()=>{const{data:session}=await supabase.auth.getSession();return session.session?.access_token||"";},[]);
+  const load=useCallback(async()=>{setLoading(true);setError("");try{const response=await fetch("/api/v1/tasks",{headers:{Authorization:`Bearer ${await sessionToken()}`},cache:"no-store"});const body=await response.json();if(!response.ok)throw new Error(body.error?.message||body.error);setData(body.data||body);}catch{setError("Não foi possível carregar sua operação diária.");}finally{setLoading(false);}},[sessionToken]);
+  useEffect(()=>{void load();},[load]);
+  async function act(task:Task,action:"complete"|"postpone_one_day"){setSavingId(task.id);setError("");try{const response=await fetch("/api/v1/tasks",{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${await sessionToken()}`},body:JSON.stringify({id:task.id,action})});const body=await response.json();if(!response.ok)throw new Error(body.error?.message||body.error);await load();}catch{setError(action==="complete"?"Não foi possível concluir a tarefa.":"Não foi possível reagendar a tarefa.");}finally{setSavingId(null);}}
+  const visible=useMemo(()=>data?.tasks.filter(task=>view==="overdue"?task.overdue:view==="today"?task.today:view==="mine"?task.mine:view==="team"?!task.mine:view==="no_due"?!task.due_at:true)??[],[data,view]);
+  const leadership=Boolean(data&&["admin","director","superintendent","manager"].includes(data.scope.role));
+  return <div className="space-y-6 pb-8" data-phase="41-task-center">
+    <section><AtlasBadge tone="info">FASE 41 · CENTRAL DE TAREFAS</AtlasBadge><h1 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-white sm:text-4xl">Tarefas e próximos passos</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Uma fila segura para cumprir combinados, recuperar atrasos e manter cada lead avançando.</p></section>
+    {error?<div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div>:null}
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6"><AtlasMetric label="Pendentes" value={loading?"—":data?.summary.open??0} detail="Ações visíveis" trend="LIVE" tone="blue"/><AtlasMetric label="Vencidas" value={loading?"—":data?.summary.overdue??0} detail="Resolver primeiro" trend="SLA" tone="rose"/><AtlasMetric label="Para hoje" value={loading?"—":data?.summary.today??0} detail="Compromissos do dia" trend="HOJE" tone="amber"/><AtlasMetric label="Alta prioridade" value={loading?"—":data?.summary.high??0} detail="Maior impacto" trend="FOCO" tone="violet"/><AtlasMetric label="Sem prazo" value={loading?"—":data?.summary.withoutDueDate??0} detail="Planejamento incompleto" trend="REVISAR" tone="amber"/><AtlasMetric label="Minha fila" value={loading?"—":data?.summary.mine??0} detail="Sob minha responsabilidade" trend="PESSOAL" tone="green"/></section>
+    <div className={`grid gap-5 ${leadership?"xl:grid-cols-[1fr_320px]":""}`}>
+      <AtlasCard><AtlasCardHeader eyebrow="Execução diária" title="Fila comercial priorizada" description="Atraso, prazo e prioridade formam uma ordem explicável. As ações são reconfirmadas pela API e pelo RLS." action={<button type="button" onClick={()=>void load()} className="atlas-button-secondary">Atualizar</button>}/><div className="flex gap-2 overflow-x-auto border-t border-white/[.06] p-4 sm:px-6">{([['priority','Prioridade'],['overdue','Vencidas'],['today','Hoje'],['mine','Minha fila'],['team','Equipe visível'],['no_due','Sem prazo']]as const).map(([key,label])=><button key={key} onClick={()=>setView(key)} className={`atlas-kanban-toggle shrink-0 ${view===key?"is-active":""}`}>{label}</button>)}</div><div className="grid gap-3 p-4 sm:p-6 lg:grid-cols-2">{loading?[1,2,3,4].map(item=><AtlasSkeleton key={item} className="h-48"/>):visible.length?visible.map(task=><article key={task.id} className={`rounded-2xl border p-4 ${task.overdue?"border-rose-400/18 bg-rose-400/[.04]":"border-white/[.07] bg-white/[.02]"}`}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate text-sm font-semibold text-white">{task.title}</h2><p className="mt-1 truncate text-xs text-slate-500">{task.lead?.name||"Sem lead vinculada"}{task.lead?.purpose?` · ${task.lead.purpose}`:""}</p></div><AtlasBadge tone={task.overdue?"danger":["alta","high","critical"].includes(task.priority)?"warning":"neutral"}>{task.overdue?"VENCIDA":task.priority||"NORMAL"}</AtlasBadge></div><p className="mt-4 text-xs leading-5 text-slate-400">{task.description||"Execute a ação e registre o resultado na timeline da lead."}</p><div className="mt-3 flex items-center justify-between gap-2"><p className={`text-xs font-semibold ${task.overdue?"text-rose-300":"text-sky-300"}`}>{dateLabel(task.due_at)}</p><span className="text-[10px] text-slate-500">{task.assigneeName}</span></div><div className="mt-4 flex flex-wrap gap-2">{task.lead_id?<Link href={`/leads/${task.lead_id}`} className="atlas-button-secondary">Abrir lead</Link>:null}<button type="button" disabled={savingId===task.id} onClick={()=>void act(task,"postpone_one_day")} className="atlas-button-secondary disabled:opacity-50">+1 dia</button><button type="button" disabled={savingId===task.id} onClick={()=>void act(task,"complete")} className="atlas-button-primary disabled:opacity-50">Concluir</button></div></article>):<div className="lg:col-span-2"><AtlasEmpty title="Fila em dia" description="Nenhuma tarefa aberta neste filtro."/></div>}</div></AtlasCard>
+      {leadership?<AtlasCard><AtlasCardHeader eyebrow="Equipe visível" title="Carga por responsável" description="Consolidado operacional, não ranking de pessoas."/><div className="space-y-2 p-5">{data?.byOwner.map(owner=><div key={owner.id} className="rounded-xl border border-white/[.06] p-3"><div className="flex items-center justify-between gap-2"><strong className="text-xs text-white">{owner.name}</strong><span className={owner.overdue?"text-xs font-bold text-rose-200":"text-xs font-bold text-emerald-200"}>{owner.overdue} vencidas</span></div><p className="mt-1 text-[10px] text-slate-500">{owner.open} abertas · {owner.today} hoje · {owner.high} prioritárias</p></div>)}{!data?.byOwner.length?<AtlasEmpty title="Sem tarefas visíveis" description="A equipe ainda não possui ações abertas."/>:null}<p className="pt-2 text-[10px] leading-4 text-slate-600">A central não atribui tarefas automaticamente e não usa volume isolado para avaliar desempenho.</p></div></AtlasCard>:null}
+    </div>
   </div>;
 }
