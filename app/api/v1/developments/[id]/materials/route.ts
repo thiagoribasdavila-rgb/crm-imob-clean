@@ -75,7 +75,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from("project_materials")
-    .select("id,material_type,title,description,file_name,mime_type,file_size,version,valid_from,valid_until,is_current,created_at,storage_provider,storage_bucket,storage_path")
+    .select("id,material_type,title,description,file_name,mime_type,file_size,version,valid_from,valid_until,is_current,review_status,verified_at,review_note,created_at,storage_provider,storage_bucket,storage_path")
     .eq("organization_id", access.access.organization.id)
     .eq("development_id", id)
     .eq("is_current", true)

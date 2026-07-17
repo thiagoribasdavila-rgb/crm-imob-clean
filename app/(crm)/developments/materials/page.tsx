@@ -12,6 +12,8 @@ type Development = {
   developer_name: string | null;
   city: string | null;
   status: string;
+  coveragePercent?: number;
+  pendingReview?: number;
 };
 
 type Material = {
@@ -27,7 +29,11 @@ type Material = {
   created_at: string;
   url: string | null;
   urlExpiresAt: string | null;
+  review_status: "pending" | "verified" | "rejected";
+  verified_at: string | null;
 };
+type Coverage = { developerName: string; projects: number; complete: number; averageCoverage: number; expiring: number; expired: number; pendingReview: number };
+type PortfolioSummary = { projects: number; complete: number; expiring: number; expired: number; pendingReview: number };
 
 type StorageHomologation = { status: "passed" | "incomplete"; privateBucket: boolean; tenantPathProtected: boolean; signedUrlTtlSeconds: number; essential: Array<{ type: string; available: boolean; version: number | null; expiresAt: string | null }> };
 
@@ -51,6 +57,8 @@ export default function ProjectMaterialsPage() {
   const [selectedId, setSelectedId] = useState("");
   const [materials, setMaterials] = useState<Material[]>([]);
   const [storageHomologation, setStorageHomologation] = useState<StorageHomologation | null>(null);
+  const [coverage, setCoverage] = useState<Coverage[]>([]);
+  const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
   const [currentRole, setCurrentRole] = useState("");
   const [query, setQuery] = useState("");
   const [developer, setDeveloper] = useState("");
@@ -69,7 +77,7 @@ export default function ProjectMaterialsPage() {
       const token = sessionData.session?.access_token;
       if (!token) { setError("Sessão expirada."); setLoading(false); return; }
       const [portfolioResponse, meResponse] = await Promise.all([
-        fetch("/api/v1/launch-os", { headers: { Authorization: `Bearer ${token}` } }),
+        fetch("/api/v1/developments/materials", { headers: { Authorization: `Bearer ${token}` } }),
         fetch("/api/v1/auth/me"),
       ]);
       const portfolio = await portfolioResponse.json();
@@ -78,6 +86,8 @@ export default function ProjectMaterialsPage() {
       else {
         const items = (portfolio.developments ?? []) as Development[];
         setDevelopments(items);
+        setCoverage(portfolio.coverageByDeveloper ?? []);
+        setPortfolioSummary(portfolio.summary ?? null);
         const preferred = new URLSearchParams(window.location.search).get("project");
         if (items.length) setSelectedId(items.some((item) => item.id === preferred) ? preferred! : items[0].id);
       }
@@ -118,7 +128,6 @@ export default function ProjectMaterialsPage() {
   }, [developer, developments, query]);
   const selected = developments.find((item) => item.id === selectedId) ?? null;
   const canManage = ["admin", "director", "superintendent", "manager"].includes(currentRole);
-  const expiring = materials.filter((item) => item.valid_until && referenceTime > 0 && new Date(item.valid_until).getTime() < referenceTime + 7 * 86400000).length;
   const missingEssential = essentialTypes.filter((type) => !materials.some((material) => material.material_type === type && (!material.valid_until || referenceTime === 0 || new Date(material.valid_until).getTime() >= referenceTime)));
   const essentialReady = essentialTypes.length - missingEssential.length;
 
@@ -143,8 +152,18 @@ export default function ProjectMaterialsPage() {
     setUploading(false);
   }
 
+  async function reviewMaterial(materialId: string) {
+    const note = "Material vigente conferido pela gestão comercial";
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) { setError("Sessão expirada. Entre novamente para validar o material."); return; }
+    const response = await fetch("/api/v1/developments/materials", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ materialId, status: "verified", note }) });
+    const payload = await response.json();
+    if (!response.ok) setError(payload.error || "Falha ao validar material."); else { setNotice("Material validado e registrado no histórico."); await loadMaterials(selectedId); }
+  }
+
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10" data-phase="67-developer-material-center">
       <section className="atlas-grid-glow overflow-hidden rounded-[30px] border border-cyan-400/10 bg-gradient-to-br from-cyan-500/[.12] via-blue-500/[.07] to-violet-500/[.12] p-6 sm:p-8">
         <div className="grid gap-7 xl:grid-cols-[1.4fr_.7fr] xl:items-end">
           <div>
@@ -161,13 +180,21 @@ export default function ProjectMaterialsPage() {
       </section>
 
       <section className="grid gap-4 sm:grid-cols-3">
-        <AtlasMetric label="Projetos encontrados" value={loading ? "—" : filtered.length} detail="Busca por nome, cidade ou incorporadora" trend="PORTFÓLIO" tone="blue" />
+        <AtlasMetric label="Cobertura do portfólio" value={loading ? "—" : `${portfolioSummary?.complete ?? 0}/${portfolioSummary?.projects ?? 0}`} detail="Projetos com book, tabela e espelho" trend="PORTFÓLIO" tone="blue" />
         <AtlasMetric label="Kit essencial" value={materialsLoading ? "—" : `${essentialReady}/3`} detail="Book, tabela e espelho" trend={missingEssential.length ? "INCOMPLETO" : "COMPLETO"} tone={missingEssential.length ? "amber" : "green"} />
-        <AtlasMetric label="Pedem atualização" value={materialsLoading ? "—" : expiring} detail="Vencidos ou a vencer em 7 dias" trend={expiring ? "ATENÇÃO" : "EM DIA"} tone={expiring ? "amber" : "green"} />
+        <AtlasMetric label="Pedem atualização" value={loading ? "—" : (portfolioSummary?.expiring ?? 0) + (portfolioSummary?.expired ?? 0)} detail="Vencidos ou a vencer em 7 dias no portfólio" trend={(portfolioSummary?.expiring || portfolioSummary?.expired) ? "ATENÇÃO" : "EM DIA"} tone={(portfolioSummary?.expiring || portfolioSummary?.expired) ? "amber" : "green"} />
       </section>
 
       {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
       {notice ? <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-200">{notice}</div> : null}
+
+      <AtlasCard>
+        <AtlasCardHeader eyebrow="Visão corporativa" title="Cobertura por incorporadora" description="Kit essencial, vencimentos e validações pendentes em todo o portfólio." />
+        <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
+          {coverage.map((item) => <button key={item.developerName} onClick={() => setDeveloper(item.developerName)} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4 text-left hover:border-sky-400/25"><div className="flex items-start justify-between gap-3"><div><strong className="text-white">{item.developerName}</strong><p className="mt-1 text-xs text-slate-500">{item.complete}/{item.projects} projetos completos</p></div><AtlasBadge tone={item.averageCoverage === 100 ? "success" : "warning"}>{item.averageCoverage}%</AtlasBadge></div><div className="mt-3 flex flex-wrap gap-2 text-[10px] text-slate-400"><span>{item.expiring} a vencer</span><span>·</span><span>{item.expired} vencidos</span><span>·</span><span>{item.pendingReview} em revisão</span></div></button>)}
+          {!coverage.length && !loading ? <AtlasEmpty title="Sem cobertura calculada" description="Cadastre projetos e materiais para iniciar." /> : null}
+        </div>
+      </AtlasCard>
 
       {selected && storageHomologation ? <AtlasCard><AtlasCardHeader eyebrow="Fase 31 · Storage privado" title="Book, tabela e espelho protegidos" description="O aceite exige os três materiais vigentes, acessíveis por links temporários e isolados no caminho da organização." /><div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-5">{storageHomologation.essential.map((item) => <div key={item.type} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><span className="text-xs text-slate-500">{materialLabels[item.type]?.label || item.type}</span><div className="mt-2"><AtlasBadge tone={item.available ? "success" : "warning"}>{item.available ? `V${item.version} ACESSÍVEL` : "PENDENTE"}</AtlasBadge></div></div>)}<div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><span className="text-xs text-slate-500">Segurança</span><strong className="mt-2 block text-sm text-white">Bucket privado</strong><p className="mt-1 text-[10px] text-slate-500">Links expiram em {Math.round(storageHomologation.signedUrlTtlSeconds / 60)} min · caminho interno oculto</p></div><div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><span className="text-xs text-slate-500">Isolamento</span><strong className="mt-2 block text-sm text-white">{storageHomologation.tenantPathProtected ? "Organização protegida" : "Revisar"}</strong><p className="mt-1 text-[10px] text-slate-500">Acesso validado antes de assinar</p></div></div></AtlasCard> : null}
 
@@ -202,11 +229,11 @@ export default function ProjectMaterialsPage() {
                   const config = materialLabels[material.material_type] || materialLabels.other;
                   const expired = Boolean(material.valid_until && referenceTime > 0 && new Date(material.valid_until).getTime() < referenceTime);
                   return <article key={material.id} className="rounded-[22px] border border-white/[0.07] bg-white/[0.025] p-5">
-                    <div className="flex items-start justify-between"><span className="text-3xl text-sky-300">{config.icon}</span><AtlasBadge tone={expired ? "danger" : "success"}>{expired ? "VENCIDO" : `V${material.version}`}</AtlasBadge></div>
+                    <div className="flex items-start justify-between"><span className="text-3xl text-sky-300">{config.icon}</span><div className="flex gap-2"><AtlasBadge tone={material.review_status === "verified" ? "success" : "warning"}>{material.review_status === "verified" ? "VALIDADO" : "Validação pendente"}</AtlasBadge><AtlasBadge tone={expired ? "danger" : "success"}>{expired ? "VENCIDO" : `V${material.version}`}</AtlasBadge></div></div>
                     <h2 className="mt-4 text-lg font-semibold text-white">{material.title}</h2>
                     <p className="mt-1 text-xs leading-5 text-slate-500">{config.description}</p>
                     <div className="mt-4 flex justify-between text-xs text-slate-500"><span>{formatSize(material.file_size)}</span><span>{material.valid_until ? `Válido até ${new Date(`${material.valid_until}T12:00:00`).toLocaleDateString("pt-BR")}` : "Sem vencimento"}</span></div>
-                    {material.url ? <a href={material.url} target="_blank" rel="noreferrer" className="atlas-button-secondary mt-4 block text-center">Abrir material</a> : <span className="mt-4 block text-xs text-rose-300">Arquivo temporariamente indisponível</span>}
+                    <div className="mt-4 grid grid-cols-2 gap-2">{material.url ? <a href={material.url} target="_blank" rel="noreferrer" className="atlas-button-secondary block text-center">Abrir material</a> : <span className="text-xs text-rose-300">Arquivo indisponível</span>}{canManage && material.review_status !== "verified" ? <button onClick={() => void reviewMaterial(material.id)} className="atlas-button-secondary">Validar material</button> : null}</div>
                   </article>;
                 })}
               </div>

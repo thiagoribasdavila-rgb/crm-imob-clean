@@ -980,7 +980,17 @@ Pendência externa: aplicar migration e validar tabelas reais, volume, moeda, du
 
 Pendência externa: aplicar migration e validar fontes reais, duas versões, concorrência, vigência, simulação, histórico e dois tenants.
 
-Próxima fase: **Fase 67 — Central de materiais por incorporadora**, unificando busca, atualização, validade e cobertura do kit comercial.
+## Fase 67 — Central de materiais por incorporadora
+
+**Estado:** 100% implementada e aprovada localmente; portfólio e Storage reais permanecem para homologação.
+
+**Evolução:** cobertura de book, tabela e espelho passa a ser calculada em todo o portfólio e agrupada por incorporadora, com vencimentos e revisões pendentes.
+
+**Governança:** nova versão entra pendente, gestão valida somente o arquivo atual e eventos preservam a decisão. Links continuam privados e temporários. O contrato está em `config/developer-material-center.json`, o gate em `npm run material-center:check` e o roteiro em `docs/DEVELOPER_MATERIAL_CENTER_PHASE_67.md`.
+
+Pendência externa: aplicar migration e validar três incorporadoras, kit, validade, revisão, Storage, perfis e dois tenants.
+
+Próxima fase: **Fase 68 — Dossiê automático do projeto e da região**, reunindo fatos, fontes, pendências e prontidão para a IA.
 
 ## Painel das 100 fases
 
