@@ -12,9 +12,11 @@ Consolidar tokens, cards, botões, formulários, tabelas, modais e feedback. Rem
 
 Entrega: `FINAL_PHASE_2_DESIGN_SYSTEM.md`, componentes canônicos compartilhados e verificação automática `final-design-system:check`.
 
-## 3. Navegação, busca e mobile
+## 3. Navegação, busca e mobile — concluída
 
 Otimizar shell, menu por perfil, busca global, atalhos, breadcrumbs, safe areas, gestos e telas pequenas. Aceite: tarefas principais executáveis em 390 px sem rolagem horizontal indevida.
+
+Entrega: `FINAL_PHASE_3_NAVIGATION_MOBILE.md`, dock diário móvel, busca global responsiva e verificação automática `final-navigation:check`.
 
 ## 4. CRM e Lead 360
 

@@ -1,0 +1,15 @@
+{
+  "phase": 3,
+  "status": "completed",
+  "mobile_reference_width": 390,
+  "daily_actions": ["dashboard", "leads", "pipeline", "tasks", "search"],
+  "role_aware_sidebar": true,
+  "global_search": {
+    "keyboard_shortcut": "mod+k",
+    "mobile_full_height": true,
+    "focus_trap": true,
+    "portfolio_search": true
+  },
+  "safe_areas": ["top", "bottom"],
+  "accessibility": ["skip_link", "aria_current", "dialog", "escape_close", "focus_visible"]
+}

@@ -687,6 +687,16 @@ textarea:focus {
   height: 40px;
   border-radius: 12px;
 }
+.atlas-mobile-search {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--atlas-border);
+  border-radius: 12px;
+  color: #bae6fd;
+  background: rgba(56, 189, 248, 0.06);
+}
 .atlas-command-trigger {
   display: none;
   min-width: 190px;
@@ -998,6 +1008,9 @@ textarea:focus {
   .atlas-command-trigger {
     display: flex;
   }
+  .atlas-mobile-search {
+    display: none;
+  }
 }
 @media (min-width: 1024px) {
   .atlas-sidebar {
@@ -1048,6 +1061,110 @@ textarea:focus {
   .atlas-page-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+.atlas-mobile-dock {
+  position: fixed;
+  z-index: 44;
+  right: 10px;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  left: 10px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  min-height: 64px;
+  padding: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 20px;
+  background: rgba(7, 11, 21, 0.94);
+  box-shadow: 0 18px 60px rgba(2, 6, 23, 0.48);
+  backdrop-filter: blur(22px) saturate(140%);
+}
+.atlas-mobile-dock-action {
+  display: flex;
+  min-width: 0;
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 3px;
+  border: 0;
+  border-radius: 14px;
+  color: #64748b;
+  background: transparent;
+}
+.atlas-mobile-dock-action > span {
+  font-size: 17px;
+  line-height: 1;
+}
+.atlas-mobile-dock-action small {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 9px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.atlas-mobile-dock-action[data-active="true"] {
+  color: #bae6fd;
+  background: linear-gradient(145deg, rgba(56, 189, 248, 0.14), rgba(37, 99, 235, 0.06));
+}
+@media (min-width: 1024px) {
+  .atlas-mobile-dock {
+    display: none;
+  }
+}
+
+.atlas-command-dialog {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+}
+.atlas-command-dialog-panel {
+  width: 100%;
+  max-width: 672px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 28px;
+  background: rgba(9, 13, 24, 0.97);
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.65);
+}
+.atlas-command-close {
+  display: none;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border: 1px solid var(--atlas-border);
+  border-radius: 11px;
+  color: #cbd5e1;
+  background: var(--atlas-surface-soft);
+  font-size: 20px;
+}
+@media (max-width: 639px) {
+  .atlas-command-dialog {
+    padding: max(10px, env(safe-area-inset-top)) 0 0;
+  }
+  .atlas-command-dialog-panel {
+    height: 100%;
+    max-width: none;
+    border-width: 1px 0 0;
+    border-radius: 22px 22px 0 0;
+  }
+  .atlas-command-close {
+    display: grid;
+    place-items: center;
+  }
+  .atlas-command-dialog-panel [role="listbox"] {
+    max-height: calc(100dvh - 132px);
+  }
+  .atlas-command-footer {
+    display: none;
   }
 }
 

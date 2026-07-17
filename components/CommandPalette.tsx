@@ -39,6 +39,7 @@ export default function CommandPalette() {
   const [selected, setSelected] = useState(0);
   const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -62,7 +63,12 @@ export default function CommandPalette() {
     setQuery("");
     setLeadCommands([]);
     setSelected(0);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     requestAnimationFrame(() => inputRef.current?.focus());
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
   }, [open]);
 
   useEffect(() => setOpen(false), [pathname]);
@@ -100,15 +106,33 @@ export default function CommandPalette() {
     if (event.key === "Enter" && filtered[selected]) { event.preventDefault(); run(filtered[selected]); }
   }
 
+  function keepFocusInside(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Tab") return;
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+    );
+    if (!focusable?.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/65 px-4 pt-[12vh] backdrop-blur-md" role="dialog" aria-modal="true" aria-label="Paleta de comandos Atlas" onMouseDown={() => setOpen(false)}>
-      <div className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/10 bg-[#090d18]/95 shadow-[0_30px_100px_rgba(0,0,0,.65)]" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="atlas-command-dialog" role="dialog" aria-modal="true" aria-label="Busca global Atlas" onMouseDown={() => setOpen(false)}>
+      <div ref={dialogRef} className="atlas-command-dialog-panel" onKeyDown={keepFocusInside} onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center gap-3 border-b border-white/[0.08] px-5 py-4">
           <span className="text-sky-300">⌕</span>
           <input ref={inputRef} value={query} onChange={(event) => { setQuery(event.target.value); setSelected(0); }} onKeyDown={handleInputKeyDown} placeholder="Buscar nome, telefone, projeto, corretor ou intenção..." className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500" role="combobox" aria-expanded="true" aria-controls="atlas-command-results" aria-activedescendant={filtered[selected] ? `atlas-command-${selected}` : undefined} />
           <kbd className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-slate-500">ESC</kbd>
+          <button type="button" className="atlas-command-close" onClick={() => setOpen(false)} aria-label="Fechar busca">×</button>
         </div>
         <div id="atlas-command-results" role="listbox" className="max-h-[58vh] overflow-y-auto p-3">
           {filtered.length ? (
@@ -130,7 +154,7 @@ export default function CommandPalette() {
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between border-t border-white/[0.07] px-5 py-3 text-[10px] uppercase tracking-[0.14em] text-slate-600">
+        <div className="atlas-command-footer flex items-center justify-between border-t border-white/[0.07] px-5 py-3 text-[10px] uppercase tracking-[0.14em] text-slate-600">
           <span>{searching ? "Buscando carteira..." : `${filtered.length} resultado(s)`}</span>
           <span>↑ ↓ navegar · Enter abrir · Esc fechar</span>
         </div>

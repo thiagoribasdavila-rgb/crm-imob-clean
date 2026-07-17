@@ -62,6 +62,16 @@ export function Topbar({
       <div className="atlas-topbar-actions">
         <button
           type="button"
+          className="atlas-mobile-search"
+          onClick={() =>
+            window.dispatchEvent(new Event("atlas:open-command-palette"))
+          }
+          aria-label="Buscar em toda a plataforma"
+        >
+          <span aria-hidden="true">⌕</span>
+        </button>
+        <button
+          type="button"
           className="atlas-command-trigger"
           onClick={() =>
             window.dispatchEvent(new Event("atlas:open-command-palette"))

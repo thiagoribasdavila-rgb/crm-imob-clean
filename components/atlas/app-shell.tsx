@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
+import { MobileDock } from "./mobile-dock";
 import type { ShellIdentity } from "./shell-types";
 const defaultIdentity: ShellIdentity = {
   name: "Usuário Atlas",
@@ -108,6 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="atlas-app-main" id="atlas-main-content" tabIndex={-1}>
         <div className="atlas-app-content">{children}</div>
       </main>
+      <MobileDock />
     </div>
   );
 }
