@@ -7,7 +7,9 @@ const need = (file, ...tokens) => {
 };
 
 need("config/final-crm-lead-360.json", '"phase": 4', '"mission": "conversion_first"', '"local_intelligence_cost": 0');
-need("config/final-10-phases-improvement.json", '"current_phase": 4', '"completed": [1, 2, 3, 4]');
+const program = JSON.parse(fs.readFileSync("config/final-10-phases-improvement.json", "utf8"));
+checks.push(["config/final-10-phases-improvement.json: fase atual não regrediu", Number(program.current_phase) >= 4]);
+checks.push(["config/final-10-phases-improvement.json: fases 1 a 4 concluídas", [1, 2, 3, 4].every((phase) => program.completed?.includes(phase))]);
 need("app/(crm)/leads/page.tsx", "FILTER_STORAGE_KEY", "filtersHydrated", "sessionStorage", "bulk-transfer");
 need("app/(crm)/leads/[id]/page.tsx", "LeadOperationalBar", 'id="qualificacao"', 'id="historico"', 'id="matching"');
 need("components/crm/lead-operational-bar.tsx", "nextAction", "openTasks", "unreadMessages", 'href="#qualificacao"');
