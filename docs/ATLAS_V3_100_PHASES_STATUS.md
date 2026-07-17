@@ -1110,6 +1110,18 @@ Pendência externa: aplicar migrations, comparar perfis de leads reais e validar
 
 Próxima fase: **Fase 79 — Monitoramento de drift e qualidade**, detectando mudança de público, queda de calibração e envelhecimento do modelo sem reação automática.
 
+## Fase 79 — Monitoramento de drift e qualidade
+
+**Estado:** 100% implementada e aprovada localmente; séries temporais reais permanecem necessárias para homologação.
+
+**Evolução:** janelas de 30, 60 e 90 dias são comparadas ao período imediatamente anterior. O monitor mede PSI das probabilidades, score médio, conversão observada e mudança no Brier Score, preservando cada relatório.
+
+**Governança:** cada lado exige 100 fotografias; amostra baixa não vira alerta. PSI 0,10/0,25 e delta Brier 0,02/0,05 separam atenção e alerta. Não há rollback, mudança de campanha ou decisão sobre pessoas. O contrato está em `config/prediction-drift-monitoring.json`, o gate em `npm run prediction-drift:check` e o roteiro em `docs/PREDICTION_DRIFT_MONITORING_PHASE_79.md`.
+
+Pendência externa: acumular séries, gerar três janelas e homologar estabilidade, atenção, alerta, perfis autorizados e dois tenants.
+
+Próxima fase: **Fase 80 — Gate final de modelo e equidade**, fechando dados e predição com critérios de liberação, auditoria de segmentos permitidos e rollback humano.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
