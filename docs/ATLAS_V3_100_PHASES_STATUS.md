@@ -1086,6 +1086,18 @@ Pendência externa: aplicar migrations, criar coortes em datas distintas e aguar
 
 Próxima fase: **Fase 77 — Score preditivo calibrado**, comparando probabilidade prevista e conversão observada com explicação e limites de confiança.
 
+## Fase 77 — Score preditivo calibrado
+
+**Estado:** 100% implementada e aprovada localmente; métricas reais e ativação permanecem condicionadas à maturação do dataset.
+
+**Evolução:** score comercial e probabilidade permanecem separados. Candidatos imutáveis comparam previsto e observado em faixas, medem Brier Score e erro esperado de calibração, aplicando fallback quando a faixa tem menos de 20 exemplos.
+
+**Governança:** no mínimo 100 exemplos, 20 positivos e 20 negativos; somente a diretoria ativa uma curva elegível, com justificativa auditável. Há um modelo ativo por organização, sem promoção automática ou ranking de pessoas. O contrato está em `config/calibrated-predictive-score.json`, o gate em `npm run conversion-calibration:check` e o roteiro em `docs/CALIBRATED_PREDICTIVE_SCORE_PHASE_77.md`.
+
+Pendência externa: maturar dataset, construir candidato, aferir Brier/ECE e homologar aprovação do diretor entre dois tenants.
+
+Próxima fase: **Fase 78 — Explicabilidade preditiva operacional**, traduzindo probabilidade, confiança e fatores em ações claras para corretor e gestão.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
