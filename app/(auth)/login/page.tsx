@@ -225,36 +225,36 @@ function LoginExperience() {
       <div className="pointer-events-none absolute inset-0 opacity-[.16] [background-image:linear-gradient(rgba(125,211,252,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(125,211,252,.08)_1px,transparent_1px)] [background-size:72px_72px] [mask-image:linear-gradient(to_bottom,black,transparent_88%)]" />
       <div className="pointer-events-none absolute left-[12%] top-[18%] h-72 w-72 rounded-full bg-sky-400/[.08] blur-[100px]" />
 
-      <div className="relative mx-auto grid min-h-screen w-full max-w-[1380px] items-center gap-12 px-5 py-8 lg:grid-cols-[1.08fr_440px] lg:px-12 xl:gap-20">
-        <section className="relative hidden min-h-[720px] overflow-hidden rounded-[38px] border border-white/[.06] bg-white/[.018] p-10 lg:flex lg:flex-col lg:justify-between xl:p-12">
+      <div className="relative mx-auto grid min-h-screen w-full max-w-[1440px] items-center gap-12 px-5 py-8 lg:grid-cols-[1.1fr_440px] lg:px-12 xl:gap-24">
+        <section className="relative hidden min-h-[720px] overflow-hidden border-r border-white/[.06] p-10 lg:flex lg:flex-col lg:justify-between xl:p-12">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_65%_42%,rgba(14,165,233,.13),transparent_24rem)]" />
-          <Image src="/brand/atlas-robot-assistant.png" alt="Assistente de inteligência Atlas" width={420} height={630} priority className="pointer-events-none absolute -bottom-6 right-[-24px] h-[390px] w-auto select-none object-contain opacity-80 drop-shadow-[0_24px_42px_rgba(14,165,233,.14)] xl:right-2 xl:h-[430px]" />
+          <Image src="/brand/atlas-robot-assistant.png" alt="Assistente de inteligência Atlas" width={420} height={630} priority className="pointer-events-none absolute -bottom-4 -right-20 h-[380px] w-auto select-none object-contain opacity-80 drop-shadow-[0_24px_42px_rgba(14,165,233,.14)] xl:-right-20 xl:h-[420px]" />
           <div className="pointer-events-none absolute bottom-14 right-16 h-20 w-56 rounded-[50%] bg-sky-400/20 blur-3xl" />
           <div className="relative z-10">
-          <div className="flex items-center gap-4">
+          <Link href="/" className="inline-flex items-center gap-4" aria-label="Voltar para a página inicial do Atlas">
             <span className="grid h-12 w-12 place-items-center rounded-2xl border border-sky-300/20 bg-sky-400/[.09] text-lg font-black text-sky-200 shadow-[0_0_32px_rgba(56,189,248,.10)]">A</span>
             <div><p className="text-2xl font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[10px] font-semibold uppercase tracking-[.25em] text-slate-500">Real Estate Intelligence</p></div>
-          </div>
+          </Link>
           <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-sky-300/10 bg-sky-300/[.045] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.18em] text-sky-200"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-300" /> AI Brain conectado ao comercial</div>
-          <h1 className="mt-6 max-w-[480px] text-5xl font-semibold leading-[1.02] tracking-[-.055em] xl:max-w-[540px] xl:text-6xl">Inteligência que transforma <span className="bg-gradient-to-r from-white via-sky-200 to-blue-400 bg-clip-text text-transparent">movimento em venda.</span></h1>
+          <h1 className="mt-6 max-w-[520px] text-5xl font-semibold leading-[.98] tracking-[-.06em] xl:max-w-[580px] xl:text-6xl">Seu command center para <span className="bg-gradient-to-r from-white via-sky-200 to-blue-400 bg-clip-text text-transparent">decidir e vender.</span></h1>
           <p className="mt-6 max-w-sm text-base leading-7 text-slate-400">Um ambiente único para leads, imóveis, equipe, campanhas e decisões comerciais.</p>
           </div>
-          <div className="relative z-10 grid max-w-[450px] grid-cols-3 gap-3">
-            {[ ["Lead Intelligence", "Prioridade clara"], ["Copiloto único", "Próxima ação"], ["Operação viva", "Aprendizado contínuo"] ].map(([title, detail]) => <div key={title} className="rounded-2xl border border-white/[.07] bg-[#07101a]/70 p-4 backdrop-blur-xl"><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">{title}</p><p className="mt-2 text-sm font-semibold text-slate-100">{detail}</p></div>)}
+          <div className="relative z-10 grid max-w-[360px] grid-cols-3 border-y border-white/[.07] py-5">
+            {[ ["Lead Intelligence", "Prioridade clara"], ["Copiloto único", "Próxima ação"], ["Operação viva", "Aprendizado contínuo"] ].map(([title, detail], index) => <div key={title} className={`px-4 ${index ? "border-l border-white/[.07]" : ""}`}><p className="text-[9px] font-semibold uppercase tracking-[.15em] text-slate-600">{title}</p><p className="mt-2 text-sm font-semibold text-slate-200">{detail}</p></div>)}
           </div>
         </section>
 
         <section className="mx-auto w-full max-w-lg">
           <div className="mb-6 flex items-center justify-between gap-3 lg:hidden"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-400/15 font-black text-sky-300">A</span><div><p className="text-xl font-black">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[9px] uppercase tracking-[.2em] text-slate-500">Real Estate Intelligence</p></div></div><span role="img" aria-label="Assistente Atlas" className="h-16 w-12 bg-[url('/brand/atlas-robot-assistant.png')] bg-contain bg-center bg-no-repeat drop-shadow-[0_12px_20px_rgba(14,165,233,.18)]" /></div>
-          <div className="relative overflow-hidden rounded-[30px] border border-sky-300/[0.12] bg-[#08101a]/90 p-6 shadow-[0_35px_110px_rgba(0,0,0,.48)] backdrop-blur-2xl sm:p-9">
+          <div className="relative overflow-hidden rounded-[32px] border border-white/[.09] bg-[#070d15]/92 p-6 shadow-[0_40px_120px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.035)] backdrop-blur-2xl sm:p-9">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-300/70 to-transparent" />
             <div>
               <div className="flex items-center justify-between gap-4">
-                <p className="text-xs font-semibold text-slate-500">Acesso seguro</p>
+                <p className="text-[10px] font-bold uppercase tracking-[.18em] text-slate-500">Acesso privado</p>
                 <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[.12em] ${systemStatus === "online" ? "border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300" : systemStatus === "offline" ? "border-amber-400/15 bg-amber-400/[0.07] text-amber-300" : "border-white/10 bg-white/[.04] text-slate-400"}`}><span className={`h-1.5 w-1.5 rounded-full ${systemStatus === "online" ? "bg-emerald-400" : systemStatus === "offline" ? "bg-amber-400" : "animate-pulse bg-slate-500"}`} /> {systemStatus === "online" ? "Sistema disponível" : systemStatus === "offline" ? "Conexão instável" : "Verificando"}</span>
               </div>
-              <h2 className="mt-3 text-3xl font-semibold tracking-[-.035em]">Entrar no Atlas</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">Seu command center comercial está pronto.</p>
+              <h2 className="mt-5 text-4xl font-semibold tracking-[-.05em]">Bem-vindo.</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Entre para continuar sua operação comercial.</p>
             </div>
 
             <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
@@ -272,7 +272,7 @@ function LoginExperience() {
                     autoComplete="username"
                     value={email}
                     onChange={(event) => { setEmail(event.target.value); if (error) setError(""); }}
-                    className="w-full border-white/10 bg-white/[.035] px-4 py-3.5 pr-11 transition focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
+                    className="h-14 w-full border-white/10 bg-white/[.03] px-4 pr-11 transition focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
                     placeholder="voce@empresa.com"
                     aria-invalid={Boolean(error)}
                   />
@@ -293,7 +293,7 @@ function LoginExperience() {
                     onKeyDown={updateCapsLock}
                     onKeyUp={updateCapsLock}
                     onBlur={() => setCapsLock(false)}
-                    className="w-full border-white/10 bg-white/[.035] px-4 py-3.5 pr-14 transition focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
+                    className="h-14 w-full border-white/10 bg-white/[.03] px-4 pr-14 transition focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
                     placeholder="Digite sua senha"
                     aria-invalid={Boolean(error)}
                     aria-describedby={[capsLock ? "caps-lock-warning" : "", error ? "login-error" : ""].filter(Boolean).join(" ") || undefined}
@@ -322,7 +322,7 @@ function LoginExperience() {
 
               {error ? <div id="login-error" role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"><p className="font-semibold">Não foi possível entrar</p><p className="mt-1 leading-5 text-rose-200/90">{error}</p>{/senha|credenciais|incorretos/i.test(error) ? <Link href={`/forgot-password${email ? `?email=${encodeURIComponent(email.trim().toLowerCase())}` : ""}`} className="mt-3 inline-flex text-xs font-bold text-white underline underline-offset-4">Redefinir minha senha</Link> : null}</div> : null}
 
-              <button type="submit" disabled={loading} aria-busy={loading} className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-300 via-sky-400 to-blue-500 px-5 py-3.5 text-sm font-bold text-[#03111d] shadow-[0_14px_40px_rgba(14,165,233,.20)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60">
+              <button type="submit" disabled={loading} aria-busy={loading} className="group flex h-14 w-full items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-bold !text-slate-950 shadow-[0_16px_45px_rgba(255,255,255,.08)] transition hover:-translate-y-0.5 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60">
                 {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" /> {loginStage === "profile" ? "Preparando sua operação..." : loginStage === "redirect" ? "Abrindo seu painel..." : "Validando acesso..."}</> : <>Entrar no Atlas OS <span aria-hidden="true">→</span></>}
               </button>
               <p className="sr-only" role="status" aria-live="polite">
@@ -331,10 +331,11 @@ function LoginExperience() {
               {systemStatus === "offline" ? <button type="button" onClick={() => window.location.reload()} className="w-full text-center text-xs font-semibold text-amber-200">Tentar reconectar</button> : null}
             </form>
 
-            <div className="mt-7 border-t border-white/[0.07] pt-6">
-              <div className="flex items-center justify-between gap-4 text-xs text-slate-500"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" /> Sessão protegida</span><span>Atlas V3</span></div>
+            <div className="mt-7 border-t border-white/[0.07] pt-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[.12em] text-slate-600"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" /> Sessão protegida</span><span>Dados isolados</span><span>Atlas V3</span></div>
             </div>
           </div>
+          <Link href="/" className="mx-auto mt-5 flex w-fit items-center gap-2 text-xs text-slate-600 transition hover:text-slate-300"><span aria-hidden="true">←</span> Voltar para o início</Link>
         </section>
       </div>
     </main>
