@@ -26,6 +26,7 @@ const evolutionPhases = readFileSync(resolve(root, "lib/atlas/evolution-phases.t
 const homologationRoute = readFileSync(resolve(root, "app/api/v1/homologation/route.ts"), "utf8");
 const homologationMigration = readFileSync(resolve(root, "supabase/migrations/20260716221959_homologation_checklist.sql"), "utf8");
 const metaWebhook = readFileSync(resolve(root, "app/api/webhooks/meta/route.ts"), "utf8");
+const metaWebhookTest = readFileSync(resolve(root, "app/api/v1/integrations/meta/webhook-test/route.ts"), "utf8");
 const outboxWorker = readFileSync(resolve(root, "app/api/v2/outbox/process/route.ts"), "utf8");
 const metaMigration = readFileSync(resolve(root, "supabase/migrations/20260716222643_meta_lead_closed_loop.sql"), "utf8");
 const providerRouter = readFileSync(resolve(root, "lib/ai/provider-router.ts"), "utf8");
@@ -140,7 +141,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("210 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("216 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -149,6 +150,12 @@ const checks = [
   ["Meta deduplica lead real", metaMigration.includes("external_lead_id text not null unique") && metaWebhook.includes('insertError.code === "23505"')],
   ["Meta usa processamento resiliente", metaWebhook.includes('topic: "meta.lead.fetch"') && outboxWorker.includes('event.topic === "meta.lead.fetch"')],
   ["Meta não expõe credencial", outboxWorker.includes("META_LEAD_ACCESS_TOKEN") && !metaWebhook.includes("META_LEAD_ACCESS_TOKEN")],
+  ["ensaio Meta exige diretoria", metaWebhookTest.includes('commercialRole === "director"') && metaSettingsPage.includes("exclusivas da diretoria")],
+  ["ensaio Meta assina evento oficial", metaWebhookTest.includes("signWebhookPayload") && metaWebhookTest.includes('"x-hub-signature-256": signature')],
+  ["ensaio Meta repete a mesma entrega", metaWebhookTest.includes("const first = await deliver(); const second = await deliver()")],
+  ["ensaio Meta importa lead oficial", metaWebhookTest.includes("META_LEAD_ACCESS_TOKEN") && metaWebhookTest.includes("meta.lead.fetch") === false && metaWebhookTest.includes("/api/v2/outbox/process")],
+  ["ensaio Meta comprova uma única lead", metaWebhookTest.includes("count !== 1") && metaWebhookTest.includes('lead?.source !== "Meta Lead Ads"')],
+  ["ensaio Meta preserva atribuição", metaWebhookTest.includes("meta.externalLeadId === leadgenId") && metaWebhookTest.includes("meta.pageId === pageId") && metaWebhookTest.includes("meta.formId === formId")],
   ["Meta cria memória de campanha", outboxWorker.includes("campaign_events") && outboxWorker.includes('event_type: "lead_created"')],
   ["roteamento independente de Vercel", providerRouter.includes("api.openai.com/v1/responses") && providerRouter.includes("api.perplexity.ai")],
   ["pesquisa externa bloqueia PII", providerRouter.includes("containsPersonalData") && providerRouter.includes("Pesquisa externa bloqueada")],

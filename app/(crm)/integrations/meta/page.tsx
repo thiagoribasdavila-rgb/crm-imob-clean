@@ -20,6 +20,8 @@ export default function MetaIntegration() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [webhookTest, setWebhookTest] = useState({ sourceId: "", leadgenId: "" });
+  const [webhookResult, setWebhookResult] = useState<{ leadId: string; leadCount: number; attributionPreserved: boolean; duplicateDelivery: { duplicates?: number }; testedAt: string } | null>(null);
 
   async function request(init?: RequestInit) {
     const { data: session } = await supabase.auth.getSession();
@@ -63,6 +65,13 @@ export default function MetaIntegration() {
     catch (cause) { setError(cause instanceof Error ? cause.message : "Falha ao revisar relatório."); } finally { setSaving(false); }
   }
 
+  async function testWebhook(event: FormEvent) {
+    event.preventDefault(); setSaving(true); setError(""); setNotice("");
+    try { const source = data?.sources.find((item) => item.id === webhookTest.sourceId); if (!source?.form_id) throw new Error("Selecione uma origem com formulário específico."); const { data: session } = await supabase.auth.getSession(); const response = await fetch("/api/v1/integrations/meta/webhook-test", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.session?.access_token}` }, body: JSON.stringify({ pageId: source.page_id, formId: source.form_id, leadgenId: webhookTest.leadgenId }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error?.message || "Ensaio Meta falhou."); setWebhookResult(body.data); setNotice("Webhook assinado, deduplicado e atribuído corretamente."); await load(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Ensaio Meta falhou."); }
+    finally { setSaving(false); }
+  }
+
   const ready = data ? Object.values(data.readiness).filter(Boolean).length : 0;
   return <div className="space-y-6 pb-12">
     <section className="atlas-grid-glow rounded-[30px] border border-blue-400/15 bg-gradient-to-br from-blue-500/[.14] via-violet-500/[.08] to-transparent p-6 sm:p-8">
@@ -80,6 +89,21 @@ export default function MetaIntegration() {
       <AtlasMetric label="Perfis compradores" value={data?.funnelInsights.buyerProfiles ?? "—"} detail="Compraram em outro lugar" trend="LEARN" tone="rose" />
     </section>
     <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[.07] p-4 text-sm leading-6 text-amber-100"><strong>Governança de campanhas:</strong> a IA e o time comercial produzem evidências e recomendações. Somente o diretor pode autorizar decisões de público, orçamento, criativo, escala ou ativação.</div>
+    <AtlasCard>
+      <AtlasCardHeader eyebrow="Fase 24 · Webhook Meta" title="Comprovar entrada única e atribuição" description="Use um lead criado na ferramenta oficial de testes da Meta. O Atlas assina e entrega o mesmo evento duas vezes, importa os dados reais e comprova que apenas uma lead foi criada." />
+      <form onSubmit={testWebhook} className="grid gap-3 p-5 sm:p-6 lg:grid-cols-[1fr_1fr_auto]">
+        <select required value={webhookTest.sourceId} onChange={(event) => setWebhookTest({ ...webhookTest, sourceId: event.target.value })} className={inputClass}>
+          <option value="">Página e formulário cadastrados</option>
+          {data?.sources.filter((source) => source.active && source.form_id).map((source) => <option key={source.id} value={source.id}>{source.name} · formulário {source.form_id}</option>)}
+        </select>
+        <input required inputMode="numeric" pattern="[0-9]+" value={webhookTest.leadgenId} onChange={(event) => setWebhookTest({ ...webhookTest, leadgenId: event.target.value })} placeholder="ID do lead oficial de teste" className={inputClass} />
+        <button disabled={!data?.canDecide || saving} className="atlas-button-primary min-w-48 disabled:opacity-40">{saving ? "Comprovando..." : "Executar ensaio real"}</button>
+      </form>
+      <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+        {!data?.canDecide ? <p className="text-xs text-amber-300">A execução e a evidência deste ensaio são exclusivas da diretoria.</p> : null}
+        {webhookResult ? <div className="grid gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[.07] p-4 sm:grid-cols-3"><div><span className="text-xs text-emerald-200/70">Leads criadas</span><strong className="mt-1 block text-2xl text-white">{webhookResult.leadCount}</strong></div><div><span className="text-xs text-emerald-200/70">Entrega repetida</span><strong className="mt-1 block text-sm text-white">{(webhookResult.duplicateDelivery.duplicates ?? 0) >= 1 ? "Duplicidade bloqueada" : "Validada"}</strong></div><div><span className="text-xs text-emerald-200/70">Atribuição</span><strong className="mt-1 block text-sm text-white">{webhookResult.attributionPreserved ? "Origem preservada" : "Revisar"}</strong><p className="mt-1 text-[10px] text-slate-500">Lead {webhookResult.leadId}</p></div></div> : <p className="text-xs leading-5 text-slate-500">O ID deve vir de um lead oficial de teste da Meta e permanecer disponível para leitura pelo token configurado na Hostinger.</p>}
+      </div>
+    </AtlasCard>
     <section className="grid gap-6 xl:grid-cols-2">
       <AtlasCard><AtlasCardHeader eyebrow="Configuração segura" title="Fontes de leads" description="Cada origem controla separadamente se seus dados podem alimentar conversões." /><div className="p-5 sm:p-6">{!data ? <AtlasSkeleton className="h-48" /> : !data.sources.length ? <AtlasEmpty title="Nenhuma fonte cadastrada" description="Cadastre a primeira Página e Formulário para aceitar webhooks." /> : <div className="space-y-3">{data.sources.map((source) => <div key={source.id} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><div className="flex justify-between gap-3"><div><strong className="text-white">{source.name}</strong><p className="mt-1 text-xs text-slate-500">Página {source.page_id} · Formulário {source.form_id || "todos"}</p></div><div className="flex flex-wrap justify-end gap-2"><AtlasBadge tone={source.active ? "success" : "warning"}>{source.active ? "ATIVA" : "PAUSADA"}</AtlasBadge><AtlasBadge tone={source.conversion_sharing_enabled ? "info" : "warning"}>{source.conversion_sharing_enabled ? "SINAL AUTORIZADO" : "SEM COMPARTILHAMENTO"}</AtlasBadge></div></div>{source.consent_basis ? <p className="mt-3 text-xs leading-5 text-slate-400">Base registrada: {source.consent_basis}</p> : null}</div>)}</div>}</div></AtlasCard>
       <AtlasCard><AtlasCardHeader eyebrow="Nova origem" title="Conectar Página/Formulário" description="O compartilhamento com conversões nasce desligado e depende de base registrada." /><form onSubmit={saveSource} className="space-y-3 p-5 sm:p-6"><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Nome da origem, ex.: ARVO Julho" className={inputClass} /><input required inputMode="numeric" value={form.pageId} onChange={(event) => setForm({ ...form, pageId: event.target.value })} placeholder="ID da Página Meta" className={inputClass} /><input inputMode="numeric" value={form.formId} onChange={(event) => setForm({ ...form, formId: event.target.value })} placeholder="ID do formulário (opcional)" className={inputClass} /><label className="flex items-start gap-3 rounded-xl border border-white/[.07] bg-white/[.025] p-4 text-sm text-slate-300"><input type="checkbox" checked={form.conversionSharingEnabled} onChange={(event) => setForm({ ...form, conversionSharingEnabled: event.target.checked })} className="mt-1" /><span>Esta origem possui autorização válida para enviar sinais de conversão à Meta.</span></label>{form.conversionSharingEnabled ? <textarea required value={form.consentBasis} onChange={(event) => setForm({ ...form, consentBasis: event.target.value })} placeholder="Registre a base de autorização, política ou formulário aplicado" className={`${inputClass} min-h-24 resize-y`} /> : null}<button disabled={!data?.canManage || saving} className="atlas-button-primary w-full disabled:opacity-40">{saving ? "Salvando..." : "Ativar fonte de leads"}</button>{!data?.canManage ? <p className="text-xs text-amber-300">Somente gestão pode alterar esta integração.</p> : null}</form></AtlasCard>
