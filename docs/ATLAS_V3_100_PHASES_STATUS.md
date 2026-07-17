@@ -990,7 +990,17 @@ Pendência externa: aplicar migration e validar fontes reais, duas versões, con
 
 Pendência externa: aplicar migration e validar três incorporadoras, kit, validade, revisão, Storage, perfis e dois tenants.
 
-Próxima fase: **Fase 68 — Dossiê automático do projeto e da região**, reunindo fatos, fontes, pendências e prontidão para a IA.
+## Fase 68 — Dossiê automático do projeto e da região
+
+**Estado:** 100% implementada e aprovada localmente; evidências e fontes reais permanecem para homologação.
+
+**Evolução:** cada empreendimento recebe prontidão explicável baseada em localização, tipologias, diferenciais com fonte, materiais comerciais vigentes e fontes regionais. Lacunas ficam visíveis e não viram fatos por inferência.
+
+**Governança:** somente um dossiê com 100% pode ser publicado, e apenas após decisão de diretor ou superintendente. A autorização limita a IA a fatos aprovados, não usa dados pessoais e preserva eventos. O contrato está em `config/project-region-dossier.json`, o gate em `npm run project-dossier:check` e o roteiro em `docs/PROJECT_REGION_DOSSIER_PHASE_68.md`.
+
+Pendência externa: aplicar migration e validar projeto incompleto/completo, fontes reais, aprovação por perfil, histórico e dois tenants.
+
+Próxima fase: **Fase 69 — Estudo regional assistido e governado**, facilitando atualização de fontes e validade sem inventar informações.
 
 ## Painel das 100 fases
 
