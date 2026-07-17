@@ -50,6 +50,12 @@ export async function POST(request: Request) {
     }
     if (conversation.lead_id) await requireLeadAccess(identity, conversation.lead_id);
 
+    const normalizedRecipient = payload.recipient.replace(/\D/g, "");
+    if (payload.channel === "whatsapp") {
+      const { data: suppression } = await admin.from("messaging_suppressions").select("id").eq("organization_id", identity.organizationId).eq("channel", "whatsapp").eq("recipient", normalizedRecipient).maybeSingle();
+      if (suppression) return NextResponse.json({ error: "Este contato solicitou a interrupção das mensagens no WhatsApp." }, { status: 409 });
+    }
+
     const requiresApproval = payload.channel !== "email";
     const { data: message, error: messageError } = await admin
       .from("messages")
@@ -58,7 +64,7 @@ export async function POST(request: Request) {
         conversation_id: payload.conversationId,
         direction: "outbound",
         channel: payload.channel,
-        recipient: payload.recipient,
+        recipient: payload.channel === "whatsapp" ? normalizedRecipient : payload.recipient,
         content: payload.content.trim(),
         status: "queued",
       })

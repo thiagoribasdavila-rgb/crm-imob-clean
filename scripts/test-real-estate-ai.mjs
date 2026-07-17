@@ -39,6 +39,7 @@ const metaWebhookTest = readFileSync(resolve(root, "app/api/v1/integrations/meta
 const metaConversionTest = readFileSync(resolve(root, "app/api/v1/integrations/meta/conversion-test/route.ts"), "utf8");
 const metaInsightsTest = readFileSync(resolve(root, "app/api/v1/integrations/meta/insights-test/route.ts"), "utf8");
 const outboxWorker = readFileSync(resolve(root, "app/api/v2/outbox/process/route.ts"), "utf8");
+const messageSendRoute = readFileSync(resolve(root, "app/api/v2/messages/send/route.ts"), "utf8");
 const metaMigration = readFileSync(resolve(root, "supabase/migrations/20260716222643_meta_lead_closed_loop.sql"), "utf8");
 const providerRouter = readFileSync(resolve(root, "lib/ai/provider-router.ts"), "utf8");
 const aiCostMigration = readFileSync(resolve(root, "supabase/migrations/20260717012700_ai_usage_cost_tracking.sql"), "utf8");
@@ -62,6 +63,7 @@ const approvalsListRoute = readFileSync(resolve(root, "app/api/v2/approvals/rout
 const approvalsPage = readFileSync(resolve(root, "app/(crm)/approvals/page.tsx"), "utf8");
 const atomicMessageApprovalMigration = readFileSync(resolve(root, "supabase/migrations/20260717013400_atomic_message_approval.sql"), "utf8");
 const atomicCommercialProposalMigration = readFileSync(resolve(root, "supabase/migrations/20260717014200_atomic_commercial_proposal_review.sql"), "utf8");
+const immediateOptOutMigration = readFileSync(resolve(root, "supabase/migrations/20260717014400_immediate_whatsapp_opt_out.sql"), "utf8");
 const metaInsights = readFileSync(resolve(root, "lib/meta/insights.ts"), "utf8");
 const customerExperience = readFileSync(resolve(root, "lib/atlas/customer-experience.ts"), "utf8");
 const whatsappWebhook = readFileSync(resolve(root, "app/api/webhooks/whatsapp/route.ts"), "utf8");
@@ -181,7 +183,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("348 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("354 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["painel comparativo é exclusivo da superintendência", superintendentDashboardRoute.includes('actorRole !== "superintendent"') && superintendentDashboardRoute.includes('scope: "superintendent-dashboard"')],
   ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('roleOf(profile) === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
   ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && superintendentDashboardRoute.match(/\.eq\("organization_id", identity\.access\.organization\.id\)/g)?.length >= 2],
@@ -347,6 +349,12 @@ const checks = [
   ["ensaio percorre fila Hostinger", whatsappHealth.includes('topic: "message.send"') && whatsappHealth.includes("/api/v2/outbox/process")],
   ["painel acompanha envio entrega e leitura", whatsappHealthPage.includes("Fase 28 · Template oficial") && whatsappHealthPage.includes("test.delivered_at") && whatsappHealthPage.includes("test.read_at")],
   ["worker impede tomada duplicada", outboxWorker.includes('.in("status", ["pending", "failed"])') && outboxWorker.includes("if (!claimed) continue")],
+  ["opt-out reconhece frases reais", whatsappWebhook.includes("nao quero mais") && whatsappWebhook.includes("nao me envie mais") && whatsappWebhook.includes('normalize("NFD")')],
+  ["opt-out cancela pendências imediatamente", immediateOptOutMigration.includes("status='cancelled'") && immediateOptOutMigration.includes("status='blocked'") && immediateOptOutMigration.includes("status='failed'")],
+  ["opt-out é auditável na lead", immediateOptOutMigration.includes("whatsapp_opt_out") && immediateOptOutMigration.includes("messaging.opt_out") && immediateOptOutMigration.includes("blockedMessages")],
+  ["worker bloqueia todo WhatsApp suprimido", outboxWorker.includes("universalSuppression") && outboxWorker.includes("Bloqueado por opt-out antes do envio") && !outboxWorker.includes("if (templateItem?.batchId) {\n          const { data: universalSuppression")],
+  ["banco impede nova fila para opt-out", immediateOptOutMigration.includes("block_suppressed_whatsapp_outbox") && immediateOptOutMigration.includes("whatsapp_recipient_suppressed")],
+  ["fase 48 deixa proteção visível", whatsappHealthPage.includes("Fase 48 · Opt-out imediato") && whatsappHealthPage.includes("Pedido do cliente vence qualquer automação") && messageSendRoute.includes("solicitou a interrupção")],
   ["compra externa não infla receita própria", experienceMigration.includes("external_sales_records") && experienceMigration.includes("status = 'comprou_outro'")],
   ["venda externa é exclusiva da diretoria", experienceMigration.includes("external_sales_director_scope") && experienceMigration.includes("commercial_role")],
   ["gerente registra somente lead do time direto", governedExternalBuyerMigration.includes("reports_to=p_actor_id") && governedExternalBuyerMigration.includes("external_buyer_out_of_scope")],

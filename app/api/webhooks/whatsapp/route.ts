@@ -13,7 +13,8 @@ function normalizePhone(value: string) {
 }
 
 function isOptOut(value: string) {
-  return /^(sair|pare|parar|cancelar|remover|stop|unsubscribe)$/i.test(value.trim());
+  const normalized = value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
+  return /^(sair|pare|parar|cancelar|remover|stop|unsubscribe|nao quero mais|nao me envie mais)$/.test(normalized);
 }
 
 export async function GET(request: Request) {
@@ -86,7 +87,8 @@ export async function POST(request: Request) {
           const sender = normalizePhone(incoming.from);
           const incomingText = incoming.text?.body ?? "";
           if (isOptOut(incomingText)) {
-            await admin.from("messaging_suppressions").upsert({ organization_id: integration.organization_id, channel: "whatsapp", recipient: sender, reason: "opt_out", source: "whatsapp_inbound" }, { onConflict: "organization_id,channel,recipient" });
+            const { error: optOutError } = await admin.rpc("register_whatsapp_opt_out", { p_organization_id: integration.organization_id, p_recipient: sender, p_source: "whatsapp_inbound", p_external_message_id: incoming.id });
+            if (optOutError) throw optOutError;
           }
           const { data: conversation } = await admin
             .from("conversations")

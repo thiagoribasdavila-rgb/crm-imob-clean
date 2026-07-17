@@ -82,6 +82,12 @@ export async function POST(request: Request) {
         const { data: message, error: messageError } = await admin.from("messages").select("id,channel,recipient,content,media").eq("id", event.aggregate_id).single();
         if (messageError || !message) throw messageError ?? new Error("Mensagem não encontrada.");
         if (message.channel !== "whatsapp") throw new Error(`Canal ainda não conectado ao worker: ${message.channel}`);
+        const normalizedRecipient = String(message.recipient || "").replace(/\D/g, "");
+        const { data: universalSuppression } = await admin.from("messaging_suppressions").select("id").eq("organization_id", event.organization_id).eq("channel", "whatsapp").eq("recipient", normalizedRecipient).maybeSingle();
+        if (universalSuppression) {
+          await Promise.all([admin.from("messages").update({ status: "failed", error: "Contato bloqueado por opt-out." }).eq("id", message.id), admin.from("integration_outbox").update({ status: "blocked", delivered_at: now, last_error: "Bloqueado por opt-out antes do envio." }).eq("id", event.id)]);
+          continue;
+        }
         const media = Array.isArray(message.media) ? message.media : [];
         const templateItem = media.find((item) => item && typeof item === "object" && (item as { type?: unknown }).type === "whatsapp_template") as { name?: string; language?: string; batchId?: string } | undefined;
         if (templateItem?.batchId) {
