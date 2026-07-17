@@ -1,8 +1,8 @@
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export const LEAD_STAGES = ["novo", "contato", "qualificacao", "visita", "proposta", "contrato", "ganho", "perdido", "comprou_outro"] as const;
-export type LeadStage = (typeof LEAD_STAGES)[number];
+export const LEAD_STAGES = PIPELINE_STAGE_KEYS;
+export type LeadStage = PipelineStageKey;
 
 export function normalizeUuid(value: unknown) {
   const normalized = String(value ?? "").trim().toLowerCase();
@@ -45,6 +45,6 @@ export function normalizeBrazilianDocument(value: unknown) {
 }
 
 export function normalizeLeadStage(value: unknown): LeadStage | null {
-  const normalized = String(value ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return (LEAD_STAGES as readonly string[]).includes(normalized) ? normalized as LeadStage : null;
+  return canonicalPipelineStage(value);
 }
+import { PIPELINE_STAGE_KEYS, canonicalPipelineStage, type PipelineStageKey } from "@/lib/atlas/pipeline-stages";

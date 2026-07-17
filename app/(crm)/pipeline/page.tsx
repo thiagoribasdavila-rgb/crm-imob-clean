@@ -6,21 +6,12 @@ import { DragEvent, useEffect, useMemo, useState, type CSSProperties } from "rea
 import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
+import { DEFAULT_PIPELINE_STAGES, type PipelineStageDefinition, type PipelineStageKey } from "@/lib/atlas/pipeline-stages";
 
-const stages = [
-  { key: "novo", label: "Novos", probability: 5 },
-  { key: "contato", label: "Contato", probability: 15 },
-  { key: "qualificacao", label: "Qualificação", probability: 30 },
-  { key: "visita", label: "Visita", probability: 50 },
-  { key: "proposta", label: "Proposta", probability: 70 },
-  { key: "contrato", label: "Contrato", probability: 90 },
-  { key: "ganho", label: "Ganhos", probability: 100 },
-] as const;
-
-type StageKey = (typeof stages)[number]["key"] | "perdido" | "comprou_outro";
+const defaultStages = DEFAULT_PIPELINE_STAGES.filter((stage) => stage.visible && stage.outcome !== "lost" && stage.outcome !== "buyer_profile");
+type StageKey = PipelineStageKey;
 type FocusKey = "prioridade" | "sla" | "atrasadas" | "sem_acao" | "quentes" | "todas";
 type SortKey = "prioridade" | "score" | "valor" | "recente";
-const destinationOptions: Array<{ key: StageKey; label: string }> = [...stages, { key: "perdido", label: "Perdido" }, { key: "comprou_outro", label: "Comprou em outro lugar" }];
 type Lead = {
   id: string;
   name: string | null;
@@ -134,6 +125,8 @@ function phoneLinks(phone: string | null) {
 
 export default function PipelinePage() {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [stages, setStages] = useState<PipelineStageDefinition[]>(defaultStages);
+  const [canConfigureStages, setCanConfigureStages] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -161,6 +154,8 @@ export default function PipelinePage() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Falha ao carregar pipeline.");
       setLeads((payload.leads ?? []) as Lead[]);
+      if (Array.isArray(payload.stages)) setStages((payload.stages as PipelineStageDefinition[]).filter((stage) => stage.visible && stage.outcome !== "lost" && stage.outcome !== "buyer_profile"));
+      setCanConfigureStages(payload.canConfigureStages === true);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Falha ao carregar pipeline.");
     } finally {
@@ -232,6 +227,11 @@ export default function PipelinePage() {
     });
   }, [focus, leads, query, sort]);
 
+  const destinationOptions = useMemo<Array<{ key: StageKey; label: string }>>(() => {
+    const configured = new Map(stages.map((stage) => [stage.key, stage.label]));
+    return DEFAULT_PIPELINE_STAGES.map((stage) => ({ key: stage.key, label: configured.get(stage.key) || stage.label }));
+  }, [stages]);
+
   const metrics = useMemo(() => {
     const open = leads.filter((lead) => !["ganho", "perdido", "comprou_outro"].includes(lead.status ?? "novo"));
     const pipeline = open.reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0);
@@ -245,12 +245,12 @@ export default function PipelinePage() {
     const buyerProfiles = leads.filter((lead) => lead.status === "comprou_outro").length;
     const firstContactOverdue = open.filter((lead) => firstContactSla(lead)?.overdue).length;
     return { open: open.length, pipeline, forecast, hot, highRisk, won, buyerProfiles, firstContactOverdue };
-  }, [leads]);
+  }, [leads, stages]);
 
   const stageData = useMemo(() => stages.map((stage) => {
     const items = visibleLeads.filter((lead) => (lead.status ?? "novo") === stage.key);
     return { ...stage, items, value: items.reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0) };
-  }), [visibleLeads]);
+  }), [stages, visibleLeads]);
   const boardStages = useMemo(() => hideEmpty ? stageData.filter((stage) => stage.items.length > 0) : stageData, [hideEmpty, stageData]);
   const dailyFocus = useMemo(() => leads.filter(isOpenLead).sort((a, b) => priorityWeight(b) - priorityWeight(a)).slice(0, 3), [leads]);
 
@@ -278,6 +278,7 @@ export default function PipelinePage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead, região, origem ou campanha..." className="min-w-72 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
+            {canConfigureStages ? <Link href="/pipeline/settings" className="atlas-button-secondary">Configurar etapas</Link> : null}
             <Link href="/leads/new" className="atlas-button-primary">+ Novo lead</Link>
           </div>
         </div>

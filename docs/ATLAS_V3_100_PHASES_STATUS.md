@@ -608,7 +608,19 @@ Pendência externa: validar sequência real de WhatsApp, Meta, transferências e
 
 Pendência externa: testar perfis vazios, parciais e completos com quatro papéis e dois tenants; medir redução do tempo de qualificação e utilidade das perguntas.
 
-Próxima fase: **Fase 31 — etapas canônicas**, definindo estágios consistentes, editáveis e mensuráveis para o pipeline.
+## Fase 31 — Etapas canônicas
+
+**Estado:** 100% implementada e aprovada localmente; aplicação da migration e reconciliação com dados reais permanecem para homologação.
+
+**Evolução:** nove chaves canônicas agora orientam CRM, Kanban, forecast, análises, IA e integrações. Aliases históricos são normalizados sem criar novas colunas. O Kanban recebe a configuração da API em vez de manter uma lista concorrente.
+
+**Personalização governada:** diretoria, administração e superintendência podem ajustar rótulo, probabilidade, ordem e visibilidade por organização. Chave e significado do resultado permanecem imutáveis; comprador externo continua separado de ganho e não infla receita.
+
+**Medição:** cada etapa possui probabilidade explícita para forecast e posição estável para funil. O contrato está em `config/canonical-pipeline-stages.json`, o gate em `npm run canonical-stages:check` e o roteiro em `docs/CANONICAL_PIPELINE_STAGES_PHASE_31.md`.
+
+Pendência externa: aplicar migration, editar as etapas em homologação, percorrer a jornada completa e testar isolamento com dois tenants.
+
+Próxima fase: **Fase 32 — Kanban moderno**, melhorando densidade, carregamento, responsividade, atalhos e experiência visual.
 
 ## Painel das 100 fases
 

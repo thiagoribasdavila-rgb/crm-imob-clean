@@ -4,10 +4,9 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
+import { canonicalPipelineStage, mergePipelineStageSettings } from "@/lib/atlas/pipeline-stages";
 
 export const dynamic = "force-dynamic";
-
-const allowedStages = new Set(["novo", "contato", "qualificacao", "visita", "proposta", "contrato", "ganho", "perdido", "comprou_outro"]);
 
 function authError(error: unknown) {
   const message = error instanceof Error ? error.message : "Não autorizado.";
@@ -27,7 +26,9 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ leads: data ?? [] });
+    const { data: settings } = await identity.supabase.from("pipeline_stage_settings").select("stage_key,label,probability,position,visible").eq("organization_id", identity.organizationId);
+    const role = identity.commercialRole || identity.role;
+    return NextResponse.json({ leads: data ?? [], stages: mergePipelineStageSettings(settings ?? []), stageContract: "canonical-v1", canConfigureStages: ["admin", "director", "superintendent"].includes(String(role || "")) });
   } catch (error) {
     logger.warn("pipeline.read_failed", { error: error instanceof Error ? error.message : String(error) });
     return authError(error);
@@ -47,10 +48,10 @@ export async function PATCH(request: Request) {
     const identity = await requireApiIdentity(request);
     const body = await request.json();
     const leadId = String(body.leadId || "");
-    const stage = String(body.stage || "").toLowerCase();
+    const stage = canonicalPipelineStage(body.stage);
     const followUpDescription = String(body.followUpDescription || "").trim().slice(0, 4000);
 
-    if (!leadId || !allowedStages.has(stage) || (stage === "comprou_outro" && followUpDescription.length < 10)) {
+    if (!leadId || !stage || (stage === "comprou_outro" && followUpDescription.length < 10)) {
       return NextResponse.json({ error: "Lead ou etapa inválida." }, { status: 400 });
     }
 
@@ -66,7 +67,7 @@ export async function PATCH(request: Request) {
 
     if (!current) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
 
-    const previousStage = current.status || "novo";
+    const previousStage = canonicalPipelineStage(current.status) || "novo";
     const { data, error } = await identity.supabase
       .from("leads")
       .update({ status: stage, updated_at: new Date().toISOString() })
