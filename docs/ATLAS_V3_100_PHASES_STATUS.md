@@ -632,7 +632,19 @@ Pendência externa: aplicar migration, editar as etapas em homologação, percor
 
 Pendência externa: testar celular físico, teclado, carteira volumosa, carregamento lento e percepção dos corretores.
 
-Próxima fase: **Fase 33 — movimentação segura**, garantindo transação, histórico, permissões e opção de desfazer.
+## Fase 33 — Movimentação segura
+
+**Estado:** 100% implementada e aprovada localmente; migration e concorrência real permanecem para homologação.
+
+**Evolução:** status, registro causal, timeline e evento técnico agora são gravados na mesma transação. A lead é bloqueada durante a mudança e a etapa esperada evita que duas sessões sobrescrevam silenciosamente o trabalho uma da outra.
+
+**Desfazer causal:** a reversão referencia o movimento original e só é aceita se ele continuar sendo o mais recente, a etapa atual corresponder e nenhuma reversão anterior existir. Tentativas antigas retornam conflito e pedem atualização do Kanban.
+
+**Permissões:** organização, ator, hierarquia e responsável são validados dentro da transação, além do acesso prévio da API. O contrato está em `config/safe-pipeline-movement.json`, o gate em `npm run safe-movement:check` e o roteiro em `docs/SAFE_PIPELINE_MOVEMENT_PHASE_33.md`.
+
+Pendência externa: aplicar migration e executar movimentos simultâneos, escopo lateral e reversões concorrentes no Supabase de homologação.
+
+Próxima fase: **Fase 34 — SLA de primeiro contato**, medindo entrada, primeira interação válida e cumprimento do prazo.
 
 ## Painel das 100 fases
 

@@ -1,0 +1,11 @@
+{
+  "phase": 33,
+  "api": "app/api/v1/pipeline/route.ts",
+  "page": "app/(crm)/pipeline/page.tsx",
+  "migration": "supabase/migrations/20260717190000_phase_33_atomic_pipeline_moves.sql",
+  "transaction": "move_pipeline_lead",
+  "atomicWrites": ["leads", "pipeline_stage_moves", "activities", "atlas_events"],
+  "conflictControl": "expected_from_stage",
+  "undoControls": ["original_move", "current_stage", "latest_move", "single_reversal"],
+  "scopeControls": ["organization", "actor", "hierarchy", "lead_owner"]
+}

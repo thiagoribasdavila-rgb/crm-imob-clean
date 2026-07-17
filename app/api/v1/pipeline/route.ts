@@ -49,9 +49,11 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const leadId = String(body.leadId || "");
     const stage = canonicalPipelineStage(body.stage);
+    const expectedFromStage = canonicalPipelineStage(body.expectedFromStage);
+    const reversalOf = typeof body.reversalOf === "string" && /^[0-9a-f-]{36}$/i.test(body.reversalOf) ? body.reversalOf : null;
     const followUpDescription = String(body.followUpDescription || "").trim().slice(0, 4000);
 
-    if (!leadId || !stage || (stage === "comprou_outro" && followUpDescription.length < 10)) {
+    if (!leadId || !stage || !expectedFromStage || (stage === "comprou_outro" && followUpDescription.length < 10)) {
       return NextResponse.json({ error: "Lead ou etapa inválida." }, { status: 400 });
     }
 
@@ -68,41 +70,16 @@ export async function PATCH(request: Request) {
     if (!current) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
 
     const previousStage = canonicalPipelineStage(current.status) || "novo";
-    const { data, error } = await identity.supabase
-      .from("leads")
-      .update({ status: stage, updated_at: new Date().toISOString() })
-      .eq("id", leadId)
-      .eq("organization_id", identity.organizationId)
-      .select("id,name,status,score,temperature,budget_min,budget_max,source,campaign_id,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,first_contact_due_at,first_contacted_at,first_contact_sla_minutes,created_at,updated_at,assigned_to,metadata")
-      .single();
-
-    if (error || !data) throw error || new Error("Falha ao mover lead.");
-
-    const occurredAt = new Date().toISOString();
-    await Promise.allSettled([
-      identity.supabase.from("activities").insert({
-        organization_id: identity.organizationId,
-        lead_id: leadId,
-        user_id: identity.userId,
-        type: "pipeline_stage_changed",
-        title: `Etapa alterada para ${stage}`,
-        description: stage === "comprou_outro" ? `Comprou em outro lugar. ${followUpDescription}` : `${previousStage} → ${stage}`,
-        occurred_at: occurredAt,
-      }),
-      admin.from("atlas_events").insert({
-        organization_id: identity.organizationId,
-        event_type: "lead.stage_changed",
-        source: "atlas-v1",
-        aggregate_type: "lead",
-        aggregate_id: leadId,
-        payload: { previousStage, stage, userId: identity.userId },
-        correlation_id: crypto.randomUUID(),
-      }),
-      recordFunnelLearning({ organizationId: identity.organizationId, leadId, previousStage, stage, occurredAt, description: followUpDescription }),
-    ]);
+    if (previousStage !== expectedFromStage) return NextResponse.json({ error: "A lead foi movimentada por outra pessoa. Atualize o Kanban antes de tentar novamente.", code: "PIPELINE_STAGE_CONFLICT", currentStage: previousStage }, { status: 409 });
+    const { data: move, error: moveError } = await admin.rpc("move_pipeline_lead", { p_actor_id: identity.userId, p_organization_id: identity.organizationId, p_lead_id: leadId, p_to_stage: stage, p_expected_from_stage: expectedFromStage, p_reason: followUpDescription || null, p_reversal_of: reversalOf });
+    if (moveError) { const conflict = /conflict|undo_stale|already_reversed/i.test(moveError.message); return NextResponse.json({ error: conflict ? "A movimentação mudou e não pode mais ser desfeita sem atualizar o Kanban." : "Não foi possível movimentar a lead com segurança.", code: conflict ? "PIPELINE_STAGE_CONFLICT" : "PIPELINE_MOVE_FAILED" }, { status: conflict ? 409 : 400 }); }
+    const { data } = await identity.supabase.from("leads").select("id,name,status,score,temperature,budget_min,budget_max,source,campaign_id,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,first_contact_due_at,first_contacted_at,first_contact_sla_minutes,created_at,updated_at,assigned_to,metadata").eq("id",leadId).eq("organization_id",identity.organizationId).single();
+    if (!data) throw new Error("Lead fora do escopo após movimentação.");
+    const occurredAt = String((move as { occurredAt?: string })?.occurredAt || new Date().toISOString());
+    await Promise.allSettled([recordFunnelLearning({ organizationId: identity.organizationId, leadId, previousStage, stage, occurredAt, description: followUpDescription })]);
 
     logger.info("pipeline.stage_changed", { leadId, previousStage, stage, organizationId: identity.organizationId });
-    return NextResponse.json({ lead: data });
+    return NextResponse.json({ lead: data, move });
   } catch (error) {
     logger.warn("pipeline.move_failed", { error: error instanceof Error ? error.message : String(error) });
     return authError(error);

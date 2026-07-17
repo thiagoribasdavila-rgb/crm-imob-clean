@@ -1,0 +1,10 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+const read=(path)=>readFileSync(resolve(process.cwd(),path),"utf8"); const contract=JSON.parse(read("config/safe-pipeline-movement.json")); const api=read(contract.api); const page=read(contract.page); const sql=read(contract.migration); const failures=[];
+for(const table of contract.atomicWrites) if(!sql.includes(`public.${table}`) && !sql.includes(`into ${table}`)) failures.push(`escrita atômica ausente: ${table}`);
+for(const marker of ["for update","p_expected_from_stage","pipeline_stage_conflict","pipeline_move_out_of_scope","pipeline_undo_stale","pipeline_already_reversed","reversal_of","latest_id"]) if(!sql.toLowerCase().includes(marker)) failures.push(`controle transacional ausente: ${marker}`);
+if(!api.includes('admin.rpc("move_pipeline_lead"')||!api.includes("expectedFromStage")||!api.includes("PIPELINE_STAGE_CONFLICT")||!api.includes("requireLeadAccess")) failures.push("API não usa transação, concorrência e escopo");
+if(api.includes('.from("leads")\n      .update({ status: stage')) failures.push("API ainda altera status fora da transação");
+for(const marker of ["moveId", "reversalOf", "undoLastMove", "expectedFromStage", "Desfazer movimentação"]) if(!page.includes(marker)) failures.push(`desfazer seguro incompleto: ${marker}`);
+if(!sql.includes("unique (reversal_of)")||!sql.includes("pipeline_stage_reverted")) failures.push("reversão não é única ou auditável");
+if(failures.length){console.error("MOVIMENTAÇÃO SEGURA Fase 33: REPROVADO");for(const failure of failures)console.error(`- ${failure}`);process.exit(1);} console.log(`MOVIMENTAÇÃO SEGURA Fase 33: aprovado — ${contract.atomicWrites.length} escritas atômicas, conflito otimista e desfazer causal.`);

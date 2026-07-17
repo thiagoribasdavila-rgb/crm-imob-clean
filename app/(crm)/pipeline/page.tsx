@@ -138,7 +138,7 @@ export default function PipelinePage() {
   const [hideEmpty, setHideEmpty] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<StageKey | null>(null);
-  const [lastMove, setLastMove] = useState<{ leadId: string; leadName: string; from: StageKey; to: StageKey } | null>(null);
+  const [lastMove, setLastMove] = useState<{ moveId: string; leadId: string; leadName: string; from: StageKey; to: StageKey } | null>(null);
 
   async function authenticatedFetch(input: RequestInfo, init?: RequestInit) {
     const { data } = await supabase.auth.getSession();
@@ -166,7 +166,7 @@ export default function PipelinePage() {
 
   useEffect(() => { void load(); }, []);
 
-  async function moveLead(id: string, stage: StageKey) {
+  async function moveLead(id: string, stage: StageKey, reversalOf?: string) {
     const currentLead = leads.find((lead) => lead.id === id);
     const previousStage = (currentLead?.status || "novo") as StageKey;
     if (previousStage === stage) { setDraggedId(null); setDragOverStage(null); return; }
@@ -180,10 +180,10 @@ export default function PipelinePage() {
     setError("");
     setLeads((current) => current.map((lead) => (lead.id === id ? { ...lead, status: stage, updated_at: new Date().toISOString() } : lead)));
     try {
-      const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, followUpDescription }) });
+      const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, expectedFromStage: previousStage, followUpDescription, reversalOf: reversalOf || null }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Falha ao mover lead.");
-      setLastMove({ leadId: id, leadName: currentLead?.name || "Lead", from: previousStage, to: stage });
+      if (!reversalOf && payload.move?.moveId) setLastMove({ moveId: payload.move.moveId, leadId: id, leadName: currentLead?.name || "Lead", from: previousStage, to: stage });
     } catch (moveError) {
       setLeads(previous);
       setError(moveError instanceof Error ? moveError.message : "Falha ao mover lead.");
@@ -210,7 +210,7 @@ export default function PipelinePage() {
     if (!lastMove) return;
     const move = lastMove;
     setLastMove(null);
-    await moveLead(move.leadId, move.from);
+    await moveLead(move.leadId, move.from, move.moveId);
     setLastMove(null);
   }
 
