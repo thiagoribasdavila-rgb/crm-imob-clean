@@ -62,17 +62,11 @@ export async function POST(request: NextRequest) {
   const role = roleOf(identity.access.profile.role, identity.access.profile.commercialRole);
 
   if (body?.action === "experience_decision" && body.signalId && ["keep", "change_requested"].includes(body.experienceDecision || "")) {
-    const { data: signal } = await admin.from("lead_experience_signals").select("id,lead_id,broker_id,recommendation").eq("id", body.signalId).eq("organization_id", org).eq("status", "pending").single();
-    if (!signal) return apiError("SIGNAL_NOT_FOUND", "Alerta de experiência não encontrado.", identity.meta, { status: 404 });
-    const { data: profiles } = await admin.from("profiles").select("id,reports_to").eq("organization_id", org).eq("active", true);
-    const allowed = role === "director" ? new Set((profiles ?? []).map((item) => item.id)) : descendants(profiles ?? [], identity.access.profile.id);
-    if (!signal.broker_id || !allowed.has(signal.broker_id)) return apiError("FORBIDDEN", "Alerta fora da sua estrutura.", identity.meta, { status: 403 });
-    const decision = body.experienceDecision!;
-    await admin.from("lead_experience_signals").update({ status: decision, decision_by: identity.access.profile.id, decision_reason: String(body.reason || "").trim().slice(0, 500) || null, decided_at: new Date().toISOString() }).eq("id", signal.id);
-    if (decision === "change_requested") {
-      await admin.from("approval_requests").insert({ organization_id: org, request_type: "lead_broker_change", entity_type: "lead_experience_signal", entity_id: signal.id, payload: { leadId: signal.lead_id, currentBrokerId: signal.broker_id, recommendation: signal.recommendation }, requested_by: identity.access.profile.id });
-    }
-    return apiSuccess({ signalId: signal.id, decision, requiresNewBrokerSelection: decision === "change_requested" }, identity.meta, { headers: rate.headers });
+    const reason = String(body.reason || "").trim();
+    if (reason.length < 5) return apiError("REASON_REQUIRED", "Explique brevemente a decisão para manter a auditoria do atendimento.", identity.meta, { status: 400 });
+    const { data, error } = await admin.rpc("decide_lead_experience_signal", { p_actor_id: identity.access.profile.id, p_organization_id: org, p_signal_id: body.signalId, p_decision: body.experienceDecision, p_reason: reason.slice(0, 500) });
+    if (error) return apiError("EXPERIENCE_DECISION_FAILED", "O alerta mudou ou está fora da sua estrutura. Atualize a tela.", identity.meta, { status: 409 });
+    return apiSuccess({ ...data, requiresNewBrokerSelection: body.experienceDecision === "change_requested", humanDecisionRequired: true }, identity.meta, { headers: rate.headers });
   }
 
   if (body?.action === "control" && body.batchId && ["pause", "resume"].includes(body.command || "")) {

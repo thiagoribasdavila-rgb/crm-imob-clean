@@ -63,6 +63,7 @@ const whatsappWebhook = readFileSync(resolve(root, "app/api/webhooks/whatsapp/ro
 const whatsappHealth = readFileSync(resolve(root, "app/api/v1/integrations/whatsapp/route.ts"), "utf8");
 const whatsappHealthPage = readFileSync(resolve(root, "app/(crm)/integrations/whatsapp/page.tsx"), "utf8");
 const experienceMigration = readFileSync(resolve(root, "supabase/migrations/20260717001011_whatsapp_experience_and_external_sales_control.sql"), "utf8");
+const atomicExperienceMigration = readFileSync(resolve(root, "supabase/migrations/20260717013200_atomic_experience_decision.sql"), "utf8");
 const paymentRuleMigration = readFileSync(resolve(root, "supabase/migrations/20260717002702_developer_payment_flow_rules.sql"), "utf8");
 const atomicPaymentRuleMigration = readFileSync(resolve(root, "supabase/migrations/20260717012000_atomic_developer_payment_rule_versioning.sql"), "utf8");
 const paymentRuleRoute = readFileSync(resolve(root, "app/api/v1/developers/payment-rules/route.ts"), "utf8");
@@ -160,7 +161,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("306 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("312 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["painel comparativo é exclusivo da superintendência", superintendentDashboardRoute.includes('actorRole !== "superintendent"') && superintendentDashboardRoute.includes('scope: "superintendent-dashboard"')],
   ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('roleOf(profile) === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
   ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && superintendentDashboardRoute.match(/\.eq\("organization_id", identity\.access\.organization\.id\)/g)?.length >= 2],
@@ -300,6 +301,12 @@ const checks = [
   ["IA detecta rejeição explícita do corretor", customerExperience.includes("brokerRejection") && customerExperience.includes("offer_broker_change")],
   ["troca de corretor exige decisão humana", customerExperience.includes("Qual opção prefere?") && experienceMigration.includes("decision_by")],
   ["atrito de atendimento é auditável", whatsappWebhook.includes("lead_experience_signals") && whatsappWebhook.includes("customer.experience_friction")],
+  ["decisão de experiência exige liderança", atomicExperienceMigration.includes("actor_role not in ('director', 'superintendent', 'manager')") && atomicExperienceMigration.includes("experience_decision_forbidden")],
+  ["gerente decide somente sobre corretor direto", atomicExperienceMigration.includes("reports_to = p_actor_id") && atomicExperienceMigration.includes("experience_signal_out_of_scope")],
+  ["decisão e aprovação são atômicas", atomicExperienceMigration.includes("for update") && atomicExperienceMigration.includes("insert into public.approval_requests") && atomicExperienceMigration.includes("begin;")],
+  ["solicitação nunca transfere a lead", atomicExperienceMigration.includes("'leadReassigned', false") && reactivationPage.includes("não altera o responsável atual")],
+  ["motivo humano é obrigatório e auditado", reactivationRoute.includes("REASON_REQUIRED") && atomicExperienceMigration.includes("decision_reason = left(trim(p_reason), 500)") && reactivationPage.includes("Motivo da decisão (obrigatório)")],
+  ["fase 41 diferencia IA de decisão humana", reactivationPage.includes("Fase 41 · Decisão humana") && reactivationPage.includes("A IA explica o atrito, mas nunca troca o corretor") && reactivationRoute.includes("humanDecisionRequired: true")],
   ["WhatsApp consulta qualidade oficial", whatsappHealth.includes("quality_rating") && whatsappHealth.includes("messaging_limit_tier")],
   ["diagnóstico WhatsApp exige diretoria", whatsappHealth.includes('commercialRole === "director"') && whatsappHealth.includes("whatsapp-health")],
   ["diagnóstico WhatsApp possui timeout", whatsappHealth.includes("AbortSignal.timeout(30_000)") && whatsappHealth.includes('cache: "no-store"')],
