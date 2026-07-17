@@ -29,7 +29,7 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     const [activityResult, propertyResult, opportunityResult, experienceResult, conversationResult, taskResult, campaignResult] = await Promise.all([
-      identity.supabase.from("activities").select("id,title,description,type,metadata,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
+      identity.supabase.from("activities").select("id,user_id,title,description,type,metadata,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
       admin.from("properties").select("id,title,price,city,state,bedrooms,bathrooms,parking_spaces,area,status").eq("organization_id", identity.organizationId).limit(150),
       identity.supabase.from("opportunities").select("id,stage,value,probability,expected_close_at,property_id,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
       identity.supabase.from("lead_experience_signals").select("id,signal_type,severity,confidence,evidence,recommendation,suggested_reply,status,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
@@ -55,15 +55,29 @@ export async function GET(request: Request, context: RouteContext) {
       !lead.phone && !lead.email ? "Cliente sem canal de contato" : null,
     ].filter((value): value is string => Boolean(value));
     const completedFields = fields.filter((field) => field.complete).length;
+    const activityUserIds = [...new Set((activityResult.data ?? []).map((item) => item.user_id).filter((value): value is string => Boolean(value)))];
+    const { data: activityUsers } = activityUserIds.length ? await admin.from("profiles").select("id,full_name").eq("organization_id", identity.organizationId).in("id", activityUserIds) : { data: [] as Array<{ id: string; full_name: string | null }> };
+    const activityUserMap = new Map((activityUsers ?? []).map((profile) => [profile.id, profile.full_name || "Equipe Atlas"]));
+    const activities = (activityResult.data ?? []).map((activity) => ({ ...activity, authorName: activity.user_id ? activityUserMap.get(activity.user_id) || "Equipe Atlas" : "Automação Atlas" }));
+    const openTasks = (taskResult.data ?? []).filter((task) => !["done", "concluida", "completed", "cancelado"].includes(String(task.status || "").toLowerCase()));
+    const unreadMessages = (conversationResult.data ?? []).reduce((total, conversation) => total + Number(conversation.unread_count || 0), 0);
+    const activeOpportunities = (opportunityResult.data ?? []).filter((opportunity) => !["ganho", "perdido", "won", "lost"].includes(String(opportunity.stage || "").toLowerCase()));
+    const briefingActions = [
+      unreadMessages ? `Responder ${unreadMessages} ${unreadMessages === 1 ? "mensagem pendente" : "mensagens pendentes"}.` : null,
+      inconsistencies[0] ? `Revisar: ${inconsistencies[0]}.` : null,
+      fields.find((field) => !field.complete) ? `Confirmar ${fields.find((field) => !field.complete)!.label}.` : null,
+      openTasks[0]?.due_at ? `Concluir a próxima tarefa prevista para ${new Date(openTasks[0].due_at).toLocaleDateString("pt-BR")}.` : null,
+    ].filter((value): value is string => Boolean(value)).slice(0, 3);
 
     return NextResponse.json({
       lead,
-      activities: activityResult.data ?? [],
+      activities,
       properties: propertyResult.data ?? [],
       opportunities: opportunityResult.data ?? [],
       experienceSignals: experienceResult.data ?? [],
       unifiedProfile: { conversations: conversationResult.data ?? [], tasks: taskResult.data ?? [], campaignEvents: campaignResult.data ?? [], sources: ["CRM", ...(conversationResult.data?.length ? ["Atendimento"] : []), ...(campaignResult.data?.length ? ["Marketing"] : []), ...(opportunityResult.data?.length ? ["Vendas"] : [])] },
       dataQuality: { completeness: Math.round(completedFields / fields.length * 100), completedFields, totalFields: fields.length, missing: fields.filter((field) => !field.complete).map(({ key, label }) => ({ key, label })), inconsistencies, status: inconsistencies.length ? "review" : completedFields === fields.length ? "complete" : "enrich", recommendation: inconsistencies[0] || (fields.find((field) => !field.complete)?.label ? `Coletar ${fields.find((field) => !field.complete)!.label} no próximo contato.` : "Perfil consistente e pronto para personalização.") },
+      contactBriefing: { unreadMessages, openTasks: openTasks.length, activeOpportunities: activeOpportunities.length, lastInteractionAt: activities[0]?.occurred_at || null, context: activities[0]?.description || activities[0]?.title || "Ainda não há interação registrada com este cliente.", actions: briefingActions.length ? briefingActions : ["Validar interesse atual e combinar a próxima ação com data."], generatedBy: "Atlas Intelligence local", requiresApproval: true },
     });
   } catch (error) {
     logger.warn("lead.intelligence.read_failed", { error: error instanceof Error ? error.message : String(error) });
