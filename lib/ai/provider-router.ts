@@ -1,4 +1,5 @@
 import "server-only";
+import { resilientFetch } from "@/lib/http/resilient-fetch";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { assessAIComplexity } from "@/lib/ai/complexity";
@@ -124,10 +125,6 @@ async function recordUsage(input: GenerateInput, result: AIProviderResult) {
   return { ...result, cost };
 }
 
-function withTimeout(timeoutMs: number) {
-  return AbortSignal.timeout(Math.min(60_000, Math.max(1_000, timeoutMs)));
-}
-
 function openAIText(output: unknown) {
   if (!output || typeof output !== "object") return "";
   const items =
@@ -171,7 +168,7 @@ async function generateOpenAI(input: GenerateInput): Promise<AIProviderResult> {
           };
   const model = profile.model;
   const startedAt = Date.now();
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  const response = await resilientFetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -187,8 +184,7 @@ async function generateOpenAI(input: GenerateInput): Promise<AIProviderResult> {
       max_output_tokens: profile.maxOutputTokens,
       prompt_cache_key: `atlas:${input.feature}:${input.task}:v1`,
     }),
-    signal: withTimeout(input.timeoutMs ?? 30_000),
-  });
+  }, { timeoutMs: input.timeoutMs ?? 30_000, retries: 1, retryUnsafe: true, operation: "OpenAI" });
   const body = (await response.json()) as {
     id?: string;
     error?: { message?: string };
@@ -231,7 +227,7 @@ async function generatePerplexity(
   if (!apiKey) throw new Error("PERPLEXITY_API_KEY não configurada.");
   const model = aiModelProfiles().research;
   const startedAt = Date.now();
-  const response = await fetch("https://api.perplexity.ai/v1/sonar", {
+  const response = await resilientFetch("https://api.perplexity.ai/v1/sonar", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -245,8 +241,7 @@ async function generatePerplexity(
       ],
       search_context_size: "low",
     }),
-    signal: withTimeout(input.timeoutMs ?? 30_000),
-  });
+  }, { timeoutMs: input.timeoutMs ?? 30_000, retries: 1, retryUnsafe: true, operation: "Perplexity" });
   const body = (await response.json()) as {
     id?: string;
     error?: { message?: string };
@@ -288,7 +283,7 @@ async function generateEconomyProvider(input: GenerateInput, provider: EconomyPr
   const model = process.env[config.model];
   if (!apiKey || !model) throw new Error(`${provider} não configurado.`);
   const startedAt = Date.now();
-  const response = await fetch(process.env[`ATLAS_${provider.toUpperCase()}_BASE_URL`] || config.baseUrl, {
+  const response = await resilientFetch(process.env[`ATLAS_${provider.toUpperCase()}_BASE_URL`] || config.baseUrl, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -298,8 +293,7 @@ async function generateEconomyProvider(input: GenerateInput, provider: EconomyPr
       max_tokens: input.task === "fast" ? 600 : input.task === "commercial" ? 1200 : 2400,
       stream: false,
     }),
-    signal: withTimeout(input.timeoutMs ?? 30_000),
-  });
+  }, { timeoutMs: input.timeoutMs ?? 30_000, retries: 1, retryUnsafe: true, operation: provider });
   const body = await response.json() as {
     id?: string; error?: { message?: string };
     choices?: Array<{ message?: { content?: string } }>;

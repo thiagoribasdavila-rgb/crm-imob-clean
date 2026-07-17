@@ -47,6 +47,7 @@ const outboxWorker = readFileSync(resolve(root, "app/api/v2/outbox/process/route
 const messageSendRoute = readFileSync(resolve(root, "app/api/v2/messages/send/route.ts"), "utf8");
 const metaMigration = readFileSync(resolve(root, "supabase/migrations/20260716222643_meta_lead_closed_loop.sql"), "utf8");
 const providerRouter = readFileSync(resolve(root, "lib/ai/provider-router.ts"), "utf8");
+const apiCore = readFileSync(resolve(root, "lib/api/core.ts"), "utf8");
 const complexityRouter = readFileSync(resolve(root, "lib/ai/complexity.ts"), "utf8");
 const conversionPredictor = readFileSync(resolve(root, "lib/ai/conversion-predictor.ts"), "utf8");
 const aiCostMigration = readFileSync(resolve(root, "supabase/migrations/20260717012700_ai_usage_cost_tracking.sql"), "utf8");
@@ -56,6 +57,7 @@ const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
 const metaSettingsPage = readFileSync(resolve(root, "app/(crm)/integrations/meta/page.tsx"), "utf8");
+const resilientFetch = readFileSync(resolve(root, "lib/http/resilient-fetch.ts"), "utf8");
 const pipelineRoute = readFileSync(resolve(root, "app/api/v1/pipeline/route.ts"), "utf8");
 const pipelinePage = readFileSync(resolve(root, "app/(crm)/pipeline/page.tsx"), "utf8");
 const funnelLearning = readFileSync(resolve(root, "lib/atlas/funnel-learning.ts"), "utf8");
@@ -314,6 +316,10 @@ const checks = [
   ["Andromeda recebe identificador externo protegido", outboxWorker.includes("external_id") && outboxWorker.includes("hashMetaValue(`atlas:")],
   ["sinais Meta incluem versão auditável", outboxWorker.includes('atlas_signal_version: "andromeda-v1"')],
   ["painel mede prontidão do sinal Andromeda", metaSettings.includes("andromedaReadiness") && metaSettingsPage.includes("Qualidade da conexão CRM → Meta")],
+  ["cliente HTTP central possui timeout e repetição limitada", resilientFetch.includes("AbortSignal.timeout") && resilientFetch.includes("Math.min(3") && resilientFetch.includes("RETRYABLE_STATUS")],
+  ["WhatsApp nunca repete envio automaticamente", outboxWorker.includes('retries: 0, operation: "WhatsApp"')],
+  ["APIs críticas usam transporte resiliente", providerRouter.includes("resilientFetch") && metaInsights.includes("resilientFetch") && outboxWorker.includes("resilientFetch")],
+  ["respostas canônicas expõem duração segura", apiCore.includes("Server-Timing") && apiCore.includes("X-Response-Time")],
   ["evento inicial de lead é deduplicado", outboxWorker.includes("meta-lead-${metaEvent.external_lead_id}") && metaConversions.includes('ignoreDuplicates: true')],
   ["avanços do funil alimentam aprendizado", metaConversions.includes('qualificacao: "QualifiedLead"') && metaConversions.includes('ganho: "ConvertedLead"')],
   ["movimentação do pipeline gera sinal seguro", pipelineRoute.includes("recordFunnelLearning") && funnelLearning.includes("queueMetaStageConversion") && metaConversions.includes("dataSharingConsent !== true")],

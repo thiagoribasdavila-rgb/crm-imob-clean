@@ -52,6 +52,9 @@ function responseHeaders(meta: ApiMeta, extra?: HeadersInit): Headers {
   headers.set("X-Correlation-Id", meta.correlationId);
   headers.set("X-Atlas-Api-Version", meta.version);
   headers.set("X-Content-Type-Options", "nosniff");
+  const durationMs = Math.max(0, Date.now() - new Date(meta.timestamp).getTime());
+  headers.set("Server-Timing", `atlas;dur=${durationMs}`);
+  headers.set("X-Response-Time", `${durationMs}ms`);
   return headers;
 }
 

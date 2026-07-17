@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { hashMetaValue, queueMetaConversion } from "@/lib/meta/conversions";
+import { resilientFetch } from "@/lib/http/resilient-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +20,13 @@ async function deliverWhatsApp(recipient: string, content: string, template?: Wh
   const apiVersion = process.env.META_GRAPH_API_VERSION || "v23.0";
   if (!phoneNumberId || !accessToken) throw new Error("Credenciais do WhatsApp não configuradas.");
 
-  const response = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
+  const response = await resilientFetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify(template
       ? { messaging_product: "whatsapp", to: recipient, type: "template", template: { name: template.name, language: { code: template.language } } }
       : { messaging_product: "whatsapp", to: recipient, type: "text", text: { body: content } }),
-  });
+  }, { timeoutMs: 30_000, retries: 0, operation: "WhatsApp" });
 
   const data = (await response.json()) as { messages?: Array<{ id: string }>; error?: { message?: string } };
   if (!response.ok) throw new Error(data.error?.message || `WhatsApp HTTP ${response.status}`);
@@ -37,7 +38,7 @@ async function fetchMetaLead(externalLeadId: string) {
   const apiVersion = process.env.META_GRAPH_API_VERSION || "v23.0";
   if (!accessToken) throw new Error("META_LEAD_ACCESS_TOKEN não configurado.");
   const fields = "id,created_time,ad_id,adset_id,campaign_id,form_id,field_data";
-  const response = await fetch(`https://graph.facebook.com/${apiVersion}/${encodeURIComponent(externalLeadId)}?fields=${fields}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+  const response = await resilientFetch(`https://graph.facebook.com/${apiVersion}/${encodeURIComponent(externalLeadId)}?fields=${fields}`, { headers: { Authorization: `Bearer ${accessToken}` } }, { timeoutMs: 30_000, retries: 2, operation: "Meta Lead Ads" });
   const data = await response.json() as { id?: string; created_time?: string; ad_id?: string; adset_id?: string; campaign_id?: string; form_id?: string; field_data?: Array<{ name: string; values?: string[] }>; error?: { message?: string } };
   if (!response.ok) throw new Error(data.error?.message || `Meta Graph HTTP ${response.status}`);
   return data;
@@ -178,11 +179,11 @@ export async function POST(request: Request) {
         if (!userData.em && !userData.ph) throw new Error("Conversão sem e-mail ou telefone consentido para correspondência.");
         await admin.from("meta_conversion_events").update({ status: "processing", attempts: Number(conversion.attempts || 0) + 1, last_error: null }).eq("id", conversion.id);
         const apiVersion = process.env.META_GRAPH_API_VERSION || "v23.0";
-        const response = await fetch(`https://graph.facebook.com/${apiVersion}/${encodeURIComponent(config.dataset_id)}/events`, {
+        const response = await resilientFetch(`https://graph.facebook.com/${apiVersion}/${encodeURIComponent(config.dataset_id)}/events`, {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
           body: JSON.stringify({ data: [{ event_name: conversion.event_name, event_time: Math.floor(new Date(conversion.occurred_at).getTime() / 1000), event_id: conversion.event_id, action_source: conversion.action_source, user_data: userData, custom_data: { ...conversion.custom_data, atlas_signal_version: "andromeda-v1" } }], test_event_code: config.test_event_code }),
-        });
+        }, { timeoutMs: 30_000, retries: 1, retryUnsafe: true, operation: "Meta Conversions API" });
         const metaResponse = await response.json() as Record<string, unknown>;
         if (!response.ok) throw new Error(typeof metaResponse.error === "object" && metaResponse.error ? String((metaResponse.error as { message?: unknown }).message || `Meta HTTP ${response.status}`) : `Meta HTTP ${response.status}`);
         await admin.from("meta_conversion_events").update({ status: "delivered", delivered_at: now, meta_response: metaResponse, last_error: null }).eq("id", conversion.id);
