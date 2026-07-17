@@ -94,10 +94,7 @@ async function live(org: string) {
         Boolean(connection) ||
         ["openai", "perplexity", "storage", "hostinger"].includes(provider),
       verifiedStatus:
-        connection?.status ||
-        (["storage", "hostinger"].includes(provider) && envReady[provider]()
-          ? "connected"
-          : null),
+        connection?.status || null,
       lastSyncAt:
         connection?.last_sync_at ||
         (provider === "meta" ? metaEvents?.[0]?.received_at : null),
@@ -188,6 +185,7 @@ export async function GET(req: NextRequest) {
         snapshots: snapshots || [],
         policy: {
           secretsMasked: true,
+          secretsExposed: false,
           valuesReturned: false,
           connectedRequiresVerifiedTest: true,
           healthRequiresFreshEvidence: true,
