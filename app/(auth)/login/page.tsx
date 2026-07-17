@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import {
   FormEvent,
   KeyboardEvent,
@@ -15,13 +14,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const REMEMBERED_EMAIL_KEY = "atlas.remembered-email";
-
-const capabilities = [
-  "CRM e pipeline inteligente",
-  "Matching comprador × imóvel",
-  "Marketing e atribuição",
-  "Agentes, forecast e Digital Twin",
-];
 
 function safeNextPath(value: string | null): string {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
@@ -173,35 +165,30 @@ function LoginExperience() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050812] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_16%,rgba(14,165,233,.18),transparent_30rem),radial-gradient(circle_at_88%_20%,rgba(139,92,246,.17),transparent_28rem)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.025)_1px,transparent_1px)] [background-size:44px_44px]" />
+    <main className="relative min-h-screen overflow-hidden bg-[#07090d] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,.08),transparent_34rem)]" />
 
-      <div className="relative mx-auto grid min-h-screen w-full max-w-[1500px] items-center gap-12 px-5 py-10 lg:grid-cols-[1.15fr_.85fr] lg:px-12">
+      <div className="relative mx-auto grid min-h-screen w-full max-w-[1280px] items-center gap-16 px-5 py-10 lg:grid-cols-[1fr_460px] lg:px-12">
         <section className="hidden lg:block">
           <div className="flex items-center gap-4">
-            <span className="grid h-14 w-14 place-items-center rounded-2xl border border-sky-400/20 bg-gradient-to-br from-sky-400/20 to-violet-500/20 text-xl font-black text-sky-200 shadow-[0_0_42px_rgba(56,189,248,.18)]">A</span>
+            <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[.04] text-lg font-black text-white">A</span>
             <div><p className="text-2xl font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[10px] font-semibold uppercase tracking-[.25em] text-slate-500">Real Estate Operating System</p></div>
           </div>
-          <h1 className="mt-12 max-w-3xl text-6xl font-semibold leading-[1.02] tracking-[-.055em]">O sistema operacional inteligente do <span className="atlas-gradient-text">mercado imobiliário.</span></h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400">Uma camada única para operação comercial, dados, marketing, imóveis, inteligência artificial e tomada de decisão.</p>
-          <div className="mt-10 grid max-w-2xl grid-cols-2 gap-3">
-            {capabilities.map((item, index) => <div key={item} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 backdrop-blur"><div className="mb-3 grid h-8 w-8 place-items-center rounded-xl bg-sky-400/10 text-xs text-sky-300">0{index + 1}</div><p className="text-sm font-medium text-slate-200">{item}</p></div>)}
-          </div>
-          <div className="mt-10 flex items-center gap-6 text-xs text-slate-500"><span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,.7)]" /> Ambiente operacional</span><span>Hostinger</span><span>Multiempresa</span><span>LGPD-ready</span></div>
-          <Image src="/brand/atlas-robot-assistant.png" alt="Robô assistente Atlas" width={250} height={375} priority className="pointer-events-none absolute bottom-0 left-[46%] w-[230px] drop-shadow-[0_28px_28px_rgba(0,0,0,.45)]" />
+          <h1 className="mt-12 max-w-2xl text-6xl font-semibold leading-[1.02] tracking-[-.055em]">Sua operação comercial, <span className="text-sky-300">mais simples.</span></h1>
+          <p className="mt-6 max-w-xl text-lg leading-8 text-slate-400">Clientes, imóveis, equipe e inteligência em uma única experiência.</p>
+          <div className="mt-10 flex items-center gap-5 text-xs text-slate-500"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Operação protegida</span><span>Hostinger</span><span>LGPD</span></div>
         </section>
 
         <section className="mx-auto w-full max-w-lg">
           <div className="mb-8 flex items-center gap-3 lg:hidden"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-400/15 font-black text-sky-300">A</span><div><p className="text-xl font-black">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[9px] uppercase tracking-[.2em] text-slate-500">Real Estate OS</p></div></div>
-          <div className="atlas-grid-glow rounded-[30px] border border-white/[0.1] bg-[#0a1020]/85 p-6 shadow-[0_40px_130px_rgba(0,0,0,.45)] backdrop-blur-2xl sm:p-9">
+          <div className="rounded-[28px] border border-white/[0.08] bg-[#0d1016]/95 p-6 shadow-[0_28px_90px_rgba(0,0,0,.34)] sm:p-9">
             <div>
               <div className="flex items-center justify-between gap-4">
-                <p className="atlas-eyebrow">Secure workspace</p>
+                <p className="text-xs font-semibold text-slate-500">Acesso seguro</p>
                 <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[.12em] ${systemStatus === "online" ? "border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300" : systemStatus === "offline" ? "border-amber-400/15 bg-amber-400/[0.07] text-amber-300" : "border-white/10 bg-white/[.04] text-slate-400"}`}><span className={`h-1.5 w-1.5 rounded-full ${systemStatus === "online" ? "bg-emerald-400" : systemStatus === "offline" ? "bg-amber-400" : "animate-pulse bg-slate-500"}`} /> {systemStatus === "online" ? "Sistema disponível" : systemStatus === "offline" ? "Conexão instável" : "Verificando"}</span>
               </div>
-              <h2 className="mt-3 text-3xl font-semibold tracking-[-.035em]">Bem-vindo ao Atlas.</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-400">Acesse sua operação com segurança e continue exatamente de onde parou.</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-.035em]">Entrar no Atlas</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Continue de onde você parou.</p>
             </div>
 
             <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
