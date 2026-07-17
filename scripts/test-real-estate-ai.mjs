@@ -66,6 +66,8 @@ const atomicCommercialProposalMigration = readFileSync(resolve(root, "supabase/m
 const immediateOptOutMigration = readFileSync(resolve(root, "supabase/migrations/20260717014400_immediate_whatsapp_opt_out.sql"), "utf8");
 const nightlyReplyMigration = readFileSync(resolve(root, "supabase/migrations/20260717014600_nightly_reply_broker_routing.sql"), "utf8");
 const conversationsPage = readFileSync(resolve(root, "app/(crm)/conversations/page.tsx"), "utf8");
+const commandPalette = readFileSync(resolve(root, "components/CommandPalette.tsx"), "utf8");
+const quickCreate = readFileSync(resolve(root, "components/AtlasQuickCreate.tsx"), "utf8");
 const metaInsights = readFileSync(resolve(root, "lib/meta/insights.ts"), "utf8");
 const customerExperience = readFileSync(resolve(root, "lib/atlas/customer-experience.ts"), "utf8");
 const whatsappWebhook = readFileSync(resolve(root, "app/api/webhooks/whatsapp/route.ts"), "utf8");
@@ -185,7 +187,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("360 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("366 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["painel comparativo é exclusivo da superintendência", superintendentDashboardRoute.includes('actorRole !== "superintendent"') && superintendentDashboardRoute.includes('scope: "superintendent-dashboard"')],
   ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('roleOf(profile) === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
   ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && superintendentDashboardRoute.match(/\.eq\("organization_id", identity\.access\.organization\.id\)/g)?.length >= 2],
@@ -363,6 +365,12 @@ const checks = [
   ["opt-out não reativa jornada noturna", whatsappWebhook.includes("if (!optedOut && inboundMessage?.id)") && immediateOptOutMigration.includes("status='opted_out'")],
   ["conversas respeitam carteira comercial", nightlyReplyMigration.includes("conversations_commercial_scope") && nightlyReplyMigration.includes("messages_commercial_scope") && nightlyReplyMigration.includes("can_access_commercial_lead")],
   ["fase 49 mostra próxima ação", conversationsPage.includes("Fase 49 · Resposta noturna") && conversationsPage.includes("RESPONDER AGORA") && conversationsPage.includes("continuar a descoberta")],
+  ["busca global encontra leads sob RLS", commandPalette.includes('.from("leads")') && commandPalette.includes("Leads da minha carteira") && commandPalette.includes("/leads/${lead.id}")],
+  ["busca é tolerante a acentos", commandPalette.includes('normalize("NFD")') && commandPalette.includes("[\\u0300-\\u036f]")],
+  ["paleta opera inteiramente pelo teclado", commandPalette.includes('event.key === "ArrowDown"') && commandPalette.includes('event.key === "ArrowUp"') && commandPalette.includes('event.key === "Enter"')],
+  ["busca rápida evita consultas excessivas", commandPalette.includes("window.setTimeout") && commandPalette.includes("220") && commandPalette.includes("window.clearTimeout")],
+  ["ações rápidas seguem contexto da lead", quickCreate.includes("contextualActions") && quickCreate.includes("Enviar mensagem") && quickCreate.includes("Registrar ligação") && quickCreate.includes("Agendar visita")],
+  ["conversas atualizam ao vivo", conversationsPage.includes("atlas-conversations-live") && conversationsPage.includes("postgres_changes") && conversationsPage.includes("Atualização ao vivo")],
   ["compra externa não infla receita própria", experienceMigration.includes("external_sales_records") && experienceMigration.includes("status = 'comprou_outro'")],
   ["venda externa é exclusiva da diretoria", experienceMigration.includes("external_sales_director_scope") && experienceMigration.includes("commercial_role")],
   ["gerente registra somente lead do time direto", governedExternalBuyerMigration.includes("reports_to=p_actor_id") && governedExternalBuyerMigration.includes("external_buyer_out_of_scope")],
