@@ -548,7 +548,19 @@ Pendência externa: reconciliar pipeline, receita e comissões com fonte finance
 
 Pendência externa: aplicar a migration em homologação, testar contatos simultâneos, telefone suprimido, duplicidade visível/lateral e conclusão do cadastro em celular em menos de um minuto.
 
-Próxima fase: **Fase 26 — importação de leads**, com prévia, mapeamento, validação, deduplicação e relatório de limpeza antes de gravar a base.
+## Fase 26 — Lead 360
+
+**Estado:** 100% implementada e aprovada localmente; conferência com conversas e carteiras reais permanece para homologação.
+
+**Evolução:** a tela já avançada de inteligência ganhou um mapa 360 explícito, reunindo identidade, origem, campanha, memória histórica, responsável, projeto, incorporadora, score, prontidão, atividades, comunicações, tarefas, oportunidades e próxima ação. Cada bloco leva à fonte operacional correta.
+
+**Fonte única:** o mapa não replica o cliente nem cria uma segunda base. Projeto, corretor, campanha, conversas e pipeline permanecem em seus registros canônicos e aparecem reconciliados na lead autorizada. Qualidade e lacunas continuam explicadas sem fusão silenciosa.
+
+**Escopo:** `requireLeadAccess` antecede qualquer enriquecimento; organização e RLS protegem atividades, mensagens, conversas, tarefas, oportunidades, campanhas e memórias. O contrato está em `config/lead-360.json`, o gate em `npm run lead-360:check` e o roteiro em `docs/LEAD_360_PHASE_26.md`.
+
+Pendência externa: testar lead própria e lateral, reconciliar projeto, responsável, campanha, mensagens e pipeline, e medir se o corretor encontra contexto e próxima ação em menos de um minuto.
+
+Próxima fase: **Fase 27 — busca inteligente**, encontrando rapidamente leads por nome, telefone, e-mail, projeto, origem e contexto permitido.
 
 ## Painel das 100 fases
 

@@ -40,6 +40,13 @@ export async function GET(request: Request, context: RouteContext) {
     ]);
 
     const lead = leadResult.data;
+    const conversationIds = (conversationResult.data ?? []).map((conversation) => conversation.id);
+    const [ownerResult, developmentResult, campaignLookupResult, messageResult] = await Promise.all([
+      lead.assigned_to ? admin.from("profiles").select("id,full_name,commercial_role,role").eq("id", lead.assigned_to).eq("organization_id", identity.organizationId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      lead.development_id ? admin.from("developments").select("id,name,developer_name,status,city").eq("id", lead.development_id).eq("organization_id", identity.organizationId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      lead.campaign_id ? admin.from("campaigns").select("id,name,channel,status").eq("id", lead.campaign_id).eq("organization_id", identity.organizationId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      conversationIds.length ? identity.supabase.from("messages").select("id,conversation_id,direction,channel,status,created_at").eq("organization_id", identity.organizationId).in("conversation_id", conversationIds).order("created_at", { ascending: false }).limit(200) : Promise.resolve({ data: [], error: null }),
+    ]);
     const fields = [
       { key: "name", label: "nome", complete: Boolean(lead.name) },
       { key: "contact", label: "telefone ou e-mail", complete: Boolean(lead.phone || lead.email) },
@@ -77,6 +84,7 @@ export async function GET(request: Request, context: RouteContext) {
       opportunities: opportunityResult.data ?? [],
       experienceSignals: experienceResult.data ?? [],
       unifiedProfile: { conversations: conversationResult.data ?? [], tasks: taskResult.data ?? [], campaignEvents: campaignResult.data ?? [], historicalMemories: sourceMemoryResult.data ?? [], sources: ["CRM", ...(sourceMemoryResult.data?.length ? ["Bases históricas"] : []), ...(conversationResult.data?.length ? ["Atendimento"] : []), ...(campaignResult.data?.length ? ["Marketing"] : []), ...(opportunityResult.data?.length ? ["Vendas"] : [])] },
+      relationshipContext: { owner: ownerResult.data, development: developmentResult.data, campaign: campaignLookupResult.data, communications: { conversations: conversationResult.data?.length ?? 0, messages: messageResult.data?.length ?? 0, inbound: (messageResult.data ?? []).filter((message) => message.direction === "inbound").length, outbound: (messageResult.data ?? []).filter((message) => message.direction === "outbound").length, unread: unreadMessages, channels: [...new Set((messageResult.data ?? []).map((message) => message.channel).filter(Boolean))], lastMessageAt: messageResult.data?.[0]?.created_at || null }, origin: { source: lead.source || "Não informada", createdAt: lead.created_at, campaignEvents: campaignResult.data?.length ?? 0, historicalMemories: sourceMemoryResult.data?.length ?? 0 } },
       dataQuality: { completeness: Math.round(completedFields / fields.length * 100), completedFields, totalFields: fields.length, missing: fields.filter((field) => !field.complete).map(({ key, label }) => ({ key, label })), inconsistencies, status: inconsistencies.length ? "review" : completedFields === fields.length ? "complete" : "enrich", recommendation: inconsistencies[0] || (fields.find((field) => !field.complete)?.label ? `Coletar ${fields.find((field) => !field.complete)!.label} no próximo contato.` : "Perfil consistente e pronto para personalização.") },
       contactBriefing: { unreadMessages, openTasks: openTasks.length, activeOpportunities: activeOpportunities.length, lastInteractionAt: activities[0]?.occurred_at || null, context: activities[0]?.description || activities[0]?.title || "Ainda não há interação registrada com este cliente.", actions: briefingActions.length ? briefingActions : ["Validar interesse atual e combinar a próxima ação com data."], generatedBy: "Atlas Intelligence local", requiresApproval: true },
     });

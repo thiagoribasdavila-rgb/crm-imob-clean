@@ -1,0 +1,8 @@
+{
+  "phase": 26,
+  "route": "app/api/v1/leads/[id]/route.ts",
+  "page": "app/(crm)/leads/[id]/page.tsx",
+  "requiredAreas": ["identity", "origin", "history", "score", "activities", "development", "owner", "communications", "pipeline", "nextAction"],
+  "scopeControls": ["requireLeadAccess", "identity.supabase", "organization_id", "canonical-record"],
+  "experienceControls": ["single-screen-map", "source-of-truth", "deep-links", "data-quality", "contact-briefing"]
+}
