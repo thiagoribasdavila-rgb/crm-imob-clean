@@ -15,12 +15,9 @@ export async function POST(request: NextRequest, context: Context) {
     if (!body.action || !["simulate", "proposal"].includes(body.action)) return NextResponse.json({ error: "Ação de simulação inválida." }, { status: 400 });
     const admin = getSupabaseAdmin();
     if (body.action === "proposal" && body.simulationId) {
-      const { data: simulation } = await admin.from("commercial_simulations").select("id,lead_id,property_id,valid_until,status").eq("id", body.simulationId).eq("lead_id", id).eq("organization_id", identity.organizationId).single();
-      if (!simulation || new Date(simulation.valid_until).getTime() < Date.now()) return NextResponse.json({ error: "Simulação vencida. Recalcule com preço e regra atuais." }, { status: 409 });
-      await admin.from("commercial_simulations").update({ status: "proposal_review", updated_at: new Date().toISOString() }).eq("id", simulation.id);
-      const { data: approval, error } = await admin.from("approval_requests").insert({ organization_id: identity.organizationId, request_type: "commercial_proposal", entity_type: "commercial_simulation", entity_id: simulation.id, payload: { leadId: id, propertyId: simulation.property_id, requiresInventoryCheck: true, requiresPriceCheck: true, requiresPaymentRuleCheck: true }, requested_by: identity.userId }).select("id").single();
-      if (error) return NextResponse.json({ error: "Não foi possível enviar a proposta para revisão." }, { status: 400 });
-      return NextResponse.json({ simulationId: simulation.id, approvalId: approval.id, status: "proposal_review" }, { status: 202 });
+      const { data, error } = await admin.rpc("request_commercial_proposal_review", { p_actor_id: identity.userId, p_organization_id: identity.organizationId, p_simulation_id: body.simulationId, p_lead_id: id });
+      if (error) return NextResponse.json({ error: "Preço, estoque ou regra mudou, a simulação venceu ou já existe revisão pendente. Recalcule antes de continuar." }, { status: 409 });
+      return NextResponse.json(data, { status: 202 });
     }
     if (!body.propertyId || !/^[0-9a-f-]{36}$/i.test(body.propertyId)) return NextResponse.json({ error: "Selecione uma unidade válida." }, { status: 400 });
     const { data: property } = await admin.from("properties").select("id,title,price,status,development_id").eq("id", body.propertyId).eq("organization_id", identity.organizationId).single();

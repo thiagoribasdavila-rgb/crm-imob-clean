@@ -50,6 +50,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     if (error || !approval) return NextResponse.json({ error: "Aprovação não encontrada." }, { status: 404 });
     if (approval.status !== "pending") return NextResponse.json({ error: "Aprovação já decidida." }, { status: 409 });
+    if (approval.entity_type === "commercial_simulation") {
+      const reason = String(body.reason || "").trim();
+      const { data, error: decisionError } = await admin.rpc("decide_commercial_proposal", { p_actor_id: identity.userId, p_organization_id: identity.organizationId, p_approval_id: approval.id, p_decision: body.decision, p_reason: reason.slice(0, 500) });
+      if (decisionError) return NextResponse.json({ error: "A proposta saiu da sua alçada, já foi decidida ou preço, estoque e regra mudaram." }, { status: 409 });
+      const result = data as { leadId?: string; previousStage?: string; decidedAt?: string; status?: string } | null;
+      if (body.decision === "approved" && result?.leadId) await recordFunnelLearning({ organizationId: identity.organizationId, leadId: result.leadId, previousStage: result.previousStage || "qualificacao", stage: "proposta", occurredAt: result.decidedAt || new Date().toISOString(), description: "Proposta aprovada após validação atômica de preço, estoque e regra." });
+      logger.info("approval.commercial_proposal_decided", { approvalId: id, decision: body.decision, userId: identity.userId });
+      return NextResponse.json(data);
+    }
     if (["meta_campaign_optimization", "meta_audience_change", "meta_budget_change", "meta_creative_change"].includes(approval.request_type) && profile.commercial_role !== "director" && profile.role !== "admin") return NextResponse.json({ error: "Decisões de campanha pertencem exclusivamente ao diretor." }, { status: 403 });
     if (approval.entity_type === "message") {
       const reason = String(body.reason || "").trim();
