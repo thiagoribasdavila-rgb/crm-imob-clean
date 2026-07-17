@@ -231,6 +231,30 @@ Evidências: `config/environment-variables.json`, `npm run environment:variables
 
 Próxima fase: **Fase 8 — Gestão de segredos**, definindo rotação, responsáveis, validade e resposta a incidente sem registrar valores sensíveis.
 
+## Fase 8 — Gestão de segredos
+
+Status: **Testada**.
+
+Percentual antes: **74%** — segredos não eram versionados nem retornados, porém responsabilidade e periodicidade de rotação ainda não formavam um contrato verificável.
+
+Percentual depois: **100%** — todos os segredos possuem responsável operacional, prazo máximo de rotação, armazenamento permitido e procedimento de incidente; o release bloqueia acesso privado em componentes cliente.
+
+### Controles implantados
+
+- Segredos críticos de plataforma giram em até 60 dias.
+- Credenciais temporárias expiram ou são revogadas após o uso, com limite de 7 dias.
+- Chaves de IA, marketing, mensageria, anúncios e storage giram em até 90 dias.
+- Valores podem existir somente nas variáveis protegidas da Hostinger ou nos secrets do projeto Supabase.
+- Browser, tabelas comerciais, Git, logs, eventos analíticos e prompts de IA são destinos proibidos.
+- Incidente exige revogação no provedor, substituição segura, reinício, scanner, release gate, teste isolado e registro sem o valor da chave.
+- O painel da diretoria recebe somente cobertura, responsável, periodicidade e estado configurado.
+
+Evidências: `config/secret-governance.json`, `npm run security:governance` e `/api/v1/governance/secrets`.
+
+Pendência externa: a rotação real das chaves só pode ser comprovada depois que as credenciais de homologação forem criadas nos respectivos provedores; nenhuma data foi inventada.
+
+Próxima fase: **Fase 9 — Observabilidade**, estruturando correlação, logs seguros, métricas, erros e trilha operacional.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |

@@ -74,6 +74,8 @@ const environmentContract = readFileSync(resolve(root, "config/environments.json
 const environmentCheck = readFileSync(resolve(root, "scripts/check-environments.mjs"), "utf8");
 const environmentVariables = readFileSync(resolve(root, "config/environment-variables.json"), "utf8");
 const environmentVariablesCheck = readFileSync(resolve(root, "scripts/check-environment-variables.mjs"), "utf8");
+const secretGovernance = readFileSync(resolve(root, "config/secret-governance.json"), "utf8");
+const secretGovernanceCheck = readFileSync(resolve(root, "scripts/check-secret-governance.mjs"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
@@ -493,6 +495,7 @@ const checks = [
   ["arquitetura modular atribui dono único aos dados", moduleBoundaries.includes('"key": "crm"') && moduleBoundaries.includes('"key": "governance"') && moduleBoundaryCheck.includes("entidade canônica sem módulo responsável") && hundredPhaseStatus.includes("Fase 5 — Arquitetura modular")],
   ["ambientes não misturam banco e credenciais temporárias", environmentContract.includes('"production"') && environmentContract.includes('"allowsBootstrap": false') && productionPreflight.includes("ATLAS_DATABASE_ENVIRONMENT") && environmentCheck.includes("Node.js 24.x") && hundredPhaseStatus.includes("Fase 6 — Configuração de ambientes")],
   ["variáveis possuem inventário único sem segredo público", environmentVariables.includes('"requirement": "temporary"') && environmentVariables.includes('"scope": "runtime"') && environmentVariablesCheck.includes("variável usada no código sem classificação") && secretsRoute.includes('source: "config/environment-variables.json"') && hundredPhaseStatus.includes("Fase 7 — Variáveis de ambiente")],
+  ["segredos permanecem no servidor com dono e rotação", secretGovernance.includes('"browser bundle"') && secretGovernance.includes('"rotationDays"') && secretGovernanceCheck.includes("componente cliente referencia segredo privado") && secretsRoute.includes("governanceSource") && hundredPhaseStatus.includes("Fase 8 — Gestão de segredos")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],
