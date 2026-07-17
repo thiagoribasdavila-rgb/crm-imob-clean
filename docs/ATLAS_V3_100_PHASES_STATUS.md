@@ -536,7 +536,19 @@ Pendência externa: testar duas superintendências paralelas, reconciliar totais
 
 Pendência externa: reconciliar pipeline, receita e comissões com fonte financeira; validar custos de campanha; testar isolamento entre duas organizações e comprovar que as principais decisões são identificadas em menos de dois minutos.
 
-Próxima fase: **Fase 25 — CRM mobile-first**, otimizando as ações essenciais para uso rápido no celular.
+## Fase 25 — Cadastro de lead
+
+**Estado:** 100% implementada e aprovada localmente; concorrência real e aplicação da migration permanecem para homologação.
+
+**Evolução:** o cadastro foi reduzido ao essencial: nome, telefone ou e-mail, origem e projeto. A qualificação adicional virou um bloco opcional, mantendo orçamento, objetivo, dormitórios, regiões e contexto disponíveis sem tornar a entrada lenta. A experiência ganhou erros por campo, limites visíveis e botão adequado para toque.
+
+**Integridade:** telefone e e-mail são normalizados; telefone com histórico inválido é recusado; e a deduplicação agora acontece dentro de uma transação com trava por contato. Requisições simultâneas não devem gerar duas leads. Duplicidade lateral não revela carteira, responsável ou identificação da lead.
+
+**Escopo:** a função atômica exige usuário autenticado, organização atual e atribuição ao próprio criador. O contrato está em `config/lead-registration.json`, o gate em `npm run lead-registration:check` e o roteiro em `docs/LEAD_REGISTRATION_PHASE_25.md`.
+
+Pendência externa: aplicar a migration em homologação, testar contatos simultâneos, telefone suprimido, duplicidade visível/lateral e conclusão do cadastro em celular em menos de um minuto.
+
+Próxima fase: **Fase 26 — importação de leads**, com prévia, mapeamento, validação, deduplicação e relatório de limpeza antes de gravar a base.
 
 ## Painel das 100 fases
 

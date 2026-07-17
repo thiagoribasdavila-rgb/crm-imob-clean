@@ -25,6 +25,11 @@ function normalizePhone(value?: string) {
   return value?.replace(/\D/g, "") || null;
 }
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const allowedPurposes = new Set(["moradia", "investimento", "locacao"]);
+const allowedSources = new Set(["Meta Ads", "Google", "WhatsApp", "Indicação", "Portal", "Orgânico", "Manual"]);
+
 export async function POST(request: Request) {
   const rate = checkRateLimit(clientKey(request, "v1-leads-create"), { limit: 30, windowMs: 60_000 });
   if (!rate.allowed) {
@@ -44,17 +49,24 @@ export async function POST(request: Request) {
     const email = body.email?.trim().toLowerCase() || null;
     const phone = normalizePhone(body.phone);
 
-    if (!name) {
-      return NextResponse.json({ error: "Nome é obrigatório." }, { status: 400 });
+    if (!name || name.length < 2 || name.length > 120) {
+      return NextResponse.json({ error: "Informe um nome entre 2 e 120 caracteres.", field: "name" }, { status: 400 });
     }
     if (!email && !phone) {
-      return NextResponse.json({ error: "Informe pelo menos telefone ou e-mail." }, { status: 400 });
+      return NextResponse.json({ error: "Informe pelo menos telefone ou e-mail.", field: "contact" }, { status: 400 });
     }
-    if (body.budgetMin && body.budgetMax && body.budgetMin > body.budgetMax) {
-      return NextResponse.json({ error: "O orçamento mínimo não pode superar o máximo." }, { status: 400 });
+    if (email && (email.length > 254 || !emailPattern.test(email))) return NextResponse.json({ error: "Informe um e-mail válido.", field: "email" }, { status: 400 });
+    if (phone && (phone.length < 10 || phone.length > 15)) return NextResponse.json({ error: "Informe um telefone válido com DDD.", field: "phone" }, { status: 400 });
+    if (body.source && !allowedSources.has(body.source)) return NextResponse.json({ error: "Origem inválida.", field: "source" }, { status: 400 });
+    if (body.purpose && !allowedPurposes.has(body.purpose)) return NextResponse.json({ error: "Objetivo inválido.", field: "purpose" }, { status: 400 });
+    if ((body.budgetMin != null && (!Number.isFinite(body.budgetMin) || body.budgetMin < 0 || body.budgetMin > 1_000_000_000)) || (body.budgetMax != null && (!Number.isFinite(body.budgetMax) || body.budgetMax < 0 || body.budgetMax > 1_000_000_000))) return NextResponse.json({ error: "Informe um orçamento válido.", field: "budget" }, { status: 400 });
+    if (body.budgetMin != null && body.budgetMax != null && body.budgetMin > body.budgetMax) {
+      return NextResponse.json({ error: "O orçamento mínimo não pode superar o máximo.", field: "budgetMax" }, { status: 400 });
     }
-    if (body.developmentId && !/^[0-9a-f-]{36}$/i.test(body.developmentId)) {
-      return NextResponse.json({ error: "Projeto inválido." }, { status: 400 });
+    if (body.bedrooms != null && (!Number.isInteger(body.bedrooms) || body.bedrooms < 0 || body.bedrooms > 20)) return NextResponse.json({ error: "Quantidade de dormitórios inválida.", field: "bedrooms" }, { status: 400 });
+    if ((body.notes?.length ?? 0) > 5000 || (body.preferredRegions?.length ?? 0) > 20) return NextResponse.json({ error: "O contexto informado ultrapassa o limite permitido.", field: "notes" }, { status: 400 });
+    if (body.developmentId && !uuidPattern.test(body.developmentId)) {
+      return NextResponse.json({ error: "Projeto inválido.", field: "developmentId" }, { status: 400 });
     }
 
     const admin = getSupabaseAdmin();
@@ -62,31 +74,6 @@ export async function POST(request: Request) {
       const { data: development } = await admin.from("developments").select("id").eq("id", body.developmentId).eq("organization_id", identity.organizationId).maybeSingle();
       if (!development) return NextResponse.json({ error: "Projeto não encontrado nesta organização." }, { status: 400 });
     }
-    let duplicateQuery = admin
-      .from("leads")
-      .select("id,name,email,phone")
-      .eq("organization_id", identity.organizationId)
-      .limit(1);
-
-    if (email && phone) duplicateQuery = duplicateQuery.or(`email.eq.${email},phone.eq.${phone}`);
-    else if (email) duplicateQuery = duplicateQuery.eq("email", email);
-    else duplicateQuery = duplicateQuery.eq("phone", phone);
-
-    const { data: duplicate, error: duplicateError } = await duplicateQuery.maybeSingle();
-    if (duplicateError) throw duplicateError;
-    if (duplicate) {
-      const { data: visibleDuplicate } = await identity.supabase
-        .from("leads")
-        .select("id")
-        .eq("id", duplicate.id)
-        .eq("organization_id", identity.organizationId)
-        .maybeSingle();
-      return NextResponse.json(
-        { error: "Já existe um lead com este contato.", ...(visibleDuplicate ? { duplicateLeadId: duplicate.id } : {}) },
-        { status: 409 },
-      );
-    }
-
     const score = calculateLeadScore({
       email,
       phone,
@@ -98,31 +85,15 @@ export async function POST(request: Request) {
       status: "novo",
     });
 
-    const { data: lead, error: leadError } = await admin
-      .from("leads")
-      .insert({
-        organization_id: identity.organizationId,
-        development_id: body.developmentId || null,
-        assigned_to: identity.userId,
-        name,
-        email,
-        phone,
-        source: body.source?.trim() || "Manual",
-        purpose: body.purpose?.trim() || null,
-        budget_min: body.budgetMin ?? null,
-        budget_max: body.budgetMax ?? null,
-        bedrooms: body.bedrooms ?? null,
-        preferred_regions: body.preferredRegions ?? [],
-        notes: body.notes?.trim() || null,
-        status: "novo",
-        score: score.score,
-        temperature: score.temperature,
-        metadata: { scoreReasons: score.reasons, createdVia: "atlas_v1_api" },
-      })
-      .select("id,name,score,temperature")
-      .single();
-
+    const { data: atomicResult, error: leadError } = await identity.supabase.rpc("create_lead_atomic", { p_organization_id: identity.organizationId, p_development_id: body.developmentId || null, p_assigned_to: identity.userId, p_name: name, p_email: email, p_phone: phone, p_source: body.source?.trim() || "Manual", p_purpose: body.purpose?.trim() || null, p_budget_min: body.budgetMin ?? null, p_budget_max: body.budgetMax ?? null, p_bedrooms: body.bedrooms ?? null, p_preferred_regions: (body.preferredRegions ?? []).map((region) => region.trim()).filter(Boolean).slice(0, 20), p_notes: body.notes?.trim() || null, p_score: score.score, p_temperature: score.temperature, p_metadata: { scoreReasons: score.reasons, createdVia: "atlas_v1_api" } });
+    if (leadError?.message.includes("invalid_phone_suppressed")) return NextResponse.json({ error: "Este telefone possui histórico de qualidade inválida e não pode ser recadastrado.", field: "phone" }, { status: 422 });
     if (leadError) throw leadError;
+    const atomic = atomicResult as { status: "created" | "duplicate"; leadId: string; name?: string; score?: number; temperature?: string };
+    if (atomic.status === "duplicate") {
+      const { data: visibleDuplicate } = await identity.supabase.from("leads").select("id").eq("id", atomic.leadId).eq("organization_id", identity.organizationId).maybeSingle();
+      return NextResponse.json({ error: "Já existe um lead com este contato.", ...(visibleDuplicate ? { duplicateLeadId: atomic.leadId } : {}) }, { status: 409 });
+    }
+    const lead = { id: atomic.leadId, name: atomic.name || name, score: atomic.score ?? score.score, temperature: atomic.temperature || score.temperature };
 
     await Promise.allSettled([
       admin.from("activities").insert({
