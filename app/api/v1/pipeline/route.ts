@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiIdentity } from "@/lib/security/api-auth";
+import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
@@ -11,18 +11,16 @@ const allowedStages = new Set(["novo", "contato", "qualificacao", "visita", "pro
 
 function authError(error: unknown) {
   const message = error instanceof Error ? error.message : "Não autorizado.";
-  const status = /sessão|token|autenticação|organização/i.test(message) ? 401 : 400;
+  const status = /sessão|token|autenticação|organização/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   return NextResponse.json({ error: message }, { status });
 }
 
 export async function GET(request: Request) {
   try {
     const identity = await requireApiIdentity(request);
-    const admin = getSupabaseAdmin();
-
-    const { data, error } = await admin
+    const { data, error } = await identity.supabase
       .from("leads")
-      .select("id,name,phone,email,status,score,temperature,budget_min,budget_max,source,campaign_id,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,created_at,updated_at,assigned_to,metadata")
+      .select("id,name,phone,email,status,score,temperature,budget_min,budget_max,source,campaign_id,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,first_contact_due_at,first_contacted_at,first_contact_sla_minutes,created_at,updated_at,assigned_to,metadata")
       .eq("organization_id", identity.organizationId)
       .order("score", { ascending: false })
       .limit(500);
@@ -56,8 +54,10 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Lead ou etapa inválida." }, { status: 400 });
     }
 
+    await requireLeadAccess(identity, leadId);
+
     const admin = getSupabaseAdmin();
-    const { data: current } = await admin
+    const { data: current } = await identity.supabase
       .from("leads")
       .select("id,name,status")
       .eq("id", leadId)
@@ -67,19 +67,19 @@ export async function PATCH(request: Request) {
     if (!current) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
 
     const previousStage = current.status || "novo";
-    const { data, error } = await admin
+    const { data, error } = await identity.supabase
       .from("leads")
       .update({ status: stage, updated_at: new Date().toISOString() })
       .eq("id", leadId)
       .eq("organization_id", identity.organizationId)
-      .select("id,name,status,score,temperature,budget_min,budget_max,source,campaign_id,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,created_at,updated_at,assigned_to,metadata")
+      .select("id,name,status,score,temperature,budget_min,budget_max,source,campaign_id,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,first_contact_due_at,first_contacted_at,first_contact_sla_minutes,created_at,updated_at,assigned_to,metadata")
       .single();
 
     if (error || !data) throw error || new Error("Falha ao mover lead.");
 
     const occurredAt = new Date().toISOString();
     await Promise.allSettled([
-      admin.from("activities").insert({
+      identity.supabase.from("activities").insert({
         organization_id: identity.organizationId,
         lead_id: leadId,
         user_id: identity.userId,

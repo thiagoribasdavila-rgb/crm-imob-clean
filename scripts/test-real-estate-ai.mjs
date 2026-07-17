@@ -35,6 +35,7 @@ const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
 const metaSettingsPage = readFileSync(resolve(root, "app/(crm)/integrations/meta/page.tsx"), "utf8");
 const pipelineRoute = readFileSync(resolve(root, "app/api/v1/pipeline/route.ts"), "utf8");
+const pipelinePage = readFileSync(resolve(root, "app/(crm)/pipeline/page.tsx"), "utf8");
 const funnelLearning = readFileSync(resolve(root, "lib/atlas/funnel-learning.ts"), "utf8");
 const followUpIntelligence = readFileSync(resolve(root, "lib/atlas/follow-up-intelligence.ts"), "utf8");
 const campaignIntelligence = readFileSync(resolve(root, "lib/meta/campaign-intelligence.ts"), "utf8");
@@ -61,6 +62,7 @@ const managerTransferMigration = readFileSync(resolve(root, "supabase/migrations
 const leadCreateRoute = readFileSync(resolve(root, "app/api/v1/leads/route.ts"), "utf8");
 const commercialSimulationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/commercial-simulation/route.ts"), "utf8");
 const brokerLeadScopeMigration = readFileSync(resolve(root, "supabase/migrations/20260717005110_broker_lead_360_related_scope.sql"), "utf8");
+const firstContactSlaMigration = readFileSync(resolve(root, "supabase/migrations/20260717005333_first_contact_sla_lifecycle.sql"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -109,7 +111,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("143 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("148 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -207,6 +209,11 @@ const checks = [
   ["corretor reconhece carteira exclusiva", leadsPortfolioPage.includes("CARTEIRA EXCLUSIVA") && leadsPortfolioPage.includes("somente a sua carteira")],
   ["timeline acompanha o escopo atual da lead", brokerLeadScopeMigration.includes("activities_commercial_select") && brokerLeadScopeMigration.includes("private.can_access_commercial_lead")],
   ["Lead 360 consulta relacionados sob RLS", leadIntelligenceRoute.includes('identity.supabase.from("activities")') && leadIntelligenceRoute.includes('identity.supabase.from("lead_experience_signals")')],
+  ["pipeline do corretor respeita RLS", pipelineRoute.includes('identity.supabase') && pipelineRoute.includes("requireLeadAccess(identity, leadId)")],
+  ["SLA de primeiro contato tem ciclo próprio", firstContactSlaMigration.includes("first_contact_due_at") && firstContactSlaMigration.includes("first_contacted_at")],
+  ["SLA nasce automaticamente para lead Meta", firstContactSlaMigration.includes("apply_first_contact_sla") && firstContactSlaMigration.includes("Meta Lead Ads")],
+  ["primeira interação encerra SLA no banco", firstContactSlaMigration.includes("close_first_contact_sla_from_activity") && firstContactSlaMigration.includes("first_contacted_at is null")],
+  ["pipeline destaca SLA inicial", pipelinePage.includes("SLA vencido") && pipelinePage.includes("1º contato em até")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

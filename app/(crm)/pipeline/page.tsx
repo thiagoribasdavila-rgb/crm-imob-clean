@@ -36,6 +36,9 @@ type Lead = {
   purpose: string | null;
   last_interaction_at: string | null;
   next_action_at: string | null;
+  first_contact_due_at: string | null;
+  first_contacted_at: string | null;
+  first_contact_sla_minutes: number | null;
   created_at: string | null;
   updated_at: string | null;
   assigned_to: string | null;
@@ -77,6 +80,17 @@ function relativeTime(value: string | null) {
 function dateLabel(value: string | null) {
   if (!value) return "Não agendado";
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+function firstContactSla(lead: Lead) {
+  if (lead.first_contacted_at) {
+    const minutes = lead.created_at ? Math.max(0, Math.round((new Date(lead.first_contacted_at).getTime() - new Date(lead.created_at).getTime()) / 60_000)) : null;
+    return { label: minutes === null ? "Contato realizado" : `Contato em ${minutes} min`, tone: "success" as const, overdue: false };
+  }
+  if (!lead.first_contact_due_at) return null;
+  const remaining = Math.ceil((new Date(lead.first_contact_due_at).getTime() - Date.now()) / 60_000);
+  if (remaining < 0) return { label: `SLA vencido há ${Math.abs(remaining)} min`, tone: "danger" as const, overdue: true };
+  return { label: `1º contato em até ${remaining} min`, tone: remaining <= 2 ? "warning" as const : "info" as const, overdue: false };
 }
 
 export default function PipelinePage() {
@@ -157,7 +171,8 @@ export default function PipelinePage() {
     const highRisk = open.filter((lead) => leadRisk(lead) === "alto").length;
     const won = leads.filter((lead) => lead.status === "ganho").reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0);
     const buyerProfiles = leads.filter((lead) => lead.status === "comprou_outro").length;
-    return { open: open.length, pipeline, forecast, hot, highRisk, won, buyerProfiles };
+    const firstContactOverdue = open.filter((lead) => firstContactSla(lead)?.overdue).length;
+    return { open: open.length, pipeline, forecast, hot, highRisk, won, buyerProfiles, firstContactOverdue };
   }, [leads]);
 
   const stageData = useMemo(() => stages.map((stage) => {
@@ -189,7 +204,7 @@ export default function PipelinePage() {
         <AtlasMetric label="Pipeline bruto" value={loading ? "—" : brl.format(metrics.pipeline)} detail="Potencial comercial total" trend="VGV" tone="violet" />
         <AtlasMetric label="Forecast" value={loading ? "—" : brl.format(metrics.forecast)} detail="Ponderado por etapa" trend="AI" tone="green" />
         <AtlasMetric label="Leads quentes" value={loading ? "—" : metrics.hot} detail="Prioridade imediata" trend="HOT" tone="rose" />
-        <AtlasMetric label="Risco alto" value={loading ? "—" : metrics.highRisk} detail="Negócios exigindo ação" trend="RISK" tone="amber" />
+        <AtlasMetric label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} trend="RISK" tone="amber" />
         <AtlasMetric label="Perfis compradores" value={loading ? "—" : metrics.buyerProfiles} detail="Compraram em outro lugar" trend="LEARN" tone="green" />
       </section>
 
@@ -218,6 +233,7 @@ export default function PipelinePage() {
                 {loading ? <div className="space-y-3">{[1,2,3].map((item) => <AtlasSkeleton key={item} className="h-36 w-full" />)}</div> : stage.items.length === 0 ? <AtlasEmpty title="Etapa vazia" description="Arraste uma oportunidade para esta etapa." /> : <div className="space-y-3">
                   {stage.items.map((lead) => {
                     const risk = leadRisk(lead);
+                    const contactSla = firstContactSla(lead);
                     return (
                       <article key={lead.id} draggable onDragStart={(event) => { setDraggedId(lead.id); event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""}`}>
                         <div className="flex items-start justify-between gap-3">
@@ -225,6 +241,7 @@ export default function PipelinePage() {
                           <AtlasBadge tone={riskTone(risk)}>Risco {risk}</AtlasBadge>
                         </div>
                         <div className="atlas-lead-origin"><span>{lead.source || "Origem não informada"}</span>{metaCampaign(lead) ? <small>{metaCampaign(lead)}</small> : null}</div>
+                        {contactSla ? <div className="mt-3"><AtlasBadge tone={contactSla.tone}>{contactSla.label}</AtlasBadge></div> : null}
                         <div className="mt-3 grid grid-cols-2 gap-2">
                           <div className="rounded-xl border border-white/[0.05] bg-white/[0.025] p-2"><p className="text-[9px] uppercase tracking-wider text-slate-600">Score</p><p className="mt-1 text-sm font-semibold text-white">{lead.score ?? 0}</p></div>
                           <div className="rounded-xl border border-white/[0.05] bg-white/[0.025] p-2"><p className="text-[9px] uppercase tracking-wider text-slate-600">Temperatura</p><p className="mt-1 text-sm font-semibold capitalize text-white">{lead.temperature || "frio"}</p></div>
