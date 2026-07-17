@@ -2,11 +2,12 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-const excludedDirectories = new Set([".git", ".next", "node_modules", "dist", "tmp", "outputs", ".atlas-build-quarantine", ".atlas-dev-quarantine"]);
+const excludedDirectories = new Set([".git", ".next", "node_modules", "dist", "tmp", "outputs"]);
+const excludedDirectory = (name) => excludedDirectories.has(name) || name.startsWith(".atlas-route-quarantine-");
 function filesystemFiles(directory = ".") {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name).replace(/^\.\//, "");
-    if (entry.isDirectory()) return excludedDirectories.has(entry.name) ? [] : filesystemFiles(path);
+    if (entry.isDirectory()) return excludedDirectory(entry.name) ? [] : filesystemFiles(path);
     return entry.isFile() ? [path] : [];
   });
 }

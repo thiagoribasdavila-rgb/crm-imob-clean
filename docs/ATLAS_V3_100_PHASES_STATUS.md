@@ -43,6 +43,37 @@ Execute `npm run inventory:v3` para obter os números do commit corrente. A medi
 - Páginas existentes não são automaticamente consideradas funcionalidades concluídas.
 - A Fase 2 deve classificar duplicidades e protótipos usando este inventário antes de qualquer remoção.
 
+## Fase 2 — Limpeza arquitetural
+
+Status: **Testada**.
+
+Percentual antes: **82%** — o pacote já excluía protótipos, mas build e desenvolvimento disputavam a mesma quarentena e podiam deixar exclusões temporárias na árvore.
+
+Percentual depois: **100%** — fronteiras classificadas, pacote preservado e quarentena protegida contra concorrência.
+
+### Classificação
+
+- **Canônico implantável**: 1.135 arquivos que sustentam o V3 ativo.
+- **Protótipos conceituais**: grupos `(ai)`, `(autonomous)`, `(andromeda)`, `(atlas)`, `(automation)`, `(autonomous-business)`, `(digital-life-form)`, `(reality-engine)`, `(engine)` e `(unified-consciousness)`.
+- **Rotas CRM duplicadas**: analytics antigos, Kanban paralelo, Pipedrive paralelo, pipelines por temperatura, edição/tabela duplicadas de leads e detalhe antigo de tarefa.
+- **API duplicada**: `app/api/leads`, substituída pelos contratos canônicos `/api/v1`.
+- **Código histórico preservado**: continua no Git para rastreabilidade, mas não entra no ZIP Hostinger nem no build ativo.
+
+### Melhorias desta fase
+
+- Build e desenvolvimento usam uma trava atômica compartilhada antes de mover qualquer rota.
+- Uma segunda execução falha com mensagem clara sem tocar nos arquivos.
+- Travas abandonadas por processo encerrado são recuperadas com segurança.
+- Cada execução usa quarentena exclusiva por modo e PID.
+- A restauração acontece em sucesso, falha ou encerramento controlado.
+- O scanner de segredos ignora somente quarentenas internas, inclusive no modo sem Git.
+
+### Risco residual
+
+Encerramento forçado pelo sistema operacional (`SIGKILL`) não permite executar cleanup em nenhum processo Node. A trava registra o PID e evita que uma execução concorrente apague a quarentena da outra; recuperação manual continua necessária caso a máquina seja desligada durante a movimentação.
+
+Próxima fase: **Fase 3 — Fonte única da verdade**, documentando entidades e destinos canônicos sem criar tabelas paralelas.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |

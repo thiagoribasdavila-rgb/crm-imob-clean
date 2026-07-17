@@ -63,6 +63,7 @@ const aiCostTest = readFileSync(resolve(root, "app/api/ai/cost-routing-test/rout
 const hostingerDeployment = readFileSync(resolve(root, "docs/HOSTINGER_DEPLOYMENT.md"), "utf8");
 const inventoryScript = readFileSync(resolve(root, "scripts/inventory-v3.mjs"), "utf8");
 const hundredPhaseStatus = readFileSync(resolve(root, "docs/ATLAS_V3_100_PHASES_STATUS.md"), "utf8");
+const routeQuarantine = readFileSync(resolve(root, "scripts/route-quarantine.mjs"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
@@ -476,6 +477,7 @@ const checks = [
   ["preflight cobre APIs da Hostinger", systemHealthRoute.includes("hostinger") && systemHealthRoute.includes("workerSecret") && systemHealthRoute.includes("openai") && systemHealthRoute.includes("meta") && systemHealthRoute.includes("whatsapp")],
   ["homologação usa a credencial canônica do WhatsApp", homologationRoute.includes("WHATSAPP_ACCESS_TOKEN") && !homologationRoute.includes("WHATSAPP_TOKEN &&")],
   ["programa de 100 fases possui inventário reproduzível", inventoryScript.includes("deployableFiles") && inventoryScript.includes("legacyPrototypePathsExcludedFromPackage") && hundredPhaseStatus.includes("Fase 1 — Inventário completo")],
+  ["limpeza arquitetural impede quarentenas concorrentes", routeQuarantine.includes('openSync(lockPath, "wx"') && routeQuarantine.includes("processIsAlive") && hundredPhaseStatus.includes("Fase 2 — Limpeza arquitetural")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],
