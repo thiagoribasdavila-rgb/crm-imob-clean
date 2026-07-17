@@ -774,7 +774,17 @@ Pendência externa: aplicar migration e validar cron, fuso, janelas, reagendamen
 
 Pendência externa: aplicar migration após a Fase 44 e validar duas sessões, reconexão, logout, lateralidade e dois tenants.
 
-Próxima fase: **Fase 46 — Agenda comercial unificada**, reunindo tarefas, visitas e compromissos com atualização consistente.
+## Fase 46 — Agenda comercial unificada
+
+**Estado:** 100% implementada e aprovada localmente; fusos, hierarquia e Realtime reais permanecem para homologação.
+
+**Evolução:** tarefas abertas, visitas ativas e próximas ações das leads agora chegam por uma API única. Hoje, sete dias, mês, atrasados e visão completa compartilham o mesmo contrato e indicadores claros.
+
+**Consistência e segurança:** uma próxima ação igual a uma visita ativa não é duplicada. A API exige autenticação, organização e RLS hierárquico; atualizações não concluem tarefas, não mudam responsáveis e não contatam clientes. O contrato está em `config/commercial-calendar.json`, o gate em `npm run commercial-calendar:check` e o roteiro em `docs/COMMERCIAL_CALENDAR_PHASE_46.md`.
+
+Pendência externa: validar quatro perfis, dois tenants, fuso, virada mensal, eventos simultâneos, reconexão e volume real.
+
+Próxima fase: **Fase 47 — Sincronização externa de calendário**, preparando conexões opt-in sem expor dados comerciais.
 
 ## Painel das 100 fases
 

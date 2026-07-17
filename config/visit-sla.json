@@ -4,6 +4,7 @@
   "api": "app/api/v1/leads/[id]/visits/route.ts",
   "schedulePage": "app/(crm)/leads/[id]/schedule/page.tsx",
   "calendarPage": "app/(crm)/calendar/page.tsx",
+  "calendarApi": "app/api/v1/calendar/route.ts",
   "states": ["scheduled", "confirmed", "completed", "cancelled", "no_show"],
   "formats": ["onsite", "video"],
   "measurements": ["confirmation_minutes", "completion_delay_minutes"],
