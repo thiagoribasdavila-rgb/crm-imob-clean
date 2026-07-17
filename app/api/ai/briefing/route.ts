@@ -38,18 +38,22 @@ export async function GET(request: NextRequest) {
   const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const { data: learningActivities } = await access.supabase
     .from("activities")
-    .select("type,metadata,occurred_at")
+    .select("lead_id,type,metadata,occurred_at")
     .in("type", ["property_presentation", "property_feedback"])
     .gte("occurred_at", since)
     .order("occurred_at", { ascending: false })
     .limit(2_000);
   const learning = new Map<string, Omit<ProductLearning, "title" | "interestRate">>();
+  const latestFeedback = new Set<string>();
   for (const activity of learningActivities ?? []) {
     const metadata = activity.metadata && typeof activity.metadata === "object" ? activity.metadata as Record<string, unknown> : {};
     const propertyIds = activity.type === "property_presentation" && Array.isArray(metadata.propertyIds)
       ? metadata.propertyIds.filter((value): value is string => typeof value === "string")
       : activity.type === "property_feedback" && typeof metadata.propertyId === "string" ? [metadata.propertyId] : [];
     for (const propertyId of propertyIds) {
+      const feedbackKey = `${activity.lead_id}:${propertyId}`;
+      if (activity.type === "property_feedback" && latestFeedback.has(feedbackKey)) continue;
+      if (activity.type === "property_feedback") latestFeedback.add(feedbackKey);
       const current = learning.get(propertyId) ?? { propertyId, presentations: 0, interested: 0, rejected: 0 };
       if (activity.type === "property_presentation") current.presentations += 1;
       if (activity.type === "property_feedback" && metadata.signal === "interested") current.interested += 1;

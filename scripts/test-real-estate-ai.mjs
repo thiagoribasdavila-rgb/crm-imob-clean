@@ -64,6 +64,7 @@ const commercialSimulationRoute = readFileSync(resolve(root, "app/api/v1/leads/[
 const brokerLeadScopeMigration = readFileSync(resolve(root, "supabase/migrations/20260717005110_broker_lead_360_related_scope.sql"), "utf8");
 const firstContactSlaMigration = readFileSync(resolve(root, "supabase/migrations/20260717005333_first_contact_sla_lifecycle.sql"), "utf8");
 const inventoryGuardMigration = readFileSync(resolve(root, "supabase/migrations/20260717005624_property_presentation_inventory_guard.sql"), "utf8");
+const feedbackGuardMigration = readFileSync(resolve(root, "supabase/migrations/20260717005843_property_feedback_presentation_guard.sql"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -112,7 +113,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("152 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("157 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -219,6 +220,11 @@ const checks = [
   ["registro reconfirma estoque vigente", leadIntelligenceRoute.includes("isPropertyAvailable(property.status)") && leadIntelligenceRoute.includes("Atualize a seleção")],
   ["banco impede apresentação de unidade bloqueada", inventoryGuardMigration.includes("guard_property_presentation_inventory") && inventoryGuardMigration.includes("Unidade indisponível")],
   ["leitura da lead no matching permanece sob RLS", presentationRoute.includes('identity.supabase.from("leads")')],
+  ["API exige apresentação antes do feedback", leadIntelligenceRoute.includes("Registre a apresentação deste imóvel") && leadIntelligenceRoute.includes("propertyIds: [propertyId]")],
+  ["banco impede feedback sem apresentação", feedbackGuardMigration.includes("guard_property_feedback_presentation") && feedbackGuardMigration.includes("Retorno sem apresentação prévia")],
+  ["rejeição registra motivo estruturado", matchingStudio.includes("Motivo principal") && leadIntelligenceRoute.includes("principal motivo da não aderência")],
+  ["ranking usa somente feedback mais recente", briefingRoute.includes("latestFeedback") && briefingRoute.includes("feedbackKey")],
+  ["feedback preserva motivo na timeline", leadIntelligenceRoute.includes("metadata: { propertyId, signal, reason")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

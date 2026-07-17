@@ -193,18 +193,22 @@ export async function POST(request: Request, context: RouteContext) {
     if (body.action === "property_feedback") {
       const propertyId = typeof body.propertyId === "string" && /^[0-9a-f-]{36}$/i.test(body.propertyId) ? body.propertyId : null;
       const signal = body.signal === "interested" || body.signal === "rejected" ? body.signal : null;
-      if (!propertyId || !signal) return NextResponse.json({ error: "Retorno de imóvel inválido." }, { status: 400 });
+      const reasons: Record<string, string> = { price: "preço", location: "localização", typology: "tipologia", payment: "condição de pagamento", delivery: "prazo de entrega", product: "produto ou diferenciais", other: "outro motivo" };
+      const reason = typeof body.reason === "string" && body.reason in reasons ? body.reason : null;
+      if (!propertyId || !signal || (signal === "rejected" && !reason)) return NextResponse.json({ error: "Retorno inválido. Informe o principal motivo da não aderência." }, { status: 400 });
       const { data: property } = await admin.from("properties").select("id,title").eq("id", propertyId).eq("organization_id", identity.organizationId).maybeSingle();
       if (!property) return NextResponse.json({ error: "Imóvel fora do portfólio acessível." }, { status: 404 });
+      const { data: presentation } = await admin.from("activities").select("id").eq("organization_id", identity.organizationId).eq("lead_id", id).eq("type", "property_presentation").contains("metadata", { propertyIds: [propertyId] }).limit(1).maybeSingle();
+      if (!presentation) return NextResponse.json({ error: "Registre a apresentação deste imóvel antes do retorno do cliente." }, { status: 409 });
       const interested = signal === "interested";
       const { data, error } = await admin.from("activities").insert({
         organization_id: identity.organizationId,
         lead_id: id,
         user_id: identity.userId,
         title: interested ? "Cliente demonstrou interesse" : "Imóvel sem aderência para o cliente",
-        description: `${property.title || "Imóvel"}: ${interested ? "manter entre as prioridades" : "não reapresentar sem mudança de contexto"}.`,
+        description: `${property.title || "Imóvel"}: ${interested ? "manter entre as prioridades" : `não aderiu por ${reasons[reason!]}`}.`,
         type: "property_feedback",
-        metadata: { propertyId, signal, source: "ai_matching_studio" },
+        metadata: { propertyId, signal, reason, source: "ai_matching_studio" },
         occurred_at: new Date().toISOString(),
       }).select("id,title,description,type,metadata,occurred_at").single();
       if (error) return NextResponse.json({ error: "Não foi possível registrar o retorno." }, { status: 400 });
