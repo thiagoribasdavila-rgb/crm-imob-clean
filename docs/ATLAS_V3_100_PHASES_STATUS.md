@@ -950,7 +950,17 @@ Pendência externa: aplicar migrations 61–62 e validar portfólio real, dois t
 
 Pendência externa: aplicar migration, cadastrar portfólio real e validar matching, copiloto, fontes e permissões em dois tenants.
 
-Próxima fase: **Fase 64 — Estoque e espelho de vendas canônico**, conectando unidades reais às tipologias, disponibilidade e histórico operacional.
+## Fase 64 — Estoque e espelho de vendas canônico
+
+**Estado:** 100% implementada e aprovada localmente; espelho real e concorrência permanecem para homologação.
+
+**Evolução:** cada unidade é ligada à tipologia canônica, recebe chave única, origem, versão e frescor. Status e preço passam por operação atômica e geram histórico com autor e motivo.
+
+**Proteções:** reserva ativa impede alteração incompatível e concorrência otimista bloqueia sobrescrita de dado novo. O contrato está em `config/canonical-sales-mirror.json`, o gate em `npm run sales-mirror:check` e o roteiro em `docs/CANONICAL_SALES_MIRROR_PHASE_64.md`.
+
+Pendência externa: aplicar migrations 63–64 e validar espelho real, duplicidade, reserva, concorrência, perfis e dois tenants.
+
+Próxima fase: **Fase 65 — Importação e atualização inteligente de tabelas**, reconciliando planilhas de incorporadoras com o espelho canônico.
 
 ## Painel das 100 fases
 
