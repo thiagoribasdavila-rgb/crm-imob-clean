@@ -1338,6 +1338,18 @@ Pendência externa: aplicar migration, testar cada provedor oficial, domínio HT
 
 Próxima fase: **Fase 98 — Segurança, desempenho e observabilidade final**, fechando limites, índices, logs, métricas, alertas e recuperação antes do pacote Hostinger.
 
+## Fase 98 — Segurança, desempenho e observabilidade final
+
+**Estado:** 100% implementada localmente; migration, carga e infraestrutura Hostinger permanecem para homologação.
+
+**Evolução:** banco, memória, filas, DLQ, latência p95 da IA, restore, HTTPS, cron e logs formam um gate único, com índices e snapshots auditáveis.
+
+**Governança:** riscos críticos/altos bloqueiam; somente diretor acessa; logs brutos e segredos não retornam; gate nunca publica. Contrato em `config/final-reliability-release-gate.json`, gate `npm run reliability-gate:check` e roteiro `docs/FINAL_RELIABILITY_RELEASE_GATE_PHASE_98.md`.
+
+Pendência externa: aplicar migration, executar carga, restore, PM2/logrotate, HTTPS, cron e dois tenants.
+
+Próxima fase: **Fase 99 — Homologação e aceite executivo**, reunindo evidências por perfil, integrações, dados reais, regressão e decisão formal de go/no-go.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
