@@ -18,6 +18,7 @@ const stages = [
 ] as const;
 
 type StageKey = (typeof stages)[number]["key"] | "perdido" | "comprou_outro";
+type FocusKey = "prioridade" | "sla" | "atrasadas" | "sem_acao" | "quentes" | "todas";
 const destinationOptions: Array<{ key: StageKey; label: string }> = [...stages, { key: "perdido", label: "Perdido" }, { key: "comprou_outro", label: "Comprou em outro lugar" }];
 type Lead = {
   id: string;
@@ -93,12 +94,32 @@ function firstContactSla(lead: Lead) {
   return { label: `1º contato em até ${remaining} min`, tone: remaining <= 2 ? "warning" as const : "info" as const, overdue: false };
 }
 
+function isOpenLead(lead: Lead) {
+  return !["ganho", "perdido", "comprou_outro"].includes(lead.status ?? "novo");
+}
+
+function isNextActionOverdue(lead: Lead) {
+  return Boolean(lead.next_action_at && new Date(lead.next_action_at).getTime() < Date.now());
+}
+
+function priorityWeight(lead: Lead) {
+  const sla = firstContactSla(lead);
+  let weight = Number(lead.score ?? 0);
+  if (sla?.overdue) weight += 300;
+  if (isNextActionOverdue(lead)) weight += 220;
+  if (!lead.next_action_at) weight += 80;
+  if (lead.temperature === "quente") weight += 100;
+  if (leadRisk(lead) === "alto") weight += 120;
+  return weight;
+}
+
 export default function PipelinePage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [focus, setFocus] = useState<FocusKey>("prioridade");
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
   async function authenticatedFetch(input: RequestInfo, init?: RequestInit) {
@@ -156,9 +177,18 @@ export default function PipelinePage() {
 
   const visibleLeads = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return leads;
-    return leads.filter((lead) => [lead.name, lead.email, lead.phone, lead.temperature, lead.source, lead.purpose, metaCampaign(lead), ...(lead.preferred_regions ?? [])].some((value) => value?.toLowerCase().includes(normalized)));
-  }, [leads, query]);
+    const searched = normalized ? leads.filter((lead) => [lead.name, lead.email, lead.phone, lead.temperature, lead.source, lead.purpose, metaCampaign(lead), ...(lead.preferred_regions ?? [])].some((value) => value?.toLowerCase().includes(normalized))) : leads;
+    const filtered = searched.filter((lead) => {
+      if (focus === "todas") return true;
+      if (!isOpenLead(lead)) return false;
+      if (focus === "sla") return Boolean(firstContactSla(lead)?.overdue);
+      if (focus === "atrasadas") return isNextActionOverdue(lead);
+      if (focus === "sem_acao") return !lead.next_action_at;
+      if (focus === "quentes") return lead.temperature === "quente" || Number(lead.score ?? 0) >= 70;
+      return Boolean(firstContactSla(lead)?.overdue) || isNextActionOverdue(lead) || !lead.next_action_at || lead.temperature === "quente" || Number(lead.score ?? 0) >= 70 || leadRisk(lead) === "alto";
+    });
+    return [...filtered].sort((a, b) => priorityWeight(b) - priorityWeight(a));
+  }, [focus, leads, query]);
 
   const metrics = useMemo(() => {
     const open = leads.filter((lead) => !["ganho", "perdido", "comprou_outro"].includes(lead.status ?? "novo"));
@@ -179,6 +209,18 @@ export default function PipelinePage() {
     const items = visibleLeads.filter((lead) => (lead.status ?? "novo") === stage.key);
     return { ...stage, items, value: items.reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0) };
   }), [visibleLeads]);
+
+  const focusOptions = useMemo(() => {
+    const open = leads.filter(isOpenLead);
+    return [
+      { key: "prioridade" as const, label: "Minha prioridade", count: open.filter((lead) => firstContactSla(lead)?.overdue || isNextActionOverdue(lead) || !lead.next_action_at || lead.temperature === "quente" || Number(lead.score ?? 0) >= 70 || leadRisk(lead) === "alto").length },
+      { key: "sla" as const, label: "SLA vencido", count: open.filter((lead) => firstContactSla(lead)?.overdue).length },
+      { key: "atrasadas" as const, label: "Ações atrasadas", count: open.filter(isNextActionOverdue).length },
+      { key: "sem_acao" as const, label: "Sem próxima ação", count: open.filter((lead) => !lead.next_action_at).length },
+      { key: "quentes" as const, label: "Leads quentes", count: open.filter((lead) => lead.temperature === "quente" || Number(lead.score ?? 0) >= 70).length },
+      { key: "todas" as const, label: "Todos", count: leads.length },
+    ];
+  }, [leads]);
 
   return (
     <div className="space-y-6 pb-8">
@@ -206,6 +248,15 @@ export default function PipelinePage() {
         <AtlasMetric label="Leads quentes" value={loading ? "—" : metrics.hot} detail="Prioridade imediata" trend="HOT" tone="rose" />
         <AtlasMetric label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} trend="RISK" tone="amber" />
         <AtlasMetric label="Perfis compradores" value={loading ? "—" : metrics.buyerProfiles} detail="Compraram em outro lugar" trend="LEARN" tone="green" />
+      </section>
+
+      <section className="rounded-[24px] border border-white/[0.07] bg-white/[0.018] p-4 sm:p-5" aria-label="Fila de foco comercial">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Fila inteligente</p><h3 className="mt-1 text-lg font-semibold text-white">O que precisa de ação agora</h3><p className="mt-1 text-xs text-slate-500">Ordenado automaticamente por SLA, atraso, temperatura, risco e score.</p></div>
+          <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar oportunidades do pipeline">
+            {focusOptions.map((option) => <button key={option.key} type="button" onClick={() => setFocus(option.key)} aria-pressed={focus === option.key} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${focus === option.key ? "border-sky-400/30 bg-sky-400/10 text-sky-200" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><span>{option.label}</span><span className={`rounded-full px-1.5 py-0.5 text-[9px] ${focus === option.key ? "bg-sky-300/15 text-sky-100" : "bg-white/[0.05] text-slate-500"}`}>{option.count}</span></button>)}
+          </div>
+        </div>
       </section>
 
       <section className="atlas-pipeline-flow" aria-label="Resumo visual das etapas do pipeline">
@@ -253,6 +304,7 @@ export default function PipelinePage() {
                           <p><span>Último contato</span><strong>{relativeTime(lead.last_interaction_at)}</strong></p>
                           <p><span>Próxima ação</span><strong>{dateLabel(lead.next_action_at)}</strong></p>
                         </div>
+                        <Link href={`/leads/${lead.id}`} className="mt-4 flex w-full items-center justify-between rounded-xl border border-sky-400/15 bg-sky-400/[0.06] px-3 py-2.5 text-xs font-semibold text-sky-200 transition hover:border-sky-400/30 hover:bg-sky-400/10"><span>{contactSla?.overdue ? "Resolver SLA agora" : isNextActionOverdue(lead) ? "Executar ação atrasada" : lead.next_action_at ? "Abrir próxima ação" : "Definir próxima ação"}</span><span aria-hidden="true">→</span></Link>
                         <select value={lead.status ?? "novo"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="mt-4 w-full rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-slate-300 outline-none focus:border-sky-400/30">
                           {destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
                         </select>
