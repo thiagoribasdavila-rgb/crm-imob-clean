@@ -1,0 +1,11 @@
+{
+  "phase": 36,
+  "migration": "supabase/migrations/20260717213000_phase_36_visit_sla.sql",
+  "api": "app/api/v1/leads/[id]/visits/route.ts",
+  "schedulePage": "app/(crm)/leads/[id]/schedule/page.tsx",
+  "calendarPage": "app/(crm)/calendar/page.tsx",
+  "states": ["scheduled", "confirmed", "completed", "cancelled", "no_show"],
+  "formats": ["onsite", "video"],
+  "measurements": ["confirmation_minutes", "completion_delay_minutes"],
+  "scope": ["organization", "lead", "broker", "commercial_hierarchy"]
+}

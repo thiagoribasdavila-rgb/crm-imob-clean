@@ -668,7 +668,19 @@ Pendência externa: aplicar migration e aferir prazos, concorrência e isolament
 
 Pendência externa: aplicar migration e aferir conclusão, reagendamento, cancelamento, transferência e isolamento com contatos reais.
 
-Próxima fase: **Fase 36 — SLA de visita**, medindo agendamento, confirmação, realização e ausência.
+## Fase 36 — SLA de visitas
+
+**Estado:** 100% implementada e aprovada localmente; migration e jornada real permanecem para homologação.
+
+**Evolução:** a antiga tela vazia virou um fluxo completo de agendamento, confirmação, realização, cancelamento e ausência. Visita presencial e videochamada compartilham o mesmo histórico governado.
+
+**Operação:** o agendamento atualiza a próxima ação e registra timeline. O calendário reúne tarefas e visitas; resultados terminais não podem ser alterados silenciosamente e a ausência só é aceita após o horário marcado.
+
+**Medição:** tempo de confirmação e atraso da realização ficam persistidos por lead e corretor. O contrato está em `config/visit-sla.json`, o gate em `npm run visit-sla:check` e o roteiro em `docs/VISIT_SLA_PHASE_36.md`.
+
+Pendência externa: aplicar migration e validar presencial, vídeo, concorrência, escopo lateral e dois tenants em homologação.
+
+Próxima fase: **Fase 37 — SLA de proposta**, medindo preparação, envio, retorno e validade comercial.
 
 ## Painel das 100 fases
 
