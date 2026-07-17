@@ -714,7 +714,17 @@ Pendência externa: conferir somas por etapa e escopo com oportunidades reais, q
 
 Pendência externa: aferir idades, reversões, limites e cobertura com histórico real, quatro papéis e dois tenants.
 
-Próxima fase: **Fase 40 — Velocidade e conversão do funil**, consolidando transições, tempo entre etapas e coortes sem atribuir causalidade indevida.
+## Fase 40 — Velocidade e conversão do funil
+
+**Estado:** 100% implementada e aprovada localmente; aferição estatística com volume real permanece para homologação.
+
+**Evolução:** o Atlas mede conversão sequencial e tempo de saída por etapa dentro da mesma coorte. Etapas alcançadas permanecem no denominador mesmo após retorno, evitando distorção pelo status atual.
+
+**Confiança e governança:** taxas exigem 30 entradas e tempos exigem 10 saídas para comparação segura. Reversões ficam explícitas. A análise respeita RLS e hierarquia, não atribui causalidade, não ranqueia pessoas e não executa decisões. O contrato está em `config/funnel-velocity.json`, o gate em `npm run funnel-velocity:check` e o roteiro em `docs/FUNNEL_VELOCITY_PHASE_40.md`.
+
+Pendência externa: aferir coortes, saltos, retornos, reversões, durações e isolamento com histórico real.
+
+Próxima fase: **Fase 41 — Central de tarefas**, consolidando prioridades, responsáveis, prazos e execução diária.
 
 ## Painel das 100 fases
 
