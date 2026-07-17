@@ -24,6 +24,7 @@ O código compila e os contratos de login, sessão, RLS, hierarquia, APIs e segr
 - `ATLAS_BASE_URL` aponta para `https://crm.seudominio.com.br`.
 - `DATABASE_URL` ainda não foi fornecida; migrations e backup não podem ser executados com segurança sem a conexão Postgres de homologação.
 - Por causa da URL placeholder, login, health, readiness, status V1/V2, status V3 e proteção das áreas autenticadas não podem ser comprovados na Hostinger.
+- O pré-flight não transforma essa dependência em sete falsos erros: enquanto o domínio for placeholder, informa os testes HTTP como não executados e mantém o domínio como bloqueio-raiz.
 - O auditor aprofundado encontrou 2/8 superfícies prontas. `profiles` e `leads` ainda não têm o contrato canônico completo (`42703`), enquanto `developers`, `developments`, `project_materials` e `properties` não estão disponíveis no schema REST conectado (`PGRST205`).
 - O banco ainda usa campos legados (`profiles.name`, `assigned_user_id`, `project_id`, `score_ia`). A migration `20260717213000_v3_legacy_runtime_schema_bridge.sql` faz a transição de forma aditiva e preserva esses campos.
 - A auditoria real de autenticação para de forma segura enquanto `profiles` não possuir `commercial_role` e `reports_to`; ela não cria, bloqueia, exclui ou altera usuários.

@@ -20,6 +20,7 @@ function loadLocalEnv() {
 const localEnv = loadLocalEnv();
 const value = (key) => process.env[key] || localEnv[key] || "";
 const baseUrl = (value("ATLAS_BASE_URL") || "http://localhost:3000").replace(/\/$/, "");
+const publicAppUrl = value("NEXT_PUBLIC_APP_URL").replace(/\/$/, "");
 const atlasEnvironment = value("ATLAS_ENV");
 const results = [];
 const placeholderHost = /(^|\.)(seudominio\.com\.br|example\.com)$/i;
@@ -37,7 +38,9 @@ check("Banco isolado", value("ATLAS_DATABASE_ENVIRONMENT") === atlasEnvironment,
 check("URL segura", atlasEnvironment === "development" ? /^http:\/\/localhost(?::\d+)?$/i.test(baseUrl) : /^https:\/\//i.test(baseUrl), atlasEnvironment === "development" ? "localhost permitido somente em desenvolvimento" : "HTTPS obrigatório fora do desenvolvimento");
 let baseHostname = "";
 try { baseHostname = new URL(baseUrl).hostname; } catch {}
-check("Domínio público real", atlasEnvironment === "development" || Boolean(baseHostname && !placeholderHost.test(baseHostname)), atlasEnvironment === "development" ? "não exigido em desenvolvimento" : baseHostname && !placeholderHost.test(baseHostname) ? "configurado" : "substitua o domínio de exemplo pela URL da Hostinger");
+const publicDomainReady = atlasEnvironment === "development" || Boolean(baseHostname && !placeholderHost.test(baseHostname));
+check("Domínio público real", publicDomainReady, atlasEnvironment === "development" ? "não exigido em desenvolvimento" : publicDomainReady ? "configurado" : "substitua o domínio de exemplo pela URL da Hostinger");
+check("URLs da aplicação", Boolean(publicAppUrl && publicAppUrl === baseUrl), publicAppUrl === baseUrl ? "ATLAS_BASE_URL e NEXT_PUBLIC_APP_URL alinhadas" : "configure as duas URLs com o mesmo domínio HTTPS");
 if (atlasEnvironment === "production") {
   check("Bootstrap removido", !value("ATLAS_BOOTSTRAP_SECRET"), value("ATLAS_BOOTSTRAP_SECRET") ? "remova ATLAS_BOOTSTRAP_SECRET" : "não configurado");
   check("Credenciais de teste removidas", !value("ATLAS_TEST_EMAIL") && !value("ATLAS_TEST_PASSWORD"), "produção não usa conta automatizada");
@@ -47,7 +50,12 @@ check("NEXT_PUBLIC_SUPABASE_URL", Boolean(value("NEXT_PUBLIC_SUPABASE_URL")), "c
 const publicSupabaseKey = value("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") || value("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 check("Chave pública Supabase", Boolean(publicSupabaseKey), publicSupabaseKey ? "publishable/anon configurada" : "configure NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY");
 check("SUPABASE_SERVICE_ROLE_KEY", Boolean(value("SUPABASE_SERVICE_ROLE_KEY")), "configurada");
-check("DATABASE_URL", Boolean(value("DATABASE_URL")), value("DATABASE_URL") ? "conexão Postgres configurada" : "necessária para backup e migrations");
+let databaseUrlReady = false;
+try {
+  const databaseUrl = new URL(value("DATABASE_URL"));
+  databaseUrlReady = ["postgres:", "postgresql:"].includes(databaseUrl.protocol) && Boolean(databaseUrl.hostname && databaseUrl.pathname !== "/");
+} catch {}
+check("DATABASE_URL", databaseUrlReady, databaseUrlReady ? "conexão Postgres estruturalmente válida" : "informe uma URL postgresql válida para backup e migrations");
 check("ATLAS_CRON_SECRET", Boolean(value("ATLAS_CRON_SECRET")), "configurada");
 const aiCredential = Boolean(value("OPENAI_API_KEY"));
 check("IA comercial", aiCredential, aiCredential ? "OpenAI direta disponível" : "configure OPENAI_API_KEY");
@@ -74,15 +82,19 @@ const routes = [
   ["Launch OS protection", "/developments", [200, 307, 308]],
 ];
 
-for (const [name, path, expected] of routes) {
-  try {
-    const startedAt = Date.now();
-    const response = await fetch(`${baseUrl}${path}`, { redirect: "manual" });
-    const duration = Date.now() - startedAt;
-    check(name, expected.includes(response.status), `HTTP ${response.status} · ${duration} ms`);
-  } catch (error) {
-    check(name, false, error instanceof Error ? error.message : String(error));
+if (publicDomainReady) {
+  for (const [name, path, expected] of routes) {
+    try {
+      const startedAt = Date.now();
+      const response = await fetch(`${baseUrl}${path}`, { redirect: "manual", signal: AbortSignal.timeout(15_000) });
+      const duration = Date.now() - startedAt;
+      check(name, expected.includes(response.status), `HTTP ${response.status} · ${duration} ms`);
+    } catch (error) {
+      check(name, false, error instanceof Error ? error.message : String(error));
+    }
   }
+} else {
+  console.log("⏭️ Smoke HTTP: aguardando domínio público real; 7 testes dependentes não foram executados.");
 }
 
 const requiredFailures = results.filter((item) => item.required && !item.ok);
