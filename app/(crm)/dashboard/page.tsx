@@ -412,8 +412,9 @@ export default function DashboardPage() {
       const won = data.opportunities.filter((opportunity) => normalized(opportunity.stage) === "ganho" && (dateValue(opportunity, "won_at", "updated_at", "created_at")?.getTime() ?? 0) >= since);
       const completedTasks = data.tasks.filter((task) => isDone(task) && (dateValue(task, "updated_at", "created_at")?.getTime() ?? 0) >= since);
       const conversion = createdLeads.length ? Math.round((won.length / createdLeads.length) * 1000) / 10 : 0;
-      return [key, { label, created: createdLeads.length, moved: movedLeads.length, won: won.length, completed: completedTasks.length, conversion }];
-    })) as Record<DecisionPeriod, { label: string; created: number; moved: number; won: number; completed: number; conversion: number }>;
+      const relationship = createdLeads.filter((lead) => ["indicacao", "referral", "recorrente", "recompra", "cliente_antigo"].some((signal) => normalized(stringValue(lead, "source", "origin", "lead_source")).includes(signal))).length;
+      return [key, { label, created: createdLeads.length, moved: movedLeads.length, won: won.length, completed: completedTasks.length, conversion, relationship }];
+    })) as Record<DecisionPeriod, { label: string; created: number; moved: number; won: number; completed: number; conversion: number; relationship: number }>;
   }, [data.leads, data.opportunities, data.tasks, referenceTime]);
 
   const roleActions = useMemo(() => {
@@ -428,7 +429,7 @@ export default function DashboardPage() {
       return {
         eyebrow: "Rotina do gerente",
         title: "Onde o time precisa de você",
-        mission: "Remover gargalos, garantir SLA e orientar os corretores — sem assumir o atendimento deles.",
+        mission: "Atuar como coach: remover gargalos, garantir SLA e orientar os corretores sem retirar sua autonomia.",
         items: alerts,
       };
     }
@@ -446,7 +447,7 @@ export default function DashboardPage() {
     return {
       eyebrow: "Rotina do corretor",
       title: "O que fazer agora",
-      mission: "Atender, qualificar, avançar a próxima ação e registrar o resultado para a IA aprender.",
+      mission: "Cuidar do cliente e do próprio negócio: atender, avançar a próxima ação e registrar o resultado para a IA reduzir trabalho administrativo.",
       items,
     };
   }, [isManager, priorities, referenceTime, teamSla]);
@@ -456,6 +457,8 @@ export default function DashboardPage() {
     ? (teamSla?.totals.alerts ?? 0) > 0
       ? `Comece pelos ${teamSla?.totals.brokersWithAlerts ?? 0} corretores com SLA vencido. Combine responsável e prazo ainda hoje.`
       : "O time está sem alertas críticos. Use o dia para revisar conversão, qualidade das próximas ações e coaching."
+    : selectedDecisionReport.relationship > 0
+      ? `${selectedDecisionReport.relationship} novos leads vieram de relacionamento neste período. Priorize resposta pessoal, peça contexto da indicação e planeje o próximo contato.`
     : metrics.overdue > 0
       ? `Resolva primeiro os ${metrics.overdue} itens atrasados e depois avance os leads quentes. Registre cada resultado para melhorar a próxima recomendação.`
       : "Sua operação está em dia. Priorize leads quentes e confirme uma próxima ação com data em cada atendimento.";
@@ -586,10 +589,10 @@ export default function DashboardPage() {
               {(["day", "week", "month"] as DecisionPeriod[]).map((key) => <button key={key} type="button" aria-pressed={decisionPeriod === key} onClick={() => setDecisionPeriod(key)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${decisionPeriod === key ? "bg-white text-slate-950" : "border border-white/10 text-slate-400 hover:text-white"}`}>{decisionReports[key].label}</button>)}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              {[{ label: "Novos leads", value: selectedDecisionReport.created }, { label: "Leads movimentados", value: selectedDecisionReport.moved }, { label: "Vendas ganhas", value: selectedDecisionReport.won }, { label: "Tarefas concluídas", value: selectedDecisionReport.completed }].map((metric) => <div key={metric.label} className="rounded-xl border border-white/[.06] bg-white/[.025] p-3"><strong className="text-xl text-white">{metric.value}</strong><p className="mt-1 text-[11px] text-slate-500">{metric.label}</p></div>)}
+              {[{ label: "Novos leads", value: selectedDecisionReport.created }, { label: "Leads movimentados", value: selectedDecisionReport.moved }, { label: "Vendas ganhas", value: selectedDecisionReport.won }, { label: "Indicação e recompra", value: selectedDecisionReport.relationship }].map((metric) => <div key={metric.label} className="rounded-xl border border-white/[.06] bg-white/[.025] p-3"><strong className="text-xl text-white">{metric.value}</strong><p className="mt-1 text-[11px] text-slate-500">{metric.label}</p></div>)}
             </div>
             <div className="mt-4 rounded-xl border border-violet-400/15 bg-violet-500/[.07] p-4"><p className="text-xs font-bold text-violet-200">✦ Recomendação Atlas</p><p className="mt-2 text-sm leading-6 text-slate-300">{aiDecision}</p></div>
-            <p className="mt-3 text-[10px] leading-4 text-slate-600">Resumo calculado com dados reais visíveis no CRM. A IA orienta; decisões e alterações continuam sob responsabilidade humana.</p>
+            <p className="mt-3 text-[10px] leading-4 text-slate-600">Visão agent-first: menos administração, mais tempo com o cliente. Resumo calculado com dados reais do CRM; a IA orienta e a decisão continua humana.</p>
           </aside>
         </div>
       </section>
