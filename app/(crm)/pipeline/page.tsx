@@ -114,6 +114,24 @@ function priorityWeight(lead: Lead) {
   return weight;
 }
 
+function brokerGuidance(lead: Lead) {
+  const sla = firstContactSla(lead);
+  if (sla?.overdue) return { action: "Fazer o primeiro contato agora", reason: "O SLA venceu e a chance de resposta cai com o tempo.", tone: "danger" as const };
+  if (isNextActionOverdue(lead)) return { action: "Retomar o combinado", reason: `A próxima ação estava prevista para ${dateLabel(lead.next_action_at)}.`, tone: "warning" as const };
+  if (!lead.next_action_at) return { action: "Definir a próxima ação", reason: "A oportunidade está sem compromisso futuro registrado.", tone: "warning" as const };
+  if ((lead.status ?? "novo") === "proposta") return { action: "Validar proposta e objeções", reason: "Confirme preço, fluxo, prazo e quem participa da decisão.", tone: "info" as const };
+  if ((lead.status ?? "novo") === "visita") return { action: "Preparar a visita", reason: "Reconfirme horário, interesse principal e unidade disponível.", tone: "info" as const };
+  if (lead.temperature === "quente" || Number(lead.score ?? 0) >= 70) return { action: "Avançar a oportunidade", reason: "A lead combina intenção e sinais comerciais fortes.", tone: "success" as const };
+  return { action: "Manter o acompanhamento", reason: `Próxima ação em ${dateLabel(lead.next_action_at)}.`, tone: "info" as const };
+}
+
+function phoneLinks(phone: string | null) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  const international = digits.startsWith("55") ? digits : `55${digits}`;
+  return { call: `tel:+${international}`, whatsapp: `https://wa.me/${international}` };
+}
+
 export default function PipelinePage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,6 +252,7 @@ export default function PipelinePage() {
     return { ...stage, items, value: items.reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0) };
   }), [visibleLeads]);
   const boardStages = useMemo(() => hideEmpty ? stageData.filter((stage) => stage.items.length > 0) : stageData, [hideEmpty, stageData]);
+  const dailyFocus = useMemo(() => leads.filter(isOpenLead).sort((a, b) => priorityWeight(b) - priorityWeight(a)).slice(0, 3), [leads]);
 
   const focusOptions = useMemo(() => {
     const open = leads.filter(isOpenLead);
@@ -285,6 +304,14 @@ export default function PipelinePage() {
         </div>
       </section>
 
+      <section className="atlas-broker-focus" aria-label="Plano de ação recomendado para o corretor">
+        <div className="atlas-broker-focus-heading"><div><p>Copiloto comercial</p><h3>Comece por aqui</h3><span>As três ações com maior impacto agora, explicadas em linguagem simples.</span></div><Link href="/tasks" className="atlas-kanban-toggle">Ver minhas tarefas</Link></div>
+        <div className="grid gap-3 lg:grid-cols-3">
+          {dailyFocus.map((lead, index) => { const guidance = brokerGuidance(lead); const contact = phoneLinks(lead.phone); return <article key={lead.id} className="atlas-broker-action"><div className="flex items-start justify-between gap-3"><span className="atlas-broker-rank">{String(index + 1).padStart(2, "0")}</span><AtlasBadge tone={guidance.tone}>{lead.score ?? 0} SCORE</AtlasBadge></div><Link href={`/leads/${lead.id}`} className="mt-4 block truncate text-sm font-semibold text-white hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-3 text-sm font-semibold text-sky-200">{guidance.action}</p><p className="mt-1 min-h-10 text-xs leading-5 text-slate-500">{guidance.reason}</p><div className="mt-4 grid grid-cols-3 gap-2"><Link href={`/leads/${lead.id}`} className="atlas-broker-shortcut">Abrir</Link><Link href={`/leads/${lead.id}/messages`} className="atlas-broker-shortcut">IA</Link>{contact ? <a href={contact.call} className="atlas-broker-shortcut">Ligar</a> : <span className="atlas-broker-shortcut is-disabled">Sem fone</span>}</div></article>; })}
+          {!loading && dailyFocus.length === 0 ? <div className="lg:col-span-3"><AtlasEmpty title="Tudo em dia" description="Nenhuma oportunidade aberta exige ação neste momento." /></div> : null}
+        </div>
+      </section>
+
       <section className="atlas-pipeline-flow" aria-label="Resumo visual das etapas do pipeline">
         {stageData.map((stage, index) => (
           <div key={stage.key} style={{ "--flow": `${stage.probability}%` } as CSSProperties}>
@@ -323,6 +350,8 @@ export default function PipelinePage() {
                   {stage.items.map((lead) => {
                     const risk = leadRisk(lead);
                     const contactSla = firstContactSla(lead);
+                    const guidance = brokerGuidance(lead);
+                    const contact = phoneLinks(lead.phone);
                     return (
                       <article key={lead.id} draggable onDragEnd={() => { setDraggedId(null); setDragOverStage(null); }} onDragStart={(event) => { setDraggedId(lead.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""}`}>
                         <div className="flex items-start justify-between gap-3">
@@ -342,7 +371,8 @@ export default function PipelinePage() {
                           <p><span>Último contato</span><strong>{relativeTime(lead.last_interaction_at)}</strong></p>
                           <p><span>Próxima ação</span><strong>{dateLabel(lead.next_action_at)}</strong></p>
                         </div>
-                        <Link href={`/leads/${lead.id}`} className="mt-4 flex w-full items-center justify-between rounded-xl border border-sky-400/15 bg-sky-400/[0.06] px-3 py-2.5 text-xs font-semibold text-sky-200 transition hover:border-sky-400/30 hover:bg-sky-400/10"><span>{contactSla?.overdue ? "Resolver SLA agora" : isNextActionOverdue(lead) ? "Executar ação atrasada" : lead.next_action_at ? "Abrir próxima ação" : "Definir próxima ação"}</span><span aria-hidden="true">→</span></Link>
+                        <div className="atlas-card-guidance"><span>Próxima melhor ação</span><strong>{guidance.action}</strong><small>{guidance.reason}</small></div>
+                        <div className="atlas-card-shortcuts"><Link href={`/leads/${lead.id}`} title="Abrir perfil completo">Perfil</Link><Link href={`/leads/${lead.id}/messages`} title="Criar abordagem com IA">✦ Mensagem</Link>{contact ? <><a href={contact.call} title="Ligar para a lead">Ligar</a><a href={contact.whatsapp} target="_blank" rel="noreferrer" title="Abrir WhatsApp">WhatsApp</a></> : null}</div>
                         <select value={lead.status ?? "novo"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="mt-4 w-full rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-slate-300 outline-none focus:border-sky-400/30">
                           {destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
                         </select>
