@@ -19,6 +19,7 @@ const stages = [
 
 type StageKey = (typeof stages)[number]["key"] | "perdido" | "comprou_outro";
 type FocusKey = "prioridade" | "sla" | "atrasadas" | "sem_acao" | "quentes" | "todas";
+type SortKey = "prioridade" | "score" | "valor" | "recente";
 const destinationOptions: Array<{ key: StageKey; label: string }> = [...stages, { key: "perdido", label: "Perdido" }, { key: "comprou_outro", label: "Comprou em outro lugar" }];
 type Lead = {
   id: string;
@@ -120,7 +121,12 @@ export default function PipelinePage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [focus, setFocus] = useState<FocusKey>("prioridade");
+  const [sort, setSort] = useState<SortKey>("prioridade");
+  const [compact, setCompact] = useState(false);
+  const [hideEmpty, setHideEmpty] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<StageKey | null>(null);
+  const [lastMove, setLastMove] = useState<{ leadId: string; leadName: string; from: StageKey; to: StageKey } | null>(null);
 
   async function authenticatedFetch(input: RequestInfo, init?: RequestInit) {
     const { data } = await supabase.auth.getSession();
@@ -147,6 +153,9 @@ export default function PipelinePage() {
   useEffect(() => { void load(); }, []);
 
   async function moveLead(id: string, stage: StageKey) {
+    const currentLead = leads.find((lead) => lead.id === id);
+    const previousStage = (currentLead?.status || "novo") as StageKey;
+    if (previousStage === stage) { setDraggedId(null); setDragOverStage(null); return; }
     let followUpDescription = "";
     if (stage === "comprou_outro") {
       followUpDescription = window.prompt("Descreva o que pesou na compra: projeto, região, preço, prazo, financiamento ou atendimento. Essa descrição ficará protegida no CRM.")?.trim() || "";
@@ -160,12 +169,14 @@ export default function PipelinePage() {
       const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, followUpDescription }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Falha ao mover lead.");
+      setLastMove({ leadId: id, leadName: currentLead?.name || "Lead", from: previousStage, to: stage });
     } catch (moveError) {
       setLeads(previous);
       setError(moveError instanceof Error ? moveError.message : "Falha ao mover lead.");
     } finally {
       setSavingId(null);
       setDraggedId(null);
+      setDragOverStage(null);
     }
   }
 
@@ -173,6 +184,14 @@ export default function PipelinePage() {
     event.preventDefault();
     const id = event.dataTransfer.getData("text/lead-id") || draggedId;
     if (id) void moveLead(id, stage);
+  }
+
+  async function undoLastMove() {
+    if (!lastMove) return;
+    const move = lastMove;
+    setLastMove(null);
+    await moveLead(move.leadId, move.from);
+    setLastMove(null);
   }
 
   const visibleLeads = useMemo(() => {
@@ -187,8 +206,13 @@ export default function PipelinePage() {
       if (focus === "quentes") return lead.temperature === "quente" || Number(lead.score ?? 0) >= 70;
       return Boolean(firstContactSla(lead)?.overdue) || isNextActionOverdue(lead) || !lead.next_action_at || lead.temperature === "quente" || Number(lead.score ?? 0) >= 70 || leadRisk(lead) === "alto";
     });
-    return [...filtered].sort((a, b) => priorityWeight(b) - priorityWeight(a));
-  }, [focus, leads, query]);
+    return [...filtered].sort((a, b) => {
+      if (sort === "score") return Number(b.score ?? 0) - Number(a.score ?? 0);
+      if (sort === "valor") return Number(b.budget_max ?? 0) - Number(a.budget_max ?? 0);
+      if (sort === "recente") return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
+      return priorityWeight(b) - priorityWeight(a);
+    });
+  }, [focus, leads, query, sort]);
 
   const metrics = useMemo(() => {
     const open = leads.filter((lead) => !["ganho", "perdido", "comprou_outro"].includes(lead.status ?? "novo"));
@@ -209,6 +233,7 @@ export default function PipelinePage() {
     const items = visibleLeads.filter((lead) => (lead.status ?? "novo") === stage.key);
     return { ...stage, items, value: items.reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0) };
   }), [visibleLeads]);
+  const boardStages = useMemo(() => hideEmpty ? stageData.filter((stage) => stage.items.length > 0) : stageData, [hideEmpty, stageData]);
 
   const focusOptions = useMemo(() => {
     const open = leads.filter(isOpenLead);
@@ -240,6 +265,7 @@ export default function PipelinePage() {
       </section>
 
       {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
+      {lastMove ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.07] px-4 py-3 text-sm text-sky-100" role="status"><span><strong>{lastMove.leadName}</strong> avançou para {destinationOptions.find((item) => item.key === lastMove.to)?.label}.</span><button type="button" onClick={() => void undoLastMove()} disabled={Boolean(savingId)} className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs font-semibold hover:bg-sky-300/15 disabled:opacity-50">Desfazer movimentação</button></div> : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <AtlasMetric label="Negócios abertos" value={loading ? "—" : metrics.open} detail="Oportunidades em andamento" trend="LIVE" tone="blue" />
@@ -271,10 +297,22 @@ export default function PipelinePage() {
 
       <AtlasCard>
         <AtlasCardHeader eyebrow="Conversion system" title="Fluxo comercial" description="Arraste os cards entre as etapas ou use o seletor. Cada movimentação gera histórico e evento no Atlas." />
+        <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-4 sm:px-6 xl:flex-row xl:items-center xl:justify-between" aria-label="Controles do Kanban">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500" htmlFor="pipeline-sort">Ordenar</label>
+            <select id="pipeline-sort" value={sort} onChange={(event) => setSort(event.target.value as SortKey)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-200 outline-none focus:border-sky-400/30">
+              <option value="prioridade">Prioridade inteligente</option><option value="score">Maior score</option><option value="valor">Maior valor</option><option value="recente">Atualização recente</option>
+            </select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setCompact((value) => !value)} aria-pressed={compact} className={`atlas-kanban-toggle ${compact ? "is-active" : ""}`}>{compact ? "Visão compacta" : "Visão confortável"}</button>
+            <button type="button" onClick={() => setHideEmpty((value) => !value)} aria-pressed={hideEmpty} className={`atlas-kanban-toggle ${hideEmpty ? "is-active" : ""}`}>{hideEmpty ? "Mostrando etapas ativas" : "Mostrar todas as etapas"}</button>
+          </div>
+        </div>
         <div className="overflow-x-auto p-4 sm:p-6">
-          <div className="grid min-w-[1750px] grid-cols-7 gap-4">
-            {stageData.map((stage) => (
-              <section key={stage.key} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className="atlas-pipeline-column">
+          <div className={`atlas-kanban-board ${compact ? "is-compact" : ""}`} style={{ "--kanban-columns": boardStages.length } as CSSProperties}>
+            {boardStages.map((stage) => (
+              <section key={stage.key} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""}`}>
                 <div className="mb-4 border-b border-white/[0.06] pb-3">
                   <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white">{stage.label}</h3><span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-slate-300">{stage.items.length}</span></div>
                   <p className="mt-2 text-xs text-slate-500">{brl.format(stage.value)}</p>
@@ -286,7 +324,7 @@ export default function PipelinePage() {
                     const risk = leadRisk(lead);
                     const contactSla = firstContactSla(lead);
                     return (
-                      <article key={lead.id} draggable onDragStart={(event) => { setDraggedId(lead.id); event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""}`}>
+                      <article key={lead.id} draggable onDragEnd={() => { setDraggedId(null); setDragOverStage(null); }} onDragStart={(event) => { setDraggedId(lead.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-1 truncate text-[11px] text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
                           <AtlasBadge tone={riskTone(risk)}>Risco {risk}</AtlasBadge>
