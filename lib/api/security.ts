@@ -11,6 +11,30 @@ export type AtlasRole = "admin" | "director" | "superintendent" | "manager" | "b
 export type CommercialRole = "director" | "superintendent" | "manager" | "broker";
 export type AccessRole = "admin" | "director_decisor" | "director" | "broker";
 
+function normalizedRole(value: unknown) {
+  return String(value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+function resolveLegacyAccessRole(profile: Record<string, unknown>): AccessRole {
+  const explicit = normalizedRole(profile.access_role);
+  if (["admin", "director_decisor", "director", "broker"].includes(explicit)) return explicit as AccessRole;
+  const role = normalizedRole(profile.role);
+  if (role === "admin") return "admin";
+  if (["director_decisor", "diretor_decisor"].includes(role)) return "director_decisor";
+  if (["director", "diretor", "manager", "gerente", "superintendent", "superintendente"].includes(role)) return "director";
+  return "broker";
+}
+
+function resolveLegacyCommercialRole(profile: Record<string, unknown>): CommercialRole {
+  const explicit = normalizedRole(profile.commercial_role);
+  if (["director", "superintendent", "manager", "broker"].includes(explicit)) return explicit as CommercialRole;
+  const role = normalizedRole(profile.role);
+  if (["manager", "gerente"].includes(role)) return "manager";
+  if (["superintendent", "superintendente"].includes(role)) return "superintendent";
+  if (["broker", "corretor"].includes(role)) return "broker";
+  return "director";
+}
+
 export function resolveCommercialRole(profile: { role: AtlasRole; commercialRole?: AtlasRole | null; commercial_role?: AtlasRole | null }): AtlasRole {
   const commercialRole = profile.commercialRole ?? profile.commercial_role;
   if (commercialRole) return commercialRole;
@@ -150,7 +174,7 @@ export async function requireAccessContext(
 
   const { data: profile, error: profileError } = await auth.supabase
     .from("profiles")
-    .select("id, organization_id, role, access_role, commercial_role, reports_to, active")
+    .select("*")
     .eq("id", auth.user.id)
     .maybeSingle();
 
@@ -163,26 +187,30 @@ export async function requireAccessContext(
     };
   }
 
-  if (!profile || !profile.organization_id) {
+  const profileRecord = profile as Record<string, unknown> | null;
+  if (!profileRecord) {
     return {
       ok: false as const,
-      response: apiError("PROFILE_REQUIRED", "Perfil organizacional não configurado.", auth.meta, {
+      response: apiError("PROFILE_REQUIRED", "Usuário autenticado, mas sem perfil no Atlas.", auth.meta, {
         status: 403,
       }),
     };
   }
 
-  if (!profile.active) {
+  if (profileRecord.active !== true) {
     return {
       ok: false as const,
       response: apiError("PROFILE_INACTIVE", "Este usuário está inativo.", auth.meta, { status: 403 }),
     };
   }
 
+  const organizationId = typeof profileRecord.organization_id === "string" ? profileRecord.organization_id : "";
+  if (!organizationId) return { ok: false as const, response: apiError("PROFILE_ORGANIZATION_REQUIRED", "O perfil não possui uma organização vinculada.", auth.meta, { status: 403 }) };
+
   const { data: organization, error: organizationError } = await auth.supabase
     .from("organizations")
-    .select("id, name, slug, plan, active")
-    .eq("id", profile.organization_id)
+    .select("*")
+    .eq("id", organizationId)
     .maybeSingle();
 
   if (organizationError) {
@@ -194,26 +222,31 @@ export async function requireAccessContext(
     };
   }
 
-  if (!organization) {
+  const organizationRecord = organization as Record<string, unknown> | null;
+  if (!organizationRecord) {
     return {
       ok: false as const,
       response: apiError("ORGANIZATION_REQUIRED", "Organização não encontrada.", auth.meta, { status: 403 }),
     };
   }
 
-  if (!organization.active) {
+  const organizationStatus = normalizedRole(organizationRecord.status);
+  const organizationIsActive = organizationRecord.active === true || (["active", "ativo", "enabled"].includes(organizationStatus) && organizationRecord.active !== false);
+  if (!organizationIsActive) {
     return {
       ok: false as const,
       response: apiError("ORGANIZATION_INACTIVE", "A organização está inativa.", auth.meta, { status: 403 }),
     };
   }
 
-  const effectiveRole = resolveCommercialRole({ role: profile.role, commercial_role: profile.commercial_role });
-  const accessRole = profile.access_role as AccessRole;
+  const role = normalizedRole(profileRecord.role) || "broker";
+  const commercialRole = resolveLegacyCommercialRole(profileRecord);
+  const effectiveRole = commercialRole;
+  const accessRole = resolveLegacyAccessRole(profileRecord);
   if (options.accessRoles?.length && !options.accessRoles.includes(accessRole)) {
     logger.warn("api.access_denied", {
       path: request.nextUrl.pathname,
-      organizationId: profile.organization_id,
+      organizationId,
       accessRole,
       reason: "access_role_not_allowed",
     });
@@ -225,7 +258,7 @@ export async function requireAccessContext(
   if (options.roles?.length && !options.roles.includes(effectiveRole)) {
     logger.warn("api.access_denied", {
       path: request.nextUrl.pathname,
-      organizationId: profile.organization_id,
+      organizationId,
       role: effectiveRole,
       reason: "role_not_allowed",
     });
@@ -241,26 +274,26 @@ export async function requireAccessContext(
       email: auth.user.email ?? null,
     },
     profile: {
-      id: profile.id,
-      organizationId: profile.organization_id,
-      role: profile.role,
+      id: String(profileRecord.id),
+      organizationId,
+      role,
       accessRole,
-      commercialRole: profile.commercial_role,
-      reportsTo: profile.reports_to,
-      active: profile.active,
+      commercialRole,
+      reportsTo: typeof profileRecord.reports_to === "string" ? profileRecord.reports_to : null,
+      active: true,
     },
     organization: {
-      id: organization.id,
-      name: organization.name,
-      slug: organization.slug,
-      plan: organization.plan,
-      active: organization.active,
+      id: String(organizationRecord.id),
+      name: String(organizationRecord.name || "Atlas"),
+      slug: typeof organizationRecord.slug === "string" ? organizationRecord.slug : null,
+      plan: typeof organizationRecord.plan === "string" ? organizationRecord.plan : null,
+      active: true,
     },
   };
 
   logger.info("api.access_granted", {
     path: request.nextUrl.pathname,
-    organizationId: profile.organization_id,
+    organizationId,
     role: effectiveRole,
     authMode: auth.authMode,
   });

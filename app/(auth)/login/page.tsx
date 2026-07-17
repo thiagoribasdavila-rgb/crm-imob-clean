@@ -43,11 +43,20 @@ async function confirmServerSession(): Promise<Response> {
 
 async function destinationForSession(response: Response, requested: string | null) {
   if (requested) return safeAuthDestination(requested);
-  const payload = await response.clone().json().catch(() => null) as { data?: { profile?: { accessRole?: string } } } | null;
-  const accessRole = payload?.data?.profile?.accessRole;
-  if (accessRole === "admin") return "/users";
-  if (accessRole === "broker") return "/leads";
   return "/dashboard";
+}
+
+async function readSessionFailure(response: Response) {
+  const payload = await response.clone().json().catch(() => null) as { error?: { code?: string } } | null;
+  const code = payload?.error?.code;
+  if (code === "PROFILE_REQUIRED") return "Seu login está correto, mas o perfil do Atlas não foi encontrado.";
+  if (code === "PROFILE_INACTIVE") return "Seu perfil está inativo. Solicite a liberação ao administrador.";
+  if (code === "PROFILE_ORGANIZATION_REQUIRED") return "Seu perfil ainda não possui uma organização vinculada.";
+  if (code === "ORGANIZATION_REQUIRED") return "A organização vinculada ao seu perfil não foi encontrada.";
+  if (code === "ORGANIZATION_INACTIVE") return "A organização vinculada ao seu acesso está inativa.";
+  if (code === "PROFILE_LOOKUP_FAILED") return "Não foi possível carregar seu perfil. Tente novamente em instantes.";
+  if (code === "ORGANIZATION_LOOKUP_FAILED") return "Não foi possível carregar sua organização. Tente novamente em instantes.";
+  return "O acesso foi autenticado, mas os dados do painel não puderam ser carregados.";
 }
 
 function EyeIcon({ hidden }: { hidden: boolean }) {
@@ -177,15 +186,19 @@ function LoginExperience() {
       }
 
       if (sessionResponse.status === 403) {
+        const message = await readSessionFailure(sessionResponse);
         await supabase.auth.signOut();
-        setError("Seu acesso ainda não está liberado para esta operação. Peça ao administrador para revisar seu perfil e organização.");
+        setError(message);
         return;
       }
 
       if (!sessionResponse.ok) {
-        setError("O acesso foi autenticado, mas o painel não pôde ser preparado. Tente novamente em instantes.");
+        setError(await readSessionFailure(sessionResponse));
         return;
       }
+
+      const sessionContext = await sessionResponse.clone().json().catch(() => null);
+      if (sessionContext) window.sessionStorage.setItem("atlas:auth-context", JSON.stringify(sessionContext));
 
       if (rememberEmail) {
         window.localStorage.setItem(REMEMBERED_EMAIL_KEY, normalizedEmail);

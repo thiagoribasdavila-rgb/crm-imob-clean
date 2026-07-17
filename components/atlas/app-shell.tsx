@@ -42,30 +42,34 @@ export function AppShell({ children }: { children: ReactNode }) {
       if (!auth.user) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name,organization_id,role,access_role,commercial_role")
+        .select("*")
         .eq("id", auth.user.id)
         .maybeSingle();
       let organization = defaultIdentity.organization;
       if (profile?.organization_id) {
         const { data } = await supabase
           .from("organizations")
-          .select("name")
+          .select("*")
           .eq("id", profile.organization_id)
           .maybeSingle();
         organization = data?.name || organization;
       }
+      const rawRole = String(profile?.role || "").trim().toLowerCase();
+      const rawAccessRole = String(profile?.access_role || "").trim().toLowerCase();
+      const accessRole: ShellIdentity["accessRole"] = rawAccessRole === "admin" || rawRole === "admin" ? "admin" : ["director_decisor", "diretor_decisor"].includes(rawAccessRole || rawRole) ? "director_decisor" : ["director", "diretor", "manager", "gerente", "superintendent", "superintendente"].includes(rawAccessRole || rawRole) ? "director" : "broker";
       const next = {
         name:
           profile?.full_name ||
+          profile?.name ||
           auth.user.email?.split("@")[0] ||
           defaultIdentity.name,
         email: auth.user.email || "",
         organization,
         role:
           profile?.commercial_role ||
-          (profile?.role === "admin" ? "director" : profile?.role) ||
+          (rawRole === "admin" ? "director" : rawRole) ||
           "broker",
-        accessRole: profile?.access_role || "broker",
+        accessRole,
       };
       window.sessionStorage.setItem(
         "atlas:shell-identity",

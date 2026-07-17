@@ -172,7 +172,7 @@ export default function DashboardPage() {
       supabase.from("tasks").select("*").order("due_at", { ascending: true, nullsFirst: false }).limit(300),
       supabase.from("ai_insights").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("developments").select("*").order("name", { ascending: true }).limit(100),
-      supabase.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").eq("active", true).limit(300),
+      supabase.from("profiles").select("*").eq("active", true).limit(300),
     ]);
 
     const labels = ["Leads", "Pipeline", "Tarefas", "Inteligência", "Projetos", "Equipe"];
