@@ -16,7 +16,9 @@ import { StatusBadge } from "@/components/atlas/status-badge";
 type DataRow = Record<string, unknown>;
 type Period = "7" | "30" | "90" | "all";
 type DecisionPeriod = "day" | "week" | "month";
+type CommandMode = "focus" | "complete";
 const DASHBOARD_PERIOD_KEY = "atlas:dashboard-periods:v1";
+const COMMAND_MODE_KEY = "atlas:command-mode:v1";
 type DashboardData = {
   leads: DataRow[];
   opportunities: DataRow[];
@@ -140,6 +142,7 @@ export default function DashboardPage() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [period, setPeriod] = useState<Period>("30");
   const [decisionPeriod, setDecisionPeriod] = useState<DecisionPeriod>("day");
+  const [commandMode, setCommandMode] = useState<CommandMode>("focus");
   const [project, setProject] = useState("all");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [viewerId, setViewerId] = useState("");
@@ -155,6 +158,8 @@ export default function DashboardPage() {
       const saved = JSON.parse(window.sessionStorage.getItem(DASHBOARD_PERIOD_KEY) || "{}") as { period?: Period; decisionPeriod?: DecisionPeriod };
       if (["7", "30", "90", "all"].includes(saved.period || "")) setPeriod(saved.period!);
       if (["day", "week", "month"].includes(saved.decisionPeriod || "")) setDecisionPeriod(saved.decisionPeriod!);
+      const savedMode = window.localStorage.getItem(COMMAND_MODE_KEY);
+      if (savedMode === "focus" || savedMode === "complete") setCommandMode(savedMode);
     } catch {
       window.sessionStorage.removeItem(DASHBOARD_PERIOD_KEY);
     }
@@ -163,6 +168,10 @@ export default function DashboardPage() {
   useEffect(() => {
     window.sessionStorage.setItem(DASHBOARD_PERIOD_KEY, JSON.stringify({ period, decisionPeriod }));
   }, [decisionPeriod, period]);
+
+  useEffect(() => {
+    window.localStorage.setItem(COMMAND_MODE_KEY, commandMode);
+  }, [commandMode]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -565,7 +574,7 @@ export default function DashboardPage() {
   if (!viewerRole) return <ErrorState title="Perfil comercial não identificado" description="Seu usuário está autenticado, mas ainda não possui um papel comercial ativo nesta organização." action={<Link href="/settings/profile" className="atlas-button-secondary">Revisar meu perfil</Link>} />;
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="atlas-command-shell space-y-6 pb-10" data-command-mode={commandMode}>
       <section className="atlas-command-hero">
         <div className="atlas-command-hero-copy">
           <div className="flex flex-wrap gap-2">
@@ -645,6 +654,10 @@ export default function DashboardPage() {
           </select>
         </div>
         <span>{loading ? "Carregando operação..." : `${leads.length} leads no recorte atual`}</span>
+        <div className="atlas-command-mode" role="group" aria-label="Nível de detalhe do Command Center">
+          <button type="button" aria-pressed={commandMode === "focus"} onClick={() => setCommandMode("focus")}>Foco diário</button>
+          <button type="button" aria-pressed={commandMode === "complete"} onClick={() => setCommandMode("complete")}>Análise completa</button>
+        </div>
       </section>
 
       {warnings.length ? (
@@ -717,7 +730,7 @@ export default function DashboardPage() {
 
       {isManager ? <section className="rounded-[28px] border border-rose-400/15 bg-gradient-to-br from-rose-500/[.08] to-amber-500/[.04] p-5 sm:p-6" data-phase="35-follow-up-sla"><PageHeader eyebrow="Fase 35 · SLA de follow-up" title="Cadência, atraso e recuperação do time" description="Compromissos cumpridos, recuperações e alertas somente dos corretores diretamente subordinados, medidos nos últimos 30 dias." />{!teamSla ? <LoadingState rows={3} /> : <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6"><MetricCard label="Cumprimento" value={teamSla.totals.followUpComplianceRate === null ? "—" : `${teamSla.totals.followUpComplianceRate}%`} detail={`${teamSla.totals.followUpsMeasured} follow-ups medidos`} trend="30 DIAS" tone={teamSla.totals.followUpComplianceRate === null ? "neutral" : teamSla.totals.followUpComplianceRate >= 80 ? "success" : "warning"} /><MetricCard label="Tempo de execução" value={teamSla.totals.averageFollowUpMinutes === null ? "—" : `${teamSla.totals.averageFollowUpMinutes} min`} detail="Do agendamento ao contato" trend="CADÊNCIA" /><MetricCard label="Recuperados" value={teamSla.totals.recoveredFollowUps} detail="Executados depois do prazo" trend="APRENDIZADO" tone="violet" /><MetricCard label="Follow-ups atrasados" value={teamSla.totals.followUpOverdue} detail="Próxima ação vencida agora" trend="RECUPERAR" tone="warning" /><MetricCard label="Sem primeiro contato" value={teamSla.totals.firstContactOverdue} detail="SLA inicial vencido" trend="URGENTE" tone="danger" /><MetricCard label="Corretores com alerta" value={teamSla.totals.brokersWithAlerts} detail="Somente meu time direto" trend="ESCOPO" tone="violet" /></div>{teamSla.alerts.length ? <div className="grid gap-3 lg:grid-cols-2">{teamSla.alerts.slice(0, 12).map((alert) => <a key={`${alert.kind}-${alert.leadId}`} href={`/leads/${alert.leadId}`} className="group rounded-2xl border border-white/[.07] bg-white/[.025] p-4 transition hover:border-rose-300/25 hover:bg-white/[.04]"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold text-white group-hover:text-rose-100">{alert.leadName}</p><p className="mt-1 text-xs text-slate-500">Responsável: {alert.brokerName}</p></div><StatusBadge tone={alert.kind === "first_contact" ? "danger" : "warning"}>{alert.kind === "first_contact" ? "SEM CONTATO" : "FOLLOW-UP"}</StatusBadge></div><p className="mt-3 text-xs text-rose-200">Atrasado há {alert.overdueMinutes < 60 ? `${alert.overdueMinutes} min` : `${Math.floor(alert.overdueMinutes / 60)}h`} · abrir Lead 360 →</p></a>)}</div> : <EmptyState title="SLAs do time em dia" description="Nenhum primeiro contato ou follow-up está vencido agora." />}</div>}</section> : null}
 
-      <section className="atlas-command-metrics">
+      <section className="atlas-command-detail atlas-command-metrics">
         <MetricCard label="Leads ativos" value={loading ? "—" : metrics.active} detail="Base em atendimento" trend="LIVE" />
         <MetricCard label="Leads quentes" value={loading ? "—" : metrics.hot} detail="Score ≥ 70 ou temperatura quente" trend="HOT" tone="danger" />
         <MetricCard label="Sem responsável" value={loading ? "—" : metrics.unassigned} detail="Exigem distribuição manual" trend="AÇÃO" tone="warning" />
@@ -730,7 +743,7 @@ export default function DashboardPage() {
         {isDirector ? <><MetricCard label="Comissões a receber" value={loading ? "—" : brl.format(metrics.commissionReceivable)} detail={`${metrics.commissionDueSoon} vencem em até 7 dias`} trend="CAIXA" tone="success" /><MetricCard label="Comissões atrasadas" value={loading ? "—" : metrics.commissionOverdue} detail="Exigem cobrança da incorporadora" trend="SLA" tone="danger" /><MetricCard label="Vendas sem comissão" value={loading ? "—" : metrics.commissionUnconfigured} detail="Precisam de configuração financeira" trend="AÇÃO" tone="warning" /></> : null}
       </section>
 
-      <section className="atlas-command-grid atlas-command-grid-main">
+      <section className="atlas-command-detail atlas-command-grid atlas-command-grid-main">
         <article className="atlas-command-panel">
           <PageHeader eyebrow="Conversão" title="Funil comercial" description="Distribuição real dos leads no período selecionado." actions={<Link href="/pipeline">Abrir pipeline →</Link>} />
           {loading ? <LoadingState rows={4} /> : leads.length === 0 ? (
@@ -801,7 +814,7 @@ export default function DashboardPage() {
         </article>
       </section>
 
-      <section className="atlas-command-grid atlas-command-grid-triple">
+      <section className="atlas-command-detail atlas-command-grid atlas-command-grid-triple">
         <article className="atlas-command-panel">
           <PageHeader eyebrow="Prioridades" title="Ações de hoje" description="Score, atraso e ausência de responsável combinados." actions={<Link href="/leads">Ver leads →</Link>} />
           {loading ? <LoadingState rows={4} /> : priorities.length === 0 ? (
@@ -861,7 +874,7 @@ export default function DashboardPage() {
         </article>
       </section>
 
-      {(isDirector || isManager) ? <section className="atlas-command-panel">
+      {(isDirector || isManager) ? <section className="atlas-command-detail atlas-command-panel">
         <PageHeader eyebrow={isDirector ? "Performance comercial" : "Gestão do time"} title={isDirector ? "Corretores e carteiras" : "Números de cada corretor"} description="Carteira, leads quentes, atrasos e conversão dentro do seu escopo hierárquico." actions={<Link href="/brokers">Abrir equipe →</Link>} />
         {loading ? <LoadingState rows={4} /> : teamPerformance.length === 0 ? <EmptyState title="Nenhum corretor visível" description="Vincule corretores à hierarquia para acompanhar o desempenho." /> : <div className="atlas-team-performance">
           {teamPerformance.map((broker, index) => <Link href={`/leads?assigned_to=${broker.id}`} key={broker.id}>
@@ -873,7 +886,7 @@ export default function DashboardPage() {
         </div>}
       </section> : null}
 
-      {isDirector ? <section className="atlas-command-panel">
+      {isDirector ? <section className="atlas-command-detail atlas-command-panel">
         <PageHeader eyebrow="Recebíveis" title="Comissões sob atenção" description="Prioridade financeira por vencimento, saldo e incorporadora." actions={<Link href="/sales">Abrir vendas →</Link>} />
         {loading ? <LoadingState rows={4} /> : commissionQueue.length === 0 ? (
           <EmptyState title="Nenhuma comissão pendente" description="Vendas ganhas com valores a receber aparecerão nesta fila." />
@@ -892,7 +905,7 @@ export default function DashboardPage() {
         )}
       </section> : null}
 
-      <section className="atlas-command-grid atlas-command-grid-bottom">
+      <section className="atlas-command-detail atlas-command-grid atlas-command-grid-bottom">
         <article className="atlas-command-panel">
           <PageHeader eyebrow="Portfólio" title="Projetos" description="Volume e temperatura dos leads por empreendimento." actions={<Link href="/developments">Launch OS →</Link>} />
           {loading ? <LoadingState rows={3} /> : visibleProjects.length === 0 ? (
