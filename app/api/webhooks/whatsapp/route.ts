@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
   try {
     const body = JSON.parse(rawBody) as {
-      entry?: Array<{ changes?: Array<{ value?: { metadata?: { phone_number_id?: string }; messages?: Array<{ id: string; from: string; timestamp?: string; text?: { body?: string }; type?: string }> } }> }>;
+      entry?: Array<{ changes?: Array<{ value?: { metadata?: { phone_number_id?: string }; messages?: Array<{ id: string; from: string; timestamp?: string; text?: { body?: string }; type?: string }>; statuses?: Array<{ id: string; status: "sent" | "delivered" | "read" | "failed"; timestamp?: string; errors?: Array<{ code?: number; title?: string }> }> } }> }>;
     };
 
     const admin = getSupabaseAdmin();
@@ -59,6 +59,27 @@ export async function POST(request: Request) {
           .eq("external_account_id", phoneNumberId)
           .maybeSingle();
         if (!integration?.organization_id) continue;
+
+        for (const statusEvent of change.value?.statuses ?? []) {
+          const { data: outbound } = await admin.from("messages").select("id,status,media").eq("organization_id", integration.organization_id).eq("external_message_id", statusEvent.id).maybeSingle();
+          if (!outbound || outbound.status === statusEvent.status) continue;
+          const media = Array.isArray(outbound.media) ? outbound.media : [];
+          const templateItem = media.find((item) => item && typeof item === "object" && (item as { type?: unknown }).type === "whatsapp_template") as { batchId?: string } | undefined;
+          const at = statusEvent.timestamp ? new Date(Number(statusEvent.timestamp) * 1000).toISOString() : new Date().toISOString();
+          await admin.from("messages").update({ status: statusEvent.status, ...(statusEvent.status === "delivered" ? { delivered_at: at } : {}), ...(statusEvent.status === "read" ? { read_at: at } : {}), ...(statusEvent.status === "failed" ? { error: statusEvent.errors?.[0]?.title || "Falha informada pela API do WhatsApp." } : {}) }).eq("id", outbound.id);
+          if (templateItem?.batchId) {
+            const counter = statusEvent.status === "delivered" ? "delivered_count" : statusEvent.status === "read" ? "read_count" : statusEvent.status === "failed" ? "failed_count" : null;
+            if (counter) {
+              const { data: batch } = await admin.from("lead_reactivation_batches").select("delivered_count,read_count,failed_count,queued_count").eq("id", templateItem.batchId).single();
+              if (batch) {
+                const next = Number(batch[counter as keyof typeof batch] || 0) + 1;
+                const failureRate = statusEvent.status === "failed" ? next / Math.max(1, Number(batch.queued_count || 0)) : Number(batch.failed_count || 0) / Math.max(1, Number(batch.queued_count || 0));
+                const quality = Number(batch.queued_count || 0) >= 20 && failureRate >= 0.1 ? "red" : failureRate >= 0.05 ? "yellow" : "green";
+                await admin.from("lead_reactivation_batches").update({ [counter]: next, quality_status: quality, ...(quality === "red" ? { status: "running", paused_reason: "Pausa automática: falhas acima de 10%." } : {}) }).eq("id", templateItem.batchId);
+              }
+            }
+          }
+        }
 
         for (const incoming of change.value?.messages ?? []) {
           const sender = normalizePhone(incoming.from);
@@ -110,6 +131,11 @@ export async function POST(request: Request) {
           });
           if (messageError) throw messageError;
           await admin.from("lead_reactivation_contacts").update({ status: "replied" }).eq("organization_id", integration.organization_id).eq("phone", sender).in("status", ["queued", "sent"]);
+          const { data: repliedContacts } = await admin.from("lead_reactivation_contacts").select("batch_id").eq("organization_id", integration.organization_id).eq("phone", sender).eq("status", "replied");
+          for (const batchId of new Set((repliedContacts ?? []).map((contact) => contact.batch_id))) {
+            const { count } = await admin.from("lead_reactivation_contacts").select("id", { count: "exact", head: true }).eq("batch_id", batchId).eq("status", "replied");
+            await admin.from("lead_reactivation_batches").update({ replied_count: count || 0 }).eq("id", batchId);
+          }
           accepted += 1;
         }
       }

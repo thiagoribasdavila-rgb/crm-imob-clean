@@ -149,6 +149,7 @@ export default function AtlasCopilotDock() {
         },
         body: JSON.stringify({
           prompt: question,
+          leadId: typeof externalContext.leadId === "string" ? externalContext.leadId : undefined,
           context: {
             dashboard: externalContext,
             nextAction,

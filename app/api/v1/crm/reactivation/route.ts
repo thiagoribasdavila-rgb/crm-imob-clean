@@ -54,10 +54,20 @@ export async function POST(request: NextRequest) {
   if (!rate.ok) return rate.response;
   const identity = await requireAccessContext(request);
   if (!identity.ok) return identity.response;
-  const body = await request.json().catch(() => null) as { action?: string; name?: string; ownerId?: string; developmentId?: string; sourceType?: string; consentBasis?: string; consentConfirmed?: boolean; rows?: ImportRow[]; batchId?: string; templateName?: string; templateLanguage?: string } | null;
+  const body = await request.json().catch(() => null) as { action?: string; name?: string; ownerId?: string; developmentId?: string; sourceType?: string; consentBasis?: string; consentConfirmed?: boolean; rows?: ImportRow[]; batchId?: string; templateName?: string; templateLanguage?: string; dailyCap?: number; intervalSeconds?: number; command?: "pause" | "resume" } | null;
   const admin = getSupabaseAdmin();
   const org = identity.access.organization.id;
   const role = roleOf(identity.access.profile.role, identity.access.profile.commercialRole);
+
+  if (body?.action === "control" && body.batchId && ["pause", "resume"].includes(body.command || "")) {
+    const { data: batch } = await admin.from("lead_reactivation_batches").select("id,owner_id,status").eq("id", body.batchId).eq("organization_id", org).single();
+    if (!batch) return apiError("BATCH_NOT_FOUND", "Campanha não encontrada.", identity.meta, { status: 404 });
+    const { data: profiles } = await admin.from("profiles").select("id,reports_to").eq("organization_id", org).eq("active", true);
+    const allowed = role === "director" ? new Set((profiles ?? []).map((item) => item.id)) : descendants(profiles ?? [], identity.access.profile.id);
+    if (!allowed.has(batch.owner_id) || (body.command === "resume" && role === "broker")) return apiError("FORBIDDEN", "A retomada exige a liderança responsável.", identity.meta, { status: 403 });
+    await admin.from("lead_reactivation_batches").update(body.command === "pause" ? { quality_status: "red", paused_reason: "Pausa manual.", updated_at: new Date().toISOString() } : { quality_status: "yellow", status: "queued", paused_reason: null, updated_at: new Date().toISOString() }).eq("id", batch.id);
+    return apiSuccess({ batchId: batch.id, status: body.command === "pause" ? "paused" : "queued" }, identity.meta, { headers: rate.headers });
+  }
 
   if (body?.action === "import") {
     const rows = Array.isArray(body.rows) ? body.rows.slice(0, 500) : [];
@@ -113,6 +123,8 @@ export async function POST(request: NextRequest) {
   if (body?.action === "activate" && body.batchId) {
     const templateName = String(body.templateName || "").trim();
     const language = String(body.templateLanguage || "pt_BR").trim();
+    const intervalSeconds = Math.min(3600, Math.max(10, Math.floor(body.intervalSeconds ?? 30)));
+    const dailyCap = Math.min(1000, Math.max(1, Math.min(Math.floor(body.dailyCap ?? 100), Math.floor((9 * 60 * 60) / intervalSeconds))));
     if (!/^[a-z0-9_]{2,512}$/.test(templateName)) return apiError("INVALID_TEMPLATE", "Informe o nome técnico de um template aprovado no WhatsApp.", identity.meta, { status: 400 });
     const { data: batch } = await admin.from("lead_reactivation_batches").select("*").eq("id", body.batchId).eq("organization_id", org).single();
     if (!batch) return apiError("BATCH_NOT_FOUND", "Base não encontrada.", identity.meta, { status: 404 });
@@ -135,8 +147,8 @@ export async function POST(request: NextRequest) {
     }
     const { error: approvalError } = await admin.from("approval_requests").insert({ organization_id: org, request_type: "whatsapp_reactivation", entity_type: "reactivation_batch", entity_id: batch.id, payload: { batchId: batch.id, templateName, language, prepared, ownerId: batch.owner_id }, requested_by: identity.access.profile.id });
     if (approvalError) return apiError("APPROVAL_FAILED", "Não foi possível enviar a campanha para aprovação.", identity.meta, { status: 500 });
-    await admin.from("lead_reactivation_batches").update({ status: "pending_approval", template_name: templateName, template_language: language, queued_count: prepared, updated_at: new Date().toISOString() }).eq("id", batch.id);
-    return apiSuccess({ batchId: batch.id, prepared, status: "pending_approval" }, identity.meta, { status: 202, headers: rate.headers });
+    await admin.from("lead_reactivation_batches").update({ status: "pending_approval", template_name: templateName, template_language: language, daily_cap: dailyCap, interval_seconds: intervalSeconds, queued_count: prepared, updated_at: new Date().toISOString() }).eq("id", batch.id);
+    return apiSuccess({ batchId: batch.id, prepared, dailyCap, intervalSeconds, status: "pending_approval" }, identity.meta, { status: 202, headers: rate.headers });
   }
   return apiError("INVALID_ACTION", "Ação inválida.", identity.meta, { status: 400 });
 }

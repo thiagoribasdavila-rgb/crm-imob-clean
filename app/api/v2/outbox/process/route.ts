@@ -83,6 +83,24 @@ export async function POST(request: Request) {
         if (message.channel !== "whatsapp") throw new Error(`Canal ainda não conectado ao worker: ${message.channel}`);
         const media = Array.isArray(message.media) ? message.media : [];
         const templateItem = media.find((item) => item && typeof item === "object" && (item as { type?: unknown }).type === "whatsapp_template") as { name?: string; language?: string; batchId?: string } | undefined;
+        if (templateItem?.batchId) {
+          const [{ data: batch }, { data: suppression }] = await Promise.all([
+            admin.from("lead_reactivation_batches").select("status,quality_status").eq("id", templateItem.batchId).eq("organization_id", event.organization_id).single(),
+            admin.from("messaging_suppressions").select("id").eq("organization_id", event.organization_id).eq("channel", "whatsapp").eq("recipient", message.recipient).maybeSingle(),
+          ]);
+          if (!batch || !["queued", "running"].includes(batch.status) || batch.quality_status === "red") {
+            await admin.from("integration_outbox").update({ status: "pending", available_at: new Date(Date.now() + 60 * 60_000).toISOString(), last_error: "Campanha pausada por governança ou qualidade." }).eq("id", event.id);
+            continue;
+          }
+          if (suppression) {
+            await Promise.all([
+              admin.from("messages").update({ status: "failed", error: "Contato bloqueado por opt-out." }).eq("id", message.id),
+              admin.from("lead_reactivation_contacts").update({ status: "blocked", block_reason: "opt_out" }).eq("batch_id", templateItem.batchId).eq("message_id", message.id),
+              admin.from("integration_outbox").update({ status: "delivered", delivered_at: now, last_error: "Bloqueado por opt-out antes do envio." }).eq("id", event.id),
+            ]);
+            continue;
+          }
+        }
         const template = templateItem?.name ? { name: templateItem.name, language: templateItem.language || "pt_BR" } : undefined;
         const externalMessageId = await deliverWhatsApp(message.recipient, message.content, template);
         await admin.from("messages").update({ status: "sent", sent_at: now, external_message_id: externalMessageId, error: null }).eq("id", message.id);

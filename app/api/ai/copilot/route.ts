@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireApiIdentity } from "@/lib/security/api-auth";
+import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { buildRealEstateContext } from "@/lib/ai/real-estate-context";
 import {
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
 type CopilotRequest = {
   prompt?: unknown;
   context?: unknown;
+  leadId?: unknown;
 };
 
 function text(value: unknown, fallback = "") {
@@ -34,6 +36,7 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as CopilotRequest;
     const prompt = text(body.prompt);
+    const leadId = text(body.leadId);
 
     if (!prompt) {
       return NextResponse.json({ error: "prompt é obrigatório." }, { status: 400 });
@@ -41,6 +44,19 @@ export async function POST(request: Request) {
 
     if (prompt.length > 2000) {
       return NextResponse.json({ error: "prompt deve ter no máximo 2000 caracteres." }, { status: 400 });
+    }
+
+    let leadContext: Record<string, unknown> | null = null;
+    let persistentCopilot: { id: string; copilot_key: string; memory: unknown; interaction_count: number; learning_version: number } | null = null;
+    if (leadId) {
+      if (!/^[0-9a-f-]{36}$/i.test(leadId)) return NextResponse.json({ error: "Lead inválida." }, { status: 400 });
+      await requireLeadAccess(identity, leadId);
+      const [{ data: lead }, { data: copilot }] = await Promise.all([
+        identity.supabase.from("leads").select("id,name,status,source,score,temperature,assigned_to,development_id,next_action_at,metadata").eq("id", leadId).single(),
+        identity.supabase.from("lead_copilots").select("id,copilot_key,memory,interaction_count,learning_version").eq("lead_id", leadId).maybeSingle(),
+      ]);
+      leadContext = lead as Record<string, unknown> | null;
+      persistentCopilot = copilot;
     }
 
     const operationalContext = await buildRealEstateContext(identity);
@@ -70,12 +86,15 @@ export async function POST(request: Request) {
         "Se a pergunta não for imobiliária nem relacionada à operação Atlas, redirecione de forma breve ao escopo imobiliário.",
         "Nunca solicite ou revele secrets, tokens, cookies, service role keys ou senhas.",
         "Não exponha dados pessoais ou identifique leads em análises agregadas.",
+        "Quando houver uma lead vinculada, você é o copiloto persistente daquela lead e do corretor responsável: preserve continuidade, não misture memórias de outras leads e use o histórico apenas para orientar a próxima melhor ação.",
         `Playbook operacional:\n${REAL_ESTATE_OPERATING_PLAYBOOK.map((item) => `- ${item}`).join("\n")}`,
         `Base de mercado calibrada:\n${marketKnowledgeForPrompt()}`,
       ].join("\n"),
       prompt: [
         `Organização: ${identity.organizationId}`,
         `Snapshot operacional seguro do Atlas: ${compact(operationalContext, 12000)}`,
+        `Lead vinculada ao copiloto: ${compact(leadContext, 5000) || "nenhuma"}`,
+        `Memória persistente exclusiva desta lead: ${compact(persistentCopilot?.memory, 4000) || "ainda sem memória"}`,
         `Contexto não confiável da tela: ${compact(body.context) || "não informado"}`,
         `Pergunta: ${prompt}`,
       ].join("\n\n"),
@@ -88,6 +107,13 @@ export async function POST(request: Request) {
         organizationId: identity.organizationId,
         message: providerError instanceof Error ? providerError.message : String(providerError),
       });
+    }
+
+    if (leadId && persistentCopilot) {
+      const memory = persistentCopilot.memory && typeof persistentCopilot.memory === "object" ? persistentCopilot.memory as Record<string, unknown> : {};
+      const recent = Array.isArray(memory.recent) ? memory.recent.slice(-7) : [];
+      recent.push({ at: new Date().toISOString(), question: prompt.slice(0, 500), answer: answer.slice(0, 1500), brokerId: identity.userId });
+      await getSupabaseAdmin().from("lead_copilots").update({ memory: { ...memory, recent }, interaction_count: Number(persistentCopilot.interaction_count || 0) + 1, last_interaction_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", persistentCopilot.id).eq("organization_id", identity.organizationId);
     }
 
     return NextResponse.json({
@@ -106,6 +132,7 @@ export async function POST(request: Request) {
         operationalContext: true,
         mode,
       },
+      copilot: persistentCopilot ? { id: persistentCopilot.id, key: persistentCopilot.copilot_key, leadId, learningVersion: persistentCopilot.learning_version, persistent: true } : null,
     });
   } catch (error) {
     logger.warn("ai.copilot_failed", { error: error instanceof Error ? error.message : String(error) });

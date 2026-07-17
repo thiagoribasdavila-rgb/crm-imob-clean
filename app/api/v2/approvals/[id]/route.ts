@@ -7,6 +7,18 @@ export const dynamic = "force-dynamic";
 
 type DecisionPayload = { decision?: "approved" | "rejected"; reason?: string };
 
+function scheduledAt(index: number, dailyCap: number, intervalSeconds: number) {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value || 0);
+  const dayOffset = Math.floor(index / dailyCap);
+  const position = index % dailyCap;
+  const windowStart = new Date(Date.UTC(value("year"), value("month") - 1, value("day") + dayOffset, 12, 0, 0));
+  const start = dayOffset === 0 ? new Date(Math.max(now.getTime() + 10_000, windowStart.getTime())) : windowStart;
+  const candidate = new Date(start.getTime() + position * intervalSeconds * 1000);
+  return candidate.toISOString();
+}
+
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const identity = await requireApiIdentity(request);
@@ -73,10 +85,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
 
     if (approval.entity_type === "reactivation_batch" && approval.entity_id) {
-      const { data: contacts } = await admin.from("lead_reactivation_contacts").select("id,message_id").eq("batch_id", approval.entity_id).eq("status", "pending_approval");
+      const [{ data: contacts }, { data: batchConfig }] = await Promise.all([
+        admin.from("lead_reactivation_contacts").select("id,message_id").eq("batch_id", approval.entity_id).eq("status", "pending_approval"),
+        admin.from("lead_reactivation_batches").select("daily_cap,interval_seconds").eq("id", approval.entity_id).single(),
+      ]);
       const messageIds = (contacts ?? []).map((item) => item.message_id).filter(Boolean) as string[];
       if (body.decision === "approved" && messageIds.length) {
-        const outbox = messageIds.map((messageId) => ({ organization_id: identity.organizationId, topic: "message.send", aggregate_type: "message", aggregate_id: messageId, payload: { messageId, channel: "whatsapp", reactivationBatchId: approval.entity_id } }));
+        const dailyCap = Number(batchConfig?.daily_cap || 100);
+        const intervalSeconds = Number(batchConfig?.interval_seconds || 30);
+        const outbox = messageIds.map((messageId, index) => ({ organization_id: identity.organizationId, topic: "message.send", aggregate_type: "message", aggregate_id: messageId, available_at: scheduledAt(index, dailyCap, intervalSeconds), payload: { messageId, channel: "whatsapp", reactivationBatchId: approval.entity_id } }));
         const { error: outboxError } = await admin.from("integration_outbox").insert(outbox);
         if (outboxError) throw outboxError;
         await Promise.all([
