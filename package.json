@@ -122,6 +122,7 @@
     "preflight:production": "node scripts/preflight-production.mjs",
     "package:hostinger": "node scripts/package-hostinger.mjs && node scripts/verify-hostinger-package.mjs",
     "final-release:check": "node scripts/check-final-hostinger-release.mjs",
+    "final-improvement:check": "node scripts/check-final-improvement-program.mjs",
     "smoke:hostinger": "node scripts/smoke-hostinger-release.mjs",
     "worker:run": "node scripts/run-workers.mjs",
     "reports:meta-daily": "node scripts/run-daily-meta-report.mjs",

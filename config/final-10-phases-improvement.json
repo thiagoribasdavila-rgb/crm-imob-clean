@@ -1,0 +1,10 @@
+{
+  "program": "atlas-v3-final-improvement",
+  "phases": 10,
+  "current_phase": 1,
+  "completed": [1],
+  "dimensions": ["visual", "operational", "execution"],
+  "production_requires": ["phase_10", "executive_go", "hostinger_smoke"],
+  "automatic_deploy": false,
+  "shared_gates": ["typecheck", "lint", "build", "api_security", "secret_scan"]
+}

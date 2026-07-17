@@ -1,0 +1,47 @@
+# Programa final de melhoria do Atlas V3 — 10 fases
+
+O programa pós-V3 melhora visual, operação e execução sem alterar permissões, dados reais ou integrações aprovadas. Cada fase precisa passar por TypeScript, lint, build, segurança de APIs e varredura de segredos. Produção continua dependente do GO executivo.
+
+## 1. Auditoria global e linha de base — concluída
+
+Inventariar superfície ativa, complexidade, carregamentos, limites de rota, componentes duplicados, custo visual e critérios mensuráveis. Entrega: `FINAL_PHASE_1_SYSTEM_AUDIT.md`.
+
+## 2. Design system e identidade única
+
+Consolidar tokens, cards, botões, formulários, tabelas, modais e feedback. Remover componentes visuais antigos sem uso. Aceite: nenhuma nova variação ad hoc nas telas críticas; contraste, foco e movimento reduzido aprovados.
+
+## 3. Navegação, busca e mobile
+
+Otimizar shell, menu por perfil, busca global, atalhos, breadcrumbs, safe areas, gestos e telas pequenas. Aceite: tarefas principais executáveis em 390 px sem rolagem horizontal indevida.
+
+## 4. CRM e Lead 360
+
+Dividir telas grandes, adotar carregamento progressivo, próxima melhor ação, filtros persistentes, seleção em massa e histórico rápido. Aceite: carteira e lead abrem com conteúdo prioritário antes dos blocos secundários.
+
+## 5. Pipeline, Kanban e produtividade
+
+Evoluir drag-and-drop, atualização otimista, virtualização, SLAs, tarefas e agenda. Aceite: movimentações instantâneas com rollback visual e nenhuma perda de estado.
+
+## 6. Projetos e incorporadoras
+
+Unificar busca, materiais, tabela, espelho, estoque, versões e fluxo de pagamento. Aceite: corretor encontra o pacote comercial vigente em até três interações.
+
+## 7. Dashboards e decisões por perfil
+
+Reduzir ruído e separar claramente corretor, gerente, superintendente e diretor. Aceite: cada perfil recebe até cinco prioridades acionáveis e relatórios dia/semana/mês no próprio escopo.
+
+## 8. IA, automações e integrações
+
+Aplicar streaming, cancelamento, cache seguro, fallback econômico, filas, saúde e custo por ação. Aceite: nenhuma IA bloqueia a operação; toda ação externa mantém aprovação, auditoria e fallback.
+
+## 9. Confiabilidade, desempenho e homologação
+
+Medir banco, APIs, filas, renderização, acessibilidade, mobile, dois tenants e quatro perfis. Aceite: zero bloqueio crítico, restore e rollback comprovados, snapshots 97–99 atualizados.
+
+## 10. Regressão e pacote Hostinger final
+
+Executar build completo, smoke HTTPS, manifesto, inventário interno, checksum reproduzível e runbook. Aceite: GO executivo registrado e ZIP verificado sem segredos ou dados pessoais.
+
+## Ordem de execução
+
+As fases seguem 1 → 10. Correções críticas podem antecipar trabalho, mas nenhuma fase posterior mascara pendências anteriores. Percentuais representam evidência executada, não intenção.
