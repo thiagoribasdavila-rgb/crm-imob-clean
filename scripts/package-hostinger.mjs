@@ -19,7 +19,7 @@ execFileSync("tar", ["-xf", "-", "-C", stage], { input: archive });
 
 for (const relativePath of legacyRoutePaths) rmSync(join(stage, relativePath), { recursive: true, force: true });
 for (const relativePath of [
-  "AGENTS.md", "CLAUDE.md", ".github", "core", "logs",
+  "AGENTS.md", "CLAUDE.md", "core", "logs",
   "public/file.svg", "public/globe.svg", "public/next.svg", "public/vercel.svg", "public/window.svg",
 ]) rmSync(join(stage, relativePath), { recursive: true, force: true });
 
