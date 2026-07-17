@@ -464,7 +464,19 @@ Pendência externa: aplicar a migration em homologação e testar diretor, super
 
 Pendência externa: em homologação, comprovar 401 sem sessão, 403 fora da função/carteira, 400 para entrada inválida, 429 após limite e isolamento entre duas organizações; conferir os registros por correlação sem tokens ou dados pessoais.
 
-Próxima fase: **Fase 19 — proteção contra abuso**, consolidando rate limit distribuído, deduplicação, idempotência e endurecimento adicional dos webhooks.
+## Fase 19 — Proteção contra abuso
+
+**Estado:** 100% implementada e aprovada localmente; aplicação da migration e ensaio concorrente em homologação pendentes.
+
+**Evolução desta fase:** os controles críticos deixaram de depender somente da memória de um processo Node. Meta, WhatsApp e envio externo agora compartilham cotas atômicas no Postgres, mantendo a proteção após reinício e entre múltiplas instâncias da Hostinger. O contador falha de forma segura com 503 quando a proteção persistente não pode ser confirmada.
+
+**Idempotência e deduplicação:** envio externo exige `Idempotency-Key`, associa a chave ao hash da requisição e reproduz a resposta anterior sem executar novamente; chaves simultâneas ou reutilizadas com outro conteúdo são bloqueadas. Mensagens recebidas pelo WhatsApp ganham unicidade por organização, canal e identificador externo, enquanto o Meta mantém a deduplicação de `leadgen_id`. Ambos validam HMAC sobre o corpo bruto.
+
+**Governança:** tabela de cotas sem acesso de `anon`/`authenticated`, funções privilegiadas com `search_path` vazio e execução exclusiva do `service_role`, expiração de chaves e limpeza incremental de buckets. O contrato está em `config/abuse-protection.json`, o gate em `npm run abuse-protection:check` e o roteiro em `docs/ABUSE_PROTECTION_PHASE_19.md`.
+
+Pendência externa: verificar duplicidades antigas de IDs do WhatsApp, aplicar a migration em homologação e testar duas instâncias concorrentes, replay, conflito de chave, assinatura inválida e tempestade controlada de eventos.
+
+Próxima fase: **Fase 20 — auditoria de segurança**, consolidando evidências, testes ofensivos controlados, dependências, cabeçalhos, banco e critérios finais do bloco de segurança.
 
 ## Painel das 100 fases
 

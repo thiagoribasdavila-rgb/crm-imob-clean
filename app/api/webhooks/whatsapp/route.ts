@@ -4,6 +4,7 @@ import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { assessCustomerExperience } from "@/lib/atlas/customer-experience";
+import { enforceDistributedRateLimit } from "@/lib/security/abuse-protection";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const distributed = await enforceDistributedRateLimit(request, { scope: "whatsapp-webhook", limit: 300, windowSeconds: 60 });
+  if (!distributed.allowed) return distributed.response;
   const rate = checkRateLimit(clientKey(request, "whatsapp-webhook"), { limit: 300, windowMs: 60_000 });
   if (!rate.allowed) return NextResponse.json({ error: "Rate limit." }, { status: 429 });
 
@@ -48,6 +51,7 @@ export async function POST(request: Request) {
 
     const admin = getSupabaseAdmin();
     let accepted = 0;
+    let duplicates = 0;
 
     for (const entry of body.entry ?? []) {
       for (const change of entry.changes ?? []) {
@@ -135,6 +139,7 @@ export async function POST(request: Request) {
             external_message_id: incoming.id,
             created_at: incoming.timestamp ? new Date(Number(incoming.timestamp) * 1000).toISOString() : new Date().toISOString(),
           }).select("id").single();
+          if (messageError?.code === "23505") { duplicates += 1; continue; }
           if (messageError) throw messageError;
           if (!optedOut && inboundMessage?.id) {
             const { error: journeyError } = await admin.rpc("route_nightly_journey_reply", { p_organization_id: integration.organization_id, p_conversation_id: conversationId, p_message_id: inboundMessage.id });
@@ -161,8 +166,8 @@ export async function POST(request: Request) {
       }
     }
 
-    logger.info("whatsapp.webhook_processed", { accepted });
-    return NextResponse.json({ received: true, accepted });
+    logger.info("whatsapp.webhook_processed", { accepted, duplicates });
+    return NextResponse.json({ received: true, accepted, duplicates });
   } catch (error) {
     logger.error("whatsapp.webhook_failed", error);
     return NextResponse.json({ error: "Falha ao processar webhook." }, { status: 500 });

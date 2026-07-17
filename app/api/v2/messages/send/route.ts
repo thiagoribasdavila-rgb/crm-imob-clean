@@ -4,6 +4,7 @@ import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { normalizeEmail, normalizePhoneE164 } from "@/lib/atlas/data-contracts";
+import { claimIdempotency, completeIdempotency, enforceDistributedRateLimit, requestFingerprint } from "@/lib/security/abuse-protection";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,8 @@ type Payload = {
 };
 
 export async function POST(request: Request) {
+  const distributed = await enforceDistributedRateLimit(request, { scope: "v2-message-send", limit: 30, windowSeconds: 60 });
+  if (!distributed.allowed) return distributed.response;
   const rate = checkRateLimit(clientKey(request, "v2-message-send"), { limit: 30, windowMs: 60_000 });
   if (!rate.allowed) {
     return NextResponse.json(
@@ -37,6 +40,9 @@ export async function POST(request: Request) {
     if (!payload.conversationId || !payload.channel || !payload.recipient || !payload.content?.trim()) {
       return NextResponse.json({ error: "conversationId, channel, recipient e content são obrigatórios." }, { status: 400 });
     }
+    const requestHash = requestFingerprint(payload);
+    const idempotency = await claimIdempotency({ organizationId: identity.organizationId, scope: "v2.message.send", key: request.headers.get("idempotency-key"), requestHash });
+    if (idempotency.state !== "claimed") return idempotency.response;
 
     const admin = getSupabaseAdmin();
     const { data: conversation, error: conversationError } = await admin
@@ -103,8 +109,10 @@ export async function POST(request: Request) {
       requiresApproval,
     });
 
+    const responseBody = { id: message.id, status: requiresApproval ? "pending_approval" : "queued" };
+    await completeIdempotency({ organizationId: identity.organizationId, scope: "v2.message.send", key: idempotency.key, requestHash, status: 202, body: responseBody });
     return NextResponse.json(
-      { id: message.id, status: requiresApproval ? "pending_approval" : "queued" },
+      responseBody,
       { status: 202, headers: { "X-RateLimit-Remaining": String(rate.remaining) } },
     );
   } catch (error) {

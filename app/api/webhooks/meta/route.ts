@@ -3,6 +3,7 @@ import { verifyWebhookSignature } from "@/lib/security/webhook-signature";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { logger } from "@/lib/observability/logger";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { enforceDistributedRateLimit } from "@/lib/security/abuse-protection";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const distributed = await enforceDistributedRateLimit(request, { scope: "meta-webhook", limit: 120, windowSeconds: 60 });
+  if (!distributed.allowed) return distributed.response;
   const rate = checkRateLimit(clientKey(request, "meta-webhook"), { limit: 120, windowMs: 60_000 });
   if (!rate.allowed) {
     return NextResponse.json(
