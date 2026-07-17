@@ -17,12 +17,28 @@ function containsSecret(value: unknown, depth = 0): boolean {
   );
 }
 
+function sanitizeForResponse(value: unknown, depth = 0): unknown {
+  if (depth > 8 || !value || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map((item) => sanitizeForResponse(item, depth + 1));
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([key]) => !/token|secret|password|private.?key|client.?secret|api.?key/i.test(key)).map(([key, nested]) => [key, sanitizeForResponse(nested, depth + 1)]));
+}
+
+function environmentReadiness(provider: string) {
+  const readiness: Record<string, boolean> = {
+    meta: Boolean(process.env.META_APP_SECRET && process.env.META_LEAD_ACCESS_TOKEN),
+    google_ads: Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN), youtube: Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN),
+    tiktok_ads: Boolean(process.env.TIKTOK_ADS_ACCESS_TOKEN), website: Boolean(process.env.ATLAS_BASE_URL), webhook: Boolean(process.env.ATLAS_CRON_SECRET),
+  };
+  return readiness[provider] ?? false;
+}
+
 export async function GET(request: NextRequest) {
   const access = await requireAccessContext(request);
   if (!access.ok) return access.response;
   const { data, error } = await access.supabase.from("integrations").select("id,provider,name,status,external_account_id,config,last_sync_at,last_error,updated_at").order("provider");
   if (error) return NextResponse.json({ error: "Não foi possível ler as integrações." }, { status: 500 });
-  return NextResponse.json({ catalog: integrationCatalog, connections: data ?? [], canManage: canManage(access.access.profile.commercialRole, access.access.profile.role) });
+  const connections = (data ?? []).map((item) => ({ ...item, config: sanitizeForResponse(item.config) }));
+  return NextResponse.json({ catalog: integrationCatalog.map((item) => ({ ...item, environmentReady: environmentReadiness(item.provider) })), connections, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role), policy: { secretsInDatabase: false, connectedRequiresVerifiedTest: true, humanApprovalForExternalActions: true } });
 }
 
 export async function POST(request: NextRequest) {

@@ -49,6 +49,8 @@ const experienceMigration = readFileSync(resolve(root, "supabase/migrations/2026
 const paymentRuleMigration = readFileSync(resolve(root, "supabase/migrations/20260717002702_developer_payment_flow_rules.sql"), "utf8");
 const commercialSimulation = readFileSync(resolve(root, "app/api/v1/leads/[id]/commercial-simulation/route.ts"), "utf8");
 const readinessRoute = readFileSync(resolve(root, "app/api/v1/ready/route.ts"), "utf8");
+const integrationsRoute = readFileSync(resolve(root, "app/api/v1/integrations/route.ts"), "utf8");
+const integrationsPage = readFileSync(resolve(root, "app/(crm)/integrations/page.tsx"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -97,7 +99,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("120 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("122 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -172,6 +174,8 @@ const checks = [
   ["regra de pagamento preserva versões", paymentRuleMigration.includes("developer_payment_flow_rules") && paymentRuleMigration.includes("version integer") && paymentRuleMigration.includes("where active")],
   ["simulação fotografa regra vigente", commercialSimulation.includes("rule_snapshot") && commercialSimulation.includes("Simulação preliminar") && commercialSimulation.includes("valid_until")],
   ["preflight cobre APIs da Hostinger", readinessRoute.includes("metaConversions") && readinessRoute.includes("nightlyTemplate") && readinessRoute.includes('=== "hostinger"')],
+  ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
+  ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
