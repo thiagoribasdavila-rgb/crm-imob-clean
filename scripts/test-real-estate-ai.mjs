@@ -80,6 +80,10 @@ const hostingerHealthMigration = readFileSync(resolve(root, "supabase/migrations
 const hostingerHealthRoute = readFileSync(resolve(root, "app/api/v1/governance/hostinger-health/route.ts"), "utf8");
 const hostingerHealthPage = readFileSync(resolve(root, "app/(crm)/integrations/hostinger/page.tsx"), "utf8");
 const pm2Config = readFileSync(resolve(root, "ecosystem.config.cjs"), "utf8");
+const secretsRoute = readFileSync(resolve(root, "app/api/v1/governance/secrets/route.ts"), "utf8");
+const secretsPage = readFileSync(resolve(root, "app/(crm)/atlas-v3/governance/page.tsx"), "utf8");
+const secretsScanner = readFileSync(resolve(root, "scripts/scan-secrets.mjs"), "utf8");
+const packageConfig = readFileSync(resolve(root, "package.json"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -128,7 +132,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("186 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("192 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -269,6 +273,12 @@ const checks = [
   ["ensaio Hostinger é exclusivo da diretoria", hostingerHealthMigration.includes("commercial_role = 'director'") && hostingerHealthRoute.includes("Somente a diretoria")],
   ["PM2 possui logs separados e datados", pm2Config.includes("log_date_format") && pm2Config.includes("atlas-v3-out.log") && pm2Config.includes("atlas-v3-error.log")],
   ["Command Center mede recuperação", hostingerHealthPage.includes("recovery_seconds") && hostingerHealthPage.includes("Comprovar retorno") && hostingerHealthPage.includes("Nenhum reinício real comprovado")],
+  ["auditoria de segredos nunca retorna valores", secretsRoute.includes("valuesReturned: false") && secretsPage.includes("Valores invisíveis")],
+  ["inventário diferencia público e servidor", secretsRoute.includes('scope: "public"') && secretsRoute.includes('scope: "server"')],
+  ["segredos são exclusivos da diretoria", secretsRoute.includes("exclusiva da diretoria") && secretsRoute.includes("commercialRole")],
+  ["scanner bloqueia tokens conhecidos", secretsScanner.includes("PRIVATE KEY") && secretsScanner.includes("OpenAI") && secretsScanner.includes("GitHub")],
+  ["scanner bloqueia variável pública indevida", secretsScanner.includes("allowedPublic") && secretsScanner.includes("variável pública não aprovada")],
+  ["scanner antecede build de produção", packageConfig.includes('"validate": "npm run security:secrets && npm run enterprise:check')],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
