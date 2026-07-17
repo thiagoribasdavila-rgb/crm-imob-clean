@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { safeAuthDestination } from "@/lib/auth/safe-redirect";
 
@@ -22,6 +22,23 @@ async function withLoginTimeout<T>(operation: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("LOGIN_TIMEOUT")), LOGIN_TIMEOUT_MS); });
   try { return await Promise.race([operation, timeout]); } finally { if (timer) clearTimeout(timer); }
+}
+
+async function confirmServerSession(): Promise<Response> {
+  let lastResponse: Response | undefined;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    lastResponse = await withLoginTimeout(fetch("/api/v1/auth/me", {
+      cache: "no-store",
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    }));
+
+    if (lastResponse.ok || lastResponse.status !== 401) return lastResponse;
+    await new Promise((resolve) => window.setTimeout(resolve, 200 * (attempt + 1)));
+  }
+
+  return lastResponse!;
 }
 
 function EyeIcon({ hidden }: { hidden: boolean }) {
@@ -41,7 +58,6 @@ function EyeIcon({ hidden }: { hidden: boolean }) {
 }
 
 function LoginExperience() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -72,10 +88,21 @@ function LoginExperience() {
     }
     void Promise.all([
       fetch("/api/health", { cache: "no-store" }).then((response) => { if (active) setSystemStatus(response.ok ? "online" : "offline"); }).catch(() => { if (active) setSystemStatus("offline"); }),
-      supabase.auth.getSession().then(({ data }) => { if (active && data.session?.user) { setLoginStage("redirect"); router.replace(destination); router.refresh(); } }),
+      supabase.auth.getSession().then(async ({ data }) => {
+        if (!active || !data.session?.user) return;
+        const response = await confirmServerSession().catch(() => undefined);
+        if (!active) return;
+        if (response?.ok) {
+          setLoading(true);
+          setLoginStage("redirect");
+          window.location.replace(destination);
+        } else if (response?.status === 401 || response?.status === 403) {
+          await supabase.auth.signOut();
+        }
+      }),
     ]);
     return () => { active = false; };
-  }, [destination, router]);
+  }, [destination]);
 
   function updateCapsLock(event: KeyboardEvent<HTMLInputElement>) {
     setCapsLock(event.getModifierState("CapsLock"));
@@ -101,6 +128,7 @@ function LoginExperience() {
     setLoading(true);
     setLoginStage("auth");
     setError("");
+    let redirecting = false;
 
     try {
       const { data, error: signInError } = await withLoginTimeout(supabase.auth.signInWithPassword({
@@ -130,21 +158,22 @@ function LoginExperience() {
       }
 
       setLoginStage("profile");
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("organization_id,active")
-        .eq("id", data.session.user.id)
-        .maybeSingle();
+      const sessionResponse = await confirmServerSession();
 
-      if (profileError || !profile?.organization_id) {
+      if (sessionResponse.status === 401) {
         await supabase.auth.signOut();
-        setError("Usuário sem organização vinculada. Peça ao administrador para concluir o cadastro do perfil.");
+        setError("A sessão foi autenticada, mas não chegou ao servidor. Atualize a página e tente novamente.");
         return;
       }
 
-      if (profile.active === false) {
+      if (sessionResponse.status === 403) {
         await supabase.auth.signOut();
-        setError("Usuário inativo. Peça ao administrador para reativar o acesso.");
+        setError("Seu acesso ainda não está liberado para esta operação. Peça ao administrador para revisar seu perfil e organização.");
+        return;
+      }
+
+      if (!sessionResponse.ok) {
+        setError("O acesso foi autenticado, mas o painel não pôde ser preparado. Tente novamente em instantes.");
         return;
       }
 
@@ -155,13 +184,15 @@ function LoginExperience() {
       }
 
       setLoginStage("redirect");
-      router.replace(destination);
-      router.refresh();
+      redirecting = true;
+      window.location.assign(destination);
     } catch (cause) {
       setError(cause instanceof Error && cause.message === "LOGIN_TIMEOUT" ? "A validação demorou mais que o esperado. Sua senha não foi alterada; tente novamente." : "Ocorreu uma falha inesperada. Verifique sua conexão e tente novamente.");
     } finally {
-      setLoading(false);
-      setLoginStage((current) => current === "redirect" ? current : "idle");
+      if (!redirecting) {
+        setLoading(false);
+        setLoginStage("idle");
+      }
     }
   }
 

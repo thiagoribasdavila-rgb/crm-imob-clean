@@ -1,11 +1,11 @@
 {
-  "version": 1,
+  "version": 2,
   "canonicalPath": "/login",
   "defaultDestination": "/dashboard",
   "timeoutMs": 15000,
   "rememberEmailDefault": false,
   "rememberPassword": false,
   "requiredStates": ["checking", "authenticating", "validating-profile", "redirecting", "error"],
-  "requiredControls": ["safe-internal-redirect", "active-session-redirect", "profile-organization-check", "active-profile-check", "rate-limit-message", "network-message", "caps-lock-warning", "password-visibility", "recovery-link", "keyboard-submit", "aria-live-error"],
+  "requiredControls": ["safe-internal-redirect", "ssr-cookie-session", "server-session-confirmation", "clean-full-navigation", "active-session-redirect", "profile-organization-check", "active-profile-check", "rate-limit-message", "network-message", "caps-lock-warning", "password-visibility", "recovery-link", "keyboard-submit", "aria-live-error"],
   "externalHomologation": ["valid-user", "invalid-password", "inactive-user", "missing-profile", "expired-session", "mobile-device"]
 }

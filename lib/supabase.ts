@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabasePublicConfig } from "@/utils/supabase/env";
 
 let instance: SupabaseClient | null = null;
@@ -8,13 +9,9 @@ export function getSupabase(): SupabaseClient {
 
   const { url, key } = getSupabasePublicConfig();
 
-  instance = createClient(url, key, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  });
+  // The SSR browser client persists the session in cookies. The proxy and
+  // Server Components read those same cookies, preventing post-login loops.
+  instance = createBrowserClient(url, key);
 
   return instance;
 }

@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const contract = JSON.parse(readFileSync(resolve(root, "config/login-experience.json"), "utf8"));
 const login = readFileSync(resolve(root, "app/(auth)/login/page.tsx"), "utf8");
+const browserSupabase = readFileSync(resolve(root, "lib/supabase.ts"), "utf8");
 const redirect = readFileSync(resolve(root, "lib/auth/safe-redirect.ts"), "utf8");
 const callback = readFileSync(resolve(root, "app/auth/callback/route.ts"), "utf8");
 const middleware = readFileSync(resolve(root, "utils/supabase/middleware.ts"), "utf8");
@@ -15,7 +16,9 @@ if (contract.canonicalPath !== "/login" || legacyGuard.includes("/auth/login")) 
 if (!redirect.includes('value.startsWith("//")') || !redirect.includes('value.includes("\\\\")') || !redirect.includes("AUTH_PATHS.has(pathname)")) errors.push("redirecionamento interno não bloqueia origem externa ou loop de autenticação");
 if (!login.includes("withLoginTimeout") || !login.includes("LOGIN_TIMEOUT_MS = 15_000")) errors.push("login sem limite de espera");
 if (!login.includes("setRememberEmail] = useState(false)") || login.includes("localStorage.setItem") === false) errors.push("memória de e-mail não exige escolha");
-if (!login.includes("signInWithPassword") || !login.includes('.select("organization_id,active")') || !login.includes("profile.active === false")) errors.push("autenticação não valida perfil e organização");
+if (!browserSupabase.includes('createBrowserClient') || browserSupabase.includes('persistSession: true')) errors.push("cliente do navegador não compartilha cookies com o servidor");
+if (!login.includes("signInWithPassword") || !login.includes('fetch("/api/v1/auth/me"') || !login.includes('credentials: "include"')) errors.push("autenticação não confirma sessão, perfil e organização no servidor");
+if (!login.includes("window.location.assign(destination)") || !login.includes("window.location.replace(destination)")) errors.push("redirecionamento pós-login não força navegação limpa");
 if (!login.includes('role="alert"') || !login.includes('aria-live="assertive"') || !login.includes("Caps Lock está ativado")) errors.push("feedback acessível incompleto");
 if (!login.includes("Esqueci minha senha") || !login.includes("showPassword") || !login.includes("autoComplete=\"current-password\"")) errors.push("controles essenciais ausentes");
 if (!middleware.includes('pathname.startsWith("/login") && authenticated') || !callback.includes("safeAuthDestination")) errors.push("sessão ativa ou callback sem destino seguro");
