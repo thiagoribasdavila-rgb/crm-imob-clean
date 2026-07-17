@@ -1194,6 +1194,18 @@ Pendência externa: aplicar migration e homologar oito etapas, fallback Atlas, v
 
 Próxima fase: **Fase 86 — Qualificação conversacional estruturada**, convertendo respostas autorizadas em campos, lacunas e próxima melhor pergunta sem salvar conversa bruta.
 
+## Fase 86 — Qualificação conversacional estruturada
+
+**Estado:** 100% implementada e aprovada localmente; migration e teste com atendimentos reais permanecem para homologação.
+
+**Evolução:** o corretor recebe uma pergunta por vez, escuta a lead e confirma uma resposta controlada. O sistema calcula progresso, lacunas, próxima melhor pergunta e prontidão para apresentação; o Copiloto recebe somente sinais confirmados.
+
+**Governança:** não há transcrição, áudio, mensagem, resposta livre ou inferência automática. Um perfil pertence a uma lead e ao corretor responsável, acompanha transferências e respeita RLS hierárquica e tenant. O contrato está em `config/structured-conversational-qualification.json`, o gate em `npm run conversational-qualification:check` e o roteiro em `docs/STRUCTURED_CONVERSATIONAL_QUALIFICATION_PHASE_86.md`.
+
+Pendência externa: aplicar migration e homologar oito perguntas, alteração, transferência, quatro perfis, dois tenants e uso no atendimento real.
+
+Próxima fase: **Fase 87 — Assistente de simulação comercial**, montando cenários explicáveis com regras vigentes da incorporadora e validação humana.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |

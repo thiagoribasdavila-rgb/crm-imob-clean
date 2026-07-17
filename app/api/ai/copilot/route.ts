@@ -13,6 +13,7 @@ import { generateAIText, selectCopilotTask } from "@/lib/ai/provider-router";
 import { assessAIComplexity } from "@/lib/ai/complexity";
 import { structuredMemoryFromGovernedContext } from "@/lib/ai/structured-commercial-memory";
 import { playbookForPrompt, resolveActivePlaybook } from "@/lib/ai/versioned-real-estate-playbooks";
+import { qualificationProgress } from "@/lib/ai/conversational-qualification";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,8 @@ export async function POST(request: Request) {
     if (leadId) {
       const { data: memory } = await identity.supabase.from("lead_commercial_memory_states").select("interaction_count,memory_version,intent_key,timeline_key,financing_key,objection_keys,signal_keys,stage_key,recommended_action_key,last_interaction_at,expires_at").eq("lead_id", leadId).gt("expires_at", new Date().toISOString()).maybeSingle();
       if (memory) contextPackage.sections.continuity = { interactionCount: memory.interaction_count, memoryVersion: memory.memory_version, intent: memory.intent_key, timeline: memory.timeline_key, financing: memory.financing_key, objections: memory.objection_keys, signals: memory.signal_keys, stage: memory.stage_key, recommendedAction: memory.recommended_action_key, lastInteractionAt: memory.last_interaction_at, expiresAt: memory.expires_at, previousConversationTextIncluded: false };
+      const { data: qualification } = await identity.supabase.from("lead_qualification_profiles").select("purpose_key,timeline_key,financing_key,budget_readiness_key,region_readiness_key,unit_profile_key,decision_role_key,contact_preference_key").eq("lead_id", leadId).maybeSingle();
+      if (qualification) { const profile = { purpose: qualification.purpose_key||undefined, timeline: qualification.timeline_key||undefined, financing: qualification.financing_key||undefined, budget_readiness: qualification.budget_readiness_key||undefined, region_readiness: qualification.region_readiness_key||undefined, unit_profile: qualification.unit_profile_key||undefined, decision_role: qualification.decision_role_key||undefined, contact_preference: qualification.contact_preference_key||undefined }; (contextPackage.sections as Record<string, unknown>).qualification = { profile, ...qualificationProgress(profile), rawConversationStored: false, brokerConfirmed: true }; }
     }
     const operationalContext = contextPackage.sections.operation;
     const leadContext = contextPackage.sections.lead as { stage?: string } | undefined;
