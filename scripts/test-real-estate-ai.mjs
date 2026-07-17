@@ -91,6 +91,7 @@ const legacyReadyRoute = readFileSync(resolve(root, "app/api/ready/route.ts"), "
 const openAITestRoute = readFileSync(resolve(root, "app/api/ai/openai-test/route.ts"), "utf8");
 const openAITraceMigration = readFileSync(resolve(root, "supabase/migrations/20260717012622_openai_request_traceability.sql"), "utf8");
 const aiSettingsPage = readFileSync(resolve(root, "app/(crm)/settings/ai/page.tsx"), "utf8");
+const perplexityTestRoute = readFileSync(resolve(root, "app/api/ai/perplexity-test/route.ts"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -139,7 +140,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("204 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("210 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -298,6 +299,12 @@ const checks = [
   ["requisição OpenAI possui rastreio", providerRouter.includes("providerRequestId: body.id") && openAITraceMigration.includes("provider_request_id")],
   ["consumo do teste OpenAI é persistido", providerRouter.includes("recordUsage(request, await generateOpenAI(request))") && openAITestRoute.includes("measured: true")],
   ["painel comprova modelo latência e tokens", aiSettingsPage.includes("Testar OpenAI real") && aiSettingsPage.includes("providerRequestId") && aiSettingsPage.includes("totalTokens")],
+  ["Perplexity usa endpoint Sonar atual", providerRouter.includes("https://api.perplexity.ai/v1/sonar")],
+  ["teste Perplexity não aceita fallback", perplexityTestRoute.includes('result.provider !== "perplexity"') && perplexityTestRoute.includes("fallbackUsed: false")],
+  ["teste Perplexity bloqueia PII", providerRouter.includes('feature: "perplexity-homologation"') && providerRouter.includes("containsPersonalData: false")],
+  ["teste Perplexity exige fontes HTTPS", perplexityTestRoute.includes("citations.length === 0") && perplexityTestRoute.includes('/^https:\\/\\//i')],
+  ["pesquisa Perplexity é rastreável e medida", providerRouter.includes("providerRequestId: body.id") && perplexityTestRoute.includes("measured: true")],
+  ["painel Perplexity abre fontes", aiSettingsPage.includes("Testar Perplexity real") && aiSettingsPage.includes("researchResult.citations.map") && aiSettingsPage.includes('target="_blank"')],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

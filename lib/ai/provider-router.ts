@@ -49,13 +49,13 @@ async function generatePerplexity(input: GenerateInput): Promise<AIProviderResul
   if (!apiKey) throw new Error("PERPLEXITY_API_KEY não configurada.");
   const model = process.env.ATLAS_RESEARCH_MODEL || "sonar";
   const startedAt = Date.now();
-  const response = await fetch("https://api.perplexity.ai/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model, messages: [{ role: "system", content: input.system }, { role: "user", content: input.prompt }], search_context_size: "low" }), signal: withTimeout(input.timeoutMs ?? 30_000) });
-  const body = await response.json() as { error?: { message?: string }; choices?: Array<{ message?: { content?: string } }>; citations?: string[]; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } };
+  const response = await fetch("https://api.perplexity.ai/v1/sonar", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model, messages: [{ role: "system", content: input.system }, { role: "user", content: input.prompt }], search_context_size: "low" }), signal: withTimeout(input.timeoutMs ?? 30_000) });
+  const body = await response.json() as { id?: string; error?: { message?: string }; choices?: Array<{ message?: { content?: string } }>; citations?: string[]; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } };
   if (!response.ok) throw new Error(body.error?.message || `Perplexity HTTP ${response.status}`);
   const text = body.choices?.[0]?.message?.content?.trim();
   if (!text) throw new Error("Perplexity retornou resposta vazia.");
   const usage = { inputTokens: body.usage?.prompt_tokens ?? 0, outputTokens: body.usage?.completion_tokens ?? 0, totalTokens: body.usage?.total_tokens ?? 0 };
-  return { text, provider: "perplexity", model, latencyMs: Date.now() - startedAt, citations: body.citations ?? [], usage };
+  return { text, provider: "perplexity", model, latencyMs: Date.now() - startedAt, citations: body.citations ?? [], providerRequestId: body.id || response.headers.get("x-request-id") || undefined, usage };
 }
 
 export function aiProviderReadiness() {
@@ -82,4 +82,9 @@ export async function generateAIText(input: GenerateInput): Promise<AIProviderRe
 export async function testOpenAIConnection(input: Pick<GenerateInput, "organizationId" | "userId">) {
   const request: GenerateInput = { ...input, task: "fast", feature: "openai-homologation", containsPersonalData: false, timeoutMs: 30_000, system: "Você é o teste técnico do Atlas. Não execute ações e não solicite dados pessoais.", prompt: "Responda somente ATLAS_OPENAI_OK para confirmar a conexão." };
   return recordUsage(request, await generateOpenAI(request));
+}
+
+export async function testPerplexityConnection(input: Pick<GenerateInput, "organizationId" | "userId">) {
+  const request: GenerateInput = { ...input, task: "research", feature: "perplexity-homologation", containsPersonalData: false, timeoutMs: 30_000, system: "Você testa pesquisa imobiliária do Atlas. Use apenas fontes públicas, cite URLs e não solicite dados pessoais.", prompt: "Indique dois indicadores públicos úteis para analisar o mercado imobiliário brasileiro e cite as fontes." };
+  return recordUsage(request, await generatePerplexity(request));
 }
