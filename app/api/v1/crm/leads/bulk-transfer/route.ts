@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
   const targetOwnerId = typeof body.targetOwnerId === "string" ? body.targetOwnerId : "";
   const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 500) : "";
 
-  if (!leadIds.length || leadIds.length > 200 || !UUID.test(targetOwnerId)) {
-    return apiError("INVALID_TRANSFER", "Selecione de 1 a 200 leads e um destino válido.", access.meta, {
+  if (!leadIds.length || leadIds.length > 200 || !UUID.test(targetOwnerId) || reason.length < 5) {
+    return apiError("INVALID_TRANSFER", "Selecione de 1 a 200 leads, um destino válido e informe o motivo.", access.meta, {
       status: 400,
       headers: rate.headers,
     });
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     p_organization_id: access.access.organization.id,
     p_lead_ids: leadIds,
     p_target_owner_id: targetOwnerId,
-    p_reason: reason || null,
+    p_reason: reason,
   });
 
   if (error) {

@@ -55,6 +55,8 @@ const recoveryRoute = readFileSync(resolve(root, "app/api/auth/password-recovery
 const authCallback = readFileSync(resolve(root, "app/auth/callback/route.ts"), "utf8");
 const forgotPassword = readFileSync(resolve(root, "app/(auth)/forgot-password/page.tsx"), "utf8");
 const crmLeadsRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/route.ts"), "utf8");
+const bulkTransferRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/bulk-transfer/route.ts"), "utf8");
+const teamTransferMigration = readFileSync(resolve(root, "supabase/migrations/20260717004248_atomic_team_bulk_transfer.sql"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -103,7 +105,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("128 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("131 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -186,6 +188,9 @@ const checks = [
   ["superintendente alterna carteiras de gerentes", crmLeadsRoute.includes("team_owner") && crmLeadsRoute.includes("descendantIds")],
   ["gerente paralelo é bloqueado", crmLeadsRoute.includes("TEAM_OUT_OF_SCOPE") && crmLeadsRoute.includes("access.supabase")],
   ["filtro individual preserva corretor", leadIntelligencePage.includes("assigned_to") || leadsPortfolioPage.includes('params.set("assigned_to", broker)')],
+  ["transferência de equipe mantém corretor único", teamTransferMigration.includes("actual_target") && teamTransferMigration.includes("O gerente de destino não possui corretores ativos")],
+  ["transferência em massa é atômica", teamTransferMigration.includes("for update") && teamTransferMigration.includes("accessible_count <> requested_count")],
+  ["transferência exige motivo auditável", bulkTransferRoute.includes("reason.length < 5") && teamTransferMigration.includes("lead_transfer_items")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

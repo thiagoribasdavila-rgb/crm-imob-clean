@@ -431,8 +431,8 @@ export default function LeadsPage() {
             <option value="">Escolha gerente ou corretor</option>
             {transferTargets.map((profile) => <option key={profile.id} value={profile.id}>{profile.full_name || "Usuário sem nome"} · {profile.commercial_role || profile.role}</option>)}
           </select>
-          <input className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white" value={transferReason} onChange={(event) => setTransferReason(event.target.value)} placeholder="Motivo (opcional)" maxLength={500} />
-          <button type="button" className="atlas-button-primary" disabled={!transferTarget || transferring} onClick={transferSelected}>{transferring ? "Transferindo..." : "Confirmar transferência"}</button>
+          <input className="min-h-11 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white" value={transferReason} onChange={(event) => setTransferReason(event.target.value)} placeholder="Motivo da transferência" minLength={5} maxLength={500} />
+          <button type="button" className="atlas-button-primary" disabled={!transferTarget || transferReason.trim().length < 5 || transferring} onClick={transferSelected}>{transferring ? "Transferindo..." : "Confirmar transferência"}</button>
           <button type="button" className="atlas-button-secondary" onClick={() => setSelected(new Set())}>Cancelar</button>
         </section>
       ) : null}
