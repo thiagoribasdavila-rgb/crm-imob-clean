@@ -107,7 +107,7 @@ export default function SalesPage() {
   return (
     <div className="space-y-6">
       <div className="relative overflow-hidden rounded-[26px] border border-white/[.08] bg-white/[.025] p-6 pr-40">
-        <Image src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas" width={120} height={180} className="pointer-events-none absolute -bottom-12 right-5 h-auto w-28 drop-shadow-[0_18px_18px_rgba(0,0,0,.42)]" />
+        <Image src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas" width={84} height={126} className="pointer-events-none absolute -bottom-8 right-5 h-auto w-20 opacity-70 drop-shadow-[0_12px_14px_rgba(0,0,0,.32)]" />
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">Revenue engine</p>
         <h1 className="mt-2 text-3xl font-black">Vendas e oportunidades</h1>
         <p className="mt-2 text-zinc-400">Visão consolidada do VGV, previsão ponderada e negócios em andamento.</p>

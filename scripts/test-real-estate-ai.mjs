@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = process.cwd();
+const globalsCss = readFileSync(resolve(root, "app/globals.css"), "utf8");
 const route = readFileSync(resolve(root, "app/api/ai/copilot/route.ts"), "utf8");
 const exclusiveCopilotMigration = readFileSync(resolve(root, "supabase/migrations/20260717014000_atomic_exclusive_lead_copilot_memory.sql"), "utf8");
 const knowledge = readFileSync(resolve(root, "lib/ai/real-estate-knowledge.ts"), "utf8");
@@ -498,6 +499,7 @@ const checks = [
   ["corretor recebe três prioridades diárias explicadas", pipelinePage.includes("Comece por aqui") && pipelinePage.includes("dailyFocus") && pipelinePage.includes("As três ações com maior impacto")],
   ["card orienta próxima melhor ação", pipelinePage.includes("brokerGuidance") && pipelinePage.includes("Próxima melhor ação")],
   ["card oferece atalhos operacionais", pipelinePage.includes("Criar abordagem com IA") && pipelinePage.includes("Abrir WhatsApp") && pipelinePage.includes("Ligar para a lead")],
+  ["robô do pipeline permanece como detalhe visual", globalsCss.includes("width: clamp(76px, 8vw, 112px)") && globalsCss.includes("opacity: .72")],
   ["rascunho rejeita estoque indisponível na API", presentationRoute.includes("isPropertyAvailable") && presentationRoute.includes("O estoque mudou")],
   ["registro reconfirma estoque vigente", leadIntelligenceRoute.includes("isPropertyAvailable(property.status)") && leadIntelligenceRoute.includes("Atualize a seleção")],
   ["banco impede apresentação de unidade bloqueada", inventoryGuardMigration.includes("guard_property_presentation_inventory") && inventoryGuardMigration.includes("Unidade indisponível")],

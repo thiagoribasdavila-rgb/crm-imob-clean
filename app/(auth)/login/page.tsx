@@ -174,7 +174,7 @@ function LoginExperience() {
       <div className="relative mx-auto grid min-h-screen w-full max-w-[1380px] items-center gap-12 px-5 py-8 lg:grid-cols-[1.08fr_440px] lg:px-12 xl:gap-20">
         <section className="relative hidden min-h-[720px] overflow-hidden rounded-[38px] border border-white/[.06] bg-white/[.018] p-10 lg:flex lg:flex-col lg:justify-between xl:p-12">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_65%_42%,rgba(14,165,233,.13),transparent_24rem)]" />
-          <Image src="/brand/atlas-robot-assistant.png" alt="Assistente de inteligência Atlas" width={520} height={780} priority className="pointer-events-none absolute -bottom-8 right-[-46px] h-[510px] w-auto select-none object-contain opacity-95 drop-shadow-[0_35px_60px_rgba(14,165,233,.18)] xl:right-0 xl:h-[560px]" />
+          <Image src="/brand/atlas-robot-assistant.png" alt="Assistente de inteligência Atlas" width={420} height={630} priority className="pointer-events-none absolute -bottom-6 right-[-24px] h-[390px] w-auto select-none object-contain opacity-80 drop-shadow-[0_24px_42px_rgba(14,165,233,.14)] xl:right-2 xl:h-[430px]" />
           <div className="pointer-events-none absolute bottom-14 right-16 h-20 w-56 rounded-[50%] bg-sky-400/20 blur-3xl" />
           <div className="relative z-10">
           <div className="flex items-center gap-4">
