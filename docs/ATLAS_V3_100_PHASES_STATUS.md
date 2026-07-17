@@ -1290,6 +1290,18 @@ Pendência externa: aplicar migrations, criar experimento na plataforma oficial,
 
 Próxima fase: **Fase 94 — Inteligência de criativos imobiliários**, organizando mensagem, formato, projeto, público, aprovação e aprendizagem sem confundir correlação com causalidade.
 
+## Fase 94 — Inteligência de criativos imobiliários
+
+**Estado:** 100% implementada localmente; migration, arquivos e desempenho real permanecem para homologação.
+
+**Evolução:** criativos agora são versionados por projeto, incorporadora, funil, momento, ângulo, promessa, objeção e formato. Fatos diários calculam mídia, qualificação, avanço comercial, vídeo e fadiga.
+
+**Governança:** diretoria aprova; superintendência acompanha. Comparação exige 30 leads CRM, atributos sensíveis de público são proibidos e nenhuma peça é publicada ou substituída automaticamente. O contrato está em `config/real-estate-creative-intelligence.json`, o gate em `npm run creative-intelligence:check` e o roteiro em `docs/REAL_ESTATE_CREATIVE_INTELLIGENCE_PHASE_94.md`.
+
+Pendência externa: aplicar migration, anexar arquivos oficiais, importar fatos conciliados e validar dois tenants.
+
+Próxima fase: **Fase 95 — Orquestração de orçamento e portfólio**, recomendando alocação entre projetos e canais com limites, caixa, capacidade comercial e decisão explícita da diretoria.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |

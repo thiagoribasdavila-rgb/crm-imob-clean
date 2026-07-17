@@ -1,0 +1,7 @@
+import fs from"node:fs";const checks=[];const need=(file,...terms)=>{const source=fs.readFileSync(file,"utf8");for(const term of terms)checks.push([`${file}: ${term}`,source.includes(term)])};
+need("lib/marketing/real-estate-creative-intelligence.ts","sampleSufficient","videoCompletionRate","fatigueRisk","association_for_controlled_test","automaticPublishing:false");
+need("supabase/migrations/20260719163000_phase_94_real_estate_creative_intelligence.sql","creative_intelligence_versions","creative_performance_daily_facts","development_id","message_angle","content_hash","video_completions<=video_starts","qualified_leads<=crm_leads","review_creative_intelligence_version","published',false");
+need("app/api/v1/marketing/creatives/route.ts","projectRequired:true","minimumCrmLeads:30","causalClaimAllowed:false","sensitiveAudienceAttributesAllowed:false","APPROVED_CREATIVE_REQUIRED","duplicatePrevented");
+need("app/(crm)/marketing/creatives/page.tsx","94-real-estate-creative-intelligence","PROJETO OBRIGATÓRIO","30 LEADS PARA COMPARAR","SEM PUBLICAÇÃO AUTOMÁTICA","nenhuma peça foi publicada ou substituída automaticamente");
+need("config/real-estate-creative-intelligence.json","\"phase\": 94","\"project_required\": true","\"sensitive_audience_attributes_allowed\": false","\"causal_claim_allowed\": false");
+for(const[name,ok]of checks)console.log(`${ok?"✓":"✗"} ${name}`);if(checks.some(([,ok])=>!ok))process.exit(1);console.log(`\nFase 94 aprovada: ${checks.length} controles de inteligência criativa.`);
