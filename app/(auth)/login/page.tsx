@@ -165,23 +165,24 @@ function LoginExperience() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#07090d] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(56,189,248,.08),transparent_34rem)]" />
+    <main className="relative min-h-screen overflow-hidden bg-[#06090f] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(14,165,233,.14),transparent_34rem),radial-gradient(circle_at_82%_70%,rgba(37,99,235,.07),transparent_28rem)]" />
 
       <div className="relative mx-auto grid min-h-screen w-full max-w-[1280px] items-center gap-16 px-5 py-10 lg:grid-cols-[1fr_460px] lg:px-12">
         <section className="hidden lg:block">
           <div className="flex items-center gap-4">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[.04] text-lg font-black text-white">A</span>
+            <span className="grid h-12 w-12 place-items-center rounded-2xl border border-sky-300/20 bg-sky-400/[.09] text-lg font-black text-sky-200">A</span>
             <div><p className="text-2xl font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[10px] font-semibold uppercase tracking-[.25em] text-slate-500">Real Estate Operating System</p></div>
           </div>
-          <h1 className="mt-12 max-w-2xl text-6xl font-semibold leading-[1.02] tracking-[-.055em]">Sua operação comercial, <span className="text-sky-300">mais simples.</span></h1>
+          <h1 className="mt-12 max-w-2xl text-6xl font-semibold leading-[1.02] tracking-[-.055em]">Sua operação comercial, <span className="bg-gradient-to-r from-sky-300 to-blue-400 bg-clip-text text-transparent">mais simples.</span></h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-slate-400">Clientes, imóveis, equipe e inteligência em uma única experiência.</p>
           <div className="mt-10 flex items-center gap-5 text-xs text-slate-500"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Operação protegida</span><span>Hostinger</span><span>LGPD</span></div>
         </section>
 
         <section className="mx-auto w-full max-w-lg">
           <div className="mb-8 flex items-center gap-3 lg:hidden"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-400/15 font-black text-sky-300">A</span><div><p className="text-xl font-black">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[9px] uppercase tracking-[.2em] text-slate-500">Real Estate OS</p></div></div>
-          <div className="rounded-[28px] border border-white/[0.08] bg-[#0d1016]/95 p-6 shadow-[0_28px_90px_rgba(0,0,0,.34)] sm:p-9">
+          <div className="relative overflow-hidden rounded-[28px] border border-sky-300/[0.12] bg-[#0b1019]/95 p-6 shadow-[0_28px_90px_rgba(0,0,0,.34)] sm:p-9">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-300/70 to-transparent" />
             <div>
               <div className="flex items-center justify-between gap-4">
                 <p className="text-xs font-semibold text-slate-500">Acesso seguro</p>
@@ -206,7 +207,7 @@ function LoginExperience() {
                     autoComplete="username"
                     value={email}
                     onChange={(event) => { setEmail(event.target.value); if (error) setError(""); }}
-                    className="w-full px-4 py-3.5 pr-11"
+                    className="w-full border-white/10 bg-white/[.035] px-4 py-3.5 pr-11 transition focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
                     placeholder="voce@empresa.com"
                     aria-invalid={Boolean(error)}
                   />
@@ -227,7 +228,7 @@ function LoginExperience() {
                     onKeyDown={updateCapsLock}
                     onKeyUp={updateCapsLock}
                     onBlur={() => setCapsLock(false)}
-                    className="w-full px-4 py-3.5 pr-14"
+                    className="w-full border-white/10 bg-white/[.035] px-4 py-3.5 pr-14 transition focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
                     placeholder="Digite sua senha"
                     aria-invalid={Boolean(error)}
                     aria-describedby={capsLock ? "caps-lock-warning" : undefined}
@@ -256,14 +257,14 @@ function LoginExperience() {
 
               {error ? <div role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"><p className="font-semibold">Não foi possível entrar</p><p className="mt-1 leading-5 text-rose-200/90">{error}</p>{/senha|credenciais|incorretos/i.test(error) ? <Link href={`/forgot-password${email ? `?email=${encodeURIComponent(email.trim().toLowerCase())}` : ""}`} className="mt-3 inline-flex text-xs font-bold text-white underline underline-offset-4">Redefinir minha senha</Link> : null}</div> : null}
 
-              <button type="submit" disabled={loading} aria-busy={loading} className="atlas-button-primary flex w-full items-center justify-center gap-2 py-3.5 disabled:cursor-not-allowed disabled:opacity-60">
+              <button type="submit" disabled={loading} aria-busy={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-400 to-blue-500 px-5 py-3.5 text-sm font-bold text-white shadow-[0_12px_35px_rgba(14,165,233,.18)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60">
                 {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" /> {loginStage === "profile" ? "Preparando sua operação..." : loginStage === "redirect" ? "Abrindo seu painel..." : "Validando acesso..."}</> : <>Entrar no Atlas OS <span aria-hidden="true">→</span></>}
               </button>
               {systemStatus === "offline" ? <button type="button" onClick={() => window.location.reload()} className="w-full text-center text-xs font-semibold text-amber-200">Tentar reconectar</button> : null}
             </form>
 
             <div className="mt-7 border-t border-white/[0.07] pt-6">
-              <div className="flex items-center justify-between gap-4 text-xs text-slate-500"><span>Sessão criptografada</span><span>Atlas V3 · acesso restrito</span></div>
+              <div className="flex items-center justify-between gap-4 text-xs text-slate-500"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" /> Sessão protegida</span><span>Atlas V3</span></div>
             </div>
           </div>
         </section>
