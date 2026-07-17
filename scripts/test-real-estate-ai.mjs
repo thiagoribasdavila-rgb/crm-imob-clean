@@ -100,6 +100,8 @@ const firstContactSlaMigration = readFileSync(resolve(root, "supabase/migrations
 const inventoryGuardMigration = readFileSync(resolve(root, "supabase/migrations/20260717005624_property_presentation_inventory_guard.sql"), "utf8");
 const feedbackGuardMigration = readFileSync(resolve(root, "supabase/migrations/20260717005843_property_feedback_presentation_guard.sql"), "utf8");
 const materialsRoute = readFileSync(resolve(root, "app/api/v1/developments/[id]/materials/route.ts"), "utf8");
+const materialStorage = readFileSync(resolve(root, "lib/storage/project-materials.ts"), "utf8");
+const materialCloudMigration = readFileSync(resolve(root, "supabase/migrations/20260717034208_project_material_cloud_storage.sql"), "utf8");
 const materialsPage = readFileSync(resolve(root, "app/(crm)/developments/materials/page.tsx"), "utf8");
 const atomicMaterialMigration = readFileSync(resolve(root, "supabase/migrations/20260717012100_atomic_project_material_versioning.sql"), "utf8");
 const graphUpsertRoute = readFileSync(resolve(root, "app/api/atlas2030/graph/upsert/route.ts"), "utf8");
@@ -441,11 +443,12 @@ const checks = [
   ["material exige incorporadora", materialsRoute.includes("Informe a incorporadora do empreendimento")],
   ["upload valida conteúdo real do arquivo", materialsRoute.includes("hasExpectedSignature") && materialsRoute.includes("não corresponde ao formato")],
   ["vigência de material é validada antes do upload", materialsRoute.includes("Revise as datas de vigência") && materialsRoute.includes("validUntil < validFrom")],
-  ["link de material possui expiração curta", materialsRoute.includes("createSignedUrl(material.storage_path, 900)")],
+  ["link de material possui expiração curta", materialsRoute.includes("expiresInSeconds = 900") && materialStorage.includes("getSignedUrl") && materialStorage.includes("createSignedUrl(location.path, expiresIn)")],
   ["versionamento de material é atômico", atomicMaterialMigration.includes("version_project_material") && atomicMaterialMigration.includes("pg_advisory_xact_lock")],
   ["material valida organização no banco", atomicMaterialMigration.includes("material_development_invalid") && atomicMaterialMigration.includes("p_organization_id::text || '/' || p_development_id::text")],
   ["upload de material exige gestão", atomicMaterialMigration.includes("commercial_role in ('director', 'superintendent', 'manager')") && atomicMaterialMigration.includes("material_upload_forbidden")],
-  ["falha remove arquivo órfão", materialsRoute.includes('storage.from("project-materials").remove([storagePath])') && materialsRoute.includes("version_project_material")],
+  ["falha remove arquivo órfão", materialsRoute.includes("deleteMaterial(upload)") && materialsRoute.includes("version_project_material_cloud")],
+  ["migração de materiais verifica checksum", materialStorage.includes("Checksum ou tamanho divergente após cópia") && materialCloudMigration.includes("finalize_project_material_migration")],
   ["API oculta caminho interno do Storage", materialsRoute.includes("storage_path: undefined") && materialsRoute.includes("urlExpiresAt")],
   ["painel comprova kit protegido da fase 31", materialsRoute.includes("storageHomologation") && materialsPage.includes("Fase 31 · Storage privado") && materialsPage.includes("Bucket privado")],
   ["grafo rejeita entidades de outra empresa", graphUpsertRoute.includes("endpointIds") && graphUpsertRoute.includes("fora da sua empresa") && graphUpsertRoute.includes("organization_id")],

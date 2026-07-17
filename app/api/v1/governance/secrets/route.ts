@@ -11,6 +11,7 @@ const inventory = [
   { name: "META_LEAD_ACCESS_TOKEN", scope: "server", required: false }, { name: "META_CONVERSIONS_ACCESS_TOKEN", scope: "server", required: false },
   { name: "META_ADS_ACCESS_TOKEN", scope: "server", required: false }, { name: "WHATSAPP_ACCESS_TOKEN", scope: "server", required: false },
   { name: "GOOGLE_ADS_DEVELOPER_TOKEN", scope: "server", required: false }, { name: "TIKTOK_ADS_ACCESS_TOKEN", scope: "server", required: false },
+  { name: "ATLAS_OBJECT_STORAGE_ACCESS_KEY_ID", scope: "server", required: false }, { name: "ATLAS_OBJECT_STORAGE_SECRET_ACCESS_KEY", scope: "server", required: false },
 ] as const;
 
 export async function GET(request: NextRequest) {

@@ -66,3 +66,16 @@ O rollback troca somente o destino do tráfego. Não apague a aplicação, banco
 4. Valide no V2: HTTPS, login, leitura de leads, pipeline e integrações essenciais.
 5. Registre o código HTTP, o horário final e a referência da evidência em `/atlas-v3/audit`.
 6. Se o ensaio falhar, reverta o apontamento ao V3 e registre a falha; não tente corrigir durante a janela.
+# Armazenamento privado dos materiais
+
+O Atlas pode manter os materiais no Supabase Storage ou usar qualquer serviço compatível com S3 (incluindo Cloudflare R2). A aplicação continua na Hostinger; somente os arquivos pesados saem do processo web.
+
+1. Crie um bucket privado, sem acesso público e com versionamento/retenção conforme a política da empresa.
+2. Configure as variáveis `ATLAS_OBJECT_STORAGE_*` descritas em `.env.example`.
+3. Mantenha `ATLAS_MATERIAL_STORAGE_PROVIDER=supabase` durante o ensaio.
+4. Consulte `GET /api/v1/governance/material-storage-migration` com uma sessão de diretor.
+5. Migre lotes pequenos com `POST` e `{ "confirm": true, "batchSize": 3 }`.
+6. Abra os links temporários e confira os documentos. A origem Supabase é preservada para reversão.
+7. Depois da homologação, use `ATLAS_MATERIAL_STORAGE_PROVIDER=s3` para direcionar novos uploads à nuvem.
+
+Nunca exponha chaves S3 como `NEXT_PUBLIC_*`. Os arquivos permanecem privados e são entregues por links assinados de 15 minutos.

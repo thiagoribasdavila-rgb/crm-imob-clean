@@ -32,6 +32,8 @@
     "setup:atlas": "npm ci && npm run prisma:generate && npm run doctor && npm run release:check"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1089.0",
+    "@aws-sdk/s3-request-presigner": "3.1089.0",
     "@prisma/client": "^7.8.0",
     "@streamdown/cjk": "^1.0.3",
     "@streamdown/code": "^1.1.1",
