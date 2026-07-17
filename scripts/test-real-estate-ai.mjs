@@ -502,7 +502,7 @@ const checks = [
   ["painel comprova histórico da fase 30", paymentRuleRoute.includes("historyPreserved") && paymentRulePage.includes("Fase 30 · Evidência automática") && paymentRulePage.includes("CRIAR 2ª VERSÃO")],
   ["simulação fotografa regra vigente", commercialSimulation.includes("rule_snapshot") && commercialSimulation.includes("Simulação preliminar") && commercialSimulation.includes("valid_until")],
   ["simulação usa somente regra ativa e vigente", commercialSimulation.includes('.eq("active", true)') && commercialSimulation.includes("valid_from.is.null") && commercialSimulation.includes("valid_until.is.null")],
-  ["simulação não ultrapassa vigência da regra", commercialSimulation.includes("ruleDeadline") && commercialSimulation.includes("Math.min(Date.now() + 24 * 60 * 60_000, ruleDeadline)")],
+  ["simulação não ultrapassa vigência da regra", commercialSimulation.includes("ruleDeadline") && commercialSimulation.includes("releaseDeadline") && commercialSimulation.includes("Math.min(Date.now() + 24 * 60 * 60_000, ruleDeadline, releaseDeadline)")],
   ["simulação rejeita preço inválido", commercialSimulation.includes("Number.isFinite(price)") && commercialSimulation.includes("price <= 0")],
   ["simulação declara que não é proposta", commercialSimulation.includes("NÃO É PROPOSTA") && leadIntelligencePage.includes("Fase 46 · Simulação, não promessa")],
   ["simulação não apresenta saldo como crédito aprovado", commercialSimulation.includes("creditApproved: false") && leadIntelligencePage.includes("Saldo após entrada")],

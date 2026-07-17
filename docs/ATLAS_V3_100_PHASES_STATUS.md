@@ -970,7 +970,17 @@ Pendência externa: aplicar migrations 63–64 e validar espelho real, duplicida
 
 Pendência externa: aplicar migration e validar tabelas reais, volume, moeda, duplicidade, reservas, concorrência e dois tenants.
 
-Próxima fase: **Fase 66 — Versionamento e vigência comercial**, definindo qual tabela, espelho e condição estão válidos em cada momento.
+## Fase 66 — Versionamento e vigência comercial
+
+**Estado:** 100% implementada e aprovada localmente; fontes e simulações reais permanecem para homologação.
+
+**Evolução:** tabela, espelho/importação e condição de pagamento passam a formar um pacote versionado. Uma única versão ativa governa o empreendimento e cada simulação fotografa suas fontes.
+
+**Governança:** superintendência prepara; diretoria ativa com motivo. Ativação substitui a anterior atomicamente e validade limita simulações. O contrato está em `config/commercial-release-versioning.json`, o gate em `npm run commercial-release:check` e o roteiro em `docs/COMMERCIAL_RELEASE_VERSIONING_PHASE_66.md`.
+
+Pendência externa: aplicar migration e validar fontes reais, duas versões, concorrência, vigência, simulação, histórico e dois tenants.
+
+Próxima fase: **Fase 67 — Central de materiais por incorporadora**, unificando busca, atualização, validade e cobertura do kit comercial.
 
 ## Painel das 100 fases
 
