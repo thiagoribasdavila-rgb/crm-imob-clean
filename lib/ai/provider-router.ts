@@ -1,5 +1,6 @@
 import "server-only";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { logger } from "@/lib/observability/logger";
 
 export type AITask = "fast" | "commercial" | "reasoning" | "research";
 type GenerateInput = {
@@ -38,9 +39,9 @@ const economyProviders: Record<EconomyProvider, { key: string; model: string; ba
 
 export function aiModelProfiles() {
   return {
-    fast: process.env.ATLAS_AI_FAST_MODEL || "gpt-5.6-luna",
-    commercial: process.env.ATLAS_AI_COMMERCIAL_MODEL || "gpt-5.6-terra",
-    reasoning: process.env.ATLAS_AI_REASONING_MODEL || process.env.ATLAS_AI_MODEL || "gpt-5.6-sol",
+    fast: process.env.ATLAS_AI_FAST_MODEL || "gpt-5-mini",
+    commercial: process.env.ATLAS_AI_COMMERCIAL_MODEL || process.env.ATLAS_AI_MODEL || "gpt-5.2",
+    reasoning: process.env.ATLAS_AI_REASONING_MODEL || process.env.ATLAS_AI_MODEL || "gpt-5.2",
     research: process.env.ATLAS_RESEARCH_MODEL || "sonar",
   } as const;
 }
@@ -372,7 +373,15 @@ export async function generateAIText(
     try {
       result = provider === "openai" ? await generateOpenAI(input) : await generateEconomyProvider(input, provider);
       break;
-    } catch { /* tenta a próxima rota homologada */ }
+    } catch (error) {
+      logger.warn("ai.provider_failover", {
+        provider,
+        task: input.task,
+        feature: input.feature,
+        containsPersonalData: Boolean(input.containsPersonalData),
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
   return recordUsage(input, result);
 }

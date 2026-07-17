@@ -11,6 +11,7 @@ const fallback = readFileSync(resolve(root, "lib/ai/real-estate-fallback.ts"), "
 const statusRoute = readFileSync(resolve(root, "app/api/ai/status/route.ts"), "utf8");
 const qualification = readFileSync(resolve(root, "lib/ai/lead-qualification.ts"), "utf8");
 const qualificationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/qualify/route.ts"), "utf8");
+const proxySource = readFileSync(resolve(root, "proxy.ts"), "utf8");
 const briefingRoute = readFileSync(resolve(root, "app/api/ai/briefing/route.ts"), "utf8");
 const messageDraft = readFileSync(resolve(root, "app/api/v1/leads/[id]/message-draft/route.ts"), "utf8");
 const messageSafety = readFileSync(resolve(root, "lib/ai/real-estate-message.ts"), "utf8");
@@ -275,6 +276,9 @@ const checks = [
   ["provedores econômicos nunca recebem dados pessoais", providerRouter.includes("if (input.containsPersonalData) throw new Error") && providerRouter.includes('input.containsPersonalData ? ["openai" as const]')],
   ["roteamento econômico tem fallback por tarefa", providerRouter.includes('fast: ["qwen", "deepseek", "openai"]') && providerRouter.includes('reasoning: ["openai", "deepseek", "glm", "kimi"]')],
   ["modelos econômicos exigem configuração explícita", providerRouter.includes("!apiKey || !model") && providerRouter.includes("configuredEconomyProvider")],
+  ["modelos OpenAI padrão existem no catálogo público", providerRouter.includes('"gpt-5-mini"') && providerRouter.includes('"gpt-5.2"') && !providerRouter.includes("gpt-5.6-luna")],
+  ["falhas de provedor ficam observáveis", providerRouter.includes("ai.provider_failover") && providerRouter.includes("logger.warn")],
+  ["todas as páginas privadas exigem sessão por padrão", proxySource.includes("!publicPages.has(pathname)") && proxySource.includes("/((?!api/") && ["/login", "/forgot-password", "/reset-password", "/auth/callback"].every((path) => proxySource.includes(path))],
   ["painel organiza as quatro IAs por função", aiSettingsPage.includes("Orquestração final · V3") && ["Qwen", "DeepSeek", "Kimi", "GLM"].every((provider) => aiSettingsPage.includes(provider))],
   ["Hostinger possui worker próprio", hostingerDeployment.includes("scripts/run-workers.mjs") && hostingerDeployment.includes("pm2")],
   ["uso de IA é mensurável", providerRouter.includes("ai_usage_events") && providerRouter.includes("totalTokens")],
