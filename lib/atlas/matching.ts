@@ -1,4 +1,5 @@
 import type { AtlasLead, AtlasProperty } from "@/types/atlas";
+import { AVAILABLE_STATUSES, BLOCKED_STATUSES, normalizePropertyStatus } from "@/lib/atlas/property-availability";
 
 export type MatchConfidence = "alta" | "média" | "baixa";
 
@@ -20,9 +21,6 @@ export interface MatchResult {
   recommendation: "priorizar" | "avaliar" | "não recomendar";
 }
 
-const AVAILABLE_STATUSES = new Set(["ativo", "available", "disponivel", "disponível", "livre", "em estoque"]);
-const BLOCKED_STATUSES = new Set(["vendido", "sold", "reservado", "reserved", "indisponivel", "indisponível", "inativo"]);
-
 function normalize(value: string | null | undefined) {
   return (value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
@@ -37,7 +35,7 @@ export function matchLeadToProperty(lead: Partial<AtlasLead>, property: AtlasPro
   const dimensions: MatchDimension[] = [];
   let knownSignals = 0;
 
-  const rawStatus = normalize(property.status);
+  const rawStatus = normalizePropertyStatus(property.status);
   const isAvailable = AVAILABLE_STATUSES.has(rawStatus);
   const isBlocked = BLOCKED_STATUSES.has(rawStatus);
   if (isAvailable) {

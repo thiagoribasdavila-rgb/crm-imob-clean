@@ -5,6 +5,7 @@ import { auditPropertyPresentation, fallbackPropertyPresentation } from "@/lib/a
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { isPropertyAvailable } from "@/lib/atlas/property-availability";
 
 export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ id: string }> };
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const admin = getSupabaseAdmin();
     const [leadResult, propertyResult] = await Promise.all([
-      admin.from("leads").select("id,name,budget_max,preferred_regions,bedrooms,purpose").eq("id", id).eq("organization_id", identity.organizationId).single(),
+      identity.supabase.from("leads").select("id,name,budget_max,preferred_regions,bedrooms,purpose").eq("id", id).eq("organization_id", identity.organizationId).single(),
       admin.from("properties").select("id,title,price,city,state,bedrooms,bathrooms,parking_spaces,area,status").eq("organization_id", identity.organizationId).in("id", propertyIds),
     ]);
     if (leadResult.error || !leadResult.data) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
@@ -37,6 +38,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const property = propertyResult.data.find((item) => item.id === propertyId);
       return property ? [property] : [];
     });
+    if (orderedProperties.length !== propertyIds.length) return NextResponse.json({ error: "Um ou mais imóveis não pertencem ao portfólio acessível." }, { status: 404 });
+    if (orderedProperties.some((property) => !isPropertyAvailable(property.status))) {
+      return NextResponse.json({ error: "O estoque mudou. Remova unidades indisponíveis antes de gerar a apresentação." }, { status: 409 });
+    }
     const firstName = String(lead.name || "Cliente").trim().split(/\s+/)[0];
     const fallback = fallbackPropertyPresentation(firstName, orderedProperties);
     let content = fallback;

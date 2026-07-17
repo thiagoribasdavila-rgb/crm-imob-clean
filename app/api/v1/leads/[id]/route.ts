@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 import { recordFollowUpIntelligence } from "@/lib/atlas/follow-up-intelligence";
+import { isPropertyAvailable } from "@/lib/atlas/property-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -172,6 +173,7 @@ export async function POST(request: Request, context: RouteContext) {
         .eq("organization_id", identity.organizationId)
         .in("id", propertyIds);
       if (propertyError || properties?.length !== propertyIds.length) return NextResponse.json({ error: "Um ou mais imóveis não pertencem ao portfólio acessível." }, { status: 400 });
+      if (properties.some((property) => !isPropertyAvailable(property.status))) return NextResponse.json({ error: "O estoque mudou. Atualize a seleção e remova unidades indisponíveis." }, { status: 409 });
       const channel = body.channel === "email" ? "email" : "whatsapp";
       const titles = propertyIds.map((propertyId) => properties.find((property) => property.id === propertyId)?.title || "Imóvel sem título");
       const { data, error } = await admin.from("activities").insert({
