@@ -596,7 +596,19 @@ Pendência externa: conferir janelas de data no fuso oficial, origens reais, pro
 
 Pendência externa: validar sequência real de WhatsApp, Meta, transferências e propostas com quatro perfis e dois tenants; testar paginação acima de 500 eventos.
 
-Próxima fase: **Fase 30 — dados incompletos**, detectando lacunas e sugerindo as perguntas mais úteis para completar o perfil.
+## Fase 30 — Dados incompletos
+
+**Estado:** 100% implementada e aprovada localmente; aferição de utilidade com corretores reais permanece para homologação.
+
+**Evolução:** o Lead 360 detecta automaticamente lacunas e apresenta perguntas ordenadas pelo impacto comercial. Respostas estruturadas recalibram a qualificação, campos livres recebem foco direto e ações de projeto ou agenda abrem o destino correto.
+
+**Eficiência:** o cálculo é local, determinístico e sem custo de LLM. A completude é ponderada pelo valor do dado: canal, intenção, prazo, pagamento e orçamento valem mais que itens complementares. Dados documentais e endereço exato não elevam score ou completude comercial.
+
+**Escopo:** o diagnóstico só é devolvido após sessão, organização, acesso à lead e RLS hierárquico. O contrato está em `config/data-completeness.json`, o gate em `npm run data-completeness:check` e o roteiro em `docs/DATA_COMPLETENESS_PHASE_30.md`.
+
+Pendência externa: testar perfis vazios, parciais e completos com quatro papéis e dois tenants; medir redução do tempo de qualificação e utilidade das perguntas.
+
+Próxima fase: **Fase 31 — etapas canônicas**, definindo estágios consistentes, editáveis e mensuráveis para o pipeline.
 
 ## Painel das 100 fases
 

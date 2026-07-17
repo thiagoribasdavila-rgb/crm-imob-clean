@@ -5,6 +5,7 @@ import { logger } from "@/lib/observability/logger";
 import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 import { recordFollowUpIntelligence } from "@/lib/atlas/follow-up-intelligence";
 import { isPropertyAvailable } from "@/lib/atlas/property-availability";
+import { assessLeadCompleteness } from "@/lib/ai/data-completeness";
 
 export const dynamic = "force-dynamic";
 
@@ -47,22 +48,14 @@ export async function GET(request: Request, context: RouteContext) {
       lead.campaign_id ? admin.from("campaigns").select("id,name,channel,status").eq("id", lead.campaign_id).eq("organization_id", identity.organizationId).maybeSingle() : Promise.resolve({ data: null, error: null }),
       conversationIds.length ? identity.supabase.from("messages").select("id,conversation_id,direction,channel,status,created_at").eq("organization_id", identity.organizationId).in("conversation_id", conversationIds).order("created_at", { ascending: false }).limit(200) : Promise.resolve({ data: [], error: null }),
     ]);
-    const fields = [
-      { key: "name", label: "nome", complete: Boolean(lead.name) },
-      { key: "contact", label: "telefone ou e-mail", complete: Boolean(lead.phone || lead.email) },
-      { key: "purpose", label: "finalidade da compra", complete: Boolean(lead.purpose) },
-      { key: "budget", label: "faixa de orçamento", complete: lead.budget_min != null || lead.budget_max != null },
-      { key: "regions", label: "região de preferência", complete: Array.isArray(lead.preferred_regions) && lead.preferred_regions.length > 0 },
-      { key: "bedrooms", label: "quantidade de dormitórios", complete: lead.bedrooms != null },
-      { key: "interaction", label: "interação registrada", complete: (activityResult.data?.length ?? 0) > 0 },
-      { key: "next_action", label: "próxima ação com data", complete: Boolean(lead.next_action_at) },
-    ];
+    const completeness = assessLeadCompleteness(lead, (activityResult.data?.length ?? 0) > 0);
+    const fields = completeness.fields;
     const inconsistencies = [
       lead.budget_min != null && lead.budget_max != null && Number(lead.budget_min) > Number(lead.budget_max) ? "Orçamento mínimo maior que o máximo" : null,
       lead.status === "ganho" && !(opportunityResult.data ?? []).some((item) => item.stage === "ganho") ? "Lead ganho sem oportunidade ganha vinculada" : null,
       !lead.phone && !lead.email ? "Cliente sem canal de contato" : null,
     ].filter((value): value is string => Boolean(value));
-    const completedFields = fields.filter((field) => field.complete).length;
+    const completedFields = completeness.completedFields;
     const activityUserIds = [...new Set((activityResult.data ?? []).map((item) => item.user_id).filter((value): value is string => Boolean(value)))];
     const { data: activityUsers } = activityUserIds.length ? await admin.from("profiles").select("id,full_name").eq("organization_id", identity.organizationId).in("id", activityUserIds) : { data: [] as Array<{ id: string; full_name: string | null }> };
     const activityUserMap = new Map((activityUsers ?? []).map((profile) => [profile.id, profile.full_name || "Equipe Atlas"]));
@@ -85,7 +78,7 @@ export async function GET(request: Request, context: RouteContext) {
       experienceSignals: experienceResult.data ?? [],
       unifiedProfile: { conversations: conversationResult.data ?? [], tasks: taskResult.data ?? [], campaignEvents: campaignResult.data ?? [], historicalMemories: sourceMemoryResult.data ?? [], sources: ["CRM", ...(sourceMemoryResult.data?.length ? ["Bases históricas"] : []), ...(conversationResult.data?.length ? ["Atendimento"] : []), ...(campaignResult.data?.length ? ["Marketing"] : []), ...(opportunityResult.data?.length ? ["Vendas"] : [])] },
       relationshipContext: { owner: ownerResult.data, development: developmentResult.data, campaign: campaignLookupResult.data, communications: { conversations: conversationResult.data?.length ?? 0, messages: messageResult.data?.length ?? 0, inbound: (messageResult.data ?? []).filter((message) => message.direction === "inbound").length, outbound: (messageResult.data ?? []).filter((message) => message.direction === "outbound").length, unread: unreadMessages, channels: [...new Set((messageResult.data ?? []).map((message) => message.channel).filter(Boolean))], lastMessageAt: messageResult.data?.[0]?.created_at || null }, origin: { source: lead.source || "Não informada", createdAt: lead.created_at, campaignEvents: campaignResult.data?.length ?? 0, historicalMemories: sourceMemoryResult.data?.length ?? 0 } },
-      dataQuality: { completeness: Math.round(completedFields / fields.length * 100), completedFields, totalFields: fields.length, missing: fields.filter((field) => !field.complete).map(({ key, label }) => ({ key, label })), inconsistencies, status: inconsistencies.length ? "review" : completedFields === fields.length ? "complete" : "enrich", recommendation: inconsistencies[0] || (fields.find((field) => !field.complete)?.label ? `Coletar ${fields.find((field) => !field.complete)!.label} no próximo contato.` : "Perfil consistente e pronto para personalização.") },
+      dataQuality: { completeness: completeness.completeness, completedFields, totalFields: completeness.totalFields, missing: fields.filter((field) => !field.complete).map(({ key, label }) => ({ key, label })), inconsistencies, status: inconsistencies.length ? "review" : completedFields === completeness.totalFields ? "complete" : "enrich", recommendation: inconsistencies[0] || completeness.nextQuestion?.question || "Perfil consistente e pronto para personalização.", nextQuestion: completeness.nextQuestion, questions: completeness.questions, calculation: "weighted_commercial_completeness_v1" },
       contactBriefing: { unreadMessages, openTasks: openTasks.length, activeOpportunities: activeOpportunities.length, lastInteractionAt: activities[0]?.occurred_at || null, context: activities[0]?.description || activities[0]?.title || "Ainda não há interação registrada com este cliente.", actions: briefingActions.length ? briefingActions : ["Validar interesse atual e combinar a próxima ação com data."], generatedBy: "Atlas Intelligence local", requiresApproval: true },
     });
   } catch (error) {
