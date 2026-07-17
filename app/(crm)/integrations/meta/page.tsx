@@ -52,6 +52,9 @@ type CampaignIntelligence = {
   costPerQualifiedLead?: number | null;
   ctr?: number | null;
   sampleStatus: "insufficient" | "learning" | "reliable";
+  confidencePercent: number;
+  scaleEligible: boolean;
+  scaleBlockers: string[];
   recommendation: string;
 };
 type DailyReport = {
@@ -143,6 +146,12 @@ type Payload = {
 
 const inputClass =
   "w-full rounded-xl border border-white/10 bg-white/[.035] px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400/40";
+const scaleBlockerLabels: Record<string, string> = {
+  amostra_menor_que_50: "menos de 50 leads",
+  cobertura_de_atendimento_menor_que_60: "cobertura de atendimento abaixo de 60%",
+  qualidade_menor_que_20: "qualidade abaixo de 20%",
+  conversao_menor_que_5: "conversão abaixo de 5%",
+};
 
 export default function MetaIntegration() {
   const [data, setData] = useState<Payload | null>(null);
@@ -1129,9 +1138,9 @@ export default function MetaIntegration() {
       </AtlasCard>
       <AtlasCard>
         <AtlasCardHeader
-          eyebrow="Campaign intelligence"
-          title="Ranking de performance comercial"
-          description="Nota ponderada por qualidade, conversão, visita, proposta, score e maturidade — sem inventar custo ou ROAS."
+          eyebrow="Fase 37 · Campaign intelligence"
+          title="Ranking comercial com trava de escala"
+          description="A superintendência compara qualidade e conversão sem inventar custo ou ROAS; escala só aparece com 50+ leads e operação comercial comprovada. A decisão continua exclusiva do diretor."
         />
         <div className="overflow-x-auto p-5 sm:p-6">
           {data?.campaignIntelligence.length ? (
@@ -1162,7 +1171,7 @@ export default function MetaIntegration() {
                       <strong className="text-white">
                         {campaign.campaignId === "sem-campanha"
                           ? "Origem não identificada"
-                          : campaign.campaignId}
+                          : campaign.campaignName || campaign.campaignId}
                       </strong>
                       <p className="mt-1 text-slate-600">
                         {campaign.total} leads · score médio{" "}
@@ -1185,6 +1194,7 @@ export default function MetaIntegration() {
                             ? "APRENDENDO"
                             : "INSUFICIENTE"}
                       </AtlasBadge>
+                      <p className="mt-2 text-[10px] text-slate-500">{campaign.confidencePercent}% de confiança</p>
                     </td>
                     <td className="p-3 text-lg font-semibold text-white">
                       {campaign.performanceScore}
@@ -1203,6 +1213,8 @@ export default function MetaIntegration() {
                     </td>
                     <td className="max-w-sm p-3 leading-5 text-slate-400">
                       {campaign.recommendation}
+                      <div className="mt-2"><AtlasBadge tone={campaign.scaleEligible ? "success" : "neutral"}>{campaign.scaleEligible ? "ELEGÍVEL PARA ANÁLISE DE ESCALA" : "ESCALA BLOQUEADA"}</AtlasBadge></div>
+                      {!campaign.scaleEligible ? <p className="mt-2 text-[10px] text-slate-600">Pendências: {campaign.scaleBlockers.map((blocker) => scaleBlockerLabels[blocker] || blocker).join(" · ")}</p> : null}
                     </td>
                   </tr>
                 ))}

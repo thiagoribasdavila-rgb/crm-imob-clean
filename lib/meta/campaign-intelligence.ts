@@ -39,6 +39,7 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[], paidInsights:
     const visitRate = percent(visits);
     const proposalRate = percent(proposals);
     const confidenceFactor = sampleStatus === "reliable" ? 1 : sampleStatus === "learning" ? 0.75 : 0.4;
+    const confidencePercent = Math.round(confidenceFactor * 100);
     const responseScore = responseCoverage ? Math.round(sla15Rate * 0.7 + responseCoverage * 0.3) : 0;
     const performanceScore = Math.round(Math.min(100, (qualityRate * 0.3 + conversionRate * 3 * 0.3 + visitRate * 0.12 + proposalRate * 0.08 + averageScore * 0.1 + responseScore * 0.1) * confidenceFactor));
     const paid = paidInsights.find((insight) => insight.campaignId === campaignId);
@@ -46,6 +47,8 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[], paidInsights:
     const cpl = spend !== null && total ? Math.round((spend / total) * 100) / 100 : null;
     const costPerQualifiedLead = spend !== null && qualified ? Math.round((spend / qualified) * 100) / 100 : null;
     const ctr = paid?.impressions ? Math.round((paid.clicks / paid.impressions) * 10_000) / 100 : null;
+    const scaleBlockers = [sampleStatus !== "reliable" ? "amostra_menor_que_50" : null, responseCoverage < 60 ? "cobertura_de_atendimento_menor_que_60" : null, qualityRate < 20 ? "qualidade_menor_que_20" : null, conversionRate < 5 ? "conversao_menor_que_5" : null].filter((item): item is string => Boolean(item));
+    const scaleEligible = scaleBlockers.length === 0;
     const recommendation = sampleStatus === "insufficient"
       ? "Coletar mais dados antes de alterar público ou orçamento."
       : responseCoverage < 60
@@ -56,10 +59,11 @@ export function buildMetaCampaignIntelligence(leads: LeadSignal[], paidInsights:
             ? "Priorizar velocidade e cadência do primeiro atendimento."
             : visits < Math.ceil(qualified * 0.35)
               ? "Testar criativos e abordagem orientados a visita."
-              : conversionRate >= 5
+              : scaleEligible
                 ? "Candidata a escala controlada após validação de custo."
                 : "Manter aprendizado e revisar objeções de proposta e fechamento.";
-    return { campaignId, campaignName: paid?.campaignName || campaignId, total, contacted, qualified, visits, proposals, converted, buyersElsewhere, averageScore, averageResponseMinutes, responseCoverage, sla5Rate, sla15Rate, qualityRate, visitRate, proposalRate, conversionRate, performanceScore, spend, cpl, costPerQualifiedLead, ctr, sampleStatus, recommendation };
+    const campaignName = paid?.campaignName || String(metaRecord(items[0]?.metadata).campaignName || campaignId);
+    return { campaignId, campaignName, total, contacted, qualified, visits, proposals, converted, buyersElsewhere, averageScore, averageResponseMinutes, responseCoverage, sla5Rate, sla15Rate, qualityRate, visitRate, proposalRate, conversionRate, performanceScore, spend, cpl, costPerQualifiedLead, ctr, sampleStatus, confidencePercent, scaleEligible, scaleBlockers, recommendation };
   });
   const paidCosts = base.map((campaign) => campaign.costPerQualifiedLead).filter((value): value is number => value !== null && value > 0);
   const bestCost = paidCosts.length ? Math.min(...paidCosts) : null;

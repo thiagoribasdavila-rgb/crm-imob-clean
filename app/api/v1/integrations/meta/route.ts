@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { requireAccessContext } from "@/lib/api/security";
+import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { buildMetaCampaignIntelligence } from "@/lib/meta/campaign-intelligence";
 
@@ -12,6 +12,8 @@ function canManage(role: string | null, legacyRole: string) {
 function isDirector(role: string | null, legacyRole: string) { return role === "director" || legacyRole === "admin"; }
 
 export async function GET(request: NextRequest) {
+  const limited = enforceRateLimit(request, { limit: 60, scope: "meta-campaign-ranking" });
+  if (!limited.ok) return limited.response;
   const access = await requireAccessContext(request);
   if (!access.ok) return access.response;
   const [{ data: sources, error }, { data: events }, { data: conversionConfig }, { data: conversionEvents }, { data: learningEvents }, { data: metaLeads }, { data: dailyReports }] = await Promise.all([
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest) {
     const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as Record<string, unknown> : {};
     return meta.dataSharingConsent === true && Boolean(lead.email || lead.phone);
   }).slice(0, 20).map((lead) => ({ id: lead.id, name: lead.name || "Lead Meta", hasEmail: Boolean(lead.email), hasPhone: Boolean(lead.phone) }));
-  return NextResponse.json({ sources: sources ?? [], summary, conversionConfig, conversionCandidates, conversionSummary, conversionFunnel, internalFunnel, funnelInsights, audienceRecommendations, campaignIntelligence, dailyReports: dailyReports ?? [], readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), adsInsights: Boolean(process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role), canDecide });
+  return NextResponse.json({ scope: { viewerRole: access.access.profile.commercialRole || access.access.profile.role, hierarchicalRls: true, directorDecisionOnly: true }, sources: sources ?? [], summary, conversionConfig, conversionCandidates, conversionSummary, conversionFunnel, internalFunnel, funnelInsights, audienceRecommendations, campaignIntelligence, dailyReports: dailyReports ?? [], readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), adsInsights: Boolean(process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role), canDecide }, { headers: limited.headers });
 }
 
 export async function POST(request: NextRequest) {
