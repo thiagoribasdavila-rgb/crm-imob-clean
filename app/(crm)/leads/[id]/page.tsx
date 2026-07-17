@@ -14,7 +14,7 @@ type LeadRow = {
   source: string | null; status: string | null; temperature: string | null;
   score: number | null; budget_min: number | null; budget_max: number | null;
   preferred_regions: string[] | null; bedrooms: number | null; purpose: string | null;
-  notes: string | null; created_at: string | null;
+  notes: string | null; created_at: string | null; next_action_at?: string | null;
   metadata: { meta?: { campaignId?: string; adsetId?: string; adId?: string; formId?: string; sourceName?: string; dataSharingConsent?: boolean } } | null;
 };
 type ActivityRow = { id: string; title: string; description: string | null; type: string; metadata?: { propertyId?: string; signal?: "interested" | "rejected" } | null; occurred_at: string };
@@ -22,7 +22,9 @@ type PropertyRow = { id: string; title: string | null; price: number | null; cit
 type OpportunityRow = { id: string; stage: string; value: number | null; probability: number; expected_close_at: string | null; property_id: string | null; created_at: string };
 type ExperienceRow = { id: string; severity: string; confidence: number; evidence: string; recommendation: string; suggested_reply: string | null; status: string; created_at: string };
 
-type Payload = { lead: LeadRow; activities: ActivityRow[]; properties: PropertyRow[]; opportunities: OpportunityRow[]; experienceSignals: ExperienceRow[] };
+type DataQuality = { completeness: number; completedFields: number; totalFields: number; missing: Array<{ key: string; label: string }>; inconsistencies: string[]; status: "review" | "complete" | "enrich"; recommendation: string };
+type UnifiedProfile = { conversations: Array<{ id: string; status: string; channel: string; last_message_at: string | null; unread_count: number }>; tasks: Array<{ id: string; status: string; due_at: string | null; priority: string | null }>; campaignEvents: Array<{ id: string; event_type: string; occurred_at: string }>; sources: string[] };
+type Payload = { lead: LeadRow; activities: ActivityRow[]; properties: PropertyRow[]; opportunities: OpportunityRow[]; experienceSignals: ExperienceRow[]; dataQuality: DataQuality; unifiedProfile: UnifiedProfile };
 type Qualification = {
   score: number; temperature: "frio" | "morno" | "quente"; confidence: number;
   dimensions: Array<{ key: string; label: string; score: number; maximum: number; reasons: string[] }>;
@@ -46,6 +48,8 @@ export default function LeadDetailPage() {
   const [properties, setProperties] = useState<PropertyRow[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
   const [experienceSignals, setExperienceSignals] = useState<ExperienceRow[]>([]);
+  const [dataQuality, setDataQuality] = useState<DataQuality | null>(null);
+  const [unifiedProfile, setUnifiedProfile] = useState<UnifiedProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -79,6 +83,8 @@ export default function LeadDetailPage() {
       setProperties(data.properties);
       setOpportunities(data.opportunities);
       setExperienceSignals(data.experienceSignals ?? []);
+      setDataQuality(data.dataQuality);
+      setUnifiedProfile(data.unifiedProfile);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Falha ao carregar o lead.");
     } finally {
@@ -222,6 +228,8 @@ export default function LeadDetailPage() {
       </section>
 
       {message ? <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 p-4 text-sm text-sky-100">{message}</div> : null}
+
+      {dataQuality && unifiedProfile ? <AtlasCard><AtlasCardHeader eyebrow="Fonte única da verdade" title="Perfil unificado e qualidade dos dados" description="CRM, atendimento, vendas e marketing reunidos no mesmo cliente, com lacunas e inconsistências explicadas pela IA." action={<AtlasBadge tone={dataQuality.status === "complete" ? "success" : dataQuality.status === "review" ? "danger" : "warning"}>{dataQuality.completeness}% COMPLETO</AtlasBadge>} /><div className="grid gap-5 p-5 sm:p-6 xl:grid-cols-[.8fr_1.2fr]"><div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-5"><div className="flex items-end justify-between"><div><p className="atlas-eyebrow">Identidade canônica</p><strong className="mt-2 block text-lg text-white">Um cliente, um histórico</strong></div><span className="text-3xl font-semibold text-cyan-200">{dataQuality.completedFields}/{dataQuality.totalFields}</span></div><div className="mt-4"><AtlasProgress value={dataQuality.completeness} label="Completude para personalização" /></div><div className="mt-4 flex flex-wrap gap-2">{unifiedProfile.sources.map((source) => <AtlasBadge key={source} tone="info">{source.toUpperCase()}</AtlasBadge>)}</div><div className="mt-5 grid grid-cols-3 gap-2 text-center">{[["Conversas", unifiedProfile.conversations.length], ["Tarefas", unifiedProfile.tasks.length], ["Sinais de campanha", unifiedProfile.campaignEvents.length]].map(([label, value]) => <div key={label} className="rounded-xl bg-white/[.03] p-3"><strong className="text-lg text-white">{value}</strong><p className="mt-1 text-[10px] text-slate-500">{label}</p></div>)}</div></div><div className="space-y-3"><div className="rounded-2xl border border-violet-400/15 bg-violet-400/[.06] p-4"><p className="atlas-eyebrow">Próximo dado mais valioso</p><p className="mt-2 text-sm leading-6 text-violet-100">{dataQuality.recommendation}</p></div>{dataQuality.missing.length ? <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[.05] p-4"><p className="text-xs font-bold uppercase tracking-[.14em] text-amber-300">Lacunas encontradas</p><div className="mt-3 flex flex-wrap gap-2">{dataQuality.missing.map((item) => <span key={item.key} className="rounded-full border border-amber-300/15 px-3 py-1 text-xs text-amber-100">{item.label}</span>)}</div></div> : null}{dataQuality.inconsistencies.length ? <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[.05] p-4"><p className="text-xs font-bold uppercase tracking-[.14em] text-rose-300">Revisão humana necessária</p><ul className="mt-2 space-y-1 text-xs text-slate-300">{dataQuality.inconsistencies.map((item) => <li key={item}>• {item}</li>)}</ul></div> : null}<p className="text-[11px] leading-5 text-slate-500">O Atlas nunca funde cadastros ambíguos silenciosamente. Sugestões de limpeza ou consolidação preservam proprietário, consentimento, timeline e auditoria.</p></div></div></AtlasCard> : null}
 
       {experienceSignals[0]?.status === "pending" ? <AtlasCard><AtlasCardHeader eyebrow="IA de experiência" title="Atenção ao atendimento" description="A recomendação é explicável e a troca nunca acontece automaticamente." action={<AtlasBadge tone={experienceSignals[0].severity === "critical" ? "danger" : "warning"}>{experienceSignals[0].confidence}% confiança</AtlasBadge>} /><div className="grid gap-4 p-5 sm:p-6 xl:grid-cols-[1fr_.8fr]"><div className="rounded-2xl border border-amber-400/15 bg-amber-400/[.05] p-4"><p className="font-semibold text-white">{experienceSignals[0].evidence}</p><p className="mt-2 text-sm text-slate-400">Recomendação: {experienceSignals[0].recommendation === "offer_broker_change" ? "oferecer ao cliente a opção de manter ou trocar o corretor" : "recuperar o atendimento com acompanhamento"}.</p></div><div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[.05] p-4"><p className="atlas-eyebrow">Resposta sugerida</p><p className="mt-2 text-sm leading-6 text-cyan-50">{experienceSignals[0].suggested_reply}</p></div></div></AtlasCard> : null}
 

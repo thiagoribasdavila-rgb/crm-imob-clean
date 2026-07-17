@@ -28,19 +28,42 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Lead fora do seu escopo comercial." }, { status: 403 });
     }
 
-    const [activityResult, propertyResult, opportunityResult, experienceResult] = await Promise.all([
+    const [activityResult, propertyResult, opportunityResult, experienceResult, conversationResult, taskResult, campaignResult] = await Promise.all([
       identity.supabase.from("activities").select("id,title,description,type,metadata,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
       admin.from("properties").select("id,title,price,city,state,bedrooms,bathrooms,parking_spaces,area,status").eq("organization_id", identity.organizationId).limit(150),
       identity.supabase.from("opportunities").select("id,stage,value,probability,expected_close_at,property_id,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
       identity.supabase.from("lead_experience_signals").select("id,signal_type,severity,confidence,evidence,recommendation,suggested_reply,status,created_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("created_at", { ascending: false }).limit(20),
+      identity.supabase.from("conversations").select("id,status,channel,last_message_at,unread_count").eq("lead_id", id).eq("organization_id", identity.organizationId).order("last_message_at", { ascending: false }).limit(50),
+      identity.supabase.from("tasks").select("id,status,due_at,priority").eq("lead_id", id).eq("organization_id", identity.organizationId).limit(100),
+      identity.supabase.from("campaign_events").select("id,event_type,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(100),
     ]);
 
+    const lead = leadResult.data;
+    const fields = [
+      { key: "name", label: "nome", complete: Boolean(lead.name) },
+      { key: "contact", label: "telefone ou e-mail", complete: Boolean(lead.phone || lead.email) },
+      { key: "purpose", label: "finalidade da compra", complete: Boolean(lead.purpose) },
+      { key: "budget", label: "faixa de orçamento", complete: lead.budget_min != null || lead.budget_max != null },
+      { key: "regions", label: "região de preferência", complete: Array.isArray(lead.preferred_regions) && lead.preferred_regions.length > 0 },
+      { key: "bedrooms", label: "quantidade de dormitórios", complete: lead.bedrooms != null },
+      { key: "interaction", label: "interação registrada", complete: (activityResult.data?.length ?? 0) > 0 },
+      { key: "next_action", label: "próxima ação com data", complete: Boolean(lead.next_action_at) },
+    ];
+    const inconsistencies = [
+      lead.budget_min != null && lead.budget_max != null && Number(lead.budget_min) > Number(lead.budget_max) ? "Orçamento mínimo maior que o máximo" : null,
+      lead.status === "ganho" && !(opportunityResult.data ?? []).some((item) => item.stage === "ganho") ? "Lead ganho sem oportunidade ganha vinculada" : null,
+      !lead.phone && !lead.email ? "Cliente sem canal de contato" : null,
+    ].filter((value): value is string => Boolean(value));
+    const completedFields = fields.filter((field) => field.complete).length;
+
     return NextResponse.json({
-      lead: leadResult.data,
+      lead,
       activities: activityResult.data ?? [],
       properties: propertyResult.data ?? [],
       opportunities: opportunityResult.data ?? [],
       experienceSignals: experienceResult.data ?? [],
+      unifiedProfile: { conversations: conversationResult.data ?? [], tasks: taskResult.data ?? [], campaignEvents: campaignResult.data ?? [], sources: ["CRM", ...(conversationResult.data?.length ? ["Atendimento"] : []), ...(campaignResult.data?.length ? ["Marketing"] : []), ...(opportunityResult.data?.length ? ["Vendas"] : [])] },
+      dataQuality: { completeness: Math.round(completedFields / fields.length * 100), completedFields, totalFields: fields.length, missing: fields.filter((field) => !field.complete).map(({ key, label }) => ({ key, label })), inconsistencies, status: inconsistencies.length ? "review" : completedFields === fields.length ? "complete" : "enrich", recommendation: inconsistencies[0] || (fields.find((field) => !field.complete)?.label ? `Coletar ${fields.find((field) => !field.complete)!.label} no próximo contato.` : "Perfil consistente e pronto para personalização.") },
     });
   } catch (error) {
     logger.warn("lead.intelligence.read_failed", { error: error instanceof Error ? error.message : String(error) });
