@@ -912,7 +912,15 @@ Pendência externa: aplicar migration, configurar cron Hostinger e validar aceit
 
 Pendência externa: aplicar migration e validar três níveis de liderança, dois tenants, volume e resposta sem PII.
 
-Próxima fase: **Fase 60 — Fechamento do bloco de distribuição**, reconciliando as fases 51–59 e preparando homologação real da equipe.
+## Fase 60 — Fechamento do bloco de distribuição
+
+**Estado:** 100% da engenharia local aprovada; homologação operacional continua dependente de evidência real.
+
+**Reconciliação:** nove contratos, nove gates e nove invariantes cobrem as fases 51–59. A página de homologação separa claramente engenharia aprovada de operação pendente e inclui testes reais de capacidade, reserva, aceite e escopo gerencial.
+
+**Pendências externas:** quatro perfis, dois tenants, equipe online, concorrência, cron de reservas, capacidade, mobile e 10 mil leads. O contrato está em `config/distribution-block-closure.json`, o gate em `npm run distribution-block:check` e o roteiro em `docs/DISTRIBUTION_BLOCK_CLOSURE_PHASE_60.md`.
+
+Próxima fase: **Fase 61 — Cadastro completo de incorporadoras**, iniciando o bloco de projetos e incorporadoras com fonte única da verdade.
 
 ## Painel das 100 fases
 
