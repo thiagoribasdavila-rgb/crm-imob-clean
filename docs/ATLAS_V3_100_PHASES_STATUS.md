@@ -940,7 +940,17 @@ Pendência externa: aplicar migration e validar incorporadoras reais, dois tenan
 
 Pendência externa: aplicar migrations 61–62 e validar portfólio real, dois tenants, permissões, concorrência, geolocalização e dossiê automático.
 
-Próxima fase: **Fase 63 — Catálogo de tipologias e diferenciais**, estruturando os atributos que alimentam busca, matching e IA comercial.
+## Fase 63 — Catálogo de tipologias e diferenciais
+
+**Estado:** 100% implementada e aprovada localmente; catálogo e consumo real permanecem para homologação.
+
+**Evolução:** tipologias ganham área, dormitórios, vagas, preço e disponibilidade estruturados. Diferenciais são categorizados, priorizados e separados entre verificados e pendentes.
+
+**Governança:** liderança grava por RPC atômica, RLS isola tenants e fonte é obrigatória para marcar um fato como verificado. O contrato está em `config/typology-feature-catalog.json`, o gate em `npm run development-catalog:check` e o roteiro em `docs/TYPOLOGY_FEATURE_CATALOG_PHASE_63.md`.
+
+Pendência externa: aplicar migration, cadastrar portfólio real e validar matching, copiloto, fontes e permissões em dois tenants.
+
+Próxima fase: **Fase 64 — Estoque e espelho de vendas canônico**, conectando unidades reais às tipologias, disponibilidade e histórico operacional.
 
 ## Painel das 100 fases
 

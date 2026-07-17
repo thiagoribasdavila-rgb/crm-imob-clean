@@ -68,7 +68,7 @@ export default function DevelopmentCommandPage() {
             <h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">{item.name}</h1>
             <p className="mt-3 text-sm text-slate-400 sm:text-base">{item.developer_name || "Incorporadora não informada"} · {[item.neighborhood, item.city, item.state].filter(Boolean).join(" · ") || "Localização não informada"}</p>
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300">{signal.recommendation}</p>
-            <div className="mt-6 flex flex-wrap gap-3"><Link href={`/developments/materials?project=${id}`} className="atlas-button-primary">Book, tabela e espelho</Link><Link href={`/developments/${id}/inventory`} className="atlas-button-secondary">Abrir estoque</Link></div>
+            <div className="mt-6 flex flex-wrap gap-3"><Link href={`/developments/materials?project=${id}`} className="atlas-button-primary">Book, tabela e espelho</Link><Link href={`/developments/${id}/catalog`} className="atlas-button-secondary">Tipologias e diferenciais</Link><Link href={`/developments/${id}/inventory`} className="atlas-button-secondary">Abrir estoque</Link></div>
           </div>
           <div className="min-w-72 rounded-3xl border border-white/[0.08] bg-[#070d1b]/70 p-5 backdrop-blur-xl"><div className="flex items-center justify-between"><span className="text-sm text-slate-400">Absorção</span><span className="text-3xl font-semibold text-emerald-300">{m.absorption}%</span></div><div className="mt-5"><AtlasProgress value={m.absorption} /></div><p className="mt-4 text-xs text-slate-500">Entrega: {item.delivery_date ? new Date(item.delivery_date).toLocaleDateString("pt-BR") : "a definir"}</p></div>
         </div>
