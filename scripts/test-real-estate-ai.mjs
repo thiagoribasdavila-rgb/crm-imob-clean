@@ -53,6 +53,9 @@ const apiSecurity = readFileSync(resolve(root, "lib/api/security.ts"), "utf8");
 const supabaseMiddleware = readFileSync(resolve(root, "utils/supabase/middleware.ts"), "utf8");
 const nextConfig = readFileSync(resolve(root, "next.config.ts"), "utf8");
 const productionPreflight = readFileSync(resolve(root, "scripts/preflight-production.mjs"), "utf8");
+const tasksPage = readFileSync(resolve(root, "app/(crm)/tasks/page.tsx"), "utf8");
+const v2ReferenceAnalysis = readFileSync(resolve(root, "docs/V2_REFERENCE_ANALYSIS.md"), "utf8");
+const v2GapAnalysis = readFileSync(resolve(root, "docs/V2_V3_GAP_ANALYSIS.md"), "utf8");
 const complexityRouter = readFileSync(resolve(root, "lib/ai/complexity.ts"), "utf8");
 const conversionPredictor = readFileSync(resolve(root, "lib/ai/conversion-predictor.ts"), "utf8");
 const aiCostMigration = readFileSync(resolve(root, "supabase/migrations/20260717012700_ai_usage_cost_tracking.sql"), "utf8");
@@ -331,6 +334,10 @@ const checks = [
   ["cabeçalhos reduzem superfícies legadas do navegador", nextConfig.includes("X-Permitted-Cross-Domain-Policies") && nextConfig.includes("Origin-Agent-Cluster")],
   ["preflight mede roteamento e custos das IAs", productionPreflight.includes("IAs econômicas") && productionPreflight.includes("Roteamento de modelos") && productionPreflight.includes("Custos de IA")],
   ["preflight mede o ciclo Andromeda completo", productionPreflight.includes("Meta Conversions") && productionPreflight.includes("Meta Insights")],
+  ["arquivo V2 é referência e não produto", v2ReferenceAnalysis.includes("não reinstalar como produto final") && v2ReferenceAnalysis.includes("Itens que não devem ser copiados")],
+  ["matriz V2 V3 preserva destinos canônicos", v2GapAnalysis.includes("Mapa de dados para migração real") && v2GapAnalysis.includes("converter, não recriar tabela")],
+  ["tarefas recuperam conclusão e reagendamento do V2", tasksPage.includes("async function finish") && tasksPage.includes("async function postpone") && tasksPage.includes("+1 dia")],
+  ["fila diária prioriza vencimentos", tasksPage.includes("Prioridade inteligente") && tasksPage.includes("Somente vencidas") && tasksPage.includes("overdue")],
   ["evento inicial de lead é deduplicado", outboxWorker.includes("meta-lead-${metaEvent.external_lead_id}") && metaConversions.includes('ignoreDuplicates: true')],
   ["avanços do funil alimentam aprendizado", metaConversions.includes('qualificacao: "QualifiedLead"') && metaConversions.includes('ganho: "ConvertedLead"')],
   ["movimentação do pipeline gera sinal seguro", pipelineRoute.includes("recordFunnelLearning") && funnelLearning.includes("queueMetaStageConversion") && metaConversions.includes("dataSharingConsent !== true")],
