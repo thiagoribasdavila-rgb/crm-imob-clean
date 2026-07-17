@@ -842,7 +842,17 @@ Pendência externa: aplicar migration e testar concorrência, presença, pesos, 
 
 Pendência externa: validar liderança, dois tenants, concorrência, fila acima de 100 e resposta sem PII na rede.
 
-Próxima fase: **Fase 53 — Transferência individual governada**, preservando histórico, motivo e responsável único.
+## Fase 53 — Transferência individual governada
+
+**Estado:** 100% implementada e aprovada localmente; concorrência, triggers e hierarquia reais permanecem para homologação.
+
+**Evolução:** a Lead 360 abre uma transferência com destinos permitidos e motivo obrigatório. Tarefas abertas acompanham o novo corretor; timeline, lote e item preservam a evidência.
+
+**Concorrência:** o RPC bloqueia a lead e compara o responsável esperado, retornando conflito sem sobrescrever uma mudança recente. Conversa e copiloto seguem o trigger de titularidade exclusiva. O contrato está em `config/governed-single-lead-transfer.json`, o gate em `npm run single-transfer:check` e o roteiro em `docs/GOVERNED_SINGLE_LEAD_TRANSFER_PHASE_53.md`.
+
+Pendência externa: aplicar migration e validar gestor, diretor, dois tenants, conflito, tarefas, conversa e copiloto reais.
+
+Próxima fase: **Fase 54 — Transferência entre equipes**, permitindo mover carteira para outro gerente com redistribuição controlada aos corretores elegíveis.
 
 ## Painel das 100 fases
 
