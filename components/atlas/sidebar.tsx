@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const navigation = [
   {
@@ -167,8 +167,12 @@ export function Sidebar({
   accessRole,
 }: SidebarProps) {
   const pathname = usePathname();
+  const [query, setQuery] = useState("");
 
-  useEffect(() => onCloseMobile(), [pathname, onCloseMobile]);
+  useEffect(() => {
+    onCloseMobile();
+    setQuery("");
+  }, [pathname, onCloseMobile]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -184,11 +188,28 @@ export function Sidebar({
     };
   }, [mobileOpen, onCloseMobile]);
 
-  const visibleItems = navigation.filter((item) => {
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (event.key !== "/" || target?.matches("input, textarea, select, [contenteditable='true']")) return;
+      if (collapsed && !mobileOpen) return;
+      event.preventDefault();
+      document.getElementById("atlas-sidebar-search-input")?.focus();
+    };
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, [collapsed, mobileOpen]);
+
+  const permittedItems = useMemo(() => navigation.filter((item) => {
     const scoped = "accessRoles" in item ? item.accessRoles : undefined;
     return scoped ? scoped.some((candidate) => candidate === accessRole) : item.roles.some((candidate) => candidate === role);
-  });
+  }), [accessRole, role]);
+  const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
+  const visibleItems = useMemo(() => normalizedQuery
+    ? permittedItems.filter((item) => `${item.label} ${item.group}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery))
+    : permittedItems, [normalizedQuery, permittedItems]);
   const visibleGroups = [...new Set(visibleItems.map((item) => item.group))];
+  const currentItem = permittedItems.find((item) => isActive(pathname, item.href));
 
   return (
     <>
@@ -228,12 +249,26 @@ export function Sidebar({
           </button>
         </div>
 
+        <div className="atlas-sidebar-search atlas-sidebar-label">
+          <span aria-hidden="true">⌕</span>
+          <label className="sr-only" htmlFor="atlas-sidebar-search-input">Buscar uma tela</label>
+          <input
+            id="atlas-sidebar-search-input"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar tela..."
+            autoComplete="off"
+          />
+          {query ? <button type="button" onClick={() => setQuery("")} aria-label="Limpar busca">×</button> : <kbd>/</kbd>}
+        </div>
+
+        {currentItem ? <div className="atlas-sidebar-current atlas-sidebar-label"><span>Você está em</span><strong>{currentItem.label}</strong></div> : null}
+
         <nav className="atlas-sidebar-nav" aria-label="Navegação principal">
           {visibleGroups.map((group) => (
             <div className="atlas-nav-group" key={group}>
-              <p className="atlas-sidebar-section atlas-sidebar-label">
-                {group}
-              </p>
+              <p className="atlas-sidebar-section atlas-sidebar-label"><span>{group}</span><small>{visibleItems.filter((item) => item.group === group).length}</small></p>
               {visibleItems
                 .filter((item) => item.group === group)
                 .map((item) => {
@@ -263,6 +298,7 @@ export function Sidebar({
                 })}
             </div>
           ))}
+          {!visibleItems.length ? <div className="atlas-sidebar-empty atlas-sidebar-label"><span>⌕</span><strong>Nenhuma tela encontrada</strong><small>Tente buscar por leads, vendas ou projetos.</small><button type="button" onClick={() => setQuery("")}>Limpar busca</button></div> : null}
         </nav>
 
         <div className="atlas-sidebar-footer">

@@ -641,8 +641,63 @@ textarea:focus {
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 14px 12px 20px;
+  padding: 10px 12px 20px;
 }
+.atlas-sidebar-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 12px 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+}
+.atlas-sidebar-search > span { color: #64748b; font-size: 16px; }
+.atlas-sidebar-search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #dbe5f2;
+  background: transparent;
+  box-shadow: none;
+  font-size: 11px;
+}
+.atlas-sidebar-search input:focus { border: 0; background: transparent; box-shadow: none; }
+.atlas-sidebar-search button,
+.atlas-sidebar-search kbd {
+  flex: 0 0 auto;
+  border: 0;
+  color: #52637a;
+  background: transparent;
+  font-size: 10px;
+}
+.atlas-sidebar-search kbd { border: 1px solid rgba(148,163,184,.1); border-radius: 6px; padding: 2px 4px; }
+.atlas-sidebar-current {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 14px 8px;
+  padding: 4px 8px;
+  color: #52637a;
+  font-size: 9px;
+}
+.atlas-sidebar-current strong { overflow: hidden; color: #8da0b8; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.atlas-sidebar-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 28px 12px;
+  text-align: center;
+}
+.atlas-sidebar-empty > span { color: #38bdf8; font-size: 22px; }
+.atlas-sidebar-empty strong { color: #cbd5e1; font-size: 11px; }
+.atlas-sidebar-empty small { color: #52637a; font-size: 9px; line-height: 1.5; }
+.atlas-sidebar-empty button { margin-top: 4px; border: 0; color: #7dd3fc; background: transparent; font-size: 10px; font-weight: 700; }
 .atlas-nav-group + .atlas-nav-group {
   margin-top: 17px;
   padding-top: 14px;
@@ -656,6 +711,22 @@ textarea:focus {
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+.atlas-sidebar-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.atlas-sidebar-section small {
+  display: grid;
+  min-width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 7px;
+  color: #53637a;
+  background: rgba(255,255,255,.03);
+  font-size: 8px;
+  letter-spacing: 0;
 }
 .atlas-nav-link {
   position: relative;
