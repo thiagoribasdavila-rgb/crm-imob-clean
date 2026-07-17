@@ -26,7 +26,10 @@ type Material = {
   valid_until: string | null;
   created_at: string;
   url: string | null;
+  urlExpiresAt: string | null;
 };
+
+type StorageHomologation = { status: "passed" | "incomplete"; privateBucket: boolean; tenantPathProtected: boolean; signedUrlTtlSeconds: number; essential: Array<{ type: string; available: boolean; version: number | null; expiresAt: string | null }> };
 
 const materialLabels: Record<string, { label: string; icon: string; description: string }> = {
   book: { label: "Book comercial", icon: "◫", description: "Apresentação completa do empreendimento" },
@@ -47,6 +50,7 @@ export default function ProjectMaterialsPage() {
   const [developments, setDevelopments] = useState<Development[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [storageHomologation, setStorageHomologation] = useState<StorageHomologation | null>(null);
   const [currentRole, setCurrentRole] = useState("");
   const [query, setQuery] = useState("");
   const [developer, setDeveloper] = useState("");
@@ -91,8 +95,9 @@ export default function ProjectMaterialsPage() {
     const payload = await response.json();
     if (!response.ok) {
       setMaterials([]);
+      setStorageHomologation(null);
       setError(payload.error || "Não foi possível carregar os materiais.");
-    } else setMaterials(payload.materials ?? []);
+    } else { setMaterials(payload.materials ?? []); setStorageHomologation(payload.storageHomologation ?? null); }
     setReferenceTime(Date.now());
     setMaterialsLoading(false);
   }
@@ -143,7 +148,7 @@ export default function ProjectMaterialsPage() {
       <section className="atlas-grid-glow overflow-hidden rounded-[30px] border border-cyan-400/10 bg-gradient-to-br from-cyan-500/[.12] via-blue-500/[.07] to-violet-500/[.12] p-6 sm:p-8">
         <div className="grid gap-7 xl:grid-cols-[1.4fr_.7fr] xl:items-end">
           <div>
-            <div className="flex flex-wrap gap-2"><AtlasBadge tone="info">MATERIAL HUB</AtlasBadge><AtlasBadge tone="success">TUDO EM UM LUGAR</AtlasBadge><AtlasBadge tone="violet">POR INCORPORADORA</AtlasBadge></div>
+            <div className="flex flex-wrap gap-2"><AtlasBadge tone="info">MATERIAL HUB</AtlasBadge><AtlasBadge tone="success">TUDO EM UM LUGAR</AtlasBadge><AtlasBadge tone="violet">POR INCORPORADORA</AtlasBadge><AtlasBadge tone={storageHomologation?.status === "passed" ? "success" : "warning"}>FASE 31 · {storageHomologation?.status === "passed" ? "COMPROVADA" : "PENDENTE"}</AtlasBadge></div>
             <h1 className="mt-5 max-w-4xl text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">Encontre o material certo antes mesmo de o cliente terminar a pergunta.</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">Book, tabela, espelho de vendas, plantas e apresentações organizados por incorporadora e projeto, sempre na versão vigente.</p>
           </div>
@@ -163,6 +168,8 @@ export default function ProjectMaterialsPage() {
 
       {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
       {notice ? <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-200">{notice}</div> : null}
+
+      {selected && storageHomologation ? <AtlasCard><AtlasCardHeader eyebrow="Fase 31 · Storage privado" title="Book, tabela e espelho protegidos" description="O aceite exige os três materiais vigentes, acessíveis por links temporários e isolados no caminho da organização." /><div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-5">{storageHomologation.essential.map((item) => <div key={item.type} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><span className="text-xs text-slate-500">{materialLabels[item.type]?.label || item.type}</span><div className="mt-2"><AtlasBadge tone={item.available ? "success" : "warning"}>{item.available ? `V${item.version} ACESSÍVEL` : "PENDENTE"}</AtlasBadge></div></div>)}<div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><span className="text-xs text-slate-500">Segurança</span><strong className="mt-2 block text-sm text-white">Bucket privado</strong><p className="mt-1 text-[10px] text-slate-500">Links expiram em {Math.round(storageHomologation.signedUrlTtlSeconds / 60)} min · caminho interno oculto</p></div><div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><span className="text-xs text-slate-500">Isolamento</span><strong className="mt-2 block text-sm text-white">{storageHomologation.tenantPathProtected ? "Organização protegida" : "Revisar"}</strong><p className="mt-1 text-[10px] text-slate-500">Acesso validado antes de assinar</p></div></div></AtlasCard> : null}
 
       <section className="grid gap-6 xl:grid-cols-[.72fr_1.28fr]">
         <AtlasCard>

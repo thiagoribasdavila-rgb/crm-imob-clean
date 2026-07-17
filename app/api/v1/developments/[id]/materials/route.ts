@@ -81,11 +81,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   if (error) return NextResponse.json({ error: "Não foi possível carregar os materiais." }, { status: 500 });
 
+  const expiresInSeconds = 900;
+  const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
   const materials = await Promise.all((data ?? []).map(async (material) => {
     const { data: signed } = await admin.storage.from("project-materials").createSignedUrl(material.storage_path, 900);
-    return { ...material, url: signed?.signedUrl ?? null };
+    const safeMaterial = { ...material, storage_path: undefined };
+    return { ...safeMaterial, url: signed?.signedUrl ?? null, urlExpiresAt: signed?.signedUrl ? expiresAt : null };
   }));
-  return NextResponse.json({ development, materials });
+  const today = new Date().toISOString().slice(0, 10);
+  const essential = ["book", "price_table", "sales_mirror"].map((type) => { const material = materials.find((item) => item.material_type === type && (!item.valid_from || item.valid_from <= today) && (!item.valid_until || item.valid_until >= today)); return { type, available: Boolean(material?.url), version: material?.version ?? null, expiresAt: material?.urlExpiresAt ?? null }; });
+  return NextResponse.json({ development, materials, storageHomologation: { status: essential.every((item) => item.available) ? "passed" : "incomplete", privateBucket: true, tenantPathProtected: true, signedUrlTtlSeconds: expiresInSeconds, essential } });
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
@@ -119,17 +124,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   const admin = getSupabaseAdmin();
-  const { data: previous } = await admin
-    .from("project_materials")
-    .select("id,version")
-    .eq("organization_id", access.access.organization.id)
-    .eq("development_id", id)
-    .eq("material_type", materialType)
-    .eq("is_current", true)
-    .maybeSingle();
-
-  const version = Number(previous?.version ?? 0) + 1;
-  const storagePath = `${access.access.organization.id}/${id}/${materialType}/v${version}-${Date.now()}-${safeFileName(file.name)}`;
+  const storagePath = `${access.access.organization.id}/${id}/${materialType}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
   const upload = await admin.storage.from("project-materials").upload(storagePath, file, {
     contentType: file.type,
     cacheControl: "3600",
@@ -137,31 +132,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
   });
   if (upload.error) return NextResponse.json({ error: `Falha no envio: ${upload.error.message}` }, { status: 400 });
 
-  if (previous) await admin.from("project_materials").update({ is_current: false, updated_at: new Date().toISOString() }).eq("id", previous.id);
+  const { data: result, error } = await admin.rpc("version_project_material", { p_organization_id: access.access.organization.id, p_development_id: id, p_uploaded_by: access.access.profile.id, p_material_type: materialType, p_title: title, p_description: description, p_storage_path: storagePath, p_file_name: file.name, p_mime_type: file.type, p_file_size: file.size, p_valid_from: validFrom, p_valid_until: validUntil });
+  const material = (Array.isArray(result) ? result[0] : result) as { id: string; version: number } | null;
 
-  const { data: material, error } = await admin
-    .from("project_materials")
-    .insert({
-      organization_id: access.access.organization.id,
-      development_id: id,
-      material_type: materialType,
-      title,
-      description: description || null,
-      storage_path: storagePath,
-      file_name: file.name,
-      mime_type: file.type,
-      file_size: file.size,
-      version,
-      valid_from: validFrom,
-      valid_until: validUntil,
-      uploaded_by: access.access.profile.id,
-    })
-    .select("id,material_type,title,file_name,version,valid_from,valid_until,created_at")
-    .single();
-
-  if (error) {
+  if (error || !material) {
     await admin.storage.from("project-materials").remove([storagePath]);
-    if (previous) await admin.from("project_materials").update({ is_current: true }).eq("id", previous.id);
     return NextResponse.json({ error: "Não foi possível registrar a nova versão." }, { status: 500 });
   }
 
@@ -171,7 +146,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     source: "launch-os.material-hub",
     aggregate_type: "development",
     aggregate_id: id,
-    payload: { materialId: material.id, materialType, version, fileName: file.name },
+    payload: { materialId: material.id, materialType, version: material.version, fileName: file.name },
     correlation_id: crypto.randomUUID(),
   });
 

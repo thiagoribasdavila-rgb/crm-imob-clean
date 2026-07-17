@@ -74,6 +74,7 @@ const inventoryGuardMigration = readFileSync(resolve(root, "supabase/migrations/
 const feedbackGuardMigration = readFileSync(resolve(root, "supabase/migrations/20260717005843_property_feedback_presentation_guard.sql"), "utf8");
 const materialsRoute = readFileSync(resolve(root, "app/api/v1/developments/[id]/materials/route.ts"), "utf8");
 const materialsPage = readFileSync(resolve(root, "app/(crm)/developments/materials/page.tsx"), "utf8");
+const atomicMaterialMigration = readFileSync(resolve(root, "supabase/migrations/20260717012100_atomic_project_material_versioning.sql"), "utf8");
 const graphUpsertRoute = readFileSync(resolve(root, "app/api/atlas2030/graph/upsert/route.ts"), "utf8");
 const inventoryReserveRoute = readFileSync(resolve(root, "app/api/atlas2030/inventory/reserve/route.ts"), "utf8");
 const tenantReferenceMigration = readFileSync(resolve(root, "supabase/migrations/20260717010418_enforce_tenant_reference_integrity.sql"), "utf8");
@@ -147,7 +148,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("246 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("252 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -300,6 +301,12 @@ const checks = [
   ["upload valida conteúdo real do arquivo", materialsRoute.includes("hasExpectedSignature") && materialsRoute.includes("não corresponde ao formato")],
   ["vigência de material é validada antes do upload", materialsRoute.includes("Revise as datas de vigência") && materialsRoute.includes("validUntil < validFrom")],
   ["link de material possui expiração curta", materialsRoute.includes("createSignedUrl(material.storage_path, 900)")],
+  ["versionamento de material é atômico", atomicMaterialMigration.includes("version_project_material") && atomicMaterialMigration.includes("pg_advisory_xact_lock")],
+  ["material valida organização no banco", atomicMaterialMigration.includes("material_development_invalid") && atomicMaterialMigration.includes("p_organization_id::text || '/' || p_development_id::text")],
+  ["upload de material exige gestão", atomicMaterialMigration.includes("commercial_role in ('director', 'superintendent', 'manager')") && atomicMaterialMigration.includes("material_upload_forbidden")],
+  ["falha remove arquivo órfão", materialsRoute.includes('storage.from("project-materials").remove([storagePath])') && materialsRoute.includes("version_project_material")],
+  ["API oculta caminho interno do Storage", materialsRoute.includes("storage_path: undefined") && materialsRoute.includes("urlExpiresAt")],
+  ["painel comprova kit protegido da fase 31", materialsRoute.includes("storageHomologation") && materialsPage.includes("Fase 31 · Storage privado") && materialsPage.includes("Bucket privado")],
   ["grafo rejeita entidades de outra empresa", graphUpsertRoute.includes("endpointIds") && graphUpsertRoute.includes("fora da sua empresa") && graphUpsertRoute.includes("organization_id")],
   ["reserva valida cliente dentro da empresa", inventoryReserveRoute.includes('from("customers")') && inventoryReserveRoute.includes("Cliente inexistente ou fora da sua empresa")],
   ["reserva valida lead sob escopo comercial", inventoryReserveRoute.includes("identity.supabase") && inventoryReserveRoute.includes("fora do seu escopo comercial")],
