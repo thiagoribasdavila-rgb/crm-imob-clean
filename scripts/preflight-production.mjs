@@ -22,6 +22,7 @@ const value = (key) => process.env[key] || localEnv[key] || "";
 const baseUrl = (value("ATLAS_BASE_URL") || "http://localhost:3000").replace(/\/$/, "");
 const atlasEnvironment = value("ATLAS_ENV");
 const results = [];
+const placeholderHost = /(^|\.)(seudominio\.com\.br|example\.com)$/i;
 
 function check(name, ok, detail, required = true) {
   results.push({ name, ok, detail, required });
@@ -34,6 +35,9 @@ check("Ambiente Atlas", ["development", "homologation", "production"].includes(a
 check("Identidade do ambiente", Boolean(value("ATLAS_ENVIRONMENT_ID")), value("ATLAS_ENVIRONMENT_ID") ? "configurada" : "configure um identificador exclusivo");
 check("Banco isolado", value("ATLAS_DATABASE_ENVIRONMENT") === atlasEnvironment, value("ATLAS_DATABASE_ENVIRONMENT") ? `banco marcado como ${value("ATLAS_DATABASE_ENVIRONMENT")}` : "configure ATLAS_DATABASE_ENVIRONMENT");
 check("URL segura", atlasEnvironment === "development" ? /^http:\/\/localhost(?::\d+)?$/i.test(baseUrl) : /^https:\/\//i.test(baseUrl), atlasEnvironment === "development" ? "localhost permitido somente em desenvolvimento" : "HTTPS obrigatório fora do desenvolvimento");
+let baseHostname = "";
+try { baseHostname = new URL(baseUrl).hostname; } catch {}
+check("Domínio público real", atlasEnvironment === "development" || Boolean(baseHostname && !placeholderHost.test(baseHostname)), atlasEnvironment === "development" ? "não exigido em desenvolvimento" : baseHostname && !placeholderHost.test(baseHostname) ? "configurado" : "substitua o domínio de exemplo pela URL da Hostinger");
 if (atlasEnvironment === "production") {
   check("Bootstrap removido", !value("ATLAS_BOOTSTRAP_SECRET"), value("ATLAS_BOOTSTRAP_SECRET") ? "remova ATLAS_BOOTSTRAP_SECRET" : "não configurado");
   check("Credenciais de teste removidas", !value("ATLAS_TEST_EMAIL") && !value("ATLAS_TEST_PASSWORD"), "produção não usa conta automatizada");
@@ -43,6 +47,7 @@ check("NEXT_PUBLIC_SUPABASE_URL", Boolean(value("NEXT_PUBLIC_SUPABASE_URL")), "c
 const publicSupabaseKey = value("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") || value("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 check("Chave pública Supabase", Boolean(publicSupabaseKey), publicSupabaseKey ? "publishable/anon configurada" : "configure NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY");
 check("SUPABASE_SERVICE_ROLE_KEY", Boolean(value("SUPABASE_SERVICE_ROLE_KEY")), "configurada");
+check("DATABASE_URL", Boolean(value("DATABASE_URL")), value("DATABASE_URL") ? "conexão Postgres configurada" : "necessária para backup e migrations");
 check("ATLAS_CRON_SECRET", Boolean(value("ATLAS_CRON_SECRET")), "configurada");
 const aiCredential = Boolean(value("OPENAI_API_KEY"));
 check("IA comercial", aiCredential, aiCredential ? "OpenAI direta disponível" : "configure OPENAI_API_KEY");
