@@ -34,12 +34,13 @@ export async function GET(request: Request) {
     const identity = await requireApiIdentity(request);
     const admin = getSupabaseAdmin();
 
-    const [developmentResult, propertyResult, opportunityResult, campaignResult, reservationResult] = await Promise.all([
+    const [developmentResult, propertyResult, opportunityResult, campaignResult, reservationResult, intelligenceResult] = await Promise.all([
       admin.from("developments").select("*").eq("organization_id", identity.organizationId).order("created_at", { ascending: false }),
       admin.from("properties").select("*").eq("organization_id", identity.organizationId).limit(2000),
       admin.from("opportunities").select("*").eq("organization_id", identity.organizationId).limit(2000),
       admin.from("campaigns").select("*").eq("organization_id", identity.organizationId).limit(500),
       admin.from("atlas_inventory_reservations").select("*").eq("organization_id", identity.organizationId).limit(1000),
+      admin.from("project_intelligence_profiles").select("development_id,onboarding_status,readiness_percent,missing_information").eq("organization_id", identity.organizationId),
     ]);
 
     if (developmentResult.error) throw developmentResult.error;
@@ -48,6 +49,7 @@ export async function GET(request: Request) {
     const opportunities = (opportunityResult.data ?? []) as AnyRow[];
     const campaigns = (campaignResult.data ?? []) as AnyRow[];
     const reservations = (reservationResult.data ?? []) as AnyRow[];
+    const intelligence = (intelligenceResult.data ?? []) as AnyRow[];
 
     const developments = ((developmentResult.data ?? []) as AnyRow[]).map((development) => {
       const id = textValue(development.id);
@@ -69,6 +71,7 @@ export async function GET(request: Request) {
 
       return {
         ...development,
+        intelligence: intelligence.find((item) => textValue(item.development_id) === id) ?? null,
         metrics: {
           inventoryTotal: inventory.length,
           available: available.length,
