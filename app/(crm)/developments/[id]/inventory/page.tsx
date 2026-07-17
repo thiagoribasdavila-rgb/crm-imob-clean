@@ -158,7 +158,7 @@ export default function DevelopmentInventoryPage() {
       </AtlasCard>
 
       <AtlasCard>
-        <AtlasCardHeader eyebrow="Unit map" title="Mapa comercial de unidades" description="Disponibilidade, preço, tipologia, reserva e atualização operacional em tempo real." action={<button onClick={() => void load()} className="text-xs font-semibold text-sky-300">Atualizar ↻</button>} />
+        <AtlasCardHeader eyebrow="Unit map" title="Mapa comercial de unidades" description="Disponibilidade, preço, tipologia, reserva e atualização operacional em tempo real." action={<div className="flex gap-3"><Link href={`/developments/${id}/inventory/import`} className="text-xs font-semibold text-emerald-300">Importar tabela</Link><button onClick={() => void load()} className="text-xs font-semibold text-sky-300">Atualizar ↻</button></div>} />
         <div className="border-t border-white/[0.06] p-5 sm:p-6">
           <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar unidade, andar, tipologia..." className="rounded-2xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition focus:border-sky-400/30" />

@@ -960,7 +960,17 @@ Pendência externa: aplicar migration, cadastrar portfólio real e validar match
 
 Pendência externa: aplicar migrations 63–64 e validar espelho real, duplicidade, reserva, concorrência, perfis e dois tenants.
 
-Próxima fase: **Fase 65 — Importação e atualização inteligente de tabelas**, reconciliando planilhas de incorporadoras com o espelho canônico.
+## Fase 65 — Importação e atualização inteligente de tabelas
+
+**Estado:** 100% implementada e aprovada localmente; formatos reais das incorporadoras permanecem para homologação.
+
+**Evolução:** arquivos XLSX/CSV são normalizados, reconciliados linha a linha e separados em criação, atualização, sem mudança, conflito ou erro. A prévia é obrigatória e arquivo repetido é identificado por hash.
+
+**Proteções:** somente diretoria/superintendência aprovam com motivo; aplicação atômica reutiliza concorrência e bloqueio por reserva. O contrato está em `config/intelligent-inventory-import.json`, o gate em `npm run inventory-import:check` e o roteiro em `docs/INTELLIGENT_INVENTORY_IMPORT_PHASE_65.md`.
+
+Pendência externa: aplicar migration e validar tabelas reais, volume, moeda, duplicidade, reservas, concorrência e dois tenants.
+
+Próxima fase: **Fase 66 — Versionamento e vigência comercial**, definindo qual tabela, espelho e condição estão válidos em cada momento.
 
 ## Painel das 100 fases
 
