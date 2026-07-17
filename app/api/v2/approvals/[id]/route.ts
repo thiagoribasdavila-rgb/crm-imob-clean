@@ -24,7 +24,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       .eq("organization_id", identity.organizationId)
       .single();
 
-    if (!profile || !["admin", "manager"].includes(profile.role)) {
+    if (!profile || (!["admin", "manager"].includes(profile.role) && !["director", "superintendent", "manager"].includes(profile.commercial_role || ""))) {
       return NextResponse.json({ error: "Apenas administradores e gestores podem decidir aprovações." }, { status: 403 });
     }
 
@@ -38,6 +38,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (error || !approval) return NextResponse.json({ error: "Aprovação não encontrada." }, { status: 404 });
     if (approval.status !== "pending") return NextResponse.json({ error: "Aprovação já decidida." }, { status: 409 });
     if (["meta_campaign_optimization", "meta_audience_change", "meta_budget_change", "meta_creative_change"].includes(approval.request_type) && profile.commercial_role !== "director" && profile.role !== "admin") return NextResponse.json({ error: "Decisões de campanha pertencem exclusivamente ao diretor." }, { status: 403 });
+    if (approval.entity_type === "reactivation_batch" && approval.entity_id && profile.commercial_role !== "director" && profile.role !== "admin") {
+      const [{ data: batch }, { data: team }] = await Promise.all([
+        admin.from("lead_reactivation_batches").select("owner_id").eq("id", approval.entity_id).eq("organization_id", identity.organizationId).single(),
+        admin.from("profiles").select("id,reports_to").eq("organization_id", identity.organizationId).eq("active", true),
+      ]);
+      const allowed = new Set([identity.userId]);
+      let changed = true;
+      while (changed) { changed = false; for (const member of team ?? []) if (member.reports_to && allowed.has(member.reports_to) && !allowed.has(member.id)) { allowed.add(member.id); changed = true; } }
+      if (!batch || !allowed.has(batch.owner_id)) return NextResponse.json({ error: "Esta campanha pertence a outra estrutura comercial." }, { status: 403 });
+    }
 
     const decidedAt = new Date().toISOString();
     const { error: updateError } = await admin
@@ -60,6 +70,26 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     if (body.decision === "rejected" && approval.entity_type === "message" && approval.entity_id) {
       await admin.from("messages").update({ status: "failed", error: body.reason || "Envio rejeitado na governança." }).eq("id", approval.entity_id);
+    }
+
+    if (approval.entity_type === "reactivation_batch" && approval.entity_id) {
+      const { data: contacts } = await admin.from("lead_reactivation_contacts").select("id,message_id").eq("batch_id", approval.entity_id).eq("status", "pending_approval");
+      const messageIds = (contacts ?? []).map((item) => item.message_id).filter(Boolean) as string[];
+      if (body.decision === "approved" && messageIds.length) {
+        const outbox = messageIds.map((messageId) => ({ organization_id: identity.organizationId, topic: "message.send", aggregate_type: "message", aggregate_id: messageId, payload: { messageId, channel: "whatsapp", reactivationBatchId: approval.entity_id } }));
+        const { error: outboxError } = await admin.from("integration_outbox").insert(outbox);
+        if (outboxError) throw outboxError;
+        await Promise.all([
+          admin.from("lead_reactivation_contacts").update({ status: "queued" }).eq("batch_id", approval.entity_id).eq("status", "pending_approval"),
+          admin.from("lead_reactivation_batches").update({ status: "queued", updated_at: decidedAt }).eq("id", approval.entity_id),
+        ]);
+      } else if (body.decision === "rejected") {
+        if (messageIds.length) await admin.from("messages").update({ status: "failed", error: body.reason || "Campanha de reativação rejeitada." }).in("id", messageIds);
+        await Promise.all([
+          admin.from("lead_reactivation_contacts").update({ status: "failed", block_reason: "rejected" }).eq("batch_id", approval.entity_id).eq("status", "pending_approval"),
+          admin.from("lead_reactivation_batches").update({ status: "rejected", updated_at: decidedAt }).eq("id", approval.entity_id),
+        ]);
+      }
     }
 
     logger.info("approval.decided", { approvalId: id, decision: body.decision, userId: identity.userId });

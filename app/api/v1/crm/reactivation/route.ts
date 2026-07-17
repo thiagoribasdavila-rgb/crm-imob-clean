@@ -1,0 +1,142 @@
+import { type NextRequest } from "next/server";
+import { apiError, apiSuccess } from "@/lib/api/core";
+import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+
+type ImportRow = { name?: string; phone?: string; email?: string };
+function normalizePhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+  return digits.length >= 12 && digits.length <= 15 ? digits : "";
+}
+
+function roleOf(role: string, commercialRole: string | null) {
+  return commercialRole || (role === "admin" ? "director" : role);
+}
+
+function descendants(profiles: Array<{ id: string; reports_to: string | null }>, root: string) {
+  const ids = new Set([root]);
+  let changed = true;
+  while (changed) { changed = false; for (const profile of profiles) if (profile.reports_to && ids.has(profile.reports_to) && !ids.has(profile.id)) { ids.add(profile.id); changed = true; } }
+  return ids;
+}
+
+export async function GET(request: NextRequest) {
+  const rate = enforceRateLimit(request, { limit: 60, scope: "crm-reactivation-read" });
+  if (!rate.ok) return rate.response;
+  const identity = await requireAccessContext(request);
+  if (!identity.ok) return identity.response;
+  const admin = getSupabaseAdmin();
+  const org = identity.access.organization.id;
+  const [profilesResult, batchesResult, contactsResult, projectsResult] = await Promise.all([
+    admin.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").eq("organization_id", org).eq("active", true),
+    admin.from("lead_reactivation_batches").select("*").eq("organization_id", org).order("created_at", { ascending: false }).limit(100),
+    admin.from("lead_reactivation_contacts").select("batch_id,status").eq("organization_id", org),
+    admin.from("developments").select("id,name,developer_name").eq("organization_id", org).order("name"),
+  ]);
+  const failed = [profilesResult, batchesResult, contactsResult, projectsResult].find((item) => item.error);
+  if (failed?.error) return apiError("REACTIVATION_LOOKUP_FAILED", "Não foi possível carregar a central de reativação.", identity.meta, { status: 500, details: failed.error.message });
+  const profiles = profilesResult.data ?? [];
+  const role = roleOf(identity.access.profile.role, identity.access.profile.commercialRole);
+  const visible = role === "director" ? new Set(profiles.map((item) => item.id)) : descendants(profiles, identity.access.profile.id);
+  const batches = (batchesResult.data ?? []).filter((item) => visible.has(item.owner_id));
+  const contacts = contactsResult.data ?? [];
+  return apiSuccess({
+    viewer: { id: identity.access.profile.id, role },
+    targets: profiles.filter((item) => visible.has(item.id) && (item.commercial_role || item.role) === "broker"),
+    projects: projectsResult.data ?? [],
+    batches: batches.map((batch) => ({ ...batch, summary: contacts.filter((item) => item.batch_id === batch.id).reduce((sum, item) => ({ ...sum, [item.status]: (sum[item.status] || 0) + 1 }), {} as Record<string, number>) })),
+  }, identity.meta, { headers: rate.headers });
+}
+
+export async function POST(request: NextRequest) {
+  const rate = enforceRateLimit(request, { limit: 20, scope: "crm-reactivation-write" });
+  if (!rate.ok) return rate.response;
+  const identity = await requireAccessContext(request);
+  if (!identity.ok) return identity.response;
+  const body = await request.json().catch(() => null) as { action?: string; name?: string; ownerId?: string; developmentId?: string; sourceType?: string; consentBasis?: string; consentConfirmed?: boolean; rows?: ImportRow[]; batchId?: string; templateName?: string; templateLanguage?: string } | null;
+  const admin = getSupabaseAdmin();
+  const org = identity.access.organization.id;
+  const role = roleOf(identity.access.profile.role, identity.access.profile.commercialRole);
+
+  if (body?.action === "import") {
+    const rows = Array.isArray(body.rows) ? body.rows.slice(0, 500) : [];
+    if (!rows.length) return apiError("EMPTY_BASE", "Inclua ao menos um contato válido.", identity.meta, { status: 400 });
+    if (!body.consentConfirmed || !body.consentBasis?.trim()) return apiError("CONSENT_REQUIRED", "Confirme e descreva a autorização para contato por WhatsApp.", identity.meta, { status: 400 });
+    const sourceType = role === "broker" ? "broker_external" : body.sourceType === "broker_external" ? "broker_external" : "company_legacy";
+    const ownerId = role === "broker" ? identity.access.profile.id : body.ownerId || identity.access.profile.id;
+    const { data: profiles } = await admin.from("profiles").select("id,reports_to,commercial_role,role").eq("organization_id", org).eq("active", true);
+    const allowed = role === "director" ? new Set((profiles ?? []).map((item) => item.id)) : descendants(profiles ?? [], identity.access.profile.id);
+    const target = (profiles ?? []).find((item) => item.id === ownerId);
+    if (!target || !allowed.has(ownerId) || (target.commercial_role || target.role) !== "broker") return apiError("INVALID_OWNER", "Selecione um corretor permitido na sua estrutura.", identity.meta, { status: 403 });
+    if (body.developmentId) {
+      const { data: project } = await admin.from("developments").select("id").eq("id", body.developmentId).eq("organization_id", org).maybeSingle();
+      if (!project) return apiError("INVALID_PROJECT", "Projeto não encontrado.", identity.meta, { status: 400 });
+    }
+    const unique = new Map<string, { name: string; phone: string; email: string | null }>();
+    for (const row of rows) {
+      const phone = normalizePhone(row.phone || "");
+      if (phone) unique.set(phone, { name: String(row.name || "Lead reativação").trim().slice(0, 120), phone, email: String(row.email || "").trim().toLowerCase() || null });
+    }
+    const normalized = Array.from(unique.values());
+    if (!normalized.length) return apiError("INVALID_CONTACTS", "Nenhum telefone válido foi encontrado.", identity.meta, { status: 400 });
+    const phones = normalized.map((item) => item.phone);
+    const [{ data: suppressions }, { data: existing }] = await Promise.all([
+      admin.from("messaging_suppressions").select("recipient").eq("organization_id", org).eq("channel", "whatsapp").in("recipient", phones),
+      admin.from("leads").select("id,phone,assigned_to").eq("organization_id", org).not("phone", "is", null).limit(10000),
+    ]);
+    const blocked = new Set((suppressions ?? []).map((item) => item.recipient));
+    const existingMap = new Map((existing ?? []).map((item) => [normalizePhone(item.phone || ""), item]));
+    const { data: batch, error: batchError } = await admin.from("lead_reactivation_batches").insert({ organization_id: org, owner_id: ownerId, created_by: identity.access.profile.id, development_id: body.developmentId || null, name: String(body.name || "Base de reativação").trim().slice(0, 120), source_type: sourceType, consent_basis: body.consentBasis.trim().slice(0, 500), imported_count: normalized.length }).select("id").single();
+    if (batchError || !batch) return apiError("IMPORT_FAILED", "Não foi possível criar a base.", identity.meta, { status: 500 });
+    const contacts = [];
+    let eligible = 0;
+    for (const item of normalized) {
+      let lead = existingMap.get(item.phone);
+      let reason: string | null = blocked.has(item.phone) ? "opt_out" : null;
+      if (lead && role === "broker" && lead.assigned_to && lead.assigned_to !== ownerId) reason = "lead_de_outro_corretor";
+      if (lead && role !== "broker" && !reason) {
+        await admin.from("leads").update({ assigned_to: ownerId, ...(body.developmentId ? { development_id: body.developmentId } : {}), updated_at: new Date().toISOString() }).eq("id", lead.id).eq("organization_id", org);
+      }
+      if (!lead && !reason) {
+        const created = await admin.from("leads").insert({ organization_id: org, assigned_to: ownerId, development_id: body.developmentId || null, name: item.name, phone: item.phone, email: item.email, source: sourceType === "company_legacy" ? "Base antiga" : "Base externa do corretor", status: "novo", metadata: { reactivation: { batchId: batch.id, consentBasis: body.consentBasis.trim(), importedBy: identity.access.profile.id } } }).select("id,phone,assigned_to").single();
+        if (created.data) lead = created.data;
+        else reason = "falha_ao_criar_lead";
+      }
+      if (!reason) eligible += 1;
+      contacts.push({ batch_id: batch.id, organization_id: org, lead_id: lead?.id || null, phone: item.phone, status: reason ? "blocked" : "imported", block_reason: reason });
+    }
+    await Promise.all([admin.from("lead_reactivation_contacts").insert(contacts), admin.from("lead_reactivation_batches").update({ eligible_count: eligible }).eq("id", batch.id)]);
+    return apiSuccess({ batchId: batch.id, imported: normalized.length, eligible, blocked: normalized.length - eligible }, identity.meta, { status: 201, headers: rate.headers });
+  }
+
+  if (body?.action === "activate" && body.batchId) {
+    const templateName = String(body.templateName || "").trim();
+    const language = String(body.templateLanguage || "pt_BR").trim();
+    if (!/^[a-z0-9_]{2,512}$/.test(templateName)) return apiError("INVALID_TEMPLATE", "Informe o nome técnico de um template aprovado no WhatsApp.", identity.meta, { status: 400 });
+    const { data: batch } = await admin.from("lead_reactivation_batches").select("*").eq("id", body.batchId).eq("organization_id", org).single();
+    if (!batch) return apiError("BATCH_NOT_FOUND", "Base não encontrada.", identity.meta, { status: 404 });
+    const { data: profiles } = await admin.from("profiles").select("id,reports_to").eq("organization_id", org).eq("active", true);
+    const allowed = role === "director" ? new Set((profiles ?? []).map((item) => item.id)) : descendants(profiles ?? [], identity.access.profile.id);
+    if (!allowed.has(batch.owner_id)) return apiError("FORBIDDEN", "Base fora da sua estrutura.", identity.meta, { status: 403 });
+    const { data: contacts } = await admin.from("lead_reactivation_contacts").select("id,lead_id,phone,status").eq("batch_id", batch.id).eq("status", "imported").limit(500);
+    let prepared = 0;
+    for (const contact of contacts ?? []) {
+      let { data: conversation } = await admin.from("conversations").select("id").eq("organization_id", org).eq("channel", "whatsapp").eq("lead_id", contact.lead_id).maybeSingle();
+      if (!conversation) {
+        const created = await admin.from("conversations").insert({ organization_id: org, lead_id: contact.lead_id, channel: "whatsapp", external_thread_id: contact.phone, assigned_to: batch.owner_id, status: "open" }).select("id").single();
+        conversation = created.data;
+      }
+      if (!conversation) continue;
+      const { data: message } = await admin.from("messages").insert({ organization_id: org, conversation_id: conversation.id, direction: "outbound", channel: "whatsapp", recipient: contact.phone, content: `Template WhatsApp: ${templateName}`, media: [{ type: "whatsapp_template", name: templateName, language, batchId: batch.id }], status: "queued" }).select("id").single();
+      if (!message) continue;
+      await admin.from("lead_reactivation_contacts").update({ status: "pending_approval", message_id: message.id }).eq("id", contact.id);
+      prepared += 1;
+    }
+    const { error: approvalError } = await admin.from("approval_requests").insert({ organization_id: org, request_type: "whatsapp_reactivation", entity_type: "reactivation_batch", entity_id: batch.id, payload: { batchId: batch.id, templateName, language, prepared, ownerId: batch.owner_id }, requested_by: identity.access.profile.id });
+    if (approvalError) return apiError("APPROVAL_FAILED", "Não foi possível enviar a campanha para aprovação.", identity.meta, { status: 500 });
+    await admin.from("lead_reactivation_batches").update({ status: "pending_approval", template_name: templateName, template_language: language, queued_count: prepared, updated_at: new Date().toISOString() }).eq("id", batch.id);
+    return apiSuccess({ batchId: batch.id, prepared, status: "pending_approval" }, identity.meta, { status: 202, headers: rate.headers });
+  }
+  return apiError("INVALID_ACTION", "Ação inválida.", identity.meta, { status: 400 });
+}

@@ -6,6 +6,15 @@ import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
 
+function normalizePhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length === 10 || digits.length === 11 ? `55${digits}` : digits;
+}
+
+function isOptOut(value: string) {
+  return /^(sair|pare|parar|cancelar|remover|stop|unsubscribe)$/i.test(value.trim());
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const mode = url.searchParams.get("hub.mode");
@@ -52,12 +61,17 @@ export async function POST(request: Request) {
         if (!integration?.organization_id) continue;
 
         for (const incoming of change.value?.messages ?? []) {
+          const sender = normalizePhone(incoming.from);
+          const incomingText = incoming.text?.body ?? "";
+          if (isOptOut(incomingText)) {
+            await admin.from("messaging_suppressions").upsert({ organization_id: integration.organization_id, channel: "whatsapp", recipient: sender, reason: "opt_out", source: "whatsapp_inbound" }, { onConflict: "organization_id,channel,recipient" });
+          }
           const { data: conversation } = await admin
             .from("conversations")
             .select("id")
             .eq("organization_id", integration.organization_id)
             .eq("channel", "whatsapp")
-            .eq("external_thread_id", incoming.from)
+            .eq("external_thread_id", sender)
             .maybeSingle();
 
           let conversationId = conversation?.id;
@@ -67,7 +81,7 @@ export async function POST(request: Request) {
               .insert({
                 organization_id: integration.organization_id,
                 channel: "whatsapp",
-                external_thread_id: incoming.from,
+                external_thread_id: sender,
                 status: "open",
                 unread_count: 1,
                 last_message_at: new Date().toISOString(),
@@ -88,13 +102,14 @@ export async function POST(request: Request) {
             conversation_id: conversationId,
             direction: "inbound",
             channel: "whatsapp",
-            sender: incoming.from,
+            sender,
             content: incoming.text?.body ?? `[${incoming.type ?? "mensagem"}]`,
             status: "received",
             external_message_id: incoming.id,
             created_at: incoming.timestamp ? new Date(Number(incoming.timestamp) * 1000).toISOString() : new Date().toISOString(),
           });
           if (messageError) throw messageError;
+          await admin.from("lead_reactivation_contacts").update({ status: "replied" }).eq("organization_id", integration.organization_id).eq("phone", sender).in("status", ["queued", "sent"]);
           accepted += 1;
         }
       }

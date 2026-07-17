@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 const navigation = [
   { label: "Command Center", href: "/dashboard", icon: "⌘", roles: ["director","superintendent","manager","broker"] },
   { label: "Leads", href: "/leads", icon: "◎", roles: ["director","superintendent","manager","broker"] },
+  { label: "Reativação", href: "/leads/import", icon: "↻", roles: ["director","superintendent","manager","broker"] },
   { label: "Pipeline", href: "/pipeline", icon: "⌁", roles: ["director","superintendent","manager","broker"] },
   { label: "Tarefas", href: "/tasks", icon: "✓", roles: ["director","superintendent","manager","broker"] },
   { label: "Agenda", href: "/calendar", icon: "□", roles: ["director","superintendent","manager","broker"] },
