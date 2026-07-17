@@ -25,6 +25,8 @@ const leadsPortfolioRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/rou
 const crmDashboard = readFileSync(resolve(root, "app/(crm)/dashboard/page.tsx"), "utf8");
 const superintendentDashboardRoute = readFileSync(resolve(root, "app/api/v1/analytics/dashboard/route.ts"), "utf8");
 const teamSlaRoute = readFileSync(resolve(root, "app/api/v1/analytics/team-sla/route.ts"), "utf8");
+const weeklyAcquisitionRoute = readFileSync(resolve(root, "app/api/v1/analytics/weekly-acquisition/route.ts"), "utf8");
+const weeklyAcquisition = readFileSync(resolve(root, "lib/analytics/weekly-acquisition-report.ts"), "utf8");
 const distributionPage = readFileSync(resolve(root, "app/(crm)/distribution/page.tsx"), "utf8");
 const distributionRoute = readFileSync(resolve(root, "app/api/v1/crm/distribution/route.ts"), "utf8");
 const distributionMigration = readFileSync(resolve(root, "supabase/migrations/20260716234729_balanced_project_lead_distribution.sql"), "utf8");
@@ -314,6 +316,9 @@ const checks = [
   ["Meta Insights é somente leitura", metaInsights.includes('/insights?${params}') && !metaInsights.includes('method: "POST"')],
   ["ranking incorpora eficiência real", campaignIntelligence.includes("costPerQualifiedLead") && campaignIntelligence.includes("ctr") && campaignIntelligence.includes("spend")],
   ["relatórios financeiros cobrem três períodos", metaDailyReport.includes("fetchMetaCampaignInsights(1)") && metaDailyReport.includes("fetchMetaCampaignInsights(7)") && metaDailyReport.includes("fetchMetaCampaignInsights(30)")],
+  ["relatório semanal cruza campanha e incorporadora", weeklyAcquisition.includes("developer_name") && weeklyAcquisition.includes("campaignId") && weeklyAcquisitionRoute.includes("fetchMetaCampaignInsights(7)")],
+  ["rateio compartilhado fica explícito", weeklyAcquisition.includes("proportional_by_leads") && weeklyAcquisition.includes("Custo dividido proporcionalmente")],
+  ["relatório semanal é exclusivo da diretoria", weeklyAcquisitionRoute.includes('roles: ["admin", "director"]')],
   ["painel diferencia ausência de custo", metaSettingsPage.includes("Insights financeiros ainda não conectados")],
   ["carteira identifica origem Meta", leadIntelligencePage.includes("Meta campaign context") && leadIntelligencePage.includes("dataSharingConsent")],
   ["lista permite foco em leads Meta", leadsPortfolioPage.includes('value="Meta Lead Ads"') && leadsPortfolioPage.includes("META · APRENDENDO")],
