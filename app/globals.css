@@ -686,7 +686,8 @@ textarea:focus {
   color: #52637a;
   font-size: 9px;
 }
-.atlas-sidebar-current strong { overflow: hidden; color: #8da0b8; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.atlas-sidebar-current strong { min-width: 0; flex: 1; overflow: hidden; color: #8da0b8; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.atlas-sidebar-current button { border: 0; color: #7dd3fc; background: transparent; font-size: 12px; }
 .atlas-sidebar-empty {
   display: grid;
   justify-items: center;
@@ -744,6 +745,46 @@ textarea:focus {
     color var(--atlas-transition),
     background var(--atlas-transition),
     border-color var(--atlas-transition);
+}
+.atlas-nav-item {
+  position: relative;
+}
+.atlas-nav-item .atlas-nav-link {
+  padding-right: 34px;
+}
+.atlas-nav-favorite {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 8px;
+  color: #46566d;
+  background: transparent;
+  opacity: 0;
+  transition: color var(--atlas-transition), background var(--atlas-transition), opacity var(--atlas-transition);
+}
+.atlas-nav-item:hover .atlas-nav-favorite,
+.atlas-nav-favorite:focus-visible,
+.atlas-nav-favorite[data-pinned="true"] { opacity: 1; }
+.atlas-nav-favorite:hover { color: #bae6fd; background: rgba(56,189,248,.08); }
+.atlas-nav-favorite[data-pinned="true"] { color: #7dd3fc; }
+.atlas-nav-favorites {
+  margin-bottom: 14px;
+  padding: 10px 7px 7px;
+  border: 1px solid rgba(56,189,248,.1);
+  border-radius: 14px;
+  background: rgba(56,189,248,.025);
+}
+.atlas-nav-favorites + .atlas-nav-group {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 .atlas-nav-link:hover {
   border-color: var(--atlas-border);

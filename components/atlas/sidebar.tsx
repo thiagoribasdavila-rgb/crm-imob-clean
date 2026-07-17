@@ -144,6 +144,8 @@ const navigation = [
     accessRoles: ["admin"],
   },
 ] as const;
+type NavigationItem = (typeof navigation)[number];
+const FAVORITES_KEY = "atlas:sidebar-favorites:v1";
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -168,6 +170,16 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [query, setQuery] = useState("");
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) || "[]") as unknown;
+      if (Array.isArray(saved)) setFavorites(saved.filter((item): item is string => typeof item === "string"));
+    } catch {
+      window.localStorage.removeItem(FAVORITES_KEY);
+    }
+  }, []);
 
   useEffect(() => {
     onCloseMobile();
@@ -210,6 +222,30 @@ export function Sidebar({
     : permittedItems, [normalizedQuery, permittedItems]);
   const visibleGroups = [...new Set(visibleItems.map((item) => item.group))];
   const currentItem = permittedItems.find((item) => isActive(pathname, item.href));
+  const favoriteItems = permittedItems.filter((item) => favorites.includes(item.href));
+
+  function toggleFavorite(href: string) {
+    setFavorites((current) => {
+      const next = current.includes(href) ? current.filter((item) => item !== href) : [...current, href];
+      window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function renderNavItem(item: NavigationItem, favoriteCopy = false) {
+    const active = isActive(pathname, item.href);
+    const pinned = favorites.includes(item.href);
+    return (
+      <div className="atlas-nav-item" key={`${favoriteCopy ? "favorite-" : ""}${item.href}`}>
+        <Link href={item.href} className="atlas-nav-link" data-active={active ? "true" : "false"} title={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined} onClick={onCloseMobile}>
+          <span className="atlas-nav-icon" aria-hidden="true">{item.icon}</span>
+          <span className="atlas-sidebar-label">{item.label}</span>
+          {active ? <span className="atlas-nav-current atlas-sidebar-label" aria-hidden="true" /> : null}
+        </Link>
+        <button type="button" className="atlas-nav-favorite atlas-sidebar-label" data-pinned={pinned ? "true" : "false"} onClick={() => toggleFavorite(item.href)} aria-label={pinned ? `Remover ${item.label} dos favoritos` : `Fixar ${item.label} nos favoritos`} title={pinned ? "Remover dos favoritos" : "Fixar nos favoritos"}>{pinned ? "★" : "☆"}</button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -263,39 +299,14 @@ export function Sidebar({
           {query ? <button type="button" onClick={() => setQuery("")} aria-label="Limpar busca">×</button> : <kbd>/</kbd>}
         </div>
 
-        {currentItem ? <div className="atlas-sidebar-current atlas-sidebar-label"><span>Você está em</span><strong>{currentItem.label}</strong></div> : null}
+        {currentItem ? <div className="atlas-sidebar-current atlas-sidebar-label"><span>Você está em</span><strong>{currentItem.label}</strong><button type="button" onClick={() => toggleFavorite(currentItem.href)} aria-label={favorites.includes(currentItem.href) ? "Remover tela atual dos favoritos" : "Fixar tela atual nos favoritos"}>{favorites.includes(currentItem.href) ? "★" : "☆"}</button></div> : null}
 
         <nav className="atlas-sidebar-nav" aria-label="Navegação principal">
+          {!normalizedQuery && favoriteItems.length ? <div className="atlas-nav-group atlas-nav-favorites"><p className="atlas-sidebar-section atlas-sidebar-label"><span>Favoritos</span><small>{favoriteItems.length}</small></p>{favoriteItems.map((item) => renderNavItem(item, true))}</div> : null}
           {visibleGroups.map((group) => (
             <div className="atlas-nav-group" key={group}>
               <p className="atlas-sidebar-section atlas-sidebar-label"><span>{group}</span><small>{visibleItems.filter((item) => item.group === group).length}</small></p>
-              {visibleItems
-                .filter((item) => item.group === group)
-                .map((item) => {
-                  const active = isActive(pathname, item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="atlas-nav-link"
-                      data-active={active ? "true" : "false"}
-                      title={collapsed ? item.label : undefined}
-                      aria-current={active ? "page" : undefined}
-                      onClick={onCloseMobile}
-                    >
-                      <span className="atlas-nav-icon" aria-hidden="true">
-                        {item.icon}
-                      </span>
-                      <span className="atlas-sidebar-label">{item.label}</span>
-                      {active ? (
-                        <span
-                          className="atlas-nav-current atlas-sidebar-label"
-                          aria-hidden="true"
-                        />
-                      ) : null}
-                    </Link>
-                  );
-                })}
+              {visibleItems.filter((item) => item.group === group).map((item) => renderNavItem(item))}
             </div>
           ))}
           {!visibleItems.length ? <div className="atlas-sidebar-empty atlas-sidebar-label"><span>⌕</span><strong>Nenhuma tela encontrada</strong><small>Tente buscar por leads, vendas ou projetos.</small><button type="button" onClick={() => setQuery("")}>Limpar busca</button></div> : null}
