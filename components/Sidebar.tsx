@@ -37,6 +37,7 @@ const sections = [
     { name: "Agentes", href: "/atlas-v3/agents", icon: "⬡" },
     { name: "Market Intelligence", href: "/atlas-v3/market", icon: "⌖" },
     { name: "Forecast", href: "/atlas-v3/forecast", icon: "∿" },
+    { name: "Aging do pipeline", href: "/atlas-v3/pipeline-aging", icon: "◷" },
     { name: "Marketplace", href: "/atlas-v3/marketplace", icon: "◧" },
     { name: "Investor", href: "/atlas-v3/investor", icon: "△" },
     { name: "Incorporadoras", href: "/atlas-v3/developer", icon: "▤" },

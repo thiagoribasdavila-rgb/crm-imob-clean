@@ -704,7 +704,17 @@ Pendência externa: aplicar migration e validar aprovação, envio, retorno, ven
 
 Pendência externa: conferir somas por etapa e escopo com oportunidades reais, quatro papéis e dois tenants.
 
-Próxima fase: **Fase 39 — Aging do pipeline**, medindo tempo por etapa, estagnação e velocidade de avanço.
+## Fase 39 — Aging do pipeline
+
+**Estado:** 100% implementada e aprovada localmente; aferição com histórico real permanece para homologação.
+
+**Evolução:** o sistema mede tempo na etapa atual, compara com o SLA canônico, identifica atenção, estagnação e criticidade e entrega uma fila objetiva para ação do corretor e da liderança.
+
+**Precisão e governança:** movimentações registradas são a fonte real. Leads anteriores ao histórico usam a criação como estimativa, com cobertura explícita. A análise é hierárquica, somente leitura e não transfere carteira nem toma decisão sobre pessoas. O contrato está em `config/pipeline-aging.json`, o gate em `npm run pipeline-aging:check` e o roteiro em `docs/PIPELINE_AGING_PHASE_39.md`.
+
+Pendência externa: aferir idades, reversões, limites e cobertura com histórico real, quatro papéis e dois tenants.
+
+Próxima fase: **Fase 40 — Velocidade e conversão do funil**, consolidando transições, tempo entre etapas e coortes sem atribuir causalidade indevida.
 
 ## Painel das 100 fases
 
