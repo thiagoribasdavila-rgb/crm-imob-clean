@@ -1,0 +1,20 @@
+{
+  "phase": 2,
+  "status": "completed",
+  "identity": "Atlas Spatial Blue",
+  "principles": ["clarity", "hierarchy", "speed", "accessibility", "reduced_motion"],
+  "canonical_components": {
+    "surface": "components/ui/AtlasCard.tsx#AtlasCard",
+    "metric": "components/ui/AtlasCard.tsx#AtlasMetric",
+    "badge": "components/ui/AtlasUI.tsx#AtlasBadge",
+    "empty": "components/ui/AtlasUI.tsx#AtlasEmpty",
+    "progress": "components/ui/AtlasUI.tsx#AtlasProgress",
+    "page_header": "components/atlas/page-header.tsx#PageHeader"
+  },
+  "compatibility_adapters": [
+    "components/atlas/metric-card.tsx",
+    "components/atlas/status-badge.tsx",
+    "components/atlas/empty-state.tsx"
+  ],
+  "gates": ["canonical_rendering", "focus_visible", "contrast", "reduced_motion", "typecheck", "lint", "build"]
+}

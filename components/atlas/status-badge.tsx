@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AtlasBadge } from "@/components/ui/AtlasUI";
 
 type StatusBadgeProps = {
   children: ReactNode;
@@ -6,9 +7,5 @@ type StatusBadgeProps = {
 };
 
 export function StatusBadge({ children, tone = "neutral" }: StatusBadgeProps) {
-  return (
-    <span className="atlas-status-badge" data-tone={tone}>
-      {children}
-    </span>
-  );
+  return <AtlasBadge tone={tone}>{children}</AtlasBadge>;
 }

@@ -6,9 +6,11 @@ O programa pós-V3 melhora visual, operação e execução sem alterar permissõ
 
 Inventariar superfície ativa, complexidade, carregamentos, limites de rota, componentes duplicados, custo visual e critérios mensuráveis. Entrega: `FINAL_PHASE_1_SYSTEM_AUDIT.md`.
 
-## 2. Design system e identidade única
+## 2. Design system e identidade única — concluída
 
 Consolidar tokens, cards, botões, formulários, tabelas, modais e feedback. Remover componentes visuais antigos sem uso. Aceite: nenhuma nova variação ad hoc nas telas críticas; contraste, foco e movimento reduzido aprovados.
+
+Entrega: `FINAL_PHASE_2_DESIGN_SYSTEM.md`, componentes canônicos compartilhados e verificação automática `final-design-system:check`.
 
 ## 3. Navegação, busca e mobile
 

@@ -8,7 +8,7 @@ export function AtlasCard({
   className?: string;
 }) {
   return (
-    <section className={`atlas-panel atlas-surface-card ${className}`}>
+    <section className={`atlas-panel atlas-surface-card ${className}`.trim()}>
       {children}
     </section>
   );
@@ -52,8 +52,8 @@ export function AtlasMetric({
 }: {
   label: string;
   value: ReactNode;
-  detail?: string;
-  trend?: string;
+  detail?: ReactNode;
+  trend?: ReactNode;
   tone?: "blue" | "green" | "amber" | "violet" | "rose";
 }) {
   return (
@@ -61,7 +61,7 @@ export function AtlasMetric({
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-slate-400">{label}</p>
         {trend ? (
-          <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-1 text-[10px] font-semibold text-slate-300">
+          <span className="atlas-metric-trend">
             {trend}
           </span>
         ) : null}

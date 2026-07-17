@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AtlasEmpty } from "@/components/ui/AtlasUI";
 
 type EmptyStateProps = {
   title: string;
@@ -7,12 +8,5 @@ type EmptyStateProps = {
 };
 
 export function EmptyState({ title, description, action }: EmptyStateProps) {
-  return (
-    <div className="atlas-state" role="status">
-      <span className="atlas-state-icon" aria-hidden="true">◇</span>
-      <h2>{title}</h2>
-      <p>{description}</p>
-      {action ? <div className="atlas-state-action">{action}</div> : null}
-    </div>
-  );
+  return <AtlasEmpty title={title} description={description} action={action} />;
 }

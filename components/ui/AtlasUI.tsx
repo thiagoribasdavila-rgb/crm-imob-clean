@@ -7,7 +7,11 @@ export function AtlasBadge({
   children: ReactNode;
   tone?: "neutral" | "success" | "warning" | "danger" | "info" | "violet";
 }) {
-  return <span className={`atlas-badge atlas-badge-${tone}`}>{children}</span>;
+  return (
+    <span className={`atlas-badge atlas-badge-${tone}`} data-tone={tone}>
+      {children}
+    </span>
+  );
 }
 
 export function AtlasEmpty({
@@ -20,7 +24,10 @@ export function AtlasEmpty({
   action?: ReactNode;
 }) {
   return (
-    <div className="atlas-empty-state flex min-h-56 flex-col items-center justify-center rounded-2xl p-8 text-center">
+    <div
+      className="atlas-empty-state flex min-h-56 flex-col items-center justify-center rounded-2xl p-8 text-center"
+      role="status"
+    >
       <div
         className="atlas-empty-orb mb-4 grid h-12 w-12 place-items-center rounded-2xl text-xl text-sky-200"
         aria-hidden="true"

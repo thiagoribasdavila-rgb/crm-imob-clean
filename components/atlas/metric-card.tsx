@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AtlasMetric } from "@/components/ui/AtlasCard";
 
 type MetricCardProps = {
   label: string;
@@ -15,14 +16,22 @@ export function MetricCard({
   trend,
   tone = "info",
 }: MetricCardProps) {
+  const canonicalTone = {
+    info: "blue",
+    success: "green",
+    warning: "amber",
+    danger: "rose",
+    violet: "violet",
+    neutral: "blue",
+  }[tone] as "blue" | "green" | "amber" | "rose" | "violet";
+
   return (
-    <article className="atlas-official-metric" data-tone={tone}>
-      <div className="atlas-metric-heading">
-        <span>{label}</span>
-        {trend ? <span className="atlas-metric-trend">{trend}</span> : null}
-      </div>
-      <strong className="atlas-metric-value">{value}</strong>
-      {detail ? <p className="atlas-metric-detail">{detail}</p> : null}
-    </article>
+    <AtlasMetric
+      label={label}
+      value={value}
+      detail={detail}
+      trend={trend}
+      tone={canonicalTone}
+    />
   );
 }
