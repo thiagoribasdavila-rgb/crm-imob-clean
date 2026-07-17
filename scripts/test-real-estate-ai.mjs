@@ -472,6 +472,7 @@ const checks = [
   ["proposta respeita hierarquia comercial", atomicCommercialProposalMigration.includes("with recursive team") && atomicCommercialProposalMigration.includes("proposal_out_of_scope")],
   ["fase 47 reúne proposta e mensagem", approvalsListRoute.includes('["message","commercial_simulation"]') && approvalsPage.includes("Fase 47 · Revisão humana") && approvalsPage.includes("Aprovar proposta")],
   ["preflight cobre APIs da Hostinger", systemHealthRoute.includes("hostinger") && systemHealthRoute.includes("workerSecret") && systemHealthRoute.includes("openai") && systemHealthRoute.includes("meta") && systemHealthRoute.includes("whatsapp")],
+  ["homologação usa a credencial canônica do WhatsApp", homologationRoute.includes("WHATSAPP_ACCESS_TOKEN") && !homologationRoute.includes("WHATSAPP_TOKEN &&")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],

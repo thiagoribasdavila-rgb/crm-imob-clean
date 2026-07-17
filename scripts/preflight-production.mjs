@@ -30,7 +30,8 @@ function check(name, ok, detail, required = true) {
 console.log("\nATLAS AI — Production Preflight\n");
 
 check("NEXT_PUBLIC_SUPABASE_URL", Boolean(value("NEXT_PUBLIC_SUPABASE_URL")), "configurada");
-check("NEXT_PUBLIC_SUPABASE_ANON_KEY", Boolean(value("NEXT_PUBLIC_SUPABASE_ANON_KEY")), "configurada");
+const publicSupabaseKey = value("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") || value("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+check("Chave pública Supabase", Boolean(publicSupabaseKey), publicSupabaseKey ? "publishable/anon configurada" : "configure NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY");
 check("SUPABASE_SERVICE_ROLE_KEY", Boolean(value("SUPABASE_SERVICE_ROLE_KEY")), "configurada");
 check("ATLAS_CRON_SECRET", Boolean(value("ATLAS_CRON_SECRET")), "configurada");
 const aiCredential = Boolean(value("OPENAI_API_KEY"));
