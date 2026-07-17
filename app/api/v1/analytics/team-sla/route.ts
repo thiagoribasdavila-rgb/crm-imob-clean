@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
   const brokerIds = (brokers ?? []).map((broker) => broker.id);
   const { data: leads, error: leadError } = brokerIds.length ? await admin.from("leads").select("id,name,assigned_to,status,first_contact_due_at,first_contacted_at,first_response_minutes,first_contact_sla_met,next_action_at").eq("organization_id", organizationId).in("assigned_to", brokerIds).limit(5000) : { data: [], error: null };
   if (leadError) return apiError("SLA_LOOKUP_FAILED", "Não foi possível consolidar os SLAs do time.", identity.meta, { status: 500 });
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const { data: followUpEvents, error: followUpError } = brokerIds.length ? await admin.from("follow_up_sla_events").select("broker_id,status,on_time,response_minutes,delay_minutes,scheduled_at").eq("organization_id", organizationId).in("broker_id", brokerIds).gte("scheduled_at", thirtyDaysAgo).limit(10000) : { data: [], error: null };
+  if (followUpError) return apiError("FOLLOW_UP_SLA_LOOKUP_FAILED", "Não foi possível medir a execução dos follow-ups.", identity.meta, { status: 500 });
   const brokerMap = new Map((brokers ?? []).map((broker) => [broker.id, broker.full_name || "Corretor"]));
   const terminal = new Set(["ganho", "perdido", "arquivado", "comprou_outro"]);
   const now = Date.now();
@@ -37,6 +40,9 @@ export async function GET(request: NextRequest) {
     const measured = owned.filter((lead) => lead.first_contact_sla_met !== null);
     const met = measured.filter((lead) => lead.first_contact_sla_met === true);
     const responseValues = owned.map((lead) => lead.first_response_minutes).filter((value): value is number => typeof value === "number");
+    const followUps = (followUpEvents ?? []).filter((event) => event.broker_id === broker.id && ["completed", "recovered"].includes(event.status));
+    const followUpsOnTime = followUps.filter((event) => event.on_time === true);
+    const recovered = followUps.filter((event) => event.status === "recovered");
     return {
       brokerId: broker.id,
       brokerName: broker.full_name || "Corretor",
@@ -46,11 +52,18 @@ export async function GET(request: NextRequest) {
       met: met.length,
       complianceRate: measured.length ? Math.round((met.length / measured.length) * 100) : null,
       averageResponseMinutes: responseValues.length ? Math.round(responseValues.reduce((sum, value) => sum + value, 0) / responseValues.length) : null,
+      followUpsMeasured: followUps.length,
+      followUpComplianceRate: followUps.length ? Math.round((followUpsOnTime.length / followUps.length) * 100) : null,
+      recoveredFollowUps: recovered.length,
     };
   }).sort((a, b) => b.firstContactOverdue - a.firstContactOverdue || b.measured - a.measured);
   const measured = (leads ?? []).filter((lead) => lead.first_contact_sla_met !== null);
   const met = measured.filter((lead) => lead.first_contact_sla_met === true);
   const responseValues = (leads ?? []).map((lead) => lead.first_response_minutes).filter((value): value is number => typeof value === "number");
+  const completedFollowUps = (followUpEvents ?? []).filter((event) => ["completed", "recovered"].includes(event.status));
+  const onTimeFollowUps = completedFollowUps.filter((event) => event.on_time === true);
+  const recoveredFollowUps = completedFollowUps.filter((event) => event.status === "recovered");
+  const followUpResponseValues = completedFollowUps.map((event) => event.response_minutes).filter((value): value is number => typeof value === "number");
   return apiSuccess({
     scope: { role: "manager", directBrokersOnly: true, organizationId },
     totals: {
@@ -62,6 +75,10 @@ export async function GET(request: NextRequest) {
       met: met.length,
       complianceRate: measured.length ? Math.round((met.length / measured.length) * 100) : null,
       averageResponseMinutes: responseValues.length ? Math.round(responseValues.reduce((sum, value) => sum + value, 0) / responseValues.length) : null,
+      followUpsMeasured: completedFollowUps.length,
+      followUpComplianceRate: completedFollowUps.length ? Math.round((onTimeFollowUps.length / completedFollowUps.length) * 100) : null,
+      recoveredFollowUps: recoveredFollowUps.length,
+      averageFollowUpMinutes: followUpResponseValues.length ? Math.round(followUpResponseValues.reduce((sum, value) => sum + value, 0) / followUpResponseValues.length) : null,
     },
     alerts,
     byBroker,

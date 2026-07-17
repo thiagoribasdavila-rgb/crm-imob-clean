@@ -656,7 +656,19 @@ Pendência externa: aplicar migration e executar movimentos simultâneos, escopo
 
 Pendência externa: aplicar migration e aferir prazos, concorrência e isolamento com leads e mensagens reais em homologação.
 
-Próxima fase: **Fase 35 — SLA de follow-up**, medindo cadência, atraso e recuperação das próximas ações.
+## Fase 35 — SLA de follow-up
+
+**Estado:** 100% implementada e aprovada localmente; migration e amostra operacional de 30 dias permanecem para homologação.
+
+**Evolução:** cada próxima ação abre um ciclo auditável com agendamento, prazo, execução e resultado. Reagendamento, cancelamento, cumprimento e recuperação tardia deixam de ser confundidos.
+
+**Medição:** o painel gerencial mostra taxa de cumprimento, tempo médio de execução, follow-ups recuperados e atrasos ainda abertos, sempre limitado aos corretores diretamente subordinados.
+
+**Fonte única:** `leads.next_action_at` continua sendo a agenda operacional. O histórico analítico apenas registra seus ciclos e interações válidas. O contrato está em `config/follow-up-sla.json`, o gate em `npm run follow-up-sla:check` e o roteiro em `docs/FOLLOW_UP_SLA_PHASE_35.md`.
+
+Pendência externa: aplicar migration e aferir conclusão, reagendamento, cancelamento, transferência e isolamento com contatos reais.
+
+Próxima fase: **Fase 36 — SLA de visita**, medindo agendamento, confirmação, realização e ausência.
 
 ## Painel das 100 fases
 

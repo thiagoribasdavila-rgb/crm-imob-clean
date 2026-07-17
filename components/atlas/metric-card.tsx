@@ -5,7 +5,7 @@ type MetricCardProps = {
   value: ReactNode;
   detail?: ReactNode;
   trend?: ReactNode;
-  tone?: "info" | "success" | "warning" | "danger" | "violet";
+  tone?: "info" | "success" | "warning" | "danger" | "violet" | "neutral";
 };
 
 export function MetricCard({
