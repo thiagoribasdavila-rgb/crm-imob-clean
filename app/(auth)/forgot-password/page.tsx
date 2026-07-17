@@ -19,7 +19,10 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get("error");
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("error");
+    const suggestedEmail = params.get("email")?.trim().toLowerCase() || "";
+    if (suggestedEmail.includes("@")) setEmail(suggestedEmail);
     if (code) {
       setRouteError(
         recoveryMessages[code] || "Não foi possível concluir a recuperação. Solicite um novo link.",

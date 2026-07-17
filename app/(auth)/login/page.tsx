@@ -59,6 +59,8 @@ function LoginExperience() {
   const [capsLock, setCapsLock] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [systemStatus, setSystemStatus] = useState<"checking" | "online" | "offline">("checking");
+  const [loginStage, setLoginStage] = useState<"idle" | "auth" | "profile" | "redirect">("idle");
 
   const destination = useMemo(
     () => safeNextPath(searchParams.get("next")),
@@ -66,16 +68,21 @@ function LoginExperience() {
   );
 
   useEffect(() => {
+    let active = true;
     const remembered = window.localStorage.getItem(REMEMBERED_EMAIL_KEY)?.trim() || "";
     if (remembered) {
       setEmail(remembered);
       setRememberEmail(true);
       window.setTimeout(() => passwordRef.current?.focus(), 0);
-      return;
+    } else {
+      emailRef.current?.focus();
     }
-
-    emailRef.current?.focus();
-  }, []);
+    void Promise.all([
+      fetch("/api/health", { cache: "no-store" }).then((response) => { if (active) setSystemStatus(response.ok ? "online" : "offline"); }).catch(() => { if (active) setSystemStatus("offline"); }),
+      supabase.auth.getSession().then(({ data }) => { if (active && data.session?.user) { setLoginStage("redirect"); router.replace(destination); router.refresh(); } }),
+    ]);
+    return () => { active = false; };
+  }, [destination, router]);
 
   function updateCapsLock(event: KeyboardEvent<HTMLInputElement>) {
     setCapsLock(event.getModifierState("CapsLock"));
@@ -99,6 +106,7 @@ function LoginExperience() {
     }
 
     setLoading(true);
+    setLoginStage("auth");
     setError("");
 
     try {
@@ -128,6 +136,7 @@ function LoginExperience() {
         return;
       }
 
+      setLoginStage("profile");
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("organization_id,active")
@@ -152,12 +161,14 @@ function LoginExperience() {
         window.localStorage.removeItem(REMEMBERED_EMAIL_KEY);
       }
 
+      setLoginStage("redirect");
       router.replace(destination);
       router.refresh();
     } catch {
       setError("Ocorreu uma falha inesperada. Verifique sua conexão e tente novamente.");
     } finally {
       setLoading(false);
+      setLoginStage((current) => current === "redirect" ? current : "idle");
     }
   }
 
@@ -187,7 +198,7 @@ function LoginExperience() {
             <div>
               <div className="flex items-center justify-between gap-4">
                 <p className="atlas-eyebrow">Secure workspace</p>
-                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/[0.07] px-3 py-1 text-[10px] font-semibold uppercase tracking-[.12em] text-emerald-300"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Online</span>
+                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[.12em] ${systemStatus === "online" ? "border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300" : systemStatus === "offline" ? "border-amber-400/15 bg-amber-400/[0.07] text-amber-300" : "border-white/10 bg-white/[.04] text-slate-400"}`}><span className={`h-1.5 w-1.5 rounded-full ${systemStatus === "online" ? "bg-emerald-400" : systemStatus === "offline" ? "bg-amber-400" : "animate-pulse bg-slate-500"}`} /> {systemStatus === "online" ? "Sistema disponível" : systemStatus === "offline" ? "Conexão instável" : "Verificando"}</span>
               </div>
               <h2 className="mt-3 text-3xl font-semibold tracking-[-.035em]">Bem-vindo ao Atlas.</h2>
               <p className="mt-3 text-sm leading-6 text-slate-400">Acesse sua operação com segurança e continue exatamente de onde parou.</p>
@@ -256,11 +267,12 @@ function LoginExperience() {
                 <Link href="/forgot-password" className="text-xs font-medium text-sky-300 transition hover:text-sky-200">Esqueci minha senha</Link>
               </div>
 
-              {error ? <div role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"><p className="font-semibold">Não foi possível entrar</p><p className="mt-1 leading-5 text-rose-200/90">{error}</p></div> : null}
+              {error ? <div role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"><p className="font-semibold">Não foi possível entrar</p><p className="mt-1 leading-5 text-rose-200/90">{error}</p>{/senha|credenciais|incorretos/i.test(error) ? <Link href={`/forgot-password${email ? `?email=${encodeURIComponent(email.trim().toLowerCase())}` : ""}`} className="mt-3 inline-flex text-xs font-bold text-white underline underline-offset-4">Redefinir minha senha</Link> : null}</div> : null}
 
-              <button type="submit" disabled={loading} className="atlas-button-primary flex w-full items-center justify-center gap-2 py-3.5 disabled:cursor-not-allowed disabled:opacity-60">
-                {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" /> Autenticando com segurança...</> : <>Entrar no Atlas OS <span aria-hidden="true">→</span></>}
+              <button type="submit" disabled={loading} aria-busy={loading} className="atlas-button-primary flex w-full items-center justify-center gap-2 py-3.5 disabled:cursor-not-allowed disabled:opacity-60">
+                {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" /> {loginStage === "profile" ? "Preparando sua operação..." : loginStage === "redirect" ? "Abrindo seu painel..." : "Validando acesso..."}</> : <>Entrar no Atlas OS <span aria-hidden="true">→</span></>}
               </button>
+              {systemStatus === "offline" ? <button type="button" onClick={() => window.location.reload()} className="w-full text-center text-xs font-semibold text-amber-200">Tentar reconectar</button> : null}
             </form>
 
             <div className="mt-7 border-t border-white/[0.07] pt-6">
