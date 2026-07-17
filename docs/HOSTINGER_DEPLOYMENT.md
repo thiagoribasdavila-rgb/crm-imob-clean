@@ -24,6 +24,10 @@ O mesmo worker verifica a jornada comercial noturna. Configure `WHATSAPP_NIGHTLY
 
 Teste manualmente com `npm run worker:run`. Mantenha a saída durante a homologação para comprovar execução e falhas.
 
+Os logs do PM2 são separados em `logs/atlas-v3-out.log` e `logs/atlas-v3-error.log`, com data e fuso. Crie o diretório `logs` no primeiro provisionamento e configure rotação no painel da Hostinger para evitar crescimento ilimitado.
+
+Para o ensaio da Fase 18, abra `/integrations/hostinger`, inicie o teste, execute `pm2 restart atlas-v3-homolog` e volte à tela. A aplicação compara a identificação do processo anterior com a nova, confirma o banco e registra o tempo de recuperação.
+
 Configure também o relatório diário da diretoria às 08:00 no horário do servidor:
 
 ```text

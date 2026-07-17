@@ -76,6 +76,10 @@ const auditPage = readFileSync(resolve(root, "app/(crm)/atlas-v3/audit/page.tsx"
 const rollbackMigration = readFileSync(resolve(root, "supabase/migrations/20260717011059_v2_rollback_drill_evidence.sql"), "utf8");
 const rollbackRoute = readFileSync(resolve(root, "app/api/v1/governance/rollback/route.ts"), "utf8");
 const rollbackPanel = readFileSync(resolve(root, "app/(crm)/atlas-v3/audit/RollbackDrillPanel.tsx"), "utf8");
+const hostingerHealthMigration = readFileSync(resolve(root, "supabase/migrations/20260717011614_hostinger_restart_drills.sql"), "utf8");
+const hostingerHealthRoute = readFileSync(resolve(root, "app/api/v1/governance/hostinger-health/route.ts"), "utf8");
+const hostingerHealthPage = readFileSync(resolve(root, "app/(crm)/integrations/hostinger/page.tsx"), "utf8");
+const pm2Config = readFileSync(resolve(root, "ecosystem.config.cjs"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -124,7 +128,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("180 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("186 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -259,6 +263,12 @@ const checks = [
   ["ensaio mede tempo e saúde do V2", rollbackRoute.includes("duration_minutes") && rollbackRoute.includes("health_check_status") && rollbackPanel.includes("Resposta HTTP")],
   ["evidência de rollback é exclusiva da diretoria", rollbackMigration.includes("enable row level security") && rollbackMigration.includes("commercial_role = 'director'") && rollbackRoute.includes("Somente a diretoria")],
   ["Hostinger possui roteiro reversível", hostingerDeployment.includes("Ensaio de rollback V3 → V2") && hostingerDeployment.includes("Não apague a aplicação")],
+  ["saúde Hostinger não expõe segredos", hostingerHealthRoute.includes("memoryMb") && hostingerHealthRoute.includes("cronConfigured") && !hostingerHealthRoute.includes("ATLAS_CRON_SECRET:")],
+  ["reinício exige nova inicialização", hostingerHealthRoute.includes("before_boot_id !== current.bootId") && hostingerHealthMigration.includes("before_boot_id <> after_boot_id")],
+  ["retorno exige banco saudável", hostingerHealthRoute.includes('current.status === "healthy"') && hostingerHealthRoute.includes("ready_after_restart")],
+  ["ensaio Hostinger é exclusivo da diretoria", hostingerHealthMigration.includes("commercial_role = 'director'") && hostingerHealthRoute.includes("Somente a diretoria")],
+  ["PM2 possui logs separados e datados", pm2Config.includes("log_date_format") && pm2Config.includes("atlas-v3-out.log") && pm2Config.includes("atlas-v3-error.log")],
+  ["Command Center mede recuperação", hostingerHealthPage.includes("recovery_seconds") && hostingerHealthPage.includes("Comprovar retorno") && hostingerHealthPage.includes("Nenhum reinício real comprovado")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
