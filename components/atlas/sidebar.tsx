@@ -41,6 +41,20 @@ const navigation = [
     roles: ["director", "superintendent", "manager", "broker"],
   },
   {
+    group: "Hoje",
+    label: "Atividades",
+    href: "/activity",
+    icon: "◷",
+    roles: ["director", "superintendent", "manager", "broker"],
+  },
+  {
+    group: "Comercial",
+    label: "Clientes 360",
+    href: "/customers",
+    icon: "◉",
+    roles: ["director", "superintendent", "manager", "broker"],
+  },
+  {
     group: "Comercial",
     label: "Projetos",
     href: "/developments",
