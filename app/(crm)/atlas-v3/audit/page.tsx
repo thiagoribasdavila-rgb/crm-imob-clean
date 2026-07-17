@@ -5,6 +5,7 @@ import { DatabaseBackup, RotateCcw, ShieldCheck } from "lucide-react";
 import { AtlasBadge } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
 import { supabase } from "@/lib/supabase";
+import { RollbackDrillPanel } from "./RollbackDrillPanel";
 
 type Log = { id: string; action: string; entity_type: string | null; entity_id: string | null; created_at: string };
 type Backup = { id: string; provider: string; snapshot_reference: string; snapshot_created_at: string; restore_status: "pending" | "passed" | "failed"; restore_tested_at: string | null; restore_duration_minutes: number | null; evidence_reference: string | null; responsible_id: string };
@@ -50,9 +51,9 @@ export default function AuditPage() {
 
   return <div className="space-y-6 pb-12">
     <header className="atlas-grid-glow rounded-[30px] border border-sky-400/15 bg-gradient-to-br from-sky-500/[.12] via-violet-500/[.06] to-emerald-500/[.08] p-6 sm:p-8">
-      <AtlasBadge tone="info">GOVERNANÇA · FASE 16</AtlasBadge>
-      <h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">Backup com restauração comprovada.</h1>
-      <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">Registre o snapshot externo antes da publicação. O Atlas guarda referência, responsável e resultado do ensaio — nunca declara um backup que não foi executado.</p>
+      <AtlasBadge tone="info">GOVERNANÇA · FASES 16–17</AtlasBadge>
+      <h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">Backup e retorno controlado.</h1>
+      <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">Comprove a restauração e ensaie o retorno ao V2 sem apagar o V3. O Atlas guarda responsável, duração e evidência — nunca declara um teste que não foi executado.</p>
     </header>
 
     {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
@@ -76,6 +77,8 @@ export default function AuditPage() {
         <div className="sm:col-span-2 lg:col-span-3"><button disabled={saving} className="atlas-button-primary">{saving ? "Registrando…" : "Registrar evidência"}</button></div>
       </form>
     </AtlasCard>
+
+    <RollbackDrillPanel />
 
     <AtlasCard><AtlasCardHeader eyebrow="Histórico de recuperação" title="Snapshots e ensaios" description="Aprovação só aparece quando data e evidência da restauração foram informadas." />
       <div className="divide-y divide-white/[.06]">{backups.map((item) => <div key={item.id} className="grid gap-3 p-5 md:grid-cols-[1.2fr_1fr_auto] md:items-center sm:p-6"><div><div className="font-medium text-white">{item.provider} · {item.snapshot_reference}</div><div className="mt-1 text-xs text-slate-500">Snapshot: {new Date(item.snapshot_created_at).toLocaleString("pt-BR")} · Responsável: {item.responsible_id.slice(0, 8)}</div></div><div className="text-xs text-slate-400">{item.evidence_reference || "Restauração ainda sem evidência"}{item.restore_duration_minutes != null ? ` · ${item.restore_duration_minutes} min` : ""}</div><AtlasBadge tone={item.restore_status === "passed" ? "success" : item.restore_status === "failed" ? "danger" : "warning"}>{item.restore_status === "passed" ? "RESTAURADO" : item.restore_status === "failed" ? "FALHOU" : "PENDENTE"}</AtlasBadge></div>)}{!backups.length ? <div className="p-8 text-center text-sm text-slate-500">Nenhum snapshot real registrado.</div> : null}</div>

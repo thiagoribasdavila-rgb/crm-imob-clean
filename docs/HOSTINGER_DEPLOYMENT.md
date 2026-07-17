@@ -51,3 +51,14 @@ Teste com `npm run reports:meta-daily`. O processo é idempotente: gera um relat
 3. Executar preflight, rotas reais e roteiro por perfil.
 4. Criar snapshot/backup antes de qualquer promoção.
 5. Manter rollback para o V2 até o piloto ser aprovado.
+
+## Ensaio de rollback V3 → V2
+
+O rollback troca somente o destino do tráfego. Não apague a aplicação, banco, storage ou variáveis do V3 durante o ensaio.
+
+1. Confirme no Command Center que há um backup com restauração aprovada.
+2. Pause temporariamente entradas no V3 e anote o horário inicial.
+3. Na Hostinger, altere o domínio público para a aplicação V2 preservada; mantenha o V3 no subdomínio interno de homologação.
+4. Valide no V2: HTTPS, login, leitura de leads, pipeline e integrações essenciais.
+5. Registre o código HTTP, o horário final e a referência da evidência em `/atlas-v3/audit`.
+6. Se o ensaio falhar, reverta o apontamento ao V3 e registre a falha; não tente corrigir durante a janela.

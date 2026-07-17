@@ -73,6 +73,9 @@ const tenantReferenceMigration = readFileSync(resolve(root, "supabase/migrations
 const backupEvidenceMigration = readFileSync(resolve(root, "supabase/migrations/20260717010718_homologation_backup_restore_evidence.sql"), "utf8");
 const backupEvidenceRoute = readFileSync(resolve(root, "app/api/v1/governance/backups/route.ts"), "utf8");
 const auditPage = readFileSync(resolve(root, "app/(crm)/atlas-v3/audit/page.tsx"), "utf8");
+const rollbackMigration = readFileSync(resolve(root, "supabase/migrations/20260717011059_v2_rollback_drill_evidence.sql"), "utf8");
+const rollbackRoute = readFileSync(resolve(root, "app/api/v1/governance/rollback/route.ts"), "utf8");
+const rollbackPanel = readFileSync(resolve(root, "app/(crm)/atlas-v3/audit/RollbackDrillPanel.tsx"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -121,7 +124,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("174 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("180 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -249,7 +252,13 @@ const checks = [
   ["backup é governado somente pela diretoria", backupEvidenceRoute.includes("Somente a diretoria") && backupEvidenceMigration.includes("commercial_role = 'director'")],
   ["restauração aprovada exige comprovação", backupEvidenceMigration.includes("restore_tested_at is not null") && backupEvidenceMigration.includes("evidence_reference is not null")],
   ["API valida duração e evidência de restauração", backupEvidenceRoute.includes("RESTORE_EVIDENCE_REQUIRED") && backupEvidenceRoute.includes("INVALID_RESTORE_DURATION")],
-  ["Command Center não inventa backup", auditPage.includes("nunca declara um backup que não foi executado") && auditPage.includes("Nenhum snapshot real registrado")],
+  ["Command Center não inventa backup", auditPage.includes("nunca declara um teste que não foi executado") && auditPage.includes("Nenhum snapshot real registrado")],
+  ["rollback preserva o V3", rollbackMigration.includes("v3_preserved boolean not null default true check (v3_preserved)") && rollbackRoute.includes("Manter V3 online")],
+  ["rollback aceita somente simulação", rollbackMigration.includes("execution_mode = 'simulation'") && rollbackMigration.includes("source_environment = 'v3-homologation'")],
+  ["rollback exige backup restaurado", rollbackMigration.includes("enforce_rollback_backup_evidence") && rollbackMigration.includes("restore_status = 'passed'")],
+  ["ensaio mede tempo e saúde do V2", rollbackRoute.includes("duration_minutes") && rollbackRoute.includes("health_check_status") && rollbackPanel.includes("Resposta HTTP")],
+  ["evidência de rollback é exclusiva da diretoria", rollbackMigration.includes("enable row level security") && rollbackMigration.includes("commercial_role = 'director'") && rollbackRoute.includes("Somente a diretoria")],
+  ["Hostinger possui roteiro reversível", hostingerDeployment.includes("Ensaio de rollback V3 → V2") && hostingerDeployment.includes("Não apague a aplicação")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
