@@ -882,7 +882,17 @@ Pendência externa: aplicar migration e validar dois tenants, equipe real, proje
 
 Pendência externa: aplicar migration e validar dois tenants, carga real, todos os caminhos de atribuição, projetos e concorrência.
 
-Próxima fase: **Fase 57 — Regras de prioridade de distribuição**, combinando SLA, projeto e origem sem discriminação de pessoas.
+## Fase 57 — Prioridade explicável de distribuição
+
+**Estado:** 100% implementada e aprovada localmente; fila, volume e concorrência reais permanecem para homologação.
+
+**Evolução:** a liderança define prioridade e SLA por origem dentro do projeto. A ordem usa pressão de SLA, prioridade da origem e antiguidade, sem dados pessoais ou ranking de pessoas.
+
+**Destino protegido:** o corretor continua sendo escolhido por hierarquia, presença, projeto, capacidade e carga ponderada. Cada atribuição registra sua explicação. O contrato está em `config/explainable-distribution-priority.json`, o gate em `npm run distribution-priority:check` e o roteiro em `docs/EXPLAINABLE_DISTRIBUTION_PRIORITY_PHASE_57.md`.
+
+Pendência externa: aplicar migration e validar dois tenants, origens, projetos, SLA, capacidade, concorrência e evento sem PII.
+
+Próxima fase: **Fase 58 — Reserva e devolução de leads**, controlando aceite, expiração e retorno seguro à fila.
 
 ## Painel das 100 fases
 

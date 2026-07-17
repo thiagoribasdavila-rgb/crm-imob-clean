@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   const admin = getSupabaseAdmin();
   const organizationId = identity.access.organization.id;
-  const [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult, capacityResult] = await Promise.all([
+  const [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult, capacityResult, priorityResult] = await Promise.all([
     admin.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").eq("organization_id", organizationId).eq("active", true),
     admin.from("developments").select("id,name,developer_name,status").eq("organization_id", organizationId).order("name"),
     admin.from("commercial_presence").select("profile_id,availability,last_seen_at").eq("organization_id", organizationId),
@@ -39,8 +39,9 @@ export async function GET(request: NextRequest) {
     admin.from("project_distribution_members").select("development_id,profile_id,enabled,weight,assignments_count,last_assigned_at").eq("organization_id", organizationId),
     admin.from("lead_distribution_events").select("id,development_id,lead_id,assigned_to,actor_id,score_snapshot,created_at").eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(50),
     admin.from("broker_capacity_limits").select("profile_id,max_active_leads,max_project_leads,warning_percent,updated_at").eq("organization_id", organizationId),
+    admin.from("lead_distribution_priority_rules").select("development_id,source_key,priority,sla_minutes,enabled,updated_at").eq("organization_id", organizationId),
   ]);
-  const failure = [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult, capacityResult].find((result) => result.error);
+  const failure = [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult, capacityResult, priorityResult].find((result) => result.error);
   if (failure?.error) return apiError("DISTRIBUTION_LOOKUP_FAILED", "Não foi possível carregar a fila comercial.", identity.meta, { status: 500, details: failure.error.message });
 
   const allProfiles = profilesResult.data ?? [];
@@ -64,6 +65,8 @@ export async function GET(request: NextRequest) {
     presence,
     queue,
     capacity: (capacityResult.data ?? []).filter((item) => profileIds.has(item.profile_id)),
+    priorityRules: priorityResult.data ?? [],
+    leadSources: [...new Set(leads.map((lead) => (lead.source || "não informada").trim().toLowerCase()))].sort().slice(0, 100),
     recentAssignments: (eventsResult.data ?? []).filter((item) => profileIds.has(item.assigned_to)).slice(0, 20),
     unassignedQueue,
     unassignedPolicy: { metadataOnly: true, piiExposed: false, automaticAssignment: false, explicitLeadershipAction: true, maximumVisible: 100 },
@@ -82,7 +85,7 @@ export async function POST(request: NextRequest) {
   if (!limited.ok) return limited.response;
   const identity = await requireAccessContext(request);
   if (!identity.ok) return identity.response;
-  const body = await request.json().catch(() => null) as { action?: string; availability?: string; developmentId?: string; limit?: number; profileId?: string; enabled?: boolean; weight?: number; endsAt?: string; reason?: string; maxActiveLeads?: number; maxProjectLeads?: number; warningPercent?: number } | null;
+  const body = await request.json().catch(() => null) as { action?: string; availability?: string; developmentId?: string; limit?: number; profileId?: string; enabled?: boolean; weight?: number; endsAt?: string; reason?: string; maxActiveLeads?: number; maxProjectLeads?: number; warningPercent?: number; sourceKey?: string; priority?: number; slaMinutes?: number } | null;
   if (!body?.action) return apiError("INVALID_REQUEST", "Ação não informada.", identity.meta, { status: 400 });
   const admin = getSupabaseAdmin();
 
@@ -99,6 +102,14 @@ export async function POST(request: NextRequest) {
 
   const role = identity.access.profile.commercialRole || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
   if (!managerRoles.has(role)) return apiError("FORBIDDEN", "Perfil sem permissão para distribuir leads.", identity.meta, { status: 403 });
+  if (body.action === "configure_priority") {
+    const reason=body.reason?.trim()||"";
+    if(!body.developmentId||!body.sourceKey||!Number.isInteger(body.priority)||!Number.isInteger(body.slaMinutes)||reason.length<10||reason.length>500)return apiError("INVALID_PRIORITY_RULE","Informe projeto, origem, prioridade, SLA e motivo.",identity.meta,{status:400});
+    const {data,error}=await admin.rpc("configure_distribution_priority",{p_actor_id:identity.access.profile.id,p_organization_id:identity.access.organization.id,p_development_id:body.developmentId,p_source_key:body.sourceKey,p_priority:body.priority,p_sla_minutes:body.slaMinutes,p_enabled:body.enabled!==false,p_reason:reason});
+    if(error)return apiError("PRIORITY_UPDATE_REJECTED",error.message,identity.meta,{status:409});
+    structuredApiLog("info","crm.distribution.priority_configured",request,identity.meta,{actorId:identity.access.profile.id,developmentId:body.developmentId,sourceKey:body.sourceKey});
+    return apiSuccess(data,identity.meta,{headers:limited.headers});
+  }
   if (body.action === "configure_capacity") {
     const reason = body.reason?.trim() || "";
     if (!body.profileId || !Number.isInteger(body.maxActiveLeads) || !Number.isInteger(body.maxProjectLeads) || !Number.isInteger(body.warningPercent) || reason.length < 10 || reason.length > 500) return apiError("INVALID_CAPACITY", "Informe limites, alerta e motivo auditável.", identity.meta, { status: 400 });
@@ -134,7 +145,7 @@ export async function POST(request: NextRequest) {
   }
   if (body.action !== "distribute" || !body.developmentId) return apiError("INVALID_REQUEST", "Projeto ou ação inválida.", identity.meta, { status: 400 });
   const limit = Math.min(100, Math.max(1, Math.floor(body.limit ?? 1)));
-  const { data, error } = await admin.rpc("distribute_project_leads_v2", {
+  const { data, error } = await admin.rpc("distribute_project_leads_v3", {
     p_actor_id: identity.access.profile.id,
     p_organization_id: identity.access.organization.id,
     p_development_id: body.developmentId,
