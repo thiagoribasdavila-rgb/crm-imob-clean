@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
-import { buildRealEstateContext } from "@/lib/ai/real-estate-context";
+import { buildGovernedRealEstateAIContext } from "@/lib/ai/governed-real-estate-context";
 import {
   marketKnowledgeForPrompt,
   REAL_ESTATE_OPERATING_PLAYBOOK,
@@ -47,21 +47,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "prompt deve ter no máximo 2000 caracteres." }, { status: 400 });
     }
 
-    let leadContext: Record<string, unknown> | null = null;
-    let persistentCopilot: { id: string; copilot_key: string; broker_id: string; memory: unknown; interaction_count: number; learning_version: number } | null = null;
+    let persistentCopilot: { id: string; copilot_key: string; broker_id: string; interaction_count: number; learning_version: number } | null = null;
     if (leadId) {
       if (!/^[0-9a-f-]{36}$/i.test(leadId)) return NextResponse.json({ error: "Lead inválida." }, { status: 400 });
       await requireLeadAccess(identity, leadId);
-      const [{ data: lead }, { data: copilot }, { data: sourceMemories }] = await Promise.all([
-        identity.supabase.from("leads").select("id,name,status,source,score,temperature,assigned_to,development_id,next_action_at,metadata").eq("id", leadId).single(),
-        identity.supabase.from("lead_copilots").select("id,copilot_key,broker_id,memory,interaction_count,learning_version").eq("organization_id", identity.organizationId).eq("lead_id", leadId).maybeSingle(),
-        identity.supabase.from("lead_source_memories").select("commercial_facts,source_file,source_sheet,memory_role,created_at").eq("organization_id", identity.organizationId).eq("lead_id", leadId).eq("ai_eligible", true).order("created_at", { ascending: false }).limit(20),
+      const [{ data: lead }, { data: copilot }] = await Promise.all([
+        identity.supabase.from("leads").select("id,assigned_to").eq("id", leadId).single(),
+        identity.supabase.from("lead_copilots").select("id,copilot_key,broker_id,interaction_count,learning_version").eq("organization_id", identity.organizationId).eq("lead_id", leadId).maybeSingle(),
       ]);
-      leadContext = lead ? { ...lead, historicalCommercialMemory: sourceMemories ?? [], memorySafety: "Somente fatos comerciais permitidos; campos sensíveis foram excluídos na preparação." } as Record<string, unknown> : null;
       persistentCopilot = copilot && copilot.broker_id === lead?.assigned_to ? copilot : null;
     }
 
-    const operationalContext = await buildRealEstateContext(identity);
     const sources = relevantMarketSources(prompt);
     let answer = "";
     let mode: "generative" | "local-fallback" = "generative";
@@ -69,10 +65,12 @@ export async function POST(request: Request) {
     let model = "deterministic-safe-fallback";
     const complexity = assessAIComplexity(prompt);
     const task = selectCopilotTask(prompt);
+    const contextPackage = await buildGovernedRealEstateAIContext(identity, { task, purpose: "commercial-copilot", leadId: leadId || undefined, prompt });
+    const operationalContext = contextPackage.sections.operation;
     try {
       const result = await generateAIText({
       task,
-      containsPersonalData: true,
+      containsPersonalData: contextPackage.manifest.dataClass === "personal",
       organizationId: identity.organizationId,
       userId: identity.userId,
       feature: "copilot",
@@ -99,11 +97,9 @@ export async function POST(request: Request) {
         `Base de mercado calibrada:\n${marketKnowledgeForPrompt()}`,
       ].join("\n"),
       prompt: [
-        `Organização: ${identity.organizationId}`,
-        `Snapshot operacional seguro do Atlas: ${compact(operationalContext, 12000)}`,
-        `Lead vinculada ao copiloto: ${compact(leadContext, 5000) || "nenhuma"}`,
-        `Memória persistente exclusiva desta lead: ${compact(persistentCopilot?.memory, 4000) || "ainda sem memória"}`,
-        `Contexto não confiável da tela: ${compact(body.context) || "não informado"}`,
+        `Pacote imobiliário governado: ${compact(contextPackage.sections, 14000)}`,
+        `Manifesto do contexto: ${compact(contextPackage.manifest, 2000)}`,
+        `Contexto da tela recebido: ${body.context ? "presente, mas deliberadamente não incluído" : "não informado"}`,
         `Pergunta: ${prompt}`,
       ].join("\n\n"),
       });

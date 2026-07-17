@@ -1146,6 +1146,18 @@ Pendência externa: aplicar migration, configurar preços/modelos/chaves e compr
 
 Próxima fase: **Fase 82 — Contexto imobiliário governado**, montando o pacote mínimo de lead, projeto, região e operação que cada IA pode receber.
 
+## Fase 82 — Contexto imobiliário governado
+
+**Estado:** 100% implementada e aprovada localmente; conteúdo real e rotas externas permanecem para homologação.
+
+**Evolução:** o Copiloto deixou de receber lead, metadata, memórias e tela em formato bruto. O pacote agora combina operação agregada, sinais comerciais, projeto, inventário agregado, fontes regionais verificadas e continuidade sem texto anterior. Cada montagem gera manifesto e fingerprint.
+
+**Governança:** nome, telefone, e-mail, documentos, endereço, IDs internos, texto de materiais, resumos regionais e contexto da tela ficam fora do prompt. Pacote de lead ou pergunta com identificador é pessoal e segue somente OpenAI/local. O contrato está em `config/governed-real-estate-ai-context.json`, o gate em `npm run ai-context:check` e o roteiro em `docs/GOVERNED_REAL_ESTATE_AI_CONTEXT_PHASE_82.md`.
+
+Pendência externa: aplicar migration e comparar pacotes agregado/lead, hierarquia, manifesto, fontes, roteamento e isolamento entre tenants.
+
+Próxima fase: **Fase 83 — Memória comercial segura**, estruturando aprendizado longitudinal da lead sem guardar conversa bruta nem misturar clientes.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |

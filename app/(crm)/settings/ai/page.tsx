@@ -217,7 +217,7 @@ export default function AISettings() {
               capacidade de continuar operando quando o provedor generativo
               estiver indisponível.
             </p>
-            <Link href="/settings/ai-orchestration" className="atlas-button-secondary mt-5 inline-flex">Abrir orquestrador comercial →</Link>
+            <div className="mt-5 flex flex-wrap gap-3"><Link href="/settings/ai-orchestration" className="atlas-button-secondary inline-flex">Abrir orquestrador comercial →</Link><Link href="/settings/ai-context" className="atlas-button-secondary inline-flex">Auditar contexto enviado →</Link></div>
           </div>
           <div className="rounded-3xl border border-white/[0.08] bg-[#070d1b]/75 p-5">
             <p className="atlas-eyebrow">Roteamento eficiente</p>
