@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useState } from "react";
 import { AtlasBadge, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import {
@@ -215,6 +217,7 @@ export default function AISettings() {
               capacidade de continuar operando quando o provedor generativo
               estiver indisponível.
             </p>
+            <Link href="/settings/ai-orchestration" className="atlas-button-secondary mt-5 inline-flex">Abrir orquestrador comercial →</Link>
           </div>
           <div className="rounded-3xl border border-white/[0.08] bg-[#070d1b]/75 p-5">
             <p className="atlas-eyebrow">Roteamento eficiente</p>

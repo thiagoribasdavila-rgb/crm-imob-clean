@@ -3,9 +3,10 @@ import { resilientFetch } from "@/lib/http/resilient-fetch";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { assessAIComplexity } from "@/lib/ai/complexity";
+import { planCommercialAI, type AIExecutionPlan, type RoutedProvider } from "@/lib/ai/commercial-orchestrator";
 
 export type AITask = "fast" | "commercial" | "reasoning" | "research";
-type GenerateInput = {
+export type GenerateInput = {
   task: AITask;
   system: string;
   prompt: string;
@@ -124,6 +125,8 @@ async function recordUsage(input: GenerateInput, result: AIProviderResult) {
   }
   return { ...result, cost };
 }
+
+async function recordOrchestration(input:GenerateInput,plan:AIExecutionPlan,result:AIProviderResult){try{await getSupabaseAdmin().from("ai_orchestration_decisions").insert({organization_id:input.organizationId,user_id:input.userId||null,feature:input.feature,requested_task:plan.requestedTask,resolved_task:plan.resolvedTask,data_class:plan.dataClass,risk_level:plan.riskLevel,provider_order:plan.providerOrder,selected_provider:result.provider,selected_model:result.model,token_budget:plan.tokenBudget,routing_reasons:plan.routingReasons,human_review_required:plan.humanReviewRequired,fallback_used:result.provider==="local",status:result.provider==="local"?"fallback":"completed",latency_ms:result.latencyMs,total_tokens:result.usage.totalTokens,estimated_cost_usd:usageCost(input.task,result.usage).estimatedUsd,completed_at:new Date().toISOString()})}catch{/* Auditoria indisponível não derruba o atendimento. */}}
 
 function openAIText(output: unknown) {
   if (!output || typeof output !== "object") return "";
@@ -346,22 +349,14 @@ export async function generateAIText(
   input: GenerateInput,
 ): Promise<AIProviderResult> {
   let result: AIProviderResult;
-  if (input.task === "research") {
-    try { result = await generatePerplexity(input); } catch { result = localFallback(input); }
-    return recordUsage(input, result);
-  }
-  const defaults: Record<Exclude<AITask, "research">, Array<"openai" | EconomyProvider>> = {
-    fast: ["qwen", "deepseek", "openai"],
-    commercial: ["openai", "qwen", "kimi"],
-    reasoning: ["openai", "deepseek", "glm", "kimi"],
-  };
   const configuredOrder = String(process.env[`ATLAS_AI_${input.task.toUpperCase()}_PROVIDER_ORDER`] || "")
-    .split(",").map((value) => value.trim().toLowerCase()).filter((value): value is "openai" | EconomyProvider => value === "openai" || value in economyProviders);
-  const order = input.containsPersonalData ? ["openai" as const] : configuredOrder.length ? configuredOrder : defaults[input.task];
+    .split(",").map((value) => value.trim().toLowerCase()).filter((value): value is RoutedProvider => value==="openai"||value==="perplexity"||value==="local"||value in economyProviders);
+  const readiness=aiProviderReadiness(),plan=planCommercialAI({task:input.task,containsPersonalData:input.containsPersonalData,feature:input.feature,configuredOrder,available:readiness});
   result = localFallback(input);
-  for (const provider of order) {
+  for (const provider of plan.providerOrder) {
+    if(provider==="local"){result=localFallback(input);break}
     try {
-      result = provider === "openai" ? await generateOpenAI(input) : await generateEconomyProvider(input, provider);
+      result = provider === "openai" ? await generateOpenAI(input) : provider==="perplexity"?await generatePerplexity(input):await generateEconomyProvider(input, provider);
       break;
     } catch (error) {
       logger.warn("ai.provider_failover", {
@@ -373,7 +368,7 @@ export async function generateAIText(
       });
     }
   }
-  return recordUsage(input, result);
+  await recordOrchestration(input,plan,result);return recordUsage(input, result);
 }
 
 export async function testOpenAIConnection(

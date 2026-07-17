@@ -1134,6 +1134,18 @@ Pendência externa: aplicar migrations, maturar amostra, testar gates bloqueado/
 
 Próxima fase: **Fase 81 — Orquestrador comercial de IA**, iniciando o bloco de IA com roteamento por tarefa, custo, risco e dados permitidos.
 
+## Fase 81 — Orquestrador comercial de IA
+
+**Estado:** 100% implementada e aprovada localmente; provedores e preços reais permanecem para homologação na Hostinger.
+
+**Evolução:** todas as chamadas do roteador principal recebem plano único com tarefa, classe de dados, risco, ordem de provedores, orçamento de tokens, política de custo, fallback e revisão humana. A decisão real registra provedor, modelo, tokens, custo e latência sem guardar prompt ou resposta.
+
+**Governança:** dados pessoais usam somente OpenAI ou local; pesquisa pública usa Perplexity com fontes ou fallback honesto; provedores econômicos só recebem contexto sem PII. Nenhuma geração autoriza ação externa. O contrato está em `config/commercial-ai-orchestrator.json`, o gate em `npm run ai-orchestrator:check` e o roteiro em `docs/COMMERCIAL_AI_ORCHESTRATOR_PHASE_81.md`.
+
+Pendência externa: aplicar migration, configurar preços/modelos/chaves e comprovar quatro rotas, falhas, dados pessoais e isolamento entre tenants na Hostinger.
+
+Próxima fase: **Fase 82 — Contexto imobiliário governado**, montando o pacote mínimo de lead, projeto, região e operação que cada IA pode receber.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
