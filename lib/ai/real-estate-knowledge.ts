@@ -72,6 +72,42 @@ export const REAL_ESTATE_MARKET_SOURCES: MarketSource[] = [
     ],
     useFor: ["benchmark", "velocidade de vendas", "oferta e demanda"],
   },
+  {
+    id: "fipezap-methodology-2026",
+    title: "Índice FipeZAP e metodologia",
+    publisher: "Fundação Instituto de Pesquisas Econômicas - Fipe",
+    url: "https://www.fipe.org.br/pt-br/indices/fipezap/",
+    verifiedAt: "2026-07-17",
+    facts: [
+      "O índice acompanha preços anunciados de venda e locação, e não preços finais de escrituras ou contratos.",
+      "As séries residenciais cobrem apartamentos prontos em cidades selecionadas e podem apoiar comparação regional e tendência.",
+    ],
+    useFor: ["preço anunciado", "tendência regional", "benchmark", "liquidez", "concorrência"],
+  },
+  {
+    id: "ibge-pnad-regional-2026-q1",
+    title: "PNAD Contínua Trimestral - 1º trimestre de 2026",
+    publisher: "IBGE",
+    url: "https://agenciadenoticias.ibge.gov.br/agencia-sala-de-imprensa/2013-agencia-de-noticias/releases/46676-pnad-continua-trimestral-desocupacao-sobe-em-15-das-27-ufs-no-1-trimestre-de-2026",
+    verifiedAt: "2026-07-17",
+    facts: [
+      "A PNAD permite acompanhar desocupação, subutilização e diferenças entre unidades da federação.",
+      "Renda e emprego regionais são contexto de capacidade de compra, mas não substituem a qualificação financeira individual nem a análise de crédito.",
+    ],
+    useFor: ["renda regional", "emprego", "capacidade de compra", "risco macroeconômico"],
+  },
+  {
+    id: "bcb-credit-statistics-2026-06",
+    title: "Estatísticas monetárias e de crédito - junho de 2026",
+    publisher: "Banco Central do Brasil",
+    url: "https://www.bcb.gov.br/content/estatisticas/hist_estatisticasmonetariascredito/202606_Texto_de_estatisticas_monetarias_e_de_credito.pdf",
+    verifiedAt: "2026-07-17",
+    facts: [
+      "As estatísticas do Banco Central acompanham saldos e condições agregadas de crédito, incluindo financiamento imobiliário.",
+      "Crédito agregado ajuda a interpretar o cenário, mas taxa e aprovação de uma pessoa dependem do agente financeiro e do perfil individual.",
+    ],
+    useFor: ["crédito imobiliário", "funding", "capacidade de compra", "cenário financeiro"],
+  },
 ];
 
 export const CUSTOMER_EXPERIENCE_SOURCES: MarketSource[] = [
@@ -121,6 +157,9 @@ export const REAL_ESTATE_OPERATING_PLAYBOOK = [
   "Para gestores, diferencie volume, conversão, velocidade, aging, SLA, forecast e qualidade da carteira.",
   "Para corretores, responda com uma próxima ação executável, argumento de atendimento e dado que ainda precisa ser confirmado.",
   "Recomendação de preço ou investimento deve separar dado interno, referência externa, hipótese e risco.",
+  "Previsão de conversão deve exibir probabilidade, confiança, fatores favoráveis, riscos e dados ausentes; nunca apresentar score como garantia.",
+  "Resultado local ganho ou perdido, velocidade por etapa e qualidade do atendimento têm prioridade sobre benchmarks nacionais na recalibração.",
+  "Preço anunciado, renda regional, juros e oferta são contexto; não devem ser tratados isoladamente como causa da compra individual.",
   "Dados pessoais de leads não devem aparecer em respostas agregadas nem ser enviados sem necessidade.",
   "Em reativação, detectar atrito não autoriza troca automática: explique o sinal, ofereça recuperação ou troca e preserve a decisão humana.",
   "Escalar WhatsApp exige opt-in, template aprovado, pacing, monitoramento de qualidade e pausa rápida diante de falhas ou feedback negativo.",

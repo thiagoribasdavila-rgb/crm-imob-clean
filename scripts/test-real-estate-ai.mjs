@@ -48,6 +48,7 @@ const messageSendRoute = readFileSync(resolve(root, "app/api/v2/messages/send/ro
 const metaMigration = readFileSync(resolve(root, "supabase/migrations/20260716222643_meta_lead_closed_loop.sql"), "utf8");
 const providerRouter = readFileSync(resolve(root, "lib/ai/provider-router.ts"), "utf8");
 const complexityRouter = readFileSync(resolve(root, "lib/ai/complexity.ts"), "utf8");
+const conversionPredictor = readFileSync(resolve(root, "lib/ai/conversion-predictor.ts"), "utf8");
 const aiCostMigration = readFileSync(resolve(root, "supabase/migrations/20260717012700_ai_usage_cost_tracking.sql"), "utf8");
 const aiCostTest = readFileSync(resolve(root, "app/api/ai/cost-routing-test/route.ts"), "utf8");
 const hostingerDeployment = readFileSync(resolve(root, "docs/HOSTINGER_DEPLOYMENT.md"), "utf8");
@@ -279,6 +280,10 @@ const checks = [
   ["complexidade da IA combina múltiplos sinais imobiliários", complexityRouter.includes("assessAIComplexity") && ["cálculo ou indicador", "comparação de cenários", "decisão estratégica", "impacto financeiro ou regulatório"].every((signal) => complexityRouter.includes(signal))],
   ["roteamento possui quatro níveis adaptativos", ["imediata", "comercial", "analítica", "estratégica"].every((level) => complexityRouter.includes(level)) && providerRouter.includes("assessAIComplexity(prompt).task")],
   ["decisões críticas exigem revisão humana", complexityRouter.includes("requiresHumanReview") && route.includes("Esta solicitação exige revisão humana") && statusRoute.includes("humanReviewEscalation")],
+  ["predição de conversão é probabilística e explicável", conversionPredictor.includes("predictConversionDetailed") && conversionPredictor.includes("positiveFactors") && conversionPredictor.includes("riskFactors") && conversionPredictor.includes("missingSignals")],
+  ["predição limita confiança sem evidência local", conversionPredictor.includes("confidence") && conversionPredictor.includes("84") && conversionPredictor.includes("não garante compra")],
+  ["predição usa sinais do funil atendimento recência e aderência", ["stageWeight", "responseMinutes", "daysSinceLastInteraction", "budgetFit", "propertyMatchScore"].every((signal) => conversionPredictor.includes(signal))],
+  ["calibração incorpora preço renda emprego crédito e oferta", ["fipezap-methodology", "ibge-pnad-regional", "bcb-credit-statistics", "cbic-iin"].every((source) => knowledge.includes(source))],
   ["modelos econômicos exigem configuração explícita", providerRouter.includes("!apiKey || !model") && providerRouter.includes("configuredEconomyProvider")],
   ["modelos OpenAI padrão existem no catálogo público", providerRouter.includes('"gpt-5-mini"') && providerRouter.includes('"gpt-5.2"') && !providerRouter.includes("gpt-5.6-luna")],
   ["falhas de provedor ficam observáveis", providerRouter.includes("ai.provider_failover") && providerRouter.includes("logger.warn")],

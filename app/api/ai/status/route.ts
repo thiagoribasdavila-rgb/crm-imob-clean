@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       periodDays: 30,
     },
     domain: "mercado-imobiliario-brasileiro",
-    calibrationVerifiedAt: "2026-07-16",
+    calibrationVerifiedAt: "2026-07-17",
     marketSources: REAL_ESTATE_MARKET_SOURCES.map(
       ({ id, title, publisher, url, verifiedAt }) => ({
         id,

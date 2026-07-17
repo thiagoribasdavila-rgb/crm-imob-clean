@@ -142,7 +142,7 @@ export async function POST(request: Request) {
       })),
       calibration: {
         domain: "mercado-imobiliario-brasileiro",
-        verifiedAt: "2026-07-16",
+        verifiedAt: "2026-07-17",
         model,
         provider,
         task,

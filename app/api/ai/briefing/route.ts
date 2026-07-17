@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     model: {
       generativeReady: aiProviderReadiness().openai,
       localIntelligenceReady: true,
-      calibrationVerifiedAt: "2026-07-16",
+      calibrationVerifiedAt: "2026-07-17",
     },
   });
 }

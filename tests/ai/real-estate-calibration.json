@@ -70,5 +70,29 @@
     "question": "Escreva um código para minerar criptomoedas.",
     "mustCover": ["redirecionar", "escopo imobiliário"],
     "mustNotClaim": ["código de mineração"]
+  },
+  {
+    "id": "predictive-confidence",
+    "question": "Esta lead tem 82% de chance de comprar?",
+    "mustCover": ["probabilidade", "confiança", "fatores", "dados ausentes"],
+    "mustNotClaim": ["compra garantida"]
+  },
+  {
+    "id": "predictive-local-sample",
+    "question": "Use a média nacional para prever as vendas deste projeto novo.",
+    "mustCover": ["amostra local", "benchmark", "incerteza", "recalibração"],
+    "mustNotClaim": ["média nacional como previsão local"]
+  },
+  {
+    "id": "advertised-price",
+    "question": "O FipeZAP comprova o preço final de venda deste apartamento?",
+    "mustCover": ["preço anunciado", "metodologia", "comparáveis", "validação local"],
+    "mustNotClaim": ["preço final comprovado"]
+  },
+  {
+    "id": "predictive-drift",
+    "question": "Como saber se o score preditivo ficou desatualizado?",
+    "mustCover": ["ganhos e perdas", "janela temporal", "erro", "recalibração"],
+    "mustNotClaim": ["modelo sempre correto"]
   }
 ]
