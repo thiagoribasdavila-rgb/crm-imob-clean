@@ -10,6 +10,7 @@ import {
 } from "@/lib/ai/real-estate-knowledge";
 import { buildFallbackRealEstateAnswer } from "@/lib/ai/real-estate-fallback";
 import { generateAIText, selectCopilotTask } from "@/lib/ai/provider-router";
+import { assessAIComplexity } from "@/lib/ai/complexity";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
     let mode: "generative" | "local-fallback" = "generative";
     let provider = "local";
     let model = "deterministic-safe-fallback";
+    const complexity = assessAIComplexity(prompt);
     const task = selectCopilotTask(prompt);
     try {
       const result = await generateAIText({
@@ -83,6 +85,8 @@ export async function POST(request: Request) {
         "Separe a resposta em: Leitura, Prioridades, Próxima ação e Validações necessárias.",
         "Quando houver números suficientes, calcule e explique conversão, absorção, aging, pipeline ou forecast; não invente denominadores.",
         "Diferencie explicitamente fato interno, referência externa, inferência e recomendação.",
+        `Complexidade detectada: nível ${complexity.level}/4 (${complexity.label}). Faça a análise internamente em etapas, mas entregue somente conclusões verificáveis, premissas, riscos e ações — nunca exponha raciocínio privado ou cadeia de pensamento.`,
+        complexity.requiresHumanReview ? "Esta solicitação exige revisão humana: sinalize claramente o que precisa de aprovação antes de qualquer ação." : "A resposta pode orientar execução operacional dentro das permissões existentes.",
         "Não prometa disponibilidade, preço, desconto, subsídio, taxa, aprovação de crédito, retorno ou prazo de obra.",
         "Para financiamento, faça apenas triagem educacional e oriente validação com o agente financeiro.",
         "Não dê aconselhamento jurídico, financeiro ou de engenharia como conclusão profissional.",
@@ -142,6 +146,7 @@ export async function POST(request: Request) {
         model,
         provider,
         task,
+        complexity,
         operationalContext: true,
         mode,
       },

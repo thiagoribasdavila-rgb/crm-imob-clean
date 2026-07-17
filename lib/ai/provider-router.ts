@@ -1,6 +1,7 @@
 import "server-only";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { assessAIComplexity } from "@/lib/ai/complexity";
 
 export type AITask = "fast" | "commercial" | "reasoning" | "research";
 type GenerateInput = {
@@ -47,12 +48,7 @@ export function aiModelProfiles() {
 }
 
 export function selectCopilotTask(prompt: string): Exclude<AITask, "research"> {
-  const normalized = prompt.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const complexSignals = ["forecast", "cenario", "estrateg", "projecao", "compar", "causal", "risco financeiro", "plano diretor"];
-  const fastSignals = ["resuma", "resumo", "proxima acao", "prioridade", "o que fazer agora", "checklist"];
-  if (complexSignals.some((signal) => normalized.includes(signal))) return "reasoning";
-  if (prompt.length <= 420 && fastSignals.some((signal) => normalized.includes(signal))) return "fast";
-  return "commercial";
+  return assessAIComplexity(prompt).task;
 }
 
 function pricingFor(task: AITask) {

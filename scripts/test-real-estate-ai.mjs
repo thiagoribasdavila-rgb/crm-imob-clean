@@ -47,6 +47,7 @@ const outboxWorker = readFileSync(resolve(root, "app/api/v2/outbox/process/route
 const messageSendRoute = readFileSync(resolve(root, "app/api/v2/messages/send/route.ts"), "utf8");
 const metaMigration = readFileSync(resolve(root, "supabase/migrations/20260716222643_meta_lead_closed_loop.sql"), "utf8");
 const providerRouter = readFileSync(resolve(root, "lib/ai/provider-router.ts"), "utf8");
+const complexityRouter = readFileSync(resolve(root, "lib/ai/complexity.ts"), "utf8");
 const aiCostMigration = readFileSync(resolve(root, "supabase/migrations/20260717012700_ai_usage_cost_tracking.sql"), "utf8");
 const aiCostTest = readFileSync(resolve(root, "app/api/ai/cost-routing-test/route.ts"), "utf8");
 const hostingerDeployment = readFileSync(resolve(root, "docs/HOSTINGER_DEPLOYMENT.md"), "utf8");
@@ -275,6 +276,9 @@ const checks = [
   ["quatro IAs econômicas possuem rotas oficiais configuráveis", ["deepseek", "qwen", "kimi", "glm"].every((provider) => providerRouter.includes(`${provider}:`)) && providerRouter.includes("ATLAS_QWEN_MODEL")],
   ["provedores econômicos nunca recebem dados pessoais", providerRouter.includes("if (input.containsPersonalData) throw new Error") && providerRouter.includes('input.containsPersonalData ? ["openai" as const]')],
   ["roteamento econômico tem fallback por tarefa", providerRouter.includes('fast: ["qwen", "deepseek", "openai"]') && providerRouter.includes('reasoning: ["openai", "deepseek", "glm", "kimi"]')],
+  ["complexidade da IA combina múltiplos sinais imobiliários", complexityRouter.includes("assessAIComplexity") && ["cálculo ou indicador", "comparação de cenários", "decisão estratégica", "impacto financeiro ou regulatório"].every((signal) => complexityRouter.includes(signal))],
+  ["roteamento possui quatro níveis adaptativos", ["imediata", "comercial", "analítica", "estratégica"].every((level) => complexityRouter.includes(level)) && providerRouter.includes("assessAIComplexity(prompt).task")],
+  ["decisões críticas exigem revisão humana", complexityRouter.includes("requiresHumanReview") && route.includes("Esta solicitação exige revisão humana") && statusRoute.includes("humanReviewEscalation")],
   ["modelos econômicos exigem configuração explícita", providerRouter.includes("!apiKey || !model") && providerRouter.includes("configuredEconomyProvider")],
   ["modelos OpenAI padrão existem no catálogo público", providerRouter.includes('"gpt-5-mini"') && providerRouter.includes('"gpt-5.2"') && !providerRouter.includes("gpt-5.6-luna")],
   ["falhas de provedor ficam observáveis", providerRouter.includes("ai.provider_failover") && providerRouter.includes("logger.warn")],

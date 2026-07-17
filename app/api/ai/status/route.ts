@@ -76,6 +76,8 @@ export async function GET(request: NextRequest) {
       promptInjectionGuard: true,
       financialDisclaimer: true,
       localFallback: true,
+      adaptiveComplexityRouting: true,
+      humanReviewEscalation: true,
     },
   });
 }

@@ -71,6 +71,8 @@ const controlLabels: Record<string, string> = {
   promptInjectionGuard: "Defesa contra instruções maliciosas",
   financialDisclaimer: "Limites para crédito e investimento",
   localFallback: "Motor local de contingência",
+  adaptiveComplexityRouting: "Roteamento adaptativo por complexidade",
+  humanReviewEscalation: "Escalonamento para revisão humana",
 };
 
 export default function AISettings() {
