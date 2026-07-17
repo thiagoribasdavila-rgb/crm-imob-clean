@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import process from "node:process";
 
-const baseUrl = (process.env.ATLAS_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const envPath = new URL("../.env.local", import.meta.url);
 
 function loadLocalEnv() {
@@ -20,6 +19,7 @@ function loadLocalEnv() {
 
 const localEnv = loadLocalEnv();
 const value = (key) => process.env[key] || localEnv[key] || "";
+const baseUrl = (value("ATLAS_BASE_URL") || "http://localhost:3000").replace(/\/$/, "");
 const results = [];
 
 function check(name, ok, detail, required = true) {
@@ -36,9 +36,16 @@ check("ATLAS_CRON_SECRET", Boolean(value("ATLAS_CRON_SECRET")), "configurada");
 const aiCredential = Boolean(value("OPENAI_API_KEY"));
 check("IA comercial", aiCredential, aiCredential ? "OpenAI direta disponível" : "configure OPENAI_API_KEY");
 check("Pesquisa web", Boolean(value("PERPLEXITY_API_KEY")), value("PERPLEXITY_API_KEY") ? "Perplexity disponível" : "opcional: configure PERPLEXITY_API_KEY", false);
+const economyProviders = ["DEEPSEEK", "QWEN", "KIMI", "GLM"].filter((provider) => Boolean(value(`${provider}_API_KEY`) && value(`ATLAS_${provider}_MODEL`)));
+check("IAs econômicas", economyProviders.length > 0, economyProviders.length ? `${economyProviders.join(", ")} pronta(s) para roteamento` : "opcional: configure chave e modelo de ao menos um provedor", false);
+check("Roteamento de modelos", Boolean(value("ATLAS_AI_FAST_MODEL") && value("ATLAS_AI_MODEL") && value("ATLAS_RESEARCH_MODEL")), "modelos rápido, comercial e pesquisa definidos");
+const pricingReady = ["FAST", "COMMERCIAL", "REASONING", "RESEARCH"].every((tier) => Number(value(`ATLAS_AI_${tier}_INPUT_USD_PER_MILLION`)) > 0 && Number(value(`ATLAS_AI_${tier}_OUTPUT_USD_PER_MILLION`)) > 0);
+check("Custos de IA", pricingReady, pricingReady ? "preços por milhão configurados" : "configure preços atuais para medir custo real", false);
 check("Ambiente Hostinger", value("ATLAS_HOSTING_PROVIDER") === "hostinger", "ATLAS_HOSTING_PROVIDER=hostinger");
 check("ATLAS_BOOTSTRAP_SECRET", Boolean(value("ATLAS_BOOTSTRAP_SECRET")), "necessária somente até criar o primeiro admin", false);
 check("META_APP_SECRET", Boolean(value("META_APP_SECRET")), "opcional para teste inicial", false);
+check("Meta Conversions", Boolean(value("META_CONVERSIONS_ACCESS_TOKEN") && value("META_AD_ACCOUNT_ID")), "necessária para fechar o ciclo CRM → Andromeda", false);
+check("Meta Insights", Boolean(value("META_ADS_ACCESS_TOKEN") && value("META_AD_ACCOUNT_ID")), "necessária para custo e ranking real", false);
 check("WHATSAPP_ACCESS_TOKEN", Boolean(value("WHATSAPP_ACCESS_TOKEN")), "opcional para teste inicial", false);
 
 const routes = [

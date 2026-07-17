@@ -52,6 +52,7 @@ const apiCore = readFileSync(resolve(root, "lib/api/core.ts"), "utf8");
 const apiSecurity = readFileSync(resolve(root, "lib/api/security.ts"), "utf8");
 const supabaseMiddleware = readFileSync(resolve(root, "utils/supabase/middleware.ts"), "utf8");
 const nextConfig = readFileSync(resolve(root, "next.config.ts"), "utf8");
+const productionPreflight = readFileSync(resolve(root, "scripts/preflight-production.mjs"), "utf8");
 const complexityRouter = readFileSync(resolve(root, "lib/ai/complexity.ts"), "utf8");
 const conversionPredictor = readFileSync(resolve(root, "lib/ai/conversion-predictor.ts"), "utf8");
 const aiCostMigration = readFileSync(resolve(root, "supabase/migrations/20260717012700_ai_usage_cost_tracking.sql"), "utf8");
@@ -328,6 +329,8 @@ const checks = [
   ["páginas autenticadas não vazam por cache compartilhado", supabaseMiddleware.includes('Cache-Control", "private, no-store') && supabaseMiddleware.includes('Vary", "Cookie')],
   ["limitador canônico controla crescimento de memória", apiSecurity.includes("MAX_RATE_BUCKETS") && apiSecurity.includes("pruneRateBuckets")],
   ["cabeçalhos reduzem superfícies legadas do navegador", nextConfig.includes("X-Permitted-Cross-Domain-Policies") && nextConfig.includes("Origin-Agent-Cluster")],
+  ["preflight mede roteamento e custos das IAs", productionPreflight.includes("IAs econômicas") && productionPreflight.includes("Roteamento de modelos") && productionPreflight.includes("Custos de IA")],
+  ["preflight mede o ciclo Andromeda completo", productionPreflight.includes("Meta Conversions") && productionPreflight.includes("Meta Insights")],
   ["evento inicial de lead é deduplicado", outboxWorker.includes("meta-lead-${metaEvent.external_lead_id}") && metaConversions.includes('ignoreDuplicates: true')],
   ["avanços do funil alimentam aprendizado", metaConversions.includes('qualificacao: "QualifiedLead"') && metaConversions.includes('ganho: "ConvertedLead"')],
   ["movimentação do pipeline gera sinal seguro", pipelineRoute.includes("recordFunnelLearning") && funnelLearning.includes("queueMetaStageConversion") && metaConversions.includes("dataSharingConsent !== true")],
