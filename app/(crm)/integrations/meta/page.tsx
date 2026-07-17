@@ -9,7 +9,7 @@ type Source = { id: string; page_id: string; form_id: string | null; name: strin
 type ConversionConfig = { dataset_id: string; mode: "test"; enabled: boolean; test_event_code: string | null; consent_required: boolean } | null;
 type CampaignIntelligence = { rank: number; campaignId: string; campaignName?: string; total: number; contacted: number; qualified: number; visits: number; proposals: number; converted: number; buyersElsewhere: number; averageScore: number; averageResponseMinutes: number | null; responseCoverage: number; sla5Rate: number; sla15Rate: number; qualityRate: number; visitRate: number; proposalRate: number; conversionRate: number; performanceScore: number; spend?: number | null; cpl?: number | null; costPerQualifiedLead?: number | null; ctr?: number | null; sampleStatus: "insufficient" | "learning" | "reliable"; recommendation: string };
 type DailyReport = { id: string; report_date: string; status: "ready" | "reviewed"; payload: { generatedAt: string; periods: { day: CampaignIntelligence[]; week: CampaignIntelligence[]; month: CampaignIntelligence[] }; recommendations: Array<{ campaignId: string; recommendation: string; qualityRate: number; conversionRate: number; decisionRequired: boolean }>; topSignals: Array<{ signal: string; count: number }>; aiConsensus: Array<{ provider: string; model: string; analysis: string; citations: string[] }>; delivery: Record<string, number>; governance: { decisionRole: "director"; automaticCampaignChanges: false } } };
-type Payload = { sources: Source[]; summary: Record<string, number>; conversionConfig: ConversionConfig; conversionSummary: Record<string, number>; conversionFunnel: Record<string, number>; internalFunnel: Record<string, number>; funnelInsights: { qualifiedRate: number; visitRate: number; proposalRate: number; convertedRate: number; lost: number; buyerProfiles: number }; audienceRecommendations: Array<{ signal: string; count: number }>; campaignIntelligence: CampaignIntelligence[]; dailyReports: DailyReport[]; readiness: { webhookSecret: boolean; graphToken: boolean; conversionsToken: boolean; adsInsights: boolean; cronWorker: boolean }; canManage: boolean; canDecide: boolean };
+type Payload = { sources: Source[]; summary: Record<string, number>; conversionConfig: ConversionConfig; conversionCandidates: Array<{ id: string; name: string; hasEmail: boolean; hasPhone: boolean }>; conversionSummary: Record<string, number>; conversionFunnel: Record<string, number>; internalFunnel: Record<string, number>; funnelInsights: { qualifiedRate: number; visitRate: number; proposalRate: number; convertedRate: number; lost: number; buyerProfiles: number }; audienceRecommendations: Array<{ signal: string; count: number }>; campaignIntelligence: CampaignIntelligence[]; dailyReports: DailyReport[]; readiness: { webhookSecret: boolean; graphToken: boolean; conversionsToken: boolean; adsInsights: boolean; cronWorker: boolean }; canManage: boolean; canDecide: boolean };
 
 const inputClass = "w-full rounded-xl border border-white/10 bg-white/[.035] px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400/40";
 
@@ -22,6 +22,8 @@ export default function MetaIntegration() {
   const [saving, setSaving] = useState(false);
   const [webhookTest, setWebhookTest] = useState({ sourceId: "", leadgenId: "" });
   const [webhookResult, setWebhookResult] = useState<{ leadId: string; leadCount: number; attributionPreserved: boolean; duplicateDelivery: { duplicates?: number }; testedAt: string } | null>(null);
+  const [conversionLeadId, setConversionLeadId] = useState("");
+  const [conversionResult, setConversionResult] = useState<{ mode: string; productionEnabled: boolean; datasetIdMasked: string; eventId: string; eventName: string; eventsReceived: number; traceId: string | null; deliveredAt: string } | null>(null);
 
   async function request(init?: RequestInit) {
     const { data: session } = await supabase.auth.getSession();
@@ -72,6 +74,13 @@ export default function MetaIntegration() {
     finally { setSaving(false); }
   }
 
+  async function testConversion(event: FormEvent) {
+    event.preventDefault(); setSaving(true); setError(""); setNotice("");
+    try { const { data: session } = await supabase.auth.getSession(); const response = await fetch("/api/v1/integrations/meta/conversion-test", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.session?.access_token}` }, body: JSON.stringify({ leadId: conversionLeadId }) }); const body = await response.json(); if (!response.ok) throw new Error(body.error?.message || "Ensaio da Conversions API falhou."); setConversionResult(body.data); setNotice("Evento confirmado no dataset de teste; produção permanece bloqueada."); await load(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Ensaio da Conversions API falhou."); }
+    finally { setSaving(false); }
+  }
+
   const ready = data ? Object.values(data.readiness).filter(Boolean).length : 0;
   return <div className="space-y-6 pb-12">
     <section className="atlas-grid-glow rounded-[30px] border border-blue-400/15 bg-gradient-to-br from-blue-500/[.14] via-violet-500/[.08] to-transparent p-6 sm:p-8">
@@ -102,6 +111,20 @@ export default function MetaIntegration() {
       <div className="px-5 pb-5 sm:px-6 sm:pb-6">
         {!data?.canDecide ? <p className="text-xs text-amber-300">A execução e a evidência deste ensaio são exclusivas da diretoria.</p> : null}
         {webhookResult ? <div className="grid gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[.07] p-4 sm:grid-cols-3"><div><span className="text-xs text-emerald-200/70">Leads criadas</span><strong className="mt-1 block text-2xl text-white">{webhookResult.leadCount}</strong></div><div><span className="text-xs text-emerald-200/70">Entrega repetida</span><strong className="mt-1 block text-sm text-white">{(webhookResult.duplicateDelivery.duplicates ?? 0) >= 1 ? "Duplicidade bloqueada" : "Validada"}</strong></div><div><span className="text-xs text-emerald-200/70">Atribuição</span><strong className="mt-1 block text-sm text-white">{webhookResult.attributionPreserved ? "Origem preservada" : "Revisar"}</strong><p className="mt-1 text-[10px] text-slate-500">Lead {webhookResult.leadId}</p></div></div> : <p className="text-xs leading-5 text-slate-500">O ID deve vir de um lead oficial de teste da Meta e permanecer disponível para leitura pelo token configurado na Hostinger.</p>}
+      </div>
+    </AtlasCard>
+    <AtlasCard>
+      <AtlasCardHeader eyebrow="Fase 25 · Conversions API" title="Confirmar evento no dataset de teste" description="O Atlas usa uma lead Meta consentida, envia um evento real pela fila segura da Hostinger e exige a confirmação da Meta. A produção continua tecnicamente bloqueada." />
+      <form onSubmit={testConversion} className="grid gap-3 p-5 sm:p-6 lg:grid-cols-[1fr_auto]">
+        <select required value={conversionLeadId} onChange={(event) => setConversionLeadId(event.target.value)} className={inputClass}>
+          <option value="">Lead Meta com consentimento e identificador</option>
+          {data?.conversionCandidates.map((lead) => <option key={lead.id} value={lead.id}>{lead.name} · {lead.hasEmail && lead.hasPhone ? "e-mail e telefone" : lead.hasEmail ? "e-mail" : "telefone"}</option>)}
+        </select>
+        <button disabled={!data?.canDecide || saving || !data?.conversionConfig?.enabled} className="atlas-button-primary min-w-52 disabled:opacity-40">{saving ? "Consultando Meta..." : "Executar teste CAPI"}</button>
+      </form>
+      <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+        {!data?.conversionConfig?.enabled ? <p className="text-xs text-amber-300">Informe o Dataset ID e o código de evento de teste no cartão Conversions API para liberar o ensaio.</p> : !data?.conversionCandidates.length ? <p className="text-xs text-amber-300">Nenhuma lead Meta possui simultaneamente consentimento e e-mail ou telefone elegível.</p> : null}
+        {conversionResult ? <div className="grid gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[.07] p-4 sm:grid-cols-3"><div><span className="text-xs text-emerald-200/70">Meta confirmou</span><strong className="mt-1 block text-2xl text-white">{conversionResult.eventsReceived} evento</strong></div><div><span className="text-xs text-emerald-200/70">Ambiente</span><strong className="mt-1 block text-sm text-white">{conversionResult.mode === "test" && !conversionResult.productionEnabled ? "Teste · produção bloqueada" : "Revisar"}</strong><p className="mt-1 text-[10px] text-slate-500">Dataset {conversionResult.datasetIdMasked}</p></div><div><span className="text-xs text-emerald-200/70">Rastreabilidade</span><strong className="mt-1 block text-sm text-white">{conversionResult.traceId ? "Trace Meta registrado" : "Evento registrado"}</strong><p className="mt-1 truncate text-[10px] text-slate-500">{conversionResult.eventId}</p></div></div> : null}
       </div>
     </AtlasCard>
     <section className="grid gap-6 xl:grid-cols-2">

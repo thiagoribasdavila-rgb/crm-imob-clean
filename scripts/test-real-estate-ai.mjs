@@ -27,6 +27,7 @@ const homologationRoute = readFileSync(resolve(root, "app/api/v1/homologation/ro
 const homologationMigration = readFileSync(resolve(root, "supabase/migrations/20260716221959_homologation_checklist.sql"), "utf8");
 const metaWebhook = readFileSync(resolve(root, "app/api/webhooks/meta/route.ts"), "utf8");
 const metaWebhookTest = readFileSync(resolve(root, "app/api/v1/integrations/meta/webhook-test/route.ts"), "utf8");
+const metaConversionTest = readFileSync(resolve(root, "app/api/v1/integrations/meta/conversion-test/route.ts"), "utf8");
 const outboxWorker = readFileSync(resolve(root, "app/api/v2/outbox/process/route.ts"), "utf8");
 const metaMigration = readFileSync(resolve(root, "supabase/migrations/20260716222643_meta_lead_closed_loop.sql"), "utf8");
 const providerRouter = readFileSync(resolve(root, "lib/ai/provider-router.ts"), "utf8");
@@ -141,7 +142,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("216 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("222 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -156,6 +157,12 @@ const checks = [
   ["ensaio Meta importa lead oficial", metaWebhookTest.includes("META_LEAD_ACCESS_TOKEN") && metaWebhookTest.includes("meta.lead.fetch") === false && metaWebhookTest.includes("/api/v2/outbox/process")],
   ["ensaio Meta comprova uma única lead", metaWebhookTest.includes("count !== 1") && metaWebhookTest.includes('lead?.source !== "Meta Lead Ads"')],
   ["ensaio Meta preserva atribuição", metaWebhookTest.includes("meta.externalLeadId === leadgenId") && metaWebhookTest.includes("meta.pageId === pageId") && metaWebhookTest.includes("meta.formId === formId")],
+  ["ensaio CAPI exige diretoria", metaConversionTest.includes('commercialRole === "director"') && metaSettingsPage.includes("Fase 25 · Conversions API")],
+  ["ensaio CAPI permanece em teste", metaConversionTest.includes('config.mode !== "test"') && metaConversionTest.includes("productionEnabled: false")],
+  ["ensaio CAPI exige consentimento", metaConversionTest.includes("meta.dataSharingConsent !== true") && metaConversionTest.includes("LEAD_NOT_ELIGIBLE")],
+  ["ensaio CAPI usa fila Hostinger", metaConversionTest.includes("queueMetaConversion") && metaConversionTest.includes("/api/v2/outbox/process")],
+  ["ensaio CAPI exige confirmação Meta", metaConversionTest.includes("events_received") && metaConversionTest.includes('event?.status !== "delivered"')],
+  ["ensaio CAPI preserva rastreabilidade", metaConversionTest.includes("fbtrace_id") && metaConversionTest.includes("datasetIdMasked")],
   ["Meta cria memória de campanha", outboxWorker.includes("campaign_events") && outboxWorker.includes('event_type: "lead_created"')],
   ["roteamento independente de Vercel", providerRouter.includes("api.openai.com/v1/responses") && providerRouter.includes("api.perplexity.ai")],
   ["pesquisa externa bloqueia PII", providerRouter.includes("containsPersonalData") && providerRouter.includes("Pesquisa externa bloqueada")],

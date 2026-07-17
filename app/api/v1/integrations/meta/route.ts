@@ -44,7 +44,14 @@ export async function GET(request: NextRequest) {
   const rate = (value: number) => leads > 0 ? Math.round((value / leads) * 100) : 0;
   const funnelInsights = { qualifiedRate: rate(conversionFunnel.QualifiedLead || 0), visitRate: rate(conversionFunnel.Schedule || 0), proposalRate: rate(conversionFunnel.SubmitApplication || 0), convertedRate: rate(conversionFunnel.ConvertedLead || 0), lost: internalFunnel.perdido || 0, buyerProfiles: internalFunnel.comprou_outro || 0 };
   const campaignIntelligence = buildMetaCampaignIntelligence(metaLeads ?? []);
-  return NextResponse.json({ sources: sources ?? [], summary, conversionConfig, conversionSummary, conversionFunnel, internalFunnel, funnelInsights, audienceRecommendations, campaignIntelligence, dailyReports: dailyReports ?? [], readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), adsInsights: Boolean(process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role), canDecide: isDirector(access.access.profile.commercialRole, access.access.profile.role) });
+  const canDecide = isDirector(access.access.profile.commercialRole, access.access.profile.role);
+  const { data: candidateRows } = canDecide ? await access.supabase.from("leads").select("id,name,email,phone,metadata").eq("source", "Meta Lead Ads").order("created_at", { ascending: false }).limit(50) : { data: [] };
+  const conversionCandidates = (candidateRows ?? []).filter((lead) => {
+    const metadata = lead.metadata && typeof lead.metadata === "object" ? lead.metadata as Record<string, unknown> : {};
+    const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as Record<string, unknown> : {};
+    return meta.dataSharingConsent === true && Boolean(lead.email || lead.phone);
+  }).slice(0, 20).map((lead) => ({ id: lead.id, name: lead.name || "Lead Meta", hasEmail: Boolean(lead.email), hasPhone: Boolean(lead.phone) }));
+  return NextResponse.json({ sources: sources ?? [], summary, conversionConfig, conversionCandidates, conversionSummary, conversionFunnel, internalFunnel, funnelInsights, audienceRecommendations, campaignIntelligence, dailyReports: dailyReports ?? [], readiness: { webhookSecret: Boolean(process.env.META_APP_SECRET && process.env.META_WEBHOOK_VERIFY_TOKEN), graphToken: Boolean(process.env.META_LEAD_ACCESS_TOKEN), conversionsToken: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), adsInsights: Boolean(process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID), cronWorker: Boolean(process.env.ATLAS_CRON_SECRET) }, canManage: canManage(access.access.profile.commercialRole, access.access.profile.role), canDecide });
 }
 
 export async function POST(request: NextRequest) {
