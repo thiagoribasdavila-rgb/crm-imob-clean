@@ -1050,7 +1050,17 @@ Pendência externa: aplicar migration e validar duplicidades reais, concorrênci
 
 Pendência externa: aplicar migration e validar autorização, expiração, horários, opt-out, quatro perfis, canais reais e dois tenants.
 
-Próxima fase: **Fase 74 — Histórico de origem e atribuição**, preservando campanha, canal, formulário e mudanças sem sobrescrever a primeira origem.
+## Fase 74 — Histórico de origem e atribuição
+
+**Estado:** 100% implementada e aprovada localmente; campanhas e jornadas reais permanecem para homologação.
+
+**Evolução:** a primeira origem fica imutável e cada novo contato vira um toque na jornada, preservando canal, campanha, anúncio, formulário, página e projeto quando disponíveis.
+
+**Governança:** a timeline é append-only, idempotente, sem PII e protegida por hierarquia. Leads antigas recebem backfill sem inventar informação. O contrato está em `config/immutable-lead-attribution.json`, o gate em `npm run lead-attribution:check` e o roteiro em `docs/IMMUTABLE_LEAD_ATTRIBUTION_PHASE_74.md`.
+
+Pendência externa: aplicar migration e validar Meta, entradas manuais, mudanças, repetição, backfill, perfis e dois tenants.
+
+Próxima fase: **Fase 75 — Eventos comportamentais canônicos**, padronizando respostas, visitas, propostas e conversões para aprendizado confiável.
 
 ## Painel das 100 fases
 
