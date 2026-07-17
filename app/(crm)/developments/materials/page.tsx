@@ -66,6 +66,8 @@ export default function ProjectMaterialsPage() {
   const [currentRole, setCurrentRole] = useState("");
   const [query, setQuery] = useState("");
   const [developer, setDeveloper] = useState("");
+  const [materialQuery, setMaterialQuery] = useState("");
+  const [materialType, setMaterialType] = useState("");
   const [loading, setLoading] = useState(true);
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -132,7 +134,11 @@ export default function ProjectMaterialsPage() {
     }
   }
 
-  useEffect(() => { void loadMaterials(selectedId); }, [selectedId]);
+  useEffect(() => {
+    setMaterialQuery("");
+    setMaterialType("");
+    void loadMaterials(selectedId);
+  }, [selectedId]);
 
   const developers = useMemo(
     () => [...new Set(developments.map((item) => item.developer_name || "Sem incorporadora"))].sort(),
@@ -154,6 +160,32 @@ export default function ProjectMaterialsPage() {
     type,
     material: materials.find((material) => material.material_type === type && (!material.valid_until || referenceTime === 0 || new Date(material.valid_until).getTime() >= referenceTime)) ?? null,
   }));
+  const visibleMaterials = useMemo(() => {
+    const normalized = materialQuery.trim().toLowerCase();
+    return materials
+      .filter((material) => !materialType || material.material_type === materialType)
+      .filter((material) => !normalized || [material.title, material.description, material.file_name, materialLabels[material.material_type]?.label].some((value) => value?.toLowerCase().includes(normalized)))
+      .sort((left, right) => {
+        const leftExpired = Boolean(left.valid_until && referenceTime > 0 && new Date(left.valid_until).getTime() < referenceTime);
+        const rightExpired = Boolean(right.valid_until && referenceTime > 0 && new Date(right.valid_until).getTime() < referenceTime);
+        if (leftExpired !== rightExpired) return leftExpired ? 1 : -1;
+        if (left.review_status !== right.review_status) return left.review_status === "verified" ? -1 : 1;
+        return right.created_at.localeCompare(left.created_at);
+      });
+  }, [materialQuery, materialType, materials, referenceTime]);
+
+  async function shareMaterial(material: Material) {
+    if (!material.url) return;
+    try {
+      const nativeShare = typeof navigator.share === "function";
+      if (nativeShare) await navigator.share({ title: material.title, text: `${selected?.name || "Empreendimento"} · link temporário do Atlas`, url: material.url });
+      else await navigator.clipboard.writeText(material.url);
+      setNotice(nativeShare ? "Material compartilhado com segurança." : "Link temporário copiado. Ele expira em 15 minutos.");
+    } catch (shareError) {
+      if (shareError instanceof Error && shareError.name === "AbortError") return;
+      setError("Não foi possível compartilhar. Abra o material e use o compartilhamento do navegador.");
+    }
+  }
 
   async function uploadMaterial(event: React.FormEvent) {
     event.preventDefault();
@@ -230,7 +262,7 @@ export default function ProjectMaterialsPage() {
         <AtlasCard>
           <AtlasCardHeader eyebrow="Busca rápida" title="Incorporadora e projeto" description="Filtre e escolha o empreendimento." />
           <div className="space-y-3 p-5">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar projeto, cidade..." className="w-full rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
+            <div className="relative"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nome do projeto, incorporadora ou cidade..." className="w-full rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 pr-12 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Limpar busca de projetos" className="absolute inset-y-0 right-0 w-11 text-slate-500 hover:text-white">×</button> : null}</div>
             <select value={developer} onChange={(event) => setDeveloper(event.target.value)} className="w-full rounded-xl border border-white/10 bg-[#0a1120] px-4 py-3 text-sm text-white">
               <option value="">Todas as incorporadoras</option>
               {developers.map((name) => <option key={name} value={name}>{name}</option>)}
@@ -243,6 +275,7 @@ export default function ProjectMaterialsPage() {
                   <span className="mt-1 block text-xs text-slate-500">{item.city || "Cidade não informada"} · {item.status}</span>
                 </button>
               ))}
+              {!loading && filtered.length === 0 ? <AtlasEmpty title="Projeto não encontrado" description="Limpe os filtros ou tente parte do nome, bairro ou incorporadora." /> : null}
             </div>
           </div>
         </AtlasCard>
@@ -250,11 +283,12 @@ export default function ProjectMaterialsPage() {
         <AtlasCard>
           <AtlasCardHeader eyebrow="Kit comercial" title={selected?.name || "Materiais do projeto"} description="Abra ou baixe sempre a versão vigente." action={selected ? <Link href={`/developments/${selected.id}`} className="text-xs font-semibold text-sky-300">Abrir projeto →</Link> : null} />
           <div className="p-5 sm:p-6">
+            {selected && materials.length ? <div className="mb-5 rounded-2xl border border-white/[.07] bg-white/[.02] p-3"><div className="flex flex-col gap-3 lg:flex-row"><div className="relative flex-1"><input value={materialQuery} onChange={(event) => setMaterialQuery(event.target.value)} placeholder="Buscar tabela, planta, vídeo, memorial..." className="w-full rounded-xl border border-white/10 bg-[#080f1c] px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/35" />{materialQuery ? <button type="button" onClick={() => setMaterialQuery("")} aria-label="Limpar busca de materiais" className="absolute inset-y-0 right-0 w-11 text-slate-500 hover:text-white">×</button> : null}</div><select value={materialType} onChange={(event) => setMaterialType(event.target.value)} className="rounded-xl border border-white/10 bg-[#080f1c] px-4 py-3 text-sm text-white"><option value="">Todos os materiais</option>{Object.entries(materialLabels).map(([value, item]) => <option key={value} value={value}>{item.label}</option>)}</select></div><div className="mt-3 flex flex-wrap gap-2">{essentialTypes.map((type) => <button key={type} type="button" onClick={() => setMaterialType(materialType === type ? "" : type)} className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[.1em] transition ${materialType === type ? "border-sky-300/40 bg-sky-300/15 text-sky-200" : "border-white/10 text-slate-400 hover:border-sky-300/20 hover:text-white"}`}>{materialLabels[type].label}</button>)}<span className="ml-auto self-center text-[10px] text-slate-500">{visibleMaterials.length} resultado(s)</span></div></div> : null}
             {selected ? <div className="mb-5 grid gap-2 sm:grid-cols-3" aria-label="Acesso rápido ao kit essencial">{essentialMaterials.map(({ type, material }) => material?.url ? <a key={type} href={material.url} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[.06] p-3 transition hover:border-emerald-300/35"><span className="block text-[10px] font-bold uppercase tracking-[.12em] text-emerald-300">Vigente · V{material.version}</span><strong className="mt-1 block text-sm text-white">{materialLabels[type].label}</strong><small className="mt-1 block text-slate-500">Abrir agora →</small></a> : <div key={type} className="rounded-2xl border border-amber-400/15 bg-amber-400/[.04] p-3"><span className="block text-[10px] font-bold uppercase tracking-[.12em] text-amber-300">Pendente</span><strong className="mt-1 block text-sm text-white">{materialLabels[type].label}</strong><small className="mt-1 block text-slate-500">Aguardando publicação</small></div>)}</div> : null}
             {!materialsLoading && selected && missingEssential.length ? <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/[.07] p-4 text-xs leading-5 text-amber-100">Kit incompleto: falta {missingEssential.map((type) => materialLabels[type].label).join(", ")}. Atualize abaixo para o corretor encontrar tudo sem sair do projeto.</div> : null}
-            {materialsLoading ? <div className="grid gap-4 sm:grid-cols-2">{[1,2,3,4].map((item) => <AtlasSkeleton key={item} className="h-44 w-full" />)}</div> : !selected ? <AtlasEmpty title="Selecione um projeto" description="Escolha uma incorporadora e um empreendimento para acessar o kit comercial." /> : materials.length === 0 ? <AtlasEmpty title="Kit comercial ainda vazio" description="Adicione book, tabela, espelho ou plantas para liberar o material ao time." /> : (
+            {materialsLoading ? <div className="grid gap-4 sm:grid-cols-2">{[1,2,3,4].map((item) => <AtlasSkeleton key={item} className="h-44 w-full" />)}</div> : !selected ? <AtlasEmpty title="Selecione um projeto" description="Escolha uma incorporadora e um empreendimento para acessar o kit comercial." /> : materials.length === 0 ? <AtlasEmpty title="Kit comercial ainda vazio" description="Adicione book, tabela, espelho ou plantas para liberar o material ao time." /> : visibleMaterials.length === 0 ? <AtlasEmpty title="Nenhum material neste filtro" description="Escolha outro tipo ou limpe a busca para visualizar o kit completo." /> : (
               <div className="grid gap-4 sm:grid-cols-2">
-                {materials.map((material) => {
+                {visibleMaterials.map((material) => {
                   const config = materialLabels[material.material_type] || materialLabels.other;
                   const expired = Boolean(material.valid_until && referenceTime > 0 && new Date(material.valid_until).getTime() < referenceTime);
                   return <article key={material.id} className="rounded-[22px] border border-white/[0.07] bg-white/[0.025] p-5">
@@ -262,7 +296,7 @@ export default function ProjectMaterialsPage() {
                     <h2 className="mt-4 text-lg font-semibold text-white">{material.title}</h2>
                     <p className="mt-1 text-xs leading-5 text-slate-500">{config.description}</p>
                     <div className="mt-4 flex justify-between text-xs text-slate-500"><span>{formatSize(material.file_size)}</span><span>{material.valid_until ? `Válido até ${new Date(`${material.valid_until}T12:00:00`).toLocaleDateString("pt-BR")}` : "Sem vencimento"}</span></div>
-                    <div className="mt-4 grid grid-cols-2 gap-2">{material.url ? <a href={material.url} target="_blank" rel="noreferrer" className="atlas-button-secondary block text-center">Abrir material</a> : <span className="text-xs text-rose-300">Arquivo indisponível</span>}{canManage && material.review_status !== "verified" ? <button onClick={() => void reviewMaterial(material.id)} className="atlas-button-secondary">Validar material</button> : null}</div>
+                    <div className="mt-4 grid grid-cols-2 gap-2">{material.url ? <a href={material.url} target="_blank" rel="noreferrer" className="atlas-button-primary block text-center">Abrir agora</a> : <span className="text-xs text-rose-300">Arquivo indisponível</span>}{material.url ? <button type="button" onClick={() => void shareMaterial(material)} className="atlas-button-secondary">Compartilhar</button> : null}{canManage && material.review_status !== "verified" ? <button onClick={() => void reviewMaterial(material.id)} className="atlas-button-secondary col-span-2">Validar material</button> : null}</div>
                   </article>;
                 })}
               </div>
