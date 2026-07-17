@@ -1278,6 +1278,18 @@ Pendência externa: aplicar migration, confirmar eventos no dataset de teste, va
 
 Próxima fase: **Fase 93 — Laboratório de experimentos de mídia**, formalizando hipótese, controle, orçamento máximo, janela, critério de parada e leitura causal prudente.
 
+## Fase 93 — Laboratório de experimentos de mídia
+
+**Estado:** 100% implementada localmente; migrations, execução externa e amostra real permanecem para homologação.
+
+**Evolução:** cada experimento exige ciclo Andromeda aprovado, hipótese, uma variável, controle, teste, métrica primária, proteção, teto total/diário e janela. Checkpoints avaliam amostra, lift direcional e regras de parada.
+
+**Governança:** somente o diretor aprova e transiciona; superintendência acompanha. O Atlas não executa campanha, não declara causalidade, não escolhe vencedor e não altera orçamento. O contrato está em `config/governed-media-experiment-lab.json`, o gate em `npm run media-experiment:check` e o roteiro em `docs/GOVERNED_MEDIA_EXPERIMENT_LAB_PHASE_93.md`.
+
+Pendência externa: aplicar migrations, criar experimento na plataforma oficial, conciliar ID/custos e concluir amostra com dois tenants.
+
+Próxima fase: **Fase 94 — Inteligência de criativos imobiliários**, organizando mensagem, formato, projeto, público, aprovação e aprendizagem sem confundir correlação com causalidade.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
