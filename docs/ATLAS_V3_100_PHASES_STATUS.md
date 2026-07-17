@@ -644,7 +644,19 @@ Pendência externa: testar celular físico, teclado, carteira volumosa, carregam
 
 Pendência externa: aplicar migration e executar movimentos simultâneos, escopo lateral e reversões concorrentes no Supabase de homologação.
 
-Próxima fase: **Fase 34 — SLA de primeiro contato**, medindo entrada, primeira interação válida e cumprimento do prazo.
+## Fase 34 — SLA de primeiro contato
+
+**Estado:** 100% implementada e aprovada localmente; migration e aferição com contatos reais permanecem para homologação.
+
+**Evolução:** toda lead passa a receber um prazo por origem: 5 minutos para canais Meta e 15 minutos para as demais fontes, com política isolada por organização. O histórico preserva horário, minutos de resposta e resultado do SLA.
+
+**Precisão:** apenas ligações, e-mails, WhatsApp, visitas, reuniões, mensagens e contatos válidos encerram o relógio. Eventos internos e automações sem interação não geram falso cumprimento.
+
+**Gestão:** o Kanban mostra tempo restante ou resultado concluído; a visão do gerente consolida taxa de cumprimento e tempo médio por corretor. O contrato está em `config/first-contact-sla.json`, o gate em `npm run first-contact-sla:check` e o roteiro em `docs/FIRST_CONTACT_SLA_PHASE_34.md`.
+
+Pendência externa: aplicar migration e aferir prazos, concorrência e isolamento com leads e mensagens reais em homologação.
+
+Próxima fase: **Fase 35 — SLA de follow-up**, medindo cadência, atraso e recuperação das próximas ações.
 
 ## Painel das 100 fases
 

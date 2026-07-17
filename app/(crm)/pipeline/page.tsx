@@ -32,6 +32,8 @@ type Lead = {
   first_contact_due_at: string | null;
   first_contacted_at: string | null;
   first_contact_sla_minutes: number | null;
+  first_response_minutes: number | null;
+  first_contact_sla_met: boolean | null;
   created_at: string | null;
   updated_at: string | null;
   assigned_to: string | null;
@@ -77,8 +79,8 @@ function dateLabel(value: string | null) {
 
 function firstContactSla(lead: Lead) {
   if (lead.first_contacted_at) {
-    const minutes = lead.created_at ? Math.max(0, Math.round((new Date(lead.first_contacted_at).getTime() - new Date(lead.created_at).getTime()) / 60_000)) : null;
-    return { label: minutes === null ? "Contato realizado" : `Contato em ${minutes} min`, tone: "success" as const, overdue: false };
+    const minutes = lead.first_response_minutes ?? (lead.created_at ? Math.max(0, Math.round((new Date(lead.first_contacted_at).getTime() - new Date(lead.created_at).getTime()) / 60_000)) : null);
+    return { label: minutes === null ? "Contato realizado" : `${lead.first_contact_sla_met === false ? "Fora do SLA" : "No SLA"} · ${minutes} min`, tone: lead.first_contact_sla_met === false ? "warning" as const : "success" as const, overdue: false };
   }
   if (!lead.first_contact_due_at) return null;
   const remaining = Math.ceil((new Date(lead.first_contact_due_at).getTime() - Date.now()) / 60_000);
