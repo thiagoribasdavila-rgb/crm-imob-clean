@@ -31,6 +31,7 @@ for (const required of [
   "package.json",
   "package-lock.json",
   "ecosystem.config.cjs",
+  "lib/auth/safe-redirect.ts",
   "docs/HOSTINGER_FINAL_RELEASE_PHASE_100.md",
 ])
   if (!entries.includes(required))

@@ -46,7 +46,6 @@ for (const relativePath of [
   "components/analytics",
   "components/pipeline",
   "components/ui/ProtectedRoute.tsx",
-  "lib/auth",
   "lib/data",
   "lib/services",
   "public/file.svg",
@@ -154,6 +153,7 @@ for (const required of [
   "HOSTINGER_PACKAGE.json",
   "RELEASE_FILES.sha256",
   "docs/HOSTINGER_FINAL_RELEASE_PHASE_100.md",
+  "lib/auth/safe-redirect.ts",
 ]) {
   if (!entries.includes(required))
     throw new Error(`Arquivo obrigatório ausente no ZIP: ${required}`);

@@ -8,7 +8,7 @@ const need = (file, ...tokens) => {
 
 need("config/final-regression-hostinger-package.json", '"phase": 10', '"host": "hostinger"', '"automatic_deploy": false', '"production_authorized": false');
 need("config/final-10-phases-improvement.json", '"current_phase": 10', '"completed": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]');
-need("scripts/package-hostinger.mjs", 'execFileSync("git", ["archive"', "privateDataIncluded: false", "RELEASE_FILES.sha256", "atlas-v3-hostinger-final.zip");
+need("scripts/package-hostinger.mjs", 'execFileSync("git", ["archive"', "privateDataIncluded: false", "RELEASE_FILES.sha256", "atlas-v3-hostinger-final.zip", '"lib/auth/safe-redirect.ts"');
 need("scripts/verify-hostinger-package.mjs", "Checksum externo divergente", "Caminho inseguro no ZIP", "Integridade interna divergente", "manifest.commit !== head");
 need("docs/FINAL_PHASE_10_REGRESSION_HOSTINGER_PACKAGE.md", "Node.js 24", "candidato final de homologação", "Produção continua bloqueada", "não publica");
 
