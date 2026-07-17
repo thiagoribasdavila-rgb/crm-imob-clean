@@ -181,7 +181,7 @@ export default function DashboardPage() {
       supabase.from("tasks").select("*").order("due_at", { ascending: true, nullsFirst: false }).limit(300),
       supabase.from("ai_insights").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("developments").select("*").order("name", { ascending: true }).limit(100),
-      supabase.from("profiles").select("*").eq("active", true).limit(300),
+      supabase.from("profiles").select("*").limit(300),
     ]);
 
     const labels = ["Leads", "Pipeline", "Tarefas", "Inteligência", "Projetos", "Equipe"];
@@ -220,7 +220,7 @@ export default function DashboardPage() {
   );
   const referenceTime = lastUpdated?.getTime() ?? 0;
   const viewer = data.profiles.find((profile) => String(profile.id) === viewerId);
-  const viewerRole = viewer ? stringValue(viewer, "commercial_role", "role") : "";
+  const viewerRole = viewer ? normalized(stringValue(viewer, "commercial_role", "role")) : "";
   const isDirector = viewerRole === "director" || stringValue(viewer ?? {}, "role") === "admin";
   const isSuperintendent = viewerRole === "superintendent";
   const isManager = viewerRole === "manager";
@@ -571,6 +571,7 @@ export default function DashboardPage() {
   };
 
   if (loading) return <LoadingState rows={6} />;
+  if (viewer && viewer.active !== true) return <ErrorState title="Perfil aguardando ativação" description="Seu login está correto, mas o perfil comercial está inativo. Um administrador deve ativar seu acesso antes de abrir a operação." action={<Link href="/settings/profile" className="atlas-button-secondary">Ver situação do perfil</Link>} />;
   if (!viewerRole) return <ErrorState title="Perfil comercial não identificado" description="Seu usuário está autenticado, mas ainda não possui um papel comercial ativo nesta organização." action={<Link href="/settings/profile" className="atlas-button-secondary">Revisar meu perfil</Link>} />;
 
   return (

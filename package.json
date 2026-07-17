@@ -152,6 +152,7 @@
     "bootstrap:diagnose": "node --env-file=.env.local scripts/diagnose-bootstrap.mjs",
     "project:import:in-perdizes": "node --env-file=.env.local scripts/import-in-perdizes.mjs",
     "leads:import:memory": "node --env-file=.env.local scripts/import-prepared-lead-memory.mjs",
+    "inactive-memory:check": "node scripts/check-inactive-memory-isolation.mjs",
     "setup:atlas": "npm ci && npm run prisma:generate && npm run doctor && npm run release:check"
   },
   "dependencies": {

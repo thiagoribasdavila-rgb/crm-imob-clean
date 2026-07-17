@@ -21,6 +21,7 @@ export async function GET(request: Request) {
       .from("leads")
       .select("id,name,phone,email,status,score,temperature,budget_min,budget_max,source,campaign_id,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,first_contact_due_at,first_contacted_at,first_contact_sla_minutes,first_response_minutes,first_contact_sla_met,created_at,updated_at,assigned_to,metadata")
       .eq("organization_id", identity.organizationId)
+      .neq("status", "arquivado")
       .order("score", { ascending: false })
       .limit(500);
 

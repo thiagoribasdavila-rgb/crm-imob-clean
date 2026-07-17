@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
       { count: usePagePagination ? "exact" : undefined },
     )
     .eq("organization_id", access.access.organization.id)
+    .neq("status", "arquivado")
     .order(sort, { ascending: direction === "asc" })
     .order("id", { ascending: direction === "asc" });
 

@@ -28,7 +28,7 @@ export async function buildRealEstateContext(identity: ApiIdentity) {
   };
   const developments = rows(0);
   const properties = rows(1);
-  const leads = rows(2);
+  const leads = rows(2).filter((item) => status(item.status) !== "arquivado");
   const opportunities = rows(3);
   const materials = rows(4);
   const historicalMemories = rows(5);
