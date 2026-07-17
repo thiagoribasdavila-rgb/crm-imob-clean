@@ -88,6 +88,9 @@ const systemHealthRoute = readFileSync(resolve(root, "app/api/v1/governance/syst
 const systemHealthPage = readFileSync(resolve(root, "app/(crm)/atlas-v3/developer/health/page.tsx"), "utf8");
 const publicHealthRoute = readFileSync(resolve(root, "app/api/v1/health/route.ts"), "utf8");
 const legacyReadyRoute = readFileSync(resolve(root, "app/api/ready/route.ts"), "utf8");
+const openAITestRoute = readFileSync(resolve(root, "app/api/ai/openai-test/route.ts"), "utf8");
+const openAITraceMigration = readFileSync(resolve(root, "supabase/migrations/20260717012622_openai_request_traceability.sql"), "utf8");
+const aiSettingsPage = readFileSync(resolve(root, "app/(crm)/settings/ai/page.tsx"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -136,7 +139,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("198 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("204 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -289,6 +292,12 @@ const checks = [
   ["rotas legadas usam contrato canônico", legacyReadyRoute.includes('@/app/api/v1/ready/route') && legacyReadyRoute.includes("canonicalReady")],
   ["diagnóstico detalhado exige diretoria", systemHealthRoute.includes("exclusivo da diretoria") && systemHealthRoute.includes("commercialRole")],
   ["Command Center separa obrigatório de opcional", systemHealthPage.includes("Dependências obrigatórias") && systemHealthPage.includes("Integrações opcionais") && systemHealthPage.includes("Vivo é diferente de pronto")],
+  ["teste OpenAI não aceita fallback", openAITestRoute.includes('result.provider !== "openai"') && openAITestRoute.includes("fallbackUsed: false")],
+  ["teste OpenAI é exclusivo da diretoria", openAITestRoute.includes("exclusivo da diretoria") && openAITestRoute.includes("commercialRole")],
+  ["teste OpenAI usa prompt sem dados pessoais", providerRouter.includes('feature: "openai-homologation"') && providerRouter.includes("containsPersonalData: false")],
+  ["requisição OpenAI possui rastreio", providerRouter.includes("providerRequestId: body.id") && openAITraceMigration.includes("provider_request_id")],
+  ["consumo do teste OpenAI é persistido", providerRouter.includes("recordUsage(request, await generateOpenAI(request))") && openAITestRoute.includes("measured: true")],
+  ["painel comprova modelo latência e tokens", aiSettingsPage.includes("Testar OpenAI real") && aiSettingsPage.includes("providerRequestId") && aiSettingsPage.includes("totalTokens")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

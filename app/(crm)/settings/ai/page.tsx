@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AtlasBadge, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
+import { supabase } from "@/lib/supabase";
 
 type AIStatus = {
   status: "ready" | "degraded";
@@ -29,6 +30,8 @@ const controlLabels: Record<string, string> = {
 export default function AISettings() {
   const [data, setData] = useState<AIStatus | null>(null);
   const [error, setError] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ model: string; providerRequestId: string | null; latencyMs: number; usage: { totalTokens: number }; testedAt: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -44,6 +47,13 @@ export default function AISettings() {
   }, []);
 
   const enabledControls = data ? Object.values(data.controls).filter(Boolean).length : 0;
+
+  async function testOpenAI() {
+    setTesting(true); setError("");
+    try { const { data: session } = await supabase.auth.getSession(); const response = await fetch("/api/ai/openai-test", { method: "POST", headers: { Authorization: `Bearer ${session.session?.access_token}` } }); const body = await response.json(); if (!response.ok) throw new Error(body.error?.message || "Teste OpenAI falhou."); setTestResult(body.data); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Teste OpenAI falhou."); }
+    finally { setTesting(false); }
+  }
 
   return (
     <div className="space-y-6 pb-10">
@@ -67,6 +77,8 @@ export default function AISettings() {
         <AtlasMetric label="Pesquisa atualizada" value={!data ? "—" : data.providers.perplexity ? "Ativa" : "Pendente"} detail="Perplexity sem envio de PII" trend="SONAR" tone={data?.providers.perplexity ? "green" : "amber"} />
       </section>
       <section className="grid gap-4 sm:grid-cols-3"><AtlasMetric label="Chamadas de IA · 30 dias" value={data?.usage.calls ?? "—"} detail={`${data?.usage.openaiCalls ?? 0} OpenAI · ${data?.usage.perplexityCalls ?? 0} Perplexity · ${data?.usage.localCalls ?? 0} fallback`} trend="USO" tone="blue" /><AtlasMetric label="Tokens processados" value={data?.usage.tokens?.toLocaleString("pt-BR") ?? "—"} detail="Base para apuração de custo" trend="CUSTO" tone="amber" /><AtlasMetric label="Latência média" value={data ? `${data.usage.averageLatencyMs} ms` : "—"} detail="Tempo dos provedores externos" trend="SLA" tone="green" /></section>
+
+      <AtlasCard><AtlasCardHeader eyebrow="Fase 22 · OpenAI real" title="Teste rastreável sem fallback" description="Executa uma chamada mínima na Responses API. Só aprova se a resposta vier da OpenAI, for íntegra e tiver consumo medido." /><div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"><div>{testResult ? <><div className="flex items-center gap-2"><AtlasBadge tone="success">APROVADO</AtlasBadge><span className="text-sm text-white">{testResult.model} · {testResult.latencyMs} ms · {testResult.usage.totalTokens} tokens</span></div><p className="mt-2 break-all text-xs text-slate-500">Rastreio OpenAI: {testResult.providerRequestId || "identificador não retornado"} · {new Date(testResult.testedAt).toLocaleString("pt-BR")}</p></> : <p className="text-sm text-slate-400">Nenhuma chamada real foi comprovada nesta sessão.</p>}</div><button disabled={testing || !data?.gatewayConfigured} onClick={() => void testOpenAI()} className="atlas-button-primary">{testing ? "Testando…" : "Testar OpenAI real"}</button></div></AtlasCard>
 
       <section className="grid gap-6 xl:grid-cols-2">
         <AtlasCard>
