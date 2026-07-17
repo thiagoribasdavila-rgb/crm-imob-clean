@@ -814,7 +814,15 @@ Pendência externa: validar quatro perfis, dois tenants, empates, atualização 
 
 Pendência externa: validar quatro perfis, dois tenants, semana vazia, virada do período e comportamento móvel.
 
-Próxima fase: **Fase 50 — Fechamento do bloco de produtividade**, auditando adoção, acessibilidade, desempenho e prontidão de homologação das fases 41–49.
+## Fase 50 — Fechamento do bloco de produtividade
+
+**Estado:** engenharia local das fases 41–49 reconciliada e 100% aprovada; homologação operacional permanece independente.
+
+**Auditoria:** nove contratos e nove gates cobrem tarefas, criação, recorrência, lembretes, Realtime, agenda, conexão externa, assistente diário e revisão semanal. Limites de consulta e tamanho das filas evitam excesso de custo e interface.
+
+**Verdade operacional:** o painel separa “engenharia local” de “evidência real”. Quatro perfis, dois tenants, mobile, fuso, cron, Realtime, OAuth, acessibilidade e volume real continuam obrigatórios. O contrato está em `config/productivity-block-closure.json`, o gate em `npm run productivity-block:check` e o roteiro em `docs/PRODUCTIVITY_BLOCK_CLOSURE_PHASE_50.md`.
+
+Próxima fase: **Fase 51 — Motor de distribuição por disponibilidade**, iniciando o bloco de distribuição e carteiras com atribuição atômica e explicável.
 
 ## Painel das 100 fases
 
