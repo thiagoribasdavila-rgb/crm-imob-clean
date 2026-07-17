@@ -22,6 +22,7 @@ const leadIntelligencePage = readFileSync(resolve(root, "app/(crm)/leads/[id]/pa
 const leadsPortfolioPage = readFileSync(resolve(root, "app/(crm)/leads/page.tsx"), "utf8");
 const leadsPortfolioRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/route.ts"), "utf8");
 const crmDashboard = readFileSync(resolve(root, "app/(crm)/dashboard/page.tsx"), "utf8");
+const superintendentDashboardRoute = readFileSync(resolve(root, "app/api/v1/analytics/dashboard/route.ts"), "utf8");
 const evolutionPhases = readFileSync(resolve(root, "lib/atlas/evolution-phases.ts"), "utf8");
 const homologationRoute = readFileSync(resolve(root, "app/api/v1/homologation/route.ts"), "utf8");
 const homologationMigration = readFileSync(resolve(root, "supabase/migrations/20260716221959_homologation_checklist.sql"), "utf8");
@@ -152,7 +153,13 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("264 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("270 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["painel comparativo é exclusivo da superintendência", superintendentDashboardRoute.includes('actorRole !== "superintendent"') && superintendentDashboardRoute.includes('scope: "superintendent-dashboard"')],
+  ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('roleOf(profile) === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
+  ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && superintendentDashboardRoute.match(/\.eq\("organization_id", identity\.access\.organization\.id\)/g)?.length >= 2],
+  ["estruturas paralelas e leads sem responsável ficam fora", superintendentDashboardRoute.includes('visibleOwnerIds') && superintendentDashboardRoute.includes('.in("assigned_to"') && superintendentDashboardRoute.includes("parallelStructuresExcluded: true") && superintendentDashboardRoute.includes("unassignedExcluded: true")],
+  ["totais da superintendência são reconciliados", superintendentDashboardRoute.includes("managerLeadSum") && superintendentDashboardRoute.includes("scopedLeadCount") && superintendentDashboardRoute.includes("matches:")],
+  ["interface explicita o escopo da fase 34", crmDashboard.includes("Fase 34 · Escopo reconciliado") && crmDashboard.includes("ESTRUTURAS PARALELAS EXCLUÍDAS") && crmDashboard.includes("SEM NÚMEROS DA DIRETORIA INTEIRA")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],

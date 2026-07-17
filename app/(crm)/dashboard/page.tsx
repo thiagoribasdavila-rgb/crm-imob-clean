@@ -21,6 +21,7 @@ type DashboardData = {
   developments: DataRow[];
   profiles: DataRow[];
 };
+type SuperintendentSummary = { scope: { role: "superintendent"; directManagersOnly: boolean; parallelStructuresExcluded: boolean; unassignedExcluded: boolean }; totals: { managers: number; brokers: number; leads: number; activeLeads: number; hotLeads: number; overdueLeads: number; won: number; potentialVgv: number }; managers: Array<{ managerId: string; managerName: string; brokers: number; leads: number; activeLeads: number; hotLeads: number; overdueLeads: number; won: number; conversionRate: number; potentialVgv: number }>; reconciliation: { managerLeadSum: number; scopedLeadCount: number; matches: boolean }; generatedAt: string };
 
 const emptyData: DashboardData = {
   leads: [],
@@ -132,6 +133,7 @@ export default function DashboardPage() {
   const [project, setProject] = useState("all");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [viewerId, setViewerId] = useState("");
+  const [superintendentSummary, setSuperintendentSummary] = useState<SuperintendentSummary | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -182,7 +184,19 @@ export default function DashboardPage() {
   const viewer = data.profiles.find((profile) => String(profile.id) === viewerId);
   const viewerRole = stringValue(viewer ?? {}, "commercial_role", "role") || "broker";
   const isDirector = viewerRole === "director" || stringValue(viewer ?? {}, "role") === "admin";
+  const isSuperintendent = viewerRole === "superintendent";
   const isManager = viewerRole === "manager";
+
+  useEffect(() => {
+    if (viewerRole !== "superintendent") { setSuperintendentSummary(null); return; }
+    let active = true;
+    void supabase.auth.getSession().then(async ({ data: session }) => {
+      const response = await fetch("/api/v1/analytics/dashboard", { headers: { Authorization: `Bearer ${session.session?.access_token || ""}` }, cache: "no-store" });
+      const body = await response.json();
+      if (active) { if (response.ok) setSuperintendentSummary(body.data); else setWarnings((current) => [...current, body.error?.message || "Painel da superintendência indisponível."]); }
+    });
+    return () => { active = false; };
+  }, [viewerRole]);
 
   const leads = useMemo(
     () =>
@@ -393,13 +407,13 @@ export default function DashboardPage() {
       <section className="atlas-command-hero">
         <div className="atlas-command-hero-copy">
           <div className="flex flex-wrap gap-2">
-            <StatusBadge tone="info">{isDirector ? "COMMAND CENTER DIRETORIA" : isManager ? "COMMAND CENTER DO TIME" : "MINHA OPERAÇÃO"}</StatusBadge>
+            <StatusBadge tone="info">{isDirector ? "COMMAND CENTER DIRETORIA" : isSuperintendent ? "PAINEL DA SUPERINTENDÊNCIA" : isManager ? "COMMAND CENTER DO TIME" : "MINHA OPERAÇÃO"}</StatusBadge>
             <StatusBadge tone="success">DADOS REAIS</StatusBadge>
             <StatusBadge tone="violet">ATLAS COPILOT</StatusBadge>
           </div>
-          <h1>{isDirector ? <>Toda a empresa, decisões e IA em <span className="atlas-gradient-text">uma única visão.</span></> : isManager ? <>Seu time, carteira e conversão em <span className="atlas-gradient-text">tempo real.</span></> : <>Suas prioridades comerciais em <span className="atlas-gradient-text">uma única visão.</span></>}</h1>
+          <h1>{isDirector ? <>Toda a empresa, decisões e IA em <span className="atlas-gradient-text">uma única visão.</span></> : isSuperintendent ? <>Seus gerentes e equipes em <span className="atlas-gradient-text">uma visão comparativa.</span></> : isManager ? <>Seu time, carteira e conversão em <span className="atlas-gradient-text">tempo real.</span></> : <>Suas prioridades comerciais em <span className="atlas-gradient-text">uma única visão.</span></>}</h1>
           <p>
-            {isDirector ? "Acompanhe equipes, conversão, campanhas, projetos, recebíveis e decisões estratégicas." : isManager ? "Acompanhe todos os corretores sob sua gestão, gargalos, SLA, tarefas e oportunidades do time." : "Organize seus leads, tarefas, próximos contatos e oportunidades prioritárias."}
+            {isDirector ? "Acompanhe equipes, conversão, campanhas, projetos, recebíveis e decisões estratégicas." : isSuperintendent ? "Compare somente os gerentes que respondem a você, com totais reconciliados e estruturas paralelas excluídas." : isManager ? "Acompanhe todos os corretores sob sua gestão, gargalos, SLA, tarefas e oportunidades do time." : "Organize seus leads, tarefas, próximos contatos e oportunidades prioritárias."}
           </p>
           <div className="atlas-command-actions">
             <button
@@ -477,6 +491,13 @@ export default function DashboardPage() {
           description={warnings.join(" · ")}
           action={<button type="button" className="atlas-button-secondary" onClick={() => void load()}>Tentar novamente</button>}
         />
+      ) : null}
+
+      {isSuperintendent ? (
+        <section className="rounded-[28px] border border-sky-400/15 bg-gradient-to-br from-sky-500/[.09] to-violet-500/[.05] p-5 sm:p-6">
+          <PageHeader eyebrow="Fase 34 · Escopo reconciliado" title="Comparativo dos gerentes subordinados" description="Somente gerentes que respondem diretamente a você e as equipes abaixo deles entram nesta visão." />
+          {!superintendentSummary ? <LoadingState rows={3} /> : <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><MetricCard label="Gerentes" value={superintendentSummary.totals.managers} detail={`${superintendentSummary.totals.brokers} corretores subordinados`} trend="ESCOPO" tone="violet" /><MetricCard label="Leads das equipes" value={superintendentSummary.totals.leads} detail={`${superintendentSummary.totals.activeLeads} ativos · ${superintendentSummary.totals.hotLeads} quentes`} trend="CARTEIRA" /><MetricCard label="Vendas ganhas" value={superintendentSummary.totals.won} detail="Somente equipes subordinadas" trend="CONVERSÃO" tone="success" /><MetricCard label="VGV potencial" value={brl.format(superintendentSummary.totals.potentialVgv)} detail={`${superintendentSummary.totals.overdueLeads} leads atrasados`} trend="PIPELINE" tone={superintendentSummary.totals.overdueLeads ? "warning" : "success"} /></div><div className="overflow-x-auto rounded-2xl border border-white/[.07]"><table className="w-full min-w-[760px] text-left text-xs"><thead className="bg-white/[.035] text-slate-500"><tr><th className="p-3">Gerente</th><th className="p-3">Corretores</th><th className="p-3">Leads</th><th className="p-3">Quentes</th><th className="p-3">Atrasados</th><th className="p-3">Ganhos</th><th className="p-3">Conversão</th><th className="p-3">VGV potencial</th></tr></thead><tbody>{superintendentSummary.managers.map((manager) => <tr key={manager.managerId} className="border-t border-white/[.06]"><td className="p-3 font-semibold text-white">{manager.managerName}</td><td className="p-3 text-slate-300">{manager.brokers}</td><td className="p-3 text-slate-300">{manager.leads}</td><td className="p-3 text-amber-200">{manager.hotLeads}</td><td className="p-3 text-rose-200">{manager.overdueLeads}</td><td className="p-3 text-emerald-200">{manager.won}</td><td className="p-3 text-slate-300">{manager.conversionRate}%</td><td className="p-3 text-slate-300">{brl.format(manager.potentialVgv)}</td></tr>)}</tbody></table></div><div className="flex flex-wrap gap-2"><StatusBadge tone={superintendentSummary.reconciliation.matches ? "success" : "danger"}>{superintendentSummary.reconciliation.matches ? "TOTAIS CONFEREM" : "REVISAR TOTAIS"}</StatusBadge><StatusBadge tone="info">ESTRUTURAS PARALELAS EXCLUÍDAS</StatusBadge><StatusBadge tone="info">SEM NÚMEROS DA DIRETORIA INTEIRA</StatusBadge></div></div>}
+        </section>
       ) : null}
 
       <section className="atlas-command-metrics">
