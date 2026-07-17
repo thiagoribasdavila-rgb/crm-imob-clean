@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { assessAIComplexity } from "@/lib/ai/complexity";
 import { planCommercialAI, type AIExecutionPlan, type RoutedProvider } from "@/lib/ai/commercial-orchestrator";
+import { AI_GUARD_SYSTEM_POLICY, assessAIInput, inspectAndSanitizeAIOutput } from "@/lib/ai/instruction-output-guard";
 
 export type AITask = "fast" | "commercial" | "reasoning" | "research";
 export type GenerateInput = {
@@ -30,6 +31,7 @@ export type AIProviderResult = {
     estimatedUsd: number;
     pricingConfigured: boolean;
   };
+  guardrail?: { risk: "low" | "medium" | "high"; blocked: boolean; humanReviewRequired: boolean; findingCodes: string[] };
 };
 
 type EconomyProvider = "deepseek" | "qwen" | "kimi" | "glm";
@@ -349,6 +351,11 @@ export async function generateAIText(
   input: GenerateInput,
 ): Promise<AIProviderResult> {
   let result: AIProviderResult;
+  const inputGuard=assessAIInput(input.system,input.prompt);
+  const guardedInput={...input,system:`${input.system}\n\n${AI_GUARD_SYSTEM_POLICY}`};
+  const recordGuard=async(stage:"input"|"output",guard:typeof inputGuard,provider?:string,model?:string)=>{if(!guard.findings.length)return;try{await getSupabaseAdmin().from("ai_guardrail_events").insert({organization_id:input.organizationId,user_id:input.userId||null,feature:input.feature,stage,risk_level:guard.risk,blocked:guard.blocked,human_review_required:guard.humanReviewRequired,finding_codes:guard.findings.map(f=>f.code),provider:provider||null,model:model||null})}catch{/* Guardrail funciona mesmo antes da migration. */}};
+  await recordGuard("input",inputGuard);
+  if(inputGuard.blocked){result=localFallback(input);result.text="Solicitação bloqueada pela proteção da IA. Remova instruções para revelar configurações, segredos, executar comandos ou ignorar regras. Se a necessidade for legítima, encaminhe para revisão humana.";result.guardrail={risk:inputGuard.risk,blocked:true,humanReviewRequired:true,findingCodes:inputGuard.findings.map(f=>f.code)};return recordUsage(input,result)}
   const configuredOrder = String(process.env[`ATLAS_AI_${input.task.toUpperCase()}_PROVIDER_ORDER`] || "")
     .split(",").map((value) => value.trim().toLowerCase()).filter((value): value is RoutedProvider => value==="openai"||value==="perplexity"||value==="local"||value in economyProviders);
   const readiness=aiProviderReadiness(),plan=planCommercialAI({task:input.task,containsPersonalData:input.containsPersonalData,feature:input.feature,configuredOrder,available:readiness});
@@ -356,7 +363,7 @@ export async function generateAIText(
   for (const provider of plan.providerOrder) {
     if(provider==="local"){result=localFallback(input);break}
     try {
-      result = provider === "openai" ? await generateOpenAI(input) : provider==="perplexity"?await generatePerplexity(input):await generateEconomyProvider(input, provider);
+      result = provider === "openai" ? await generateOpenAI(guardedInput) : provider==="perplexity"?await generatePerplexity(guardedInput):await generateEconomyProvider(guardedInput, provider);
       break;
     } catch (error) {
       logger.warn("ai.provider_failover", {
@@ -368,7 +375,7 @@ export async function generateAIText(
       });
     }
   }
-  await recordOrchestration(input,plan,result);return recordUsage(input, result);
+  const inspected=inspectAndSanitizeAIOutput(result.text);result.text=inspected.text;result.guardrail={risk:inspected.assessment.risk,blocked:inspected.assessment.blocked,humanReviewRequired:inputGuard.humanReviewRequired||inspected.assessment.humanReviewRequired,findingCodes:[...inputGuard.findings,...inspected.assessment.findings].map(f=>f.code)};await recordGuard("output",inspected.assessment,result.provider,result.model);await recordOrchestration(input,plan,result);return recordUsage(input, result);
 }
 
 export async function testOpenAIConnection(

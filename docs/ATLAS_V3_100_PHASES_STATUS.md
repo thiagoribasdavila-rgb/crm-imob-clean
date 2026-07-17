@@ -1170,6 +1170,18 @@ Pendência externa: aplicar migration e homologar criação, continuidade, trans
 
 Próxima fase: **Fase 84 — Guardrails de instrução e saída**, bloqueando prompt injection, vazamento e ações indevidas antes de ampliar a autonomia.
 
+## Fase 84 — Guardrails de instrução e saída
+
+**Estado:** 100% implementada e aprovada localmente; aplicação da migration e testes adversariais reais permanecem para homologação.
+
+**Evolução:** o roteador central inspeciona entradas antes de consumir tokens e respostas antes de entregá-las. Manipulação de instruções, tentativa de extrair segredos e elevação de ferramentas são bloqueadas; possíveis segredos e promessas inseguras na saída são removidos ou enviados para revisão.
+
+**Governança:** conteúdo do CRM é sempre dado não confiável, nenhuma ação externa é autorizada pela geração e a auditoria registra somente códigos técnicos — nunca prompts, respostas ou dados pessoais. O contrato está em `config/ai-instruction-output-guard.json`, o gate em `npm run ai-guardrails:check` e o roteiro em `docs/AI_INSTRUCTION_OUTPUT_GUARD_PHASE_84.md`.
+
+Pendência externa: aplicar migration e homologar ataques, falsos positivos, sanitização, quatro perfis, dois tenants e falhas dos provedores.
+
+Próxima fase: **Fase 85 — Playbooks imobiliários versionados**, especializando abordagem, qualificação, simulação, visita, proposta e reativação por etapa.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
