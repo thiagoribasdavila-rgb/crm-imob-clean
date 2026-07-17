@@ -11,7 +11,7 @@ O escopo comercial usa a cadeia compacta Thiago → Senna → corretores. A perm
 
 ## Reset seguro
 
-`npm run auth:official:reset` executa apenas uma simulação. O modo de aplicação exige confirmação explícita. Contas antigas são bloqueadas no Auth e seus perfis são desativados, mas não são apagados: leads, tarefas, vendas e auditoria continuam referenciáveis. As seis contas oficiais recebem convite ou recuperação de senha; nenhuma senha fica no código, log ou ZIP.
+`npm run auth:official:reset` executa apenas uma simulação. O modo de aplicação exige confirmação explícita. Contas antigas são bloqueadas no Auth e seus perfis são desativados, mas não são apagados: leads, tarefas, vendas e auditoria continuam referenciáveis. As seis contas oficiais recebem senhas temporárias fortes e exclusivas. Elas são gravadas somente em `outputs/official-access-credentials.txt`, com permissão local restrita, e nunca entram no código, Git ou ZIP. `ATLAS_RECOVERY_INBOX` gera logins distintos com endereçamento adicional (`+atlas-perfil`) para que todas as recuperações cheguem à mesma caixa.
 
 Antes de aplicar: use homologação, aplique a migration `official_auth_rbac`, registre backup restaurável, preencha a organização e os seis e-mails, execute a simulação e somente então confirme com `--confirm=RESET_AND_INVITE_OFFICIAL_USERS`. Remova as variáveis temporárias após o primeiro acesso.
 

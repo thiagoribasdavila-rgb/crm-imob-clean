@@ -1,13 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
+import { randomBytes } from "node:crypto";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const APPLY_TOKEN = "RESET_AND_INVITE_OFFICIAL_USERS";
 const apply = process.argv.includes(`--confirm=${APPLY_TOKEN}`);
-const required = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "ATLAS_AUTH_ORGANIZATION_ID", "ATLAS_BASE_URL"];
+const required = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "ATLAS_BASE_URL", "ATLAS_RECOVERY_INBOX"];
 const missing = required.filter((key) => !process.env[key]);
 if (process.env.ATLAS_ENV !== "homologation" || process.env.ATLAS_DATABASE_ENVIRONMENT !== "homologation") throw new Error("O reset oficial só pode ser executado em homologation.");
 if (missing.length) throw new Error(`Variáveis ausentes: ${missing.join(", ")}`);
 const baseUrl = process.env.ATLAS_BASE_URL.replace(/\/$/, "");
 if (!/^https:\/\//i.test(baseUrl) || /(?:seu-dom[ií]nio|example|localhost)/i.test(baseUrl)) throw new Error("ATLAS_BASE_URL deve ser o domínio HTTPS real da homologação.");
+const recoveryInbox = process.env.ATLAS_RECOVERY_INBOX.trim().toLowerCase();
+if (!/^\S+@\S+\.\S+$/.test(recoveryInbox)) throw new Error("ATLAS_RECOVERY_INBOX inválido.");
+const [recoveryLocal, recoveryDomain] = recoveryInbox.split("@");
 
 const definitions = [
   { key: "ADMIN", name: "Administrador Atlas", accessRole: "admin", role: "admin", commercialRole: "director", supervisor: null },
@@ -16,14 +22,19 @@ const definitions = [
   { key: "DIEGO", name: "Diego", accessRole: "broker", role: "broker", commercialRole: "broker", supervisor: "SENNA" },
   { key: "LUCIANO", name: "Luciano", accessRole: "broker", role: "broker", commercialRole: "broker", supervisor: "SENNA" },
   { key: "ADOLFO", name: "Adolfo", accessRole: "broker", role: "broker", commercialRole: "broker", supervisor: "SENNA" },
-].map((item) => ({ ...item, email: (process.env[`ATLAS_INITIAL_${item.key}_EMAIL`] || "").trim().toLowerCase() }));
+].map((item) => ({ ...item, email: (process.env[`ATLAS_INITIAL_${item.key}_EMAIL`] || `${recoveryLocal}+atlas-${item.key.toLowerCase()}@${recoveryDomain}`).trim().toLowerCase() }));
 
 const invalid = definitions.filter((item) => !/^\S+@\S+\.\S+$/.test(item.email));
 if (invalid.length) throw new Error(`Preencha os e-mails oficiais: ${invalid.map((item) => `ATLAS_INITIAL_${item.key}_EMAIL`).join(", ")}`);
 if (new Set(definitions.map((item) => item.email)).size !== definitions.length) throw new Error("Cada usuário inicial precisa de um e-mail exclusivo.");
 
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-const organizationId = process.env.ATLAS_AUTH_ORGANIZATION_ID;
+let organizationId = process.env.ATLAS_AUTH_ORGANIZATION_ID;
+if (!organizationId) {
+  const { data: organizations, error } = await admin.from("organizations").select("id").eq("active", true).limit(2);
+  if (error || organizations?.length !== 1) throw new Error("Informe ATLAS_AUTH_ORGANIZATION_ID quando houver zero ou mais de uma organização ativa.");
+  organizationId = organizations[0].id;
+}
 const { data: organization, error: organizationError } = await admin.from("organizations").select("id,active").eq("id", organizationId).maybeSingle();
 if (organizationError || !organization?.active) throw new Error("ATLAS_AUTH_ORGANIZATION_ID não aponta para uma organização ativa.");
 const { error: schemaError } = await admin.from("profiles").select("id,access_role").limit(1);
@@ -51,15 +62,17 @@ const { error: deactivateError } = await admin.from("profiles").update({ active:
 if (deactivateError) throw deactivateError;
 
 const ids = new Map();
+const credentials = [];
 for (const item of definitions) {
+  const password = `${randomBytes(18).toString("base64url")}!Aa7`;
   let user = authUsers.find((candidate) => candidate.email?.toLowerCase() === item.email);
   const isExisting = Boolean(user);
   if (!user) {
-    const { data, error } = await admin.auth.admin.inviteUserByEmail(item.email, { redirectTo: `${baseUrl}/auth/callback?next=/reset-password`, data: { full_name: item.name } });
-    if (error || !data.user) throw error || new Error(`Falha ao convidar ${item.key}.`);
+    const { data, error } = await admin.auth.admin.createUser({ email: item.email, password, email_confirm: true, user_metadata: { full_name: item.name }, app_metadata: { organization_id: organizationId, access_role: item.accessRole } });
+    if (error || !data.user) throw error || new Error(`Falha ao criar ${item.key}.`);
     user = data.user;
   }
-  const { error: authError } = await admin.auth.admin.updateUserById(user.id, { ban_duration: "none", app_metadata: { organization_id: organizationId, access_role: item.accessRole } });
+  const { error: authError } = await admin.auth.admin.updateUserById(user.id, { password, email_confirm: true, ban_duration: "none", app_metadata: { organization_id: organizationId, access_role: item.accessRole } });
   if (authError) throw authError;
   const reportsTo = item.supervisor ? ids.get(item.supervisor) : null;
   const { error: profileError } = await admin.from("profiles").upsert({ id: user.id, organization_id: organizationId, full_name: item.name, role: item.role, access_role: item.accessRole, commercial_role: item.commercialRole, reports_to: reportsTo, active: true }, { onConflict: "id" });
@@ -68,6 +81,15 @@ for (const item of definitions) {
     const { error: recoveryError } = await admin.auth.resetPasswordForEmail(item.email, { redirectTo: `${baseUrl}/auth/callback?next=/reset-password` });
     if (recoveryError) throw recoveryError;
   }
+  credentials.push({ name: item.name, email: item.email, password });
   ids.set(item.key, user.id);
+}
+if (credentials.length) {
+  const outputDirectory = resolve(process.cwd(), "outputs");
+  const outputFile = resolve(outputDirectory, "official-access-credentials.txt");
+  mkdirSync(outputDirectory, { recursive: true, mode: 0o700 });
+  writeFileSync(outputFile, `${credentials.map((item) => `${item.name}\nLogin: ${item.email}\nSenha temporária: ${item.password}`).join("\n\n")}\n`, { mode: 0o600 });
+  chmodSync(outputFile, 0o600);
+  console.log(`Credenciais novas gravadas localmente em ${outputFile}.`);
 }
 console.log("RBAC oficial aplicado: 6 acessos ativos; demais contas bloqueadas; senhas não armazenadas.");
