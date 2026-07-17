@@ -764,7 +764,17 @@ Pendência externa: aplicar migration e validar cadências, virada mensal, conco
 
 Pendência externa: aplicar migration e validar cron, fuso, janelas, reagendamento, descarte, hierarquia e isolamento real.
 
-Próxima fase: **Fase 45 — Notificações em tempo real**, atualizando a operação sem recarregar a tela.
+## Fase 45 — Notificações em tempo real
+
+**Estado:** 100% implementada e aprovada localmente; publicação Realtime e duas sessões reais permanecem para homologação.
+
+**Evolução:** a caixa e o contador superior acompanham lembretes sem recarregar. O contador mostra apenas itens pessoais, não lidos e ativos; mudanças possuem anúncio acessível.
+
+**Segurança e resiliência:** o canal respeita RLS, filtra `assigned_to`, é removido ao sair e cai para atualização manual em erro ou timeout. O contrato está em `config/realtime-task-notifications.json`, o gate em `npm run realtime-notifications:check` e o roteiro em `docs/REALTIME_TASK_NOTIFICATIONS_PHASE_45.md`.
+
+Pendência externa: aplicar migration após a Fase 44 e validar duas sessões, reconexão, logout, lateralidade e dois tenants.
+
+Próxima fase: **Fase 46 — Agenda comercial unificada**, reunindo tarefas, visitas e compromissos com atualização consistente.
 
 ## Painel das 100 fases
 
