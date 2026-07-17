@@ -1010,7 +1010,17 @@ Pendência externa: aplicar migration e validar projeto incompleto/completo, fon
 
 Pendência externa: aplicar migration e validar fontes reais, expiração, aprovação por perfil, sincronização do dossiê e dois tenants.
 
-Próxima fase: **Fase 70 — Homologação completa do bloco de projetos**, consolidando incorporadora, projeto, catálogo, estoque, vigência, materiais e inteligência.
+## Fase 70 — Homologação completa do bloco de projetos
+
+**Estado:** 100% implementada e aprovada localmente; aceite com dados e usuários reais permanece pendente.
+
+**Evolução:** o portfólio mostra oito gates por projeto — incorporadora, cadastro, catálogo, estoque, versão comercial, materiais, região e dossiê — com prontidão individual e média do bloco.
+
+**Governança:** somente a diretoria homologa. O servidor revalida as oito evidências, preserva snapshot e histórico, e o aceite não autoriza produção. O contrato está em `config/project-block-homologation.json`, o gate em `npm run project-block:check` e o roteiro em `docs/PROJECT_BLOCK_HOMOLOGATION_PHASE_70.md`.
+
+Pendência externa: aplicar migrations 61–70 e validar portfólio real, oito gates, quatro perfis, expiração, dois tenants e renovação do aceite.
+
+Próxima fase: **Fase 71 — Contrato canônico de dados da lead**, iniciando o bloco de dados, score e predição com qualidade mensurável.
 
 ## Painel das 100 fases
 
