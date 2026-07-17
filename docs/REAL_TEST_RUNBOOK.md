@@ -64,10 +64,11 @@ Somente quando ainda não existir perfil:
 npm run bootstrap:admin -- \
   --email="SEU_EMAIL" \
   --password="SENHA_FORTE_COM_12_OU_MAIS_CARACTERES" \
-  --name="Thiago D'Avila"
+  --name="Thiago D'Avila" \
+  --confirm=CREATE_FIRST_ADMIN
 ```
 
-Após confirmar o login, remova `ATLAS_BOOTSTRAP_SECRET` do ambiente.
+Antes, `npm run bootstrap:diagnose` apenas confere o ambiente e não cria dados. Após confirmar o primeiro login, remova `ATLAS_BOOTSTRAP_SECRET`, reinicie a aplicação e confirme que a rota de bootstrap ficou indisponível.
 
 ## 6. Roteiro funcional obrigatório
 

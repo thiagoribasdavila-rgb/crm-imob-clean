@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "allowedEnvironments": ["development", "homologation"],
+  "forbiddenEnvironment": "production",
+  "secretMinimumLength": 32,
+  "singleUseLock": "first-profile",
+  "explicitCliConfirmation": "CREATE_FIRST_ADMIN",
+  "passwordPolicy": {
+    "minimumLength": 12,
+    "maximumLength": 128,
+    "minimumCharacterCategories": 3
+  },
+  "diagnosticMode": "read-only",
+  "rollbackAuthUserOnProfileFailure": true,
+  "responseCache": "no-store",
+  "postActivation": [
+    "validate-first-login",
+    "remove-ATLAS_BOOTSTRAP_SECRET",
+    "restart-application",
+    "confirm-bootstrap-route-is-unavailable"
+  ]
+}

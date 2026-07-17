@@ -382,7 +382,24 @@ Evidências: `config/session-management.json`, `/api/auth/sessions`, `app/(crm)/
 
 Pendência externa: comprovar renovação, expiração natural e os três escopos usando dois navegadores/dispositivos reais na Hostinger.
 
-Próxima fase: **Fase 14 — Primeiro administrador**, tornando o bootstrap temporário, auditável e removível.
+### Fase 14 — Primeiro administrador
+
+Percentual anterior: **72%**. Percentual após implementação e testes locais: **100%**. Estado: **Testada**.
+
+- A ativação existe somente em desenvolvimento e homologação; produção responde como recurso indisponível mesmo que um segredo seja deixado por engano.
+- O segredo temporário exige no mínimo 32 caracteres e usa comparação em tempo constante.
+- O bootstrap trava quando encontra o primeiro perfil e rejeita uma segunda ativação ou uma execução concorrente no mesmo processo.
+- A execução por terminal exige confirmação explícita `CREATE_FIRST_ADMIN` e política forte de senha.
+- Se a criação do perfil falhar, o usuário recém-criado no Supabase Auth é removido para evitar conta órfã.
+- O diagnóstico passou a ser estritamente somente leitura: não cria nem remove usuários ou perfis.
+- Respostas não podem ser armazenadas em cache e logs de sucesso preservam apenas domínio do e-mail e identificadores auditáveis.
+- O encerramento exige validar o primeiro login, remover `ATLAS_BOOTSTRAP_SECRET`, reiniciar a aplicação e comprovar que a rota ficou indisponível.
+
+Evidências: `config/admin-bootstrap.json`, `/api/bootstrap/admin`, `scripts/bootstrap-admin.mjs`, `scripts/diagnose-bootstrap.mjs` e `npm run admin-bootstrap:check`.
+
+Pendência externa: executar uma única ativação no Supabase exclusivo de homologação, validar o login e registrar a remoção do segredo na Hostinger. Nenhum usuário real foi criado pelos testes locais.
+
+Próxima fase: **Fase 15 — Perfis e hierarquia**, validando diretor, superintendente, gerente e corretor de ponta a ponta.
 
 ## Painel das 100 fases
 

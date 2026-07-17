@@ -1,14 +1,30 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
 
+let bootstrapInProgress = false;
+
+function bootstrapAllowed(): boolean {
+  return process.env.ATLAS_ENV === "development" || process.env.ATLAS_ENV === "homologation";
+}
+
 function isAuthorized(request: Request): boolean {
   const expected = process.env.ATLAS_BOOTSTRAP_SECRET;
   const received = request.headers.get("x-atlas-bootstrap-secret");
-  return Boolean(expected && received && expected === received);
+  if (!bootstrapAllowed() || !expected || expected.length < 32 || !received) return false;
+  const expectedBytes = Buffer.from(expected);
+  const receivedBytes = Buffer.from(received);
+  return expectedBytes.length === receivedBytes.length && timingSafeEqual(expectedBytes, receivedBytes);
+}
+
+function response(body: object, init?: ResponseInit) {
+  const result = NextResponse.json(body, init);
+  result.headers.set("Cache-Control", "no-store, max-age=0");
+  return result;
 }
 
 function projectRefFromUrl(url?: string): string | null {
@@ -53,8 +69,9 @@ type BootstrapPayload = {
 };
 
 export async function GET(request: Request) {
+  if (!bootstrapAllowed()) return response({ error: "Bootstrap indisponível neste ambiente." }, { status: 404 });
   if (!isAuthorized(request)) {
-    return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+    return response({ error: "Não autorizado." }, { status: 401 });
   }
 
   try {
@@ -68,8 +85,9 @@ export async function GET(request: Request) {
     if (usersError) throw usersError;
     if (profilesError) throw profilesError;
 
-    return NextResponse.json({
+    return response({
       status: "ok",
+      bootstrap: profilesCount === 0 ? "available" : "locked",
       environment: {
         supabaseUrlConfigured: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
         serviceRoleConfigured: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
@@ -84,18 +102,19 @@ export async function GET(request: Request) {
   } catch (error) {
     const detail = safeError(error);
     logger.error("atlas.bootstrap_diagnostic_failed", detail);
-    return NextResponse.json({ error: "Falha no diagnóstico do bootstrap.", detail }, { status: 500 });
+    return response({ error: "Falha no diagnóstico do bootstrap.", detail }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
+  if (!bootstrapAllowed()) return response({ error: "Bootstrap indisponível neste ambiente." }, { status: 404 });
   const rate = checkRateLimit(clientKey(request, "atlas-bootstrap-admin"), {
     limit: 5,
     windowMs: 15 * 60_000,
   });
 
   if (!rate.allowed) {
-    return NextResponse.json(
+    return response(
       { error: "Muitas tentativas de ativação." },
       {
         status: 429,
@@ -107,8 +126,11 @@ export async function POST(request: Request) {
   }
 
   if (!isAuthorized(request)) {
-    return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+    return response({ error: "Não autorizado." }, { status: 401 });
   }
+
+  if (bootstrapInProgress) return response({ error: "Ativação já está em andamento." }, { status: 409 });
+  bootstrapInProgress = true;
 
   try {
     const admin = getSupabaseAdmin();
@@ -118,15 +140,17 @@ export async function POST(request: Request) {
     const fullName = body.fullName?.trim() || "Administrador Atlas";
 
     if (!email || !email.includes("@")) {
-      return NextResponse.json({ error: "E-mail inválido." }, { status: 400 });
+      return response({ error: "E-mail inválido." }, { status: 400 });
     }
 
-    if (password.length < 12) {
-      return NextResponse.json(
-        { error: "A senha inicial deve possuir pelo menos 12 caracteres." },
+    const passwordCategories = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter((rule) => rule.test(password)).length;
+    if (password.length < 12 || password.length > 128 || passwordCategories < 3) {
+      return response(
+        { error: "Use de 12 a 128 caracteres e combine ao menos três tipos de caractere." },
         { status: 400 },
       );
     }
+    if (fullName.length > 120) return response({ error: "Nome excede 120 caracteres." }, { status: 400 });
 
     const { count: existingProfiles, error: profilesError } = await admin
       .from("profiles")
@@ -134,7 +158,7 @@ export async function POST(request: Request) {
 
     if (profilesError) throw profilesError;
     if ((existingProfiles ?? 0) > 0) {
-      return NextResponse.json(
+      return response(
         { error: "Bootstrap já concluído. Crie novos usuários pelo módulo administrativo." },
         { status: 409 },
       );
@@ -155,7 +179,7 @@ export async function POST(request: Request) {
     }
 
     if (!organizationId) {
-      return NextResponse.json(
+      return response(
         { error: "Nenhuma organização ativa foi encontrada." },
         { status: 409 },
       );
@@ -175,7 +199,7 @@ export async function POST(request: Request) {
     if (authError) {
       const detail = safeError(authError);
       logger.error("atlas.bootstrap_auth_create_failed", detail);
-      return NextResponse.json(
+      return response(
         {
           error: "O Supabase Auth recusou a criação do usuário.",
           detail,
@@ -210,7 +234,7 @@ export async function POST(request: Request) {
       emailDomain: email.split("@")[1],
     });
 
-    return NextResponse.json(
+    return response(
       {
         status: "created",
         userId,
@@ -222,9 +246,11 @@ export async function POST(request: Request) {
   } catch (error) {
     const detail = safeError(error);
     logger.error("atlas.bootstrap_admin_failed", detail);
-    return NextResponse.json(
+    return response(
       { error: "Falha ao ativar o administrador inicial.", detail },
       { status: 500 },
     );
+  } finally {
+    bootstrapInProgress = false;
   }
 }
