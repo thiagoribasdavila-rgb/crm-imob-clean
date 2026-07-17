@@ -524,7 +524,19 @@ Pendência externa: testar dois gerentes com estruturas paralelas, validar prese
 
 Pendência externa: testar duas superintendências paralelas, reconciliar totais, presença, SLA e carga com dados conhecidos, e medir se as três prioridades principais são identificadas em menos de dois minutos.
 
-Próxima fase: **Fase 24 — dashboard do diretor**, com visão consolidada da operação, decisões estratégicas e separação clara entre acompanhamento e execução.
+## Fase 24 — Dashboard do diretor
+
+**Estado:** 100% implementada e aprovada localmente; reconciliação financeira e teste com dois tenants permanecem para homologação.
+
+**Evolução:** o diretor recebeu um Command Center consolidando operação comercial, pipeline, forecast, vendas, comissões, campanhas, incorporadoras, estrutura de liderança, custo da IA e riscos prioritários. A tela separa acompanhamento, evidência e decisão.
+
+**Verdade executiva:** forecast é explicitamente ponderado pela probabilidade registrada no CRM e não declara movimento sem snapshot anterior. Campanhas precisam de trinta leads e superintendências de cinquenta leads para comparação; abaixo disso aparece “Amostra baixa”. Telemetria de IA só aparece como medida quando a consulta real está disponível.
+
+**Governança:** endpoint exclusivo de diretor/admin, todas as fontes filtradas por organização e nenhuma mutação. Orçamento, pessoas, campanhas e transferências nunca são alterados pelo painel. O contrato está em `config/director-dashboard.json`, o gate em `npm run director-dashboard:check` e o roteiro em `docs/DIRECTOR_DASHBOARD_PHASE_24.md`.
+
+Pendência externa: reconciliar pipeline, receita e comissões com fonte financeira; validar custos de campanha; testar isolamento entre duas organizações e comprovar que as principais decisões são identificadas em menos de dois minutos.
+
+Próxima fase: **Fase 25 — CRM mobile-first**, otimizando as ações essenciais para uso rápido no celular.
 
 ## Painel das 100 fases
 
