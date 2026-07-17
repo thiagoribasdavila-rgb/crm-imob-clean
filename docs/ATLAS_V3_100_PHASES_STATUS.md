@@ -862,7 +862,17 @@ Pendência externa: aplicar migration e validar gestor, diretor, dois tenants, c
 
 Pendência externa: aplicar migration e validar dois tenants, equipe real, projetos, pesos, concorrência, tarefas e lote de até 200 leads.
 
-Próxima fase: **Fase 55 — Redistribuição por ausência**, protegendo atendimento e SLA quando um corretor ficar indisponível.
+## Fase 55 — Redistribuição governada por ausência
+
+**Estado:** 100% implementada e aprovada localmente; equipe, concorrência e carga reais permanecem para homologação.
+
+**Evolução:** o gerente declara corretor, período e motivo e confirma a cobertura. Uma simples queda de internet nunca transfere carteira. Somente leads comerciais ativas são redistribuídas; vendas, perdas, descartes e arquivos permanecem intactos.
+
+**Continuidade:** cada lead vai diretamente a um corretor online da mesma equipe, elegível no projeto e escolhido por carga ponderada. Timeline, tarefas, lote e evento de ausência preservam a evidência. O contrato está em `config/governed-absence-redistribution.json`, o gate em `npm run absence-redistribution:check` e o roteiro em `docs/GOVERNED_ABSENCE_REDISTRIBUTION_PHASE_55.md`.
+
+Pendência externa: aplicar migration e validar dois tenants, equipe real, projetos, pesos, concorrência, tarefas e lote de até 200 leads.
+
+Próxima fase: **Fase 56 — Limites de carteira por corretor**, evitando sobrecarga sem criar ranking injusto de pessoas.
 
 ## Painel das 100 fases
 

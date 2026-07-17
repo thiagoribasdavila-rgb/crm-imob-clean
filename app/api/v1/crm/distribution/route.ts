@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { apiError, apiSuccess } from "@/lib/api/core";
+import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   if (!limited.ok) return limited.response;
   const identity = await requireAccessContext(request);
   if (!identity.ok) return identity.response;
-  const body = await request.json().catch(() => null) as { action?: string; availability?: string; developmentId?: string; limit?: number; profileId?: string; enabled?: boolean; weight?: number } | null;
+  const body = await request.json().catch(() => null) as { action?: string; availability?: string; developmentId?: string; limit?: number; profileId?: string; enabled?: boolean; weight?: number; endsAt?: string; reason?: string } | null;
   if (!body?.action) return apiError("INVALID_REQUEST", "Ação não informada.", identity.meta, { status: 400 });
   const admin = getSupabaseAdmin();
 
@@ -97,6 +97,16 @@ export async function POST(request: NextRequest) {
 
   const role = identity.access.profile.commercialRole || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
   if (!managerRoles.has(role)) return apiError("FORBIDDEN", "Perfil sem permissão para distribuir leads.", identity.meta, { status: 403 });
+  if (body.action === "cover_absence") {
+    const reason = body.reason?.trim() || "";
+    const endsAt = body.endsAt ? new Date(body.endsAt) : null;
+    const limit = Math.min(200, Math.max(1, Math.floor(body.limit ?? 200)));
+    if (!body.profileId || reason.length < 10 || reason.length > 500 || !endsAt || Number.isNaN(endsAt.getTime())) return apiError("INVALID_ABSENCE", "Informe corretor, período e motivo entre 10 e 500 caracteres.", identity.meta, { status: 400 });
+    const { data, error } = await admin.rpc("redistribute_absent_broker_leads", { p_actor_id: identity.access.profile.id, p_organization_id: identity.access.organization.id, p_broker_id: body.profileId, p_ends_at: endsAt.toISOString(), p_reason: reason, p_limit: limit });
+    if (error) return apiError("ABSENCE_REDISTRIBUTION_REJECTED", error.message, identity.meta, { status: 409 });
+    structuredApiLog("info", "crm.distribution.absence_covered", request, identity.meta, { actorId: identity.access.profile.id, brokerId: body.profileId, transferred: data?.transferred ?? null });
+    return apiSuccess(data, identity.meta, { headers: limited.headers });
+  }
   if (body.action === "configure_member" && body.developmentId && body.profileId) {
     const weight = Math.min(10, Math.max(1, Math.floor(body.weight ?? 1)));
     const [{ data: project }, { data: profiles }] = await Promise.all([
