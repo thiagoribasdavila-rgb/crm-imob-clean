@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { homologationChecklist } from "@/lib/atlas/homologation-checklist";
 import { requireAccessContext } from "@/lib/api/security";
+import { aiCalibration } from "@/lib/atlas/ai-calibration";
+import { evolutionPhases, overallEvolution, technicalEvolution } from "@/lib/atlas/evolution-phases";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +12,7 @@ export async function GET(request: NextRequest) {
   if (!access.ok) return access.response;
   const { data, error } = await access.supabase.from("homologation_results").select("id,check_key,outcome,notes,verified_by,verified_at").order("verified_at", { ascending: false });
   if (error) return NextResponse.json({ error: "Aplique a migração de homologação para iniciar o roteiro." }, { status: 503 });
-  return NextResponse.json({ checks: homologationChecklist, results: data ?? [], currentUser: { id: access.access.profile.id, commercialRole: access.access.profile.commercialRole || (access.access.profile.role === "admin" ? "director" : access.access.profile.role) } });
+  return NextResponse.json({ checks: homologationChecklist, results: data ?? [], readiness: { overallEvolution, technicalEvolution, aiCalibration, phases: evolutionPhases }, currentUser: { id: access.access.profile.id, commercialRole: access.access.profile.commercialRole || (access.access.profile.role === "admin" ? "director" : access.access.profile.role) } });
 }
 
 export async function POST(request: NextRequest) {

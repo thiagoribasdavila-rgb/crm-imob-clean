@@ -27,9 +27,14 @@ function openAIText(output: unknown) {
 async function generateOpenAI(input: GenerateInput): Promise<AIProviderResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY não configurada.");
-  const model = input.task === "fast" ? process.env.ATLAS_AI_FAST_MODEL || "gpt-5-mini" : process.env.ATLAS_AI_MODEL || "gpt-5.2";
+  const profile = input.task === "fast"
+    ? { model: process.env.ATLAS_AI_FAST_MODEL || "gpt-5.6-luna", effort: "none", verbosity: "low", maxOutputTokens: 600 }
+    : input.task === "commercial"
+      ? { model: process.env.ATLAS_AI_COMMERCIAL_MODEL || "gpt-5.6-terra", effort: "low", verbosity: "low", maxOutputTokens: 1200 }
+      : { model: process.env.ATLAS_AI_REASONING_MODEL || process.env.ATLAS_AI_MODEL || "gpt-5.6-sol", effort: "medium", verbosity: "medium", maxOutputTokens: 2400 };
+  const model = profile.model;
   const startedAt = Date.now();
-  const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model, store: false, instructions: input.system, input: input.prompt }), signal: withTimeout(input.timeoutMs ?? 30_000) });
+  const response = await fetch("https://api.openai.com/v1/responses", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model, store: false, instructions: input.system, input: input.prompt, reasoning: { effort: profile.effort }, text: { verbosity: profile.verbosity }, max_output_tokens: profile.maxOutputTokens, prompt_cache_key: `atlas:${input.feature}:${input.task}:v1` }), signal: withTimeout(input.timeoutMs ?? 30_000) });
   const body = await response.json() as { error?: { message?: string }; output?: unknown[]; usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number } };
   if (!response.ok) throw new Error(body.error?.message || `OpenAI HTTP ${response.status}`);
   const text = openAIText(body);
