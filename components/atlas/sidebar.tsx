@@ -6,23 +6,119 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 const navigation = [
-  { label: "Command Center", href: "/dashboard", icon: "⌘", roles: ["director","superintendent","manager","broker"] },
-  { label: "Leads", href: "/leads", icon: "◎", roles: ["director","superintendent","manager","broker"] },
-  { label: "Reativação", href: "/leads/import", icon: "↻", roles: ["director","superintendent","manager","broker"] },
-  { label: "Pipeline", href: "/pipeline", icon: "⌁", roles: ["director","superintendent","manager","broker"] },
-  { label: "Tarefas", href: "/tasks", icon: "✓", roles: ["director","superintendent","manager","broker"] },
-  { label: "Agenda", href: "/calendar", icon: "□", roles: ["director","superintendent","manager","broker"] },
-  { label: "Corretores", href: "/brokers", icon: "◇", roles: ["director","superintendent","manager"] },
-  { label: "Distribuição", href: "/distribution", icon: "⇄", roles: ["director","superintendent","manager"] },
-  { label: "Vendas", href: "/sales", icon: "◌", roles: ["director","superintendent","manager"] },
-  { label: "Vendas externas", href: "/external-sales", icon: "↙", roles: ["director"] },
-  { label: "Relatórios", href: "/reports", icon: "↗", roles: ["director","superintendent","manager"] },
-  { label: "Projetos", href: "/developments", icon: "▥", roles: ["director","superintendent","manager","broker"] },
-  { label: "Copilot", href: "/ai-dashboard", icon: "✦", roles: ["director","superintendent","manager","broker"] },
-  { label: "Integrações", href: "/integrations", icon: "∞", roles: ["director"] },
-  { label: "Evolução V3", href: "/atlas-v3", icon: "◈", roles: ["director"] },
-  { label: "Configurações", href: "/settings", icon: "⚙", roles: ["director","superintendent","manager"] },
-];
+  {
+    group: "Hoje",
+    label: "Command Center",
+    href: "/dashboard",
+    icon: "⌘",
+    roles: ["director", "superintendent", "manager", "broker"],
+  },
+  {
+    group: "Hoje",
+    label: "Leads",
+    href: "/leads",
+    icon: "◎",
+    roles: ["director", "superintendent", "manager", "broker"],
+  },
+  {
+    group: "Hoje",
+    label: "Pipeline",
+    href: "/pipeline",
+    icon: "⌁",
+    roles: ["director", "superintendent", "manager", "broker"],
+  },
+  {
+    group: "Hoje",
+    label: "Tarefas",
+    href: "/tasks",
+    icon: "✓",
+    roles: ["director", "superintendent", "manager", "broker"],
+  },
+  {
+    group: "Hoje",
+    label: "Agenda",
+    href: "/calendar",
+    icon: "□",
+    roles: ["director", "superintendent", "manager", "broker"],
+  },
+  {
+    group: "Comercial",
+    label: "Projetos",
+    href: "/developments",
+    icon: "▥",
+    roles: ["director", "superintendent", "manager", "broker"],
+  },
+  {
+    group: "Comercial",
+    label: "Reativação",
+    href: "/leads/import",
+    icon: "↻",
+    roles: ["director", "superintendent", "manager", "broker"],
+  },
+  {
+    group: "Comercial",
+    label: "Copilot",
+    href: "/ai-dashboard",
+    icon: "✦",
+    roles: ["director", "superintendent", "manager", "broker"],
+  },
+  {
+    group: "Gestão",
+    label: "Corretores",
+    href: "/brokers",
+    icon: "◇",
+    roles: ["director", "superintendent", "manager"],
+  },
+  {
+    group: "Gestão",
+    label: "Distribuição",
+    href: "/distribution",
+    icon: "⇄",
+    roles: ["director", "superintendent", "manager"],
+  },
+  {
+    group: "Gestão",
+    label: "Vendas",
+    href: "/sales",
+    icon: "◌",
+    roles: ["director", "superintendent", "manager"],
+  },
+  {
+    group: "Gestão",
+    label: "Relatórios",
+    href: "/reports",
+    icon: "↗",
+    roles: ["director", "superintendent", "manager"],
+  },
+  {
+    group: "Diretoria",
+    label: "Vendas externas",
+    href: "/external-sales",
+    icon: "↙",
+    roles: ["director"],
+  },
+  {
+    group: "Diretoria",
+    label: "Integrações",
+    href: "/integrations",
+    icon: "∞",
+    roles: ["director"],
+  },
+  {
+    group: "Diretoria",
+    label: "Evolução V3",
+    href: "/atlas-v3",
+    icon: "◈",
+    roles: ["director"],
+  },
+  {
+    group: "Diretoria",
+    label: "Configurações",
+    href: "/settings",
+    icon: "⚙",
+    roles: ["director", "superintendent", "manager"],
+  },
+] as const;
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -48,10 +144,39 @@ export function Sidebar({
     void (async () => {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) return;
-      const { data } = await supabase.from("profiles").select("role,commercial_role").eq("id", auth.user.id).maybeSingle();
-      setRole(data?.commercial_role || (data?.role === "admin" ? "director" : data?.role) || "broker");
+      const { data } = await supabase
+        .from("profiles")
+        .select("role,commercial_role")
+        .eq("id", auth.user.id)
+        .maybeSingle();
+      setRole(
+        data?.commercial_role ||
+          (data?.role === "admin" ? "director" : data?.role) ||
+          "broker",
+      );
     })();
   }, []);
+
+  useEffect(() => onCloseMobile(), [pathname, onCloseMobile]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCloseMobile();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileOpen, onCloseMobile]);
+
+  const visibleItems = navigation.filter((item) =>
+    item.roles.some((candidate) => candidate === role),
+  );
+  const visibleGroups = [...new Set(visibleItems.map((item) => item.group))];
 
   return (
     <>
@@ -68,10 +193,16 @@ export function Sidebar({
         data-mobile-open={mobileOpen ? "true" : "false"}
       >
         <div className="atlas-sidebar-brand">
-          <Link href="/dashboard" className="atlas-brand-link" onClick={onCloseMobile}>
+          <Link
+            href="/dashboard"
+            className="atlas-brand-link"
+            onClick={onCloseMobile}
+          >
             <span className="atlas-brand-mark">A</span>
             <span className="atlas-sidebar-label">
-              <strong>ATLAS <em>AI</em></strong>
+              <strong>
+                ATLAS <em>AI</em>
+              </strong>
               <small>Real Estate OS</small>
             </span>
           </Link>
@@ -86,24 +217,40 @@ export function Sidebar({
         </div>
 
         <nav className="atlas-sidebar-nav" aria-label="Navegação principal">
-          <p className="atlas-sidebar-section atlas-sidebar-label">Operação</p>
-          {navigation.filter((item) => item.roles.includes(role)).map((item) => {
-            const active = isActive(pathname, item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="atlas-nav-link"
-                data-active={active ? "true" : "false"}
-                title={collapsed ? item.label : undefined}
-                aria-current={active ? "page" : undefined}
-                onClick={onCloseMobile}
-              >
-                <span className="atlas-nav-icon" aria-hidden="true">{item.icon}</span>
-                <span className="atlas-sidebar-label">{item.label}</span>
-              </Link>
-            );
-          })}
+          {visibleGroups.map((group) => (
+            <div className="atlas-nav-group" key={group}>
+              <p className="atlas-sidebar-section atlas-sidebar-label">
+                {group}
+              </p>
+              {visibleItems
+                .filter((item) => item.group === group)
+                .map((item) => {
+                  const active = isActive(pathname, item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="atlas-nav-link"
+                      data-active={active ? "true" : "false"}
+                      title={collapsed ? item.label : undefined}
+                      aria-current={active ? "page" : undefined}
+                      onClick={onCloseMobile}
+                    >
+                      <span className="atlas-nav-icon" aria-hidden="true">
+                        {item.icon}
+                      </span>
+                      <span className="atlas-sidebar-label">{item.label}</span>
+                      {active ? (
+                        <span
+                          className="atlas-nav-current atlas-sidebar-label"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                    </Link>
+                  );
+                })}
+            </div>
+          ))}
         </nav>
 
         <div className="atlas-sidebar-footer">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 type Identity = {
@@ -14,6 +15,23 @@ const initialIdentity: Identity = {
   name: "Usuário Atlas",
   email: "",
   organization: "Organização atual",
+};
+
+const sectionLabels: Record<string, string> = {
+  dashboard: "Command Center",
+  leads: "Leads",
+  pipeline: "Pipeline",
+  tasks: "Tarefas",
+  calendar: "Agenda",
+  developments: "Projetos",
+  brokers: "Corretores",
+  distribution: "Distribuição",
+  sales: "Vendas",
+  reports: "Relatórios",
+  integrations: "Integrações",
+  settings: "Configurações",
+  "atlas-v3": "Evolução V3",
+  "ai-dashboard": "Copilot",
 };
 
 export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
@@ -46,7 +64,10 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
 
       if (active) {
         setIdentity({
-          name: profile?.full_name || auth.user.email?.split("@")[0] || initialIdentity.name,
+          name:
+            profile?.full_name ||
+            auth.user.email?.split("@")[0] ||
+            initialIdentity.name,
           email: auth.user.email || "",
           organization,
         });
@@ -64,8 +85,9 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
     router.replace("/login");
   }
 
+  const sectionKey = pathname.split("/").filter(Boolean).at(0) || "dashboard";
   const currentSection =
-    pathname.split("/").filter(Boolean).at(0)?.replaceAll("-", " ") || "dashboard";
+    sectionLabels[sectionKey] || sectionKey.replaceAll("-", " ");
 
   return (
     <header className="atlas-app-topbar">
@@ -87,9 +109,23 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
       <div className="atlas-topbar-actions">
         <button
           type="button"
+          className="atlas-command-trigger"
+          onClick={() =>
+            window.dispatchEvent(new Event("atlas:open-command-palette"))
+          }
+          aria-label="Buscar em toda a plataforma"
+        >
+          <span aria-hidden="true">⌕</span>
+          <span>Buscar</span>
+          <kbd>⌘ K</kbd>
+        </button>
+        <button
+          type="button"
           className="atlas-notification-button"
           aria-label="Notificações"
-          onClick={() => window.dispatchEvent(new Event("atlas:open-notifications"))}
+          onClick={() =>
+            window.dispatchEvent(new Event("atlas:open-notifications"))
+          }
         >
           <span aria-hidden="true">⌁</span>
           <span className="atlas-notification-dot" />
@@ -98,9 +134,13 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
           <strong>{identity.name}</strong>
           <span>{identity.email || identity.organization}</span>
         </div>
-        <span className="atlas-user-avatar" aria-hidden="true">
+        <Link
+          href="/settings/profile"
+          className="atlas-user-avatar"
+          aria-label="Abrir meu perfil"
+        >
           {identity.name.slice(0, 2).toUpperCase()}
-        </span>
+        </Link>
         <button type="button" className="atlas-signout" onClick={signOut}>
           Sair
         </button>
