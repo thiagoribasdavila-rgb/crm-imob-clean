@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { cpFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -12,7 +12,7 @@ if (!existsSync(envFile)) throw new Error("Arquivo de ambiente local ausente par
 const stage = mkdtempSync(join(tmpdir(), "atlas-hostinger-clean-build-"));
 try {
   execFileSync("unzip", ["-q", zip, "-d", stage]);
-  cpFileSync(envFile, join(stage, ".env.local"));
+  copyFileSync(envFile, join(stage, ".env.local"));
   execFileSync("npm", ["ci", "--no-audit", "--no-fund"], { cwd: stage, stdio: "inherit" });
   execFileSync("npm", ["run", "build"], { cwd: stage, stdio: "inherit" });
   console.log(JSON.stringify({ ok: true, cleanInstall: true, cleanBuild: true, secretsPackaged: false }));
