@@ -42,11 +42,14 @@ export async function GET(request: NextRequest) {
   const visible = role === "director" ? new Set(profiles.map((item) => item.id)) : descendants(profiles, identity.access.profile.id);
   const batches = (batchesResult.data ?? []).filter((item) => visible.has(item.owner_id));
   const contacts = contactsResult.data ?? [];
+  const batchIds = batches.map((item) => item.id);
+  const { data: offerContacts } = batchIds.length ? await admin.from("lead_reactivation_contacts").select("id,batch_id,status,lead:leads!lead_id(id,name,status,score,assigned_to,next_action_at,metadata)").eq("organization_id", org).in("batch_id", batchIds).in("status", ["imported","replied"]).limit(200) : { data: [] };
   return apiSuccess({
     viewer: { id: identity.access.profile.id, role },
     targets: profiles.filter((item) => visible.has(item.id) && (item.commercial_role || item.role) === "broker"),
     projects: projectsResult.data ?? [],
     batches: batches.map((batch) => ({ ...batch, summary: contacts.filter((item) => item.batch_id === batch.id).reduce((sum, item) => { sum[item.status] = (sum[item.status] || 0) + 1; if (item.block_reason) sum[`blocked:${item.block_reason}`] = (sum[`blocked:${item.block_reason}`] || 0) + 1; return sum; }, {} as Record<string, number>) })),
+    offers: (offerContacts ?? []).map((contact) => { const lead = Array.isArray(contact.lead) ? contact.lead[0] : contact.lead; const score = Number(lead?.score || 0); return { contactId: contact.id, batchId: contact.batch_id, status: contact.status, lead, aiPriority: score >= 70 ? "high" : score >= 45 ? "medium" : "learning", aiSuggestion: score >= 70 ? "Priorizar abordagem consultiva hoje." : contact.status === "replied" ? "Retomar a conversa com base na última resposta." : "Validar interesse e atualizar o perfil antes da oferta." }; }).filter((item) => item.lead),
     experiences: (experienceResult.data ?? []).filter((item) => item.broker_id && visible.has(item.broker_id)),
   }, identity.meta, { headers: rate.headers });
 }
@@ -56,10 +59,20 @@ export async function POST(request: NextRequest) {
   if (!rate.ok) return rate.response;
   const identity = await requireAccessContext(request);
   if (!identity.ok) return identity.response;
-  const body = await request.json().catch(() => null) as { action?: string; name?: string; ownerId?: string; developmentId?: string; sourceType?: string; consentBasis?: string; consentConfirmed?: boolean; rows?: ImportRow[]; batchId?: string; templateName?: string; templateLanguage?: string; dailyCap?: number; intervalSeconds?: number; command?: "pause" | "resume"; signalId?: string; experienceDecision?: "keep" | "change_requested"; reason?: string } | null;
+  const body = await request.json().catch(() => null) as { action?: string; name?: string; ownerId?: string; developmentId?: string; sourceType?: string; consentBasis?: string; consentConfirmed?: boolean; rows?: ImportRow[]; batchId?: string; templateName?: string; templateLanguage?: string; dailyCap?: number; intervalSeconds?: number; command?: "pause" | "resume"; signalId?: string; experienceDecision?: "keep" | "change_requested"; reason?: string; leadId?: string; phoneQualityReason?: "invalid_phone" | "disconnected" | "wrong_person"; evidence?: string } | null;
   const admin = getSupabaseAdmin();
   const org = identity.access.organization.id;
   const role = roleOf(identity.access.profile.role, identity.access.profile.commercialRole);
+
+  if (body?.action === "mark_invalid_phone" && body.leadId && body.phoneQualityReason) {
+    const evidence = String(body.evidence || "").trim();
+    if (evidence.length < 5) return apiError("EVIDENCE_REQUIRED", "Descreva como o telefone inválido foi confirmado.", identity.meta, { status: 400 });
+    const { data: visibleLead } = await identity.supabase.from("leads").select("id").eq("id", body.leadId).maybeSingle();
+    if (!visibleLead) return apiError("LEAD_NOT_VISIBLE", "Lead inexistente ou fora da sua carteira.", identity.meta, { status: 404 });
+    const { data, error } = await admin.rpc("register_invalid_lead_phone", { p_organization_id: org, p_lead_id: body.leadId, p_actor_id: identity.access.profile.id, p_reason: body.phoneQualityReason, p_evidence: evidence.slice(0, 500) });
+    if (error) return apiError("PHONE_SUPPRESSION_FAILED", "Não foi possível registrar a limpeza do telefone.", identity.meta, { status: 409 });
+    return apiSuccess({ ...data, futureImportsBlocked: true, historyPreserved: true }, identity.meta, { headers: rate.headers });
+  }
 
   if (body?.action === "experience_decision" && body.signalId && ["keep", "change_requested"].includes(body.experienceDecision || "")) {
     const reason = String(body.reason || "").trim();
@@ -102,21 +115,23 @@ export async function POST(request: NextRequest) {
     const normalized = Array.from(unique.values());
     if (!normalized.length) return apiError("INVALID_CONTACTS", "Nenhum telefone válido foi encontrado.", identity.meta, { status: 400 });
     const phones = normalized.map((item) => item.phone);
-    const [{ data: suppressions }, { data: existing }] = await Promise.all([
+    const [{ data: suppressions }, { data: qualitySuppressions }, { data: existing }] = await Promise.all([
       admin.from("messaging_suppressions").select("recipient").eq("organization_id", org).eq("channel", "whatsapp").in("recipient", phones),
-      admin.from("leads").select("id,phone,assigned_to").eq("organization_id", org).not("phone", "is", null).limit(10000),
+      admin.from("contact_quality_suppressions").select("id,normalized_contact,reason").eq("organization_id", org).eq("channel", "whatsapp").eq("active", true).in("normalized_contact", phones),
+      admin.from("leads").select("id,phone,phone_normalized,assigned_to").eq("organization_id", org).in("phone_normalized", phones),
     ]);
     const blocked = new Set((suppressions ?? []).map((item) => item.recipient));
-    const existingMap = new Map((existing ?? []).map((item) => [normalizePhone(item.phone || ""), item]));
+    const qualityMap = new Map((qualitySuppressions ?? []).map((item) => [item.normalized_contact, item]));
+    const existingMap = new Map((existing ?? []).map((item) => [item.phone_normalized || normalizePhone(item.phone || ""), item]));
     const { data: batch, error: batchError } = await admin.from("lead_reactivation_batches").insert({ organization_id: org, owner_id: ownerId, created_by: identity.access.profile.id, development_id: body.developmentId || null, name: String(body.name || "Base de reativação").trim().slice(0, 120), source_type: sourceType, consent_basis: body.consentBasis.trim().slice(0, 500), imported_count: normalized.length }).select("id").single();
     if (batchError || !batch) return apiError("IMPORT_FAILED", "Não foi possível criar a base.", identity.meta, { status: 500 });
     const contacts = [];
     let eligible = 0;
     for (const item of normalized) {
       let lead = existingMap.get(item.phone);
-      let reason: string | null = blocked.has(item.phone) ? "opt_out" : (occurrences.get(item.phone) || 0) > 1 ? "duplicado_no_arquivo" : lead ? "lead_ja_existente" : null;
+      let reason: string | null = blocked.has(item.phone) ? "opt_out" : qualityMap.has(item.phone) ? "invalid_phone_history" : (occurrences.get(item.phone) || 0) > 1 ? "duplicado_no_arquivo" : lead ? "lead_ja_existente" : null;
       if (!lead && !reason) {
-        const created = await admin.from("leads").insert({ organization_id: org, assigned_to: ownerId, development_id: body.developmentId || null, name: item.name, phone: item.phone, email: item.email, source: sourceType === "company_legacy" ? "Base antiga" : "Base externa do corretor", status: "novo", metadata: { reactivation: { batchId: batch.id, consentBasis: body.consentBasis.trim(), importedBy: identity.access.profile.id } } }).select("id,phone,assigned_to").single();
+        const created = await admin.from("leads").insert({ organization_id: org, assigned_to: ownerId, development_id: body.developmentId || null, name: item.name, phone: item.phone, email: item.email, source: sourceType === "company_legacy" ? "Base antiga" : "Base externa do corretor", status: "novo", metadata: { reactivation: { batchId: batch.id, consentBasis: body.consentBasis.trim(), importedBy: identity.access.profile.id } } }).select("id,phone,phone_normalized,assigned_to").single();
         if (created.data) lead = created.data;
         else reason = "falha_ao_criar_lead";
       }
@@ -126,6 +141,8 @@ export async function POST(request: NextRequest) {
     const { error: contactsError } = await admin.from("lead_reactivation_contacts").insert(contacts);
     if (contactsError) { await admin.from("lead_reactivation_batches").delete().eq("id", batch.id).eq("organization_id", org); return apiError("IMPORT_FAILED", "A base não foi gravada por completo e foi descartada com segurança.", identity.meta, { status: 500 }); }
     await admin.from("lead_reactivation_batches").update({ eligible_count: eligible }).eq("id", batch.id);
+    const qualityHistory = contacts.filter((contact) => contact.block_reason === "invalid_phone_history").map((contact) => ({ organization_id: org, suppression_id: qualityMap.get(contact.phone)!.id, lead_id: contact.lead_id, action: "blocked_import", batch_id: batch.id, actor_id: identity.access.profile.id, details: { sourceType } }));
+    if (qualityHistory.length) await admin.from("contact_quality_history").insert(qualityHistory);
     return apiSuccess({ batchId: batch.id, imported: normalized.length, eligible, blocked: normalized.length - eligible }, identity.meta, { status: 201, headers: rate.headers });
   }
 
@@ -142,11 +159,13 @@ export async function POST(request: NextRequest) {
     if (!allowed.has(batch.owner_id)) return apiError("FORBIDDEN", "Base fora da sua estrutura.", identity.meta, { status: 403 });
     const { data: contacts } = await admin.from("lead_reactivation_contacts").select("id,lead_id,phone,status").eq("batch_id", batch.id).eq("status", "imported").limit(500);
     const activationPhones = (contacts ?? []).map((contact) => contact.phone);
-    const { data: latestSuppressions } = activationPhones.length ? await admin.from("messaging_suppressions").select("recipient").eq("organization_id", org).eq("channel", "whatsapp").in("recipient", activationPhones) : { data: [] };
+    const [{ data: latestSuppressions }, { data: badQuality }] = activationPhones.length ? await Promise.all([admin.from("messaging_suppressions").select("recipient").eq("organization_id", org).eq("channel", "whatsapp").in("recipient", activationPhones), admin.from("contact_quality_suppressions").select("id,normalized_contact").eq("organization_id", org).eq("channel", "whatsapp").eq("active", true).in("normalized_contact", activationPhones)]) : [{ data: [] }, { data: [] }];
     const suppressedNow = new Set((latestSuppressions ?? []).map((item) => item.recipient));
+    const badQualityMap = new Map((badQuality ?? []).map((item) => [item.normalized_contact, item.id]));
     let prepared = 0;
     for (const contact of contacts ?? []) {
       if (suppressedNow.has(contact.phone)) { await admin.from("lead_reactivation_contacts").update({ status: "blocked", block_reason: "opt_out_before_activation" }).eq("id", contact.id).eq("organization_id", org); continue; }
+      if (badQualityMap.has(contact.phone)) { await admin.from("lead_reactivation_contacts").update({ status: "blocked", block_reason: "invalid_phone_before_activation" }).eq("id", contact.id).eq("organization_id", org); await admin.from("contact_quality_history").insert({ organization_id: org, suppression_id: badQualityMap.get(contact.phone), lead_id: contact.lead_id, action: "blocked_activation", batch_id: batch.id, actor_id: identity.access.profile.id }); continue; }
       let { data: conversation } = await admin.from("conversations").select("id").eq("organization_id", org).eq("channel", "whatsapp").eq("lead_id", contact.lead_id).maybeSingle();
       if (!conversation) {
         const created = await admin.from("conversations").insert({ organization_id: org, lead_id: contact.lead_id, channel: "whatsapp", external_thread_id: contact.phone, assigned_to: batch.owner_id, status: "open" }).select("id").single();
