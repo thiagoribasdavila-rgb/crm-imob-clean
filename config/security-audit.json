@@ -1,0 +1,9 @@
+{
+  "phase": 20,
+  "areas": ["secrets", "dependencies", "permissions", "uploads", "logs", "personal_data"],
+  "requiredGates": ["security:secrets", "security:governance", "security:dependencies", "observability:check", "sessions:check", "rls:check", "api-security:check", "abuse-protection:check", "security:audit"],
+  "requiredHeaders": ["Content-Security-Policy", "Strict-Transport-Security", "X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy", "Permissions-Policy"],
+  "uploadControls": ["allowedMimeTypes", "MAX_FILE_SIZE", "hasExpectedSignature", "safeFileName", "crypto.randomUUID", "deleteMaterial"],
+  "logSensitiveKeys": ["authorization", "cookie", "password", "token", "secret", "email", "phone", "cpf", "cnpj", "document", "prompt", "message"],
+  "productionAuditMaximum": { "high": 0, "critical": 0 }
+}

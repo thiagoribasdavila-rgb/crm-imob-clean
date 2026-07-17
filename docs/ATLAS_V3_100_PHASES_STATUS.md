@@ -476,7 +476,19 @@ Pendência externa: em homologação, comprovar 401 sem sessão, 403 fora da fun
 
 Pendência externa: verificar duplicidades antigas de IDs do WhatsApp, aplicar a migration em homologação e testar duas instâncias concorrentes, replay, conflito de chave, assinatura inválida e tempestade controlada de eventos.
 
-Próxima fase: **Fase 20 — auditoria de segurança**, consolidando evidências, testes ofensivos controlados, dependências, cabeçalhos, banco e critérios finais do bloco de segurança.
+## Fase 20 — Auditoria de segurança
+
+**Estado:** 100% auditada e aprovada no ambiente local; pentest controlado, advisors do Supabase e testes multiempresa permanecem como gates externos de homologação.
+
+**Resultado:** segredos, dependências, permissões, uploads, logs e dados pessoais foram consolidados em um único contrato. O inventário de produção encontrou zero vulnerabilidades conhecidas; o upload valida tamanho, MIME, assinatura binária, nome, caminho aleatório e remoção de órfão; os logs mantêm correlação e redação de credenciais/PII; e toda autorização continua baseada em `profiles`/RLS.
+
+**Correções:** `role` e `organization_id` foram removidos de `user_metadata` no bootstrap; falhas internas do armazenamento deixaram de ser expostas ao navegador; Content Security Policy foi adicionada; clientes Supabase foram fixados em versões exatas; e `npm audit --omit=dev --audit-level=high` passou a bloquear a validação quando houver vulnerabilidade alta ou crítica.
+
+**Gate final do bloco:** `npm run security:audit` verifica 6 áreas, 9 gates, 6 cabeçalhos e 6 controles de upload. O relatório está em `docs/SECURITY_AUDIT_PHASE_20.md`. O ZIP não deve ser produzido se qualquer gate das fases 11–20 falhar.
+
+Pendência externa: aplicar migrations 17–19 em homologação, executar Supabase Security/Performance Advisors, testar diretor/superintendente/gerente/corretores em duas organizações, validar uploads maliciosos e executar carga/replay controlados.
+
+Próxima fase: **Fase 21 — dashboard do corretor**, unificando prioridades, leads quentes, tarefas, SLA, agenda e próximas melhores ações em uma experiência diária simples.
 
 ## Painel das 100 fases
 

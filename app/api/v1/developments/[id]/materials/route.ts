@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { deleteMaterial, materialStorageReady, signedMaterialUrl, uploadMaterial } from "@/lib/storage/project-materials";
+import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -129,7 +130,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const bytes = new Uint8Array(await file.arrayBuffer());
   let upload;
   try { upload = await uploadMaterial(storagePath, bytes, file.type); }
-  catch (uploadError) { return NextResponse.json({ error: `Falha no envio: ${uploadError instanceof Error ? uploadError.message : "erro no armazenamento"}` }, { status: 400 }); }
+  catch (uploadError) {
+    logger.error("project.material_upload_failed", uploadError, { organizationId: access.access.organization.id, developmentId: id, mimeType: file.type, fileSize: file.size });
+    return NextResponse.json({ error: "Não foi possível armazenar o arquivo. Tente novamente ou contate o suporte." }, { status: 502 });
+  }
 
   const { data: result, error } = await admin.rpc("version_project_material_cloud", { p_organization_id: access.access.organization.id, p_development_id: id, p_uploaded_by: access.access.profile.id, p_material_type: materialType, p_title: title, p_description: description, p_storage_provider: upload.provider, p_storage_bucket: upload.bucket, p_storage_path: upload.path, p_file_name: file.name, p_mime_type: file.type, p_file_size: file.size, p_content_sha256: upload.checksum, p_valid_from: validFrom, p_valid_until: validUntil });
   const material = (Array.isArray(result) ? result[0] : result) as { id: string; version: number } | null;

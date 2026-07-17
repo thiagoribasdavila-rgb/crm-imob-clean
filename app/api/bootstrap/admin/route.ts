@@ -191,8 +191,6 @@ export async function POST(request: Request) {
       email_confirm: true,
       user_metadata: {
         full_name: fullName,
-        role: "admin",
-        organization_id: organizationId,
       },
     });
 
