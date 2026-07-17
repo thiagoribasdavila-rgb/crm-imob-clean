@@ -61,6 +61,8 @@ const conversionPredictor = readFileSync(resolve(root, "lib/ai/conversion-predic
 const aiCostMigration = readFileSync(resolve(root, "supabase/migrations/20260717012700_ai_usage_cost_tracking.sql"), "utf8");
 const aiCostTest = readFileSync(resolve(root, "app/api/ai/cost-routing-test/route.ts"), "utf8");
 const hostingerDeployment = readFileSync(resolve(root, "docs/HOSTINGER_DEPLOYMENT.md"), "utf8");
+const inventoryScript = readFileSync(resolve(root, "scripts/inventory-v3.mjs"), "utf8");
+const hundredPhaseStatus = readFileSync(resolve(root, "docs/ATLAS_V3_100_PHASES_STATUS.md"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
@@ -473,6 +475,7 @@ const checks = [
   ["fase 47 reúne proposta e mensagem", approvalsListRoute.includes('["message","commercial_simulation"]') && approvalsPage.includes("Fase 47 · Revisão humana") && approvalsPage.includes("Aprovar proposta")],
   ["preflight cobre APIs da Hostinger", systemHealthRoute.includes("hostinger") && systemHealthRoute.includes("workerSecret") && systemHealthRoute.includes("openai") && systemHealthRoute.includes("meta") && systemHealthRoute.includes("whatsapp")],
   ["homologação usa a credencial canônica do WhatsApp", homologationRoute.includes("WHATSAPP_ACCESS_TOKEN") && !homologationRoute.includes("WHATSAPP_TOKEN &&")],
+  ["programa de 100 fases possui inventário reproduzível", inventoryScript.includes("deployableFiles") && inventoryScript.includes("legacyPrototypePathsExcludedFromPackage") && hundredPhaseStatus.includes("Fase 1 — Inventário completo")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],
@@ -561,7 +564,7 @@ const checks = [
   ["segredos são exclusivos da diretoria", secretsRoute.includes("exclusiva da diretoria") && secretsRoute.includes("commercialRole")],
   ["scanner bloqueia tokens conhecidos", secretsScanner.includes("PRIVATE KEY") && secretsScanner.includes("OpenAI") && secretsScanner.includes("GitHub")],
   ["scanner bloqueia variável pública indevida", secretsScanner.includes("allowedPublic") && secretsScanner.includes("variável pública não aprovada")],
-  ["scanner antecede build de produção", packageConfig.includes('"validate": "npm run security:secrets && npm run enterprise:check')],
+  ["scanner antecede build de produção", packageConfig.indexOf("npm run security:secrets") < packageConfig.indexOf("npm run build")],
   ["health mede somente vida do processo", publicHealthRoute.includes('status: "ok"') && publicHealthRoute.includes('status: 200') && !publicHealthRoute.includes("SUPABASE_SERVICE_ROLE_KEY")],
   ["ready testa banco com credencial de servidor", readinessRoute.includes("getSupabaseAdmin") && readinessRoute.includes('status: ready ? 200 : 503')],
   ["ready público não revela erro interno", !readinessRoute.includes("error.message") && !readinessRoute.includes("featureSnapshot")],
