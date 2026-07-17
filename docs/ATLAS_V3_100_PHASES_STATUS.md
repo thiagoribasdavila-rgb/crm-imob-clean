@@ -1074,6 +1074,18 @@ Pendência externa: aplicar migration e validar jornada completa, repetição de
 
 Próxima fase: **Fase 76 — Dataset supervisionado de conversão**, criando rótulos e janelas temporais confiáveis sem vazamento do futuro.
 
+## Fase 76 — Dataset supervisionado de conversão
+
+**Estado:** 100% implementada e aprovada localmente; aplicação das migrations e maturação temporal da coorte permanecem para homologação.
+
+**Evolução:** fotografias imutáveis preservam apenas sinais conhecidos no instante da previsão. Ganho, perda e compra externa viram rótulo somente quando acontecem depois e dentro de janelas de 30, 60, 90 ou 180 dias. Leads abertas nunca são rotuladas artificialmente como perda.
+
+**Governança:** datasets são versionados e exigem no mínimo 100 exemplos, 20 positivos e 20 negativos. Não há PII, texto livre, ranking de pessoas ou promoção automática de modelo. O contrato está em `config/supervised-conversion-dataset.json`, o gate em `npm run conversion-dataset:check` e o roteiro em `docs/SUPERVISED_CONVERSION_DATASET_PHASE_76.md`.
+
+Pendência externa: aplicar migrations, criar coortes em datas distintas e aguardar desfechos reais para aferir calibração.
+
+Próxima fase: **Fase 77 — Score preditivo calibrado**, comparando probabilidade prevista e conversão observada com explicação e limites de confiança.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
