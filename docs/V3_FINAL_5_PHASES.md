@@ -4,7 +4,7 @@
 
 - O V3, V2 preservado, CRM, IA, Meta, WhatsApp, materiais e governança permanecem no mesmo produto.
 - Rotas antigas que já são colocadas em quarentena durante build e desenvolvimento ficam fora somente do ZIP de produção.
-- O `core/` conceitual sem imports ativos e os ícones padrão sem uso também ficam fora do ZIP; componentes efetivamente conectados permanecem.
+- Camadas conceituais e legadas sem imports no escopo ativo (`core`, `application`, serviços e componentes antigos) e ícones padrão sem uso ficam fora do ZIP; componentes efetivamente conectados permanecem.
 - Código histórico continua no repositório; nenhuma base ou funcionalidade homologável é apagada.
 
 ## Fase 47 — Eficiência operacional
