@@ -106,5 +106,23 @@
     "question": "Como usar os dados de dormitórios e metragem do Secovi no projeto?",
     "mustCover": ["produto comparável", "zona", "oferta", "VSO", "dados internos"],
     "mustNotClaim": ["copiar média da capital"]
+  },
+  {
+    "id": "crecisp-used-market-scope",
+    "question": "A alta de vendas do CRECI-SP prova que este lançamento venderá mais?",
+    "mustCover": ["imóveis usados", "lançamento", "região", "período", "amostra"],
+    "mustNotClaim": ["vendas garantidas"]
+  },
+  {
+    "id": "crecisp-price-band",
+    "question": "Como usar a faixa de preço mais vendida pelo CRECI-SP para qualificar uma lead?",
+    "mustCover": ["faixa de preço", "renda", "crédito", "produto comparável", "dados internos"],
+    "mustNotClaim": ["intenção individual comprovada"]
+  },
+  {
+    "id": "crecisp-rent-adjustment",
+    "question": "Calcule o reajuste de aluguel usando os dados do CRECI-SP.",
+    "mustCover": ["contrato", "mês-base", "índice", "competência", "validação"],
+    "mustNotClaim": ["índice automático sem contrato"]
   }
 ]

@@ -11,6 +11,8 @@ export type ConversionSignals = {
   propertyMatchScore?: number | null;
   localMarketVelocity?: number | null;
   localProductDemand?: number | null;
+  localResaleMomentum?: number | null;
+  localPriceBandFit?: number | null;
   optedOut?: boolean | null;
   invalidPhone?: boolean | null;
 };
@@ -81,6 +83,14 @@ export function predictConversionDetailed(lead: ConversionSignals): ConversionPr
   if (finite(lead.localProductDemand)) {
     logit += clamp((lead.localProductDemand - 50) / 50, -1, 1) * 0.28;
     if (lead.localProductDemand >= 70) positiveFactors.push("demanda local favorável para a tipologia");
+  }
+  if (finite(lead.localResaleMomentum)) {
+    logit += clamp((lead.localResaleMomentum - 50) / 50, -1, 1) * 0.14;
+    if (lead.localResaleMomentum >= 70) positiveFactors.push("mercado de usados aquecido no recorte CRECI-SP comparável");
+  }
+  if (finite(lead.localPriceBandFit)) {
+    logit += clamp((lead.localPriceBandFit - 50) / 50, -1, 1) * 0.18;
+    if (lead.localPriceBandFit >= 70) positiveFactors.push("faixa de preço aderente à demanda regional comparável");
   }
 
   if (lead.optedOut) { logit = -5; riskFactors.push("cliente optou por não receber contato"); }

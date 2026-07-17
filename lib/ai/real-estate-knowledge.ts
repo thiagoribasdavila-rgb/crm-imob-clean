@@ -135,6 +135,46 @@ export const REAL_ESTATE_MARKET_SOURCES: MarketSource[] = [
     ],
     useFor: ["interior de São Paulo", "Baixada Santista", "RMSP", "estoque", "metro quadrado", "VGV", "demanda regional"],
   },
+  {
+    id: "crecisp-market-research-2026",
+    title: "Pesquisas mensais do mercado imobiliário paulista",
+    publisher: "CRECI-SP",
+    url: "https://www.crecisp.gov.br/comunicacao/pesquisasmercado/especial",
+    verifiedAt: "2026-07-17",
+    facts: [
+      "O CRECI-SP pesquisa mensalmente vendas e locações de imóveis residenciais usados no Estado de São Paulo.",
+      "Mais de 1.500 imobiliárias são consultadas sobre quantidade negociada e variação dos preços de comercialização e aluguel.",
+      "A base oferece recortes estadual, capital e regionais; mês, município, amostra e segmento precisam acompanhar cada indicador utilizado.",
+      "Dados de imóveis usados não devem ser aplicados diretamente a lançamentos, estoque de incorporadora ou VSO de unidades novas.",
+    ],
+    useFor: ["CRECI-SP", "imóveis usados", "vendas", "locações", "preço", "capital", "interior", "demanda regional"],
+  },
+  {
+    id: "crecisp-campinas-2026-03",
+    title: "Pesquisa do mercado imobiliário de Campinas e Região - março de 2026",
+    publisher: "CRECI-SP",
+    url: "https://crecisp.gov.br/Files/marketresearch/54bedbbc-aa6f-4acb-b8ee-1d37b1fdeaeb_pesquisa-marco26campinas.pdf",
+    verifiedAt: "2026-07-17",
+    facts: [
+      "A pesquisa de 86 imobiliárias em 23 municípios registrou retração mensal de 4,64% nas vendas e alta de 0,69% nas locações residenciais usadas.",
+      "A faixa de R$ 201 mil a R$ 300 mil concentrou 36,7% das vendas, seguida de R$ 301 mil a R$ 400 mil, com 20%.",
+      "Regiões em desenvolvimento responderam por 58,6% dos negócios reportados.",
+      "Os percentuais descrevem a amostra regional e o período; não comprovam intenção ou capacidade financeira de uma lead individual.",
+    ],
+    useFor: ["Campinas", "imóveis usados", "faixa de preço", "vendas", "locações", "demanda regional", "comparáveis"],
+  },
+  {
+    id: "crecisp-rent-indices-2026",
+    title: "Índices econômicos para reajuste de aluguel",
+    publisher: "CRECI-SP",
+    url: "https://www.crecisp.gov.br/corretor/indicesaluguel?index=0",
+    verifiedAt: "2026-07-17",
+    facts: [
+      "O CRECI-SP publica séries de índices econômicos aplicáveis a reajustes de locação e informa a defasagem de divulgação de cada referência.",
+      "O índice correto depende do contrato e do mês-base; a ferramenta deve exibir fonte, competência e confirmação humana antes de calcular reajuste.",
+    ],
+    useFor: ["aluguel", "locação", "reajuste", "IGP-M", "índice", "contrato"],
+  },
 ];
 
 export const CUSTOMER_EXPERIENCE_SOURCES: MarketSource[] = [
@@ -188,6 +228,8 @@ export const REAL_ESTATE_OPERATING_PLAYBOOK = [
   "Resultado local ganho ou perdido, velocidade por etapa e qualidade do atendimento têm prioridade sobre benchmarks nacionais na recalibração.",
   "Preço anunciado, renda regional, juros e oferta são contexto; não devem ser tratados isoladamente como causa da compra individual.",
   "Para projetos paulistas, use VSO, oferta, lançamentos e vendas do Secovi-SP somente no mesmo recorte de cidade, zona, tipologia, metragem e faixa de preço.",
+  "Use pesquisas do CRECI-SP para imóveis residenciais usados e locações somente com o mesmo mês, município ou região, faixa de preço, tipologia e composição da amostra; não misture esses indicadores com VSO de lançamentos.",
+  "Sinal regional do CRECI-SP ajuda a formular hipótese de demanda e argumento comercial, mas nunca substitui renda, crédito, intenção, consentimento e comportamento observável da lead.",
   "Dados pessoais de leads não devem aparecer em respostas agregadas nem ser enviados sem necessidade.",
   "Em reativação, detectar atrito não autoriza troca automática: explique o sinal, ofereça recuperação ou troca e preserve a decisão humana.",
   "Escalar WhatsApp exige opt-in, template aprovado, pacing, monitoramento de qualidade e pausa rápida diante de falhas ou feedback negativo.",
