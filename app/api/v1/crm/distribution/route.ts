@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
 
   return apiSuccess({
     viewer: { id: identity.access.profile.id, role },
+    rules: { algorithm: "online_project_load_v1", presenceWindowSeconds: 90, onlineOnly: true, projectScoped: true, weightedLoad: true, atomicLock: true },
     projects: projectsResult.data ?? [],
     profiles: profiles.map((profile) => ({ ...profile, resolved_role: roleOf(profile) })),
     presence,
