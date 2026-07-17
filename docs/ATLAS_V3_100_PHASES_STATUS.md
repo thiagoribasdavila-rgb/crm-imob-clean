@@ -500,7 +500,19 @@ Pendência externa: aplicar migrations 17–19 em homologação, executar Supaba
 
 Pendência externa: testar dois corretores de equipes diferentes, confirmar isolamento, validar a ordenação com casos reais de SLA/follow-up/tarefa e medir se o corretor encontra sua primeira ação em menos de um minuto.
 
-Próxima fase: **Fase 22 — dashboard do gerente**, reunindo equipe, filas, SLA, conversão, atrasos, distribuição e intervenções necessárias.
+## Fase 22 — Dashboard do gerente
+
+**Estado:** 100% implementada e aprovada localmente; validação com dois times paralelos e presença real pendente em homologação.
+
+**Evolução:** o gerente agora recebe um cockpit específico do time direto com corretores online/disponíveis, carteiras ativas e quentes, SLA inicial, follow-ups, ausência de próxima ação, conversão, entradas nas últimas 24 horas e equilíbrio da distribuição. A fila do gerente transforma exceções em intervenções claras de coaching.
+
+**Decisão responsável:** conversão só é exibida como comparável após vinte leads; antes disso aparece “Amostra baixa”. Carga desigual gera recomendação, não transferência automática, e o painel nunca rompe um atendimento ativo.
+
+**Escopo:** endpoint exclusivo de `manager`, organização obrigatória, corretores limitados por `reports_to = managerId`, equipes paralelas excluídas e nenhuma mutação de dados. O contrato está em `config/manager-dashboard.json`, o gate em `npm run manager-dashboard:check` e o roteiro em `docs/MANAGER_DASHBOARD_PHASE_22.md`.
+
+Pendência externa: testar dois gerentes com estruturas paralelas, validar presença online, totais, SLA e distribuição, e medir se as três principais intervenções são identificadas em menos de dois minutos.
+
+Próxima fase: **Fase 23 — dashboard do superintendente**, comparando apenas gerentes subordinados e suas equipes, sem revelar estruturas paralelas.
 
 ## Painel das 100 fases
 
