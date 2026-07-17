@@ -66,6 +66,9 @@ const whatsappWebhook = readFileSync(resolve(root, "app/api/webhooks/whatsapp/ro
 const whatsappHealth = readFileSync(resolve(root, "app/api/v1/integrations/whatsapp/route.ts"), "utf8");
 const whatsappHealthPage = readFileSync(resolve(root, "app/(crm)/integrations/whatsapp/page.tsx"), "utf8");
 const experienceMigration = readFileSync(resolve(root, "supabase/migrations/20260717001011_whatsapp_experience_and_external_sales_control.sql"), "utf8");
+const externalSalesRoute = readFileSync(resolve(root, "app/api/v1/crm/external-sales/route.ts"), "utf8");
+const externalSalesPage = readFileSync(resolve(root, "app/(crm)/external-sales/page.tsx"), "utf8");
+const governedExternalBuyerMigration = readFileSync(resolve(root, "supabase/migrations/20260717013600_governed_external_buyer_registration.sql"), "utf8");
 const atomicExperienceMigration = readFileSync(resolve(root, "supabase/migrations/20260717013200_atomic_experience_decision.sql"), "utf8");
 const paymentRuleMigration = readFileSync(resolve(root, "supabase/migrations/20260717002702_developer_payment_flow_rules.sql"), "utf8");
 const atomicPaymentRuleMigration = readFileSync(resolve(root, "supabase/migrations/20260717012000_atomic_developer_payment_rule_versioning.sql"), "utf8");
@@ -164,7 +167,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("318 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("324 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["painel comparativo é exclusivo da superintendência", superintendentDashboardRoute.includes('actorRole !== "superintendent"') && superintendentDashboardRoute.includes('scope: "superintendent-dashboard"')],
   ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('roleOf(profile) === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
   ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && superintendentDashboardRoute.match(/\.eq\("organization_id", identity\.access\.organization\.id\)/g)?.length >= 2],
@@ -332,6 +335,12 @@ const checks = [
   ["worker impede tomada duplicada", outboxWorker.includes('.in("status", ["pending", "failed"])') && outboxWorker.includes("if (!claimed) continue")],
   ["compra externa não infla receita própria", experienceMigration.includes("external_sales_records") && experienceMigration.includes("status = 'comprou_outro'")],
   ["venda externa é exclusiva da diretoria", experienceMigration.includes("external_sales_director_scope") && experienceMigration.includes("commercial_role")],
+  ["gerente registra somente lead do time direto", governedExternalBuyerMigration.includes("reports_to=p_actor_id") && governedExternalBuyerMigration.includes("external_buyer_out_of_scope")],
+  ["registro externo exige motivo comercial", governedExternalBuyerMigration.includes("external_buyer_reason_required") && externalSalesRoute.includes("ao menos 10 caracteres")],
+  ["perfil externo não gera receita própria", governedExternalBuyerMigration.includes("'revenueImpact',0") && governedExternalBuyerMigration.includes("estimated_value=null") && externalSalesPage.includes("Impacto em receita própria: R$ 0")],
+  ["dados financeiros ficam exclusivos da diretoria", externalSalesRoute.includes("canReviewFinancial") && externalSalesRoute.includes("estimated_value:null") && externalSalesPage.includes("Dados financeiros ocultos")],
+  ["registro e mudança de funil são atômicos", governedExternalBuyerMigration.includes("for update") && governedExternalBuyerMigration.includes("status='comprou_outro'") && governedExternalBuyerMigration.includes("begin;")],
+  ["fase 43 preserva perfil comprador", externalSalesPage.includes("FASE 43 · PERFIL COMPRADOR EXTERNO") && externalSalesPage.includes("Registrar perfil comprador") && governedExternalBuyerMigration.includes("financialReviewRole','director")],
   ["regra de pagamento preserva versões", paymentRuleMigration.includes("developer_payment_flow_rules") && paymentRuleMigration.includes("version integer") && paymentRuleMigration.includes("where active")],
   ["versionamento de pagamento é atômico", atomicPaymentRuleMigration.includes("version_developer_payment_rule") && atomicPaymentRuleMigration.includes("pg_advisory_xact_lock")],
   ["falha não deixa incorporadora sem regra", atomicPaymentRuleMigration.includes("update public.developer_payment_flow_rules") && atomicPaymentRuleMigration.includes("insert into public.developer_payment_flow_rules") && atomicPaymentRuleMigration.includes("begin;")],
