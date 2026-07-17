@@ -40,6 +40,7 @@ type Profile = {
 
 type ReferenceRow = Record<string, unknown>;
 type SortDirection = "asc" | "desc";
+type AttentionFilter = "" | "overdue" | "no_action" | "hot" | "unassigned";
 
 type LeadsPayload = {
   ok: true;
@@ -130,6 +131,7 @@ export default function LeadsPage() {
   const [project, setProject] = useState("");
   const [broker, setBroker] = useState("");
   const [score, setScore] = useState("");
+  const [attention, setAttention] = useState<AttentionFilter>("");
   const [sort, setSort] = useState("created_at");
   const [direction, setDirection] = useState<SortDirection>("desc");
   const [page, setPage] = useState(1);
@@ -232,6 +234,7 @@ export default function LeadsPage() {
           params.set("max_score", "69");
         }
         if (score === "cold") params.set("max_score", "39");
+        if (attention) params.set("attention", attention);
 
         const response = await fetch(`/api/v1/crm/leads?${params}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -258,7 +261,7 @@ export default function LeadsPage() {
 
     void loadLeads();
     return () => controller.abort();
-  }, [broker, campaignIds, debouncedSearch, direction, page, profiles, project, reloadKey, score, sort, source, status]);
+  }, [attention, broker, campaignIds, debouncedSearch, direction, page, profiles, project, reloadKey, score, sort, source, status]);
 
   const profileMap = useMemo(
     () => new Map(profiles.map((profile) => [profile.id, profile.full_name || "Usuário Atlas"])),
@@ -294,7 +297,7 @@ export default function LeadsPage() {
     [profiles],
   );
 
-  const hasFilters = Boolean(search || status || source || project || broker || score);
+  const hasFilters = Boolean(search || status || source || project || broker || score || attention);
   const canTransfer = ["admin", "director", "superintendent", "manager"].includes(currentRole);
   const transferTargets = profiles.filter((profile) => {
     const role = profile.commercial_role || profile.role;
@@ -308,9 +311,12 @@ export default function LeadsPage() {
     setError("");
     setNotice("");
     try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Sessão expirada. Entre novamente para transferir leads.");
       const response = await fetch("/api/v1/crm/leads/bulk-transfer", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ leadIds: [...selected], targetOwnerId: transferTarget, reason: transferReason }),
       });
       const payload = await response.json();
@@ -335,6 +341,7 @@ export default function LeadsPage() {
     setProject("");
     setBroker("");
     setScore("");
+    setAttention("");
     setSort("created_at");
     setDirection("desc");
     setPage(1);
@@ -342,6 +349,11 @@ export default function LeadsPage() {
 
   function updateFilter(setter: (value: string) => void, value: string) {
     setter(value);
+    setPage(1);
+  }
+
+  function applyAttention(value: AttentionFilter) {
+    setAttention((current) => current === value ? "" : value);
     setPage(1);
   }
 
@@ -384,6 +396,20 @@ export default function LeadsPage() {
           ? <MetricCard label="Corretores no meu time" value={referencesLoading ? "—" : teamBrokers.length} detail="Somente subordinados ativos" trend="ESCOPO" tone="success" />
           : <MetricCard label="Sem responsável" value={loading ? "—" : pageMetrics.unassigned} detail="Precisam de distribuição" trend="AÇÃO" tone="warning" />}
         <MetricCard label="Ações atrasadas" value={loading ? "—" : pageMetrics.overdue} detail="Follow-up fora do prazo" trend="SLA" tone="danger" />
+      </section>
+
+      <section className="rounded-[24px] border border-white/[0.07] bg-white/[0.018] p-4 sm:p-5" aria-label="Atalhos da rotina comercial">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Minha rotina</p><h2 className="mt-1 text-lg font-semibold text-white">Encontre rapidamente onde agir</h2><p className="mt-1 text-xs text-slate-500">Os atalhos consultam toda a carteira dentro do seu escopo comercial.</p></div>
+          <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar leads que precisam de atenção">
+            {([
+              ["overdue", "Ações atrasadas", "Resolver follow-ups vencidos"],
+              ["no_action", "Sem próxima ação", "Evitar leads esquecidas"],
+              ["hot", "Leads quentes", "Atender maior intenção"],
+              ...(currentRole !== "broker" ? [["unassigned", "Sem responsável", "Distribuir para o time"]] : []),
+            ] as Array<[AttentionFilter, string, string]>).map(([key, label, description]) => <button key={key} type="button" onClick={() => applyAttention(key)} aria-pressed={attention === key} title={description} className={`shrink-0 rounded-xl border px-3 py-2.5 text-left transition ${attention === key ? "border-sky-400/30 bg-sky-400/10 text-sky-100" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><strong className="block text-xs">{label}</strong><span className="mt-0.5 block text-[9px] opacity-60">{description}</span></button>)}
+          </div>
+        </div>
       </section>
 
       <section className="atlas-leads-filter-panel">

@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 const allowedSorts = new Set(["created_at", "updated_at", "score", "name"]);
 const allowedDirections = new Set(["asc", "desc"]);
+const allowedAttentionFilters = new Set(["overdue", "no_action", "hot", "unassigned"]);
 
 function clampLimit(raw: string | null) {
   const parsed = Number(raw ?? "25");
@@ -87,6 +88,9 @@ export async function GET(request: NextRequest) {
     ? (params.get("direction") as "asc" | "desc")
     : "desc";
   const cursor = decodeCursor(params.get("cursor"));
+  const attention = allowedAttentionFilters.has(params.get("attention") ?? "")
+    ? params.get("attention")
+    : null;
 
   if (teamOwner && assignedTo) {
     return apiError("AMBIGUOUS_OWNER_FILTER", "Escolha uma equipe ou um corretor, não os dois ao mesmo tempo.", access.meta, {
@@ -144,6 +148,13 @@ export async function GET(request: NextRequest) {
   } else if (assignedTo === "unassigned") query = query.is("assigned_to", null);
   if (minScore !== null) query = query.gte("score", minScore);
   if (maxScore !== null) query = query.lte("score", maxScore);
+  if (attention) {
+    query = query.not("status", "in", "(ganho,perdido,comprou_outro)");
+    if (attention === "overdue") query = query.lt("next_action_at", new Date().toISOString());
+    if (attention === "no_action") query = query.is("next_action_at", null);
+    if (attention === "hot") query = query.or("temperature.eq.quente,score.gte.70");
+    if (attention === "unassigned") query = query.is("assigned_to", null);
+  }
   if (campaignIds.length) query = query.in("campaign_id", campaignIds);
   if (search) {
     const escaped = search.replace(/[,%()]/g, " ").trim();
@@ -209,6 +220,7 @@ export async function GET(request: NextRequest) {
         search,
         sort,
         direction,
+        attention,
       },
     },
     access.meta,
