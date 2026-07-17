@@ -36,9 +36,11 @@ Unificar busca, materiais, tabela, espelho, estoque, versões e fluxo de pagamen
 
 Entrega: `FINAL_PHASE_6_PROJECTS_DEVELOPERS.md`, kit essencial direto, autenticação corrigida e verificação automática `final-projects:check`.
 
-## 7. Dashboards e decisões por perfil
+## 7. Dashboards e decisões por perfil — concluída
 
 Reduzir ruído e separar claramente corretor, gerente, superintendente e diretor. Aceite: cada perfil recebe até cinco prioridades acionáveis e relatórios dia/semana/mês no próprio escopo.
+
+Entrega: `FINAL_PHASE_7_ROLE_DASHBOARDS.md`, perfil resolvido antes da renderização e verificação automática `final-dashboards:check`.
 
 ## 8. IA, automações e integrações
 

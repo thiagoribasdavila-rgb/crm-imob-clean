@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/atlas/status-badge";
 type DataRow = Record<string, unknown>;
 type Period = "7" | "30" | "90" | "all";
 type DecisionPeriod = "day" | "week" | "month";
+const DASHBOARD_PERIOD_KEY = "atlas:dashboard-periods:v1";
 type DashboardData = {
   leads: DataRow[];
   opportunities: DataRow[];
@@ -149,6 +150,20 @@ export default function DashboardPage() {
   const [managerDaily, setManagerDaily] = useState<ManagerDaily | null>(null);
   const [directorDaily, setDirectorDaily] = useState<DirectorDaily | null>(null);
 
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.sessionStorage.getItem(DASHBOARD_PERIOD_KEY) || "{}") as { period?: Period; decisionPeriod?: DecisionPeriod };
+      if (["7", "30", "90", "all"].includes(saved.period || "")) setPeriod(saved.period!);
+      if (["day", "week", "month"].includes(saved.decisionPeriod || "")) setDecisionPeriod(saved.decisionPeriod!);
+    } catch {
+      window.sessionStorage.removeItem(DASHBOARD_PERIOD_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.sessionStorage.setItem(DASHBOARD_PERIOD_KEY, JSON.stringify({ period, decisionPeriod }));
+  }, [decisionPeriod, period]);
+
   const load = useCallback(async () => {
     setLoading(true);
     const results = await Promise.all([
@@ -196,10 +211,11 @@ export default function DashboardPage() {
   );
   const referenceTime = lastUpdated?.getTime() ?? 0;
   const viewer = data.profiles.find((profile) => String(profile.id) === viewerId);
-  const viewerRole = stringValue(viewer ?? {}, "commercial_role", "role") || "broker";
+  const viewerRole = viewer ? stringValue(viewer, "commercial_role", "role") : "";
   const isDirector = viewerRole === "director" || stringValue(viewer ?? {}, "role") === "admin";
   const isSuperintendent = viewerRole === "superintendent";
   const isManager = viewerRole === "manager";
+  const isBroker = viewerRole === "broker";
 
   useEffect(() => {
     if (!isDirector) { setDirectorDaily(null); return; }
@@ -262,7 +278,7 @@ export default function DashboardPage() {
   }, [viewerId]);
 
   useEffect(() => {
-    if (viewerRole !== "broker") { setBrokerDaily(null); return; }
+    if (!isBroker) { setBrokerDaily(null); return; }
     let active = true;
     void supabase.auth.getSession().then(async ({ data: session }) => {
       const response = await fetch("/api/v1/analytics/broker-daily", { headers: { Authorization: `Bearer ${session.session?.access_token || ""}` }, cache: "no-store" });
@@ -272,7 +288,7 @@ export default function DashboardPage() {
       else setWarnings((current) => [...current, body.error?.message || "Sua agenda diária está indisponível."]);
     });
     return () => { active = false; };
-  }, [viewerRole]);
+  }, [isBroker]);
 
   const leads = useMemo(
     () =>
@@ -545,6 +561,9 @@ export default function DashboardPage() {
     })),
   };
 
+  if (loading) return <LoadingState rows={6} />;
+  if (!viewerRole) return <ErrorState title="Perfil comercial não identificado" description="Seu usuário está autenticado, mas ainda não possui um papel comercial ativo nesta organização." action={<Link href="/settings/profile" className="atlas-button-secondary">Revisar meu perfil</Link>} />;
+
   return (
     <div className="space-y-6 pb-10">
       <section className="atlas-command-hero">
@@ -636,7 +655,7 @@ export default function DashboardPage() {
         />
       ) : null}
 
-      {!isDirector && !isSuperintendent && !isManager ? (
+      {isBroker ? (
         <section className="rounded-[28px] border border-sky-400/15 bg-gradient-to-br from-sky-500/[.09] via-slate-950/75 to-cyan-500/[.05] p-5 sm:p-6" data-phase="21-broker-daily">
           <PageHeader eyebrow="Fase 21 · Meu dia" title="Seu plano comercial em 60 segundos" description="Somente sua carteira: quem atender agora, por que entrou na fila e qual é a próxima melhor ação." actions={<Link href="/pipeline">Abrir meu pipeline →</Link>} />
           {!brokerDaily ? <LoadingState rows={4} /> : <div className="mt-5 space-y-5">
