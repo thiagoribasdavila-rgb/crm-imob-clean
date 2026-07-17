@@ -620,7 +620,19 @@ Pendência externa: testar perfis vazios, parciais e completos com quatro papéi
 
 Pendência externa: aplicar migration, editar as etapas em homologação, percorrer a jornada completa e testar isolamento com dois tenants.
 
-Próxima fase: **Fase 32 — Kanban moderno**, melhorando densidade, carregamento, responsividade, atalhos e experiência visual.
+## Fase 32 — Kanban moderno
+
+**Estado:** 100% implementada e aprovada localmente; aferição em aparelhos e carteiras reais permanece para homologação.
+
+**Evolução:** o Kanban ganhou navegação de uma etapa por vez no celular, cabeçalhos fixos, scroll com encaixe, foco acessível e movimentação por teclado. No desktop preserva a visão ampla, densidade compacta, ocultação de vazias, ordenação e atalhos operacionais.
+
+**Produtividade:** cards levam diretamente a perfil, mensagem com IA, ligação e WhatsApp. A movimentação pode ocorrer por arrastar, seletor ou `Alt + seta`, com opção de desfazer e registro na timeline.
+
+**Qualidade:** carregamento mantém skeletons e estado sem salto estrutural; a região do quadro declara ocupação e foco para tecnologia assistiva. O contrato está em `config/modern-kanban.json`, o gate em `npm run modern-kanban:check` e o roteiro em `docs/MODERN_KANBAN_PHASE_32.md`.
+
+Pendência externa: testar celular físico, teclado, carteira volumosa, carregamento lento e percepção dos corretores.
+
+Próxima fase: **Fase 33 — movimentação segura**, garantindo transação, histórico, permissões e opção de desfazer.
 
 ## Painel das 100 fases
 

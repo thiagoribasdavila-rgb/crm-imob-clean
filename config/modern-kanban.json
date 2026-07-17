@@ -1,0 +1,9 @@
+{
+  "phase": 32,
+  "page": "app/(crm)/pipeline/page.tsx",
+  "styles": "app/globals.css",
+  "experienceControls": ["mobile-stage-tabs", "compact-density", "hide-empty", "sticky-headers", "scroll-snap", "progressive-skeletons", "card-shortcuts", "keyboard-move", "visible-focus", "undo"],
+  "keyboardShortcut": "Alt+ArrowLeft|Alt+ArrowRight",
+  "mobileMode": "single-stage",
+  "movementAlternatives": ["drag-drop", "stage-select", "keyboard"]
+}

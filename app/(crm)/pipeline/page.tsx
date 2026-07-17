@@ -127,6 +127,7 @@ export default function PipelinePage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [stages, setStages] = useState<PipelineStageDefinition[]>(defaultStages);
   const [canConfigureStages, setCanConfigureStages] = useState(false);
+  const [mobileStage, setMobileStage] = useState<StageKey>(defaultStages[0]?.key || "novo");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -199,6 +200,12 @@ export default function PipelinePage() {
     if (id) void moveLead(id, stage);
   }
 
+  function moveByKeyboard(lead: Lead, direction: -1 | 1) {
+    const current = stages.findIndex((stage) => stage.key === (lead.status || "novo"));
+    const destination = stages[current + direction];
+    if (destination) void moveLead(lead.id, destination.key);
+  }
+
   async function undoLastMove() {
     if (!lastMove) return;
     const move = lastMove;
@@ -252,6 +259,7 @@ export default function PipelinePage() {
     return { ...stage, items, value: items.reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0) };
   }), [stages, visibleLeads]);
   const boardStages = useMemo(() => hideEmpty ? stageData.filter((stage) => stage.items.length > 0) : stageData, [hideEmpty, stageData]);
+  const activeMobileStage = boardStages.some((stage) => stage.key === mobileStage) ? mobileStage : boardStages[0]?.key;
   const dailyFocus = useMemo(() => leads.filter(isOpenLead).sort((a, b) => priorityWeight(b) - priorityWeight(a)).slice(0, 3), [leads]);
 
   const focusOptions = useMemo(() => {
@@ -337,11 +345,12 @@ export default function PipelinePage() {
             <button type="button" onClick={() => setHideEmpty((value) => !value)} aria-pressed={hideEmpty} className={`atlas-kanban-toggle ${hideEmpty ? "is-active" : ""}`}>{hideEmpty ? "Mostrando etapas ativas" : "Mostrar todas as etapas"}</button>
           </div>
         </div>
-        <div className="overflow-x-auto p-4 sm:p-6">
-          <div className={`atlas-kanban-board ${compact ? "is-compact" : ""}`} style={{ "--kanban-columns": boardStages.length } as CSSProperties}>
+        <div className="atlas-kanban-mobile-nav" role="tablist" aria-label="Escolher etapa no celular">{boardStages.map((stage) => <button key={stage.key} type="button" role="tab" aria-selected={activeMobileStage === stage.key} onClick={() => setMobileStage(stage.key)} className={activeMobileStage === stage.key ? "is-active" : ""}><span>{stage.label}</span><b>{stage.items.length}</b></button>)}</div>
+        <div className="atlas-kanban-scroll p-4 sm:p-6" tabIndex={0} aria-label="Quadro Kanban com rolagem horizontal">
+          <div className={`atlas-kanban-board ${compact ? "is-compact" : ""}`} style={{ "--kanban-columns": boardStages.length } as CSSProperties} aria-busy={loading}>
             {boardStages.map((stage) => (
-              <section key={stage.key} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""}`}>
-                <div className="mb-4 border-b border-white/[0.06] pb-3">
+              <section key={stage.key} role="tabpanel" aria-label={`${stage.label}: ${stage.items.length} leads`} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""} ${activeMobileStage !== stage.key ? "is-mobile-hidden" : ""}`}>
+                <div className="atlas-pipeline-column-header mb-4 border-b border-white/[0.06] pb-3">
                   <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white">{stage.label}</h3><span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-slate-300">{stage.items.length}</span></div>
                   <p className="mt-2 text-xs text-slate-500">{brl.format(stage.value)}</p>
                   <div className="mt-3"><AtlasProgress value={stage.probability} /></div>
@@ -354,7 +363,7 @@ export default function PipelinePage() {
                     const guidance = brokerGuidance(lead);
                     const contact = phoneLinks(lead.phone);
                     return (
-                      <article key={lead.id} draggable onDragEnd={() => { setDraggedId(null); setDragOverStage(null); }} onDragStart={(event) => { setDraggedId(lead.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""}`}>
+                      <article key={lead.id} draggable tabIndex={0} aria-label={`${lead.name || "Lead sem nome"}, etapa ${stage.label}. Alt mais seta move entre etapas.`} onKeyDown={(event) => { if (event.altKey && event.key === "ArrowLeft") { event.preventDefault(); moveByKeyboard(lead, -1); } if (event.altKey && event.key === "ArrowRight") { event.preventDefault(); moveByKeyboard(lead, 1); } }} onDragEnd={() => { setDraggedId(null); setDragOverStage(null); }} onDragStart={(event) => { setDraggedId(lead.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-1 truncate text-[11px] text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
                           <AtlasBadge tone={riskTone(risk)}>Risco {risk}</AtlasBadge>
@@ -385,6 +394,7 @@ export default function PipelinePage() {
             ))}
           </div>
         </div>
+        <div className="border-t border-white/[.06] px-5 py-3 text-[10px] text-slate-500 sm:px-6">Arraste, use o seletor ou pressione <kbd className="rounded border border-white/10 px-1.5 py-0.5 text-slate-300">Alt + ←/→</kbd> com o card em foco. A movimentação continua registrada na timeline.</div>
       </AtlasCard>
       <AtlasCard>
         <AtlasCardHeader eyebrow="Inteligência de compradores" title="Compraram em outro lugar" description="Base separada do funil ativo: compradores reais que ajudam a entender público, produto, preço e concorrência sem contar como venda da empresa." />
