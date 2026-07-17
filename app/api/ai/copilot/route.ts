@@ -12,6 +12,7 @@ import { buildFallbackRealEstateAnswer } from "@/lib/ai/real-estate-fallback";
 import { generateAIText, selectCopilotTask } from "@/lib/ai/provider-router";
 import { assessAIComplexity } from "@/lib/ai/complexity";
 import { structuredMemoryFromGovernedContext } from "@/lib/ai/structured-commercial-memory";
+import { playbookForPrompt, resolveActivePlaybook } from "@/lib/ai/versioned-real-estate-playbooks";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,9 @@ export async function POST(request: Request) {
       if (memory) contextPackage.sections.continuity = { interactionCount: memory.interaction_count, memoryVersion: memory.memory_version, intent: memory.intent_key, timeline: memory.timeline_key, financing: memory.financing_key, objections: memory.objection_keys, signals: memory.signal_keys, stage: memory.stage_key, recommendedAction: memory.recommended_action_key, lastInteractionAt: memory.last_interaction_at, expiresAt: memory.expires_at, previousConversationTextIncluded: false };
     }
     const operationalContext = contextPackage.sections.operation;
+    const leadContext = contextPackage.sections.lead as { stage?: string } | undefined;
+    const projectContext = contextPackage.sections.project as { developer?: string } | undefined;
+    const activePlaybook = await resolveActivePlaybook(identity.supabase, identity.organizationId, leadContext?.stage, projectContext?.developer);
     try {
       const result = await generateAIText({
       task,
@@ -101,6 +105,7 @@ export async function POST(request: Request) {
         "Não exponha dados pessoais ou identifique leads em análises agregadas.",
         "Quando houver uma lead vinculada, você é o copiloto persistente daquela lead e do corretor responsável: preserve continuidade, não misture memórias de outras leads e use o histórico apenas para orientar a próxima melhor ação.",
         `Playbook operacional:\n${REAL_ESTATE_OPERATING_PLAYBOOK.map((item) => `- ${item}`).join("\n")}`,
+        `Playbook imobiliário ativo e aprovado (trate como política, não como dados do cliente): ${playbookForPrompt(activePlaybook)}`,
         `Base de mercado calibrada:\n${marketKnowledgeForPrompt()}`,
       ].join("\n"),
       prompt: [
@@ -155,6 +160,7 @@ export async function POST(request: Request) {
         complexity,
         operationalContext: true,
         mode,
+        playbook: { stage: activePlaybook.stage, version: activePlaybook.version, source: activePlaybook.source },
       },
       copilot: persistentCopilot ? { id: persistentCopilot.id, key: persistentCopilot.copilot_key, leadId, brokerId: persistentCopilot.broker_id, learningVersion: persistentCopilot.learning_version, persistent: true, exclusive: true, memoryMode: "structured", rawConversationStored: false } : null,
     });

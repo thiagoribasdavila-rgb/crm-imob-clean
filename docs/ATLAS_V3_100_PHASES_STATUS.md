@@ -1182,6 +1182,18 @@ Pendência externa: aplicar migration e homologar ataques, falsos positivos, san
 
 Próxima fase: **Fase 85 — Playbooks imobiliários versionados**, especializando abordagem, qualificação, simulação, visita, proposta e reativação por etapa.
 
+## Fase 85 — Playbooks imobiliários versionados
+
+**Estado:** 100% implementada e aprovada localmente; publicação e validação com a equipe real permanecem para homologação.
+
+**Evolução:** o Copiloto resolve automaticamente um dos oito playbooks comerciais e recebe objetivo, perguntas, ações, critérios para avançar e proibições. O padrão seguro Atlas funciona imediatamente; versões da operação ou incorporadora podem especializar o método.
+
+**Governança:** somente a diretoria publica, existe uma única versão ativa por etapa e escopo, a anterior é preservada e a incorporadora tem precedência controlada sobre o padrão da organização. Nenhum playbook autoriza ação externa. O contrato está em `config/versioned-real-estate-playbooks.json`, o gate em `npm run ai-playbooks:check` e o roteiro em `docs/VERSIONED_REAL_ESTATE_PLAYBOOKS_PHASE_85.md`.
+
+Pendência externa: aplicar migration e homologar oito etapas, fallback Atlas, versão organizacional, substituição por incorporadora, quatro perfis e dois tenants.
+
+Próxima fase: **Fase 86 — Qualificação conversacional estruturada**, convertendo respostas autorizadas em campos, lacunas e próxima melhor pergunta sem salvar conversa bruta.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
