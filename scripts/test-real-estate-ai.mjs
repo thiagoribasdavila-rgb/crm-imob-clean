@@ -67,6 +67,9 @@ const inventoryGuardMigration = readFileSync(resolve(root, "supabase/migrations/
 const feedbackGuardMigration = readFileSync(resolve(root, "supabase/migrations/20260717005843_property_feedback_presentation_guard.sql"), "utf8");
 const materialsRoute = readFileSync(resolve(root, "app/api/v1/developments/[id]/materials/route.ts"), "utf8");
 const materialsPage = readFileSync(resolve(root, "app/(crm)/developments/materials/page.tsx"), "utf8");
+const graphUpsertRoute = readFileSync(resolve(root, "app/api/atlas2030/graph/upsert/route.ts"), "utf8");
+const inventoryReserveRoute = readFileSync(resolve(root, "app/api/atlas2030/inventory/reserve/route.ts"), "utf8");
+const tenantReferenceMigration = readFileSync(resolve(root, "supabase/migrations/20260717010418_enforce_tenant_reference_integrity.sql"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -115,7 +118,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("162 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("168 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -232,6 +235,12 @@ const checks = [
   ["upload valida conteúdo real do arquivo", materialsRoute.includes("hasExpectedSignature") && materialsRoute.includes("não corresponde ao formato")],
   ["vigência de material é validada antes do upload", materialsRoute.includes("Revise as datas de vigência") && materialsRoute.includes("validUntil < validFrom")],
   ["link de material possui expiração curta", materialsRoute.includes("createSignedUrl(material.storage_path, 900)")],
+  ["grafo rejeita entidades de outra empresa", graphUpsertRoute.includes("endpointIds") && graphUpsertRoute.includes("fora da sua empresa") && graphUpsertRoute.includes("organization_id")],
+  ["reserva valida cliente dentro da empresa", inventoryReserveRoute.includes('from("customers")') && inventoryReserveRoute.includes("Cliente inexistente ou fora da sua empresa")],
+  ["reserva valida lead sob escopo comercial", inventoryReserveRoute.includes("identity.supabase") && inventoryReserveRoute.includes("fora do seu escopo comercial")],
+  ["banco impede referências cruzadas no grafo", tenantReferenceMigration.includes("enforce_atlas_relationship_tenant") && tenantReferenceMigration.includes("entity.organization_id = new.organization_id")],
+  ["banco impede referências cruzadas na reserva", tenantReferenceMigration.includes("enforce_inventory_reservation_tenant") && tenantReferenceMigration.includes("lead.organization_id = new.organization_id") && tenantReferenceMigration.includes("customer.organization_id = new.organization_id")],
+  ["travas de tenant não são executáveis por usuários", tenantReferenceMigration.includes("set search_path = ''") && tenantReferenceMigration.includes("from public, anon, authenticated")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
