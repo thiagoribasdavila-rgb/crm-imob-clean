@@ -11,7 +11,7 @@ import type { EvolutionPhase } from "@/lib/atlas/evolution-phases";
 type Result = { id: string; check_key: string; outcome: "passed" | "failed"; notes: string | null; verified_by: string; verified_at: string };
 type Payload = { checks: HomologationCheck[]; results: Result[]; readiness: { overallEvolution: number; technicalEvolution: number; aiCalibration: { percent: number; controls: number; scenarios: number; next: string; dimensions: Array<{ name: string; percent: number }> }; phases: EvolutionPhase[]; deployment: Record<string, boolean> }; currentUser: { id: string; commercialRole: HomologationRole } };
 const roleLabels: Record<HomologationRole, string> = { director: "Diretor", superintendent: "Superintendente", manager: "Gerente", broker: "Corretor" };
-const deploymentLabels: Record<string, string> = { hostinger: "Hostinger", publicUrl: "URL pública", cron: "Cron", openai: "OpenAI", perplexity: "Perplexity", metaLeads: "Meta Leads", metaConversions: "Meta CAPI", metaInsights: "Meta Insights", whatsapp: "WhatsApp", nightlyTemplate: "Template 20h" };
+const deploymentLabels: Record<string, string> = { hostinger: "Hostinger", publicUrl: "URL pública", passwordRecovery: "Recuperação PKCE", cron: "Cron", openai: "OpenAI", perplexity: "Perplexity", metaLeads: "Meta Leads", metaConversions: "Meta CAPI", metaInsights: "Meta Insights", whatsapp: "WhatsApp", nightlyTemplate: "Template 20h" };
 
 export default function HomologationPage() {
   const [data, setData] = useState<Payload | null>(null);

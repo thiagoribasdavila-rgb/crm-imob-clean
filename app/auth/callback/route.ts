@@ -62,7 +62,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(authFailureUrl(origin, "session_exchange_failed"));
     }
 
-    return NextResponse.redirect(new URL(next, origin));
+    const response = NextResponse.redirect(new URL(next, origin));
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   }
 
   if (tokenHash && rawType && allowedOtpTypes.has(rawType as EmailOtpType)) {
@@ -81,7 +83,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(authFailureUrl(origin, "token_verification_failed"));
     }
 
-    return NextResponse.redirect(new URL(next, origin));
+    const response = NextResponse.redirect(new URL(next, origin));
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   }
 
   return NextResponse.redirect(authFailureUrl(origin, "missing_auth_token"));

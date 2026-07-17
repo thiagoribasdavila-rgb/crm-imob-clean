@@ -51,6 +51,9 @@ const commercialSimulation = readFileSync(resolve(root, "app/api/v1/leads/[id]/c
 const readinessRoute = readFileSync(resolve(root, "app/api/v1/ready/route.ts"), "utf8");
 const integrationsRoute = readFileSync(resolve(root, "app/api/v1/integrations/route.ts"), "utf8");
 const integrationsPage = readFileSync(resolve(root, "app/(crm)/integrations/page.tsx"), "utf8");
+const recoveryRoute = readFileSync(resolve(root, "app/api/auth/password-recovery/route.ts"), "utf8");
+const authCallback = readFileSync(resolve(root, "app/auth/callback/route.ts"), "utf8");
+const forgotPassword = readFileSync(resolve(root, "app/(auth)/forgot-password/page.tsx"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -99,7 +102,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("122 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("125 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -176,6 +179,9 @@ const checks = [
   ["preflight cobre APIs da Hostinger", readinessRoute.includes("metaConversions") && readinessRoute.includes("nightlyTemplate") && readinessRoute.includes('=== "hostinger"')],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
+  ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],
+  ["recuperação não permite origem aleatória", recoveryRoute.includes("ATLAS_BASE_URL") && recoveryRoute.includes("NODE_ENV") && recoveryRoute.includes("test(origin)") && !forgotPassword.includes("window.location.origin")],
+  ["callback troca código uma única vez", authCallback.includes("exchangeCodeForSession") && authCallback.includes('Cache-Control", "no-store"')],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

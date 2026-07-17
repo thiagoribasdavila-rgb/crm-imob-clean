@@ -37,6 +37,7 @@ Teste com `npm run reports:meta-daily`. O processo é idempotente: gera um relat
 - `ATLAS_HOSTING_PROVIDER=hostinger`
 - `ATLAS_ENV=homologation`
 - `ATLAS_BASE_URL=https://homolog.seu-dominio.com.br`
+- No Supabase Auth, configure `Site URL` com esse mesmo domínio e adicione `https://homolog.seu-dominio.com.br/auth/callback` às Redirect URLs. O template de recuperação deve usar `{{ .RedirectTo }}`.
 - Supabase público e service role somente no servidor.
 - `ATLAS_CRON_SECRET`
 - `OPENAI_API_KEY`
