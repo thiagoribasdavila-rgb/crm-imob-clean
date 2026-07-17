@@ -94,5 +94,17 @@
     "question": "Como saber se o score preditivo ficou desatualizado?",
     "mustCover": ["ganhos e perdas", "janela temporal", "erro", "recalibração"],
     "mustNotClaim": ["modelo sempre correto"]
+  },
+  {
+    "id": "secovi-sp-scope",
+    "question": "A VSO do Secovi-SP prova que este projeto venderá rápido?",
+    "mustCover": ["cidade", "tipologia", "faixa de preço", "amostra local", "hipótese"],
+    "mustNotClaim": ["venda rápida garantida"]
+  },
+  {
+    "id": "secovi-product-demand",
+    "question": "Como usar os dados de dormitórios e metragem do Secovi no projeto?",
+    "mustCover": ["produto comparável", "zona", "oferta", "VSO", "dados internos"],
+    "mustNotClaim": ["copiar média da capital"]
   }
 ]

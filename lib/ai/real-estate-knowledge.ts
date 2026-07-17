@@ -108,6 +108,33 @@ export const REAL_ESTATE_MARKET_SOURCES: MarketSource[] = [
     ],
     useFor: ["crédito imobiliário", "funding", "capacidade de compra", "cenário financeiro"],
   },
+  {
+    id: "secovi-sp-pmi-2026-05",
+    title: "Pesquisa Mensal do Mercado Imobiliário - maio de 2026",
+    publisher: "Secovi-SP",
+    url: "https://secovi.com.br/secovi-sp-divulga-dados-de-maio-do-mercado-imobiliario/",
+    verifiedAt: "2026-07-17",
+    facts: [
+      "Na cidade de São Paulo, maio de 2026 registrou 13.130 unidades residenciais novas lançadas, 9.993 vendidas e oferta final de 88,8 mil unidades.",
+      "A VSO mensal foi de 10,1% e a VSO acumulada em 12 meses foi de 55,9%.",
+      "Dois dormitórios, imóveis de 30 m² a 45 m² e produtos enquadrados no MCMV lideraram diversos indicadores do mês.",
+      "Os recortes por zona, tipologia, área e preço devem ser comparados apenas com projetos equivalentes na cidade de São Paulo.",
+    ],
+    useFor: ["São Paulo", "VSO", "lançamentos", "vendas", "oferta final", "tipologia", "metragem", "MCMV", "zona"],
+  },
+  {
+    id: "secovi-sp-interior-2026-q1",
+    title: "Mercado do interior, Baixada Santista e Região Metropolitana - 1º trimestre de 2026",
+    publisher: "Secovi-SP",
+    url: "https://secovi.com.br/secovi-sp-aponta-mercado-imobiliario-resiliente-no-interior-paulista-apesar-de-desafios-economicos-e-politicos/",
+    verifiedAt: "2026-07-17",
+    facts: [
+      "O levantamento abrange 42 cidades do interior, Baixada Santista e Região Metropolitana de São Paulo.",
+      "A pesquisa acompanha lançamentos, vendas, estoque, valor de metro quadrado e VGV vendido em polos paulistas.",
+      "Resultados agregados das 42 cidades não substituem o recorte específico da cidade, microrregião e produto do empreendimento.",
+    ],
+    useFor: ["interior de São Paulo", "Baixada Santista", "RMSP", "estoque", "metro quadrado", "VGV", "demanda regional"],
+  },
 ];
 
 export const CUSTOMER_EXPERIENCE_SOURCES: MarketSource[] = [
@@ -160,6 +187,7 @@ export const REAL_ESTATE_OPERATING_PLAYBOOK = [
   "Previsão de conversão deve exibir probabilidade, confiança, fatores favoráveis, riscos e dados ausentes; nunca apresentar score como garantia.",
   "Resultado local ganho ou perdido, velocidade por etapa e qualidade do atendimento têm prioridade sobre benchmarks nacionais na recalibração.",
   "Preço anunciado, renda regional, juros e oferta são contexto; não devem ser tratados isoladamente como causa da compra individual.",
+  "Para projetos paulistas, use VSO, oferta, lançamentos e vendas do Secovi-SP somente no mesmo recorte de cidade, zona, tipologia, metragem e faixa de preço.",
   "Dados pessoais de leads não devem aparecer em respostas agregadas nem ser enviados sem necessidade.",
   "Em reativação, detectar atrito não autoriza troca automática: explique o sinal, ofereça recuperação ou troca e preserve a decisão humana.",
   "Escalar WhatsApp exige opt-in, template aprovado, pacing, monitoramento de qualidade e pausa rápida diante de falhas ou feedback negativo.",

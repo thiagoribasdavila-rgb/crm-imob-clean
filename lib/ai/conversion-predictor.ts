@@ -9,6 +9,8 @@ export type ConversionSignals = {
   essentialAnswers?: number | null;
   budgetFit?: number | null;
   propertyMatchScore?: number | null;
+  localMarketVelocity?: number | null;
+  localProductDemand?: number | null;
   optedOut?: boolean | null;
   invalidPhone?: boolean | null;
 };
@@ -72,6 +74,14 @@ export function predictConversionDetailed(lead: ConversionSignals): ConversionPr
     logit += clamp((lead.propertyMatchScore - 50) / 50, -1, 1) * 0.45;
     if (lead.propertyMatchScore >= 70) positiveFactors.push("imóvel com boa aderência");
   } else missingSignals.push("matching de imóvel");
+  if (finite(lead.localMarketVelocity)) {
+    logit += clamp((lead.localMarketVelocity - 50) / 50, -1, 1) * 0.22;
+    if (lead.localMarketVelocity >= 70) positiveFactors.push("velocidade favorável no recorte local comparável");
+  }
+  if (finite(lead.localProductDemand)) {
+    logit += clamp((lead.localProductDemand - 50) / 50, -1, 1) * 0.28;
+    if (lead.localProductDemand >= 70) positiveFactors.push("demanda local favorável para a tipologia");
+  }
 
   if (lead.optedOut) { logit = -5; riskFactors.push("cliente optou por não receber contato"); }
   if (lead.invalidPhone) { logit -= 1.2; riskFactors.push("telefone inválido ou suprimido"); }
