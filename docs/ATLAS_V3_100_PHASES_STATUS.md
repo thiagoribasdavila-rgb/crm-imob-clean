@@ -1000,7 +1000,17 @@ Pendência externa: aplicar migration e validar três incorporadoras, kit, valid
 
 Pendência externa: aplicar migration e validar projeto incompleto/completo, fontes reais, aprovação por perfil, histórico e dois tenants.
 
-Próxima fase: **Fase 69 — Estudo regional assistido e governado**, facilitando atualização de fontes e validade sem inventar informações.
+## Fase 69 — Estudo regional assistido e governado
+
+**Estado:** 100% implementada e aprovada localmente; fontes regionais reais permanecem para homologação.
+
+**Evolução:** gestores cadastram fontes por categoria com publicador, URL HTTPS, resumo factual, data de referência e validade. Somente fontes vigentes e verificadas alimentam o dossiê.
+
+**Governança:** novas fontes ficam pendentes; diretoria ou superintendência revisa. Vencimento remove a fonte do contexto, alterações revogam a publicação anterior e eventos preservam decisões. O contrato está em `config/governed-region-study.json`, o gate em `npm run region-study:check` e o roteiro em `docs/GOVERNED_REGION_STUDY_PHASE_69.md`.
+
+Pendência externa: aplicar migration e validar fontes reais, expiração, aprovação por perfil, sincronização do dossiê e dois tenants.
+
+Próxima fase: **Fase 70 — Homologação completa do bloco de projetos**, consolidando incorporadora, projeto, catálogo, estoque, vigência, materiais e inteligência.
 
 ## Painel das 100 fases
 
