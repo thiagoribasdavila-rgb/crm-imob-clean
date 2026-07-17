@@ -512,7 +512,19 @@ Pendência externa: testar dois corretores de equipes diferentes, confirmar isol
 
 Pendência externa: testar dois gerentes com estruturas paralelas, validar presença online, totais, SLA e distribuição, e medir se as três principais intervenções são identificadas em menos de dois minutos.
 
-Próxima fase: **Fase 23 — dashboard do superintendente**, comparando apenas gerentes subordinados e suas equipes, sem revelar estruturas paralelas.
+## Fase 23 — Dashboard do superintendente
+
+**Estado:** 100% implementada e aprovada localmente; validação com duas superintendências e dados reais pendente em homologação.
+
+**Evolução:** o painel simples já existente foi transformado em cockpit diário da superintendência. Agora consolida gerentes diretos, presença das equipes, leads ativos e quentes, SLA inicial, follow-ups, ausência de próxima ação, entradas recentes, carga média por corretor e uma fila de apoio aos gerentes.
+
+**Comparação responsável:** conversão só entra na comparação após trinta leads por equipe; abaixo disso aparece “Amostra baixa”. Desequilíbrio de carga e falhas de SLA geram recomendações de intervenção, nunca transferência, penalização ou mudança automática.
+
+**Escopo:** endpoint exclusivo de `superintendent`, organização obrigatória, gerentes limitados por `reports_to = superintendentId`, corretores diretos de cada gerente, estruturas paralelas e leads sem responsável excluídos. O contrato está em `config/superintendent-dashboard.json`, o gate em `npm run superintendent-dashboard:check` e o roteiro em `docs/SUPERINTENDENT_DASHBOARD_PHASE_23.md`.
+
+Pendência externa: testar duas superintendências paralelas, reconciliar totais, presença, SLA e carga com dados conhecidos, e medir se as três prioridades principais são identificadas em menos de dois minutos.
+
+Próxima fase: **Fase 24 — dashboard do diretor**, com visão consolidada da operação, decisões estratégicas e separação clara entre acompanhamento e execução.
 
 ## Painel das 100 fases
 
