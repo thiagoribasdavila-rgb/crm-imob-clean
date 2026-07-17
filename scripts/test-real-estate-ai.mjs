@@ -70,6 +70,9 @@ const materialsPage = readFileSync(resolve(root, "app/(crm)/developments/materia
 const graphUpsertRoute = readFileSync(resolve(root, "app/api/atlas2030/graph/upsert/route.ts"), "utf8");
 const inventoryReserveRoute = readFileSync(resolve(root, "app/api/atlas2030/inventory/reserve/route.ts"), "utf8");
 const tenantReferenceMigration = readFileSync(resolve(root, "supabase/migrations/20260717010418_enforce_tenant_reference_integrity.sql"), "utf8");
+const backupEvidenceMigration = readFileSync(resolve(root, "supabase/migrations/20260717010718_homologation_backup_restore_evidence.sql"), "utf8");
+const backupEvidenceRoute = readFileSync(resolve(root, "app/api/v1/governance/backups/route.ts"), "utf8");
+const auditPage = readFileSync(resolve(root, "app/(crm)/atlas-v3/audit/page.tsx"), "utf8");
 const evals = JSON.parse(readFileSync(resolve(root, "tests/ai/real-estate-calibration.json"), "utf8"));
 
 const checks = [
@@ -118,7 +121,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("168 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("174 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -241,6 +244,12 @@ const checks = [
   ["banco impede referências cruzadas no grafo", tenantReferenceMigration.includes("enforce_atlas_relationship_tenant") && tenantReferenceMigration.includes("entity.organization_id = new.organization_id")],
   ["banco impede referências cruzadas na reserva", tenantReferenceMigration.includes("enforce_inventory_reservation_tenant") && tenantReferenceMigration.includes("lead.organization_id = new.organization_id") && tenantReferenceMigration.includes("customer.organization_id = new.organization_id")],
   ["travas de tenant não são executáveis por usuários", tenantReferenceMigration.includes("set search_path = ''") && tenantReferenceMigration.includes("from public, anon, authenticated")],
+  ["backup de homologação possui responsável", backupEvidenceMigration.includes("responsible_id uuid not null") && backupEvidenceRoute.includes("identity.access.profile.id")],
+  ["evidência de backup é isolada por empresa", backupEvidenceMigration.includes("enable row level security") && backupEvidenceMigration.includes("current_organization_id")],
+  ["backup é governado somente pela diretoria", backupEvidenceRoute.includes("Somente a diretoria") && backupEvidenceMigration.includes("commercial_role = 'director'")],
+  ["restauração aprovada exige comprovação", backupEvidenceMigration.includes("restore_tested_at is not null") && backupEvidenceMigration.includes("evidence_reference is not null")],
+  ["API valida duração e evidência de restauração", backupEvidenceRoute.includes("RESTORE_EVIDENCE_REQUIRED") && backupEvidenceRoute.includes("INVALID_RESTORE_DURATION")],
+  ["Command Center não inventa backup", auditPage.includes("nunca declara um backup que não foi executado") && auditPage.includes("Nenhum snapshot real registrado")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
