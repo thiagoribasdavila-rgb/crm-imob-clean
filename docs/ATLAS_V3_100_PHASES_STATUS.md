@@ -1254,6 +1254,18 @@ Pendência externa: aplicar migration e homologar cron noturno/manhã, API ofici
 
 Próxima fase: **Fase 91 — Inteligência de campanhas multicanal**, unificando Meta, Google, TikTok, YouTube e portais com atribuição e custos comparáveis.
 
+## Fase 91 — Inteligência de campanhas multicanal
+
+**Estado:** 100% implementada e aprovada localmente; migration, credenciais e conciliação oficial permanecem para homologação.
+
+**Evolução:** Meta, Google Ads, YouTube, TikTok Ads e portais agora entram em um contrato diário comum, em BRL, com gasto, mídia e etapas imobiliárias comparáveis. O ranking exige 30 leads confirmadas pelo CRM e mostra confiança e divergência entre a plataforma e a operação.
+
+**Governança:** métricas da plataforma não são tratadas como venda; snapshots são versionados, não recebem PII e não alteram orçamento automaticamente. O contrato está em `config/multichannel-campaign-intelligence.json`, o gate em `npm run campaign-intelligence:check` e o roteiro em `docs/MULTICHANNEL_CAMPAIGN_INTELLIGENCE_PHASE_91.md`.
+
+Pendência externa: aplicar migration, ligar credenciais oficiais e conciliar um snapshot por plataforma com dados reais e dois tenants.
+
+Próxima fase: **Fase 92 — Loop Meta/Andromeda governado**, transformando resultados consentidos do CRM em sinais de conversão e recomendações auditáveis, sempre sob decisão da diretoria.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
