@@ -36,6 +36,7 @@ const materialLabels: Record<string, { label: string; icon: string; description:
   presentation: { label: "Apresentação", icon: "▤", description: "Material de apoio para atendimento" },
   other: { label: "Outros materiais", icon: "◇", description: "Documentos complementares" },
 };
+const essentialTypes = ["book", "price_table", "sales_mirror"] as const;
 
 function formatSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
@@ -113,6 +114,8 @@ export default function ProjectMaterialsPage() {
   const selected = developments.find((item) => item.id === selectedId) ?? null;
   const canManage = ["admin", "director", "superintendent", "manager"].includes(currentRole);
   const expiring = materials.filter((item) => item.valid_until && referenceTime > 0 && new Date(item.valid_until).getTime() < referenceTime + 7 * 86400000).length;
+  const missingEssential = essentialTypes.filter((type) => !materials.some((material) => material.material_type === type && (!material.valid_until || referenceTime === 0 || new Date(material.valid_until).getTime() >= referenceTime)));
+  const essentialReady = essentialTypes.length - missingEssential.length;
 
   async function uploadMaterial(event: React.FormEvent) {
     event.preventDefault();
@@ -154,7 +157,7 @@ export default function ProjectMaterialsPage() {
 
       <section className="grid gap-4 sm:grid-cols-3">
         <AtlasMetric label="Projetos encontrados" value={loading ? "—" : filtered.length} detail="Busca por nome, cidade ou incorporadora" trend="PORTFÓLIO" tone="blue" />
-        <AtlasMetric label="Materiais vigentes" value={materialsLoading ? "—" : materials.length} detail="Versões atuais do projeto" trend="ARQUIVOS" tone="violet" />
+        <AtlasMetric label="Kit essencial" value={materialsLoading ? "—" : `${essentialReady}/3`} detail="Book, tabela e espelho" trend={missingEssential.length ? "INCOMPLETO" : "COMPLETO"} tone={missingEssential.length ? "amber" : "green"} />
         <AtlasMetric label="Pedem atualização" value={materialsLoading ? "—" : expiring} detail="Vencidos ou a vencer em 7 dias" trend={expiring ? "ATENÇÃO" : "EM DIA"} tone={expiring ? "amber" : "green"} />
       </section>
 
@@ -185,6 +188,7 @@ export default function ProjectMaterialsPage() {
         <AtlasCard>
           <AtlasCardHeader eyebrow="Kit comercial" title={selected?.name || "Materiais do projeto"} description="Abra ou baixe sempre a versão vigente." action={selected ? <Link href={`/developments/${selected.id}`} className="text-xs font-semibold text-sky-300">Abrir projeto →</Link> : null} />
           <div className="p-5 sm:p-6">
+            {!materialsLoading && selected && missingEssential.length ? <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/[.07] p-4 text-xs leading-5 text-amber-100">Kit incompleto: falta {missingEssential.map((type) => materialLabels[type].label).join(", ")}. Atualize abaixo para o corretor encontrar tudo sem sair do projeto.</div> : null}
             {materialsLoading ? <div className="grid gap-4 sm:grid-cols-2">{[1,2,3,4].map((item) => <AtlasSkeleton key={item} className="h-44 w-full" />)}</div> : !selected ? <AtlasEmpty title="Selecione um projeto" description="Escolha uma incorporadora e um empreendimento para acessar o kit comercial." /> : materials.length === 0 ? <AtlasEmpty title="Kit comercial ainda vazio" description="Adicione book, tabela, espelho ou plantas para liberar o material ao time." /> : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {materials.map((material) => {
