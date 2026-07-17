@@ -26,7 +26,7 @@ type Payload = { lead: LeadRow; activities: ActivityRow[]; properties: PropertyR
 type Qualification = {
   score: number; temperature: "frio" | "morno" | "quente"; confidence: number;
   dimensions: Array<{ key: string; label: string; score: number; maximum: number; reasons: string[] }>;
-  strengths: string[]; missingData: string[]; risks: string[]; nextBestAction: string; recalculatedAt: string;
+  strengths: string[]; missingData: string[]; risks: string[]; nextBestAction: string; recommendedQuestions: Array<{ key: string; question: string; why: string; options?: Array<{ value: string; label: string }> }>; recalculatedAt: string;
 };
 
 const inputClass = "w-full rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-400/40 focus:bg-sky-400/[0.035]";
@@ -167,11 +167,11 @@ export default function LeadDetailPage() {
     }
   }
 
-  async function qualifyLead() {
+  async function qualifyLead(answers?: Record<string, string>) {
     setQualifying(true);
     setMessage(null);
     try {
-      const data = await api(`/api/v1/leads/${leadId}/qualify`, { method: "POST" }) as { qualification: Qualification };
+      const data = await api(`/api/v1/leads/${leadId}/qualify`, { method: "POST", body: JSON.stringify({ answers }) }) as { qualification: Qualification };
       setQualification(data.qualification);
       setLead((current) => current ? { ...current, score: data.qualification.score, temperature: data.qualification.temperature } : current);
       setMessage("Qualificação recalibrada e registrada na timeline.");
@@ -231,6 +231,7 @@ export default function LeadDetailPage() {
               {qualification.missingData.length ? <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.06] p-4"><p className="text-xs font-bold uppercase tracking-[.14em] text-amber-300">Dados que aumentam a confiança</p><p className="mt-2 text-xs leading-5 text-slate-300">{qualification.missingData.join(" · ")}</p></div> : null}
             </div>
           </div>
+          {qualification.recommendedQuestions.length ? <div className="border-t border-white/[.06] p-5 sm:p-6"><p className="atlas-eyebrow">Qualificação rápida · máximo 3 perguntas</p><div className="mt-4 grid gap-3 lg:grid-cols-3">{qualification.recommendedQuestions.map((question) => <div key={question.key} className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[.04] p-4"><strong className="text-sm text-white">{question.question}</strong><p className="mt-1 text-xs leading-5 text-slate-500">{question.why}</p>{question.options ? <div className="mt-3 flex flex-wrap gap-2">{question.options.map((option) => <button key={option.value} disabled={qualifying} onClick={() => void qualifyLead({ [question.key]: option.value })} className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-cyan-100 hover:border-cyan-400/40">{option.label}</button>)}</div> : <button onClick={() => document.querySelector<HTMLInputElement>(question.key === "budget" ? 'input[placeholder="Orçamento máximo"]' : 'input[placeholder="Regiões preferidas"]')?.focus()} className="atlas-button-secondary mt-3">Preencher perfil</button>}</div>)}</div><p className="mt-4 text-[11px] leading-5 text-slate-500">As respostas melhoram score, produto e criativo. Para a Meta saem apenas categorias agregadas; conversa livre e dados pessoais permanecem no CRM.</p></div> : null}
         </AtlasCard>
       ) : null}
 

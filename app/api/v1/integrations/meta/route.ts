@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     access.supabase.from("meta_lead_events").select("id,status,received_at,processed_at,last_error").order("received_at", { ascending: false }).limit(100),
     access.supabase.from("meta_conversion_configs").select("dataset_id,mode,enabled,test_event_code,consent_required").maybeSingle(),
     access.supabase.from("meta_conversion_events").select("status,event_name").order("created_at", { ascending: false }).limit(100),
-    access.supabase.from("campaign_events").select("event_type,source,payload").in("source", ["crm-funnel", "crm-followup"]).order("occurred_at", { ascending: false }).limit(500),
+    access.supabase.from("campaign_events").select("event_type,source,payload").in("source", ["crm-funnel", "crm-followup", "crm-qualification"]).order("occurred_at", { ascending: false }).limit(1000),
     access.supabase.from("leads").select("status,score,metadata,created_at,last_interaction_at").eq("source", "Meta Lead Ads").order("created_at", { ascending: false }).limit(2000),
     access.supabase.from("meta_daily_reports").select("id,report_date,status,payload,created_at,updated_at").order("report_date", { ascending: false }).limit(7),
   ]);

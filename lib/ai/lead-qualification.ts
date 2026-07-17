@@ -19,7 +19,10 @@ type QualificationInput = {
   opportunityCount: number;
   propertyMatchCount: number;
   now?: number;
+  answers?: Record<string, string>;
 };
+
+export type QualificationQuestion = { key: string; question: string; why: string; options?: Array<{ value: string; label: string }> };
 
 export type LeadQualification = {
   score: number;
@@ -30,6 +33,7 @@ export type LeadQualification = {
   missingData: string[];
   risks: string[];
   nextBestAction: string;
+  recommendedQuestions: QualificationQuestion[];
   recalculatedAt: string;
 };
 
@@ -39,7 +43,7 @@ function daysSince(date: string | null | undefined, now: number) {
   return Number.isFinite(parsed) ? Math.max(0, Math.floor((now - parsed) / 86400000)) : null;
 }
 
-export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, propertyMatchCount, now = Date.now() }: QualificationInput): LeadQualification {
+export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, propertyMatchCount, answers = {}, now = Date.now() }: QualificationInput): LeadQualification {
   const strengths: string[] = [];
   const missingData: string[] = [];
   const risks: string[] = [];
@@ -52,6 +56,7 @@ export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, p
   if (lead.preferred_regions?.length) { profile += 6; strengths.push("Região de interesse definida"); } else missingData.push("Região de interesse");
   if (lead.bedrooms) profile += 4; else missingData.push("Tipologia desejada");
   if (lead.purpose) profile += 4; else missingData.push("Objetivo da compra");
+  if (answers.financing) { profile += 3; strengths.push("Forma de pagamento conhecida"); } else missingData.push("Forma de pagamento");
   dimensions.push({ key: "profile", label: "Perfil e capacidade", score: profile, maximum: 35, reasons: strengths.slice() });
 
   const interactionDays = daysSince(lead.last_interaction_at, now);
@@ -70,6 +75,7 @@ export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, p
   let intent = stageScores[normalizedStatus] ?? 4;
   const intentReasons = [`Etapa atual: ${normalizedStatus}`];
   if (opportunityCount > 0) { intent = Math.min(25, intent + 4); intentReasons.push(`${opportunityCount} oportunidade(s) vinculada(s)`); }
+  if (["ate_3_meses", "3_a_6_meses"].includes(answers.timeline)) { intent = Math.min(25, intent + 4); intentReasons.push("Prazo de compra próximo"); }
   dimensions.push({ key: "intent", label: "Intenção e avanço", score: intent, maximum: 25, reasons: intentReasons });
 
   let fit = 0;
@@ -102,5 +108,13 @@ export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, p
               ? "Apresentar os melhores matches e abrir uma oportunidade para o interesse confirmado."
               : "Tratar a principal objeção e combinar a próxima etapa com data definida.";
 
-  return { score, temperature, confidence, dimensions, strengths, missingData, risks, nextBestAction, recalculatedAt: new Date(now).toISOString() };
+  const recommendedQuestions: QualificationQuestion[] = [
+    ...(!lead.purpose ? [{ key: "purpose", question: "O imóvel é para morar ou investir?", why: "Define produto, argumento e criativo.", options: [{ value: "moradia", label: "Morar" }, { value: "investimento", label: "Investir" }] }] : []),
+    ...(!answers.timeline ? [{ key: "timeline", question: "Quando pretende comprar?", why: "É o sinal mais rápido de intenção real.", options: [{ value: "ate_3_meses", label: "Até 3 meses" }, { value: "3_a_6_meses", label: "3–6 meses" }, { value: "6_a_12_meses", label: "6–12 meses" }, { value: "sem_prazo", label: "Só pesquisando" }] }] : []),
+    ...(!answers.financing ? [{ key: "financing", question: "Como pretende pagar?", why: "Direciona simulação e faixa viável sem prometer crédito.", options: [{ value: "financiamento", label: "Financiamento" }, { value: "recursos_proprios", label: "Recursos próprios" }, { value: "permuta", label: "Permuta + recursos" }, { value: "nao_definido", label: "Ainda não definiu" }] }] : []),
+    ...(!lead.budget_max ? [{ key: "budget", question: "Qual faixa de investimento fica confortável?", why: "Evita apresentar produto incompatível." }] : []),
+    ...(!lead.preferred_regions?.length ? [{ key: "region", question: "Quais regiões são prioridade e por quê?", why: "Separa preferência real de curiosidade." }] : []),
+  ].slice(0, 3) as QualificationQuestion[];
+
+  return { score, temperature, confidence, dimensions, strengths, missingData, risks, nextBestAction, recommendedQuestions, recalculatedAt: new Date(now).toISOString() };
 }

@@ -13,6 +13,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (!rate.allowed) return NextResponse.json({ error: "Aguarde antes de recalibrar novamente." }, { status: 429 });
 
   try {
+    const body = await request.json().catch(() => ({})) as { answers?: Record<string, unknown> };
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;
     await requireLeadAccess(identity, id);
@@ -26,6 +27,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (leadResult.error || !leadResult.data) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
 
     const lead = leadResult.data;
+    const metadata = typeof lead.metadata === "object" && lead.metadata ? lead.metadata as Record<string, unknown> : {};
+    const existingAnswers = metadata.qualificationAnswers && typeof metadata.qualificationAnswers === "object" ? metadata.qualificationAnswers as Record<string, string> : {};
+    const allowedAnswerKeys = new Set(["purpose", "timeline", "financing"]);
+    const newAnswers = Object.fromEntries(Object.entries(body.answers ?? {}).filter(([key, value]) => allowedAnswerKeys.has(key) && typeof value === "string").map(([key, value]) => [key, String(value).slice(0, 50)]));
+    const answers = { ...existingAnswers, ...newAnswers };
+    if (answers.purpose && !lead.purpose) lead.purpose = answers.purpose;
     const matches = (propertiesResult.data ?? []).filter((property) => {
       const available = ["available", "ativo", "disponivel", "disponível"].includes(String(property.status ?? "").toLowerCase());
       const budgetFit = !lead.budget_max || !property.price || Number(property.price) <= Number(lead.budget_max) * 1.1;
@@ -38,13 +45,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       activityCount: activitiesResult.count ?? 0,
       opportunityCount: opportunitiesResult.count ?? 0,
       propertyMatchCount: matches.length,
+      answers,
     });
 
-    const metadata = typeof lead.metadata === "object" && lead.metadata ? lead.metadata : {};
     const { error } = await admin.from("leads").update({
       score: qualification.score,
       temperature: qualification.temperature,
-      metadata: { ...metadata, aiQualification: qualification },
+      purpose: lead.purpose || null,
+      metadata: { ...metadata, qualificationAnswers: answers, aiQualification: qualification },
       updated_at: new Date().toISOString(),
     }).eq("id", id).eq("organization_id", identity.organizationId);
     if (error) return NextResponse.json({ error: "Não foi possível salvar a qualificação." }, { status: 500 });
@@ -56,9 +64,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       type: "ai_qualification",
       title: `Qualificação recalibrada: ${qualification.score}/100`,
       description: qualification.nextBestAction,
-      metadata: { score: qualification.score, confidence: qualification.confidence, temperature: qualification.temperature },
+      metadata: { score: qualification.score, confidence: qualification.confidence, temperature: qualification.temperature, answered: Object.keys(newAnswers) },
       occurred_at: new Date().toISOString(),
     });
+    if (Object.keys(newAnswers).length) await admin.from("campaign_events").upsert({ organization_id: identity.organizationId, lead_id: id, event_type: "qualification_signal", source: "crm-qualification", external_event_id: `qualification-${id}-${Object.keys(answers).sort().join("-")}`, payload: { decision_signals: Object.entries(newAnswers).map(([key, value]) => `${key}:${value}`) }, occurred_at: new Date().toISOString() }, { onConflict: "organization_id,source,external_event_id", ignoreDuplicates: true });
     return NextResponse.json({ qualification });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha na qualificação.";
