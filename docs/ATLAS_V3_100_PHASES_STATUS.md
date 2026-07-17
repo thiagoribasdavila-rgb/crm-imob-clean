@@ -902,7 +902,17 @@ Pendência externa: aplicar migration e validar dois tenants, origens, projetos,
 
 Pendência externa: aplicar migration, configurar cron Hostinger e validar aceite, expiração, interação, concorrência, tarefas e dois tenants.
 
-Próxima fase: **Fase 59 — Histórico e auditoria da carteira**, consolidando atribuições, aceites, devoluções e capacidade em uma visão gerencial.
+## Fase 59 — Histórico e auditoria da carteira
+
+**Estado:** 100% implementada e aprovada localmente; volume e hierarquia reais permanecem para homologação.
+
+**Evolução:** a liderança acompanha distribuição, transferência, reservas, devoluções, ausências e capacidade em um livro único, ordenado e resumido.
+
+**Privacidade:** a visão respeita tenant e hierarquia, reutiliza fontes operacionais e não retorna nome, contato ou texto livre da lead. O contrato está em `config/portfolio-audit-ledger.json`, o gate em `npm run portfolio-audit:check` e o roteiro em `docs/PORTFOLIO_AUDIT_LEDGER_PHASE_59.md`.
+
+Pendência externa: aplicar migration e validar três níveis de liderança, dois tenants, volume e resposta sem PII.
+
+Próxima fase: **Fase 60 — Fechamento do bloco de distribuição**, reconciliando as fases 51–59 e preparando homologação real da equipe.
 
 ## Painel das 100 fases
 

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   const admin = getSupabaseAdmin();
   const organizationId = identity.access.organization.id;
-  const [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult, capacityResult, priorityResult] = await Promise.all([
+  const [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult, capacityResult, priorityResult, auditResult] = await Promise.all([
     admin.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").eq("organization_id", organizationId).eq("active", true),
     admin.from("developments").select("id,name,developer_name,status").eq("organization_id", organizationId).order("name"),
     admin.from("commercial_presence").select("profile_id,availability,last_seen_at").eq("organization_id", organizationId),
@@ -40,8 +40,9 @@ export async function GET(request: NextRequest) {
     admin.from("lead_distribution_events").select("id,development_id,lead_id,assigned_to,actor_id,score_snapshot,created_at").eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(50),
     admin.from("broker_capacity_limits").select("profile_id,max_active_leads,max_project_leads,warning_percent,updated_at").eq("organization_id", organizationId),
     admin.from("lead_distribution_priority_rules").select("development_id,source_key,priority,sla_minutes,enabled,updated_at").eq("organization_id", organizationId),
+    admin.rpc("get_portfolio_audit_ledger",{p_actor_id:identity.access.profile.id,p_organization_id:organizationId,p_limit:100}),
   ]);
-  const failure = [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult, capacityResult, priorityResult].find((result) => result.error);
+  const failure = [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult, capacityResult, priorityResult, auditResult].find((result) => result.error);
   if (failure?.error) return apiError("DISTRIBUTION_LOOKUP_FAILED", "Não foi possível carregar a fila comercial.", identity.meta, { status: 500, details: failure.error.message });
 
   const allProfiles = profilesResult.data ?? [];
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
     capacity: (capacityResult.data ?? []).filter((item) => profileIds.has(item.profile_id)),
     priorityRules: priorityResult.data ?? [],
     leadSources: [...new Set(leads.map((lead) => (lead.source || "não informada").trim().toLowerCase()))].sort().slice(0, 100),
+    portfolioAudit:auditResult.data,
     recentAssignments: (eventsResult.data ?? []).filter((item) => profileIds.has(item.assigned_to)).slice(0, 20),
     unassignedQueue,
     unassignedPolicy: { metadataOnly: true, piiExposed: false, automaticAssignment: false, explicitLeadershipAction: true, maximumVisible: 100 },
