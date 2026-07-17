@@ -13,15 +13,15 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { safeAuthDestination } from "@/lib/auth/safe-redirect";
 
 const REMEMBERED_EMAIL_KEY = "atlas.remembered-email";
 
-function safeNextPath(value: string | null): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/dashboard";
-  }
-
-  return value;
+const LOGIN_TIMEOUT_MS = 15_000;
+async function withLoginTimeout<T>(operation: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("LOGIN_TIMEOUT")), LOGIN_TIMEOUT_MS); });
+  try { return await Promise.race([operation, timeout]); } finally { if (timer) clearTimeout(timer); }
 }
 
 function EyeIcon({ hidden }: { hidden: boolean }) {
@@ -48,7 +48,7 @@ function LoginExperience() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberEmail, setRememberEmail] = useState(true);
+  const [rememberEmail, setRememberEmail] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -56,7 +56,7 @@ function LoginExperience() {
   const [loginStage, setLoginStage] = useState<"idle" | "auth" | "profile" | "redirect">("idle");
 
   const destination = useMemo(
-    () => safeNextPath(searchParams.get("next")),
+    () => safeAuthDestination(searchParams.get("next")),
     [searchParams],
   );
 
@@ -103,10 +103,10 @@ function LoginExperience() {
     setError("");
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await withLoginTimeout(supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
-      });
+      }));
 
       if (signInError) {
         const message = signInError.message.toLowerCase();
@@ -157,8 +157,8 @@ function LoginExperience() {
       setLoginStage("redirect");
       router.replace(destination);
       router.refresh();
-    } catch {
-      setError("Ocorreu uma falha inesperada. Verifique sua conexão e tente novamente.");
+    } catch (cause) {
+      setError(cause instanceof Error && cause.message === "LOGIN_TIMEOUT" ? "A validação demorou mais que o esperado. Sua senha não foi alterada; tente novamente." : "Ocorreu uma falha inesperada. Verifique sua conexão e tente novamente.");
     } finally {
       setLoading(false);
       setLoginStage((current) => current === "redirect" ? current : "idle");
@@ -242,7 +242,7 @@ function LoginExperience() {
                     className="w-full border-white/10 bg-white/[.035] px-4 py-3.5 pr-14 transition focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
                     placeholder="Digite sua senha"
                     aria-invalid={Boolean(error)}
-                    aria-describedby={capsLock ? "caps-lock-warning" : undefined}
+                    aria-describedby={[capsLock ? "caps-lock-warning" : "", error ? "login-error" : ""].filter(Boolean).join(" ") || undefined}
                   />
                   <button
                     type="button"
@@ -266,7 +266,7 @@ function LoginExperience() {
                 <Link href="/forgot-password" className="text-xs font-medium text-sky-300 transition hover:text-sky-200">Esqueci minha senha</Link>
               </div>
 
-              {error ? <div role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"><p className="font-semibold">Não foi possível entrar</p><p className="mt-1 leading-5 text-rose-200/90">{error}</p>{/senha|credenciais|incorretos/i.test(error) ? <Link href={`/forgot-password${email ? `?email=${encodeURIComponent(email.trim().toLowerCase())}` : ""}`} className="mt-3 inline-flex text-xs font-bold text-white underline underline-offset-4">Redefinir minha senha</Link> : null}</div> : null}
+              {error ? <div id="login-error" role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"><p className="font-semibold">Não foi possível entrar</p><p className="mt-1 leading-5 text-rose-200/90">{error}</p>{/senha|credenciais|incorretos/i.test(error) ? <Link href={`/forgot-password${email ? `?email=${encodeURIComponent(email.trim().toLowerCase())}` : ""}`} className="mt-3 inline-flex text-xs font-bold text-white underline underline-offset-4">Redefinir minha senha</Link> : null}</div> : null}
 
               <button type="submit" disabled={loading} aria-busy={loading} className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-300 via-sky-400 to-blue-500 px-5 py-3.5 text-sm font-bold text-[#03111d] shadow-[0_14px_40px_rgba(14,165,233,.20)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60">
                 {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" /> {loginStage === "profile" ? "Preparando sua operação..." : loginStage === "redirect" ? "Abrindo seu painel..." : "Validando acesso..."}</> : <>Entrar no Atlas OS <span aria-hidden="true">→</span></>}

@@ -82,6 +82,9 @@ const commandCenterContract = readFileSync(resolve(root, "config/command-center.
 const commandCenterCheck = readFileSync(resolve(root, "scripts/check-command-center.mjs"), "utf8");
 const commandCenterRoute = readFileSync(resolve(root, "app/api/v1/governance/command-center/route.ts"), "utf8");
 const commandCenterOverview = readFileSync(resolve(root, "app/(crm)/atlas-v3/CommandCenterOverview.tsx"), "utf8");
+const loginContract = readFileSync(resolve(root, "config/login-experience.json"), "utf8");
+const loginCheck = readFileSync(resolve(root, "scripts/check-login.mjs"), "utf8");
+const safeAuthRedirect = readFileSync(resolve(root, "lib/auth/safe-redirect.ts"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
@@ -504,6 +507,7 @@ const checks = [
   ["segredos permanecem no servidor com dono e rotação", secretGovernance.includes('"browser bundle"') && secretGovernance.includes('"rotationDays"') && secretGovernanceCheck.includes("componente cliente referencia segredo privado") && secretsRoute.includes("governanceSource") && hundredPhaseStatus.includes("Fase 8 — Gestão de segredos")],
   ["observabilidade correlaciona e sanitiza erros", observabilityContract.includes('"X-Correlation-Id"') && observabilityContract.includes('"providerCostUsd"') && observabilityCheck.includes("log canônico da API não usa sanitização") && apiCore.includes("sanitizeLogMetadata") && hundredPhaseStatus.includes("Fase 9 — Observabilidade")],
   ["Command Center decide por evidência real", commandCenterContract.includes('"missingEvidence": "pending"') && commandCenterCheck.includes("falha de consulta pode estar virando sucesso") && commandCenterRoute.includes("realTestRequired: true") && commandCenterOverview.includes("Gates críticos") && hundredPhaseStatus.includes("Fase 10 — Command Center")],
+  ["login é seguro acessível e resiliente", loginContract.includes('"canonicalPath": "/login"') && loginCheck.includes("login sem limite de espera") && safeAuthRedirect.includes("AUTH_PATHS.has(pathname)") && proxySource.includes("auth.proxy.session_refresh_failed") && hundredPhaseStatus.includes("Fase 11 — Login")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],

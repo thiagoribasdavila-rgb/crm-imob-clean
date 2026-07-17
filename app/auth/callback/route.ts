@@ -3,6 +3,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { createRequestContext } from "@/lib/api/core";
 import { logger } from "@/lib/observability/logger";
+import { safeAuthDestination } from "@/lib/auth/safe-redirect";
 
 const allowedOtpTypes = new Set<EmailOtpType>([
   "signup",
@@ -12,14 +13,6 @@ const allowedOtpTypes = new Set<EmailOtpType>([
   "email_change",
   "email",
 ]);
-
-function safeNextPath(value: string | null, fallback = "/dashboard"): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return fallback;
-  }
-
-  return value;
-}
 
 function authFailureUrl(origin: string, reason: string) {
   const destination = new URL("/forgot-password", origin);
@@ -45,7 +38,7 @@ export async function GET(request: NextRequest) {
   const errorCode = requestUrl.searchParams.get("error_code");
   const errorDescription = requestUrl.searchParams.get("error_description");
   const fallback = rawType === "recovery" ? "/reset-password" : "/dashboard";
-  const next = safeNextPath(requestUrl.searchParams.get("next"), fallback);
+  const next = safeAuthDestination(requestUrl.searchParams.get("next"), fallback);
 
   if (errorCode || errorDescription) {
     return NextResponse.redirect(authFailureUrl(origin, "recovery_link_invalid"));

@@ -306,6 +306,32 @@ Pendências externas: popular o painel com dados da Hostinger/Supabase reais, ex
 
 Próxima fase: **Fase 11 — Login**, validando acesso, mensagens, carregamento, responsividade e experiência minimalista.
 
+## Fase 11 — Login
+
+Status: **Testada**.
+
+Percentual antes: **88%** — a experiência visual e as validações principais já estavam avançadas, mas um guard legado apontava para rota inexistente, o proxy podia registrar detalhe bruto e autenticação lenta não possuía timeout.
+
+Percentual depois: **100%** — rota canônica única, destino interno protegido, timeout de 15 segundos, perfil e organização validados, feedback acessível e estados claros do início ao redirecionamento.
+
+### Experiência e segurança
+
+- Sessão já ativa segue diretamente ao dashboard sem reapresentar o formulário.
+- O destino `next` aceita somente caminho interno, bloqueia barra invertida, caracteres de controle, origem externa e loop para páginas de autenticação.
+- Login valida e-mail, senha, sessão criada, organização vinculada e perfil ativo.
+- Espera superior a 15 segundos devolve orientação clara e permite nova tentativa.
+- E-mail só é lembrado após escolha; senha nunca é armazenada.
+- Caps Lock, mostrar/ocultar senha, Enter, foco inicial, recuperação e mensagens `aria-live` apoiam uso rápido e acessível.
+- Mensagens distinguem credencial inválida, limite de tentativas e conexão sem expor detalhes internos.
+- O proxy registra somente tipo do erro e IDs de correlação, nunca mensagem bruta de autenticação.
+- Layout permanece responsivo e minimalista, com robô reduzido no celular e elemento secundário no desktop.
+
+Evidências: `config/login-experience.json`, `lib/auth/safe-redirect.ts`, `app/(auth)/login/page.tsx` e `npm run login:check`.
+
+Pendência externa: homologar com usuário válido, senha inválida, perfil inativo, perfil incompleto, sessão expirada e aparelho móvel no domínio HTTPS da Hostinger.
+
+Próxima fase: **Fase 12 — Recuperação de senha**, validando envio, callback, troca, expiração e domínio público.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
