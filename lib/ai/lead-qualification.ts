@@ -20,6 +20,17 @@ type QualificationInput = {
   propertyMatchCount: number;
   now?: number;
   answers?: Record<string, string>;
+  historicalMemories?: HistoricalMemory[];
+};
+
+export type HistoricalMemory = {
+  source_file?: string | null;
+  source_sheet?: string | null;
+  commercial_facts?: Record<string, unknown> | null;
+  excluded_sensitive_fields?: string[] | null;
+  duplicate_group_size?: number | null;
+  memory_role?: string | null;
+  created_at?: string | null;
 };
 
 export type QualificationQuestion = { key: string; question: string; why: string; options?: Array<{ value: string; label: string }> };
@@ -35,6 +46,15 @@ export type LeadQualification = {
   nextBestAction: string;
   recommendedQuestions: QualificationQuestion[];
   recalculatedAt: string;
+  historicalIntelligence: {
+    adjustment: number;
+    maximumAdjustment: number;
+    dataConfidence: number;
+    memoryCount: number;
+    sourceCount: number;
+    signals: string[];
+    privacyGuard: string;
+  };
 };
 
 function daysSince(date: string | null | undefined, now: number) {
@@ -43,7 +63,7 @@ function daysSince(date: string | null | undefined, now: number) {
   return Number.isFinite(parsed) ? Math.max(0, Math.floor((now - parsed) / 86400000)) : null;
 }
 
-export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, propertyMatchCount, answers = {}, now = Date.now() }: QualificationInput): LeadQualification {
+export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, propertyMatchCount, answers = {}, historicalMemories = [], now = Date.now() }: QualificationInput): LeadQualification {
   const strengths: string[] = [];
   const missingData: string[] = [];
   const risks: string[] = [];
@@ -85,7 +105,28 @@ export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, p
   if (lead.budget_min && lead.budget_max && lead.budget_min <= lead.budget_max) { fit += 2; fitReasons.push("Faixa financeira consistente"); }
   dimensions.push({ key: "fit", label: "Aderência comercial", score: Math.min(15, fit), maximum: 15, reasons: fitReasons });
 
-  let score = dimensions.reduce((sum, dimension) => sum + dimension.score, 0);
+  const sources = new Set(historicalMemories.map((memory) => `${memory.source_file ?? ""}:${memory.source_sheet ?? ""}`).filter((source) => source !== ":"));
+  const factEntries = historicalMemories.flatMap((memory) => Object.entries(memory.commercial_facts ?? {}));
+  const factKeys = new Set(factEntries.map(([key]) => key.toLowerCase()));
+  const factValues = factEntries.map(([, value]) => String(value ?? "").toLowerCase());
+  const sensitivePresence = new Set(historicalMemories.flatMap((memory) => memory.excluded_sensitive_fields ?? []).map((field) => field.toLowerCase()));
+  const historicalSignals: string[] = [];
+  let historicalAdjustment = 0;
+  if (historicalMemories.length >= 2) { historicalAdjustment += 2; historicalSignals.push("Histórico comercial encontrado em mais de um registro"); }
+  if (sources.size >= 2) { historicalAdjustment += 2; historicalSignals.push(`Presença consistente em ${sources.size} fontes comerciais`); }
+  if ([...factKeys].some((key) => /campanha|anuncio|conjunto|criativo|origem|site/.test(key))) { historicalAdjustment += 2; historicalSignals.push("Origem de campanha ou anúncio rastreável"); }
+  if (factValues.some((value) => /visita|proposta|negocia|reuni[aã]o|atendimento/.test(value))) { historicalAdjustment += 3; historicalSignals.push("Histórico registra avanço comercial relevante"); }
+  if ([...factKeys].some((key) => /localizacao|cidade|bairro|regiao|estado/.test(key))) { historicalAdjustment += 1; historicalSignals.push("Preferência geográfica histórica disponível"); }
+  historicalAdjustment = Math.min(10, historicalAdjustment);
+
+  const usefulFactCount = factKeys.size;
+  const contactConfidence = (lead.phone ? 18 : 0) + (lead.email ? 12 : 0);
+  const historyConfidence = Math.min(35, historicalMemories.length * 5) + Math.min(20, sources.size * 5) + Math.min(15, usefulFactCount * 2);
+  const documentReadiness = sensitivePresence.has("cpf") || sensitivePresence.has("cnpj") ? 5 : 0;
+  const historicalDataConfidence = Math.min(100, 10 + contactConfidence + historyConfidence + documentReadiness);
+  if (documentReadiness) historicalSignals.push("Documento consta na origem protegida e melhora somente a confiança cadastral");
+
+  let score = dimensions.reduce((sum, dimension) => sum + dimension.score, 0) + historicalAdjustment;
   const createdDays = daysSince(lead.created_at, now);
   if (createdDays !== null && createdDays > 30 && activityCount === 0) { score -= 12; risks.push("Lead antigo sem interação registrada"); }
   if (lead.next_action_at && new Date(lead.next_action_at).getTime() < now) { score -= 6; risks.push("Próxima ação atrasada"); }
@@ -116,5 +157,17 @@ export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, p
     ...(!lead.preferred_regions?.length ? [{ key: "region", question: "Quais regiões são prioridade e por quê?", why: "Separa preferência real de curiosidade." }] : []),
   ].slice(0, 3) as QualificationQuestion[];
 
-  return { score, temperature, confidence, dimensions, strengths, missingData, risks, nextBestAction, recommendedQuestions, recalculatedAt: new Date(now).toISOString() };
+  return {
+    score, temperature, confidence, dimensions, strengths, missingData, risks, nextBestAction, recommendedQuestions,
+    historicalIntelligence: {
+      adjustment: historicalAdjustment,
+      maximumAdjustment: 10,
+      dataConfidence: historicalDataConfidence,
+      memoryCount: historicalMemories.length,
+      sourceCount: sources.size,
+      signals: historicalSignals,
+      privacyGuard: "CPF, CNPJ e endereço exato não entram no potencial comercial nem são enviados à IA.",
+    },
+    recalculatedAt: new Date(now).toISOString(),
+  };
 }
