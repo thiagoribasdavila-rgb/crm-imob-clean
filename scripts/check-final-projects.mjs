@@ -7,7 +7,9 @@ const need = (file, ...tokens) => {
 };
 
 need("config/final-projects-developers.json", '"phase": 6', '"maximum_interactions": 3', '"authenticated_read": true', '"authenticated_upload": true');
-need("config/final-10-phases-improvement.json", '"current_phase": 6', '"completed": [1, 2, 3, 4, 5, 6]');
+const program = JSON.parse(fs.readFileSync("config/final-10-phases-improvement.json", "utf8"));
+checks.push(["config/final-10-phases-improvement.json: fase atual não regrediu", Number(program.current_phase) >= 6]);
+checks.push(["config/final-10-phases-improvement.json: fases 1 a 6 concluídas", [1, 2, 3, 4, 5, 6].every((phase) => program.completed?.includes(phase))]);
 need("app/(crm)/developments/materials/page.tsx", "accessToken", 'Authorization: `Bearer ${token}`', "essentialMaterials", "Acesso rápido ao kit essencial");
 need("app/api/v1/developments/[id]/materials/route.ts", "requireAccessContext", "signedMaterialUrl", "hasExpectedSignature", "version_project_material_cloud");
 need("app/(crm)/developments/[id]/page.tsx", "Estudo regional", "Book, tabela e espelho", "Vigência comercial", "Abrir estoque");
