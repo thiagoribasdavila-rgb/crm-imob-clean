@@ -1062,6 +1062,18 @@ Pendência externa: aplicar migration e validar Meta, entradas manuais, mudança
 
 Próxima fase: **Fase 75 — Eventos comportamentais canônicos**, padronizando respostas, visitas, propostas e conversões para aprendizado confiável.
 
+## Fase 75 — Eventos comportamentais canônicos
+
+**Estado:** 100% implementada e aprovada localmente; aplicação da migration e jornada real permanecem para homologação.
+
+**Evolução:** mensagens, ligações, visitas, propostas e desfechos agora convergem para uma taxonomia append-only com 19 eventos e cinco categorias. Captura automática, backfill e idempotência evitam lacunas e duplicidades.
+
+**Eficiência e privacidade:** a normalização é determinística, custa zero tokens e aceita somente atributos estruturados. Conteúdo, nome, telefone, e-mail, documentos, endereço e anotações não entram na memória analítica. O contrato está em `config/canonical-behavior-events.json`, o gate em `npm run behavior-events:check` e o roteiro em `docs/CANONICAL_BEHAVIOR_EVENTS_PHASE_75.md`.
+
+Pendência externa: aplicar migration e validar jornada completa, repetição de webhooks, quatro perfis e dois tenants.
+
+Próxima fase: **Fase 76 — Dataset supervisionado de conversão**, criando rótulos e janelas temporais confiáveis sem vazamento do futuro.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
