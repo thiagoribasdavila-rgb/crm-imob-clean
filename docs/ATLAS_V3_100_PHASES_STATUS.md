@@ -401,6 +401,26 @@ Pendência externa: executar uma única ativação no Supabase exclusivo de homo
 
 Próxima fase: **Fase 15 — Perfis e hierarquia**, validando diretor, superintendente, gerente e corretor de ponta a ponta.
 
+### Fase 15 — Perfis e hierarquia
+
+Percentual anterior: **76%**. Percentual após implementação e testes locais: **100%**. Estado: **Testada**.
+
+- A gestão de equipe deixou de ser uma tela vazia e passou a mostrar a estrutura real visível ao usuário.
+- O diretor enxerga a organização; o superintendente, seus descendentes; o gerente, seus corretores diretos; e o corretor permanece restrito a si e às próprias leads.
+- Convites são enviados pelo Supabase Auth no servidor, exigem confirmação de e-mail e nunca expõem a credencial administrativa no navegador.
+- A cadeia obrigatória é diretor → superintendente → gerente → corretor.
+- O banco rejeita superior inativo, vínculo com outra empresa, autorreferência e combinação inválida de funções.
+- Campos de autorização (`organization_id`, função, superior e estado) não podem ser alterados pelo próprio usuário; dados profissionais continuam editáveis.
+- Alterações passam por função exclusiva da `service_role` e geram histórico de auditoria protegido por RLS.
+- A interface explica o escopo, mostra totais por nível, permite convite governado e ativação/desativação conforme autoridade.
+- Papéis não são autorizados por `user_metadata`, que é editável pelo usuário; a fonte canônica permanece a tabela `profiles` sob RLS.
+
+Evidências: `config/commercial-hierarchy.json`, `/api/v1/team`, `/settings/team`, migration `secure_commercial_profile_hierarchy` e `npm run commercial-hierarchy:check`.
+
+Pendência externa: aplicar a migration no Supabase de homologação e testar com quatro contas reais e uma segunda organização, comprovando visibilidade, convite, desativação e bloqueio lateral. Nenhum convite foi enviado pelos testes locais.
+
+Próxima fase: **Fase 16 — Diretor**, fechando a visão integral e os controles exclusivos da diretoria.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
