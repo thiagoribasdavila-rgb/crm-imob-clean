@@ -88,6 +88,16 @@ export async function GET(request: NextRequest) {
     : "desc";
   const cursor = decodeCursor(params.get("cursor"));
 
+  if (teamOwner && assignedTo) {
+    return apiError("AMBIGUOUS_OWNER_FILTER", "Escolha uma equipe ou um corretor, não os dois ao mesmo tempo.", access.meta, {
+      status: 400,
+      headers: rate.headers,
+    });
+  }
+  if (assignedTo && assignedTo !== "unassigned" && !uuidPattern.test(assignedTo)) {
+    return apiError("INVALID_OWNER", "Corretor inválido.", access.meta, { status: 400, headers: rate.headers });
+  }
+
   if (params.has("cursor") && !cursor) {
     return apiError("INVALID_CURSOR", "Cursor de paginação inválido.", access.meta, {
       status: 400,
@@ -113,14 +123,25 @@ export async function GET(request: NextRequest) {
 
   if (status) query = query.eq("status", status);
   if (source) query = query.eq("source", source);
-  if (teamOwner) {
-    if (!uuidPattern.test(teamOwner)) return apiError("INVALID_TEAM", "Gerente inválido.", access.meta, { status: 400, headers: rate.headers });
-    const { data: visibleProfiles } = await access.supabase.from("profiles").select("id,reports_to,commercial_role,role").eq("organization_id", access.access.organization.id).eq("active", true);
-    const manager = (visibleProfiles ?? []).find((profile) => profile.id === teamOwner && (profile.commercial_role || profile.role) === "manager");
-    if (!manager) return apiError("TEAM_OUT_OF_SCOPE", "Equipe fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });
-    query = query.in("assigned_to", descendantIds(visibleProfiles ?? [], manager.id));
+  if (teamOwner || (assignedTo && assignedTo !== "unassigned")) {
+    const { data: visibleProfiles, error: profilesError } = await access.supabase
+      .from("profiles")
+      .select("id,reports_to,commercial_role,role")
+      .eq("organization_id", access.access.organization.id)
+      .eq("active", true);
+    if (profilesError) return apiError("TEAM_SCOPE_FAILED", "Não foi possível validar o escopo da equipe.", access.meta, { status: 500, headers: rate.headers });
+
+    if (assignedTo && assignedTo !== "unassigned") {
+      const broker = (visibleProfiles ?? []).find((profile) => profile.id === assignedTo && (profile.commercial_role || profile.role) === "broker");
+      if (!broker) return apiError("OWNER_OUT_OF_SCOPE", "Corretor fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });
+    }
+    if (teamOwner) {
+      if (!uuidPattern.test(teamOwner)) return apiError("INVALID_TEAM", "Gerente inválido.", access.meta, { status: 400, headers: rate.headers });
+      const manager = (visibleProfiles ?? []).find((profile) => profile.id === teamOwner && (profile.commercial_role || profile.role) === "manager");
+      if (!manager) return apiError("TEAM_OUT_OF_SCOPE", "Equipe fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });
+      query = query.in("assigned_to", descendantIds(visibleProfiles ?? [], manager.id));
+    } else if (assignedTo) query = query.eq("assigned_to", assignedTo);
   } else if (assignedTo === "unassigned") query = query.is("assigned_to", null);
-  else if (assignedTo) query = query.eq("assigned_to", assignedTo);
   if (minScore !== null) query = query.gte("score", minScore);
   if (maxScore !== null) query = query.lte("score", maxScore);
   if (campaignIds.length) query = query.in("campaign_id", campaignIds);

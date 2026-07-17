@@ -105,7 +105,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("131 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("134 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -191,6 +191,9 @@ const checks = [
   ["transferência de equipe mantém corretor único", teamTransferMigration.includes("actual_target") && teamTransferMigration.includes("O gerente de destino não possui corretores ativos")],
   ["transferência em massa é atômica", teamTransferMigration.includes("for update") && teamTransferMigration.includes("accessible_count <> requested_count")],
   ["transferência exige motivo auditável", bulkTransferRoute.includes("reason.length < 5") && teamTransferMigration.includes("lead_transfer_items")],
+  ["gerente consulta somente corretor visível", crmLeadsRoute.includes("OWNER_OUT_OF_SCOPE") && crmLeadsRoute.includes('profile.id === assignedTo')],
+  ["filtros de equipe são não ambíguos", crmLeadsRoute.includes("AMBIGUOUS_OWNER_FILTER") && crmLeadsRoute.includes("teamOwner && assignedTo")],
+  ["tela identifica o escopo do gerente", leadsPortfolioPage.includes("MEU TIME") && leadsPortfolioPage.includes("Todo o meu time")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);

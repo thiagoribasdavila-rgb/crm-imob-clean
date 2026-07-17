@@ -287,6 +287,11 @@ export default function LeadsPage() {
     }).length,
   }), [items, referenceTime]);
 
+  const teamBrokers = useMemo(
+    () => profiles.filter((profile) => (profile.commercial_role || profile.role) === "broker"),
+    [profiles],
+  );
+
   const hasFilters = Boolean(search || status || source || project || broker || score);
   const canTransfer = ["admin", "director", "superintendent", "manager"].includes(currentRole);
   const transferTargets = profiles.filter((profile) => {
@@ -345,6 +350,7 @@ export default function LeadsPage() {
             <StatusBadge tone="info">LEADS INTELLIGENCE</StatusBadge>
             <StatusBadge tone="success">TENANT-SAFE</StatusBadge>
             <StatusBadge tone="violet">LEAD 360</StatusBadge>
+            {currentRole === "manager" ? <StatusBadge tone="success">MEU TIME · {teamBrokers.length} CORRETORES</StatusBadge> : null}
           </div>
           <h1>Concentre a operação nos leads com maior chance de avançar.</h1>
           <p>{currentRole === "broker" ? "Sua carteira, prioridades e próximas ações em uma visão simples para vender mais e perder menos tempo." : "Visibilidade respeitando a hierarquia, distribuição em massa e histórico completo para conduzir o time comercial."}</p>
@@ -370,7 +376,9 @@ export default function LeadsPage() {
       <section className="atlas-leads-metrics">
         <MetricCard label="Leads encontrados" value={loading ? "—" : total} detail={`${PAGE_SIZE} por página`} trend="BASE" />
         <MetricCard label="Quentes nesta página" value={loading ? "—" : pageMetrics.hot} detail="Score ≥ 70 ou temperatura quente" trend="HOT" tone="danger" />
-        <MetricCard label="Sem responsável" value={loading ? "—" : pageMetrics.unassigned} detail="Precisam de distribuição" trend="AÇÃO" tone="warning" />
+        {currentRole === "manager"
+          ? <MetricCard label="Corretores no meu time" value={referencesLoading ? "—" : teamBrokers.length} detail="Somente subordinados ativos" trend="ESCOPO" tone="success" />
+          : <MetricCard label="Sem responsável" value={loading ? "—" : pageMetrics.unassigned} detail="Precisam de distribuição" trend="AÇÃO" tone="warning" />}
         <MetricCard label="Ações atrasadas" value={loading ? "—" : pageMetrics.overdue} detail="Follow-up fora do prazo" trend="SLA" tone="danger" />
       </section>
 
@@ -397,9 +405,9 @@ export default function LeadsPage() {
           <option value="Meta Lead Ads">Meta Lead Ads</option>
         </select>
         {currentRole !== "broker" ? <select value={broker} onChange={(event) => updateFilter(setBroker, event.target.value)} aria-label="Filtrar por corretor" disabled={referencesLoading}>
-          <option value="">Todos os corretores</option>
-          <option value="unassigned">Sem responsável</option>
-          {profiles.filter((profile) => ["broker", "manager"].includes(profile.commercial_role || profile.role)).map((profile) => <option key={profile.id} value={profile.id}>{profile.full_name || "Usuário sem nome"}</option>)}
+          <option value="">{currentRole === "manager" ? "Todo o meu time" : "Todos os corretores"}</option>
+          {currentRole !== "manager" ? <option value="unassigned">Sem responsável</option> : null}
+          {(currentRole === "manager" ? teamBrokers : profiles.filter((profile) => ["broker", "manager"].includes(profile.commercial_role || profile.role))).map((profile) => <option key={profile.id} value={profile.id}>{profile.full_name || "Usuário sem nome"}</option>)}
         </select> : null}
         <select value={score} onChange={(event) => updateFilter(setScore, event.target.value)} aria-label="Filtrar por score">
           <option value="">Todos os scores</option>
