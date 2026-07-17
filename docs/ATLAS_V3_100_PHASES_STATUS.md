@@ -930,7 +930,17 @@ Pendência externa: aplicar migration e validar três níveis de liderança, doi
 
 Pendência externa: aplicar migration e validar incorporadoras reais, dois tenants, CNPJ, permissões e vínculos migrados.
 
-Próxima fase: **Fase 62 — Cadastro completo de empreendimentos**, vinculando dados comerciais, localização, tipologia e ciclo de vendas à incorporadora canônica.
+## Fase 62 — Cadastro completo de empreendimentos
+
+**Estado:** 100% implementada e aprovada localmente; migração e portfólio real permanecem para homologação.
+
+**Evolução:** cada empreendimento ganha ficha operacional única, ligada por ID à incorporadora, com identidade, localização, coordenadas, produto, tipologias, faixas, unidades, datas e ciclo comercial.
+
+**Governança:** diretoria/superintendência escrevem por RPC atômica, o banco valida faixas e datas, o nome legado permanece sincronizado e eventos auditam alterações. O contrato está em `config/complete-development-registry.json`, o gate em `npm run development-registry:check` e o roteiro em `docs/COMPLETE_DEVELOPMENT_REGISTRY_PHASE_62.md`.
+
+Pendência externa: aplicar migrations 61–62 e validar portfólio real, dois tenants, permissões, concorrência, geolocalização e dossiê automático.
+
+Próxima fase: **Fase 63 — Catálogo de tipologias e diferenciais**, estruturando os atributos que alimentam busca, matching e IA comercial.
 
 ## Painel das 100 fases
 
