@@ -47,16 +47,16 @@ export async function POST(request: Request) {
     }
 
     let leadContext: Record<string, unknown> | null = null;
-    let persistentCopilot: { id: string; copilot_key: string; memory: unknown; interaction_count: number; learning_version: number } | null = null;
+    let persistentCopilot: { id: string; copilot_key: string; broker_id: string; memory: unknown; interaction_count: number; learning_version: number } | null = null;
     if (leadId) {
       if (!/^[0-9a-f-]{36}$/i.test(leadId)) return NextResponse.json({ error: "Lead inválida." }, { status: 400 });
       await requireLeadAccess(identity, leadId);
       const [{ data: lead }, { data: copilot }] = await Promise.all([
         identity.supabase.from("leads").select("id,name,status,source,score,temperature,assigned_to,development_id,next_action_at,metadata").eq("id", leadId).single(),
-        identity.supabase.from("lead_copilots").select("id,copilot_key,memory,interaction_count,learning_version").eq("lead_id", leadId).maybeSingle(),
+        identity.supabase.from("lead_copilots").select("id,copilot_key,broker_id,memory,interaction_count,learning_version").eq("organization_id", identity.organizationId).eq("lead_id", leadId).maybeSingle(),
       ]);
       leadContext = lead as Record<string, unknown> | null;
-      persistentCopilot = copilot;
+      persistentCopilot = copilot && copilot.broker_id === lead?.assigned_to ? copilot : null;
     }
 
     const operationalContext = await buildRealEstateContext(identity);
@@ -110,10 +110,14 @@ export async function POST(request: Request) {
     }
 
     if (leadId && persistentCopilot) {
-      const memory = persistentCopilot.memory && typeof persistentCopilot.memory === "object" ? persistentCopilot.memory as Record<string, unknown> : {};
-      const recent = Array.isArray(memory.recent) ? memory.recent.slice(-7) : [];
-      recent.push({ at: new Date().toISOString(), question: prompt.slice(0, 500), answer: answer.slice(0, 1500), brokerId: identity.userId });
-      await getSupabaseAdmin().from("lead_copilots").update({ memory: { ...memory, recent }, interaction_count: Number(persistentCopilot.interaction_count || 0) + 1, last_interaction_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", persistentCopilot.id).eq("organization_id", identity.organizationId);
+      const { error: memoryError } = await getSupabaseAdmin().rpc("append_lead_copilot_interaction", {
+        p_organization_id: identity.organizationId,
+        p_lead_id: leadId,
+        p_broker_id: persistentCopilot.broker_id,
+        p_question: prompt.slice(0, 500),
+        p_answer: answer.slice(0, 1500),
+      });
+      if (memoryError) logger.warn("ai.copilot_memory_append_failed", { organizationId: identity.organizationId, leadId, error: memoryError.message });
     }
 
     return NextResponse.json({
@@ -132,7 +136,7 @@ export async function POST(request: Request) {
         operationalContext: true,
         mode,
       },
-      copilot: persistentCopilot ? { id: persistentCopilot.id, key: persistentCopilot.copilot_key, leadId, learningVersion: persistentCopilot.learning_version, persistent: true } : null,
+      copilot: persistentCopilot ? { id: persistentCopilot.id, key: persistentCopilot.copilot_key, leadId, brokerId: persistentCopilot.broker_id, learningVersion: persistentCopilot.learning_version, persistent: true, exclusive: true } : null,
     });
   } catch (error) {
     logger.warn("ai.copilot_failed", { error: error instanceof Error ? error.message : String(error) });

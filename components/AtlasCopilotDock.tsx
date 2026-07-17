@@ -39,6 +39,8 @@ type CopilotCalibration = {
   model?: string;
 };
 
+type PersistentCopilot = { leadId: string; learningVersion: number; persistent: boolean; exclusive: boolean };
+
 const suggestedQuestions = [
   "Quais leads devo priorizar hoje e por quê?",
   "Onde o funil comercial está perdendo velocidade?",
@@ -63,13 +65,14 @@ export default function AtlasCopilotDock() {
   const [copilotError, setCopilotError] = useState("");
   const [copilotSources, setCopilotSources] = useState<CopilotSource[]>([]);
   const [copilotCalibration, setCopilotCalibration] = useState<CopilotCalibration | null>(null);
+  const [persistentCopilot, setPersistentCopilot] = useState<PersistentCopilot | null>(null);
   const [externalContext, setExternalContext] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
     const handleOpen = (event: Event) => {
       const detail = (event as CustomEvent<OpenCopilotDetail>).detail;
       if (detail?.prompt) setPrompt(detail.prompt);
-      if (detail?.context) setExternalContext(detail.context);
+      setExternalContext(detail?.context ?? {});
       setOpen(true);
     };
     const handleShortcut = (event: KeyboardEvent) => {
@@ -135,6 +138,7 @@ export default function AtlasCopilotDock() {
     setCopilotAnswer("");
     setCopilotSources([]);
     setCopilotCalibration(null);
+    setPersistentCopilot(null);
 
     try {
       const { data } = await supabase.auth.getSession();
@@ -169,11 +173,12 @@ export default function AtlasCopilotDock() {
         }),
       });
 
-      const payload = (await response.json()) as { answer?: string; sources?: CopilotSource[]; calibration?: CopilotCalibration; error?: string };
+      const payload = (await response.json()) as { answer?: string; sources?: CopilotSource[]; calibration?: CopilotCalibration; copilot?: PersistentCopilot | null; error?: string };
       if (!response.ok) throw new Error(payload.error || "Falha ao consultar o Atlas Copilot.");
       setCopilotAnswer(payload.answer || "Sem resposta do modelo.");
       setCopilotSources(payload.sources ?? []);
       setCopilotCalibration(payload.calibration ?? null);
+      setPersistentCopilot(payload.copilot ?? null);
     } catch (error) {
       setCopilotError(error instanceof Error ? error.message : "Falha ao consultar o Atlas Copilot.");
     } finally {
@@ -231,6 +236,7 @@ export default function AtlasCopilotDock() {
                 <span className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-400">CALIBRADO · JUL/26</span>
               </div>
               <p className="mt-2 text-xs leading-5 text-slate-500">O Atlas consulta somente seu escopo comercial e diferencia dados internos, referências externas e recomendações.</p>
+              {persistentCopilot?.exclusive ? <div className="mt-3 rounded-2xl border border-emerald-400/15 bg-emerald-400/[.06] px-4 py-3"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-emerald-300">Fase 45 · Copiloto exclusivo</p><p className="mt-1 text-xs text-emerald-50">Memória vinculada somente a esta lead e ao corretor responsável · versão {persistentCopilot.learningVersion}</p></div> : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {suggestedQuestions.map((question) => <button key={question} type="button" onClick={() => setPrompt(question)} className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-left text-[10px] text-slate-400 transition hover:border-sky-400/25 hover:text-sky-200">{question}</button>)}
               </div>

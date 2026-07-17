@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 const root = process.cwd();
 const route = readFileSync(resolve(root, "app/api/ai/copilot/route.ts"), "utf8");
+const exclusiveCopilotMigration = readFileSync(resolve(root, "supabase/migrations/20260717014000_atomic_exclusive_lead_copilot_memory.sql"), "utf8");
 const knowledge = readFileSync(resolve(root, "lib/ai/real-estate-knowledge.ts"), "utf8");
 const context = readFileSync(resolve(root, "lib/ai/real-estate-context.ts"), "utf8");
 const ui = readFileSync(resolve(root, "components/AtlasCopilotDock.tsx"), "utf8");
@@ -136,6 +137,12 @@ const checks = [
   ["cenários de segurança", evals.some((item) => item.id === "privacy") && evals.some((item) => item.id === "off-domain")],
   ["fallback operacional", route.includes("buildFallbackRealEstateAnswer") && fallback.includes("motor imobiliário local")],
   ["modo da resposta visível", ui.includes("Motor local seguro") && ui.includes("IA generativa")],
+  ["copiloto usa o corretor responsável", route.includes("copilot.broker_id === lead?.assigned_to") && route.includes("brokerId: persistentCopilot.broker_id")],
+  ["memória exclusiva exige lead e corretor", exclusiveCopilotMigration.includes("lc.lead_id = p_lead_id") && exclusiveCopilotMigration.includes("lc.broker_id = p_broker_id") && exclusiveCopilotMigration.includes("l.assigned_to = p_broker_id")],
+  ["memória do copiloto é atômica", exclusiveCopilotMigration.includes("for update of lc") && exclusiveCopilotMigration.includes("interaction_count = interaction_count + 1")],
+  ["memória exclusiva não é gravável pelo cliente", exclusiveCopilotMigration.includes("revoke all on function public.append_lead_copilot_interaction") && exclusiveCopilotMigration.includes("to service_role")],
+  ["contexto antigo não vaza ao reabrir copiloto", ui.includes("setExternalContext(detail?.context ?? {})")],
+  ["fase 45 mostra exclusividade ao corretor", ui.includes("Fase 45 · Copiloto exclusivo") && ui.includes("Memória vinculada somente a esta lead e ao corretor responsável")],
   ["diagnóstico sem segredos", statusRoute.includes("gatewayConfigured") && !statusRoute.includes("AI_GATEWAY_API_KEY:" )],
   ["score explicável", qualification.includes("dimensions") && qualification.includes("confidence") && qualification.includes("missingData")],
   ["score com risco temporal", qualification.includes("Próxima ação atrasada") && qualification.includes("Lead antigo sem interação")],
@@ -173,7 +180,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("330 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("336 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["painel comparativo é exclusivo da superintendência", superintendentDashboardRoute.includes('actorRole !== "superintendent"') && superintendentDashboardRoute.includes('scope: "superintendent-dashboard"')],
   ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('roleOf(profile) === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
   ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && superintendentDashboardRoute.match(/\.eq\("organization_id", identity\.access\.organization\.id\)/g)?.length >= 2],
