@@ -7,7 +7,9 @@ const need = (file, ...tokens) => {
 };
 
 need("config/final-design-system.json", '"phase": 2', '"status": "completed"', '"canonical_components"');
-need("config/final-10-phases-improvement.json", '"current_phase": 2', '"completed": [1, 2]');
+const program = JSON.parse(fs.readFileSync("config/final-10-phases-improvement.json", "utf8"));
+checks.push(["config/final-10-phases-improvement.json: fase atual não regrediu", Number(program.current_phase) >= 2]);
+checks.push(["config/final-10-phases-improvement.json: fases 1 e 2 concluídas", [1, 2].every((phase) => program.completed?.includes(phase))]);
 need("components/atlas/metric-card.tsx", "AtlasMetric", "canonicalTone");
 need("components/atlas/status-badge.tsx", "AtlasBadge");
 need("components/atlas/empty-state.tsx", "AtlasEmpty");

@@ -7,7 +7,9 @@ const need = (file, ...tokens) => {
 };
 
 need("config/final-navigation-mobile.json", '"phase": 3', '"mobile_reference_width": 390', '"role_aware_sidebar": true');
-need("config/final-10-phases-improvement.json", '"current_phase": 3', '"completed": [1, 2, 3]');
+const program = JSON.parse(fs.readFileSync("config/final-10-phases-improvement.json", "utf8"));
+checks.push(["config/final-10-phases-improvement.json: fase atual não regrediu", Number(program.current_phase) >= 3]);
+checks.push(["config/final-10-phases-improvement.json: fases 1 a 3 concluídas", [1, 2, 3].every((phase) => program.completed?.includes(phase))]);
 need("components/atlas/app-shell.tsx", "MobileDock");
 need("components/atlas/mobile-dock.tsx", 'aria-label="Ações rápidas"', 'aria-current', "atlas:open-command-palette");
 need("components/atlas/sidebar.tsx", "visibleItems", "item.roles", 'aria-current');
