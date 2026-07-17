@@ -52,6 +52,9 @@ const whatsappHealth = readFileSync(resolve(root, "app/api/v1/integrations/whats
 const whatsappHealthPage = readFileSync(resolve(root, "app/(crm)/integrations/whatsapp/page.tsx"), "utf8");
 const experienceMigration = readFileSync(resolve(root, "supabase/migrations/20260717001011_whatsapp_experience_and_external_sales_control.sql"), "utf8");
 const paymentRuleMigration = readFileSync(resolve(root, "supabase/migrations/20260717002702_developer_payment_flow_rules.sql"), "utf8");
+const atomicPaymentRuleMigration = readFileSync(resolve(root, "supabase/migrations/20260717012000_atomic_developer_payment_rule_versioning.sql"), "utf8");
+const paymentRuleRoute = readFileSync(resolve(root, "app/api/v1/developers/payment-rules/route.ts"), "utf8");
+const paymentRulePage = readFileSync(resolve(root, "app/(crm)/developments/payment-rules/page.tsx"), "utf8");
 const commercialSimulation = readFileSync(resolve(root, "app/api/v1/leads/[id]/commercial-simulation/route.ts"), "utf8");
 const readinessRoute = readFileSync(resolve(root, "app/api/v1/ready/route.ts"), "utf8");
 const integrationsRoute = readFileSync(resolve(root, "app/api/v1/integrations/route.ts"), "utf8");
@@ -144,7 +147,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("240 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("246 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -247,6 +250,12 @@ const checks = [
   ["compra externa não infla receita própria", experienceMigration.includes("external_sales_records") && experienceMigration.includes("status = 'comprou_outro'")],
   ["venda externa é exclusiva da diretoria", experienceMigration.includes("external_sales_director_scope") && experienceMigration.includes("commercial_role")],
   ["regra de pagamento preserva versões", paymentRuleMigration.includes("developer_payment_flow_rules") && paymentRuleMigration.includes("version integer") && paymentRuleMigration.includes("where active")],
+  ["versionamento de pagamento é atômico", atomicPaymentRuleMigration.includes("version_developer_payment_rule") && atomicPaymentRuleMigration.includes("pg_advisory_xact_lock")],
+  ["falha não deixa incorporadora sem regra", atomicPaymentRuleMigration.includes("update public.developer_payment_flow_rules") && atomicPaymentRuleMigration.includes("insert into public.developer_payment_flow_rules") && atomicPaymentRuleMigration.includes("begin;")],
+  ["versionamento exige gestão autorizada", atomicPaymentRuleMigration.includes("commercial_role in ('director', 'superintendent')") && atomicPaymentRuleMigration.includes("payment_rule_forbidden")],
+  ["função de regra não é pública", atomicPaymentRuleMigration.includes("revoke all on function") && atomicPaymentRuleMigration.includes("to service_role")],
+  ["API valida números e vigência", paymentRuleRoute.includes("Number.isInteger(installmentsCount)") && paymentRuleRoute.includes("validUntil < validFrom")],
+  ["painel comprova histórico da fase 30", paymentRuleRoute.includes("historyPreserved") && paymentRulePage.includes("Fase 30 · Evidência automática") && paymentRulePage.includes("CRIAR 2ª VERSÃO")],
   ["simulação fotografa regra vigente", commercialSimulation.includes("rule_snapshot") && commercialSimulation.includes("Simulação preliminar") && commercialSimulation.includes("valid_until")],
   ["preflight cobre APIs da Hostinger", systemHealthRoute.includes("hostinger") && systemHealthRoute.includes("workerSecret") && systemHealthRoute.includes("openai") && systemHealthRoute.includes("meta") && systemHealthRoute.includes("whatsapp")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
