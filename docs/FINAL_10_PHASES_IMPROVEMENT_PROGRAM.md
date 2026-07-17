@@ -54,9 +54,11 @@ Medir banco, APIs, filas, renderização, acessibilidade, mobile, dois tenants e
 
 Entrega: `FINAL_PHASE_9_RELIABILITY_HOMOLOGATION.md`, evidência ausente bloqueante, consultas operacionais limitadas e verificação automática `final-reliability:check`. Evidências reais de restore, rollback, dois tenants, quatro perfis e HTTPS permanecem obrigatórias no ambiente.
 
-## 10. Regressão e pacote Hostinger final
+## 10. Regressão e pacote Hostinger final — concluída
 
 Executar build completo, smoke HTTPS, manifesto, inventário interno, checksum reproduzível e runbook. Aceite: GO executivo registrado e ZIP verificado sem segredos ou dados pessoais.
+
+Entrega: `FINAL_PHASE_10_REGRESSION_HOSTINGER_PACKAGE.md`, contrato de fechamento, regressão local e verificação automática `final-package:check`. O ZIP é candidato de homologação; smoke HTTPS e GO executivo continuam externos e bloqueantes.
 
 ## Ordem de execução
 

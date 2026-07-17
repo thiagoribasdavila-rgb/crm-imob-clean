@@ -21,6 +21,7 @@
     { "name": "ATLAS_ENVIRONMENT_ID", "scope": "server", "requirement": "required", "secret": false, "purpose": "Identidade exclusiva da instalação." },
     { "name": "ATLAS_DATABASE_ENVIRONMENT", "scope": "server", "requirement": "required", "secret": false, "purpose": "Estágio declarado do banco conectado." },
     { "name": "ATLAS_HOSTING_PROVIDER", "scope": "server", "requirement": "required", "secret": false, "purpose": "Provedor que executa a aplicação." },
+    { "name": "ATLAS_SMOKE_BASE_URL", "scope": "server", "requirement": "optional", "secret": false, "purpose": "URL HTTPS temporária usada pelo smoke do artefato publicado." },
 
     { "name": "ATLAS_BOOTSTRAP_SECRET", "scope": "server", "requirement": "temporary", "secret": true, "purpose": "Criação inicial do administrador; proibido em produção." },
     { "name": "ATLAS_TEST_EMAIL", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Conta exclusiva de homologação." },

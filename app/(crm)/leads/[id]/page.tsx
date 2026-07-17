@@ -852,8 +852,7 @@ export default function LeadDetailPage() {
                 "pt-BR",
                 { hour: "2-digit", minute: "2-digit" },
               )}
-              . Se houver interação registrada, a lead não será devolvida
-              automaticamente.
+              . Se houver interação registrada, a lead não será devolvida automaticamente.
             </p>
           </div>
           <button

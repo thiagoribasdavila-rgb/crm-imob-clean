@@ -388,7 +388,7 @@ export default function PipelinePage() {
           </div>
         </div>
         <div className="atlas-kanban-mobile-nav" role="tablist" aria-label="Escolher etapa no celular">{boardStages.map((stage) => <button key={stage.key} type="button" role="tab" aria-selected={activeMobileStage === stage.key} onClick={() => setMobileStage(stage.key)} className={activeMobileStage === stage.key ? "is-active" : ""}><span>{stage.label}</span><b>{stage.items.length}</b></button>)}</div>
-        <div className="atlas-kanban-scroll p-4 sm:p-6" tabIndex={0} aria-label="Quadro Kanban com rolagem horizontal">
+        <div className="atlas-kanban-scroll p-4 sm:p-6" tabIndex={0} aria-label="Quadro Kanban com rolagem horizontal" aria-busy={loading}>
           <div className={`atlas-kanban-board ${compact ? "is-compact" : ""}`} style={{ "--kanban-columns": boardStages.length } as CSSProperties} aria-busy={loading || Boolean(savingId)}>
             {boardStages.map((stage) => (
               <section key={stage.key} role="tabpanel" aria-label={`${stage.label}: ${stage.items.length} leads`} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""} ${activeMobileStage !== stage.key ? "is-mobile-hidden" : ""}`}>
