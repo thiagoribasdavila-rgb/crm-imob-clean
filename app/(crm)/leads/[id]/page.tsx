@@ -28,7 +28,8 @@ type DataQuality = { completeness: number; completedFields: number; totalFields:
 type UnifiedProfile = { conversations: Array<{ id: string; status: string; channel: string; last_message_at: string | null; unread_count: number }>; tasks: Array<{ id: string; status: string; due_at: string | null; priority: string | null }>; campaignEvents: Array<{ id: string; event_type: string; occurred_at: string }>; sources: string[] };
 type ContactBriefing = { unreadMessages: number; openTasks: number; activeOpportunities: number; lastInteractionAt: string | null; context: string; actions: string[]; generatedBy: string; requiresApproval: boolean };
 type RelationshipContext = { owner: { id: string; full_name: string | null; commercial_role: string | null; role: string } | null; development: { id: string; name: string; developer_name: string | null; status: string | null; city: string | null } | null; campaign: { id: string; name: string; channel: string | null; status: string | null } | null; communications: { conversations: number; messages: number; inbound: number; outbound: number; unread: number; channels: string[]; lastMessageAt: string | null }; origin: { source: string; createdAt: string | null; campaignEvents: number; historicalMemories: number } };
-type Payload = { lead: LeadRow; activities: ActivityRow[]; properties: PropertyRow[]; opportunities: OpportunityRow[]; experienceSignals: ExperienceRow[]; proposals: ProposalRow[]; dataQuality: DataQuality; unifiedProfile: UnifiedProfile; contactBriefing: ContactBriefing; relationshipContext: RelationshipContext };
+type AssignmentReservation={id:string;broker_id:string;status:"pending"|"accepted"|"expired"|"released"|"superseded";reserved_at:string;expires_at:string;accepted_at:string|null;released_at:string|null;release_reason:string|null};
+type Payload = { lead: LeadRow; activities: ActivityRow[]; properties: PropertyRow[]; opportunities: OpportunityRow[]; experienceSignals: ExperienceRow[]; proposals: ProposalRow[]; dataQuality: DataQuality; unifiedProfile: UnifiedProfile; contactBriefing: ContactBriefing; relationshipContext: RelationshipContext;assignmentReservation:AssignmentReservation|null };
 type Qualification = {
   score: number; temperature: "frio" | "morno" | "quente"; confidence: number;
   dimensions: Array<{ key: string; label: string; score: number; maximum: number; reasons: string[] }>;
@@ -57,6 +58,7 @@ export default function LeadDetailPage() {
   const [unifiedProfile, setUnifiedProfile] = useState<UnifiedProfile | null>(null);
   const [contactBriefing, setContactBriefing] = useState<ContactBriefing | null>(null);
   const [relationshipContext, setRelationshipContext] = useState<RelationshipContext | null>(null);
+  const [assignmentReservation,setAssignmentReservation]=useState<AssignmentReservation|null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -95,6 +97,7 @@ export default function LeadDetailPage() {
       setUnifiedProfile(data.unifiedProfile);
       setContactBriefing(data.contactBriefing);
       setRelationshipContext(data.relationshipContext);
+      setAssignmentReservation(data.assignmentReservation);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Falha ao carregar o lead.");
     } finally {
@@ -184,6 +187,10 @@ export default function LeadDetailPage() {
     }
   }
 
+  async function acceptAssignment(){
+    try{await api(`/api/v1/leads/${leadId}`,{method:"POST",body:JSON.stringify({action:"accept_assignment"})});setMessage("Lead aceita. A carteira permanece com você e o aceite foi registrado.");await load()}catch(error){setMessage(error instanceof Error?error.message:"Não foi possível aceitar a lead.")}
+  }
+
   async function simulate(propertyId: string) {
     setMessage(null);
     try {
@@ -261,6 +268,8 @@ export default function LeadDetailPage() {
       </section>
 
       {message ? <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 p-4 text-sm text-sky-100">{message}</div> : null}
+
+      {assignmentReservation?.status==="pending"?<section data-phase="58-lead-reservation" className="flex flex-col gap-4 rounded-3xl border border-amber-400/25 bg-amber-400/[.07] p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="atlas-eyebrow text-amber-200">Fase 58 · Reserva aguardando aceite</p><h2 className="mt-2 text-lg font-semibold text-white">Confirme que você assumirá este atendimento</h2><p className="mt-1 text-xs leading-5 text-slate-400">Aceite até {new Date(assignmentReservation.expires_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}. Se houver interação registrada, a lead não será devolvida automaticamente.</p></div><button type="button" onClick={()=>void acceptAssignment()} className="atlas-button-primary">Aceitar lead</button></section>:null}
 
       {dataQuality?.questions.length ? <AtlasCard><div data-phase="30-data-gaps"><AtlasCardHeader eyebrow="Fase 30 · Dados úteis" title="Pergunte menos e descubra o que realmente ajuda a vender" description="As lacunas são priorizadas pelo impacto em contato, intenção, matching e continuidade. A análise local não gera custo de IA." action={<AtlasBadge tone="warning">{dataQuality.completeness}% COMPLETO</AtlasBadge>} /><div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-3">{dataQuality.questions.slice(0, 6).map((question, index) => <article key={question.key} className={`rounded-2xl border p-4 ${index === 0 ? "border-cyan-300/30 bg-cyan-400/[.07]" : "border-white/[.07] bg-white/[.025]"}`}><div className="flex items-center justify-between gap-2"><AtlasBadge tone={question.priority === "critical" ? "danger" : question.priority === "high" ? "warning" : "info"}>{question.label}</AtlasBadge>{index === 0 ? <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-200">Pergunte agora</span> : null}</div><strong className="mt-3 block text-sm leading-6 text-white">{question.question}</strong><p className="mt-1 text-xs leading-5 text-slate-500">{question.why}</p>{question.options ? <div className="mt-3 flex flex-wrap gap-2">{question.options.map((option) => <button key={option.value} type="button" disabled={qualifying} onClick={() => void qualifyLead({ [question.key]: option.value })} className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-cyan-100 hover:border-cyan-400/40 disabled:opacity-50">{option.label}</button>)}</div> : <button type="button" onClick={() => actOnGap(question)} className="atlas-button-secondary mt-3">{question.action === "navigate" ? "Abrir ação" : "Preencher agora"}</button>}</article>)}</div><div className="border-t border-white/[.06] px-5 py-4 text-[11px] leading-5 text-slate-500 sm:px-6">A completude é ponderada pelo valor comercial do dado. CPF, CNPJ, endereço exato e documentos não aumentam score nem são enviados às IAs.</div></div></AtlasCard> : dataQuality?.status === "complete" ? <div data-phase="30-data-gaps" className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[.06] p-5 text-sm text-emerald-100">Perfil comercial completo. Confirme apenas mudanças naturais na próxima conversa.</div> : null}
 

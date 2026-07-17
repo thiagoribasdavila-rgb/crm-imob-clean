@@ -43,11 +43,12 @@ export async function GET(request: Request, context: RouteContext) {
 
     const lead = leadResult.data;
     const conversationIds = (conversationResult.data ?? []).map((conversation) => conversation.id);
-    const [ownerResult, developmentResult, campaignLookupResult, messageResult] = await Promise.all([
+    const [ownerResult, developmentResult, campaignLookupResult, messageResult, reservationResult] = await Promise.all([
       lead.assigned_to ? admin.from("profiles").select("id,full_name,commercial_role,role").eq("id", lead.assigned_to).eq("organization_id", identity.organizationId).maybeSingle() : Promise.resolve({ data: null, error: null }),
       lead.development_id ? admin.from("developments").select("id,name,developer_name,status,city").eq("id", lead.development_id).eq("organization_id", identity.organizationId).maybeSingle() : Promise.resolve({ data: null, error: null }),
       lead.campaign_id ? admin.from("campaigns").select("id,name,channel,status").eq("id", lead.campaign_id).eq("organization_id", identity.organizationId).maybeSingle() : Promise.resolve({ data: null, error: null }),
       conversationIds.length ? identity.supabase.from("messages").select("id,conversation_id,direction,channel,status,created_at").eq("organization_id", identity.organizationId).in("conversation_id", conversationIds).order("created_at", { ascending: false }).limit(200) : Promise.resolve({ data: [], error: null }),
+      identity.supabase.from("lead_assignment_reservations").select("id,broker_id,status,reserved_at,expires_at,accepted_at,released_at,release_reason").eq("lead_id",id).eq("organization_id",identity.organizationId).order("created_at",{ascending:false}).limit(1).maybeSingle(),
     ]);
     const completeness = assessLeadCompleteness(lead, (activityResult.data?.length ?? 0) > 0);
     const fields = completeness.fields;
@@ -82,6 +83,7 @@ export async function GET(request: Request, context: RouteContext) {
       relationshipContext: { owner: ownerResult.data, development: developmentResult.data, campaign: campaignLookupResult.data, communications: { conversations: conversationResult.data?.length ?? 0, messages: messageResult.data?.length ?? 0, inbound: (messageResult.data ?? []).filter((message) => message.direction === "inbound").length, outbound: (messageResult.data ?? []).filter((message) => message.direction === "outbound").length, unread: unreadMessages, channels: [...new Set((messageResult.data ?? []).map((message) => message.channel).filter(Boolean))], lastMessageAt: messageResult.data?.[0]?.created_at || null }, origin: { source: lead.source || "Não informada", createdAt: lead.created_at, campaignEvents: campaignResult.data?.length ?? 0, historicalMemories: sourceMemoryResult.data?.length ?? 0 } },
       dataQuality: { completeness: completeness.completeness, completedFields, totalFields: completeness.totalFields, missing: fields.filter((field) => !field.complete).map(({ key, label }) => ({ key, label })), inconsistencies, status: inconsistencies.length ? "review" : completedFields === completeness.totalFields ? "complete" : "enrich", recommendation: inconsistencies[0] || completeness.nextQuestion?.question || "Perfil consistente e pronto para personalização.", nextQuestion: completeness.nextQuestion, questions: completeness.questions, calculation: "weighted_commercial_completeness_v1" },
       contactBriefing: { unreadMessages, openTasks: openTasks.length, activeOpportunities: activeOpportunities.length, lastInteractionAt: activities[0]?.occurred_at || null, context: activities[0]?.description || activities[0]?.title || "Ainda não há interação registrada com este cliente.", actions: briefingActions.length ? briefingActions : ["Validar interesse atual e combinar a próxima ação com data."], generatedBy: "Atlas Intelligence local", requiresApproval: true },
+      assignmentReservation: reservationResult.data ?? null,
     });
   } catch (error) {
     logger.warn("lead.intelligence.read_failed", { error: error instanceof Error ? error.message : String(error) });
@@ -157,6 +159,12 @@ export async function POST(request: Request, context: RouteContext) {
 
     const { data: lead } = await admin.from("leads").select("id,budget_max,source,metadata,created_at,last_interaction_at").eq("id", id).eq("organization_id", identity.organizationId).single();
     if (!lead) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
+
+    if(body.action==="accept_assignment"){
+      const{data,error}=await admin.rpc("accept_lead_assignment",{p_actor_id:identity.userId,p_organization_id:identity.organizationId,p_lead_id:id});
+      if(error)return NextResponse.json({error:error.message},{status:409});
+      return NextResponse.json({reservation:data});
+    }
 
     if (body.action === "activity") {
       const title = String(body.title || "").trim();

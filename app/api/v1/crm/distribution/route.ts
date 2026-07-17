@@ -145,11 +145,12 @@ export async function POST(request: NextRequest) {
   }
   if (body.action !== "distribute" || !body.developmentId) return apiError("INVALID_REQUEST", "Projeto ou ação inválida.", identity.meta, { status: 400 });
   const limit = Math.min(100, Math.max(1, Math.floor(body.limit ?? 1)));
-  const { data, error } = await admin.rpc("distribute_project_leads_v3", {
+  const { data, error } = await admin.rpc("distribute_project_leads_v4", {
     p_actor_id: identity.access.profile.id,
     p_organization_id: identity.access.organization.id,
     p_development_id: body.developmentId,
     p_limit: limit,
+    p_acceptance_minutes: 5,
   });
   if (error) return apiError("DISTRIBUTION_FAILED", error.message, identity.meta, { status: 409 });
   return apiSuccess(data, identity.meta, { headers: limited.headers });

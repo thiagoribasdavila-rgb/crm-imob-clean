@@ -892,7 +892,17 @@ Pendência externa: aplicar migration e validar dois tenants, carga real, todos 
 
 Pendência externa: aplicar migration e validar dois tenants, origens, projetos, SLA, capacidade, concorrência e evento sem PII.
 
-Próxima fase: **Fase 58 — Reserva e devolução de leads**, controlando aceite, expiração e retorno seguro à fila.
+## Fase 58 — Reserva, aceite e devolução segura
+
+**Estado:** 100% implementada e aprovada localmente; cron, concorrência e usuários reais permanecem para homologação.
+
+**Evolução:** cada distribuição cria reserva de cinco minutos. O corretor aceita na Lead 360; sem aceite ou interação, o worker protegido devolve a lead e tarefas abertas à fila.
+
+**Proteções:** interação iniciada impede devolução; troca de responsável supera a reserva; o worker não contata clientes. O contrato está em `config/lead-assignment-reservations.json`, o gate em `npm run lead-reservation:check` e o roteiro em `docs/LEAD_ASSIGNMENT_RESERVATIONS_PHASE_58.md`.
+
+Pendência externa: aplicar migration, configurar cron Hostinger e validar aceite, expiração, interação, concorrência, tarefas e dois tenants.
+
+Próxima fase: **Fase 59 — Histórico e auditoria da carteira**, consolidando atribuições, aceites, devoluções e capacidade em uma visão gerencial.
 
 ## Painel das 100 fases
 
