@@ -872,7 +872,17 @@ Pendência externa: aplicar migration e validar dois tenants, equipe real, proje
 
 Pendência externa: aplicar migration e validar dois tenants, equipe real, projetos, pesos, concorrência, tarefas e lote de até 200 leads.
 
-Próxima fase: **Fase 56 — Limites de carteira por corretor**, evitando sobrecarga sem criar ranking injusto de pessoas.
+## Fase 56 — Limites de carteira por corretor
+
+**Estado:** 100% implementada e aprovada localmente; carga e concorrência reais permanecem para homologação.
+
+**Evolução:** o gerente define teto total, teto por projeto, alerta e motivo. A capacidade representa condição operacional, sem meta, score ou ranking de pessoas.
+
+**Proteção universal:** o banco bloqueia novas atribuições acima do teto em todos os caminhos do CRM e usa trava por corretor contra concorrência. Carteiras encerradas não consomem capacidade; reduzir um teto não remove leads atuais. O contrato está em `config/broker-portfolio-capacity.json`, o gate em `npm run broker-capacity:check` e o roteiro em `docs/BROKER_PORTFOLIO_CAPACITY_PHASE_56.md`.
+
+Pendência externa: aplicar migration e validar dois tenants, carga real, todos os caminhos de atribuição, projetos e concorrência.
+
+Próxima fase: **Fase 57 — Regras de prioridade de distribuição**, combinando SLA, projeto e origem sem discriminação de pessoas.
 
 ## Painel das 100 fases
 
