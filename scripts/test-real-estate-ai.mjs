@@ -98,6 +98,9 @@ const commercialHierarchyContract = readFileSync(resolve(root, "config/commercia
 const commercialHierarchyCheck = readFileSync(resolve(root, "scripts/check-commercial-hierarchy.mjs"), "utf8");
 const teamManagementRoute = readFileSync(resolve(root, "app/api/v1/team/route.ts"), "utf8");
 const teamManagementPage = readFileSync(resolve(root, "app/(crm)/settings/team/page.tsx"), "utf8");
+const hierarchyEnforcementContract = readFileSync(resolve(root, "config/hierarchy-enforcement.json"), "utf8");
+const hierarchyEnforcementCheck = readFileSync(resolve(root, "scripts/check-hierarchy-enforcement.mjs"), "utf8");
+const leadExportRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/export/route.ts"), "utf8");
 const sessionPanel = readFileSync(resolve(root, "app/(crm)/settings/profile/SessionSecurityPanel.tsx"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
@@ -526,6 +529,7 @@ const checks = [
   ["sessões renovam e revogam por escopo explícito", sessionContract.includes('"current": "local"') && sessionCheck.includes("logout rápido não está limitado") && sessionRoute.includes('action === "others"') && sessionPanel.includes("Encerrar todos") && hundredPhaseStatus.includes("Fase 13 — Sessões")],
   ["primeiro administrador usa bootstrap temporário e removível", adminBootstrapContract.includes('"diagnosticMode": "read-only"') && adminBootstrapCheck.includes("produção bloqueada") && adminBootstrapRoute.includes("timingSafeEqual") && hundredPhaseStatus.includes("Fase 14 — Primeiro administrador")],
   ["hierarquia comercial protege os quatro níveis", commercialHierarchyContract.includes('"broker": "self-and-owned-leads"') && commercialHierarchyCheck.includes("campos protegidos") && teamManagementRoute.includes("inviteUserByEmail") && teamManagementPage.includes("Equipe com visão por nível") && hundredPhaseStatus.includes("Fase 15 — Perfis e hierarquia")],
+  ["hierarquia alcança frontend APIs banco exportações relatórios e integrações", hierarchyEnforcementContract.includes('"strategicDecisionRole": "director"') && hierarchyEnforcementCheck.includes("6 camadas") && leadExportRoute.includes("personalContactFieldsReturned: false") && hundredPhaseStatus.includes("Fase 16 — Hierarquia")],
   ["hub omnichannel remove segredos históricos", integrationsRoute.includes("sanitizeForResponse") && integrationsRoute.includes("secretsInDatabase: false")],
   ["hub não inventa conexão", integrationsPage.includes("Conectado só quando foi comprovado") && integrationsPage.includes('connection?.status === "connected"') && !integrationsPage.includes('status: "connected"')],
   ["recuperação usa PKCE no servidor", recoveryRoute.includes("createClient") && recoveryRoute.includes("resetPasswordForEmail") && recoveryRoute.includes("/auth/callback")],

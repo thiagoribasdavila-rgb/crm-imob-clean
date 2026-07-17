@@ -3,6 +3,7 @@ import { requireApiIdentity } from "@/lib/security/api-auth";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { isDirectorProfile } from "@/lib/api/security";
 
 export const dynamic = "force-dynamic";
 
@@ -28,13 +29,13 @@ export async function POST(request: Request) {
     const admin = getSupabaseAdmin();
     const { data: profile } = await admin
       .from("profiles")
-      .select("role")
+      .select("role,commercial_role")
       .eq("id", identity.userId)
       .eq("organization_id", identity.organizationId)
       .single();
 
-    if (!profile || !["admin", "manager"].includes(String(profile.role))) {
-      return NextResponse.json({ error: "Apenas administradores e gestores podem publicar produtos de dados." }, { status: 403 });
+    if (!profile || !isDirectorProfile({ role: profile.role, commercial_role: profile.commercial_role })) {
+      return NextResponse.json({ error: "Publicação de produtos de dados é exclusiva da diretoria." }, { status: 403 });
     }
 
     const body = (await request.json()) as Payload;

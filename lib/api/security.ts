@@ -6,7 +6,18 @@ import { getSupabasePublicConfig } from "@/utils/supabase/env";
 
 type RateBucket = { count: number; resetAt: number };
 
-type AtlasRole = "admin" | "director" | "superintendent" | "manager" | "broker" | "viewer" | string;
+export type AtlasRole = "admin" | "director" | "superintendent" | "manager" | "broker" | "viewer" | string;
+export type CommercialRole = "director" | "superintendent" | "manager" | "broker";
+
+export function resolveCommercialRole(profile: { role: AtlasRole; commercialRole?: AtlasRole | null; commercial_role?: AtlasRole | null }): AtlasRole {
+  const commercialRole = profile.commercialRole ?? profile.commercial_role;
+  if (commercialRole) return commercialRole;
+  return profile.role === "admin" ? "director" : profile.role;
+}
+
+export function isDirectorProfile(profile: { role: AtlasRole; commercialRole?: AtlasRole | null; commercial_role?: AtlasRole | null }) {
+  return resolveCommercialRole(profile) === "director";
+}
 
 type AccessContext = {
   user: {
@@ -194,7 +205,8 @@ export async function requireAccessContext(
     };
   }
 
-  if (options.roles?.length && !options.roles.includes(profile.role)) {
+  const effectiveRole = resolveCommercialRole({ role: profile.role, commercial_role: profile.commercial_role });
+  if (options.roles?.length && !options.roles.includes(effectiveRole)) {
     return {
       ok: false as const,
       response: apiError("FORBIDDEN", "Permissão insuficiente para esta operação.", auth.meta, { status: 403 }),

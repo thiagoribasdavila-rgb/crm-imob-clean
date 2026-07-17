@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "layers": ["frontend", "api", "database", "exports", "reports", "integrations"],
+  "effectiveRoleSource": "profiles.commercial_role-with-legacy-fallback",
+  "roleOrder": ["director", "superintendent", "manager", "broker"],
+  "strategicDecisionRole": "director",
+  "exportPolicy": {
+    "respectsRls": true,
+    "explicitOrganizationFilter": true,
+    "brokerExplicitOwnerFilter": true,
+    "maximumRows": 10000,
+    "personalContactFieldsReturned": false,
+    "spreadsheetFormulaNeutralization": true
+  },
+  "invariants": [
+    "commercial_role overrides legacy role",
+    "director-only integrations never accept legacy manager",
+    "campaign decisions remain exclusive to the director",
+    "frontend visibility never replaces API or RLS authorization",
+    "exports use the same hierarchy as the CRM"
+  ]
+}

@@ -419,7 +419,28 @@ Evidências: `config/commercial-hierarchy.json`, `/api/v1/team`, `/settings/team
 
 Pendência externa: aplicar a migration no Supabase de homologação e testar com quatro contas reais e uma segunda organização, comprovando visibilidade, convite, desativação e bloqueio lateral. Nenhum convite foi enviado pelos testes locais.
 
-Próxima fase: **Fase 16 — Diretor**, fechando a visão integral e os controles exclusivos da diretoria.
+Próxima fase: **Fase 16 — Hierarquia**, aplicando os quatro níveis em todas as camadas.
+
+### Fase 16 — Hierarquia
+
+Percentual anterior: **81%**. Percentual após implementação e testes locais: **100%**. Estado: **Testada**.
+
+- O papel efetivo passou a ser resolvido centralmente: `commercial_role` prevalece e o papel legado serve apenas como compatibilidade controlada.
+- Autorizações declarativas das APIs agora comparam o papel comercial efetivo, evitando que superintendente e gerente sejam confundidos pelo legado `manager`.
+- Frontend mantém menus distintos para diretor, superintendente, gerente e corretor; ocultar um item nunca substitui a autorização da API e do banco.
+- Banco preserva isolamento por organização, descendência comercial, carteira e campos de autorização protegidos.
+- A exportação de leads deixou de ser uma tela fictícia e passou a gerar CSV real sob a mesma RLS do CRM.
+- Diretor exporta a organização; superintendente, estruturas subordinadas; gerente, o time; corretor, somente a própria carteira.
+- CSV exclui telefone, e-mail e documentos, neutraliza fórmulas, limita dez mil linhas, não usa cache e registra escopo e volume em log seguro.
+- Relatórios financeiros continuam exclusivos da diretoria e as decisões de campanha permanecem humanas e exclusivas do diretor.
+- Reprocessamento de integrações e publicação de produtos de dados deixaram de aceitar o papel legado genérico de gerente.
+- O motor de decisões bloqueia explicitamente otimização de campanha para superintendente e gerente.
+
+Evidências: `config/hierarchy-enforcement.json`, `lib/api/security.ts`, `/api/v1/crm/leads/export`, `/leads/export` e `npm run hierarchy-enforcement:check`.
+
+Pendência externa: após aplicar as migrations em homologação, executar a matriz com quatro contas e duas organizações nas seis camadas, comparar contagens e tentar acessos laterais manuais. Nenhum dado foi exportado pelos testes locais.
+
+Próxima fase: **Fase 17 — RLS**, auditando tabela por tabela o isolamento por empresa, usuário, equipe, carteira e função.
 
 ## Painel das 100 fases
 
