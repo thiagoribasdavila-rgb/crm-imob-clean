@@ -1909,6 +1909,30 @@ textarea:focus {
   }
 }
 
+/* Lead 360 — prioridade visual para a ação que move a venda */
+.atlas-lead-primary-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.atlas-lead-more-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; max-width: 760px; margin-top: 10px; padding: 10px; border: 1px solid rgba(255,255,255,.07); border-radius: 16px; background: rgba(3,8,18,.42); animation: atlas-filter-reveal .2s ease both; }
+.atlas-lead-more-actions a, .atlas-lead-more-actions button { min-height: 38px; padding: 0 11px; border: 1px solid transparent; border-radius: 10px; color: #8fa0b7; background: transparent; font-size: 10px; font-weight: 650; text-align: left; transition: all .18s ease; }
+.atlas-lead-more-actions a:hover, .atlas-lead-more-actions button:hover { border-color: rgba(56,189,248,.16); color: #e0f2fe; background: rgba(56,189,248,.055); }
+@media (min-width: 760px) { .atlas-lead-more-actions { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media (max-width: 639px) { .atlas-lead-primary-actions > * { flex: 1 1 calc(50% - 5px); } .atlas-lead-primary-actions > :first-child { flex-basis: 100%; } .atlas-lead-more-actions { grid-template-columns: 1fr 1fr; } }
+
+/* CRM focus mode — busca imediata e filtros sob demanda */
+.atlas-leads-filter-panel { display: block; padding: 10px; border-color: rgba(255,255,255,.085); background: linear-gradient(145deg, rgba(255,255,255,.04), rgba(8,14,27,.84)); box-shadow: inset 0 1px rgba(255,255,255,.045), 0 16px 45px rgba(0,0,0,.12); }
+.atlas-leads-filter-top { display: flex; align-items: center; gap: 8px; }
+.atlas-leads-filter-top .atlas-leads-search { min-height: 48px; flex: 1; border-color: transparent; background: rgba(255,255,255,.026); }
+.atlas-leads-search kbd { flex: 0 0 auto; border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 4px 6px; color: #56667d; background: rgba(255,255,255,.025); font: 9px var(--font-mono); }
+.atlas-filter-toggle { display: inline-flex; min-height: 48px; align-items: center; gap: 8px; padding: 0 14px; border: 1px solid rgba(255,255,255,.08); border-radius: 13px; color: #b5c1d1; background: rgba(255,255,255,.026); font-size: 11px; font-weight: 700; transition: all .18s ease; }
+.atlas-filter-toggle:hover, .atlas-filter-toggle[aria-expanded="true"] { border-color: rgba(56,189,248,.22); color: #e0f2fe; background: rgba(56,189,248,.07); }
+.atlas-filter-toggle strong { display: grid; min-width: 20px; height: 20px; place-items: center; border-radius: 999px; color: #07111f; background: #7dd3fc; font-size: 9px; }
+.atlas-leads-filter-top .atlas-clear-filters { min-height: 48px; }
+.atlas-leads-advanced-filters { display: grid; gap: 8px; margin-top: 9px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.055); animation: atlas-filter-reveal .2s ease both; }
+.atlas-leads-advanced-filters select, .atlas-filter-input-wrap input { width: 100%; min-width: 0; min-height: 44px; padding: 0 34px 0 12px; border: 1px solid var(--atlas-border); border-radius: 12px; color: #cdd7e5; background: #0a1120; font-size: 11px; }
+@keyframes atlas-filter-reveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@media (min-width: 760px) { .atlas-leads-advanced-filters { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media (min-width: 1180px) { .atlas-leads-advanced-filters { grid-template-columns: repeat(4,minmax(0,1fr)); } }
+@media (max-width: 639px) { .atlas-leads-filter-top { align-items: stretch; flex-wrap: wrap; } .atlas-leads-filter-top .atlas-leads-search { flex-basis: 100%; } .atlas-leads-search kbd { display: none; } .atlas-filter-toggle { flex: 1; justify-content: center; } }
+
 /* Atlas Spatial UI — acabamento global futurista e minimalista */
 .atlas-ambient {
   position: fixed;
