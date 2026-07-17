@@ -68,6 +68,8 @@ export async function POST(request: Request) {
     let mode: "generative" | "local-fallback" = "generative";
     let provider = "local";
     let model = "deterministic-safe-fallback";
+    let estimatedCostUsd = 0;
+    let pricingConfigured = false;
     const complexity = assessAIComplexity(prompt);
     const task = selectCopilotTask(prompt);
     const contextPackage = await buildGovernedRealEstateAIContext(identity, { task, purpose: "commercial-copilot", leadId: leadId || undefined, prompt });
@@ -88,6 +90,7 @@ export async function POST(request: Request) {
       organizationId: identity.organizationId,
       userId: identity.userId,
       feature: "copilot",
+      signal: request.signal,
       system: [
         "Você é o Atlas Copilot Imobiliário, especialista no mercado imobiliário brasileiro e na operação de lançamentos.",
         "Seu público inclui corretores, gerentes, superintendentes, diretores e incorporadoras.",
@@ -121,8 +124,11 @@ export async function POST(request: Request) {
       answer = result.text;
       provider = result.provider;
       model = result.model;
+      estimatedCostUsd = result.cost?.estimatedUsd ?? 0;
+      pricingConfigured = result.cost?.pricingConfigured ?? false;
       mode = result.provider === "local" ? "local-fallback" : "generative";
     } catch (providerError) {
+      if (request.signal.aborted) throw providerError;
       mode = "local-fallback";
       answer = buildFallbackRealEstateAnswer(prompt, operationalContext);
       logger.warn("ai.copilot_provider_unavailable", {
@@ -160,6 +166,8 @@ export async function POST(request: Request) {
         model,
         provider,
         task,
+        estimatedCostUsd,
+        pricingConfigured,
         complexity,
         operationalContext: true,
         mode,
@@ -168,6 +176,9 @@ export async function POST(request: Request) {
       copilot: persistentCopilot ? { id: persistentCopilot.id, key: persistentCopilot.copilot_key, leadId, brokerId: persistentCopilot.broker_id, learningVersion: persistentCopilot.learning_version, persistent: true, exclusive: true, memoryMode: "structured", rawConversationStored: false } : null,
     });
   } catch (error) {
+    if (request.signal.aborted) {
+      return NextResponse.json({ error: "Consulta cancelada." }, { status: 499 });
+    }
     logger.warn("ai.copilot_failed", { error: error instanceof Error ? error.message : String(error) });
     const message = error instanceof Error ? error.message : "Falha ao consultar o Atlas Copilot.";
     const unauthorized = /token|sessão|autenticação|organização/i.test(message);

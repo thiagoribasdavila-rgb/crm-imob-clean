@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { MessageResponse } from "@/components/ai-elements/message";
 
@@ -37,6 +37,10 @@ type CopilotSource = {
 type CopilotCalibration = {
   mode?: "generative" | "local-fallback";
   model?: string;
+  provider?: string;
+  task?: string;
+  estimatedCostUsd?: number;
+  pricingConfigured?: boolean;
 };
 
 type PersistentCopilot = { leadId: string; learningVersion: number; persistent: boolean; exclusive: boolean };
@@ -67,11 +71,13 @@ export default function AtlasCopilotDock() {
   const [copilotCalibration, setCopilotCalibration] = useState<CopilotCalibration | null>(null);
   const [persistentCopilot, setPersistentCopilot] = useState<PersistentCopilot | null>(null);
   const [externalContext, setExternalContext] = useState<Record<string, unknown>>({});
+  const requestControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const handleOpen = (event: Event) => {
       const detail = (event as CustomEvent<OpenCopilotDetail>).detail;
       if (detail?.prompt) setPrompt(detail.prompt);
+      setCopilotError("");
       setExternalContext(detail?.context ?? {});
       setOpen(true);
     };
@@ -89,6 +95,8 @@ export default function AtlasCopilotDock() {
       window.removeEventListener("keydown", handleShortcut);
     };
   }, []);
+
+  useEffect(() => () => requestControllerRef.current?.abort(), []);
 
   useEffect(() => {
     if (!open) return;
@@ -133,6 +141,9 @@ export default function AtlasCopilotDock() {
     const question = prompt.trim();
     if (!question) return;
 
+    requestControllerRef.current?.abort();
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
     setCopilotLoading(true);
     setCopilotError("");
     setCopilotAnswer("");
@@ -171,6 +182,7 @@ export default function AtlasCopilotDock() {
             })),
           },
         }),
+        signal: controller.signal,
       });
 
       const payload = (await response.json()) as { answer?: string; sources?: CopilotSource[]; calibration?: CopilotCalibration; copilot?: PersistentCopilot | null; error?: string };
@@ -180,10 +192,22 @@ export default function AtlasCopilotDock() {
       setCopilotCalibration(payload.calibration ?? null);
       setPersistentCopilot(payload.copilot ?? null);
     } catch (error) {
-      setCopilotError(error instanceof Error ? error.message : "Falha ao consultar o Atlas Copilot.");
+      setCopilotError(controller.signal.aborted ? "Consulta cancelada. Ajuste a pergunta ou tente novamente." : error instanceof Error ? error.message : "Falha ao consultar o Atlas Copilot.");
     } finally {
-      setCopilotLoading(false);
+      if (requestControllerRef.current === controller) {
+        requestControllerRef.current = null;
+        setCopilotLoading(false);
+      }
     }
+  }
+
+  function cancelCopilot() {
+    requestControllerRef.current?.abort();
+  }
+
+  function closeCopilot() {
+    requestControllerRef.current?.abort();
+    setOpen(false);
   }
 
   return (
@@ -203,7 +227,7 @@ export default function AtlasCopilotDock() {
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-[80] flex justify-end bg-slate-950/70 backdrop-blur-sm" onMouseDown={() => setOpen(false)}>
+        <div className="fixed inset-0 z-[80] flex justify-end bg-slate-950/70 backdrop-blur-sm" onMouseDown={closeCopilot}>
           <aside
             className="h-full w-full max-w-md overflow-y-auto border-l border-white/[0.08] bg-[#060b16]/98 p-5 shadow-[-24px_0_100px_rgba(2,8,23,.6)]"
             onMouseDown={(event) => event.stopPropagation()}
@@ -215,7 +239,7 @@ export default function AtlasCopilotDock() {
                 <h2 className="mt-2 text-2xl font-semibold tracking-[-.03em] text-white">Especialista imobiliário</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-400">Estoque, leads, projetos, materiais, crédito e mercado em uma leitura operacional.</p>
               </div>
-              <button type="button" onClick={() => setOpen(false)} className="atlas-icon-button" aria-label="Fechar copilot">×</button>
+              <button type="button" onClick={closeCopilot} className="atlas-icon-button" aria-label="Fechar copilot">×</button>
             </div>
 
             <section className="mt-6 rounded-3xl border border-sky-400/15 bg-gradient-to-br from-sky-500/[.12] to-violet-500/[.08] p-5">
@@ -248,7 +272,7 @@ export default function AtlasCopilotDock() {
                 className="mt-4 w-full resize-none rounded-2xl border border-white/[0.08] bg-slate-950/70 px-4 py-3 text-sm text-slate-200 outline-none transition placeholder:text-slate-600 focus:border-sky-400/40"
                 placeholder="Ex.: o que devo priorizar hoje para converter mais leads?"
               />
-              {copilotError ? <p className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs leading-5 text-amber-100">{copilotError}</p> : null}
+              {copilotError ? <p role="alert" className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs leading-5 text-amber-100">{copilotError}</p> : null}
               {copilotAnswer ? (
                 <div className="mt-3 rounded-2xl border border-sky-400/15 bg-sky-400/10 px-4 py-3 text-sm leading-6 text-sky-50">
                   <div className="mb-3 flex items-center justify-between gap-3 border-b border-sky-200/10 pb-3">
@@ -256,17 +280,18 @@ export default function AtlasCopilotDock() {
                     <span className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[.12em] ${copilotCalibration?.mode === "local-fallback" ? "bg-amber-400/10 text-amber-200" : "bg-emerald-400/10 text-emerald-200"}`}>{copilotCalibration?.mode === "local-fallback" ? "Motor local seguro" : "IA generativa"}</span>
                   </div>
                   <MessageResponse>{copilotAnswer}</MessageResponse>
+                  {copilotCalibration ? <p className="mt-3 border-t border-sky-200/10 pt-3 text-[10px] uppercase tracking-[.12em] text-sky-200/70">{copilotCalibration.provider || "local"} · {copilotCalibration.model || "modelo seguro"} · {copilotCalibration.pricingConfigured ? `custo medido US$ ${(copilotCalibration.estimatedCostUsd ?? 0).toFixed(6)}` : "preço pendente de configuração"}</p> : null}
                   {copilotSources.length ? <div className="mt-4 border-t border-sky-200/10 pt-3"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-sky-300">Referências consultadas</p><div className="mt-2 space-y-2">{copilotSources.map((source) => <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-white/[0.06] bg-slate-950/30 px-3 py-2 text-xs text-slate-300 transition hover:border-sky-400/25"><strong className="block text-sky-200">{source.publisher}</strong><span>{source.title} · verificado em {new Date(`${source.verifiedAt}T12:00:00`).toLocaleDateString("pt-BR")}</span></a>)}</div></div> : null}
                 </div>
               ) : null}
-              <button
-                type="button"
-                onClick={askCopilot}
-                disabled={copilotLoading || !prompt.trim()}
-                className="atlas-button-primary mt-4 w-full disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {copilotLoading ? "Consultando o Atlas Copilot..." : "Perguntar"}
-              </button>
+              {copilotLoading ? (
+                <div className="mt-4 grid grid-cols-2 gap-2" aria-live="polite">
+                  <button type="button" onClick={cancelCopilot} className="atlas-button-secondary w-full">Cancelar consulta</button>
+                  <button type="button" disabled className="atlas-button-primary w-full cursor-wait opacity-70">Consultando...</button>
+                </div>
+              ) : (
+                <button type="button" onClick={askCopilot} disabled={!prompt.trim()} className="atlas-button-primary mt-4 w-full disabled:cursor-not-allowed disabled:opacity-60">Perguntar</button>
+              )}
             </section>
 
             <section className="mt-6">

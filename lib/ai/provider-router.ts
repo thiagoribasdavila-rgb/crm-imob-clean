@@ -16,6 +16,7 @@ export type GenerateInput = {
   organizationId: string;
   userId?: string;
   feature: string;
+  signal?: AbortSignal;
 };
 export type AIProviderResult = {
   text: string;
@@ -189,6 +190,7 @@ async function generateOpenAI(input: GenerateInput): Promise<AIProviderResult> {
       max_output_tokens: profile.maxOutputTokens,
       prompt_cache_key: `atlas:${input.feature}:${input.task}:v1`,
     }),
+    signal: input.signal,
   }, { timeoutMs: input.timeoutMs ?? 30_000, retries: 1, retryUnsafe: true, operation: "OpenAI" });
   const body = (await response.json()) as {
     id?: string;
@@ -246,6 +248,7 @@ async function generatePerplexity(
       ],
       search_context_size: "low",
     }),
+    signal: input.signal,
   }, { timeoutMs: input.timeoutMs ?? 30_000, retries: 1, retryUnsafe: true, operation: "Perplexity" });
   const body = (await response.json()) as {
     id?: string;
@@ -298,6 +301,7 @@ async function generateEconomyProvider(input: GenerateInput, provider: EconomyPr
       max_tokens: input.task === "fast" ? 600 : input.task === "commercial" ? 1200 : 2400,
       stream: false,
     }),
+    signal: input.signal,
   }, { timeoutMs: input.timeoutMs ?? 30_000, retries: 1, retryUnsafe: true, operation: provider });
   const body = await response.json() as {
     id?: string; error?: { message?: string };
@@ -366,6 +370,11 @@ export async function generateAIText(
       result = provider === "openai" ? await generateOpenAI(guardedInput) : provider==="perplexity"?await generatePerplexity(guardedInput):await generateEconomyProvider(guardedInput, provider);
       break;
     } catch (error) {
+      if (input.signal?.aborted) {
+        throw input.signal.reason instanceof Error
+          ? input.signal.reason
+          : new DOMException("Solicitação cancelada.", "AbortError");
+      }
       logger.warn("ai.provider_failover", {
         provider,
         task: input.task,

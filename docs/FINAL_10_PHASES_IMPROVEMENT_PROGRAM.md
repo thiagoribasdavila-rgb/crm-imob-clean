@@ -42,9 +42,11 @@ Reduzir ruído e separar claramente corretor, gerente, superintendente e diretor
 
 Entrega: `FINAL_PHASE_7_ROLE_DASHBOARDS.md`, perfil resolvido antes da renderização e verificação automática `final-dashboards:check`.
 
-## 8. IA, automações e integrações
+## 8. IA, automações e integrações — concluída
 
 Aplicar streaming, cancelamento, cache seguro, fallback econômico, filas, saúde e custo por ação. Aceite: nenhuma IA bloqueia a operação; toda ação externa mantém aprovação, auditoria e fallback.
+
+Entrega: `FINAL_PHASE_8_AI_AUTOMATIONS_INTEGRATIONS.md`, cancelamento ponta a ponta, transparência de provedor/custo e verificação automática `final-ai:check`. O streaming permanece condicionado à homologação específica do proxy Hostinger.
 
 ## 9. Confiabilidade, desempenho e homologação
 
