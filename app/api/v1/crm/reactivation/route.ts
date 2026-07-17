@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   const [profilesResult, batchesResult, contactsResult, projectsResult, experienceResult] = await Promise.all([
     admin.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").eq("organization_id", org).eq("active", true),
     admin.from("lead_reactivation_batches").select("*").eq("organization_id", org).order("created_at", { ascending: false }).limit(100),
-    admin.from("lead_reactivation_contacts").select("batch_id,status").eq("organization_id", org),
+    admin.from("lead_reactivation_contacts").select("batch_id,status,block_reason").eq("organization_id", org),
     admin.from("developments").select("id,name,developer_name").eq("organization_id", org).order("name"),
     admin.from("lead_experience_signals").select("id,lead_id,broker_id,signal_type,severity,confidence,evidence,recommendation,suggested_reply,status,created_at").eq("organization_id", org).eq("status", "pending").order("created_at", { ascending: false }).limit(100),
   ]);
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     viewer: { id: identity.access.profile.id, role },
     targets: profiles.filter((item) => visible.has(item.id) && (item.commercial_role || item.role) === "broker"),
     projects: projectsResult.data ?? [],
-    batches: batches.map((batch) => ({ ...batch, summary: contacts.filter((item) => item.batch_id === batch.id).reduce((sum, item) => ({ ...sum, [item.status]: (sum[item.status] || 0) + 1 }), {} as Record<string, number>) })),
+    batches: batches.map((batch) => ({ ...batch, summary: contacts.filter((item) => item.batch_id === batch.id).reduce((sum, item) => { sum[item.status] = (sum[item.status] || 0) + 1; if (item.block_reason) sum[`blocked:${item.block_reason}`] = (sum[`blocked:${item.block_reason}`] || 0) + 1; return sum; }, {} as Record<string, number>) })),
     experiences: (experienceResult.data ?? []).filter((item) => item.broker_id && visible.has(item.broker_id)),
   }, identity.meta, { headers: rate.headers });
 }
@@ -100,9 +100,10 @@ export async function POST(request: NextRequest) {
       if (!project) return apiError("INVALID_PROJECT", "Projeto não encontrado.", identity.meta, { status: 400 });
     }
     const unique = new Map<string, { name: string; phone: string; email: string | null }>();
+    const occurrences = new Map<string, number>();
     for (const row of rows) {
       const phone = normalizePhone(row.phone || "");
-      if (phone) unique.set(phone, { name: String(row.name || "Lead reativação").trim().slice(0, 120), phone, email: String(row.email || "").trim().toLowerCase() || null });
+      if (phone) { occurrences.set(phone, (occurrences.get(phone) || 0) + 1); if (!unique.has(phone)) unique.set(phone, { name: String(row.name || "Lead reativação").trim().slice(0, 120), phone, email: String(row.email || "").trim().toLowerCase() || null }); }
     }
     const normalized = Array.from(unique.values());
     if (!normalized.length) return apiError("INVALID_CONTACTS", "Nenhum telefone válido foi encontrado.", identity.meta, { status: 400 });
@@ -119,11 +120,7 @@ export async function POST(request: NextRequest) {
     let eligible = 0;
     for (const item of normalized) {
       let lead = existingMap.get(item.phone);
-      let reason: string | null = blocked.has(item.phone) ? "opt_out" : null;
-      if (lead && role === "broker" && lead.assigned_to && lead.assigned_to !== ownerId) reason = "lead_de_outro_corretor";
-      if (lead && role !== "broker" && !reason) {
-        await admin.from("leads").update({ assigned_to: ownerId, ...(body.developmentId ? { development_id: body.developmentId } : {}), updated_at: new Date().toISOString() }).eq("id", lead.id).eq("organization_id", org);
-      }
+      let reason: string | null = blocked.has(item.phone) ? "opt_out" : (occurrences.get(item.phone) || 0) > 1 ? "duplicado_no_arquivo" : lead ? "lead_ja_existente" : null;
       if (!lead && !reason) {
         const created = await admin.from("leads").insert({ organization_id: org, assigned_to: ownerId, development_id: body.developmentId || null, name: item.name, phone: item.phone, email: item.email, source: sourceType === "company_legacy" ? "Base antiga" : "Base externa do corretor", status: "novo", metadata: { reactivation: { batchId: batch.id, consentBasis: body.consentBasis.trim(), importedBy: identity.access.profile.id } } }).select("id,phone,assigned_to").single();
         if (created.data) lead = created.data;
@@ -132,7 +129,9 @@ export async function POST(request: NextRequest) {
       if (!reason) eligible += 1;
       contacts.push({ batch_id: batch.id, organization_id: org, lead_id: lead?.id || null, phone: item.phone, status: reason ? "blocked" : "imported", block_reason: reason });
     }
-    await Promise.all([admin.from("lead_reactivation_contacts").insert(contacts), admin.from("lead_reactivation_batches").update({ eligible_count: eligible }).eq("id", batch.id)]);
+    const { error: contactsError } = await admin.from("lead_reactivation_contacts").insert(contacts);
+    if (contactsError) { await admin.from("lead_reactivation_batches").delete().eq("id", batch.id).eq("organization_id", org); return apiError("IMPORT_FAILED", "A base não foi gravada por completo e foi descartada com segurança.", identity.meta, { status: 500 }); }
+    await admin.from("lead_reactivation_batches").update({ eligible_count: eligible }).eq("id", batch.id);
     return apiSuccess({ batchId: batch.id, imported: normalized.length, eligible, blocked: normalized.length - eligible }, identity.meta, { status: 201, headers: rate.headers });
   }
 
@@ -148,8 +147,12 @@ export async function POST(request: NextRequest) {
     const allowed = role === "director" ? new Set((profiles ?? []).map((item) => item.id)) : descendants(profiles ?? [], identity.access.profile.id);
     if (!allowed.has(batch.owner_id)) return apiError("FORBIDDEN", "Base fora da sua estrutura.", identity.meta, { status: 403 });
     const { data: contacts } = await admin.from("lead_reactivation_contacts").select("id,lead_id,phone,status").eq("batch_id", batch.id).eq("status", "imported").limit(500);
+    const activationPhones = (contacts ?? []).map((contact) => contact.phone);
+    const { data: latestSuppressions } = activationPhones.length ? await admin.from("messaging_suppressions").select("recipient").eq("organization_id", org).eq("channel", "whatsapp").in("recipient", activationPhones) : { data: [] };
+    const suppressedNow = new Set((latestSuppressions ?? []).map((item) => item.recipient));
     let prepared = 0;
     for (const contact of contacts ?? []) {
+      if (suppressedNow.has(contact.phone)) { await admin.from("lead_reactivation_contacts").update({ status: "blocked", block_reason: "opt_out_before_activation" }).eq("id", contact.id).eq("organization_id", org); continue; }
       let { data: conversation } = await admin.from("conversations").select("id").eq("organization_id", org).eq("channel", "whatsapp").eq("lead_id", contact.lead_id).maybeSingle();
       if (!conversation) {
         const created = await admin.from("conversations").insert({ organization_id: org, lead_id: contact.lead_id, channel: "whatsapp", external_thread_id: contact.phone, assigned_to: batch.owner_id, status: "open" }).select("id").single();
@@ -161,6 +164,7 @@ export async function POST(request: NextRequest) {
       await admin.from("lead_reactivation_contacts").update({ status: "pending_approval", message_id: message.id }).eq("id", contact.id);
       prepared += 1;
     }
+    if (!prepared) return apiError("NO_ELIGIBLE_CONTACTS", "Nenhum contato permaneceu elegível após a nova verificação de opt-out.", identity.meta, { status: 409 });
     const { error: approvalError } = await admin.from("approval_requests").insert({ organization_id: org, request_type: "whatsapp_reactivation", entity_type: "reactivation_batch", entity_id: batch.id, payload: { batchId: batch.id, templateName, language, prepared, ownerId: batch.owner_id }, requested_by: identity.access.profile.id });
     if (approvalError) return apiError("APPROVAL_FAILED", "Não foi possível enviar a campanha para aprovação.", identity.meta, { status: 500 });
     await admin.from("lead_reactivation_batches").update({ status: "pending_approval", template_name: templateName, template_language: language, daily_cap: dailyCap, interval_seconds: intervalSeconds, queued_count: prepared, updated_at: new Date().toISOString() }).eq("id", batch.id);

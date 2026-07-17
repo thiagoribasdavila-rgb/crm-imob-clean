@@ -26,6 +26,9 @@ const superintendentDashboardRoute = readFileSync(resolve(root, "app/api/v1/anal
 const distributionPage = readFileSync(resolve(root, "app/(crm)/distribution/page.tsx"), "utf8");
 const distributionRoute = readFileSync(resolve(root, "app/api/v1/crm/distribution/route.ts"), "utf8");
 const distributionMigration = readFileSync(resolve(root, "supabase/migrations/20260716234729_balanced_project_lead_distribution.sql"), "utf8");
+const reactivationRoute = readFileSync(resolve(root, "app/api/v1/crm/reactivation/route.ts"), "utf8");
+const reactivationPage = readFileSync(resolve(root, "app/(crm)/leads/import/page.tsx"), "utf8");
+const reactivationMigration = readFileSync(resolve(root, "supabase/migrations/20260716235515_lead_reactivation_center.sql"), "utf8");
 const evolutionPhases = readFileSync(resolve(root, "lib/atlas/evolution-phases.ts"), "utf8");
 const homologationRoute = readFileSync(resolve(root, "app/api/v1/homologation/route.ts"), "utf8");
 const homologationMigration = readFileSync(resolve(root, "supabase/migrations/20260716221959_homologation_checklist.sql"), "utf8");
@@ -156,7 +159,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("276 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("282 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["painel comparativo é exclusivo da superintendência", superintendentDashboardRoute.includes('actorRole !== "superintendent"') && superintendentDashboardRoute.includes('scope: "superintendent-dashboard"')],
   ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('roleOf(profile) === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
   ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && superintendentDashboardRoute.match(/\.eq\("organization_id", identity\.access\.organization\.id\)/g)?.length >= 2],
@@ -169,6 +172,12 @@ const checks = [
   ["disponibilidade controla elegibilidade", distributionPage.includes('availability === "available"') && distributionPage.includes("Somente “Disponível” participa da distribuição") && distributionMigration.includes("cp.availability = 'available'")],
   ["corretor desabilitado no projeto fica fora", distributionPage.includes("stateMap.get(item.id)?.enabled !== false") && distributionMigration.includes("coalesce(m.enabled, true)")],
   ["fila equilibra carga e última atribuição", distributionMigration.includes("project_load::numeric / weight") && distributionMigration.includes("last_assigned_at nulls first") && distributionMigration.includes("pg_advisory_xact_lock")],
+  ["reativação exige consentimento declarado", reactivationRoute.includes("CONSENT_REQUIRED") && reactivationPage.includes("autorização válida para contato")],
+  ["duplicados são bloqueados sem transferir lead", reactivationRoute.includes("duplicado_no_arquivo") && reactivationRoute.includes("lead_ja_existente") && !reactivationRoute.includes('leads").update({ assigned_to: ownerId')],
+  ["opt-out é verificado na importação", reactivationRoute.includes('from("messaging_suppressions")') && reactivationRoute.includes('reason: string | null = blocked.has(item.phone) ? "opt_out"')],
+  ["opt-out é revalidado antes da ativação", reactivationRoute.includes("latestSuppressions") && reactivationRoute.includes("opt_out_before_activation") && reactivationRoute.includes("NO_ELIGIBLE_CONTACTS")],
+  ["reativação exige aprovação humana", reactivationRoute.includes('request_type: "whatsapp_reactivation"') && reactivationRoute.includes('status: "pending_approval"') && reactivationPage.includes("Enviar para aprovação")],
+  ["proteções da fase 36 ficam auditáveis", reactivationMigration.includes("block_reason text") && reactivationPage.includes("Fase 36 · Proteção comprovada") && reactivationPage.includes("Nenhuma lead existente é transferida silenciosamente")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],

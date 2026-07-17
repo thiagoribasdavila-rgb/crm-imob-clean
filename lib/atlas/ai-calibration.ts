@@ -8,7 +8,7 @@ export const aiCalibration = {
     { name: "Custo e velocidade", percent: 84 },
     { name: "Evidência em operação real", percent: 55 },
   ],
-  controls: 276,
+  controls: 282,
   scenarios: 12,
   next: "Rodar piloto com conversas reais, comparar conversão por rota e recalibrar com resultado ganho/perdido.",
 };
