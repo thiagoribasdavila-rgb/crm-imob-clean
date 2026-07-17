@@ -11,6 +11,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  turbopack: { root: process.cwd() },
   serverExternalPackages: ["@supabase/supabase-js"],
   reactStrictMode: true,
   poweredByHeader: false,
