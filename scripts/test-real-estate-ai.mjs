@@ -32,6 +32,8 @@ const metaInsightsTest = readFileSync(resolve(root, "app/api/v1/integrations/met
 const outboxWorker = readFileSync(resolve(root, "app/api/v2/outbox/process/route.ts"), "utf8");
 const metaMigration = readFileSync(resolve(root, "supabase/migrations/20260716222643_meta_lead_closed_loop.sql"), "utf8");
 const providerRouter = readFileSync(resolve(root, "lib/ai/provider-router.ts"), "utf8");
+const aiCostMigration = readFileSync(resolve(root, "supabase/migrations/20260717012700_ai_usage_cost_tracking.sql"), "utf8");
+const aiCostTest = readFileSync(resolve(root, "app/api/ai/cost-routing-test/route.ts"), "utf8");
 const hostingerDeployment = readFileSync(resolve(root, "docs/HOSTINGER_DEPLOYMENT.md"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
@@ -150,7 +152,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("258 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("264 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["homologação real não é simulada", evolutionPhases.includes('progress: 0') && evolutionPhases.includes("Executar piloto de 5 a 10 dias")],
   ["homologação tem evidência persistida", homologationRoute.includes("homologation_results") && homologationRoute.includes("verified_at")],
   ["homologação isolada por RLS", homologationMigration.includes("enable row level security") && homologationMigration.includes("current_organization_id")],
@@ -182,6 +184,12 @@ const checks = [
   ["pesquisa externa bloqueia PII", providerRouter.includes("containsPersonalData") && providerRouter.includes("Pesquisa externa bloqueada")],
   ["Hostinger possui worker próprio", hostingerDeployment.includes("scripts/run-workers.mjs") && hostingerDeployment.includes("pm2")],
   ["uso de IA é mensurável", providerRouter.includes("ai_usage_events") && providerRouter.includes("totalTokens")],
+  ["custo da IA possui telemetria", aiCostMigration.includes("estimated_cost_usd") && providerRouter.includes("estimated_cost_usd: cost.estimatedUsd")],
+  ["tarifa da IA é configurável", providerRouter.includes("_INPUT_USD_PER_MILLION") && providerRouter.includes("_OUTPUT_USD_PER_MILLION") && !providerRouter.includes("inputPerMillion: 1")],
+  ["ensaio executa três rotas reais", providerRouter.includes('task: "fast"') && providerRouter.includes('task: "commercial"') && providerRouter.includes('task: "reasoning"') && aiCostTest.includes('provider !== "openai"')],
+  ["ensaio de custo exige diretoria", aiCostTest.includes('commercialRole === "director"') && aiCostTest.includes("ai-cost-routing-test")],
+  ["ensaio de custo não envia PII", providerRouter.includes('feature: "cost-routing-fast"') && providerRouter.includes("containsPersonalData: false")],
+  ["painel comprova custo por rota", aiSettingsPage.includes("Fase 33 · Roteamento e custo") && aiSettingsPage.includes("estimatedCostUsd") && aiSettingsPage.includes("Custo estimado · 30 dias")],
   ["custo preserva isolamento", costConversionMigration.includes("ai_usage_events_select_org") && costConversionMigration.includes("current_organization_id")],
   ["conversões Meta começam pausadas", costConversionMigration.includes("meta_conversion_configs") && costConversionMigration.includes("enabled boolean not null default false")],
   ["conversão Meta é idempotente", costConversionMigration.includes("unique (organization_id, event_id)")],
@@ -354,14 +362,14 @@ const checks = [
   ["teste OpenAI não aceita fallback", openAITestRoute.includes('result.provider !== "openai"') && openAITestRoute.includes("fallbackUsed: false")],
   ["teste OpenAI é exclusivo da diretoria", openAITestRoute.includes("exclusivo da diretoria") && openAITestRoute.includes("commercialRole")],
   ["teste OpenAI usa prompt sem dados pessoais", providerRouter.includes('feature: "openai-homologation"') && providerRouter.includes("containsPersonalData: false")],
-  ["requisição OpenAI possui rastreio", providerRouter.includes("providerRequestId: body.id") && openAITraceMigration.includes("provider_request_id")],
+  ["requisição OpenAI possui rastreio", providerRouter.includes("providerRequestId:") && providerRouter.includes('body.id || response.headers.get("x-request-id")') && openAITraceMigration.includes("provider_request_id")],
   ["consumo do teste OpenAI é persistido", providerRouter.includes("recordUsage(request, await generateOpenAI(request))") && openAITestRoute.includes("measured: true")],
   ["painel comprova modelo latência e tokens", aiSettingsPage.includes("Testar OpenAI real") && aiSettingsPage.includes("providerRequestId") && aiSettingsPage.includes("totalTokens")],
   ["Perplexity usa endpoint Sonar atual", providerRouter.includes("https://api.perplexity.ai/v1/sonar")],
   ["teste Perplexity não aceita fallback", perplexityTestRoute.includes('result.provider !== "perplexity"') && perplexityTestRoute.includes("fallbackUsed: false")],
   ["teste Perplexity bloqueia PII", providerRouter.includes('feature: "perplexity-homologation"') && providerRouter.includes("containsPersonalData: false")],
   ["teste Perplexity exige fontes HTTPS", perplexityTestRoute.includes("citations.length === 0") && perplexityTestRoute.includes('/^https:\\/\\//i')],
-  ["pesquisa Perplexity é rastreável e medida", providerRouter.includes("providerRequestId: body.id") && perplexityTestRoute.includes("measured: true")],
+  ["pesquisa Perplexity é rastreável e medida", providerRouter.includes("providerRequestId:") && providerRouter.includes('body.id || response.headers.get("x-request-id")') && perplexityTestRoute.includes("measured: true")],
   ["painel Perplexity abre fontes", aiSettingsPage.includes("Testar Perplexity real") && aiSettingsPage.includes("researchResult.citations.map") && aiSettingsPage.includes('target="_blank"')],
 ];
 
