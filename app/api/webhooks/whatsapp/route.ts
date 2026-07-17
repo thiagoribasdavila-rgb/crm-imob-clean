@@ -86,7 +86,8 @@ export async function POST(request: Request) {
         for (const incoming of change.value?.messages ?? []) {
           const sender = normalizePhone(incoming.from);
           const incomingText = incoming.text?.body ?? "";
-          if (isOptOut(incomingText)) {
+          const optedOut = isOptOut(incomingText);
+          if (optedOut) {
             const { error: optOutError } = await admin.rpc("register_whatsapp_opt_out", { p_organization_id: integration.organization_id, p_recipient: sender, p_source: "whatsapp_inbound", p_external_message_id: incoming.id });
             if (optOutError) throw optOutError;
           }
@@ -135,6 +136,10 @@ export async function POST(request: Request) {
             created_at: incoming.timestamp ? new Date(Number(incoming.timestamp) * 1000).toISOString() : new Date().toISOString(),
           }).select("id").single();
           if (messageError) throw messageError;
+          if (!optedOut && inboundMessage?.id) {
+            const { error: journeyError } = await admin.rpc("route_nightly_journey_reply", { p_organization_id: integration.organization_id, p_conversation_id: conversationId, p_message_id: inboundMessage.id });
+            if (journeyError) throw journeyError;
+          }
           await admin.from("lead_reactivation_contacts").update({ status: "replied" }).eq("organization_id", integration.organization_id).eq("phone", sender).in("status", ["queued", "sent"]);
           const { data: repliedContacts } = await admin.from("lead_reactivation_contacts").select("batch_id").eq("organization_id", integration.organization_id).eq("phone", sender).eq("status", "replied");
           for (const batchId of new Set((repliedContacts ?? []).map((contact) => contact.batch_id))) {

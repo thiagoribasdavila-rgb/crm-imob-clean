@@ -29,6 +29,7 @@ begin
   with stopped as (update public.integration_outbox set status='blocked',last_error='Bloqueado imediatamente por opt-out.',delivered_at=now(),locked_at=null,locked_by=null where organization_id=p_organization_id and topic='message.send' and status in ('pending','failed') and aggregate_id in(select id from public.messages where organization_id=p_organization_id and channel='whatsapp' and recipient=normalized) returning id)
   select count(*) into blocked_events from stopped;
   update public.lead_reactivation_contacts set status='blocked',block_reason='opt_out' where organization_id=p_organization_id and phone=normalized and status in ('pending_approval','queued','sent');
+  update public.ai_sales_journeys set status='opted_out',next_run_at=null,updated_at=now() where organization_id=p_organization_id and lead_id=lead_ref and status not in ('completed','opted_out');
   if lead_ref is not null then
     insert into public.activities(organization_id,lead_id,type,title,description,metadata,occurred_at) values(p_organization_id,lead_ref,'whatsapp_opt_out','Cliente solicitou interrupção de mensagens','Novos envios por WhatsApp foram bloqueados imediatamente.',jsonb_build_object('source',p_source,'externalMessageId',p_external_message_id,'blockedMessages',blocked_messages),now());
   end if;

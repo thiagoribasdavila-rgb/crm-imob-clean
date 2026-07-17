@@ -64,6 +64,8 @@ const approvalsPage = readFileSync(resolve(root, "app/(crm)/approvals/page.tsx")
 const atomicMessageApprovalMigration = readFileSync(resolve(root, "supabase/migrations/20260717013400_atomic_message_approval.sql"), "utf8");
 const atomicCommercialProposalMigration = readFileSync(resolve(root, "supabase/migrations/20260717014200_atomic_commercial_proposal_review.sql"), "utf8");
 const immediateOptOutMigration = readFileSync(resolve(root, "supabase/migrations/20260717014400_immediate_whatsapp_opt_out.sql"), "utf8");
+const nightlyReplyMigration = readFileSync(resolve(root, "supabase/migrations/20260717014600_nightly_reply_broker_routing.sql"), "utf8");
+const conversationsPage = readFileSync(resolve(root, "app/(crm)/conversations/page.tsx"), "utf8");
 const metaInsights = readFileSync(resolve(root, "lib/meta/insights.ts"), "utf8");
 const customerExperience = readFileSync(resolve(root, "lib/atlas/customer-experience.ts"), "utf8");
 const whatsappWebhook = readFileSync(resolve(root, "app/api/webhooks/whatsapp/route.ts"), "utf8");
@@ -183,7 +185,7 @@ const checks = [
   ["aprendizado respeita RLS", briefingRoute.includes('access.supabase') && briefingRoute.includes('property_feedback')],
   ["gestão enxerga aceitação de produto", briefingRoute.includes("productLearning") && briefingRoute.includes("interestRate")],
   ["rejeição gera sinal gerencial", briefingRoute.includes("product-rejection") && briefingRoute.includes("Rejeição elevada")],
-  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("354 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
+  ["roadmap registra evolução da IA", evolutionPhases.includes('name: "IA funcional"') && evolutionPhases.includes("360 controles calibrados") && evolutionPhases.includes("Fallback local determinístico")],
   ["painel comparativo é exclusivo da superintendência", superintendentDashboardRoute.includes('actorRole !== "superintendent"') && superintendentDashboardRoute.includes('scope: "superintendent-dashboard"')],
   ["superintendência enxerga somente gerentes diretos", superintendentDashboardRoute.includes('roleOf(profile) === "manager"') && superintendentDashboardRoute.includes("profile.reports_to === identity.access.profile.id")],
   ["comparativo preserva isolamento da organização", superintendentDashboardRoute.includes('.from("profiles")') && superintendentDashboardRoute.includes('.from("leads")') && superintendentDashboardRoute.match(/\.eq\("organization_id", identity\.access\.organization\.id\)/g)?.length >= 2],
@@ -355,6 +357,12 @@ const checks = [
   ["worker bloqueia todo WhatsApp suprimido", outboxWorker.includes("universalSuppression") && outboxWorker.includes("Bloqueado por opt-out antes do envio") && !outboxWorker.includes("if (templateItem?.batchId) {\n          const { data: universalSuppression")],
   ["banco impede nova fila para opt-out", immediateOptOutMigration.includes("block_suppressed_whatsapp_outbox") && immediateOptOutMigration.includes("whatsapp_recipient_suppressed")],
   ["fase 48 deixa proteção visível", whatsappHealthPage.includes("Fase 48 · Opt-out imediato") && whatsappHealthPage.includes("Pedido do cliente vence qualquer automação") && messageSendRoute.includes("solicitou a interrupção")],
+  ["resposta noturna chega ao corretor único", nightlyReplyMigration.includes("lead_owner<>journey.broker_id") && nightlyReplyMigration.includes("assigned_to=lead_owner") && nightlyReplyMigration.includes("broker_id=lead_owner")],
+  ["resposta avança jornada sem regressão", nightlyReplyMigration.includes("journey.stage='approach' then 'discovery'") && nightlyReplyMigration.includes("status='waiting_broker'")],
+  ["resposta noturna é atômica e auditável", nightlyReplyMigration.includes("for update") && nightlyReplyMigration.includes("nightly_journey_reply") && nightlyReplyMigration.includes("nightly_journey.customer_replied")],
+  ["opt-out não reativa jornada noturna", whatsappWebhook.includes("if (!optedOut && inboundMessage?.id)") && immediateOptOutMigration.includes("status='opted_out'")],
+  ["conversas respeitam carteira comercial", nightlyReplyMigration.includes("conversations_commercial_scope") && nightlyReplyMigration.includes("messages_commercial_scope") && nightlyReplyMigration.includes("can_access_commercial_lead")],
+  ["fase 49 mostra próxima ação", conversationsPage.includes("Fase 49 · Resposta noturna") && conversationsPage.includes("RESPONDER AGORA") && conversationsPage.includes("continuar a descoberta")],
   ["compra externa não infla receita própria", experienceMigration.includes("external_sales_records") && experienceMigration.includes("status = 'comprou_outro'")],
   ["venda externa é exclusiva da diretoria", experienceMigration.includes("external_sales_director_scope") && experienceMigration.includes("commercial_role")],
   ["gerente registra somente lead do time direto", governedExternalBuyerMigration.includes("reports_to=p_actor_id") && governedExternalBuyerMigration.includes("external_buyer_out_of_scope")],
