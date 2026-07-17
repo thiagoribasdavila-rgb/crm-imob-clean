@@ -30,9 +30,11 @@ Evoluir drag-and-drop, atualização otimista, virtualização, SLAs, tarefas e 
 
 Entrega: `FINAL_PHASE_5_PIPELINE_PRODUCTIVITY.md`, movimentação serializada, preferências preservadas e verificação automática `final-pipeline:check`.
 
-## 6. Projetos e incorporadoras
+## 6. Projetos e incorporadoras — concluída
 
 Unificar busca, materiais, tabela, espelho, estoque, versões e fluxo de pagamento. Aceite: corretor encontra o pacote comercial vigente em até três interações.
+
+Entrega: `FINAL_PHASE_6_PROJECTS_DEVELOPERS.md`, kit essencial direto, autenticação corrigida e verificação automática `final-projects:check`.
 
 ## 7. Dashboards e decisões por perfil
 

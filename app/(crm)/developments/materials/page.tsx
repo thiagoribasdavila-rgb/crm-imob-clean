@@ -71,6 +71,13 @@ export default function ProjectMaterialsPage() {
   const [form, setForm] = useState({ materialType: "price_table", title: "", description: "", validFrom: "", validUntil: "" });
   const [file, setFile] = useState<File | null>(null);
 
+  async function accessToken() {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Sessão expirada. Entre novamente no Atlas.");
+    return token;
+  }
+
   useEffect(() => {
     async function loadPortfolio() {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -101,15 +108,21 @@ export default function ProjectMaterialsPage() {
     if (!developmentId) return;
     setMaterialsLoading(true);
     setError("");
-    const response = await fetch(`/api/v1/developments/${developmentId}/materials`);
-    const payload = await response.json();
-    if (!response.ok) {
+    try {
+      const token = await accessToken();
+      const response = await fetch(`/api/v1/developments/${developmentId}/materials`, { headers: { Authorization: `Bearer ${token}` } });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Não foi possível carregar os materiais.");
+      setMaterials(payload.materials ?? []);
+      setStorageHomologation(payload.storageHomologation ?? null);
+      setReferenceTime(Date.now());
+    } catch (loadError) {
       setMaterials([]);
       setStorageHomologation(null);
-      setError(payload.error || "Não foi possível carregar os materiais.");
-    } else { setMaterials(payload.materials ?? []); setStorageHomologation(payload.storageHomologation ?? null); }
-    setReferenceTime(Date.now());
-    setMaterialsLoading(false);
+      setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar os materiais.");
+    } finally {
+      setMaterialsLoading(false);
+    }
   }
 
   useEffect(() => { void loadMaterials(selectedId); }, [selectedId]);
@@ -130,6 +143,10 @@ export default function ProjectMaterialsPage() {
   const canManage = ["admin", "director", "superintendent", "manager"].includes(currentRole);
   const missingEssential = essentialTypes.filter((type) => !materials.some((material) => material.material_type === type && (!material.valid_until || referenceTime === 0 || new Date(material.valid_until).getTime() >= referenceTime)));
   const essentialReady = essentialTypes.length - missingEssential.length;
+  const essentialMaterials = essentialTypes.map((type) => ({
+    type,
+    material: materials.find((material) => material.material_type === type && (!material.valid_until || referenceTime === 0 || new Date(material.valid_until).getTime() >= referenceTime)) ?? null,
+  }));
 
   async function uploadMaterial(event: React.FormEvent) {
     event.preventDefault();
@@ -140,16 +157,20 @@ export default function ProjectMaterialsPage() {
     const body = new FormData();
     body.set("file", file);
     Object.entries(form).forEach(([key, value]) => body.set(key, value));
-    const response = await fetch(`/api/v1/developments/${selectedId}/materials`, { method: "POST", body });
-    const payload = await response.json();
-    if (!response.ok) setError(payload.error || "Falha ao atualizar material.");
-    else {
+    try {
+      const token = await accessToken();
+      const response = await fetch(`/api/v1/developments/${selectedId}/materials`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Falha ao atualizar material.");
       setNotice(`${materialLabels[form.materialType]?.label || "Material"} atualizado com sucesso.`);
       setFile(null);
       setForm((current) => ({ ...current, title: "", description: "", validFrom: "", validUntil: "" }));
       await loadMaterials(selectedId);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Falha ao atualizar material.");
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   }
 
   async function reviewMaterial(materialId: string) {
@@ -222,6 +243,7 @@ export default function ProjectMaterialsPage() {
         <AtlasCard>
           <AtlasCardHeader eyebrow="Kit comercial" title={selected?.name || "Materiais do projeto"} description="Abra ou baixe sempre a versão vigente." action={selected ? <Link href={`/developments/${selected.id}`} className="text-xs font-semibold text-sky-300">Abrir projeto →</Link> : null} />
           <div className="p-5 sm:p-6">
+            {selected ? <div className="mb-5 grid gap-2 sm:grid-cols-3" aria-label="Acesso rápido ao kit essencial">{essentialMaterials.map(({ type, material }) => material?.url ? <a key={type} href={material.url} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[.06] p-3 transition hover:border-emerald-300/35"><span className="block text-[10px] font-bold uppercase tracking-[.12em] text-emerald-300">Vigente · V{material.version}</span><strong className="mt-1 block text-sm text-white">{materialLabels[type].label}</strong><small className="mt-1 block text-slate-500">Abrir agora →</small></a> : <div key={type} className="rounded-2xl border border-amber-400/15 bg-amber-400/[.04] p-3"><span className="block text-[10px] font-bold uppercase tracking-[.12em] text-amber-300">Pendente</span><strong className="mt-1 block text-sm text-white">{materialLabels[type].label}</strong><small className="mt-1 block text-slate-500">Aguardando publicação</small></div>)}</div> : null}
             {!materialsLoading && selected && missingEssential.length ? <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/[.07] p-4 text-xs leading-5 text-amber-100">Kit incompleto: falta {missingEssential.map((type) => materialLabels[type].label).join(", ")}. Atualize abaixo para o corretor encontrar tudo sem sair do projeto.</div> : null}
             {materialsLoading ? <div className="grid gap-4 sm:grid-cols-2">{[1,2,3,4].map((item) => <AtlasSkeleton key={item} className="h-44 w-full" />)}</div> : !selected ? <AtlasEmpty title="Selecione um projeto" description="Escolha uma incorporadora e um empreendimento para acessar o kit comercial." /> : materials.length === 0 ? <AtlasEmpty title="Kit comercial ainda vazio" description="Adicione book, tabela, espelho ou plantas para liberar o material ao time." /> : (
               <div className="grid gap-4 sm:grid-cols-2">
