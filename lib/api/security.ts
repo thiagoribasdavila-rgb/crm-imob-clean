@@ -9,6 +9,7 @@ type RateBucket = { count: number; resetAt: number };
 
 export type AtlasRole = "admin" | "director" | "superintendent" | "manager" | "broker" | "viewer" | string;
 export type CommercialRole = "director" | "superintendent" | "manager" | "broker";
+export type AccessRole = "admin" | "director_decisor" | "director" | "broker";
 
 export function resolveCommercialRole(profile: { role: AtlasRole; commercialRole?: AtlasRole | null; commercial_role?: AtlasRole | null }): AtlasRole {
   const commercialRole = profile.commercialRole ?? profile.commercial_role;
@@ -29,6 +30,7 @@ type AccessContext = {
     id: string;
     organizationId: string;
     role: AtlasRole;
+    accessRole: AccessRole;
     commercialRole: "director" | "superintendent" | "manager" | "broker" | null;
     reportsTo: string | null;
     active: boolean;
@@ -141,14 +143,14 @@ export async function requireAuthenticatedUser(request: NextRequest) {
 
 export async function requireAccessContext(
   request: NextRequest,
-  options: { roles?: AtlasRole[] } = {},
+  options: { roles?: AtlasRole[]; accessRoles?: AccessRole[] } = {},
 ) {
   const auth = await requireAuthenticatedUser(request);
   if (!auth.ok) return auth;
 
   const { data: profile, error: profileError } = await auth.supabase
     .from("profiles")
-    .select("id, organization_id, role, commercial_role, reports_to, active")
+    .select("id, organization_id, role, access_role, commercial_role, reports_to, active")
     .eq("id", auth.user.id)
     .maybeSingle();
 
@@ -207,6 +209,19 @@ export async function requireAccessContext(
   }
 
   const effectiveRole = resolveCommercialRole({ role: profile.role, commercial_role: profile.commercial_role });
+  const accessRole = profile.access_role as AccessRole;
+  if (options.accessRoles?.length && !options.accessRoles.includes(accessRole)) {
+    logger.warn("api.access_denied", {
+      path: request.nextUrl.pathname,
+      organizationId: profile.organization_id,
+      accessRole,
+      reason: "access_role_not_allowed",
+    });
+    return {
+      ok: false as const,
+      response: apiError("FORBIDDEN", "Permissão insuficiente para esta operação.", auth.meta, { status: 403 }),
+    };
+  }
   if (options.roles?.length && !options.roles.includes(effectiveRole)) {
     logger.warn("api.access_denied", {
       path: request.nextUrl.pathname,
@@ -229,6 +244,7 @@ export async function requireAccessContext(
       id: profile.id,
       organizationId: profile.organization_id,
       role: profile.role,
+      accessRole,
       commercialRole: profile.commercial_role,
       reportsTo: profile.reports_to,
       active: profile.active,

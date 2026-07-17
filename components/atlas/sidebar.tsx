@@ -91,10 +91,19 @@ const navigation = [
   },
   {
     group: "Diretoria",
+    label: "Usuários e acessos",
+    href: "/users",
+    icon: "♙",
+    roles: ["director"],
+    accessRoles: ["admin"],
+  },
+  {
+    group: "Diretoria",
     label: "Vendas externas",
     href: "/external-sales",
     icon: "↙",
     roles: ["director"],
+    accessRoles: ["admin", "director_decisor"],
   },
   {
     group: "Diretoria",
@@ -102,6 +111,7 @@ const navigation = [
     href: "/integrations",
     icon: "∞",
     roles: ["director"],
+    accessRoles: ["admin", "director_decisor"],
   },
   {
     group: "Diretoria",
@@ -109,6 +119,7 @@ const navigation = [
     href: "/atlas-v3",
     icon: "◈",
     roles: ["director"],
+    accessRoles: ["admin", "director_decisor"],
   },
   {
     group: "Diretoria",
@@ -116,6 +127,7 @@ const navigation = [
     href: "/settings",
     icon: "⚙",
     roles: ["director", "superintendent", "manager"],
+    accessRoles: ["admin"],
   },
 ] as const;
 
@@ -129,6 +141,7 @@ type SidebarProps = {
   onCloseMobile: () => void;
   onToggle: () => void;
   role: string;
+  accessRole: string;
 };
 
 export function Sidebar({
@@ -137,6 +150,7 @@ export function Sidebar({
   onCloseMobile,
   onToggle,
   role,
+  accessRole,
 }: SidebarProps) {
   const pathname = usePathname();
 
@@ -156,9 +170,10 @@ export function Sidebar({
     };
   }, [mobileOpen, onCloseMobile]);
 
-  const visibleItems = navigation.filter((item) =>
-    item.roles.some((candidate) => candidate === role),
-  );
+  const visibleItems = navigation.filter((item) => {
+    const scoped = "accessRoles" in item ? item.accessRoles : undefined;
+    return scoped ? scoped.some((candidate) => candidate === accessRole) : item.roles.some((candidate) => candidate === role);
+  });
   const visibleGroups = [...new Set(visibleItems.map((item) => item.group))];
 
   return (

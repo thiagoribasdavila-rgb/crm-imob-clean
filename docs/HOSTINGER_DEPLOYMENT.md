@@ -10,7 +10,7 @@
 
 ## Aplicação
 
-Use Node.js 24, execute `npm ci`, `npm run prisma:generate`, `npm run validate` e inicie com `npm start`. Em VPS, `pm2 start ecosystem.config.cjs` mantém o processo ativo. Em Node.js Web Apps, configure o comando de inicialização como `npm start`.
+Use Node.js 20.9 ou superior da linha 20, execute `npm ci`, `npm run prisma:generate`, `npm run validate` e inicie com `npm start`. Em VPS, `pm2 start ecosystem.config.cjs` mantém o processo ativo. Em Node.js Web Apps, configure o comando de inicialização como `npm start`.
 
 O pacote enxuto e verificado é gerado com `npm run package:hostinger`. Use o ZIP e o SHA-256 criados em `dist/hostinger`; não compacte manualmente a pasta de desenvolvimento.
 

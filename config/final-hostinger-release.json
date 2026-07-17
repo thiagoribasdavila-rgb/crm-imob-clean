@@ -2,7 +2,7 @@
   "phase": 100,
   "artifact": "dist/hostinger/atlas-v3-hostinger-final.zip",
   "checksum": "dist/hostinger/atlas-v3-hostinger-final.zip.sha256",
-  "runtime": "Node.js 24",
+  "runtime": "Node.js 20.9+",
   "process_manager": "PM2",
   "source": "committed Git HEAD",
   "required_evidence": [

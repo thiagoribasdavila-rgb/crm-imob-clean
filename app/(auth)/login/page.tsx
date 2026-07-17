@@ -41,6 +41,15 @@ async function confirmServerSession(): Promise<Response> {
   return lastResponse!;
 }
 
+async function destinationForSession(response: Response, requested: string | null) {
+  if (requested) return safeAuthDestination(requested);
+  const payload = await response.clone().json().catch(() => null) as { data?: { profile?: { accessRole?: string } } } | null;
+  const accessRole = payload?.data?.profile?.accessRole;
+  if (accessRole === "admin") return "/users";
+  if (accessRole === "broker") return "/leads";
+  return "/dashboard";
+}
+
 function EyeIcon({ hidden }: { hidden: boolean }) {
   return hidden ? (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current" strokeWidth="1.8">
@@ -75,6 +84,7 @@ function LoginExperience() {
     () => safeAuthDestination(searchParams.get("next")),
     [searchParams],
   );
+  const requestedDestination = searchParams.get("next");
 
   useEffect(() => {
     let active = true;
@@ -95,14 +105,14 @@ function LoginExperience() {
         if (response?.ok) {
           setLoading(true);
           setLoginStage("redirect");
-          window.location.replace(destination);
+          window.location.replace(await destinationForSession(response, requestedDestination));
         } else if (response?.status === 401 || response?.status === 403) {
           await supabase.auth.signOut();
         }
       }),
     ]);
     return () => { active = false; };
-  }, [destination]);
+  }, [destination, requestedDestination]);
 
   function updateCapsLock(event: KeyboardEvent<HTMLInputElement>) {
     setCapsLock(event.getModifierState("CapsLock"));
@@ -185,7 +195,7 @@ function LoginExperience() {
 
       setLoginStage("redirect");
       redirecting = true;
-      window.location.assign(destination);
+      window.location.assign(await destinationForSession(sessionResponse, requestedDestination));
     } catch (cause) {
       setError(cause instanceof Error && cause.message === "LOGIN_TIMEOUT" ? "A validação demorou mais que o esperado. Sua senha não foi alterada; tente novamente." : "Ocorreu uma falha inesperada. Verifique sua conexão e tente novamente.");
     } finally {
@@ -302,6 +312,9 @@ function LoginExperience() {
               <button type="submit" disabled={loading} aria-busy={loading} className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-300 via-sky-400 to-blue-500 px-5 py-3.5 text-sm font-bold text-[#03111d] shadow-[0_14px_40px_rgba(14,165,233,.20)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60">
                 {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" /> {loginStage === "profile" ? "Preparando sua operação..." : loginStage === "redirect" ? "Abrindo seu painel..." : "Validando acesso..."}</> : <>Entrar no Atlas OS <span aria-hidden="true">→</span></>}
               </button>
+              <p className="sr-only" role="status" aria-live="polite">
+                {loading ? (loginStage === "profile" ? "Acesso validado. Preparando sua operação." : loginStage === "redirect" ? "Acesso validado. Abrindo seu painel." : "Validando suas credenciais.") : "Formulário de acesso pronto."}
+              </p>
               {systemStatus === "offline" ? <button type="button" onClick={() => window.location.reload()} className="w-full text-center text-xs font-semibold text-amber-200">Tentar reconectar</button> : null}
             </form>
 

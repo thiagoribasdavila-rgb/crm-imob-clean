@@ -11,6 +11,7 @@ const defaultIdentity: ShellIdentity = {
   email: "",
   organization: "Organização atual",
   role: "broker",
+  accessRole: "broker",
 };
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -41,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       if (!auth.user) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name,organization_id,role,commercial_role")
+        .select("full_name,organization_id,role,access_role,commercial_role")
         .eq("id", auth.user.id)
         .maybeSingle();
       let organization = defaultIdentity.organization;
@@ -64,6 +65,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           profile?.commercial_role ||
           (profile?.role === "admin" ? "director" : profile?.role) ||
           "broker",
+        accessRole: profile?.access_role || "broker",
       };
       window.sessionStorage.setItem(
         "atlas:shell-identity",
@@ -104,6 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         onCloseMobile={closeMobile}
         onToggle={toggleSidebar}
         role={identity.role}
+        accessRole={identity.accessRole}
       />
       <Topbar identity={identity} onOpenMenu={openMobile} />
       <main className="atlas-app-main" id="atlas-main-content" tabIndex={-1}>

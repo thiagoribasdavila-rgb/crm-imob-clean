@@ -28,7 +28,7 @@ Execute `npm run inventory:v3` para obter os números do commit corrente. A medi
 - componentes, bibliotecas, migrations, scripts e documentação;
 - variáveis públicas e variáveis exclusivas do servidor;
 - caminhos protótipos excluídos do ZIP final;
-- Hostinger, Node.js 24 e Supabase como limites oficiais.
+- Hostinger, Node.js 20.9+ e Supabase como limites oficiais.
 
 ### Resultado desta fase
 
@@ -200,7 +200,7 @@ Percentual depois: **100%** — três ambientes contratados, identidade exclusiv
 - `ATLAS_DATABASE_ENVIRONMENT`: deve coincidir com `ATLAS_ENV`.
 - `ATLAS_BASE_URL`: localhost somente em desenvolvimento; HTTPS nos demais ambientes.
 
-O `.env.example` agora nasce em desenvolvimento e não finge estar na Hostinger. O PM2 continua explicitamente em homologação, Node.js 24 e Hostinger. Produção exige outro projeto Supabase e remoção das credenciais temporárias.
+O `.env.example` agora nasce em desenvolvimento e não finge estar na Hostinger. O PM2 continua explicitamente em homologação, Node.js 20.9+ e Hostinger. Produção exige outro projeto Supabase e remoção das credenciais temporárias.
 
 Evidências: `config/environments.json`, `npm run environments:check` e `npm run preflight:production`.
 

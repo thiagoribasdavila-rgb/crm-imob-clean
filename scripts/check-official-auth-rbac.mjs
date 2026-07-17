@@ -1,0 +1,21 @@
+import { readFileSync } from "node:fs";
+const read = (path) => readFileSync(path, "utf8");
+const config = JSON.parse(read("config/official-auth-rbac.json"));
+const migration = read("supabase/migrations/20260717200655_official_auth_rbac.sql");
+const reset = read("scripts/reset-official-auth-rbac.mjs");
+const security = read("lib/api/security.ts");
+const login = read("app/(auth)/login/page.tsx");
+const shell = read("components/atlas/app-shell.tsx");
+const failures = [];
+for (const role of ["admin", "director_decisor", "director", "broker"]) if (!config.roles[role] || !migration.includes(`'${role}'`)) failures.push(`perfil ausente: ${role}`);
+for (const name of ["Thiago", "Senna", "Diego", "Luciano", "Adolfo"]) if (!reset.includes(`name: "${name}"`)) failures.push(`usuário inicial ausente: ${name}`);
+if (!migration.includes("access_role") || !migration.includes("profile_authorization_fields_are_server_managed")) failures.push("access_role não protegido");
+if (!migration.includes("broker_requires_operational_director") || !migration.includes("operational_director_requires_decision_director")) failures.push("cadeia compacta inválida");
+if (!reset.includes("dry-run") || !reset.includes("RESET_AND_INVITE_OFFICIAL_USERS") || reset.includes("deleteUser(")) failures.push("reset inseguro");
+for (const marker of ["ban_duration: \"876000h\"", "active: false", "app_metadata", "inviteUserByEmail", "resetPasswordForEmail"]) if (!reset.includes(marker)) failures.push(`reset incompleto: ${marker}`);
+if (!security.includes("accessRole: AccessRole") || !security.includes("access_role")) failures.push("API sem access_role");
+if (!login.includes("destinationForSession") || !login.includes('accessRole === "admin"') || !login.includes('accessRole === "broker"')) failures.push("login sem redirecionamento por perfil");
+if (!shell.includes("access_role") || !shell.includes("accessRole={identity.accessRole}")) failures.push("shell sem RBAC oficial");
+if (config.reset.deleteUsers !== false || config.reset.passwordsStored !== false || config.source !== "profiles-table-under-rls") failures.push("contrato de segurança inválido");
+if (failures.length) { console.error("ATLAS AUTH RBAC OFICIAL: FAILED"); failures.forEach((failure) => console.error(`- ${failure}`)); process.exit(1); }
+console.log("ATLAS AUTH RBAC OFICIAL: PASSED (4 perfis; 6 acessos; RLS; reset reversível; senha zero)");

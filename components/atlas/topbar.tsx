@@ -18,6 +18,7 @@ const sectionLabels: Record<string, string> = {
   reports: "Relatórios",
   integrations: "Integrações",
   settings: "Configurações",
+  users: "Usuários e acessos",
   "atlas-v3": "Evolução V3",
   "ai-dashboard": "Copilot",
 };
@@ -95,7 +96,7 @@ export function Topbar({
         </button>
         <div className="atlas-user-copy">
           <strong>{identity.name}</strong>
-          <span>{identity.email || identity.organization}</span>
+          <span>{identity.accessRole === "admin" ? "Administrador" : identity.accessRole === "director_decisor" ? "Diretor decisor" : identity.accessRole === "director" ? "Diretor comercial" : "Corretor"}</span>
         </div>
         <Link
           href="/settings/profile"

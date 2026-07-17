@@ -10,7 +10,7 @@ O ZIP contém manifesto com versão e commit, inventário SHA-256 de cada arquiv
 
 ## Instalação
 
-Na Hostinger, usar Node.js 24, executar `npm ci`, `npm run prisma:generate`, aplicar as migrations aprovadas no Supabase de homologação e iniciar com `npm start` ou `pm2 start ecosystem.config.cjs`. As chaves devem ser preenchidas no painel da Hostinger, nunca dentro do ZIP.
+Na Hostinger, usar Node.js 20.9+, executar `npm ci`, `npm run prisma:generate`, aplicar as migrations aprovadas no Supabase de homologação e iniciar com `npm start` ou `pm2 start ecosystem.config.cjs`. As chaves devem ser preenchidas no painel da Hostinger, nunca dentro do ZIP.
 
 ## Estado de liberação
 

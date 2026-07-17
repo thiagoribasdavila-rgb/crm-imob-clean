@@ -4,7 +4,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 const root = process.cwd(),
-  zip = resolve(root, "dist/hostinger/atlas-v3-hostinger-final.zip"),
+  packageName = process.env.ATLAS_PACKAGE_NAME || "atlas-v3-hostinger-final.zip",
+  zip = resolve(root, `dist/hostinger/${packageName}`),
   sumFile = `${zip}.sha256`;
 if (!existsSync(zip) || !existsSync(sumFile))
   throw new Error("ZIP ou checksum ausente.");

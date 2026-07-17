@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "accessRoles": ["admin", "director_decisor", "director", "broker"],
   "roles": ["director", "superintendent", "manager", "broker"],
   "visibility": {
     "director": "entire-organization",
@@ -19,5 +20,5 @@
   "inviteRequiresEmailConfirmation": true,
   "changesAreAudited": true,
   "selfManagedFields": ["full_name", "avatar_url", "phone", "creci", "bio"],
-  "serverManagedFields": ["organization_id", "role", "commercial_role", "reports_to", "active"]
+  "serverManagedFields": ["organization_id", "role", "access_role", "commercial_role", "reports_to", "active"]
 }

@@ -13,7 +13,7 @@ if (!envExample.includes("ATLAS_HOSTING_PROVIDER=local")) errors.push(".env.exam
 if (!ecosystem.includes('ATLAS_ENV: "homologation"')) errors.push("PM2 deve iniciar em homologation");
 if (!ecosystem.includes('ATLAS_DATABASE_ENVIRONMENT: "homologation"')) errors.push("PM2 deve identificar o banco de homologação");
 if (!ecosystem.includes('ATLAS_HOSTING_PROVIDER: "hostinger"')) errors.push("PM2 deve declarar Hostinger");
-if (packageConfig.engines?.node !== "24.x") errors.push("runtime oficial deve permanecer Node.js 24.x");
+if (packageConfig.engines?.node !== ">=20.9 <21") errors.push("runtime oficial deve permanecer Node.js 20.9+");
 if (contract.environments?.production?.allowsBootstrap !== false || contract.environments?.production?.allowsTestCredentials !== false) errors.push("produção não pode aceitar bootstrap ou conta de teste");
 
 if (errors.length) {
@@ -21,4 +21,4 @@ if (errors.length) {
   errors.forEach((error) => console.error(`- ${error}`));
   process.exit(1);
 }
-console.log("ATLAS ENVIRONMENTS: PASSED (development, homologation e production isolados; Node.js 24.x)");
+console.log("ATLAS ENVIRONMENTS: PASSED (development, homologation e production isolados; Node.js 20.9+)");

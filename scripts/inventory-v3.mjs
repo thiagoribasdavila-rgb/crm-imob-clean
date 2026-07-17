@@ -37,7 +37,7 @@ const inventory = {
     serverVariables: [...serverVariables].sort(),
   },
   boundaries: {
-    productionTarget: "Hostinger Node.js 24",
+    productionTarget: "Hostinger Node.js 20.9+",
     databaseAuthStorage: "Supabase",
     historicalV2Dependency: false,
     legacyPrototypePathsExcludedFromPackage: legacyRoutePaths.length,

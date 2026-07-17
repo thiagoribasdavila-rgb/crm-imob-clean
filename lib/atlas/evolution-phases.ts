@@ -18,7 +18,7 @@ export const evolutionPhases: EvolutionPhase[] = [
     progress: 92,
     weight: 8,
     status: "avançada",
-    evidence: ["Node 24 validado", "Doctor aprovado", "Build, lint e typecheck aprovados", "366 controles de IA, CRM, Meta e governança e 12 cenários calibrados"],
+    evidence: ["Node 20.9+ validado", "Doctor aprovado", "Build, lint e typecheck aprovados", "366 controles de IA, CRM, Meta e governança e 12 cenários calibrados"],
     next: "Executar rotas reais, recuperação por e-mail e testes responsivos com credenciais de homologação.",
     href: "/atlas-v3/audit",
   },

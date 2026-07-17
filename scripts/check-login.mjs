@@ -18,7 +18,7 @@ if (!login.includes("withLoginTimeout") || !login.includes("LOGIN_TIMEOUT_MS = 1
 if (!login.includes("setRememberEmail] = useState(false)") || login.includes("localStorage.setItem") === false) errors.push("memória de e-mail não exige escolha");
 if (!browserSupabase.includes('createBrowserClient') || browserSupabase.includes('persistSession: true')) errors.push("cliente do navegador não compartilha cookies com o servidor");
 if (!login.includes("signInWithPassword") || !login.includes('fetch("/api/v1/auth/me"') || !login.includes('credentials: "include"')) errors.push("autenticação não confirma sessão, perfil e organização no servidor");
-if (!login.includes("window.location.assign(destination)") || !login.includes("window.location.replace(destination)")) errors.push("redirecionamento pós-login não força navegação limpa");
+if (!login.includes("window.location.assign(") || !login.includes("window.location.replace(")) errors.push("redirecionamento pós-login não força navegação limpa");
 if (!login.includes('role="alert"') || !login.includes('aria-live="assertive"') || !login.includes("Caps Lock está ativado")) errors.push("feedback acessível incompleto");
 if (!login.includes("Esqueci minha senha") || !login.includes("showPassword") || !login.includes("autoComplete=\"current-password\"")) errors.push("controles essenciais ausentes");
 if (!middleware.includes('pathname.startsWith("/login") && authenticated') || !callback.includes("safeAuthDestination")) errors.push("sessão ativa ou callback sem destino seguro");

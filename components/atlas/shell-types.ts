@@ -3,4 +3,5 @@ export type ShellIdentity = {
   email: string;
   organization: string;
   role: string;
+  accessRole: "admin" | "director_decisor" | "director" | "broker";
 };

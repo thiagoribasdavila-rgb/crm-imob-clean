@@ -28,7 +28,7 @@ O avanço geral é calculado pela soma do percentual comprovado de cada fase mul
 
 ## Gates aprovados
 
-- Node 24
+- Node 20.9+
 - Instalação limpa
 - Prisma Client
 - Doctor

@@ -3,7 +3,7 @@
   "artifact": "dist/hostinger/atlas-v3-hostinger-final.zip",
   "checksum": "dist/hostinger/atlas-v3-hostinger-final.zip.sha256",
   "source": "committed_git_head",
-  "runtime": "node_24",
+  "runtime": "node_20_9_plus",
   "host": "hostinger",
   "required_gates": ["release_check", "final_release_check", "api_security", "secret_scan", "package_verification"],
   "prohibited": ["secrets", "personal_data", "env_local", "node_modules", "build_cache", "spreadsheets", "pdfs"],

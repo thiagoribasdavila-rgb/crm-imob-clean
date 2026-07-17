@@ -27,6 +27,13 @@
     { "name": "ATLAS_BOOTSTRAP_SECRET", "scope": "server", "requirement": "temporary", "secret": true, "purpose": "Criação inicial do administrador; proibido em produção." },
     { "name": "ATLAS_TEST_EMAIL", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Conta exclusiva de homologação." },
     { "name": "ATLAS_TEST_PASSWORD", "scope": "server", "requirement": "temporary", "secret": true, "purpose": "Senha da conta exclusiva de homologação." },
+    { "name": "ATLAS_AUTH_ORGANIZATION_ID", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Organização-alvo do reset RBAC oficial em homologação." },
+    { "name": "ATLAS_INITIAL_ADMIN_EMAIL", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "E-mail do administrador inicial." },
+    { "name": "ATLAS_INITIAL_THIAGO_EMAIL", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "E-mail do diretor decisor inicial." },
+    { "name": "ATLAS_INITIAL_SENNA_EMAIL", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "E-mail do diretor comercial inicial." },
+    { "name": "ATLAS_INITIAL_DIEGO_EMAIL", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "E-mail do corretor Diego." },
+    { "name": "ATLAS_INITIAL_LUCIANO_EMAIL", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "E-mail do corretor Luciano." },
+    { "name": "ATLAS_INITIAL_ADOLFO_EMAIL", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "E-mail do corretor Adolfo." },
     { "name": "ATLAS_IMPORT_ORGANIZATION_ID", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Tenant de uma importação supervisionada." },
     { "name": "ATLAS_IMPORT_OWNER_ID", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Responsável de uma importação supervisionada." },
     { "name": "ATLAS_IMPORT_ACTOR_ID", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Autor auditável de uma importação supervisionada." },
@@ -85,6 +92,7 @@
     { "name": "WHATSAPP_NIGHTLY_APPROACH_TEMPLATE", "scope": "server", "requirement": "optional", "secret": false, "purpose": "Template aprovado para abordagem noturna." },
     { "name": "WHATSAPP_TEST_RECIPIENT", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Destino exclusivo do ensaio de homologação." },
 
+    { "name": "ATLAS_PACKAGE_NAME", "scope": "build", "requirement": "optional", "secret": false, "purpose": "Nome controlado do artefato ZIP de release." },
     { "name": "NODE_ENV", "scope": "runtime", "requirement": "managed", "secret": false, "purpose": "Estágio técnico gerenciado por Node/Next." },
     { "name": "NODE_APP_INSTANCE", "scope": "runtime", "requirement": "managed", "secret": false, "purpose": "Identificador de processo gerenciado pelo PM2." },
     { "name": "NEXT_PHASE", "scope": "runtime", "requirement": "managed", "secret": false, "purpose": "Estado interno de build do Next.js." }

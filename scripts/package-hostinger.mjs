@@ -13,7 +13,9 @@ import { legacyRoutePaths } from "./legacy-route-paths.mjs";
 const root = process.cwd();
 const outputRoot = resolve(root, "dist/hostinger");
 const stage = join(outputRoot, "atlas-v3");
-const zipPath = join(outputRoot, "atlas-v3-hostinger-final.zip");
+const packageName = process.env.ATLAS_PACKAGE_NAME || "atlas-v3-hostinger-final.zip";
+if (!/^atlas-v3-[a-z0-9-]+\.zip$/.test(packageName)) throw new Error("Nome de pacote inválido.");
+const zipPath = join(outputRoot, packageName);
 const checksumPath = `${zipPath}.sha256`;
 const trackedChanges = execFileSync(
   "git",
@@ -73,7 +75,7 @@ writeFileSync(
       commit,
       releaseVersion,
       sourceTimestamp,
-      target: "Hostinger Node.js 24",
+      target: "Hostinger Node.js 20.9+",
       releaseChannel: "final-homologation-candidate",
       cleanInstall: true,
       dependsOnV2: false,
@@ -158,7 +160,7 @@ for (const required of [
 }
 const bytes = readFileSync(zipPath);
 const checksum = createHash("sha256").update(bytes).digest("hex");
-writeFileSync(checksumPath, `${checksum}  atlas-v3-hostinger-final.zip\n`);
+writeFileSync(checksumPath, `${checksum}  ${packageName}\n`);
 if (!existsSync(zipPath)) throw new Error("ZIP Hostinger não foi criado.");
 console.log(
   JSON.stringify({

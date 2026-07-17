@@ -20,7 +20,7 @@ O ZIP é um candidato técnico, não uma autorização de publicação. A promo�
 1. Conferir o SHA-256 local e o exibido após o upload.
 2. Extrair em uma nova pasta na Hostinger; não misturar com instalação anterior.
 3. Criar `.env.local` no servidor a partir de `.env.example`, preenchendo segredos somente no ambiente protegido.
-4. Usar Node.js 24 e executar `npm ci` e `npm run prisma:generate`.
+4. Usar Node.js 20.9+ e executar `npm ci` e `npm run prisma:generate`.
 5. Aplicar as migrations pendentes no Supabase correto e executar `npm run preflight:production`.
 6. Criar `logs/`, iniciar com `pm2 start ecosystem.config.cjs` e configurar rotação.
 7. Configurar workers e relatórios no cron conforme `docs/HOSTINGER_DEPLOYMENT.md`.
