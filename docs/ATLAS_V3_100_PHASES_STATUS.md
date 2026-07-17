@@ -754,7 +754,17 @@ Pendência externa: validar lead e responsável laterais, corretor próprio, lid
 
 Pendência externa: aplicar migration e validar cadências, virada mensal, concorrência, encerramento e isolamento real.
 
-Próxima fase: **Fase 44 — Lembretes inteligentes**, antecipando tarefas sem criar ruído ou contato automático.
+## Fase 44 — Lembretes inteligentes
+
+**Estado:** 100% implementada e aprovada localmente; migration, worker e fuso real permanecem para homologação.
+
+**Evolução:** a tela vazia de notificações virou caixa pessoal. Alta prioridade alerta com 24 horas, normal com 4, baixa com 1 e atraso imediatamente. Leitura e descarte pertencem ao responsável.
+
+**Controle:** tarefa, tipo e prazo geram um único alerta; reagendamento abre um novo ciclo. Tarefas encerradas somem. Não há mensagem ao cliente nem conclusão automática. O contrato está em `config/smart-task-reminders.json`, o gate em `npm run smart-reminders:check` e o roteiro em `docs/SMART_TASK_REMINDERS_PHASE_44.md`.
+
+Pendência externa: aplicar migration e validar cron, fuso, janelas, reagendamento, descarte, hierarquia e isolamento real.
+
+Próxima fase: **Fase 45 — Notificações em tempo real**, atualizando a operação sem recarregar a tela.
 
 ## Painel das 100 fases
 

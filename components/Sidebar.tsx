@@ -11,6 +11,7 @@ const sections = [
     { name: "Clientes", href: "/customers", icon: "◇" },
     { name: "Tarefas", href: "/tasks", icon: "✓" },
     { name: "Agenda", href: "/calendar", icon: "□" },
+    { name: "Lembretes", href: "/notifications", icon: "◔" },
   ]},
   { title: "Imobiliário", items: [
     { name: "Imóveis", href: "/properties", icon: "⌂" },
