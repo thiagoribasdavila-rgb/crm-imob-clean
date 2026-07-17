@@ -584,7 +584,19 @@ Pendência externa: testar termos reais, acentos, telefone, projeto, corretor e 
 
 Pendência externa: conferir janelas de data no fuso oficial, origens reais, projeto sem campanha e isolamento com quatro perfis e duas organizações.
 
-Próxima fase: **Fase 29 — timeline**, registrando mudanças, contatos, transferências, IA, propostas e eventos externos.
+## Fase 29 — Timeline
+
+**Estado:** 100% implementada e aprovada localmente; confronto com eventos reais dos provedores permanece para homologação.
+
+**Evolução:** a tela antes vazia tornou-se um histórico cronológico único com mudanças do CRM, contatos, transferências, IA, propostas e integrações. Cada evento explica o que ocorreu, quando, por qual origem e sob responsabilidade de quem, com filtros rápidos por categoria.
+
+**Fonte única:** a timeline não replica eventos. Ela normaliza para leitura `activities`, `messages`, transferências, eventos de campanha e simulações; registros de simulação já representados em atividades são deduplicados.
+
+**Privacidade e escopo:** sessão, lead, organização e RLS hierárquico são verificados antes das consultas. Conteúdo de mensagens, payloads técnicos e identificadores externos não são expostos. O contrato está em `config/unified-timeline.json`, o gate em `npm run unified-timeline:check` e o roteiro em `docs/UNIFIED_TIMELINE_PHASE_29.md`.
+
+Pendência externa: validar sequência real de WhatsApp, Meta, transferências e propostas com quatro perfis e dois tenants; testar paginação acima de 500 eventos.
+
+Próxima fase: **Fase 30 — dados incompletos**, detectando lacunas e sugerindo as perguntas mais úteis para completar o perfil.
 
 ## Painel das 100 fases
 
