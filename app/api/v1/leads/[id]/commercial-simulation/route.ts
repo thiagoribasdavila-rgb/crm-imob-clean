@@ -1,14 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, context: Context) {
+  const rate = checkRateLimit(clientKey(request, "commercial-simulation"), { limit: 20, windowMs: 60_000 });
+  if (!rate.allowed) return NextResponse.json({ error: "Aguarde antes de criar outra simulação." }, { status: 429 });
   try {
     const identity = await requireApiIdentity(request); const { id } = await context.params; await requireLeadAccess(identity, id);
     const body = await request.json() as { propertyId?: string; action?: "simulate" | "proposal"; simulationId?: string };
+    if (!body.action || !["simulate", "proposal"].includes(body.action)) return NextResponse.json({ error: "Ação de simulação inválida." }, { status: 400 });
     const admin = getSupabaseAdmin();
     if (body.action === "proposal" && body.simulationId) {
       const { data: simulation } = await admin.from("commercial_simulations").select("id,lead_id,property_id,valid_until,status").eq("id", body.simulationId).eq("lead_id", id).eq("organization_id", identity.organizationId).single();
@@ -24,14 +28,20 @@ export async function POST(request: NextRequest, context: Context) {
     const { data: development } = await admin.from("developments").select("id,name,developer_name").eq("id", property.development_id).eq("organization_id", identity.organizationId).single();
     if (!development?.developer_name) return NextResponse.json({ error: "Informe a incorporadora do empreendimento." }, { status: 409 });
     const today = new Date().toISOString().slice(0, 10);
-    const { data: rule } = await admin.from("developer_payment_flow_rules").select("*").eq("organization_id", identity.organizationId).ilike("developer_name", development.developer_name).eq("active", true).or(`valid_from.is.null,valid_from.lte.${today}`).or(`valid_until.is.null,valid_until.gte.${today}`).maybeSingle();
+    const { data: rule, error: ruleError } = await admin.from("developer_payment_flow_rules").select("id,developer_name,rule_name,version,payment_flow,down_payment_percent,installments_count,balloon_payment_notes,financing_notes,valid_from,valid_until,active").eq("organization_id", identity.organizationId).ilike("developer_name", development.developer_name).eq("active", true).or(`valid_from.is.null,valid_from.lte.${today}`).or(`valid_until.is.null,valid_until.gte.${today}`).maybeSingle();
+    if (ruleError) return NextResponse.json({ error: "Não foi possível confirmar a regra vigente da incorporadora." }, { status: 409 });
     if (!rule) return NextResponse.json({ error: "Cadastre uma regra de pagamento vigente para esta incorporadora." }, { status: 409 });
-    const price = Number(property.price); const down = rule.down_payment_percent === null ? null : Math.round(price * Number(rule.down_payment_percent)) / 100;
+    const price = Number(property.price);
+    if (!Number.isFinite(price) || price <= 0) return NextResponse.json({ error: "O preço vigente da unidade é inválido." }, { status: 409 });
+    const down = rule.down_payment_percent === null ? null : Math.round(price * Number(rule.down_payment_percent)) / 100;
     const balance = down === null ? null : price - down; const count = Number(rule.installments_count || 0) || null; const installment = balance !== null && count ? Math.round(balance / count * 100) / 100 : null;
-    const snapshot = { developerName: rule.developer_name, developmentName: development.name, ruleName: rule.rule_name, version: rule.version, paymentFlow: rule.payment_flow, downPaymentPercent: rule.down_payment_percent, balloonPaymentNotes: rule.balloon_payment_notes, financingNotes: rule.financing_notes, ruleValidity: { from: rule.valid_from, until: rule.valid_until } };
-    const { data, error } = await admin.from("commercial_simulations").insert({ organization_id: identity.organizationId, lead_id: id, property_id: property.id, development_id: development.id, payment_rule_id: rule.id, created_by: identity.userId, property_price: price, down_payment: down, financed_balance: balance, installment_amount: installment, installments_count: count, rule_snapshot: snapshot }).select("id,property_price,down_payment,financed_balance,installment_amount,installments_count,rule_snapshot,status,valid_until").single();
+    const disclaimer = "Simulação preliminar — NÃO É PROPOSTA. Preço, estoque, crédito e condições devem ser reconfirmados antes de qualquer envio ao cliente.";
+    const snapshot = { developerName: rule.developer_name, developmentName: development.name, propertyTitle: property.title, ruleName: rule.rule_name, version: rule.version, paymentFlow: rule.payment_flow, downPaymentPercent: rule.down_payment_percent, balloonPaymentNotes: rule.balloon_payment_notes, financingNotes: rule.financing_notes, ruleValidity: { from: rule.valid_from, until: rule.valid_until }, calculatedAt: new Date().toISOString(), calculation: "Entrada = preço × percentual da regra; saldo = preço − entrada; parcela linear = saldo ÷ quantidade, quando aplicável.", disclaimer };
+    const ruleDeadline = rule.valid_until ? new Date(`${rule.valid_until}T23:59:59.999Z`).getTime() : Number.POSITIVE_INFINITY;
+    const validUntil = new Date(Math.min(Date.now() + 24 * 60 * 60_000, ruleDeadline)).toISOString();
+    const { data, error } = await admin.from("commercial_simulations").insert({ organization_id: identity.organizationId, lead_id: id, property_id: property.id, development_id: development.id, payment_rule_id: rule.id, created_by: identity.userId, property_price: price, down_payment: down, financed_balance: balance, installment_amount: installment, installments_count: count, rule_snapshot: snapshot, valid_until: validUntil }).select("id,property_price,down_payment,financed_balance,installment_amount,installments_count,rule_snapshot,status,valid_until").single();
     if (error) return NextResponse.json({ error: "Não foi possível registrar a simulação." }, { status: 400 });
     await admin.from("activities").insert({ organization_id: identity.organizationId, lead_id: id, user_id: identity.userId, type: "commercial_simulation", title: `Simulação criada para ${property.title || "unidade"}`, description: `Regra ${rule.rule_name}, versão ${rule.version}. Valores sujeitos à confirmação.`, metadata: { simulationId: data.id, paymentRuleId: rule.id, requiresHumanApproval: true }, occurred_at: new Date().toISOString() });
-    return NextResponse.json({ simulation: data, property: { id: property.id, title: property.title }, disclaimer: "Simulação preliminar. Preço, estoque, crédito e condições devem ser reconfirmados antes da proposta." }, { status: 201 });
+    return NextResponse.json({ simulation: data, property: { id: property.id, title: property.title }, disclaimer, safeguards: { isProposal: false, creditApproved: false, inventoryRecheckRequired: true, priceRecheckRequired: true, paymentRuleVersion: rule.version } }, { status: 201 });
   } catch (error) { const message = error instanceof Error ? error.message : "Falha na simulação."; return NextResponse.json({ error: message }, { status: /sessão|token/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500 }); }
 }
