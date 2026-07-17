@@ -32,7 +32,7 @@ export default function Home() {
         </header>
 
         <section className="grid flex-1 items-center gap-10 py-14 lg:grid-cols-[1.05fr_.95fr] lg:py-10">
-          <div className="relative z-10 max-w-3xl">
+          <div className="atlas-entrance-copy relative z-10 max-w-3xl">
             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-sky-300/15 bg-sky-300/[.05] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-sky-200">
               <span className="h-1.5 w-1.5 rounded-full bg-sky-300" /> Tecnologia para o mercado imobiliário
             </div>
@@ -53,15 +53,24 @@ export default function Home() {
               <Link href="/forgot-password" className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/10 px-7 text-sm font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/[.04]">Recuperar acesso</Link>
             </div>
 
-            <div className="mt-12 flex flex-wrap gap-x-6 gap-y-3 border-t border-white/[.07] pt-6">
-              {operatingSignals.map((signal) => <span key={signal} className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.16em] text-slate-500"><span className="h-1 w-1 rounded-full bg-sky-400" />{signal}</span>)}
+            <div className="mt-12 border-t border-white/[.07] pt-6">
+              <p className="mb-4 text-[9px] font-bold uppercase tracking-[.22em] text-slate-600">Uma única fonte da verdade</p>
+              <div className="flex flex-wrap gap-x-6 gap-y-3">
+                {operatingSignals.map((signal) => <span key={signal} className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[.16em] text-slate-500"><span className="h-1 w-1 rounded-full bg-sky-400" />{signal}</span>)}
+              </div>
             </div>
           </div>
 
-          <div className="relative mx-auto min-h-[500px] w-full max-w-[650px] lg:min-h-[700px]">
+          <div className="atlas-entrance-visual relative mx-auto min-h-[500px] w-full max-w-[650px] lg:min-h-[700px]">
             <div className="absolute left-[8%] top-[10%] h-[68%] w-[84%] rounded-full bg-sky-400/[.08] blur-[100px]" />
             <div className="absolute inset-x-[5%] bottom-[14%] h-px bg-gradient-to-r from-transparent via-sky-300/60 to-transparent shadow-[0_0_40px_rgba(56,189,248,.45)]" />
             <div className="absolute inset-x-[8%] bottom-[14%] h-[38%] opacity-35 [background-image:linear-gradient(to_top,rgba(56,189,248,.35)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,.22)_1px,transparent_1px)] [background-size:100%_42px,52px_100%] [mask-image:linear-gradient(to_top,black,transparent)] [transform:perspective(500px)_rotateX(64deg)] [transform-origin:bottom]" />
+            <div className="atlas-signal-line absolute left-[16%] right-[16%] top-[34%] h-px bg-gradient-to-r from-transparent via-sky-300/80 to-transparent shadow-[0_0_24px_rgba(56,189,248,.6)]" />
+
+            <div className="absolute right-[8%] top-[9%] text-right">
+              <p className="text-[9px] font-bold uppercase tracking-[.22em] text-slate-600">Spatial intelligence</p>
+              <p className="mt-1 text-xs font-medium text-slate-400">Mercado · Produto · Cliente</p>
+            </div>
 
             <div className="absolute left-0 top-[17%] z-20 rounded-2xl border border-white/[.09] bg-[#07101a]/80 px-4 py-3 backdrop-blur-xl">
               <p className="text-[9px] font-bold uppercase tracking-[.17em] text-slate-500">Signal</p>
@@ -72,7 +81,7 @@ export default function Home() {
               <p className="mt-1 text-sm font-semibold text-white">Contexto imobiliário ativo</p>
             </div>
 
-            <Image src="/brand/atlas-robot-assistant.png" alt="Assistente de inteligência imobiliária Atlas" width={560} height={820} priority sizes="(max-width: 1024px) 75vw, 42vw" className="absolute bottom-[10%] left-1/2 z-10 h-[72%] w-auto -translate-x-1/2 object-contain opacity-90 drop-shadow-[0_40px_65px_rgba(14,165,233,.18)]" />
+            <Image src="/brand/atlas-robot-assistant.png" alt="Assistente de inteligência imobiliária Atlas" width={560} height={820} priority sizes="(max-width: 1024px) 75vw, 42vw" className="atlas-entrance-robot absolute bottom-[10%] left-1/2 z-10 h-[72%] w-auto object-contain opacity-90 drop-shadow-[0_40px_65px_rgba(14,165,233,.18)]" />
           </div>
         </section>
 

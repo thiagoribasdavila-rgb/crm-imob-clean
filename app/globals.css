@@ -98,6 +98,52 @@ body::before {
   mask-image: linear-gradient(to bottom, black, transparent 78%);
 }
 
+@keyframes atlas-entrance-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes atlas-entrance-float {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, -8px); }
+}
+
+@keyframes atlas-signal-pulse {
+  0%, 100% { opacity: 0.45; transform: scaleX(0.82); }
+  50% { opacity: 1; transform: scaleX(1); }
+}
+
+.atlas-entrance-copy {
+  animation: atlas-entrance-rise 0.8s cubic-bezier(.22, 1, .36, 1) both;
+}
+.atlas-entrance-visual {
+  animation: atlas-entrance-rise 1s .12s cubic-bezier(.22, 1, .36, 1) both;
+}
+.atlas-entrance-robot {
+  transform: translateX(-50%);
+  animation: atlas-entrance-float 5.5s ease-in-out infinite;
+}
+.atlas-signal-line {
+  transform-origin: center;
+  animation: atlas-signal-pulse 2.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .atlas-entrance-copy,
+  .atlas-entrance-visual,
+  .atlas-entrance-robot,
+  .atlas-signal-line {
+    animation: none !important;
+  }
+}
+
 a {
   color: inherit;
   text-decoration: none;
