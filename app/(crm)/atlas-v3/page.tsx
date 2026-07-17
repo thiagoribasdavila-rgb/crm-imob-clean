@@ -120,6 +120,7 @@ export default function AtlasV3Page() {
             <Link href="/atlas-v3/conversion-dataset" className="atlas-button-secondary">Aprendizado preditivo</Link>
             <Link href="/atlas-v3/conversion-calibration" className="atlas-button-secondary">Calibração preditiva</Link>
             <Link href="/atlas-v3/model-monitoring" className="atlas-button-secondary">Saúde do modelo</Link>
+            <Link href="/atlas-v3/model-governance" className="atlas-button-secondary">Gate final do modelo</Link>
             <Link href="/decision-center" className="atlas-button-secondary">Decisões e IA</Link>
           </div>
         </div>

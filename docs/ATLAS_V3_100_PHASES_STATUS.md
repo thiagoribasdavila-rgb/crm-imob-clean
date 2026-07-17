@@ -1122,6 +1122,18 @@ Pendência externa: acumular séries, gerar três janelas e homologar estabilida
 
 Próxima fase: **Fase 80 — Gate final de modelo e equidade**, fechando dados e predição com critérios de liberação, auditoria de segmentos permitidos e rollback humano.
 
+## Fase 80 — Gate final de modelo e equidade
+
+**Estado:** 100% implementada e aprovada localmente; liberação real depende da maturação e das evidências das fases 75–79.
+
+**Evolução:** o modelo calibrado só influencia a operação após dataset validado, calibração elegível/ativa, drift aceitável, dois segmentos com amostra, equidade de erro, 50 explicações recentes e ausência de atributos proibidos. Sem aprovação, o baseline permanece.
+
+**Governança:** somente a diretoria aprova, rejeita ou executa rollback, sempre com justificativa. Auditoria usa segmentos operacionais de qualidade cadastral; atributos protegidos, documentos e endereço são bloqueados. O contrato está em `config/model-release-equity-gate.json`, o gate em `npm run model-release-gate:check` e o roteiro em `docs/MODEL_RELEASE_EQUITY_GATE_PHASE_80.md`.
+
+Pendência externa: aplicar migrations, maturar amostra, testar gates bloqueado/pronto, aprovação, substituição, rollback e isolamento entre tenants.
+
+Próxima fase: **Fase 81 — Orquestrador comercial de IA**, iniciando o bloco de IA com roteamento por tarefa, custo, risco e dados permitidos.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
