@@ -1350,6 +1350,16 @@ Pendência externa: aplicar migration, executar carga, restore, PM2/logrotate, H
 
 Próxima fase: **Fase 99 — Homologação e aceite executivo**, reunindo evidências por perfil, integrações, dados reais, regressão e decisão formal de go/no-go.
 
+## Fase 99 — Homologação e aceite executivo
+
+**Entregue:** ciclo formal e auditável por versão candidata, consolidação dos 53 testes operacionais, confiabilidade, integrações, restauração, rollback, dados reais, Hostinger e HTTPS. Diretor, superintendente, gerente e corretor possuem uma assinatura imutável por ciclo.
+
+**Decisão segura:** toda pendência bloqueia GO; somente o diretor registra GO/NO-GO com justificativa. O aceite não publica, não altera DNS e não expõe segredos. Contrato em `config/executive-homologation-acceptance.json`, gate `npm run executive-acceptance:check`, painel `/atlas-v3/acceptance` e roteiro `docs/EXECUTIVE_HOMOLOGATION_ACCEPTANCE_PHASE_99.md`.
+
+Pendência externa: aplicar migration, concluir os testes com quatro usuários reais, registrar snapshots 97/98, restauração, rollback, integrações e domínio HTTPS na Hostinger.
+
+Próxima fase: **Fase 100 — Pacote final Hostinger e encerramento do V3**, gerando artefato reproduzível, manifesto, checksum, runbook, smoke pós-publicação e procedimento de retorno.
+
 ## Painel das 100 fases
 
 | Bloco | Fases | Estado atual | Próximo gate |
