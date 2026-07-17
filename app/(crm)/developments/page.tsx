@@ -80,11 +80,14 @@ export default function DevelopmentsPage() {
       setLoading(false);
       return;
     }
-    const response = await fetch("/api/v1/launch-os", { headers: { Authorization: `Bearer ${token}` } });
-    const payload = await response.json();
-    if (!response.ok) setError(payload.error || "Falha ao carregar o Launch OS.");
-    else setData(payload as Payload);
-    setLoading(false);
+    try {
+      const response = await fetch("/api/v1/launch-os", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) setError(payload.error || "Projetos temporariamente indisponíveis. Tente novamente.");
+      else setData(payload as Payload);
+    } catch {
+      setError("Não foi possível conectar aos projetos. Verifique sua conexão e tente novamente.");
+    } finally { setLoading(false); }
   }
 
   useEffect(() => { void load(); }, []);
@@ -121,7 +124,7 @@ export default function DevelopmentsPage() {
         </div>
       </section>
 
-      {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
+      {error ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200"><span>{error}</span><button type="button" onClick={() => void load()} className="atlas-button-secondary">Tentar novamente</button></div> : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AtlasMetric label="VGV do portfólio" value={loading ? "—" : brl.format(data?.portfolio.totalVgv ?? 0)} detail="Valor total do estoque vinculado" trend="PORTFÓLIO" tone="violet" />

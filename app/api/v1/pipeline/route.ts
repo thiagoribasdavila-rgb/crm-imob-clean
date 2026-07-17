@@ -5,6 +5,7 @@ import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 import { canonicalPipelineStage, mergePipelineStageSettings } from "@/lib/atlas/pipeline-stages";
+import { mapLegacyLead } from "@/lib/compat/legacy-v2";
 
 export const dynamic = "force-dynamic";
 
@@ -19,19 +20,22 @@ export async function GET(request: Request) {
     const identity = await requireApiIdentity(request);
     const { data, error } = await identity.supabase
       .from("leads")
-      .select("id,name,phone,email,status,score,temperature,budget_min,budget_max,source,campaign_id,preferred_regions,bedrooms,purpose,last_interaction_at,next_action_at,first_contact_due_at,first_contacted_at,first_contact_sla_minutes,first_response_minutes,first_contact_sla_met,created_at,updated_at,assigned_to,metadata")
+      .select("*")
       .eq("organization_id", identity.organizationId)
       .neq("status", "arquivado")
-      .order("score", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(500);
 
     if (error) throw error;
 
     const { data: settings } = await identity.supabase.from("pipeline_stage_settings").select("stage_key,label,probability,position,visible").eq("organization_id", identity.organizationId);
     const role = identity.commercialRole || identity.role;
-    return NextResponse.json({ leads: data ?? [], stages: mergePipelineStageSettings(settings ?? []), stageContract: "canonical-v1", canConfigureStages: ["admin", "director", "superintendent"].includes(String(role || "")) });
+    const leads = ((data ?? []) as Record<string, unknown>[]).map(mapLegacyLead).sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+    return NextResponse.json({ leads, stages: mergePipelineStageSettings(settings ?? []), stageContract: "canonical-v1", compatibility: "safe-v2-v3", canConfigureStages: ["admin", "director", "superintendent"].includes(String(role || "")) });
   } catch (error) {
     logger.warn("pipeline.read_failed", { error: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : "";
+    if (!/sessão|token|autenticação|organização|escopo/i.test(message)) return NextResponse.json({ error: "Pipeline temporariamente indisponível. O Atlas registrou o problema. Tente novamente." }, { status: 503 });
     return authError(error);
   }
 }

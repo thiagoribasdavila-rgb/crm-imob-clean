@@ -10,6 +10,7 @@ import { LoadingState } from "@/components/atlas/loading-state";
 import { MetricCard } from "@/components/atlas/metric-card";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
+import { isMissingColumn, isMissingRelation, leadAsOpportunity, mapLegacyLead, mapLegacyProfile, mapLegacyProject, mapLegacyTask } from "@/lib/compat/legacy-v2";
 
 // Fase 40 · SLA do time permanece como base da fila; a Fase 35 amplia sua medição.
 
@@ -175,7 +176,7 @@ export default function DashboardPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const results = await Promise.all([
+    const [leadResult, opportunityResult, taskResult, insightResult, developmentResult, profileResult] = await Promise.all([
       supabase.from("leads").select("*").order("created_at", { ascending: false }).limit(500),
       supabase.from("opportunities").select("*").order("created_at", { ascending: false }).limit(300),
       supabase.from("tasks").select("*").order("due_at", { ascending: true, nullsFirst: false }).limit(300),
@@ -183,20 +184,38 @@ export default function DashboardPage() {
       supabase.from("developments").select("*").order("name", { ascending: true }).limit(100),
       supabase.from("profiles").select("*").limit(300),
     ]);
-
-    const labels = ["Leads", "Pipeline", "Tarefas", "Inteligência", "Projetos", "Equipe"];
-    setWarnings(
-      results.flatMap((result, index) =>
-        result.error ? [`${labels[index]}: ${result.error.message}`] : [],
-      ),
-    );
+    const legacyTasks = taskResult.error && isMissingColumn(taskResult.error)
+      ? await supabase.from("tasks").select("*").order("created_at", { ascending: true }).limit(300)
+      : null;
+    const legacyProjects = developmentResult.error && isMissingRelation(developmentResult.error)
+      ? await supabase.from("projects").select("*").order("name", { ascending: true }).limit(100)
+      : null;
+    const leads = ((leadResult.data ?? []) as DataRow[]).map(mapLegacyLead);
+    const opportunities = opportunityResult.error && isMissingRelation(opportunityResult.error)
+      ? leads.map(leadAsOpportunity)
+      : ((opportunityResult.data ?? []) as DataRow[]);
+    const tasks = (((legacyTasks?.data ?? taskResult.data) ?? []) as DataRow[]).map(mapLegacyTask);
+    const developments = (((legacyProjects?.data ?? developmentResult.data) ?? []) as DataRow[]).map(mapLegacyProject);
+    const compatibility = [
+      opportunityResult.error && isMissingRelation(opportunityResult.error) ? "Pipeline adaptado à base atual" : "",
+      legacyTasks ? "Prazos de tarefas compatibilizados" : "",
+      insightResult.error && isMissingRelation(insightResult.error) ? "Inteligência pronta para ativação" : "",
+      legacyProjects ? "Projetos conectados ao cadastro atual" : "",
+    ].filter(Boolean);
+    const unavailable = [
+      leadResult.error ? "Leads" : "",
+      taskResult.error && !legacyTasks ? "Tarefas" : "",
+      developmentResult.error && !legacyProjects ? "Projetos" : "",
+      profileResult.error ? "Equipe" : "",
+    ].filter(Boolean);
+    setWarnings([...compatibility, ...unavailable.map((module) => `${module} temporariamente indisponível. Tente atualizar.`)]);
     setData({
-      leads: (results[0].data ?? []) as DataRow[],
-      opportunities: (results[1].data ?? []) as DataRow[],
-      tasks: (results[2].data ?? []) as DataRow[],
-      insights: (results[3].data ?? []) as DataRow[],
-      developments: (results[4].data ?? []) as DataRow[],
-      profiles: (results[5].data ?? []) as DataRow[],
+      leads,
+      opportunities,
+      tasks,
+      insights: insightResult.error && isMissingRelation(insightResult.error) ? [] : (insightResult.data ?? []) as DataRow[],
+      developments,
+      profiles: ((profileResult.data ?? []) as DataRow[]).map(mapLegacyProfile),
     });
     const { data: authData } = await supabase.auth.getUser();
     setViewerId(authData.user?.id || "");

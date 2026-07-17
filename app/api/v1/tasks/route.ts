@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { buildTaskCenter } from "@/lib/analytics/task-center";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { isMissingColumn, mapLegacyLead, mapLegacyProfile, mapLegacyTask } from "@/lib/compat/legacy-v2";
 
 export const dynamic = "force-dynamic";
 const uuid = (value: unknown) => typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null;
@@ -13,12 +14,19 @@ export async function GET(request: NextRequest) {
   const organizationId = identity.access.organization.id;
   const [tasks, profiles, leads] = await Promise.all([
     identity.supabase.from("tasks").select("id,title,description,due_at,priority,status,lead_id,assigned_to,recurrence_id,created_at,lead:leads(id,name,purpose)").eq("organization_id", organizationId).order("due_at", { ascending: true, nullsFirst: false }).limit(2000),
-    identity.supabase.from("profiles").select("id,full_name,commercial_role,role").eq("organization_id", organizationId).eq("active", true).limit(2000),
-    identity.supabase.from("leads").select("id,name,assigned_to,status").eq("organization_id", organizationId).order("updated_at", { ascending: false }).limit(1000),
+    identity.supabase.from("profiles").select("*").eq("organization_id", organizationId).eq("active", true).limit(2000),
+    identity.supabase.from("leads").select("*").eq("organization_id", organizationId).order("updated_at", { ascending: false }).limit(1000),
   ]);
-  if (tasks.error || profiles.error || leads.error) return apiError("TASK_CENTER_LOAD_FAILED", "Não foi possível carregar a central de tarefas.", identity.meta, { status: 500 });
-  const center = buildTaskCenter((tasks.data ?? []) as never[], profiles.data ?? [], identity.access.profile.id);
-  return apiSuccess({ scope: { organizationId, role: identity.access.profile.commercialRole || identity.access.profile.role, actorId: identity.access.profile.id, hierarchicalRls: true }, ...center, creationOptions: { leads: leads.data ?? [], assignees: profiles.data ?? [], defaults: { assigneeId: identity.access.profile.id, priority: "media" } }, generatedAt: new Date().toISOString() }, identity.meta, { headers: { ...rate.headers, "Cache-Control": "no-store" } });
+  const fallbackTasks = tasks.error && isMissingColumn(tasks.error)
+    ? await identity.supabase.from("tasks").select("*").eq("organization_id", organizationId).order("created_at", { ascending: true }).limit(2000)
+    : null;
+  if ((tasks.error && !fallbackTasks) || fallbackTasks?.error || profiles.error || leads.error) return apiError("TASK_CENTER_LOAD_FAILED", "Módulo de tarefas temporariamente indisponível. Tente novamente.", identity.meta, { status: 503 });
+  const profileRows = ((profiles.data ?? []) as Record<string, unknown>[]).map(mapLegacyProfile);
+  const leadRows = ((leads.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead);
+  const leadMap = new Map(leadRows.map((lead) => [String(lead.id), lead]));
+  const taskRows = (((fallbackTasks?.data ?? tasks.data) ?? []) as Record<string, unknown>[]).map(mapLegacyTask).map((task) => ({ ...task, lead: task.lead || (task.lead_id ? leadMap.get(String(task.lead_id)) : null) }));
+  const center = buildTaskCenter(taskRows as never[], profileRows as never[], identity.access.profile.id);
+  return apiSuccess({ scope: { organizationId, role: identity.access.profile.commercialRole || identity.access.profile.role, actorId: identity.access.profile.id, hierarchicalRls: true }, ...center, compatibility: fallbackTasks ? "safe-v2-v3" : "canonical-v3", creationOptions: { leads: leadRows, assignees: profileRows, defaults: { assigneeId: identity.access.profile.id, priority: "media" } }, generatedAt: new Date().toISOString() }, identity.meta, { headers: { ...rate.headers, "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: NextRequest) {

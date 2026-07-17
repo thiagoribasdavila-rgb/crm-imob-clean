@@ -3,6 +3,7 @@ import { requireApiIdentity } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
+import { isMissingRelation, leadAsOpportunity, mapLegacyProject } from "@/lib/compat/legacy-v2";
 
 export const dynamic = "force-dynamic";
 
@@ -43,15 +44,22 @@ export async function GET(request: Request) {
       admin.from("project_intelligence_profiles").select("development_id,onboarding_status,readiness_percent,missing_information").eq("organization_id", identity.organizationId),
     ]);
 
-    if (developmentResult.error) throw developmentResult.error;
+    const legacyProjects = developmentResult.error && isMissingRelation(developmentResult.error)
+      ? await admin.from("projects").select("*").eq("organization_id", identity.organizationId).order("created_at", { ascending: false })
+      : null;
+    if ((developmentResult.error && !legacyProjects) || legacyProjects?.error) throw developmentResult.error || legacyProjects?.error;
+    const legacyLeads = opportunityResult.error && isMissingRelation(opportunityResult.error)
+      ? await admin.from("leads").select("*").eq("organization_id", identity.organizationId).limit(2000)
+      : null;
 
     const properties = (propertyResult.data ?? []) as AnyRow[];
-    const opportunities = (opportunityResult.data ?? []) as AnyRow[];
+    const opportunities = legacyLeads?.error ? [] : legacyLeads ? ((legacyLeads.data ?? []) as AnyRow[]).map(leadAsOpportunity) : (opportunityResult.data ?? []) as AnyRow[];
     const campaigns = (campaignResult.data ?? []) as AnyRow[];
     const reservations = (reservationResult.data ?? []) as AnyRow[];
     const intelligence = (intelligenceResult.data ?? []) as AnyRow[];
 
-    const developments = ((developmentResult.data ?? []) as AnyRow[]).map((development) => {
+    const developmentRows = (((legacyProjects?.data ?? developmentResult.data) ?? []) as AnyRow[]).map(mapLegacyProject);
+    const developments = developmentRows.map((development) => {
       const id = textValue(development.id);
       const inventory = properties.filter((item) => developmentRef(item) === id);
       const linkedOpportunities = opportunities.filter((item) => developmentRef(item) === id || inventory.some((unit) => textValue(unit.id) === textValue(item.property_id)));
@@ -109,11 +117,11 @@ export async function GET(request: Request) {
       { totalVgv: 0, soldVgv: 0, pipeline: 0, forecast: 0, units: 0, available: 0, sold: 0, reservations: 0 },
     );
 
-    return NextResponse.json({ portfolio, developments, generatedAt: new Date().toISOString() });
+    return NextResponse.json({ portfolio, developments, compatibility: legacyProjects ? "safe-v2-v3" : "canonical-v3", generatedAt: new Date().toISOString() });
   } catch (error) {
     logger.error("launch_os.read_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao carregar Launch OS.";
     const status = /token|sessão|organização|autoriz/i.test(message) ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: status === 401 ? message : "Projetos temporariamente indisponíveis. O Atlas registrou o problema. Tente novamente." }, { status });
   }
 }

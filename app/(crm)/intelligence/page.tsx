@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { AtlasBadge, AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
+import { isMissingRelation } from "@/lib/compat/legacy-v2";
 
 type Insight = {
   id: string;
@@ -19,39 +22,33 @@ export default function IntelligencePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
+  const load = useCallback(async () => {
+      setLoading(true);
+      setError(null);
       const { data, error } = await supabase
         .from("ai_insights")
         .select("id, title, summary, recommendation, score, confidence, status, created_at")
         .order("created_at", { ascending: false })
         .limit(20);
 
-      if (error) setError(error.message);
+      if (error && !isMissingRelation(error)) setError("Módulo temporariamente indisponível. O Atlas registrou o problema.");
       setItems((data as Insight[]) ?? []);
       setLoading(false);
-    }
-    load();
   }, []);
+
+  useEffect(() => { void load(); }, [load]);
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-fuchsia-300">Atlas Intelligence Layer</p>
-        <h1 className="mt-2 text-3xl font-black">Central de inteligência</h1>
-        <p className="mt-2 text-zinc-400">Insights, previsões e recomendações explicáveis para a operação imobiliária.</p>
-      </div>
+      <div><AtlasBadge tone="violet">ATLAS INTELLIGENCE</AtlasBadge><h1 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-white sm:text-4xl">Central de inteligência</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Sinais, previsões e recomendações explicáveis para a operação imobiliária, sem decisões automáticas sobre pessoas.</p></div>
 
-      {error && <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</div>}
+      {error && <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200"><span>{error}</span><button type="button" onClick={() => void load()} className="atlas-button-secondary">Tentar novamente</button></div>}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {loading ? (
-          <div className="rounded-2xl border border-zinc-800 p-8 text-zinc-400">Carregando inteligência...</div>
+          [1,2,3,4].map((item) => <AtlasSkeleton key={item} className="h-48" />)
         ) : items.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-8">
-            <h2 className="text-lg font-bold">Motor preparado</h2>
-            <p className="mt-2 text-zinc-400">Ainda não existem insights persistidos. O Atlas já possui estrutura para score de leads, matching e recomendações.</p>
-          </div>
+          <AtlasCard className="lg:col-span-2"><AtlasCardHeader eyebrow="Motor preparado" title="A inteligência será ativada sobre dados consolidados" description="Assim que os insights forem persistidos, o Atlas exibirá score, resumo e próxima melhor ação sem poluir a rotina comercial."/><div className="p-5"><AtlasEmpty title="Nenhum insight disponível agora" description="Os leads continuam acessíveis e a operação segue funcionando normalmente." /></div></AtlasCard>
         ) : (
           items.map((item) => (
             <article key={item.id} className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
