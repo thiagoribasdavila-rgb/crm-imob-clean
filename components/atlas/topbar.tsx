@@ -25,9 +25,11 @@ const sectionLabels: Record<string, string> = {
 
 export function Topbar({
   identity,
+  mobileOpen,
   onOpenMenu,
 }: {
   identity: ShellIdentity;
+  mobileOpen: boolean;
   onOpenMenu: () => void;
 }) {
   const pathname = usePathname();
@@ -48,16 +50,19 @@ export function Topbar({
       <div className="atlas-topbar-inner">
         <div className="atlas-topbar-start">
         <button
+          id="atlas-mobile-menu-trigger"
           type="button"
           className="atlas-mobile-menu"
           onClick={onOpenMenu}
           aria-label="Abrir menu"
+          aria-controls="atlas-primary-sidebar"
+          aria-expanded={mobileOpen}
         >
           ☰
         </button>
         <div>
           <span className="atlas-topbar-context">{identity.organization}</span>
-          <span className="atlas-topbar-section">{currentSection}</span>
+          <span className="atlas-topbar-section" aria-live="polite">{currentSection}</span>
         </div>
         </div>
 

@@ -214,6 +214,11 @@ button:disabled {
 :focus-visible {
   outline: 2px solid rgba(125, 211, 252, 0.9);
   outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(56, 189, 248, 0.12);
+}
+.atlas-app-main:focus {
+  outline: none;
+  box-shadow: none;
 }
 input,
 select,
@@ -1648,6 +1653,26 @@ textarea:focus {
   .atlas-app-shell .atlas-panel,
   .atlas-app-shell .atlas-official-metric,
   .atlas-app-shell .atlas-metric { animation: none !important; transition-duration: 0.01ms !important; }
+}
+@media (prefers-contrast: more) {
+  :root {
+    --atlas-border: rgba(226, 232, 240, 0.42);
+    --atlas-text-muted: #cbd5e1;
+  }
+  .atlas-app-shell .text-slate-500,
+  .atlas-app-shell .text-zinc-500 {
+    color: #cbd5e1;
+  }
+}
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 3px;
+  }
+  .atlas-nav-link[data-active="true"],
+  .atlas-mobile-dock-action[data-active="true"] {
+    border: 2px solid Highlight;
+  }
 }
 
 .atlas-command-dialog {

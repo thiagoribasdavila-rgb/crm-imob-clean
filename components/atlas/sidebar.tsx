@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { atlasNavigation } from "@/lib/atlas/navigation";
 /* legacy catalog removed in phase 004
   {
@@ -176,6 +176,7 @@ export function Sidebar({
   accessRole,
 }: SidebarProps) {
   const pathname = usePathname();
+  const sidebarRef = useRef<HTMLElement>(null);
   const [query, setQuery] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
 
@@ -195,15 +196,32 @@ export function Sidebar({
 
   useEffect(() => {
     if (!mobileOpen) return;
+    const sidebar = sidebarRef.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onCloseMobile();
+      if (event.key !== "Tab" || !sidebar) return;
+      const focusable = Array.from(sidebar.querySelectorAll<HTMLElement>(focusableSelector)).filter((element) => element.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable.at(-1)!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKeyDown);
+    window.requestAnimationFrame(() => document.getElementById("atlas-sidebar-search-input")?.focus());
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
+      if (sidebar?.contains(document.activeElement)) previousFocus?.focus();
     };
   }, [mobileOpen, onCloseMobile]);
 
@@ -263,7 +281,10 @@ export function Sidebar({
         aria-label="Fechar menu"
       />
       <aside
+        id="atlas-primary-sidebar"
+        ref={sidebarRef}
         className="atlas-sidebar"
+        aria-label="Menu principal do Atlas"
         data-collapsed={collapsed ? "true" : "false"}
         data-mobile-open={mobileOpen ? "true" : "false"}
       >

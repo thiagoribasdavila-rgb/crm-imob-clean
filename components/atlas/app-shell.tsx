@@ -115,7 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         role={identity.role}
         accessRole={identity.accessRole}
       />
-      <Topbar identity={identity} onOpenMenu={openMobile} />
+      <Topbar identity={identity} mobileOpen={mobileOpen} onOpenMenu={openMobile} />
       <main className="atlas-app-main" id="atlas-main-content" tabIndex={-1}>
         <div className="atlas-app-content">{children}</div>
       </main>

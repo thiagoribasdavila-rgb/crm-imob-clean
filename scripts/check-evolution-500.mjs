@@ -16,6 +16,7 @@ const phaseEleven = JSON.parse(fs.readFileSync("config/evolution-phase-011-failu
 const phaseTwelve = JSON.parse(fs.readFileSync("config/evolution-phase-012-desktop-canvas.json", "utf8"));
 const phaseThirteen = JSON.parse(fs.readFileSync("config/evolution-phase-013-tablet-workspace.json", "utf8"));
 const phaseFourteen = JSON.parse(fs.readFileSync("config/evolution-phase-014-mobile-touch.json", "utf8"));
+const phaseFifteen = JSON.parse(fs.readFileSync("config/evolution-phase-015-accessibility.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -27,6 +28,7 @@ const navigation = fs.readFileSync("lib/atlas/navigation.ts", "utf8");
 const sidebar = fs.readFileSync("components/atlas/sidebar.tsx", "utf8");
 const palette = fs.readFileSync("components/CommandPalette.tsx", "utf8");
 const mobileDock = fs.readFileSync("components/atlas/mobile-dock.tsx", "utf8");
+const appShell = fs.readFileSync("components/atlas/app-shell.tsx", "utf8");
 
 const checks = [
   ["50 ondas", (source.match(/\{ id: \d+, name:/g) || []).length === 50],
@@ -63,6 +65,10 @@ const checks = [
   ["Fase 014 protege a experiência móvel", phaseFourteen.status === "completed" && phaseFourteen.minimumTouchTargetPx >= 44],
   ["Formulários móveis não provocam zoom", globalStyles.includes(".atlas-app-shell textarea") && globalStyles.includes("font-size: 16px")],
   ["Topbar móvel mantém ação comercial", topbar.includes('href="/leads/new"') && phaseFourteen.preservedActions.includes("new lead")],
+  ["Fase 015 reforça acessibilidade sistêmica", phaseFifteen.status === "completed" && phaseFifteen.keyboardFocusTrap === true],
+  ["Menu móvel declara relação e estado", topbar.includes('aria-controls="atlas-primary-sidebar"') && topbar.includes("aria-expanded={mobileOpen}") && sidebar.includes('id="atlas-primary-sidebar"')],
+  ["Preferências de contraste são respeitadas", globalStyles.includes("@media (prefers-contrast: more)") && globalStyles.includes("@media (forced-colors: active)")],
+  ["Shell transmite estado do menu", appShell.includes("mobileOpen={mobileOpen}")],
 ];
 
 for (const [label, passed] of checks) {

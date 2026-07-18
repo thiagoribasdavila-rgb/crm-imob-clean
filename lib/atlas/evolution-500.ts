@@ -96,6 +96,11 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Shell touch-first abaixo de 768 px", "Campos com 16 px evitam zoom involuntário no iOS", "Topbar compacta e dock preservam ações comerciais essenciais"],
   },
+  15: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Menu móvel contém e restaura o foco", "Seções e controles expõem relações ARIA", "Foco, contraste elevado e cores forçadas possuem suporte sistêmico"],
+  },
 };
 
 const checkpoints = [
