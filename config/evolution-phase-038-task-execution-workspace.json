@@ -1,0 +1,91 @@
+{
+  "phase": 38,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "task-execution-workspace",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "dataFetchingChanged": false,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": false,
+  "taskContract": {
+    "layoutAttribute": "execution-first",
+    "prioritySource": "authorized-task-and-daily-productivity-payloads",
+    "primarySignals": 4,
+    "visibleDailyPriorities": 3,
+    "existingTaskCreationPreserved": true,
+    "recurrencePreserved": true,
+    "existingFiltersPreserved": true,
+    "teamVisibilityPreserved": true,
+    "agendaLinkPreserved": true,
+    "safePatchActionsPreserved": true
+  },
+  "informationHierarchy": {
+    "signals": [
+      "overdue",
+      "today",
+      "mine",
+      "without due date"
+    ],
+    "primaryDailySteps": 3,
+    "remainingStepsProgressivelyDisclosed": true,
+    "extendedMetricsProgressivelyDisclosed": true,
+    "recurrenceManagementProgressivelyDisclosed": true,
+    "creationOptionalFieldsProgressivelyDisclosed": true,
+    "functionalityRemoved": false
+  },
+  "executionPolicy": {
+    "completeRequiresHumanAction": true,
+    "postponeRequiresHumanAction": true,
+    "recurrenceCancellationRequiresHumanAction": true,
+    "automaticTaskCompletion": false,
+    "automaticAssignment": false,
+    "peopleRanking": false
+  },
+  "truthPolicy": {
+    "queueLimitedToAuthorizedPayload": true,
+    "priorityIsExplainableHeuristicNotPrediction": true,
+    "assistantPresentedAsAutonomousAi": false,
+    "productivityGainPublished": false,
+    "conversionGuaranteePublished": false
+  },
+  "accessibility": {
+    "semanticCreationForm": true,
+    "filtersUseTabSemantics": true,
+    "queueUsesPoliteLiveRegion": true,
+    "loadingUsesBusyState": true,
+    "minimumNewTouchTargetPx": 44,
+    "reducedMotionPolicyPreserved": true
+  },
+  "structuralBaseline": {
+    "newStateAdded": false,
+    "newEffectAdded": false,
+    "newNetworkRequestAdded": false,
+    "existingNetworkRequests": 2,
+    "dailyPriorityLimit": 3,
+    "runtimeTaskCompletionTimeMeasured": false
+  },
+  "safetyPolicy": {
+    "databaseWriteAdded": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "taskApiContractPreserved": true,
+    "routesPreserved": true
+  },
+  "exitCriteria": {
+    "firstViewportShowsDailySignals": true,
+    "firstThreePrioritiesAreVisible": true,
+    "taskCreationRemainsAvailable": true,
+    "taskActionsRemainExplicit": true,
+    "teamSummaryDoesNotRankPeople": true,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 39,
+    "name": "Melhorar agenda",
+    "status": "planned"
+  }
+}

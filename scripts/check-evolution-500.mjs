@@ -39,6 +39,7 @@ const phaseThirtyFour = JSON.parse(fs.readFileSync("config/evolution-phase-034-n
 const phaseThirtyFive = JSON.parse(fs.readFileSync("config/evolution-phase-035-dashboard-decision-first.json", "utf8"));
 const phaseThirtySix = JSON.parse(fs.readFileSync("config/evolution-phase-036-leads-action-workspace.json", "utf8"));
 const phaseThirtySeven = JSON.parse(fs.readFileSync("config/evolution-phase-037-pipeline-movement-workspace.json", "utf8"));
+const phaseThirtyEight = JSON.parse(fs.readFileSync("config/evolution-phase-038-task-execution-workspace.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -57,6 +58,7 @@ const navigationPerformance = fs.readFileSync("components/atlas/navigation-perfo
 const dashboard = fs.readFileSync("app/(crm)/dashboard/page.tsx", "utf8");
 const leadsPage = fs.readFileSync("app/(crm)/leads/page.tsx", "utf8");
 const pipelinePage = fs.readFileSync("app/(crm)/pipeline/page.tsx", "utf8");
+const tasksPage = fs.readFileSync("app/(crm)/tasks/page.tsx", "utf8");
 
 const checks = [
   ["50 ondas", (source.match(/\{ id: \d+, name:/g) || []).length === 50],
@@ -145,6 +147,8 @@ const checks = [
   ["Leads preserva paginação, RBAC e verdade", phaseThirtySix.leadsContract.existingPaginationPreserved === true && phaseThirtySix.truthPolicy.queuePresentedAsGlobalPortfolio === false && phaseThirtySix.safetyPolicy.rbacPreserved === true],
   ["Fase 037 orienta Pipeline à próxima movimentação", phaseThirtySeven.status === "completed" && phaseThirtySeven.pipelineContract.visiblePriorityLimit === 3 && pipelinePage.includes('data-pipeline-layout="movement-first"')],
   ["Pipeline preserva etapas, movimento seguro e verdade", phaseThirtySeven.pipelineContract.canonicalStagesPreserved === true && phaseThirtySeven.pipelineContract.safeMovementPreserved === true && phaseThirtySeven.truthPolicy.queuePresentedAsGlobalPortfolio === false && phaseThirtySeven.safetyPolicy.rbacPreserved === true],
+  ["Fase 038 orienta Tarefas à execução diária", phaseThirtyEight.status === "completed" && phaseThirtyEight.taskContract.visibleDailyPriorities === 3 && tasksPage.includes('data-task-layout="execution-first"')],
+  ["Tarefas preservam ações humanas, RBAC e verdade", phaseThirtyEight.executionPolicy.automaticTaskCompletion === false && phaseThirtyEight.truthPolicy.priorityIsExplainableHeuristicNotPrediction === true && phaseThirtyEight.safetyPolicy.rbacPreserved === true],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 
