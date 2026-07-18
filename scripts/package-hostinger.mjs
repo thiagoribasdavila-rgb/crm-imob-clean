@@ -27,7 +27,10 @@ if (trackedChanges)
     "Existem alterações versionadas sem commit. Registre-as antes de gerar o pacote Hostinger.",
   );
 
-rmSync(outputRoot, { recursive: true, force: true });
+mkdirSync(outputRoot, { recursive: true });
+rmSync(stage, { recursive: true, force: true });
+rmSync(zipPath, { force: true });
+rmSync(checksumPath, { force: true });
 mkdirSync(stage, { recursive: true });
 const archive = execFileSync("git", ["archive", "--format=tar", "HEAD"], {
   cwd: root,
@@ -77,6 +80,9 @@ writeFileSync(
       sourceTimestamp,
       target: "Hostinger Node.js 20.9+",
       releaseChannel: "final-homologation-candidate",
+      evolutionPhase: process.env.ATLAS_EVOLUTION_PHASE
+        ? Number(process.env.ATLAS_EVOLUTION_PHASE)
+        : null,
       cleanInstall: true,
       dependsOnV2: false,
       startCommand: "npm start",

@@ -1,0 +1,116 @@
+{
+  "phase": 42,
+  "wave": 3,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "project-decision-workspace",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "dataFetchingChanged": true,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": true,
+  "projectContract": {
+    "layoutAttribute": "decision-first",
+    "canonicalSource": "public.developments",
+    "legacySource": "public.projects",
+    "maximumProjects": 500,
+    "maximumAnalysisRows": 5000,
+    "visiblePriorityLimit": 3,
+    "essentialMaterialKit": [
+      "book",
+      "price_table",
+      "sales_mirror"
+    ],
+    "verifiedCurrentMaterialsOnly": true,
+    "moduleFailureIsolation": true,
+    "serverSideAuthentication": true,
+    "readOnly": true
+  },
+  "informationHierarchy": {
+    "signals": [
+      "visible projects",
+      "available units",
+      "complete commercial kits",
+      "projects requiring review"
+    ],
+    "priorityOrder": [
+      "expired material",
+      "incomplete commercial kit",
+      "pending material review",
+      "inventory not connected",
+      "incomplete registry"
+    ],
+    "financialSignalsPreserved": true,
+    "moduleHealthProgressivelyDisclosed": true,
+    "managementActionsProgressivelyDisclosed": true,
+    "searchAndSegmentsVisible": true,
+    "functionalityRemoved": false
+  },
+  "compatibility": {
+    "canonicalPortfolio": "developments",
+    "legacyPortfolio": "projects",
+    "canonicalPipeline": "opportunities",
+    "legacyPipeline": "leads",
+    "optionalModules": [
+      "properties",
+      "campaigns",
+      "atlas_inventory_reservations",
+      "project_intelligence_profiles",
+      "project_materials"
+    ],
+    "optionalModuleFailureBreaksPortfolio": false,
+    "technicalErrorsReturnedToUser": false
+  },
+  "executionPolicy": {
+    "automaticMaterialApproval": false,
+    "automaticInventoryChange": false,
+    "automaticProjectHomologation": false,
+    "automaticCommercialDecision": false,
+    "openingProjectRequiresHumanAction": true
+  },
+  "truthPolicy": {
+    "priorityIsExplainableObservationNotPrediction": true,
+    "forecastPresentedAsGuaranteedRevenue": false,
+    "expiredMaterialCountedAsCurrent": false,
+    "pendingMaterialCountedAsVerified": false,
+    "missingModulePresentedAsConnected": false,
+    "runtimeProductivityClaimPublished": false
+  },
+  "accessibility": {
+    "segmentFiltersUsePressedState": true,
+    "updatesUsePoliteLiveRegion": true,
+    "loadingUsesBusyState": true,
+    "minimumNewTouchTargetPx": 44,
+    "mobileActionsRemainReachable": true,
+    "reducedMotionPolicyPreserved": true
+  },
+  "safetyPolicy": {
+    "databaseWriteAdded": false,
+    "databaseSchemaChanged": false,
+    "environmentSecretsExposed": false,
+    "adminClientUsedForPortfolioReads": false,
+    "authenticatedRlsClientUsed": true,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "existingProjectRoutesPreserved": true,
+    "existingMaterialsGovernancePreserved": true
+  },
+  "exitCriteria": {
+    "portfolioSurvivesOptionalModuleFailure": true,
+    "canonicalAndLegacyProjectsSupported": true,
+    "currentMaterialValidityEnforced": true,
+    "maximumThreeExplainablePriorities": true,
+    "technicalErrorsRemainRedacted": true,
+    "phaseTwentyGateBypassed": false
+  },
+  "checkpointPolicy": {
+    "interval": 50,
+    "nextCheckpoint": 50,
+    "packageCreatedThisPhase": false
+  },
+  "nextPhase": {
+    "phase": 43,
+    "name": "Melhorar Reativação",
+    "status": "planned"
+  }
+}

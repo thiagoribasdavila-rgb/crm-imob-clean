@@ -1652,6 +1652,120 @@ textarea:focus {
   }
 }
 
+/* Fase 042 — Projetos orientados à decisão, com gestão progressivamente revelada. */
+.atlas-project-actions > div :is(a, button) {
+  display: flex;
+  min-height: 44px;
+  width: 100%;
+  align-items: center;
+  border-radius: 12px;
+  padding: 0 12px;
+  border: 0;
+  color: rgb(203 213 225);
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.atlas-project-actions > div :is(a, button):hover,
+.atlas-project-actions > div :is(a, button):focus-visible {
+  color: white;
+  background: rgba(56, 189, 248, 0.09);
+  outline: none;
+}
+
+.atlas-project-priority {
+  min-height: 156px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.022);
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.atlas-project-priority:hover,
+.atlas-project-priority:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(125, 211, 252, 0.24);
+  background: rgba(56, 189, 248, 0.045);
+  outline: none;
+}
+
+.atlas-project-segment {
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+  padding: 0 15px;
+  color: rgb(148 163 184);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 13px;
+  font-weight: 600;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.atlas-project-segment[aria-pressed="true"] {
+  border-color: rgba(125, 211, 252, 0.28);
+  color: rgb(224 242 254);
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.atlas-project-card {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 24px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.025);
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.atlas-project-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(56, 189, 248, 0.2);
+  background: rgba(56, 189, 248, 0.035);
+}
+
+.atlas-project-health summary::-webkit-details-marker,
+.atlas-project-actions summary::-webkit-details-marker {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .atlas-project-actions {
+    width: 100%;
+  }
+
+  .atlas-project-actions > summary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .atlas-project-actions > div {
+    right: 0;
+    left: 0;
+    min-width: 0;
+  }
+
+  .atlas-project-card {
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-project-priority,
+  .atlas-project-segment,
+  .atlas-project-card,
+  .atlas-project-actions > div :is(a, button) {
+    transition: none;
+  }
+
+  .atlas-project-priority:hover,
+  .atlas-project-card:hover {
+    transform: none;
+  }
+}
+
 /* Fase 041 — Customer 360 orientado a vínculo, contexto e próxima ação. */
 .atlas-customer-hero {
   position: relative;
