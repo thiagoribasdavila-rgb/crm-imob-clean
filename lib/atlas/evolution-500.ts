@@ -81,6 +81,11 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Componente recuperável único criado", "Agenda e Projetos conectados ao padrão", "Retentativa segura sem exposição de stack técnico"],
   },
+  12: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Canvas desktop ampliado para 1728 px", "Barra superior alinhada ao conteúdo", "Margens responsivas preservam densidade e leitura"],
+  },
 };
 
 const checkpoints = [

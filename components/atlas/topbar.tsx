@@ -45,7 +45,8 @@ export function Topbar({
 
   return (
     <header className="atlas-app-topbar">
-      <div className="atlas-topbar-start">
+      <div className="atlas-topbar-inner">
+        <div className="atlas-topbar-start">
         <button
           type="button"
           className="atlas-mobile-menu"
@@ -58,9 +59,9 @@ export function Topbar({
           <span className="atlas-topbar-context">{identity.organization}</span>
           <span className="atlas-topbar-section">{currentSection}</span>
         </div>
-      </div>
+        </div>
 
-      <div className="atlas-topbar-actions">
+        <div className="atlas-topbar-actions">
         <Link
           href="/leads/new"
           className="atlas-button-primary atlas-quick-create"
@@ -117,6 +118,7 @@ export function Topbar({
         <button type="button" className="atlas-signout" onClick={signOut}>
           Sair
         </button>
+        </div>
       </div>
     </header>
   );

@@ -96,6 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div
       className="atlas-app-shell"
       data-sidebar-collapsed={collapsed ? "true" : "false"}
+      data-desktop-layout="balanced-canvas"
     >
       <div className="atlas-ambient" aria-hidden="true">
         <span className="atlas-ambient-orb atlas-ambient-orb-one" />

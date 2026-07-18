@@ -17,6 +17,8 @@
   --atlas-sidebar-width: 264px;
   --atlas-sidebar-collapsed-width: 78px;
   --atlas-topbar-height: 72px;
+  --atlas-content-max: 1728px;
+  --atlas-desktop-gutter: clamp(24px, 2.1vw, 40px);
   --atlas-radius-sm: 10px;
   --atlas-radius-md: 14px;
   --atlas-radius-lg: 22px;

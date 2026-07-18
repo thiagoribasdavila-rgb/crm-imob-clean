@@ -13,8 +13,10 @@ const phaseEight = JSON.parse(fs.readFileSync("config/evolution-phase-008-primar
 const phaseNine = JSON.parse(fs.readFileSync("config/evolution-phase-009-progressive-loading.json", "utf8"));
 const phaseTen = JSON.parse(fs.readFileSync("config/evolution-phase-010-useful-empty-states.json", "utf8"));
 const phaseEleven = JSON.parse(fs.readFileSync("config/evolution-phase-011-failure-recovery.json", "utf8"));
+const phaseTwelve = JSON.parse(fs.readFileSync("config/evolution-phase-012-desktop-canvas.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
+const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
 const crmLoading = fs.readFileSync("app/(crm)/loading.tsx", "utf8");
 const atlasUi = fs.readFileSync("components/ui/AtlasUI.tsx", "utf8");
 const calendarPage = fs.readFileSync("app/(crm)/calendar/page.tsx", "utf8");
@@ -52,6 +54,8 @@ const checks = [
   ["Vazios oferecem recuperação", calendarPage.includes("Criar tarefa") && developmentsPage.includes("Limpar filtros") && developmentsPage.includes("Cadastrar empreendimento")],
   ["Fase 011 padroniza recuperação", phaseEleven.status === "completed" && phaseEleven.technicalStackExposed === false],
   ["Falhas críticas podem repetir", atlasUi.includes("AtlasRecoverableError") && calendarPage.includes("AtlasRecoverableError") && developmentsPage.includes("AtlasRecoverableError")],
+  ["Fase 012 amplia o canvas desktop", phaseTwelve.status === "completed" && tokens.includes("--atlas-content-max: 1728px")],
+  ["Topbar e conteúdo compartilham alinhamento", topbar.includes("atlas-topbar-inner") && globalStyles.includes("max-width: var(--atlas-content-max)")],
 ];
 
 for (const [label, passed] of checks) {

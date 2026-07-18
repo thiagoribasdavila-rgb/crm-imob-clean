@@ -549,7 +549,7 @@ textarea:focus {
 }
 .atlas-app-content {
   width: 100%;
-  max-width: 1600px;
+  max-width: var(--atlas-content-max);
   margin: 0 auto;
   animation: atlas-content-in 0.32s ease both;
 }
@@ -885,11 +885,7 @@ textarea:focus {
   top: 0;
   right: 0;
   left: 0;
-  display: flex;
   height: var(--atlas-topbar-height);
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
   padding: 0 16px;
   border-bottom: 1px solid var(--atlas-border);
   background: linear-gradient(
@@ -900,6 +896,16 @@ textarea:focus {
   box-shadow: 0 18px 50px rgba(2, 6, 23, 0.12);
   backdrop-filter: blur(28px) saturate(145%);
   transition: left var(--atlas-transition);
+}
+.atlas-topbar-inner {
+  display: flex;
+  width: 100%;
+  max-width: var(--atlas-content-max);
+  height: 100%;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 .atlas-topbar-start,
 .atlas-topbar-actions {
@@ -1300,11 +1306,11 @@ textarea:focus {
   }
   .atlas-app-main {
     margin-left: var(--atlas-sidebar-width);
-    padding: calc(var(--atlas-topbar-height) + 28px) 28px 48px;
+    padding: calc(var(--atlas-topbar-height) + 28px) var(--atlas-desktop-gutter) 48px;
   }
   .atlas-app-topbar {
     left: var(--atlas-sidebar-width);
-    padding-inline: 28px;
+    padding-inline: var(--atlas-desktop-gutter);
   }
   .atlas-app-shell[data-sidebar-collapsed="true"] .atlas-sidebar {
     width: var(--atlas-sidebar-collapsed-width);
