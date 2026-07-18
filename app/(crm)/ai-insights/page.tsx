@@ -1,7 +1,6 @@
-export default function AIInsights() {
-  return (
-    <div>
-      <h1>Insights de IA</h1>
-    </div>
-  );
+import { redirect } from "next/navigation";
+import { resolveAtlasNavigationAlias } from "@/lib/atlas/navigation-aliases";
+
+export default function AiInsightsCompatibilityPage() {
+  redirect(resolveAtlasNavigationAlias("/ai-insights"));
 }

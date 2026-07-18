@@ -22,7 +22,7 @@ const sections = [
     { name: "V2 Overview", href: "/atlas-v2", icon: "✺" },
     { name: "Marketing AI", href: "/marketing", icon: "◉" },
     { name: "Conversas", href: "/conversations", icon: "◍" },
-    { name: "Criativos", href: "/creatives", icon: "✣" },
+    { name: "Criativos", href: "/marketing/creatives", icon: "✣" },
     { name: "Automações", href: "/automations", icon: "⚡" },
     { name: "Aprovações", href: "/approvals", icon: "✓" },
     { name: "Integrações", href: "/integrations", icon: "⊕" },

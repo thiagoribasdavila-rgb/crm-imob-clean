@@ -25,6 +25,7 @@ const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-
 const phaseTwentyOne = JSON.parse(fs.readFileSync("config/evolution-phase-021-navigation-architecture-inventory.json", "utf8"));
 const phaseTwentyTwo = JSON.parse(fs.readFileSync("config/evolution-phase-022-navigation-commercial-outcomes.json", "utf8"));
 const phaseTwentyThree = JSON.parse(fs.readFileSync("config/evolution-phase-023-navigation-baseline.json", "utf8"));
+const phaseTwentyFour = JSON.parse(fs.readFileSync("config/evolution-phase-024-navigation-deduplication.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -98,6 +99,8 @@ const checks = [
   ["Jornadas críticas limitam o esforço", phaseTwentyTwo.criticalJourneys.every((journey) => journey.maximumActions <= 3) && phaseTwentyTwo.successModel.inventedBehaviorMetricAllowed === false],
   ["Fase 023 mede a arquitetura sem inventar uso", phaseTwentyThree.status === "completed" && phaseTwentyThree.structuralBaseline.crmRoutes === 141 && phaseTwentyThree.behavioralTelemetry.status === "blocked-awaiting-runtime-telemetry"],
   ["Linha de base preserva privacidade e runtime", phaseTwentyThree.productionDataModified === false && phaseTwentyThree.runtimeNavigationChanged === false && phaseTwentyThree.measurementPolicy.personalDataCaptured === false],
+  ["Fase 024 elimina interfaces duplicadas com compatibilidade", phaseTwentyFour.status === "completed" && phaseTwentyFour.aliasesConsolidated === 7 && phaseTwentyFour.aliasesPreserved === true],
+  ["Consolidação não inventa uso nem apaga rota", phaseTwentyFour.routesDeleted === false && phaseTwentyFour.permanentRedirectUsed === false && phaseTwentyFour.behavioralTelemetry.inventedMetricPublished === false],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 

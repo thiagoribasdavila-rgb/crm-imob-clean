@@ -182,6 +182,19 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Nenhum dado, segredo, rota ou decisão sobre pessoas foi alterado",
     ],
   },
+  24: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Sete conceitos duplicados passaram a ter um único destino canônico",
+      "URLs antigas permanecem válidas por redirecionamento temporário e reversível",
+      "Três referências internas foram migradas para destinos oficiais",
+      "Kanban e Analytics voltaram ao build apenas como camadas de compatibilidade",
+      "Saúde das integrações ganhou entrada contextual direta",
+      "Nenhuma rota, dado, favorito ou histórico foi apagado",
+      "Uso real continua pendente de telemetria e o gate da Fase 020 permanece bloqueado",
+    ],
+  },
 };
 
 const checkpoints = [

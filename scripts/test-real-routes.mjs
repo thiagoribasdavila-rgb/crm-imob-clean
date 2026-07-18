@@ -25,7 +25,7 @@ const protectedPages = [
   "/leads/new",
   "/pipeline",
   "/activity",
-  "/agents",
+  "/atlas-v3/agents",
   "/ai-dashboard",
   "/approvals",
   "/brokers",

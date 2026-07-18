@@ -10,8 +10,6 @@ export const legacyRoutePaths = [
   "app/(engine)",
   "app/(unified-consciousness)",
   "app/analytics",
-  "app/(crm)/analytics",
-  "app/(crm)/kanban",
   "app/(crm)/pipedrive",
   "app/(crm)/pipeline/cold",
   "app/(crm)/pipeline/warm",
