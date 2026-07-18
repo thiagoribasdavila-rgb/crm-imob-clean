@@ -1,0 +1,20 @@
+{
+  "artifact": "ATLAS_AI_OS_RELEASE_v1.zip",
+  "status": "blocked",
+  "approved": false,
+  "localBuildsRequired": 1,
+  "gates": {
+    "organizedStructure": false,
+    "reviewedCode": false,
+    "validatedDependencies": false,
+    "consistentDatabase": false,
+    "preparedEnvironment": false,
+    "criticalTestsPassed": false,
+    "minimumOperationWorking": false,
+    "directorApproval": false
+  },
+  "evidence": [],
+  "automaticDeploy": false,
+  "secretsIncluded": false,
+  "customerDataIncluded": false
+}

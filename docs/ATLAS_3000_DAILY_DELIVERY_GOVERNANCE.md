@@ -1,8 +1,10 @@
-# ATLAS AI OS — governança das 3.000 fases
+# ATLAS AI OS — governança da evolução contínua
 
 ## Regra de execução
 
-O programa passa a operar com uma entrega real por dia. Planejamento, tela criada sem fluxo funcional e porcentagem estimada não contam como evolução concluída. Cada fase precisa de alteração verificável, evidência, risco explícito e validação proporcional ao impacto.
+O programa passa a operar com uma entrega real por dia e horizonte infinito. As 3.000 fases permanecem como backlog de referência, não como linha de chegada nem porcentagem de maturidade. Planejamento, tela criada sem fluxo funcional e porcentagem estimada não contam como evolução concluída. Cada fase precisa de alteração verificável, evidência, risco explícito e validação proporcional ao impacto.
+
+Somente uma fase pode ficar em andamento. A validação diária usa testes direcionados, typecheck quando houver código, lint dos arquivos alterados e varredura de segredos. Build completo é proibido no ciclo diário.
 
 ## Ordem de prioridade
 
@@ -24,6 +26,6 @@ Toda proposta deve responder: **isso aumenta a capacidade operacional do Atlas?*
 
 ## Política de pacote
 
-O ZIP recorrente do programa anterior foi encerrado como política ativa. O pacote histórico da fase 47 é preservado. O próximo artefato será `ATLAS_AI_OS_RELEASE_v1.zip`, somente quando estrutura, código, dependências, banco, ambiente, testes críticos e operação mínima tiverem evidência aprovada.
+O ZIP recorrente do programa anterior foi encerrado como política ativa. O pacote histórico da fase 47 é preservado. O próximo artefato será `ATLAS_AI_OS_RELEASE_v1.zip`, somente quando estrutura, código, dependências, banco, ambiente, testes críticos e operação mínima tiverem evidência aprovada. O fechamento executará exatamente um build local.
 
 O pacote de release não incluirá `.env.local`, segredos, planilhas de clientes, PDFs privados ou dados pessoais.

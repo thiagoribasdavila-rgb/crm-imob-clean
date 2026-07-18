@@ -321,6 +321,7 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
   46: { status: "concluída", completedAt: "2026-07-18", evidence: ["Distribuição evidencia urgência e capacidade", "Responsável único preservado", "Distribuição exige comando explícito"] },
   47: { status: "concluída", completedAt: "2026-07-18", evidence: ["Vendas destaca até três decisões", "Risco deriva de campos observáveis", "Forecast não é apresentado como garantia"] },
   48: { status: "concluída", completedAt: "2026-07-18", evidence: ["Login e shell usam o mesmo contexto oficial", "Sessão válida não é encerrada por falha temporária", "Administrador, diretor, gerente e corretor recebem identidade coerente"] },
+  49: { status: "concluída", completedAt: "2026-07-18", evidence: ["Entrega diária executa regressão direcionada sem build", "Release exige gates e um único build local", "Prioridade começa por bloqueios operacionais e conversão"] },
 };
 
 const checkpoints = [

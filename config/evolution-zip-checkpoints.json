@@ -1,5 +1,8 @@
 {
   "program": "Atlas V3 Evolution 2000",
+  "active": false,
+  "supersededBy": "config/evolution-program-3000.json",
+  "supersededAtPhase": 49,
   "interval": 100,
   "firstCheckpoint": 100,
   "lastCheckpoint": 2000,

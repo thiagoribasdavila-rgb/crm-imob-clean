@@ -4,6 +4,9 @@ import { resolve } from "node:path";
 
 const root = process.cwd();
 const policy = JSON.parse(readFileSync(resolve(root, "config/evolution-zip-checkpoints.json"), "utf8"));
+if (policy.active === false) {
+  throw new Error("Pacotes recorrentes por fase foram encerrados. Use o release oficial somente após aprovação dos gates.");
+}
 const requested = process.argv[2] || process.env.ATLAS_EVOLUTION_PHASE || "";
 const phase = Number(requested);
 
