@@ -145,6 +145,18 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Homologação por perfil e liberação de produção permanecem bloqueadas até staging reproduzível",
     ],
   },
+  21: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "141 rotas CRM classificadas sem consultar dados comerciais",
+      "26 destinos canônicos resolvem para páginas existentes",
+      "29 rotas dinâmicas foram preservadas como contexto de jornada",
+      "71 rotas profundas permanecem como superfícies de apoio",
+      "14 superfícies de topo fora do catálogo foram classificadas antes de qualquer consolidação",
+      "Nenhuma rota foi excluída ou redirecionada e o gate da Fase 020 permanece bloqueado",
+    ],
+  },
 };
 
 const checkpoints = [
