@@ -6,7 +6,14 @@ const phaseTwentyOne = JSON.parse(fs.readFileSync("config/evolution-phase-021-na
 const navigation = fs.readFileSync("lib/atlas/navigation.ts", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_022_NAVIGATION_COMMERCIAL_OUTCOMES.md", "utf8");
 
-const canonicalRoutes = [...new Set([...navigation.matchAll(/href:\s*"([^"]+)"/g)].map((match) => match[1]))].sort();
+const primaryNavigation = navigation.split("export const atlasNavigation = [")[1]?.split("] as const satisfies readonly AtlasNavigationItem[];")[0] ?? "";
+const contextualNavigation = navigation.split("export const atlasContextCommands = [")[1]?.split("] as const;")[0] ?? "";
+const canonicalRoutes = [
+  ...new Set(
+    [...`${primaryNavigation}\n${contextualNavigation}`.matchAll(/href:\s*"([^"]+)"/g)]
+      .map((match) => match[1]),
+  ),
+].sort();
 const outcomeRoutes = config.canonicalOutcomes.map((item) => item.route).sort();
 const primaryOutcomes = config.canonicalOutcomes.filter((item) => item.surface === "primary");
 const contextualOutcomes = config.canonicalOutcomes.filter((item) => item.surface === "contextual-command");

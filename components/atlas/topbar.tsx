@@ -3,7 +3,10 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { getAtlasNavigationContext } from "@/lib/atlas/navigation";
+import {
+  getAtlasNavigationContext,
+  getAtlasTaskActionForPathname,
+} from "@/lib/atlas/navigation";
 import type { ShellIdentity } from "./shell-types";
 
 export function Topbar({
@@ -30,6 +33,11 @@ export function Topbar({
   const currentSection = navigationContext?.label
     || `${fallbackSection.charAt(0).toLocaleUpperCase("pt-BR")}${fallbackSection.slice(1)}`;
   const currentGroup = navigationContext?.group || "Atlas";
+  const taskAction = getAtlasTaskActionForPathname(pathname, identity) ?? {
+    label: "Novo lead",
+    href: "/leads/new",
+    icon: "＋",
+  };
 
   return (
     <header className="atlas-app-topbar">
@@ -58,13 +66,13 @@ export function Topbar({
 
         <div className="atlas-topbar-actions">
         <Link
-          href="/leads/new"
+          href={taskAction.href}
           className="atlas-button-primary atlas-quick-create"
-          aria-label="Criar novo lead"
-          title="Criar novo lead"
+          aria-label={`Ação rápida: ${taskAction.label}`}
+          title={`Ação rápida: ${taskAction.label}`}
         >
-          <span aria-hidden="true">＋</span>
-          <strong>Novo lead</strong>
+          <span aria-hidden="true">{taskAction.icon}</span>
+          <strong>{taskAction.label}</strong>
         </Link>
         <button
           type="button"

@@ -20,11 +20,16 @@ function segmentCount(route) {
 }
 
 const navigationSource = fs.readFileSync("lib/atlas/navigation.ts", "utf8");
+const primaryNavigationSource = navigationSource.split("export const atlasNavigation = [")[1]?.split("] as const satisfies readonly AtlasNavigationItem[];")[0] ?? "";
+const contextualNavigationSource = navigationSource.split("export const atlasContextCommands = [")[1]?.split("] as const;")[0] ?? "";
 const pageFiles = trackedCrmPages();
 const routes = pageFiles.map(routeFromPage);
 const routeSet = new Set(routes);
 const canonicalDestinations = [
-  ...new Set([...navigationSource.matchAll(/href:\s*"([^"]+)"/g)].map((match) => match[1])),
+  ...new Set(
+    [...`${primaryNavigationSource}\n${contextualNavigationSource}`.matchAll(/href:\s*"([^"]+)"/g)]
+      .map((match) => match[1]),
+  ),
 ].sort();
 const canonicalSet = new Set(canonicalDestinations);
 const missingCanonicalDestinations = canonicalDestinations.filter((route) => !routeSet.has(route));

@@ -19,6 +19,14 @@ type AtlasScopedItem = {
   accessRoles?: readonly string[];
 };
 
+export type AtlasTaskAction = AtlasScopedItem & {
+  contextHref: string;
+  label: string;
+  href: string;
+  icon: string;
+  keywords: string;
+};
+
 export function canAccessAtlasItem(
   item: AtlasScopedItem,
   identity: AtlasNavigationIdentity,
@@ -61,6 +69,33 @@ export const atlasContextCommands = [
   { label: "Atlas 2030", href: "/atlas-2030", group: "Platform", keywords: "knowledge graph simulações plataforma", roles: ["director"], accessRoles: ["admin", "director_decisor"] },
 ] as const;
 
+export const atlasTaskActions = [
+  { contextHref: "/leads/new", label: "Ver leads", href: "/leads", icon: "◎", keywords: "voltar carteira leads", roles: ["director", "superintendent", "manager", "broker"] },
+  { contextHref: "/tasks", label: "Abrir agenda", href: "/calendar", icon: "□", keywords: "agenda compromissos visitas", roles: ["director", "superintendent", "manager", "broker"] },
+  { contextHref: "/calendar", label: "Ver tarefas", href: "/tasks", icon: "✓", keywords: "tarefas follow up pendências", roles: ["director", "superintendent", "manager", "broker"] },
+  { contextHref: "/customers", label: "Abrir leads", href: "/leads", icon: "◎", keywords: "leads carteira atendimento", roles: ["director", "superintendent", "manager", "broker"] },
+  { contextHref: "/developments", label: "Buscar materiais", href: "/developments/materials", icon: "⌕", keywords: "book tabela espelho materiais", roles: ["director", "superintendent", "manager", "broker"] },
+  { contextHref: "/leads/import", label: "Revisar duplicidades", href: "/leads/deduplication", icon: "◇", keywords: "duplicados limpeza base", roles: ["director", "superintendent", "manager", "broker"] },
+  { contextHref: "/brokers", label: "Distribuir leads", href: "/distribution", icon: "⇄", keywords: "fila atribuição corretores", roles: ["director", "superintendent", "manager"] },
+  { contextHref: "/sales", label: "Abrir relatórios", href: "/reports", icon: "↗", keywords: "resultado decisão forecast", roles: ["director", "superintendent", "manager"] },
+  { contextHref: "/reports", label: "Centro de decisão", href: "/decision-center", icon: "◈", keywords: "decisão aprovação evidência", roles: ["director", "superintendent", "manager"] },
+  { contextHref: "/revenue-engine", label: "Marketing AI", href: "/marketing", icon: "⚡", keywords: "campanhas meta receita", roles: ["director", "superintendent", "manager"] },
+  { contextHref: "/users", label: "Configurar equipe", href: "/settings/team", icon: "♙", keywords: "equipe acesso organização", roles: ["director"], accessRoles: ["admin"] },
+  { contextHref: "/external-sales", label: "Abrir relatórios", href: "/reports", icon: "↗", keywords: "aprendizado comprador externo", roles: ["director"], accessRoles: ["admin", "director_decisor"] },
+  { contextHref: "/integrations", label: "Ver saúde", href: "/integrations/health", icon: "⌁", keywords: "status teste conexão", roles: ["director"], accessRoles: ["admin", "director_decisor"] },
+  { contextHref: "/atlas-v3", label: "Abrir homologação", href: "/atlas-v3/homologation", icon: "◈", keywords: "gate evidência homologação", roles: ["director"], accessRoles: ["admin", "director_decisor"] },
+  { contextHref: "/settings", label: "Saúde da IA", href: "/settings/ai", icon: "✦", keywords: "modelos agentes custo saúde", roles: ["director", "superintendent", "manager"], accessRoles: ["admin"] },
+] as const satisfies readonly AtlasTaskAction[];
+
+const atlasDefaultTaskAction = {
+  contextHref: "*",
+  label: "Novo lead",
+  href: "/leads/new",
+  icon: "＋",
+  keywords: "cadastrar criar lead contato",
+  roles: ["director", "superintendent", "manager", "broker"],
+} as const satisfies AtlasTaskAction;
+
 export const atlasMobileNavigation = atlasNavigation.filter((item) => "mobilePrimary" in item && item.mobilePrimary);
 
 export function getAtlasNavigationForIdentity(identity: AtlasNavigationIdentity) {
@@ -73,6 +108,22 @@ export function getAtlasContextCommandsForIdentity(identity: AtlasNavigationIden
 
 export function getAtlasMobileNavigationForIdentity(identity: AtlasNavigationIdentity) {
   return atlasMobileNavigation.filter((item) => canAccessAtlasItem(item, identity));
+}
+
+export function getAtlasTaskActionForPathname(
+  pathname: string,
+  identity: AtlasNavigationIdentity,
+): AtlasTaskAction | null {
+  const normalizedPath = pathname.split("?")[0]?.split("#")[0] || "/";
+  const contextualAction = atlasTaskActions.find((item) => item.contextHref === normalizedPath);
+
+  if (contextualAction && canAccessAtlasItem(contextualAction, identity)) {
+    return contextualAction;
+  }
+
+  return canAccessAtlasItem(atlasDefaultTaskAction, identity)
+    ? atlasDefaultTaskAction
+    : null;
 }
 
 const atlasNavigationContexts = [

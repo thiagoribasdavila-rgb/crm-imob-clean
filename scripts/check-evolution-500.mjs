@@ -28,6 +28,7 @@ const phaseTwentyThree = JSON.parse(fs.readFileSync("config/evolution-phase-023-
 const phaseTwentyFour = JSON.parse(fs.readFileSync("config/evolution-phase-024-navigation-deduplication.json", "utf8"));
 const phaseTwentyFive = JSON.parse(fs.readFileSync("config/evolution-phase-025-navigation-information-compaction.json", "utf8"));
 const phaseTwentySix = JSON.parse(fs.readFileSync("config/evolution-phase-026-navigation-visual-hierarchy.json", "utf8"));
+const phaseTwentySeven = JSON.parse(fs.readFileSync("config/evolution-phase-027-navigation-task-step-reduction.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -62,7 +63,7 @@ const checks = [
   ["Fase 006 com hierarquia acessível", phaseSix.status === "completed" && phaseSix.accessibility.activeStateDoesNotDependOnColorOnly === true],
   ["Estado ativo com trilho visual", globalStyles.includes('.atlas-nav-link[data-active="true"]::before')],
   ["Fase 007 reduz passos", phaseSeven.status === "completed" && phaseSeven.after.navigationDecisions < phaseSeven.before.navigationDecisions],
-  ["Novo lead persistente e acessível", topbar.includes('href="/leads/new"') && topbar.includes('aria-label="Criar novo lead"')],
+  ["Novo lead permanece como ação padrão acessível", navigation.includes('label: "Novo lead"') && navigation.includes('href: "/leads/new"') && topbar.includes("Ação rápida:")],
   ["Fase 008 padroniza ação principal", phaseEight.status === "completed" && topbar.includes("atlas-button-primary atlas-quick-create")],
   ["Fase 009 carrega progressivamente", phaseNine.status === "completed" && crmLoading.includes('aria-live="polite"')],
   ["Skeleton decorativo silencioso", atlasUi.includes('aria-hidden="true"')],
@@ -76,7 +77,7 @@ const checks = [
   ["Dock de tablet preserva a área útil", globalStyles.includes("width: min(calc(100% - 32px), 560px)") && globalStyles.includes("transform: translateX(-50%)")],
   ["Fase 014 protege a experiência móvel", phaseFourteen.status === "completed" && phaseFourteen.minimumTouchTargetPx >= 44],
   ["Formulários móveis não provocam zoom", globalStyles.includes(".atlas-app-shell textarea") && globalStyles.includes("font-size: 16px")],
-  ["Topbar móvel mantém ação comercial", topbar.includes('href="/leads/new"') && phaseFourteen.preservedActions.includes("new lead")],
+  ["Topbar móvel mantém ação comercial", topbar.includes("taskAction.href") && phaseFourteen.preservedActions.includes("new lead")],
   ["Fase 015 reforça acessibilidade sistêmica", phaseFifteen.status === "completed" && phaseFifteen.keyboardFocusTrap === true],
   ["Menu móvel declara relação e estado", topbar.includes('aria-controls="atlas-primary-sidebar"') && topbar.includes("aria-expanded={mobileOpen}") && sidebar.includes('id="atlas-primary-sidebar"')],
   ["Preferências de contraste são respeitadas", globalStyles.includes("@media (prefers-contrast: more)") && globalStyles.includes("@media (forced-colors: active)")],
@@ -107,6 +108,8 @@ const checks = [
   ["Compactação preserva busca, toque e RBAC", phaseTwentyFive.compactionChanges.favoriteDuplication.searchStillReturnsPinnedItems === true && phaseTwentyFive.compactionChanges.touchTargets.minimumNavigationTargetPx === 44 && phaseTwentyFive.safetyPolicy.rbacPreserved === true],
   ["Fase 026 clarifica contexto e estado atual", phaseTwentySix.status === "completed" && phaseTwentySix.contextResolution.staticParallelLabelMapRemoved === true && phaseTwentySix.hierarchyModel.activeSignals.length >= 6],
   ["Hierarquia preserva semântica, toque e RBAC", phaseTwentySix.semanticNavigation.groupsUseHeadingElement === true && phaseTwentySix.interactionTargets.favoriteActionMinimumPx === 44 && phaseTwentySix.safetyPolicy.rbacPreserved === true],
+  ["Fase 027 reduz passos por contexto", phaseTwentySeven.status === "completed" && phaseTwentySeven.taskActions.contextualTransitions === 15 && phaseTwentySeven.taskActions.singlePersistentSlot === true],
+  ["Ação contextual preserva RBAC e fonte única", phaseTwentySeven.safetyPolicy.rbacPreserved === true && navigation.includes("getAtlasTaskActionForPathname") && topbar.includes("taskAction.href") && palette.includes("Ação desta tela")],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 

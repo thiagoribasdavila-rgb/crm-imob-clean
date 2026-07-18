@@ -222,6 +222,20 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Nenhuma métrica comportamental foi inventada e o gate da Fase 020 permanece bloqueado",
     ],
   },
+  27: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Uma única ação rápida da topbar muda de acordo com o destino atual",
+      "Quinze transições de jornada reutilizam rotas existentes sem duplicar formulários",
+      "Projetos abre materiais e Integrações abre saúde em uma ação",
+      "Tarefas e Agenda possuem continuidade direta nos dois sentidos",
+      "Busca global prioriza a mesma ação contextual sem duplicar o destino",
+      "Ação padrão Novo lead permanece disponível quando não existe contexto mais específico",
+      "Ação contextual respeita a mesma política de papel e acesso do catálogo governado",
+      "Nenhuma métrica comportamental foi inventada e o gate da Fase 020 permanece bloqueado",
+    ],
+  },
 };
 
 const checkpoints = [

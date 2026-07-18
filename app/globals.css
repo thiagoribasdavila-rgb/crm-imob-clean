@@ -1017,6 +1017,12 @@ textarea:focus {
   transform: translateY(-1px);
 }
 .atlas-quick-create span { font-size: 15px; line-height: 1; }
+.atlas-quick-create strong {
+  max-width: 116px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 @media (max-width: 767px) {
   .atlas-quick-create { padding: 0; }
   .atlas-quick-create strong { display: none; }
@@ -1387,6 +1393,13 @@ textarea:focus {
   }
   .atlas-command-trigger {
     min-width: 160px;
+  }
+  .atlas-quick-create {
+    width: 40px;
+    padding: 0;
+  }
+  .atlas-quick-create strong {
+    display: none;
   }
   .atlas-user-copy {
     display: none;

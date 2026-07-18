@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import {
   getAtlasContextCommandsForIdentity,
   getAtlasNavigationForIdentity,
+  getAtlasTaskActionForPathname,
 } from "@/lib/atlas/navigation";
 import type { ShellIdentity } from "@/components/atlas/shell-types";
 
@@ -49,20 +50,27 @@ export default function CommandPalette({
   const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const taskAction = getAtlasTaskActionForPathname(pathname, identity);
   const commands = useMemo<Command[]>(() => [
-    ...getAtlasNavigationForIdentity(identity).map((item) => ({
+    ...(taskAction ? [{
+      label: taskAction.label,
+      href: taskAction.href,
+      group: "Ação desta tela",
+      keywords: taskAction.keywords,
+    }] : []),
+    ...getAtlasNavigationForIdentity(identity).filter((item) => item.href !== taskAction?.href).map((item) => ({
       label: item.label,
       href: item.href,
       group: item.group,
       keywords: item.keywords,
     })),
-    ...getAtlasContextCommandsForIdentity(identity).map((item) => ({
+    ...getAtlasContextCommandsForIdentity(identity).filter((item) => item.href !== taskAction?.href).map((item) => ({
       label: item.label,
       href: item.href,
       group: item.group,
       keywords: item.keywords,
     })),
-  ], [identity.accessRole, identity.role]);
+  ], [identity.accessRole, identity.role, taskAction]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
