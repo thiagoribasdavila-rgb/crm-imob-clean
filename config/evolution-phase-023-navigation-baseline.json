@@ -1,0 +1,96 @@
+{
+  "phase": 23,
+  "wave": 2,
+  "status": "completed",
+  "measuredAt": "2026-07-18",
+  "scope": "source-level-navigation-baseline-with-behavioral-telemetry-boundary",
+  "productionDataModified": false,
+  "runtimeNavigationChanged": false,
+  "structuralBaseline": {
+    "trackedSourceFiles": 183,
+    "crmRoutes": 141,
+    "canonicalDestinations": 26,
+    "canonicalDestinationsPresent": 26,
+    "maximumRouteDepth": 4,
+    "averageRouteDepth": 1.91,
+    "depthDistribution": {
+      "0": 1,
+      "1": 38,
+      "2": 76,
+      "3": 25,
+      "4": 1
+    },
+    "routesAtDepthTwoOrLess": 115,
+    "routesAtDepthThreeOrMore": 26,
+    "navigationReferences": 177,
+    "uniqueInternalTargets": 67,
+    "uniqueStaticInternalTargets": 49,
+    "dynamicTemplateReferences": 75,
+    "nextLinkComponents": 190,
+    "rawInternalAnchors": 2,
+    "canonicalRoutesCoveredByGovernedCatalog": 26,
+    "canonicalRoutesWithExplicitSourceInbound": 16,
+    "canonicalRoutesWithoutExplicitSourceInbound": 10
+  },
+  "criticalJourneyBaseline": {
+    "journeysDefined": 6,
+    "journeysWithExistingEndpoints": 6,
+    "journeysWithDirectReferenceOrSameRouteAction": 5,
+    "journeysWithoutContextualDirectReference": [
+      "diagnosticar-integracao"
+    ],
+    "runtimeJourneysMeasured": 0
+  },
+  "findings": [
+    {
+      "id": "governed-catalog-coverage",
+      "status": "healthy",
+      "evidence": "Os 26 destinos canônicos existem e são publicados pelo catálogo governado."
+    },
+    {
+      "id": "deep-route-discovery",
+      "status": "attention",
+      "evidence": "26 rotas possuem profundidade estrutural entre três e quatro segmentos e dependem de descoberta contextual."
+    },
+    {
+      "id": "catalog-only-destinations",
+      "status": "attention",
+      "evidence": "10 destinos canônicos não possuem referência explícita adicional no código e dependem do catálogo compartilhado."
+    },
+    {
+      "id": "integration-health-entry",
+      "status": "attention",
+      "evidence": "A jornada de integrações possui destino de saúde, mas a página inicial não oferece referência direta medida."
+    },
+    {
+      "id": "raw-internal-anchors",
+      "status": "attention",
+      "evidence": "Duas navegações internas usam âncora HTML em vez do componente Link do App Router."
+    }
+  ],
+  "behavioralTelemetry": {
+    "status": "blocked-awaiting-runtime-telemetry",
+    "clickThroughRate": null,
+    "medianActionsToComplete": null,
+    "taskCompletionRate": null,
+    "abandonmentRate": null,
+    "timeToCommercialOutcome": null,
+    "reason": "Estrutura de código não comprova comportamento real de usuário."
+  },
+  "measurementPolicy": {
+    "sourceLevelMeasurementIsBehavioralProof": false,
+    "inventedMetricAllowed": false,
+    "personalDataCaptured": false,
+    "environmentSecretsRead": false,
+    "automaticDecisionAboutPeopleAllowed": false
+  },
+  "exitCriteria": {
+    "baselineIsReproducible": true,
+    "canonicalCoverageMeasured": true,
+    "criticalJourneyStructureMeasured": true,
+    "behavioralUnknownsRemainExplicit": true,
+    "routeDeleted": false,
+    "redirectAdded": false,
+    "phaseTwentyGateBypassed": false
+  }
+}

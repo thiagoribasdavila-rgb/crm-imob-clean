@@ -169,6 +169,19 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Nenhuma decisão automática sobre pessoas, remoção ou redirecionamento foi autorizado",
     ],
   },
+  23: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Linha de base estrutural reproduzível cobre 183 arquivos e 141 rotas CRM",
+      "Os 26 destinos canônicos permanecem presentes no catálogo governado",
+      "Profundidade máxima de quatro segmentos e 26 rotas profundas foram medidas",
+      "Seis jornadas críticas possuem endpoints existentes e uma lacuna contextual foi identificada",
+      "Duas âncoras internas e dez destinos dependentes apenas do catálogo foram registrados para evolução",
+      "Cliques, tempo, conclusão e abandono continuam sem valor até telemetria real",
+      "Nenhum dado, segredo, rota ou decisão sobre pessoas foi alterado",
+    ],
+  },
 };
 
 const checkpoints = [
