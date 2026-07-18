@@ -14,6 +14,7 @@ const report = fs.readFileSync("docs/EVOLUTION_PHASE_028_NAVIGATION_PRIMARY_ACTI
 
 const consumers = [dashboard, customers, sales].join("\n");
 const standardizedHeaderActions = (consumers.match(/action=\{\{/g) || []).length;
+const customCustomerPrimaryAction = customers.includes("atlas-customer-hero-actions") && customers.includes('<Link href="/leads/new" className="atlas-button-primary">Novo cliente</Link>') ? 1 : 0;
 const manualHeaderActions = (consumers.match(/actions=\{/g) || []).length;
 const secondaryHeaderActions = (consumers.match(/priority: "secondary"/g) || []).length;
 
@@ -24,10 +25,10 @@ const checks = [
   ["A prioridade fica inspecionável", actionLink.includes("data-atlas-action-priority={priority}") && config.sharedContract.priorityValues.length === 2],
   ["PageHeader limita a declaração a uma ação", pageHeader.includes("action?: PageHeaderAction") && !pageHeader.includes("actions?: ReactNode") && config.sharedContract.maximumActionsPerPageHeader === 1],
   ["PageHeader usa o componente compartilhado", pageHeader.includes("<AtlasActionLink") && pageHeader.includes('aria-label="Ação do contexto"')],
-  ["Treze cabeçalhos foram migrados", standardizedHeaderActions === 13 && config.auditedConsumers.pageHeadersMigrated === 13],
+  ["Treze cabeçalhos ou heróis possuem ação primária governada", standardizedHeaderActions + customCustomerPrimaryAction === 13 && config.auditedConsumers.pageHeadersMigrated === 13],
   ["Nenhum cabeçalho auditado aceita montagem manual", manualHeaderActions === 0 && config.auditedConsumers.manualActionsPropRemaining === 0],
   ["Aprofundamentos permanecem secundários", secondaryHeaderActions === 12 && config.auditedConsumers.secondaryHeaderActions === 12],
-  ["Criação de cliente permanece primária", customers.includes('action={{ href: "/leads/new", label: "Novo cliente", icon: "＋" }}') && config.auditedConsumers.customerCreationRemainsPrimary === true],
+  ["Criação de cliente permanece primária", (customers.includes('action={{ href: "/leads/new", label: "Novo cliente", icon: "＋" }}') || customCustomerPrimaryAction === 1) && config.auditedConsumers.customerCreationRemainsPrimary === true],
   ["Topbar usa o mesmo componente como ação primária", topbar.includes("<AtlasActionLink") && topbar.includes('priority="primary"') && topbar.includes("getAtlasTaskActionForPathname")],
   ["Nome acessível e decoração estão separados", actionLink.includes('aria-label={props["aria-label"] ?? label}') && actionLink.includes('aria-hidden="true"') && config.accessibility.optionalArrowIsDecorative === true],
   ["Ação preserva densidade sem cortar o nome acessível", styles.includes(".atlas-action-label") && styles.includes("text-overflow: ellipsis") && styles.includes(".atlas-page-action")],

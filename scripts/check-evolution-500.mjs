@@ -42,6 +42,7 @@ const phaseThirtySeven = JSON.parse(fs.readFileSync("config/evolution-phase-037-
 const phaseThirtyEight = JSON.parse(fs.readFileSync("config/evolution-phase-038-task-execution-workspace.json", "utf8"));
 const phaseThirtyNine = JSON.parse(fs.readFileSync("config/evolution-phase-039-agenda-time-workspace.json", "utf8"));
 const phaseForty = JSON.parse(fs.readFileSync("config/evolution-phase-040-activity-explainable-history.json", "utf8"));
+const phaseFortyOne = JSON.parse(fs.readFileSync("config/evolution-phase-041-customer-relationship-workspace.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -63,6 +64,8 @@ const pipelinePage = fs.readFileSync("app/(crm)/pipeline/page.tsx", "utf8");
 const tasksPage = fs.readFileSync("app/(crm)/tasks/page.tsx", "utf8");
 const activityPage = fs.readFileSync("app/(crm)/activity/page.tsx", "utf8");
 const activityApi = fs.readFileSync("app/api/v1/activity/route.ts", "utf8");
+const customersPage = fs.readFileSync("app/(crm)/customers/page.tsx", "utf8");
+const customersApi = fs.readFileSync("app/api/v1/customers/route.ts", "utf8");
 
 const checks = [
   ["50 ondas", (source.match(/\{ id: \d+, name:/g) || []).length === 50],
@@ -157,6 +160,8 @@ const checks = [
   ["Agenda preserva fontes, ações humanas e verdade", phaseThirtyNine.calendarContract.sources.length === 3 && phaseThirtyNine.executionPolicy.automaticCustomerContact === false && phaseThirtyNine.truthPolicy.orderingUsesDeadlineNotPrediction === true && phaseThirtyNine.safetyPolicy.rbacPreserved === true],
   ["Fase 040 transforma Atividades em histórico explicável", phaseForty.status === "completed" && phaseForty.activityContract.latestVisibleLimit === 3 && activityPage.includes('data-activity-layout="explain-first"')],
   ["Atividades preserva leitura, RLS e verdade", phaseForty.activityContract.readOnly === true && phaseForty.truthPolicy.orderingIsChronologicalNotPrediction === true && phaseForty.safetyPolicy.rbacPreserved === true && activityApi.includes("requireAccessContext")],
+  ["Fase 041 orienta Clientes 360 ao relacionamento", phaseFortyOne.status === "completed" && phaseFortyOne.customerContract.visibleReviewLimit === 3 && customersPage.includes('data-customers-layout="relationship-first"')],
+  ["Clientes preserva fonte única, RLS e base fria separada", phaseFortyOne.customerContract.sourceOfTruth === "public.leads" && phaseFortyOne.customerContract.coldReactivationBaseExcluded === true && phaseFortyOne.safetyPolicy.hierarchicalRlsPreserved === true && customersApi.includes("requireAccessContext")],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 

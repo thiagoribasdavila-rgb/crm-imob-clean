@@ -1,0 +1,113 @@
+{
+  "phase": 41,
+  "wave": 3,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "customer-relationship-workspace",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "dataFetchingChanged": true,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": true,
+  "customerContract": {
+    "layoutAttribute": "relationship-first",
+    "sourceOfTruth": "public.leads",
+    "coldReactivationBaseExcluded": true,
+    "segments": [
+      "all",
+      "active",
+      "won",
+      "external",
+      "closed"
+    ],
+    "primarySignals": 4,
+    "visibleReviewLimit": 3,
+    "pageSize": 25,
+    "maximumAnalysisRows": 5000,
+    "lead360LinksAvailable": true,
+    "serverSideAuthentication": true,
+    "manualRefreshAvailable": true,
+    "readOnly": true
+  },
+  "informationHierarchy": {
+    "signals": [
+      "visible relationships",
+      "active relationships",
+      "relationships needing action",
+      "recorded purchases"
+    ],
+    "reviewUsesObservedDeadlines": true,
+    "reviewLimit": 3,
+    "relationshipBeforePrediction": true,
+    "customerContext": [
+      "contact",
+      "development",
+      "purpose",
+      "owner",
+      "budget",
+      "next action"
+    ],
+    "scopeExplanationProgressivelyDisclosed": true,
+    "searchAndSegmentsRemainVisible": true,
+    "functionalityRemoved": false
+  },
+  "executionPolicy": {
+    "openingLead360RequiresHumanAction": true,
+    "automaticCustomerContact": false,
+    "automaticReactivation": false,
+    "automaticAssignment": false,
+    "automaticScoring": false,
+    "automaticDecision": false
+  },
+  "truthPolicy": {
+    "reviewOrderingIsObservedNotPrediction": true,
+    "coldBasePresentedAsActivePortfolio": false,
+    "relationshipCountsUseAuthorizedRecords": true,
+    "assistantPresentedAsAutonomousAi": false,
+    "productivityGainPublished": false,
+    "conversionGuaranteePublished": false
+  },
+  "accessibility": {
+    "segmentFiltersUsePressedState": true,
+    "updatesUsePoliteLiveRegion": true,
+    "loadingUsesBusyState": true,
+    "minimumNewTouchTargetPx": 44,
+    "mobileRowsBecomeSingleColumn": true,
+    "reducedMotionPolicyPreserved": true
+  },
+  "structuralBaseline": {
+    "directBrowserDatabaseQueriesBefore": 1,
+    "directBrowserDatabaseQueriesAfter": 0,
+    "authenticatedApiRequests": 1,
+    "networkRequestsPerView": 1,
+    "maximumVisibleReviewItems": 3,
+    "runtimeSearchLatencyMeasured": false,
+    "runtimeConversionGainMeasured": false
+  },
+  "safetyPolicy": {
+    "databaseWriteAdded": false,
+    "databaseSchemaChanged": false,
+    "environmentSecretsExposed": false,
+    "rawMetadataReturned": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "hierarchicalRlsPreserved": true,
+    "reactivationGovernancePreserved": true,
+    "existingLead360Preserved": true,
+    "routesPreserved": true
+  },
+  "exitCriteria": {
+    "directCustomerTableDependencyRemoved": true,
+    "authorizedRelationshipsLoadFromCanonicalSource": true,
+    "coldBaseRemainsSeparated": true,
+    "searchSegmentsAndPaginationOperate": true,
+    "technicalErrorsRemainRedacted": true,
+    "noDuplicateCustomerRecordCreated": true,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 42,
+    "name": "Melhorar Projetos",
+    "status": "planned"
+  }
+}
