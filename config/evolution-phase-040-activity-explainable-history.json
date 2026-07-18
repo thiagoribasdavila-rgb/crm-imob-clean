@@ -1,0 +1,109 @@
+{
+  "phase": 40,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "activity-explainable-history",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "dataFetchingChanged": true,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": true,
+  "activityContract": {
+    "layoutAttribute": "explain-first",
+    "sourceOfTruth": "public.activities",
+    "categories": [
+      "change",
+      "contact",
+      "transfer",
+      "ai",
+      "proposal",
+      "external"
+    ],
+    "periods": [
+      "today",
+      "week",
+      "month",
+      "all"
+    ],
+    "primarySignals": 4,
+    "latestVisibleLimit": 3,
+    "maximumVisibleRecords": 500,
+    "realtimePreserved": true,
+    "manualRefreshAvailable": true,
+    "lead360LinksAvailable": true,
+    "rawMetadataReturned": false,
+    "readOnly": true
+  },
+  "informationHierarchy": {
+    "signals": [
+      "today",
+      "contacts",
+      "clients in motion",
+      "visible records"
+    ],
+    "latestMovementsUseChronologicalOrder": true,
+    "latestMovementLimit": 3,
+    "timelineGroupedByLocalDay": true,
+    "categoryCompositionProgressivelyDisclosed": true,
+    "searchAndFiltersRemainVisible": true,
+    "functionalityRemoved": false
+  },
+  "executionPolicy": {
+    "historyIsReadOnly": true,
+    "openingLeadRequiresHumanAction": true,
+    "automaticTaskCreation": false,
+    "automaticCustomerContact": false,
+    "automaticAssignment": false,
+    "automaticDecision": false
+  },
+  "truthPolicy": {
+    "orderingIsChronologicalNotPrediction": true,
+    "payloadLimitedToAuthorizedHistory": true,
+    "activityCountsAreObservedRecords": true,
+    "assistantPresentedAsAutonomousAi": false,
+    "productivityGainPublished": false,
+    "conversionGuaranteePublished": false
+  },
+  "accessibility": {
+    "filtersUsePressedState": true,
+    "timelineUsesSectionAndTimeSemantics": true,
+    "updatesUsePoliteLiveRegion": true,
+    "loadingUsesBusyState": true,
+    "minimumNewTouchTargetPx": 44,
+    "reducedMotionPolicyPreserved": true
+  },
+  "structuralBaseline": {
+    "newStateAdded": true,
+    "newEffectAdded": true,
+    "newNetworkRequestAdded": true,
+    "networkRequests": 1,
+    "realtimeSubscriptions": 1,
+    "visibleLatestLimit": 3,
+    "runtimeHistorySearchTimeMeasured": false
+  },
+  "safetyPolicy": {
+    "databaseWriteAdded": false,
+    "databaseSchemaChanged": false,
+    "environmentSecretsExposed": false,
+    "rawMetadataReturned": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "rlsPreserved": true,
+    "existingLeadTimelinePreserved": true,
+    "routesPreserved": true
+  },
+  "exitCriteria": {
+    "activityPlaceholderRemoved": true,
+    "authorizedHistoryLoadsFromCanonicalSource": true,
+    "filtersAndSearchOperateLocally": true,
+    "technicalErrorsRemainRedacted": true,
+    "historicalRecordsRemainImmutable": true,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 41,
+    "name": "Melhorar Clientes 360",
+    "status": "planned"
+  }
+}

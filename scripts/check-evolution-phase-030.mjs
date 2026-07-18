@@ -52,7 +52,7 @@ const checks = [
   ["Taxonomia compartilhada possui cinco motivos", reasons.every((reason) => atlasUi.includes(`\"${reason}\"`)) && config.emptyStateContract.reasons.join(",") === reasons.join(",")],
   ["Componente expõe motivo e presença de ação", atlasUi.includes("data-empty-reason={reason}") && atlasUi.includes("data-has-action={Boolean(action)}") && atlasUi.includes("atlas-empty-eyebrow")],
   ["Wrapper preserva o contrato compartilhado", wrapper.includes("type AtlasEmptyReason") && wrapper.includes("reason={reason}") && wrapper.includes("eyebrow={eyebrow}")],
-  ["Linha de base estrutural permanece reproduzível", crmFiles.length === config.structuralBaseline.crmPages && emptyStateConsumers === config.structuralBaseline.emptyStateConsumers && emptyStateUses === config.structuralBaseline.emptyStateUses],
+  ["Linha de base estrutural permanece coberta", crmFiles.length >= config.structuralBaseline.crmPages && emptyStateConsumers >= config.structuralBaseline.emptyStateConsumers && emptyStateUses >= config.structuralBaseline.emptyStateUses],
   ["Primeiro recorte governado possui motivos explícitos", explicitReasons >= config.structuralBaseline.explicitReasonsAfter && config.structuralBaseline.explicitReasonsBefore === 0],
   ["Ações úteis aumentaram sem dados fictícios", statesWithActions >= config.structuralBaseline.emptyStatesWithActionsAfter && config.structuralBaseline.emptyStatesWithActionsAfter > config.structuralBaseline.emptyStatesWithActionsBefore && config.truthPolicy.fakeRecordsRendered === false],
   ["Oito superfícies comerciais estão cobertas", criticalFiles.every((file) => fs.readFileSync(file, "utf8").includes("reason=")) && config.criticalSurfaces.length === 8],

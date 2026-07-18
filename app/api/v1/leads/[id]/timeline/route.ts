@@ -2,21 +2,12 @@ import { NextResponse } from "next/server";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { activityCategoryForType, type ActivityCategory } from "@/lib/atlas/activity-timeline";
 
 export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ id: string }> };
-type TimelineCategory = "change" | "contact" | "transfer" | "ai" | "proposal" | "external";
+type TimelineCategory = ActivityCategory;
 type TimelineEvent = { id: string; category: TimelineCategory; title: string; description: string | null; occurredAt: string; actorName: string; source: string; status?: string | null };
-
-const proposalTypes = new Set(["commercial_simulation", "commercial_proposal_decision", "commercial_proposal_lifecycle", "property_presentation", "property_feedback"]);
-const aiTypes = new Set(["ai", "ai_qualification", "experience_alert", "qualification", "score_recalibrated"]);
-const contactTypes = new Set(["call", "email", "message", "note", "meeting", "visit", "whatsapp_opt_out"]);
-function categoryForActivity(type: string): TimelineCategory {
-  if (proposalTypes.has(type)) return "proposal";
-  if (aiTypes.has(type) || type.startsWith("ai_")) return "ai";
-  if (contactTypes.has(type)) return "contact";
-  return "change";
-}
 
 function safeError(error: unknown) {
   const message = error instanceof Error ? error.message : "Não foi possível carregar a timeline.";
@@ -63,7 +54,7 @@ export async function GET(request: Request, context: RouteContext) {
 
     const events: TimelineEvent[] = [
       { id: `created-${leadResult.data.id}`, category: "change" as const, title: "Lead criado no CRM", description: "Início do histórico comercial unificado.", occurredAt: leadResult.data.created_at, actorName: "Atlas CRM", source: "crm" },
-      ...(activityResult.data ?? []).map((row) => ({ id: `activity-${row.id}`, category: categoryForActivity(String(row.type || "system")), title: row.title || "Atividade registrada", description: row.description, occurredAt: row.occurred_at, actorName: actor(row.user_id), source: String(row.type || "crm") })),
+      ...(activityResult.data ?? []).map((row) => ({ id: `activity-${row.id}`, category: activityCategoryForType(row.type), title: row.title || "Atividade registrada", description: row.description, occurredAt: row.occurred_at, actorName: actor(row.user_id), source: String(row.type || "crm") })),
       ...(transferResult.data ?? []).map((row) => { const batch = batches.get(row.batch_id); return { id: `transfer-${row.id}`, category: "transfer" as const, title: "Responsável pela lead alterado", description: `${actor(row.previous_owner_id)} → ${actor(row.target_owner_id)}${batch?.reason ? `. Motivo: ${batch.reason}` : "."}`, occurredAt: row.created_at, actorName: actor(batch?.actor_id || null), source: "crm_transfer" }; }),
       ...(messageResult.data ?? []).map((row) => ({ id: `message-${row.id}`, category: "contact" as const, title: row.direction === "inbound" ? "Mensagem recebida" : "Mensagem enviada", description: `${channelByConversation.get(row.conversation_id) || row.channel || "Canal digital"} · ${row.status || "registrada"}`, occurredAt: row.created_at, actorName: row.direction === "inbound" ? "Cliente" : "Equipe Atlas", source: row.channel || "mensageria", status: row.status })),
       ...(campaignResult.data ?? []).map((row) => ({ id: `external-${row.id}`, category: "external" as const, title: String(row.event_type || "Evento externo").replaceAll("_", " "), description: `Sinal recebido de ${row.source || "integração externa"}.`, occurredAt: row.occurred_at, actorName: "Integração Atlas", source: row.source || "external" })),
