@@ -160,6 +160,7 @@ export default function DashboardPage() {
   const [brokerDaily, setBrokerDaily] = useState<BrokerDaily | null>(null);
   const [managerDaily, setManagerDaily] = useState<ManagerDaily | null>(null);
   const [directorDaily, setDirectorDaily] = useState<DirectorDaily | null>(null);
+  const [liveConnected, setLiveConnected] = useState(false);
 
   useEffect(() => {
     try {
@@ -232,6 +233,24 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const refresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => void load(), 700);
+    };
+    const channel = supabase
+      .channel("atlas-command-center-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, refresh)
+      .subscribe((status) => setLiveConnected(status === "SUBSCRIBED"));
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      setLiveConnected(false);
+      void supabase.removeChannel(channel);
+    };
   }, [load]);
 
   const projectMap = useMemo(
@@ -576,7 +595,32 @@ export default function DashboardPage() {
       ? `${predictiveSignal.evidence} ${predictiveSignal.action}`
     : metrics.overdue > 0
       ? `Resolva primeiro os ${metrics.overdue} itens atrasados e depois avance os leads quentes. Registre cada resultado para melhorar a próxima recomendação.`
-      : "Sua operação está em dia. Priorize leads quentes e confirme uma próxima ação com data em cada atendimento.";
+    : "Sua operação está em dia. Priorize leads quentes e confirme uma próxima ação com data em cada atendimento.";
+
+  const decisionBrief = useMemo(() => {
+    const atRiskValue = priorities.reduce((sum, lead) => sum + numberValue(lead, "value", "estimated_value", "potential_value"), 0);
+    const happened = metrics.overdue > 0
+      ? `${metrics.overdue} ações estão fora do prazo.`
+      : metrics.unassigned > 0
+        ? `${metrics.unassigned} leads ainda estão sem responsável.`
+        : `${metrics.hot} oportunidades quentes estão no recorte atual.`;
+    const why = metrics.overdue > 0
+      ? "O prazo da próxima ação venceu sem conclusão registrada."
+      : metrics.unassigned > 0
+        ? "A distribuição ainda não associou um responsável único."
+        : "Score e temperatura indicam intenção comercial acima da média da carteira.";
+    const action = isDirector
+      ? (directorDaily?.risks[0]?.action || aiDecision)
+      : isManager
+        ? (managerDaily?.interventions[0]?.action || aiDecision)
+        : brokerDaily?.priorities[0]?.nextBestAction || aiDecision;
+    const impact = atRiskValue > 0
+      ? `${brl.format(atRiskValue)} associados às prioridades visíveis, sem promessa de fechamento.`
+      : metrics.pipeline > 0
+        ? `${brl.format(metrics.pipeline)} no pipeline aberto; impacto depende de avanço e probabilidade registrados.`
+        : "Impacto financeiro ainda não mensurável: complete valor e probabilidade das oportunidades.";
+    return { happened, why, action, impact };
+  }, [aiDecision, brokerDaily, directorDaily, isDirector, isManager, managerDaily, metrics.hot, metrics.overdue, metrics.pipeline, metrics.unassigned, priorities]);
 
   const aiContext = {
     period,
@@ -689,6 +733,16 @@ export default function DashboardPage() {
 
       <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" aria-label="Saúde dos módulos">
         {moduleHealth.map((module) => <Link key={module.label} href={module.href} className="group flex items-center gap-3 rounded-2xl border border-white/[.06] bg-white/[.018] px-4 py-3 transition hover:border-sky-300/20 hover:bg-white/[.035]"><span className={`h-2.5 w-2.5 rounded-full ${module.status === "operational" ? "bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,.7)]" : module.status === "syncing" ? "bg-amber-300" : "bg-rose-400"}`} /><div className="min-w-0"><p className="text-xs font-semibold text-white">{module.label}</p><p className="truncate text-[10px] text-slate-500">{module.detail}</p></div><span className="ml-auto text-xs text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-sky-300">→</span></Link>)}
+      </section>
+
+      <section className="rounded-[26px] border border-cyan-400/10 bg-gradient-to-r from-cyan-500/[.055] via-white/[.018] to-violet-500/[.055] p-4 sm:p-5" aria-label="Briefing de decisão do Command Center">
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-cyan-300">Decision Engine · leitura executável</p><h2 className="mt-1 text-lg font-semibold text-white">Da evidência para a próxima decisão</h2></div><StatusBadge tone={liveConnected ? "success" : "neutral"}>{liveConnected ? "TEMPO REAL" : "ATUALIZAÇÃO SEGURA"}</StatusBadge></div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{[
+          ["O que aconteceu", decisionBrief.happened, "EVIDÊNCIA"],
+          ["Por que aconteceu", decisionBrief.why, "CAUSA OBSERVADA"],
+          ["O que fazer agora", decisionBrief.action, "AÇÃO HUMANA"],
+          ["Impacto financeiro", decisionBrief.impact, "SEM GARANTIA"],
+        ].map(([title, detail, badge]) => <article key={title} className="rounded-2xl border border-white/[.065] bg-[#07101f]/70 p-4"><span className="text-[9px] font-bold uppercase tracking-[.16em] text-slate-500">{badge}</span><h3 className="mt-2 text-sm font-semibold text-white">{title}</h3><p className="mt-2 text-xs leading-5 text-slate-400">{detail}</p></article>)}</div>
       </section>
 
       {warnings.length ? (
