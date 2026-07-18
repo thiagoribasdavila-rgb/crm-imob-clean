@@ -104,6 +104,13 @@ const navigation = [
     roles: ["director", "superintendent", "manager"],
   },
   {
+    group: "Gestão",
+    label: "Revenue Engine",
+    href: "/revenue-engine",
+    icon: "⚡",
+    roles: ["director", "superintendent", "manager"],
+  },
+  {
     group: "Diretoria",
     label: "Usuários e acessos",
     href: "/users",

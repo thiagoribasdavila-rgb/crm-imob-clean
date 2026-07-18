@@ -109,6 +109,7 @@
     "nightly-copilot:check": "node scripts/check-governed-nightly-copilot.mjs",
     "campaign-intelligence:check": "node scripts/check-multichannel-campaign-intelligence.mjs",
     "andromeda-loop:check": "node scripts/check-meta-andromeda-learning-loop.mjs",
+    "revenue-engine:check": "node scripts/check-revenue-engine.mjs",
     "media-experiment:check": "node scripts/check-governed-media-experiment-lab.mjs",
     "creative-intelligence:check": "node scripts/check-real-estate-creative-intelligence.mjs",
     "budget-orchestration:check": "node scripts/check-governed-budget-orchestration.mjs",

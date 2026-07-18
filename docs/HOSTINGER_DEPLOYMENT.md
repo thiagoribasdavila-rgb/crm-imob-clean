@@ -18,7 +18,7 @@ O pacote enxuto e verificado é gerado com `npm run package:hostinger`. Use o ZI
 
 Configure um cron por minuto com o mesmo ambiente da aplicação:
 
-O mesmo worker verifica a jornada comercial noturna. Configure `WHATSAPP_NIGHTLY_APPROACH_TEMPLATE` com o nome técnico de um template aprovado; novas abordagens só são preparadas após 20h, com consentimento e aprovação humana.
+O mesmo worker verifica a jornada comercial noturna. Configure `WHATSAPP_NIGHTLY_APPROACH_TEMPLATE` com o nome técnico de um template aprovado; novas abordagens só são preparadas após 22h, com consentimento e aprovação humana.
 
 ```text
 * * * * * cd /caminho/atlas-v3 && /caminho/node scripts/run-workers.mjs

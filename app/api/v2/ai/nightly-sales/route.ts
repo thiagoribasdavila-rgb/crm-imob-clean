@@ -11,7 +11,7 @@ function authorized(request: Request) {
 
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
-  const window=nightlyWindow();if(!window.active)return NextResponse.json({ prepared: 0, reason: "A jornada opera somente entre 20h e 22h59 em São Paulo.",window:window.label });
+  const window=nightlyWindow();if(!window.active)return NextResponse.json({ prepared: 0, reason: "A jornada opera somente entre 22h e 6h59 em São Paulo.",window:window.label });
   const templateName = String(process.env.WHATSAPP_NIGHTLY_APPROACH_TEMPLATE || "").trim();
   if (!/^[a-z0-9_]{2,512}$/.test(templateName)) return NextResponse.json({ error: "Configure um template oficial em WHATSAPP_NIGHTLY_APPROACH_TEMPLATE." }, { status: 503 });
 
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const snapshot = { project: development || null, currentMaterials: materialCount || 0, region: development?.city || null, mission: ["discovery", "qualification", "simulation_draft", "human_handoff"],policy:eligibility };
     const { data: journey } = await admin.from("ai_sales_journeys").insert({ organization_id: lead.organization_id, lead_id: lead.id, broker_id: lead.assigned_to, development_id: lead.development_id, conversation_id: conversation.id, stage: "approach", status: "pending_approval", last_message_id: message.id, consent_basis: consentBasis, context_snapshot: snapshot,policy_version:1,maximum_automated_stage:"qualification",outbound_count:1,morning_handoff_required:true }).select("id").single();
     if (!journey) continue;
-    await admin.from("approval_requests").insert({ organization_id: lead.organization_id, request_type: "ai_nightly_approach", entity_type: "message", entity_id: message.id, payload: { journeyId: journey.id, leadId: lead.id, brokerId: lead.assigned_to, project: projectName, afterHour: 20, stages: snapshot.mission }, requested_by: lead.assigned_to });
+    await admin.from("approval_requests").insert({ organization_id: lead.organization_id, request_type: "ai_nightly_approach", entity_type: "message", entity_id: message.id, payload: { journeyId: journey.id, leadId: lead.id, brokerId: lead.assigned_to, project: projectName, afterHour: 22, stages: snapshot.mission }, requested_by: lead.assigned_to });
     prepared += 1;
   }
   return NextResponse.json({ prepared, blocked, window: window.label, requiresApproval: true,maximumAutomatedStage:"qualification",proposalAllowed:false,morningHandoff:true });
