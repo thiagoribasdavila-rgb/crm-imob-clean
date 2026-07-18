@@ -71,6 +71,11 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Fallback ordenado por prioridade de informação", "Status de carregamento anunciado de forma acessível", "Skeletons decorativos removidos da árvore assistiva"],
   },
+  10: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Agenda vazia ganhou próximo passo", "Projetos distinguem portfólio vazio de filtro sem resultado", "Vendas preserva recuperação contextual sem dados fictícios"],
+  },
 };
 
 const checkpoints = [

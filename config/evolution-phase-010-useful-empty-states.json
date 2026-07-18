@@ -1,0 +1,13 @@
+{
+  "phase": 10,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "criticalStates": [
+    { "surface": "calendar", "explainsState": true, "nextAction": "create task" },
+    { "surface": "developments with no records", "explainsState": true, "nextAction": "register development" },
+    { "surface": "developments filtered to zero", "explainsState": true, "nextAction": "clear filters" },
+    { "surface": "sales", "explainsState": true, "nextAction": "open pipeline or clear filters" }
+  ],
+  "principle": "A healthy zero state may reassure; an incomplete setup or zero-result filter must offer recovery.",
+  "fakeRecordsCreated": 0
+}

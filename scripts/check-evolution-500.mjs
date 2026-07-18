@@ -11,10 +11,13 @@ const phaseSix = JSON.parse(fs.readFileSync("config/evolution-phase-006-visual-h
 const phaseSeven = JSON.parse(fs.readFileSync("config/evolution-phase-007-reduce-task-steps.json", "utf8"));
 const phaseEight = JSON.parse(fs.readFileSync("config/evolution-phase-008-primary-action-standard.json", "utf8"));
 const phaseNine = JSON.parse(fs.readFileSync("config/evolution-phase-009-progressive-loading.json", "utf8"));
+const phaseTen = JSON.parse(fs.readFileSync("config/evolution-phase-010-useful-empty-states.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const crmLoading = fs.readFileSync("app/(crm)/loading.tsx", "utf8");
 const atlasUi = fs.readFileSync("components/ui/AtlasUI.tsx", "utf8");
+const calendarPage = fs.readFileSync("app/(crm)/calendar/page.tsx", "utf8");
+const developmentsPage = fs.readFileSync("app/(crm)/developments/page.tsx", "utf8");
 const navigation = fs.readFileSync("lib/atlas/navigation.ts", "utf8");
 const sidebar = fs.readFileSync("components/atlas/sidebar.tsx", "utf8");
 const palette = fs.readFileSync("components/CommandPalette.tsx", "utf8");
@@ -44,6 +47,8 @@ const checks = [
   ["Fase 008 padroniza ação principal", phaseEight.status === "completed" && topbar.includes("atlas-button-primary atlas-quick-create")],
   ["Fase 009 carrega progressivamente", phaseNine.status === "completed" && crmLoading.includes('aria-live="polite"')],
   ["Skeleton decorativo silencioso", atlasUi.includes('aria-hidden="true"')],
+  ["Fase 010 cobre vazios críticos", phaseTen.status === "completed" && phaseTen.criticalStates.length >= 4],
+  ["Vazios oferecem recuperação", calendarPage.includes("Criar tarefa") && developmentsPage.includes("Limpar filtros") && developmentsPage.includes("Cadastrar empreendimento")],
 ];
 
 for (const [label, passed] of checks) {
