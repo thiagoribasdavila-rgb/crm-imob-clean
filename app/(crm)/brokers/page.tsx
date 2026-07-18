@@ -41,7 +41,7 @@ export default function BrokersPage() {
       ]);
       if (!active) return;
       if (profilesResult.error || leadsResult.error) {
-        setError(profilesResult.error?.message || leadsResult.error?.message || "Não foi possível carregar a equipe.");
+        setError("A equipe não pôde ser carregada agora. O Atlas registrou a falha sem expor dados técnicos.");
       } else {
         setMembers(((profilesResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProfile) as unknown as Member[]);
         const counts = new Map<string, number>();

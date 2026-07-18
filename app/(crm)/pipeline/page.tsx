@@ -193,12 +193,12 @@ export default function PipelinePage() {
     try {
       const response = await authenticatedFetch("/api/v1/pipeline");
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Falha ao carregar pipeline.");
+      if (!response.ok) throw new Error("O pipeline não pôde ser carregado agora. Tente novamente em instantes.");
       setLeads((payload.leads ?? []) as Lead[]);
       if (Array.isArray(payload.stages)) setStages((payload.stages as PipelineStageDefinition[]).filter((stage) => stage.visible && stage.outcome !== "lost" && stage.outcome !== "buyer_profile"));
       setCanConfigureStages(payload.canConfigureStages === true);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Falha ao carregar pipeline.");
+      setError(loadError instanceof Error ? loadError.message : "O pipeline não pôde ser carregado agora.");
     } finally {
       setLoading(false);
     }
@@ -226,7 +226,7 @@ export default function PipelinePage() {
     try {
       const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, expectedFromStage: previousStage, followUpDescription, reversalOf: reversalOf || null }) });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Falha ao mover lead.");
+      if (!response.ok) throw new Error("A movimentação não foi confirmada. A lead permaneceu na etapa anterior.");
       if (!reversalOf && payload.move?.moveId) setLastMove({ moveId: payload.move.moveId, leadId: id, leadName: currentLead?.name || "Lead", from: previousStage, to: stage });
     } catch (moveError) {
       setLeads(previous);

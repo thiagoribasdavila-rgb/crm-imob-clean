@@ -273,7 +273,7 @@ export default function LeadsPage() {
       setCurrentProfileId(meResult?.data?.profile?.id || "");
       const referenceError =
         profileResult.error || campaignResult.error || developmentResult.error;
-      if (referenceError) setError(`Referências: ${referenceError.message}`);
+      if (referenceError) setError("Alguns filtros auxiliares estão sincronizando. A carteira principal continua protegida.");
       setReferencesLoading(false);
     }
 

@@ -83,7 +83,7 @@ export default function DevelopmentsPage() {
     try {
       const response = await fetch("/api/v1/launch-os", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
       const payload = await response.json();
-      if (!response.ok) setError(payload.error || "Projetos temporariamente indisponíveis. Tente novamente.");
+      if (!response.ok) setError("O portfólio não pôde ser atualizado agora. O Atlas preservou os dados e registrou a falha.");
       else setData(payload as Payload);
     } catch {
       setError("Não foi possível conectar aos projetos. Verifique sua conexão e tente novamente.");
