@@ -549,19 +549,49 @@ export default function DashboardPage() {
   }, [data.leads, data.opportunities, data.tasks, referenceTime]);
 
   const roleActions = useMemo(() => {
+    if (isDirector) {
+      const risks = directorDaily?.risks.slice(0, 3).map((risk) => ({
+        title: risk.reason,
+        detail: `${risk.area} · evidência executiva da organização`,
+        action: risk.action,
+        href: "/reports",
+        priority: risk.severity === "critical" ? "Agora" : "Revisar",
+      })) ?? [];
+      return {
+        eyebrow: "Rotina da diretoria",
+        title: "Decisões que exigem atenção",
+        mission: "Atuar por exceção: proteger receita, remover riscos e confirmar cada decisão sensível com evidência e aprovação humana.",
+        items: risks,
+      };
+    }
+    if (isSuperintendent) {
+      const interventions = superintendentSummary?.interventions.slice(0, 3).map((item) => ({
+        title: item.managerName,
+        detail: item.reason,
+        action: item.action,
+        href: item.href,
+        priority: item.severity === "critical" ? "Agora" : item.severity === "attention" ? "Apoiar" : "Equilibrar",
+      })) ?? [];
+      return {
+        eyebrow: "Rotina da superintendência",
+        title: "Onde apoiar os gerentes",
+        mission: "Comparar somente sua estrutura direta e intervir onde SLA, carga ou conversão exigem apoio comprovado.",
+        items: interventions,
+      };
+    }
     if (isManager) {
-      const alerts = teamSla?.byBroker.slice(0, 3).map((broker) => ({
-        title: broker.brokerName,
-        detail: `${broker.firstContactOverdue} sem primeiro contato · ${broker.followUpOverdue} follow-ups atrasados`,
-        action: "Cobrar plano de recuperação e acompanhar até concluir",
-        href: "/brokers",
-        priority: "Intervir",
+      const interventions = managerDaily?.interventions.slice(0, 3).map((item) => ({
+        title: item.brokerName,
+        detail: item.reason,
+        action: item.action,
+        href: item.href,
+        priority: item.severity === "critical" ? "Agora" : item.severity === "attention" ? "Intervir" : "Equilibrar",
       })) ?? [];
       return {
         eyebrow: "Rotina do gerente",
         title: "Onde o time precisa de você",
         mission: "Atuar como coach: remover gargalos, garantir SLA e orientar os corretores sem retirar sua autonomia.",
-        items: alerts,
+        items: interventions,
       };
     }
     const items = priorities.slice(0, 3).map((lead) => {
@@ -581,7 +611,29 @@ export default function DashboardPage() {
       mission: "Cuidar do cliente e do próprio negócio: atender, avançar a próxima ação e registrar o resultado para a IA reduzir trabalho administrativo.",
       items,
     };
-  }, [isManager, priorities, referenceTime, teamSla]);
+  }, [directorDaily, isDirector, isManager, isSuperintendent, managerDaily, priorities, referenceTime, superintendentSummary]);
+
+  const roleSummaryLoading = (isDirector && !directorDaily)
+    || (isSuperintendent && !superintendentSummary)
+    || (isManager && !managerDaily)
+    || (isBroker && !brokerDaily);
+  const fallbackCommandHref = isDirector
+    ? "/reports"
+    : isSuperintendent || isManager
+      ? "/distribution"
+      : "/leads";
+  const primaryCommand = roleActions.items[0] ?? {
+    title: roleSummaryLoading ? "Preparando sua prioridade" : "Nenhuma exceção crítica no seu escopo",
+    detail: roleSummaryLoading ? "Consolidando os dados permitidos para o seu papel." : "A operação visível não apresenta uma ação urgente agora.",
+    action: roleSummaryLoading ? "Aguarde a consolidação ou atualize os dados" : "Revise a carteira e confirme as próximas ações",
+    href: fallbackCommandHref,
+    priority: roleSummaryLoading ? "Atualizando" : "Em dia",
+  };
+  const commandStatus = roleSummaryLoading
+    ? "Atualizando"
+    : roleActions.items.length
+      ? "Ação necessária"
+      : "Em dia";
 
   const selectedDecisionReport = decisionReports[decisionPeriod];
   const predictiveSignal = predictiveBriefing?.signals[0];
@@ -645,7 +697,7 @@ export default function DashboardPage() {
   if (!viewerRole) return <ErrorState title="Perfil comercial não identificado" description="Seu usuário está autenticado, mas ainda não possui um papel comercial ativo nesta organização." action={<Link href="/settings/profile" className="atlas-button-secondary">Revisar meu perfil</Link>} />;
 
   return (
-    <div className="atlas-command-shell space-y-6 pb-10" data-command-mode={commandMode}>
+    <div className="atlas-command-shell space-y-6 pb-10" data-command-mode={commandMode} data-dashboard-layout="decision-first">
       <section className="atlas-command-hero">
         <div className="atlas-command-hero-copy">
           <div className="flex flex-wrap gap-2">
@@ -653,44 +705,48 @@ export default function DashboardPage() {
             <StatusBadge tone="success">DADOS REAIS</StatusBadge>
             <StatusBadge tone="violet">ATLAS COPILOT</StatusBadge>
           </div>
-          <h1>{isDirector ? <>Receita, conversão e riscos em <span className="atlas-gradient-text">uma única visão.</span></> : isSuperintendent ? <>Seus gerentes e equipes em <span className="atlas-gradient-text">uma visão comparativa.</span></> : isManager ? <>Seu time, carteira e conversão em <span className="atlas-gradient-text">tempo real.</span></> : <>Suas prioridades comerciais em <span className="atlas-gradient-text">uma única visão.</span></>}</h1>
+          <h1>{isDirector ? <>Decida onde a operação <span className="atlas-gradient-text">exige atenção.</span></> : isSuperintendent ? <>Veja qual gerente <span className="atlas-gradient-text">precisa de apoio.</span></> : isManager ? <>Intervenha onde o time <span className="atlas-gradient-text">mais precisa.</span></> : <>Comece pela ação com <span className="atlas-gradient-text">maior prioridade.</span></>}</h1>
           <p>
-            {isDirector ? "Descubra onde a operação ganha ou perde dinheiro e quais decisões podem acelerar vendas hoje." : isSuperintendent ? "Compare somente os gerentes que respondem a você, com totais reconciliados e estruturas paralelas excluídas." : isManager ? "Acompanhe todos os corretores sob sua gestão, gargalos, SLA, tarefas e oportunidades do time." : "Organize seus leads, tarefas, próximos contatos e oportunidades prioritárias."}
+            {isDirector ? "Receita, risco e próxima decisão organizados por exceção, dentro do seu escopo autorizado." : isSuperintendent ? "Gerentes diretos, SLA e carga comercial consolidados sem misturar estruturas paralelas." : isManager ? "Corretores diretos, gargalos e próxima intervenção em uma fila curta e explicável." : "Leads, tarefas e próximos contatos ordenados para você agir sem procurar em várias telas."}
           </p>
           <div className="atlas-command-actions">
+            <Link href={primaryCommand.href} className="atlas-button-primary">
+              Agir agora
+            </Link>
             <button
               type="button"
-              className="atlas-button-primary"
+              className="atlas-button-secondary"
               onClick={() =>
                 openCopilot(
-                  "Analise o snapshot atual da operação e liste as 5 ações mais importantes para hoje, com justificativa e ordem de execução.",
-                  aiContext,
+                  `Explique por que esta é a próxima prioridade e prepare um plano curto, sem executar nenhuma ação: ${primaryCommand.title}. ${primaryCommand.action}`,
+                  { ...aiContext, primaryCommand },
                 )
               }
             >
-              ✦ Analisar operação com IA
+              ✦ Explicar com IA
             </button>
-            <Link href="/leads/new" className="atlas-button-secondary">+ Novo lead</Link>
-            <button type="button" className="atlas-button-secondary" onClick={() => void load()}>
-              Atualizar
+            <button type="button" className="atlas-button-secondary atlas-command-refresh" onClick={() => void load()} aria-label="Atualizar dados do Command Center">
+              ↻
             </button>
           </div>
         </div>
-        <div className="atlas-command-pulse atlas-command-pulse-with-robot">
+        <div className="atlas-command-pulse atlas-command-pulse-with-robot" aria-live="polite">
           <Image className="atlas-dashboard-robot" src="/brand/atlas-robot-assistant.png" alt="Assistente Atlas, robô de inteligência comercial" width={240} height={360} priority />
           <div className="atlas-command-pulse-head">
             <div>
-              <span>Saúde comercial</span>
-              <strong>Operação agora</strong>
+              <span>Próxima decisão</span>
+              <strong>{commandStatus}</strong>
             </div>
-            <b>{Math.max(0, Math.min(100, 100 - metrics.overdue * 4 - metrics.unassigned * 2))}</b>
+            <div className="atlas-command-priority-count">
+              <b>{roleActions.items.length}</b>
+              <span>prioridades visíveis</span>
+            </div>
           </div>
-          <div className="atlas-health-track">
-            <span
-              style={{
-                width: `${Math.max(4, Math.min(100, 100 - metrics.overdue * 4 - metrics.unassigned * 2))}%`,
-              }}
-            />
+          <div className="atlas-command-primary-signal">
+            <StatusBadge tone={primaryCommand.priority === "Agora" || primaryCommand.priority === "Intervir" ? "danger" : primaryCommand.priority === "Em dia" ? "success" : "info"}>{primaryCommand.priority.toUpperCase()}</StatusBadge>
+            <strong>{primaryCommand.title}</strong>
+            <p>{primaryCommand.detail}</p>
+            <Link href={primaryCommand.href}>{primaryCommand.action} →</Link>
           </div>
           <div className="atlas-command-pulse-grid">
             <div><strong>{metrics.hot}</strong><span>quentes</span></div>
@@ -731,7 +787,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" aria-label="Saúde dos módulos">
+      <section className="atlas-command-detail grid gap-2 sm:grid-cols-2 xl:grid-cols-4" aria-label="Saúde dos módulos">
         {moduleHealth.map((module) => <Link key={module.label} href={module.href} className="group flex items-center gap-3 rounded-2xl border border-white/[.06] bg-white/[.018] px-4 py-3 transition hover:border-sky-300/20 hover:bg-white/[.035]"><span className={`h-2.5 w-2.5 rounded-full ${module.status === "operational" ? "bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,.7)]" : module.status === "syncing" ? "bg-amber-300" : "bg-rose-400"}`} /><div className="min-w-0"><p className="text-xs font-semibold text-white">{module.label}</p><p className="truncate text-[10px] text-slate-500">{module.detail}</p></div><span className="ml-auto text-xs text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-sky-300">→</span></Link>)}
       </section>
 
@@ -754,7 +810,7 @@ export default function DashboardPage() {
       ) : null}
 
       {isBroker ? (
-        <section className="rounded-[28px] border border-sky-400/15 bg-gradient-to-br from-sky-500/[.09] via-slate-950/75 to-cyan-500/[.05] p-5 sm:p-6" data-phase="21-broker-daily">
+        <section className="atlas-command-detail rounded-[28px] border border-sky-400/15 bg-gradient-to-br from-sky-500/[.09] via-slate-950/75 to-cyan-500/[.05] p-5 sm:p-6" data-phase="21-broker-daily">
           <PageHeader eyebrow="Fase 21 · Meu dia" title="Seu plano comercial em 60 segundos" description="Somente sua carteira: quem atender agora, por que entrou na fila e qual é a próxima melhor ação." action={{ href: "/pipeline", label: "Abrir meu pipeline", priority: "secondary" }} />
           {!brokerDaily ? <LoadingState rows={4} /> : <div className="mt-5 space-y-5">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">

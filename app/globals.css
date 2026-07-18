@@ -2095,19 +2095,48 @@ textarea:focus {
   font-size: 38px;
   letter-spacing: -0.06em;
 }
-.atlas-health-track {
-  height: 7px;
-  overflow: hidden;
-  margin-top: 20px;
-  border-radius: 99px;
-  background: rgba(255, 255, 255, 0.06);
+.atlas-command-priority-count {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
 }
-.atlas-health-track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #34d399, #38bdf8, #8b5cf6);
-  box-shadow: 0 0 22px rgba(56, 189, 248, 0.44);
+.atlas-command-priority-count > span {
+  max-width: 88px;
+  text-align: right;
+  line-height: 1.25;
+}
+.atlas-command-primary-signal {
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+  padding: 15px;
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(14, 165, 233, 0.08), rgba(124, 58, 237, 0.06));
+}
+.atlas-command-primary-signal > strong {
+  color: #f8fafc;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.atlas-command-primary-signal > p {
+  color: #8fa0b8;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.atlas-command-primary-signal > a {
+  color: #bae6fd;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.atlas-command-primary-signal > a:hover {
+  color: #fff;
+}
+.atlas-command-refresh {
+  min-width: 44px;
+  padding-inline: 0;
+  font-size: 18px;
 }
 .atlas-command-pulse-grid {
   display: grid;
@@ -2205,8 +2234,34 @@ textarea:focus {
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(14, 165, 233, 0.08);
 }
 .atlas-command-shell[data-command-mode="focus"] .atlas-command-detail,
+.atlas-command-shell[data-command-mode="focus"] [data-phase="22-manager-daily"],
+.atlas-command-shell[data-command-mode="focus"] [data-phase="23-superintendent-daily"],
+.atlas-command-shell[data-command-mode="focus"] [data-phase="24-director-command-center"],
 .atlas-command-shell[data-command-mode="focus"] [data-phase="35-follow-up-sla"] {
   display: none;
+}
+
+/* Fase 035 — dashboard orientado à próxima decisão. */
+.atlas-command-shell[data-dashboard-layout="decision-first"] .atlas-command-hero {
+  gap: clamp(20px, 3vw, 30px);
+  padding: clamp(22px, 3vw, 36px);
+}
+.atlas-command-shell[data-dashboard-layout="decision-first"] .atlas-command-hero-copy h1 {
+  max-width: 800px;
+  margin-top: 18px;
+  font-size: clamp(34px, 4.8vw, 62px);
+  line-height: 1;
+}
+.atlas-command-shell[data-dashboard-layout="decision-first"] .atlas-command-hero-copy > p {
+  max-width: 680px;
+  margin-top: 16px;
+  line-height: 1.6;
+}
+.atlas-command-shell[data-dashboard-layout="decision-first"] .atlas-command-actions {
+  margin-top: 20px;
+}
+.atlas-command-shell[data-dashboard-layout="decision-first"] .atlas-command-pulse-with-robot {
+  padding-top: 68px;
 }
 .atlas-command-metrics {
   display: grid;

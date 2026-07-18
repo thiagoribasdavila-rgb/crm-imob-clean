@@ -36,6 +36,7 @@ const phaseThirtyOne = JSON.parse(fs.readFileSync("config/evolution-phase-031-na
 const phaseThirtyTwo = JSON.parse(fs.readFileSync("config/evolution-phase-032-navigation-desktop-workspace.json", "utf8"));
 const phaseThirtyThree = JSON.parse(fs.readFileSync("config/evolution-phase-033-navigation-tablet-workspace.json", "utf8"));
 const phaseThirtyFour = JSON.parse(fs.readFileSync("config/evolution-phase-034-navigation-mobile-workspace.json", "utf8"));
+const phaseThirtyFive = JSON.parse(fs.readFileSync("config/evolution-phase-035-dashboard-decision-first.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -51,6 +52,7 @@ const palette = fs.readFileSync("components/CommandPalette.tsx", "utf8");
 const mobileDock = fs.readFileSync("components/atlas/mobile-dock.tsx", "utf8");
 const appShell = fs.readFileSync("components/atlas/app-shell.tsx", "utf8");
 const navigationPerformance = fs.readFileSync("components/atlas/navigation-performance.tsx", "utf8");
+const dashboard = fs.readFileSync("app/(crm)/dashboard/page.tsx", "utf8");
 
 const checks = [
   ["50 ondas", (source.match(/\{ id: \d+, name:/g) || []).length === 50],
@@ -133,6 +135,8 @@ const checks = [
   ["Tablet adaptativo preserva dock, ações e verdade", phaseThirtyThree.exitCriteria.tabletDockRemainsAvailable === true && phaseThirtyThree.exitCriteria.commercialActionsRemoved === false && phaseThirtyThree.structuralBaseline.runtimeNavigationGainMeasured === false && phaseThirtyThree.safetyPolicy.rbacPreserved === true],
   ["Fase 034 leva a ação contextual à zona do polegar", phaseThirtyFour.status === "completed" && phaseThirtyFour.mobileContract.contextualActionPosition === 3 && appShell.includes('data-mobile-layout="thumb-first"')],
   ["Mobile preserva navegação, RBAC e verdade", phaseThirtyFour.exitCriteria.primaryNavigationStillComplete === true && phaseThirtyFour.structuralBaseline.runtimeOneHandSuccessMeasured === false && phaseThirtyFour.safetyPolicy.rbacPreserved === true],
+  ["Fase 035 orienta o dashboard à próxima decisão", phaseThirtyFive.status === "completed" && phaseThirtyFive.dashboardContract.syntheticHealthScoreRemoved === true && dashboard.includes('data-dashboard-layout="decision-first"')],
+  ["Dashboard preserva análise, RBAC e verdade", phaseThirtyFive.dashboardContract.extendedPanelsPreserved === true && phaseThirtyFive.truthPolicy.runtimeProductivityClaimPublished === false && phaseThirtyFive.safetyPolicy.rbacPreserved === true],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 
