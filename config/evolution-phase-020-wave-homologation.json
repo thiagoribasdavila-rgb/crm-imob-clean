@@ -1,0 +1,51 @@
+{
+  "phase": 20,
+  "wave": 1,
+  "status": "blocked",
+  "scope": "homologate-wave-one-with-reproducible-staging-evidence",
+  "evaluatedAt": "2026-07-18",
+  "productionReleaseAllowed": false,
+  "productionDataModified": false,
+  "localEvidence": {
+    "typecheckPassed": true,
+    "lintPassed": true,
+    "buildPassed": true,
+    "secretScanPassed": true,
+    "navigationAndProfileChecksPassed": true
+  },
+  "runtimeEvidence": {
+    "readOnlyAuditExecuted": true,
+    "canonicalSchemaReady": false,
+    "canonicalHierarchyReady": false,
+    "personalDataPrinted": false,
+    "runtimeMutationExecuted": false
+  },
+  "releaseGates": [
+    { "id": "isolated-staging", "label": "Supabase de homologação separado", "passed": false, "owner": "diretoria" },
+    { "id": "restorable-backup", "label": "Backup restaurável comprovado", "passed": false, "owner": "infraestrutura" },
+    { "id": "migration-history", "label": "Histórico local e remoto reconciliado", "passed": false, "owner": "engenharia" },
+    { "id": "clean-replay", "label": "Cadeia completa reproduzida do zero em staging", "passed": false, "owner": "engenharia" },
+    { "id": "runtime-schema", "label": "Schema canônico aprovado em leitura", "passed": false, "owner": "engenharia" },
+    { "id": "profile-journeys", "label": "Jornadas autenticadas por perfil em staging", "passed": false, "owner": "produto" },
+    { "id": "director-approval", "label": "Aceite explícito da diretoria", "passed": false, "owner": "diretoria" }
+  ],
+  "approvedLocalClaims": [
+    "the application compiles and builds locally",
+    "the secret scanner detected no packaged credentials",
+    "runtime audits are read-only and minimize personal data",
+    "navigation authorization is covered by static profile checks"
+  ],
+  "forbiddenClaims": [
+    "wave one is homologated",
+    "production database is migration-ready",
+    "commercial hierarchy is operational in runtime",
+    "production release is approved"
+  ],
+  "exitCriteria": {
+    "allReleaseGatesPassed": false,
+    "runtimeAuditsPassedInStaging": false,
+    "authenticatedJourneysPassedInStaging": false,
+    "explicitDirectorApprovalRecorded": false
+  },
+  "nextSafeAction": "provision a separate Supabase staging project, reconcile the baseline migration, then rehearse the additive chain without production writes"
+}

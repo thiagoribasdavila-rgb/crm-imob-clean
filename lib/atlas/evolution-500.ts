@@ -14,7 +14,7 @@ export type Evolution500Phase = {
   outcome: string;
   href: string;
   pillar: EvolutionWave["pillar"];
-  status: "planejada" | "concluída";
+  status: "planejada" | "bloqueada" | "concluída";
   evidence?: string[];
   completedAt?: string;
 };
@@ -135,6 +135,16 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Nenhuma migração ou alteração de usuário foi executada",
     ],
   },
+  20: {
+    status: "bloqueada",
+    evidence: [
+      "Qualidade local aprovada por typecheck, lint, build e scanner de segredos",
+      "Banco runtime auditado somente em leitura, sem alterar usuários ou dados comerciais",
+      "Ambiente Supabase de homologação separado ainda não foi comprovado",
+      "Cadeia histórica de migrations precisa ser reconciliada antes de qualquer aplicação remota",
+      "Homologação por perfil e liberação de produção permanecem bloqueadas até staging reproduzível",
+    ],
+  },
 };
 
 const checkpoints = [
@@ -238,6 +248,7 @@ export const evolution500Summary = {
   phasesPerWave: checkpoints.length,
   executionRule: "Uma fase só avança com evidência, medição e validação do perfil afetado.",
   completedPhases: evolution500Phases.filter((phase) => phase.status === "concluída").length,
+  blockedPhases: evolution500Phases.filter((phase) => phase.status === "bloqueada").length,
 };
 
 export const evolution1000Waves = evolution500Waves;

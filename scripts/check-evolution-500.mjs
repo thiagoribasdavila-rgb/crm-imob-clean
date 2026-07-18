@@ -21,6 +21,7 @@ const phaseSixteen = JSON.parse(fs.readFileSync("config/evolution-phase-016-perc
 const phaseSeventeen = JSON.parse(fs.readFileSync("config/evolution-phase-017-real-usage.json", "utf8"));
 const phaseEighteen = JSON.parse(fs.readFileSync("config/evolution-phase-018-profile-validation.json", "utf8"));
 const phaseNineteen = JSON.parse(fs.readFileSync("config/evolution-phase-019-evidence-correction.json", "utf8"));
+const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -87,6 +88,8 @@ const checks = [
   ["Perfil em cache não eleva permissões", phaseEighteen.exitCriteria.cachedIdentityCannotElevateNavigation === true && !appShell.includes("setIdentity({ ...defaultIdentity, ...parsed })")],
   ["Fase 019 corrige evidências sem mutação", phaseNineteen.status === "completed" && phaseNineteen.productionDataModified === false],
   ["Push direto continua bloqueado", phaseNineteen.migrationReadiness.directDbPushAllowed === false && phaseNineteen.exitCriteria.phaseTwentyRemainsBlockedUntilRuntimeApproval === true],
+  ["Fase 020 não inventa homologação", phaseTwenty.status === "blocked" && phaseTwenty.productionReleaseAllowed === false],
+  ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 
 for (const [label, passed] of checks) {
