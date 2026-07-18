@@ -1,13 +1,21 @@
-import type { ReactNode } from "react";
+import {
+  AtlasActionLink,
+  type AtlasActionLinkProps,
+} from "./action-link";
+
+export type PageHeaderAction = Pick<
+  AtlasActionLinkProps,
+  "href" | "label" | "icon" | "priority" | "aria-label" | "title"
+>;
 
 type PageHeaderProps = {
   eyebrow?: string;
   title: string;
   description?: string;
-  actions?: ReactNode;
+  action?: PageHeaderAction;
 };
 
-export function PageHeader({ eyebrow, title, description, actions }: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, description, action }: PageHeaderProps) {
   return (
     <header className="atlas-page-header">
       <div className="atlas-page-heading">
@@ -15,7 +23,11 @@ export function PageHeader({ eyebrow, title, description, actions }: PageHeaderP
         <h1>{title}</h1>
         {description ? <p className="atlas-page-description">{description}</p> : null}
       </div>
-      {actions ? <div className="atlas-page-actions">{actions}</div> : null}
+      {action ? (
+        <div className="atlas-page-actions" aria-label="Ação do contexto">
+          <AtlasActionLink {...action} className="atlas-page-action" showArrow />
+        </div>
+      ) : null}
     </header>
   );
 }

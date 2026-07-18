@@ -67,7 +67,7 @@ export default function CustomersPage() {
         eyebrow="Customer 360 · Fonte única"
         title="Clientes"
         description="Compradores, investidores e relacionamentos comerciais reunidos em uma visão pesquisável e segura."
-        actions={<Link className="atlas-button-primary" href="/leads/new">Novo cliente</Link>}
+        action={{ href: "/leads/new", label: "Novo cliente", icon: "＋" }}
       />
       {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

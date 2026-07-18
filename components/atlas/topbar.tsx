@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { AtlasActionLink } from "./action-link";
 import {
   getAtlasNavigationContext,
   getAtlasTaskActionForPathname,
@@ -65,15 +66,15 @@ export function Topbar({
         </div>
 
         <div className="atlas-topbar-actions">
-        <Link
+        <AtlasActionLink
           href={taskAction.href}
-          className="atlas-button-primary atlas-quick-create"
+          className="atlas-quick-create"
+          label={taskAction.label}
+          icon={taskAction.icon}
+          priority="primary"
           aria-label={`Ação rápida: ${taskAction.label}`}
           title={`Ação rápida: ${taskAction.label}`}
-        >
-          <span aria-hidden="true">{taskAction.icon}</span>
-          <strong>{taskAction.label}</strong>
-        </Link>
+        />
         <button
           type="button"
           className="atlas-mobile-search"

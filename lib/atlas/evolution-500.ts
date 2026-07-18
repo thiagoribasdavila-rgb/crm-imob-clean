@@ -236,6 +236,20 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Nenhuma métrica comportamental foi inventada e o gate da Fase 020 permanece bloqueado",
     ],
   },
+  28: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Treze cabeçalhos passaram a declarar no máximo uma ação",
+      "Links simples, botões primários e botões secundários usam um componente compartilhado",
+      "Criação de cliente permanece primária e doze aprofundamentos permanecem secundários",
+      "Ação operacional da topbar usa o mesmo contrato com prioridade primária",
+      "Rótulo acessível permanece completo mesmo quando o texto visual precisa truncar",
+      "Ações de página preservam alvo mínimo de 44 pixels e adaptação móvel",
+      "Nenhum destino, fluxo, dado, segredo ou RBAC foi alterado",
+      "Nenhuma métrica comportamental foi inventada e o gate da Fase 020 permanece bloqueado",
+    ],
+  },
 };
 
 const checkpoints = [

@@ -439,6 +439,33 @@ textarea:focus {
   background: rgba(56, 189, 248, 0.08);
   color: white;
 }
+.atlas-action-link {
+  min-height: 42px;
+  max-width: 100%;
+  white-space: nowrap;
+}
+.atlas-action-icon,
+.atlas-action-arrow {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+.atlas-action-icon {
+  font-size: 15px;
+}
+.atlas-action-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.atlas-action-arrow {
+  color: currentColor;
+  opacity: 0.68;
+  transition: transform var(--atlas-transition), opacity var(--atlas-transition);
+}
+.atlas-action-link:hover .atlas-action-arrow {
+  transform: translateX(2px);
+  opacity: 1;
+}
 .atlas-badge {
   display: inline-flex;
   align-items: center;
@@ -1215,6 +1242,10 @@ textarea:focus {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
+}
+.atlas-page-action {
+  max-width: min(240px, 42vw);
+  min-height: 44px;
 }
 .atlas-official-metric {
   min-height: 146px;

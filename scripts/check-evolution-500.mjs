@@ -29,6 +29,7 @@ const phaseTwentyFour = JSON.parse(fs.readFileSync("config/evolution-phase-024-n
 const phaseTwentyFive = JSON.parse(fs.readFileSync("config/evolution-phase-025-navigation-information-compaction.json", "utf8"));
 const phaseTwentySix = JSON.parse(fs.readFileSync("config/evolution-phase-026-navigation-visual-hierarchy.json", "utf8"));
 const phaseTwentySeven = JSON.parse(fs.readFileSync("config/evolution-phase-027-navigation-task-step-reduction.json", "utf8"));
+const phaseTwentyEight = JSON.parse(fs.readFileSync("config/evolution-phase-028-navigation-primary-action-standard.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -64,7 +65,7 @@ const checks = [
   ["Estado ativo com trilho visual", globalStyles.includes('.atlas-nav-link[data-active="true"]::before')],
   ["Fase 007 reduz passos", phaseSeven.status === "completed" && phaseSeven.after.navigationDecisions < phaseSeven.before.navigationDecisions],
   ["Novo lead permanece como ação padrão acessível", navigation.includes('label: "Novo lead"') && navigation.includes('href: "/leads/new"') && topbar.includes("Ação rápida:")],
-  ["Fase 008 padroniza ação principal", phaseEight.status === "completed" && topbar.includes("atlas-button-primary atlas-quick-create")],
+  ["Fase 008 padroniza ação principal", phaseEight.status === "completed" && topbar.includes("<AtlasActionLink") && topbar.includes('priority="primary"')],
   ["Fase 009 carrega progressivamente", phaseNine.status === "completed" && crmLoading.includes('aria-live="polite"')],
   ["Skeleton decorativo silencioso", atlasUi.includes('aria-hidden="true"')],
   ["Fase 010 cobre vazios críticos", phaseTen.status === "completed" && phaseTen.criticalStates.length >= 4],
@@ -110,6 +111,8 @@ const checks = [
   ["Hierarquia preserva semântica, toque e RBAC", phaseTwentySix.semanticNavigation.groupsUseHeadingElement === true && phaseTwentySix.interactionTargets.favoriteActionMinimumPx === 44 && phaseTwentySix.safetyPolicy.rbacPreserved === true],
   ["Fase 027 reduz passos por contexto", phaseTwentySeven.status === "completed" && phaseTwentySeven.taskActions.contextualTransitions === 15 && phaseTwentySeven.taskActions.singlePersistentSlot === true],
   ["Ação contextual preserva RBAC e fonte única", phaseTwentySeven.safetyPolicy.rbacPreserved === true && navigation.includes("getAtlasTaskActionForPathname") && topbar.includes("taskAction.href") && palette.includes("Ação desta tela")],
+  ["Fase 028 limita e padroniza ações de cabeçalho", phaseTwentyEight.status === "completed" && phaseTwentyEight.sharedContract.maximumActionsPerPageHeader === 1 && phaseTwentyEight.auditedConsumers.pageHeadersMigrated === 13],
+  ["Prioridade compartilhada preserva destinos e RBAC", phaseTwentyEight.auditedConsumers.secondaryHeaderActions === 12 && phaseTwentyEight.navigationDestinationsChanged === false && phaseTwentyEight.safetyPolicy.rbacPreserved === true],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 
