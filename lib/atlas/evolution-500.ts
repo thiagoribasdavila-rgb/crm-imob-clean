@@ -123,6 +123,18 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Auditoria real foi bloqueada pelo contrato legado de profiles e permanece explícita para a homologação",
     ],
   },
+  19: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Auditoria de schema passou a listar todas as tabelas e colunas ausentes",
+      "Auditoria de hierarquia consulta somente campos seguros de autorização",
+      "Contrato legado real foi medido sem imprimir dados pessoais",
+      "Hierarquia ausente não é presumida nem aprovada",
+      "Cadeia histórica não reproduzível foi registrada como bloqueio de produção",
+      "Nenhuma migração ou alteração de usuário foi executada",
+    ],
+  },
 };
 
 const checkpoints = [

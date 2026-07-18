@@ -20,6 +20,7 @@ const phaseFifteen = JSON.parse(fs.readFileSync("config/evolution-phase-015-acce
 const phaseSixteen = JSON.parse(fs.readFileSync("config/evolution-phase-016-perceived-speed.json", "utf8"));
 const phaseSeventeen = JSON.parse(fs.readFileSync("config/evolution-phase-017-real-usage.json", "utf8"));
 const phaseEighteen = JSON.parse(fs.readFileSync("config/evolution-phase-018-profile-validation.json", "utf8"));
+const phaseNineteen = JSON.parse(fs.readFileSync("config/evolution-phase-019-evidence-correction.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -84,6 +85,8 @@ const checks = [
   ["Fase 018 valida cada perfil", phaseEighteen.status === "completed" && phaseEighteen.personas.length === 6],
   ["Navegação usa uma política por perfil", sidebar.includes("getAtlasNavigationForIdentity") && palette.includes("getAtlasContextCommandsForIdentity") && mobileDock.includes("getAtlasMobileNavigationForIdentity")],
   ["Perfil em cache não eleva permissões", phaseEighteen.exitCriteria.cachedIdentityCannotElevateNavigation === true && !appShell.includes("setIdentity({ ...defaultIdentity, ...parsed })")],
+  ["Fase 019 corrige evidências sem mutação", phaseNineteen.status === "completed" && phaseNineteen.productionDataModified === false],
+  ["Push direto continua bloqueado", phaseNineteen.migrationReadiness.directDbPushAllowed === false && phaseNineteen.exitCriteria.phaseTwentyRemainsBlockedUntilRuntimeApproval === true],
 ];
 
 for (const [label, passed] of checks) {
