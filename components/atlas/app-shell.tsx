@@ -128,7 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       data-sidebar-collapsed={collapsed ? "true" : "false"}
       data-desktop-density={desktopDensity}
       data-desktop-layout="adaptive-wide-workspace"
-      data-tablet-layout="focused-workspace"
+      data-tablet-layout="adaptive-overlay-workspace"
       data-mobile-layout="touch-first"
     >
       <div className="atlas-ambient" aria-hidden="true">

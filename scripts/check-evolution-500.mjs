@@ -34,6 +34,7 @@ const phaseTwentyNine = JSON.parse(fs.readFileSync("config/evolution-phase-029-n
 const phaseThirty = JSON.parse(fs.readFileSync("config/evolution-phase-030-navigation-useful-empty-states.json", "utf8"));
 const phaseThirtyOne = JSON.parse(fs.readFileSync("config/evolution-phase-031-navigation-failure-recovery.json", "utf8"));
 const phaseThirtyTwo = JSON.parse(fs.readFileSync("config/evolution-phase-032-navigation-desktop-workspace.json", "utf8"));
+const phaseThirtyThree = JSON.parse(fs.readFileSync("config/evolution-phase-033-navigation-tablet-workspace.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -127,6 +128,8 @@ const checks = [
   ["Recuperação compartilhada redige detalhes técnicos", atlasUi.includes("safeFailureDescription(description)") && atlasUi.includes('data-recovery-strategy="safe-read-retry"') && phaseThirtyOne.recoveryContract.technicalDetailsRedacted === true],
   ["Fase 032 adapta a densidade no desktop amplo", phaseThirtyTwo.status === "completed" && phaseThirtyTwo.desktopContract.modes.length === 2 && appShell.includes("data-desktop-density={desktopDensity}")],
   ["Desktop adaptativo preserva tablet, celular e verdade", phaseThirtyTwo.desktopContract.tabletAndMobileUnaffected === true && phaseThirtyTwo.structuralBaseline.runtimeScrollReductionMeasured === false && phaseThirtyTwo.safetyPolicy.rbacPreserved === true],
+  ["Fase 033 adapta tablets grandes sem reservar sidebar", phaseThirtyThree.status === "completed" && phaseThirtyThree.tabletContract.maximumViewportPx === 1179 && appShell.includes('data-tablet-layout="adaptive-overlay-workspace"')],
+  ["Tablet adaptativo preserva dock, ações e verdade", phaseThirtyThree.exitCriteria.tabletDockRemainsAvailable === true && phaseThirtyThree.exitCriteria.commercialActionsRemoved === false && phaseThirtyThree.structuralBaseline.runtimeNavigationGainMeasured === false && phaseThirtyThree.safetyPolicy.rbacPreserved === true],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 

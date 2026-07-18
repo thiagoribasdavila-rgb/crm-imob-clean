@@ -4453,3 +4453,114 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
     display: inline;
   }
 }
+
+/* Fase 033 — workspace adaptativo para tablets e telas intermediárias. */
+@media (min-width: 768px) and (max-width: 1179px) {
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"] .atlas-sidebar {
+    width: min(320px, 86vw);
+    transform: translateX(-100%);
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-sidebar[data-mobile-open="true"] {
+    transform: translateX(0);
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-sidebar-close,
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-mobile-menu {
+    display: grid;
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-sidebar-toggle {
+    display: none;
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-app-main {
+    margin-left: 0;
+    padding: calc(var(--atlas-topbar-height) + 24px)
+      var(--atlas-tablet-gutter)
+      calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-app-topbar {
+    left: 0;
+    padding-inline: var(--atlas-tablet-gutter);
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-app-content {
+    min-width: 0;
+    container-name: atlas-tablet-workspace;
+    container-type: inline-size;
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-mobile-dock {
+    right: auto;
+    left: 50%;
+    display: grid;
+    width: min(calc(100% - 40px), var(--atlas-tablet-dock-max));
+    transform: translateX(-50%);
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-command-trigger {
+    min-width: clamp(132px, 20vw, 190px);
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-quick-create {
+    width: 40px;
+    padding: 0;
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-quick-create strong,
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-user-copy {
+    display: none;
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-page-actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 899px) {
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-command-trigger {
+    min-width: 120px;
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-command-trigger kbd {
+    display: none;
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-topbar-context {
+    max-width: 150px;
+  }
+
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-topbar-inner,
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-topbar-start,
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-topbar-actions {
+    gap: 8px;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1179px) {
+  .atlas-app-shell[data-tablet-layout="adaptive-overlay-workspace"]
+    .atlas-topbar-context {
+    max-width: 220px;
+  }
+}
