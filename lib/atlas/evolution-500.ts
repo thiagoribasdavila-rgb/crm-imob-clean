@@ -46,6 +46,11 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Catálogo canônico criado", "Sidebar, busca e dock conectados à mesma fonte", "Comando V2 removido da navegação ativa sem excluir a rota"],
   },
+  5: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Banner de página atual redundante removido", "Contadores sem valor comercial removidos", "Busca, favoritos e indicador ativo preservados"],
+  },
 };
 
 const checkpoints = [

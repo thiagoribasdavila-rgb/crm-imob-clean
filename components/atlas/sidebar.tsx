@@ -228,7 +228,6 @@ export function Sidebar({
     ? permittedItems.filter((item) => `${item.label} ${item.group}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery))
     : permittedItems, [normalizedQuery, permittedItems]);
   const visibleGroups = [...new Set(visibleItems.map((item) => item.group))];
-  const currentItem = permittedItems.find((item) => isActive(pathname, item.href));
   const favoriteItems = permittedItems.filter((item) => favorites.includes(item.href));
 
   function toggleFavorite(href: string) {
@@ -306,13 +305,11 @@ export function Sidebar({
           {query ? <button type="button" onClick={() => setQuery("")} aria-label="Limpar busca">×</button> : <kbd>/</kbd>}
         </div>
 
-        {currentItem ? <div className="atlas-sidebar-current atlas-sidebar-label"><span>Você está em</span><strong>{currentItem.label}</strong><button type="button" onClick={() => toggleFavorite(currentItem.href)} aria-label={favorites.includes(currentItem.href) ? "Remover tela atual dos favoritos" : "Fixar tela atual nos favoritos"}>{favorites.includes(currentItem.href) ? "★" : "☆"}</button></div> : null}
-
         <nav className="atlas-sidebar-nav" aria-label="Navegação principal">
-          {!normalizedQuery && favoriteItems.length ? <div className="atlas-nav-group atlas-nav-favorites"><p className="atlas-sidebar-section atlas-sidebar-label"><span>Favoritos</span><small>{favoriteItems.length}</small></p>{favoriteItems.map((item) => renderNavItem(item, true))}</div> : null}
+          {!normalizedQuery && favoriteItems.length ? <div className="atlas-nav-group atlas-nav-favorites"><p className="atlas-sidebar-section atlas-sidebar-label"><span>Favoritos</span></p>{favoriteItems.map((item) => renderNavItem(item, true))}</div> : null}
           {visibleGroups.map((group) => (
             <div className="atlas-nav-group" key={group}>
-              <p className="atlas-sidebar-section atlas-sidebar-label"><span>{group}</span><small>{visibleItems.filter((item) => item.group === group).length}</small></p>
+              <p className="atlas-sidebar-section atlas-sidebar-label"><span>{group}</span></p>
               {visibleItems.filter((item) => item.group === group).map((item) => renderNavItem(item))}
             </div>
           ))}
