@@ -744,12 +744,12 @@ textarea:focus {
 .atlas-sidebar-empty small { color: #52637a; font-size: 9px; line-height: 1.5; }
 .atlas-sidebar-empty button { margin-top: 4px; border: 0; color: #7dd3fc; background: transparent; font-size: 10px; font-weight: 700; }
 .atlas-nav-group + .atlas-nav-group {
-  margin-top: 17px;
-  padding-top: 14px;
+  margin-top: 13px;
+  padding-top: 10px;
   border-top: 1px solid rgba(148, 163, 184, 0.08);
 }
 .atlas-sidebar-section {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   padding: 0 10px;
   color: #71829a;
   font-size: 9px;
@@ -777,9 +777,9 @@ textarea:focus {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 45px;
-  margin-bottom: 3px;
+  gap: 10px;
+  min-height: 44px;
+  margin-bottom: 2px;
   padding: 7px 10px;
   border: 1px solid transparent;
   border-radius: 12px;
@@ -819,8 +819,8 @@ textarea:focus {
 .atlas-nav-favorite:hover { color: #bae6fd; background: rgba(56,189,248,.08); }
 .atlas-nav-favorite[data-pinned="true"] { color: #7dd3fc; }
 .atlas-nav-favorites {
-  margin-bottom: 14px;
-  padding: 10px 7px 7px;
+  margin-bottom: 10px;
+  padding: 8px 7px 6px;
   border: 1px solid rgba(56,189,248,.1);
   border-radius: 14px;
   background: rgba(56,189,248,.025);
@@ -1733,6 +1733,14 @@ textarea:focus {
   border-radius: 28px;
   background: rgba(9, 13, 24, 0.97);
   box-shadow: 0 30px 100px rgba(0, 0, 0, 0.65);
+}
+.atlas-command-group-label {
+  margin: 8px 12px 3px;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .atlas-lead-operational-bar {

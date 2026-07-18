@@ -160,15 +160,18 @@ export default function CommandPalette({
         <div id="atlas-command-results" role="listbox" className="max-h-[58vh] overflow-y-auto p-3">
           {filtered.length ? (
             <div className="space-y-1">
-              {filtered.map((command, index) => (
-                <button id={`atlas-command-${index}`} role="option" aria-selected={selected === index} key={command.href} type="button" onMouseEnter={() => setSelected(index)} onClick={() => run(command)} className={`group flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${selected === index ? "border-sky-400/20 bg-sky-400/[0.09]" : "border-transparent hover:bg-white/[0.035]"}`}>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100 group-hover:text-white">{command.label}</p>
-                    <p className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-600">{command.group}</p>
+              {filtered.map((command, index) => {
+                const showGroup = index === 0 || filtered[index - 1]?.group !== command.group;
+                return (
+                  <div key={`${command.group}-${command.href}`} role="presentation">
+                    {showGroup ? <p className="atlas-command-group-label" role="presentation">{command.group}</p> : null}
+                    <button id={`atlas-command-${index}`} role="option" aria-label={`${command.label}, ${command.group}`} aria-selected={selected === index} type="button" onMouseEnter={() => setSelected(index)} onClick={() => run(command)} className={`group flex w-full items-center justify-between rounded-2xl border px-4 py-2.5 text-left transition ${selected === index ? "border-sky-400/20 bg-sky-400/[0.09]" : "border-transparent hover:bg-white/[0.035]"}`}>
+                      <span className="text-sm font-semibold text-slate-100 group-hover:text-white">{command.label}</span>
+                      <span className="text-xs text-slate-600 group-hover:text-sky-300">↗</span>
+                    </button>
                   </div>
-                  <span className="text-xs text-slate-600 group-hover:text-sky-300">↗</span>
-                </button>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="px-4 py-12 text-center">

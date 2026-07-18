@@ -195,6 +195,19 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Uso real continua pendente de telemetria e o gate da Fase 020 permanece bloqueado",
     ],
   },
+  25: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Favoritos fixados deixaram de aparecer novamente no grupo original",
+      "A busca continua consultando favoritos e todo o catálogo permitido",
+      "A busca global apresenta a categoria uma vez por grupo e preserva o nome acessível",
+      "Favoritos e grupos receberam contadores discretos de telas",
+      "Alvos de navegação permanecem com no mínimo 44 pixels",
+      "Vinte destinos principais, seis comandos contextuais, quatro destinos móveis e RBAC foram preservados",
+      "Nenhuma métrica comportamental foi inventada e o gate da Fase 020 permanece bloqueado",
+    ],
+  },
 };
 
 const checkpoints = [

@@ -1,0 +1,63 @@
+{
+  "phase": 25,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "navigation-information-compaction-without-feature-loss",
+  "productionDataModified": false,
+  "runtimeNavigationChanged": true,
+  "catalogPreservation": {
+    "primaryDestinations": 20,
+    "contextCommands": 6,
+    "mobilePrimaryDestinations": 4,
+    "routesRemoved": 0,
+    "permissionsChanged": false
+  },
+  "compactionChanges": {
+    "favoriteDuplication": {
+      "before": "pinned item repeated in favorites and its original group",
+      "after": "pinned item appears once in favorites while browsing",
+      "searchStillReturnsPinnedItems": true,
+      "duplicatesPerPinnedFavoriteBefore": 1,
+      "duplicatesPerPinnedFavoriteAfter": 0
+    },
+    "commandPaletteMetadata": {
+      "before": "category repeated below every result",
+      "after": "category heading shown once per contiguous group",
+      "optionKeepsAccessibleGroupName": true
+    },
+    "sidebarSections": {
+      "countsAdded": true,
+      "groupSpacingBeforePx": 17,
+      "groupSpacingAfterPx": 13,
+      "separatorPaddingBeforePx": 14,
+      "separatorPaddingAfterPx": 10
+    },
+    "touchTargets": {
+      "minimumNavigationTargetPx": 44,
+      "reducedBelowAccessibleMinimum": false
+    }
+  },
+  "measurementPolicy": {
+    "inventedBehaviorMetricAllowed": false,
+    "clickRateClaimed": false,
+    "completionRateClaimed": false,
+    "behavioralTelemetryStatus": "awaiting-runtime-telemetry"
+  },
+  "safetyPolicy": {
+    "databaseRead": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "automaticDecisionAboutPeopleAllowed": false,
+    "rbacPreserved": true
+  },
+  "exitCriteria": {
+    "allPrimaryDestinationsRemainDiscoverable": true,
+    "allContextCommandsRemainSearchable": true,
+    "favoriteItemsAreNotRepeatedWhileBrowsing": true,
+    "favoriteItemsRemainSearchable": true,
+    "commandPaletteCategoriesAreGrouped": true,
+    "minimumTouchTargetPreserved": true,
+    "phaseTwentyGateBypassed": false
+  }
+}
