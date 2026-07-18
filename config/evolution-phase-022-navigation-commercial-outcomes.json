@@ -1,0 +1,359 @@
+{
+  "phase": 22,
+  "wave": 2,
+  "status": "completed",
+  "definedAt": "2026-07-18",
+  "scope": "define-commercial-outcome-for-governed-navigation-without-runtime-mutation",
+  "productionDataModified": false,
+  "runtimeNavigationChanged": false,
+  "principle": "Cada destino governado deve responder a uma pergunta comercial, conduzir a uma ação principal e produzir uma evidência verificável.",
+  "successModel": {
+    "requiredFields": [
+      "decisionQuestion",
+      "primaryAction",
+      "completionEvidence"
+    ],
+    "maximumActionsForCriticalJourney": 3,
+    "inventedBehaviorMetricAllowed": false,
+    "automaticDecisionAboutPeopleAllowed": false
+  },
+  "canonicalOutcomes": [
+    {
+      "route": "/dashboard",
+      "surface": "primary",
+      "audience": "operação comercial",
+      "decisionQuestion": "O que exige atenção agora?",
+      "primaryAction": "Abrir a prioridade comercial de maior impacto.",
+      "completionEvidence": "A prioridade foi aberta e recebeu uma ação rastreável."
+    },
+    {
+      "route": "/leads",
+      "surface": "primary",
+      "audience": "operação comercial",
+      "decisionQuestion": "Qual lead deve ser atendida primeiro e por quê?",
+      "primaryAction": "Abrir a lead priorizada e registrar a próxima ação.",
+      "completionEvidence": "A lead possui responsável, contato ou próxima ação registrada."
+    },
+    {
+      "route": "/pipeline",
+      "surface": "primary",
+      "audience": "operação comercial",
+      "decisionQuestion": "Qual oportunidade está parada, em risco ou pronta para avançar?",
+      "primaryAction": "Avançar a etapa ou registrar o follow-up necessário.",
+      "completionEvidence": "Movimentação ou compromisso salvo no histórico."
+    },
+    {
+      "route": "/tasks",
+      "surface": "primary",
+      "audience": "operação comercial",
+      "decisionQuestion": "Qual compromisso precisa ser executado agora?",
+      "primaryAction": "Concluir, reagendar ou abrir o contexto da tarefa.",
+      "completionEvidence": "Status, prazo e resultado da tarefa permanecem registrados."
+    },
+    {
+      "route": "/calendar",
+      "surface": "primary",
+      "audience": "operação comercial",
+      "decisionQuestion": "Qual é o próximo compromisso comercial?",
+      "primaryAction": "Agendar ou executar visita, contato ou reunião.",
+      "completionEvidence": "Compromisso associado à pessoa responsável e ao contexto comercial."
+    },
+    {
+      "route": "/activity",
+      "surface": "primary",
+      "audience": "operação comercial",
+      "decisionQuestion": "O que mudou na operação e quem realizou a mudança?",
+      "primaryAction": "Abrir o evento que exige conferência ou continuidade.",
+      "completionEvidence": "Evento rastreável com origem, momento e entidade relacionada."
+    },
+    {
+      "route": "/customers",
+      "surface": "primary",
+      "audience": "operação comercial",
+      "decisionQuestion": "Qual é o contexto completo deste comprador?",
+      "primaryAction": "Abrir o perfil e completar a informação necessária ao atendimento.",
+      "completionEvidence": "Histórico, interesse e próxima ação permanecem na fonte única."
+    },
+    {
+      "route": "/developments",
+      "surface": "primary",
+      "audience": "operação comercial",
+      "decisionQuestion": "Qual projeto, estoque ou material atende esta oportunidade?",
+      "primaryAction": "Abrir o empreendimento e localizar a informação comercial vigente.",
+      "completionEvidence": "Projeto, unidade ou material selecionado com versão identificável."
+    },
+    {
+      "route": "/leads/import",
+      "surface": "primary",
+      "audience": "operação comercial",
+      "decisionQuestion": "Quais contatos antigos podem voltar à operação com segurança?",
+      "primaryAction": "Importar ou revisar um lote para reativação governada.",
+      "completionEvidence": "Lote registra origem, duplicidade, consentimento e elegibilidade."
+    },
+    {
+      "route": "/ai-dashboard",
+      "surface": "primary",
+      "audience": "operação comercial",
+      "decisionQuestion": "Qual recomendação de IA merece revisão humana agora?",
+      "primaryAction": "Revisar a evidência e aceitar, ajustar ou rejeitar a sugestão.",
+      "completionEvidence": "Decisão humana e resultado esperado ficam registrados."
+    },
+    {
+      "route": "/brokers",
+      "surface": "primary",
+      "audience": "liderança comercial",
+      "decisionQuestion": "Qual pessoa ou equipe precisa de suporte operacional?",
+      "primaryAction": "Abrir desempenho e definir uma ação de acompanhamento.",
+      "completionEvidence": "Plano de ação associado ao escopo correto da liderança."
+    },
+    {
+      "route": "/distribution",
+      "surface": "primary",
+      "audience": "liderança comercial",
+      "decisionQuestion": "Quem deve receber esta lead considerando projeto, carga e disponibilidade?",
+      "primaryAction": "Atribuir ou transferir com justificativa visível.",
+      "completionEvidence": "A lead permanece com um único responsável e histórico de transferência."
+    },
+    {
+      "route": "/sales",
+      "surface": "primary",
+      "audience": "liderança comercial",
+      "decisionQuestion": "Qual oportunidade exige ação para fechar ou receber comissão?",
+      "primaryAction": "Atualizar previsão, fechamento ou SLA financeiro.",
+      "completionEvidence": "Valor, etapa, responsável e prazo ficam rastreáveis."
+    },
+    {
+      "route": "/reports",
+      "surface": "primary",
+      "audience": "liderança comercial",
+      "decisionQuestion": "Qual decisão o período exige?",
+      "primaryAction": "Abrir a recomendação sustentada por dados do escopo.",
+      "completionEvidence": "Período, evidência e decisão podem ser revisados ou exportados."
+    },
+    {
+      "route": "/revenue-engine",
+      "surface": "primary",
+      "audience": "liderança comercial",
+      "decisionQuestion": "Qual campanha está gerando oportunidade e receita real?",
+      "primaryAction": "Investigar a campanha, o atendimento ou o evento de conversão.",
+      "completionEvidence": "Origem, custo, etapa e resultado permanecem atribuídos."
+    },
+    {
+      "route": "/users",
+      "surface": "primary",
+      "audience": "administração",
+      "decisionQuestion": "Qual acesso precisa ser criado, corrigido ou desativado?",
+      "primaryAction": "Gerenciar o usuário dentro do RBAC e da organização corretos.",
+      "completionEvidence": "Mudança de acesso aparece no registro administrativo."
+    },
+    {
+      "route": "/external-sales",
+      "surface": "primary",
+      "audience": "diretoria",
+      "decisionQuestion": "O que a compra fora da plataforma ensina sobre público e oferta?",
+      "primaryAction": "Registrar a compra externa e o motivo comercial.",
+      "completionEvidence": "Aprendizado preservado sem somar receita ou conversão próprias."
+    },
+    {
+      "route": "/integrations",
+      "surface": "primary",
+      "audience": "diretoria",
+      "decisionQuestion": "Qual conexão está pronta, degradada ou bloqueada?",
+      "primaryAction": "Testar a integração ou abrir sua correção operacional.",
+      "completionEvidence": "Credencial, cadastro e teste real mantêm estados separados."
+    },
+    {
+      "route": "/atlas-v3",
+      "surface": "primary",
+      "audience": "diretoria",
+      "decisionQuestion": "Qual evidência ainda bloqueia a homologação?",
+      "primaryAction": "Abrir o gate bloqueado e seu próximo responsável.",
+      "completionEvidence": "Status, evidência e bloqueio não são confundidos com conclusão."
+    },
+    {
+      "route": "/settings",
+      "surface": "primary",
+      "audience": "administração",
+      "decisionQuestion": "Qual configuração governada precisa mudar?",
+      "primaryAction": "Abrir a área correta e salvar uma alteração autorizada.",
+      "completionEvidence": "Configuração mantém escopo, validação e trilha de mudança."
+    },
+    {
+      "route": "/leads/new",
+      "surface": "contextual-command",
+      "audience": "operação comercial",
+      "decisionQuestion": "Quais dados mínimos permitem iniciar o atendimento?",
+      "primaryAction": "Cadastrar a lead com origem e responsável válidos.",
+      "completionEvidence": "Lead única criada com identificador e histórico inicial."
+    },
+    {
+      "route": "/properties",
+      "surface": "contextual-command",
+      "audience": "operação comercial",
+      "decisionQuestion": "Qual unidade corresponde ao perfil e à condição do cliente?",
+      "primaryAction": "Comparar ou selecionar uma unidade disponível.",
+      "completionEvidence": "Unidade e projeto ficam vinculados ao contexto do atendimento."
+    },
+    {
+      "route": "/marketing",
+      "surface": "contextual-command",
+      "audience": "liderança comercial",
+      "decisionQuestion": "Qual campanha, público ou criativo deve ser melhorado?",
+      "primaryAction": "Abrir o experimento ou recomendação com maior impacto provável.",
+      "completionEvidence": "Alteração exige aprovação e preserva hipótese, custo e resultado."
+    },
+    {
+      "route": "/conversations",
+      "surface": "contextual-command",
+      "audience": "operação comercial",
+      "decisionQuestion": "Qual conversa aguarda resposta ou handoff?",
+      "primaryAction": "Responder ou continuar o atendimento no responsável exclusivo.",
+      "completionEvidence": "Mensagem, responsável e próxima ação permanecem no histórico."
+    },
+    {
+      "route": "/decision-center",
+      "surface": "contextual-command",
+      "audience": "liderança comercial",
+      "decisionQuestion": "Qual exceção precisa de decisão humana?",
+      "primaryAction": "Aprovar, ajustar ou rejeitar com justificativa.",
+      "completionEvidence": "Decisão, autor, evidência e efeito ficam auditáveis."
+    },
+    {
+      "route": "/atlas-2030",
+      "surface": "contextual-command",
+      "audience": "diretoria",
+      "decisionQuestion": "Qual cenário estratégico merece simulação controlada?",
+      "primaryAction": "Executar ou revisar uma simulação sem mutação automática da operação.",
+      "completionEvidence": "Premissas, resultado e decisão permanecem versionados."
+    }
+  ],
+  "criticalJourneys": [
+    {
+      "journey": "capturar-nova-lead",
+      "start": "/dashboard",
+      "end": "/leads/new",
+      "maximumActions": 2,
+      "businessResult": "Lead única criada com origem e responsável."
+    },
+    {
+      "journey": "agir-na-prioridade",
+      "start": "/dashboard",
+      "end": "/leads/[id]",
+      "maximumActions": 2,
+      "businessResult": "Próxima ação registrada na oportunidade prioritária."
+    },
+    {
+      "journey": "avancar-oportunidade",
+      "start": "/pipeline",
+      "end": "/pipeline",
+      "maximumActions": 2,
+      "businessResult": "Etapa ou follow-up atualizado com histórico."
+    },
+    {
+      "journey": "localizar-material-vigente",
+      "start": "/developments",
+      "end": "/developments/materials",
+      "maximumActions": 3,
+      "businessResult": "Material correto aberto com projeto e versão identificáveis."
+    },
+    {
+      "journey": "distribuir-lead",
+      "start": "/distribution",
+      "end": "/distribution",
+      "maximumActions": 2,
+      "businessResult": "Lead atribuída a um único responsável com justificativa."
+    },
+    {
+      "journey": "diagnosticar-integracao",
+      "start": "/integrations",
+      "end": "/integrations/health",
+      "maximumActions": 3,
+      "businessResult": "Conexão classificada por credencial, cadastro e teste real."
+    }
+  ],
+  "ambiguityDecisions": [
+    {
+      "concept": "automacoes",
+      "primaryRoute": "/automations",
+      "aliasesToPreserveUntilUsageAudit": [
+        "/automation"
+      ],
+      "businessOutcome": "Revisar fluxos ativos, preparados e planejados com regra de segurança.",
+      "nextSafeStep": "Medir links e uso antes de criar redirecionamento."
+    },
+    {
+      "concept": "pipeline-kanban",
+      "primaryRoute": "/pipeline",
+      "aliasesToPreserveUntilUsageAudit": [
+        "/kanban"
+      ],
+      "businessOutcome": "Priorizar e avançar oportunidades no fluxo comercial governado.",
+      "nextSafeStep": "Preservar o alias até comprovar que nenhum favorito ou integração depende dele."
+    },
+    {
+      "concept": "inteligencia-de-criativos",
+      "primaryRoute": "/marketing/creatives",
+      "aliasesToPreserveUntilUsageAudit": [
+        "/creatives"
+      ],
+      "businessOutcome": "Criar, aprovar e aprender com versões de criativos vinculadas a projeto e funil.",
+      "nextSafeStep": "Unificar a biblioteca visual após validar migração das leituras existentes."
+    },
+    {
+      "concept": "agentes-especializados",
+      "primaryRoute": "/atlas-v3/agents",
+      "aliasesToPreserveUntilUsageAudit": [
+        "/agents"
+      ],
+      "businessOutcome": "Governar agentes especializados com aprovação humana para ações sensíveis.",
+      "nextSafeStep": "Manter a rota curta como compatibilidade até a auditoria de uso."
+    },
+    {
+      "concept": "inteligencia-operacional",
+      "primaryRoute": "/intelligence",
+      "aliasesToPreserveUntilUsageAudit": [
+        "/ai-insights"
+      ],
+      "businessOutcome": "Reunir sinais, previsões e recomendações explicáveis sem decisão automática sobre pessoas.",
+      "nextSafeStep": "Direcionar insights antigos somente após validar consumidores internos."
+    },
+    {
+      "concept": "analytics-relatorios",
+      "primaryRoute": "/reports",
+      "aliasesToPreserveUntilUsageAudit": [
+        "/analytics"
+      ],
+      "businessOutcome": "Converter o período e o escopo em decisão comercial revisável.",
+      "nextSafeStep": "Preservar as páginas analíticas profundas como apoio especializado."
+    },
+    {
+      "concept": "conversas",
+      "primaryRoute": "/conversations",
+      "aliasesToPreserveUntilUsageAudit": [
+        "/chat"
+      ],
+      "businessOutcome": "Responder conversas e entregar handoffs sem misturar responsáveis.",
+      "nextSafeStep": "Manter o chat legado até confirmar ausência de links externos."
+    }
+  ],
+  "supportRoutePolicy": {
+    "dynamicRoutes": "Devem abrir a entidade dentro da jornada e nunca competir com a navegação principal.",
+    "deepSupportRoutes": "Devem ser descobertas por contexto, busca ou ação do domínio.",
+    "historicalRoutes": "Permanecem fora da navegação ativa até existir plano de compatibilidade e telemetria suficiente.",
+    "contextualUtilities": [
+      "/approvals",
+      "/notifications",
+      "/search",
+      "/intelligence"
+    ]
+  },
+  "exitCriteria": {
+    "allCanonicalDestinationsHaveOutcome": true,
+    "criticalJourneysHaveActionBudget": true,
+    "semanticAmbiguitiesHavePrimaryConcept": true,
+    "routeDeleted": false,
+    "redirectAdded": false,
+    "inventedMetricPublished": false,
+    "phaseTwentyGateBypassed": false
+  }
+}

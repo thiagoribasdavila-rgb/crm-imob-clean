@@ -157,6 +157,18 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Nenhuma rota foi excluída ou redirecionada e o gate da Fase 020 permanece bloqueado",
     ],
   },
+  22: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Os 26 destinos canônicos receberam pergunta, ação e evidência comercial",
+      "Vinte destinos principais e seis comandos contextuais mantêm papéis distintos",
+      "Seis jornadas críticas possuem objetivo de até três ações sem inventar uso real",
+      "Sete grupos ambíguos receberam conceito principal e compatibilidade preservada",
+      "Rotas dinâmicas continuam no contexto e páginas profundas permanecem como apoio",
+      "Nenhuma decisão automática sobre pessoas, remoção ou redirecionamento foi autorizado",
+    ],
+  },
 };
 
 const checkpoints = [

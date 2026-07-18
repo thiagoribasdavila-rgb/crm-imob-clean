@@ -23,6 +23,7 @@ const phaseEighteen = JSON.parse(fs.readFileSync("config/evolution-phase-018-pro
 const phaseNineteen = JSON.parse(fs.readFileSync("config/evolution-phase-019-evidence-correction.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
 const phaseTwentyOne = JSON.parse(fs.readFileSync("config/evolution-phase-021-navigation-architecture-inventory.json", "utf8"));
+const phaseTwentyTwo = JSON.parse(fs.readFileSync("config/evolution-phase-022-navigation-commercial-outcomes.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -92,6 +93,8 @@ const checks = [
   ["Fase 020 não inventa homologação", phaseTwenty.status === "blocked" && phaseTwenty.productionReleaseAllowed === false],
   ["Fase 021 inventaria navegação sem mutação", phaseTwentyOne.status === "completed" && phaseTwentyOne.productionDataModified === false && phaseTwentyOne.runtimeNavigationChanged === false],
   ["Topologia CRM fecha em 141 rotas", phaseTwentyOne.topology.crmRoutes === 141 && phaseTwentyOne.topology.canonicalDestinationsPresent === 26 && phaseTwentyOne.topology.missingCanonicalDestinations === 0],
+  ["Fase 022 orienta navegação a resultado", phaseTwentyTwo.status === "completed" && phaseTwentyTwo.canonicalOutcomes.length === 26],
+  ["Jornadas críticas limitam o esforço", phaseTwentyTwo.criticalJourneys.every((journey) => journey.maximumActions <= 3) && phaseTwentyTwo.successModel.inventedBehaviorMetricAllowed === false],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 
