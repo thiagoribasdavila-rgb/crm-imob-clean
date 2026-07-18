@@ -76,6 +76,11 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Agenda vazia ganhou próximo passo", "Projetos distinguem portfólio vazio de filtro sem resultado", "Vendas preserva recuperação contextual sem dados fictícios"],
   },
+  11: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Componente recuperável único criado", "Agenda e Projetos conectados ao padrão", "Retentativa segura sem exposição de stack técnico"],
+  },
 };
 
 const checkpoints = [

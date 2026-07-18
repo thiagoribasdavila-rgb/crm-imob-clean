@@ -43,6 +43,28 @@ export function AtlasEmpty({
   );
 }
 
+export function AtlasRecoverableError({
+  description,
+  onRetry,
+}: {
+  description?: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-4 rounded-2xl border border-rose-400/20 bg-rose-400/[0.07] p-4 sm:flex-row sm:items-center sm:justify-between" role="alert">
+      <div className="flex min-w-0 gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-400/10 text-rose-200" aria-hidden="true">!</span>
+        <div>
+          <p className="text-sm font-semibold text-rose-100">Não foi possível atualizar esta área</p>
+          <p className="mt-1 text-xs leading-5 text-slate-300">Seus dados permanecem protegidos.</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">{description || "Tente novamente em alguns instantes."}</p>
+        </div>
+      </div>
+      <button type="button" onClick={onRetry} className="atlas-button-secondary shrink-0">Tentar novamente</button>
+    </div>
+  );
+}
+
 export function AtlasSkeleton({
   className = "h-5 w-full",
 }: {

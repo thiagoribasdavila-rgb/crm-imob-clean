@@ -12,6 +12,7 @@ const phaseSeven = JSON.parse(fs.readFileSync("config/evolution-phase-007-reduce
 const phaseEight = JSON.parse(fs.readFileSync("config/evolution-phase-008-primary-action-standard.json", "utf8"));
 const phaseNine = JSON.parse(fs.readFileSync("config/evolution-phase-009-progressive-loading.json", "utf8"));
 const phaseTen = JSON.parse(fs.readFileSync("config/evolution-phase-010-useful-empty-states.json", "utf8"));
+const phaseEleven = JSON.parse(fs.readFileSync("config/evolution-phase-011-failure-recovery.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const crmLoading = fs.readFileSync("app/(crm)/loading.tsx", "utf8");
@@ -49,6 +50,8 @@ const checks = [
   ["Skeleton decorativo silencioso", atlasUi.includes('aria-hidden="true"')],
   ["Fase 010 cobre vazios críticos", phaseTen.status === "completed" && phaseTen.criticalStates.length >= 4],
   ["Vazios oferecem recuperação", calendarPage.includes("Criar tarefa") && developmentsPage.includes("Limpar filtros") && developmentsPage.includes("Cadastrar empreendimento")],
+  ["Fase 011 padroniza recuperação", phaseEleven.status === "completed" && phaseEleven.technicalStackExposed === false],
+  ["Falhas críticas podem repetir", atlasUi.includes("AtlasRecoverableError") && calendarPage.includes("AtlasRecoverableError") && developmentsPage.includes("AtlasRecoverableError")],
 ];
 
 for (const [label, passed] of checks) {

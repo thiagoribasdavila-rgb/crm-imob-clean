@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 
 type Metrics = {
@@ -124,7 +124,7 @@ export default function DevelopmentsPage() {
         </div>
       </section>
 
-      {error ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200"><span>{error}</span><button type="button" onClick={() => void load()} className="atlas-button-secondary">Tentar novamente</button></div> : null}
+      {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} /> : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AtlasMetric label="VGV do portfólio" value={loading ? "—" : brl.format(data?.portfolio.totalVgv ?? 0)} detail="Valor total do estoque vinculado" trend="PORTFÓLIO" tone="violet" />
