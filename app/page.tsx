@@ -2,9 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 const capabilities = [
-  { index: "01", title: "CRM vivo", detail: "Carteira, funil e próxima ação em um único fluxo." },
-  { index: "02", title: "Inteligência imobiliária", detail: "Projetos, materiais, estoque e região conectados à venda." },
-  { index: "03", title: "Decisão assistida", detail: "IA aplicada ao atendimento, previsão e performance comercial." },
+  { index: "01", title: "Mais conversão", detail: "Priorize oportunidades e reduza leads perdidos no funil." },
+  { index: "02", title: "Receita rastreável", detail: "Conecte campanha, atendimento, visita e venda ao ROI real." },
+  { index: "03", title: "Gestão previsível", detail: "Antecipe gargalos, proteja SLAs e acompanhe o forecast comercial." },
 ];
 
 const operatingSignals = ["Leads", "Pipeline", "Projetos", "Campanhas", "Inteligência"];
@@ -27,7 +27,7 @@ export default function Home() {
             <span className="grid h-10 w-10 place-items-center rounded-xl border border-sky-300/20 bg-sky-300/[.07] text-sm font-black text-sky-200 transition group-hover:border-sky-300/40">A</span>
             <div>
               <p className="text-lg font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p>
-              <p className="text-[8px] font-semibold uppercase tracking-[.24em] text-slate-500">Real Estate OS</p>
+              <p className="text-[8px] font-semibold uppercase tracking-[.24em] text-slate-500">Inteligência comercial imobiliária</p>
             </div>
           </Link>
 
@@ -40,7 +40,7 @@ export default function Home() {
         <section className="grid flex-1 items-center gap-10 py-14 lg:grid-cols-[1.05fr_.95fr] lg:py-10">
           <div className="atlas-entrance-copy relative z-10 max-w-3xl">
             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-sky-300/15 bg-sky-300/[.05] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-sky-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-sky-300" /> Tecnologia para o mercado imobiliário
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-300" /> Vendas imobiliárias com previsibilidade
             </div>
 
             <h1 className="max-w-[820px] text-[clamp(3.4rem,7vw,7.4rem)] font-semibold leading-[.88] tracking-[-.075em] text-white">
@@ -49,7 +49,7 @@ export default function Home() {
             </h1>
 
             <p className="mt-8 max-w-xl text-base leading-7 text-slate-400 sm:text-lg sm:leading-8">
-              O sistema operacional comercial que conecta pessoas, imóveis, dados e inteligência para transformar cada oportunidade em uma ação clara.
+              A plataforma de inteligência comercial que transforma leads em vendas previsíveis para incorporadoras e imobiliárias.
             </p>
 
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
@@ -150,15 +150,15 @@ export default function Home() {
         <section className="relative overflow-hidden rounded-b-[32px] border border-white/[.08] bg-gradient-to-br from-[#07121d] to-[#03070b] px-6 py-20 text-center sm:px-10 lg:py-28">
           <div className="pointer-events-none absolute left-1/2 top-0 h-56 w-96 -translate-x-1/2 rounded-full bg-sky-400/[.08] blur-[90px]" />
           <div className="relative mx-auto max-w-3xl">
-            <p className="text-[10px] font-bold uppercase tracking-[.24em] text-sky-400">Atlas AI Real Estate OS</p>
-            <h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] sm:text-6xl">Sua operação começa com uma decisão clara.</h2>
-            <p className="mx-auto mt-6 max-w-xl text-sm leading-7 text-slate-500">Entre no command center e transforme informação em execução comercial.</p>
+              <p className="text-[10px] font-bold uppercase tracking-[.24em] text-sky-400">Atlas AI · O cérebro comercial imobiliário</p>
+            <h2 className="mt-5 text-4xl font-semibold tracking-[-.055em] sm:text-6xl">Transforme leads em receita previsível.</h2>
+            <p className="mx-auto mt-6 max-w-xl text-sm leading-7 text-slate-500">Entre no Command Center e saiba onde agir hoje para vender mais, com menos desperdício de mídia e tempo comercial.</p>
             <Link href="/login" className="group mt-9 inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-white px-8 text-sm font-bold !text-slate-950 transition hover:-translate-y-0.5 hover:bg-sky-100">Acessar o Atlas <span className="transition group-hover:translate-x-1" aria-hidden="true">→</span></Link>
           </div>
         </section>
 
         <footer className="flex flex-col items-center justify-between gap-3 py-8 text-[10px] uppercase tracking-[.16em] text-slate-700 sm:flex-row">
-          <span>Atlas AI · Real Estate Intelligence</span><span>CRM · Projetos · Marketing · IA</span>
+          <span>Atlas AI · Inteligência comercial imobiliária</span><span>Leads · Receita · Marketing · Previsibilidade</span>
         </footer>
       </div>
     </main>

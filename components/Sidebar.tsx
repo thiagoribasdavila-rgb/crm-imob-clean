@@ -74,7 +74,7 @@ export default function Sidebar() {
         <div className="border-b border-white/[0.07] px-6 py-6">
           <Link href="/dashboard" className="group flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl border border-sky-400/20 bg-gradient-to-br from-sky-400/20 to-violet-500/15 text-lg font-black text-sky-300 shadow-[0_0_28px_rgba(56,189,248,.12)]">A</span>
-            <span><span className="block text-xl font-black tracking-[-.04em] text-white">ATLAS <span className="text-sky-400">AI</span></span><span className="block text-[9px] font-semibold uppercase tracking-[.22em] text-slate-500">Real Estate OS</span></span>
+            <span><span className="block text-xl font-black tracking-[-.04em] text-white">ATLAS <span className="text-sky-400">AI</span></span><span className="block text-[9px] font-semibold uppercase tracking-[.22em] text-slate-500">Inteligência comercial</span></span>
           </Link>
         </div>
 

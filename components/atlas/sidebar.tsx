@@ -272,7 +272,7 @@ export function Sidebar({
               <strong>
                 ATLAS <em>AI</em>
               </strong>
-              <small>Real Estate OS</small>
+              <small>Inteligência comercial</small>
             </span>
           </Link>
           <button

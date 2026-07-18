@@ -609,9 +609,9 @@ export default function DashboardPage() {
             <StatusBadge tone="success">DADOS REAIS</StatusBadge>
             <StatusBadge tone="violet">ATLAS COPILOT</StatusBadge>
           </div>
-          <h1>{isDirector ? <>Toda a empresa, decisões e IA em <span className="atlas-gradient-text">uma única visão.</span></> : isSuperintendent ? <>Seus gerentes e equipes em <span className="atlas-gradient-text">uma visão comparativa.</span></> : isManager ? <>Seu time, carteira e conversão em <span className="atlas-gradient-text">tempo real.</span></> : <>Suas prioridades comerciais em <span className="atlas-gradient-text">uma única visão.</span></>}</h1>
+          <h1>{isDirector ? <>Receita, conversão e riscos em <span className="atlas-gradient-text">uma única visão.</span></> : isSuperintendent ? <>Seus gerentes e equipes em <span className="atlas-gradient-text">uma visão comparativa.</span></> : isManager ? <>Seu time, carteira e conversão em <span className="atlas-gradient-text">tempo real.</span></> : <>Suas prioridades comerciais em <span className="atlas-gradient-text">uma única visão.</span></>}</h1>
           <p>
-            {isDirector ? "Acompanhe equipes, conversão, campanhas, projetos, recebíveis e decisões estratégicas." : isSuperintendent ? "Compare somente os gerentes que respondem a você, com totais reconciliados e estruturas paralelas excluídas." : isManager ? "Acompanhe todos os corretores sob sua gestão, gargalos, SLA, tarefas e oportunidades do time." : "Organize seus leads, tarefas, próximos contatos e oportunidades prioritárias."}
+            {isDirector ? "Descubra onde a operação ganha ou perde dinheiro e quais decisões podem acelerar vendas hoje." : isSuperintendent ? "Compare somente os gerentes que respondem a você, com totais reconciliados e estruturas paralelas excluídas." : isManager ? "Acompanhe todos os corretores sob sua gestão, gargalos, SLA, tarefas e oportunidades do time." : "Organize seus leads, tarefas, próximos contatos e oportunidades prioritárias."}
           </p>
           <div className="atlas-command-actions">
             <button

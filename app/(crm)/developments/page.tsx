@@ -111,9 +111,9 @@ export default function DevelopmentsPage() {
       <section className="atlas-grid-glow overflow-hidden rounded-[30px] border border-violet-400/10 bg-gradient-to-br from-violet-500/[.13] via-blue-500/[.055] to-cyan-500/[.08] p-6 shadow-[0_34px_120px_rgba(2,8,23,.42)] sm:p-8">
         <div className="grid gap-8 xl:grid-cols-[1.45fr_.8fr] xl:items-end">
           <div>
-            <div className="flex flex-wrap gap-2"><AtlasBadge tone="violet">LAUNCH OS</AtlasBadge><AtlasBadge tone="success">PORTFÓLIO AO VIVO</AtlasBadge><AtlasBadge tone="info">INCORPORADORAS</AtlasBadge></div>
-            <h1 className="mt-5 max-w-4xl text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">O centro operacional de <span className="atlas-gradient-text">lançamentos imobiliários.</span></h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">VGV, estoque, reservas, marketing, forecast e velocidade de vendas em uma visão única para incorporadoras e gestores comerciais.</p>
+            <div className="flex flex-wrap gap-2"><AtlasBadge tone="violet">GESTÃO DE PORTFÓLIO</AtlasBadge><AtlasBadge tone="success">RESULTADO AO VIVO</AtlasBadge><AtlasBadge tone="info">INCORPORADORAS</AtlasBadge></div>
+            <h1 className="mt-5 max-w-4xl text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">Saiba quais projetos <span className="atlas-gradient-text">vendem, aceleram ou exigem ação.</span></h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">VGV, estoque, reservas, campanhas e forecast conectados para aumentar absorção e reduzir capital parado.</p>
             <div className="mt-6 flex flex-wrap gap-3"><Link href="/developments/registry" className="atlas-button-primary">Novo empreendimento</Link><Link href="/developments/homologation" className="atlas-button-secondary">Homologar projetos</Link><Link href="/developments/materials" className="atlas-button-secondary">Buscar materiais</Link><Link href="/developments/developers" className="atlas-button-secondary">Incorporadoras</Link><Link href="/developments/payment-rules" className="atlas-button-secondary">Fluxos de pagamento</Link><Link href="/properties" className="atlas-button-secondary">Abrir estoque</Link><Link href="/marketing" className="atlas-button-secondary">Marketing do portfólio</Link><button onClick={() => void load()} className="atlas-button-secondary">Atualizar dados</button></div>
           </div>
           <div className="rounded-3xl border border-white/[0.08] bg-[#070d1b]/70 p-5 backdrop-blur-xl">
@@ -129,12 +129,12 @@ export default function DevelopmentsPage() {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AtlasMetric label="VGV do portfólio" value={loading ? "—" : brl.format(data?.portfolio.totalVgv ?? 0)} detail="Valor total do estoque vinculado" trend="PORTFÓLIO" tone="violet" />
         <AtlasMetric label="VGV vendido" value={loading ? "—" : brl.format(data?.portfolio.soldVgv ?? 0)} detail={`${data?.portfolio.sold ?? 0} unidades vendidas`} trend="SELL-OUT" tone="green" />
-        <AtlasMetric label="Pipeline comercial" value={loading ? "—" : brl.format(data?.portfolio.pipeline ?? 0)} detail="Oportunidades em andamento" trend="VENDAS" tone="blue" />
-        <AtlasMetric label="Forecast ponderado" value={loading ? "—" : brl.format(data?.portfolio.forecast ?? 0)} detail="Previsão ajustada por probabilidade" trend="ATLAS AI" tone="amber" />
+        <AtlasMetric label="Receita em negociação" value={loading ? "—" : brl.format(data?.portfolio.pipeline ?? 0)} detail="Oportunidades em andamento" trend="PIPELINE" tone="blue" />
+        <AtlasMetric label="Receita provável" value={loading ? "—" : brl.format(data?.portfolio.forecast ?? 0)} detail="Forecast ponderado pela probabilidade" trend="PREVISÃO" tone="amber" />
       </section>
 
       <AtlasCard>
-        <AtlasCardHeader eyebrow="Launch portfolio" title="Empreendimentos em operação" description="Visão executiva por projeto, incorporadora, estoque, vendas e marketing." action={<div className="relative"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar empreendimento..." className="w-64 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" /></div>} />
+        <AtlasCardHeader eyebrow="Decisão por projeto" title="Onde acelerar vendas agora" description="Compare incorporadora, estoque, absorção, pipeline e marketing para decidir a próxima ação." action={<div className="relative"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar empreendimento..." className="w-64 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" /></div>} />
         <div className="p-5 sm:p-6">
           {loading ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[1,2,3,4,5,6].map((item) => <AtlasSkeleton key={item} className="h-72 w-full" />)}</div> : filtered.length === 0 ? <AtlasEmpty title="Nenhum empreendimento encontrado" description="Cadastre ou ajuste os filtros para começar a operar o portfólio no Launch OS." /> : <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">{filtered.map((item) => {
             const m = item.metrics;
