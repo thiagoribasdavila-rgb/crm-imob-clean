@@ -1,0 +1,12 @@
+{
+  "phase": 13,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "viewportRangePx": { "min": 768, "max": 1023 },
+  "contentGutterPx": 24,
+  "dockMaxWidthPx": 560,
+  "sidebarMaxWidthPx": 320,
+  "topbar": { "userCopyHidden": true, "globalSearchPreserved": true, "newLeadPreserved": true, "profilePreserved": true },
+  "desktopBehaviorChanged": false,
+  "mobileBehaviorChanged": false
+}

@@ -14,6 +14,7 @@ const phaseNine = JSON.parse(fs.readFileSync("config/evolution-phase-009-progres
 const phaseTen = JSON.parse(fs.readFileSync("config/evolution-phase-010-useful-empty-states.json", "utf8"));
 const phaseEleven = JSON.parse(fs.readFileSync("config/evolution-phase-011-failure-recovery.json", "utf8"));
 const phaseTwelve = JSON.parse(fs.readFileSync("config/evolution-phase-012-desktop-canvas.json", "utf8"));
+const phaseThirteen = JSON.parse(fs.readFileSync("config/evolution-phase-013-tablet-workspace.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -56,6 +57,8 @@ const checks = [
   ["Falhas críticas podem repetir", atlasUi.includes("AtlasRecoverableError") && calendarPage.includes("AtlasRecoverableError") && developmentsPage.includes("AtlasRecoverableError")],
   ["Fase 012 amplia o canvas desktop", phaseTwelve.status === "completed" && tokens.includes("--atlas-content-max: 1728px")],
   ["Topbar e conteúdo compartilham alinhamento", topbar.includes("atlas-topbar-inner") && globalStyles.includes("max-width: var(--atlas-content-max)")],
+  ["Fase 013 possui faixa exclusiva de tablet", phaseThirteen.status === "completed" && globalStyles.includes("@media (min-width: 768px) and (max-width: 1023px)")],
+  ["Dock de tablet preserva a área útil", globalStyles.includes("width: min(calc(100% - 32px), 560px)") && globalStyles.includes("transform: translateX(-50%)")],
 ];
 
 for (const [label, passed] of checks) {

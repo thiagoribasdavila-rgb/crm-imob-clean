@@ -86,6 +86,11 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Canvas desktop ampliado para 1728 px", "Barra superior alinhada ao conteúdo", "Margens responsivas preservam densidade e leitura"],
   },
+  13: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Workspace específico para 768–1023 px", "Dock centralizado e limitado a 560 px", "Barra superior compactada sem remover ações essenciais"],
+  },
 };
 
 const checkpoints = [
