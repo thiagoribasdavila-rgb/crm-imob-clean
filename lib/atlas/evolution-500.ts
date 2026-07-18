@@ -291,6 +291,20 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Cobertura estrutural não foi apresentada como resultado de uso e o gate da Fase 020 permanece bloqueado",
     ],
   },
+  32: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Desktop amplo oferece densidade compacta ou confortável sem duplicar páginas",
+      "Modo compacto é padrão e a escolha fica persistida somente no navegador atual",
+      "Modo confortável preserva o canvas de 1.728 pixels e o espaçamento da Fase 012",
+      "Área principal, cabeçalhos, indicadores, tabelas e estados compartilham a mesma compactação",
+      "Botão nativo comunica estado e próxima opção com nome acessível e aria-pressed",
+      "Tablet e celular permanecem fora do novo contrato de densidade",
+      "Nenhum dado, rota, permissão ou segredo foi alterado",
+      "Compactação estrutural não foi apresentada como ganho medido e o gate da Fase 020 permanece bloqueado",
+    ],
+  },
 };
 
 const checkpoints = [

@@ -5,3 +5,5 @@ export type ShellIdentity = {
   role: string;
   accessRole: "admin" | "director_decisor" | "director" | "broker";
 };
+
+export type DesktopDensity = "compact" | "comfortable";

@@ -4354,3 +4354,102 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 }
+
+/* Fase 032 — espaço de trabalho adaptativo para desktop amplo. */
+.atlas-desktop-density-toggle {
+  display: none;
+}
+
+@media (min-width: 1180px) {
+  .atlas-desktop-density-toggle {
+    display: inline-flex;
+    min-width: 40px;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 11px;
+    border: 1px solid var(--atlas-border);
+    border-radius: 12px;
+    color: var(--atlas-text-muted);
+    background: rgba(255, 255, 255, 0.025);
+    font-size: 12px;
+    font-weight: 700;
+    transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+  }
+
+  .atlas-desktop-density-toggle:hover {
+    border-color: rgba(56, 189, 248, 0.28);
+    color: var(--atlas-text);
+    background: rgba(56, 189, 248, 0.07);
+  }
+
+  .atlas-desktop-density-toggle[aria-pressed="true"] {
+    border-color: rgba(125, 211, 252, 0.24);
+    color: #dff6ff;
+    background: rgba(56, 189, 248, 0.1);
+  }
+
+  .atlas-density-label {
+    display: none;
+  }
+
+  .atlas-app-main {
+    scrollbar-gutter: stable;
+  }
+
+  .atlas-app-content {
+    container-name: atlas-workspace;
+    container-type: inline-size;
+  }
+
+  .atlas-app-shell[data-desktop-density="compact"] .atlas-app-main {
+    padding-top: calc(var(--atlas-topbar-height) + 20px);
+    padding-bottom: 40px;
+  }
+
+  .atlas-app-shell[data-desktop-density="compact"] .atlas-page-header {
+    min-height: 96px;
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+  }
+
+  .atlas-app-shell[data-desktop-density="compact"] .atlas-page-header h1 {
+    font-size: clamp(28px, 2.7vw, 40px);
+  }
+
+  .atlas-app-shell[data-desktop-density="compact"] .atlas-page-header p {
+    margin-top: 8px;
+    line-height: 1.55;
+  }
+
+  .atlas-app-shell[data-desktop-density="compact"] .atlas-card-header {
+    padding: 18px 20px;
+  }
+
+  .atlas-app-shell[data-desktop-density="compact"] .atlas-metric {
+    min-height: 126px;
+    padding: 16px;
+  }
+
+  .atlas-app-shell[data-desktop-density="compact"] .atlas-metric-number {
+    margin-top: 12px;
+    font-size: 28px;
+  }
+
+  .atlas-app-shell[data-desktop-density="compact"] th,
+  .atlas-app-shell[data-desktop-density="compact"] td {
+    padding: 11px 14px;
+  }
+
+  .atlas-app-shell[data-desktop-density="compact"] .atlas-state {
+    min-height: 220px;
+    padding: 26px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .atlas-density-label {
+    display: inline;
+  }
+}

@@ -8,7 +8,9 @@ import { Topbar } from "./topbar";
 import { MobileDock } from "./mobile-dock";
 import { NavigationPerformance } from "./navigation-performance";
 import CommandPalette from "@/components/CommandPalette";
-import type { ShellIdentity } from "./shell-types";
+import type { DesktopDensity, ShellIdentity } from "./shell-types";
+
+const DESKTOP_DENSITY_KEY = "atlas:desktop-density";
 const defaultIdentity: ShellIdentity = {
   name: "Usuário Atlas",
   email: "",
@@ -22,11 +24,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [identity, setIdentity] = useState<ShellIdentity>(defaultIdentity);
+  const [desktopDensity, setDesktopDensity] = useState<DesktopDensity>("compact");
 
   useEffect(() => {
     setCollapsed(
       window.localStorage.getItem("atlas:sidebar-collapsed") === "true",
     );
+    const savedDensity = window.localStorage.getItem(DESKTOP_DENSITY_KEY);
+    if (savedDensity === "compact" || savedDensity === "comfortable") {
+      setDesktopDensity(savedDensity);
+    }
   }, []);
 
   useEffect(() => {
@@ -109,12 +116,18 @@ export function AppShell({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+  const toggleDesktopDensity = useCallback(() => {
+    const next = desktopDensity === "compact" ? "comfortable" : "compact";
+    setDesktopDensity(next);
+    window.localStorage.setItem(DESKTOP_DENSITY_KEY, next);
+  }, [desktopDensity]);
 
   return (
     <div
       className="atlas-app-shell"
       data-sidebar-collapsed={collapsed ? "true" : "false"}
-      data-desktop-layout="balanced-canvas"
+      data-desktop-density={desktopDensity}
+      data-desktop-layout="adaptive-wide-workspace"
       data-tablet-layout="focused-workspace"
       data-mobile-layout="touch-first"
     >
@@ -133,7 +146,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         role={identity.role}
         accessRole={identity.accessRole}
       />
-      <Topbar identity={identity} mobileOpen={mobileOpen} onOpenMenu={openMobile} />
+      <Topbar
+        identity={identity}
+        mobileOpen={mobileOpen}
+        desktopDensity={desktopDensity}
+        onOpenMenu={openMobile}
+        onToggleDesktopDensity={toggleDesktopDensity}
+      />
       <NavigationPerformance />
       <main className="atlas-app-main" id="atlas-main-content" tabIndex={-1}>
         <div className="atlas-app-content" key={pathname}>{children}</div>

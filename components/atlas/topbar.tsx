@@ -8,16 +8,20 @@ import {
   getAtlasNavigationContext,
   getAtlasTaskActionForPathname,
 } from "@/lib/atlas/navigation";
-import type { ShellIdentity } from "./shell-types";
+import type { DesktopDensity, ShellIdentity } from "./shell-types";
 
 export function Topbar({
   identity,
   mobileOpen,
+  desktopDensity,
   onOpenMenu,
+  onToggleDesktopDensity,
 }: {
   identity: ShellIdentity;
   mobileOpen: boolean;
+  desktopDensity: DesktopDensity;
   onOpenMenu: () => void;
+  onToggleDesktopDensity: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -96,6 +100,23 @@ export function Topbar({
           <span aria-hidden="true">⌕</span>
           <span>Buscar</span>
           <kbd>⌘ K</kbd>
+        </button>
+        <button
+          type="button"
+          className="atlas-desktop-density-toggle"
+          aria-pressed={desktopDensity === "compact"}
+          aria-label={desktopDensity === "compact"
+            ? "Usar espaçamento confortável no desktop"
+            : "Compactar o espaço de trabalho no desktop"}
+          title={desktopDensity === "compact"
+            ? "Usar espaçamento confortável"
+            : "Usar modo compacto"}
+          onClick={onToggleDesktopDensity}
+        >
+          <span aria-hidden="true">{desktopDensity === "compact" ? "▦" : "▤"}</span>
+          <span className="atlas-density-label">
+            {desktopDensity === "compact" ? "Compacto" : "Confortável"}
+          </span>
         </button>
         <button
           type="button"

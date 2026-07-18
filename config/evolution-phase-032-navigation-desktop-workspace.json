@@ -1,0 +1,81 @@
+{
+  "phase": 32,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "adaptive-wide-desktop-density-for-commercial-navigation",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "clientPreferenceChanged": true,
+  "dataFetchingChanged": false,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": false,
+  "desktopContract": {
+    "minimumViewportPx": 1180,
+    "modes": ["compact", "comfortable"],
+    "defaultMode": "compact",
+    "comfortableModePreservesPhaseTwelveBaseline": true,
+    "preferenceStorage": "local-only",
+    "preferenceKey": "atlas:desktop-density",
+    "controlLocation": "topbar",
+    "contentMaxPx": 1728,
+    "tabletAndMobileUnaffected": true
+  },
+  "compactMode": {
+    "purpose": "show more operational context without hiding content",
+    "sharedSurfaces": [
+      "main workspace",
+      "page header",
+      "card header",
+      "metric cards",
+      "data tables",
+      "empty and recovery states"
+    ],
+    "minimumTopbarControlPx": 40,
+    "contentRemoved": false,
+    "horizontalOverflowIntroduced": false
+  },
+  "structuralBaseline": {
+    "phaseTwelveDesktopModeCount": 1,
+    "phaseThirtyTwoDesktopModeCount": 2,
+    "compactSharedSurfaces": 6,
+    "wideWorkspaceContainerEnabled": true,
+    "stableScrollbarGutterEnabled": true,
+    "runtimeScrollReductionMeasured": false
+  },
+  "accessibility": {
+    "nativeButton": true,
+    "ariaPressedState": true,
+    "contextualAccessibleLabel": true,
+    "keyboardOperable": true,
+    "doesNotDependOnIconAlone": true,
+    "reducedMotionPolicyPreserved": true
+  },
+  "truthPolicy": {
+    "preferencePresentedAsMeasuredProductivity": false,
+    "structuralCompactionPresentedAsRuntimeOutcome": false,
+    "fakeBehaviorMetricPublished": false
+  },
+  "safetyPolicy": {
+    "databaseWrite": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "routesPreserved": true
+  },
+  "exitCriteria": {
+    "persistentDesktopDensityChoice": true,
+    "compactModeUsesSharedShellSelectors": true,
+    "comfortableModePreservesExistingSpacing": true,
+    "tabletRulesChanged": false,
+    "mobileRulesChanged": false,
+    "parallelWorkflowCreated": false,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 33,
+    "name": "Otimizar tablet",
+    "status": "planned"
+  }
+}
