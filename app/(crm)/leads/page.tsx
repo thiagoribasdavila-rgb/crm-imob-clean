@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { mapLegacyProfile, mapLegacyProject } from "@/lib/compat/legacy-v2";
 import { EmptyState } from "@/components/atlas/empty-state";
 import { ErrorState } from "@/components/atlas/error-state";
 import { LoadingState } from "@/components/atlas/loading-state";
@@ -255,19 +256,15 @@ export default function LeadsPage() {
     async function loadReferences() {
       const [profileResult, campaignResult, developmentResult, meResult] =
         await Promise.all([
-          supabase
-            .from("profiles")
-            .select("id,full_name,role,commercial_role,reports_to,active")
-            .eq("active", true)
-            .order("full_name"),
+          supabase.from("profiles").select("*").eq("active", true).order("created_at"),
           supabase.from("campaigns").select("*").limit(500),
-          supabase.from("developments").select("*").order("name").limit(100),
+          supabase.from("projects").select("*").order("name").limit(100),
           fetch("/api/v1/auth/me").then((response) => response.json()),
         ]);
       if (!active) return;
-      setProfiles((profileResult.data ?? []) as Profile[]);
+      setProfiles(((profileResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProfile) as unknown as Profile[]);
       setCampaigns((campaignResult.data ?? []) as ReferenceRow[]);
-      setDevelopments((developmentResult.data ?? []) as ReferenceRow[]);
+      setDevelopments(((developmentResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProject) as ReferenceRow[]);
       setCurrentRole(
         meResult?.data?.profile?.commercialRole ||
           meResult?.data?.profile?.role ||

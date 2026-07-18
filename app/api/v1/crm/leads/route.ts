@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { isMissingColumn, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
 
 export const dynamic = "force-dynamic";
 
@@ -192,7 +193,45 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { data, error, count } = await query;
+  let { data, error, count } = await query;
+
+  if (error && isMissingColumn(error)) {
+    const legacyResult = await access.supabase
+      .from("leads")
+      .select("*")
+      .eq("organization_id", access.access.organization.id)
+      .neq("status", "arquivado")
+      .limit(5000);
+    if (!legacyResult.error) {
+      let legacyRows = ((legacyResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead);
+      if (status) legacyRows = legacyRows.filter((row) => String(row.status ?? "") === status);
+      if (source) legacyRows = legacyRows.filter((row) => String(row.source ?? "") === source);
+      if (developmentId) legacyRows = legacyRows.filter((row) => String(row.development_id ?? "") === developmentId);
+      if (assignedTo === "unassigned") legacyRows = legacyRows.filter((row) => !row.assigned_to);
+      if (assignedTo && assignedTo !== "unassigned") legacyRows = legacyRows.filter((row) => String(row.assigned_to ?? "") === assignedTo);
+      if (teamOwner) {
+        const profileResult = await access.supabase.from("profiles").select("*").eq("organization_id", access.access.organization.id).eq("active", true);
+        const profiles = ((profileResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProfile) as Array<Record<string, unknown> & { id: string; reports_to: string | null }>;
+        const allowedOwners = new Set(descendantIds(profiles, teamOwner));
+        legacyRows = legacyRows.filter((row) => allowedOwners.has(String(row.assigned_to ?? "")));
+      }
+      if (minScore !== null) legacyRows = legacyRows.filter((row) => Number(row.score ?? 0) >= minScore);
+      if (maxScore !== null) legacyRows = legacyRows.filter((row) => Number(row.score ?? 0) <= maxScore);
+      if (search) {
+        const needle = search.toLocaleLowerCase("pt-BR");
+        legacyRows = legacyRows.filter((row) => [row.name, row.email, row.phone].some((value) => String(value ?? "").toLocaleLowerCase("pt-BR").includes(needle)));
+      }
+      const valueForSort = (row: Record<string, unknown>) => sort === "score" ? Number(row.score ?? 0) : String(row[sort] ?? row.created_at ?? "");
+      legacyRows.sort((left, right) => {
+        const a = valueForSort(left); const b = valueForSort(right);
+        const compared = typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b));
+        return direction === "asc" ? compared : -compared;
+      });
+      count = legacyRows.length;
+      data = legacyRows.slice(offset, offset + limit) as typeof data;
+      error = null;
+    }
+  }
 
   if (error) {
     structuredApiLog("error", "crm.leads.list_failed", request, access.meta, {

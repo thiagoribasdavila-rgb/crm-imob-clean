@@ -51,8 +51,8 @@ export async function GET(request: Request) {
       legacyProjects = await admin.from("projects").select("*").order("created_at", { ascending: false });
     }
     if (legacyProjects?.error && isMissingColumn(legacyProjects.error)) {
-      const { count: activeOrganizations } = await admin.from("organizations").select("id", { count: "exact", head: true }).eq("status", "ACTIVE");
-      if ((activeOrganizations ?? 0) === 1) legacyProjects = await admin.from("projects").select("*").order("created_at", { ascending: false });
+      const { count: organizationCount } = await admin.from("organizations").select("id", { count: "exact", head: true });
+      if ((organizationCount ?? 0) === 1) legacyProjects = await admin.from("projects").select("*").order("created_at", { ascending: false });
     }
     if ((developmentResult.error && !legacyProjects) || legacyProjects?.error) throw developmentResult.error || legacyProjects?.error;
     const legacyLeads = opportunityResult.error && isMissingRelation(opportunityResult.error)

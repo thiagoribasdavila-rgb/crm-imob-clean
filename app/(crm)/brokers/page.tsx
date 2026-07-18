@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/atlas/error-state";
 import { LoadingState } from "@/components/atlas/loading-state";
 import { MetricCard } from "@/components/atlas/metric-card";
 import { StatusBadge } from "@/components/atlas/status-badge";
+import { mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
 
 type Member = {
   id: string;
@@ -35,17 +36,19 @@ export default function BrokersPage() {
     let active = true;
     async function load() {
       const [profilesResult, leadsResult] = await Promise.all([
-        supabase.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").order("full_name"),
-        supabase.from("leads").select("assigned_to"),
+        supabase.from("profiles").select("*").order("created_at"),
+        supabase.from("leads").select("*").neq("status", "arquivado").limit(5000),
       ]);
       if (!active) return;
       if (profilesResult.error || leadsResult.error) {
         setError(profilesResult.error?.message || leadsResult.error?.message || "Não foi possível carregar a equipe.");
       } else {
-        setMembers((profilesResult.data ?? []) as Member[]);
+        setMembers(((profilesResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProfile) as unknown as Member[]);
         const counts = new Map<string, number>();
-        for (const lead of leadsResult.data ?? []) {
-          if (lead.assigned_to) counts.set(lead.assigned_to, (counts.get(lead.assigned_to) ?? 0) + 1);
+        for (const rawLead of (leadsResult.data ?? []) as Record<string, unknown>[]) {
+          const lead = mapLegacyLead(rawLead);
+          const owner = typeof lead.assigned_to === "string" ? lead.assigned_to : "";
+          if (owner) counts.set(owner, (counts.get(owner) ?? 0) + 1);
         }
         setLeadCounts(counts);
       }

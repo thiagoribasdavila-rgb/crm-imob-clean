@@ -21,7 +21,9 @@ export function mapLegacyLead(row: CompatRow): CompatRow {
     temperature: first(row, "temperature", "classificacao_ia"),
     assigned_to: first(row, "assigned_to", "assigned_user_id"),
     development_id: first(row, "development_id", "project_id"),
-    next_action_at: first(row, "next_action_at", "next_action", "next_contact"),
+    // V2 uses `next_action` as free text. Only date-shaped fields may feed
+    // calendars and SLA calculations.
+    next_action_at: first(row, "next_action_at", "next_contact"),
     last_interaction_at: first(row, "last_interaction_at", "updated_at", "created_at"),
     preferred_regions: first(row, "preferred_regions", "region", "neighborhood"),
   };
