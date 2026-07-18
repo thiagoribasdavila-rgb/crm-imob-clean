@@ -1,0 +1,82 @@
+{
+  "phase": 26,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "governed-navigation-visual-and-semantic-hierarchy",
+  "productionDataModified": false,
+  "runtimeNavigationChanged": true,
+  "hierarchyModel": {
+    "topbarLevels": [
+      { "level": 1, "content": "organization", "emphasis": "context" },
+      { "level": 2, "content": "navigation group", "emphasis": "category" },
+      { "level": 3, "content": "current destination", "emphasis": "primary" }
+    ],
+    "sidebarLevels": [
+      "semantic section heading",
+      "available destination",
+      "explicit current destination"
+    ],
+    "activeSignals": [
+      "aria-current",
+      "current text badge",
+      "accent rail",
+      "font weight",
+      "active icon surface",
+      "current group marker"
+    ]
+  },
+  "contextResolution": {
+    "source": "governed navigation catalog",
+    "staticParallelLabelMapRemoved": true,
+    "primaryDestinationsCovered": 20,
+    "contextCommandsCovered": 6,
+    "longestMatchingDestinationWins": true,
+    "nestedRoutesSupported": true
+  },
+  "semanticNavigation": {
+    "groupsUseSectionElement": true,
+    "groupsUseHeadingElement": true,
+    "groupsUseAriaLabelledby": true,
+    "collapsedLinksKeepAccessibleName": true
+  },
+  "visualPriority": {
+    "inactiveIconsUseSecondaryContrast": true,
+    "activeIconUsesPrimaryContrast": true,
+    "currentGroupIsMarked": true,
+    "currentDestinationUsesExplicitBadge": true,
+    "secondaryFavoriteActionRemainsQuiet": true
+  },
+  "interactionTargets": {
+    "navigationItemMinimumPx": 44,
+    "favoriteActionMinimumPx": 44,
+    "collapsedNavigationRecentered": true
+  },
+  "catalogPreservation": {
+    "primaryDestinations": 20,
+    "contextCommands": 6,
+    "mobilePrimaryDestinations": 4,
+    "routesRemoved": 0,
+    "permissionsChanged": false
+  },
+  "measurementPolicy": {
+    "inventedBehaviorMetricAllowed": false,
+    "visualClarityClaimIsStructuralOnly": true,
+    "behavioralTelemetryStatus": "awaiting-runtime-telemetry"
+  },
+  "safetyPolicy": {
+    "databaseRead": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "automaticDecisionAboutPeopleAllowed": false,
+    "rbacPreserved": true
+  },
+  "exitCriteria": {
+    "currentLocationUsesSingleGovernedSource": true,
+    "currentGroupIsVisuallyIdentified": true,
+    "currentDestinationIsVisuallyAndSemanticallyIdentified": true,
+    "collapsedNavigationRemainsAccessible": true,
+    "secondaryActionsMeetTouchTarget": true,
+    "phaseTwentyGateBypassed": false
+  }
+}

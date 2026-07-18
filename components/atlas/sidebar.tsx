@@ -264,10 +264,10 @@ export function Sidebar({
     const pinned = favorites.includes(item.href);
     return (
       <div className="atlas-nav-item" key={`${favoriteCopy ? "favorite-" : ""}${item.href}`}>
-        <Link href={item.href} className="atlas-nav-link" data-active={active ? "true" : "false"} title={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined} onClick={onCloseMobile}>
+        <Link href={item.href} className="atlas-nav-link" data-active={active ? "true" : "false"} title={collapsed ? item.label : undefined} aria-label={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined} onClick={onCloseMobile}>
           <span className="atlas-nav-icon" aria-hidden="true">{item.icon}</span>
           <span className="atlas-sidebar-label">{item.label}</span>
-          {active ? <span className="atlas-nav-current atlas-sidebar-label" aria-hidden="true" /> : null}
+          {active ? <span className="atlas-nav-current atlas-sidebar-label" aria-hidden="true">Atual</span> : null}
         </Link>
         <button type="button" className="atlas-nav-favorite atlas-sidebar-label" data-pinned={pinned ? "true" : "false"} onClick={() => toggleFavorite(item.href)} aria-label={pinned ? `Remover ${item.label} dos favoritos` : `Fixar ${item.label} nos favoritos`} title={pinned ? "Remover dos favoritos" : "Fixar nos favoritos"}>{pinned ? "★" : "☆"}</button>
       </div>
@@ -330,14 +330,21 @@ export function Sidebar({
         </div>
 
         <nav className="atlas-sidebar-nav" aria-label="Navegação principal">
-          {!normalizedQuery && favoriteItems.length ? <div className="atlas-nav-group atlas-nav-favorites"><p className="atlas-sidebar-section atlas-sidebar-label"><span>Favoritos</span><small aria-label={`${favoriteItems.length} favoritos`}>{favoriteItems.length}</small></p>{favoriteItems.map((item) => renderNavItem(item, true))}</div> : null}
+          {!normalizedQuery && favoriteItems.length ? (
+            <section className="atlas-nav-group atlas-nav-favorites" data-current={favoriteItems.some((item) => isActive(pathname, item.href)) ? "true" : "false"} aria-labelledby="atlas-nav-favorites-heading">
+              <h2 id="atlas-nav-favorites-heading" className="atlas-sidebar-section atlas-sidebar-label"><span>Favoritos</span><small aria-label={`${favoriteItems.length} favoritos`}>{favoriteItems.length}</small></h2>
+              {favoriteItems.map((item) => renderNavItem(item, true))}
+            </section>
+          ) : null}
           {visibleGroups.map((group) => {
             const groupItems = groupedItems.filter((item) => item.group === group);
+            const groupHeadingId = `atlas-nav-group-${group.toLocaleLowerCase("pt-BR").replaceAll(" ", "-")}`;
+            const groupIsCurrent = groupItems.some((item) => isActive(pathname, item.href));
             return (
-              <div className="atlas-nav-group" key={group}>
-                <p className="atlas-sidebar-section atlas-sidebar-label"><span>{group}</span><small aria-label={`${groupItems.length} telas`}>{groupItems.length}</small></p>
+              <section className="atlas-nav-group" data-current={groupIsCurrent ? "true" : "false"} aria-labelledby={groupHeadingId} key={group}>
+                <h2 id={groupHeadingId} className="atlas-sidebar-section atlas-sidebar-label"><span>{group}</span><small aria-label={`${groupItems.length} telas`}>{groupItems.length}</small></h2>
                 {groupItems.map((item) => renderNavItem(item))}
-              </div>
+              </section>
             );
           })}
           {!visibleItems.length ? <div className="atlas-sidebar-empty atlas-sidebar-label"><span>⌕</span><strong>Nenhuma tela encontrada</strong><small>Tente buscar por leads, vendas ou projetos.</small><button type="button" onClick={() => setQuery("")}>Limpar busca</button></div> : null}

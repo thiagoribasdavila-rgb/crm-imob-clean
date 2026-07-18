@@ -74,3 +74,26 @@ export function getAtlasContextCommandsForIdentity(identity: AtlasNavigationIden
 export function getAtlasMobileNavigationForIdentity(identity: AtlasNavigationIdentity) {
   return atlasMobileNavigation.filter((item) => canAccessAtlasItem(item, identity));
 }
+
+const atlasNavigationContexts = [
+  ...atlasNavigation.map((item) => ({
+    group: item.group,
+    label: item.label,
+    href: item.href,
+    source: "primary" as const,
+  })),
+  ...atlasContextCommands.map((item) => ({
+    group: item.group,
+    label: item.label,
+    href: item.href,
+    source: "contextual" as const,
+  })),
+].sort((left, right) => right.href.length - left.href.length);
+
+export function getAtlasNavigationContext(pathname: string) {
+  const normalizedPath = pathname.split("?")[0]?.split("#")[0] || "/";
+
+  return atlasNavigationContexts.find((item) =>
+    normalizedPath === item.href || normalizedPath.startsWith(`${item.href}/`),
+  ) ?? null;
+}

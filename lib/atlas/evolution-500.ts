@@ -208,6 +208,20 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Nenhuma métrica comportamental foi inventada e o gate da Fase 020 permanece bloqueado",
     ],
   },
+  26: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Topbar passou a resolver empresa, grupo e destino pelo catálogo governado",
+      "Rotas profundas usam o destino correspondente mais específico",
+      "Grupos da sidebar usam section, h2 e aria-labelledby",
+      "Grupo atual recebe marcador próprio sem duplicar o contexto de favoritos",
+      "Destino ativo combina aria-current, texto Atual, trilho, peso e ícone destacado",
+      "Menu recolhido preserva nome acessível e recentraliza o destino",
+      "Destino e favorito mantêm alvos de 44 pixels sem alterar rotas ou RBAC",
+      "Nenhuma métrica comportamental foi inventada e o gate da Fase 020 permanece bloqueado",
+    ],
+  },
 };
 
 const checkpoints = [

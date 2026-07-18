@@ -3,25 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { getAtlasNavigationContext } from "@/lib/atlas/navigation";
 import type { ShellIdentity } from "./shell-types";
-
-const sectionLabels: Record<string, string> = {
-  dashboard: "Command Center",
-  leads: "Leads",
-  pipeline: "Pipeline",
-  tasks: "Tarefas",
-  calendar: "Agenda",
-  developments: "Projetos",
-  brokers: "Corretores",
-  distribution: "Distribuição",
-  sales: "Vendas",
-  reports: "Relatórios",
-  integrations: "Integrações",
-  settings: "Configurações",
-  users: "Usuários e acessos",
-  "atlas-v3": "Evolução V3",
-  "ai-dashboard": "Copilot",
-};
 
 export function Topbar({
   identity,
@@ -42,8 +25,11 @@ export function Topbar({
   }
 
   const sectionKey = pathname.split("/").filter(Boolean).at(0) || "dashboard";
-  const currentSection =
-    sectionLabels[sectionKey] || sectionKey.replaceAll("-", " ");
+  const navigationContext = getAtlasNavigationContext(pathname);
+  const fallbackSection = sectionKey.replaceAll("-", " ");
+  const currentSection = navigationContext?.label
+    || `${fallbackSection.charAt(0).toLocaleUpperCase("pt-BR")}${fallbackSection.slice(1)}`;
+  const currentGroup = navigationContext?.group || "Atlas";
 
   return (
     <header className="atlas-app-topbar">
@@ -60,8 +46,12 @@ export function Topbar({
         >
           ☰
         </button>
-        <div>
-          <span className="atlas-topbar-context">{identity.organization}</span>
+        <div className="atlas-topbar-location" role="group" aria-label={`Local atual: ${currentGroup}, ${currentSection}`}>
+          <span className="atlas-topbar-context">
+            <span>{identity.organization}</span>
+            <i aria-hidden="true">·</i>
+            <strong>{currentGroup}</strong>
+          </span>
           <span className="atlas-topbar-section" aria-live="polite">{currentSection}</span>
         </div>
         </div>
