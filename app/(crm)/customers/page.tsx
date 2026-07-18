@@ -100,7 +100,7 @@ export default function CustomersPage() {
               })}</tbody>
             </table>
           </div>
-        ) : <div className="p-5"><AtlasEmpty title={items.length ? "Nenhum cliente neste filtro" : "Nenhum cliente cadastrado"} description={items.length ? "Altere a busca ou o perfil para ampliar os resultados." : "Cadastre a primeira lead para iniciar a memória comercial unificada."} action={items.length ? <button className="atlas-button-secondary" onClick={() => { setQuery(""); setProfile("all"); }}>Limpar filtros</button> : <Link className="atlas-button-primary" href="/leads/new">Cadastrar lead</Link>} /></div>}
+        ) : <div className="p-5"><AtlasEmpty reason={items.length ? "no-results" : "first-use"} eyebrow={items.length ? "Busca sem correspondência" : "Fonte única ainda vazia"} title={items.length ? "Nenhum cliente neste filtro" : "Nenhum cliente cadastrado"} description={items.length ? "Altere a busca ou o perfil para ampliar os resultados." : "Cadastre a primeira lead para iniciar a memória comercial unificada."} action={items.length ? <button type="button" className="atlas-button-secondary" onClick={() => { setQuery(""); setProfile("all"); }}>Limpar filtros</button> : <Link className="atlas-button-primary" href="/leads/new">Cadastrar lead</Link>} /></div>}
       </AtlasCard>
     </div>
   );

@@ -1005,6 +1005,8 @@ export default function LeadsPage() {
             </div>
           ) : items.length === 0 ? (
             <EmptyState
+              reason={hasFilters ? "no-results" : "first-use"}
+              eyebrow={hasFilters ? "Busca sem correspondência" : "Comece sua carteira"}
               title={
                 hasFilters
                   ? "Nenhum lead corresponde aos filtros"

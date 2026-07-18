@@ -2949,6 +2949,13 @@ textarea:focus {
 .atlas-button-primary:active, .atlas-button-secondary:active, .atlas-icon-button:active { transform: scale(.975); }
 .atlas-empty-state { border: 1px dashed rgba(125, 211, 252, 0.15); background: radial-gradient(circle at 50% 20%, rgba(56,189,248,.07), transparent 45%), rgba(255,255,255,.014); }
 .atlas-empty-orb { border: 1px solid rgba(125, 211, 252, 0.22); background: linear-gradient(145deg, rgba(56,189,248,.14), rgba(139,92,246,.12)); box-shadow: 0 14px 38px rgba(56,189,248,.12), inset 0 1px rgba(255,255,255,.12); }
+.atlas-empty-eyebrow { margin-bottom: 8px; color: rgba(125, 211, 252, .78); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+.atlas-empty-state[data-empty-reason="completed"] { border-style: solid; border-color: rgba(52, 211, 153, .14); background: radial-gradient(circle at 50% 20%, rgba(52,211,153,.055), transparent 45%), rgba(255,255,255,.014); }
+.atlas-empty-state[data-empty-reason="completed"] .atlas-empty-orb { border-color: rgba(52, 211, 153, .2); background: linear-gradient(145deg, rgba(52,211,153,.11), rgba(56,189,248,.08)); color: rgb(167 243 208); }
+.atlas-empty-state[data-empty-reason="not-configured"] { border-color: rgba(251, 191, 36, .16); }
+.atlas-empty-state[data-empty-reason="not-configured"] .atlas-empty-eyebrow { color: rgba(253, 230, 138, .82); }
+.atlas-empty-state[data-has-action="true"] .atlas-button-primary,
+.atlas-empty-state[data-has-action="true"] .atlas-button-secondary { min-height: 44px; }
 .atlas-progress-track { background: rgba(255, 255, 255, 0.055); box-shadow: inset 0 1px 2px rgba(0,0,0,.28); }
 .atlas-progress-value { background: linear-gradient(90deg, #55d9ff, #448dff 52%, #9b7cff); box-shadow: 0 0 18px rgba(68,141,255,.42); transition: width .5s cubic-bezier(.2,.8,.2,1); }
 .atlas-app-topbar { border-bottom-color: rgba(255,255,255,.065); }

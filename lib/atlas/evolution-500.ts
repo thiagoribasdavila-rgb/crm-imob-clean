@@ -264,6 +264,19 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Nenhuma latência ou melhora comportamental foi inventada e o gate da Fase 020 permanece bloqueado",
     ],
   },
+  30: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Estados vazios compartilham cinco motivos explícitos e inspecionáveis",
+      "Leads, agenda, tarefas, pipeline, clientes, projetos, vendas e distribuição receberam orientação contextual",
+      "Primeiro uso, filtro sem resultado, atividade ausente, rotina concluída e configuração pendente não se confundem",
+      "Ações permanecem links ou botões nativos com alvo mínimo de 44 pixels",
+      "Falhas continuam no componente recuperável e não são mascaradas como ausência de dados",
+      "Nenhuma consulta, rota, permissão, dado, segredo ou registro fictício foi alterado",
+      "Cobertura estrutural não foi apresentada como resultado de uso e o gate da Fase 020 permanece bloqueado",
+    ],
+  },
 };
 
 const checkpoints = [

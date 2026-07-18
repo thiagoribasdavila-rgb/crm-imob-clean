@@ -1,5 +1,20 @@
 import type { ReactNode } from "react";
 
+export type AtlasEmptyReason =
+  | "first-use"
+  | "no-results"
+  | "no-activity"
+  | "completed"
+  | "not-configured";
+
+const emptyReasonLabels: Record<AtlasEmptyReason, string> = {
+  "first-use": "Primeiro passo",
+  "no-results": "Filtros ativos",
+  "no-activity": "Ainda sem movimentação",
+  completed: "Operação em dia",
+  "not-configured": "Configuração necessária",
+};
+
 export function AtlasBadge({
   children,
   tone = "neutral",
@@ -18,15 +33,21 @@ export function AtlasEmpty({
   title,
   description,
   action,
+  reason = "no-results",
+  eyebrow,
 }: {
   title: string;
   description: string;
   action?: ReactNode;
+  reason?: AtlasEmptyReason;
+  eyebrow?: string;
 }) {
   return (
     <div
       className="atlas-empty-state flex min-h-56 flex-col items-center justify-center rounded-2xl p-8 text-center"
       role="status"
+      data-empty-reason={reason}
+      data-has-action={Boolean(action)}
     >
       <div
         className="atlas-empty-orb mb-4 grid h-12 w-12 place-items-center rounded-2xl text-xl text-sky-200"
@@ -34,11 +55,17 @@ export function AtlasEmpty({
       >
         ✦
       </div>
+      <p className="atlas-empty-eyebrow">{eyebrow || emptyReasonLabels[reason]}</p>
       <h3 className="font-semibold text-white">{title}</h3>
       <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
         {description}
       </p>
       {action ? <div className="mt-5">{action}</div> : null}
+      {!action && reason === "completed" ? (
+        <p className="mt-4 text-xs font-medium text-emerald-300/80">
+          Nenhuma ação necessária agora.
+        </p>
+      ) : null}
     </div>
   );
 }
