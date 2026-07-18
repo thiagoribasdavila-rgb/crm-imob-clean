@@ -1,0 +1,78 @@
+{
+  "phase": 29,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "progressive-navigation-loading-with-persistent-shell-stable-geometry-and-local-module-fallbacks",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "dataFetchingChanged": false,
+  "routeBehaviorChanged": false,
+  "progressiveContract": {
+    "sharedComponent": "components/atlas/progressive-page-loading.tsx",
+    "routeFallback": "app/(crm)/loading.tsx",
+    "localFallback": "components/atlas/loading-state.tsx",
+    "priorities": [
+      "essential",
+      "summary",
+      "detail"
+    ],
+    "persistentShell": "components/atlas/app-shell.tsx",
+    "persistentTopbarActionAvailable": true,
+    "routeFeedbackAvailable": true
+  },
+  "structuralBaseline": {
+    "crmRouteFallbacks": 1,
+    "pagesWithClientLoadSignals": 100,
+    "pagesWithLocalFeedbackSignals": 76,
+    "sharedLocalLoadingConsumers": 4,
+    "runtimeTimingMeasured": false
+  },
+  "visualStability": {
+    "essentialMinimumHeightPx": 188,
+    "summaryMinimumHeightPx": 144,
+    "detailMinimumHeightPx": 420,
+    "stablePlaceholderGeometry": true,
+    "layoutContainmentAppliedToEssentialStage": true,
+    "contentHiddenUntilComplete": false
+  },
+  "accessibility": {
+    "singleRouteLiveStatus": true,
+    "routeBusyState": true,
+    "localBusyState": true,
+    "repeatedLocalLiveRegionsRemoved": true,
+    "skeletonsHiddenFromAssistiveTechnology": true,
+    "reducedMotionRespected": true
+  },
+  "truthPolicy": {
+    "fakeProgressRendered": false,
+    "fakePercentageRendered": false,
+    "inventedLatencyMetricAllowed": false,
+    "structuralCoverageIsRuntimePerformanceProof": false,
+    "clientDataFetchesConvertedToServerSuspense": false
+  },
+  "safetyPolicy": {
+    "databaseRead": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "automaticDecisionAboutPeopleAllowed": false,
+    "rbacPreserved": true,
+    "routeGuardsPreserved": true
+  },
+  "exitCriteria": {
+    "essentialStageFirstInDom": true,
+    "threePrioritiesInspectable": true,
+    "shellRemainsInteractive": true,
+    "localModulesCanLoadWithoutBlankingPage": true,
+    "layoutShiftProtectionDeclared": true,
+    "parallelWorkflowCreated": false,
+    "routeRemoved": false,
+    "permissionChanged": false,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 30,
+    "name": "Criar estado vazio útil",
+    "status": "planned"
+  }
+}

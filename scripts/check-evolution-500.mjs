@@ -30,10 +30,13 @@ const phaseTwentyFive = JSON.parse(fs.readFileSync("config/evolution-phase-025-n
 const phaseTwentySix = JSON.parse(fs.readFileSync("config/evolution-phase-026-navigation-visual-hierarchy.json", "utf8"));
 const phaseTwentySeven = JSON.parse(fs.readFileSync("config/evolution-phase-027-navigation-task-step-reduction.json", "utf8"));
 const phaseTwentyEight = JSON.parse(fs.readFileSync("config/evolution-phase-028-navigation-primary-action-standard.json", "utf8"));
+const phaseTwentyNine = JSON.parse(fs.readFileSync("config/evolution-phase-029-navigation-progressive-loading.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
 const crmLoading = fs.readFileSync("app/(crm)/loading.tsx", "utf8");
+const progressivePageLoading = fs.readFileSync("components/atlas/progressive-page-loading.tsx", "utf8");
+const localLoadingState = fs.readFileSync("components/atlas/loading-state.tsx", "utf8");
 const atlasUi = fs.readFileSync("components/ui/AtlasUI.tsx", "utf8");
 const calendarPage = fs.readFileSync("app/(crm)/calendar/page.tsx", "utf8");
 const developmentsPage = fs.readFileSync("app/(crm)/developments/page.tsx", "utf8");
@@ -66,7 +69,7 @@ const checks = [
   ["Fase 007 reduz passos", phaseSeven.status === "completed" && phaseSeven.after.navigationDecisions < phaseSeven.before.navigationDecisions],
   ["Novo lead permanece como ação padrão acessível", navigation.includes('label: "Novo lead"') && navigation.includes('href: "/leads/new"') && topbar.includes("Ação rápida:")],
   ["Fase 008 padroniza ação principal", phaseEight.status === "completed" && topbar.includes("<AtlasActionLink") && topbar.includes('priority="primary"')],
-  ["Fase 009 carrega progressivamente", phaseNine.status === "completed" && crmLoading.includes('aria-live="polite"')],
+  ["Fase 009 carrega progressivamente", phaseNine.status === "completed" && crmLoading.includes("<ProgressivePageLoading") && progressivePageLoading.includes('aria-live="polite"')],
   ["Skeleton decorativo silencioso", atlasUi.includes('aria-hidden="true"')],
   ["Fase 010 cobre vazios críticos", phaseTen.status === "completed" && phaseTen.criticalStates.length >= 4],
   ["Vazios oferecem recuperação", calendarPage.includes("Criar tarefa") && developmentsPage.includes("Limpar filtros") && developmentsPage.includes("Cadastrar empreendimento")],
@@ -113,6 +116,8 @@ const checks = [
   ["Ação contextual preserva RBAC e fonte única", phaseTwentySeven.safetyPolicy.rbacPreserved === true && navigation.includes("getAtlasTaskActionForPathname") && topbar.includes("taskAction.href") && palette.includes("Ação desta tela")],
   ["Fase 028 limita e padroniza ações de cabeçalho", phaseTwentyEight.status === "completed" && phaseTwentyEight.sharedContract.maximumActionsPerPageHeader === 1 && phaseTwentyEight.auditedConsumers.pageHeadersMigrated === 13],
   ["Prioridade compartilhada preserva destinos e RBAC", phaseTwentyEight.auditedConsumers.secondaryHeaderActions === 12 && phaseTwentyEight.navigationDestinationsChanged === false && phaseTwentyEight.safetyPolicy.rbacPreserved === true],
+  ["Fase 029 ordena o carregamento sem bloquear o shell", phaseTwentyNine.status === "completed" && phaseTwentyNine.progressiveContract.priorities.join(",") === "essential,summary,detail" && phaseTwentyNine.progressiveContract.persistentTopbarActionAvailable === true],
+  ["Carregamento progressivo preserva acessibilidade e verdade", progressivePageLoading.includes('aria-busy="true"') && localLoadingState.includes('data-loading-priority="detail"') && phaseTwentyNine.truthPolicy.fakeProgressRendered === false && phaseTwentyNine.safetyPolicy.rbacPreserved === true],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 

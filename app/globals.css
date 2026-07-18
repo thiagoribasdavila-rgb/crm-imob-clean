@@ -524,6 +524,43 @@ textarea:focus {
   );
   animation: atlas-shimmer 1.6s infinite;
 }
+.atlas-progressive-loading {
+  display: grid;
+  gap: 24px;
+  isolation: isolate;
+}
+.atlas-loading-stage {
+  animation: atlas-loading-reveal 220ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.atlas-loading-stage[data-loading-priority="essential"] {
+  animation-delay: 0ms;
+}
+.atlas-loading-stage[data-loading-priority="summary"] {
+  animation-delay: 40ms;
+}
+.atlas-loading-stage[data-loading-priority="detail"] {
+  animation-delay: 80ms;
+}
+.atlas-loading-essential {
+  min-height: 188px;
+  contain: layout paint;
+}
+.atlas-loading-summary {
+  min-height: 144px;
+}
+.atlas-loading-detail {
+  min-height: 420px;
+}
+@keyframes atlas-loading-reveal {
+  from {
+    opacity: .64;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 .atlas-divider {
   border-color: rgba(148, 163, 184, 0.1);
 }
@@ -1375,6 +1412,7 @@ textarea:focus {
 .atlas-loading-state {
   display: grid;
   gap: 12px;
+  min-height: 72px;
 }
 .atlas-loading-row {
   position: relative;
@@ -1769,6 +1807,7 @@ textarea:focus {
 
 @media (prefers-reduced-motion: reduce) {
   .atlas-app-content,
+  .atlas-loading-stage,
   .atlas-app-content > *,
   .atlas-app-shell .atlas-panel,
   .atlas-app-shell .atlas-official-metric,

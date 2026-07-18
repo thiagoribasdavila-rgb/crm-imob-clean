@@ -250,6 +250,20 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Nenhuma métrica comportamental foi inventada e o gate da Fase 020 permanece bloqueado",
     ],
   },
+  29: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Fallback comercial passou a declarar contexto essencial, resumo e detalhes em ordem explícita",
+      "Shell, busca e ação comercial contextual permanecem disponíveis durante a navegação",
+      "Skeletons reproduzem a hierarquia da tela e reservam geometria estável",
+      "Um único status vivo comunica a troca de rota sem anúncios locais repetidos",
+      "Carregamentos locais preservam cada módulo sem bloquear a página inteira",
+      "Movimento reduzido desativa a entrada progressiva sem esconder conteúdo",
+      "Nenhuma consulta, rota, permissão, dado ou segredo foi alterado",
+      "Nenhuma latência ou melhora comportamental foi inventada e o gate da Fase 020 permanece bloqueado",
+    ],
+  },
 };
 
 const checkpoints = [
