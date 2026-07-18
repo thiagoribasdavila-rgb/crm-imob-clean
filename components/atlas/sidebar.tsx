@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-
-const navigation = [
+import { atlasNavigation } from "@/lib/atlas/navigation";
+/* legacy catalog removed in phase 004
   {
     group: "Operação diária",
     label: "Command Center",
@@ -150,8 +150,8 @@ const navigation = [
     roles: ["director", "superintendent", "manager"],
     accessRoles: ["admin"],
   },
-] as const;
-type NavigationItem = (typeof navigation)[number];
+*/
+type NavigationItem = (typeof atlasNavigation)[number];
 const FAVORITES_KEY = "atlas:sidebar-favorites:v1";
 
 function isActive(pathname: string, href: string) {
@@ -219,7 +219,7 @@ export function Sidebar({
     return () => window.removeEventListener("keydown", focusSearch);
   }, [collapsed, mobileOpen]);
 
-  const permittedItems = useMemo(() => navigation.filter((item) => {
+  const permittedItems = useMemo(() => atlasNavigation.filter((item) => {
     const scoped = "accessRoles" in item ? item.accessRoles : undefined;
     return scoped ? scoped.some((candidate) => candidate === accessRole) : item.roles.some((candidate) => candidate === role);
   }), [accessRole, role]);

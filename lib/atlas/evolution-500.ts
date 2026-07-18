@@ -14,7 +14,38 @@ export type Evolution500Phase = {
   outcome: string;
   href: string;
   pillar: EvolutionWave["pillar"];
-  status: "planejada";
+  status: "planejada" | "concluída";
+  evidence?: string[];
+  completedAt?: string;
+};
+
+const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence" | "completedAt">> = {
+  1: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "141 páginas CRM inventariadas",
+      "20 destinos da sidebar classificados em 4 grupos",
+      "17 comandos globais e 4 atalhos móveis registrados",
+      "4 jornadas por perfil e 6 jornadas críticas documentadas",
+      "Lacunas de navegação preservadas para correção nas fases seguintes",
+    ],
+  },
+  2: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Resultado comercial e critérios de sucesso registrados", "Decisão e ação priorizadas acima de volume visual", "Métricas sem telemetria real explicitamente bloqueadas"],
+  },
+  3: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Linha de base estrutural medida", "Três catálogos independentes identificados", "Métricas comportamentais mantidas pendentes até instrumentação real"],
+  },
+  4: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Catálogo canônico criado", "Sidebar, busca e dock conectados à mesma fonte", "Comando V2 removido da navegação ativa sem excluir a rota"],
+  },
 };
 
 const checkpoints = [
@@ -99,15 +130,17 @@ export const evolution500Waves: EvolutionWave[] = waveDefinitions.map((wave) => 
 }));
 
 export const evolution500Phases: Evolution500Phase[] = evolution500Waves.flatMap((wave) =>
-  checkpoints.map((checkpoint, index) => ({
-    id: (wave.id - 1) * checkpoints.length + index + 1,
+  checkpoints.map((checkpoint, index) => {
+    const id = (wave.id - 1) * checkpoints.length + index + 1;
+    return ({
+    id,
     waveId: wave.id,
     title: `${wave.name} · ${checkpoint}`,
     outcome: wave.outcome,
     href: wave.href,
     pillar: wave.pillar,
-    status: "planejada" as const,
-  })),
+    ...(phaseEvidence[id] ?? { status: "planejada" as const }),
+  });}),
 );
 
 export const evolution500Summary = {
@@ -115,6 +148,7 @@ export const evolution500Summary = {
   totalWaves: evolution500Waves.length,
   phasesPerWave: checkpoints.length,
   executionRule: "Uma fase só avança com evidência, medição e validação do perfil afetado.",
+  completedPhases: evolution500Phases.filter((phase) => phase.status === "concluída").length,
 };
 
 export const evolution1000Waves = evolution500Waves;

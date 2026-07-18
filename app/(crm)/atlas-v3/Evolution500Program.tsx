@@ -28,7 +28,7 @@ export function Evolution500Program() {
           <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400">{evolution1000Summary.totalWaves} ondas de {evolution1000Summary.phasesPerWave} entregas, organizadas para elevar o produto sem aumentar a confusão.</p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
-          {[["Fases", evolution1000Summary.totalPhases], ["Ondas", evolution1000Summary.totalWaves], ["Ativas", 0]].map(([label, value]) => <div key={String(label)} className="min-w-20 rounded-2xl border border-white/[.08] bg-white/[.035] p-3 backdrop-blur-xl"><strong className="block text-xl text-white">{value}</strong><span className="text-[9px] uppercase tracking-[.16em] text-slate-500">{label}</span></div>)}
+          {[["Fases", evolution1000Summary.totalPhases], ["Ondas", evolution1000Summary.totalWaves], ["Concluídas", evolution1000Summary.completedPhases]].map(([label, value]) => <div key={String(label)} className="min-w-20 rounded-2xl border border-white/[.08] bg-white/[.035] p-3 backdrop-blur-xl"><strong className="block text-xl text-white">{value}</strong><span className="text-[9px] uppercase tracking-[.16em] text-slate-500">{label}</span></div>)}
         </div>
       </div>
       <div className="relative mt-6">
@@ -55,7 +55,7 @@ export function Evolution500Program() {
           <h3 className="mt-5 text-2xl font-semibold tracking-[-.03em] text-white sm:text-3xl">{selectedWave.name}</h3>
           <p className="mt-3 text-sm leading-6 text-slate-400">{selectedWave.outcome}</p>
           <div className="mt-6 grid gap-2 sm:grid-cols-2">
-            {selectedPhases.map((phase) => <div key={phase.id} className="flex gap-3 rounded-xl border border-white/[.06] bg-black/10 p-3"><span className="font-mono text-[10px] text-sky-300">{String(phase.id).padStart(3, "0")}</span><span className="text-xs leading-5 text-slate-300">{phase.title.split(" · ")[1]}</span></div>)}
+            {selectedPhases.map((phase) => <div key={phase.id} data-complete={phase.status === "concluída" ? "true" : "false"} className="flex gap-3 rounded-xl border border-white/[.06] bg-black/10 p-3 data-[complete=true]:border-emerald-300/20 data-[complete=true]:bg-emerald-300/[.055]"><span className={`font-mono text-[10px] ${phase.status === "concluída" ? "text-emerald-300" : "text-sky-300"}`}>{phase.status === "concluída" ? "✓" : String(phase.id).padStart(3, "0")}</span><span className="text-xs leading-5 text-slate-300">{phase.title.split(" · ")[1]}</span></div>)}
           </div>
           <Link href={selectedWave.href} className="atlas-button-primary mt-6 w-full justify-center">Abrir módulo relacionado →</Link>
         </article>

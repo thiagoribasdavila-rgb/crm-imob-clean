@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { atlasContextCommands, atlasNavigation } from "@/lib/atlas/navigation";
 
-const commands = [
+/* legacy catalog removed in phase 004
   { label: "Command Center", href: "/dashboard", group: "Operação", keywords: "dashboard inicio indicadores" },
   { label: "Novo lead", href: "/leads/new", group: "Ações", keywords: "cadastrar criar lead contato" },
   { label: "Leads", href: "/leads", group: "Operação", keywords: "clientes contatos oportunidades" },
@@ -22,6 +23,11 @@ const commands = [
   { label: "Evolução e homologação V3", href: "/atlas-v3", group: "Intelligence", keywords: "fases percentual progresso agentes digital twin inteligencia homologacao" },
   { label: "Atlas 2030", href: "/atlas-2030", group: "Platform", keywords: "knowledge graph simulacoes plataforma" },
   { label: "Configurações", href: "/settings", group: "Administração", keywords: "empresa preferencias integracoes" },
+*/
+
+const commands = [
+  ...atlasNavigation.map((item) => ({ label: item.label, href: item.href, group: item.group, keywords: item.keywords })),
+  ...atlasContextCommands,
 ];
 
 type Command = { label: string; href: string; group: string; keywords: string };

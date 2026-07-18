@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { atlasMobileNavigation } from "@/lib/atlas/navigation";
 
-const dailyActions = [
+/* legacy catalog removed in phase 004
   { label: "Início", href: "/dashboard", icon: "⌘" },
   { label: "Leads", href: "/leads", icon: "◎" },
   { label: "Pipeline", href: "/pipeline", icon: "⌁" },
   { label: "Tarefas", href: "/tasks", icon: "✓" },
-] as const;
+*/
 
 export function MobileDock() {
   const pathname = usePathname();
 
   return (
     <nav className="atlas-mobile-dock" aria-label="Ações rápidas">
-      {dailyActions.map((item) => {
+      {atlasMobileNavigation.map((item) => {
         const active =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
