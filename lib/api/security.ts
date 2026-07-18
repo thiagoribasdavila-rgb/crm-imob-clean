@@ -53,6 +53,7 @@ type AccessContext = {
   };
   profile: {
     id: string;
+    name: string;
     organizationId: string;
     role: AtlasRole;
     accessRole: AccessRole;
@@ -282,6 +283,12 @@ export async function requireAccessContext(
     },
     profile: {
       id: String(profileRecord.id),
+      name: String(
+        profileRecord.full_name
+        || profileRecord.name
+        || auth.user.email?.split("@")[0]
+        || "Usuário Atlas",
+      ),
       organizationId,
       role,
       accessRole,

@@ -14,6 +14,10 @@ import {
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { safeAuthDestination } from "@/lib/auth/safe-redirect";
+import {
+  parseAtlasAuthContext,
+  storeAtlasAuthContext,
+} from "@/lib/auth/atlas-auth-context";
 
 const REMEMBERED_EMAIL_KEY = "atlas.remembered-email";
 
@@ -198,7 +202,8 @@ function LoginExperience() {
       }
 
       const sessionContext = await sessionResponse.clone().json().catch(() => null);
-      if (sessionContext) window.sessionStorage.setItem("atlas:auth-context", JSON.stringify(sessionContext));
+      const resolvedContext = parseAtlasAuthContext(sessionContext);
+      if (resolvedContext) storeAtlasAuthContext(resolvedContext);
 
       if (rememberEmail) {
         window.localStorage.setItem(REMEMBERED_EMAIL_KEY, normalizedEmail);

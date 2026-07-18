@@ -8,6 +8,7 @@ const sidebar = fs.readFileSync("components/atlas/sidebar.tsx", "utf8");
 const palette = fs.readFileSync("components/CommandPalette.tsx", "utf8");
 const mobileDock = fs.readFileSync("components/atlas/mobile-dock.tsx", "utf8");
 const appShell = fs.readFileSync("components/atlas/app-shell.tsx", "utf8");
+const authContext = fs.readFileSync("lib/auth/atlas-auth-context.ts", "utf8");
 const layout = fs.readFileSync("app/(crm)/layout.tsx", "utf8");
 const security = fs.readFileSync("lib/api/security.ts", "utf8");
 
@@ -34,8 +35,8 @@ const checks = [
   ["Busca usa política central", palette.includes("getAtlasNavigationForIdentity") && palette.includes("getAtlasContextCommandsForIdentity")],
   ["Dock móvel usa política central", mobileDock.includes("getAtlasMobileNavigationForIdentity")],
   ["Paleta recebe identidade confirmada", appShell.includes("<CommandPalette identity={identity}") && !layout.includes("CommandPalette")],
-  ["Cache não restaura papéis", appShell.includes("...defaultIdentity") && !appShell.includes("setIdentity({ ...defaultIdentity, ...parsed })")],
-  ["Fallback legado preserva papel canônico", config.exitCriteria.legacyRoleFallbackIsCanonical === true && appShell.includes("commercialRoleCandidate") && appShell.includes('? "superintendent"')],
+  ["Cache de papel exige contexto validado", appShell.includes("readAtlasAuthContext") && authContext.includes("parseAtlasAuthContext") && authContext.includes("isAccessRole")],
+  ["Fallback legado preserva papel canônico", config.exitCriteria.legacyRoleFallbackIsCanonical === true && authContext.includes('"superintendent"') && authContext.includes('"manager"')],
   ["Servidor confirma o usuário", security.includes("auth.getUser") && security.includes('from("profiles")')],
   ["Servidor valida organização ativa", security.includes('from("organizations")') && security.includes("organizationIsActive")],
   ["Dados pessoais fora da validação", config.personalDataCaptured === false],

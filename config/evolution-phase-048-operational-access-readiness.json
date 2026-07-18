@@ -1,0 +1,41 @@
+{
+  "phase": 48,
+  "programTotal": 3000,
+  "wave": 3,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "operational-access-readiness",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "accessContract": {
+    "authoritativeEndpoint": "/api/v1/auth/me",
+    "profiles": ["administrator", "director", "manager", "broker"],
+    "serverAuthorizationRequired": true,
+    "browserProfileLookupRemoved": true,
+    "organizationFallbackRemainsServerOnly": true
+  },
+  "sessionContract": {
+    "temporaryServerFailureSignsOutUser": false,
+    "unauthorizedResponseSignsOutUser": true,
+    "recoverableRetryAvailable": true,
+    "authorizationCache": "session-only",
+    "responseCache": "no-store"
+  },
+  "safetyPolicy": {
+    "rbacPreserved": true,
+    "rlsPreserved": true,
+    "tenantIsolationPreserved": true,
+    "secretsExposed": false,
+    "automaticCommercialAction": false
+  },
+  "release": {
+    "zipCreated": false,
+    "reason": "release gates are not all approved",
+    "artifactWhenReady": "ATLAS_AI_OS_RELEASE_v1.zip"
+  },
+  "nextPhase": {
+    "phase": 49,
+    "name": "CRM mínimo ponta a ponta por perfil",
+    "status": "planned"
+  }
+}

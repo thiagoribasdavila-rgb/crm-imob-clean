@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import {
+  authContextToShellIdentity,
+  fetchAtlasAuthContext,
+  readAtlasAuthContext,
+} from "@/lib/auth/atlas-auth-context";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { MobileDock } from "./mobile-dock";
@@ -37,73 +41,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    let active = true;
-    const cached = window.sessionStorage.getItem("atlas:shell-identity");
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached) as Partial<ShellIdentity>;
-        if (typeof parsed.name === "string") {
-          setIdentity({
-            ...defaultIdentity,
-            name: parsed.name,
-            email: typeof parsed.email === "string" ? parsed.email : "",
-            organization: typeof parsed.organization === "string"
-              ? parsed.organization
-              : defaultIdentity.organization,
-          });
-        }
-      } catch {
-        window.sessionStorage.removeItem("atlas:shell-identity");
-      }
-    }
+    const controller = new AbortController();
+    const authoritativeCached = readAtlasAuthContext();
+    if (authoritativeCached) setIdentity(authContextToShellIdentity(authoritativeCached));
+
     void (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", auth.user.id)
-        .maybeSingle();
-      let organization = defaultIdentity.organization;
-      if (profile?.organization_id) {
-        const { data } = await supabase
-          .from("organizations")
-          .select("*")
-          .eq("id", profile.organization_id)
-          .maybeSingle();
-        organization = data?.name || organization;
+      try {
+        const { context } = await fetchAtlasAuthContext(controller.signal);
+        if (!context) return;
+        const next = authContextToShellIdentity(context);
+        setIdentity(next);
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          // SupabaseGuard mantém a recuperação da sessão; o shell conserva a última identidade segura.
+        }
       }
-      const rawRole = String(profile?.role || "").trim().toLowerCase();
-      const rawAccessRole = String(profile?.access_role || "").trim().toLowerCase();
-      const rawCommercialRole = String(profile?.commercial_role || "").trim().toLowerCase();
-      const accessRole: ShellIdentity["accessRole"] = rawAccessRole === "admin" || rawRole === "admin" ? "admin" : ["director_decisor", "diretor_decisor"].includes(rawAccessRole || rawRole) ? "director_decisor" : ["director", "diretor", "manager", "gerente", "superintendent", "superintendente"].includes(rawAccessRole || rawRole) ? "director" : "broker";
-      const commercialRoleCandidate = rawCommercialRole || rawRole;
-      const role = ["broker", "corretor"].includes(commercialRoleCandidate)
-        ? "broker"
-        : ["manager", "gerente"].includes(commercialRoleCandidate)
-          ? "manager"
-          : ["superintendent", "superintendente"].includes(commercialRoleCandidate)
-            ? "superintendent"
-            : "director";
-      const next = {
-        name:
-          profile?.full_name ||
-          profile?.name ||
-          auth.user.email?.split("@")[0] ||
-          defaultIdentity.name,
-        email: auth.user.email || "",
-        organization,
-        role,
-        accessRole,
-      };
-      window.sessionStorage.setItem(
-        "atlas:shell-identity",
-        JSON.stringify(next),
-      );
-      if (active) setIdentity(next);
     })();
     return () => {
-      active = false;
+      controller.abort();
     };
   }, []);
 

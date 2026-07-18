@@ -1,0 +1,32 @@
+{
+  "program": "ATLAS AI OS — Evolução 3000",
+  "totalPhases": 3000,
+  "deliveryCadence": "one-phase-per-day",
+  "currentPhase": 48,
+  "decisionRule": "prioritize-operational-capacity",
+  "releasePolicy": {
+    "mode": "release-gated",
+    "artifact": "ATLAS_AI_OS_RELEASE_v1.zip",
+    "automaticCheckpointPackages": false,
+    "requirements": [
+      "organized-structure",
+      "reviewed-code",
+      "validated-dependencies",
+      "consistent-database",
+      "prepared-environment",
+      "critical-tests-passed",
+      "minimum-operation-working"
+    ]
+  },
+  "truthPolicy": {
+    "phaseRequiresEvidence": true,
+    "phaseRequiresValidation": true,
+    "plannedWorkCountsAsProgress": false,
+    "productionReadinessMayBeInferred": false
+  },
+  "historicalProgram": {
+    "name": "Atlas V3 Evolution 2000",
+    "closedThroughPhase": 47,
+    "phase47PackagePreserved": true
+  }
+}

@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { clearAtlasAuthContext } from "@/lib/auth/atlas-auth-context";
 import { AtlasActionLink } from "./action-link";
 import {
   getAtlasNavigationContext,
@@ -28,7 +29,7 @@ export function Topbar({
 
   async function signOut() {
     await supabase.auth.signOut({ scope: "local" });
-    window.sessionStorage.removeItem("atlas:shell-identity");
+    clearAtlasAuthContext();
     router.replace("/login");
   }
 
@@ -43,6 +44,17 @@ export function Topbar({
     href: "/leads/new",
     icon: "＋",
   };
+  const roleLabel = identity.accessRole === "admin"
+    ? "Administrador"
+    : identity.accessRole === "director_decisor"
+      ? "Diretor decisor"
+      : identity.role === "manager"
+        ? "Gerente"
+        : identity.role === "superintendent"
+          ? "Superintendente"
+          : identity.role === "broker"
+            ? "Corretor"
+            : "Diretor comercial";
 
   return (
     <header className="atlas-app-topbar">
@@ -131,7 +143,7 @@ export function Topbar({
         </button>
         <div className="atlas-user-copy">
           <strong>{identity.name}</strong>
-          <span>{identity.accessRole === "admin" ? "Administrador" : identity.accessRole === "director_decisor" ? "Diretor decisor" : identity.accessRole === "director" ? "Diretor comercial" : "Corretor"}</span>
+          <span>{roleLabel}</span>
         </div>
         <Link
           href="/settings/profile"

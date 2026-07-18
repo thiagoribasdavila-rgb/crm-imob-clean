@@ -320,6 +320,7 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
   45: { status: "concluída", completedAt: "2026-07-18", evidence: ["Gestão de equipe usa carteira e SLA", "Fila de apoio não cria ranking punitivo", "Hierarquia e DTO sem PII preservados"] },
   46: { status: "concluída", completedAt: "2026-07-18", evidence: ["Distribuição evidencia urgência e capacidade", "Responsável único preservado", "Distribuição exige comando explícito"] },
   47: { status: "concluída", completedAt: "2026-07-18", evidence: ["Vendas destaca até três decisões", "Risco deriva de campos observáveis", "Forecast não é apresentado como garantia"] },
+  48: { status: "concluída", completedAt: "2026-07-18", evidence: ["Login e shell usam o mesmo contexto oficial", "Sessão válida não é encerrada por falha temporária", "Administrador, diretor, gerente e corretor recebem identidade coerente"] },
 };
 
 const checkpoints = [
