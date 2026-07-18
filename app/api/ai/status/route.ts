@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data: usageRows } = await access.supabase
     .from("ai_usage_events")
-    .select("provider,total_tokens,latency_ms,estimated_cost_usd")
+    .select("provider,model,total_tokens,latency_ms,estimated_cost_usd,created_at")
     .gte("created_at", since)
     .limit(5_000);
   const usage = (usageRows ?? []).reduce(
@@ -43,14 +43,35 @@ export async function GET(request: NextRequest) {
       localCalls: 0,
     },
   );
+  const lastSuccess = new Map<string, { model: string | null; createdAt: string; latencyMs: number }>();
+  for (const row of usageRows ?? []) {
+    if (!lastSuccess.has(row.provider)) lastSuccess.set(row.provider, { model: row.model || null, createdAt: row.created_at, latencyMs: Number(row.latency_ms || 0) });
+  }
+  const providerHealth = Object.entries(providers).filter(([name]) => !["localFallback", "host"].includes(name)).map(([name, configured]) => {
+    const success = lastSuccess.get(name);
+    return { name, configured: Boolean(configured), validated: Boolean(success), status: !configured ? "not_configured" : success ? "operational" : "awaiting_live_test", model: success?.model || null, lastSuccessfulAt: success?.createdAt || null, latencyMs: success?.latencyMs || null };
+  });
+  const generativeOperational = providerHealth.some((item) => item.name !== "perplexity" && item.status === "operational");
+  const researchOperational = providerHealth.some((item) => item.name === "perplexity" && item.status === "operational");
+  const memoryOperational = Boolean((usageRows ?? []).length);
+  const agents = [
+    { id: "lead", name: "Atlas Lead Agent", status: generativeOperational ? "supervised" : "prepared", functions: ["score", "intenção", "próxima ação"] },
+    { id: "copilot", name: "Atlas Sales Copilot", status: generativeOperational ? "supervised" : "prepared", functions: ["abordagem", "objeções", "visitas"] },
+    { id: "manager", name: "Atlas Manager Intelligence", status: "deterministic", functions: ["gargalos", "atrasos", "equipe"] },
+    { id: "executive", name: "Atlas Executive Intelligence", status: "deterministic", functions: ["riscos", "previsão", "decisões"] },
+    { id: "marketing", name: "Atlas Marketing Agent", status: researchOperational && Boolean(process.env.META_ADS_ACCESS_TOKEN) && Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN) ? "supervised" : "prepared", functions: ["campanhas", "públicos", "ROI"] },
+  ];
   return NextResponse.json({
-    status: gatewayConfigured ? "ready" : "degraded",
+    status: generativeOperational ? "ready" : "degraded",
     gatewayConfigured,
     fallbackAvailable: true,
     model: models.commercial,
     models,
     pricing: aiPricingReadiness(),
     providers,
+    providerHealth,
+    agents,
+    activationPolicy: { mode: "supervised", autonomousExternalActions: false, humanApprovalRequired: true, memoryOperational, rawPromptsStored: false, personalDataRestrictedToTrustedProvider: true },
     usage: {
       ...usage,
       averageLatencyMs: usage.calls

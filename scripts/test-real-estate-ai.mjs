@@ -634,7 +634,7 @@ const checks = [
   ["requisição OpenAI possui rastreio", providerRouter.includes("providerRequestId:") && providerRouter.includes('body.id || response.headers.get("x-request-id")') && openAITraceMigration.includes("provider_request_id")],
   ["consumo do teste OpenAI é persistido", providerRouter.includes("recordUsage(request, await generateOpenAI(request))") && openAITestRoute.includes("measured: true")],
   ["painel comprova modelo latência e tokens", aiSettingsPage.includes("Testar OpenAI real") && aiSettingsPage.includes("providerRequestId") && aiSettingsPage.includes("totalTokens")],
-  ["Perplexity usa endpoint Sonar atual", providerRouter.includes("https://api.perplexity.ai/v1/sonar")],
+  ["Perplexity usa endpoint Chat Completions homologado", providerRouter.includes("https://api.perplexity.ai/chat/completions")],
   ["teste Perplexity não aceita fallback", perplexityTestRoute.includes('result.provider !== "perplexity"') && perplexityTestRoute.includes("fallbackUsed: false")],
   ["teste Perplexity bloqueia PII", providerRouter.includes('feature: "perplexity-homologation"') && providerRouter.includes("containsPersonalData: false")],
   ["teste Perplexity exige fontes HTTPS", perplexityTestRoute.includes("citations.length === 0") && perplexityTestRoute.includes('/^https:\\/\\//i')],

@@ -234,7 +234,7 @@ async function generatePerplexity(
   if (!apiKey) throw new Error("PERPLEXITY_API_KEY não configurada.");
   const model = aiModelProfiles().research;
   const startedAt = Date.now();
-  const response = await resilientFetch("https://api.perplexity.ai/v1/sonar", {
+  const response = await resilientFetch("https://api.perplexity.ai/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,

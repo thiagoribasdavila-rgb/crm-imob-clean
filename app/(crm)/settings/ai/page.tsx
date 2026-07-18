@@ -38,6 +38,9 @@ type AIStatus = {
     localFallback: boolean;
     host: "hostinger";
   };
+  providerHealth: Array<{ name: string; configured: boolean; validated: boolean; status: "not_configured" | "awaiting_live_test" | "operational"; model: string | null; lastSuccessfulAt: string | null; latencyMs: number | null }>;
+  agents: Array<{ id: string; name: string; status: "supervised" | "prepared" | "deterministic"; functions: string[] }>;
+  activationPolicy: { mode: "supervised"; autonomousExternalActions: false; humanApprovalRequired: true; memoryOperational: boolean; rawPromptsStored: false; personalDataRestrictedToTrustedProvider: true };
   usage: {
     calls: number;
     tokens: number;
@@ -271,6 +274,19 @@ export default function AISettings() {
           tone={data?.providers.perplexity ? "green" : "amber"}
         />
       </section>
+
+      <AtlasCard>
+        <AtlasCardHeader eyebrow="AI Health Center" title="Conexão comprovada, não presumida" description="Uma chave configurada só vira integração operacional depois de uma resposta real registrada. Nenhum segredo é enviado ao navegador." />
+        <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3 sm:p-6">
+          {(data?.providerHealth ?? []).map((provider) => <div key={provider.name} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><div className="flex items-center justify-between gap-2"><strong className="capitalize text-white">{provider.name}</strong><AtlasBadge tone={provider.status === "operational" ? "success" : provider.configured ? "warning" : "neutral"}>{provider.status === "operational" ? "OPERACIONAL" : provider.configured ? "TESTE PENDENTE" : "NÃO CONFIGURADA"}</AtlasBadge></div><p className="mt-3 text-xs text-slate-400">{provider.status === "operational" ? `${provider.model ?? "modelo validado"} · ${provider.latencyMs ?? 0} ms` : provider.configured ? "Credencial detectada; falta evidência registrada." : "Sem credencial no servidor."}</p>{provider.lastSuccessfulAt ? <p className="mt-2 text-[10px] text-slate-600">Último sucesso: {new Date(provider.lastSuccessfulAt).toLocaleString("pt-BR")}</p> : null}</div>)}
+        </div>
+      </AtlasCard>
+
+      <AtlasCard>
+        <AtlasCardHeader eyebrow="Agentes comerciais" title="Aprendizado supervisionado por padrão" description="Os agentes analisam, sugerem e registram. Envio, transferência, campanha ou decisão financeira continuam exigindo ação humana." />
+        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-5 sm:p-6">{(data?.agents ?? []).map((agent) => <div key={agent.id} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><div className="flex items-start justify-between gap-2"><strong className="text-sm text-white">{agent.name}</strong><AtlasBadge tone={agent.status === "supervised" ? "success" : agent.status === "deterministic" ? "info" : "warning"}>{agent.status === "supervised" ? "SUPERVISIONADO" : agent.status === "deterministic" ? "LOCAL" : "PREPARADO"}</AtlasBadge></div><p className="mt-3 text-xs leading-5 text-slate-400">{agent.functions.join(" · ")}</p></div>)}</div>
+        <div className="border-t border-white/[.06] px-5 py-4 text-xs text-slate-400 sm:px-6">Memória estruturada: <strong className={data?.activationPolicy.memoryOperational ? "text-emerald-300" : "text-amber-300"}>{data?.activationPolicy.memoryOperational ? "com evidência de uso" : "aguardando primeira execução registrada"}</strong> · ações externas automáticas bloqueadas · aprovação humana obrigatória.</div>
+      </AtlasCard>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AtlasMetric
           label="Chamadas de IA · 30 dias"
