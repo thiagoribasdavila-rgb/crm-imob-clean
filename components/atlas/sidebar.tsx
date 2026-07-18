@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { atlasNavigation } from "@/lib/atlas/navigation";
+import { atlasNavigation, getAtlasNavigationForIdentity } from "@/lib/atlas/navigation";
 /* legacy catalog removed in phase 004
   {
     group: "Operação diária",
@@ -237,10 +237,10 @@ export function Sidebar({
     return () => window.removeEventListener("keydown", focusSearch);
   }, [collapsed, mobileOpen]);
 
-  const permittedItems = useMemo(() => atlasNavigation.filter((item) => {
-    const scoped = "accessRoles" in item ? item.accessRoles : undefined;
-    return scoped ? scoped.some((candidate) => candidate === accessRole) : item.roles.some((candidate) => candidate === role);
-  }), [accessRole, role]);
+  const permittedItems = useMemo(
+    () => getAtlasNavigationForIdentity({ role, accessRole }),
+    [accessRole, role],
+  );
   const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
   const visibleItems = useMemo(() => normalizedQuery
     ? permittedItems.filter((item) => `${item.label} ${item.group}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery))

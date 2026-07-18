@@ -7,6 +7,7 @@ import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { MobileDock } from "./mobile-dock";
 import { NavigationPerformance } from "./navigation-performance";
+import CommandPalette from "@/components/CommandPalette";
 import type { ShellIdentity } from "./shell-types";
 const defaultIdentity: ShellIdentity = {
   name: "Usuário Atlas",
@@ -34,8 +35,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (cached) {
       try {
         const parsed = JSON.parse(cached) as Partial<ShellIdentity>;
-        if (typeof parsed.name === "string" && typeof parsed.role === "string")
-          setIdentity({ ...defaultIdentity, ...parsed });
+        if (typeof parsed.name === "string") {
+          setIdentity({
+            ...defaultIdentity,
+            name: parsed.name,
+            email: typeof parsed.email === "string" ? parsed.email : "",
+            organization: typeof parsed.organization === "string"
+              ? parsed.organization
+              : defaultIdentity.organization,
+          });
+        }
       } catch {
         window.sessionStorage.removeItem("atlas:shell-identity");
       }
@@ -59,7 +68,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       }
       const rawRole = String(profile?.role || "").trim().toLowerCase();
       const rawAccessRole = String(profile?.access_role || "").trim().toLowerCase();
+      const rawCommercialRole = String(profile?.commercial_role || "").trim().toLowerCase();
       const accessRole: ShellIdentity["accessRole"] = rawAccessRole === "admin" || rawRole === "admin" ? "admin" : ["director_decisor", "diretor_decisor"].includes(rawAccessRole || rawRole) ? "director_decisor" : ["director", "diretor", "manager", "gerente", "superintendent", "superintendente"].includes(rawAccessRole || rawRole) ? "director" : "broker";
+      const commercialRoleCandidate = rawCommercialRole || rawRole;
+      const role = ["broker", "corretor"].includes(commercialRoleCandidate)
+        ? "broker"
+        : ["manager", "gerente"].includes(commercialRoleCandidate)
+          ? "manager"
+          : ["superintendent", "superintendente"].includes(commercialRoleCandidate)
+            ? "superintendent"
+            : "director";
       const next = {
         name:
           profile?.full_name ||
@@ -68,10 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           defaultIdentity.name,
         email: auth.user.email || "",
         organization,
-        role:
-          profile?.commercial_role ||
-          (rawRole === "admin" ? "director" : rawRole) ||
-          "broker",
+        role,
         accessRole,
       };
       window.sessionStorage.setItem(
@@ -123,7 +138,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="atlas-app-main" id="atlas-main-content" tabIndex={-1}>
         <div className="atlas-app-content" key={pathname}>{children}</div>
       </main>
-      <MobileDock />
+      <MobileDock identity={identity} />
+      <CommandPalette identity={identity} />
     </div>
   );
 }

@@ -19,6 +19,7 @@ const phaseFourteen = JSON.parse(fs.readFileSync("config/evolution-phase-014-mob
 const phaseFifteen = JSON.parse(fs.readFileSync("config/evolution-phase-015-accessibility.json", "utf8"));
 const phaseSixteen = JSON.parse(fs.readFileSync("config/evolution-phase-016-perceived-speed.json", "utf8"));
 const phaseSeventeen = JSON.parse(fs.readFileSync("config/evolution-phase-017-real-usage.json", "utf8"));
+const phaseEighteen = JSON.parse(fs.readFileSync("config/evolution-phase-018-profile-validation.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -46,7 +47,7 @@ const checks = [
   ["Fase 002 orientada a resultado", phaseTwo.status === "completed" && phaseTwo.successMeasures.length >= 4],
   ["Fase 003 sem métricas inventadas", phaseThree.status === "completed" && phaseThree.instrumentationPending.length >= 3],
   ["Fase 004 com fonte canônica", phaseFour.status === "completed" && navigation.includes("atlasNavigation")],
-  ["Três consumidores canônicos", sidebar.includes("atlasNavigation") && palette.includes("atlasNavigation") && mobileDock.includes("atlasMobileNavigation")],
+  ["Três consumidores canônicos", sidebar.includes("getAtlasNavigationForIdentity") && palette.includes("getAtlasNavigationForIdentity") && mobileDock.includes("getAtlasMobileNavigationForIdentity")],
   ["V2 fora do catálogo canônico", !navigation.includes("/atlas-v2") && phaseFour.historicalRouteDeleted === false],
   ["Fase 005 compacta sem esconder", phaseFive.status === "completed" && phaseFive.removedRedundancies.length === 3 && phaseFive.preservedSignals.length >= 4],
   ["Sidebar sem banner redundante", !sidebar.includes("Você está em")],
@@ -80,6 +81,9 @@ const checks = [
   ["Telemetria usa ingestão autenticada e não bloqueante", phaseSeventeen.authenticatedIngestion === true && navigationPerformance.includes('fetch("/api/v3/events/ingest"') && navigationPerformance.includes("keepalive: true")],
   ["Rotas são minimizadas antes do envio", phaseSeventeen.routeParametersNormalized === true && phaseSeventeen.queryStringsCaptured === false && navigationPerformance.includes("normalizeRoute")],
   ["Privacidade da navegação é explícita", phaseSeventeen.personalDataCaptured === false && phaseSeventeen.doNotTrackRespected === true && navigationPerformance.includes("navigator.doNotTrack")],
+  ["Fase 018 valida cada perfil", phaseEighteen.status === "completed" && phaseEighteen.personas.length === 6],
+  ["Navegação usa uma política por perfil", sidebar.includes("getAtlasNavigationForIdentity") && palette.includes("getAtlasContextCommandsForIdentity") && mobileDock.includes("getAtlasMobileNavigationForIdentity")],
+  ["Perfil em cache não eleva permissões", phaseEighteen.exitCriteria.cachedIdentityCannotElevateNavigation === true && !appShell.includes("setIdentity({ ...defaultIdentity, ...parsed })")],
 ];
 
 for (const [label, passed] of checks) {

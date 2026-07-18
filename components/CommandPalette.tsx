@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { atlasContextCommands, atlasNavigation } from "@/lib/atlas/navigation";
+import {
+  getAtlasContextCommandsForIdentity,
+  getAtlasNavigationForIdentity,
+} from "@/lib/atlas/navigation";
+import type { ShellIdentity } from "@/components/atlas/shell-types";
 
 /* legacy catalog removed in phase 004
   { label: "Command Center", href: "/dashboard", group: "Operação", keywords: "dashboard inicio indicadores" },
@@ -25,18 +29,17 @@ import { atlasContextCommands, atlasNavigation } from "@/lib/atlas/navigation";
   { label: "Configurações", href: "/settings", group: "Administração", keywords: "empresa preferencias integracoes" },
 */
 
-const commands = [
-  ...atlasNavigation.map((item) => ({ label: item.label, href: item.href, group: item.group, keywords: item.keywords })),
-  ...atlasContextCommands,
-];
-
 type Command = { label: string; href: string; group: string; keywords: string };
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
-export default function CommandPalette() {
+export default function CommandPalette({
+  identity,
+}: {
+  identity: Pick<ShellIdentity, "role" | "accessRole">;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -46,6 +49,20 @@ export default function CommandPalette() {
   const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const commands = useMemo<Command[]>(() => [
+    ...getAtlasNavigationForIdentity(identity).map((item) => ({
+      label: item.label,
+      href: item.href,
+      group: item.group,
+      keywords: item.keywords,
+    })),
+    ...getAtlasContextCommandsForIdentity(identity).map((item) => ({
+      label: item.label,
+      href: item.href,
+      group: item.group,
+      keywords: item.keywords,
+    })),
+  ], [identity.accessRole, identity.role]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -83,7 +100,7 @@ export default function CommandPalette() {
     const normalizedQuery = normalize(query);
     const modules = !normalizedQuery ? commands : commands.filter((command) => normalize(`${command.label} ${command.group} ${command.keywords}`).includes(normalizedQuery));
     return [...leadCommands, ...modules];
-  }, [leadCommands, query]);
+  }, [commands, leadCommands, query]);
 
   useEffect(() => {
     const safeQuery = query.replace(/[^\p{L}\p{N}\s@.+()-]/gu, "").trim().slice(0, 80);

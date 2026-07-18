@@ -9,6 +9,26 @@ export type AtlasNavigationItem = {
   mobilePrimary?: boolean;
 };
 
+export type AtlasNavigationIdentity = {
+  role: string;
+  accessRole: string;
+};
+
+type AtlasScopedItem = {
+  roles: readonly string[];
+  accessRoles?: readonly string[];
+};
+
+export function canAccessAtlasItem(
+  item: AtlasScopedItem,
+  identity: AtlasNavigationIdentity,
+) {
+  if (item.accessRoles?.length) {
+    return item.accessRoles.includes(identity.accessRole);
+  }
+  return item.roles.includes(identity.role);
+}
+
 export const atlasNavigation = [
   { group: "Operação diária", label: "Command Center", href: "/dashboard", icon: "⌘", roles: ["director", "superintendent", "manager", "broker"], keywords: "dashboard início indicadores prioridades", mobilePrimary: true },
   { group: "Operação diária", label: "Leads", href: "/leads", icon: "◎", roles: ["director", "superintendent", "manager", "broker"], keywords: "clientes contatos oportunidades", mobilePrimary: true },
@@ -33,12 +53,24 @@ export const atlasNavigation = [
 ] as const satisfies readonly AtlasNavigationItem[];
 
 export const atlasContextCommands = [
-  { label: "Novo lead", href: "/leads/new", group: "Ações", keywords: "cadastrar criar lead contato" },
-  { label: "Imóveis", href: "/properties", group: "Launch OS", keywords: "estoque produtos unidades" },
-  { label: "Marketing AI", href: "/marketing", group: "Growth", keywords: "meta criativos campanhas roi" },
-  { label: "Conversas", href: "/conversations", group: "Growth", keywords: "whatsapp instagram atendimento" },
-  { label: "Centro de Decisão", href: "/decision-center", group: "Intelligence", keywords: "decisões alertas aprovações" },
-  { label: "Atlas 2030", href: "/atlas-2030", group: "Platform", keywords: "knowledge graph simulações plataforma" },
+  { label: "Novo lead", href: "/leads/new", group: "Ações", keywords: "cadastrar criar lead contato", roles: ["director", "superintendent", "manager", "broker"] },
+  { label: "Imóveis", href: "/properties", group: "Launch OS", keywords: "estoque produtos unidades", roles: ["director", "superintendent", "manager", "broker"] },
+  { label: "Marketing AI", href: "/marketing", group: "Growth", keywords: "meta criativos campanhas roi", roles: ["director", "superintendent", "manager"] },
+  { label: "Conversas", href: "/conversations", group: "Growth", keywords: "whatsapp instagram atendimento", roles: ["director", "superintendent", "manager", "broker"] },
+  { label: "Centro de Decisão", href: "/decision-center", group: "Intelligence", keywords: "decisões alertas aprovações", roles: ["director", "superintendent", "manager"] },
+  { label: "Atlas 2030", href: "/atlas-2030", group: "Platform", keywords: "knowledge graph simulações plataforma", roles: ["director"], accessRoles: ["admin", "director_decisor"] },
 ] as const;
 
 export const atlasMobileNavigation = atlasNavigation.filter((item) => "mobilePrimary" in item && item.mobilePrimary);
+
+export function getAtlasNavigationForIdentity(identity: AtlasNavigationIdentity) {
+  return atlasNavigation.filter((item) => canAccessAtlasItem(item, identity));
+}
+
+export function getAtlasContextCommandsForIdentity(identity: AtlasNavigationIdentity) {
+  return atlasContextCommands.filter((item) => canAccessAtlasItem(item, identity));
+}
+
+export function getAtlasMobileNavigationForIdentity(identity: AtlasNavigationIdentity) {
+  return atlasMobileNavigation.filter((item) => canAccessAtlasItem(item, identity));
+}

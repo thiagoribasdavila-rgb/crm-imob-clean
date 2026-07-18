@@ -1,0 +1,95 @@
+{
+  "phase": 18,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "identitySource": "profiles-table-under-rls",
+  "authorizationSource": "server-requireAccessContext",
+  "navigationDefaultBeforeResolution": "broker",
+  "liveUsersModified": false,
+  "productionDataModified": false,
+  "personalDataCaptured": false,
+  "validationMode": [
+    "deterministic navigation matrix",
+    "server authorization contract",
+    "read-only hierarchy audit attempted"
+  ],
+  "runtimeAudit": {
+    "executed": true,
+    "status": "blocked_schema_contract",
+    "code": "42703",
+    "reason": "profiles V3 contract is not fully available in the connected database",
+    "mutationPerformed": false,
+    "nextAction": "apply approved migrations, then run audit:runtime-schema and audit:auth-hierarchy"
+  },
+  "personas": [
+    {
+      "id": "administrator",
+      "label": "Administrador",
+      "role": "director",
+      "accessRole": "admin",
+      "expectedNavigationCount": 20,
+      "expectedContextCommandCount": 6,
+      "allowed": ["/users", "/settings", "/integrations", "/atlas-2030"],
+      "blocked": []
+    },
+    {
+      "id": "decision_director",
+      "label": "Diretor decisor",
+      "role": "director",
+      "accessRole": "director_decisor",
+      "expectedNavigationCount": 18,
+      "expectedContextCommandCount": 6,
+      "allowed": ["/reports", "/external-sales", "/integrations", "/atlas-v3", "/atlas-2030"],
+      "blocked": ["/users", "/settings"]
+    },
+    {
+      "id": "commercial_director",
+      "label": "Diretor comercial",
+      "role": "director",
+      "accessRole": "director",
+      "expectedNavigationCount": 15,
+      "expectedContextCommandCount": 5,
+      "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
+      "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings", "/atlas-2030"]
+    },
+    {
+      "id": "superintendent",
+      "label": "Superintendente",
+      "role": "superintendent",
+      "accessRole": "director",
+      "expectedNavigationCount": 15,
+      "expectedContextCommandCount": 5,
+      "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
+      "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings", "/atlas-2030"]
+    },
+    {
+      "id": "manager",
+      "label": "Gerente",
+      "role": "manager",
+      "accessRole": "director",
+      "expectedNavigationCount": 15,
+      "expectedContextCommandCount": 5,
+      "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
+      "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings", "/atlas-2030"]
+    },
+    {
+      "id": "broker",
+      "label": "Corretor",
+      "role": "broker",
+      "accessRole": "broker",
+      "expectedNavigationCount": 10,
+      "expectedContextCommandCount": 3,
+      "allowed": ["/leads", "/pipeline", "/properties", "/conversations"],
+      "blocked": ["/brokers", "/distribution", "/reports", "/marketing", "/decision-center", "/atlas-2030", "/users", "/settings"]
+    }
+  ],
+  "exitCriteria": {
+    "sidebarUsesCanonicalPolicy": true,
+    "globalSearchUsesCanonicalPolicy": true,
+    "mobileDockUsesCanonicalPolicy": true,
+    "serverRemainsAuthorizationBoundary": true,
+    "cachedIdentityCannotElevateNavigation": true,
+    "legacyRoleFallbackIsCanonical": true,
+    "runtimeEvidenceInvented": false
+  }
+}

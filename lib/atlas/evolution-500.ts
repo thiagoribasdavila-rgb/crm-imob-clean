@@ -111,6 +111,18 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Visualizações e navegações concluídas geram eventos reais autenticados", "Rotas removem parâmetros e identificadores antes do envio", "Telemetria respeita Do Not Track e nunca bloqueia a operação"],
   },
+  18: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Seis personas cobrem os quatro acessos oficiais e a hierarquia comercial completa",
+      "Sidebar, busca global e dock móvel compartilham a mesma política canônica",
+      "Cache local não eleva permissões antes da confirmação do perfil protegido",
+      "Perfis legados são normalizados para o papel comercial canônico",
+      "Validação não criou usuários nem alterou dados operacionais",
+      "Auditoria real foi bloqueada pelo contrato legado de profiles e permanece explícita para a homologação",
+    ],
+  },
 };
 
 const checkpoints = [

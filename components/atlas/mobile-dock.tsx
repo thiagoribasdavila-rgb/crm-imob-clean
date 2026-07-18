@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { atlasMobileNavigation } from "@/lib/atlas/navigation";
+import { getAtlasMobileNavigationForIdentity } from "@/lib/atlas/navigation";
+import type { ShellIdentity } from "./shell-types";
 
 /* legacy catalog removed in phase 004
   { label: "Início", href: "/dashboard", icon: "⌘" },
@@ -11,12 +12,13 @@ import { atlasMobileNavigation } from "@/lib/atlas/navigation";
   { label: "Tarefas", href: "/tasks", icon: "✓" },
 */
 
-export function MobileDock() {
+export function MobileDock({ identity }: { identity: Pick<ShellIdentity, "role" | "accessRole"> }) {
   const pathname = usePathname();
+  const items = getAtlasMobileNavigationForIdentity(identity);
 
   return (
     <nav className="atlas-mobile-dock" aria-label="Ações rápidas">
-      {atlasMobileNavigation.map((item) => {
+      {items.map((item) => {
         const active =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
