@@ -44,6 +44,11 @@ const phaseThirtyNine = JSON.parse(fs.readFileSync("config/evolution-phase-039-a
 const phaseForty = JSON.parse(fs.readFileSync("config/evolution-phase-040-activity-explainable-history.json", "utf8"));
 const phaseFortyOne = JSON.parse(fs.readFileSync("config/evolution-phase-041-customer-relationship-workspace.json", "utf8"));
 const phaseFortyTwo = JSON.parse(fs.readFileSync("config/evolution-phase-042-project-decision-workspace.json", "utf8"));
+const phaseFortyThree = JSON.parse(fs.readFileSync("config/evolution-phase-043-reactivation-decision-workspace.json", "utf8"));
+const phaseFortyFour = JSON.parse(fs.readFileSync("config/evolution-phase-044-proactive-copilot.json", "utf8"));
+const phaseFortyFive = JSON.parse(fs.readFileSync("config/evolution-phase-045-team-conversion-support.json", "utf8"));
+const phaseFortySix = JSON.parse(fs.readFileSync("config/evolution-phase-046-distribution-capacity.json", "utf8"));
+const phaseFortySeven = JSON.parse(fs.readFileSync("config/evolution-phase-047-sales-revenue-decision.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -68,11 +73,16 @@ const activityApi = fs.readFileSync("app/api/v1/activity/route.ts", "utf8");
 const customersPage = fs.readFileSync("app/(crm)/customers/page.tsx", "utf8");
 const customersApi = fs.readFileSync("app/api/v1/customers/route.ts", "utf8");
 const launchOsApi = fs.readFileSync("app/api/v1/launch-os/route.ts", "utf8");
+const reactivationGovernancePage = fs.readFileSync("app/(crm)/leads/reactivation-governance/page.tsx", "utf8");
+const aiDashboard = fs.readFileSync("app/(crm)/ai-dashboard/page.tsx", "utf8");
+const brokersPage = fs.readFileSync("app/(crm)/brokers/page.tsx", "utf8");
+const distributionPage = fs.readFileSync("app/(crm)/distribution/page.tsx", "utf8");
+const salesPage = fs.readFileSync("app/(crm)/sales/page.tsx", "utf8");
 
 const checks = [
-  ["50 ondas", (source.match(/\{ id: \d+, name:/g) || []).length === 50],
+  ["100 ondas", (source.match(/\{ id: \d+, name:/g) || []).length === 100],
   ["20 checkpoints", (source.match(/^  \".*\",$/gm) || []).length === 20],
-  ["1.000 fases calculadas", source.includes("evolution1000Phases") && source.includes("checkpoints")],
+  ["2.000 fases calculadas", source.includes("evolution2000Phases") && source.includes("checkpoints")],
   ["Busca compacta", page.includes("Buscar IA, Kimi, navegação")],
   ["Sem falsa conclusão", source.includes('status: "planejada"')],
   ["Regra de evidência", source.includes("Uma fase só avança com evidência")],
@@ -166,6 +176,16 @@ const checks = [
   ["Clientes preserva fonte única, RLS e base fria separada", phaseFortyOne.customerContract.sourceOfTruth === "public.leads" && phaseFortyOne.customerContract.coldReactivationBaseExcluded === true && phaseFortyOne.safetyPolicy.hierarchicalRlsPreserved === true && customersApi.includes("requireAccessContext")],
   ["Fase 042 orienta Projetos à decisão comercial", phaseFortyTwo.status === "completed" && phaseFortyTwo.projectContract.visiblePriorityLimit === 3 && developmentsPage.includes('data-projects-layout="decision-first"')],
   ["Projetos preservam RLS, compatibilidade e materiais vigentes", phaseFortyTwo.safetyPolicy.authenticatedRlsClientUsed === true && phaseFortyTwo.projectContract.verifiedCurrentMaterialsOnly === true && launchOsApi.includes("requireAccessContext") && launchOsApi.includes("moduleHealth")],
+  ["Fase 043 separa reativação fria da operação diária", phaseFortyThree.status === "completed" && phaseFortyThree.reactivationContract.visibleDecisionLimit === 3 && reactivationGovernancePage.includes('data-reactivation-layout="decision-first"')],
+  ["Reativação preserva consentimento e execução humana", phaseFortyThree.reactivationContract.automaticCustomerContact === false && phaseFortyThree.reactivationContract.humanApprovalRequired === true],
+  ["Fase 044 torna o Copilot proativo e supervisionado", phaseFortyFour.status === "completed" && phaseFortyFour.copilotContract.visiblePlaybooks === 3 && aiDashboard.includes('data-ai-layout="proactive-human-led"')],
+  ["Copilot não executa ações autônomas", phaseFortyFour.copilotContract.automaticExecution === false && phaseFortyFour.copilotContract.humanDecisionRequired === true],
+  ["Fase 045 orienta a gestão a apoio de conversão", phaseFortyFive.status === "completed" && phaseFortyFive.teamContract.visibleSupportLimit === 3 && brokersPage.includes('data-team-layout="conversion-support"')],
+  ["Gestão não publica ranking punitivo", phaseFortyFive.teamContract.peopleRanking === false && phaseFortyFive.safetyPolicy.personalDataSentToCopilot === false],
+  ["Fase 046 protege a distribuição por capacidade", phaseFortySix.status === "completed" && phaseFortySix.distributionContract.visibleDecisionLimit === 3 && distributionPage.includes('data-distribution-layout="capacity-first"')],
+  ["Distribuição permanece humana e sem PII", phaseFortySix.distributionContract.automaticAssignment === false && phaseFortySix.distributionContract.personalDataExposed === false],
+  ["Fase 047 orienta vendas a decisões de receita", phaseFortySeven.status === "completed" && phaseFortySeven.revenueContract.visibleDecisionLimit === 3 && salesPage.includes('data-sales-layout="revenue-decision-first"')],
+  ["Forecast não é promessa e pagamento não é automático", phaseFortySeven.revenueContract.forecastGuarantee === false && phaseFortySeven.copilotPolicy.mayRegisterPayment === false],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 
@@ -174,4 +194,4 @@ for (const [label, passed] of checks) {
   console.log(`✓ ${label}`);
 }
 
-console.log("Programa Atlas 1000: 50 ondas × 20 fases = 1.000 fases planejadas e verificadas.");
+console.log("Programa Atlas 2000: 100 ondas × 20 fases = 2.000 fases planejadas e verificadas.");

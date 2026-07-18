@@ -104,8 +104,8 @@
     "phaseTwentyGateBypassed": false
   },
   "checkpointPolicy": {
-    "interval": 50,
-    "nextCheckpoint": 50,
+    "interval": 100,
+    "nextCheckpoint": 47,
     "packageCreatedThisPhase": false
   },
   "nextPhase": {

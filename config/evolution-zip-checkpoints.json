@@ -1,21 +1,15 @@
 {
-  "program": "Atlas V3 Evolution 1000",
-  "interval": 50,
-  "firstCheckpoint": 50,
-  "lastCheckpoint": 1000,
-  "nextCheckpoint": 50,
-  "latestClosedCheckpoint": 0,
+  "program": "Atlas V3 Evolution 2000",
+  "interval": 100,
+  "firstCheckpoint": 100,
+  "lastCheckpoint": 2000,
+  "specialCheckpoints": [47],
+  "nextCheckpoint": 100,
+  "latestClosedCheckpoint": 47,
   "artifactPattern": "atlas-v3-phase-{phase}-hostinger.zip",
   "target": "Hostinger Node.js 20.9+",
   "preservePreviousArtifacts": true,
-  "requiredValidation": [
-    "phase check",
-    "evolution-1000 check",
-    "typecheck",
-    "lint",
-    "build",
-    "package integrity"
-  ],
+  "requiredValidation": ["phase check", "evolution-2000 check", "typecheck", "lint", "build", "package integrity"],
   "privateDataPolicy": {
     "envLocalIncluded": false,
     "secretsIncluded": false,
@@ -24,26 +18,5 @@
     "customerDataIncluded": false,
     "envExampleIncluded": true
   },
-  "checkpoints": [
-    50,
-    100,
-    150,
-    200,
-    250,
-    300,
-    350,
-    400,
-    450,
-    500,
-    550,
-    600,
-    650,
-    700,
-    750,
-    800,
-    850,
-    900,
-    950,
-    1000
-  ]
+  "checkpoints": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000]
 }

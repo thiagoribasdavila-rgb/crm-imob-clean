@@ -153,8 +153,30 @@ export default function DistributionPage() {
   const unassigned = data?.unassigned[projectId] ?? 0;
   const weightedLoads = brokers.map((broker) => (loadMap.get(broker.id)?.by_project[projectId] ?? 0) / (stateMap.get(broker.id)?.weight || 1));
   const balanceGap = weightedLoads.length > 1 ? Math.round((Math.max(...weightedLoads) - Math.min(...weightedLoads)) * 10) / 10 : 0;
+  const selectedQueue = (data?.unassignedQueue ?? []).filter((item) => !projectId || item.developmentId === projectId);
+  const oldestWaitingMinutes = selectedQueue.reduce((maximum, item) => Math.max(maximum, item.waitingMinutes), 0);
+  const brokersNearCapacity = teamBrokers.filter((broker) => {
+    const capacity = capacityMap.get(broker.id);
+    if (!capacity) return false;
+    const currentLoad = loadMap.get(broker.id)?.total ?? 0;
+    return currentLoad >= capacity.max_active_leads * (capacity.warning_percent / 100);
+  }).length;
+  const conversionSignals = [
+    unassigned > 0 ? { title: "Leads aguardando responsável", value: String(unassigned), detail: "A liderança decide quando liberar a próxima distribuição." } : null,
+    oldestWaitingMinutes >= 60 ? { title: "SLA de entrada pressionado", value: oldestWaitingMinutes < 1440 ? `${Math.floor(oldestWaitingMinutes / 60)} h` : `${Math.floor(oldestWaitingMinutes / 1440)} d`, detail: "Tempo da lead mais antiga na fila selecionada." } : null,
+    unassigned > 0 && brokers.length === 0 ? { title: "Sem capacidade online", value: "AÇÃO", detail: "Há demanda, mas nenhum corretor elegível está disponível agora." } : null,
+    brokersNearCapacity > 0 ? { title: "Carteiras próximas do limite", value: String(brokersNearCapacity), detail: "Apoie o time antes de distribuir novos atendimentos." } : null,
+    balanceGap > 1 ? { title: "Desvio de carga no projeto", value: String(balanceGap), detail: "Revise peso, presença e capacidade antes de um novo lote." } : null,
+  ].filter((signal): signal is { title: string; value: string; detail: string } => Boolean(signal)).slice(0, 3);
 
-  return <div className="space-y-6 pb-10" data-phase="51-explainable-distribution">
+  function openCapacityCopilot() {
+    window.dispatchEvent(new CustomEvent("atlas:open-copilot", { detail: {
+      prompt: `Analise uma fila comercial do projeto ${selectedProject?.name || "selecionado"} com ${unassigned} leads aguardando, ${brokers.length} corretores disponíveis, espera máxima de ${oldestWaitingMinutes} minutos, ${brokersNearCapacity} carteiras próximas do limite e desvio de carga ${balanceGap}. Sugira até três decisões para proteger velocidade e conversão. Não distribua leads, não altere capacidade e não envie mensagens.`,
+      context: { module: "distribution-capacity", projectId: projectId || null, humanApprovalRequired: true },
+    } }));
+  }
+
+  return <div className="space-y-6 pb-10" data-phase="51-explainable-distribution" data-evolution-phase="46" data-distribution-layout="capacity-first">
     <section className="atlas-grid-glow overflow-hidden rounded-[30px] border border-cyan-400/10 bg-gradient-to-br from-cyan-500/[.12] via-blue-500/[.06] to-violet-500/[.1] p-6 shadow-[0_34px_120px_rgba(2,8,23,.42)] sm:p-8">
       <div className="flex flex-col gap-7 xl:flex-row xl:items-end xl:justify-between">
         <div><div className="flex flex-wrap gap-2"><AtlasBadge tone="success">FILA AO VIVO</AtlasBadge><AtlasBadge tone="info">PROJETO + CARGA</AtlasBadge><AtlasBadge tone="violet">HIERARQUIA ATIVA</AtlasBadge></div><h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">Leads no corretor certo, <span className="atlas-gradient-text">no momento certo.</span></h1><p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400 sm:text-base">O Atlas considera disponibilidade, projeto, carteira atual e tempo desde a última atribuição. Gerentes enxergam apenas sua estrutura; o diretor acompanha toda a operação.</p></div>
@@ -163,6 +185,21 @@ export default function DistributionPage() {
     </section>
 
     {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
+    <section data-phase="46-distribution-capacity-decision">
+      <AtlasCard>
+        <AtlasCardHeader
+          eyebrow="Fase 46 · Proteção da conversão"
+          title="Capacidade, espera e equilíbrio antes da distribuição"
+          description="O Atlas reúne somente sinais operacionais e prepara a decisão. Nenhuma lead é atribuída e nenhum limite é alterado sem ação humana explícita."
+          action={<button type="button" onClick={openCapacityCopilot} disabled={!projectId || loading} className="atlas-button-secondary disabled:opacity-50">Preparar decisão com IA</button>}
+        />
+        <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-3">
+          {conversionSignals.map((signal) => <article key={signal.title} className="rounded-2xl border border-amber-300/15 bg-amber-300/[.04] p-4"><div className="flex items-start justify-between gap-3"><h2 className="text-sm font-semibold text-white">{signal.title}</h2><AtlasBadge tone="warning">{signal.value}</AtlasBadge></div><p className="mt-3 text-xs leading-5 text-slate-400">{signal.detail}</p></article>)}
+          {!conversionSignals.length ? <div className="lg:col-span-3"><AtlasEmpty reason="completed" eyebrow="Capacidade protegida" title="Sem pressão crítica na fila selecionada" description="Continue acompanhando presença, tempo de espera e carga antes de liberar novos lotes." /></div> : null}
+        </div>
+        <div className="border-t border-white/[.06] px-5 py-3 text-[10px] text-slate-500">IA proativa para análise · aprovação humana obrigatória · sem PII · sem distribuição autônoma.</div>
+      </AtlasCard>
+    </section>
     <div data-phase="52-unassigned-lead-queue"><AtlasCard><AtlasCardHeader eyebrow="Fase 52 · Fila sem responsável" title="Recupere leads sem expor dados pessoais" description="A fila usa somente projeto, origem, etapa e tempo de espera. Nada é atribuído sem comando da liderança." action={<button type="button" disabled={working||!projectId||!brokers.length||!unassigned} onClick={()=>void distribute(1)} className="atlas-button-primary disabled:opacity-50">Distribuir próxima</button>}/><div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-2">{data?.unassignedQueue.filter(item=>!projectId||item.developmentId===projectId).slice(0,12).map(item=><article key={item.id} className={`rounded-2xl border p-4 ${item.waitingMinutes>=60?"border-amber-400/20 bg-amber-400/[.04]":"border-white/[.07] bg-white/[.025]"}`}><div className="flex items-start justify-between gap-3"><div><strong className="text-sm text-white">Lead {item.id.slice(0,8)}</strong><p className="mt-1 text-xs text-slate-500">{item.source} · {item.status}</p></div><AtlasBadge tone={item.waitingMinutes>=60?"warning":"neutral"}>{item.waitingMinutes<60?`${item.waitingMinutes} MIN`:item.waitingMinutes<1440?`${Math.floor(item.waitingMinutes/60)} H`:`${Math.floor(item.waitingMinutes/1440)} D`}</AtlasBadge></div><p className="mt-3 text-[10px] text-slate-600">Sem nome, telefone ou e-mail nesta fila. A distribuição seleciona atomicamente a lead mais antiga do projeto.</p></article>)}{!data?.unassignedQueue.filter(item=>!projectId||item.developmentId===projectId).length?<div className="lg:col-span-2"><AtlasEmpty reason="completed" eyebrow="Distribuição em dia" title="Fila sem pendências" description="Nenhuma lead sem responsável no projeto selecionado." action={<Link href="/pipeline" className="atlas-button-secondary">Revisar pipeline</Link>}/></div>:null}</div><div className="border-t border-white/[.06] px-5 py-3 text-[10px] text-slate-500">Máximo de 100 metadados visíveis · sem PII · sem atribuição automática · decisão explícita da liderança.</div></AtlasCard></div>
     {notice ? <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-200">{notice}</div> : null}
     <AtlasCard><AtlasCardHeader eyebrow="Fase 51 · Evidência de distribuição" title="Por que cada lead foi atribuída" description="Cada evento preserva projeto, responsável único, carga anterior, peso e algoritmo usado." /><div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-2">{data?.recentAssignments.filter(item=>!projectId||item.development_id===projectId).slice(0,8).map(item=>{const broker=profilesMap.get(item.assigned_to);return <article key={item.id} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><div className="flex items-start justify-between gap-3"><div><strong className="text-sm text-white">{broker?.full_name||"Corretor"}</strong><p className="mt-1 text-xs text-slate-500">Lead {item.lead_id.slice(0,8)} · {new Date(item.created_at).toLocaleString("pt-BR")}</p></div><AtlasBadge tone="success">ÚNICO RESPONSÁVEL</AtlasBadge></div><p className="mt-3 text-xs leading-5 text-slate-400">Carga anterior {item.score_snapshot?.projectLoadBefore??"—"} ÷ peso {item.score_snapshot?.weight??1} = carga ponderada {item.score_snapshot?.weightedLoadBefore??"—"}.</p></article>})}{!data?.recentAssignments.length?<div className="lg:col-span-2"><AtlasEmpty title="Sem atribuições recentes" description="As próximas distribuições terão justificativa auditável."/></div>:null}</div></AtlasCard>

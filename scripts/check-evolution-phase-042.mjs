@@ -28,9 +28,9 @@ const checks = [
   ["Busca, segmentos e recuperação permanecem", page.includes("Buscar projeto, incorporadora ou região") && page.includes('aria-pressed={segment === item.id}') && page.includes("Limpar filtros") && page.includes("AtlasRecoverableError")],
   ["Layout preserva toque, celular e movimento reduzido", styles.includes("/* Fase 042 — Projetos") && styles.includes(".atlas-project-card") && styles.includes("min-height: 44px") && styles.includes("@media (prefers-reduced-motion: reduce)")],
   ["Nenhuma decisão automática foi adicionada", page.includes("Nenhuma alteração é executada automaticamente") && config.executionPolicy.automaticProjectHomologation === false && config.executionPolicy.automaticCommercialDecision === false],
-  ["Checkpoint ocorre a cada cinquenta fases", checkpoint.interval === 50 && checkpoint.checkpoints.length === 20 && checkpoint.nextCheckpoint === 50 && packageScript.includes("phase % policy.interval")],
+  ["Checkpoint especial fecha a Fase 047 e depois segue a cada cem fases", checkpoint.interval === 100 && checkpoint.specialCheckpoints.includes(47) && checkpoint.checkpoints.length === 20 && checkpoint.latestClosedCheckpoint === 47 && checkpoint.nextCheckpoint === 100 && packageScript.includes("isSpecialCheckpoint")],
   ["ZIP preserva versões e exclui dados privados", checkpoint.preservePreviousArtifacts === true && checkpoint.privateDataPolicy.envLocalIncluded === false && hostingerPackager.includes("rmSync(stage") && !hostingerPackager.includes("rmSync(outputRoot, { recursive: true")],
-  ["Relatório registra checkpoint e próxima fase", report.includes("atlas-v3-phase-050-hostinger.zip") && report.includes("Fase 043") && config.nextPhase.phase === 43],
+  ["Relatório registra checkpoint e próxima fase", report.includes("atlas-v3-phase-047-hostinger.zip") && report.includes("Fase 043") && config.nextPhase.phase === 43],
   ["RBAC, tenant e gate de homologação permanecem", config.safetyPolicy.rbacPreserved === true && config.safetyPolicy.tenantIsolationPreserved === true && phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false],
 ];
 

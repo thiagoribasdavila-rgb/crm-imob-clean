@@ -117,14 +117,44 @@ export default function SalesPage() {
       return matchesView && (!normalized || [item.leads?.name, item.properties?.title, item.stage].some((value) => value?.toLocaleLowerCase("pt-BR").includes(normalized)));
     }).sort((a, b) => (weight[opportunityRisk(b).key] - weight[opportunityRisk(a).key]) || Number(b.value || 0) - Number(a.value || 0));
   }, [items, query, referenceTime, view]);
+  const revenueDecisionQueue = items.map((item) => {
+    const risk = opportunityRisk(item);
+    const commission = commissionStatus(item);
+    if (canManage && item.won_at && commission === "overdue") return { item, urgency: 7, title: "Comissão vencida", detail: "Confirmar o recebimento, a divergência ou o novo prazo com evidência." };
+    if (canManage && item.won_at && commission === "due_soon") return { item, urgency: 6, title: "Comissão vence em até 7 dias", detail: "Validar documento, responsável e previsão de recebimento." };
+    if (!item.won_at && !item.lost_at && risk.key === "overdue") return { item, urgency: 5, title: "Previsão de fechamento vencida", detail: "Revalidar data, valor e próxima ação antes de manter o forecast." };
+    if (!item.won_at && !item.lost_at && risk.key === "at_risk") return { item, urgency: 4, title: "Prazo próximo com baixa probabilidade", detail: "Revisar objeção, compromisso futuro e critério de avanço." };
+    if (!item.won_at && !item.lost_at && risk.key === "incomplete") return { item, urgency: 3, title: "Forecast sem dados mínimos", detail: "Completar valor e data esperada para uma leitura responsável." };
+    return null;
+  }).filter((decision): decision is { item: Opportunity; urgency: number; title: string; detail: string } => Boolean(decision)).sort((a, b) => b.urgency - a.urgency || Number(b.item.value || 0) - Number(a.item.value || 0)).slice(0, 3);
 
-  return <div className="space-y-6 pb-8">
+  function openRevenueCopilot(decision: { item: Opportunity; title: string; detail: string }) {
+    const item = decision.item;
+    const risk = opportunityRisk(item);
+    window.dispatchEvent(new CustomEvent("atlas:open-copilot", { detail: {
+      prompt: `Prepare uma revisão humana para uma oportunidade na etapa ${item.stage}, valor ${brl.format(Number(item.value || 0))}, probabilidade ${item.probability}%, risco ${risk.label}, fechamento ${item.expected_close_at || "não definido"} e comissão ${commissionStatus(item)}. O sinal atual é: ${decision.title}. Sugira dados a confirmar, próxima decisão e evidência necessária. Não altere o forecast, não registre pagamento e não envie mensagens.`,
+      context: { module: "sales-revenue-decision", opportunityId: item.id, humanApprovalRequired: true },
+    } }));
+  }
+
+  return <div className="space-y-6 pb-8" data-evolution-phase="47" data-sales-layout="revenue-decision-first">
     <section className="relative overflow-hidden rounded-[28px] border border-white/[.08] bg-white/[.025] p-6 pr-32 sm:p-8 sm:pr-44">
       <Image src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas" width={84} height={126} className="pointer-events-none absolute -bottom-8 right-5 h-auto w-20 opacity-70" />
       <PageHeader eyebrow="Revenue engine · Opportunity workspace" title="Vendas e oportunidades" description="Valor, probabilidade, prazo e risco organizados para o time saber quais negócios exigem ação agora." action={{ href: "/atlas-v3/forecast", label: "Abrir forecast", priority: "secondary" }} />
     </section>
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5"><AtlasMetric label="VGV total" value={brl.format(metrics.total)} detail="Base total visível" trend="VGV" tone="blue"/><AtlasMetric label="Forecast ponderado" value={brl.format(metrics.weighted)} detail="Valor × probabilidade" trend="PREVISÃO" tone="violet"/><AtlasMetric label="Vendas ganhas" value={brl.format(metrics.won)} detail="Receita comercial confirmada" trend="GANHO" tone="green"/><AtlasMetric label="Oportunidades abertas" value={metrics.open} detail="Negócios em andamento" trend="PIPE" tone="blue"/><AtlasMetric label="Exigem atenção" value={attentionCount} detail="Prazo, valor ou previsão" trend="AGIR" tone={attentionCount ? "rose" : "green"}/></section>
     {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
+    <section data-phase="47-revenue-decision-queue">
+      <AtlasCard>
+        <AtlasCardHeader eyebrow="Fase 47 · Decisões de receita" title="O que precisa de confirmação para avançar" description="Até três sinais verificáveis de fechamento ou recebimento. O forecast orienta a revisão, mas não promete venda nem receita." action={<AtlasBadge tone="violet">APROVAÇÃO HUMANA</AtlasBadge>}/>
+        <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-3">
+          {revenueDecisionQueue.map((decision) => <article key={`${decision.item.id}-${decision.title}`} className="rounded-2xl border border-violet-300/15 bg-violet-300/[.04] p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="text-sm font-semibold text-white">{decision.title}</h2><p className="mt-1 text-xs text-slate-500">{decision.item.leads?.name || "Oportunidade"} · {decision.item.stage}</p></div><AtlasBadge tone={decision.urgency >= 6 ? "danger" : "warning"}>{decision.urgency >= 6 ? "URGENTE" : "REVISAR"}</AtlasBadge></div><p className="mt-3 text-xs leading-5 text-slate-400">{decision.detail}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => openRevenueCopilot(decision)} className="atlas-button-secondary">Preparar decisão com IA</button>{decision.item.leads?.id ? <Link href={`/leads/${decision.item.leads.id}`} className="atlas-button-secondary">Abrir negócio</Link> : null}</div></article>)}
+          {!loading && !revenueDecisionQueue.length ? <div className="lg:col-span-3"><AtlasEmpty reason="completed" eyebrow="Receita sob controle" title="Nenhuma confirmação crítica neste recorte" description="Continue revisando valor, probabilidade, prazo e comissão com evidência humana." /></div> : null}
+          {loading ? [1,2,3].map((item) => <AtlasSkeleton key={item} className="h-44"/>) : null}
+        </div>
+        <div className="border-t border-white/[.06] px-5 py-3 text-[10px] text-slate-500">IA prepara a revisão · decisão e registro permanecem humanos · previsão não é garantia de fechamento.</div>
+      </AtlasCard>
+    </section>
     <AtlasCard><AtlasCardHeader eyebrow="Pipeline de receita" title="Fila de oportunidades" description="Os negócios de maior risco aparecem primeiro. A previsão orienta, mas não garante fechamento." action={<AtlasBadge tone="violet">REVISÃO HUMANA</AtlasBadge>}/>
       <div className="grid gap-3 border-t border-white/[.06] p-4 sm:grid-cols-[1fr_auto] sm:p-5"><input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full px-4" placeholder="Buscar lead, imóvel ou etapa"/><div className="flex gap-2 overflow-x-auto">{([['all','Todas'],['attention',`Atenção ${attentionCount}`],['closing','Fecha em 30d'],['won','Ganhas']] as const).map(([key,label]) => <button key={key} onClick={() => setView(key)} className={`atlas-kanban-toggle shrink-0 ${view === key ? "is-active" : ""}`}>{label}</button>)}</div></div>
       {loading ? <div className="grid gap-3 p-5">{[1,2,3].map((item) => <AtlasSkeleton key={item} className="h-20"/>)}</div> : visible.length ? <div className="overflow-x-auto"><table className="min-w-[1040px] text-sm"><thead><tr><th>Lead</th><th>Imóvel</th><th>Etapa</th><th>Valor</th><th>Forecast</th><th>Fechamento</th><th>Risco</th>{canManage ? <><th>SLA comissão</th><th>Ações</th></> : null}</tr></thead><tbody>{visible.map((item) => {

@@ -64,10 +64,10 @@ Essa ordenação é uma regra observável, não previsão de venda. Nada é homo
 
 ## Checkpoints ZIP
 
-Foi criada uma política fixa de checkpoint a cada 50 fases. O próximo artefato será gerado na Fase 050 com o nome `atlas-v3-phase-050-hostinger.zip`, somente depois de passar:
+O novo ciclo de 2.000 fases abre um checkpoint excepcional na Fase 047. Depois dele, os artefatos serão gerados a cada 100 fases. O primeiro pacote terá o nome `atlas-v3-phase-047-hostinger.zip`, somente depois de passar:
 
 - verificação da fase;
-- verificação do programa de 1.000 fases;
+- verificação do programa de 2.000 fases;
 - TypeScript;
 - lint;
 - build;

@@ -7,8 +7,11 @@ const policy = JSON.parse(readFileSync(resolve(root, "config/evolution-zip-check
 const requested = process.argv[2] || process.env.ATLAS_EVOLUTION_PHASE || "";
 const phase = Number(requested);
 
-if (!Number.isInteger(phase) || phase < policy.firstCheckpoint || phase > policy.lastCheckpoint || phase % policy.interval !== 0) {
-  throw new Error(`Checkpoint inválido. Use um múltiplo de ${policy.interval} entre ${policy.firstCheckpoint} e ${policy.lastCheckpoint}.`);
+const isSpecialCheckpoint = policy.specialCheckpoints?.includes(phase) === true;
+const isRecurringCheckpoint = Number.isInteger(phase) && phase >= policy.firstCheckpoint && phase <= policy.lastCheckpoint && phase % policy.interval === 0;
+
+if (!Number.isInteger(phase) || (!isSpecialCheckpoint && !isRecurringCheckpoint)) {
+  throw new Error(`Checkpoint inválido. Use uma fase especial autorizada ou um múltiplo de ${policy.interval} entre ${policy.firstCheckpoint} e ${policy.lastCheckpoint}.`);
 }
 
 const padded = String(phase).padStart(3, "0");
@@ -33,7 +36,7 @@ const run = (command, args, env = process.env) => execFileSync(command, args, {
 });
 
 run(process.execPath, [`scripts/check-evolution-phase-${padded}.mjs`]);
-run("npm", ["run", "evolution-1000:check"]);
+run("npm", ["run", "evolution-2000:check"]);
 run("npm", ["run", "typecheck"]);
 run("npm", ["run", "lint"]);
 run("npm", ["run", "build"]);
