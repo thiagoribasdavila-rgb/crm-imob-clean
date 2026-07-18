@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAccessContext } from "@/lib/api/security";
 import { REAL_ESTATE_MARKET_SOURCES } from "@/lib/ai/real-estate-knowledge";
 import { aiModelProfiles, aiProviderReadiness, aiPricingReadiness } from "@/lib/ai/provider-router";
+import { resolveAtlasAIOS } from "@/lib/ai/operating-system";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +15,11 @@ export async function GET(request: NextRequest) {
   const models = aiModelProfiles();
   const gatewayConfigured = providers.openai;
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: usageRows } = await access.supabase
+  const [{ data: usageRows }, memoryResult, knowledgeResult, learningResult] = await Promise.all([access.supabase
     .from("ai_usage_events")
     .select("provider,model,total_tokens,latency_ms,estimated_cost_usd,created_at")
     .gte("created_at", since)
-    .limit(5_000);
+    .limit(5_000), access.supabase.from("lead_commercial_memory_states").select("id", { count: "exact", head: true }), access.supabase.from("project_materials").select("id", { count: "exact", head: true }).eq("is_current", true).eq("review_status", "verified"), access.supabase.from("ai_orchestration_decisions").select("id", { count: "exact", head: true }).gte("created_at", since)]);
   const usage = (usageRows ?? []).reduce(
     (total, row) => ({
       calls: total.calls + 1,
@@ -54,13 +55,8 @@ export async function GET(request: NextRequest) {
   const generativeOperational = providerHealth.some((item) => item.name !== "perplexity" && item.status === "operational");
   const researchOperational = providerHealth.some((item) => item.name === "perplexity" && item.status === "operational");
   const memoryOperational = Boolean((usageRows ?? []).length);
-  const agents = [
-    { id: "lead", name: "Atlas Lead Agent", status: generativeOperational ? "supervised" : "prepared", functions: ["score", "intenção", "próxima ação"] },
-    { id: "copilot", name: "Atlas Sales Copilot", status: generativeOperational ? "supervised" : "prepared", functions: ["abordagem", "objeções", "visitas"] },
-    { id: "manager", name: "Atlas Manager Intelligence", status: "deterministic", functions: ["gargalos", "atrasos", "equipe"] },
-    { id: "executive", name: "Atlas Executive Intelligence", status: "deterministic", functions: ["riscos", "previsão", "decisões"] },
-    { id: "marketing", name: "Atlas Marketing Agent", status: researchOperational && Boolean(process.env.META_ADS_ACCESS_TOKEN) && Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN) ? "supervised" : "prepared", functions: ["campanhas", "públicos", "ROI"] },
-  ];
+  const operatingSystem = resolveAtlasAIOS({ generativeConfigured: gatewayConfigured, generativeOperational, researchOperational, marketingConnected: Boolean(process.env.META_ADS_ACCESS_TOKEN) && Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), memoryRecords: memoryResult.count ?? 0, knowledgeDocuments: knowledgeResult.count ?? 0, learningEvents: learningResult.count ?? 0 });
+  const agents = operatingSystem.agents.map(({ id, name, status, capabilities }) => ({ id, name, status, functions: capabilities }));
   return NextResponse.json({
     status: generativeOperational ? "ready" : "degraded",
     gatewayConfigured,
@@ -71,6 +67,7 @@ export async function GET(request: NextRequest) {
     providers,
     providerHealth,
     agents,
+    operatingSystem,
     activationPolicy: { mode: "supervised", autonomousExternalActions: false, humanApprovalRequired: true, memoryOperational, rawPromptsStored: false, personalDataRestrictedToTrustedProvider: true },
     usage: {
       ...usage,

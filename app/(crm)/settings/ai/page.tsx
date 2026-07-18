@@ -40,6 +40,14 @@ type AIStatus = {
   };
   providerHealth: Array<{ name: string; configured: boolean; validated: boolean; status: "not_configured" | "awaiting_live_test" | "operational"; model: string | null; lastSuccessfulAt: string | null; latencyMs: number | null }>;
   agents: Array<{ id: string; name: string; status: "supervised" | "prepared" | "deterministic"; functions: string[] }>;
+  operatingSystem: {
+    mode: "operational" | "prepared_offline" | "local_only";
+    brain: { status: "active"; description: string };
+    engine: { status: "online" | "awaiting_capacity" | "not_configured"; automaticRecovery: boolean; localContinuity: boolean };
+    memory: { status: "active"; records: number; rawConversationStored: false; exclusiveLeadOwnership: true };
+    knowledge: { status: "grounded" | "prepared"; documents: number; researchOperational: boolean };
+    learningLoop: { mode: "supervised"; events: number; comparesSuggestionDecisionOutcome: true };
+  };
   activationPolicy: { mode: "supervised"; autonomousExternalActions: false; humanApprovalRequired: true; memoryOperational: boolean; rawPromptsStored: false; personalDataRestrictedToTrustedProvider: true };
   usage: {
     calls: number;
@@ -204,7 +212,7 @@ export default function AISettings() {
         <div className="grid gap-7 xl:grid-cols-[1.35fr_.65fr] xl:items-end">
           <div>
             <div className="flex flex-wrap gap-2">
-              <AtlasBadge tone="info">AI CONTROL</AtlasBadge>
+              <AtlasBadge tone="info">AI OPERATING SYSTEM</AtlasBadge>
               <AtlasBadge tone="violet">REAL ESTATE</AtlasBadge>
               <AtlasBadge
                 tone={data?.status === "ready" ? "success" : "warning"}
@@ -213,12 +221,12 @@ export default function AISettings() {
               </AtlasBadge>
             </div>
             <h1 className="mt-5 max-w-4xl text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">
-              Inteligência imobiliária com contexto, limites e contingência.
+              O cérebro operacional de inteligência do ATLAS.
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
-              Diagnóstico do modelo, calibração de mercado, proteção de dados e
-              capacidade de continuar operando quando o provedor generativo
-              estiver indisponível.
+              Modelos são motores substituíveis. O Atlas preserva contexto,
+              memória, governança e aprendizado para continuar operando mesmo
+              quando um provedor estiver indisponível.
             </p>
             <div className="mt-5 flex flex-wrap gap-3"><Link href="/settings/ai-orchestration" className="atlas-button-secondary inline-flex">Abrir orquestrador comercial →</Link><Link href="/settings/ai-context" className="atlas-button-secondary inline-flex">Auditar contexto enviado →</Link></div>
           </div>
@@ -235,6 +243,20 @@ export default function AISettings() {
           {error}
         </div>
       ) : null}
+
+      <AtlasCard>
+        <AtlasCardHeader eyebrow="Atlas AI Brain" title="Motor externo, inteligência própria" description="A operação local não para sem créditos: coleta contexto, calcula sinais determinísticos e prepara a próxima chamada. Ações externas seguem bloqueadas até aprovação humana." />
+        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-5 sm:p-6">
+          {[
+            ["Sistema", data?.operatingSystem.mode === "operational" ? "Online" : data?.operatingSystem.mode === "prepared_offline" ? "Preparado offline" : "Motor local", "BRAIN"],
+            ["Motor generativo", data?.operatingSystem.engine.status === "online" ? "Respondendo" : data?.operatingSystem.engine.status === "awaiting_capacity" ? "Aguardando crédito" : "Não configurado", "ENGINE"],
+            ["Memória", data ? `${data.operatingSystem.memory.records} registros` : "—", "MEMORY"],
+            ["Conhecimento", data ? `${data.operatingSystem.knowledge.documents} materiais` : "—", "GROUNDING"],
+            ["Aprendizado", data ? `${data.operatingSystem.learningLoop.events} decisões` : "—", "LOOP"],
+          ].map(([label, value, trend]) => <AtlasMetric key={label} label={label} value={value} detail={label === "Memória" ? "Estruturada e protegida" : label === "Aprendizado" ? "Sugestão × decisão × resultado" : "Estado comprovado pela operação"} trend={trend} tone={label === "Motor generativo" && data?.operatingSystem.engine.status !== "online" ? "amber" : "blue"} />)}
+        </div>
+        <div className="flex flex-wrap gap-3 border-t border-white/[.06] px-5 py-4 sm:px-6"><Link href="/settings/ai-orchestration" className="atlas-button-secondary">Modelos e fallback</Link><Link href="/settings/ai-context" className="atlas-button-secondary">Memória e contexto</Link><Link href="/settings/ai-guardrails" className="atlas-button-secondary">Governança</Link><Link href="/settings/ai-playbooks" className="atlas-button-secondary">Conhecimento comercial</Link></div>
+      </AtlasCard>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AtlasMetric

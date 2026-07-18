@@ -140,6 +140,7 @@
     "final-projects:check": "node scripts/check-final-projects.mjs",
     "final-dashboards:check": "node scripts/check-final-dashboards.mjs",
     "final-ai:check": "node scripts/check-final-ai-integrations.mjs",
+    "ai-os:check": "node scripts/check-ai-operating-system.mjs",
     "final-reliability:check": "node scripts/check-final-reliability-homologation.mjs",
     "final-package:check": "node scripts/check-final-regression-package.mjs",
     "smoke:hostinger": "node scripts/smoke-hostinger-release.mjs",
