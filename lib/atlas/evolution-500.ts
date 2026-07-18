@@ -66,6 +66,31 @@ const waveDefinitions: Array<Omit<EvolutionWave, "range">> = [
   { id: 23, name: "Observabilidade e recuperação", outcome: "Falhas são detectadas e recuperadas antes de virar bloqueio comercial.", href: "/integrations/health", pillar: "plataforma" },
   { id: 24, name: "Homologação por jornada", outcome: "Cada fluxo é comprovado com usuário, dado e integração reais.", href: "/atlas-v3/homologation", pillar: "homologação" },
   { id: 25, name: "Produção e escala SaaS", outcome: "Release, rollback, custo e crescimento ficam controlados.", href: "/atlas-v3/reliability", pillar: "homologação" },
+  { id: 26, name: "Onboarding guiado", outcome: "Cada perfil aprende o Atlas executando sua primeira jornada real.", href: "/settings/profile", pillar: "experiência" },
+  { id: 27, name: "Central de atenção", outcome: "Alertas são priorizados, agrupados e convertidos em ação.", href: "/notifications", pillar: "experiência" },
+  { id: 28, name: "Colaboração e handoffs", outcome: "Trocas entre IA, corretor e liderança preservam todo o contexto.", href: "/activity", pillar: "operação" },
+  { id: 29, name: "Comunicação omnichannel", outcome: "WhatsApp, e-mail, ligação e agenda compartilham uma timeline.", href: "/conversations", pillar: "operação" },
+  { id: 30, name: "Reativação inteligente", outcome: "Bases antigas voltam à operação com consentimento e prioridade.", href: "/leads/reactivation-governance", pillar: "inteligência" },
+  { id: 31, name: "Meta e Andromeda", outcome: "Sinais de qualidade e conversão retornam às campanhas corretamente.", href: "/integrations/meta/andromeda", pillar: "inteligência" },
+  { id: 32, name: "Atribuição de receita", outcome: "Cada venda preserva campanha, origem, custo e contribuição real.", href: "/reports/marketing", pillar: "inteligência" },
+  { id: 33, name: "Ranking de campanhas", outcome: "A gestão compara eficiência por lead, visita, proposta e venda.", href: "/marketing/campaign-intelligence", pillar: "inteligência" },
+  { id: 34, name: "Command Center executivo", outcome: "A diretoria decide por exceção, impacto e tendência comprovada.", href: "/dashboard", pillar: "inteligência" },
+  { id: 35, name: "Workspace do corretor", outcome: "Atender, registrar e avançar uma lead exige o mínimo de esforço.", href: "/leads", pillar: "experiência" },
+  { id: 36, name: "Workspace do gerente", outcome: "O gerente enxerga gargalos, pessoas e ações do próprio time.", href: "/brokers", pillar: "operação" },
+  { id: 37, name: "Workspace da diretoria", outcome: "A liderança acompanha toda a hierarquia sem microgerenciar.", href: "/reports", pillar: "operação" },
+  { id: 38, name: "Governança administrativa", outcome: "Usuários, acessos, custos e integrações ficam auditáveis.", href: "/users", pillar: "plataforma" },
+  { id: 39, name: "Pesquisa imobiliária", outcome: "Projetos e regiões recebem conhecimento verificável e atualizado.", href: "/developments/registry", pillar: "inteligência" },
+  { id: 40, name: "Estoque e precificação", outcome: "Disponibilidade, tabela e velocidade de venda orientam a oferta.", href: "/developments", pillar: "operação" },
+  { id: 41, name: "Vendas e comissões", outcome: "Fechamento, recebimento e SLA da incorporadora seguem rastreáveis.", href: "/sales", pillar: "operação" },
+  { id: 42, name: "Forecast explicável", outcome: "Previsões mostram evidência, incerteza e ação recomendada.", href: "/atlas-v3/forecast", pillar: "inteligência" },
+  { id: 43, name: "Qualidade e deduplicação", outcome: "A fonte única permanece limpa sem perder histórico comercial.", href: "/leads/data-quality", pillar: "plataforma" },
+  { id: 44, name: "Agentes e automações", outcome: "Trabalho repetitivo é automatizado com aprovação e rastreabilidade.", href: "/atlas-v3/agents", pillar: "inteligência" },
+  { id: 45, name: "Voz e operação móvel", outcome: "Reuniões, ligações e deslocamentos viram registros e próximas ações.", href: "/calendar", pillar: "experiência" },
+  { id: 46, name: "Personalização adaptativa", outcome: "Atalhos e densidade evoluem conforme perfil e uso comprovado.", href: "/settings", pillar: "experiência" },
+  { id: 47, name: "Privacidade e LGPD", outcome: "Consentimento, finalidade, retenção e exclusão ficam controlados.", href: "/atlas-v3/governance", pillar: "plataforma" },
+  { id: 48, name: "Planos e monetização SaaS", outcome: "Start, Pro e Enterprise possuem valor, limites e custos claros.", href: "/atlas-v3/investor", pillar: "plataforma" },
+  { id: 49, name: "Customer Success", outcome: "Adoção, saúde da conta e valor percebido são medidos continuamente.", href: "/atlas-v3/acceptance", pillar: "homologação" },
+  { id: 50, name: "Otimização contínua", outcome: "Telemetria e feedback alimentam o próximo ciclo sem inflar o produto.", href: "/atlas-v3/model-monitoring", pillar: "homologação" },
 ];
 
 export const evolution500Waves: EvolutionWave[] = waveDefinitions.map((wave) => ({
@@ -91,3 +116,7 @@ export const evolution500Summary = {
   phasesPerWave: checkpoints.length,
   executionRule: "Uma fase só avança com evidência, medição e validação do perfil afetado.",
 };
+
+export const evolution1000Waves = evolution500Waves;
+export const evolution1000Phases = evolution500Phases;
+export const evolution1000Summary = evolution500Summary;
