@@ -18,6 +18,7 @@ const phaseThirteen = JSON.parse(fs.readFileSync("config/evolution-phase-013-tab
 const phaseFourteen = JSON.parse(fs.readFileSync("config/evolution-phase-014-mobile-touch.json", "utf8"));
 const phaseFifteen = JSON.parse(fs.readFileSync("config/evolution-phase-015-accessibility.json", "utf8"));
 const phaseSixteen = JSON.parse(fs.readFileSync("config/evolution-phase-016-perceived-speed.json", "utf8"));
+const phaseSeventeen = JSON.parse(fs.readFileSync("config/evolution-phase-017-real-usage.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -75,6 +76,10 @@ const checks = [
   ["Rotas críticas são preparadas em tempo ocioso", phaseSixteen.criticalRoutesPrefetched === 6 && navigationPerformance.includes("requestIdleCallback") && navigationPerformance.includes("router.prefetch")],
   ["Navegação recebe retorno imediato", appShell.includes("NavigationPerformance") && navigationPerformance.includes('role="status"') && globalStyles.includes("atlas-route-progress")],
   ["Movimento reduzido permanece respeitado", phaseSixteen.reducedMotionRespected === true && globalStyles.includes(".atlas-navigation-progress")],
+  ["Fase 017 instrumenta uso real", phaseSeventeen.status === "completed" && phaseSeventeen.inventedUsageMetric === false],
+  ["Telemetria usa ingestão autenticada e não bloqueante", phaseSeventeen.authenticatedIngestion === true && navigationPerformance.includes('fetch("/api/v3/events/ingest"') && navigationPerformance.includes("keepalive: true")],
+  ["Rotas são minimizadas antes do envio", phaseSeventeen.routeParametersNormalized === true && phaseSeventeen.queryStringsCaptured === false && navigationPerformance.includes("normalizeRoute")],
+  ["Privacidade da navegação é explícita", phaseSeventeen.personalDataCaptured === false && phaseSeventeen.doNotTrackRespected === true && navigationPerformance.includes("navigator.doNotTrack")],
 ];
 
 for (const [label, passed] of checks) {

@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 const CRITICAL_ROUTES = [
   "/dashboard",
@@ -12,10 +13,48 @@ const CRITICAL_ROUTES = [
   "/developments",
 ] as const;
 
+type NavigationSample = {
+  fromRoute: string;
+  toRoute: string;
+  startedAt: number;
+};
+
+const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i;
+const NUMERIC_SEGMENT = /^\d+$/;
+
+function normalizeRoute(pathname: string) {
+  const cleanPath = pathname.split(/[?#]/, 1)[0] || "/";
+  return cleanPath
+    .split("/")
+    .map((segment) => UUID_SEGMENT.test(segment) || NUMERIC_SEGMENT.test(segment) ? ":id" : segment.slice(0, 48))
+    .join("/")
+    .slice(0, 240);
+}
+
+async function recordUsage(eventType: "atlas.page_viewed" | "atlas.navigation_completed", payload: Record<string, unknown>) {
+  if (navigator.doNotTrack === "1") return;
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+    await fetch("/api/v3/events/ingest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ eventType, source: "atlas.web.navigation", aggregateType: "product_usage", payload }),
+      cache: "no-store",
+      keepalive: true,
+    });
+  } catch {
+    // Telemetria nunca bloqueia a operação comercial.
+  }
+}
+
 export function NavigationPerformance() {
   const pathname = usePathname();
   const router = useRouter();
   const [navigating, setNavigating] = useState(false);
+  const navigationSample = useRef<NavigationSample | null>(null);
+  const lastPageView = useRef("");
 
   useEffect(() => {
     const warmCriticalRoutes = () => {
@@ -35,6 +74,20 @@ export function NavigationPerformance() {
 
   useEffect(() => {
     setNavigating(false);
+    const route = normalizeRoute(pathname);
+    if (lastPageView.current !== route) {
+      lastPageView.current = route;
+      void recordUsage("atlas.page_viewed", { route });
+    }
+    const sample = navigationSample.current;
+    if (sample && sample.toRoute === route) {
+      navigationSample.current = null;
+      void recordUsage("atlas.navigation_completed", {
+        fromRoute: sample.fromRoute,
+        toRoute: sample.toRoute,
+        durationMs: Math.max(0, Math.round(performance.now() - sample.startedAt)),
+      });
+    }
   }, [pathname]);
 
   useEffect(() => {
@@ -44,6 +97,11 @@ export function NavigationPerformance() {
       if (!target || target.target === "_blank" || target.hasAttribute("download")) return;
       const destination = new URL(target.href, window.location.href);
       if (destination.origin !== window.location.origin || destination.pathname === window.location.pathname && destination.search === window.location.search) return;
+      navigationSample.current = {
+        fromRoute: normalizeRoute(window.location.pathname),
+        toRoute: normalizeRoute(destination.pathname),
+        startedAt: performance.now(),
+      };
       setNavigating(true);
     };
     document.addEventListener("click", onClick, true);

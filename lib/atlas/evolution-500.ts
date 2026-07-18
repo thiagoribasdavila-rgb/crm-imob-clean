@@ -106,6 +106,11 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Seis rotas comerciais críticas são pré-carregadas em tempo ocioso", "Navegação interna recebe feedback imediato e acessível", "Transição curta respeita movimento reduzido e possui recuperação automática"],
   },
+  17: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Visualizações e navegações concluídas geram eventos reais autenticados", "Rotas removem parâmetros e identificadores antes do envio", "Telemetria respeita Do Not Track e nunca bloqueia a operação"],
+  },
 };
 
 const checkpoints = [
