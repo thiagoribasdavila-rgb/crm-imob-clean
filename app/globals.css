@@ -119,6 +119,17 @@ body::before {
   50% { opacity: 1; transform: scaleX(1); }
 }
 
+@keyframes atlas-route-progress {
+  0% { transform: translateX(-100%) scaleX(0.24); }
+  55% { transform: translateX(-18%) scaleX(0.72); }
+  100% { transform: translateX(100%) scaleX(0.42); }
+}
+
+@keyframes atlas-content-ready {
+  from { opacity: 0.78; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .atlas-entrance-copy {
   animation: atlas-entrance-rise 0.8s cubic-bezier(.22, 1, .36, 1) both;
 }
@@ -134,12 +145,40 @@ body::before {
   animation: atlas-signal-pulse 2.8s ease-in-out infinite;
 }
 
+.atlas-navigation-feedback {
+  position: fixed;
+  z-index: 60;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.atlas-navigation-feedback[data-visible="true"] { opacity: 1; }
+.atlas-navigation-progress {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: left;
+  background: linear-gradient(90deg, transparent, #38bdf8 42%, #a78bfa 72%, transparent);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.72);
+  animation: atlas-route-progress 1.05s ease-in-out infinite;
+}
+.atlas-app-content { animation: atlas-content-ready 180ms cubic-bezier(.22, 1, .36, 1) both; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .atlas-entrance-copy,
   .atlas-entrance-visual,
   .atlas-entrance-robot,
   .atlas-signal-line {
+    animation: none !important;
+  }
+  .atlas-navigation-progress,
+  .atlas-app-content {
     animation: none !important;
   }
 }

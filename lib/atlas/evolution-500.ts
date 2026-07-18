@@ -101,6 +101,11 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Menu móvel contém e restaura o foco", "Seções e controles expõem relações ARIA", "Foco, contraste elevado e cores forçadas possuem suporte sistêmico"],
   },
+  16: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Seis rotas comerciais críticas são pré-carregadas em tempo ocioso", "Navegação interna recebe feedback imediato e acessível", "Transição curta respeita movimento reduzido e possui recuperação automática"],
+  },
 };
 
 const checkpoints = [

@@ -17,6 +17,7 @@ const phaseTwelve = JSON.parse(fs.readFileSync("config/evolution-phase-012-deskt
 const phaseThirteen = JSON.parse(fs.readFileSync("config/evolution-phase-013-tablet-workspace.json", "utf8"));
 const phaseFourteen = JSON.parse(fs.readFileSync("config/evolution-phase-014-mobile-touch.json", "utf8"));
 const phaseFifteen = JSON.parse(fs.readFileSync("config/evolution-phase-015-accessibility.json", "utf8"));
+const phaseSixteen = JSON.parse(fs.readFileSync("config/evolution-phase-016-perceived-speed.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -29,6 +30,7 @@ const sidebar = fs.readFileSync("components/atlas/sidebar.tsx", "utf8");
 const palette = fs.readFileSync("components/CommandPalette.tsx", "utf8");
 const mobileDock = fs.readFileSync("components/atlas/mobile-dock.tsx", "utf8");
 const appShell = fs.readFileSync("components/atlas/app-shell.tsx", "utf8");
+const navigationPerformance = fs.readFileSync("components/atlas/navigation-performance.tsx", "utf8");
 
 const checks = [
   ["50 ondas", (source.match(/\{ id: \d+, name:/g) || []).length === 50],
@@ -69,6 +71,10 @@ const checks = [
   ["Menu móvel declara relação e estado", topbar.includes('aria-controls="atlas-primary-sidebar"') && topbar.includes("aria-expanded={mobileOpen}") && sidebar.includes('id="atlas-primary-sidebar"')],
   ["Preferências de contraste são respeitadas", globalStyles.includes("@media (prefers-contrast: more)") && globalStyles.includes("@media (forced-colors: active)")],
   ["Shell transmite estado do menu", appShell.includes("mobileOpen={mobileOpen}")],
+  ["Fase 016 mede velocidade percebida", phaseSixteen.status === "completed" && phaseSixteen.inventedLatencyMetric === false],
+  ["Rotas críticas são preparadas em tempo ocioso", phaseSixteen.criticalRoutesPrefetched === 6 && navigationPerformance.includes("requestIdleCallback") && navigationPerformance.includes("router.prefetch")],
+  ["Navegação recebe retorno imediato", appShell.includes("NavigationPerformance") && navigationPerformance.includes('role="status"') && globalStyles.includes("atlas-route-progress")],
+  ["Movimento reduzido permanece respeitado", phaseSixteen.reducedMotionRespected === true && globalStyles.includes(".atlas-navigation-progress")],
 ];
 
 for (const [label, passed] of checks) {

@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { MobileDock } from "./mobile-dock";
+import { NavigationPerformance } from "./navigation-performance";
 import type { ShellIdentity } from "./shell-types";
 const defaultIdentity: ShellIdentity = {
   name: "Usuário Atlas",
@@ -15,6 +17,7 @@ const defaultIdentity: ShellIdentity = {
 };
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [identity, setIdentity] = useState<ShellIdentity>(defaultIdentity);
@@ -116,8 +119,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         accessRole={identity.accessRole}
       />
       <Topbar identity={identity} mobileOpen={mobileOpen} onOpenMenu={openMobile} />
+      <NavigationPerformance />
       <main className="atlas-app-main" id="atlas-main-content" tabIndex={-1}>
-        <div className="atlas-app-content">{children}</div>
+        <div className="atlas-app-content" key={pathname}>{children}</div>
       </main>
       <MobileDock />
     </div>
