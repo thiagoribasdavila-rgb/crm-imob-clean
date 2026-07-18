@@ -91,6 +91,11 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Workspace específico para 768–1023 px", "Dock centralizado e limitado a 560 px", "Barra superior compactada sem remover ações essenciais"],
   },
+  14: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Shell touch-first abaixo de 768 px", "Campos com 16 px evitam zoom involuntário no iOS", "Topbar compacta e dock preservam ações comerciais essenciais"],
+  },
 };
 
 const checkpoints = [

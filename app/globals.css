@@ -1357,12 +1357,63 @@ textarea:focus {
   .atlas-signout {
     display: none;
   }
+  .atlas-user-copy,
+  .atlas-topbar-context {
+    display: none;
+  }
+  .atlas-app-main {
+    padding: calc(var(--atlas-topbar-height) + 18px) 12px
+      calc(88px + env(safe-area-inset-bottom));
+  }
+  .atlas-app-topbar {
+    padding-inline: 10px;
+  }
+  .atlas-topbar-inner,
+  .atlas-topbar-start,
+  .atlas-topbar-actions {
+    gap: 7px;
+  }
+  .atlas-topbar-section {
+    max-width: 92px;
+    margin-top: 0;
+    overflow: hidden;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .atlas-mobile-menu,
+  .atlas-mobile-search,
+  .atlas-notification-button,
+  .atlas-quick-create,
+  .atlas-user-avatar {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+  }
+  .atlas-app-shell input,
+  .atlas-app-shell select,
+  .atlas-app-shell textarea {
+    font-size: 16px;
+  }
+  .atlas-app-shell .atlas-button-primary,
+  .atlas-app-shell .atlas-button-secondary {
+    min-height: 44px;
+  }
+  .atlas-app-content h1,
+  .atlas-app-content h2 {
+    overflow-wrap: break-word;
+    text-wrap: balance;
+  }
   .atlas-page-header {
     align-items: flex-start;
     flex-direction: column;
   }
 }
-
+@media (max-width: 479px) {
+  .atlas-notification-button {
+    display: none;
+  }
+}
 .atlas-mobile-dock {
   position: fixed;
   z-index: 44;
@@ -1419,6 +1470,19 @@ textarea:focus {
     left: 50%;
     width: min(calc(100% - 32px), 560px);
     transform: translateX(-50%);
+  }
+}
+@media (max-width: 374px) {
+  .atlas-mobile-dock {
+    right: 6px;
+    left: 6px;
+    padding: 4px;
+  }
+  .atlas-mobile-dock-action {
+    min-height: 48px;
+  }
+  .atlas-mobile-dock-action small {
+    font-size: 8px;
   }
 }
 
