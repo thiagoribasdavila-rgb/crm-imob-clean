@@ -7,6 +7,8 @@ const phaseTwo = JSON.parse(fs.readFileSync("config/evolution-phase-002-commerci
 const phaseThree = JSON.parse(fs.readFileSync("config/evolution-phase-003-navigation-baseline.json", "utf8"));
 const phaseFour = JSON.parse(fs.readFileSync("config/evolution-phase-004-canonical-navigation.json", "utf8"));
 const phaseFive = JSON.parse(fs.readFileSync("config/evolution-phase-005-information-density.json", "utf8"));
+const phaseSix = JSON.parse(fs.readFileSync("config/evolution-phase-006-visual-hierarchy.json", "utf8"));
+const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const navigation = fs.readFileSync("lib/atlas/navigation.ts", "utf8");
 const sidebar = fs.readFileSync("components/atlas/sidebar.tsx", "utf8");
 const palette = fs.readFileSync("components/CommandPalette.tsx", "utf8");
@@ -29,6 +31,8 @@ const checks = [
   ["V2 fora do catálogo canônico", !navigation.includes("/atlas-v2") && phaseFour.historicalRouteDeleted === false],
   ["Fase 005 compacta sem esconder", phaseFive.status === "completed" && phaseFive.removedRedundancies.length === 3 && phaseFive.preservedSignals.length >= 4],
   ["Sidebar sem banner redundante", !sidebar.includes("Você está em")],
+  ["Fase 006 com hierarquia acessível", phaseSix.status === "completed" && phaseSix.accessibility.activeStateDoesNotDependOnColorOnly === true],
+  ["Estado ativo com trilho visual", globalStyles.includes('.atlas-nav-link[data-active="true"]::before')],
 ];
 
 for (const [label, passed] of checks) {

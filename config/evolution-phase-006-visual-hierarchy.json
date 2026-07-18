@@ -1,0 +1,18 @@
+{
+  "phase": 6,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "surface": "global navigation",
+  "hierarchy": [
+    "group labels use quieter compact typography",
+    "inactive destinations use secondary contrast",
+    "active destination gains weight, accent rail and icon emphasis",
+    "favorite and permission behavior remains unchanged"
+  ],
+  "accessibility": {
+    "activeStateDoesNotDependOnColorOnly": true,
+    "activeStateSignals": ["font weight", "accent rail", "icon surface", "existing aria-current"]
+  },
+  "routesChanged": 0,
+  "permissionsChanged": 0
+}

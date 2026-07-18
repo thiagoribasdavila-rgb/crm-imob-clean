@@ -51,6 +51,11 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Banner de página atual redundante removido", "Contadores sem valor comercial removidos", "Busca, favoritos e indicador ativo preservados"],
   },
+  6: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Grupos ganharam tipografia secundária consistente", "Tela ativa possui quatro sinais visuais complementares", "Hierarquia melhorada sem alterar rotas ou permissões"],
+  },
 };
 
 const checkpoints = [
