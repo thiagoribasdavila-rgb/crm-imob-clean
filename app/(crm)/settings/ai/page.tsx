@@ -76,6 +76,13 @@ type CostRoutingResult = {
   totalEstimatedCostUsd: number;
   testedAt: string;
 };
+type ProviderTestResult = {
+  model: string;
+  providerRequestId: string | null;
+  latencyMs: number;
+  usage: { totalTokens: number };
+  testedAt: string;
+};
 
 const controlLabels: Record<string, string> = {
   operationalContext: "Contexto operacional do CRM",
@@ -109,6 +116,8 @@ export default function AISettings() {
     testedAt: string;
   } | null>(null);
   const [routingTesting, setRoutingTesting] = useState(false);
+  const [providerTesting, setProviderTesting] = useState<string | null>(null);
+  const [providerResults, setProviderResults] = useState<Record<string, ProviderTestResult>>({});
   const [routingResult, setRoutingResult] = useState<CostRoutingResult | null>(
     null,
   );
@@ -206,6 +215,30 @@ export default function AISettings() {
     }
   }
 
+  async function testEconomyProvider(provider: string) {
+    setProviderTesting(provider);
+    setError("");
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const response = await fetch("/api/ai/provider-test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.session?.access_token}`,
+        },
+        body: JSON.stringify({ provider }),
+      });
+      const body = await response.json();
+      if (!response.ok)
+        throw new Error(body.error?.message || `Teste ${provider} falhou.`);
+      setProviderResults((current) => ({ ...current, [provider]: body.data }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : `Teste ${provider} falhou.`);
+    } finally {
+      setProviderTesting(null);
+    }
+  }
+
   return (
     <div className="space-y-6 pb-10">
       <section className="atlas-grid-glow overflow-hidden rounded-[30px] border border-cyan-400/10 bg-gradient-to-br from-cyan-500/[.1] via-blue-500/[.07] to-violet-500/[.12] p-6 sm:p-8">
@@ -300,7 +333,12 @@ export default function AISettings() {
       <AtlasCard>
         <AtlasCardHeader eyebrow="AI Health Center" title="Conexão comprovada, não presumida" description="Uma chave configurada só vira integração operacional depois de uma resposta real registrada. Nenhum segredo é enviado ao navegador." />
         <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3 sm:p-6">
-          {(data?.providerHealth ?? []).map((provider) => <div key={provider.name} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><div className="flex items-center justify-between gap-2"><strong className="capitalize text-white">{provider.name}</strong><AtlasBadge tone={provider.status === "operational" ? "success" : provider.configured ? "warning" : "neutral"}>{provider.status === "operational" ? "OPERACIONAL" : provider.configured ? "TESTE PENDENTE" : "NÃO CONFIGURADA"}</AtlasBadge></div><p className="mt-3 text-xs text-slate-400">{provider.status === "operational" ? `${provider.model ?? "modelo validado"} · ${provider.latencyMs ?? 0} ms` : provider.configured ? "Credencial detectada; falta evidência registrada." : "Sem credencial no servidor."}</p>{provider.lastSuccessfulAt ? <p className="mt-2 text-[10px] text-slate-600">Último sucesso: {new Date(provider.lastSuccessfulAt).toLocaleString("pt-BR")}</p> : null}</div>)}
+          {(data?.providerHealth ?? []).map((provider) => {
+            const canTestHere = ["deepseek", "qwen", "kimi", "glm"].includes(provider.name);
+            const liveResult = providerResults[provider.name];
+            const operational = provider.status === "operational" || Boolean(liveResult);
+            return <div key={provider.name} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><div className="flex items-center justify-between gap-2"><strong className="capitalize text-white">{provider.name}</strong><AtlasBadge tone={operational ? "success" : provider.configured ? "warning" : "neutral"}>{operational ? "OPERACIONAL" : provider.configured ? "TESTE PENDENTE" : "NÃO CONFIGURADA"}</AtlasBadge></div><p className="mt-3 text-xs text-slate-400">{liveResult ? `${liveResult.model} · ${liveResult.latencyMs} ms · teste desta sessão` : provider.status === "operational" ? `${provider.model ?? "modelo validado"} · ${provider.latencyMs ?? 0} ms` : provider.configured ? "Credencial detectada; falta evidência registrada." : "Sem credencial no servidor."}</p>{provider.lastSuccessfulAt ? <p className="mt-2 text-[10px] text-slate-600">Último sucesso: {new Date(provider.lastSuccessfulAt).toLocaleString("pt-BR")}</p> : null}{canTestHere ? <button type="button" disabled={!provider.configured || providerTesting !== null} onClick={() => void testEconomyProvider(provider.name)} className="atlas-button-secondary mt-4 w-full">{providerTesting === provider.name ? "Testando…" : `Testar ${provider.name}`}</button> : null}</div>;
+          })}
         </div>
       </AtlasCard>
 

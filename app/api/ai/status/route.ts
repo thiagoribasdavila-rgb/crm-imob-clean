@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   const providers = aiProviderReadiness();
   const models = aiModelProfiles();
-  const gatewayConfigured = providers.openai;
+  const gatewayConfigured = providers.openai || providers.deepseek || providers.qwen || providers.kimi || providers.glm;
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const [{ data: usageRows }, memoryResult, knowledgeResult, learningResult] = await Promise.all([access.supabase
     .from("ai_usage_events")
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
   });
   const generativeOperational = providerHealth.some((item) => item.name !== "perplexity" && item.status === "operational");
   const researchOperational = providerHealth.some((item) => item.name === "perplexity" && item.status === "operational");
-  const memoryOperational = Boolean((usageRows ?? []).length);
+  const memoryOperational = (memoryResult.count ?? 0) > 0;
   const operatingSystem = resolveAtlasAIOS({ generativeConfigured: gatewayConfigured, generativeOperational, researchOperational, marketingConnected: Boolean(process.env.META_ADS_ACCESS_TOKEN) && Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN), memoryRecords: memoryResult.count ?? 0, knowledgeDocuments: knowledgeResult.count ?? 0, learningEvents: learningResult.count ?? 0 });
   const agents = operatingSystem.agents.map(({ id, name, status, capabilities }) => ({ id, name, status, functions: capabilities }));
   return NextResponse.json({

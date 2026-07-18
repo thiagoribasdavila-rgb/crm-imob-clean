@@ -136,7 +136,7 @@ const entries = execFileSync("unzip", ["-Z1", zipPath], { encoding: "utf8" })
   .filter(Boolean);
 const forbidden = entries.filter(
   (entry) =>
-    /(^|\/)(?:\.env\.local|node_modules|\.next|tmp|outputs|dist|\.git)(?:\/|$)/.test(
+    /(^|\/)(?:\.env\.local|hostinger\.env|node_modules|\.next|tmp|outputs|dist|\.git)(?:\/|$)/.test(
       entry,
     ) || /\.(?:xlsx?|csv|pdf)$/i.test(entry),
 );

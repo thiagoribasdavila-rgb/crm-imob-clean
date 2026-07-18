@@ -35,7 +35,7 @@ export type AIProviderResult = {
   guardrail?: { risk: "low" | "medium" | "high"; blocked: boolean; humanReviewRequired: boolean; findingCodes: string[] };
 };
 
-type EconomyProvider = "deepseek" | "qwen" | "kimi" | "glm";
+export type EconomyProvider = "deepseek" | "qwen" | "kimi" | "glm";
 const economyProviders: Record<EconomyProvider, { key: string; model: string; baseUrl: string }> = {
   deepseek: { key: "DEEPSEEK_API_KEY", model: "ATLAS_DEEPSEEK_MODEL", baseUrl: "https://api.deepseek.com/chat/completions" },
   qwen: { key: "QWEN_API_KEY", model: "ATLAS_QWEN_MODEL", baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions" },
@@ -418,6 +418,25 @@ export async function testPerplexityConnection(
       "Indique dois indicadores públicos úteis para analisar o mercado imobiliário brasileiro e cite as fontes.",
   };
   return recordUsage(request, await generatePerplexity(request));
+}
+
+export async function testEconomyProviderConnection(
+  provider: EconomyProvider,
+  input: Pick<GenerateInput, "organizationId" | "userId">,
+) {
+  const expected = `ATLAS_${provider.toUpperCase()}_OK`;
+  const request: GenerateInput = {
+    ...input,
+    task: provider === "kimi" ? "commercial" : "fast",
+    feature: `${provider}-homologation`,
+    containsPersonalData: false,
+    timeoutMs: 30_000,
+    system:
+      "Você é um teste técnico de conectividade do Atlas. Não use ferramentas, não execute ações e não solicite dados pessoais.",
+    prompt: `Responda somente ${expected} para confirmar a conexão.`,
+  };
+  const result = await generateEconomyProvider(request, provider);
+  return recordUsage(request, result);
 }
 
 export async function testAICostRouting(

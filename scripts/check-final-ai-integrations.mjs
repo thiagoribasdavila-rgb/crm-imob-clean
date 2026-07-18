@@ -11,6 +11,9 @@ const program = JSON.parse(fs.readFileSync("config/final-10-phases-improvement.j
 checks.push(["config/final-10-phases-improvement.json: fase atual não regrediu", Number(program.current_phase) >= 8]);
 checks.push(["config/final-10-phases-improvement.json: fases 1 a 8 concluídas", [1, 2, 3, 4, 5, 6, 7, 8].every((phase) => program.completed?.includes(phase))]);
 need("lib/ai/provider-router.ts", "signal?: AbortSignal", "signal: input.signal", "input.signal?.aborted", "aiProviderReadiness", "localFallback");
+need("lib/ai/provider-router.ts", "testEconomyProviderConnection", "ATLAS_${provider.toUpperCase()}_OK");
+need("app/api/ai/provider-test/route.ts", "economy-ai-homologation", "PROVIDER_NOT_CONFIGURED", "fallbackUsed: false");
+need("app/(crm)/settings/ai/page.tsx", "/api/ai/provider-test", "Testar ${provider.name}", "AI Health Center");
 need("app/api/ai/copilot/route.ts", "signal: request.signal", "request.signal.aborted", "estimatedCostUsd", "pricingConfigured");
 need("components/AtlasCopilotDock.tsx", "new AbortController()", "signal: controller.signal", "Cancelar consulta", "custo medido", "preço pendente de configuração");
 need("docs/FINAL_PHASE_8_AI_AUTOMATIONS_INTEGRATIONS.md", "cancelamento ponta a ponta", "aprovação", "Hostinger");

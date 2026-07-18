@@ -20,7 +20,7 @@ if (entries.some((e) => e.startsWith("/") || e.includes("../")))
   throw new Error("Caminho inseguro no ZIP.");
 const forbidden = entries.filter(
   (e) =>
-    /(^|\/)(?:\.env\.local|node_modules|\.next|tmp|outputs|dist|\.git)(?:\/|$)/.test(
+    /(^|\/)(?:\.env\.local|hostinger\.env|node_modules|\.next|tmp|outputs|dist|\.git)(?:\/|$)/.test(
       e,
     ) || /\.(?:xlsx?|csv|pdf|pem)$/i.test(e),
 );
