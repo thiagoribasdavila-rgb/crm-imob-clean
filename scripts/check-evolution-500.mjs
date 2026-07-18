@@ -38,6 +38,7 @@ const phaseThirtyThree = JSON.parse(fs.readFileSync("config/evolution-phase-033-
 const phaseThirtyFour = JSON.parse(fs.readFileSync("config/evolution-phase-034-navigation-mobile-workspace.json", "utf8"));
 const phaseThirtyFive = JSON.parse(fs.readFileSync("config/evolution-phase-035-dashboard-decision-first.json", "utf8"));
 const phaseThirtySix = JSON.parse(fs.readFileSync("config/evolution-phase-036-leads-action-workspace.json", "utf8"));
+const phaseThirtySeven = JSON.parse(fs.readFileSync("config/evolution-phase-037-pipeline-movement-workspace.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -55,6 +56,7 @@ const appShell = fs.readFileSync("components/atlas/app-shell.tsx", "utf8");
 const navigationPerformance = fs.readFileSync("components/atlas/navigation-performance.tsx", "utf8");
 const dashboard = fs.readFileSync("app/(crm)/dashboard/page.tsx", "utf8");
 const leadsPage = fs.readFileSync("app/(crm)/leads/page.tsx", "utf8");
+const pipelinePage = fs.readFileSync("app/(crm)/pipeline/page.tsx", "utf8");
 
 const checks = [
   ["50 ondas", (source.match(/\{ id: \d+, name:/g) || []).length === 50],
@@ -141,6 +143,8 @@ const checks = [
   ["Dashboard preserva análise, RBAC e verdade", phaseThirtyFive.dashboardContract.extendedPanelsPreserved === true && phaseThirtyFive.truthPolicy.runtimeProductivityClaimPublished === false && phaseThirtyFive.safetyPolicy.rbacPreserved === true],
   ["Fase 036 orienta Leads à próxima ação visível", phaseThirtySix.status === "completed" && phaseThirtySix.leadsContract.visiblePriorityLimit === 3 && leadsPage.includes('data-leads-layout="action-first"')],
   ["Leads preserva paginação, RBAC e verdade", phaseThirtySix.leadsContract.existingPaginationPreserved === true && phaseThirtySix.truthPolicy.queuePresentedAsGlobalPortfolio === false && phaseThirtySix.safetyPolicy.rbacPreserved === true],
+  ["Fase 037 orienta Pipeline à próxima movimentação", phaseThirtySeven.status === "completed" && phaseThirtySeven.pipelineContract.visiblePriorityLimit === 3 && pipelinePage.includes('data-pipeline-layout="movement-first"')],
+  ["Pipeline preserva etapas, movimento seguro e verdade", phaseThirtySeven.pipelineContract.canonicalStagesPreserved === true && phaseThirtySeven.pipelineContract.safeMovementPreserved === true && phaseThirtySeven.truthPolicy.queuePresentedAsGlobalPortfolio === false && phaseThirtySeven.safetyPolicy.rbacPreserved === true],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 

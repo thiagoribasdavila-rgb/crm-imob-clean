@@ -3034,8 +3034,8 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
 .atlas-pipeline-hero {
   position: relative;
   overflow: hidden;
-  padding: clamp(24px, 4vw, 40px);
-  padding-right: clamp(24px, 12vw, 168px);
+  padding: clamp(20px, 3vw, 32px);
+  padding-right: clamp(24px, 9vw, 128px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 26px;
   background:
@@ -3049,12 +3049,12 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
 }
 .atlas-pipeline-hero.is-focus-mode {
   min-height: auto;
-  padding-block: 22px;
+  padding-block: 18px;
   background: linear-gradient(135deg, rgba(15,23,42,.72), rgba(7,12,23,.9));
 }
 .atlas-pipeline-hero.is-focus-mode .atlas-pipeline-robot {
-  width: 64px;
-  opacity: .28;
+  width: 52px;
+  opacity: .2;
   transform: translateY(22%);
 }
 .atlas-pipeline-hero.is-focus-mode h2 {
@@ -3064,7 +3064,7 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
   position: absolute;
   right: clamp(18px, 3vw, 42px);
   bottom: -50px;
-  width: clamp(76px, 8vw, 112px);
+  width: clamp(64px, 7vw, 94px);
   height: auto;
   opacity: 0.72;
   filter: drop-shadow(0 14px 18px rgba(2, 8, 23, 0.34));
@@ -3219,6 +3219,15 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
     rgba(255, 255, 255, 0.016);
   padding: 18px;
 }
+.atlas-pipeline-priority-queue {
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid rgba(56, 189, 248, 0.11);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 0 0, rgba(56, 189, 248, 0.075), transparent 24rem),
+    rgba(255, 255, 255, 0.016);
+}
 .atlas-broker-focus-heading {
   display: flex;
   align-items: end;
@@ -3252,6 +3261,52 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
   background: rgba(4, 10, 21, 0.66);
   padding: 15px;
 }
+.atlas-broker-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 9px 10px;
+  border: 1px solid rgba(56, 189, 248, 0.09);
+  border-radius: 11px;
+  background: rgba(56, 189, 248, 0.035);
+  font-size: 10px;
+}
+.atlas-broker-stage span,
+.atlas-broker-stage strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.atlas-broker-stage span { color: #64748b; }
+.atlas-broker-stage i { color: #38bdf8; font-style: normal; }
+.atlas-broker-stage strong { color: #bae6fd; text-align: right; }
+.atlas-broker-move-label {
+  display: block;
+  margin-top: 14px;
+  color: #52657c;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.atlas-broker-move-select {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 11px;
+  outline: none;
+  background: #08101f;
+  color: #cbd5e1;
+  font-size: 11px;
+}
+.atlas-broker-move-select:focus-visible {
+  border-color: rgba(56,189,248,.45);
+  box-shadow: 0 0 0 3px rgba(56,189,248,.09);
+}
 .atlas-broker-rank {
   color: #3d536d;
   font:
@@ -3262,7 +3317,7 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
 .atlas-card-shortcuts a {
   display: grid;
   place-items: center;
-  min-height: 34px;
+  min-height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.025);
@@ -3464,14 +3519,15 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
   }
   .atlas-pipeline-hero {
     padding-right: 24px;
-    padding-bottom: 132px;
+    padding-bottom: 88px;
   }
   .atlas-pipeline-robot {
     right: 16px;
     bottom: -40px;
-    width: 78px;
-    opacity: 0.58;
+    width: 64px;
+    opacity: 0.42;
   }
+  .atlas-pipeline-priority-queue { padding: 15px; }
 }
 
 .atlas-evolution-hero {

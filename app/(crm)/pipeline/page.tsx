@@ -304,7 +304,7 @@ export default function PipelinePage() {
   }), [stages, visibleLeads]);
   const boardStages = useMemo(() => hideEmpty ? stageData.filter((stage) => stage.items.length > 0) : stageData, [hideEmpty, stageData]);
   const activeMobileStage = boardStages.some((stage) => stage.key === mobileStage) ? mobileStage : boardStages[0]?.key;
-  const dailyFocus = useMemo(() => leads.filter(isOpenLead).sort((a, b) => priorityWeight(b) - priorityWeight(a)).slice(0, 3), [leads]);
+  const dailyFocus = useMemo(() => visibleLeads.filter(isOpenLead).slice(0, 3), [visibleLeads]);
 
   const focusOptions = useMemo(() => {
     const open = leads.filter(isOpenLead);
@@ -319,14 +319,14 @@ export default function PipelinePage() {
   }, [leads]);
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-5 pb-8" data-phase="37-pipeline-movement-workspace" data-pipeline-layout="movement-first">
       <section className={`atlas-pipeline-hero atlas-grid-glow ${focusMode ? "is-focus-mode" : ""}`}>
         <Image className="atlas-pipeline-robot" src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas acompanhando o pipeline comercial" width={210} height={315} priority />
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="flex flex-wrap gap-2"><AtlasBadge tone="success">PIPELINE AO VIVO</AtlasBadge><AtlasBadge tone="info">{metrics.open} NEGÓCIOS</AtlasBadge></div>
-            <h2 className="mt-4 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Pipeline comercial</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Avance oportunidades, proteja SLAs e mantenha a próxima ação visível.</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Pipeline comercial</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Decida o próximo movimento, proteja SLAs e mantenha cada avanço registrado.</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead, região, origem ou campanha..." className="min-w-72 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
@@ -350,22 +350,36 @@ export default function PipelinePage() {
         <AtlasMetric label="Perfis compradores" value={loading ? "—" : metrics.buyerProfiles} detail="Compraram em outro lugar" trend="LEARN" tone="green" />
       </section> : null}
 
-      <section className="rounded-[24px] border border-white/[0.07] bg-white/[0.018] p-4 sm:p-5" aria-label="Fila de foco comercial">
+      <section className="atlas-pipeline-priority-queue" aria-labelledby="atlas-pipeline-priority-title" aria-live="polite" data-priority-source="authorized-loaded-pipeline">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Fila inteligente</p><h3 className="mt-1 text-lg font-semibold text-white">O que precisa de ação agora</h3><p className="mt-1 text-xs text-slate-500">Ordenado automaticamente por SLA, atraso, temperatura, risco e score.</p></div>
+          <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Movimentação prioritária</p><h3 id="atlas-pipeline-priority-title" className="mt-1 text-lg font-semibold text-white">Comece por aqui</h3><p className="mt-1 text-xs text-slate-500">As três ações com maior impacto operacional aparente no recorte atual; filtros e ordenação também organizam esta fila.</p></div>
           <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar oportunidades do pipeline">
             {focusOptions.map((option) => <button key={option.key} type="button" onClick={() => setFocus(option.key)} aria-pressed={focus === option.key} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${focus === option.key ? "border-sky-400/30 bg-sky-400/10 text-sky-200" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><span>{option.label}</span><span className={`rounded-full px-1.5 py-0.5 text-[9px] ${focus === option.key ? "bg-sky-300/15 text-sky-100" : "bg-white/[0.05] text-slate-500"}`}>{option.count}</span></button>)}
           </div>
         </div>
-      </section>
-
-      {!focusMode ? <section className="atlas-broker-focus" aria-label="Plano de ação recomendado para o corretor">
-        <div className="atlas-broker-focus-heading"><div><p>Copiloto comercial</p><h3>Comece por aqui</h3><span>As três ações com maior impacto agora, explicadas em linguagem simples.</span></div><Link href="/tasks" className="atlas-kanban-toggle">Ver minhas tarefas</Link></div>
-        <div className="grid gap-3 lg:grid-cols-3">
-          {dailyFocus.map((lead, index) => { const guidance = brokerGuidance(lead); const contact = phoneLinks(lead.phone); return <article key={lead.id} className="atlas-broker-action"><div className="flex items-start justify-between gap-3"><span className="atlas-broker-rank">{String(index + 1).padStart(2, "0")}</span><AtlasBadge tone={guidance.tone}>{lead.score ?? 0} SCORE</AtlasBadge></div><Link href={`/leads/${lead.id}`} className="mt-4 block truncate text-sm font-semibold text-white hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-3 text-sm font-semibold text-sky-200">{guidance.action}</p><p className="mt-1 min-h-10 text-xs leading-5 text-slate-500">{guidance.reason}</p><div className="mt-4 grid grid-cols-3 gap-2"><Link href={`/leads/${lead.id}`} className="atlas-broker-shortcut">Abrir</Link><Link href={`/leads/${lead.id}/messages`} className="atlas-broker-shortcut">IA</Link>{contact ? <a href={contact.call} className="atlas-broker-shortcut">Ligar</a> : <span className="atlas-broker-shortcut is-disabled">Sem fone</span>}</div></article>; })}
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          {dailyFocus.map((lead, index) => {
+            const guidance = brokerGuidance(lead);
+            const contact = phoneLinks(lead.phone);
+            const risk = leadRisk(lead);
+            const currentStageIndex = stages.findIndex((stage) => stage.key === (lead.status || "novo"));
+            const currentStage = stages[currentStageIndex];
+            const nextStage = currentStageIndex >= 0 ? stages[currentStageIndex + 1] : undefined;
+            return <article key={lead.id} className="atlas-broker-action">
+              <div className="flex items-start justify-between gap-3"><span className="atlas-broker-rank">{String(index + 1).padStart(2, "0")}</span><AtlasBadge tone={riskTone(risk)}>Risco {risk}</AtlasBadge></div>
+              <Link href={`/leads/${lead.id}`} className="mt-3 block truncate text-sm font-semibold text-white hover:text-sky-300">{lead.name || "Lead sem nome"}</Link>
+              <div className="atlas-broker-stage"><span>{currentStage?.label || "Etapa atual"}</span><i aria-hidden="true">→</i><strong>{nextStage?.label || "Revisar fechamento"}</strong></div>
+              <p className="mt-3 text-sm font-semibold text-sky-200">{guidance.action}</p><p className="mt-1 min-h-10 text-xs leading-5 text-slate-500">{guidance.reason}</p>
+              <label className="atlas-broker-move-label" htmlFor={`priority-stage-${lead.id}`}>Movimentar após validar</label>
+              <select id={`priority-stage-${lead.id}`} value={lead.status ?? "novo"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="atlas-broker-move-select">
+                {destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
+              </select>
+              <div className="mt-3 grid grid-cols-3 gap-2"><Link href={`/leads/${lead.id}`} className="atlas-broker-shortcut">Abrir Lead 360</Link><Link href={`/leads/${lead.id}/messages`} className="atlas-broker-shortcut">Preparar com IA</Link>{contact ? <a href={contact.call} className="atlas-broker-shortcut">Ligar</a> : <span className="atlas-broker-shortcut is-disabled">Sem telefone</span>}</div>
+            </article>;
+          })}
           {!loading && dailyFocus.length === 0 ? <div className="lg:col-span-3"><AtlasEmpty reason="completed" eyebrow="Fila prioritária concluída" title="Tudo em dia" description="Nenhuma oportunidade aberta exige ação neste momento." action={<Link href="/tasks" className="atlas-button-secondary">Revisar tarefas</Link>} /></div> : null}
         </div>
-      </section> : null}
+      </section>
 
       {!focusMode ? <section className="atlas-pipeline-flow" aria-label="Resumo visual das etapas do pipeline">
         {stageData.map((stage, index) => (

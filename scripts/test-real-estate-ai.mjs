@@ -570,7 +570,7 @@ const checks = [
   ["corretor recebe três prioridades diárias explicadas", pipelinePage.includes("Comece por aqui") && pipelinePage.includes("dailyFocus") && pipelinePage.includes("As três ações com maior impacto")],
   ["card orienta próxima melhor ação", pipelinePage.includes("brokerGuidance") && pipelinePage.includes("Próxima melhor ação")],
   ["card oferece atalhos operacionais", pipelinePage.includes("Criar abordagem com IA") && pipelinePage.includes("Abrir WhatsApp") && pipelinePage.includes("Ligar para a lead")],
-  ["robô do pipeline permanece como detalhe visual", globalsCss.includes("width: clamp(76px, 8vw, 112px)") && globalsCss.includes("opacity: 0.72")],
+  ["robô do pipeline permanece como detalhe visual", globalsCss.includes(".atlas-pipeline-robot") && globalsCss.includes("width: clamp(64px, 7vw, 94px)") && globalsCss.includes("opacity: 0.72")],
   ["rascunho rejeita estoque indisponível na API", presentationRoute.includes("isPropertyAvailable") && presentationRoute.includes("O estoque mudou")],
   ["registro reconfirma estoque vigente", leadIntelligenceRoute.includes("isPropertyAvailable(property.status)") && leadIntelligenceRoute.includes("Atualize a seleção")],
   ["banco impede apresentação de unidade bloqueada", inventoryGuardMigration.includes("guard_property_presentation_inventory") && inventoryGuardMigration.includes("Unidade indisponível")],
