@@ -1,0 +1,103 @@
+{
+  "phase": 39,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "agenda-time-workspace",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "dataFetchingChanged": false,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": false,
+  "calendarContract": {
+    "layoutAttribute": "time-first",
+    "sources": [
+      "tasks",
+      "lead_visits",
+      "leads.next_action_at"
+    ],
+    "periods": [
+      "today",
+      "week",
+      "month",
+      "overdue",
+      "all"
+    ],
+    "primarySignals": 4,
+    "visibleAttentionLimit": 3,
+    "visitFollowUpDeduplicationPreserved": true,
+    "existingRealtimePreserved": true,
+    "manualRefreshPreserved": true,
+    "taskCreationLinkPreserved": true,
+    "existingCalendarApiPreserved": true
+  },
+  "informationHierarchy": {
+    "signals": [
+      "overdue",
+      "today",
+      "next seven days",
+      "visits"
+    ],
+    "immediateAttentionShowsOverdueAndToday": true,
+    "immediateAttentionLimit": 3,
+    "timelineGroupedByLocalDay": true,
+    "sourceCompositionProgressivelyDisclosed": true,
+    "allExistingPeriodsRemainAvailable": true,
+    "functionalityRemoved": false
+  },
+  "executionPolicy": {
+    "agendaOnlyOrganizesExistingCommitments": true,
+    "openingContextRequiresHumanAction": true,
+    "automaticTaskCompletion": false,
+    "automaticVisitConfirmation": false,
+    "automaticCustomerContact": false,
+    "automaticAssignment": false
+  },
+  "truthPolicy": {
+    "attentionLimitedToAuthorizedPayload": true,
+    "orderingUsesDeadlineNotPrediction": true,
+    "realtimeStateIsExplicit": true,
+    "assistantPresentedAsAutonomousAi": false,
+    "productivityGainPublished": false,
+    "conversionGuaranteePublished": false
+  },
+  "accessibility": {
+    "timelineUsesSectionAndTimeSemantics": true,
+    "periodsUsePressedState": true,
+    "attentionUsesPoliteLiveRegion": true,
+    "loadingUsesBusyState": true,
+    "minimumNewTouchTargetPx": 44,
+    "reducedMotionPolicyPreserved": true
+  },
+  "structuralBaseline": {
+    "newStateAdded": false,
+    "newEffectAdded": false,
+    "newNetworkRequestAdded": false,
+    "existingNetworkRequests": 1,
+    "existingRealtimeSubscriptions": 1,
+    "visibleAttentionLimit": 3,
+    "runtimeAgendaCompletionTimeMeasured": false
+  },
+  "safetyPolicy": {
+    "databaseWriteAdded": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "calendarApiContractPreserved": true,
+    "routesPreserved": true
+  },
+  "exitCriteria": {
+    "firstViewportShowsTemporalSignals": true,
+    "firstThreeImmediateCommitmentsAreVisible": true,
+    "allCalendarPeriodsRemainAvailable": true,
+    "taskVisitAndFollowUpRemainUnified": true,
+    "technicalErrorsRemainRedacted": true,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 40,
+    "name": "Melhorar atividades",
+    "status": "planned"
+  }
+}

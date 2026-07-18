@@ -40,6 +40,7 @@ const phaseThirtyFive = JSON.parse(fs.readFileSync("config/evolution-phase-035-d
 const phaseThirtySix = JSON.parse(fs.readFileSync("config/evolution-phase-036-leads-action-workspace.json", "utf8"));
 const phaseThirtySeven = JSON.parse(fs.readFileSync("config/evolution-phase-037-pipeline-movement-workspace.json", "utf8"));
 const phaseThirtyEight = JSON.parse(fs.readFileSync("config/evolution-phase-038-task-execution-workspace.json", "utf8"));
+const phaseThirtyNine = JSON.parse(fs.readFileSync("config/evolution-phase-039-agenda-time-workspace.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -149,6 +150,8 @@ const checks = [
   ["Pipeline preserva etapas, movimento seguro e verdade", phaseThirtySeven.pipelineContract.canonicalStagesPreserved === true && phaseThirtySeven.pipelineContract.safeMovementPreserved === true && phaseThirtySeven.truthPolicy.queuePresentedAsGlobalPortfolio === false && phaseThirtySeven.safetyPolicy.rbacPreserved === true],
   ["Fase 038 orienta Tarefas à execução diária", phaseThirtyEight.status === "completed" && phaseThirtyEight.taskContract.visibleDailyPriorities === 3 && tasksPage.includes('data-task-layout="execution-first"')],
   ["Tarefas preservam ações humanas, RBAC e verdade", phaseThirtyEight.executionPolicy.automaticTaskCompletion === false && phaseThirtyEight.truthPolicy.priorityIsExplainableHeuristicNotPrediction === true && phaseThirtyEight.safetyPolicy.rbacPreserved === true],
+  ["Fase 039 orienta Agenda ao tempo comercial", phaseThirtyNine.status === "completed" && phaseThirtyNine.calendarContract.visibleAttentionLimit === 3 && calendarPage.includes('data-calendar-layout="time-first"')],
+  ["Agenda preserva fontes, ações humanas e verdade", phaseThirtyNine.calendarContract.sources.length === 3 && phaseThirtyNine.executionPolicy.automaticCustomerContact === false && phaseThirtyNine.truthPolicy.orderingUsesDeadlineNotPrediction === true && phaseThirtyNine.safetyPolicy.rbacPreserved === true],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 
