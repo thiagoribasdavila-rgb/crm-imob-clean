@@ -11,6 +11,7 @@ import {
 } from "@/lib/atlas/evolution-phases";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { CommandCenterOverview } from "./CommandCenterOverview";
+import { Evolution500Program } from "./Evolution500Program";
 import { isMissingRelation } from "@/lib/compat/legacy-v2";
 
 type Metrics = {
@@ -132,7 +133,7 @@ export default function AtlasV3Page() {
           </div>
           <div>
             <p><span>Execução técnica</span><strong>{technicalEvolution}%</strong></p>
-            <p><span>Fases avançadas</span><strong>{phaseSummary.advanced}/10</strong></p>
+            <p><span>Fases avançadas</span><strong>{phaseSummary.advanced}/{evolutionPhases.length}</strong></p>
             <p><span>Operação real</span><strong>pendente</strong></p>
           </div>
         </div>
@@ -145,6 +146,8 @@ export default function AtlasV3Page() {
       ) : null}
 
       <CommandCenterOverview />
+
+      <Evolution500Program />
 
       <section className="atlas-runtime-strip">
         {[

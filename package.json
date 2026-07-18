@@ -141,6 +141,7 @@
     "final-projects:check": "node scripts/check-final-projects.mjs",
     "final-dashboards:check": "node scripts/check-final-dashboards.mjs",
     "final-ai:check": "node scripts/check-final-ai-integrations.mjs",
+    "evolution-500:check": "node scripts/check-evolution-500.mjs",
     "ai-os:check": "node scripts/check-ai-operating-system.mjs",
     "final-reliability:check": "node scripts/check-final-reliability-homologation.mjs",
     "final-package:check": "node scripts/check-final-regression-package.mjs",
