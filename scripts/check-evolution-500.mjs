@@ -32,6 +32,7 @@ const phaseTwentySeven = JSON.parse(fs.readFileSync("config/evolution-phase-027-
 const phaseTwentyEight = JSON.parse(fs.readFileSync("config/evolution-phase-028-navigation-primary-action-standard.json", "utf8"));
 const phaseTwentyNine = JSON.parse(fs.readFileSync("config/evolution-phase-029-navigation-progressive-loading.json", "utf8"));
 const phaseThirty = JSON.parse(fs.readFileSync("config/evolution-phase-030-navigation-useful-empty-states.json", "utf8"));
+const phaseThirtyOne = JSON.parse(fs.readFileSync("config/evolution-phase-031-navigation-failure-recovery.json", "utf8"));
 const globalStyles = fs.readFileSync("app/globals.css", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const tokens = fs.readFileSync("styles/atlas-tokens.css", "utf8");
@@ -121,6 +122,8 @@ const checks = [
   ["Carregamento progressivo preserva acessibilidade e verdade", progressivePageLoading.includes('aria-busy="true"') && localLoadingState.includes('data-loading-priority="detail"') && phaseTwentyNine.truthPolicy.fakeProgressRendered === false && phaseTwentyNine.safetyPolicy.rbacPreserved === true],
   ["Fase 030 torna ausências acionáveis", phaseThirty.status === "completed" && phaseThirty.emptyStateContract.reasons.length === 5 && phaseThirty.criticalSurfaces.length === 8],
   ["Vazios governados não mascaram falhas", atlasUi.includes("data-empty-reason={reason}") && phaseThirty.truthPolicy.emptyStateMayMaskFetchFailure === false && phaseThirty.truthPolicy.fakeRecordsRendered === false],
+  ["Fase 031 recupera falhas sem repetir escrita", phaseThirtyOne.status === "completed" && phaseThirtyOne.structuralBaseline.sharedRecoveryConsumersAfter === 7 && phaseThirtyOne.safetyPolicy.retryRepeatsWrite === false],
+  ["Recuperação compartilhada redige detalhes técnicos", atlasUi.includes("safeFailureDescription(description)") && atlasUi.includes('data-recovery-strategy="safe-read-retry"') && phaseThirtyOne.recoveryContract.technicalDetailsRedacted === true],
   ["Bloqueio de staging aparece no programa", source.includes('status: "bloqueada"') && page.includes("Aguardando staging")],
 ];
 

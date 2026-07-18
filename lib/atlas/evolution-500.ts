@@ -277,6 +277,20 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
       "Cobertura estrutural não foi apresentada como resultado de uso e o gate da Fase 020 permanece bloqueado",
     ],
   },
+  31: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: [
+      "Agenda, tarefas, pipeline, clientes, projetos, vendas e distribuição usam o mesmo contrato recuperável",
+      "Leads preserva recuperação explícita, completando oito superfícies comerciais com próximo passo",
+      "Cinco banners antigos foram substituídos por nova tentativa local com estado ocupado",
+      "Mensagens técnicas conhecidas são redigidas antes de chegar ao usuário",
+      "Retentativas repetem somente leitura e nunca refazem movimentação, comissão, distribuição ou criação",
+      "O limite geral da área CRM compartilha o contrato e mantém retorno ao Command Center",
+      "Nenhum dado, rota, permissão ou segredo foi alterado",
+      "Cobertura estrutural não foi apresentada como resultado de uso e o gate da Fase 020 permanece bloqueado",
+    ],
+  },
 };
 
 const checkpoints = [

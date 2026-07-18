@@ -124,7 +124,7 @@ export default function DevelopmentsPage() {
         </div>
       </section>
 
-      {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} /> : null}
+      {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AtlasMetric label="VGV do portfólio" value={loading ? "—" : brl.format(data?.portfolio.totalVgv ?? 0)} detail="Valor total do estoque vinculado" trend="PORTFÓLIO" tone="violet" />

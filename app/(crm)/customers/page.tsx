@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/atlas/page-header";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
-import { AtlasBadge, AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasBadge, AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { isMissingColumn, isMissingRelation } from "@/lib/compat/legacy-v2";
 
 type Customer = {
@@ -26,10 +26,13 @@ export default function CustomersPage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [profile, setProfile] = useState("all");
+  const [reloadVersion, setReloadVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
     void (async () => {
+      setLoading(true);
+      setError(null);
       const { data, error: loadError } = await supabase
         .from("customers")
         .select("id, full_name, email, phone, profile_type, income, created_at")
@@ -46,7 +49,7 @@ export default function CustomersPage() {
       setLoading(false);
     })();
     return () => { active = false; };
-  }, []);
+  }, [reloadVersion]);
 
   const profiles = useMemo(() => [...new Set(items.map((item) => item.profile_type || "Comprador"))].sort(), [items]);
   const visible = useMemo(() => {
@@ -69,7 +72,7 @@ export default function CustomersPage() {
         description="Compradores, investidores e relacionamentos comerciais reunidos em uma visão pesquisável e segura."
         action={{ href: "/leads/new", label: "Novo cliente", icon: "＋" }}
       />
-      {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
+      {error ? <AtlasRecoverableError description={error} onRetry={() => setReloadVersion((current) => current + 1)} busy={loading} /> : null}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AtlasMetric label="Clientes visíveis" value={loading ? "—" : items.length} detail="Respeitando seu escopo comercial" trend="360" tone="blue" />
         <AtlasMetric label="Com contato" value={loading ? "—" : withContact} detail="Telefone ou e-mail disponível" trend="DADOS" tone="green" />

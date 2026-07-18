@@ -15,6 +15,15 @@ const emptyReasonLabels: Record<AtlasEmptyReason, string> = {
   "not-configured": "Configuração necessária",
 };
 
+const technicalFailurePattern = /(?:column\s+.+does not exist|could not find.+(?:table|column|schema)|schema cache|relation\s+.+does not exist|postgres|pgrst|prisma|syntaxerror|stack trace)/i;
+
+function safeFailureDescription(description?: string) {
+  if (!description || technicalFailurePattern.test(description)) {
+    return "O Atlas registrou a inconsistência. Tente novamente em alguns instantes.";
+  }
+  return description;
+}
+
 export function AtlasBadge({
   children,
   tone = "neutral",
@@ -71,23 +80,48 @@ export function AtlasEmpty({
 }
 
 export function AtlasRecoverableError({
+  title = "Não foi possível atualizar esta área",
   description,
   onRetry,
+  retryLabel = "Tentar novamente",
+  secondaryAction,
+  scope = "module",
+  busy = false,
 }: {
+  title?: string;
   description?: string;
   onRetry: () => void;
+  retryLabel?: string;
+  secondaryAction?: ReactNode;
+  scope?: "module" | "page" | "action";
+  busy?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-rose-400/20 bg-rose-400/[0.07] p-4 sm:flex-row sm:items-center sm:justify-between" role="alert">
+    <div
+      className="flex flex-col gap-4 rounded-2xl border border-rose-400/20 bg-rose-400/[0.07] p-4 sm:flex-row sm:items-center sm:justify-between"
+      role="alert"
+      data-recovery-scope={scope}
+      data-recovery-strategy="safe-read-retry"
+    >
       <div className="flex min-w-0 gap-3">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-400/10 text-rose-200" aria-hidden="true">!</span>
         <div>
-          <p className="text-sm font-semibold text-rose-100">Não foi possível atualizar esta área</p>
+          <p className="text-sm font-semibold text-rose-100">{title}</p>
           <p className="mt-1 text-xs leading-5 text-slate-300">Seus dados permanecem protegidos.</p>
-          <p className="mt-1 text-xs leading-5 text-slate-400">{description || "Tente novamente em alguns instantes."}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">{safeFailureDescription(description)}</p>
         </div>
       </div>
-      <button type="button" onClick={onRetry} className="atlas-button-secondary shrink-0">Tentar novamente</button>
+      <div className="flex shrink-0 flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={busy}
+          className="atlas-button-secondary min-h-11 shrink-0 disabled:cursor-wait disabled:opacity-60"
+        >
+          {busy ? "Atualizando…" : retryLabel}
+        </button>
+        {secondaryAction}
+      </div>
     </div>
   );
 }
