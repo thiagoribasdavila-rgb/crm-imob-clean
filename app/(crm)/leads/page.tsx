@@ -51,6 +51,14 @@ type ReferenceRow = Record<string, unknown>;
 type SortDirection = "asc" | "desc";
 type AttentionFilter = "" | "overdue" | "no_action" | "hot" | "unassigned";
 type NextActionFilter = "" | "today" | "next_7_days" | "scheduled";
+type LeadPriorityTone = "danger" | "warning" | "info";
+type LeadPriority = {
+  lead: Lead;
+  label: string;
+  detail: string;
+  tone: LeadPriorityTone;
+  rank: number;
+};
 type SavedLeadFilters = {
   search?: string;
   status?: string;
@@ -150,6 +158,70 @@ function dueLabel(value: string | null, referenceTime: number) {
     label: `${overdue ? "Atrasada" : "Próxima"} · ${date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}`,
     overdue,
   };
+}
+
+function visibleLeadPriority(
+  lead: Lead,
+  referenceTime: number,
+  includeOwnership: boolean,
+): LeadPriority | null {
+  const nextActionTime = lead.next_action_at
+    ? new Date(lead.next_action_at).getTime()
+    : Number.NaN;
+  const overdue =
+    referenceTime > 0 &&
+    Number.isFinite(nextActionTime) &&
+    nextActionTime < referenceTime;
+  const hot =
+    Number(lead.score ?? 0) >= 70 ||
+    (lead.temperature ?? "").toLowerCase() === "quente";
+
+  if (overdue) {
+    return {
+      lead,
+      label: "Follow-up vencido",
+      detail: "Retome o contato e registre o resultado do atendimento.",
+      tone: "danger",
+      rank: 0,
+    };
+  }
+  if (includeOwnership && !lead.assigned_to) {
+    return {
+      lead,
+      label: "Sem responsável",
+      detail: "Distribua a lead antes de perder o tempo de resposta.",
+      tone: "warning",
+      rank: 1,
+    };
+  }
+  if (hot && !lead.next_action_at) {
+    return {
+      lead,
+      label: "Quente sem agenda",
+      detail: "Confirme o interesse e agende a próxima ação.",
+      tone: "danger",
+      rank: 2,
+    };
+  }
+  if (hot) {
+    return {
+      lead,
+      label: "Alta intenção",
+      detail: "Revise o histórico antes do próximo contato agendado.",
+      tone: "warning",
+      rank: 3,
+    };
+  }
+  if (!lead.next_action_at) {
+    return {
+      lead,
+      label: "Sem próxima ação",
+      detail: "Defina um follow-up para a oportunidade não ficar esquecida.",
+      tone: "info",
+      rank: 4,
+    };
+  }
+  return null;
 }
 
 export default function LeadsPage() {
@@ -440,6 +512,19 @@ export default function LeadsPage() {
     [profiles],
   );
 
+  const visiblePriorityQueue = useMemo(() => {
+    const includeOwnership = currentRole !== "broker";
+    return items
+      .map((lead) =>
+        visibleLeadPriority(lead, referenceTime, includeOwnership),
+      )
+      .filter((priority): priority is LeadPriority => priority !== null)
+      .sort((left, right) => {
+        if (left.rank !== right.rank) return left.rank - right.rank;
+        return Number(right.lead.score ?? 0) - Number(left.lead.score ?? 0);
+      });
+  }, [currentRole, items, referenceTime]);
+
   const hasFilters = Boolean(
     search ||
     status ||
@@ -547,8 +632,12 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="space-y-6 pb-10">
-      <section className="atlas-leads-hero">
+    <div
+      className="space-y-5 pb-10"
+      data-phase="36-leads-action-workspace"
+      data-leads-layout="action-first"
+    >
+      <section className="atlas-leads-hero atlas-leads-hero-compact">
         <div className="atlas-leads-source-filter">
           <div className="flex flex-wrap gap-2">
             <StatusBadge tone="info">LEADS INTELLIGENCE</StatusBadge>
@@ -563,11 +652,15 @@ export default function LeadsPage() {
               </StatusBadge>
             ) : null}
           </div>
-          <h1>Concentre a operação nos leads com maior chance de avançar.</h1>
+          <h1>
+            {currentRole === "broker"
+              ? "Sua fila de leads, pronta para agir."
+              : "Leads que exigem decisão agora."}
+          </h1>
           <p>
             {currentRole === "broker"
-              ? "Sua carteira, prioridades e próximas ações em uma visão simples para vender mais e perder menos tempo."
-              : "Visibilidade respeitando a hierarquia, distribuição em massa e histórico completo para conduzir o time comercial."}
+              ? "Prioridades e próximas ações da sua carteira, sem misturar leads de outros corretores."
+              : "Prioridades do escopo autorizado, distribuição rastreável e próxima ação em uma visão compacta."}
           </p>
           <div className="atlas-command-actions">
             <Link href="/leads/new" className="atlas-button-primary">
@@ -576,44 +669,42 @@ export default function LeadsPage() {
             <Link href="/pipeline" className="atlas-button-secondary">
               Abrir pipeline
             </Link>
-            <Link href="/leads/data-quality" className="atlas-button-secondary">
-              Qualidade dos dados
-            </Link>
-            <Link
-              href="/leads/deduplication"
-              className="atlas-button-secondary"
-            >
-              Duplicidades
-            </Link>
-            <button
-              type="button"
-              className="atlas-button-secondary"
-              onClick={() =>
-                window.dispatchEvent(
-                  new CustomEvent("atlas:open-copilot", {
-                    detail: {
-                      prompt:
-                        "Analise a carteira de leads atual e recomende critérios de priorização para o time comercial.",
-                      context: {
-                        total,
-                        filters: {
-                          status,
-                          source,
-                          project,
-                          broker,
-                          score,
-                          attention,
-                          nextAction,
+            <details className="atlas-leads-tools">
+              <summary>Mais ferramentas</summary>
+              <div>
+                <Link href="/leads/data-quality">Qualidade dos dados</Link>
+                <Link href="/leads/deduplication">Duplicidades</Link>
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.dispatchEvent(
+                      new CustomEvent("atlas:open-copilot", {
+                        detail: {
+                          prompt:
+                            "Analise a carteira de leads visível e explique até três prioridades, sem executar nenhuma ação.",
+                          context: {
+                            total,
+                            filters: {
+                              status,
+                              source,
+                              project,
+                              broker,
+                              score,
+                              attention,
+                              nextAction,
+                            },
+                            pageMetrics,
+                            visiblePriorities: visiblePriorityQueue.length,
+                          },
                         },
-                        pageMetrics,
-                      },
-                    },
-                  }),
-                )
-              }
-            >
-              ✦ Analisar carteira
-            </button>
+                      }),
+                    )
+                  }
+                >
+                  ✦ Analisar carteira
+                </button>
+              </div>
+            </details>
           </div>
         </div>
         <div className="atlas-leads-total">
@@ -627,6 +718,90 @@ export default function LeadsPage() {
                 : "somente seu escopo comercial"}
           </small>
         </div>
+      </section>
+
+      <section
+        className="atlas-leads-action-queue"
+        aria-labelledby="atlas-leads-action-title"
+        aria-live="polite"
+        data-phase="36-visible-action-queue"
+      >
+        <header>
+          <div>
+            <p>Fila de ação · página atual</p>
+            <h2 id="atlas-leads-action-title">O que precisa avançar agora</h2>
+          </div>
+          <span>
+            {loading
+              ? "Sincronizando"
+              : `${visiblePriorityQueue.length} prioridade(s) visível(is)`}
+          </span>
+        </header>
+        {loading ? (
+          <LoadingState rows={3} />
+        ) : visiblePriorityQueue.length ? (
+          <div className="atlas-leads-action-list">
+            {visiblePriorityQueue.slice(0, 3).map((priority, index) => (
+              <article key={priority.lead.id} data-tone={priority.tone}>
+                <div className="atlas-leads-action-rank">
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <StatusBadge tone={priority.tone}>
+                    {priority.label}
+                  </StatusBadge>
+                </div>
+                <div className="atlas-leads-action-copy">
+                  <Link href={`/leads/${priority.lead.id}`}>
+                    {priority.lead.name || "Lead sem nome"}
+                  </Link>
+                  <p>{priority.detail}</p>
+                  <small>
+                    {projectName(priority.lead)} · {priority.lead.status || "novo"}
+                  </small>
+                </div>
+                <div className="atlas-leads-action-buttons">
+                  <Link href={`/leads/${priority.lead.id}`}>Abrir lead</Link>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new CustomEvent("atlas:open-copilot", {
+                          detail: {
+                            prompt:
+                              "Prepare uma abordagem curta para esta lead usando apenas o contexto autorizado. Explique a recomendação e não envie mensagem nem altere o CRM.",
+                            context: {
+                              leadId: priority.lead.id,
+                              project: projectName(priority.lead),
+                              status: priority.lead.status,
+                              source: priority.lead.source,
+                              score: priority.lead.score,
+                              temperature: priority.lead.temperature,
+                              priority: priority.label,
+                            },
+                          },
+                        }),
+                      )
+                    }
+                  >
+                    ✦ Preparar abordagem
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="atlas-leads-action-clear">
+            <strong>Nenhuma pendência prioritária nesta página</strong>
+            <span>
+              Use os atalhos de atenção para consultar o restante da carteira.
+            </span>
+          </div>
+        )}
+        {!loading && visiblePriorityQueue.length > 3 ? (
+          <small className="atlas-leads-action-more">
+            + {visiblePriorityQueue.length - 3} prioridade(s) continuam na
+            tabela desta página.
+          </small>
+        ) : null}
       </section>
 
       <section className="atlas-leads-metrics">
