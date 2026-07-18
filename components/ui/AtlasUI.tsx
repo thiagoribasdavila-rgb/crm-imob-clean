@@ -48,7 +48,7 @@ export function AtlasSkeleton({
 }: {
   className?: string;
 }) {
-  return <div className={`atlas-skeleton rounded-lg ${className}`} />;
+  return <div className={`atlas-skeleton rounded-lg ${className}`} aria-hidden="true" />;
 }
 
 export function AtlasProgress({

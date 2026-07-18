@@ -923,6 +923,32 @@ textarea:focus {
   color: #bae6fd;
   background: rgba(56, 189, 248, 0.06);
 }
+.atlas-quick-create {
+  display: flex;
+  min-width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 12px;
+  color: #e0f2fe;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(79, 70, 229, 0.1));
+  font-size: 11px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.045);
+  transition: border-color var(--atlas-transition), background var(--atlas-transition), transform var(--atlas-transition);
+}
+.atlas-quick-create:hover {
+  border-color: rgba(125, 211, 252, 0.35);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.24), rgba(79, 70, 229, 0.16));
+  transform: translateY(-1px);
+}
+.atlas-quick-create span { font-size: 15px; line-height: 1; }
+@media (max-width: 767px) {
+  .atlas-quick-create { padding: 0; }
+  .atlas-quick-create strong { display: none; }
+}
 .atlas-command-trigger {
   display: none;
   min-width: 190px;

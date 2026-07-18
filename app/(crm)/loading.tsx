@@ -2,7 +2,8 @@ import { AtlasSkeleton } from "@/components/ui/AtlasUI";
 
 export default function Loading() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="status" aria-live="polite" aria-label="Carregando área comercial">
+      <span className="sr-only">Carregando primeiro o resumo e depois os detalhes da operação.</span>
       <div className="rounded-[28px] border border-white/[0.07] bg-white/[0.025] p-8">
         <AtlasSkeleton className="h-5 w-40" />
         <AtlasSkeleton className="mt-5 h-12 w-3/4" />

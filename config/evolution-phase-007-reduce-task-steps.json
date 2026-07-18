@@ -1,0 +1,18 @@
+{
+  "phase": 7,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "criticalTask": "create a new lead",
+  "before": {
+    "entry": "open global search and choose Novo lead",
+    "navigationDecisions": 2
+  },
+  "after": {
+    "entry": "persistent topbar action",
+    "navigationDecisions": 1
+  },
+  "reductionPercent": 50,
+  "coverage": ["desktop", "tablet", "mobile"],
+  "routeReused": "/leads/new",
+  "newBusinessLogic": false
+}

@@ -56,6 +56,21 @@ const phaseEvidence: Record<number, Pick<Evolution500Phase, "status" | "evidence
     completedAt: "2026-07-18",
     evidence: ["Grupos ganharam tipografia secundária consistente", "Tela ativa possui quatro sinais visuais complementares", "Hierarquia melhorada sem alterar rotas ou permissões"],
   },
+  7: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Novo lead disponível como ação persistente", "Decisões de navegação reduzidas de duas para uma", "Rota e formulário existentes foram reutilizados"],
+  },
+  8: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Ação persistente aderiu ao padrão primário oficial", "Ação mantém nome acessível", "Nenhuma lógica comercial foi duplicada"],
+  },
+  9: {
+    status: "concluída",
+    completedAt: "2026-07-18",
+    evidence: ["Fallback ordenado por prioridade de informação", "Status de carregamento anunciado de forma acessível", "Skeletons decorativos removidos da árvore assistiva"],
+  },
 };
 
 const checkpoints = [

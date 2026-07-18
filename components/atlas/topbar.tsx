@@ -61,6 +61,15 @@ export function Topbar({
       </div>
 
       <div className="atlas-topbar-actions">
+        <Link
+          href="/leads/new"
+          className="atlas-button-primary atlas-quick-create"
+          aria-label="Criar novo lead"
+          title="Criar novo lead"
+        >
+          <span aria-hidden="true">＋</span>
+          <strong>Novo lead</strong>
+        </Link>
         <button
           type="button"
           className="atlas-mobile-search"
