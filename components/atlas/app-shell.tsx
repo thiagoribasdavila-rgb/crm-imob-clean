@@ -129,7 +129,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       data-desktop-density={desktopDensity}
       data-desktop-layout="adaptive-wide-workspace"
       data-tablet-layout="adaptive-overlay-workspace"
-      data-mobile-layout="touch-first"
+      data-mobile-layout="thumb-first"
     >
       <div className="atlas-ambient" aria-hidden="true">
         <span className="atlas-ambient-orb atlas-ambient-orb-one" />

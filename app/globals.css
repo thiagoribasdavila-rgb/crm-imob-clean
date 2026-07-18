@@ -4564,3 +4564,101 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
     max-width: 220px;
   }
 }
+
+/* Fase 034 — navegação thumb-first e ação comercial no dock móvel. */
+@media (max-width: 767px) {
+  .atlas-app-shell[data-mobile-layout="thumb-first"] .atlas-app-main {
+    padding-right: var(--atlas-mobile-edge);
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+    padding-left: var(--atlas-mobile-edge);
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"] .atlas-app-topbar {
+    padding-inline: var(--atlas-mobile-edge);
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"] .atlas-topbar-start {
+    flex: 1 1 auto;
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"] .atlas-topbar-location {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"] .atlas-quick-create {
+    display: none;
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"] .atlas-mobile-dock {
+    right: var(--atlas-mobile-edge);
+    left: var(--atlas-mobile-edge);
+    min-height: 68px;
+    padding: 6px;
+    border-radius: 22px;
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"]
+    .atlas-mobile-dock-action {
+    min-height: var(--atlas-mobile-dock-action);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"]
+    .atlas-mobile-dock-action[data-primary="true"] {
+    min-height: var(--atlas-mobile-primary-action);
+    transform: translateY(-8px);
+    border: 1px solid rgba(125, 211, 252, 0.34);
+    border-radius: 18px;
+    color: #f0f9ff;
+    background: linear-gradient(145deg, #0284c7, #2563eb 58%, #4f46e5);
+    box-shadow: 0 12px 30px rgba(37, 99, 235, 0.34), inset 0 1px rgba(255, 255, 255, 0.2);
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"]
+    .atlas-mobile-dock-action[data-primary="true"] > span {
+    font-size: 20px;
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"]
+    .atlas-mobile-dock-action[data-primary="true"] small {
+    max-width: 64px;
+    color: #f0f9ff;
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"]
+    :is(.atlas-mobile-menu, .atlas-mobile-search, .atlas-notification-button, .atlas-user-avatar) {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"] .atlas-page-actions {
+    gap: 8px;
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"]
+    .atlas-page-actions > :only-child {
+    width: 100%;
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 479px) {
+  .atlas-app-shell[data-mobile-layout="thumb-first"] .atlas-topbar-section {
+    max-width: clamp(64px, 22vw, 92px);
+  }
+}
+
+@media (max-width: 374px) {
+  .atlas-app-shell[data-mobile-layout="thumb-first"] .atlas-mobile-dock {
+    right: 6px;
+    left: 6px;
+    padding-inline: 3px;
+  }
+
+  .atlas-app-shell[data-mobile-layout="thumb-first"]
+    .atlas-mobile-dock-action small {
+    font-size: 8px;
+  }
+}

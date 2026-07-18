@@ -21,6 +21,9 @@
   --atlas-desktop-gutter: clamp(24px, 2.1vw, 40px);
   --atlas-tablet-gutter: clamp(18px, 3vw, 28px);
   --atlas-tablet-dock-max: 680px;
+  --atlas-mobile-edge: clamp(10px, 3.2vw, 14px);
+  --atlas-mobile-dock-action: 50px;
+  --atlas-mobile-primary-action: 58px;
   --atlas-radius-sm: 10px;
   --atlas-radius-md: 14px;
   --atlas-radius-lg: 22px;
