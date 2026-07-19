@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext, resolveCommercialRole } from "@/lib/api/security";
+import { recordAuditLog, clientIp, userAgentOf } from "@/lib/api/authorization";
 
 export const dynamic = "force-dynamic";
 const MAX_ROWS = 10_000;
@@ -34,5 +35,6 @@ export async function GET(request: NextRequest) {
   const keys = ["id", "name", "status", "temperature", "score", "source", "assigned_to", "development_id", "created_at", "updated_at", "next_action_at", "budget_min", "budget_max"] as const;
   const csv = `\uFEFF${headers.map(csvCell).join(";")}\n${rows.map((row) => keys.map((key) => csvCell(row[key])).join(";")).join("\n")}`;
   structuredApiLog("info", "crm.leads_exported", request, identity.meta, { userId: identity.access.profile.id, organizationId: identity.access.organization.id, role, rowCount: rows.length, truncated, personalContactFieldsReturned: false });
+  await recordAuditLog({ organizationId: identity.access.organization.id, actorId: identity.access.profile.id, action: "leads.export", module: "leads", resourceType: "leads_csv", ip: clientIp(request), userAgent: userAgentOf(request), metadata: { role, rowCount: rows.length, truncated } });
   return new NextResponse(csv, { status: 200, headers: { ...rate.headers, "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="atlas-leads-${new Date().toISOString().slice(0, 10)}.csv"`, "Cache-Control": "no-store", "X-Atlas-Export-Scope": role, "X-Atlas-Export-Truncated": String(truncated) } });
 }

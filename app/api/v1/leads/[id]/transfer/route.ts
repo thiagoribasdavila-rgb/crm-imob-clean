@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { recordAuditLog, clientIp, userAgentOf } from "@/lib/api/authorization";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type Context = { params: Promise<{ id: string }> };
@@ -32,5 +33,6 @@ export async function POST(request: NextRequest, context: Context) {
   if (!uuid.test(id) || !uuid.test(targetOwnerId) || (expectedOwnerId !== null && !uuid.test(expectedOwnerId)) || reason.length < 10 || reason.length > 500) return apiError("TRANSFER_INVALID", "Informe destino e motivo entre 10 e 500 caracteres.", identity.meta, { status: 400 });
   const result = await getSupabaseAdmin().rpc("transfer_single_lead", { p_actor_id: identity.access.profile.id, p_organization_id: identity.access.organization.id, p_lead_id: id, p_expected_owner_id: expectedOwnerId, p_target_owner_id: targetOwnerId, p_reason: reason });
   if (result.error) return apiError(result.error.message.includes("owner_conflict") ? "TRANSFER_OWNER_CONFLICT" : "TRANSFER_REJECTED", result.error.message.includes("owner_conflict") ? "A lead mudou de responsável. Atualize antes de tentar novamente." : "Transferência não permitida.", identity.meta, { status: result.error.message.includes("owner_conflict") ? 409 : 403 });
+  await recordAuditLog({ organizationId: identity.access.organization.id, actorId: identity.access.profile.id, action: "leads.transfer", module: "leads", resourceType: "lead", resourceId: id, ip: clientIp(request), userAgent: userAgentOf(request), metadata: { targetOwnerId, reasonLength: reason.length } });
   return apiSuccess(result.data, identity.meta, { headers: rate.headers });
 }
