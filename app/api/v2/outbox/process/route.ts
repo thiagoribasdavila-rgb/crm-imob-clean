@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { hashMetaValue, queueMetaConversion } from "@/lib/meta/conversions";
 import { resilientFetch } from "@/lib/http/resilient-fetch";
+import { integrationCatalog } from "@/lib/integrations/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -187,6 +188,36 @@ export async function POST(request: Request) {
         const metaResponse = await response.json() as Record<string, unknown>;
         if (!response.ok) throw new Error(typeof metaResponse.error === "object" && metaResponse.error ? String((metaResponse.error as { message?: unknown }).message || `Meta HTTP ${response.status}`) : `Meta HTTP ${response.status}`);
         await admin.from("meta_conversion_events").update({ status: "delivered", delivered_at: now, meta_response: metaResponse, last_error: null }).eq("id", conversion.id);
+      } else if (event.topic === "portal.lead.ingest" && event.aggregate_id) {
+        const { data: portalEvent, error: portalError } = await admin.from("portal_lead_events").select("id,organization_id,source_id,provider,external_lead_id,listing_id,contact,status").eq("id", event.aggregate_id).single();
+        if (portalError || !portalEvent) throw portalError ?? new Error("Evento de portal não encontrado.");
+        if (portalEvent.status !== "imported") {
+          await admin.from("portal_lead_events").update({ status: "processing", last_error: null }).eq("id", portalEvent.id);
+          const { data: sourceRow } = await admin.from("portal_lead_sources").select("default_owner_id,name").eq("id", portalEvent.source_id).single();
+          const contact = portalEvent.contact && typeof portalEvent.contact === "object" ? portalEvent.contact as { name?: string; email?: string; phone?: string; message?: string } : {};
+          const providerLabel = integrationCatalog.find((item) => item.provider === portalEvent.provider)?.name || portalEvent.provider;
+          const { data: existingLead } = await admin.from("leads").select("id").eq("organization_id", portalEvent.organization_id).contains("metadata", { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id } }).maybeSingle();
+          const leadInsert = existingLead ? { data: existingLead, error: null } : await admin.from("leads").insert({
+            organization_id: portalEvent.organization_id,
+            name: contact.name || `Lead ${providerLabel}`,
+            email: contact.email || null,
+            phone: contact.phone || null,
+            source: providerLabel,
+            status: "novo",
+            temperature: "frio",
+            score: 0,
+            assigned_to: sourceRow?.default_owner_id || null,
+            metadata: { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id, listingId: portalEvent.listing_id, sourceName: sourceRow?.name || null, message: contact.message || null } },
+            created_at: now,
+            next_action_at: new Date(Date.now() + 5 * 60_000).toISOString(),
+          }).select("id").single();
+          const { data: lead, error: leadError } = leadInsert;
+          if (leadError || !lead) throw leadError ?? new Error("Falha ao criar lead de portal.");
+          await Promise.all([
+            admin.from("portal_lead_events").update({ status: "imported", lead_id: lead.id, processed_at: now, last_error: null }).eq("id", portalEvent.id),
+            admin.from("campaign_events").insert({ organization_id: portalEvent.organization_id, lead_id: lead.id, event_type: "lead_created", source: "portal", external_event_id: portalEvent.external_lead_id, payload: { provider: portalEvent.provider, listingId: portalEvent.listing_id }, occurred_at: now }),
+          ]);
+        }
       } else {
         throw new Error(`Tópico não suportado: ${event.topic}`);
       }
@@ -201,6 +232,7 @@ export async function POST(request: Request) {
       await admin.from("integration_outbox").update({ status: terminal ? "dead_letter" : "failed", available_at: nextAttempt, last_error: message }).eq("id", event.id);
       if (event.topic === "meta.lead.fetch" && event.aggregate_id) await admin.from("meta_lead_events").update({ status: "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
       if (event.topic === "meta.conversion.send" && event.aggregate_id) await admin.from("meta_conversion_events").update({ status: terminal ? "dead_letter" : "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
+      if (event.topic === "portal.lead.ingest" && event.aggregate_id) await admin.from("portal_lead_events").update({ status: terminal ? "dead_letter" : "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
       const reactivationBatchId = event.payload && typeof event.payload === "object" ? String((event.payload as { reactivationBatchId?: unknown }).reactivationBatchId || "") : "";
       if (terminal && reactivationBatchId && event.aggregate_id) {
         await admin.from("lead_reactivation_contacts").update({ status: "failed", block_reason: message.slice(0, 500) }).eq("batch_id", reactivationBatchId).eq("message_id", event.aggregate_id);
