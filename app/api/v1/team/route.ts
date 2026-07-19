@@ -3,6 +3,7 @@ import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, liveStorageRole, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { recordAuditLog, clientIp, userAgentOf } from "@/lib/api/authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
   const { error: profileError } = await admin.from("profiles").upsert({ id: userId, organization_id: identity.access.organization.id, name: fullName, email, role: liveStorageRole(commercialRole), active: true, team: null }, { onConflict: "id" });
   if (metadataError || profileError) { await admin.auth.admin.deleteUser(userId); return apiError("PROFILE_CREATE_FAILED", "O convite foi revertido porque a hierarquia não pôde ser criada.", identity.meta, { status: 409 }); }
   structuredApiLog("info", "team.member_invited", request, identity.meta, { actorId: identity.access.profile.id, profileId: userId, commercialRole, emailDomain: email.split("@")[1] });
+  await recordAuditLog({ organizationId: identity.access.organization.id, actorId: identity.access.profile.id, action: "users.create", module: "users", resourceType: "profile", resourceId: userId, ip: clientIp(request), userAgent: userAgentOf(request), metadata: { commercialRole, emailDomain: email.split("@")[1] } });
   return apiSuccess({ id: userId, status: "invited", message: "Convite enviado. O acesso só será ativado após a confirmação do e-mail." }, identity.meta, { status: 201, headers: rate.headers });
 }
 
@@ -92,5 +94,6 @@ export async function PATCH(request: NextRequest) {
   const { data, error } = await admin.from("profiles").update({ role: liveStorageRole(body.commercialRole), active: body.active }).eq("id", body.profileId).eq("organization_id", identity.access.organization.id).select(LIVE_PROFILE_SELECT).single();
   if (error) return apiError("TEAM_UPDATE_REJECTED", "A alteração foi recusada pelas regras da hierarquia.", identity.meta, { status: 403 });
   structuredApiLog("info", "team.member_updated", request, identity.meta, { actorId: identity.access.profile.id, profileId: body.profileId, commercialRole: body.commercialRole, active: body.active });
+  await recordAuditLog({ organizationId: identity.access.organization.id, actorId: identity.access.profile.id, action: body.active ? "users.edit" : "users.deactivate", module: "users", resourceType: "profile", resourceId: body.profileId, ip: clientIp(request), userAgent: userAgentOf(request), metadata: { commercialRole: body.commercialRole, active: body.active } });
   return apiSuccess({ profile: data }, identity.meta, { headers: rate.headers });
 }
