@@ -1,0 +1,97 @@
+{
+  "phase": 34,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "thumb-first-mobile-navigation-and-contextual-commercial-action",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "clientPreferenceChanged": false,
+  "dataFetchingChanged": false,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": false,
+  "phaseFourteenBaseline": {
+    "maximumViewportPx": 767,
+    "minimumTouchTargetPx": 44,
+    "formFontSizePx": 16,
+    "preserved": true
+  },
+  "mobileContract": {
+    "maximumViewportPx": 767,
+    "layoutAttribute": "thumb-first",
+    "navigationPattern": "two-primary-destinations-contextual-action-two-primary-destinations",
+    "persistentDockItems": 5,
+    "contextualActionPosition": 3,
+    "primaryActionMaximumLabelPx": 64,
+    "contentEdgeToken": "--atlas-mobile-edge",
+    "dockActionToken": "--atlas-mobile-dock-action",
+    "primaryActionToken": "--atlas-mobile-primary-action",
+    "primaryActionTargetPx": 58,
+    "dockActionTargetPx": 50,
+    "safeAreaReserved": true
+  },
+  "actionResolution": {
+    "source": "governed contextual task action",
+    "fallback": "new lead",
+    "duplicatePrimaryDestinationAvoided": true,
+    "topbarDuplicateHidden": true,
+    "accessibleNamePreserved": true,
+    "newRouteCreated": false
+  },
+  "topbarContract": {
+    "menuPreserved": true,
+    "currentSectionPreserved": true,
+    "globalSearchPreserved": true,
+    "notificationsPreservedAboveCompactWidth": true,
+    "profilePreserved": true,
+    "duplicatedPrimaryActionHidden": true,
+    "signOutRemainsAvailableInAccountFlow": true
+  },
+  "structuralBaseline": {
+    "dockItemsBefore": 5,
+    "dockItemsAfter": 5,
+    "bottomReachableCommercialActionsBefore": 0,
+    "bottomReachableCommercialActionsAfter": 1,
+    "topbarVisibleActionSlotsReducedBy": 1,
+    "newStateOrEffectAdded": false,
+    "runtimeOneHandSuccessMeasured": false
+  },
+  "accessibility": {
+    "semanticNavPreserved": true,
+    "nativeLinksPreserved": true,
+    "activeDestinationUsesAriaCurrent": true,
+    "contextualActionHasAccessibleName": true,
+    "minimumTargetPx": 50,
+    "touchActionManipulation": true,
+    "keyboardOperabilityPreserved": true,
+    "reducedMotionPolicyPreserved": true
+  },
+  "truthPolicy": {
+    "structuralReachabilityPresentedAsMeasuredConversion": false,
+    "runtimeProductivityClaimPublished": false,
+    "fakeBehaviorMetricPublished": false
+  },
+  "safetyPolicy": {
+    "databaseWrite": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "routesPreserved": true
+  },
+  "exitCriteria": {
+    "commercialActionInThumbZone": true,
+    "globalSearchStillAvailable": true,
+    "profileStillAvailable": true,
+    "primaryNavigationStillComplete": true,
+    "tabletRulesChanged": false,
+    "desktopRulesChanged": false,
+    "parallelWorkflowCreated": false,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 35,
+    "name": "Melhorar dashboard",
+    "status": "planned"
+  }
+}

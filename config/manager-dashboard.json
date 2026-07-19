@@ -1,0 +1,9 @@
+{
+  "phase": 22,
+  "role": "manager",
+  "endpoint": "app/api/v1/analytics/manager-daily/route.ts",
+  "page": "app/(crm)/dashboard/page.tsx",
+  "requiredAreas": ["brokers", "online", "activeLeads", "hotLeads", "firstContactOverdue", "followUpOverdue", "withoutNextAction", "distribution", "conversionRate", "interventions"],
+  "scopeControls": ["directBrokersOnly", "parallelTeamsExcluded", "reports_to", "organization_id"],
+  "decisionControls": ["conversionSampleSufficient", "averageActiveLeads", "imbalanced", "Decisão humana"]
+}

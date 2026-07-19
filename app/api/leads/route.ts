@@ -1,18 +1,4 @@
-let leads: any[] = [];
-
-export async function GET() {
-  return Response.json(leads);
-}
-
-export async function POST(req: Request) {
-  const body = await req.json();
-
-  const newLead = {
-    id: Date.now(),
-    ...body,
-  };
-
-  leads.push(newLead);
-
-  return Response.json(newLead);
-}
+// Compatibilidade temporária: preserva clientes antigos sem manter uma segunda
+// implementação ou uma base em memória. O endpoint canônico aplica sessão,
+// organização, papel, validação, rate limit e RLS.
+export { GET, POST } from "@/app/api/v1/leads/route";

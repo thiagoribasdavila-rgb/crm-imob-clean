@@ -1,0 +1,61 @@
+{
+  "phase": 99,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-19",
+  "title": "Homologação governada da escrita de Projetos",
+  "objective": "Fechar o menor plano reversível para criar e atualizar projetos com papéis canônicos, operação atômica e histórico persistente.",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "authenticationChanged": false,
+  "runtimeBehaviorChanged": true,
+  "migrationDraftCreated": true,
+  "migrationApplied": false,
+  "evidence": {
+    "sharedCommercialRoleFunctionPreserved": true,
+    "sharedFunctionPolicyCount": 14,
+    "sharedFunctionDomainCount": 5,
+    "activeLiveRoles": [
+      "ADMIN",
+      "DIRETOR",
+      "GERENTE",
+      "CORRETOR"
+    ],
+    "canonicalProfileRoles": [
+      "ADMIN",
+      "DIRETOR_DECISOR",
+      "DIRETOR",
+      "GERENTE",
+      "CORRETOR"
+    ],
+    "projectAuditTableWasLive": false,
+    "legacyAnonymousProjectGrantDetected": true
+  },
+  "decision": {
+    "state": "blocked-awaiting-controlled-application-and-matrix",
+    "approvedDesignOperations": [
+      "create",
+      "update"
+    ],
+    "runtimeApprovedOperations": [],
+    "deleteApproved": false,
+    "directDmlApproved": false
+  },
+  "safety": {
+    "liveMigrationApplied": false,
+    "liveRlsChanged": false,
+    "liveGrantChanged": false,
+    "liveRpcCreated": false,
+    "liveDataWritten": false,
+    "sharedCommercialFunctionChanged": false
+  },
+  "release": {
+    "buildExecuted": false,
+    "zipCreated": false,
+    "checkpointPhase": 100
+  },
+  "nextPhase": {
+    "phase": 100,
+    "objective": "Executar o checkpoint único: regressão completa, um build e pacote Hostinger somente se todos os gates forem aprovados."
+  }
+}

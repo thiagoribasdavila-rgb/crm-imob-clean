@@ -1,0 +1,90 @@
+{
+  "phase": 31,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "governed-local-failure-recovery-for-critical-commercial-navigation",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "dataFetchingChanged": true,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": false,
+  "recoveryContract": {
+    "sharedComponent": "components/ui/AtlasUI.tsx#AtlasRecoverableError",
+    "scopes": ["module", "page", "action"],
+    "strategy": "safe-read-retry",
+    "requiredContent": [
+      "plain-language title",
+      "protected-data reassurance",
+      "sanitized contextual description",
+      "explicit retry action",
+      "busy feedback"
+    ],
+    "retryNeverRepeatsMutation": true,
+    "preservesLoadedSiblingContent": true,
+    "technicalDetailsRedacted": true
+  },
+  "structuralBaseline": {
+    "criticalSurfaces": 8,
+    "sharedRecoveryConsumersBefore": 2,
+    "sharedRecoveryConsumersAfter": 7,
+    "legacyCriticalRawBannersBefore": 5,
+    "legacyCriticalRawBannersAfter": 0,
+    "fullPageBoundaryUsesSharedContract": true,
+    "runtimeRecoverySuccessMeasured": false
+  },
+  "criticalSurfaces": [
+    { "surface": "leads", "recovery": "clear filters and repeat governed read" },
+    { "surface": "calendar", "recovery": "repeat calendar read" },
+    { "surface": "tasks", "recovery": "repeat task-center read" },
+    { "surface": "pipeline", "recovery": "repeat pipeline read without replaying movement" },
+    { "surface": "customers", "recovery": "repeat unified-customer read" },
+    { "surface": "developments", "recovery": "repeat portfolio read" },
+    { "surface": "sales", "recovery": "repeat opportunity read without replaying commission update" },
+    { "surface": "distribution", "recovery": "repeat queue read without replaying assignment" }
+  ],
+  "pageBoundary": {
+    "file": "app/(crm)/error.tsx",
+    "actions": ["retry render", "open feedback", "return to Command Center"],
+    "digestVisibleToUser": false,
+    "shellPreserved": true
+  },
+  "accessibility": {
+    "alertSemantics": true,
+    "nativeButtonAndLinkActions": true,
+    "minimumActionTargetPx": 44,
+    "busyStateVisibleAndDisabled": true,
+    "recoveryDoesNotDependOnColorOnly": true
+  },
+  "truthPolicy": {
+    "technicalBackendMessageMayReachUser": false,
+    "failureMayBeRenderedAsEmptyState": false,
+    "staleSiblingContentMayRemainVisible": true,
+    "fakeRuntimeMetricPublished": false,
+    "structuralCoverageIsRuntimeOutcomeProof": false
+  },
+  "safetyPolicy": {
+    "retryRepeatsWrite": false,
+    "databaseWrite": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true
+  },
+  "exitCriteria": {
+    "sevenCriticalModulesUseSharedRecovery": true,
+    "leadsKeepsExplicitRecovery": true,
+    "pageBoundaryUsesSameContract": true,
+    "technicalMessagesAreSanitized": true,
+    "networkFailureCanBecomeLocalState": true,
+    "parallelWorkflowCreated": false,
+    "routeRemoved": false,
+    "permissionChanged": false,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 32,
+    "name": "Otimizar desktop",
+    "status": "planned"
+  }
+}

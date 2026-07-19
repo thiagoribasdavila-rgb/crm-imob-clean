@@ -1,0 +1,7 @@
+import fs from"node:fs";const checks=[];const need=(file,...terms)=>{const source=fs.readFileSync(file,"utf8");for(const term of terms)checks.push([`${file}: ${term}`,source.includes(term)])};
+need("lib/meta/andromeda-learning-loop.ts","deliveryHealthy","feedbackDeepEnough","attributionReliable","noAutomaticAudienceChange: true","directorDecisionRequired: true");
+need("supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql","meta_andromeda_learning_cycles","evidence_hash","andromeda_director_required","externalChangeExecuted","decision_reason");
+need("app/api/v1/integrations/meta/andromeda-loop/route.ts","[\"director\", \"superintendent\"]","roles:[\"director\"]","consentRequired:true","negativeSignalsInternalOnly:true","automaticAudienceChanges:false","approvedCycleExecutesExternalChange:false","duplicatePrevented");
+need("app/(crm)/integrations/meta/andromeda/page.tsx","92-meta-andromeda-learning-loop","CONSENTIMENTO OBRIGATÓRIO","DECISÃO EXCLUSIVA DO DIRETOR","não executa público, verba ou campanha");
+need("config/meta-andromeda-learning-loop.json","\"phase\": 92","\"mode\": \"test_only\"","\"negative_signals\": \"internal_only\"","\"automatic_budget_changes\": false");
+for(const[name,ok]of checks)console.log(`${ok?"✓":"✗"} ${name}`);if(checks.some(([,ok])=>!ok))process.exit(1);console.log(`\nFase 92 aprovada: ${checks.length} controles do loop Meta/Andromeda.`);

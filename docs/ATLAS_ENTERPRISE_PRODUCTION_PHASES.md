@@ -87,7 +87,7 @@ Objetivo: transformar a base V1/V2/V3/Atlas 2030 em uma plataforma utilizável p
 ## Fase 10 — Production Launch
 - homologação de todos os fluxos críticos
 - testes de carga e segurança
-- deploy Vercel
+- deploy Hostinger
 - domínio e monitoramento
 - piloto com operação real
 - documentação e treinamento

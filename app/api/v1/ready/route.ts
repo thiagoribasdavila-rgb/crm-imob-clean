@@ -1,6 +1,5 @@
 import type { NextRequest } from "next/server";
-import { getSupabase } from "@/lib/supabase";
-import { featureSnapshot } from "@/lib/platform/feature-flags";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { apiSuccess, createRequestContext, structuredApiLog } from "@/lib/api/core";
 
 export const dynamic = "force-dynamic";
@@ -8,11 +7,11 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const meta = createRequestContext(request);
   const startedAt = Date.now();
-  const checks: Record<string, { ok: boolean; latencyMs?: number; detail?: string }> = {};
+  const checks: Record<string, { ok: boolean; latencyMs?: number }> = {};
 
   try {
     const dbStartedAt = Date.now();
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
     const { error } = await supabase
       .from("organizations")
       .select("id", { head: true, count: "exact" })
@@ -21,23 +20,17 @@ export async function GET(request: NextRequest) {
     checks.database = {
       ok: !error,
       latencyMs: Date.now() - dbStartedAt,
-      ...(error ? { detail: error.message } : {}),
     };
-  } catch (error) {
-    checks.database = {
-      ok: false,
-      detail: error instanceof Error ? error.message : "Falha desconhecida",
-    };
+  } catch {
+    checks.database = { ok: false };
   }
 
   const ready = Object.values(checks).every((check) => check.ok);
   const data = {
     service: "atlas-api-platform",
     status: ready ? "ready" : "not_ready",
-    environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
     latencyMs: Date.now() - startedAt,
     checks,
-    features: featureSnapshot(),
   };
 
   structuredApiLog(ready ? "info" : "warn", "api.readiness.checked", request, meta, {
@@ -45,5 +38,5 @@ export async function GET(request: NextRequest) {
     latencyMs: data.latencyMs,
   });
 
-  return apiSuccess(data, meta, { status: ready ? 200 : 503 });
+  return apiSuccess(data, meta, { status: ready ? 200 : 503, headers: { "Cache-Control": "no-store" } });
 }

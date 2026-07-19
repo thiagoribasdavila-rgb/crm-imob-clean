@@ -1,0 +1,83 @@
+{
+  "phase": 27,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "governed-contextual-task-action-without-parallel-workflows",
+  "productionDataModified": false,
+  "runtimeNavigationChanged": true,
+  "taskActions": {
+    "contextualTransitions": 15,
+    "singlePersistentSlot": true,
+    "defaultAction": {
+      "label": "Novo lead",
+      "href": "/leads/new"
+    },
+    "exactContextMatching": true,
+    "queryStringsIgnoredForResolution": true,
+    "duplicateFormCreated": false,
+    "duplicateBusinessLogicCreated": false
+  },
+  "criticalJourneyAcceleration": [
+    {
+      "context": "/developments",
+      "action": "Buscar materiais",
+      "target": "/developments/materials",
+      "structuralActionsFromContext": 1
+    },
+    {
+      "context": "/integrations",
+      "action": "Ver saúde",
+      "target": "/integrations/health",
+      "structuralActionsFromContext": 1
+    },
+    {
+      "context": "/tasks",
+      "action": "Abrir agenda",
+      "target": "/calendar",
+      "structuralActionsFromContext": 1
+    },
+    {
+      "context": "/brokers",
+      "action": "Distribuir leads",
+      "target": "/distribution",
+      "structuralActionsFromContext": 1
+    }
+  ],
+  "sharedConsumption": {
+    "topbarUsesTaskAction": true,
+    "commandPaletteUsesTaskAction": true,
+    "commandPaletteRemovesDuplicateTarget": true,
+    "mobileKeepsAccessibleActionName": true
+  },
+  "responsiveBehavior": {
+    "desktopShowsIconAndLabel": true,
+    "tabletShowsIconOnly": true,
+    "mobileShowsIconOnly": true,
+    "minimumTargetPx": 40,
+    "accessibleNameAlwaysPresent": true
+  },
+  "measurementPolicy": {
+    "structuralActionCountIsRuntimeProof": false,
+    "inventedBehaviorMetricAllowed": false,
+    "behavioralTelemetryStatus": "awaiting-runtime-telemetry"
+  },
+  "safetyPolicy": {
+    "databaseRead": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "automaticDecisionAboutPeopleAllowed": false,
+    "rbacPreserved": true,
+    "targetMustPassIdentityPolicy": true
+  },
+  "exitCriteria": {
+    "contextualActionUsesGovernedSource": true,
+    "onePersistentSlotAvoidsTopbarGrowth": true,
+    "criticalDeepDestinationsReachableInOneAction": true,
+    "defaultNewLeadActionPreserved": true,
+    "parallelWorkflowCreated": false,
+    "routeRemoved": false,
+    "permissionChanged": false,
+    "phaseTwentyGateBypassed": false
+  }
+}

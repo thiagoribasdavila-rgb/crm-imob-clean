@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiIdentity } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { resolveCommercialRole } from "@/lib/api/security";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +18,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
 
     const admin = getSupabaseAdmin();
-    const { data: profile } = await admin.from("profiles").select("role").eq("id", identity.userId).eq("organization_id", identity.organizationId).single();
-    if (!profile || !["admin", "manager"].includes(profile.role)) {
-      return NextResponse.json({ error: "Apenas gestores e administradores podem decidir." }, { status: 403 });
+    const { data: profile } = await admin.from("profiles").select("role,commercial_role").eq("id", identity.userId).eq("organization_id", identity.organizationId).single();
+    const effectiveRole = profile ? resolveCommercialRole({ role: profile.role, commercial_role: profile.commercial_role }) : null;
+    if (!effectiveRole || !["director", "superintendent", "manager"].includes(effectiveRole)) {
+      return NextResponse.json({ error: "Apenas a liderança pode decidir dentro do próprio escopo." }, { status: 403 });
     }
 
     const { data: decision, error } = await admin.from("atlas_decisions")
@@ -28,6 +30,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       .eq("organization_id", identity.organizationId)
       .single();
     if (error || !decision) return NextResponse.json({ error: "Decisão não encontrada." }, { status: 404 });
+    if (decision.decision_type === "optimize_campaign" && effectiveRole !== "director") return NextResponse.json({ error: "Decisões estratégicas de campanha pertencem à diretoria." }, { status: 403 });
 
     if (payload.action === "reject" || payload.action === "cancel") {
       const status = payload.action === "reject" ? "rejected" : "cancelled";

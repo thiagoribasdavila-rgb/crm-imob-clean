@@ -3,10 +3,10 @@
 ## 1. Atualizar o projeto
 
 ```bash
-cd /Users/thiagoribasdavila/crm-imob-clean
+cd /Users/thiagoribasdavila/atlas-v3
 git fetch origin
-git switch atlas-v3-auth
-git pull --ff-only origin atlas-v3-auth
+git switch develop/atlas-v3
+git pull --ff-only origin develop/atlas-v3
 npm ci
 npm run prisma:generate
 ```
@@ -46,10 +46,11 @@ Execute somente quando ainda não existir um administrador:
 npm run bootstrap:admin -- \
   --email="SEU_EMAIL_DE_TESTE" \
   --password="SUA_SENHA_FORTE" \
-  --name="Administrador Atlas"
+  --name="Administrador Atlas" \
+  --confirm=CREATE_FIRST_ADMIN
 ```
 
-Depois, use o mesmo e-mail e senha em `ATLAS_TEST_EMAIL` e `ATLAS_TEST_PASSWORD`.
+O diagnóstico é somente leitura. Depois, use o mesmo e-mail e senha em `ATLAS_TEST_EMAIL` e `ATLAS_TEST_PASSWORD`; valide o login, remova `ATLAS_BOOTSTRAP_SECRET` e reinicie a aplicação.
 
 ## 4. Validar o código
 

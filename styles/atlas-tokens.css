@@ -1,0 +1,70 @@
+:root {
+  color-scheme: dark;
+
+  /* ATLAS Core V2 — camadas semânticas, sem cor decorativa. */
+  --atlas-canvas: #070a0f;
+  --atlas-navigation: #090d14;
+  --atlas-surface: #0d121b;
+  --atlas-surface-subtle: #101722;
+  --atlas-surface-raised: #141c28;
+  --atlas-surface-interactive: #172130;
+  --atlas-overlay: rgba(7, 10, 15, 0.82);
+  --atlas-bg: var(--atlas-canvas);
+  --atlas-surface-soft: rgba(255, 255, 255, 0.025);
+
+  --atlas-border-subtle: rgba(148, 163, 184, 0.09);
+  --atlas-border: rgba(148, 163, 184, 0.14);
+  --atlas-border-strong: rgba(148, 163, 184, 0.24);
+
+  --atlas-text-primary: #f4f7fb;
+  --atlas-text-secondary: #a8b3c2;
+  --atlas-text-tertiary: #738094;
+  --atlas-text-disabled: #536074;
+  --atlas-text: var(--atlas-text-primary);
+  --atlas-text-muted: var(--atlas-text-secondary);
+
+  /* Azul é a única cor de ação. As demais cores comunicam estado. */
+  --atlas-accent: #4b8df8;
+  --atlas-accent-hover: #65a1ff;
+  --atlas-accent-pressed: #3375df;
+  --atlas-accent-soft: rgba(75, 141, 248, 0.12);
+  --atlas-accent-strong: #3478e5;
+  --atlas-success: #34d399;
+  --atlas-warning: #fbbf24;
+  --atlas-danger: #fb7185;
+  --atlas-info: var(--atlas-accent);
+  --atlas-violet: #8b8cf7;
+
+  --atlas-focus-ring: 0 0 0 3px rgba(75, 141, 248, 0.28);
+  --atlas-shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.16);
+  --atlas-shadow-overlay: 0 24px 72px rgba(0, 0, 0, 0.38);
+
+  --atlas-space-1: 4px;
+  --atlas-space-2: 8px;
+  --atlas-space-3: 12px;
+  --atlas-space-4: 16px;
+  --atlas-space-5: 20px;
+  --atlas-space-6: 24px;
+  --atlas-space-8: 32px;
+  --atlas-space-10: 40px;
+  --atlas-control-height: 40px;
+  --atlas-control-height-touch: 44px;
+  --atlas-content-measure: 72ch;
+
+  --atlas-sidebar-width: 264px;
+  --atlas-sidebar-collapsed-width: 78px;
+  --atlas-topbar-height: 72px;
+  --atlas-content-max: 1728px;
+  --atlas-desktop-gutter: clamp(24px, 2.1vw, 40px);
+  --atlas-tablet-gutter: clamp(18px, 3vw, 28px);
+  --atlas-tablet-dock-max: 680px;
+  --atlas-mobile-edge: clamp(10px, 3.2vw, 14px);
+  --atlas-mobile-dock-action: 50px;
+  --atlas-mobile-primary-action: 58px;
+  --atlas-radius-sm: 8px;
+  --atlas-radius-md: 12px;
+  --atlas-radius-lg: 16px;
+  --atlas-radius-pill: 999px;
+  --atlas-transition-fast: 120ms ease-out;
+  --atlas-transition: 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}

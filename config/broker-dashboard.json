@@ -1,0 +1,9 @@
+{
+  "phase": 21,
+  "role": "broker",
+  "endpoint": "app/api/v1/analytics/broker-daily/route.ts",
+  "page": "app/(crm)/dashboard/page.tsx",
+  "requiredSections": ["activeLeads", "hotLeads", "openTasks", "firstContactOverdue", "followUpOverdue", "agendaNext7Days", "priorities", "nextBestAction"],
+  "rankingSignals": ["score", "first_contact_sla", "follow_up", "overdue_task", "temperature", "missing_next_action"],
+  "safety": ["ownPortfolioOnly", "humanApprovalRequired", "assigned_to", "requireAccessContext", "enforceRateLimit"]
+}

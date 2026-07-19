@@ -1,0 +1,74 @@
+{
+  "phase": 94,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "read-only-live-supabase-contract-security-tenant-and-performance-audit",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "authenticationChanged": false,
+  "runtimeBehaviorChanged": false,
+  "objective": "establish the real database capability boundary for all nineteen Core V2 modules before any migration or additional interface work",
+  "evidence": {
+    "liveCapabilityContract": "config/atlas-core-v2-live-data-capabilities.json",
+    "runtimeSchemaAudit": "executed-read-only",
+    "authHierarchyAudit": "executed-read-only",
+    "supabaseSecurityAdvisor": "executed-read-only",
+    "supabasePerformanceAdvisor": "executed-read-only",
+    "liveMigrationInventory": "executed-read-only",
+    "mutatingActions": 0
+  },
+  "results": {
+    "liveConnectionVerified": true,
+    "tenantRowsWithoutOrganization": 0,
+    "authProfileParity": true,
+    "tablesWithRls": "23/23",
+    "moduleContractsAudited": 19,
+    "adapterRequiredModules": 12,
+    "blockedModules": 7,
+    "missingPhysicalDomains": 7,
+    "runtimeSchemaSurfacesReady": "2/8",
+    "runtimeHierarchy": "migration-required",
+    "localMigrations": 122,
+    "appliedMigrations": 33,
+    "migrationDelta": 89
+  },
+  "importantTruths": [
+    "seventeen-thousand-one-hundred-fifty-one-leads-exist-and-are-tenant-linked",
+    "seventeen-thousand-one-hundred-forty-eight-leads-came-from-import-batches",
+    "only-two-leads-are-assigned-and-zero-have-next-contact",
+    "inline-score-presence-does-not-prove-ai-calibration",
+    "ai-learning-events-are-zero-and-lead-score-evidence-has-two-rows",
+    "one-crm-project-exists-but-inventory-is-empty",
+    "code-is-ahead-of-live-schema-and-cannot-be-bulk-migrated-safely"
+  ],
+  "delivered": [
+    "live-schema-and-migration-delta",
+    "nineteen-module-capability-matrix",
+    "canonical-to-legacy-field-alias-map",
+    "tenant-and-auth-parity-evidence",
+    "rls-grant-view-and-security-definer-review",
+    "supabase-security-and-performance-advisor-baseline",
+    "aggregate-lead-data-quality-baseline",
+    "safe-compatibility-priority-order"
+  ],
+  "validation": {
+    "phaseContractCheck": true,
+    "previousPhaseRegressionRequired": true,
+    "typecheckRequired": false,
+    "changedFilesLintRequired": false,
+    "secretScanRequired": true,
+    "buildRequired": false
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false,
+    "checkpointPhase": 100
+  },
+  "nextPhase": {
+    "phase": 95,
+    "name": "Resolver canônico de capacidades e repositórios compatíveis com o banco vivo",
+    "status": "planned"
+  }
+}

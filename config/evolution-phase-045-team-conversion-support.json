@@ -1,0 +1,14 @@
+{
+  "phase": 45,
+  "wave": 3,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "team-conversion-support",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "teamContract": { "layoutAttribute": "conversion-support", "visibleSupportLimit": 3, "peopleRanking": false, "directContactDataReturned": false, "explainableSignals": ["overdue", "hot_without_next_action", "without_next_action"], "humanDecisionRequired": true },
+  "compatibility": { "canonicalColumnsPreferred": true, "legacyColumnFallback": true, "maximumProfiles": 1000, "maximumLeads": 5000 },
+  "safetyPolicy": { "authenticatedRlsClientUsed": true, "adminClientUsed": false, "tenantIsolationPreserved": true, "rbacPreserved": true, "personalDataSentToCopilot": false },
+  "truthPolicy": { "supportQueuePresentedAsPerformanceRanking": false, "conversionPromisePublished": false },
+  "nextPhase": { "phase": 46, "name": "Distribuição protegida por capacidade", "status": "planned" }
+}

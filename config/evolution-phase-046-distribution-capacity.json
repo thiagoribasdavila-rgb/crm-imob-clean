@@ -1,0 +1,35 @@
+{
+  "phase": 46,
+  "wave": 3,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "distribution-capacity-decision",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "distributionContract": {
+    "layoutAttribute": "capacity-first",
+    "visibleDecisionLimit": 3,
+    "signals": ["unassigned", "oldest_wait", "online_capacity", "portfolio_capacity", "load_balance"],
+    "automaticAssignment": false,
+    "humanDecisionRequired": true,
+    "personalDataExposed": false
+  },
+  "copilotPolicy": {
+    "aggregateContextOnly": true,
+    "mayDistribute": false,
+    "mayChangeCapacity": false,
+    "maySendMessages": false
+  },
+  "safetyPolicy": {
+    "existingAtomicDistributionPreserved": true,
+    "singleOwnerPreserved": true,
+    "hierarchyPreserved": true,
+    "rbacPreserved": true,
+    "explicitLeadershipActionRequired": true
+  },
+  "truthPolicy": {
+    "conversionPromisePublished": false,
+    "recommendationsPresentedAsAutomaticActions": false
+  },
+  "nextPhase": { "phase": 47, "name": "Decisões de receita e fechamento", "status": "planned" }
+}

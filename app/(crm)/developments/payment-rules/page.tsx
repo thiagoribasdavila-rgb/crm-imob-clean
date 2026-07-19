@@ -1,0 +1,303 @@
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+import { AtlasBadge, AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
+import { supabase } from "@/lib/supabase";
+
+type Rule = {
+  id: string;
+  developer_name: string;
+  version: number;
+  rule_name: string;
+  payment_flow: string;
+  down_payment_percent: number | null;
+  installments_count: number | null;
+  balloon_payment_notes: string | null;
+  financing_notes: string | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  active: boolean;
+};
+type Payload = {
+  rules: Rule[];
+  homologation: Array<{
+    developerName: string;
+    versions: number;
+    activeVersions: number;
+    latestVersion: number;
+    historyPreserved: boolean;
+  }>;
+  canManage: boolean;
+};
+const field =
+  "w-full rounded-xl border border-white/10 bg-white/[.035] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/40";
+
+export default function PaymentRulesPage() {
+  const [data, setData] = useState<Payload | null>(null);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    developerName: "",
+    ruleName: "",
+    paymentFlow: "",
+    downPaymentPercent: "",
+    installmentsCount: "",
+    balloonPaymentNotes: "",
+    financingNotes: "",
+    validFrom: "",
+    validUntil: "",
+  });
+  async function request(init?: RequestInit) {
+    const { data: session } = await supabase.auth.getSession();
+    const response = await fetch("/api/v1/developers/payment-rules", {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.session?.access_token}`,
+        ...(init?.headers || {}),
+      },
+    });
+    const body = await response.json();
+    if (!response.ok)
+      throw new Error(body.error || "Falha nas regras de pagamento.");
+    return body;
+  }
+  async function load() {
+    try {
+      setData((await request()) as Payload);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao carregar.");
+    }
+  }
+  useEffect(() => {
+    void load();
+  }, []);
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await request({ method: "POST", body: JSON.stringify(form) });
+      setForm({
+        developerName: "",
+        ruleName: "",
+        paymentFlow: "",
+        downPaymentPercent: "",
+        installmentsCount: "",
+        balloonPaymentNotes: "",
+        financingNotes: "",
+        validFrom: "",
+        validUntil: "",
+      });
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao salvar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <div className="space-y-6 pb-10">
+      <section className="atlas-grid-glow rounded-[30px] border border-emerald-400/10 bg-gradient-to-br from-emerald-500/[.11] via-sky-500/[.06] to-violet-500/[.09] p-6 sm:p-8">
+        <div className="flex flex-wrap gap-2">
+          <AtlasBadge tone="success">INCORPORADORAS</AtlasBadge>
+          <AtlasBadge tone="info">FASE 30 · VERSIONAMENTO</AtlasBadge>
+        </div>
+        <h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">
+          Fluxos de pagamento versionados.
+        </h1>
+        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400">
+          Cadastre conforme a demanda. A nova versão desativa a anterior sem
+          apagar o histórico usado em simulações e propostas.
+        </p>
+      </section>
+      {error ? (
+        <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">
+          {error}
+        </div>
+      ) : null}
+      {data?.homologation.length ? (
+        <AtlasCard>
+          <AtlasCardHeader
+            eyebrow="Fase 30 · Evidência automática"
+            title="Última versão ativa, histórico preservado"
+            description="A comprovação fica verde quando a incorporadora possui pelo menos duas versões, exatamente uma ativa e uma anterior mantida no histórico."
+          />
+          <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">
+            {data.homologation.map((item) => (
+              <div
+                key={item.developerName.toLocaleLowerCase("pt-BR")}
+                className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <strong className="text-white">{item.developerName}</strong>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {item.versions} versões · atual v{item.latestVersion}
+                    </p>
+                  </div>
+                  <AtlasBadge tone={item.historyPreserved ? "success" : "warning"}>
+                    {item.historyPreserved ? "COMPROVADO" : "CRIAR 2ª VERSÃO"}
+                  </AtlasBadge>
+                </div>
+                <p className="mt-3 text-xs text-slate-400">
+                  {item.activeVersions === 1 ? "Uma regra ativa" : `${item.activeVersions} regras ativas`} · histórico {item.versions > 1 ? "mantido" : "aguardando"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </AtlasCard>
+      ) : null}
+      <div className="grid gap-6 xl:grid-cols-[.9fr_1.1fr]">
+        <AtlasCard>
+          <AtlasCardHeader
+            eyebrow="Nova versão"
+            title="Regra da incorporadora"
+            description="Preencha apenas condições confirmadas em documento vigente."
+          />
+          <form onSubmit={save} className="grid gap-3 p-5 sm:p-6">
+            <input
+              required
+              className={field}
+              placeholder="Incorporadora"
+              value={form.developerName}
+              onChange={(e) =>
+                setForm({ ...form, developerName: e.target.value })
+              }
+            />
+            <input
+              required
+              className={field}
+              placeholder="Nome da regra"
+              value={form.ruleName}
+              onChange={(e) => setForm({ ...form, ruleName: e.target.value })}
+            />
+            <textarea
+              required
+              minLength={10}
+              className={`${field} min-h-32`}
+              placeholder="Fluxo completo: ato, mensais, intermediárias, chaves..."
+              value={form.paymentFlow}
+              onChange={(e) =>
+                setForm({ ...form, paymentFlow: e.target.value })
+              }
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                className={field}
+                type="number"
+                min="0"
+                max="100"
+                step="0.001"
+                placeholder="Entrada %"
+                value={form.downPaymentPercent}
+                onChange={(e) =>
+                  setForm({ ...form, downPaymentPercent: e.target.value })
+                }
+              />
+              <input
+                className={field}
+                type="number"
+                min="0"
+                max="600"
+                placeholder="Parcelas"
+                value={form.installmentsCount}
+                onChange={(e) =>
+                  setForm({ ...form, installmentsCount: e.target.value })
+                }
+              />
+            </div>
+            <textarea
+              className={field}
+              placeholder="Balões e intermediárias"
+              value={form.balloonPaymentNotes}
+              onChange={(e) =>
+                setForm({ ...form, balloonPaymentNotes: e.target.value })
+              }
+            />
+            <textarea
+              className={field}
+              placeholder="Financiamento e observações"
+              value={form.financingNotes}
+              onChange={(e) =>
+                setForm({ ...form, financingNotes: e.target.value })
+              }
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                className={field}
+                type="date"
+                value={form.validFrom}
+                onChange={(e) =>
+                  setForm({ ...form, validFrom: e.target.value })
+                }
+              />
+              <input
+                className={field}
+                type="date"
+                value={form.validUntil}
+                onChange={(e) =>
+                  setForm({ ...form, validUntil: e.target.value })
+                }
+              />
+            </div>
+            <button
+              disabled={!data?.canManage || saving}
+              className="atlas-button-primary disabled:opacity-40"
+            >
+              {saving ? "Salvando..." : "Criar nova versão"}
+            </button>
+          </form>
+        </AtlasCard>
+        <AtlasCard>
+          <AtlasCardHeader
+            eyebrow="Histórico"
+            title="Regras cadastradas"
+            description="A etiqueta ATIVA identifica a versão usada nas próximas simulações."
+          />
+          <div className="space-y-3 p-5 sm:p-6">
+            {!data ? (
+              <AtlasSkeleton className="h-60" />
+            ) : !data.rules.length ? (
+              <AtlasEmpty
+                title="Nenhuma regra cadastrada"
+                description="Cadastre a primeira regra quando receber as condições da incorporadora."
+              />
+            ) : (
+              data.rules.map((rule) => (
+                <article
+                  key={rule.id}
+                  className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-slate-500">
+                        {rule.developer_name} · versão {rule.version}
+                      </p>
+                      <h2 className="mt-1 font-semibold text-white">
+                        {rule.rule_name}
+                      </h2>
+                    </div>
+                    <AtlasBadge tone={rule.active ? "success" : "neutral"}>
+                      {rule.active ? "ATIVA" : "HISTÓRICO"}
+                    </AtlasBadge>
+                  </div>
+                  <p className="mt-3 whitespace-pre-line text-xs leading-5 text-slate-400">
+                    {rule.payment_flow}
+                  </p>
+                  <p className="mt-3 text-[11px] text-slate-500">
+                    Entrada {rule.down_payment_percent ?? "—"}% ·{" "}
+                    {rule.installments_count ?? "—"} parcelas · vigência{" "}
+                    {rule.valid_from || "aberta"} até{" "}
+                    {rule.valid_until || "aberta"}
+                  </p>
+                </article>
+              ))
+            )}
+          </div>
+        </AtlasCard>
+      </div>
+    </div>
+  );
+}

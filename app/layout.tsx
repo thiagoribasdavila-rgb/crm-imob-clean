@@ -4,12 +4,12 @@ import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: {
-    default: "Atlas AI CRM",
-    template: "%s | Atlas AI CRM",
+    default: "Atlas AI — Inteligência comercial imobiliária",
+    template: "%s | Atlas AI",
   },
   description:
-    "Sistema operacional imobiliário para leads, imóveis, vendas, marketing e inteligência comercial.",
-  applicationName: "Atlas AI CRM",
+    "A plataforma de inteligência comercial que transforma leads em vendas previsíveis para incorporadoras e imobiliárias.",
+  applicationName: "Atlas AI",
 };
 
 export default function RootLayout({

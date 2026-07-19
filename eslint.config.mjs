@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "dist/**",
+    ".atlas-route-quarantine-*/**",
     "next-env.d.ts",
 
     // Legacy and experimental surfaces preserved for architectural audit,

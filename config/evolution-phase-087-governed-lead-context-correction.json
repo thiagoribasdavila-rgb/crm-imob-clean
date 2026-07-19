@@ -1,0 +1,58 @@
+{
+  "phase": 87,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "governed-lead-context-correction",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "let-the-commercial-team-correct-the-current-project-and-source-in-lead-360-with-human-evidence-tenant-validation-optimistic-concurrency-and-append-only-audit-without-rewriting-history",
+  "changes": [
+    "add-one-typed-contract-for-current-commercial-context-correction",
+    "show-one-compact-correction-surface-inside-lead-360",
+    "load-only-projects-from-the-authenticated-organization",
+    "require-audit-reason-and-explicit-human-confirmation",
+    "compare-the-reviewed-project-and-source-with-the-current-server-values",
+    "reject-stale-edits-and-out-of-scope-projects",
+    "append-a-commercial-context-corrected-event-after-the-current-state-update",
+    "rollback-the-current-state-if-the-audit-event-cannot-be-written",
+    "remove-direct-source-editing-from-the-generic-lead-form",
+    "route-copilot-context-gaps-directly-to-the-governed-correction-surface",
+    "preserve-all-existing-historical-outcome-snapshots"
+  ],
+  "governance": {
+    "dimensions": ["project", "source"],
+    "humanConfirmationRequired": true,
+    "auditReasonMinimumCharacters": 10,
+    "tenantProjectValidation": true,
+    "optimisticConcurrency": true,
+    "auditEvent": "commercial_context_corrected",
+    "rollbackOnAuditFailure": true,
+    "historicalSnapshotsRewritten": false,
+    "automaticFill": false
+  },
+  "validation": {
+    "targetedChecks": [
+      "governed-lead-context-correction:check",
+      "commercial-context-gap-prevention:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "changed-files-lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Two users may review the same lead simultaneously. The API compares the exact reviewed context with the current row and returns a conflict instead of overwriting a newer correction.",
+  "nextPhase": {
+    "phase": 88,
+    "name": "Correção contextual explicável na timeline e impacto futuro",
+    "status": "planned"
+  }
+}

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 const recoveryMessages: Record<string, string> = {
   recovery_link_invalid: "O link de recuperação é inválido ou expirou. Solicite um novo link.",
@@ -20,7 +19,10 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get("error");
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("error");
+    const suggestedEmail = params.get("email")?.trim().toLowerCase() || "";
+    if (suggestedEmail.includes("@")) setEmail(suggestedEmail);
     if (code) {
       setRouteError(
         recoveryMessages[code] || "Não foi possível concluir a recuperação. Solicite um novo link.",
@@ -42,19 +44,16 @@ export default function ForgotPasswordPage() {
     setError("");
 
     try {
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent("/reset-password")}`;
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo,
-      });
-
-      if (resetError) {
-        const message = resetError.message.toLowerCase();
+      const response = await fetch("/api/auth/password-recovery", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail }) });
+      const body = await response.json();
+      if (!response.ok) {
+        const message = String(body.error || "").toLowerCase();
         if (message.includes("rate") || message.includes("too many")) {
           setError("Muitas solicitações em sequência. Aguarde alguns minutos antes de tentar novamente.");
         } else if (message.includes("network") || message.includes("fetch")) {
           setError("Não foi possível conectar ao Atlas. Verifique sua internet e tente novamente.");
         } else {
-          setError(`Não foi possível enviar o link agora. ${resetError.message}`);
+          setError(body.error || "Não foi possível enviar o link agora.");
         }
         return;
       }

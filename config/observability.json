@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "service": "atlas-ai-os",
+  "logFormat": "json-lines",
+  "correlationHeaders": ["X-Request-Id", "X-Correlation-Id"],
+  "requiredFields": ["timestamp", "level", "event", "service", "environment", "requestId", "correlationId"],
+  "forbiddenData": ["authorization", "cookie", "password", "token", "secret", "apiKey", "email", "phone", "cpf", "cnpj", "leadContent", "prompt"],
+  "metrics": ["responseDurationMs", "databaseLatencyMs", "uptimeSeconds", "memoryRssMb", "memoryHeapMb", "httpStatus", "providerLatencyMs", "providerTokens", "providerCostUsd"],
+  "hostinger": {
+    "stdout": "logs/atlas-v3-out.log",
+    "stderr": "logs/atlas-v3-error.log",
+    "recommendedRetentionDays": 14,
+    "recommendedMaxFileMb": 50,
+    "rotationRequiresHostingerSetup": true
+  },
+  "alerts": {
+    "readyFailure": "critical",
+    "databaseFailure": "critical",
+    "authenticationSpike": "high",
+    "externalProviderFailure": "medium",
+    "singleBusinessValidation": "info"
+  }
+}

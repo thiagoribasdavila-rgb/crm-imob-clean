@@ -1,0 +1,90 @@
+{
+  "phase": 33,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "adaptive-overlay-tablet-navigation-workspace",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "clientPreferenceChanged": false,
+  "dataFetchingChanged": false,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": false,
+  "phaseThirteenBaseline": {
+    "minimumViewportPx": 768,
+    "maximumViewportPx": 1023,
+    "dockMaxWidthPx": 560,
+    "sidebarMaxWidthPx": 320,
+    "preserved": true
+  },
+  "tabletContract": {
+    "minimumViewportPx": 768,
+    "maximumViewportPx": 1179,
+    "desktopStartsAtPx": 1180,
+    "navigationPattern": "overlay-sidebar-and-centered-bottom-dock",
+    "layoutAttribute": "adaptive-overlay-workspace",
+    "contentGutterToken": "--atlas-tablet-gutter",
+    "dockMaximumToken": "--atlas-tablet-dock-max",
+    "dockMaximumPx": 680,
+    "sidebarMaximumPx": 320,
+    "workspaceContainerEnabled": true,
+    "narrowTabletRefinementMaximumPx": 899,
+    "desktopDensityControlVisible": false
+  },
+  "topbarContract": {
+    "menuPreserved": true,
+    "currentContextPreserved": true,
+    "globalSearchPreserved": true,
+    "primaryTaskActionPreserved": true,
+    "notificationsPreserved": true,
+    "profilePreserved": true,
+    "signOutPreserved": true,
+    "duplicatedUserCopyHidden": true,
+    "narrowKeyboardHintHidden": true
+  },
+  "structuralBaseline": {
+    "tabletMaximumViewportBeforePx": 1023,
+    "tabletMaximumViewportAfterPx": 1179,
+    "largeTabletDesktopSidebarReservationRemoved": true,
+    "sharedWorkspaceContainerEnabled": true,
+    "orientationSpecificJavaScriptAdded": false,
+    "runtimeNavigationGainMeasured": false
+  },
+  "accessibility": {
+    "semanticNavigationPreserved": true,
+    "menuButtonStatePreserved": true,
+    "sidebarFocusTrapPreserved": true,
+    "escapeAndBackdropClosePreserved": true,
+    "minimumDockActionTargetPx": 50,
+    "activeDockItemUsesAriaCurrent": true,
+    "keyboardOperabilityPreserved": true
+  },
+  "truthPolicy": {
+    "responsiveCoveragePresentedAsMeasuredUsage": false,
+    "runtimeProductivityClaimPublished": false,
+    "fakeBehaviorMetricPublished": false
+  },
+  "safetyPolicy": {
+    "databaseWrite": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "routesPreserved": true
+  },
+  "exitCriteria": {
+    "tabletLargeUsesOverlayNavigation": true,
+    "tabletDockRemainsAvailable": true,
+    "desktopLayoutStartsAt1180": true,
+    "mobileRulesChanged": false,
+    "desktopWideRulesChanged": false,
+    "commercialActionsRemoved": false,
+    "parallelWorkflowCreated": false,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 34,
+    "name": "Otimizar mobile",
+    "status": "planned"
+  }
+}

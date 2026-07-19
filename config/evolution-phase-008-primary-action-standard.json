@@ -1,0 +1,17 @@
+{
+  "phase": 8,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "standard": {
+    "primaryClass": "atlas-button-primary",
+    "secondaryClass": "atlas-button-secondary",
+    "rule": "One visually dominant action per decision context; secondary actions remain quieter."
+  },
+  "topbarAction": {
+    "label": "Novo lead",
+    "href": "/leads/new",
+    "usesPrimaryStandard": true,
+    "accessibleName": true
+  },
+  "businessLogicChanged": false
+}

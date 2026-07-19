@@ -1,0 +1,9 @@
+{
+  "phase": 24,
+  "role": "director",
+  "endpoint": "app/api/v1/analytics/director-daily/route.ts",
+  "page": "app/(crm)/dashboard/page.tsx",
+  "requiredAreas": ["commercial", "financial", "forecast", "campaigns", "developers", "ai", "risks", "hierarchy"],
+  "truthControls": ["forecastMethod", "minimumLeadsForDecision", "conversionSampleSufficient", "measured"],
+  "decisionControls": ["readOnly", "humanApprovalRequired", "noAutomaticBudgetChange", "noAutomaticPeopleDecision"]
+}

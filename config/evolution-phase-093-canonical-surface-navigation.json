@@ -1,0 +1,92 @@
+{
+  "phase": 93,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "canonical-product-surface-role-aware-navigation-and-primary-module-contract-coverage",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "authenticationChanged": false,
+  "runtimeBehaviorChanged": true,
+  "objective": "keep daily navigation focused on commercial outcomes while preserving contextual, internal, experimental and retired routes as governed deep links",
+  "routeInventory": {
+    "pageFiles": 271,
+    "canonical": 23,
+    "contextual": 103,
+    "internal": 23,
+    "experimental": 115,
+    "retired": 7,
+    "unclassified": 0
+  },
+  "navigation": {
+    "productiveItems": 19,
+    "internalItems": 1,
+    "visibleGroups": [
+      "Operação diária",
+      "Clientes e portfólio",
+      "Gestão",
+      "Administração"
+    ],
+    "internalItemRemovedFromDailyMenu": "/atlas-v3",
+    "roleAware": true,
+    "mobilePrimaryItems": 4,
+    "searchUses": [
+      "label",
+      "group",
+      "keywords",
+      "business-outcome"
+    ]
+  },
+  "primaryModuleContracts": {
+    "contractedModules": 19,
+    "requiredFields": [
+      "business-outcome",
+      "primary-action",
+      "role-scope",
+      "data-domains",
+      "copilot-context",
+      "server-first-rendering"
+    ]
+  },
+  "compatibility": {
+    "routesDeleted": 0,
+    "redirectsForced": 0,
+    "deepLinksPreserved": true,
+    "aliasesDocumented": [
+      "/kanban",
+      "/pipedrive",
+      "/atlas-v2",
+      "/crm",
+      "/analytics"
+    ]
+  },
+  "delivered": [
+    "complete-page-file-classification-with-zero-unclassified-routes",
+    "canonical-contextual-internal-experimental-and-retired-surface-contract",
+    "nineteen-role-aware-productive-navigation-items",
+    "internal-evolution-route-removed-from-daily-navigation-with-deep-link-preserved",
+    "business-outcome-primary-action-and-data-domain-on-every-visible-module",
+    "nineteen-core-v2-page-contracts",
+    "sidebar-search-by-user-intent-and-reduced-group-noise",
+    "explicit-legacy-compatibility-map"
+  ],
+  "validation": {
+    "phaseContractCheck": true,
+    "previousPhaseRegressionRequired": true,
+    "typecheckRequired": true,
+    "changedFilesLintRequired": true,
+    "secretScanRequired": true,
+    "buildRequired": false
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false,
+    "checkpointPhase": 100
+  },
+  "nextPhase": {
+    "phase": 94,
+    "name": "Auditoria viva do Supabase, contratos reais de dados e contexto multi-tenant",
+    "status": "planned"
+  }
+}

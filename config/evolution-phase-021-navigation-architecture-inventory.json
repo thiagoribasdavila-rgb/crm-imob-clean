@@ -1,0 +1,201 @@
+{
+  "phase": 21,
+  "wave": 2,
+  "status": "completed",
+  "measuredAt": "2026-07-18",
+  "scope": "inventory-app-router-navigation-topology-without-route-mutation",
+  "productionDataModified": false,
+  "runtimeNavigationChanged": false,
+  "framework": {
+    "router": "Next.js App Router",
+    "nextVersion": "16.2.10",
+    "reactVersion": "19.2.4",
+    "persistentLayout": "app/(crm)/layout.tsx",
+    "entryRedirect": "/ -> /dashboard"
+  },
+  "topology": {
+    "crmRoutes": 141,
+    "rootRedirects": 1,
+    "canonicalNavigationDestinations": 25,
+    "canonicalDestinationsPresent": 25,
+    "missingCanonicalDestinations": 0,
+    "dynamicContextRoutes": 29,
+    "deepSupportRoutes": 71,
+    "topLevelNonCanonicalRoutes": 15
+  },
+  "navigationChannels": [
+    {
+      "channel": "primary-sidebar",
+      "count": 19,
+      "source": "atlasNavigation",
+      "purpose": "Destinos recorrentes governados por perfil e agrupados por trabalho."
+    },
+    {
+      "channel": "contextual-command",
+      "count": 6,
+      "source": "atlasContextCommands",
+      "purpose": "Ações e workspaces acessados por busca, contexto ou comando, sem inflar a sidebar."
+    },
+    {
+      "channel": "mobile-primary",
+      "count": 4,
+      "source": "derived from atlasNavigation",
+      "purpose": "Subconjunto móvel das rotas canônicas, não um catálogo independente."
+    }
+  ],
+  "routeBuckets": [
+    {
+      "bucket": "canonical",
+      "count": 25,
+      "disposition": "preserve"
+    },
+    {
+      "bucket": "dynamic-context",
+      "count": 29,
+      "disposition": "preserve-as-workflow-context"
+    },
+    {
+      "bucket": "deep-support",
+      "count": 71,
+      "disposition": "keep-addressable-and-audit-discoverability"
+    },
+    {
+      "bucket": "top-level-non-canonical",
+      "count": 15,
+      "disposition": "classify-before-consolidation"
+    },
+    {
+      "bucket": "root-redirect",
+      "count": 1,
+      "disposition": "preserve"
+    }
+  ],
+  "topLevelNonCanonical": [
+    {
+      "route": "/agents",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/atlas-v3/agents"
+    },
+    {
+      "route": "/ai-insights",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/intelligence"
+    },
+    {
+      "route": "/analytics",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/reports"
+    },
+    {
+      "route": "/approvals",
+      "classification": "contextual-support",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/atlas-v2",
+      "classification": "historical-compatibility",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/atlas-v3",
+      "classification": "internal-evolution-surface",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/automation",
+      "classification": "semantic-duplicate-candidate",
+      "targetToEvaluate": "/automations"
+    },
+    {
+      "route": "/automations",
+      "classification": "semantic-duplicate-candidate",
+      "targetToEvaluate": "/automation"
+    },
+    {
+      "route": "/chat",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/conversations"
+    },
+    {
+      "route": "/creatives",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/marketing/creatives"
+    },
+    {
+      "route": "/intelligence",
+      "classification": "active-contextual-support",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/kanban",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/pipeline"
+    },
+    {
+      "route": "/notifications",
+      "classification": "active-contextual-support",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/pipedrive",
+      "classification": "legacy-adapter",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/search",
+      "classification": "active-contextual-support",
+      "targetToEvaluate": null
+    }
+  ],
+  "architecture": {
+    "persistentShell": [
+      "AppShell",
+      "AtlasCopilotDock",
+      "AtlasSystemPulse",
+      "AtlasNotificationCenter",
+      "AtlasQuickCreate",
+      "AtlasWorkspaceMemory",
+      "AtlasFeedbackCenter",
+      "AtlasCommercialPresence"
+    ],
+    "pageContentResetsByPathname": true,
+    "nestedLayoutsDetected": 0,
+    "sharedLoadingBoundaries": 1,
+    "sharedErrorBoundaries": 1
+  },
+  "findings": [
+    {
+      "priority": "high",
+      "finding": "Quinze superfícies de topo são acessíveis, mas não pertencem aos catálogos canônicos de navegação.",
+      "nextAction": "Definir o resultado comercial e a descoberta correta antes de consolidar qualquer rota."
+    },
+    {
+      "priority": "high",
+      "finding": "Há sobreposição semântica entre automation/automations, kanban/pipeline e creatives/marketing/creatives.",
+      "nextAction": "Escolher um conceito canônico por tarefa e preservar compatibilidade por redirecionamento somente após validação."
+    },
+    {
+      "priority": "medium",
+      "finding": "As 141 rotas CRM compartilham um único layout, loading e error boundary no grupo principal.",
+      "nextAction": "Avaliar limites aninhados por domínio quando a medição de falhas justificar isolamento."
+    },
+    {
+      "priority": "medium",
+      "finding": "O shell global mantém oito superfícies persistentes em todas as rotas.",
+      "nextAction": "Auditar colisões de camada, foco e comandos antes de adicionar novos overlays."
+    },
+    {
+      "priority": "positive",
+      "finding": "Os 25 destinos canônicos resolvem para páginas existentes.",
+      "nextAction": "Preservar cobertura integral durante a compactação futura."
+    }
+  ],
+  "exitCriteria": {
+    "routeTopologyMeasured": true,
+    "canonicalDestinationsResolved": true,
+    "nonCanonicalRoutesClassified": true,
+    "routeDeleted": false,
+    "redirectAdded": false,
+    "phaseTwentyGateBypassed": false
+  }
+}

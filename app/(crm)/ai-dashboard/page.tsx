@@ -1,8 +1,68 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
+
+type Signal = { id: string; severity: "critical" | "attention" | "opportunity" | "healthy"; area: string; title: string; evidence: string; action: string; href: string };
+type Briefing = {
+  generatedAt: string; status: "critical" | "attention" | "healthy";
+  context: { portfolio: { developments: number; inventory: number; available: number; sold: number; absorptionPercent: number; availableVgv: number }; commercial: { leads: number; hotLeads: number; overdueNextActions: number; withoutNextAction: number; openOpportunities: number; pipelineValue: number; weightedForecast: number }; materials: { current: number; expired: number } };
+  signals: Signal[]; model: { generativeReady: boolean; localIntelligenceReady: boolean; calibrationVerifiedAt: string };
+  productLearning: { periodDays: number; summary: { presentations: number; interested: number; rejected: number }; items: Array<{ propertyId: string; title: string; presentations: number; interested: number; rejected: number; interestRate: number }> };
+};
+
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const tones = { critical: "danger", attention: "warning", opportunity: "violet", healthy: "success" } as const;
+const labels = { critical: "CRÍTICO", attention: "ATENÇÃO", opportunity: "OPORTUNIDADE", healthy: "SAUDÁVEL" } as const;
+
 export default function AIDashboard() {
+  const [data, setData] = useState<Briefing | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function load() {
+    setLoading(true); setError("");
+    const response = await fetch("/api/ai/briefing");
+    const payload = await response.json();
+    if (!response.ok) setError(payload?.error?.message || payload?.error || "Não foi possível carregar o briefing.");
+    else setData(payload as Briefing);
+    setLoading(false);
+  }
+  useEffect(() => { void load(); }, []);
+
+  function askCopilot(signal: Signal) {
+    window.dispatchEvent(new CustomEvent("atlas:open-copilot", { detail: { prompt: `Analise este sinal imobiliário e crie um plano humano de execução: ${signal.title}. Evidência: ${signal.evidence}. Não execute contato, movimentação ou distribuição.`, context: { area: signal.area, severity: signal.severity } } }));
+  }
+
+  const portfolio = data?.context.portfolio;
+  const commercial = data?.context.commercial;
+  const materials = data?.context.materials;
+  const learning = data?.productLearning;
+  const conversionPlaybooks = [
+    { id: "sla", title: "Proteger o primeiro retorno", evidence: `${commercial?.overdueNextActions ?? 0} follow-up(s) atrasado(s).`, prompt: "Priorize até três formas de proteger o SLA e recuperar conversas atrasadas, com decisão humana." },
+    { id: "next-action", title: "Retirar leads da inércia", evidence: `${commercial?.withoutNextAction ?? 0} lead(s) sem próxima ação.`, prompt: "Crie uma rotina objetiva para leads sem próxima ação, sem enviar mensagens ou alterar registros." },
+    { id: "inventory", title: "Conectar demanda e estoque", evidence: `${portfolio?.available ?? 0} unidade(s) disponíveis e ${commercial?.hotLeads ?? 0} lead(s) quente(s).`, prompt: "Sugira como revisar aderência entre demanda quente e estoque disponível, sem afirmar compatibilidade não validada." },
+  ];
+
+  function openPlaybook(playbook: (typeof conversionPlaybooks)[number]) {
+    window.dispatchEvent(new CustomEvent("atlas:open-copilot", { detail: { prompt: `${playbook.prompt} Evidência agregada: ${playbook.evidence}`, context: { module: "ai-dashboard", playbook: playbook.id } } }));
+  }
+
   return (
-    <div>
-      <h1>IA do CRM</h1>
-      <p>Insights inteligentes de leads</p>
+    <div className="space-y-6 pb-10" data-evolution-phase="44" data-ai-layout="proactive-human-led">
+      <section className="atlas-grid-glow overflow-hidden rounded-[30px] border border-violet-400/10 bg-gradient-to-br from-violet-500/[.14] via-blue-500/[.06] to-cyan-500/[.09] p-6 sm:p-8">
+        <div className="grid gap-8 xl:grid-cols-[1.35fr_.65fr] xl:items-end"><div><div className="flex flex-wrap gap-2"><AtlasBadge tone="violet">IA SUGERE</AtlasBadge><AtlasBadge tone="info">HUMANO DECIDE</AtlasBadge><AtlasBadge tone={data?.model.generativeReady ? "success" : "warning"}>{data?.model.generativeReady ? "MODELO ONLINE" : "INTELIGÊNCIA LOCAL"}</AtlasBadge></div><h1 className="mt-5 max-w-4xl text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">A IA encontra a decisão. Sua equipe conduz a venda.</h1><p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">O Atlas observa atrasos, oportunidades e estoque para preparar planos curtos. Nenhum contato, distribuição ou mudança comercial é executado automaticamente.</p><div className="mt-6 flex flex-wrap gap-3"><button type="button" onClick={() => void load()} className="atlas-button-primary">Atualizar prioridades</button><Link href="/leads/ai-qualify" className="atlas-button-secondary">Leads com maior potencial</Link><Link href="/settings/ai" className="atlas-button-secondary">Eficiência da IA</Link></div></div><div className="rounded-3xl border border-white/[0.08] bg-[#070d1b]/75 p-5"><p className="atlas-eyebrow">Saúde comercial</p><p className="mt-2 text-3xl font-semibold text-white">{loading ? "—" : labels[data?.status || "healthy"]}</p><p className="mt-2 text-xs text-slate-500">{data ? `Atualizado em ${new Date(data.generatedAt).toLocaleString("pt-BR")}` : "Calculando oportunidades..."}</p></div></div>
+      </section>
+      {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"><AtlasMetric label="Leads visíveis" value={loading ? "—" : commercial?.leads ?? 0} detail={`${commercial?.hotLeads ?? 0} quentes`} trend="CARTEIRA" tone="blue" /><AtlasMetric label="Follow-ups atrasados" value={loading ? "—" : commercial?.overdueNextActions ?? 0} detail={`${commercial?.withoutNextAction ?? 0} sem próxima ação`} trend="SLA" tone="rose" /><AtlasMetric label="Pipeline" value={loading ? "—" : brl.format(commercial?.pipelineValue ?? 0)} detail={`${commercial?.openOpportunities ?? 0} oportunidades`} trend="VENDAS" tone="violet" /><AtlasMetric label="Estoque disponível" value={loading ? "—" : portfolio?.available ?? 0} detail={brl.format(portfolio?.availableVgv ?? 0)} trend="INVENTÁRIO" tone="green" /><AtlasMetric label="Materiais vencidos" value={loading ? "—" : materials?.expired ?? 0} detail={`${materials?.current ?? 0} vigentes`} trend="HUB" tone="amber" /></section>
+      <AtlasCard><AtlasCardHeader eyebrow="Copilot proativo" title="Três planos prontos para revisão" description="A IA prepara a decisão com números agregados. A equipe escolhe, ajusta e executa."/><div className="grid gap-3 p-5 pt-0 lg:grid-cols-3">{conversionPlaybooks.map((playbook) => <article key={playbook.id} className="rounded-2xl border border-white/[.08] bg-white/[.025] p-4"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-sky-300">PLANO ASSISTIDO</p><h2 className="mt-2 font-semibold text-white">{playbook.title}</h2><p className="mt-2 text-xs leading-5 text-slate-400">{playbook.evidence}</p><button type="button" onClick={() => openPlaybook(playbook)} className="atlas-button-secondary mt-4 w-full">Preparar com IA</button></article>)}</div></AtlasCard>
+      <section className="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
+        <AtlasCard><AtlasCardHeader eyebrow="Decision queue" title="Sinais priorizados" description="Ordenados por gravidade e impacto operacional." /><div className="space-y-3 p-5 sm:p-6">{loading ? [1,2,3,4].map((item) => <AtlasSkeleton key={item} className="h-36 w-full" />) : !data?.signals.length ? <AtlasEmpty title="Nenhum sinal encontrado" description="Atualize os dados para gerar o briefing." /> : data.signals.map((signal, index) => <article key={signal.id} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5"><div className="flex items-start justify-between gap-3"><div className="flex gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[0.04] text-sm font-bold text-slate-400">{index + 1}</span><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-slate-500">{signal.area}</p><h2 className="mt-1 font-semibold text-white">{signal.title}</h2></div></div><AtlasBadge tone={tones[signal.severity]}>{labels[signal.severity]}</AtlasBadge></div><p className="mt-4 text-sm leading-6 text-slate-400">{signal.evidence}</p><div className="mt-4 rounded-xl border border-sky-400/10 bg-sky-400/[0.05] p-3 text-xs leading-5 text-sky-100">{signal.action}</div><div className="mt-4 flex flex-wrap gap-2"><Link href={signal.href} className="atlas-button-secondary">Executar agora</Link><button onClick={() => askCopilot(signal)} className="atlas-button-secondary">✦ Criar plano com IA</button></div></article>)}</div></AtlasCard>
+        <div className="space-y-6"><AtlasCard><AtlasCardHeader eyebrow="Portfolio pulse" title="Absorção do estoque" description={`${portfolio?.sold ?? 0} unidades vendidas de ${portfolio?.inventory ?? 0}.`} /><div className="p-5 sm:p-6"><div className="flex items-end justify-between"><span className="text-sm text-slate-400">Sell-through</span><strong className="text-4xl text-emerald-300">{portfolio?.absorptionPercent ?? 0}%</strong></div><div className="mt-5"><AtlasProgress value={portfolio?.absorptionPercent ?? 0} /></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-white/[0.03] p-3 text-center"><strong className="block text-white">{portfolio?.developments ?? 0}</strong><span className="text-[10px] uppercase text-slate-500">Projetos</span></div><div className="rounded-xl bg-white/[0.03] p-3 text-center"><strong className="block text-white">{portfolio?.available ?? 0}</strong><span className="text-[10px] uppercase text-slate-500">Disponíveis</span></div></div></div></AtlasCard><AtlasCard><AtlasCardHeader eyebrow="AI readiness" title="Camadas ativas" description="A inteligência local continua operando sem dependência externa." /><div className="space-y-3 p-5"><div className="flex justify-between rounded-xl bg-white/[0.03] p-3 text-sm"><span className="text-slate-400">Motor imobiliário local</span><AtlasBadge tone="success">ATIVO</AtlasBadge></div><div className="flex justify-between rounded-xl bg-white/[0.03] p-3 text-sm"><span className="text-slate-400">Modelo generativo</span><AtlasBadge tone={data?.model.generativeReady ? "success" : "warning"}>{data?.model.generativeReady ? "ATIVO" : "PENDENTE"}</AtlasBadge></div><div className="flex justify-between rounded-xl bg-white/[0.03] p-3 text-sm"><span className="text-slate-400">Calibração de mercado</span><AtlasBadge tone="info">VALIDADA</AtlasBadge></div></div></AtlasCard></div>
+      </section>
+      <AtlasCard><AtlasCardHeader eyebrow="Aprendizado comercial · 90 dias" title="Resposta dos clientes por imóvel" description="Apresentações e retornos dentro do seu escopo hierárquico." action={<Link href="/properties/mtching" className="text-xs font-semibold text-sky-300">Abrir Matching Studio →</Link>} /><div className="p-5 sm:p-6">{loading ? <AtlasSkeleton className="h-48 w-full" /> : !learning?.items.length ? <AtlasEmpty title="Ainda sem feedback suficiente" description="Registre apresentações e o retorno dos clientes para formar esta inteligência." /> : <><div className="mb-5 grid gap-3 sm:grid-cols-3"><div className="rounded-2xl bg-white/[.03] p-4"><p className="text-xs text-slate-500">Apresentações</p><strong className="mt-1 block text-2xl text-white">{learning.summary.presentations}</strong></div><div className="rounded-2xl bg-emerald-400/[.06] p-4"><p className="text-xs text-emerald-300">Interesses</p><strong className="mt-1 block text-2xl text-white">{learning.summary.interested}</strong></div><div className="rounded-2xl bg-rose-400/[.06] p-4"><p className="text-xs text-rose-300">Rejeições</p><strong className="mt-1 block text-2xl text-white">{learning.summary.rejected}</strong></div></div><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="border-b border-white/[.07] text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="pb-3">Imóvel</th><th className="pb-3 text-center">Apresentado</th><th className="pb-3 text-center">Gostou</th><th className="pb-3 text-center">Não aderiu</th><th className="pb-3 text-right">Aceitação</th></tr></thead><tbody>{learning.items.map((item) => <tr key={item.propertyId} className="border-b border-white/[.05]"><td className="py-4 font-medium text-white">{item.title}</td><td className="py-4 text-center text-slate-300">{item.presentations}</td><td className="py-4 text-center text-emerald-300">{item.interested}</td><td className="py-4 text-center text-rose-300">{item.rejected}</td><td className="py-4 text-right"><AtlasBadge tone={item.interestRate >= 60 ? "success" : item.interestRate >= 35 ? "warning" : "danger"}>{item.interestRate}%</AtlasBadge></td></tr>)}</tbody></table></div></>}</div></AtlasCard>
     </div>
   );
 }

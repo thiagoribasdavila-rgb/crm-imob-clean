@@ -1,0 +1,45 @@
+{
+  "phase": 18,
+  "publicRoutes": [
+    "app/api/health/route.ts",
+    "app/api/ready/route.ts",
+    "app/api/v1/health/route.ts",
+    "app/api/v1/ready/route.ts",
+    "app/api/v1/openapi/route.ts",
+    "app/api/v1/route.ts"
+  ],
+  "authFlowRoutes": [
+    "app/api/auth/password-recovery/route.ts",
+    "app/api/auth/password-reset/route.ts",
+    "app/api/auth/sessions/route.ts",
+    "app/api/bootstrap/admin/route.ts"
+  ],
+  "webhookRoutes": [
+    "app/api/webhooks/meta/route.ts",
+    "app/api/webhooks/whatsapp/route.ts"
+  ],
+  "workerRoutes": [
+    "app/api/v1-v2/status/route.ts",
+    "app/api/atlas2030/recommendations/generate/route.ts",
+    "app/api/v2/ai/nightly-sales/route.ts",
+    "app/api/v2/ai/nightly-handoff/route.ts",
+    "app/api/v2/meta/daily-report/route.ts",
+    "app/api/v2/outbox/process/route.ts",
+    "app/api/v2/tasks/recurrences/process/route.ts",
+    "app/api/v2/tasks/reminders/process/route.ts",
+    "app/api/v2/distribution/reservations/process/route.ts",
+    "app/api/v3/agents/process/route.ts",
+    "app/api/v3/decisions/generate/route.ts",
+    "app/api/v3/status/route.ts",
+    "app/api/v3/twins/rebuild/route.ts"
+  ],
+  "noBodyMutationRoutes": [
+    "app/api/ai/cost-routing-test/route.ts",
+    "app/api/ai/openai-test/route.ts",
+    "app/api/ai/perplexity-test/route.ts",
+    "app/api/v1/integrations/meta/daily-report-test/route.ts"
+  ],
+  "authenticationEvidence": ["requireAccessContext", "requireApiIdentity", "requireAuthenticatedUser"],
+  "validationEvidence": ["request.json(", "request.text(", "request.formData(", "req.json("],
+  "auditEvidence": ["structuredApiLog", "logger.info", "logger.warn", "logger.error", "profile_hierarchy_events", "audit_logs"]
+}

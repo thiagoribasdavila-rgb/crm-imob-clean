@@ -1,0 +1,56 @@
+{
+  "phase": 85,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "auditable-commercial-context-gap-queue",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "turn-measured-project-and-source-context-gaps-into-a-short-human-review-queue-without-rewriting-history-or-inferring-commercial-impact",
+  "changes": [
+    "add-one-typed-context-gap-queue-contract",
+    "use-current-window-human-confirmed-results-only",
+    "deduplicate-by-latest-outcome-per-task",
+    "detect-project-and-source-gaps-separately",
+    "show-missing-both-dimensions-explicitly",
+    "prioritize-more-missing-dimensions-then-oldest-observed-fact",
+    "separate-immutable-historical-gaps-from-current-lead-review",
+    "link-manual-review-to-the-existing-lead-workspace",
+    "keep-the-gap-queue-outside-the-supervised-outcome-category-filter",
+    "avoid-schema-writes-backfill-model-calls-scores-rankings-predictions-and-automatic-actions"
+  ],
+  "queue": {
+    "maximumVisibleItems": 5,
+    "window": "selected-current-period",
+    "denominator": "human-confirmed-latest-outcomes-per-task",
+    "ordering": ["missing-dimension-count-desc", "observed-at-asc"],
+    "historicalEvidence": "immutable",
+    "legacyCorrection": "current-lead-for-future-results-only",
+    "automaticCorrection": false
+  },
+  "validation": {
+    "targetedChecks": [
+      "commercial-context-gap-queue:check",
+      "commercial-context-coverage:check",
+      "historical-commercial-context-propagation:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "changed-files-lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "A current lead update cannot repair an immutable historical event. The queue therefore labels historical gaps as future-results-only and never presents a current edit as historical backfill.",
+  "nextPhase": {
+    "phase": 86,
+    "name": "Prevenção supervisionada de novas lacunas contextuais",
+    "status": "planned"
+  }
+}

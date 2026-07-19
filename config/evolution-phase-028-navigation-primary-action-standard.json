@@ -1,0 +1,74 @@
+{
+  "phase": 28,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "single-declarative-primary-action-contract-across-shared-page-headers-and-topbar",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "navigationDestinationsChanged": false,
+  "sharedContract": {
+    "component": "components/atlas/action-link.tsx",
+    "pageHeader": "components/atlas/page-header.tsx",
+    "persistentTopbar": "components/atlas/topbar.tsx",
+    "priorityValues": [
+      "primary",
+      "secondary"
+    ],
+    "defaultPriority": "primary",
+    "arbitraryReactNodeAcceptedByPageHeader": false,
+    "maximumActionsPerPageHeader": 1
+  },
+  "auditedConsumers": {
+    "pageHeadersMigrated": 13,
+    "primaryHeaderActions": 1,
+    "secondaryHeaderActions": 12,
+    "manualActionsPropRemaining": 0,
+    "persistentTopbarSlots": 1,
+    "dashboardDrilldownsRemainSecondary": true,
+    "customerCreationRemainsPrimary": true
+  },
+  "visualBehavior": {
+    "primaryUsesExistingButtonToken": "atlas-button-primary",
+    "secondaryUsesExistingButtonToken": "atlas-button-secondary",
+    "pageActionMinimumTargetPx": 44,
+    "labelTruncatesWithoutBreakingLayout": true,
+    "arrowIsDecorative": true,
+    "mobileActionUsesAvailableWidth": true
+  },
+  "accessibility": {
+    "accessibleNameFallsBackToVisibleLabel": true,
+    "optionalIconIsDecorative": true,
+    "optionalArrowIsDecorative": true,
+    "headerActionGroupHasLabel": true,
+    "priorityDoesNotDependOnColorOnly": true
+  },
+  "measurementPolicy": {
+    "structuralConsistencyIsRuntimeProof": false,
+    "inventedBehaviorMetricAllowed": false,
+    "behavioralTelemetryStatus": "awaiting-runtime-telemetry"
+  },
+  "safetyPolicy": {
+    "databaseRead": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "automaticDecisionAboutPeopleAllowed": false,
+    "rbacPreserved": true,
+    "routeGuardsPreserved": true
+  },
+  "exitCriteria": {
+    "oneActionMaximumIsEnforcedByType": true,
+    "sharedVisualPriorityIsExplicit": true,
+    "topbarUsesSameActionComponent": true,
+    "existingDestinationsPreserved": true,
+    "parallelWorkflowCreated": false,
+    "routeRemoved": false,
+    "permissionChanged": false,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 29,
+    "name": "Criar carregamento progressivo",
+    "status": "planned"
+  }
+}

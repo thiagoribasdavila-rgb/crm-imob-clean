@@ -25,23 +25,24 @@ export async function refreshSession(request: NextRequest, options?: { protect?:
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  const authenticated = !claimsError && typeof claimsData?.claims?.sub === "string" && claimsData.claims.sub.length > 0;
 
-  if (options?.protect && !user) {
+  if (options?.protect && !authenticated) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (request.nextUrl.pathname.startsWith("/login") && user) {
+  if (request.nextUrl.pathname.startsWith("/login") && authenticated) {
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = "/dashboard";
     dashboardUrl.search = "";
     return NextResponse.redirect(dashboardUrl);
   }
 
+  response.headers.set("Cache-Control", "private, no-store");
+  response.headers.set("Vary", "Cookie");
   return response;
 }

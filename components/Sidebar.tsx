@@ -11,6 +11,7 @@ const sections = [
     { name: "Clientes", href: "/customers", icon: "◇" },
     { name: "Tarefas", href: "/tasks", icon: "✓" },
     { name: "Agenda", href: "/calendar", icon: "□" },
+    { name: "Lembretes", href: "/notifications", icon: "◔" },
   ]},
   { title: "Imobiliário", items: [
     { name: "Imóveis", href: "/properties", icon: "⌂" },
@@ -21,7 +22,7 @@ const sections = [
     { name: "V2 Overview", href: "/atlas-v2", icon: "✺" },
     { name: "Marketing AI", href: "/marketing", icon: "◉" },
     { name: "Conversas", href: "/conversations", icon: "◍" },
-    { name: "Criativos", href: "/creatives", icon: "✣" },
+    { name: "Criativos", href: "/marketing/creatives", icon: "✣" },
     { name: "Automações", href: "/automations", icon: "⚡" },
     { name: "Aprovações", href: "/approvals", icon: "✓" },
     { name: "Integrações", href: "/integrations", icon: "⊕" },
@@ -37,6 +38,8 @@ const sections = [
     { name: "Agentes", href: "/atlas-v3/agents", icon: "⬡" },
     { name: "Market Intelligence", href: "/atlas-v3/market", icon: "⌖" },
     { name: "Forecast", href: "/atlas-v3/forecast", icon: "∿" },
+    { name: "Aging do pipeline", href: "/atlas-v3/pipeline-aging", icon: "◷" },
+    { name: "Velocidade do funil", href: "/atlas-v3/funnel-velocity", icon: "↝" },
     { name: "Marketplace", href: "/atlas-v3/marketplace", icon: "◧" },
     { name: "Investor", href: "/atlas-v3/investor", icon: "△" },
     { name: "Incorporadoras", href: "/atlas-v3/developer", icon: "▤" },
@@ -71,7 +74,7 @@ export default function Sidebar() {
         <div className="border-b border-white/[0.07] px-6 py-6">
           <Link href="/dashboard" className="group flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl border border-sky-400/20 bg-gradient-to-br from-sky-400/20 to-violet-500/15 text-lg font-black text-sky-300 shadow-[0_0_28px_rgba(56,189,248,.12)]">A</span>
-            <span><span className="block text-xl font-black tracking-[-.04em] text-white">ATLAS <span className="text-sky-400">AI</span></span><span className="block text-[9px] font-semibold uppercase tracking-[.22em] text-slate-500">Real Estate OS</span></span>
+            <span><span className="block text-xl font-black tracking-[-.04em] text-white">ATLAS <span className="text-sky-400">AI</span></span><span className="block text-[9px] font-semibold uppercase tracking-[.22em] text-slate-500">Inteligência comercial</span></span>
           </Link>
         </div>
 

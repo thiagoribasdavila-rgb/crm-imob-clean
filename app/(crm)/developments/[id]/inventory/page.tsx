@@ -12,10 +12,14 @@ type Property = {
   id: string; title: string | null; unit_number: string | null; floor: number | null; typology: string | null;
   price: number | null; area: number | null; bedrooms: number | null; bathrooms: number | null;
   parking_spaces: number | null; status: string | null; updated_at: string | null; activeReservation: Reservation | null;
+  tower: string | null; orientation: string | null; typology_id: string | null; list_price: number | null;
+  inventory_source: string; inventory_version: number; availability_updated_at: string; last_synced_at: string | null;
 };
 type Payload = {
   development: { id: string; name: string; developer_name: string | null; neighborhood: string | null; city: string | null; state: string | null; status: string };
   inventory: Property[];
+  typologies: { id: string; code: string; name: string; private_area: number; bedrooms: number | null; price_from: number | null }[];
+  events: { id: string; property_id: string; event_type: string; reason: string; inventory_version: number; created_at: string }[];
   metrics: { total: number; available: number; reserved: number; sold: number; blocked: number; totalVgv: number; soldVgv: number; absorption: number };
 };
 
@@ -44,6 +48,8 @@ export default function DevelopmentInventoryPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [reason, setReason] = useState("Atualização operacional do espelho");
+  const [newUnit, setNewUnit] = useState({ typologyId: "", unitNumber: "", tower: "", floor: "", orientation: "", price: "", listPrice: "" });
 
   async function authToken() {
     const { data } = await supabase.auth.getSession();
@@ -81,11 +87,20 @@ export default function DevelopmentInventoryPage() {
     const response = await fetch(`/api/v1/developments/${id}/inventory`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ propertyId, status }),
+      body: JSON.stringify({ propertyId, status, reason, expectedUpdatedAt: payload?.inventory.find((item) => item.id === propertyId)?.updated_at }),
     });
     const data = await response.json() as { error?: string };
     if (!response.ok) setError(data.error || "Falha ao atualizar unidade.");
     else await load();
+    setSavingId(null);
+  }
+
+  async function createUnit() {
+    const token = await authToken(); if (!token) return;
+    setSavingId("new"); setError("");
+    const response = await fetch(`/api/v1/developments/${id}/inventory`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ ...newUnit, floor: newUnit.floor ? Number(newUnit.floor) : null, price: Number(newUnit.price), listPrice: newUnit.listPrice ? Number(newUnit.listPrice) : null, status: "available", source: "manual", reason }) });
+    const data = await response.json() as { error?: string };
+    if (!response.ok) setError(data.error || "Falha ao cadastrar unidade."); else { setNewUnit({ typologyId: "", unitNumber: "", tower: "", floor: "", orientation: "", price: "", listPrice: "" }); await load(); }
     setSavingId(null);
   }
 
@@ -110,12 +125,12 @@ export default function DevelopmentInventoryPage() {
 
   const { development, metrics } = payload;
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10" data-phase="64-canonical-sales-mirror">
       <section className="atlas-grid-glow rounded-[30px] border border-cyan-400/10 bg-gradient-to-br from-cyan-500/[.1] via-blue-500/[.06] to-violet-500/[.1] p-6 sm:p-8">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <Link href={`/developments/${id}`} className="text-sm font-semibold text-sky-300">← Voltar ao comando</Link>
-            <div className="mt-5 flex flex-wrap gap-2"><AtlasBadge tone="violet">INVENTORY CONTROL</AtlasBadge><AtlasBadge tone="info">{development.status}</AtlasBadge></div>
+            <div className="mt-5 flex flex-wrap gap-2"><AtlasBadge tone="violet">ESPELHO CANÔNICO</AtlasBadge><AtlasBadge tone="info">{development.status}</AtlasBadge></div>
             <h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">{development.name}</h1>
             <p className="mt-3 text-sm text-slate-400">{development.developer_name || "Incorporadora não informada"} · {[development.neighborhood, development.city, development.state].filter(Boolean).join(" · ")}</p>
           </div>
@@ -133,7 +148,17 @@ export default function DevelopmentInventoryPage() {
       {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}
 
       <AtlasCard>
-        <AtlasCardHeader eyebrow="Unit map" title="Mapa comercial de unidades" description="Disponibilidade, preço, tipologia, reserva e atualização operacional em tempo real." action={<button onClick={() => void load()} className="text-xs font-semibold text-sky-300">Atualizar ↻</button>} />
+        <AtlasCardHeader eyebrow="Unidade canônica" title="Cadastrar unidade" description="Vincule cada unidade a uma tipologia canônica; preço e disponibilidade passam a ter versão e histórico." />
+        <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4 sm:p-6">
+          <label className="space-y-1.5"><span className="text-xs text-slate-400">Tipologia canônica</span><select value={newUnit.typologyId} onChange={(e)=>setNewUnit(c=>({...c,typologyId:e.target.value}))} className="w-full rounded-xl border border-white/10 bg-[#0a1020] px-3 py-2.5 text-sm text-white"><option value="">Selecione</option>{payload.typologies.map(t=><option key={t.id} value={t.id}>{t.code} · {t.name} · {t.private_area} m²</option>)}</select></label>
+          {[['unitNumber','Unidade'],['tower','Torre/bloco'],['floor','Andar'],['orientation','Orientação'],['price','Preço atual'],['listPrice','Preço de tabela']].map(([key,label])=><label key={key} className="space-y-1.5"><span className="text-xs text-slate-400">{label}</span><input value={newUnit[key as keyof typeof newUnit]} onChange={(e)=>setNewUnit(c=>({...c,[key]:e.target.value}))} type={['floor','price','listPrice'].includes(key)?'number':'text'} className="w-full rounded-xl border border-white/10 bg-white/[.035] px-3 py-2.5 text-sm text-white outline-none" /></label>)}
+          <label className="space-y-1.5 lg:col-span-3"><span className="text-xs text-slate-400">Motivo da alteração</span><input value={reason} onChange={(e)=>setReason(e.target.value)} className="w-full rounded-xl border border-white/10 bg-white/[.035] px-3 py-2.5 text-sm text-white outline-none" /></label>
+          <button disabled={savingId==="new"||!newUnit.typologyId||!newUnit.unitNumber||!newUnit.price||reason.trim().length<5} onClick={()=>void createUnit()} className="atlas-button-primary self-end disabled:opacity-40">{savingId==="new"?"Salvando...":"Cadastrar unidade"}</button>
+        </div>
+      </AtlasCard>
+
+      <AtlasCard>
+        <AtlasCardHeader eyebrow="Unit map" title="Mapa comercial de unidades" description="Disponibilidade, preço, tipologia, reserva e atualização operacional em tempo real." action={<div className="flex gap-3"><Link href={`/developments/${id}/inventory/import`} className="text-xs font-semibold text-emerald-300">Importar tabela</Link><button onClick={() => void load()} className="text-xs font-semibold text-sky-300">Atualizar ↻</button></div>} />
         <div className="border-t border-white/[0.06] p-5 sm:p-6">
           <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar unidade, andar, tipologia..." className="rounded-2xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition focus:border-sky-400/30" />
@@ -143,7 +168,7 @@ export default function DevelopmentInventoryPage() {
           <div className="mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
             {filtered.map((property) => (
               <article key={property.id} className="rounded-3xl border border-white/[0.07] bg-[#080e1c]/75 p-5 transition hover:border-sky-400/20">
-                <div className="flex items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[.18em] text-slate-500">Unidade {property.unit_number || "—"} · {property.floor !== null ? `${property.floor}º andar` : "andar não informado"}</p><h3 className="mt-2 text-lg font-semibold text-white">{property.title || property.typology || "Unidade sem título"}</h3></div><AtlasBadge tone={statusTone(property.status, property.activeReservation)}>{statusLabel(property.status, property.activeReservation)}</AtlasBadge></div>
+                <div className="flex items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[.18em] text-slate-500">{property.tower ? `${property.tower} · ` : ""}Unidade {property.unit_number || "—"} · {property.floor !== null ? `${property.floor}º andar` : "andar não informado"}</p><h3 className="mt-2 text-lg font-semibold text-white">{property.title || property.typology || "Unidade sem título"}</h3><p className="mt-1 text-[10px] text-slate-500">Versão {property.inventory_version} · disponibilidade {new Date(property.availability_updated_at).toLocaleString("pt-BR")}</p></div><AtlasBadge tone={statusTone(property.status, property.activeReservation)}>{statusLabel(property.status, property.activeReservation)}</AtlasBadge></div>
                 <p className="mt-5 text-2xl font-semibold text-white">{property.price ? brl.format(property.price) : "Preço sob consulta"}</p>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs text-slate-400"><span className="rounded-xl bg-white/[0.035] px-2 py-2">{property.area ?? "—"} m²</span><span className="rounded-xl bg-white/[0.035] px-2 py-2">{property.bedrooms ?? "—"} dorm.</span><span className="rounded-xl bg-white/[0.035] px-2 py-2">{property.parking_spaces ?? "—"} vagas</span></div>
                 {property.activeReservation?.hold_expires_at ? <p className="mt-4 text-xs text-amber-300">Hold até {new Date(property.activeReservation.hold_expires_at).toLocaleString("pt-BR")}</p> : null}

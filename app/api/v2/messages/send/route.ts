@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireApiIdentity } from "@/lib/security/api-auth";
+import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { normalizeEmail, normalizePhoneE164 } from "@/lib/atlas/data-contracts";
+import { claimIdempotency, completeIdempotency, enforceDistributedRateLimit, requestFingerprint } from "@/lib/security/abuse-protection";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,8 @@ type Payload = {
 };
 
 export async function POST(request: Request) {
+  const distributed = await enforceDistributedRateLimit(request, { scope: "v2-message-send", limit: 30, windowSeconds: 60 });
+  if (!distributed.allowed) return distributed.response;
   const rate = checkRateLimit(clientKey(request, "v2-message-send"), { limit: 30, windowMs: 60_000 });
   if (!rate.allowed) {
     return NextResponse.json(
@@ -36,17 +40,34 @@ export async function POST(request: Request) {
     if (!payload.conversationId || !payload.channel || !payload.recipient || !payload.content?.trim()) {
       return NextResponse.json({ error: "conversationId, channel, recipient e content são obrigatórios." }, { status: 400 });
     }
+    const requestHash = requestFingerprint(payload);
+    const idempotency = await claimIdempotency({ organizationId: identity.organizationId, scope: "v2.message.send", key: request.headers.get("idempotency-key"), requestHash });
+    if (idempotency.state !== "claimed") return idempotency.response;
 
     const admin = getSupabaseAdmin();
     const { data: conversation, error: conversationError } = await admin
       .from("conversations")
-      .select("id,organization_id")
+      .select("id,organization_id,lead_id")
       .eq("id", payload.conversationId)
       .eq("organization_id", identity.organizationId)
       .single();
 
     if (conversationError || !conversation) {
       return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 });
+    }
+    if (conversation.lead_id) await requireLeadAccess(identity, conversation.lead_id);
+
+    if (conversation.lead_id && ["whatsapp", "email"].includes(payload.channel)) {
+      const { data: eligibility, error: eligibilityError } = await admin.rpc("check_lead_contact_eligibility", { p_organization_id: identity.organizationId, p_lead_id: conversation.lead_id, p_channel: payload.channel });
+      const decision = eligibility as { eligible?: boolean; reason?: string } | null;
+      if (eligibilityError || !decision?.eligible) return NextResponse.json({ error: "Contato bloqueado pela preferência ou consentimento da lead.", reason: decision?.reason || "eligibility_unavailable" }, { status: 409 });
+    }
+
+    const normalizedRecipient = payload.channel === "whatsapp" ? normalizePhoneE164(payload.recipient) : payload.channel === "email" ? normalizeEmail(payload.recipient) : payload.recipient.trim();
+    if (!normalizedRecipient) return NextResponse.json({ error: "Destinatário inválido para o canal selecionado." }, { status: 400 });
+    if (payload.channel === "whatsapp") {
+      const { data: suppression } = await admin.from("messaging_suppressions").select("id").eq("organization_id", identity.organizationId).eq("channel", "whatsapp").eq("recipient", normalizedRecipient).maybeSingle();
+      if (suppression) return NextResponse.json({ error: "Este contato solicitou a interrupção das mensagens no WhatsApp." }, { status: 409 });
     }
 
     const requiresApproval = payload.channel !== "email";
@@ -57,7 +78,7 @@ export async function POST(request: Request) {
         conversation_id: payload.conversationId,
         direction: "outbound",
         channel: payload.channel,
-        recipient: payload.recipient,
+        recipient: normalizedRecipient,
         content: payload.content.trim(),
         status: "queued",
       })
@@ -94,8 +115,10 @@ export async function POST(request: Request) {
       requiresApproval,
     });
 
+    const responseBody = { id: message.id, status: requiresApproval ? "pending_approval" : "queued" };
+    await completeIdempotency({ organizationId: identity.organizationId, scope: "v2.message.send", key: idempotency.key, requestHash, status: 202, body: responseBody });
     return NextResponse.json(
-      { id: message.id, status: requiresApproval ? "pending_approval" : "queued" },
+      responseBody,
       { status: 202, headers: { "X-RateLimit-Remaining": String(rate.remaining) } },
     );
   } catch (error) {

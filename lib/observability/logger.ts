@@ -1,38 +1,38 @@
+import "server-only";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 type Metadata = Record<string, unknown>;
 
-const REDACTED_KEYS = new Set([
-  "password",
-  "token",
-  "authorization",
-  "cookie",
-  "secret",
-  "apiKey",
-  "accessToken",
-  "refreshToken",
-]);
+const SENSITIVE_KEY = /(authorization|cookie|password|passphrase|token|secret|api.?key|email|phone|mobile|whatsapp|cpf|cnpj|document|prompt|message|lead.?content)/i;
+const SENSITIVE_VALUE = /(bearer\s+[a-z0-9._-]+|\bsk-[a-z0-9_-]{12,}|\bpplx-[a-z0-9_-]{12,}|\beyJ[a-z0-9_-]+\.[a-z0-9_-]+\.[a-z0-9_-]+|[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}|\b\d{10,14}\b)/i;
 
-function redact(value: unknown): unknown {
+export function sanitizeLogMetadata(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redact);
+  if (typeof value === "string") return SENSITIVE_VALUE.test(value) ? "[REDACTED]" : value.slice(0, 2_000);
   if (!value || typeof value !== "object") return value;
 
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>).map(([key, nested]) => [
       key,
-      REDACTED_KEYS.has(key) ? "[REDACTED]" : redact(nested),
+      SENSITIVE_KEY.test(key) ? "[REDACTED]" : sanitizeLogMetadata(nested),
     ]),
   );
 }
 
+const redact = sanitizeLogMetadata;
+
 function write(level: LogLevel, event: string, metadata: Metadata = {}) {
+  const { requestId = "system", correlationId = requestId, ...safeMetadata } = metadata;
   const payload = JSON.stringify({
     timestamp: new Date().toISOString(),
     level,
     event,
     service: "atlas-ai-os",
-    environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown",
-    metadata: redact(metadata),
+    environment: process.env.ATLAS_ENV || process.env.NODE_ENV || "unknown",
+    requestId: String(requestId).slice(0, 128),
+    correlationId: String(correlationId).slice(0, 128),
+    metadata: redact(safeMetadata),
   });
 
   if (level === "error") console.error(payload);

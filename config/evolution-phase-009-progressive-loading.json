@@ -1,0 +1,13 @@
+{
+  "phase": 9,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "loadingOrder": ["commercial summary", "key metrics", "operational details"],
+  "routeLevelFallback": "app/(crm)/loading.tsx",
+  "accessibility": {
+    "liveStatus": true,
+    "descriptiveLabel": true,
+    "skeletonsHiddenFromAssistiveTechnology": true
+  },
+  "fakeDataRendered": false
+}

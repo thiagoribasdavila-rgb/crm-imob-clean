@@ -1,0 +1,112 @@
+{
+  "name": "ATLAS Core V2 Route Surfaces",
+  "version": "2.0.0-phase-093",
+  "classifiedAt": "2026-07-18",
+  "purpose": "Separate daily product navigation from contextual, internal, experimental and retired surfaces without deleting routes or breaking deep links.",
+  "productionNavigationPolicy": {
+    "allowedSurface": "canonical",
+    "internalRoutesRemainAddressable": true,
+    "experimentalRoutesRemainAddressable": true,
+    "retiredRoutesRemainAddressableUntilExplicitMigration": true,
+    "databaseChanged": false
+  },
+  "canonicalExactFiles": [
+    "app/page.tsx",
+    "app/(auth)/login/page.tsx",
+    "app/(auth)/forgot-password/page.tsx",
+    "app/(auth)/reset-password/page.tsx",
+    "app/(crm)/dashboard/page.tsx",
+    "app/(crm)/leads/page.tsx",
+    "app/(crm)/pipeline/page.tsx",
+    "app/(crm)/tasks/page.tsx",
+    "app/(crm)/calendar/page.tsx",
+    "app/(crm)/activity/page.tsx",
+    "app/(crm)/customers/page.tsx",
+    "app/(crm)/developments/page.tsx",
+    "app/(crm)/leads/import/page.tsx",
+    "app/(crm)/ai-dashboard/page.tsx",
+    "app/(crm)/brokers/page.tsx",
+    "app/(crm)/distribution/page.tsx",
+    "app/(crm)/sales/page.tsx",
+    "app/(crm)/reports/page.tsx",
+    "app/(crm)/revenue-engine/page.tsx",
+    "app/(crm)/users/page.tsx",
+    "app/(crm)/external-sales/page.tsx",
+    "app/(crm)/integrations/page.tsx",
+    "app/(crm)/settings/page.tsx"
+  ],
+  "contextualPrefixes": [
+    "app/(crm)/",
+    "app/analytics/"
+  ],
+  "internalPrefixes": [
+    "app/(crm)/atlas-v3/",
+    "app/(crm)/atlas-2030/"
+  ],
+  "experimentalPrefixes": [
+    "app/(ai)/",
+    "app/(andromeda)/",
+    "app/(automation)/",
+    "app/(autonomous)/",
+    "app/(autonomous-business)/",
+    "app/(collective-intelligence)/",
+    "app/(consciousness)/",
+    "app/(core)/",
+    "app/(digital-life-form)/",
+    "app/(economic-system)/",
+    "app/(ecosystem)/",
+    "app/(engine)/",
+    "app/(meta-economy)/",
+    "app/(reality-control)/",
+    "app/(reality-engine)/",
+    "app/(self-replicating)/",
+    "app/(supreme-market)/",
+    "app/(unified-consciousness)/"
+  ],
+  "retiredExactFiles": [
+    "app/(crm)/page.tsx",
+    "app/(crm)/atlas-v2/page.tsx",
+    "app/(crm)/kanban/page.tsx",
+    "app/(crm)/pipedrive/page.tsx"
+  ],
+  "retiredPrefixes": [
+    "app/(atlas)/"
+  ],
+  "compatibilityMap": [
+    {
+      "source": "/kanban",
+      "canonical": "/pipeline",
+      "behavior": "deep-link-preserved",
+      "reason": "Legacy Kanban entry remains available while Pipeline is the productive contract."
+    },
+    {
+      "source": "/pipedrive",
+      "canonical": "/pipeline",
+      "behavior": "deep-link-preserved",
+      "reason": "Legacy comparison route is excluded from daily navigation."
+    },
+    {
+      "source": "/atlas-v2",
+      "canonical": "/atlas-v3",
+      "behavior": "deep-link-preserved",
+      "reason": "Historic reference remains addressable but never competes with productive work."
+    },
+    {
+      "source": "/crm",
+      "canonical": "/dashboard",
+      "behavior": "deep-link-preserved",
+      "reason": "The Command Center is the canonical authenticated entry point."
+    },
+    {
+      "source": "/analytics",
+      "canonical": "/reports",
+      "behavior": "deep-link-preserved",
+      "reason": "Specialized analytics remain contextual to the governed Reports workspace."
+    }
+  ],
+  "releaseGate": {
+    "checkpointPhase": 100,
+    "buildExecuted": false,
+    "zipCreated": false
+  }
+}

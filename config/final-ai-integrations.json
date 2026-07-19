@@ -1,0 +1,14 @@
+{
+  "phase": 8,
+  "host": "hostinger",
+  "providers": ["openai", "perplexity", "deepseek", "qwen", "kimi", "glm", "local"],
+  "personal_data_external_routing": false,
+  "local_safe_fallback": true,
+  "provider_failover": true,
+  "caller_cancellation_propagated": true,
+  "close_cancels_active_request": true,
+  "cost_per_action_recorded": true,
+  "pricing_never_silently_estimated": true,
+  "external_actions_require_human_approval": true,
+  "automatic_deploy": false
+}

@@ -1,0 +1,13 @@
+{
+  "phase": 31,
+  "contract": "lib/atlas/pipeline-stages.ts",
+  "api": "app/api/v1/pipeline/route.ts",
+  "settingsApi": "app/api/v1/pipeline/stages/route.ts",
+  "board": "app/(crm)/pipeline/page.tsx",
+  "settingsPage": "app/(crm)/pipeline/settings/page.tsx",
+  "migration": "supabase/migrations/20260717183000_phase_31_canonical_pipeline_stages.sql",
+  "canonicalKeys": ["novo", "contato", "qualificacao", "visita", "proposta", "contrato", "ganho", "perdido", "comprou_outro"],
+  "editableFields": ["label", "probability", "position", "visible"],
+  "immutableFields": ["key", "outcome"],
+  "consumers": ["crm", "kanban", "forecast", "analytics", "ai", "meta"]
+}

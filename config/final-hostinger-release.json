@@ -1,0 +1,29 @@
+{
+  "phase": 100,
+  "artifact": "dist/hostinger/atlas-v3-hostinger-final.zip",
+  "checksum": "dist/hostinger/atlas-v3-hostinger-final.zip.sha256",
+  "runtime": "Node.js 20.9+",
+  "process_manager": "PM2",
+  "source": "committed Git HEAD",
+  "required_evidence": [
+    "phase_99_go",
+    "backup_restore",
+    "rollback",
+    "https",
+    "health",
+    "ready",
+    "login",
+    "password_recovery"
+  ],
+  "prohibited_content": [
+    "secrets",
+    ".env.local",
+    "node_modules",
+    "build_cache",
+    "personal_data",
+    "spreadsheets",
+    "pdfs"
+  ],
+  "automatic_deploy": false,
+  "production_requires_director_go": true
+}

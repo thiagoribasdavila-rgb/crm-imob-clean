@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { sanitizeLogMetadata } from "@/lib/observability/logger";
 
 export const ATLAS_API_VERSION = "v1";
 export const ATLAS_API_SERVICE = "atlas-api-platform";
@@ -52,6 +53,9 @@ function responseHeaders(meta: ApiMeta, extra?: HeadersInit): Headers {
   headers.set("X-Correlation-Id", meta.correlationId);
   headers.set("X-Atlas-Api-Version", meta.version);
   headers.set("X-Content-Type-Options", "nosniff");
+  const durationMs = Math.max(0, Date.now() - new Date(meta.timestamp).getTime());
+  headers.set("Server-Timing", `atlas;dur=${durationMs}`);
+  headers.set("X-Response-Time", `${durationMs}ms`);
   return headers;
 }
 
@@ -122,7 +126,7 @@ export function structuredApiLog(
     path: request.nextUrl.pathname,
     clientAddress: getClientAddress(request),
     timestamp: new Date().toISOString(),
-    ...data,
+    ...(sanitizeLogMetadata(data ?? {}) as Record<string, unknown>),
   };
 
   if (level === "error") console.error(JSON.stringify(payload));

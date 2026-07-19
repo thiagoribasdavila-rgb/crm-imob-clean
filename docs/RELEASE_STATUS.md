@@ -9,7 +9,7 @@ Status: **release candidate tecnicamente validado**.
 - [x] TypeScript sem erros
 - [x] ESLint sem erros no escopo ativo
 - [x] Build Next.js de produção concluído
-- [x] Status de integração Vercel aprovado no commit atual
+- [x] Estratégia de integração Hostinger definida no commit atual
 
 ## Revisão estrutural
 
@@ -31,7 +31,7 @@ Status: **release candidate tecnicamente validado**.
 - [ ] Mover lead no pipeline e confirmar persistência
 - [ ] Confirmar isolamento entre duas organizações
 - [ ] Conferir responsividade em desktop e celular
-- [ ] Validar variáveis de ambiente no Preview e Production da Vercel
+- [ ] Validar variáveis no ambiente isolado e na produção da Hostinger
 - [ ] Confirmar ausência de erros de runtime após navegação
 - [ ] Fazer backup do banco antes do merge em produção
 

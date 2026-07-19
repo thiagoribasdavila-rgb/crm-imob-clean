@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 const actions = [
   { title: "Novo lead", description: "Cadastrar e qualificar um novo contato", href: "/leads/new", icon: "＋", tone: "sky" },
@@ -23,7 +23,9 @@ const toneClasses: Record<string, string> = {
 
 export default function AtlasQuickCreate() {
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const contextualActions = useMemo(() => { const match = pathname.match(/^\/leads\/([0-9a-f-]{36})(?:\/|$)/i); if (!match) return actions; const lead = `/leads/${match[1]}`; return [{ title: "Enviar mensagem", description: "Continuar o atendimento desta lead", href: `${lead}/messages`, icon: "↗", tone: "sky" }, { title: "Criar tarefa", description: "Agendar o próximo follow-up", href: `${lead}/tasks`, icon: "✓", tone: "emerald" }, { title: "Agendar visita", description: "Abrir a agenda vinculada à lead", href: `${lead}/schedule`, icon: "□", tone: "violet" }, { title: "Registrar ligação", description: "Salvar contato e resultado", href: `${lead}/calls`, icon: "◌", tone: "amber" }, { title: "Adicionar nota", description: "Registrar contexto na timeline", href: `${lead}/notes`, icon: "＋", tone: "rose" }, { title: "Voltar à Lead 360", description: "Ver qualificação, imóveis e histórico", href: lead, icon: "◎", tone: "cyan" }]; }, [pathname]);
 
   useEffect(() => {
     const openPanel = () => setOpen(true);
@@ -33,6 +35,8 @@ export default function AtlasQuickCreate() {
         setOpen((current) => !current);
       }
       if (event.key === "Escape") setOpen(false);
+      const position = Number(event.key) - 1;
+      if (open && position >= 0 && contextualActions[position]) { event.preventDefault(); setOpen(false); router.push(contextualActions[position].href); }
     };
 
     window.addEventListener("atlas:open-quick-create", openPanel);
@@ -41,7 +45,7 @@ export default function AtlasQuickCreate() {
       window.removeEventListener("atlas:open-quick-create", openPanel);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, []);
+  }, [contextualActions, open, router]);
 
   function navigate(href: string) {
     setOpen(false);
@@ -65,9 +69,9 @@ export default function AtlasQuickCreate() {
           <section className="relative w-full max-w-3xl overflow-hidden rounded-[28px] border border-white/10 bg-[#070d1b]/95 shadow-[0_40px_160px_rgba(0,0,0,.65)]">
             <header className="flex items-center justify-between border-b border-white/[0.07] px-5 py-5 sm:px-7">
               <div>
-                <p className="atlas-eyebrow">Atlas action layer</p>
-                <h2 className="mt-2 text-xl font-semibold text-white">Criar ou iniciar uma ação</h2>
-                <p className="mt-1 text-sm text-slate-400">Acesse os fluxos críticos sem interromper sua operação.</p>
+                <p className="atlas-eyebrow">Ações rápidas · contexto atual</p>
+                <h2 className="mt-2 text-xl font-semibold text-white">Qual é a próxima ação?</h2>
+                <p className="mt-1 text-sm text-slate-400">Atalhos adaptados à tela para reduzir cliques e manter o ritmo comercial.</p>
               </div>
               <div className="flex items-center gap-3">
                 <kbd className="hidden rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-slate-500 sm:block">Alt A</kbd>
@@ -76,7 +80,7 @@ export default function AtlasQuickCreate() {
             </header>
 
             <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-6">
-              {actions.map((action) => (
+              {contextualActions.map((action, index) => (
                 <button
                   key={action.title}
                   onClick={() => navigate(action.href)}
@@ -88,6 +92,7 @@ export default function AtlasQuickCreate() {
                     <span className="mt-1 block text-xs leading-5 text-slate-400">{action.description}</span>
                   </span>
                   <span className="ml-auto mt-1 text-slate-600 transition group-hover:translate-x-1 group-hover:text-sky-300">→</span>
+                  <kbd className="rounded-md border border-white/10 px-1.5 py-0.5 text-[9px] text-slate-600">{index + 1}</kbd>
                 </button>
               ))}
             </div>

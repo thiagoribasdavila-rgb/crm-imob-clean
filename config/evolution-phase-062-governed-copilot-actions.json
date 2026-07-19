@@ -1,0 +1,42 @@
+{
+  "phase": 62,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "governed-copilot-task-confirmation",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "turn-a-contextual-copilot-recommendation-into-a-human-reviewed-tenant-scoped-and-audited-task",
+  "changes": [
+    "show-an-editable-task-preview-only-after-a-contextual-copilot-answer",
+    "require-an-explicit-review-checkbox-and-confirmation-button",
+    "reuse-the-live-task-api-and-lead-owner-resolution",
+    "reject-copilot-task-writes-without-a-lead-and-human-confirmation",
+    "record-the-confirmed-decision-in-the-lead-history",
+    "return-clear-success-audit-and-recovery-feedback",
+    "avoid-storing-the-generated-answer-or-personal-data-in-the-task"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "copilot-governed-actions:check",
+      "copilot-workspaces:check",
+      "corrective-sprint:check",
+      "typecheck-no-incremental",
+      "lint",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Pipeline stage changes are still preview-only and will require a separate reversible confirmation contract.",
+  "nextPhase": {
+    "phase": 63,
+    "name": "Movimentação governada e reversível do pipeline pelo Copilot",
+    "status": "planned"
+  }
+}

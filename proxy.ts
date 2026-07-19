@@ -1,32 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { refreshSession } from "@/utils/supabase/middleware";
 
-const protectedPrefixes = [
-  "/crm",
-  "/dashboard",
-  "/leads",
-  "/pipeline",
-  "/developments",
-  "/tasks",
-  "/marketing",
-  "/atlas-v2",
-  "/atlas-v3",
-  "/atlas-2030",
-];
+const publicPages = new Set(["/", "/login", "/forgot-password", "/reset-password", "/auth/callback"]);
 
 export async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
-  const isProtected = protectedPrefixes.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+  const isProtected = !publicPages.has(pathname);
 
   try {
     return await refreshSession(req, { protect: isProtected });
   } catch (error) {
-    console.error("[atlas.proxy] session refresh failed", {
-      pathname,
-      message: error instanceof Error ? error.message : String(error),
-    });
+    console.warn(JSON.stringify({ timestamp: new Date().toISOString(), level: "warn", event: "auth.proxy.session_refresh_failed", service: "atlas-ai-os", requestId: req.headers.get("x-request-id") || "proxy", correlationId: req.headers.get("x-correlation-id") || req.headers.get("x-request-id") || "proxy", pathname, errorType: error instanceof Error ? error.name : "unknown" }));
 
     if (isProtected) {
       const loginUrl = req.nextUrl.clone();
@@ -40,20 +24,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/login",
-    "/forgot-password",
-    "/reset-password",
-    "/auth/callback",
-    "/crm/:path*",
-    "/dashboard/:path*",
-    "/leads/:path*",
-    "/pipeline/:path*",
-    "/developments/:path*",
-    "/tasks/:path*",
-    "/marketing/:path*",
-    "/atlas-v2/:path*",
-    "/atlas-v3/:path*",
-    "/atlas-2030/:path*",
-  ],
+  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.[^/]+$).*)"],
 };

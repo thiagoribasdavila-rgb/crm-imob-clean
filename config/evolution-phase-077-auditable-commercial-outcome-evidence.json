@@ -1,0 +1,48 @@
+{
+  "phase": 77,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "auditable-read-only-evidence-for-supervised-commercial-outcome-windows",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "let-authorized-commercial-users-verify-the-human-confirmed-facts-behind-each-filtered-comparison-window-without-exposing-contact-data-or-creating-downstream-actions",
+  "changes": [
+    "create-a-typed-evidence-contract-for-current-and-previous-windows",
+    "reuse-the-latest-human-confirmed-outcome-per-task-from-the-existing-filtered-sample",
+    "return-total-visible-and-remaining-evidence-counts-for-each-window",
+    "include-only-lead-name-task-title-result-time-project-and-source",
+    "exclude-phone-email-message-content-and-credentials-from-the-evidence-contract",
+    "show-a-native-collapsible-auditable-panel-closed-by-default",
+    "provide-governed-navigation-to-the-authorized-lead-context",
+    "keep-the-filter-period-organization-hierarchy-rls-and-no-store-contracts",
+    "avoid-new-queries-model-calls-database-writes-schema-changes-and-automatic-commercial-actions"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "commercial-outcome-evidence:check",
+      "commercial-outcome-sufficiency:check",
+      "commercial-outcome-filter:check",
+      "commercial-outcome-period:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "The compact panel intentionally displays only the newest few facts per window while preserving the full totals. Project and source reflect the lead current record and are therefore contextual evidence, not immutable historical attribution.",
+  "nextPhase": {
+    "phase": 78,
+    "name": "Recência e desatualização da memória observada",
+    "status": "planned"
+  }
+}

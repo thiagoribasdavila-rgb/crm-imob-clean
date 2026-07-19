@@ -1,0 +1,39 @@
+{
+  "phase": 51,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "safe-live-lead-writes-and-history",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "changes": [
+    "remove-missing-create-lead-rpc",
+    "remove-missing-atlas-events-writes",
+    "use-live-lead-columns",
+    "use-live-lead-events-history",
+    "use-live-crm-projects-registry",
+    "tenant-scoped-duplicate-check",
+    "compatible-lead-360-read-and-update",
+    "friendly-unavailable-response-for-unconnected-actions"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "live-lead-writes:check",
+      "lead-registration:check",
+      "typecheck-no-incremental",
+      "changed-files-eslint"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Database-level unique contact constraint is not present in the live legacy schema; application-level tenant checks reduce but cannot eliminate simultaneous duplicate creation.",
+  "nextPhase": {
+    "phase": 52,
+    "name": "Tenant, hierarquia e presença comercial",
+    "status": "planned"
+  }
+}

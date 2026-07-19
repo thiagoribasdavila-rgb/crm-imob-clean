@@ -1,0 +1,40 @@
+{
+  "phase": 60,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "role-aware-atlas-copilot-command-center",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "turn-the-existing-dashboard-into-a-role-aware-commercial-entry-point-and-connect-copilot-to-live-operational-signals",
+  "changes": [
+    "preserve-existing-dashboard-routes-and-real-data",
+    "show-honest-generative-local-or-preparing-ai-state",
+    "add-role-specific-copilot-prompts",
+    "connect-copilot-dock-to-governed-ai-briefing",
+    "replace-legacy-task-due-at-read-with-live-due-date",
+    "replace-decision-center-legacy-ai-insights-and-lead-columns",
+    "add-friendly-partial-load-recovery"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "atlas-copilot-command-center:check",
+      "corrective-sprint:check",
+      "typecheck-no-incremental",
+      "lint",
+      "git-diff-check"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Generative AI remains dependent on valid provider credentials and credit; the governed local intelligence path continues to provide priorities when the external model is unavailable.",
+  "nextPhase": {
+    "phase": 61,
+    "name": "Copilot operacional conectado a Leads, Clientes e Agenda",
+    "status": "planned"
+  }
+}

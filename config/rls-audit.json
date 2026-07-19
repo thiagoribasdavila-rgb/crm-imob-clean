@@ -1,0 +1,19 @@
+{
+  "phase": 17,
+  "dimensions": ["organization", "role", "team", "portfolio", "user"],
+  "criticalTables": {
+    "profiles": "private.can_view_commercial_profile",
+    "leads": "private.can_access_commercial_lead",
+    "opportunities": "opportunities_commercial_select",
+    "activities": "activities_commercial_select",
+    "tasks": "tasks_commercial_select",
+    "campaigns": "campaigns_leadership_update",
+    "ai_insights": "ai_insights_org_select"
+  },
+  "serviceOnlyTables": [
+    "idempotency_keys",
+    "integration_outbox",
+    "dead_letter_events",
+    "user_provisioning_failures"
+  ]
+}

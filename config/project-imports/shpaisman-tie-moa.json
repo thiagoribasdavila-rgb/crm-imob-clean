@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "developer": {
+    "legalName": "Shpaisman",
+    "tradeName": "Shpaisman",
+    "slug": "shpaisman",
+    "status": "active",
+    "defaultCommissionSlaDays": 30
+  },
+  "projects": [
+    {
+      "name": "Tiê Aclimação",
+      "slug": "tie-aclimacao",
+      "neighborhood": "Aclimação",
+      "city": "São Paulo",
+      "state": "SP",
+      "status": "pre-launch",
+      "positioning": "Empreendimento residencial próximo ao Parque da Aclimação e a cerca de 10 minutos a pé da Estação Vergueiro, conforme material da incorporadora.",
+      "materials": [
+        { "type": "registration_form", "title": "Ficha cadastral - frente e verso", "path": "/Users/thiagoribasdavila/Downloads/00 FICHA CADASTRAL - FRENTE E VERSO.pdf" },
+        { "type": "technical_memorial", "title": "Memorial descritivo do cliente", "path": "/Users/thiagoribasdavila/Downloads/02 Memorial Descritivo Cliente.pdf" },
+        { "type": "presentation", "title": "Ficha técnica Tiê Aclimação", "path": "/Users/thiagoribasdavila/Downloads/03 TIÊ ACLIMAÇÃO_Ficha Técnica.pdf" },
+        { "type": "presentation", "title": "Apresentação comercial Tiê Aclimação", "path": "/Users/thiagoribasdavila/Downloads/04 APRESENTAÇÃO_TIÊ ACLIMAÇÃO.pdf" },
+        { "type": "video", "title": "Tiê - Decorado 30s", "path": "/Users/thiagoribasdavila/Downloads/Tiê_Decorado_30s.mov" },
+        { "type": "video", "title": "Tiê - Facilidades 30s", "path": "/Users/thiagoribasdavila/Downloads/Tiê_Facilidades_30s.mov" },
+        { "type": "video", "title": "Tiê - Proximidades 30s", "path": "/Users/thiagoribasdavila/Downloads/Tiê_Proximidades_30s.mov" }
+      ],
+      "missing": ["book válido", "tabela de vendas vigente", "espelho de vendas vigente", "fluxo de pagamento"]
+    },
+    {
+      "name": "MOA 292 Moema",
+      "slug": "moa-292-moema",
+      "neighborhood": "Moema",
+      "city": "São Paulo",
+      "state": "SP",
+      "status": "ready",
+      "positioning": "Projeto pronto para morar com acesso pelas ruas Matutru e Maicuru e pela Avenida Moaci, conforme implantação fornecida.",
+      "materials": [
+        { "type": "price_table", "title": "Tabela promocional MOA 292 - julho de 2026", "path": "/Users/thiagoribasdavila/Downloads/MOA292 - TABELA PROMOCIONAL JUL26.pdf", "validFrom": "2026-07-01", "validUntil": "2026-07-31" },
+        { "type": "price_table", "title": "Tabela de lançamento MOA 292 - base SHP", "path": "/Users/thiagoribasdavila/Downloads/TABELA DE LANÇAMENTO - MOA292_JUL26 - BASE SHP.pdf", "validFrom": "2026-07-01", "validUntil": "2026-07-31" },
+        { "type": "price_table", "title": "Tabela MOA 292 - direta 36 meses", "path": "/Users/thiagoribasdavila/Downloads/TABELA DE LANÇAMENTO - MOA292_JUL26- BASE SHP - DIRETA 36 MESES.pdf", "validFrom": "2026-07-01", "validUntil": "2026-07-31" },
+        { "type": "site_plan", "title": "Implantação Studios - orientação solar", "path": "/Users/thiagoribasdavila/Downloads/STUDIOS.jpg" },
+        { "type": "video", "title": "MOA - Facilidades 30s", "path": "/Users/thiagoribasdavila/Downloads/MOA_Facilidades_30s.mov" },
+        { "type": "video", "title": "MOA - Proximidades 30s", "path": "/Users/thiagoribasdavila/Downloads/MOA_Proximidades_30s.mov" },
+        { "type": "video", "title": "MOA - vídeo complementar", "path": "/Users/thiagoribasdavila/Downloads/Vídeo do WhatsApp de 2024-08-05 à(s) 11.09.34_0d78111f.mp4" }
+      ],
+      "missing": ["book válido", "espelho de vendas vigente", "vídeo do decorado válido"]
+    }
+  ],
+  "rejectedEmptyFiles": [
+    "/Users/thiagoribasdavila/Downloads/01 BOOK.pdf",
+    "/Users/thiagoribasdavila/Downloads/02 Memorial Descritivo.pdf",
+    "/Users/thiagoribasdavila/Downloads/DECORADO 60M².mp4",
+    "/Users/thiagoribasdavila/Downloads/Decorado.mp4",
+    "/Users/thiagoribasdavila/Downloads/MOA_Decorado_30s.mov",
+    "/Users/thiagoribasdavila/Downloads/Vídeo do WhatsApp de 2024-10-04 à(s) 12.54.25_6b01ba8f.mp4"
+  ]
+}

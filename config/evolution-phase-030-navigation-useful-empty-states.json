@@ -1,0 +1,118 @@
+{
+  "phase": 30,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "governed-useful-empty-state-contract-for-critical-commercial-navigation",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "dataFetchingChanged": false,
+  "routeBehaviorChanged": false,
+  "emptyStateContract": {
+    "sharedComponent": "components/ui/AtlasUI.tsx#AtlasEmpty",
+    "compatibilityWrapper": "components/atlas/empty-state.tsx",
+    "reasons": [
+      "first-use",
+      "no-results",
+      "no-activity",
+      "completed",
+      "not-configured"
+    ],
+    "requiredContent": [
+      "context label",
+      "plain-language title",
+      "explanation",
+      "safe next action when recovery is possible"
+    ],
+    "errorComponent": "components/ui/AtlasUI.tsx#AtlasRecoverableError"
+  },
+  "structuralBaseline": {
+    "crmPages": 148,
+    "emptyStateConsumers": 57,
+    "emptyStateUses": 101,
+    "explicitReasonsBefore": 0,
+    "explicitReasonsAfter": 13,
+    "emptyStatesWithActionsBefore": 8,
+    "emptyStatesWithActionsAfter": 14,
+    "runtimeOutcomesMeasured": false
+  },
+  "criticalSurfaces": [
+    {
+      "surface": "leads",
+      "states": ["first-use", "no-results"],
+      "actions": ["create lead", "clear filters"]
+    },
+    {
+      "surface": "calendar",
+      "states": ["completed"],
+      "actions": ["create task"]
+    },
+    {
+      "surface": "tasks",
+      "states": ["completed", "no-results"],
+      "actions": ["create task", "review priorities", "review calendar"]
+    },
+    {
+      "surface": "pipeline",
+      "states": ["completed", "no-activity"],
+      "actions": ["review tasks", "register external purchase"]
+    },
+    {
+      "surface": "customers",
+      "states": ["first-use", "no-results"],
+      "actions": ["register lead", "clear filters"]
+    },
+    {
+      "surface": "developments",
+      "states": ["first-use", "no-results"],
+      "actions": ["register development", "clear filters"]
+    },
+    {
+      "surface": "sales",
+      "states": ["first-use", "no-results"],
+      "actions": ["open pipeline", "clear filters"]
+    },
+    {
+      "surface": "distribution",
+      "states": ["completed", "not-configured"],
+      "actions": ["review pipeline", "review team"]
+    }
+  ],
+  "accessibility": {
+    "nativeLinkAndButtonActions": true,
+    "minimumActionTargetPx": 44,
+    "contextDoesNotDependOnColorOnly": true,
+    "statusSemanticsPreserved": true
+  },
+  "truthPolicy": {
+    "emptyStateMayMaskFetchFailure": false,
+    "fakeRecordsRendered": false,
+    "fakeRuntimeMetricPublished": false,
+    "structuralCoverageIsRuntimeOutcomeProof": false,
+    "completedStateMayReassureWithoutMandatoryAction": true
+  },
+  "safetyPolicy": {
+    "databaseRead": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "automaticDecisionAboutPeopleAllowed": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true
+  },
+  "exitCriteria": {
+    "sharedReasonTaxonomyInspectable": true,
+    "criticalSurfacesCovered": 8,
+    "filterAndFirstUseAreDistinguished": true,
+    "completedAndConfigurationPendingAreDistinguished": true,
+    "failuresRemainRecoverableErrors": true,
+    "parallelWorkflowCreated": false,
+    "routeRemoved": false,
+    "permissionChanged": false,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 31,
+    "name": "Criar recuperação de falha",
+    "status": "planned"
+  }
+}

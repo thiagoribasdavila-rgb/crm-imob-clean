@@ -1,0 +1,190 @@
+{
+  "name": "ATLAS Core V1",
+  "version": "1.0.0-foundation",
+  "status": "architecture-baseline",
+  "mission": "convert-leads-into-sales-with-one-operational-truth-one-premium-workspace-and-one-governed-intelligence-loop",
+  "businessLoop": [
+    "capture",
+    "understand",
+    "prioritize",
+    "act",
+    "measure",
+    "learn"
+  ],
+  "layers": [
+    {
+      "order": 1,
+      "name": "operational-truth",
+      "responsibility": "supabase-auth-tenant-data-and-row-security"
+    },
+    {
+      "order": 2,
+      "name": "event-ledger",
+      "responsibility": "append-only-commercial-facts-and-human-outcomes"
+    },
+    {
+      "order": 3,
+      "name": "digital-twin-engine",
+      "responsibility": "current-versioned-explainable-and-expiring-operational-state"
+    },
+    {
+      "order": 4,
+      "name": "decision-engine",
+      "responsibility": "deterministic-priority-risk-and-next-best-action"
+    },
+    {
+      "order": 5,
+      "name": "copilot-and-agents",
+      "responsibility": "contextual-assistance-with-provider-independent-model-routing"
+    },
+    {
+      "order": 6,
+      "name": "action-and-learning",
+      "responsibility": "governed-execution-observed-outcome-and-supervised-feedback"
+    }
+  ],
+  "canonicalFrontend": {
+    "routeSurface": "app/(crm)",
+    "appShell": "components/atlas/app-shell.tsx",
+    "navigation": "components/atlas/sidebar.tsx",
+    "navigationCatalog": "lib/atlas/navigation.ts",
+    "metricCard": "components/atlas/metric-card.tsx",
+    "designTokens": "styles/atlas-tokens.css",
+    "globalStyles": "app/globals.css",
+    "pageDepths": [
+      "glance",
+      "workspace",
+      "context"
+    ],
+    "pageContract": [
+      "short-outcome-title",
+      "one-primary-action",
+      "up-to-five-decision-metrics",
+      "smart-priority-queue",
+      "contextual-detail-without-route-loss",
+      "role-aware-copilot"
+    ]
+  },
+  "legacySurfaces": [
+    {
+      "path": "app/(atlas)",
+      "status": "quarantine-candidate",
+      "reason": "parallel-generation-with-route-collisions-and-missing-components-layout-sidebar-import"
+    },
+    {
+      "path": "components/Sidebar.tsx",
+      "status": "retire-after-import-proof",
+      "reason": "independent-navigation-catalog-outside-role-aware-canonical-shell"
+    },
+    {
+      "path": "components/atlas/MetricCard.tsx",
+      "status": "retire-after-import-proof",
+      "reason": "duplicate-noncanonical-metric-contract"
+    },
+    {
+      "path": "components/analytics/MetricCard.tsx",
+      "status": "retire-after-import-proof",
+      "reason": "unstyled-any-typed-duplicate-metric-contract"
+    },
+    {
+      "path": "components/crm/KanbanBoard.tsx",
+      "status": "retire-after-live-pipeline-parity",
+      "reason": "legacy-inline-style-board-without-governed-movement"
+    },
+    {
+      "path": "components/crm/PipelineBoard.tsx",
+      "status": "retire-after-live-pipeline-parity",
+      "reason": "static-stage-board-outside-operational-pipeline"
+    },
+    {
+      "path": "components/atlas/Pipeline.tsx",
+      "status": "retire-after-import-proof",
+      "reason": "hardcoded-demonstration-data"
+    },
+    {
+      "path": "components/pipeline/KanbanCard.tsx",
+      "status": "retire-after-import-proof",
+      "reason": "placeholder-card-with-any-props-and-inline-style"
+    }
+  ],
+  "dataAccess": {
+    "target": "one-server-side-tenant-aware-data-access-layer-per-domain",
+    "screenRule": "screens-never-query-supabase-directly",
+    "adminRule": "service-role-is-server-only-purpose-bound-and-audited",
+    "tenantRule": "organization-scope-is-resolved-before-every-commercial-read-or-write",
+    "migrationRule": "contract-adapter-shadow-read-compare-switch-retire",
+    "supabase2026Rule": "data-api-grants-and-rls-ship-together-explicitly"
+  },
+  "digitalTwinV1": {
+    "priorityTwin": "opportunity",
+    "types": [
+      "opportunity",
+      "buyer",
+      "development",
+      "inventory",
+      "broker",
+      "campaign",
+      "operation"
+    ],
+    "requiredSignalFields": [
+      "key",
+      "value",
+      "source",
+      "observedAt",
+      "validUntil",
+      "confidence",
+      "version",
+      "explanation",
+      "confirmedBy"
+    ],
+    "updateRules": [
+      "content-hash",
+      "skip-unchanged-snapshot",
+      "idempotency-key",
+      "retry-safe-queue",
+      "individual-rebuild",
+      "expiry-by-signal",
+      "append-only-history"
+    ],
+    "truthBoundary": "price-inventory-reservation-commission-and-sale-never-depend-on-llm-output"
+  },
+  "aiAutonomy": [
+    {
+      "level": 0,
+      "name": "observe"
+    },
+    {
+      "level": 1,
+      "name": "recommend"
+    },
+    {
+      "level": 2,
+      "name": "prepare"
+    },
+    {
+      "level": 3,
+      "name": "execute-with-human-approval"
+    },
+    {
+      "level": 4,
+      "name": "governed-automation"
+    }
+  ],
+  "invariants": [
+    "no-new-screen-direct-supabase-access",
+    "no-equivalent-component-duplication",
+    "no-twin-signal-without-source-time-confidence-and-explanation",
+    "no-external-action-without-idempotency-consent-and-opt-out",
+    "no-rls-policy-without-role-and-tenant-tests",
+    "no-service-secret-in-client-code",
+    "no-score-presented-as-probability-without-calibration",
+    "no-silent-ai-write-or-historical-rewrite",
+    "no-unnecessary-pii-replication"
+  ],
+  "releaseGate": {
+    "checkpointPhase": 100,
+    "buildBeforeCheckpoint": false,
+    "zipBeforeCheckpoint": false,
+    "requiredJourney": "lead-to-opportunity-twin-to-pipeline-to-copilot-to-task-to-outcome-to-learning"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "phase": 11,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "pattern": "AtlasRecoverableError",
+  "requiredSignals": ["human title", "protected-data reassurance", "contextual description", "retry action"],
+  "initialCoverage": ["calendar", "developments"],
+  "fullPageBoundary": "app/(crm)/error.tsx",
+  "technicalStackExposed": false,
+  "dataMutationOnRetry": false
+}

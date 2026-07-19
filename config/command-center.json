@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "audience": "director",
+  "areas": ["health", "security", "integrations", "queues", "backup", "ai-cost", "homologation"],
+  "criticalGates": ["database", "https", "worker-secret", "failed-outbox", "restore-evidence"],
+  "truthPolicy": {
+    "missingEvidence": "pending",
+    "queryFailure": "unknown",
+    "configuredWithoutRealTest": "configured",
+    "productionAllowedStatus": "ready"
+  },
+  "refreshSeconds": 60,
+  "valuesReturned": false
+}

@@ -1,0 +1,50 @@
+{
+  "phase": 71,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "local-descriptive-commercial-outcome-context-by-current-project-and-source",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "contextualize-human-confirmed-commercial-outcomes-by-the-current-project-and-source-of-each-lead-without-generative-ai-causal-attribution-prediction-or-downstream-writes",
+  "changes": [
+    "reuse-existing-human-confirmed-commercial-outcome-events",
+    "enrich-events-in-memory-with-current-lead-project-and-source",
+    "preserve-latest-valid-outcome-per-task",
+    "aggregate-observed-advances-no-response-and-follow-up-by-context",
+    "calculate-factual-share-against-all-observed-outcomes",
+    "separate-classified-and-unclassified-context-coverage",
+    "limit-each-dimension-to-four-leading-segments-and-summarize-the-remainder",
+    "label-the-result-as-current-lead-registration-context-not-historical-causality",
+    "preserve-authenticated-organization-rls-rate-limit-and-no-store",
+    "avoid-model-calls-predictive-claims-causal-claims-and-automatic-actions",
+    "preserve-lead-task-pipeline-score-owner-message-project-and-production-data"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "commercial-outcome-context:check",
+      "commercial-memory-quality:check",
+      "commercial-outcome-comparison:check",
+      "commercial-outcome-summary:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Project and source labels are read from the lead registration at request time; they describe the current CRM context and must not be presented as historical attribution or proof that a project or source caused an outcome.",
+  "nextPhase": {
+    "phase": 72,
+    "name": "Detalhamento factual dos resultados contextuais",
+    "status": "planned"
+  }
+}
