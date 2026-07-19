@@ -4,6 +4,7 @@ import { logger } from "@/lib/observability/logger";
 import { hashMetaValue, queueMetaConversion } from "@/lib/meta/conversions";
 import { resilientFetch } from "@/lib/http/resilient-fetch";
 import { integrationCatalog } from "@/lib/integrations/catalog";
+import { analyzeInboundWhatsApp } from "@/lib/ai/whatsapp-conversation-intelligence";
 
 export const dynamic = "force-dynamic";
 
@@ -188,6 +189,31 @@ export async function POST(request: Request) {
         const metaResponse = await response.json() as Record<string, unknown>;
         if (!response.ok) throw new Error(typeof metaResponse.error === "object" && metaResponse.error ? String((metaResponse.error as { message?: unknown }).message || `Meta HTTP ${response.status}`) : `Meta HTTP ${response.status}`);
         await admin.from("meta_conversion_events").update({ status: "delivered", delivered_at: now, meta_response: metaResponse, last_error: null }).eq("id", conversion.id);
+      } else if (event.topic === "whatsapp.inbound.analyze" && event.aggregate_id) {
+        const { data: message } = await admin.from("messages").select("id,organization_id,conversation_id,content,direction").eq("id", event.aggregate_id).maybeSingle();
+        if (message && message.direction === "inbound") {
+          const payload = event.payload && typeof event.payload === "object" ? event.payload as { conversationId?: string; leadId?: string } : {};
+          const leadId = payload.leadId || null;
+          const { data: recent } = await admin.from("messages").select("direction,content,created_at").eq("conversation_id", message.conversation_id).order("created_at", { ascending: true }).limit(20);
+          const conversationText = (recent ?? []).map((m) => `${m.direction === "inbound" ? "Cliente" : "Corretor"}: ${String(m.content || "").slice(0, 300)}`).join("\n");
+          const insight = await analyzeInboundWhatsApp({ organizationId: message.organization_id, conversationText, latestText: String(message.content || "") });
+          const { data: insightRow } = await admin.from("whatsapp_message_insights").upsert({
+            organization_id: message.organization_id,
+            conversation_id: message.conversation_id,
+            message_id: message.id,
+            lead_id: leadId,
+            intent: insight.intent,
+            objection_keys: insight.objectionKeys,
+            summary: insight.summary,
+            recommended_action_key: insight.recommendedAction,
+            temperature_signal: insight.temperature,
+            source: insight.source,
+            model: insight.model,
+          }, { onConflict: "message_id", ignoreDuplicates: true }).select("id").maybeSingle();
+          if (insightRow && leadId) {
+            await admin.from("activities").insert({ organization_id: message.organization_id, lead_id: leadId, type: "whatsapp_insight", title: `IA leu a conversa: ${insight.intent} (${insight.temperature})`, description: `${insight.summary} · Próxima ação sugerida: ${insight.recommendedAction}${insight.objectionKeys.length ? ` · Objeções: ${insight.objectionKeys.join(", ")}` : ""}`, metadata: { source: insight.source, model: insight.model, intent: insight.intent, objections: insight.objectionKeys, recommendedAction: insight.recommendedAction }, occurred_at: now });
+          }
+        }
       } else if (event.topic === "portal.lead.ingest" && event.aggregate_id) {
         const { data: portalEvent, error: portalError } = await admin.from("portal_lead_events").select("id,organization_id,source_id,provider,external_lead_id,listing_id,contact,status").eq("id", event.aggregate_id).single();
         if (portalError || !portalEvent) throw portalError ?? new Error("Evento de portal não encontrado.");

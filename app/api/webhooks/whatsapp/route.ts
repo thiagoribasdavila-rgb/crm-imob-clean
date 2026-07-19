@@ -145,6 +145,12 @@ export async function POST(request: Request) {
             const { error: journeyError } = await admin.rpc("route_nightly_journey_reply", { p_organization_id: integration.organization_id, p_conversation_id: conversationId, p_message_id: inboundMessage.id });
             if (journeyError) throw journeyError;
           }
+          // WhatsApp Intelligence (entrada) — enfileira análise por LLM apenas se
+          // habilitado (custo opt-in). Best-effort: nunca derruba o webhook.
+          if (process.env.ATLAS_WHATSAPP_NLU_ENABLED === "true" && !optedOut && inboundMessage?.id && conversationLeadId && incomingText) {
+            const { error: nluError } = await admin.from("integration_outbox").insert({ organization_id: integration.organization_id, topic: "whatsapp.inbound.analyze", aggregate_type: "message", aggregate_id: inboundMessage.id, payload: { conversationId, leadId: conversationLeadId } });
+            if (nluError) logger.warn("whatsapp.nlu_enqueue_skipped", { code: nluError.code });
+          }
           await admin.from("lead_reactivation_contacts").update({ status: "replied" }).eq("organization_id", integration.organization_id).eq("phone", sender).in("status", ["queued", "sent"]);
           const { data: repliedContacts } = await admin.from("lead_reactivation_contacts").select("batch_id").eq("organization_id", integration.organization_id).eq("phone", sender).eq("status", "replied");
           for (const batchId of new Set((repliedContacts ?? []).map((contact) => contact.batch_id))) {
