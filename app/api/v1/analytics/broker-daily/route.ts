@@ -30,6 +30,21 @@ const timestamp = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+// Probabilidade de conversão — mesma fórmula base do preditor de produção
+// (build_lead_prediction_explanation): inclui o peso da ETAPA, que o antigo
+// priorityScore ignorava, empurrando para o topo os leads mais perto da venda.
+const STAGE_WEIGHT: Record<string, number> = {
+  contato: 4,
+  qualificacao: 12,
+  visita: 20,
+  proposta: 30,
+  contrato: 42,
+};
+const conversionProbabilityPct = (score: number, status: unknown) =>
+  Math.round(
+    Math.max(1, Math.min(95, 10 + score * 0.55 + (STAGE_WEIGHT[normalize(status)] ?? 0))),
+  );
+
 export async function GET(request: NextRequest) {
   const rate = enforceRateLimit(request, {
     limit: 60,
@@ -105,8 +120,9 @@ export async function GET(request: NextRequest) {
       const followUpOverdue = nextActionAt !== null && nextActionAt < now;
       const taskOverdue = overdueByLead.has(String(lead.id));
       const noNextAction = nextActionAt === null;
+      const conversionProbability = conversionProbabilityPct(score, lead.status);
       const priorityScore =
-        score +
+        conversionProbability +
         (firstContactOverdue ? 120 : 0) +
         (followUpOverdue ? 90 : 0) +
         (taskOverdue ? 50 : 0) +
@@ -140,6 +156,8 @@ export async function GET(request: NextRequest) {
         status: String(lead.status || "novo"),
         score,
         priorityScore,
+        conversionProbability,
+        probabilityBasis: "raw" as const,
         reason,
         nextBestAction,
         dueAt: lead.next_action_at ? String(lead.next_action_at) : null,
@@ -202,7 +220,15 @@ export async function GET(request: NextRequest) {
       agenda,
       ranking: {
         explainable: true,
+        driver: "conversion_probability",
+        probabilityModel: {
+          basis: "raw",
+          formula: "clamp(1,95, 10 + score*0.55 + stage_weight)",
+          calibrationApplied: false,
+          note: "A calibração ativa aprovada é aplicada na visão de previsão por lead; a fila em lote usa a probabilidade base (idêntica quando não há modelo aprovado).",
+        },
         signals: [
+          "conversion_probability",
           "score_ia",
           "new_lead_age",
           "next_contact",
