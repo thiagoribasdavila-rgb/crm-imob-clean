@@ -38,7 +38,7 @@ export default function LeadMessages() {
         const accessToken = await token();
         const [leadResponse, developmentResult] = await Promise.all([
           fetch(`/api/v1/leads/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } }),
-          supabase.from("developments").select("id,name,developer_name").order("name").limit(200),
+          supabase.from("crm_projects").select("id,name,developer_name").order("name").limit(200),
         ]);
         const payload = await leadResponse.json();
         if (!leadResponse.ok) throw new Error(payload.error || "Lead não encontrado.");

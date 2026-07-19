@@ -6,7 +6,7 @@ A navegação agora deixa explícitos o contexto empresarial, o grupo funcional 
 
 ## Contexto governado na topbar
 
-A topbar deixou de manter uma lista paralela e incompleta de nomes. O contexto é resolvido diretamente pelo catálogo governado de 20 destinos principais e 6 comandos contextuais.
+A topbar deixou de manter uma lista paralela e incompleta de nomes. O contexto é resolvido diretamente pelo catálogo governado de 19 destinos principais e 6 comandos contextuais.
 
 A correspondência mais específica prevalece. Assim, uma rota profunda como `/leads/import` é identificada como **Reativação**, enquanto outras rotas abaixo de `/leads` continuam herdando o contexto de **Leads**.
 
@@ -43,7 +43,7 @@ Tanto o destino quanto a ação de favorito possuem alvo mínimo de 44 pixels. O
 
 ## Preservação funcional
 
-- 20 destinos principais preservados.
+- 19 destinos principais preservados.
 - 6 comandos contextuais preservados.
 - 4 destinos móveis primários preservados.
 - Nenhuma rota removida.

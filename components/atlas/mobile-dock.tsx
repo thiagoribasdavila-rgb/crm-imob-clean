@@ -8,13 +8,6 @@ import {
 } from "@/lib/atlas/navigation";
 import type { ShellIdentity } from "./shell-types";
 
-/* legacy catalog removed in phase 004
-  { label: "Início", href: "/dashboard", icon: "⌘" },
-  { label: "Leads", href: "/leads", icon: "◎" },
-  { label: "Pipeline", href: "/pipeline", icon: "⌁" },
-  { label: "Tarefas", href: "/tasks", icon: "✓" },
-*/
-
 export function MobileDock({ identity }: { identity: Pick<ShellIdentity, "role" | "accessRole"> }) {
   const pathname = usePathname();
   const items = getAtlasMobileNavigationForIdentity(identity);

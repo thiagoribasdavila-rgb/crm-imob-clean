@@ -24,7 +24,7 @@ const checks = [
   ["Contrato aceita somente prioridades explícitas", actionLink.includes('export type AtlasActionPriority = "primary" | "secondary"') && actionLink.includes('priority = "primary"')],
   ["A prioridade fica inspecionável", actionLink.includes("data-atlas-action-priority={priority}") && config.sharedContract.priorityValues.length === 2],
   ["PageHeader limita a declaração a uma ação", pageHeader.includes("action?: PageHeaderAction") && !pageHeader.includes("actions?: ReactNode") && config.sharedContract.maximumActionsPerPageHeader === 1],
-  ["PageHeader usa o componente compartilhado", pageHeader.includes("<AtlasActionLink") && pageHeader.includes('aria-label="Ação do contexto"')],
+  ["PageHeader usa o componente compartilhado", pageHeader.includes("<AtlasActionLink") && pageHeader.includes('aria-label="Ação principal do contexto"')],
   ["Treze cabeçalhos ou heróis possuem ação primária governada", standardizedHeaderActions + customCustomerPrimaryAction === 13 && config.auditedConsumers.pageHeadersMigrated === 13],
   ["Nenhum cabeçalho auditado aceita montagem manual", manualHeaderActions === 0 && config.auditedConsumers.manualActionsPropRemaining === 0],
   ["Aprofundamentos permanecem secundários", secondaryHeaderActions === 12 && config.auditedConsumers.secondaryHeaderActions === 12],

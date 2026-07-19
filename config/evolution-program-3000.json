@@ -3,7 +3,7 @@
   "referenceBacklogPhases": 3000,
   "horizon": "continuous",
   "deliveryCadence": "one-phase-per-day",
-  "currentPhase": 49,
+  "currentPhase": 101,
   "decisionRule": "prioritize-operational-capacity",
   "workInProgressLimit": 1,
   "priorityOrder": [

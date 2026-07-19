@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { mapLegacyProfile, mapLegacyProject } from "@/lib/compat/legacy-v2";
+import { LIVE_PROFILE_SELECT, mapLegacyProfile, mapLegacyProject } from "@/lib/compat/legacy-v2";
 import { EmptyState } from "@/components/atlas/empty-state";
 import { ErrorState } from "@/components/atlas/error-state";
 import { LoadingState } from "@/components/atlas/loading-state";
@@ -328,9 +328,9 @@ export default function LeadsPage() {
     async function loadReferences() {
       const [profileResult, campaignResult, developmentResult, meResult] =
         await Promise.all([
-          supabase.from("profiles").select("*").eq("active", true).order("created_at"),
-          supabase.from("campaigns").select("*").limit(500),
-          supabase.from("projects").select("*").order("name").limit(100),
+          supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("active", true).order("created_at"),
+          supabase.from("marketing_campaigns").select("id,name,platform,status,created_at").limit(500),
+          supabase.from("crm_projects").select("id,organization_id,name,developer_name,code,status,city,neighborhood,address,launch_date,delivery_date,created_at,updated_at").order("name").limit(100),
           fetch("/api/v1/auth/me").then((response) => response.json()),
         ]);
       if (!active) return;

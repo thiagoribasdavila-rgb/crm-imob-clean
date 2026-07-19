@@ -16,17 +16,17 @@
   "topology": {
     "crmRoutes": 141,
     "rootRedirects": 1,
-    "canonicalNavigationDestinations": 26,
-    "canonicalDestinationsPresent": 26,
+    "canonicalNavigationDestinations": 25,
+    "canonicalDestinationsPresent": 25,
     "missingCanonicalDestinations": 0,
     "dynamicContextRoutes": 29,
     "deepSupportRoutes": 71,
-    "topLevelNonCanonicalRoutes": 14
+    "topLevelNonCanonicalRoutes": 15
   },
   "navigationChannels": [
     {
       "channel": "primary-sidebar",
-      "count": 20,
+      "count": 19,
       "source": "atlasNavigation",
       "purpose": "Destinos recorrentes governados por perfil e agrupados por trabalho."
     },
@@ -46,7 +46,7 @@
   "routeBuckets": [
     {
       "bucket": "canonical",
-      "count": 26,
+      "count": 25,
       "disposition": "preserve"
     },
     {
@@ -61,7 +61,7 @@
     },
     {
       "bucket": "top-level-non-canonical",
-      "count": 14,
+      "count": 15,
       "disposition": "classify-before-consolidation"
     },
     {
@@ -94,6 +94,11 @@
     {
       "route": "/atlas-v2",
       "classification": "historical-compatibility",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/atlas-v3",
+      "classification": "internal-evolution-surface",
       "targetToEvaluate": null
     },
     {
@@ -161,7 +166,7 @@
   "findings": [
     {
       "priority": "high",
-      "finding": "Quatorze superfícies de topo são acessíveis, mas não pertencem aos catálogos canônicos de navegação.",
+      "finding": "Quinze superfícies de topo são acessíveis, mas não pertencem aos catálogos canônicos de navegação.",
       "nextAction": "Definir o resultado comercial e a descoberta correta antes de consolidar qualquer rota."
     },
     {
@@ -181,7 +186,7 @@
     },
     {
       "priority": "positive",
-      "finding": "Os 26 destinos canônicos resolvem para páginas existentes.",
+      "finding": "Os 25 destinos canônicos resolvem para páginas existentes.",
       "nextAction": "Preservar cobertura integral durante a compactação futura."
     }
   ],

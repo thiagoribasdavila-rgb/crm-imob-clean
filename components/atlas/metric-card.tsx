@@ -7,6 +7,7 @@ type MetricCardProps = {
   detail?: ReactNode;
   trend?: ReactNode;
   tone?: "info" | "success" | "warning" | "danger" | "violet" | "neutral";
+  relevance?: "primary" | "supporting";
 };
 
 export function MetricCard({
@@ -15,6 +16,7 @@ export function MetricCard({
   detail,
   trend,
   tone = "info",
+  relevance = "supporting",
 }: MetricCardProps) {
   const canonicalTone = {
     info: "blue",
@@ -32,6 +34,7 @@ export function MetricCard({
       detail={detail}
       trend={trend}
       tone={canonicalTone}
+      relevance={relevance}
     />
   );
 }

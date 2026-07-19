@@ -18,6 +18,13 @@ import {
   AtlasMetric,
 } from "@/components/ui/AtlasCard";
 import { LeadOperationalBar } from "@/components/crm/lead-operational-bar";
+import {
+  LeadContextCorrection,
+  type LeadContextProjectOption,
+} from "@/components/crm/lead-context-correction";
+import { CommercialContextTimelineEntry } from "@/components/crm/commercial-context-timeline-entry";
+import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
+import { parseCommercialContextCorrectionTimeline } from "@/lib/atlas/commercial-context-timeline";
 
 type LeadRow = {
   id: string;
@@ -25,6 +32,7 @@ type LeadRow = {
   email: string | null;
   phone: string | null;
   source: string | null;
+  development_id: string | null;
   status: string | null;
   temperature: string | null;
   score: number | null;
@@ -53,7 +61,10 @@ type ActivityRow = {
   description: string | null;
   type: string;
   authorName?: string;
-  metadata?: { propertyId?: string; signal?: "interested" | "rejected" } | null;
+  metadata?: ({
+    propertyId?: string;
+    signal?: "interested" | "rejected";
+  } & Record<string, unknown>) | null;
   occurred_at: string;
 };
 type PropertyRow = {
@@ -227,6 +238,7 @@ type Payload = {
   contactBriefing: ContactBriefing;
   relationshipContext: RelationshipContext;
   assignmentReservation: AssignmentReservation | null;
+  projectOptions: LeadContextProjectOption[];
 };
 type Qualification = {
   score: number;
@@ -292,6 +304,8 @@ export default function LeadDetailPage() {
     useState<RelationshipContext | null>(null);
   const [assignmentReservation, setAssignmentReservation] =
     useState<AssignmentReservation | null>(null);
+  const [projectOptions, setProjectOptions] = useState<LeadContextProjectOption[]>([]);
+  const [contextSaving, setContextSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -357,6 +371,7 @@ export default function LeadDetailPage() {
       setContactBriefing(data.contactBriefing);
       setRelationshipContext(data.relationshipContext);
       setAssignmentReservation(data.assignmentReservation);
+      setProjectOptions(data.projectOptions ?? []);
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Falha ao carregar o lead.",
@@ -471,6 +486,35 @@ export default function LeadDetailPage() {
       setMessage(error instanceof Error ? error.message : "Falha ao salvar.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function correctCommercialContext(input: {
+    projectId: string | null;
+    source: string | null;
+    reason: string;
+    humanConfirmed: true;
+    expectedProjectId: string | null;
+    expectedSource: string | null;
+  }) {
+    setContextSaving(true);
+    setMessage(null);
+    try {
+      await api(`/api/v1/leads/${leadId}`, {
+        method: "POST",
+        body: JSON.stringify({ action: "correct_commercial_context", ...input }),
+      });
+      await load();
+      setMessage("Projeto e origem corrigidos com justificativa registrada na timeline.");
+    } catch (error) {
+      const errorMessage = error instanceof Error
+        ? error.message
+        : "Não foi possível corrigir o contexto comercial.";
+      await load();
+      setMessage(errorMessage);
+      throw error;
+    } finally {
+      setContextSaving(false);
     }
   }
 
@@ -716,21 +760,18 @@ export default function LeadDetailPage() {
               {intelligence.summary}
             </p>
             <div className="atlas-lead-primary-actions mt-6">
-              <button
-                onClick={() =>
-                  window.dispatchEvent(
-                    new CustomEvent("atlas:open-copilot", {
-                      detail: {
-                        prompt: `Analise a lead ${lead.name || "selecionada"} e recomende a próxima melhor ação.`,
-                        context: { leadId: lead.id, source: "lead_360" },
-                      },
-                    }),
-                  )
-                }
+              <CopilotContextAction
+                label="✦ Preparar próxima ação"
+                prompt="Analise esta lead e prepare a próxima melhor ação com justificativa, abordagem sugerida e ponto que exige confirmação humana."
+                context={{
+                  leadId: lead.id,
+                  source: "lead_360",
+                  workspace: "lead",
+                  contextLabel: "Lead 360",
+                  returnHref: `/leads/${lead.id}`,
+                }}
                 className="atlas-button-primary"
-              >
-                ✦ Próxima melhor ação
-              </button>
+              />
               <Link
                 href={`/leads/${lead.id}/messages`}
                 className="atlas-button-primary"
@@ -982,9 +1023,7 @@ export default function LeadDetailPage() {
                 detail: relationshipContext.development
                   ? `${relationshipContext.development.developer_name || "Incorporadora"}${relationshipContext.development.city ? ` · ${relationshipContext.development.city}` : ""}`
                   : "Complete para melhorar o matching",
-                href: relationshipContext.development
-                  ? `/developments/${relationshipContext.development.id}`
-                  : "/developments",
+                href: "#commercial-context",
               },
               {
                 label: "Origem",
@@ -994,9 +1033,7 @@ export default function LeadDetailPage() {
                 detail: relationshipContext.campaign
                   ? `${relationshipContext.campaign.channel || "Canal não informado"} · ${relationshipContext.origin.campaignEvents} sinais`
                   : `${relationshipContext.origin.historicalMemories} memórias históricas`,
-                href: relationshipContext.campaign
-                  ? "/integrations/meta"
-                  : "/leads",
+                href: "#commercial-context",
               },
               {
                 label: "Comunicações",
@@ -1054,6 +1091,18 @@ export default function LeadDetailPage() {
             organização, RLS e histórico auditável.
           </div>
         </AtlasCard>
+      ) : null}
+
+      {relationshipContext ? (
+        <LeadContextCorrection
+          key={`${lead.id}:${lead.development_id || "none"}:${lead.source || "none"}`}
+          currentProjectId={lead.development_id}
+          currentProjectName={relationshipContext.development?.name ?? null}
+          currentSource={lead.source}
+          projects={projectOptions}
+          saving={contextSaving}
+          onSubmit={correctCommercialContext}
+        />
       ) : null}
 
       {dataQuality && unifiedProfile ? (
@@ -1700,8 +1749,10 @@ export default function LeadDetailPage() {
               <input
                 className={inputClass}
                 value={lead.source ?? ""}
-                placeholder="Origem"
-                onChange={(e) => setLead({ ...lead, source: e.target.value })}
+                placeholder="Origem não informada"
+                readOnly
+                aria-label="Origem comercial — use a correção governada acima"
+                title="Use Corrigir contexto para alterar a origem com justificativa auditável."
               />
               <select
                 className={inputClass}
@@ -1900,33 +1951,47 @@ export default function LeadDetailPage() {
                 />
               ) : (
                 <div className="space-y-3">
-                  {activities.map((activity) => (
-                    <article
-                      key={activity.id}
-                      className="relative rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4 pl-12"
-                    >
-                      <span className="absolute left-4 top-4 grid h-7 w-7 place-items-center rounded-full border border-sky-400/20 bg-sky-400/10 text-xs text-sky-300">
-                        •
-                      </span>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-white">
-                            {activity.title}
-                          </p>
-                          {activity.description ? (
-                            <p className="mt-1 text-xs leading-5 text-slate-400">
-                              {activity.description}
+                  {activities.map((activity) => {
+                    const contextCorrection =
+                      activity.type === "commercial_context_corrected"
+                        ? parseCommercialContextCorrectionTimeline(
+                            activity.metadata,
+                          )
+                        : null;
+
+                    return (
+                      <article
+                        key={activity.id}
+                        className="relative rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4 pl-12"
+                      >
+                        <span className="absolute left-4 top-4 grid h-7 w-7 place-items-center rounded-full border border-sky-400/20 bg-sky-400/10 text-xs text-sky-300">
+                          •
+                        </span>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-white">
+                              {activity.title}
                             </p>
-                          ) : null}
+                            {!contextCorrection && activity.description ? (
+                              <p className="mt-1 text-xs leading-5 text-slate-400">
+                                {activity.description}
+                              </p>
+                            ) : null}
+                          </div>
+                          <AtlasBadge tone="info">{activity.type}</AtlasBadge>
                         </div>
-                        <AtlasBadge tone="info">{activity.type}</AtlasBadge>
-                      </div>
-                      <p className="mt-3 text-[10px] uppercase tracking-wider text-slate-600">
-                        {activity.authorName || "Equipe Atlas"} ·{" "}
-                        {new Date(activity.occurred_at).toLocaleString("pt-BR")}
-                      </p>
-                    </article>
-                  ))}
+                        {contextCorrection ? (
+                          <CommercialContextTimelineEntry
+                            correction={contextCorrection}
+                          />
+                        ) : null}
+                        <p className="mt-3 text-[10px] uppercase tracking-wider text-slate-600">
+                          {activity.authorName || "Equipe Atlas"} ·{" "}
+                          {new Date(activity.occurred_at).toLocaleString("pt-BR")}
+                        </p>
+                      </article>
+                    );
+                  })}
                 </div>
               )}
             </div>

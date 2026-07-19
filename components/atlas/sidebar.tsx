@@ -4,153 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { atlasNavigation, getAtlasNavigationForIdentity } from "@/lib/atlas/navigation";
-/* legacy catalog removed in phase 004
-  {
-    group: "Operação diária",
-    label: "Command Center",
-    href: "/dashboard",
-    icon: "⌘",
-    roles: ["director", "superintendent", "manager", "broker"],
-  },
-  {
-    group: "Operação diária",
-    label: "Leads",
-    href: "/leads",
-    icon: "◎",
-    roles: ["director", "superintendent", "manager", "broker"],
-  },
-  {
-    group: "Operação diária",
-    label: "Pipeline",
-    href: "/pipeline",
-    icon: "⌁",
-    roles: ["director", "superintendent", "manager", "broker"],
-  },
-  {
-    group: "Operação diária",
-    label: "Tarefas",
-    href: "/tasks",
-    icon: "✓",
-    roles: ["director", "superintendent", "manager", "broker"],
-  },
-  {
-    group: "Operação diária",
-    label: "Agenda",
-    href: "/calendar",
-    icon: "□",
-    roles: ["director", "superintendent", "manager", "broker"],
-  },
-  {
-    group: "Operação diária",
-    label: "Atividades",
-    href: "/activity",
-    icon: "◷",
-    roles: ["director", "superintendent", "manager", "broker"],
-  },
-  {
-    group: "Clientes e portfólio",
-    label: "Clientes 360",
-    href: "/customers",
-    icon: "◉",
-    roles: ["director", "superintendent", "manager", "broker"],
-  },
-  {
-    group: "Clientes e portfólio",
-    label: "Projetos",
-    href: "/developments",
-    icon: "▥",
-    roles: ["director", "superintendent", "manager", "broker"],
-  },
-  {
-    group: "Clientes e portfólio",
-    label: "Reativação",
-    href: "/leads/import",
-    icon: "↻",
-    roles: ["director", "superintendent", "manager", "broker"],
-  },
-  {
-    group: "Clientes e portfólio",
-    label: "Copilot",
-    href: "/ai-dashboard",
-    icon: "✦",
-    roles: ["director", "superintendent", "manager", "broker"],
-  },
-  {
-    group: "Gestão",
-    label: "Corretores",
-    href: "/brokers",
-    icon: "◇",
-    roles: ["director", "superintendent", "manager"],
-  },
-  {
-    group: "Gestão",
-    label: "Distribuição",
-    href: "/distribution",
-    icon: "⇄",
-    roles: ["director", "superintendent", "manager"],
-  },
-  {
-    group: "Gestão",
-    label: "Vendas",
-    href: "/sales",
-    icon: "◌",
-    roles: ["director", "superintendent", "manager"],
-  },
-  {
-    group: "Gestão",
-    label: "Relatórios",
-    href: "/reports",
-    icon: "↗",
-    roles: ["director", "superintendent", "manager"],
-  },
-  {
-    group: "Gestão",
-    label: "Revenue Engine",
-    href: "/revenue-engine",
-    icon: "⚡",
-    roles: ["director", "superintendent", "manager"],
-  },
-  {
-    group: "Diretoria",
-    label: "Usuários e acessos",
-    href: "/users",
-    icon: "♙",
-    roles: ["director"],
-    accessRoles: ["admin"],
-  },
-  {
-    group: "Diretoria",
-    label: "Vendas externas",
-    href: "/external-sales",
-    icon: "↙",
-    roles: ["director"],
-    accessRoles: ["admin", "director_decisor"],
-  },
-  {
-    group: "Diretoria",
-    label: "Integrações",
-    href: "/integrations",
-    icon: "∞",
-    roles: ["director"],
-    accessRoles: ["admin", "director_decisor"],
-  },
-  {
-    group: "Diretoria",
-    label: "Evolução V3",
-    href: "/atlas-v3",
-    icon: "◈",
-    roles: ["director"],
-    accessRoles: ["admin", "director_decisor"],
-  },
-  {
-    group: "Diretoria",
-    label: "Configurações",
-    href: "/settings",
-    icon: "⚙",
-    roles: ["director", "superintendent", "manager"],
-    accessRoles: ["admin"],
-  },
-*/
 type NavigationItem = (typeof atlasNavigation)[number];
 const FAVORITES_KEY = "atlas:sidebar-favorites:v1";
 
@@ -243,7 +96,7 @@ export function Sidebar({
   );
   const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
   const visibleItems = useMemo(() => normalizedQuery
-    ? permittedItems.filter((item) => `${item.label} ${item.group}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery))
+    ? permittedItems.filter((item) => `${item.label} ${item.group} ${item.keywords} ${item.businessOutcome}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery))
     : permittedItems, [normalizedQuery, permittedItems]);
   const favoriteItems = permittedItems.filter((item) => favorites.includes(item.href));
   const groupedItems = normalizedQuery
@@ -332,7 +185,7 @@ export function Sidebar({
         <nav className="atlas-sidebar-nav" aria-label="Navegação principal">
           {!normalizedQuery && favoriteItems.length ? (
             <section className="atlas-nav-group atlas-nav-favorites" data-current={favoriteItems.some((item) => isActive(pathname, item.href)) ? "true" : "false"} aria-labelledby="atlas-nav-favorites-heading">
-              <h2 id="atlas-nav-favorites-heading" className="atlas-sidebar-section atlas-sidebar-label"><span>Favoritos</span><small aria-label={`${favoriteItems.length} favoritos`}>{favoriteItems.length}</small></h2>
+              <h2 id="atlas-nav-favorites-heading" className="atlas-sidebar-section atlas-sidebar-label"><span>Favoritos</span></h2>
               {favoriteItems.map((item) => renderNavItem(item, true))}
             </section>
           ) : null}
@@ -342,7 +195,7 @@ export function Sidebar({
             const groupIsCurrent = groupItems.some((item) => isActive(pathname, item.href));
             return (
               <section className="atlas-nav-group" data-current={groupIsCurrent ? "true" : "false"} aria-labelledby={groupHeadingId} key={group}>
-                <h2 id={groupHeadingId} className="atlas-sidebar-section atlas-sidebar-label"><span>{group}</span><small aria-label={`${groupItems.length} telas`}>{groupItems.length}</small></h2>
+                <h2 id={groupHeadingId} className="atlas-sidebar-section atlas-sidebar-label"><span>{group}</span></h2>
                 {groupItems.map((item) => renderNavItem(item))}
               </section>
             );

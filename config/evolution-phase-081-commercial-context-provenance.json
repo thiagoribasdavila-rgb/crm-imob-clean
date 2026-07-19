@@ -1,0 +1,52 @@
+{
+  "phase": 81,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "explicit-commercial-context-temporal-provenance",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "make-the-two-temporal-bases-of-commercial-context-explicit-so-human-outcome-time-is-not-confused-with-the-leads-current-project-and-source-snapshot",
+  "changes": [
+    "add-a-typed-provenance-contract-to-contextual-commercial-memory",
+    "identify-outcome-time-as-the-human-confirmed-event-time",
+    "identify-project-and-source-as-the-current-lead-snapshot-resolved-during-the-request",
+    "return-the-exact-context-resolution-time",
+    "declare-that-historical-project-and-source-attribution-is-not-confirmed",
+    "show-both-temporal-bases-inside-the-existing-progressive-disclosure",
+    "warn-that-project-or-source-may-have-changed-after-the-outcome",
+    "keep-session-organization-hierarchy-rls-no-store-and-read-only-contracts",
+    "avoid-new-queries-model-calls-writes-schema-changes-and-automatic-commercial-actions"
+  ],
+  "provenance": {
+    "outcomeTimeBasis": "human_confirmed_event_time",
+    "contextTimeBasis": "current_lead_snapshot",
+    "historicalContextConfirmed": false
+  },
+  "validation": {
+    "targetedChecks": [
+      "commercial-context-provenance:check",
+      "commercial-context-evidence:check",
+      "commercial-context-freshness:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Older outcomes still do not contain a historical project and source snapshot. This phase explains that limitation precisely but does not reconstruct or infer missing history.",
+  "nextPhase": {
+    "phase": 82,
+    "name": "Captura supervisionada do contexto para novos resultados",
+    "status": "planned"
+  }
+}

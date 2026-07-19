@@ -17,7 +17,7 @@ const checks = [
   ["Catálogo canônico possui cobertura integral", inventory.missingCanonicalDestinations.length === 0 && inventory.counts.canonicalDestinationsPresent === config.topology.canonicalDestinationsPresent],
   ["Rotas dinâmicas permanecem contextuais", inventory.counts.dynamicContextRoutes === config.topology.dynamicContextRoutes && config.topology.dynamicContextRoutes === 29],
   ["Rotas profundas permanecem de apoio", inventory.counts.deepSupportRoutes === config.topology.deepSupportRoutes && config.topology.deepSupportRoutes === 71],
-  ["Superfícies de topo foram classificadas", JSON.stringify(measuredTopLevel) === JSON.stringify(expectedTopLevel) && expectedTopLevel.length === 14],
+  ["Superfícies de topo foram classificadas", JSON.stringify(measuredTopLevel) === JSON.stringify(expectedTopLevel) && expectedTopLevel.length === 15],
   ["Ambiguidades críticas estão explícitas", expectedTopLevel.includes("/automation") && expectedTopLevel.includes("/automations") && expectedTopLevel.includes("/kanban") && expectedTopLevel.includes("/creatives")],
   ["Entrada autenticada continua no dashboard", inventory.entryRoute.redirectsToDashboard === true],
   ["Shell persistente continua governado pelo layout", layout.includes("<AppShell>") && layout.includes("<AtlasCopilotDock") && layout.includes("<AtlasNotificationCenter")],

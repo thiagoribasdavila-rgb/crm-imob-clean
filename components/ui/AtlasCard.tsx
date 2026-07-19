@@ -3,12 +3,20 @@ import type { ReactNode } from "react";
 export function AtlasCard({
   children,
   className = "",
+  density = "comfortable",
+  emphasis = "standard",
 }: {
   children: ReactNode;
   className?: string;
+  density?: "compact" | "comfortable";
+  emphasis?: "standard" | "primary" | "quiet";
 }) {
   return (
-    <section className={`atlas-panel atlas-panel-hover atlas-surface-card ${className}`.trim()}>
+    <section
+      className={`atlas-panel atlas-panel-hover atlas-surface-card ${className}`.trim()}
+      data-card-density={density}
+      data-card-emphasis={emphasis}
+    >
       {children}
     </section>
   );
@@ -49,15 +57,21 @@ export function AtlasMetric({
   detail,
   trend,
   tone = "blue",
+  relevance = "supporting",
 }: {
   label: string;
   value: ReactNode;
   detail?: ReactNode;
   trend?: ReactNode;
   tone?: "blue" | "green" | "amber" | "violet" | "rose";
+  relevance?: "primary" | "supporting";
 }) {
   return (
-    <article className={`atlas-metric atlas-metric-${tone}`} data-tone={tone}>
+    <article
+      className={`atlas-metric atlas-metric-${tone}`}
+      data-tone={tone}
+      data-relevance={relevance}
+    >
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-slate-400">{label}</p>
         {trend ? (

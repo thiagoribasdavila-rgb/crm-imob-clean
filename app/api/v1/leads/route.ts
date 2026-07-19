@@ -4,6 +4,8 @@ import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { requireApiIdentity } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { LIVE_LEAD_SELECT, mapLegacyLead } from "@/lib/compat/legacy-v2";
+import { recordLiveLeadEvent } from "@/lib/compat/live-writes";
 
 export const dynamic = "force-dynamic";
 
@@ -70,9 +72,16 @@ export async function POST(request: Request) {
     }
 
     const admin = getSupabaseAdmin();
+    let project: { id: string; name: string } | null = null;
     if (body.developmentId) {
-      const { data: development } = await admin.from("developments").select("id").eq("id", body.developmentId).eq("organization_id", identity.organizationId).maybeSingle();
-      if (!development) return NextResponse.json({ error: "Projeto não encontrado nesta organização." }, { status: 400 });
+      const { data, error } = await admin
+        .from("crm_projects")
+        .select("id,name")
+        .eq("id", body.developmentId)
+        .eq("organization_id", identity.organizationId)
+        .maybeSingle();
+      if (error || !data) return NextResponse.json({ error: "Projeto não encontrado nesta organização." }, { status: 400 });
+      project = data;
     }
     const score = calculateLeadScore({
       email,
@@ -85,42 +94,71 @@ export async function POST(request: Request) {
       status: "novo",
     });
 
-    const { data: atomicResult, error: leadError } = await identity.supabase.rpc("create_lead_atomic", { p_organization_id: identity.organizationId, p_development_id: body.developmentId || null, p_assigned_to: identity.userId, p_name: name, p_email: email, p_phone: phone, p_source: body.source?.trim() || "Manual", p_purpose: body.purpose?.trim() || null, p_budget_min: body.budgetMin ?? null, p_budget_max: body.budgetMax ?? null, p_bedrooms: body.bedrooms ?? null, p_preferred_regions: (body.preferredRegions ?? []).map((region) => region.trim()).filter(Boolean).slice(0, 20), p_notes: body.notes?.trim() || null, p_score: score.score, p_temperature: score.temperature, p_metadata: { scoreReasons: score.reasons, createdVia: "atlas_v1_api" } });
-    if (leadError?.message.includes("invalid_phone_suppressed")) return NextResponse.json({ error: "Este telefone possui histórico de qualidade inválida e não pode ser recadastrado.", field: "phone" }, { status: 422 });
-    if (leadError) throw leadError;
-    const atomic = atomicResult as { status: "created" | "duplicate"; leadId: string; name?: string; score?: number; temperature?: string };
-    if (atomic.status === "duplicate") {
-      const { data: visibleDuplicate } = await identity.supabase.from("leads").select("id").eq("id", atomic.leadId).eq("organization_id", identity.organizationId).maybeSingle();
-      return NextResponse.json({ error: "Já existe um lead com este contato.", ...(visibleDuplicate ? { duplicateLeadId: atomic.leadId } : {}) }, { status: 409 });
-    }
-    const lead = { id: atomic.leadId, name: atomic.name || name, score: atomic.score ?? score.score, temperature: atomic.temperature || score.temperature };
-
-    await Promise.allSettled([
-      admin.from("activities").insert({
-        organization_id: identity.organizationId,
-        lead_id: lead.id,
-        user_id: identity.userId,
-        type: "lead_created",
-        title: "Lead criado",
-        description: `Lead ${lead.name} criado manualmente no Atlas.`,
-        metadata: { score: lead.score, temperature: lead.temperature },
-      }),
-      admin.from("atlas_events").insert({
-        organization_id: identity.organizationId,
-        event_type: "lead.created",
-        source: "atlas-v1",
-        aggregate_type: "lead",
-        aggregate_id: lead.id,
-        payload: { score: lead.score, temperature: lead.temperature },
-        correlation_id: crypto.randomUUID(),
-      }),
+    const preferredRegions = (body.preferredRegions ?? []).map((region) => region.trim()).filter(Boolean).slice(0, 20);
+    const [emailDuplicate, phoneDuplicate] = await Promise.all([
+      email
+        ? admin.from("leads").select("id").eq("organization_id", identity.organizationId).ilike("email", email).limit(1).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      phone
+        ? admin.from("leads").select("id").eq("organization_id", identity.organizationId).eq("phone", phone).limit(1).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
+    const duplicateId = emailDuplicate.data?.id || phoneDuplicate.data?.id;
+    if (duplicateId) {
+      const { data: visibleDuplicate } = await identity.supabase
+        .from("leads")
+        .select("id")
+        .eq("id", duplicateId)
+        .eq("organization_id", identity.organizationId)
+        .maybeSingle();
+      return NextResponse.json({ error: "Já existe um lead com este contato.", ...(visibleDuplicate ? { duplicateLeadId: duplicateId } : {}) }, { status: 409 });
+    }
+
+    const purposeNote = body.purpose ? `Objetivo declarado: ${body.purpose}.` : "";
+    const notes = [purposeNote, body.notes?.trim()].filter(Boolean).join("\n").slice(0, 5000) || null;
+    const { data: storedLead, error: leadError } = await admin
+      .from("leads")
+      .insert({
+        organization_id: identity.organizationId,
+        name,
+        email,
+        phone,
+        source: body.source?.trim() || "Manual",
+        status: "novo",
+        score_ia: score.score,
+        classificacao_ia: score.temperature,
+        temperature: score.temperature,
+        assigned_user_id: identity.userId,
+        project_id: project?.id ?? null,
+        project: project?.name ?? null,
+        budget_min: body.budgetMin ?? null,
+        budget_max: body.budgetMax ?? null,
+        preferred_bedrooms: body.bedrooms ?? null,
+        preferred_neighborhoods: preferredRegions,
+        notes,
+        next_action: "Realizar primeiro contato",
+      })
+      .select(LIVE_LEAD_SELECT)
+      .single();
+    if (leadError || !storedLead) throw leadError || new Error("Não foi possível criar o lead.");
+    const lead = mapLegacyLead(storedLead as unknown as Record<string, unknown>);
+
+    const eventResult = await recordLiveLeadEvent(admin, {
+      organizationId: identity.organizationId,
+      leadId: String(lead.id),
+      actorId: identity.userId,
+      type: "lead_created",
+      title: "Lead criado",
+      description: `Lead ${lead.name || name} criado manualmente no Atlas.`,
+      metadata: { score: lead.score, temperature: lead.temperature, scoreReasons: score.reasons, createdVia: "atlas_v1_api" },
+    });
+    if (eventResult.error) logger.warn("v1.lead_event_write_failed", { leadId: lead.id, message: eventResult.error.message });
 
     logger.info("v1.lead_created", {
-      leadId: lead.id,
+      leadId: String(lead.id),
       organizationId: identity.organizationId,
       userId: identity.userId,
-      score: lead.score,
+      score: Number(lead.score || 0),
     });
 
     return NextResponse.json({ lead }, { status: 201 });

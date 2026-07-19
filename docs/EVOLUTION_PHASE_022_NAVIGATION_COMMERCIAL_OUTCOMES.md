@@ -2,7 +2,7 @@
 
 ## Resultado
 
-Os 26 destinos canônicos do Atlas agora possuem um contrato de produto com três respostas obrigatórias:
+Os 25 destinos canônicos do Atlas agora possuem um contrato de produto com três respostas obrigatórias. São 19 módulos operacionais e 6 comandos contextuais; a superfície interna de evolução (`/atlas-v3`) permanece disponível fora da navegação diária.
 
 1. Qual pergunta comercial a tela responde?
 2. Qual é a ação principal esperada?

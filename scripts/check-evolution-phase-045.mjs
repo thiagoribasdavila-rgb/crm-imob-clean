@@ -11,7 +11,7 @@ const checks = [
   ["Fila limita três carteiras sem ranking", api.includes(".slice(0, 3)") && api.includes("peopleRanking: false") && page.includes("não é um ranking de pessoas") && config.teamContract.visibleSupportLimit === 3],
   ["Sinais de carga são explicáveis", api.includes("overdue.length * 4") && api.includes("hotWithoutNextAction.length * 3") && config.teamContract.explainableSignals.length === 3],
   ["API usa sessão autenticada e RLS", api.includes("requireAccessContext") && api.includes("identity.supabase") && !api.includes("getSupabaseAdmin") && config.safetyPolicy.authenticatedRlsClientUsed === true],
-  ["Compatibilidade não remove organização", api.includes("isMissingColumn") && (api.match(/eq\("organization_id", organizationId\)/g) || []).length >= 4],
+  ["Compatibilidade não remove organização", api.includes("LIVE_PROFILE_SELECT") && api.includes("LIVE_LEAD_SELECT") && api.includes("resolveLiveHierarchy") && (api.match(/eq\("organization_id", organizationId\)/g) || []).length >= 2 && !api.includes('.select("*")')],
   ["Dados de contato não são devolvidos", !api.includes("phone") && !api.includes("email") && config.teamContract.directContactDataReturned === false],
   ["Copilot usa somente sinais agregados", page.includes('module: "team-conversion"') && !page.includes("memberId:") && config.safetyPolicy.personalDataSentToCopilot === false],
   ["Relatório registra apoio não punitivo", report.includes("não é ranking") && config.nextPhase.phase === 46]

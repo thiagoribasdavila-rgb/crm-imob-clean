@@ -1,0 +1,119 @@
+{
+  "phase": 97,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-19",
+  "scope": "core-v2-live-write-readiness-and-safe-blocker-guidance",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "authenticationChanged": false,
+  "runtimeBehaviorChanged": true,
+  "objective": "measure live write readiness for the five priority modules and guide users only to evidence-backed safe actions",
+  "delivered": {
+    "resolver": "lib/atlas/core-v2/live-write-readiness.ts",
+    "operationalContract": "module-health-v2",
+    "writeContract": "live-write-readiness-v1",
+    "priorityModules": [
+      "leads",
+      "pipeline",
+      "tasks-and-agenda",
+      "customers-360",
+      "developments"
+    ],
+    "states": [
+      "ready",
+      "source-mediated",
+      "blocked"
+    ],
+    "readyModules": [
+      "leads",
+      "pipeline",
+      "tasks-and-agenda"
+    ],
+    "sourceMediatedModules": [
+      "customers-360"
+    ],
+    "blockedModules": [
+      "developments"
+    ],
+    "readFailureBlocksWrite": true,
+    "commandCenterGuidance": true
+  },
+  "evidence": {
+    "leads": {
+      "route": "app/api/v1/leads/route.ts",
+      "operations": ["create", "update"],
+      "tenantGuard": true,
+      "duplicateCheck": true,
+      "auditTrail": "lead_events"
+    },
+    "pipeline": {
+      "route": "app/api/v1/pipeline/route.ts",
+      "operations": ["move", "reverse"],
+      "tenantGuard": true,
+      "auditTrail": "pipeline_history",
+      "compensatingWrite": true
+    },
+    "tasksAndAgenda": {
+      "route": "app/api/v1/tasks/route.ts",
+      "operations": ["create", "complete", "reschedule"],
+      "tenantGuard": true,
+      "rlsPreserved": true,
+      "copilotHumanConfirmation": true
+    },
+    "customers360": {
+      "source": "public.leads",
+      "mode": "lead-source",
+      "canonicalCustomerTableApproved": false
+    },
+    "developments": {
+      "liveReadSource": "public.crm_projects",
+      "futureWriteDomain": "public.developments",
+      "futureWriteDomainLive": false,
+      "bulkMigrationAllowed": false,
+      "safeAction": "/developments/homologation"
+    }
+  },
+  "safety": {
+    "writeProbeExecuted": false,
+    "schemaMutationExecuted": false,
+    "authMutationExecuted": false,
+    "serviceRoleAddedToHealthBoundary": false,
+    "rawDatabaseErrorsReturnedToUser": false,
+    "unavailableReadCanNeverBeWriteReady": true,
+    "dataApiExposureNeverInferredFromLocalMigration": true
+  },
+  "operationalImpact": [
+    "users-see-which-modules-can-safely-create-or-update-data",
+    "customers-360-preserves-leads-as-the-current-source-of-truth",
+    "project-write-is-not-falsely-advertised-as-ready",
+    "every-blocked-action-points-to-a-safe-human-review-path",
+    "read-failures-automatically-block-write-guidance"
+  ],
+  "knownLimits": [
+    "readiness-is-contract-evidence-not-a-destructive-write-probe",
+    "customers-360-remains-lead-backed",
+    "complete-project-write-requires-a-minimal-approved-live-adapter",
+    "commercial-hierarchy-still-depends-on-the-existing-profile-contract",
+    "historical-phase-97-integration-health-remains-preserved"
+  ],
+  "validation": {
+    "phaseContractCheck": true,
+    "previousPhaseRegressionRequired": true,
+    "typecheckRequired": true,
+    "changedFilesLintRequired": true,
+    "secretScanRequired": true,
+    "buildRequired": false
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false,
+    "checkpointPhase": 100
+  },
+  "nextPhase": {
+    "phase": 98,
+    "name": "Desenhar o adaptador mínimo e auditável de escrita para projetos vivos",
+    "status": "planned"
+  }
+}

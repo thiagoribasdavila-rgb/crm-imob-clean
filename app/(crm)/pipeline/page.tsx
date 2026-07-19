@@ -20,11 +20,18 @@ type PipelinePreferences = {
   hideEmpty?: boolean;
   mobileStage?: StageKey;
 };
+type PipelineScope = {
+  loaded: number;
+  totalOperational: number;
+  archivedMemoryExcluded: boolean;
+  limit: number;
+};
 type Lead = {
   id: string;
   name: string | null;
   phone: string | null;
   email: string | null;
+  project: string | null;
   status: string | null;
   score: number | null;
   temperature: string | null;
@@ -138,6 +145,7 @@ export default function PipelinePage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [stages, setStages] = useState<PipelineStageDefinition[]>(defaultStages);
   const [canConfigureStages, setCanConfigureStages] = useState(false);
+  const [pipelineScope, setPipelineScope] = useState<PipelineScope>({ loaded: 0, totalOperational: 0, archivedMemoryExcluded: true, limit: 500 });
   const [mobileStage, setMobileStage] = useState<StageKey>(defaultStages[0]?.key || "novo");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -197,6 +205,14 @@ export default function PipelinePage() {
       setLeads((payload.leads ?? []) as Lead[]);
       if (Array.isArray(payload.stages)) setStages((payload.stages as PipelineStageDefinition[]).filter((stage) => stage.visible && stage.outcome !== "lost" && stage.outcome !== "buyer_profile"));
       setCanConfigureStages(payload.canConfigureStages === true);
+      if (payload.pagination && typeof payload.pagination === "object") {
+        setPipelineScope({
+          loaded: Number(payload.pagination.loaded || 0),
+          totalOperational: Number(payload.pagination.totalOperational || 0),
+          archivedMemoryExcluded: payload.pagination.archivedMemoryExcluded !== false,
+          limit: Number(payload.pagination.limit || 500),
+        });
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "O pipeline não pôde ser carregado agora.");
     } finally {
@@ -324,7 +340,7 @@ export default function PipelinePage() {
         <Image className="atlas-pipeline-robot" src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas acompanhando o pipeline comercial" width={210} height={315} priority />
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <div className="flex flex-wrap gap-2"><AtlasBadge tone="success">PIPELINE AO VIVO</AtlasBadge><AtlasBadge tone="info">{metrics.open} NEGÓCIOS</AtlasBadge></div>
+            <div className="flex flex-wrap gap-2"><AtlasBadge tone="success">PIPELINE AO VIVO</AtlasBadge><AtlasBadge tone="info">{metrics.open} NEGÓCIOS</AtlasBadge>{pipelineScope.totalOperational > 0 ? <AtlasBadge tone="info">{pipelineScope.loaded}/{pipelineScope.totalOperational} CARREGADOS</AtlasBadge> : null}</div>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Pipeline comercial</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Decida o próximo movimento, proteja SLAs e mantenha cada avanço registrado.</p>
           </div>
@@ -338,6 +354,7 @@ export default function PipelinePage() {
       </section>
 
       {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
+      {!loading && pipelineScope.totalOperational > pipelineScope.loaded ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status"><span>Este quadro mostra {pipelineScope.loaded} de {pipelineScope.totalOperational} oportunidades operacionais. A memória arquivada continua isolada.</span><Link href="/leads" className="font-semibold text-amber-50 underline decoration-amber-300/40 underline-offset-4">Pesquisar a base completa</Link></div> : null}
       {savingId ? <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status" aria-live="polite">Confirmando movimentação e registrando o histórico…</div> : null}
       {lastMove ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.07] px-4 py-3 text-sm text-sky-100" role="status"><span><strong>{lastMove.leadName}</strong> avançou para {destinationOptions.find((item) => item.key === lastMove.to)?.label}.</span><button type="button" onClick={() => void undoLastMove()} disabled={Boolean(savingId)} className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs font-semibold hover:bg-sky-300/15 disabled:opacity-50">Desfazer movimentação</button></div> : null}
 
@@ -423,29 +440,39 @@ export default function PipelinePage() {
                     const guidance = brokerGuidance(lead);
                     const contact = phoneLinks(lead.phone);
                     return (
-                      <article key={lead.id} draggable={!savingId} tabIndex={0} aria-disabled={Boolean(savingId)} aria-label={`${lead.name || "Lead sem nome"}, etapa ${stage.label}. Alt mais seta move entre etapas.`} onKeyDown={(event) => { if (event.altKey && event.key === "ArrowLeft") { event.preventDefault(); moveByKeyboard(lead, -1); } if (event.altKey && event.key === "ArrowRight") { event.preventDefault(); moveByKeyboard(lead, 1); } }} onDragEnd={() => { setDraggedId(null); setDragOverStage(null); }} onDragStart={(event) => { if (savingId) { event.preventDefault(); return; } setDraggedId(lead.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""}`}>
+                      <article key={lead.id} draggable={!savingId} tabIndex={0} aria-disabled={Boolean(savingId)} aria-label={`${lead.name || "Lead sem nome"}, etapa ${stage.label}. Alt mais seta move entre etapas.`} onKeyDown={(event) => { if (event.altKey && event.key === "ArrowLeft") { event.preventDefault(); moveByKeyboard(lead, -1); } if (event.altKey && event.key === "ArrowRight") { event.preventDefault(); moveByKeyboard(lead, 1); } }} onDragEnd={() => { setDraggedId(null); setDragOverStage(null); }} onDragStart={(event) => { if (savingId) { event.preventDefault(); return; } setDraggedId(lead.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""} ${draggedId === lead.id ? "is-dragging" : ""}`} data-risk={risk}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-1 truncate text-[11px] text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
                           <AtlasBadge tone={riskTone(risk)}>Risco {risk}</AtlasBadge>
                         </div>
-                        <div className="atlas-lead-origin"><span>{lead.source || "Origem não informada"}</span>{metaCampaign(lead) ? <small>{metaCampaign(lead)}</small> : null}</div>
+                        <div className="atlas-lead-origin"><span>{lead.project || lead.source || "Projeto não informado"}</span>{metaCampaign(lead) ? <small>{metaCampaign(lead)}</small> : null}</div>
+                        <div className="atlas-kanban-signal-row">
+                          <span className={`atlas-temperature is-${String(lead.temperature || "frio").toLowerCase()}`}>{lead.temperature || "frio"}</span>
+                          <span>Score <strong>{lead.score ?? 0}</strong></span>
+                          <span>{lead.budget_max ? brl.format(lead.budget_max) : "Sem valor"}</span>
+                        </div>
                         {contactSla ? <div className="mt-3"><AtlasBadge tone={contactSla.tone}>{contactSla.label}</AtlasBadge></div> : null}
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <div className="rounded-xl border border-white/[0.05] bg-white/[0.025] p-2"><p className="text-[9px] uppercase tracking-wider text-slate-600">Score</p><p className="mt-1 text-sm font-semibold text-white">{lead.score ?? 0}</p></div>
-                          <div className="rounded-xl border border-white/[0.05] bg-white/[0.025] p-2"><p className="text-[9px] uppercase tracking-wider text-slate-600">Temperatura</p><p className="mt-1 text-sm font-semibold capitalize text-white">{lead.temperature || "frio"}</p></div>
-                        </div>
-                        <p className="mt-3 text-sm font-semibold text-slate-200">{lead.budget_max ? brl.format(lead.budget_max) : "Valor não informado"}</p>
-                        <div className="atlas-lead-details">
-                          <p><span>Interesse</span><strong>{lead.purpose || "A definir"}{lead.bedrooms ? ` · ${lead.bedrooms} dorm.` : ""}</strong></p>
-                          <p><span>Região</span><strong>{lead.preferred_regions?.join(", ") || "Não informada"}</strong></p>
-                          <p><span>Último contato</span><strong>{relativeTime(lead.last_interaction_at)}</strong></p>
-                          <p><span>Próxima ação</span><strong>{dateLabel(lead.next_action_at)}</strong></p>
-                        </div>
-                        <div className="atlas-card-guidance"><span>Próxima melhor ação</span><strong>{guidance.action}</strong><small>{guidance.reason}</small></div>
-                        <div className="atlas-card-shortcuts"><Link href={`/leads/${lead.id}`} title="Abrir perfil completo">Perfil</Link><Link href={`/leads/${lead.id}/messages`} title="Criar abordagem com IA">✦ Mensagem</Link>{contact ? <><a href={contact.call} title="Ligar para a lead">Ligar</a><a href={contact.whatsapp} target="_blank" rel="noreferrer" title="Abrir WhatsApp">WhatsApp</a></> : null}</div>
-                        <select value={lead.status ?? "novo"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="mt-4 w-full rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-slate-300 outline-none focus:border-sky-400/30">
+                        <div className="atlas-card-guidance"><span>Próxima melhor ação</span><strong>{guidance.action}</strong></div>
+                        <div className="atlas-kanban-primary-actions"><Link href={`/leads/${lead.id}`}>Abrir cliente</Link>{contact ? <a href={contact.whatsapp} target="_blank" rel="noreferrer">WhatsApp</a> : <Link href={`/leads/${lead.id}/messages`}>✦ Abordagem IA</Link>}</div>
+                        <details className="atlas-kanban-card-details">
+                          <summary>Ver contexto</summary>
+                          <div className="atlas-lead-details">
+                            <p><span>Origem</span><strong>{lead.source || "Não informada"}</strong></p>
+                            <p><span>Interesse</span><strong>{lead.purpose || "A definir"}{lead.bedrooms ? ` · ${lead.bedrooms} dorm.` : ""}</strong></p>
+                            <p><span>Região</span><strong>{lead.preferred_regions?.join(", ") || "Não informada"}</strong></p>
+                            <p><span>Último contato</span><strong>{relativeTime(lead.last_interaction_at)}</strong></p>
+                            <p><span>Próxima ação</span><strong>{dateLabel(lead.next_action_at)}</strong></p>
+                          </div>
+                          <p className="atlas-kanban-guidance-reason">{guidance.reason}</p>
+                          <div className="atlas-card-shortcuts"><Link href={`/leads/${lead.id}/messages`} title="Criar abordagem com IA">✦ Mensagem</Link>{contact ? <><a href={contact.call} title="Ligar para a lead">Ligar</a><a href={contact.whatsapp} target="_blank" rel="noreferrer" title="Abrir WhatsApp">WhatsApp</a></> : null}</div>
+                        </details>
+                        <div className="atlas-kanban-move-row">
+                          <button type="button" onClick={() => moveByKeyboard(lead, -1)} disabled={savingId === lead.id || stages.findIndex((item) => item.key === (lead.status || "novo")) <= 0} aria-label="Mover para a etapa anterior">←</button>
+                          <select aria-label={`Mover ${lead.name || "lead"} para outra etapa`} value={lead.status ?? "novo"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)}>
                           {destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
-                        </select>
+                          </select>
+                          <button type="button" onClick={() => moveByKeyboard(lead, 1)} disabled={savingId === lead.id || stages.findIndex((item) => item.key === (lead.status || "novo")) >= stages.length - 1} aria-label="Mover para a próxima etapa">→</button>
+                        </div>
                       </article>
                     );
                   })}

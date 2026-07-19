@@ -7,7 +7,7 @@
   "productionDataModified": false,
   "runtimeNavigationChanged": true,
   "catalogPreservation": {
-    "primaryDestinations": 20,
+    "primaryDestinations": 19,
     "contextCommands": 6,
     "mobilePrimaryDestinations": 4,
     "routesRemoved": 0,
@@ -27,7 +27,7 @@
       "optionKeepsAccessibleGroupName": true
     },
     "sidebarSections": {
-      "countsAdded": true,
+      "countsAdded": false,
       "groupSpacingBeforePx": 17,
       "groupSpacingAfterPx": 13,
       "separatorPaddingBeforePx": 14,

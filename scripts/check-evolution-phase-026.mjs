@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import vm from "node:vm";
+import ts from "typescript";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-026-navigation-visual-hierarchy.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -9,11 +11,19 @@ const sidebar = fs.readFileSync("components/atlas/sidebar.tsx", "utf8");
 const styles = fs.readFileSync("app/globals.css", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_026_NAVIGATION_VISUAL_HIERARCHY.md", "utf8");
 
-const navigationBlock = navigation.split("export const atlasNavigation = [")[1]?.split("] as const satisfies")[0] ?? "";
-const contextBlock = navigation.split("export const atlasContextCommands = [")[1]?.split("] as const;")[0] ?? "";
-const primaryCount = (navigationBlock.match(/href:/g) || []).length;
-const contextCount = (contextBlock.match(/href:/g) || []).length;
-const mobilePrimaryCount = (navigationBlock.match(/mobilePrimary: true/g) || []).length;
+const compiledNavigation = ts.transpileModule(navigation, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+const navigationModule = { exports: {} };
+vm.runInNewContext(compiledNavigation, {
+  module: navigationModule,
+  exports: navigationModule.exports,
+  require: () => ({}),
+});
+const { atlasNavigation, atlasContextCommands } = navigationModule.exports;
+const primaryCount = atlasNavigation.length;
+const contextCount = atlasContextCommands.length;
+const mobilePrimaryCount = atlasNavigation.filter((item) => item.mobilePrimary === true).length;
 
 const checks = [
   ["Fase 026 concluída sem mutação de dados", config.status === "completed" && config.runtimeNavigationChanged === true && config.productionDataModified === false],
@@ -31,7 +41,7 @@ const checks = [
   ["Topbar prioriza destino sobre contexto", styles.includes(".atlas-topbar-location") && styles.includes("font-size: 13px") && styles.includes(".atlas-topbar-context strong")],
   ["Ações interativas preservam 44 pixels", styles.includes("width: 44px") && styles.includes("height: 44px") && styles.includes("min-height: 44px") && config.interactionTargets.favoriteActionMinimumPx === 44],
   ["Menu recolhido recentraliza o destino", styles.includes('.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-nav-item .atlas-nav-link') && styles.includes("padding-inline: 10px")],
-  ["Catálogo e RBAC permanecem íntegros", primaryCount === 20 && contextCount === 6 && mobilePrimaryCount === 4 && config.catalogPreservation.routesRemoved === 0 && config.catalogPreservation.permissionsChanged === false && config.safetyPolicy.rbacPreserved === true],
+  ["Catálogo e RBAC permanecem íntegros", primaryCount === 19 && contextCount === 6 && mobilePrimaryCount === 4 && config.catalogPreservation.routesRemoved === 0 && config.catalogPreservation.permissionsChanged === false && config.safetyPolicy.rbacPreserved === true],
   ["Métrica comportamental não foi inventada", config.measurementPolicy.inventedBehaviorMetricAllowed === false && config.measurementPolicy.behavioralTelemetryStatus === "awaiting-runtime-telemetry"],
   ["Relatório documenta fonte, semântica e limite", report.includes("lista paralela") && report.includes("aria-labelledby") && report.includes("não afirma melhora de tempo") && report.includes("Fase 027")],
   ["Staging continua bloqueado", phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false],

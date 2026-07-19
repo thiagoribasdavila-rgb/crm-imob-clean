@@ -12,7 +12,6 @@ import {
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { CommandCenterOverview } from "./CommandCenterOverview";
 import { Evolution500Program } from "./Evolution500Program";
-import { isMissingRelation } from "@/lib/compat/legacy-v2";
 
 type Metrics = {
   leads: number;
@@ -55,24 +54,23 @@ export default function AtlasV3Page() {
     async function load() {
       const results = await Promise.all([
         supabase.from("leads").select("id", { count: "exact", head: true }),
-        supabase.from("properties").select("id", { count: "exact", head: true }),
-        supabase.from("opportunities").select("id", { count: "exact", head: true }),
-        supabase.from("developments").select("id", { count: "exact", head: true }),
+        supabase.from("inventory_units").select("id", { count: "exact", head: true }),
+        supabase.from("leads").select("id", { count: "exact", head: true }).not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)"),
+        supabase.from("crm_projects").select("id", { count: "exact", head: true }),
         supabase.from("tasks").select("id", { count: "exact", head: true }),
-        supabase.from("approval_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("atlas_decisions").select("id", { count: "exact", head: true }).eq("status", "proposed"),
-        supabase.from("ai_insights").select("id", { count: "exact", head: true }),
-        supabase.from("projects").select("id", { count: "exact", head: true }),
+        supabase.from("lead_events").select("id", { count: "exact", head: true }).eq("event_type", "approval_requested"),
+        supabase.from("lead_events").select("id", { count: "exact", head: true }).eq("event_type", "decision_proposed"),
+        supabase.from("ai_scores").select("id", { count: "exact", head: true }),
       ]);
 
       if (!active) return;
       const labels = ["Leads", "Imóveis", "Oportunidades", "Projetos", "Tarefas", "Aprovações", "Decisões", "Insights"];
-      setWarnings(results.slice(0, 8).flatMap((result, index) => result.error && !isMissingRelation(result.error) ? [`${labels[index]} temporariamente indisponível.`] : []));
+      setWarnings(results.flatMap((result, index) => result.error ? [`${labels[index]} temporariamente indisponível.`] : []));
       setMetrics({
         leads: results[0].count ?? 0,
         properties: results[1].count ?? 0,
-        opportunities: results[2].error && isMissingRelation(results[2].error) ? results[0].count ?? 0 : results[2].count ?? 0,
-        projects: results[3].error && isMissingRelation(results[3].error) ? results[8].count ?? 0 : results[3].count ?? 0,
+        opportunities: results[2].count ?? 0,
+        projects: results[3].count ?? 0,
         tasks: results[4].count ?? 0,
         approvals: results[5].count ?? 0,
         decisions: results[6].count ?? 0,

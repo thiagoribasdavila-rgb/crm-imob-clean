@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
+import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
 
 type Relationship = "active" | "won" | "external" | "closed";
 type Segment = "all" | Relationship;
@@ -184,6 +185,16 @@ export default function CustomersPage() {
           <div className="atlas-customer-hero-actions">
             <Link href="/leads/new" className="atlas-button-primary">Novo cliente</Link>
             <Link href="/leads" className="atlas-button-secondary">Abrir carteira</Link>
+            <CopilotContextAction
+              label="✦ Priorizar carteira"
+              prompt="Revise minha carteira autorizada e prepare uma lista curta dos relacionamentos que mais precisam de ação hoje, explicando o motivo sem executar alterações."
+              context={{
+                source: "customers_360",
+                workspace: "customers",
+                contextLabel: "Clientes 360",
+                returnHref: "/customers",
+              }}
+            />
           </div>
         </div>
         <div className="atlas-customer-signal-grid" aria-label="Resumo dos relacionamentos autorizados" aria-busy={loading}>
@@ -282,7 +293,21 @@ export default function CustomersPage() {
                   {customer.relationship === "active" ? <strong className={nextAction.overdue ? "is-overdue" : ""}>{nextAction.label}</strong> : <strong>Atualizado · {dateLabel(customer.updatedAt)}</strong>}
                   <small>{customer.contextGaps.length ? `Completar: ${customer.contextGaps.map((gap) => gapLabels[gap] || gap).join(", ")}` : "Contexto essencial registrado"}</small>
                 </div>
-                <Link className="atlas-customer-open" href={`/leads/${customer.id}`}>Ver Lead 360 <span aria-hidden="true">→</span></Link>
+                <div className="atlas-customer-row-actions">
+                  <CopilotContextAction
+                    label="✦ Preparar contato"
+                    prompt="Prepare um briefing objetivo para o próximo contato com esta lead, incluindo objetivo da conversa, pergunta mais importante e risco a revisar. Não envie mensagens nem altere o cadastro."
+                    context={{
+                      leadId: customer.id,
+                      source: "customers_360",
+                      workspace: "customer",
+                      contextLabel: "Cliente 360",
+                      returnHref: `/leads/${customer.id}`,
+                    }}
+                    className="atlas-customer-copilot"
+                  />
+                  <Link className="atlas-customer-open" href={`/leads/${customer.id}`}>Ver Lead 360 <span aria-hidden="true">→</span></Link>
+                </div>
               </article>
             );
           })}

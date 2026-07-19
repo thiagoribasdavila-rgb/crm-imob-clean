@@ -1,0 +1,46 @@
+{
+  "phase": 65,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "human-confirmed-atomic-idempotent-copilot-task-completion",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "allow-a-user-to-complete-an-existing-daily-queue-task-from-the-copilot-with-explicit-confirmation-atomic-concurrency-control-audit-and-immediate-queue-refresh",
+  "changes": [
+    "carry-the-observed-task-status-from-the-authenticated-daily-queue-to-the-copilot",
+    "expose-task-completion-only-for-real-task-items-and-never-for-lead-opportunities",
+    "require-an-explicit-human-execution-confirmation-before-writing",
+    "send-a-stable-idempotency-key-and-the-reviewed-task-status",
+    "validate-session-organization-rls-source-action-confirmation-status-and-idempotency-on-the-server",
+    "apply-the-status-transition-conditionally-against-the-reviewed-current-status",
+    "treat-completed-retries-as-safe-success-without-duplicating-history",
+    "record-linked-completions-in-lead-events-with-a-structured-log-fallback",
+    "refresh-the-daily-queue-after-the-confirmed-transition"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "copilot-governed-task-completion:check",
+      "copilot-daily-queue:check",
+      "copilot-governed-actions:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "A user who did not execute the task can still falsely confirm it; the audit preserves actor and evidence, but behavioral truth still depends on accountable human use.",
+  "nextPhase": {
+    "phase": 66,
+    "name": "Reagendamento governado e explicável de tarefas pelo Copilot",
+    "status": "planned"
+  }
+}

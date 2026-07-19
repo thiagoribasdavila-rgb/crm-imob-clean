@@ -2,28 +2,71 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { LIVE_LEAD_SELECT, mapLegacyLead } from "@/lib/compat/legacy-v2";
 
 type Insight = { id: string; title: string; summary: string | null; recommendation: string | null; score: number | null; confidence: number | null; status: string; entity_type: string; created_at: string };
 type Lead = { id: string; name: string | null; score: number | null; temperature: string | null; status: string | null; next_action_at: string | null };
 
 type Decision = { id: string; priority: number; title: string; reason: string; action: string; type: string };
+type BriefingResponse = {
+  signals?: Array<{ id: string; severity: "critical" | "attention" | "opportunity" | "healthy"; title: string; evidence: string; action: string }>;
+  model?: { generativeReady?: boolean };
+};
 
 export default function DecisionCenterPage() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
+    let active = true;
     async function load() {
-      const [{ data: insightData }, { data: leadData }] = await Promise.all([
-        supabase.from("ai_insights").select("id,title,summary,recommendation,score,confidence,status,entity_type,created_at").order("created_at", { ascending: false }).limit(20),
-        supabase.from("leads").select("id,name,score,temperature,status,next_action_at").order("score", { ascending: false }).limit(30),
-      ]);
-      setInsights((insightData ?? []) as Insight[]);
-      setLeads((leadData ?? []) as Lead[]);
-      setLoading(false);
+      setLoadError(false);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        const [briefingResponse, leadResult] = await Promise.all([
+          token
+            ? fetch("/api/ai/briefing", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
+            : Promise.resolve(null),
+          supabase.from("leads").select(LIVE_LEAD_SELECT).order("created_at", { ascending: false }).limit(100),
+        ]);
+        const briefing = briefingResponse?.ok ? ((await briefingResponse.json()) as BriefingResponse) : null;
+        if (leadResult.error) throw leadResult.error;
+        if (!active) return;
+        const confidence = briefing?.model?.generativeReady ? 0.9 : 0.74;
+        const scoreBySeverity = { critical: 96, attention: 84, opportunity: 76, healthy: 60 };
+        setInsights((briefing?.signals ?? []).map((signal) => ({
+          id: signal.id,
+          title: signal.title,
+          summary: signal.evidence,
+          recommendation: signal.action,
+          score: scoreBySeverity[signal.severity],
+          confidence,
+          status: "active",
+          entity_type: signal.severity === "opportunity" ? "Oportunidade" : "Operação",
+          created_at: new Date().toISOString(),
+        })));
+        setLeads((leadResult.data ?? []).map((row) => {
+          const lead = mapLegacyLead(row as unknown as Record<string, unknown>);
+          return {
+            id: String(lead.id),
+            name: typeof lead.name === "string" ? lead.name : null,
+            score: Number.isFinite(Number(lead.score)) ? Number(lead.score) : null,
+            temperature: typeof lead.temperature === "string" ? lead.temperature : null,
+            status: typeof lead.status === "string" ? lead.status : null,
+            next_action_at: typeof lead.next_action_at === "string" ? lead.next_action_at : null,
+          };
+        }));
+      } catch {
+        if (active) setLoadError(true);
+      } finally {
+        if (active) setLoading(false);
+      }
     }
-    load();
+    void load();
+    return () => { active = false; };
   }, []);
 
   const decisions = useMemo<Decision[]>(() => {
@@ -44,6 +87,8 @@ export default function DecisionCenterPage() {
         <h1 className="mt-2 text-3xl font-black tracking-tight">Centro de decisão</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">Fila priorizada de decisões comerciais, operacionais e estratégicas com justificativa, confiança e ação recomendada.</p>
       </header>
+
+      {loadError ? <div role="status" className="rounded-2xl border border-amber-400/20 bg-amber-400/[.08] px-5 py-4 text-sm text-amber-100">O Atlas não conseguiu atualizar todos os sinais agora. Seus dados permanecem protegidos; tente novamente ao recarregar esta página.</div> : null}
 
       <section className="grid gap-4 sm:grid-cols-4">
         {[["Decisões", decisions.length], ["Leads analisados", leads.length], ["Insights ativos", insights.length], ["Críticas", decisions.filter(d => d.priority >= 85).length]].map(([label, value]) => <article key={String(label)} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5"><p className="text-sm text-zinc-400">{label}</p><p className="mt-3 text-3xl font-black">{loading ? "—" : value}</p></article>)}

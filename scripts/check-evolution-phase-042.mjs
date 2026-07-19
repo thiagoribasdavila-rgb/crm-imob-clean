@@ -6,6 +6,7 @@ const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-
 const checkpoint = JSON.parse(fs.readFileSync("config/evolution-zip-checkpoints.json", "utf8"));
 const page = fs.readFileSync("app/(crm)/developments/page.tsx", "utf8");
 const api = fs.readFileSync("app/api/v1/launch-os/route.ts", "utf8");
+const liveRepositories = fs.readFileSync("lib/atlas/core-v2/live-repositories.ts", "utf8");
 const styles = fs.readFileSync("app/globals.css", "utf8");
 const packageScript = fs.readFileSync("scripts/package-evolution-checkpoint.mjs", "utf8");
 const hostingerPackager = fs.readFileSync("scripts/package-hostinger.mjs", "utf8");
@@ -20,8 +21,8 @@ const checks = [
   ["Materiais exigem versão atual, vigência e validação", api.includes('status === "verified"') && api.includes("row.is_current !== false") && api.includes("validUntil >= today") && config.projectContract.verifiedCurrentMaterialsOnly === true],
   ["Kit comercial usa book, tabela e espelho", api.includes('"book", "price_table", "sales_mirror"') && config.projectContract.essentialMaterialKit.length === 3],
   ["Módulos opcionais não derrubam o portfólio", api.includes("moduleHealth") && api.includes("optionalStatus") && config.compatibility.optionalModuleFailureBreaksPortfolio === false],
-  ["Fonte canônica e legado respeitam organização", api.includes('from("developments")') && api.includes('from("projects")') && api.includes('eq("organization_id", organizationId)') && api.includes("mapLegacyProject")],
-  ["Pipeline legado permanece compatível", api.includes('from("opportunities")') && api.includes('from("leads")') && api.includes("leadAsOpportunity")],
+  ["Fonte operacional compatível respeita organização", api.includes("readCompatibleDevelopments") && liveRepositories.includes('from("crm_projects")') && liveRepositories.includes('.eq("organization_id", organizationId)') && liveRepositories.includes("mapLegacyProject")],
+  ["Pipeline baseado em leads permanece compatível", api.includes("readCompatiblePipeline") && liveRepositories.includes('from("leads")') && liveRepositories.includes("leadAsOpportunity") && api.includes('pipelineCompatibility: ModuleStatus')],
   ["API usa contexto autenticado e RLS", api.includes("requireAccessContext") && api.includes("identity.supabase") && !api.includes("getSupabaseAdmin") && config.safetyPolicy.authenticatedRlsClientUsed === true],
   ["API é somente leitura", !api.includes(".insert(") && !api.includes(".update(") && !api.includes(".delete(") && config.projectContract.readOnly === true],
   ["Gestão avançada fica progressivamente revelada", page.includes("<details") && page.includes("Mais gestão") && page.includes("Saúde das conexões") && config.informationHierarchy.managementActionsProgressivelyDisclosed === true],

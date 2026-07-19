@@ -10,13 +10,13 @@ Esta fase não redesenha, remove ou redireciona rotas. Ela cria a base para redu
 
 | Camada de rota | Quantidade | Decisão nesta fase |
 | --- | ---: | --- |
-| Destinos canônicos | 26 | Preservar; todos existem |
+| Destinos canônicos | 25 | Preservar; todos existem |
 | Rotas dinâmicas de contexto | 29 | Preservar dentro das jornadas |
 | Rotas profundas de apoio | 71 | Manter endereçáveis e revisar descoberta |
-| Rotas de topo fora do catálogo | 14 | Classificar antes de consolidar |
+| Rotas de topo fora do catálogo | 15 | Classificar antes de consolidar |
 | Entrada com redirecionamento | 1 | Preservar `/` → `/dashboard` |
 
-Os 26 destinos canônicos são formados por 20 itens principais e 6 comandos contextuais. O dock móvel deriva quatro itens desse mesmo catálogo; ele não cria uma quarta fonte de verdade.
+Após a consolidação da Fase 93, os 25 destinos canônicos são formados por 19 itens principais e 6 comandos contextuais. O dock móvel deriva quatro itens desse mesmo catálogo; ele não cria uma quarta fonte de verdade.
 
 ## Como o App Router está organizado
 
@@ -35,12 +35,13 @@ As seguintes rotas foram classificadas, não removidas:
 - **Candidatas à consolidação:** `/agents`, `/ai-insights`, `/analytics`, `/chat`, `/creatives` e `/kanban`.
 - **Sobreposição a decidir:** `/automation` e `/automations`.
 - **Compatibilidade ou legado:** `/atlas-v2` e `/pipedrive`.
+- **Superfície interna de evolução:** `/atlas-v3`, preservada fora da navegação operacional diária.
 
 Antes de qualquer redirecionamento, a Fase 022 deverá provar qual tarefa comercial cada superfície resolve e se há links, favoritos ou integrações dependentes.
 
 ## Riscos encontrados
 
-1. Quatorze páginas de topo existem fora da navegação governada, aumentando a chance de descoberta inconsistente.
+1. Quinze páginas de topo existem fora da navegação governada; uma delas é a superfície interna `/atlas-v3`, e as demais ainda exigem descoberta contextual consistente.
 2. Três grupos apresentam sobreposição semântica clara: automação, pipeline/kanban e criativos.
 3. Um único limite de erro e carregamento atende 141 rotas; o isolamento por domínio deverá depender de evidência real de falha.
 4. Oito superfícies globais persistem no shell; novos overlays só devem entrar após auditoria de foco, teclado e camadas.

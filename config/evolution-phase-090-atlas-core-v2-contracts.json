@@ -1,0 +1,56 @@
+{
+  "phase": 90,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "atlas-core-v2-official-layout-data-and-event-contracts",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "runtimeBehaviorChanged": false,
+  "objective": "turn-the-atlas-core-v1-architecture-into-reusable-executable-contracts-that-prevent-layout-data-security-and-ai-drift",
+  "delivered": [
+    "official-page-contract-with-one-action-five-metric-limit-three-depths-role-scope-and-server-first-rendering",
+    "six-module-canonical-page-registry-focused-on-commercial-outcomes",
+    "tenant-aware-read-write-and-repository-contracts",
+    "explicit-supabase-data-api-grant-and-rls-contract",
+    "append-only-versioned-idempotent-and-pii-classified-commercial-event-envelope",
+    "human-approval-gate-for-agent-execution-at-autonomy-level-three-or-higher",
+    "single-core-v2-public-contract-entrypoint"
+  ],
+  "businessImpact": [
+    "new-screens-start-from-the-commercial-decision-instead-of-visual-decoration",
+    "direct-supabase-coupling-is-replaced-incrementally-with-tenant-aware-repositories",
+    "digital-twin-and-ai-learning-can-consume-one-auditable-event-language",
+    "future-layout-repetition-reuses-the-same-page-contract"
+  ],
+  "security": {
+    "tenantRequired": true,
+    "userMetadataAcceptedAsAuthorizationSource": false,
+    "serviceRoleInClient": false,
+    "dataApiRequiresGrantAndRls": true,
+    "agentExecutionRequiresApprovalFromLevel": 3
+  },
+  "validation": {
+    "targetedContractCheck": true,
+    "typescriptCheckRequired": true,
+    "changedFilesLintRequired": true,
+    "previousPhaseRegressionRequired": true,
+    "secretScanRequired": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisks": [
+    "existing-screens-are-not-yet-migrated-to-the-new-page-registry",
+    "live-supabase-grants-and-policies-still-require-environment-inventory",
+    "event-envelope-has-not-yet-been-persisted-in-a-ledger-table",
+    "contract-version-does-not-represent-the-retired-legacy-v2-product"
+  ],
+  "nextPhase": {
+    "phase": 91,
+    "name": "Design tokens e componentes primitivos oficiais do ATLAS Core V2",
+    "status": "planned"
+  }
+}

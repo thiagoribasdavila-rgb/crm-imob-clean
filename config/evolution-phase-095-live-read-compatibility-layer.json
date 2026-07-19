@@ -1,0 +1,83 @@
+{
+  "phase": 95,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-19",
+  "scope": "tenant-safe-live-read-compatibility-layer",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "authenticationChanged": false,
+  "runtimeBehaviorChanged": true,
+  "objective": "make one typed and tenant-safe compatibility layer the read boundary for the five priority operational domains",
+  "delivered": {
+    "capabilityResolver": "lib/atlas/core-v2/live-capability-resolver.ts",
+    "compatibleRepositories": "lib/atlas/core-v2/live-repositories.ts",
+    "compatibilityVersion": "live-read-compat-v1",
+    "priorityModules": [
+      "leads",
+      "pipeline",
+      "tasks-and-agenda",
+      "customers-360",
+      "developments"
+    ],
+    "routeIntegrations": [
+      "app/api/v1/pipeline/route.ts",
+      "app/api/v1/tasks/route.ts",
+      "app/api/v1/calendar/route.ts",
+      "app/api/v1/customers/route.ts",
+      "app/api/v1/launch-os/route.ts"
+    ],
+    "canonicalMappings": {
+      "leads.score": "leads.score_ia",
+      "leads.assigned_to": "leads.assigned_user_id",
+      "leads.next_action_at": "leads.next_contact",
+      "tasks.due_at": "tasks.due_date",
+      "tasks.assigned_to": "tasks.user_id",
+      "opportunities": "leads+pipeline_history",
+      "developments": "crm_projects",
+      "customers": "leads+profiles+crm_projects"
+    }
+  },
+  "safety": {
+    "authenticatedSupabaseClientOnly": true,
+    "explicitOrganizationFilter": true,
+    "rlsPreserved": true,
+    "serviceRoleImportedByRepository": false,
+    "rawDatabaseErrorsReturnedToUser": false,
+    "futureRelationsQueried": false,
+    "bulkMigrationExecuted": false
+  },
+  "operationalImpact": [
+    "pipeline-no-longer-queries-a-nonexistent-opportunities-table",
+    "tasks-and-calendar-read-due-date-through-one-canonical-due-at-contract",
+    "customers-360-uses-the-same-lead-contract-as-pipeline",
+    "projects-read-crm-projects-through-the-development-contract",
+    "all-priority-reads-apply-explicit-organization-id-boundaries"
+  ],
+  "knownLimits": [
+    "score-ia-remains-legacy-evidence-not-calibrated-probability",
+    "customer-360-remains-lead-backed",
+    "pipeline-probability-remains-zero-until-stage-settings-are-homologated",
+    "inventory-remains-empty-in-the-live-tenant",
+    "commercial-hierarchy-still-requires-a-minimal-reviewed-migration"
+  ],
+  "validation": {
+    "phaseContractCheck": true,
+    "previousPhaseRegressionRequired": true,
+    "typecheckRequired": true,
+    "changedFilesLintRequired": true,
+    "secretScanRequired": true,
+    "buildRequired": false
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false,
+    "checkpointPhase": 100
+  },
+  "nextPhase": {
+    "phase": 96,
+    "name": "Conectar superfícies restantes ao repositório canônico e medir saúde por módulo",
+    "status": "planned"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "phase": 79,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "factual-commercial-memory-recency-by-current-project-and-source",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "show-where-human-confirmed-commercial-memory-is-current-attention-or-stale-by-project-and-source-without-ranking-quality-or-performance-claims",
+  "changes": [
+    "create-typed-contextual-freshness-contract-for-projects-and-sources",
+    "reuse-the-current-authorized-filtered-memory-sample-without-new-queries",
+    "apply-the-same-transparent-72-and-168-hour-thresholds-to-each-context",
+    "show-latest-confirmed-fact-age-observed-count-and-missing-current-context",
+    "use-alphabetical-display-order-and-explicitly-reject-ranking-claims",
+    "preserve-hidden-context-counts-when-progressive-disclosure-limits-the-visible-list",
+    "keep-session-organization-hierarchy-rls-and-no-store-contracts",
+    "avoid-model-calls-writes-schema-changes-and-automatic-commercial-actions"
+  ],
+  "thresholds": {
+    "currentMaxHours": 72,
+    "staleAfterHours": 168,
+    "displayOrder": "alphabetical-not-ranking"
+  },
+  "validation": {
+    "targetedChecks": [
+      "commercial-context-freshness:check",
+      "commercial-memory-freshness:check",
+      "commercial-outcome-evidence:check",
+      "commercial-outcome-filter:check",
+      "commercial-outcome-period:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "A context age reflects the newest confirmed fact currently associated with that project or source. It does not prove portfolio-wide coverage, quality, conversion, or performance.",
+  "nextPhase": {
+    "phase": 80,
+    "name": "Evidências contextuais de recência sob demanda",
+    "status": "planned"
+  }
+}

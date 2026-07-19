@@ -4,9 +4,8 @@ import { structuredApiLog } from "@/lib/api/core";
 import {
   isMissingColumn,
   isMissingRelation,
-  leadAsOpportunity,
-  mapLegacyProject,
 } from "@/lib/compat/legacy-v2";
+import { readCompatibleDevelopments, readCompatiblePipeline } from "@/lib/atlas/core-v2/live-repositories";
 
 export const dynamic = "force-dynamic";
 
@@ -114,26 +113,10 @@ export async function GET(request: NextRequest) {
   const today = new Date().toISOString().slice(0, 10);
 
   try {
-    let developmentResult = await db
-      .from("developments")
-      .select("*")
-      .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false })
-      .limit(500);
-    let developmentsCompatibility: ModuleStatus = "connected";
+    const developmentResult = await readCompatibleDevelopments(db, { organizationId, limit: 500 });
+    const developmentsCompatibility: ModuleStatus = "connected";
 
-    if (developmentResult.error && isMissingRelation(developmentResult.error)) {
-      const legacyResult = await db
-        .from("projects")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false })
-        .limit(500);
-      developmentResult = legacyResult as typeof developmentResult;
-      developmentsCompatibility = legacyResult.error ? optionalStatus(legacyResult.error) : "legacy";
-    }
-
-    if (developmentResult.error) {
+    if (!developmentResult.ok) {
       structuredApiLog("warn", "launch_os.portfolio_unavailable", request, identity.meta, {
         organizationId,
         code: developmentResult.error.code,
@@ -144,49 +127,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [propertyResult, opportunityResult, campaignResult, reservationResult, intelligenceResult, materialResult] = await Promise.all([
-      db.from("properties").select("*").eq("organization_id", organizationId).limit(5000),
-      db.from("opportunities").select("*").eq("organization_id", organizationId).limit(5000),
-      db.from("campaigns").select("*").eq("organization_id", organizationId).limit(1000),
-      db.from("atlas_inventory_reservations").select("*").eq("organization_id", organizationId).limit(2000),
-      db.from("project_intelligence_profiles").select("development_id,onboarding_status,readiness_percent,missing_information").eq("organization_id", organizationId).limit(500),
-      db.from("project_materials").select("development_id,material_type,valid_from,valid_until,is_current,review_status").eq("organization_id", organizationId).limit(5000),
+    const [propertyResult, leadResult, campaignResult, materialResult] = await Promise.all([
+      db.from("inventory_units").select("id,project_id,price,status,unit_code,typology,bedrooms,private_area").eq("organization_id", organizationId).limit(5000),
+      readCompatiblePipeline(db, { organizationId, limit: 5000 }),
+      db.from("marketing_campaigns").select("id,project_id,name,platform,status,created_at").eq("organization_id", organizationId).limit(1000),
+      db.from("knowledge_documents").select("id,project_id,title,document_type,status,created_at").eq("organization_id", organizationId).limit(5000),
     ]);
-
-    let opportunities = (opportunityResult.data ?? []) as AnyRow[];
-    let pipelineCompatibility: ModuleStatus = optionalStatus(opportunityResult.error);
-    if (opportunityResult.error && isMissingRelation(opportunityResult.error)) {
-      const legacyLeads = await db
-        .from("leads")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .limit(5000);
-      if (!legacyLeads.error) {
-        opportunities = ((legacyLeads.data ?? []) as AnyRow[]).map(leadAsOpportunity);
-        pipelineCompatibility = "legacy";
-      } else {
-        opportunities = [];
-        pipelineCompatibility = optionalStatus(legacyLeads.error);
-      }
-    }
-
-    const properties = propertyResult.error ? [] : (propertyResult.data ?? []) as AnyRow[];
-    const campaigns = campaignResult.error ? [] : (campaignResult.data ?? []) as AnyRow[];
-    const reservations = reservationResult.error ? [] : (reservationResult.data ?? []) as AnyRow[];
-    const intelligence = intelligenceResult.error ? [] : (intelligenceResult.data ?? []) as AnyRow[];
-    const materials = materialResult.error ? [] : (materialResult.data ?? []) as AnyRow[];
+    const opportunities: AnyRow[] = leadResult.ok ? leadResult.opportunities : [];
+    const pipelineCompatibility: ModuleStatus = leadResult.ok ? "legacy" : "unavailable";
+    const properties: AnyRow[] = propertyResult.error ? [] : ((propertyResult.data ?? []) as unknown as AnyRow[]).map((row) => ({ ...row, development_id: row.project_id }));
+    const campaigns: AnyRow[] = campaignResult.error ? [] : (campaignResult.data ?? []) as unknown as AnyRow[];
+    const reservations: AnyRow[] = [];
+    const intelligence: AnyRow[] = [];
+    const materials: AnyRow[] = materialResult.error ? [] : ((materialResult.data ?? []) as unknown as AnyRow[]).map((row) => ({ ...row, development_id: row.project_id, material_type: row.document_type, is_current: true, review_status: "verified" }));
 
     const moduleHealth: Record<string, ModuleStatus> = {
       portfolio: developmentsCompatibility,
       inventory: optionalStatus(propertyResult.error),
       pipeline: pipelineCompatibility,
       marketing: optionalStatus(campaignResult.error),
-      reservations: optionalStatus(reservationResult.error),
-      intelligence: optionalStatus(intelligenceResult.error),
+      reservations: "not-configured",
+      intelligence: "not-configured",
       materials: optionalStatus(materialResult.error),
     };
 
-    const developmentRows = ((developmentResult.data ?? []) as AnyRow[]).map(mapLegacyProject);
+    const developmentRows = developmentResult.rows as AnyRow[];
     const developments = developmentRows.map((development) => {
       const id = textValue(development.id);
       const inventory = properties.filter((item) => developmentRef(item) === id);
@@ -312,7 +277,7 @@ export async function GET(request: NextRequest) {
         developments,
         priorities,
         moduleHealth,
-        compatibility: developmentsCompatibility === "legacy" ? "safe-v2-v3" : "canonical-v3",
+        compatibility: pipelineCompatibility === "legacy" ? "safe-v2-v3" : "canonical-v3",
         generatedAt: new Date().toISOString(),
       },
       { headers: { ...rate.headers, "Cache-Control": "no-store" } },

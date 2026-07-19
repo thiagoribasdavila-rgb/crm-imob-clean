@@ -1,0 +1,50 @@
+{
+  "phase": 73,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "local-factual-project-and-source-comparison-across-equal-time-windows",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "compare-current-project-and-source-context-counts-across-equal-time-windows-without-rates-rankings-causal-claims-predictions-generative-ai-or-downstream-writes",
+  "changes": [
+    "reuse-the-authenticated-tenant-scoped-human-confirmed-outcome-memory",
+    "compare-thirty-current-days-with-thirty-immediately-previous-days",
+    "preserve-the-latest-valid-human-confirmed-outcome-per-task-in-each-window",
+    "unify-project-and-source-labels-found-in-either-window",
+    "show-current-previous-and-signed-raw-count-difference",
+    "keep-missing-project-and-source-counts-visible-in-both-windows",
+    "aggregate-hidden-contexts-without-individual-lead-disclosure",
+    "state-that-context-reflects-the-current-lead-registration",
+    "avoid-rate-performance-ranking-causal-and-predictive-language",
+    "preserve-rate-limit-session-organization-rls-and-no-store",
+    "avoid-model-calls-and-all-production-data-writes"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "commercial-outcome-context-comparison:check",
+      "commercial-outcome-context-detail:check",
+      "commercial-outcome-context:check",
+      "commercial-outcome-summary:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Project and source are current CRM labels, not immutable historical attribution. A raw count difference can also reflect sample size, data completeness or changed registration and must not be interpreted as performance, cause, probability or recommendation.",
+  "nextPhase": {
+    "phase": 74,
+    "name": "Período supervisionado da memória comercial",
+    "status": "planned"
+  }
+}

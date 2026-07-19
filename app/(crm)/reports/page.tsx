@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { isMissingRelation, leadAsOpportunity, mapLegacyLead } from "@/lib/compat/legacy-v2";
+import { LIVE_LEAD_SELECT, leadAsOpportunity, mapLegacyLead } from "@/lib/compat/legacy-v2";
 
 type Period = "day" | "week" | "month" | "all";
 type Lead = { id: string; status: string | null; source: string | null; score: number | null; created_at: string };
@@ -28,17 +28,24 @@ export default function ReportsPage() {
 
   useEffect(() => {
     async function load() {
-      const [leadResult, opportunityResult, campaignResult] = await Promise.all([
-        supabase.from("leads").select("*"),
-        supabase.from("opportunities").select("id,stage,value,probability,created_at,won_at"),
-        supabase.from("campaigns").select("id,name,spend,revenue,leads_count,sales_count,created_at"),
+      const [leadResult, campaignResult] = await Promise.all([
+        supabase.from("leads").select(LIVE_LEAD_SELECT).not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)").limit(5000),
+        supabase.from("marketing_campaigns").select("id,name,status,created_at").order("created_at", { ascending: false }).limit(500),
       ]);
-      const mappedLeads = ((leadResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead);
-      const firstError = leadResult.error ?? (opportunityResult.error && !isMissingRelation(opportunityResult.error) ? opportunityResult.error : null) ?? (campaignResult.error && !isMissingRelation(campaignResult.error) ? campaignResult.error : null);
+      const mappedLeads = ((leadResult.data ?? []) as unknown as Record<string, unknown>[]).map(mapLegacyLead);
+      const firstError = leadResult.error ?? campaignResult.error;
       if (firstError) setError("Parte dos relatórios está temporariamente indisponível.");
       setLeads(mappedLeads as Lead[]);
-      setOpportunities((opportunityResult.error && isMissingRelation(opportunityResult.error) ? mappedLeads.map(leadAsOpportunity) : opportunityResult.data ?? []) as Opportunity[]);
-      setCampaigns((campaignResult.error && isMissingRelation(campaignResult.error) ? [] : campaignResult.data ?? []) as Campaign[]);
+      setOpportunities(mappedLeads.map(leadAsOpportunity) as Opportunity[]);
+      setCampaigns(((campaignResult.data ?? []) as unknown as Array<Record<string, unknown>>).map((campaign) => ({
+        id: String(campaign.id),
+        name: String(campaign.name || "Campanha"),
+        spend: 0,
+        revenue: 0,
+        leads_count: 0,
+        sales_count: 0,
+        created_at: String(campaign.created_at || new Date(0).toISOString()),
+      })));
       setReferenceTime(Date.now());
       const { data: session } = await supabase.auth.getSession();
       if (session.session?.access_token) {

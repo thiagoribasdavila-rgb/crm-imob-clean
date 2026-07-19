@@ -16,7 +16,7 @@ for (const marker of ["overdue", "no_action", "hot", "unassigned", "today", "nex
   if (!endpoint.includes(marker) || !page.includes(marker)) failures.push(`atalho comercial incompleto: ${marker}`);
 }
 if (!endpoint.includes("requireAccessContext") || !endpoint.includes('.eq("organization_id", access.access.organization.id)')) failures.push("filtros sem escopo autenticado da organização");
-if (!endpoint.includes("descendantIds") || !endpoint.includes("TEAM_OUT_OF_SCOPE") || !endpoint.includes("OWNER_OUT_OF_SCOPE")) failures.push("responsável/equipe sem validação hierárquica");
+if (!(endpoint.includes("descendantIds") || endpoint.includes("profileTeamScope")) || !endpoint.includes("TEAM_OUT_OF_SCOPE") || !endpoint.includes("OWNER_OUT_OF_SCOPE")) failures.push("responsável/equipe sem validação hierárquica");
 for (const marker of ["Minha rotina", "Encontre rapidamente onde agir", "Filtrar por origem", "Filtrar por projeto", "Filtrar por corretor", "Filtrar por próxima ação", "Limpar filtros"]) {
   if (!page.includes(marker)) failures.push(`experiência comercial ausente: ${marker}`);
 }

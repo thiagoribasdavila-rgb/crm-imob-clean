@@ -5,6 +5,7 @@ const phaseThirtyEight = JSON.parse(fs.readFileSync("config/evolution-phase-038-
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
 const calendar = fs.readFileSync("app/(crm)/calendar/page.tsx", "utf8");
 const calendarApi = fs.readFileSync("app/api/v1/calendar/route.ts", "utf8");
+const liveRepositories = fs.readFileSync("lib/atlas/core-v2/live-repositories.ts", "utf8");
 const styles = fs.readFileSync("app/globals.css", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_039_AGENDA_TIME_WORKSPACE.md", "utf8");
 
@@ -21,7 +22,7 @@ const checks = [
   ["Composição por fonte usa divulgação progressiva", calendar.includes("<details className=\"atlas-calendar-source-details\"") && calendar.includes("Ver composição da agenda") && config.informationHierarchy.sourceCompositionProgressivelyDisclosed === true],
   ["Contrato legado da Agenda permanece identificável", calendar.includes('data-phase="46-commercial-calendar"') && calendar.includes("FASE 46 · AGENDA COMERCIAL UNIFICADA")],
   ["Realtime e atualização manual foram preservados", calendar.includes('supabase.channel("commercial-calendar")') && calendar.includes("removeChannel") && calendar.includes("Atualizar") && config.calendarContract.existingRealtimePreserved === true],
-  ["API mantém autenticação, organização e três fontes", calendarApi.includes("requireAccessContext") && calendarApi.includes('eq("organization_id", organizationId)') && ['from("tasks")', 'from("lead_visits")', 'from("leads")'].every((source) => calendarApi.includes(source))],
+  ["API mantém autenticação, organização e três tipos de agenda", calendarApi.includes("requireAccessContext") && calendarApi.includes("readCompatibleTasks") && calendarApi.includes("readCompatibleLeads") && liveRepositories.includes('.eq("organization_id", organizationId)') && calendarApi.includes('kind: "task"') && calendarApi.includes('kind: "visit"') && calendarApi.includes('kind: "follow_up"')],
   ["Deduplicação de visita e follow-up permanece ativa", calendarApi.includes("activeVisitKeys") && calendarApi.includes("next_action_at") && config.calendarContract.visitFollowUpDeduplicationPreserved === true],
   ["Nenhuma nova chamada, estado ou efeito foi adicionado", (calendar.match(/fetch\(/g) || []).length === 1 && (calendar.match(/useState/g) || []).length === 6 && (calendar.match(/useEffect\(/g) || []).length === 2 && config.structuralBaseline.newNetworkRequestAdded === false && config.structuralBaseline.newStateAdded === false && config.structuralBaseline.newEffectAdded === false],
   ["A Agenda não executa trabalho automaticamente", calendar.includes("nenhum cliente é") && calendar.includes("contatado automaticamente") && config.executionPolicy.automaticTaskCompletion === false && config.executionPolicy.automaticVisitConfirmation === false && config.executionPolicy.automaticCustomerContact === false],

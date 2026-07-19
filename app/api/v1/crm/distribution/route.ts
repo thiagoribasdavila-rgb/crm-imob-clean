@@ -1,26 +1,13 @@
 import { type NextRequest } from "next/server";
-import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
+import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/legacy-v2";
+import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { mapLegacyLead, mapLegacyProfile, mapLegacyProject } from "@/lib/compat/legacy-v2";
 
 const managerRoles = new Set(["director", "superintendent", "manager"]);
-
-function roleOf(profile: { role?: string | null; commercial_role?: string | null }) {
-  return profile.commercial_role || (profile.role === "admin" ? "director" : profile.role) || "broker";
-}
-
-function descendants(profiles: Array<{ id: string; reports_to: string | null }>, root: string) {
-  const allowed = new Set([root]);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const profile of profiles) if (profile.reports_to && allowed.has(profile.reports_to) && !allowed.has(profile.id)) {
-      allowed.add(profile.id); changed = true;
-    }
-  }
-  return allowed;
-}
+const archived = new Set(["arquivado", "archived"]);
+const text = (value: unknown) => typeof value === "string" ? value : "";
 
 export async function GET(request: NextRequest) {
   const limited = enforceRateLimit(request, { limit: 90, scope: "crm-distribution-read" });
@@ -30,80 +17,52 @@ export async function GET(request: NextRequest) {
   const role = identity.access.profile.commercialRole || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
   if (!managerRoles.has(role)) return apiError("FORBIDDEN", "A fila comercial é gerenciada pela liderança.", identity.meta, { status: 403 });
 
-  const admin = getSupabaseAdmin();
   const organizationId = identity.access.organization.id;
-  const [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult, capacityResult, priorityResult, auditResult] = await Promise.all([
-    admin.from("profiles").select("id,full_name,role,commercial_role,reports_to,active").eq("organization_id", organizationId).eq("active", true),
-    admin.from("developments").select("id,name,developer_name,status").eq("organization_id", organizationId).order("name"),
-    admin.from("commercial_presence").select("profile_id,availability,last_seen_at").eq("organization_id", organizationId),
-    admin.from("leads").select("id,development_id,assigned_to,source,status,created_at").eq("organization_id", organizationId).limit(10000),
-    admin.from("project_distribution_members").select("development_id,profile_id,enabled,weight,assignments_count,last_assigned_at").eq("organization_id", organizationId),
-    admin.from("lead_distribution_events").select("id,development_id,lead_id,assigned_to,actor_id,score_snapshot,created_at").eq("organization_id", organizationId).order("created_at", { ascending: false }).limit(50),
-    admin.from("broker_capacity_limits").select("profile_id,max_active_leads,max_project_leads,warning_percent,updated_at").eq("organization_id", organizationId),
-    admin.from("lead_distribution_priority_rules").select("development_id,source_key,priority,sla_minutes,enabled,updated_at").eq("organization_id", organizationId),
-    admin.rpc("get_portfolio_audit_ledger",{p_actor_id:identity.access.profile.id,p_organization_id:organizationId,p_limit:100}),
+  const [profilesResult, projectsResult, leadsResult] = await Promise.all([
+    identity.supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).eq("active", true).order("name"),
+    identity.supabase.from("crm_projects").select("id,name,developer_name,status").eq("organization_id", organizationId).order("name"),
+    identity.supabase.from("leads").select(LIVE_LEAD_SELECT).eq("organization_id", organizationId).limit(5000),
   ]);
-  const failure = [profilesResult, projectsResult, presenceResult, leadsResult, queueResult, eventsResult, capacityResult, priorityResult, auditResult].find((result) => result.error);
-  if (failure?.error) {
-    const [legacyProfiles, legacyLeads, legacyProjects] = await Promise.all([
-      admin.from("profiles").select("*").eq("organization_id", organizationId).eq("active", true),
-      admin.from("leads").select("*").eq("organization_id", organizationId).limit(10000),
-      admin.from("projects").select("*").order("name"),
-    ]);
-    if (legacyProfiles.error || legacyLeads.error || legacyProjects.error) return apiError("DISTRIBUTION_LOOKUP_FAILED", "Não foi possível carregar a fila comercial.", identity.meta, { status: 500 });
-    const allProfiles = (legacyProfiles.data ?? []).map((item) => mapLegacyProfile(item));
-    const allowed = role === "director" ? new Set(allProfiles.map((profile) => String(profile.id))) : descendants(allProfiles.map((profile) => ({ id: String(profile.id), reports_to: profile.reports_to ? String(profile.reports_to) : null })), identity.access.profile.id);
-    const profiles = allProfiles.filter((profile) => allowed.has(String(profile.id)));
-    const leads = (legacyLeads.data ?? []).map((item) => mapLegacyLead(item)).filter((lead) => !["arquivado", "archived"].includes(String(lead.status || "").toLowerCase()));
-    const projects = (legacyProjects.data ?? []).map((item) => mapLegacyProject(item));
-    const presence = profiles.map((profile) => ({ profile_id: profile.id, availability: profile.availability_status || "offline", last_seen_at: null, online: false }));
-    const unassignedQueue = leads.filter((lead) => !lead.assigned_to).sort((a, b) => new Date(String(a.created_at)).getTime() - new Date(String(b.created_at)).getTime()).slice(0, 100).map((lead) => ({ id: lead.id, developmentId: lead.development_id, source: lead.source || "não informada", status: lead.status || "novo", createdAt: lead.created_at, waitingMinutes: Math.max(0, Math.floor((Date.now() - new Date(String(lead.created_at)).getTime()) / 60_000)) }));
-    return apiSuccess({
-      viewer: { id: identity.access.profile.id, role }, compatibility: "legacy-read-safe",
-      rules: { algorithm: "legacy_manual_queue", presenceWindowSeconds: 90, onlineOnly: true, projectScoped: true, weightedLoad: false, atomicLock: false, singleOwner: true, explainable: true },
-      projects, profiles: profiles.map((profile) => ({ ...profile, resolved_role: roleOf(profile) })), presence, queue: [], capacity: [], priorityRules: [], recentAssignments: [],
-      leadSources: [...new Set(leads.map((lead) => String(lead.source || "não informada").trim().toLowerCase()))].sort().slice(0, 100),
-      portfolioAudit: { events: [], summary: { total: 0, distributions: 0, transfers: 0, reservations: 0, returns: 0, absences: 0, capacityChanges: 0 }, maximum: 100, hierarchicalScope: true, piiExposed: false, immutableSources: true, generatedAt: new Date().toISOString() },
-      unassignedQueue, unassignedPolicy: { metadataOnly: true, piiExposed: false, automaticAssignment: false, explicitLeadershipAction: true, maximumVisible: 100 },
-      loads: profiles.map((profile) => ({ profile_id: profile.id, total: leads.filter((lead) => String(lead.assigned_to || "") === String(profile.id)).length, by_project: Object.fromEntries(projects.map((project) => [String(project.id), leads.filter((lead) => String(lead.assigned_to || "") === String(profile.id) && String(lead.development_id || "") === String(project.id)).length])) })),
-      unassigned: Object.fromEntries(projects.map((project) => [String(project.id), leads.filter((lead) => !lead.assigned_to && String(lead.development_id || "") === String(project.id)).length])), generatedAt: new Date().toISOString(),
-    }, identity.meta, { headers: limited.headers });
-  }
+  if (profilesResult.error || projectsResult.error || leadsResult.error) return apiError("DISTRIBUTION_LOOKUP_FAILED", "Não foi possível carregar a fila comercial.", identity.meta, { status: 503 });
 
-  const allProfiles = profilesResult.data ?? [];
-  const allowed = role === "director" ? new Set(allProfiles.map((profile) => profile.id)) : descendants(allProfiles, identity.access.profile.id);
-  const profiles = allProfiles.filter((profile) => allowed.has(profile.id));
-  const profileIds = new Set(profiles.map((profile) => profile.id));
-  const now = Date.now();
-  const presence = (presenceResult.data ?? []).filter((item) => profileIds.has(item.profile_id)).map((item) => ({
-    ...item,
-    online: item.availability !== "offline" && now - new Date(item.last_seen_at).getTime() <= 90_000,
+  const hierarchy = resolveLiveHierarchy((profilesResult.data ?? []) as unknown as CompatRow[]);
+  const allowed = role === "director" ? new Set(hierarchy.map((profile) => text(profile.id))) : descendantsFromLiveProfiles(hierarchy, identity.access.profile.id);
+  const profiles = hierarchy.filter((profile) => allowed.has(text(profile.id)));
+  const profileIds = new Set(profiles.map((profile) => text(profile.id)));
+  const projects = projectsResult.data ?? [];
+  const leads = ((leadsResult.data ?? []) as unknown as CompatRow[]).map((row) => mapLegacyLead(row)).filter((lead) => !archived.has(text(lead.status).toLowerCase()));
+  const presence = profiles.map((profile) => {
+    const availability = text(profile.availability_status || "OFFLINE").toLowerCase();
+    return { profile_id: profile.id, availability, last_seen_at: profile.created_at, online: availability !== "offline" };
+  });
+  const queue = profiles.filter((profile) => profile.commercial_role === "broker").flatMap((profile) => projects.map((project) => ({ profile_id: profile.id, development_id: project.id, enabled: true, weight: 1, assignments_count: 0, last_assigned_at: null })));
+  const unassignedQueue = leads.filter((lead) => !lead.assigned_to).sort((a, b) => Date.parse(text(a.created_at)) - Date.parse(text(b.created_at))).slice(0, 100).map((lead) => ({
+    id: lead.id,
+    developmentId: lead.development_id,
+    source: lead.source || "não informada",
+    status: lead.status || "novo",
+    createdAt: lead.created_at,
+    waitingMinutes: Math.max(0, Math.floor((Date.now() - Date.parse(text(lead.created_at))) / 60_000)),
   }));
-  const leads = leadsResult.data ?? [];
-  const queue = (queueResult.data ?? []).filter((item) => profileIds.has(item.profile_id));
-  const unassignedQueue = leads.filter((lead) => !lead.assigned_to).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).slice(0, 100).map((lead) => ({ id: lead.id, developmentId: lead.development_id, source: lead.source || "não informada", status: lead.status || "novo", createdAt: lead.created_at, waitingMinutes: Math.max(0, Math.floor((Date.now() - new Date(lead.created_at).getTime()) / 60_000)) }));
 
   return apiSuccess({
-    viewer: { id: identity.access.profile.id, role },
-    rules: { algorithm: "online_project_weighted_load_v2", presenceWindowSeconds: 90, onlineOnly: true, projectScoped: true, weightedLoad: true, atomicLock: true, singleOwner: true, explainable: true },
-    projects: projectsResult.data ?? [],
-    profiles: profiles.map((profile) => ({ ...profile, resolved_role: roleOf(profile) })),
+    viewer: { id: identity.access.profile.id, role }, compatibility: "live-schema-safe",
+    rules: { algorithm: "live_manual_queue", presenceWindowSeconds: 90, onlineOnly: true, projectScoped: true, weightedLoad: false, atomicLock: false, singleOwner: true, explainable: true },
+    projects,
+    profiles: profiles.map((profile) => ({ ...profile, full_name: profile.full_name || profile.name, resolved_role: profile.commercial_role })),
     presence,
     queue,
-    capacity: (capacityResult.data ?? []).filter((item) => profileIds.has(item.profile_id)),
-    priorityRules: priorityResult.data ?? [],
-    leadSources: [...new Set(leads.map((lead) => (lead.source || "não informada").trim().toLowerCase()))].sort().slice(0, 100),
-    portfolioAudit:auditResult.data,
-    recentAssignments: (eventsResult.data ?? []).filter((item) => profileIds.has(item.assigned_to)).slice(0, 20),
+    capacity: profiles.filter((profile) => profile.commercial_role === "broker").map((profile) => ({ profile_id: profile.id, max_active_leads: Number(profile.max_active_leads || 100), max_project_leads: Number(profile.max_active_leads || 100), warning_percent: 80, updated_at: profile.created_at })),
+    priorityRules: [],
+    recentAssignments: [],
+    leadSources: [...new Set(leads.map((lead) => text(lead.source || "não informada").trim().toLowerCase()))].sort().slice(0, 100),
+    portfolioAudit: { events: [], summary: { total: 0, distributions: 0, transfers: 0, reservations: 0, returns: 0, absences: 0, capacityChanges: 0 }, maximum: 100, hierarchicalScope: true, piiExposed: false, immutableSources: true, generatedAt: new Date().toISOString() },
     unassignedQueue,
     unassignedPolicy: { metadataOnly: true, piiExposed: false, automaticAssignment: false, explicitLeadershipAction: true, maximumVisible: 100 },
-    loads: profiles.map((profile) => ({
-      profile_id: profile.id,
-      total: leads.filter((lead) => lead.assigned_to === profile.id).length,
-      by_project: Object.fromEntries((projectsResult.data ?? []).map((project) => [project.id, leads.filter((lead) => lead.assigned_to === profile.id && lead.development_id === project.id).length])),
-    })),
-    unassigned: Object.fromEntries((projectsResult.data ?? []).map((project) => [project.id, leads.filter((lead) => !lead.assigned_to && lead.development_id === project.id).length])),
+    loads: profiles.map((profile) => ({ profile_id: profile.id, total: leads.filter((lead) => text(lead.assigned_to) === text(profile.id)).length, by_project: Object.fromEntries(projects.map((project) => [project.id, leads.filter((lead) => text(lead.assigned_to) === text(profile.id) && text(lead.development_id) === project.id).length])) })),
+    unassigned: Object.fromEntries(projects.map((project) => [project.id, leads.filter((lead) => !lead.assigned_to && text(lead.development_id) === project.id).length])),
     generatedAt: new Date().toISOString(),
+    scopedProfileCount: profileIds.size,
   }, identity.meta, { headers: limited.headers });
 }
 
@@ -112,73 +71,10 @@ export async function POST(request: NextRequest) {
   if (!limited.ok) return limited.response;
   const identity = await requireAccessContext(request);
   if (!identity.ok) return identity.response;
-  const body = await request.json().catch(() => null) as { action?: string; availability?: string; developmentId?: string; limit?: number; profileId?: string; enabled?: boolean; weight?: number; endsAt?: string; reason?: string; maxActiveLeads?: number; maxProjectLeads?: number; warningPercent?: number; sourceKey?: string; priority?: number; slaMinutes?: number } | null;
-  if (!body?.action) return apiError("INVALID_REQUEST", "Ação não informada.", identity.meta, { status: 400 });
-  const admin = getSupabaseAdmin();
-
-  if (body.action === "heartbeat") {
-    const availability = ["available", "busy", "offline"].includes(body.availability || "") ? body.availability! : "available";
-    const { error } = await admin.rpc("touch_commercial_presence", {
-      p_actor_id: identity.access.profile.id,
-      p_organization_id: identity.access.organization.id,
-      p_availability: availability,
-    });
-    if (error) return apiError("PRESENCE_UPDATE_FAILED", "Não foi possível atualizar sua disponibilidade.", identity.meta, { status: 500, details: error.message });
-    return apiSuccess({ availability, online: availability !== "offline" }, identity.meta, { headers: limited.headers });
-  }
-
-  const role = identity.access.profile.commercialRole || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
-  if (!managerRoles.has(role)) return apiError("FORBIDDEN", "Perfil sem permissão para distribuir leads.", identity.meta, { status: 403 });
-  if (body.action === "configure_priority") {
-    const reason=body.reason?.trim()||"";
-    if(!body.developmentId||!body.sourceKey||!Number.isInteger(body.priority)||!Number.isInteger(body.slaMinutes)||reason.length<10||reason.length>500)return apiError("INVALID_PRIORITY_RULE","Informe projeto, origem, prioridade, SLA e motivo.",identity.meta,{status:400});
-    const {data,error}=await admin.rpc("configure_distribution_priority",{p_actor_id:identity.access.profile.id,p_organization_id:identity.access.organization.id,p_development_id:body.developmentId,p_source_key:body.sourceKey,p_priority:body.priority,p_sla_minutes:body.slaMinutes,p_enabled:body.enabled!==false,p_reason:reason});
-    if(error)return apiError("PRIORITY_UPDATE_REJECTED",error.message,identity.meta,{status:409});
-    structuredApiLog("info","crm.distribution.priority_configured",request,identity.meta,{actorId:identity.access.profile.id,developmentId:body.developmentId,sourceKey:body.sourceKey});
-    return apiSuccess(data,identity.meta,{headers:limited.headers});
-  }
-  if (body.action === "configure_capacity") {
-    const reason = body.reason?.trim() || "";
-    if (!body.profileId || !Number.isInteger(body.maxActiveLeads) || !Number.isInteger(body.maxProjectLeads) || !Number.isInteger(body.warningPercent) || reason.length < 10 || reason.length > 500) return apiError("INVALID_CAPACITY", "Informe limites, alerta e motivo auditável.", identity.meta, { status: 400 });
-    const { data, error } = await admin.rpc("configure_broker_capacity", { p_actor_id: identity.access.profile.id, p_organization_id: identity.access.organization.id, p_profile_id: body.profileId, p_max_active_leads: body.maxActiveLeads, p_max_project_leads: body.maxProjectLeads, p_warning_percent: body.warningPercent, p_reason: reason });
-    if (error) return apiError("CAPACITY_UPDATE_REJECTED", error.message, identity.meta, { status: 409 });
-    structuredApiLog("info", "crm.distribution.capacity_configured", request, identity.meta, { actorId: identity.access.profile.id, brokerId: body.profileId });
-    return apiSuccess(data, identity.meta, { headers: limited.headers });
-  }
-  if (body.action === "cover_absence") {
-    const reason = body.reason?.trim() || "";
-    const endsAt = body.endsAt ? new Date(body.endsAt) : null;
-    const limit = Math.min(200, Math.max(1, Math.floor(body.limit ?? 200)));
-    if (!body.profileId || reason.length < 10 || reason.length > 500 || !endsAt || Number.isNaN(endsAt.getTime())) return apiError("INVALID_ABSENCE", "Informe corretor, período e motivo entre 10 e 500 caracteres.", identity.meta, { status: 400 });
-    const { data, error } = await admin.rpc("redistribute_absent_broker_leads", { p_actor_id: identity.access.profile.id, p_organization_id: identity.access.organization.id, p_broker_id: body.profileId, p_ends_at: endsAt.toISOString(), p_reason: reason, p_limit: limit });
-    if (error) return apiError("ABSENCE_REDISTRIBUTION_REJECTED", error.message, identity.meta, { status: 409 });
-    structuredApiLog("info", "crm.distribution.absence_covered", request, identity.meta, { actorId: identity.access.profile.id, brokerId: body.profileId, transferred: data?.transferred ?? null });
-    return apiSuccess(data, identity.meta, { headers: limited.headers });
-  }
-  if (body.action === "configure_member" && body.developmentId && body.profileId) {
-    const weight = Math.min(10, Math.max(1, Math.floor(body.weight ?? 1)));
-    const [{ data: project }, { data: profiles }] = await Promise.all([
-      admin.from("developments").select("id").eq("id", body.developmentId).eq("organization_id", identity.access.organization.id).maybeSingle(),
-      admin.from("profiles").select("id,role,commercial_role,reports_to").eq("organization_id", identity.access.organization.id).eq("active", true),
-    ]);
-    if (!project) return apiError("INVALID_PROJECT", "Projeto fora da sua organização.", identity.meta, { status: 400 });
-    const target = (profiles ?? []).find((profile) => profile.id === body.profileId);
-    const allowed = role === "director" ? new Set((profiles ?? []).map((profile) => profile.id)) : descendants(profiles ?? [], identity.access.profile.id);
-    const directManagerScope = role !== "manager" || target?.reports_to === identity.access.profile.id;
-    if (!target || roleOf(target) !== "broker" || !allowed.has(target.id) || !directManagerScope) return apiError("BROKER_OUT_OF_SCOPE", "Selecione um corretor direto do seu time.", identity.meta, { status: 403 });
-    const { data, error } = await admin.from("project_distribution_members").upsert({ organization_id: identity.access.organization.id, development_id: project.id, profile_id: target.id, enabled: body.enabled !== false, weight, updated_at: new Date().toISOString() }, { onConflict: "development_id,profile_id" }).select("development_id,profile_id,enabled,weight,assignments_count,last_assigned_at").single();
-    if (error) return apiError("MEMBER_CONFIG_FAILED", "Não foi possível atualizar a elegibilidade deste projeto.", identity.meta, { status: 500 });
-    return apiSuccess({ member: data, projectIsolation: true }, identity.meta, { headers: limited.headers });
-  }
-  if (body.action !== "distribute" || !body.developmentId) return apiError("INVALID_REQUEST", "Projeto ou ação inválida.", identity.meta, { status: 400 });
-  const limit = Math.min(100, Math.max(1, Math.floor(body.limit ?? 1)));
-  const { data, error } = await admin.rpc("distribute_project_leads_v4", {
-    p_actor_id: identity.access.profile.id,
-    p_organization_id: identity.access.organization.id,
-    p_development_id: body.developmentId,
-    p_limit: limit,
-    p_acceptance_minutes: 5,
-  });
-  if (error) return apiError("DISTRIBUTION_FAILED", error.message, identity.meta, { status: 409 });
-  return apiSuccess(data, identity.meta, { headers: limited.headers });
+  const body = await request.json().catch(() => null) as { action?: string; availability?: string } | null;
+  if (body?.action !== "heartbeat") return apiError("DISTRIBUTION_ACTION_PENDING", "A fila está visível. As mudanças de distribuição serão liberadas após a validação atômica.", identity.meta, { status: 503 });
+  const availability = ["available", "busy", "offline"].includes(body.availability || "") ? body.availability! : "available";
+  const { error } = await getSupabaseAdmin().from("profiles").update({ availability_status: availability.toUpperCase() }).eq("id", identity.access.profile.id).eq("organization_id", identity.access.organization.id);
+  if (error) return apiError("PRESENCE_UPDATE_FAILED", "Não foi possível atualizar sua disponibilidade.", identity.meta, { status: 503 });
+  return apiSuccess({ availability, online: availability !== "offline" }, identity.meta, { headers: limited.headers });
 }

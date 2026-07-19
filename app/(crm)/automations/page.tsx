@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { mapLegacyTask, type CompatRow } from "@/lib/compat/legacy-v2";
 
 type Task = { id: string; title: string; status: string; priority: string; due_at: string | null; created_at: string };
 
@@ -22,8 +23,8 @@ export default function AutomationsPage() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from("tasks").select("id,title,status,priority,due_at,created_at").order("created_at", { ascending: false }).limit(20);
-      setTasks((data ?? []) as Task[]);
+      const { data } = await supabase.from("tasks").select("id,title,status,priority,due_date,created_at").order("created_at", { ascending: false }).limit(20);
+      setTasks(((data ?? []) as unknown as CompatRow[]).map(mapLegacyTask) as Task[]);
       setLoading(false);
     }
     load();

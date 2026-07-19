@@ -1,7 +1,15 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
-import { isMissingColumn, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
+import {
+  canonicalCommercialRole,
+  compatibleLeadStatuses,
+  LIVE_LEAD_SELECT,
+  LIVE_PROFILE_SELECT,
+  liveLeadSortColumn,
+  mapLegacyLead,
+  mapLegacyProfile,
+} from "@/lib/compat/legacy-v2";
 
 export const dynamic = "force-dynamic";
 
@@ -38,10 +46,22 @@ function campaignFilters(raw: string | null) {
     .slice(0, 50);
 }
 const uuidPattern = /^[0-9a-f-]{36}$/i;
-function descendantIds(profiles: Array<{ id: string; reports_to: string | null }>, root: string) {
-  const ids = new Set([root]); let changed = true;
-  while (changed) { changed = false; for (const profile of profiles) if (profile.reports_to && ids.has(profile.reports_to) && !ids.has(profile.id)) { ids.add(profile.id); changed = true; } }
-  return [...ids];
+const terminalStorageStatuses = ["ganho", "GANHO", "venda", "VENDA", "vendido", "VENDIDO", "perdido", "PERDIDO", "comprou_outro", "COMPROU_OUTRO"];
+
+type CompatibleProfile = Record<string, unknown> & {
+  id: string;
+  team: string | null;
+  commercial_role: string;
+};
+
+function profileTeamScope(profiles: CompatibleProfile[], ownerId: string) {
+  const owner = profiles.find((profile) => profile.id === ownerId);
+  if (!owner) return [];
+  const team = String(owner.team || "").trim().toLocaleLowerCase("pt-BR");
+  if (!team) return [owner.id];
+  return profiles
+    .filter((profile) => String(profile.team || "").trim().toLocaleLowerCase("pt-BR") === team)
+    .map((profile) => profile.id);
 }
 
 function decodeCursor(raw: string | null): { createdAt: string; id: string } | null {
@@ -60,9 +80,11 @@ function decodeCursor(raw: string | null): { createdAt: string; id: string } | n
   }
 }
 
-function encodeCursor(row: { created_at: string | null; id: string }) {
-  if (!row.created_at) return null;
-  return Buffer.from(JSON.stringify({ createdAt: row.created_at, id: row.id }), "utf8").toString("base64url");
+function encodeCursor(row: Record<string, unknown> | undefined) {
+  const createdAt = typeof row?.created_at === "string" ? row.created_at : null;
+  const id = typeof row?.id === "string" ? row.id : null;
+  if (!createdAt || !id) return null;
+  return Buffer.from(JSON.stringify({ createdAt, id }), "utf8").toString("base64url");
 }
 
 export async function GET(request: NextRequest) {
@@ -120,64 +142,64 @@ export async function GET(request: NextRequest) {
 
   const usePagePagination = params.has("page");
   const offset = (page - 1) * limit;
+  const storageSort = liveLeadSortColumn(sort);
   let query = access.supabase
     .from("leads")
-    .select(
-      "id, name, email, phone, status, source, organization_id, assigned_to, campaign_id, development_id, temperature, score, budget_min, budget_max, preferred_regions, bedrooms, purpose, metadata, last_interaction_at, next_action_at, created_at, updated_at",
-      { count: usePagePagination ? "exact" : undefined },
-    )
+    .select(LIVE_LEAD_SELECT, { count: usePagePagination ? "exact" : undefined })
     .eq("organization_id", access.access.organization.id)
-    .neq("status", "arquivado")
-    .order(sort, { ascending: direction === "asc" })
+    .not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)")
+    .order(storageSort, { ascending: direction === "asc" })
     .order("id", { ascending: direction === "asc" });
 
   query = usePagePagination
     ? query.range(offset, offset + limit - 1)
     : query.limit(limit + 1);
 
-  if (status) query = query.eq("status", status);
+  if (status) query = query.in("status", compatibleLeadStatuses(status));
   if (source) query = query.eq("source", source);
-  if (developmentId) query = query.eq("development_id", developmentId);
+  if (developmentId) query = query.eq("project_id", developmentId);
   if (teamOwner || (assignedTo && assignedTo !== "unassigned")) {
     const { data: visibleProfiles, error: profilesError } = await access.supabase
       .from("profiles")
-      .select("id,reports_to,commercial_role,role")
+      .select(LIVE_PROFILE_SELECT)
       .eq("organization_id", access.access.organization.id)
       .eq("active", true);
     if (profilesError) return apiError("TEAM_SCOPE_FAILED", "Não foi possível validar o escopo da equipe.", access.meta, { status: 500, headers: rate.headers });
 
+    const profiles = ((visibleProfiles ?? []) as Record<string, unknown>[]).map(mapLegacyProfile) as CompatibleProfile[];
+
     if (assignedTo && assignedTo !== "unassigned") {
-      const broker = (visibleProfiles ?? []).find((profile) => profile.id === assignedTo && (profile.commercial_role || profile.role) === "broker");
-      if (!broker) return apiError("OWNER_OUT_OF_SCOPE", "Corretor fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });
+      const owner = profiles.find((profile) => profile.id === assignedTo);
+      if (!owner) return apiError("OWNER_OUT_OF_SCOPE", "Responsável fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });
     }
     if (teamOwner) {
       if (!uuidPattern.test(teamOwner)) return apiError("INVALID_TEAM", "Gerente inválido.", access.meta, { status: 400, headers: rate.headers });
-      const manager = (visibleProfiles ?? []).find((profile) => profile.id === teamOwner && (profile.commercial_role || profile.role) === "manager");
-      if (!manager) return apiError("TEAM_OUT_OF_SCOPE", "Equipe fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });
-      query = query.in("assigned_to", descendantIds(visibleProfiles ?? [], manager.id));
-    } else if (assignedTo) query = query.eq("assigned_to", assignedTo);
-  } else if (assignedTo === "unassigned") query = query.is("assigned_to", null);
-  if (minScore !== null) query = query.gte("score", minScore);
-  if (maxScore !== null) query = query.lte("score", maxScore);
+      const manager = profiles.find((profile) => profile.id === teamOwner);
+      if (!manager || canonicalCommercialRole(manager.commercial_role) !== "manager") return apiError("TEAM_OUT_OF_SCOPE", "Equipe fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });
+      query = query.in("assigned_user_id", profileTeamScope(profiles, manager.id));
+    } else if (assignedTo) query = query.eq("assigned_user_id", assignedTo);
+  } else if (assignedTo === "unassigned") query = query.is("assigned_user_id", null);
+  if (minScore !== null) query = query.gte("score_ia", minScore);
+  if (maxScore !== null) query = query.lte("score_ia", maxScore);
   if (attention) {
-    query = query.not("status", "in", "(ganho,perdido,comprou_outro)");
-    if (attention === "overdue") query = query.lt("next_action_at", new Date().toISOString());
-    if (attention === "no_action") query = query.is("next_action_at", null);
-    if (attention === "hot") query = query.or("temperature.eq.quente,score.gte.70");
-    if (attention === "unassigned") query = query.is("assigned_to", null);
+    query = query.not("status", "in", `(${terminalStorageStatuses.join(",")})`);
+    if (attention === "overdue") query = query.lt("next_contact", new Date().toISOString());
+    if (attention === "no_action") query = query.is("next_contact", null);
+    if (attention === "hot") query = query.or("temperature.ilike.quente,score_ia.gte.70");
+    if (attention === "unassigned") query = query.is("assigned_user_id", null);
   }
   if (nextAction) {
-    query = query.not("status", "in", "(ganho,perdido,comprou_outro)").not("next_action_at", "is", null);
+    query = query.not("status", "in", `(${terminalStorageStatuses.join(",")})`).not("next_contact", "is", null);
     const now = new Date();
-    if (nextAction === "scheduled") query = query.gte("next_action_at", now.toISOString());
+    if (nextAction === "scheduled") query = query.gte("next_contact", now.toISOString());
     if (nextAction === "today") {
       const end = new Date(now);
       end.setHours(23, 59, 59, 999);
-      query = query.gte("next_action_at", now.toISOString()).lte("next_action_at", end.toISOString());
+      query = query.gte("next_contact", now.toISOString()).lte("next_contact", end.toISOString());
     }
     if (nextAction === "next_7_days") {
       const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      query = query.gte("next_action_at", now.toISOString()).lte("next_action_at", end.toISOString());
+      query = query.gte("next_contact", now.toISOString()).lte("next_contact", end.toISOString());
     }
   }
   if (campaignIds.length) query = query.in("campaign_id", campaignIds);
@@ -193,45 +215,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  let { data, error, count } = await query;
-
-  if (error && isMissingColumn(error)) {
-    const legacyResult = await access.supabase
-      .from("leads")
-      .select("*")
-      .eq("organization_id", access.access.organization.id)
-      .neq("status", "arquivado")
-      .limit(5000);
-    if (!legacyResult.error) {
-      let legacyRows = ((legacyResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead);
-      if (status) legacyRows = legacyRows.filter((row) => String(row.status ?? "") === status);
-      if (source) legacyRows = legacyRows.filter((row) => String(row.source ?? "") === source);
-      if (developmentId) legacyRows = legacyRows.filter((row) => String(row.development_id ?? "") === developmentId);
-      if (assignedTo === "unassigned") legacyRows = legacyRows.filter((row) => !row.assigned_to);
-      if (assignedTo && assignedTo !== "unassigned") legacyRows = legacyRows.filter((row) => String(row.assigned_to ?? "") === assignedTo);
-      if (teamOwner) {
-        const profileResult = await access.supabase.from("profiles").select("*").eq("organization_id", access.access.organization.id).eq("active", true);
-        const profiles = ((profileResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProfile) as Array<Record<string, unknown> & { id: string; reports_to: string | null }>;
-        const allowedOwners = new Set(descendantIds(profiles, teamOwner));
-        legacyRows = legacyRows.filter((row) => allowedOwners.has(String(row.assigned_to ?? "")));
-      }
-      if (minScore !== null) legacyRows = legacyRows.filter((row) => Number(row.score ?? 0) >= minScore);
-      if (maxScore !== null) legacyRows = legacyRows.filter((row) => Number(row.score ?? 0) <= maxScore);
-      if (search) {
-        const needle = search.toLocaleLowerCase("pt-BR");
-        legacyRows = legacyRows.filter((row) => [row.name, row.email, row.phone].some((value) => String(value ?? "").toLocaleLowerCase("pt-BR").includes(needle)));
-      }
-      const valueForSort = (row: Record<string, unknown>) => sort === "score" ? Number(row.score ?? 0) : String(row[sort] ?? row.created_at ?? "");
-      legacyRows.sort((left, right) => {
-        const a = valueForSort(left); const b = valueForSort(right);
-        const compared = typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b));
-        return direction === "asc" ? compared : -compared;
-      });
-      count = legacyRows.length;
-      data = legacyRows.slice(offset, offset + limit) as typeof data;
-      error = null;
-    }
-  }
+  const { data, error, count } = await query;
 
   if (error) {
     structuredApiLog("error", "crm.leads.list_failed", request, access.meta, {
@@ -244,7 +228,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const rows = data ?? [];
+  const rows = ((data ?? []) as unknown as Record<string, unknown>[]).map(mapLegacyLead);
   const hasMore = usePagePagination
     ? offset + rows.length < (count ?? 0)
     : rows.length > limit;
@@ -286,6 +270,11 @@ export async function GET(request: NextRequest) {
         direction,
         attention,
         nextAction,
+      },
+      compatibility: {
+        canonicalContract: "lead-v1",
+        storageContract: "atlas-live-legacy",
+        databasePagination: true,
       },
     },
     access.meta,

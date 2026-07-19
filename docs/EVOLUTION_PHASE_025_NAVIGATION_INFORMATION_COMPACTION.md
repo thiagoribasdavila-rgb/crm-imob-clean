@@ -2,7 +2,7 @@
 
 ## Resultado
 
-A navegação apresenta menos repetição sem esconder nenhuma função. O catálogo governado continua com 20 destinos principais, 6 comandos contextuais e 4 destinos móveis primários, respeitando as mesmas regras de acesso por perfil.
+A navegação apresenta menos repetição sem esconder nenhuma função. O catálogo governado continua com 19 destinos principais, 6 comandos contextuais e 4 destinos móveis primários, respeitando as mesmas regras de acesso por perfil.
 
 ## Favoritos sem duplicidade visual
 
@@ -18,7 +18,7 @@ O nome acessível de cada opção continua contendo a função e a categoria. Us
 
 ## Seções mais legíveis
 
-- Favoritos e grupos exibem contadores discretos de telas.
+- Favoritos e grupos evitam contadores redundantes; o catálogo completo continua disponível pela busca.
 - O espaçamento entre grupos foi reduzido de 17 para 13 pixels.
 - O recuo do separador caiu de 14 para 10 pixels.
 - O alvo de cada item permanece com no mínimo 44 pixels.
@@ -27,7 +27,7 @@ Essas mudanças reduzem rolagem e repetição, mas não diminuem a área mínima
 
 ## Preservação funcional
 
-- 20 destinos principais preservados.
+- 19 destinos principais preservados.
 - 6 comandos contextuais preservados.
 - 4 destinos móveis primários preservados.
 - Nenhuma rota removida.

@@ -10,6 +10,7 @@ import {
   AtlasSkeleton,
 } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
+import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
 
 type Item = {
   id: string;
@@ -270,6 +271,17 @@ export default function CalendarPage() {
             linha do tempo.
           </p>
           <div className="atlas-calendar-hero-actions">
+            <CopilotContextAction
+              label="✦ Preparar meu dia"
+              prompt="Organize minha agenda comercial em uma sequência prática: atrasos primeiro, contatos de maior impacto e compromissos que exigem preparação. Apenas sugira; não conclua ou crie tarefas."
+              context={{
+                source: "commercial_calendar",
+                workspace: "calendar",
+                contextLabel: "Agenda comercial",
+                returnHref: "/calendar",
+              }}
+              className="atlas-button-primary"
+            />
             <Link href="/tasks" className="atlas-button-primary">
               Criar tarefa
             </Link>

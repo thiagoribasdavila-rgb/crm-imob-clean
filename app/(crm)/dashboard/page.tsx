@@ -10,7 +10,6 @@ import { LoadingState } from "@/components/atlas/loading-state";
 import { MetricCard } from "@/components/atlas/metric-card";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
-import { isMissingColumn, isMissingRelation, leadAsOpportunity, mapLegacyLead, mapLegacyProfile, mapLegacyProject, mapLegacyTask } from "@/lib/compat/legacy-v2";
 
 // Fase 40 · SLA do time permanece como base da fila; a Fase 35 amplia sua medição.
 
@@ -18,7 +17,26 @@ type DataRow = Record<string, unknown>;
 type Period = "7" | "30" | "90" | "all";
 type DecisionPeriod = "day" | "week" | "month";
 type CommandMode = "focus" | "complete";
-type ModuleHealth = { label: string; status: "operational" | "syncing" | "unavailable"; detail: string; href: string };
+type ModuleWriteReadiness = {
+  state: "ready" | "source-mediated" | "blocked";
+  label: string;
+  detail: string;
+  href: string;
+  actionLabel: string;
+  mode: "protected-server-boundary" | "rls-direct" | "lead-source" | "manual-gate";
+  operations: readonly string[];
+  safeguards: readonly string[];
+  blockers: readonly string[];
+};
+type ModuleHealth = {
+  id: string;
+  label: string;
+  state: "operational" | "degraded" | "unavailable";
+  detail: string;
+  href: string;
+  count: number | null;
+  write: ModuleWriteReadiness;
+};
 const DASHBOARD_PERIOD_KEY = "atlas:dashboard-periods:v1";
 const COMMAND_MODE_KEY = "atlas:command-mode:v1";
 type DashboardData = {
@@ -28,6 +46,20 @@ type DashboardData = {
   insights: DataRow[];
   developments: DataRow[];
   profiles: DataRow[];
+};
+type ModuleHealthApiData = {
+  generatedAt: string;
+  snapshot: DashboardData;
+  health: {
+    state: "operational" | "degraded" | "attention";
+    write: { ready: number; sourceMediated: number; blocked: number };
+    modules: ModuleHealth[];
+  };
+};
+type ModuleHealthApiEnvelope = {
+  ok: boolean;
+  data?: ModuleHealthApiData;
+  error?: { message?: string };
 };
 type SuperintendentSummary = { scope: { role: "superintendent"; directManagersOnly: true; directBrokersPerManagerOnly: true; parallelStructuresExcluded: true; unassignedExcluded: true }; totals: { managers: number; brokers: number; online: number; available: number; leads: number; activeLeads: number; hotLeads: number; firstContactOverdue: number; followUpOverdue: number; withoutNextAction: number; overdueLeads: number; won: number; potentialVgv: number }; benchmark: { conversionRate: number | null; minimumLeadsPerTeam: number; comparableManagers: number }; distribution: { averageActivePerBroker: number; spread: number; imbalanced: boolean; metric: string }; managers: Array<{ managerId: string; managerName: string; brokers: number; online: number; available: number; leads: number; activeLeads: number; hotLeads: number; firstContactOverdue: number; followUpOverdue: number; withoutNextAction: number; overdueLeads: number; won: number; conversionRate: number; conversionSampleSufficient: boolean; comparison: "insufficient_sample" | "at_or_above_benchmark" | "below_benchmark"; averageActivePerBroker: number; recentAssignments: number; potentialVgv: number }>; interventions: Array<{ managerId: string; managerName: string; severity: "critical" | "attention" | "opportunity"; reason: string; action: string; href: string }>; reconciliation: { managerLeadSum: number; scopedLeadCount: number; matches: boolean }; governance: { readOnly: true; humanDecisionRequired: true; automaticTransfer: false }; generatedAt: string };
 type TeamSlaSummary = { scope: { role: "manager"; directBrokersOnly: boolean }; totals: { alerts: number; firstContactOverdue: number; followUpOverdue: number; brokersWithAlerts: number; measured: number; met: number; complianceRate: number | null; averageResponseMinutes: number | null; followUpsMeasured: number; followUpComplianceRate: number | null; recoveredFollowUps: number; averageFollowUpMinutes: number | null }; alerts: Array<{ kind: "first_contact" | "follow_up"; dueAt: string; overdueMinutes: number; leadId: string; leadName: string; brokerId: string; brokerName: string }>; byBroker: Array<{ brokerId: string; brokerName: string; firstContactOverdue: number; followUpOverdue: number; followUpsMeasured: number; followUpComplianceRate: number | null; recoveredFollowUps: number }>; generatedAt: string };
@@ -44,6 +76,26 @@ const emptyData: DashboardData = {
   developments: [],
   profiles: [],
 };
+
+const CONNECTING_WRITE: ModuleWriteReadiness = {
+  state: "blocked",
+  label: "Verificando ação",
+  detail: "Confirmando a escrita segura",
+  href: "/dashboard",
+  actionLabel: "Aguarde",
+  mode: "manual-gate",
+  operations: [],
+  safeguards: ["read-before-write"],
+  blockers: ["health-loading"],
+};
+
+const INITIAL_MODULE_HEALTH: ModuleHealth[] = [
+  { id: "leads", label: "Leads", state: "degraded", detail: "Conectando carteira", href: "/leads", count: null, write: CONNECTING_WRITE },
+  { id: "pipeline", label: "Pipeline", state: "degraded", detail: "Conectando funil", href: "/pipeline", count: null, write: CONNECTING_WRITE },
+  { id: "tasks-and-agenda", label: "Tarefas e agenda", state: "degraded", detail: "Conectando prazos", href: "/tasks", count: null, write: CONNECTING_WRITE },
+  { id: "customers-360", label: "Clientes 360", state: "degraded", detail: "Conectando visão unificada", href: "/customers", count: null, write: CONNECTING_WRITE },
+  { id: "developments", label: "Projetos", state: "degraded", detail: "Conectando portfólio", href: "/developments", count: null, write: CONNECTING_WRITE },
+];
 
 const stageOrder = [
   { key: "novo", label: "Novos" },
@@ -142,12 +194,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData>(emptyData);
   const [loading, setLoading] = useState(true);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [moduleHealth, setModuleHealth] = useState<ModuleHealth[]>([
-    { label: "Pipeline", status: "syncing", detail: "Conectando dados", href: "/pipeline" },
-    { label: "Tarefas", status: "syncing", detail: "Conectando prazos", href: "/tasks" },
-    { label: "Projetos", status: "syncing", detail: "Sincronizando base", href: "/developments" },
-    { label: "Inteligência", status: "syncing", detail: "Preparando sinais", href: "/intelligence" },
-  ]);
+  const [moduleHealth, setModuleHealth] = useState<ModuleHealth[]>(INITIAL_MODULE_HEALTH);
   const [period, setPeriod] = useState<Period>("30");
   const [decisionPeriod, setDecisionPeriod] = useState<DecisionPeriod>("day");
   const [commandMode, setCommandMode] = useState<CommandMode>("focus");
@@ -184,51 +231,49 @@ export default function DashboardPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [leadResult, opportunityResult, taskResult, insightResult, developmentResult, profileResult] = await Promise.all([
-      supabase.from("leads").select("*").order("created_at", { ascending: false }).limit(500),
-      supabase.from("opportunities").select("*").order("created_at", { ascending: false }).limit(300),
-      supabase.from("tasks").select("*").order("due_at", { ascending: true, nullsFirst: false }).limit(300),
-      supabase.from("ai_insights").select("*").order("created_at", { ascending: false }).limit(30),
-      supabase.from("developments").select("*").order("name", { ascending: true }).limit(100),
-      supabase.from("profiles").select("*").limit(300),
-    ]);
-    const legacyTasks = taskResult.error && isMissingColumn(taskResult.error)
-      ? await supabase.from("tasks").select("*").order("created_at", { ascending: true }).limit(300)
-      : null;
-    const legacyProjects = developmentResult.error && isMissingRelation(developmentResult.error)
-      ? await supabase.from("projects").select("*").order("name", { ascending: true }).limit(100)
-      : null;
-    const leads = ((leadResult.data ?? []) as DataRow[]).map(mapLegacyLead);
-    const opportunities = opportunityResult.error && isMissingRelation(opportunityResult.error)
-      ? leads.map(leadAsOpportunity)
-      : ((opportunityResult.data ?? []) as DataRow[]);
-    const tasks = (((legacyTasks?.data ?? taskResult.data) ?? []) as DataRow[]).map(mapLegacyTask);
-    const developments = (((legacyProjects?.data ?? developmentResult.data) ?? []) as DataRow[]).map(mapLegacyProject);
-    const unavailable = [
-      leadResult.error ? "Leads" : "",
-      taskResult.error && !legacyTasks ? "Tarefas" : "",
-      developmentResult.error && !legacyProjects ? "Projetos" : "",
-      profileResult.error ? "Equipe" : "",
-    ].filter(Boolean);
-    setWarnings(unavailable.map((module) => `${module} temporariamente indisponível. Tente atualizar.`));
-    setModuleHealth([
-      { label: "Pipeline", status: leadResult.error ? "unavailable" : "operational", detail: opportunityResult.error && isMissingRelation(opportunityResult.error) ? "Base atual conectada" : "Contrato V3 ativo", href: "/pipeline" },
-      { label: "Tarefas", status: taskResult.error && !legacyTasks ? "unavailable" : "operational", detail: legacyTasks ? "Prazos compatibilizados" : "Agenda sincronizada", href: "/tasks" },
-      { label: "Projetos", status: developmentResult.error && !legacyProjects ? "unavailable" : "operational", detail: legacyProjects ? "Cadastro atual conectado" : "Portfólio sincronizado", href: "/developments" },
-      { label: "Inteligência", status: insightResult.error && !isMissingRelation(insightResult.error) ? "unavailable" : "operational", detail: insightResult.error ? "Sinais locais ativos" : "Insights persistidos", href: "/intelligence" },
-    ]);
-    setData({
-      leads,
-      opportunities,
-      tasks,
-      insights: insightResult.error && isMissingRelation(insightResult.error) ? [] : (insightResult.data ?? []) as DataRow[],
-      developments,
-      profiles: ((profileResult.data ?? []) as DataRow[]).map(mapLegacyProfile),
-    });
-    const { data: authData } = await supabase.auth.getUser();
-    setViewerId(authData.user?.id || "");
-    setLastUpdated(new Date());
-    setLoading(false);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData.session;
+      if (!session) throw new Error("ATLAS_SESSION_REQUIRED");
+
+      const response = await fetch("/api/v1/core-v2/module-health", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        cache: "no-store",
+      });
+      const body = await response.json().catch(() => null) as ModuleHealthApiEnvelope | null;
+      if (!response.ok || !body?.ok || !body.data) throw new Error("ATLAS_MODULE_HEALTH_UNAVAILABLE");
+
+      setViewerId(session.user.id);
+      setData(body.data.snapshot);
+      setModuleHealth(body.data.health.modules);
+      setWarnings(
+        body.data.health.modules
+          .filter((module) => module.state !== "operational")
+          .map((module) => `${module.label}: ${module.detail}.`),
+      );
+      setLastUpdated(new Date(body.data.generatedAt));
+    } catch {
+      setData(emptyData);
+      setModuleHealth(
+        INITIAL_MODULE_HEALTH.map((module) => ({
+          ...module,
+          state: "unavailable",
+          detail: "Conexão temporariamente indisponível",
+          write: {
+            ...module.write,
+            label: "Leitura necessária",
+            detail: "Restabeleça a leitura antes de alterar dados",
+            href: module.href,
+            actionLabel: "Revisar módulo",
+            blockers: ["module-read-unavailable"],
+          },
+        })),
+      );
+      setWarnings(["Não foi possível atualizar o Command Center agora. Seus dados permanecem protegidos."]);
+      setLastUpdated(new Date());
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -691,19 +736,55 @@ export default function DashboardPage() {
       recommendation: stringValue(insight, "recommendation", "summary"),
     })),
   };
+  const viewerFirstName = displayName(viewer ?? {}, "Usuário Atlas").split(/\s+/)[0];
+  const viewerRoleLabel = isDirector
+    ? "Diretoria"
+    : isSuperintendent
+      ? "Superintendência"
+      : isManager
+        ? "Gerência"
+        : "Corretor";
+  const aiMode: { label: string; detail: string; tone: "success" | "info" | "warning" } = predictiveBriefing?.model.generativeReady
+    ? { label: "IA generativa online", detail: "Modelo e inteligência operacional disponíveis", tone: "success" }
+    : predictiveBriefing?.model.localIntelligenceReady
+      ? { label: "Inteligência local ativa", detail: "Prioridades calculadas sem depender do modelo externo", tone: "info" }
+      : { label: "Preparando inteligência", detail: "Consolidando os sinais permitidos para o seu perfil", tone: "warning" };
+  const copilotPrompts = isDirector
+    ? [
+        "Qual é o maior risco comercial hoje e qual decisão exige minha aprovação?",
+        "Quais campanhas estão mais próximas de gerar receita real?",
+        "Onde há VGV parado e qual ação executiva tem maior impacto?",
+      ]
+    : isSuperintendent
+      ? [
+          "Qual gerente precisa de apoio hoje e por quê?",
+          "Onde a distribuição entre equipes está desequilibrada?",
+          "Resuma os gargalos de conversão da minha estrutura.",
+        ]
+      : isManager
+        ? [
+            "Quais corretores e leads precisam da minha intervenção hoje?",
+            "Onde o time está perdendo velocidade no funil?",
+            "Prepare um plano curto de coaching para os atrasos atuais.",
+          ]
+        : [
+            "Quais leads devo priorizar hoje e por quê?",
+            "Prepare minha agenda comercial com as próximas melhores ações.",
+            "Crie uma abordagem para reativar meus clientes sem resposta.",
+          ];
 
   if (loading) return <LoadingState rows={6} />;
   if (viewer && viewer.active !== true) return <ErrorState title="Perfil aguardando ativação" description="Seu login está correto, mas o perfil comercial está inativo. Um administrador deve ativar seu acesso antes de abrir a operação." action={<Link href="/settings/profile" className="atlas-button-secondary">Ver situação do perfil</Link>} />;
   if (!viewerRole) return <ErrorState title="Perfil comercial não identificado" description="Seu usuário está autenticado, mas ainda não possui um papel comercial ativo nesta organização." action={<Link href="/settings/profile" className="atlas-button-secondary">Revisar meu perfil</Link>} />;
 
   return (
-    <div className="atlas-command-shell space-y-6 pb-10" data-command-mode={commandMode} data-dashboard-layout="decision-first">
+    <div className="atlas-command-shell space-y-6 pb-10" data-command-mode={commandMode} data-dashboard-layout="decision-first" data-copilot-command-center="role-aware" data-ai-mode={predictiveBriefing?.model.generativeReady ? "generative" : predictiveBriefing?.model.localIntelligenceReady ? "local" : "preparing"}>
       <section className="atlas-command-hero">
         <div className="atlas-command-hero-copy">
           <div className="flex flex-wrap gap-2">
             <StatusBadge tone="info">{isDirector ? "COMMAND CENTER DIRETORIA" : isSuperintendent ? "PAINEL DA SUPERINTENDÊNCIA" : isManager ? "COMMAND CENTER DO TIME" : "MINHA OPERAÇÃO"}</StatusBadge>
             <StatusBadge tone="success">DADOS REAIS</StatusBadge>
-            <StatusBadge tone="violet">ATLAS COPILOT</StatusBadge>
+            <StatusBadge tone={aiMode.tone}>{aiMode.label.toUpperCase()}</StatusBadge>
           </div>
           <h1>{isDirector ? <>Decida onde a operação <span className="atlas-gradient-text">exige atenção.</span></> : isSuperintendent ? <>Veja qual gerente <span className="atlas-gradient-text">precisa de apoio.</span></> : isManager ? <>Intervenha onde o time <span className="atlas-gradient-text">mais precisa.</span></> : <>Comece pela ação com <span className="atlas-gradient-text">maior prioridade.</span></>}</h1>
           <p>
@@ -759,6 +840,27 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      <section className="atlas-copilot-commandbar" data-phase="60-atlas-copilot-command-center" aria-label="Atlas Copilot AI">
+        <div className="atlas-copilot-commandbar-copy">
+          <span className="atlas-copilot-commandbar-icon" aria-hidden="true">✦</span>
+          <div>
+            <p>ATLAS COPILOT AI · {viewerRoleLabel}</p>
+            <h2>{viewerFirstName}, seu assistente comercial está acompanhando a operação.</h2>
+            <span>{aiMode.detail}. A IA sugere; você confirma antes de qualquer ação.</span>
+          </div>
+        </div>
+        <div className="atlas-copilot-commandbar-prompts" aria-label="Perguntas rápidas ao Copilot">
+          {copilotPrompts.map((question) => (
+            <button key={question} type="button" onClick={() => openCopilot(question, { ...aiContext, viewerRole: viewerRoleLabel })}>
+              {question}
+            </button>
+          ))}
+          <button type="button" className="atlas-copilot-commandbar-primary" onClick={() => openCopilot("Analise minha operação e indique as três próximas ações com maior impacto comercial.", { ...aiContext, viewerRole: viewerRoleLabel })}>
+            Conversar com o Copilot →
+          </button>
+        </div>
+      </section>
+
       <section className="atlas-dashboard-toolbar" aria-label="Filtros do Command Center">
         <div>
           <label htmlFor="period">Período</label>
@@ -787,8 +889,23 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="atlas-command-detail grid gap-2 sm:grid-cols-2 xl:grid-cols-4" aria-label="Saúde dos módulos">
-        {moduleHealth.map((module) => <Link key={module.label} href={module.href} className="group flex items-center gap-3 rounded-2xl border border-white/[.06] bg-white/[.018] px-4 py-3 transition hover:border-sky-300/20 hover:bg-white/[.035]"><span className={`h-2.5 w-2.5 rounded-full ${module.status === "operational" ? "bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,.7)]" : module.status === "syncing" ? "bg-amber-300" : "bg-rose-400"}`} /><div className="min-w-0"><p className="text-xs font-semibold text-white">{module.label}</p><p className="truncate text-[10px] text-slate-500">{module.detail}</p></div><span className="ml-auto text-xs text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-sky-300">→</span></Link>)}
+      <section className="atlas-command-detail grid gap-2 sm:grid-cols-2 xl:grid-cols-5" aria-label="Saúde operacional dos módulos">
+        {moduleHealth.map((module) => (
+          <article key={module.id} className="rounded-2xl border border-white/[.06] bg-white/[.018] p-3 transition hover:border-sky-300/20 hover:bg-white/[.035]">
+            <Link href={module.href} className="group flex items-center gap-3">
+              <span className={`h-2.5 w-2.5 rounded-full ${module.state === "operational" ? "bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,.7)]" : module.state === "degraded" ? "bg-amber-300" : "bg-rose-400"}`} />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-white">{module.label}</p>
+                <p className="truncate text-[10px] text-slate-500">{module.detail}</p>
+              </div>
+              {module.count !== null ? <span className="ml-auto text-xs font-semibold text-slate-400">{module.count}</span> : <span className="ml-auto text-xs text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-sky-300">→</span>}
+            </Link>
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/[.05] pt-2">
+              <span className={`text-[9px] font-bold uppercase tracking-[.12em] ${module.write.state === "ready" ? "text-emerald-300" : module.write.state === "source-mediated" ? "text-sky-300" : "text-amber-300"}`}>{module.write.label}</span>
+              <Link href={module.write.href} className="text-[10px] font-semibold text-slate-400 transition hover:text-white" title={module.write.detail}>{module.write.actionLabel} →</Link>
+            </div>
+          </article>
+        ))}
       </section>
 
       <section className="rounded-[26px] border border-cyan-400/10 bg-gradient-to-r from-cyan-500/[.055] via-white/[.018] to-violet-500/[.055] p-4 sm:p-5" aria-label="Briefing de decisão do Command Center">
@@ -803,7 +920,7 @@ export default function DashboardPage() {
 
       {warnings.length ? (
         <ErrorState
-          title="Alguns módulos estão indisponíveis"
+          title="Atualização parcial do Command Center"
           description={warnings.join(" · ")}
           action={<button type="button" className="atlas-button-secondary" onClick={() => void load()}>Tentar novamente</button>}
         />

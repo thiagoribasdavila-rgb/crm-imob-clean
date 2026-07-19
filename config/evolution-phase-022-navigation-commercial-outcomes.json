@@ -163,14 +163,6 @@
       "completionEvidence": "Credencial, cadastro e teste real mantêm estados separados."
     },
     {
-      "route": "/atlas-v3",
-      "surface": "primary",
-      "audience": "diretoria",
-      "decisionQuestion": "Qual evidência ainda bloqueia a homologação?",
-      "primaryAction": "Abrir o gate bloqueado e seu próximo responsável.",
-      "completionEvidence": "Status, evidência e bloqueio não são confundidos com conclusão."
-    },
-    {
       "route": "/settings",
       "surface": "primary",
       "audience": "administração",

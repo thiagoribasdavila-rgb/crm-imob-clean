@@ -1,0 +1,66 @@
+{
+  "name": "ATLAS Core V2 Contracts",
+  "version": "2.0.0-contract-foundation",
+  "product": "ATLAS V3",
+  "status": "active-foundation",
+  "meaning": "second-core-evolution-inside-atlas-v3-not-the-retired-legacy-v2-application",
+  "contracts": {
+    "page": "lib/atlas/core-v2/page-contract.ts",
+    "pageRegistry": "lib/atlas/core-v2/page-registry.ts",
+    "data": "lib/atlas/core-v2/data-contract.ts",
+    "event": "lib/atlas/core-v2/event-contract.ts",
+    "publicIndex": "lib/atlas/core-v2/index.ts"
+  },
+  "pageRules": {
+    "depths": ["glance", "workspace", "context"],
+    "primaryActions": 1,
+    "maximumDecisionMetrics": 5,
+    "rendering": "server-first-with-interactive-islands",
+    "requiredModules": [
+      "command-center",
+      "leads",
+      "pipeline",
+      "customers-360",
+      "tasks-and-agenda",
+      "developments",
+      "calendar",
+      "activity",
+      "reactivation",
+      "copilot",
+      "brokers",
+      "distribution",
+      "sales",
+      "reports",
+      "revenue-engine",
+      "users",
+      "external-sales",
+      "integrations",
+      "settings"
+    ]
+  },
+  "dataRules": [
+    "tenant-context-before-every-commercial-read-or-write",
+    "screen-never-imports-supabase-for-new-work",
+    "idempotency-key-on-every-command",
+    "explicit-data-api-grants-and-rls-ship-together",
+    "service-role-remains-server-only-purpose-bound-and-audited"
+  ],
+  "eventRules": [
+    "append-only",
+    "organization-scoped",
+    "schema-versioned",
+    "idempotent",
+    "pii-classified",
+    "agent-execution-at-level-three-or-higher-requires-human-approval"
+  ],
+  "supabase2026": {
+    "newProjectDefault": "tables-not-exposed-without-explicit-grants",
+    "requirement": "data-api-grants-do-not-replace-row-level-security",
+    "liveDatabaseChanged": false
+  },
+  "releaseGate": {
+    "checkpointPhase": 100,
+    "buildExecuted": false,
+    "zipCreated": false
+  }
+}

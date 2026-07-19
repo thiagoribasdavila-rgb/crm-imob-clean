@@ -58,12 +58,9 @@ export function AtlasEmpty({
       data-empty-reason={reason}
       data-has-action={Boolean(action)}
     >
-      <div
-        className="atlas-empty-orb mb-4 grid h-12 w-12 place-items-center rounded-2xl text-xl text-sky-200"
-        aria-hidden="true"
-      >
-        ✦
-      </div>
+      <span className="atlas-empty-orb" aria-hidden="true">
+        <span />
+      </span>
       <p className="atlas-empty-eyebrow">{eyebrow || emptyReasonLabels[reason]}</p>
       <h3 className="font-semibold text-white">{title}</h3>
       <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
@@ -98,13 +95,13 @@ export function AtlasRecoverableError({
 }) {
   return (
     <div
-      className="flex flex-col gap-4 rounded-2xl border border-rose-400/20 bg-rose-400/[0.07] p-4 sm:flex-row sm:items-center sm:justify-between"
+      className="atlas-recoverable-error flex flex-col gap-4 rounded-2xl border border-rose-400/20 bg-rose-400/[0.07] p-4 sm:flex-row sm:items-center sm:justify-between"
       role="alert"
       data-recovery-scope={scope}
       data-recovery-strategy="safe-read-retry"
     >
       <div className="flex min-w-0 gap-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-400/10 text-rose-200" aria-hidden="true">!</span>
+        <span className="atlas-recovery-mark" aria-hidden="true">!</span>
         <div>
           <p className="text-sm font-semibold text-rose-100">{title}</p>
           <p className="mt-1 text-xs leading-5 text-slate-300">Seus dados permanecem protegidos.</p>

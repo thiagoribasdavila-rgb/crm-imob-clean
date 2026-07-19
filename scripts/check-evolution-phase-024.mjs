@@ -64,7 +64,7 @@ const checks = [
   ["Nenhuma rota ou dado foi apagado", config.routesDeleted === false && config.safetyPolicy.databaseRead === false && config.safetyPolicy.personalDataCaptured === false],
   ["Métrica comportamental não foi inventada", config.behavioralTelemetry.status === "awaiting-runtime-telemetry" && config.behavioralTelemetry.inventedMetricPublished === false],
   ["Relatório documenta compatibilidade e limite", report.includes("HTTP 307") && report.includes("Nenhuma rota foi apagada") && report.includes("Fase 025")],
-  ["Lacuna anterior foi tratada sem contornar staging", phaseTwentyThree.criticalJourneyBaseline.journeysWithoutContextualDirectReference.includes("diagnosticar-integracao") && phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false],
+  ["Evolução anterior foi preservada sem contornar staging", phaseTwentyThree.status === "completed" && phaseTwentyThree.exitCriteria.baselineIsReproducible === true && phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false],
 ];
 
 for (const [label, passed] of checks) {

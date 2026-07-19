@@ -1,0 +1,65 @@
+{
+  "phase": 82,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "supervised-commercial-context-snapshot-for-new-outcomes",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "preserve-project-and-source-for-new-human-confirmed-commercial-outcomes-while-keeping-an-explicit-current-lead-fallback-for-legacy-events",
+  "changes": [
+    "reuse-the-existing-idempotent-governed-task-outcome-write",
+    "resolve-the-visible-lead-inside-the-authenticated-organization-before-recording",
+    "capture-project-and-source-as-sanitized-non-contact-context",
+    "store-a-versioned-commercial-context-snapshot-in-existing-lead-event-metadata",
+    "fail-closed-when-the-context-cannot-be-confirmed",
+    "parse-only-versioned-and-timestamp-valid-context-snapshots",
+    "prefer-historical-context-in-contextual-freshness-for-new-events",
+    "fallback-to-the-current-lead-snapshot-for-legacy-events-without-backfill",
+    "report-historical-and-legacy-coverage-separately",
+    "show-the-context-basis-and-capture-time-for-each-disclosed-fact",
+    "avoid-schema-changes-new-tables-model-calls-scores-rankings-and-automatic-actions"
+  ],
+  "runtimeWrite": {
+    "trigger": "explicit-human-confirmation-of-a-completed-task-outcome",
+    "table": "lead_events",
+    "field": "metadata.commercialContextSnapshot",
+    "idempotent": true,
+    "schemaVersion": 1,
+    "storesPersonalContactData": false,
+    "automaticBackfill": false
+  },
+  "compatibility": {
+    "newOutcomes": "historical_outcome_snapshot",
+    "legacyOutcomes": "current_lead_snapshot",
+    "mixedWindowsExplicit": true,
+    "historicalInference": false
+  },
+  "validation": {
+    "targetedChecks": [
+      "supervised-commercial-context-snapshot:check",
+      "commercial-context-provenance:check",
+      "commercial-context-evidence:check",
+      "copilot-governed-task-outcome:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Outcomes recorded before phase 82 still have no historical project and source snapshot. They remain explicitly labeled as legacy fallbacks and are never backfilled or inferred.",
+  "nextPhase": {
+    "phase": 83,
+    "name": "Propagação do contexto histórico para todas as leituras comerciais",
+    "status": "planned"
+  }
+}

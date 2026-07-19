@@ -1,80 +1,99 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { LIVE_LEAD_SELECT, mapLegacyLead, mapLegacyProject, type CompatRow } from "@/lib/compat/legacy-v2";
+import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-type Profile = { id: string; full_name: string | null; role: string; commercial_role: string | null; reports_to: string | null };
-const TERMINAL = new Set(["ganho", "perdido", "arquivado", "comprou_outro"]);
+const TERMINAL = new Set(["ganho", "perdido", "arquivado", "comprou_outro", "won", "lost", "closed"]);
+const STAGE_PROBABILITY: Record<string, number> = { novo: 10, contato: 20, qualificacao: 35, visita: 55, proposta: 70, negociacao: 85, contrato: 95, ganho: 100, perdido: 0, comprou_outro: 0 };
 const normalize = (value: unknown) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-const roleOf = (profile: Profile) => profile.commercial_role || (profile.role === "admin" ? "director" : profile.role);
 const money = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0;
-const time = (value: unknown) => { const parsed = typeof value === "string" ? new Date(value).getTime() : Number.NaN; return Number.isFinite(parsed) ? parsed : null; };
+const time = (value: unknown) => { const parsed = typeof value === "string" ? Date.parse(value) : Number.NaN; return Number.isFinite(parsed) ? parsed : null; };
+const text = (value: unknown) => typeof value === "string" ? value : "";
 
 export async function GET(request: NextRequest) {
   const rate = enforceRateLimit(request, { limit: 45, windowMs: 60_000, scope: "director.daily-dashboard" });
   if (!rate.ok) return rate.response;
   const identity = await requireAccessContext(request, { roles: ["admin", "director"] });
   if (!identity.ok) return identity.response;
-  if (!(identity.access.profile.role === "admin" || identity.access.profile.commercialRole === "director")) return apiError("FORBIDDEN", "O painel executivo é exclusivo da diretoria.", identity.meta, { status: 403 });
+  if (!(identity.access.profile.role === "admin" || identity.access.profile.commercialRole === "director")) {
+    return apiError("FORBIDDEN", "O painel executivo é exclusivo da diretoria.", identity.meta, { status: 403 });
+  }
 
   const admin = getSupabaseAdmin();
   const organizationId = identity.access.organization.id;
-  const [profileResult, leadResult, opportunityResult, campaignResult, developmentResult, aiResult] = await Promise.all([
-    admin.from("profiles").select("id,full_name,role,commercial_role,reports_to").eq("organization_id", organizationId).eq("active", true).limit(2000),
-    admin.from("leads").select("id,assigned_to,status,score,temperature,next_action_at,first_contact_due_at,first_contacted_at,campaign_id,development_id,created_at").eq("organization_id", organizationId).limit(20000),
-    admin.from("opportunities").select("id,stage,value,probability,won_at,commission_net,commission_received_amount,commission_due_at,commission_status,created_at").eq("organization_id", organizationId).limit(10000),
-    admin.from("campaigns").select("id,name,status,channel,spend,leads_count,sales_count,revenue").eq("organization_id", organizationId).limit(1000),
-    admin.from("developments").select("id,name,developer_name,status").eq("organization_id", organizationId).limit(1000),
-    admin.from("ai_usage_events").select("estimated_cost_usd,total_tokens,latency_ms,created_at").eq("organization_id", organizationId).gte("created_at", new Date(Date.now() - 30 * 86_400_000).toISOString()).limit(10000),
+  const [profileResult, leadResult, campaignResult, projectResult] = await Promise.all([
+    admin.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).eq("active", true).limit(2000),
+    admin.from("leads").select(LIVE_LEAD_SELECT).eq("organization_id", organizationId).limit(20000),
+    admin.from("marketing_campaigns").select("id,name,platform,status,created_at").eq("organization_id", organizationId).limit(1000),
+    admin.from("crm_projects").select("id,organization_id,name,developer_name,code,status,city,neighborhood,address,launch_date,delivery_date,created_at,updated_at").eq("organization_id", organizationId).limit(1000),
   ]);
-  const failed = [profileResult, leadResult, opportunityResult, campaignResult, developmentResult].find((result) => result.error);
-  if (failed?.error) return apiError("DIRECTOR_DASHBOARD_FAILED", "Não foi possível consolidar a operação executiva.", identity.meta, { status: 500 });
+  if (profileResult.error || leadResult.error || campaignResult.error || projectResult.error) {
+    return apiError("DIRECTOR_DASHBOARD_FAILED", "Não foi possível consolidar a operação executiva agora.", identity.meta, { status: 503 });
+  }
 
-  const profiles = (profileResult.data ?? []) as Profile[];
-  const leads = leadResult.data ?? [];
-  const opportunities = opportunityResult.data ?? [];
-  const campaigns = campaignResult.data ?? [];
-  const developments = developmentResult.data ?? [];
+  const profiles = resolveLiveHierarchy((profileResult.data ?? []) as unknown as CompatRow[]);
+  const leads = ((leadResult.data ?? []) as unknown as CompatRow[]).map(mapLegacyLead);
+  const projects = ((projectResult.data ?? []) as unknown as CompatRow[]).map(mapLegacyProject);
+  const campaigns = (campaignResult.data ?? []) as unknown as CompatRow[];
   const now = Date.now();
   const activeLeads = leads.filter((lead) => !TERMINAL.has(normalize(lead.status)));
-  const wonLeads = leads.filter((lead) => normalize(lead.status) === "ganho").length;
-  const firstContactOverdue = activeLeads.filter((lead) => !lead.first_contacted_at && (time(lead.first_contact_due_at) ?? Number.MAX_SAFE_INTEGER) < now).length;
+  const wonLeads = leads.filter((lead) => normalize(lead.status) === "ganho");
+  const firstContactOverdue = activeLeads.filter((lead) => normalize(lead.status) === "novo" && (time(lead.created_at) ?? now) < now - 15 * 60_000).length;
   const followUpOverdue = activeLeads.filter((lead) => (time(lead.next_action_at) ?? Number.MAX_SAFE_INTEGER) < now).length;
   const withoutNextAction = activeLeads.filter((lead) => !lead.next_action_at).length;
-  const pipelineGross = opportunities.filter((item) => normalize(item.stage) !== "ganho" && normalize(item.stage) !== "perdido").reduce((sum, item) => sum + money(item.value), 0);
-  const forecastWeighted = opportunities.filter((item) => normalize(item.stage) !== "ganho" && normalize(item.stage) !== "perdido").reduce((sum, item) => sum + money(item.value) * Math.min(100, Math.max(0, money(item.probability))) / 100, 0);
-  const wonValue = opportunities.filter((item) => normalize(item.stage) === "ganho" || item.won_at).reduce((sum, item) => sum + money(item.value), 0);
-  const commissionReceivable = opportunities.reduce((sum, item) => sum + Math.max(0, money(item.commission_net) - money(item.commission_received_amount)), 0);
-  const commissionOverdue = opportunities.filter((item) => normalize(item.commission_status) === "overdue" || ((time(item.commission_due_at) ?? Number.MAX_SAFE_INTEGER) < now && money(item.commission_net) > money(item.commission_received_amount))).length;
-  const campaignSpend = campaigns.reduce((sum, item) => sum + money(item.spend), 0);
-  const campaignRevenue = campaigns.reduce((sum, item) => sum + money(item.revenue), 0);
-  const campaignsWithSample = campaigns.filter((item) => money(item.leads_count) >= 30);
-  const campaignRanking = campaigns.map((item) => ({ id: item.id, name: item.name || "Campanha", channel: item.channel || "Não informado", status: item.status || "unknown", spend: money(item.spend), leads: money(item.leads_count), sales: money(item.sales_count), revenue: money(item.revenue), costPerLead: money(item.leads_count) > 0 ? Math.round(money(item.spend) / money(item.leads_count) * 100) / 100 : null, conversionRate: money(item.leads_count) > 0 ? Math.round(money(item.sales_count) / money(item.leads_count) * 1000) / 10 : 0, sampleSufficient: money(item.leads_count) >= 30 })).sort((a, b) => Number(b.sampleSufficient) - Number(a.sampleSufficient) || b.sales - a.sales || b.leads - a.leads).slice(0, 8);
+  const pipelineGross = activeLeads.reduce((sum, lead) => sum + money(lead.budget_max), 0);
+  const forecastWeighted = activeLeads.reduce((sum, lead) => sum + money(lead.budget_max) * (STAGE_PROBABILITY[normalize(lead.status)] ?? 10) / 100, 0);
+  const wonValue = wonLeads.reduce((sum, lead) => sum + money(lead.budget_max), 0);
+
+  const campaignRanking = campaigns.map((campaign) => {
+    const campaignLeads = leads.filter((lead) => text(lead.campaign_id) === text(campaign.id));
+    const sales = campaignLeads.filter((lead) => normalize(lead.status) === "ganho").length;
+    return { id: text(campaign.id), name: text(campaign.name) || "Campanha", channel: text(campaign.platform) || "Não informado", status: text(campaign.status) || "unknown", spend: 0, leads: campaignLeads.length, sales, revenue: 0, costPerLead: null, conversionRate: campaignLeads.length ? Math.round(sales / campaignLeads.length * 1000) / 10 : 0, sampleSufficient: campaignLeads.length >= 30 };
+  }).sort((left, right) => Number(right.sampleSufficient) - Number(left.sampleSufficient) || right.sales - left.sales || right.leads - left.leads).slice(0, 8);
+
   const developerMap = new Map<string, { developerName: string; developments: number; leads: number; won: number }>();
-  for (const development of developments) { const key = development.developer_name || "Incorporadora não informada"; const current = developerMap.get(key) || { developerName: key, developments: 0, leads: 0, won: 0 }; current.developments += 1; const projectLeads = leads.filter((lead) => lead.development_id === development.id); current.leads += projectLeads.length; current.won += projectLeads.filter((lead) => normalize(lead.status) === "ganho").length; developerMap.set(key, current); }
-  const developers = [...developerMap.values()].sort((a, b) => b.won - a.won || b.leads - a.leads).slice(0, 8);
+  for (const project of projects) {
+    const key = text(project.developer_name) || "Incorporadora não informada";
+    const current = developerMap.get(key) || { developerName: key, developments: 0, leads: 0, won: 0 };
+    const projectLeads = leads.filter((lead) => text(lead.development_id) === text(project.id));
+    current.developments += 1;
+    current.leads += projectLeads.length;
+    current.won += projectLeads.filter((lead) => normalize(lead.status) === "ganho").length;
+    developerMap.set(key, current);
+  }
+  const developers = [...developerMap.values()].sort((left, right) => right.won - left.won || right.leads - left.leads).slice(0, 8);
 
-  const superintendents = profiles.filter((profile) => roleOf(profile) === "superintendent" && profile.reports_to === identity.access.profile.id);
-  const executives = superintendents.map((superintendent) => {
-    const managers = profiles.filter((profile) => roleOf(profile) === "manager" && profile.reports_to === superintendent.id);
-    const managerIds = new Set(managers.map((manager) => manager.id));
-    const brokers = profiles.filter((profile) => roleOf(profile) === "broker" && profile.reports_to && managerIds.has(profile.reports_to));
-    const ownerIds = new Set([...managers.map((manager) => manager.id), ...brokers.map((broker) => broker.id)]);
-    const portfolio = leads.filter((lead) => lead.assigned_to && ownerIds.has(lead.assigned_to));
+  const directSuperintendents = profiles.filter((profile) => profile.commercial_role === "superintendent" && text(profile.reports_to) === identity.access.profile.id);
+  const executives = directSuperintendents.map((superintendent) => {
+    const memberIds = descendantsFromLiveProfiles(profiles, text(superintendent.id));
+    const managers = profiles.filter((profile) => profile.commercial_role === "manager" && memberIds.has(text(profile.id)));
+    const brokers = profiles.filter((profile) => profile.commercial_role === "broker" && memberIds.has(text(profile.id)));
+    const portfolio = leads.filter((lead) => memberIds.has(text(lead.assigned_to)));
     const won = portfolio.filter((lead) => normalize(lead.status) === "ganho").length;
-    return { superintendentId: superintendent.id, superintendentName: superintendent.full_name || "Superintendente", managers: managers.length, brokers: brokers.length, leads: portfolio.length, activeLeads: portfolio.filter((lead) => !TERMINAL.has(normalize(lead.status))).length, won, conversionRate: portfolio.length ? Math.round(won / portfolio.length * 1000) / 10 : 0, conversionSampleSufficient: portfolio.length >= 50 };
-  }).sort((a, b) => b.won - a.won || b.activeLeads - a.activeLeads);
-  const hierarchyGaps = profiles.filter((profile) => ["superintendent", "manager", "broker"].includes(roleOf(profile)) && !profile.reports_to).length;
-  const aiUsage = (aiResult.data ?? []).reduce((sum, item) => ({ calls: sum.calls + 1, tokens: sum.tokens + money(item.total_tokens), costUsd: sum.costUsd + money(item.estimated_cost_usd), latencyMs: sum.latencyMs + money(item.latency_ms) }), { calls: 0, tokens: 0, costUsd: 0, latencyMs: 0 });
-  const risks = [
-    firstContactOverdue ? { severity: "critical", area: "Comercial", reason: `${firstContactOverdue} leads sem primeiro contato no prazo`, action: "Cobrar plano de recuperação das lideranças" } : null,
-    commissionOverdue ? { severity: "critical", area: "Financeiro", reason: `${commissionOverdue} comissões vencidas`, action: "Priorizar cobrança por incorporadora" } : null,
-    followUpOverdue >= 5 ? { severity: "attention", area: "Execução", reason: `${followUpOverdue} follow-ups vencidos`, action: "Revisar capacidade e disciplina comercial" } : null,
-    hierarchyGaps ? { severity: "attention", area: "Governança", reason: `${hierarchyGaps} perfis comerciais sem liderança definida`, action: "Corrigir a hierarquia antes de redistribuir leads" } : null,
-    !campaignsWithSample.length && campaigns.length ? { severity: "attention", area: "Campanhas", reason: "Nenhuma campanha atingiu amostra mínima", action: "Aguardar base antes de escalar ou pausar" } : null,
-  ].filter(Boolean).slice(0, 8);
+    return { superintendentId: text(superintendent.id), superintendentName: text(superintendent.full_name) || "Superintendente", managers: managers.length, brokers: brokers.length, leads: portfolio.length, activeLeads: portfolio.filter((lead) => !TERMINAL.has(normalize(lead.status))).length, won, conversionRate: portfolio.length ? Math.round(won / portfolio.length * 1000) / 10 : 0, conversionSampleSufficient: portfolio.length >= 50 };
+  }).sort((left, right) => right.won - left.won || right.activeLeads - left.activeLeads);
+  const hierarchyGaps = profiles.filter((profile) => ["superintendent", "manager", "broker"].includes(text(profile.commercial_role)) && !profile.reports_to).length;
 
-  return apiSuccess({ scope: { role: "director", organizationWide: true, directSuperintendentsOnly: true }, commercial: { leads: leads.length, activeLeads: activeLeads.length, hotLeads: activeLeads.filter((lead) => normalize(lead.temperature) === "quente" || money(lead.score) >= 70).length, unassigned: leads.filter((lead) => !lead.assigned_to).length, won: wonLeads, conversionRate: leads.length ? Math.round(wonLeads / leads.length * 1000) / 10 : 0, firstContactOverdue, followUpOverdue, withoutNextAction }, financial: { pipelineGross, forecastWeighted, forecastMethod: "crm_probability_weighted", wonValue, commissionReceivable, commissionOverdue }, marketing: { campaigns: campaigns.length, campaignsWithSample: campaignsWithSample.length, spend: campaignSpend, attributedRevenue: campaignRevenue, roas: campaignSpend > 0 ? Math.round(campaignRevenue / campaignSpend * 100) / 100 : null, minimumLeadsForDecision: 30, ranking: campaignRanking }, developers, hierarchy: { superintendents: executives, gaps: hierarchyGaps, comparisonMinimumLeads: 50 }, ai: { calls30d: aiUsage.calls, tokens30d: aiUsage.tokens, estimatedCostUsd30d: Math.round(aiUsage.costUsd * 1_000_000) / 1_000_000, averageLatencyMs30d: aiUsage.calls ? Math.round(aiUsage.latencyMs / aiUsage.calls) : 0, measured: !aiResult.error }, risks, governance: { readOnly: true, humanApprovalRequired: true, noAutomaticBudgetChange: true, noAutomaticPeopleDecision: true }, generatedAt: new Date().toISOString() }, identity.meta, { headers: { ...rate.headers, "Cache-Control": "no-store" } });
+  const risks: Array<{ severity: "critical" | "attention"; area: string; reason: string; action: string }> = [];
+  if (firstContactOverdue) risks.push({ severity: "critical", area: "Comercial", reason: `${firstContactOverdue} leads novas aguardam contato`, action: "Definir responsáveis e recuperar o SLA hoje" });
+  if (followUpOverdue >= 5) risks.push({ severity: "attention", area: "Execução", reason: `${followUpOverdue} follow-ups vencidos`, action: "Revisar a fila de próximas ações" });
+  if (hierarchyGaps) risks.push({ severity: "attention", area: "Governança", reason: `${hierarchyGaps} perfis sem liderança resolvida`, action: "Confirmar a hierarquia oficial da equipe" });
+  if (campaigns.length && !campaignRanking.some((item) => item.sampleSufficient)) risks.push({ severity: "attention", area: "Campanhas", reason: "Nenhuma campanha atingiu amostra mínima", action: "Não escalar verba sem resultados suficientes" });
+
+  return apiSuccess({
+    scope: { role: "director", organizationWide: true, directSuperintendentsOnly: true },
+    commercial: { leads: leads.length, activeLeads: activeLeads.length, hotLeads: activeLeads.filter((lead) => normalize(lead.temperature) === "quente" || money(lead.score) >= 70).length, unassigned: leads.filter((lead) => !lead.assigned_to).length, won: wonLeads.length, conversionRate: leads.length ? Math.round(wonLeads.length / leads.length * 1000) / 10 : 0, firstContactOverdue, followUpOverdue, withoutNextAction },
+    financial: { pipelineGross, forecastWeighted, forecastMethod: "lead_budget_by_canonical_stage", wonValue, commissionReceivable: 0, commissionOverdue: 0 },
+    marketing: { campaigns: campaigns.length, campaignsWithSample: campaignRanking.filter((item) => item.sampleSufficient).length, spend: 0, attributedRevenue: 0, roas: null, minimumLeadsForDecision: 30, ranking: campaignRanking },
+    developers,
+    hierarchy: { superintendents: executives, gaps: hierarchyGaps, comparisonMinimumLeads: 50 },
+    ai: { calls30d: 0, tokens30d: 0, estimatedCostUsd30d: 0, averageLatencyMs30d: 0, measured: false },
+    risks: risks.slice(0, 8),
+    governance: { readOnly: true, humanApprovalRequired: true, noAutomaticBudgetChange: true, noAutomaticPeopleDecision: true },
+    generatedAt: new Date().toISOString(),
+  }, identity.meta, { headers: { ...rate.headers, "Cache-Control": "no-store" } });
 }

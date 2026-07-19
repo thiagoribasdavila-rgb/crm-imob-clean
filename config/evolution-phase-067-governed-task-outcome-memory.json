@@ -1,0 +1,50 @@
+{
+  "phase": 67,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "human-confirmed-idempotent-task-outcome-commercial-memory",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "capture-the-observed-result-of-a-completed-lead-task-with-explicit-human-confirmation-and-preserve-it-as-idempotent-commercial-memory-without-automatic-downstream-actions",
+  "changes": [
+    "offer-outcome-capture-only-after-the-governed-task-completion-succeeds",
+    "limit-outcomes-to-a-small-explicit-commercial-taxonomy",
+    "allow-an-optional-sanitized-note-with-a-five-hundred-character-limit",
+    "require-a-second-human-confirmation-for-the-observed-result",
+    "send-the-completed-status-outcome-note-and-a-stable-idempotency-key",
+    "validate-session-organization-rls-source-action-confirmation-status-lead-and-idempotency-on-the-server",
+    "require-the-task-to-be-completed-and-linked-to-a-visible-lead",
+    "detect-safe-retries-before-writing-a-second-memory-event",
+    "record-the-result-in-the-existing-lead-events-memory-without-schema-changes",
+    "reject-the-operation-if-commercial-memory-cannot-be-persisted",
+    "preserve-task-owner-priority-due-date-pipeline-score-and-messaging",
+    "keep-the-result-as-supervised-evidence-not-an-automatic-model-claim"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "copilot-governed-task-outcome:check",
+      "copilot-governed-task-reschedule:check",
+      "copilot-governed-task-completion:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "The result is a human-observed commercial fact and can still be entered incorrectly; the Atlas preserves actor, task, lead and confirmation evidence but does not independently verify the real-world event.",
+  "nextPhase": {
+    "phase": 68,
+    "name": "Resumo local explicável dos resultados observados",
+    "status": "planned"
+  }
+}

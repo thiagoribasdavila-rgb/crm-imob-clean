@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
-import { isMissingColumn, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
+import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/legacy-v2";
+import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
 
 const closed = new Set(["ganho", "perdido", "arquivado", "comprou_outro", "closed", "won", "lost"]);
 const hotTemperatures = new Set(["quente", "hot"]);
@@ -20,16 +21,18 @@ export async function GET(request: NextRequest) {
   if (!identity.ok) return identity.response;
   const organizationId = identity.access.organization.id;
 
-  let profiles = await identity.supabase.from("profiles").select("id,full_name,role,commercial_role,reports_to,active,created_at").eq("organization_id", organizationId).order("created_at").limit(1000);
-  let leads = await identity.supabase.from("leads").select("id,status,score,temperature,assigned_to,assigned_user_id,next_action_at,next_contact,created_at").eq("organization_id", organizationId).limit(5000);
-  if (profiles.error && isMissingColumn(profiles.error)) profiles = await identity.supabase.from("profiles").select("*").eq("organization_id", organizationId).limit(1000);
-  if (leads.error && isMissingColumn(leads.error)) leads = await identity.supabase.from("leads").select("*").eq("organization_id", organizationId).limit(5000);
+  const profiles = await identity.supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).order("created_at").limit(1000);
+  const leads = await identity.supabase.from("leads").select(LIVE_LEAD_SELECT).eq("organization_id", organizationId).neq("status", "arquivado").limit(5000);
   if (profiles.error || leads.error) return apiError("TEAM_CONVERSION_UNAVAILABLE", "A visão de conversão da equipe não pôde ser atualizada.", identity.meta, { status: 503 });
 
   const now = Date.now();
-  const compatibleLeads = (leads.data ?? []).map((row) => mapLegacyLead(row));
-  const members = (profiles.data ?? []).map((row) => {
-    const profile = mapLegacyProfile(row);
+  const hierarchy = resolveLiveHierarchy((profiles.data ?? []) as unknown as CompatRow[]);
+  const actor = hierarchy.find((profile) => profile.id === identity.access.profile.id);
+  const visibleIds = actor?.commercial_role === "director"
+    ? new Set(hierarchy.map((profile) => text(profile.id)))
+    : descendantsFromLiveProfiles(hierarchy, identity.access.profile.id);
+  const compatibleLeads = ((leads.data ?? []) as unknown as CompatRow[]).map((row) => mapLegacyLead(row));
+  const members = hierarchy.filter((profile) => visibleIds.has(text(profile.id))).map((profile) => {
     const memberLeads = compatibleLeads.filter((lead) => text(lead.assigned_to) === text(profile.id));
     const activeLeads = memberLeads.filter((lead) => !closed.has(text(lead.status).toLowerCase()));
     const hotLeads = activeLeads.filter((lead) => number(lead.score) >= 70 || hotTemperatures.has(text(lead.temperature).toLowerCase()));

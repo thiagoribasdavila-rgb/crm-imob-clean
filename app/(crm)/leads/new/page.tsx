@@ -29,7 +29,11 @@ export default function NewLeadPage() {
   const [developments, setDevelopments] = useState<Array<{ id: string; name: string; developer_name: string | null }>>([]);
 
   useEffect(() => {
-    void supabase.from("developments").select("id,name,developer_name").order("name").then(({ data }) => setDevelopments(data ?? []));
+    void supabase
+      .from("crm_projects")
+      .select("id,name,developer_name")
+      .order("name")
+      .then(({ data }) => setDevelopments(data ?? []));
   }, []);
 
   const preferredRegions = useMemo(

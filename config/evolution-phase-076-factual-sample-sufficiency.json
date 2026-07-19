@@ -1,0 +1,50 @@
+{
+  "phase": 76,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "factual-per-window-sample-sufficiency-for-supervised-commercial-outcome-comparisons",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "make-the-evidence-size-of-each-comparison-window-explicit-and-block-descriptive-readiness-until-both-windows-reach-the-same-transparent-operational-minimum",
+  "changes": [
+    "define-one-transparent-minimum-of-ten-human-confirmed-results-per-window",
+    "replace-total-sample-readiness-with-per-window-readiness",
+    "calculate-current-and-previous-observed-counts-and-missing-counts-locally",
+    "return-a-typed-sample-sufficiency-contract-next-to-the-filtered-comparison",
+    "show-the-current-and-previous-evidence-size-in-a-compact-accessible-copilot-card",
+    "distinguish-no-sample-initial-sample-and-descriptive-base-available",
+    "state-that-the-operational-threshold-is-not-statistical-significance-causality-or-prediction",
+    "reuse-the-authenticated-user-client-organization-filter-rls-and-no-store",
+    "avoid-model-calls-database-writes-schema-changes-and-automatic-commercial-actions"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "commercial-outcome-sufficiency:check",
+      "commercial-outcome-filter:check",
+      "commercial-outcome-period:check",
+      "commercial-outcome-context-comparison:check",
+      "commercial-outcome-comparison:check",
+      "commercial-outcome-summary:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Ten results per window are a transparent operational guardrail, not a statistical test. The interface therefore labels the result as descriptive only and explicitly rejects significance, causality, prediction, conversion, and performance claims.",
+  "nextPhase": {
+    "phase": 77,
+    "name": "Evidências auditáveis que compõem o recorte",
+    "status": "planned"
+  }
+}

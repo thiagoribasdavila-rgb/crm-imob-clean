@@ -5,7 +5,8 @@ import {
   activityCategoryForType,
   type ActivityCategory,
 } from "@/lib/atlas/activity-timeline";
-import { mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
+import { LIVE_LEAD_SELECT, LIVE_PROFILE_SELECT, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
+import { mapLiveLeadEvent } from "@/lib/compat/live-writes";
 import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
@@ -13,11 +14,12 @@ export const dynamic = "force-dynamic";
 type ActivityRow = {
   id: string;
   lead_id: string | null;
-  user_id: string | null;
-  title: string | null;
+  created_by: string | null;
+  event_type: string | null;
   description: string | null;
   type: string | null;
-  occurred_at: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string | null;
 };
 
 const emptyCounts = (): Record<ActivityCategory, number> => ({
@@ -49,10 +51,10 @@ export async function GET(request: NextRequest) {
 
   const organizationId = identity.access.organization.id;
   const result = await identity.supabase
-    .from("activities")
-    .select("id,lead_id,user_id,title,description,type,occurred_at")
+    .from("lead_events")
+    .select("id,lead_id,created_by,event_type,description,type,metadata,created_at")
     .eq("organization_id", organizationId)
-    .order("occurred_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false, nullsFirst: false })
     .limit(500);
 
   if (result.error) {
@@ -69,17 +71,17 @@ export async function GET(request: NextRequest) {
   }
 
   const rows = ((result.data ?? []) as ActivityRow[]).filter((row) => {
-    if (!row.occurred_at) return false;
-    return Number.isFinite(new Date(row.occurred_at).getTime());
+    if (!row.created_at) return false;
+    return Number.isFinite(new Date(row.created_at).getTime());
   });
   const leadIds = [...new Set(rows.map((row) => row.lead_id).filter((value): value is string => Boolean(value)))];
-  const profileIds = [...new Set(rows.map((row) => row.user_id).filter((value): value is string => Boolean(value)))];
+  const profileIds = [...new Set(rows.map((row) => row.created_by).filter((value): value is string => Boolean(value)))];
   const [leadResult, profileResult] = await Promise.all([
     leadIds.length
-      ? identity.supabase.from("leads").select("*").eq("organization_id", organizationId).in("id", leadIds)
+      ? identity.supabase.from("leads").select(LIVE_LEAD_SELECT).eq("organization_id", organizationId).in("id", leadIds)
       : Promise.resolve({ data: [] as Record<string, unknown>[], error: null }),
     profileIds.length
-      ? identity.supabase.from("profiles").select("*").eq("organization_id", organizationId).in("id", profileIds)
+      ? identity.supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).in("id", profileIds)
       : Promise.resolve({ data: [] as Record<string, unknown>[], error: null }),
   ]);
 
@@ -103,23 +105,24 @@ export async function GET(request: NextRequest) {
   );
   const counts = emptyCounts();
   const events = rows.map((row) => {
-    const category = activityCategoryForType(row.type);
+    const mapped = mapLiveLeadEvent(row as unknown as Record<string, unknown>);
+    const category = activityCategoryForType(String(mapped.type));
     const lead = row.lead_id ? leads.get(row.lead_id) : null;
-    const profile = row.user_id ? profiles.get(row.user_id) : null;
+    const profile = row.created_by ? profiles.get(row.created_by) : null;
     counts[category] += 1;
     return {
       id: row.id,
       category,
-      title: String(row.title || "Atividade registrada").slice(0, 180),
+      title: String(mapped.title || "Atividade registrada").slice(0, 180),
       description: row.description ? String(row.description).slice(0, 900) : null,
-      occurredAt: String(row.occurred_at),
-      source: String(row.type || "crm"),
+      occurredAt: String(row.created_at),
+      source: String(row.event_type || row.type || "crm"),
       leadId: row.lead_id,
       leadName: lead ? String(lead.name || "Lead sem nome") : null,
       leadStatus: lead?.status ? String(lead.status) : null,
       actorName: profile
         ? String(profile.full_name || "Equipe Atlas")
-        : row.user_id
+        : row.created_by
           ? "Equipe Atlas"
           : "Automação Atlas",
     };

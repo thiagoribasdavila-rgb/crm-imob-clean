@@ -1,5 +1,7 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import vm from "node:vm";
+import ts from "typescript";
 
 const CRM_ROOT = "app/(crm)";
 
@@ -20,16 +22,26 @@ function segmentCount(route) {
 }
 
 const navigationSource = fs.readFileSync("lib/atlas/navigation.ts", "utf8");
-const primaryNavigationSource = navigationSource.split("export const atlasNavigation = [")[1]?.split("] as const satisfies readonly AtlasNavigationItem[];")[0] ?? "";
-const contextualNavigationSource = navigationSource.split("export const atlasContextCommands = [")[1]?.split("] as const;")[0] ?? "";
+const compiledNavigation = ts.transpileModule(navigationSource, {
+  compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2022,
+  },
+}).outputText;
+const navigationModule = { exports: {} };
+const navigationContext = vm.createContext({
+  module: navigationModule,
+  exports: navigationModule.exports,
+});
+vm.runInContext(compiledNavigation, navigationContext, {
+  filename: "navigation.compiled.cjs",
+});
+const { atlasNavigation, atlasContextCommands } = navigationModule.exports;
 const pageFiles = trackedCrmPages();
 const routes = pageFiles.map(routeFromPage);
 const routeSet = new Set(routes);
 const canonicalDestinations = [
-  ...new Set(
-    [...`${primaryNavigationSource}\n${contextualNavigationSource}`.matchAll(/href:\s*"([^"]+)"/g)]
-      .map((match) => match[1]),
-  ),
+  ...new Set([...atlasNavigation, ...atlasContextCommands].map((item) => item.href)),
 ].sort();
 const canonicalSet = new Set(canonicalDestinations);
 const missingCanonicalDestinations = canonicalDestinations.filter((route) => !routeSet.has(route));

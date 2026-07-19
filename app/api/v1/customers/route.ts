@@ -2,12 +2,11 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
-  isMissingColumn,
-  isMissingRelation,
-  mapLegacyLead,
+  LIVE_PROFILE_SELECT,
   mapLegacyProfile,
   mapLegacyProject,
 } from "@/lib/compat/legacy-v2";
+import { readCompatibleCustomers } from "@/lib/atlas/core-v2/live-repositories";
 
 export const dynamic = "force-dynamic";
 
@@ -130,29 +129,12 @@ export async function GET(request: NextRequest) {
   const requestedSegment = request.nextUrl.searchParams.get("segment") || "all";
   const segment = allowedSegments.has(requestedSegment) ? requestedSegment : "all";
 
-  let result = await identity.supabase
-    .from("leads")
-    .select(
-      "id,name,email,phone,status,source,assigned_to,development_id,temperature,score,budget_min,budget_max,purpose,last_interaction_at,next_action_at,created_at,updated_at",
-      { count: "exact" },
-    )
-    .eq("organization_id", organizationId)
-    .neq("status", "arquivado")
-    .order("updated_at", { ascending: false, nullsFirst: false })
-    .limit(MAX_ANALYSIS_ROWS);
+  const result = await readCompatibleCustomers(identity.supabase, {
+    organizationId,
+    limit: MAX_ANALYSIS_ROWS,
+  });
 
-  let compatibility = "canonical-lead-relationship";
-  if (result.error && isMissingColumn(result.error)) {
-    const legacy = await identity.supabase
-      .from("leads")
-      .select("*", { count: "exact" })
-      .eq("organization_id", organizationId)
-      .limit(MAX_ANALYSIS_ROWS);
-    result = legacy as typeof result;
-    compatibility = "legacy-lead-relationship";
-  }
-
-  if (result.error) {
+  if (!result.ok) {
     structuredApiLog("warn", "customers.relationship_read_failed", request, identity.meta, {
       organizationId,
       code: result.error.code,
@@ -166,8 +148,7 @@ export async function GET(request: NextRequest) {
   }
 
   const referenceTime = Date.now();
-  const rows = ((result.data ?? []) as LeadRecord[])
-    .map(mapLegacyLead)
+  const rows = (result.rows as LeadRecord[])
     .filter((lead) => !["arquivado", "archived"].includes(normalized(lead.status)));
   const normalizedQuery = normalized(query);
   const filtered = rows.filter((lead) => {
@@ -195,15 +176,11 @@ export async function GET(request: NextRequest) {
   const developmentIds = [...new Set(enrichedRows.map((lead) => text(lead, "development_id", "project_id")).filter((value): value is string => Boolean(value)))];
 
   const profileResult = ownerIds.length
-    ? await identity.supabase.from("profiles").select("*").eq("organization_id", organizationId).in("id", ownerIds)
+    ? await identity.supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).in("id", ownerIds)
     : { data: [] as LeadRecord[], error: null };
-  let developmentResult = developmentIds.length
-    ? await identity.supabase.from("developments").select("*").eq("organization_id", organizationId).in("id", developmentIds)
+  const developmentResult = developmentIds.length
+    ? await identity.supabase.from("crm_projects").select("id,organization_id,name,developer_name,code,status,city,neighborhood,address,launch_date,delivery_date,created_at,updated_at").eq("organization_id", organizationId).in("id", developmentIds)
     : { data: [] as LeadRecord[], error: null };
-  if (developmentResult.error && isMissingRelation(developmentResult.error)) {
-    developmentResult = await identity.supabase.from("projects").select("*").eq("organization_id", organizationId).in("id", developmentIds);
-    compatibility = `${compatibility}+legacy-projects`;
-  }
 
   const owners = new Map(
     ((profileResult.data ?? []) as LeadRecord[])
@@ -275,7 +252,7 @@ export async function GET(request: NextRequest) {
       page: { number: currentPage, limit, total: filtered.length, pages: pageCount },
       filters: { query, segment },
       generatedAt: new Date(referenceTime).toISOString(),
-      compatibility,
+      compatibility: result.compatibility,
     },
     identity.meta,
     { headers: { ...rate.headers, "Cache-Control": "no-store" } },

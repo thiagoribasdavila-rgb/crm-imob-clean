@@ -1,0 +1,52 @@
+{
+  "phase": 91,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "detailed-whole-repository-structural-gap-audit-and-evidence-bound-phase-reprioritization",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "runtimeBehaviorChanged": false,
+  "objective": "identify-what-is-missing-disconnected-duplicated-or-unproven-before-the-next-layout-and-operational-cycle",
+  "delivered": [
+    "measured-repository-inventory-across-pages-apis-components-libraries-migrations-validation-and-boundaries",
+    "prioritized-findings-from-p0-operational-risk-through-p4-external-certification",
+    "explicit-difference-between-repository-evidence-and-live-environment-proof",
+    "release-candidate-plan-for-phases-92-through-100",
+    "long-horizon-waves-through-3000-without-counting-planned-work-as-progress",
+    "ai-provider-digital-twin-and-integration-maturity-assessment",
+    "business-impact-and-exit-criteria-for-each-gap"
+  ],
+  "criticalFindings": [
+    "product-surface-sprawl",
+    "live-supabase-truth-not-proven",
+    "dual-auth-and-tenant-contexts",
+    "fragmented-direct-data-access",
+    "absence-of-behavioral-tests",
+    "unclassified-api-security-contracts"
+  ],
+  "reprioritization": {
+    "previousPhase91": "official-design-tokens-and-primitives",
+    "movedToPhase": 92,
+    "reason": "visual-foundation-must-follow-structural-truth-so-that-layout-repetition-does-not-multiply-disconnected-contracts"
+  },
+  "validation": {
+    "auditManifestCheck": true,
+    "measuredCountsPresent": true,
+    "criticalFindingsHaveExitCriteria": true,
+    "releaseCandidatePhasesMapped": true,
+    "previousPhaseRegressionRequired": true,
+    "secretValuesRead": false
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false,
+    "checkpointPhase": 100
+  },
+  "nextPhase": {
+    "phase": 92,
+    "name": "Tokens, primitivos e estados resilientes oficiais do ATLAS Core V2",
+    "status": "planned"
+  }
+}

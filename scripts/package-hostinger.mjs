@@ -13,7 +13,7 @@ import { legacyRoutePaths } from "./legacy-route-paths.mjs";
 const root = process.cwd();
 const outputRoot = resolve(root, "dist/hostinger");
 const stage = join(outputRoot, "atlas-v3");
-const packageName = process.env.ATLAS_PACKAGE_NAME || "atlas-v3-hostinger-final.zip";
+const packageName = process.env.ATLAS_PACKAGE_NAME || "atlas-v3-hostinger-homologation.zip";
 if (!/^atlas-v3-[a-z0-9-]+\.zip$/.test(packageName) && packageName !== "ATLAS_AI_OS_RELEASE_v1.zip") throw new Error("Nome de pacote inválido.");
 const zipPath = join(outputRoot, packageName);
 const checksumPath = `${zipPath}.sha256`;
@@ -79,7 +79,9 @@ writeFileSync(
       releaseVersion,
       sourceTimestamp,
       target: "Hostinger Node.js 20.9+",
-      releaseChannel: "final-homologation-candidate",
+      releaseChannel: packageName === "atlas-v3-hostinger-homologation.zip"
+        ? "hostinger-homologation-candidate"
+        : "final-homologation-candidate",
       evolutionPhase: process.env.ATLAS_EVOLUTION_PHASE
         ? Number(process.env.ATLAS_EVOLUTION_PHASE)
         : null,
@@ -158,6 +160,7 @@ for (const required of [
   "HOSTINGER_PACKAGE.json",
   "RELEASE_FILES.sha256",
   "docs/HOSTINGER_FINAL_RELEASE_PHASE_100.md",
+  "docs/EVOLUTION_PHASE_101_HOMOLOGATION_PACKAGE.md",
   "lib/auth/safe-redirect.ts",
   "components/crm/lead-operational-bar.tsx",
 ]) {

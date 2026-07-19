@@ -1,8 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
-import { mapLegacyLead, mapLegacyTask } from "@/lib/compat/legacy-v2";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { readCompatibleLeads, readCompatibleTasks } from "@/lib/atlas/core-v2/live-repositories";
 
 export const dynamic = "force-dynamic";
 
@@ -28,22 +27,19 @@ export async function GET(request: NextRequest) {
   if (!identity.ok) return identity.response;
   const organizationId = identity.access.organization.id;
   const now = Date.now();
-  const admin = getSupabaseAdmin();
-
-  const [tasks, visits, leads] = await Promise.all([
-    admin.from("tasks").select("*").eq("organization_id", organizationId).limit(2000),
-    admin.from("lead_visits").select("*").eq("organization_id", organizationId).limit(2000),
-    admin.from("leads").select("*").eq("organization_id", organizationId).limit(2000),
+  const [tasks, leads] = await Promise.all([
+    readCompatibleTasks(identity.supabase, { organizationId, limit: 2000 }),
+    readCompatibleLeads(identity.supabase, { organizationId, limit: 2000 }),
   ]);
-  if (tasks.error || leads.error) return apiError("CALENDAR_LOAD_FAILED", "Não foi possível carregar a agenda comercial.", identity.meta, { status: 500 });
-  const leadRows = ((leads.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead);
+  if (!tasks.ok || !leads.ok) return apiError("CALENDAR_LOAD_FAILED", "Não foi possível carregar a agenda comercial.", identity.meta, { status: 500 });
+  const leadRows = leads.rows;
   const leadMap = new Map(leadRows.map((lead) => [String(lead.id), lead]));
-  const taskRows = ((tasks.data ?? []) as Record<string, unknown>[]).map(mapLegacyTask);
+  const taskRows = tasks.rows;
   // Visitas são um complemento do calendário. Bases V2 podem não ter esta
   // relação; tarefas e follow-ups continuam disponíveis sem bloquear a agenda.
-  const visitRows = visits.error ? [] : (visits.data ?? []);
+  const visitRows: Array<Record<string, unknown>> = [];
 
-  const activeVisitKeys = new Set(visitRows.filter((visit) => !terminalVisits.has(String(visit.status))).map((visit) => `${visit.lead_id}:${new Date(visit.scheduled_at).toISOString()}`));
+  const activeVisitKeys = new Set(visitRows.filter((visit) => !terminalVisits.has(String(visit.status))).map((visit) => `${visit.lead_id}:${new Date(String(visit.scheduled_at)).toISOString()}`));
   const items: CalendarItem[] = [];
   for (const task of taskRows) {
     if (terminalTasks.has(String(task.status)) || !task.due_at) continue;

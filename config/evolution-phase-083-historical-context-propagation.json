@@ -1,0 +1,60 @@
+{
+  "phase": 83,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "historical-commercial-context-propagation",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "use-one-governed-historical-context-resolution-across-evidence-breakdowns-comparisons-and-freshness-with-explicit-legacy-fallback",
+  "changes": [
+    "add-one-central-commercial-outcome-context-resolver",
+    "prefer-versioned-historical-project-and-source-for-new-outcomes",
+    "keep-null-historical-values-null-instead-of-inventing-current-associations",
+    "use-the-resolver-in-auditable-evidence",
+    "include-context-basis-and-capture-time-in-evidence",
+    "use-the-resolver-in-context-breakdowns",
+    "use-the-resolver-in-context-comparisons",
+    "use-the-resolver-in-context-freshness",
+    "replace-deprecated-current-context-only-policy-claims",
+    "show-preserved-context-or-legacy-fallback-in-the-copilot",
+    "preserve-authentication-tenant-rls-and-no-store-boundaries",
+    "avoid-schema-writes-backfill-model-calls-scores-rankings-and-automatic-actions"
+  ],
+  "compatibility": {
+    "newOutcomes": "historical_outcome_snapshot",
+    "legacyOutcomes": "current_lead_snapshot",
+    "historicalNullFallback": "forbidden",
+    "automaticBackfill": false,
+    "mixedWindowsExplicit": true
+  },
+  "validation": {
+    "targetedChecks": [
+      "historical-commercial-context-propagation:check",
+      "commercial-outcome-context:check",
+      "commercial-outcome-evidence:check",
+      "commercial-context-freshness:check",
+      "commercial-context-provenance:check",
+      "supervised-commercial-context-snapshot:check",
+      "runtime-context-contract",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "changed-files-lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Results recorded before phase 82 still use the current lead context at read time. Their labels can change and neither legacy events nor the current snapshot contain immutable historical project or campaign identifiers.",
+  "nextPhase": {
+    "phase": 84,
+    "name": "Cobertura contextual por dimensão e período",
+    "status": "planned"
+  }
+}

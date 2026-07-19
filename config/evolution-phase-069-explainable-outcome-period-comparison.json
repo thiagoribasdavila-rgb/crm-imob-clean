@@ -1,0 +1,47 @@
+{
+  "phase": 69,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "local-explainable-human-confirmed-commercial-outcome-period-comparison",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "compare-current-and-previous-human-confirmed-commercial-outcomes-with-absolute-local-deltas-without-generative-ai-causal-claims-predictions-or-downstream-mutations",
+  "changes": [
+    "reuse-the-supervised-commercial-outcome-taxonomy-and-existing-lead-events",
+    "read-a-sixty-day-history-to-build-two-non-overlapping-thirty-day-windows",
+    "calculate-current-previous-and-absolute-delta-for-results-advances-no-response-follow-up-and-coverage",
+    "label-empty-insufficient-and-descriptive-samples-explicitly",
+    "avoid-double-counting-events-at-the-period-boundary",
+    "keep-authenticated-organization-rls-and-no-store-on-the-server",
+    "present-a-compact-current-versus-previous-comparison-inside-the-copilot",
+    "avoid-causal-language-predictive-claims-generative-model-calls-and-downstream-writes",
+    "preserve-task-lead-pipeline-message-score-project-and-production-data"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "commercial-outcome-comparison:check",
+      "commercial-outcome-summary:check",
+      "copilot-governed-task-outcome:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Absolute variation can reflect recording coverage, sample size or operational mix; it does not establish improvement, deterioration, causality or future conversion.",
+  "nextPhase": {
+    "phase": 70,
+    "name": "Qualidade local e lacunas da memória comercial",
+    "status": "planned"
+  }
+}

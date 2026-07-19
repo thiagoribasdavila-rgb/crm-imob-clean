@@ -85,6 +85,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       data-desktop-layout="adaptive-wide-workspace"
       data-tablet-layout="adaptive-overlay-workspace"
       data-mobile-layout="thumb-first"
+      data-visual-system="atlas-core-v2"
+      data-information-strategy="decision-first"
     >
       <div className="atlas-ambient" aria-hidden="true">
         <span className="atlas-ambient-orb atlas-ambient-orb-one" />

@@ -27,7 +27,7 @@
       "label": "Administrador",
       "role": "director",
       "accessRole": "admin",
-      "expectedNavigationCount": 20,
+      "expectedNavigationCount": 19,
       "expectedContextCommandCount": 6,
       "allowed": ["/users", "/settings", "/integrations", "/atlas-2030"],
       "blocked": []
@@ -37,9 +37,9 @@
       "label": "Diretor decisor",
       "role": "director",
       "accessRole": "director_decisor",
-      "expectedNavigationCount": 18,
+      "expectedNavigationCount": 17,
       "expectedContextCommandCount": 6,
-      "allowed": ["/reports", "/external-sales", "/integrations", "/atlas-v3", "/atlas-2030"],
+      "allowed": ["/reports", "/external-sales", "/integrations", "/atlas-2030"],
       "blocked": ["/users", "/settings"]
     },
     {

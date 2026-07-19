@@ -10,33 +10,32 @@ Esta fase mede o que o código comprova. Ela **não prova comportamento** de usu
 
 | Evidência | Resultado |
 | --- | ---: |
-| Arquivos de navegação analisados | 183 |
+| Arquivos de navegação analisados | 187 |
 | Rotas CRM | 141 |
-| Destinos canônicos existentes | 26 de 26 |
+| Destinos canônicos existentes | 25 de 25 |
 | Profundidade estrutural máxima | 4 segmentos |
 | Profundidade média | 1,91 segmentos |
 | Rotas com até 2 segmentos | 115 |
 | Rotas com 3 ou 4 segmentos | 26 |
-| Referências internas detectadas | 177 |
-| Destinos internos únicos | 67 |
-| Referências dinâmicas | 75 |
-| Componentes `Link` | 190 |
+| Referências internas detectadas | 183 |
+| Destinos internos únicos | 68 |
+| Referências dinâmicas | 84 |
+| Componentes `Link` | 201 |
 | Âncoras internas HTML | 2 |
 
 A medição pode ser repetida por `npm run navigation-baseline:measure`. O snapshot oficial está em `config/evolution-phase-023-navigation-baseline.json`.
 
 ## Descoberta dos destinos canônicos
 
-Os 26 destinos canônicos estão presentes e são publicados pelo catálogo governado compartilhado entre sidebar, busca e navegação móvel.
+Os 25 destinos canônicos estão presentes e são publicados pelo catálogo governado compartilhado entre sidebar, busca e navegação móvel.
 
-Dez deles não possuem uma segunda referência explícita medida fora desse catálogo:
+Nove deles não possuem uma segunda referência explícita medida fora desse catálogo:
 
 - atividades;
 - inteligência operacional;
 - simulações estratégicas;
 - conversas;
 - Cliente 360;
-- vendas externas;
 - integrações;
 - Revenue Engine;
 - configurações;
@@ -48,20 +47,20 @@ Isso não significa que estejam inacessíveis. Significa que dependem do catálo
 
 | Jornada | Estrutura existente | Referência contextual medida | Uso real |
 | --- | --- | --- | --- |
-| Capturar nova lead | Sim | Dashboard e shell | Aguardando telemetria |
+| Capturar nova lead | Sim | Comando compartilhado; sem referência direta na página inicial | Aguardando telemetria |
 | Agir na prioridade | Sim | Dashboard | Aguardando telemetria |
 | Avançar oportunidade | Sim | Ação na própria tela | Aguardando telemetria |
 | Localizar material vigente | Sim | Projetos | Aguardando telemetria |
 | Distribuir lead | Sim | Ação na própria tela | Aguardando telemetria |
-| Diagnosticar integração | Sim | Não medida na página inicial | Aguardando telemetria |
+| Diagnosticar integração | Sim | Integrações | Aguardando telemetria |
 
-A jornada de diagnóstico de integração é o principal ponto de descoberta contextual para a próxima simplificação: o destino `/integrations/health` existe, mas a página de integrações não apresenta referência direta medida.
+A jornada de captura de nova lead é o principal ponto de descoberta contextual ainda dependente do comando compartilhado: o destino `/leads/new` existe, mas a página inicial não apresenta uma referência direta adicional medida.
 
 ## Riscos objetivos encontrados
 
 1. **Descoberta profunda:** 26 rotas possuem três ou quatro segmentos e dependem de um contexto claro para serem encontradas.
-2. **Dependência do catálogo:** dez destinos canônicos dependem exclusivamente da navegação compartilhada, sem atalho adicional medido.
-3. **Saúde das integrações:** a jornada existe, mas ainda não possui entrada contextual direta na superfície inicial.
+2. **Dependência do catálogo:** nove destinos canônicos dependem exclusivamente da navegação compartilhada, sem atalho adicional medido.
+3. **Nova lead:** a jornada existe, mas ainda depende do comando compartilhado na superfície inicial.
 4. **Navegação interna bruta:** duas oportunidades usam `<a>` para uma rota interna, em vez do componente `Link` do App Router, podendo perder a transição cliente otimizada.
 
 Esses pontos são prioridades verificáveis, não falhas presumidas de conversão.

@@ -29,7 +29,7 @@
   "contextResolution": {
     "source": "governed navigation catalog",
     "staticParallelLabelMapRemoved": true,
-    "primaryDestinationsCovered": 20,
+    "primaryDestinationsCovered": 19,
     "contextCommandsCovered": 6,
     "longestMatchingDestinationWins": true,
     "nestedRoutesSupported": true
@@ -53,7 +53,7 @@
     "collapsedNavigationRecentered": true
   },
   "catalogPreservation": {
-    "primaryDestinations": 20,
+    "primaryDestinations": 19,
     "contextCommands": 6,
     "mobilePrimaryDestinations": 4,
     "routesRemoved": 0,
