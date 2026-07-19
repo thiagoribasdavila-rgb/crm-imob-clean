@@ -20,7 +20,7 @@ export type GenerateInput = {
 };
 export type AIProviderResult = {
   text: string;
-  provider: "openai" | "perplexity" | "deepseek" | "qwen" | "kimi" | "glm" | "local";
+  provider: "openai" | "anthropic" | "perplexity" | "deepseek" | "qwen" | "kimi" | "glm" | "local";
   model: string;
   latencyMs: number;
   citations: string[];
@@ -284,6 +284,44 @@ async function generatePerplexity(
   };
 }
 
+// Claude / Anthropic — Messages API (/v1/messages, header x-api-key + anthropic-version).
+// Não é compatível com o formato OpenAI: system é campo próprio, resposta em content[].
+// Bloqueado para dados pessoais (governança PII → somente OpenAI).
+async function generateAnthropic(input: GenerateInput): Promise<AIProviderResult> {
+  if (input.containsPersonalData) throw new Error("anthropic bloqueado para dados pessoais.");
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY não configurada.");
+  const model = process.env.ATLAS_ANTHROPIC_MODEL || "claude-opus-4-8";
+  const maxTokens = input.task === "fast" ? 600 : input.task === "commercial" ? 1200 : 2400;
+  const startedAt = Date.now();
+  const response = await resilientFetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      system: input.system,
+      messages: [{ role: "user", content: input.prompt }],
+    }),
+    signal: input.signal,
+  }, { timeoutMs: input.timeoutMs ?? 30_000, retries: 1, retryUnsafe: true, operation: "Anthropic" });
+  const body = await response.json() as {
+    id?: string; error?: { message?: string };
+    content?: Array<{ type?: string; text?: string }>;
+    usage?: { input_tokens?: number; output_tokens?: number };
+  };
+  if (!response.ok) throw new Error(body.error?.message || `Anthropic HTTP ${response.status}`);
+  const text = (body.content ?? []).filter((block) => block.type === "text").map((block) => block.text || "").join("").trim();
+  if (!text) throw new Error("Anthropic retornou resposta vazia.");
+  const inputTokens = body.usage?.input_tokens ?? 0;
+  const outputTokens = body.usage?.output_tokens ?? 0;
+  return {
+    text, provider: "anthropic", model, latencyMs: Date.now() - startedAt, citations: [],
+    providerRequestId: body.id || response.headers.get("request-id") || undefined,
+    usage: { inputTokens, outputTokens, totalTokens: inputTokens + outputTokens },
+  };
+}
+
 async function generateEconomyProvider(input: GenerateInput, provider: EconomyProvider): Promise<AIProviderResult> {
   if (input.containsPersonalData) throw new Error(`${provider} bloqueado para dados pessoais.`);
   const config = economyProviders[provider];
@@ -326,6 +364,7 @@ function configuredEconomyProvider(provider: EconomyProvider) {
 export function aiProviderReadiness() {
   return {
     openai: Boolean(process.env.OPENAI_API_KEY),
+    anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
     perplexity: Boolean(process.env.PERPLEXITY_API_KEY),
     deepseek: configuredEconomyProvider("deepseek"),
     qwen: configuredEconomyProvider("qwen"),
@@ -361,13 +400,13 @@ export async function generateAIText(
   await recordGuard("input",inputGuard);
   if(inputGuard.blocked){result=localFallback(input);result.text="Solicitação bloqueada pela proteção da IA. Remova instruções para revelar configurações, segredos, executar comandos ou ignorar regras. Se a necessidade for legítima, encaminhe para revisão humana.";result.guardrail={risk:inputGuard.risk,blocked:true,humanReviewRequired:true,findingCodes:inputGuard.findings.map(f=>f.code)};return recordUsage(input,result)}
   const configuredOrder = String(process.env[`ATLAS_AI_${input.task.toUpperCase()}_PROVIDER_ORDER`] || "")
-    .split(",").map((value) => value.trim().toLowerCase()).filter((value): value is RoutedProvider => value==="openai"||value==="perplexity"||value==="local"||value in economyProviders);
+    .split(",").map((value) => value.trim().toLowerCase()).filter((value): value is RoutedProvider => value==="openai"||value==="anthropic"||value==="perplexity"||value==="local"||value in economyProviders);
   const readiness=aiProviderReadiness(),plan=planCommercialAI({task:input.task,containsPersonalData:input.containsPersonalData,feature:input.feature,configuredOrder,available:readiness});
   result = localFallback(input);
   for (const provider of plan.providerOrder) {
     if(provider==="local"){result=localFallback(input);break}
     try {
-      result = provider === "openai" ? await generateOpenAI(guardedInput) : provider==="perplexity"?await generatePerplexity(guardedInput):await generateEconomyProvider(guardedInput, provider);
+      result = provider === "openai" ? await generateOpenAI(guardedInput) : provider==="anthropic"?await generateAnthropic(guardedInput):provider==="perplexity"?await generatePerplexity(guardedInput):await generateEconomyProvider(guardedInput, provider);
       break;
     } catch (error) {
       if (input.signal?.aborted) {
