@@ -98,10 +98,11 @@ type ExperienceRow = {
   status: string;
   created_at: string;
 };
-// Fase 100 · Sinais de atenção proativos — etapa parada, follow-up vencido ou
-// lead quente sem contato recente. Ver lib/atlas/attention-signals.ts.
+// Fase 100 · Sinais de atenção proativos — etapa parada, follow-up vencido,
+// lead quente sem contato recente ou objeção sem resposta.
+// Ver lib/atlas/attention-signals.ts.
 type AttentionSignalRow = {
-  kind: "stale_stage" | "follow_up_overdue" | "high_score_no_contact";
+  kind: "stale_stage" | "follow_up_overdue" | "high_score_no_contact" | "objection_open";
   severity: "critical" | "warning" | "info";
   reason: string;
   detail: string;

@@ -13,20 +13,23 @@ import { DEFAULT_PIPELINE_STAGES } from "@/lib/atlas/pipeline-stages";
  * alerta em `detail`.
  *
  * Usa apenas tabelas já vivas no banco: `leads` (dados já carregados pelo
- * chamador — nenhuma leitura própria aqui), `pipeline_history`, `followups`
- * e `lead_events`. Nenhuma tabela nova, nenhuma migration.
+ * chamador — nenhuma leitura própria aqui), `pipeline_history`, `followups`,
+ * `lead_events` e `lead_objections`. Nenhuma tabela nova, nenhuma migration.
  *
- * Três sinais, cada um com sua própria regra:
+ * Quatro sinais, cada um com sua própria regra:
  *  1. stale_stage            — lead parado além do tempo tolerado na etapa atual.
  *  2. follow_up_overdue      — followups.scheduled_at no passado com completed=false.
  *  3. high_score_no_contact  — score_ia alto (ou temperatura "quente") sem
  *                              nenhuma linha em lead_events nos últimos N dias úteis.
+ *  4. objection_open         — objeção registrada (lead_objections.status="OPEN")
+ *                              sem resposta há mais tempo do que o tolerável.
  */
 
 const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
 
 export type AttentionSeverity = "critical" | "warning" | "info";
-export type AttentionSignalKind = "stale_stage" | "follow_up_overdue" | "high_score_no_contact";
+export type AttentionSignalKind = "stale_stage" | "follow_up_overdue" | "high_score_no_contact" | "objection_open";
 
 export type AttentionSignal = {
   leadId: string;
@@ -86,6 +89,24 @@ export const HOT_SCORE_THRESHOLD = 70;
 
 // Dias úteis sem nenhum lead_event antes de um lead quente virar sinal.
 export const HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS = 3;
+
+// Horas sem resposta antes de uma objeção em aberto virar sinal de atenção
+// (warning) ou crítico. Objeção é urgente por natureza — cliente disse algo
+// que pode travar a venda — por isso o limite é em horas, não dias.
+export const OBJECTION_OPEN_WARNING_HOURS = 4;
+export const OBJECTION_OPEN_CRITICAL_HOURS = 24;
+
+const OBJECTION_TYPE_LABEL: Record<string, string> = {
+  PRICE: "preço",
+  FINANCING: "financiamento",
+  LOCATION: "localização",
+  SIZE: "tamanho/metragem",
+  TIMING: "momento/prazo",
+  TRUST: "confiança",
+  PRODUCT: "produto",
+  COMPETITOR: "concorrente",
+  OTHER: "outra",
+};
 
 const SEVERITY_RANK: Record<AttentionSeverity, number> = { critical: 3, warning: 2, info: 1 };
 
@@ -227,6 +248,41 @@ async function lastLeadEventAt(
   return map;
 }
 
+type OpenObjection = { createdAt: number; objectionType: string; extraCount: number };
+
+async function earliestOpenObjection(
+  supabase: SupabaseClient,
+  organizationId: string,
+  leadIds: string[],
+): Promise<Map<string, OpenObjection>> {
+  const map = new Map<string, OpenObjection>();
+  const batches = await Promise.all(
+    chunk(leadIds, 200).map((ids) =>
+      supabase
+        .from("lead_objections")
+        .select("lead_id,objection_type,created_at")
+        .eq("organization_id", organizationId)
+        .eq("status", "OPEN")
+        .in("lead_id", ids)
+        .order("created_at", { ascending: true }),
+    ),
+  );
+  for (const { data, error } of batches) {
+    if (error || !data) continue;
+    for (const row of data as Array<{ lead_id: string; objection_type: string; created_at: string }>) {
+      const createdAt = toMs(row.created_at);
+      if (createdAt === null) continue;
+      const existing = map.get(row.lead_id);
+      if (!existing) {
+        map.set(row.lead_id, { createdAt, objectionType: row.objection_type, extraCount: 0 });
+      } else {
+        existing.extraCount += 1;
+      }
+    }
+  }
+  return map;
+}
+
 function isHot(lead: AttentionSignalLeadInput) {
   return lead.score >= HOT_SCORE_THRESHOLD || String(lead.temperature || "").trim().toLowerCase() === "quente";
 }
@@ -251,10 +307,11 @@ export async function computeAttentionSignals(
   const hotLeads = openLeads.filter(isHot);
   const hotIds = hotLeads.map((lead) => lead.id);
 
-  const [stageEnteredAtByLead, overdueFollowUpByLead, lastEventAtByLead] = await Promise.all([
+  const [stageEnteredAtByLead, overdueFollowUpByLead, lastEventAtByLead, openObjectionByLead] = await Promise.all([
     latestPipelineStageEnteredAt(supabase, organizationId, openIds),
     earliestOverdueFollowUp(supabase, organizationId, openIds, now),
     lastLeadEventAt(supabase, organizationId, hotIds),
+    earliestOpenObjection(supabase, organizationId, openIds),
   ]);
 
   const signals: AttentionSignal[] = [];
@@ -300,6 +357,25 @@ export async function computeAttentionSignals(
         since: new Date(overdue.scheduledAt).toISOString(),
         metric: overdueMinutes,
       });
+    }
+
+    // Sinal 4 — objeção registrada (lead_objections) e ainda sem resposta.
+    const openObjection = openObjectionByLead.get(lead.id);
+    if (openObjection) {
+      const hoursOpen = Math.max(0, Math.floor((now - openObjection.createdAt) / HOUR_MS));
+      if (hoursOpen >= OBJECTION_OPEN_WARNING_HOURS) {
+        const typeLabel = OBJECTION_TYPE_LABEL[openObjection.objectionType] || openObjection.objectionType.toLowerCase();
+        const openLabel = hoursOpen < 24 ? `${hoursOpen}h` : `${Math.floor(hoursOpen / 24)} ${plural(Math.floor(hoursOpen / 24), "dia", "dias")}`;
+        signals.push({
+          leadId: lead.id,
+          kind: "objection_open",
+          severity: hoursOpen >= OBJECTION_OPEN_CRITICAL_HOURS ? "critical" : "warning",
+          reason: `Objeção de ${typeLabel} sem resposta há ${openLabel}`,
+          detail: `lead_objections tem uma objeção de "${typeLabel}" em aberto (status OPEN) desde ${new Date(openObjection.createdAt).toLocaleString("pt-BR")}, sem response_text registrado.${openObjection.extraCount ? ` Há mais ${openObjection.extraCount} ${plural(openObjection.extraCount, "objeção em aberto", "objeções em aberto")} para este lead.` : ""}`,
+          since: new Date(openObjection.createdAt).toISOString(),
+          metric: hoursOpen,
+        });
+      }
     }
   }
 
