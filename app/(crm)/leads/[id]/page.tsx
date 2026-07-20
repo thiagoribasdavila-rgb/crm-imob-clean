@@ -843,6 +843,9 @@ export default function LeadDetailPage() {
                 <Link href={`/leads/${lead.id}/contact-preferences`}>
                   Consentimento
                 </Link>
+                <Link href={`/leads/${lead.id}/objections`}>
+                  Objeções de venda
+                </Link>
                 <button onClick={() => void createOpportunity()}>
                   Criar oportunidade
                 </button>
