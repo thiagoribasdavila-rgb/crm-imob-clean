@@ -155,6 +155,51 @@ function phoneLinks(phone: string | null) {
   return { call: `tel:+${international}`, whatsapp: `https://wa.me/${international}` };
 }
 
+type ProactiveSignal = {
+  days: number;
+  basis: "atividade" | "criacao";
+  level: "amber" | "rose";
+  hot: boolean;
+};
+
+// Sinal proativo 100% determinístico, derivado apenas dos campos já carregados
+// (updated_at/last_interaction_at/created_at/score/temperature). Nenhum dado é
+// inventado: sem timestamp válido, não há sinal. Como leadRisk/firstContactSla,
+// lê o relógio internamente; a granularidade em dias torna o desvio irrelevante.
+function proactiveSignal(lead: Lead): ProactiveSignal | null {
+  if (!isOpenLead(lead)) return null;
+  const activityTimes = [lead.updated_at, lead.last_interaction_at]
+    .map((value) => (value ? new Date(value).getTime() : Number.NaN))
+    .filter((time) => Number.isFinite(time));
+  const hasActivity = activityTimes.length > 0;
+  const reference = hasActivity ? Math.max(...activityTimes) : lead.created_at ? new Date(lead.created_at).getTime() : Number.NaN;
+  if (!Number.isFinite(reference)) return null;
+  const days = Math.floor(Math.max(0, Date.now() - reference) / 86_400_000);
+  if (days < 3) return null;
+  return {
+    days,
+    basis: hasActivity ? "atividade" : "criacao",
+    level: days >= 7 ? "rose" : "amber",
+    hot: lead.temperature === "quente" || Number(lead.score ?? 0) >= 70,
+  };
+}
+
+function proactiveSignalView(signal: ProactiveSignal, lead: Lead) {
+  const fromCreation = signal.basis === "criacao";
+  const baseTitle = fromCreation
+    ? `Sem atualização registrada desde a criação, há ${signal.days} dia(s) — contagem baseada na data de criação, único registro disponível.`
+    : `Sem atualização registrada há ${signal.days} dia(s) — base: atualização ou interação mais recente.`;
+  return {
+    critical: signal.hot || signal.level === "rose",
+    label: signal.hot
+      ? `quente sem toque · ${signal.days}d${fromCreation ? " desde a criação" : ""}`
+      : fromCreation
+        ? `${signal.days}d desde a criação`
+        : `parado há ${signal.days}d`,
+    title: signal.hot ? `Lead quente (score ${lead.score ?? 0}). ${baseTitle} Priorize o contato.` : baseTitle,
+  };
+}
+
 export default function PipelinePage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [stages, setStages] = useState<PipelineStageDefinition[]>(defaultStages);
@@ -377,6 +422,50 @@ export default function PipelinePage() {
   const activeMobileStage = boardStages.some((stage) => stage.key === mobileStage) ? mobileStage : boardStages[0]?.key;
   const dailyFocus = useMemo(() => visibleLeads.filter(isOpenLead).slice(0, 3), [visibleLeads]);
 
+  const proactiveSignals = useMemo(() => {
+    const map = new Map<string, ProactiveSignal>();
+    for (const lead of leads) {
+      const signal = proactiveSignal(lead);
+      if (signal) map.set(lead.id, signal);
+    }
+    return map;
+  }, [leads]);
+
+  const columnSignals = useMemo(() => {
+    const map = new Map<StageKey, { stalled: number; rose: number; hot: number }>();
+    for (const stage of stageData) {
+      const summary = { stalled: 0, rose: 0, hot: 0 };
+      for (const lead of stage.items) {
+        const signal = proactiveSignals.get(lead.id);
+        if (!signal) continue;
+        summary.stalled += 1;
+        if (signal.level === "rose") summary.rose += 1;
+        if (signal.hot) summary.hot += 1;
+      }
+      map.set(stage.key, summary);
+    }
+    return map;
+  }, [proactiveSignals, stageData]);
+
+  // Sugestão única e determinística: quente parado > parado 7d+ > parado 3d+,
+  // sempre contando apenas cards visíveis no quadro (números conferíveis).
+  const aiSuggestion = useMemo(() => {
+    let hot: { label: string; count: number } | null = null;
+    let rose: { label: string; count: number } | null = null;
+    let stalled: { label: string; count: number } | null = null;
+    for (const stage of stageData) {
+      const summary = columnSignals.get(stage.key);
+      if (!summary || summary.stalled === 0) continue;
+      if (summary.hot > (hot?.count ?? 0)) hot = { label: stage.label, count: summary.hot };
+      if (summary.rose > (rose?.count ?? 0)) rose = { label: stage.label, count: summary.rose };
+      if (summary.stalled > (stalled?.count ?? 0)) stalled = { label: stage.label, count: summary.stalled };
+    }
+    if (hot) return `${hot.count} ${hot.count === 1 ? "lead quente parado" : "leads quentes parados"} em ${hot.label} — revisar primeiro`;
+    if (rose) return `${rose.count} ${rose.count === 1 ? "lead parado" : "leads parados"} há 7d+ em ${rose.label} — retomar contato`;
+    if (stalled) return `${stalled.count} ${stalled.count === 1 ? "lead parado" : "leads parados"} há 3d+ em ${stalled.label} — definir a próxima ação`;
+    return null;
+  }, [columnSignals, stageData]);
+
   const focusOptions = useMemo(() => {
     const open = leads.filter(isOpenLead);
     return [
@@ -480,13 +569,16 @@ export default function PipelinePage() {
             <button type="button" onClick={() => setHideEmpty((value) => !value)} aria-pressed={hideEmpty} className={`atlas-kanban-toggle ${hideEmpty ? "is-active" : ""}`}>{hideEmpty ? "Mostrando etapas ativas" : "Mostrar todas as etapas"}</button>
           </div>
         </div>
+        {aiSuggestion ? <div className="mx-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-[rgba(148,163,184,.12)] px-3 py-2 sm:mx-6" data-signal-source="deterministic-loaded-leads"><span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[.12em] text-[color:var(--atlas-accent)]">IA sugere</span><span className="min-w-0 font-mono text-[11px] leading-5 tabular-nums text-[#aab6ca]" title="Sugestão determinística calculada apenas com os leads já carregados neste quadro.">{aiSuggestion}</span></div> : null}
         <div className="atlas-kanban-mobile-nav" role="tablist" aria-label="Escolher etapa no celular">{boardStages.map((stage) => <button key={stage.key} type="button" role="tab" aria-selected={activeMobileStage === stage.key} onClick={() => setMobileStage(stage.key)} className={activeMobileStage === stage.key ? "is-active" : ""}><span>{stage.label}</span><b>{stage.items.length}</b></button>)}</div>
         <div className="atlas-kanban-scroll p-4 sm:p-6" tabIndex={0} aria-label="Quadro Kanban com rolagem horizontal" aria-busy={loading}>
           <div className={`atlas-kanban-board ${compact ? "is-compact" : ""}`} style={{ "--kanban-columns": boardStages.length } as CSSProperties} aria-busy={loading || Boolean(savingId)}>
-            {boardStages.map((stage) => (
-              <section key={stage.key} role="tabpanel" aria-label={`${stage.label}: ${stage.items.length} leads`} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""} ${activeMobileStage !== stage.key ? "is-mobile-hidden" : ""}`}>
+            {boardStages.map((stage) => {
+              const colSignals = columnSignals.get(stage.key);
+              return (
+              <section key={stage.key} role="tabpanel" aria-label={`${stage.label}: ${stage.items.length} leads${colSignals && colSignals.stalled > 0 ? `, ${colSignals.stalled} sem atualização há 3 ou mais dias` : ""}`} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""} ${activeMobileStage !== stage.key ? "is-mobile-hidden" : ""}`}>
                 <div className="atlas-pipeline-column-header mb-4 border-b border-white/[0.06] pb-3">
-                  <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white">{stage.label}</h3><span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-slate-300">{stage.items.length}</span></div>
+                  <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white">{stage.label}</h3><div className="flex shrink-0 items-center gap-1.5">{colSignals && colSignals.stalled > 0 ? <span className={`rounded-full border border-[rgba(148,163,184,.22)] px-1.5 py-1 font-mono text-[9px] leading-none tabular-nums ${colSignals.rose > 0 || colSignals.hot > 0 ? "text-[#fb7185]" : "text-[#f5b544]"}`} title={`${colSignals.stalled} de ${stage.items.length} lead(s) desta etapa sem atualização registrada há 3 ou mais dias.`}>{colSignals.stalled} {colSignals.stalled === 1 ? "parado" : "parados"}</span> : null}<span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] font-semibold tabular-nums text-slate-300">{stage.items.length}</span></div></div>
                   <p className="mt-2 text-xs text-slate-500">{brl.format(stage.value)}</p>
                   <div className="mt-3"><AtlasProgress value={stage.probability} /></div>
                 </div>
@@ -497,6 +589,8 @@ export default function PipelinePage() {
                     const contactSla = firstContactSla(lead);
                     const guidance = brokerGuidance(lead);
                     const contact = phoneLinks(lead.phone);
+                    const signal = proactiveSignals.get(lead.id);
+                    const signalView = signal ? proactiveSignalView(signal, lead) : null;
                     return (
                       <article key={lead.id} draggable={!savingId} tabIndex={0} aria-busy={Boolean(savingId)} aria-label={`${lead.name || "Lead sem nome"}, etapa ${stage.label}. Alt mais seta move entre etapas.`} onKeyDown={(event) => { if (event.altKey && event.key === "ArrowLeft") { event.preventDefault(); moveByKeyboard(lead, -1); } if (event.altKey && event.key === "ArrowRight") { event.preventDefault(); moveByKeyboard(lead, 1); } }} onDragEnd={() => { setDraggedId(null); setDragOverStage(null); }} onDragStart={(event) => { if (savingId) { event.preventDefault(); return; } setDraggedId(lead.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""} ${draggedId === lead.id ? "is-dragging" : ""}`} data-risk={risk}>
                         <div className="flex items-start justify-between gap-3">
@@ -512,6 +606,7 @@ export default function PipelinePage() {
                           <span>Score <strong>{lead.score ?? 0}</strong></span>
                           <span>{lead.budget_max ? brl.format(lead.budget_max) : "Sem valor"}</span>
                         </div>
+                        {signalView ? <span className={`mt-2.5 block w-fit max-w-full overflow-hidden rounded-full border border-[rgba(148,163,184,.22)] px-2 py-1 font-mono text-[9px] leading-none tabular-nums text-ellipsis whitespace-nowrap ${signalView.critical ? "text-[#fb7185]" : "text-[#f5b544]"}`} title={signalView.title}>{signalView.label}</span> : null}
                         {contactSla ? <div className="mt-3"><AtlasBadge tone={contactSla.tone}>{contactSla.label}</AtlasBadge></div> : null}
                         <div className="atlas-card-guidance"><span>Próxima melhor ação</span><strong>{guidance.action}</strong></div>
                         <div className="atlas-kanban-primary-actions" role="group" aria-label="Ações rápidas">
@@ -532,6 +627,10 @@ export default function PipelinePage() {
                           <p className="atlas-kanban-guidance-reason">{guidance.reason}</p>
                           <div className="atlas-card-shortcuts"><Link href={`/leads/${lead.id}/messages`} title="Criar abordagem com IA">✦ Mensagem</Link>{contact ? <><a href={contact.call} title="Ligar para a lead">Ligar</a><a href={contact.whatsapp} target="_blank" rel="noreferrer" title="Abrir WhatsApp">WhatsApp</a></> : null}</div>
                         </details>
+                        <div role="group" aria-label={`Abrir ou descartar ${lead.name || "lead sem nome"}`} className="pointer-events-none mt-2 flex gap-1.5 opacity-0 motion-safe:transition-opacity motion-safe:duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+                          <Link href={`/leads/${lead.id}`} title="Abrir a visão completa da lead" className="flex-1 rounded-xl border border-[rgba(148,163,184,.12)] px-2 py-1.5 text-center font-mono text-[10px] leading-4 text-[#aab6ca] motion-safe:transition-colors hover:border-[rgba(148,163,184,.22)] hover:text-[#e8eef8] focus-visible:border-[rgba(148,163,184,.22)] focus-visible:text-[#e8eef8]">Abrir</Link>
+                          <button type="button" title="Descartar com motivo classificado — abre o painel de descarte" disabled={Boolean(savingId)} onClick={() => void moveLead(lead.id, "perdido")} className="flex-1 rounded-xl border border-[rgba(148,163,184,.12)] px-2 py-1.5 text-center font-mono text-[10px] leading-4 text-[#aab6ca] motion-safe:transition-colors hover:border-[rgba(251,113,133,.22)] hover:text-[#fb7185] focus-visible:border-[rgba(251,113,133,.22)] focus-visible:text-[#fb7185] disabled:cursor-not-allowed disabled:opacity-40">Descartar</button>
+                        </div>
                         <div className="atlas-kanban-move-row">
                           <button type="button" onClick={() => moveByKeyboard(lead, -1)} disabled={savingId === lead.id || stages.findIndex((item) => item.key === (lead.status || "novo")) <= 0} aria-label="Mover para a etapa anterior">←</button>
                           <select aria-label={`Mover ${lead.name || "lead"} para outra etapa`} value={lead.status ?? "novo"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)}>
@@ -544,7 +643,8 @@ export default function PipelinePage() {
                   })}
                 </div>}
               </section>
-            ))}
+              );
+            })}
           </div>
         </div>
         <div className="border-t border-white/[.06] px-5 py-3 text-[10px] text-slate-500 sm:px-6">Arraste, use o seletor ou pressione <kbd className="rounded border border-white/10 px-1.5 py-0.5 text-slate-300">Alt + ←/→</kbd> com o card em foco. A movimentação continua registrada na timeline.</div>
