@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { atlasNavigation, getAtlasNavigationForIdentity } from "@/lib/atlas/navigation";
+import { AtlasLogo } from "@/components/atlas/atlas-logo";
 type NavigationItem = (typeof atlasNavigation)[number];
 const FAVORITES_KEY = "atlas:sidebar-favorites:v1";
 
@@ -150,7 +151,7 @@ export function Sidebar({
             className="atlas-brand-link"
             onClick={onCloseMobile}
           >
-            <span className="atlas-brand-mark">A</span>
+            <AtlasLogo size={42} className="shrink-0" />
             <span className="atlas-sidebar-label">
               <strong>
                 ATLAS <em>AI</em>

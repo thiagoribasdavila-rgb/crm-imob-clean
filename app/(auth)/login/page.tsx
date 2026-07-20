@@ -20,6 +20,7 @@ import {
   parseAtlasAuthContext,
   storeAtlasAuthContext,
 } from "@/lib/auth/atlas-auth-context";
+import { AtlasLogo } from "@/components/atlas/atlas-logo";
 
 const REMEMBERED_EMAIL_KEY = "atlas.remembered-email";
 
@@ -309,7 +310,7 @@ function LoginExperience() {
           <div className="pointer-events-none absolute bottom-14 right-16 h-20 w-56 rounded-[50%] bg-sky-400/15 blur-3xl" />
           <div className="relative z-10">
           <Link href="/" className="inline-flex items-center gap-4" aria-label="Voltar para a página inicial do Atlas">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl border border-sky-300/20 bg-sky-400/[.09] text-lg font-black text-sky-200">A</span>
+            <AtlasLogo size={48} className="shrink-0" />
             <div><p className="text-2xl font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p><p className="font-mono text-[10px] font-medium uppercase tracking-[.22em] text-slate-500">Real Estate Intelligence</p></div>
           </Link>
           <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-sky-300/10 bg-sky-300/[.045] px-3 py-1.5 font-mono text-[11px] font-medium text-sky-200"><span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-sky-300" /> IA proativa conectada ao comercial</div>
@@ -322,7 +323,7 @@ function LoginExperience() {
         </section>
 
         <section className="mx-auto w-full max-w-lg [perspective:1400px]">
-          <div className="cc5-reveal mb-6 flex items-center justify-between gap-3 lg:hidden" style={{ animationDelay: "0ms" }}><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl border border-sky-300/20 bg-sky-400/[.09] font-black text-sky-300">A</span><div><p className="text-xl font-black tracking-[-.03em]">ATLAS <span className="text-sky-400">AI</span></p><p className="font-mono text-[10px] uppercase tracking-[.22em] text-slate-500">Real Estate Intelligence</p></div></div><span role="img" aria-label="Assistente Atlas" className="h-16 w-12 bg-[url('/brand/atlas-robot-assistant.png')] bg-contain bg-center bg-no-repeat drop-shadow-[0_12px_20px_rgba(14,165,233,.18)]" /></div>
+          <div className="cc5-reveal mb-6 flex items-center justify-between gap-3 lg:hidden" style={{ animationDelay: "0ms" }}><div className="flex items-center gap-3"><AtlasLogo size={44} className="shrink-0" /><div><p className="text-xl font-black tracking-[-.03em]">ATLAS <span className="text-sky-400">AI</span></p><p className="font-mono text-[10px] uppercase tracking-[.22em] text-slate-500">Real Estate Intelligence</p></div></div><span role="img" aria-label="Assistente Atlas" className="h-16 w-12 bg-[url('/brand/atlas-robot-assistant.png')] bg-contain bg-center bg-no-repeat drop-shadow-[0_12px_20px_rgba(14,165,233,.18)]" /></div>
           <TiltShell delayMs={70} className="cc5-reveal relative overflow-hidden rounded-[28px] border border-[rgba(148,163,184,.16)] bg-[linear-gradient(180deg,#0f1830_0%,#0b1224_100%)] p-6 shadow-[0_40px_120px_rgba(0,0,0,.5)] sm:p-9">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-300/70 to-transparent" />
             <div className="motion-safe:[transform:translateZ(14px)]">
