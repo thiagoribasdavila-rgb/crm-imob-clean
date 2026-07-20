@@ -1,0 +1,80 @@
+# Pré-condição #2 — migrations para `official_auth_rbac` (banco novo de homolog)
+
+**Gerado:** 2026-07-20 · **Alvo:** `profiles` com `access_role`, `commercial_role`, `reports_to`, `full_name` + triggers de hierarquia.
+
+## Provenance das 4 colunas exigidas pelo script
+- `commercial_role`, `reports_to` → `20260716212459_commercial_hierarchy_and_bulk_transfer.sql`
+- `access_role` (+ trigger validate_commercial_hierarchy definitivo) → `20260717200655_official_auth_rbac.sql`
+- `full_name` → `20260717213000_v3_legacy_runtime_schema_bridge.sql` (bridge; **por isso o alvo vai até aqui**)
+
+## Premissa
+O banco novo tem a **base** aplicada até o corte `20260716083708` (mesmo ponto do banco antigo — 23 tabelas). Confirme com: `select max(version) from supabase_migrations.schema_migrations;` — deve dar `20260716083708`. Se der outro valor, ajustar o intervalo.
+
+## Cadeia mínima (57 migrations, EM ORDEM) — remediação + até o bridge
+```
+20260716210000_atlas_v3_canonical_base_tables.sql
+20260716212459_commercial_hierarchy_and_bulk_transfer.sql
+20260716213229_project_material_hub.sql
+20260716221959_homologation_checklist.sql
+20260716222643_meta_lead_closed_loop.sql
+20260716223608_ai_cost_and_meta_conversions.sql
+20260716234729_balanced_project_lead_distribution.sql
+20260716235515_lead_reactivation_center.sql
+20260716235900_meta_director_daily_reports.sql
+20260716235900_omnichannel_integrations.sql
+20260717000240_exclusive_lead_copilot_and_safe_messaging.sql
+20260717001011_whatsapp_experience_and_external_sales_control.sql
+20260717001500_commission_sla.sql
+20260717002420_nightly_ai_sales_journeys.sql
+20260717002702_developer_payment_flow_rules.sql
+20260717003000_commission_financial_controls.sql
+20260717003022_commercial_simulations_and_proposals.sql
+20260717004248_atomic_team_bulk_transfer.sql
+20260717004752_manager_direct_team_bulk_transfer.sql
+20260717005110_broker_lead_360_related_scope.sql
+20260717005333_first_contact_sla_lifecycle.sql
+20260717005624_property_presentation_inventory_guard.sql
+20260717005843_property_feedback_presentation_guard.sql
+20260717010000_opportunities_commercial_scope.sql
+20260717010418_enforce_tenant_reference_integrity.sql
+20260717010718_homologation_backup_restore_evidence.sql
+20260717011059_v2_rollback_drill_evidence.sql
+20260717011614_hostinger_restart_drills.sql
+20260717012000_atomic_developer_payment_rule_versioning.sql
+20260717012100_atomic_project_material_versioning.sql
+20260717012200_idempotent_daily_report_claim.sql
+20260717012622_openai_request_traceability.sql
+20260717012700_ai_usage_cost_tracking.sql
+20260717013200_atomic_experience_decision.sql
+20260717013400_atomic_message_approval.sql
+20260717013600_governed_external_buyer_registration.sql
+20260717014000_atomic_exclusive_lead_copilot_memory.sql
+20260717014200_atomic_commercial_proposal_review.sql
+20260717014400_immediate_whatsapp_opt_out.sql
+20260717014600_nightly_reply_broker_routing.sql
+20260717021500_project_intelligence_onboarding.sql
+20260717032649_profile_center.sql
+20260717034208_project_material_cloud_storage.sql
+20260717035100_legacy_base_phone_quality_suppression.sql
+20260717035803_lead_source_memory_import.sql
+20260717072714_secure_commercial_profile_hierarchy.sql
+20260717074451_phase_17_rls_isolation_audit.sql
+20260717075224_phase_19_abuse_protection.sql
+20260717102500_atomic_lead_registration.sql
+20260717183000_phase_31_canonical_pipeline_stages.sql
+20260717190000_phase_33_atomic_pipeline_moves.sql
+20260717193000_phase_34_first_contact_sla_accuracy.sql
+20260717200655_official_auth_rbac.sql
+20260717203000_expand_project_material_catalog.sql
+20260717203000_phase_35_follow_up_sla_cycles.sql
+20260717213000_phase_36_visit_sla.sql
+20260717213000_v3_legacy_runtime_schema_bridge.sql
+```
+
+## Como aplicar (loop psql do runbook Tier 2 — NÃO usar `supabase db push`)
+```bash
+HOMOLOG_URL="postgresql://postgres:SENHA@db.<REF_NOVO>.supabase.co:5432/postgres"
+while read f; do echo ">>> $f"; psql "$HOMOLOG_URL" -v ON_ERROR_STOP=1 -f "supabase/migrations/$f" || { echo "FALHOU: $f"; break; }; done < docs/deploy/rbac-chain.txt
+```
+
+> **Recomendado:** como esta cadeia já é 57 das 110 migrations da cauda, o mais coerente é aplicar a **cauda inteira** (Tier 2 do RUNBOOK_HOMOLOG_ESPELHO) e ter o homolog completo, em vez de parar no bridge. Esta lista é o **mínimo** para o script de usuários rodar.
