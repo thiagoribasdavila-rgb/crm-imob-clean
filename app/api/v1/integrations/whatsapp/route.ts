@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { metaGraphVersion, describeMetaGraphFailure } from "@/lib/meta/graph";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +27,11 @@ export async function GET(request: NextRequest) {
   if (!phoneNumberId || !accessToken) return apiSuccess({ connected: false, reason: "credentials_missing", safeguards: { credentialsExposed: false } }, identity.meta, { headers: rate.headers });
 
   try {
-    const apiVersion = process.env.META_GRAPH_API_VERSION || "v23.0";
+    const apiVersion = metaGraphVersion();
     const fields = "display_phone_number,verified_name,quality_rating,messaging_limit_tier,throughput,code_verification_status,platform_type";
     const response = await fetch(`https://graph.facebook.com/${apiVersion}/${encodeURIComponent(phoneNumberId)}?fields=${fields}`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: AbortSignal.timeout(30_000) });
     const data = await response.json() as Record<string, unknown>;
-    if (!response.ok) return apiError("WHATSAPP_GRAPH_ERROR", "A Graph API não confirmou o número configurado. Revise token, permissões e Phone Number ID.", identity.meta, { status: 502, headers: rate.headers });
+    if (!response.ok) return apiError("WHATSAPP_GRAPH_ERROR", `A Graph API não confirmou o número configurado. ${describeMetaGraphFailure(response.status, data)}`, identity.meta, { status: 502, headers: rate.headers });
     const qualityRating = String(data.quality_rating || "UNKNOWN").toUpperCase();
     const messagingLimitTier = String(data.messaging_limit_tier || "UNKNOWN").toUpperCase();
     const verificationStatus = String(data.code_verification_status || "UNKNOWN").toUpperCase();
