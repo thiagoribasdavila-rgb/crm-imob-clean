@@ -55,11 +55,18 @@ export function canAccessAtlasItem(
 
 export const atlasNavigation = [
   {
-    id: "command-center", surface: "canonical", group: "Operação diária", label: "Command Center", href: "/dashboard", icon: "⌘",
+    id: "command-center", surface: "canonical", group: "Operação diária", label: "Início", href: "/dashboard", icon: "⌘",
     roles: ["director", "superintendent", "manager", "broker"], keywords: "dashboard início indicadores prioridades decisões hoje",
     businessOutcome: "Mostrar a prioridade comercial que exige decisão ou execução agora.",
     primaryAction: { label: "Abrir prioridade", href: "/pipeline?focus=priority", outcome: "Avançar a oportunidade mais relevante." },
     dataDomains: ["leads", "tasks", "opportunities"], mobilePrimary: true,
+  },
+  {
+    id: "command-center-live", surface: "canonical", group: "Operação diária", label: "Command Center", href: "/command-center", icon: "◐",
+    roles: ["director", "superintendent", "manager", "broker"], keywords: "sala de comando tempo real ao vivo pulso sinais ia operação camadas",
+    businessOutcome: "Acompanhar em tempo real o pulso da operação, os sinais da IA e a fila do dia.",
+    primaryAction: { label: "Abrir sala de comando", href: "/command-center", outcome: "Ver o que mudou agora e agir na prioridade ao vivo." },
+    dataDomains: ["leads", "tasks", "insights"],
   },
   {
     id: "leads", surface: "canonical", group: "Operação diária", label: "Leads", href: "/leads", icon: "◎",
