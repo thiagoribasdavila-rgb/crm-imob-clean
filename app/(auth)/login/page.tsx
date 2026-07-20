@@ -47,7 +47,11 @@ async function confirmServerSession(): Promise<Response> {
 
 async function destinationForSession(response: Response, requested: string | null) {
   if (requested) return safeAuthDestination(requested);
-  return "/dashboard";
+  // Entrar no sistema = entrar na sala de comando: a visão "o que está
+  // acontecendo agora", por papel, com tempo real. O /dashboard clássico
+  // continua a um clique (item "Início" do menu) e deep links via ?next=
+  // seguem respeitados acima.
+  return "/command-center";
 }
 
 async function readSessionFailure(response: Response) {
