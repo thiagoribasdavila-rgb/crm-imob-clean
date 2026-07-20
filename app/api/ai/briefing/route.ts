@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { requireAccessContext } from "@/lib/api/security";
 import { buildRealEstateContext } from "@/lib/ai/real-estate-context";
 import { aiProviderReadiness } from "@/lib/ai/provider-router";
+import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/legacy-v2";
+import { computeAttentionSignals } from "@/lib/atlas/attention-signals";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +87,39 @@ export async function GET(request: NextRequest) {
   if (commercial.pipelineValue > 0) signals.push({ id: "forecast-gap", severity: commercial.weightedForecast < commercial.pipelineValue * 0.35 ? "attention" : "healthy", area: "forecast", title: "Qualidade do pipeline", evidence: `Forecast ponderado de ${Math.round(commercial.pipelineValue ? commercial.weightedForecast / commercial.pipelineValue * 100 : 0)}% sobre o pipeline bruto.`, action: "Revisar probabilidade, etapa e data prevista das oportunidades abertas.", href: "/pipeline", impact: 60 });
   const responses = learningSummary.interested + learningSummary.rejected;
   if (responses >= 3 && learningSummary.rejected / responses >= 0.5) signals.push({ id: "product-rejection", severity: "attention", area: "inventory", title: "Rejeição elevada nas apresentações", evidence: `${learningSummary.rejected} de ${responses} retornos recentes indicaram baixa aderência.`, action: "Revisar produto, faixa de preço e perfil dos leads antes de novas apresentações.", href: "/properties/mtching", impact: 75 + learningSummary.rejected });
+
+  // Sinais de atenção proativos (Fase 100) — o briefing agrega duas dimensões
+  // que os sinais acima não cobrem: leads parados no funil e objeções sem
+  // resposta. Reaproveita o mesmo módulo determinístico do dashboard/Lead 360.
+  const { data: leadRows } = await access.supabase
+    .from("leads")
+    .select(LIVE_LEAD_SELECT)
+    .eq("organization_id", identity.organizationId)
+    .limit(1000);
+  const attentionLeads = ((leadRows ?? []) as unknown as CompatRow[]).map(mapLegacyLead);
+  const attention = await computeAttentionSignals(
+    access.supabase,
+    identity.organizationId,
+    attentionLeads.map((lead) => ({
+      id: String(lead.id),
+      status: String(lead.status || "novo"),
+      score: Number(lead.score || 0),
+      temperature: typeof lead.temperature === "string" ? lead.temperature : null,
+      createdAt: typeof lead.created_at === "string" ? lead.created_at : null,
+    })),
+  );
+  const staleLeadIds = new Set(attention.filter((signal) => signal.kind === "stale_stage").map((signal) => signal.leadId));
+  const objectionSignals = attention.filter((signal) => signal.kind === "objection_open");
+  const objectionLeadIds = new Set(objectionSignals.map((signal) => signal.leadId));
+  if (staleLeadIds.size > 0) {
+    const critical = attention.some((signal) => signal.kind === "stale_stage" && signal.severity === "critical");
+    signals.push({ id: "stale-stage", severity: critical ? "critical" : "attention", area: "commercial", title: "Leads parados no funil", evidence: `${staleLeadIds.size} ${staleLeadIds.size === 1 ? "lead está parado" : "leads estão parados"} na mesma etapa além do tempo recomendado.`, action: "Retomar o contato ou registrar a próxima ação para destravar cada oportunidade.", href: "/pipeline", impact: 88 + staleLeadIds.size });
+  }
+  if (objectionLeadIds.size > 0) {
+    const critical = objectionSignals.some((signal) => signal.severity === "critical");
+    signals.push({ id: "open-objections", severity: critical ? "critical" : "attention", area: "commercial", title: "Objeções sem resposta", evidence: `${objectionLeadIds.size} ${objectionLeadIds.size === 1 ? "lead tem objeção" : "leads têm objeções"} de venda em aberto, ainda sem resposta registrada.`, action: "Responder a objeção com apoio do Copilot antes que a lead esfrie.", href: "/leads", impact: 92 + objectionLeadIds.size });
+  }
+
   if (!signals.length) signals.push({ id: "data-start", severity: "healthy", area: "data", title: "Operação sem alertas críticos", evidence: "Não foram encontrados gargalos suficientes no snapshot atual.", action: "Mantenha dados, cadência e materiais atualizados para ampliar a precisão.", href: "/dashboard", impact: 10 });
 
   const order = { critical: 4, attention: 3, opportunity: 2, healthy: 1 };
