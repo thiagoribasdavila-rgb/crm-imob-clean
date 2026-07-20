@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -72,6 +73,54 @@ type AdvisorPayload = {
   humanApprovalRequired: boolean;
 };
 
+// Analista Andromeda — consome /api/v1/ai/campaign-analyst (gestor+; só
+// agregados, zero PII). O Analista NARRA (anomalias entre janelas + narrativa
+// executiva); o Conselheiro RECOMENDA — papéis distintos, sem competição.
+// Shape em lib/ai/campaign-analyst.ts.
+type AnalystAnomaly = {
+  campaignId: string;
+  campaignName: string;
+  kind: "qualification_rate" | "discard_category_share" | "cost_per_lead" | "lead_volume";
+  direction: "up" | "down";
+  magnitude: number;
+  evidence: string;
+};
+
+type AnalystPayload = {
+  narrative: string;
+  engine: "generative" | "deterministic";
+  anomalies: AnalystAnomaly[];
+  period: {
+    current: { start: string; end: string; days: number };
+    previous: { start: string; end: string; days: number };
+  };
+  windowComplete: boolean;
+};
+
+const analystKindLabels: Record<AnalystAnomaly["kind"], string> = {
+  qualification_rate: "Qualificação",
+  discard_category_share: "Descarte",
+  cost_per_lead: "CPL",
+  lead_volume: "Volume",
+};
+
+// Tom semântico do chip: piora (queda de qualidade, salto de descarte, CPL
+// subindo, volume caindo) = warning/danger; melhora = success.
+const analystAnomalyTone = (anomaly: AnalystAnomaly): "success" | "warning" | "danger" => {
+  if (anomaly.kind === "qualification_rate") return anomaly.direction === "down" ? "danger" : "success";
+  if (anomaly.kind === "discard_category_share") return "warning";
+  if (anomaly.kind === "cost_per_lead") return anomaly.direction === "up" ? "warning" : "success";
+  return "danger"; // lead_volume só existe como queda >= 50%
+};
+
+const analystAnomalyDelta = (anomaly: AnalystAnomaly) => {
+  const sign = anomaly.direction === "up" ? "+" : "−";
+  const unit = anomaly.kind === "qualification_rate" || anomaly.kind === "discard_category_share"
+    ? " p.p."
+    : "%";
+  return `${sign}${anomaly.magnitude}${unit}`;
+};
+
 const advisorActionLabels: Record<AdvisorRecommendation["action"], string> = {
   scale: "ESCALAR VERBA",
   adjust_targeting: "AJUSTAR PÚBLICO",
@@ -122,6 +171,10 @@ export default function CampaignsPage() {
   const [advisor, setAdvisor] = useState<AdvisorPayload | null>(null);
   const [advisorError, setAdvisorError] = useState("");
   const [advisorLoading, setAdvisorLoading] = useState(true);
+  const [analyst, setAnalyst] = useState<AnalystPayload | null>(null);
+  const [analystError, setAnalystError] = useState("");
+  const [analystLoading, setAnalystLoading] = useState(true);
+  const [analystAgeSeconds, setAnalystAgeSeconds] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -173,6 +226,39 @@ export default function CampaignsPage() {
     };
   }, [days, reloadKey]);
 
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setAnalystLoading(true);
+      setAnalystError("");
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        const response = await fetch(`/api/v1/ai/campaign-analyst?days=${days}`, {
+          cache: "no-store",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json?.error?.message || "Analista indisponível");
+        if (active) setAnalyst(json.data as AnalystPayload);
+      } catch (reason) {
+        if (active) setAnalystError(reason instanceof Error ? reason.message : "Analista indisponível");
+      } finally {
+        if (active) setAnalystLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [days, reloadKey]);
+
+  // "atualizado há Xs" — zera a cada nova resposta do analista.
+  useEffect(() => {
+    if (!analyst) return;
+    setAnalystAgeSeconds(0);
+    const timer = setInterval(() => setAnalystAgeSeconds((value) => value + 1), 1000);
+    return () => clearInterval(timer);
+  }, [analyst]);
+
   const totals = data?.totals;
   const ranking = data?.ranking ?? [];
   const minimum = data?.policy.minimumLeadsForDecision ?? 30;
@@ -205,6 +291,81 @@ export default function CampaignsPage() {
           <Link href="/marketing/campaign-intelligence" className="rounded-full border border-violet-300/30 px-4 py-2 text-xs font-semibold text-violet-200">
             Abrir inteligência multicanal
           </Link>
+        </div>
+      </section>
+
+      <section
+        aria-label="Analista Andromeda em dedicação integral"
+        className="rounded-3xl border border-white/[.06] bg-white/[.03] p-5 sm:p-6"
+      >
+        {/* Flutuação MUITO sutil do robô — keyframes inline (globals.css é
+            intocável) sob motion-safe: zero movimento em reduced-motion. */}
+        <style>{"@keyframes atlasAnalystFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}"}</style>
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+          <div className="shrink-0 self-center sm:self-start motion-safe:[animation:atlasAnalystFloat_7s_ease-in-out_infinite]">
+            <Image
+              src="/brand/atlas-robot-assistant.png"
+              alt="Robô analista Atlas em dedicação integral às campanhas"
+              width={140}
+              height={210}
+              className="h-auto w-[110px] object-contain sm:w-[140px]"
+            />
+          </div>
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-slate-500">
+                Analista Andromeda · dedicação integral
+              </p>
+              {analyst ? (
+                <AtlasBadge tone={analyst.engine === "generative" ? "violet" : "neutral"}>
+                  {analyst.engine === "generative" ? "IA GENERATIVA" : "DETERMINÍSTICO"}
+                </AtlasBadge>
+              ) : null}
+              {analyst ? (
+                <span className="text-[10px] text-slate-500">atualizado há {analystAgeSeconds}s</span>
+              ) : null}
+            </div>
+            {analystError ? (
+              <AtlasRecoverableError
+                description={analystError}
+                onRetry={() => setReloadKey((value) => value + 1)}
+                busy={analystLoading}
+                scope="module"
+              />
+            ) : analystLoading && !analyst ? (
+              <AtlasSkeleton className="h-24 w-full" />
+            ) : analyst && data && data.ranking.length === 0 ? (
+              <AtlasEmpty
+                reason="no-activity"
+                title="Nada para narrar ainda"
+                description="Assim que campanhas tiverem leads na janela, o analista compara a janela atual com a anterior, aponta anomalias e escreve o resumo executivo aqui."
+              />
+            ) : analyst ? (
+              <>
+                <p aria-live="polite" className="text-sm leading-7 text-slate-200">
+                  {analyst.narrative}
+                </p>
+                {analyst.anomalies.length ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {analyst.anomalies.slice(0, 6).map((anomaly) => (
+                      <span key={`${anomaly.campaignId}-${anomaly.kind}`} title={anomaly.evidence}>
+                        <AtlasBadge tone={analystAnomalyTone(anomaly)}>
+                          {analystKindLabels[anomaly.kind]} {analystAnomalyDelta(anomaly)} · {anomaly.campaignName}
+                        </AtlasBadge>
+                      </span>
+                    ))}
+                    {analyst.anomalies.length > 6 ? (
+                      <AtlasBadge tone="neutral">+{analyst.anomalies.length - 6}</AtlasBadge>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    Nenhuma anomalia entre a janela atual e a anterior de mesmo tamanho.
+                  </p>
+                )}
+              </>
+            ) : null}
+          </div>
         </div>
       </section>
 
