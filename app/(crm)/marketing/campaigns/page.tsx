@@ -51,6 +51,7 @@ type Payload = {
     qualifiedDefinition: string;
     qualityGradeRule: Record<string, string>;
     spendMeasured: boolean;
+    windowComplete?: boolean;
   };
 };
 
@@ -381,17 +382,60 @@ export default function CampaignsPage() {
 
       {totals ? (
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <AtlasMetric label="Campanhas com leads" value={totals.campaignsRanked} detail={`${totals.campaigns} campanhas na organização`} trend={`${data?.period.days ?? days} DIAS`} tone="blue" />
-          <AtlasMetric label="Leads na janela" value={totals.leads} detail={`${totals.qualified} qualificadas · ${totals.sales} vendas`} trend="CRM" tone="green" />
-          <AtlasMetric label="Descartes" value={totals.discarded} detail={`${totals.classifiedDiscards} com motivo classificado`} trend="TAXONOMIA META" tone="violet" />
+          {/* Resumo com o dado DECISIVO grande (taxas) e a contagem como apoio —
+              contagem sozinha não diz qualidade. Guardas de divisão por zero. */}
           <AtlasMetric
-            label="Investimento"
-            value={data?.policy.spendMeasured ? brl(totals.spend) : "—"}
-            detail={data?.policy.spendMeasured ? "Base marketing_spend" : "marketing_spend indisponível"}
-            trend="CUSTO"
+            icon="🎯"
+            label="Taxa de qualificação"
+            value={totals.leads > 0 ? `${Math.round((totals.qualified / totals.leads) * 1000) / 10}%` : "—"}
+            detail={`${totals.qualified} de ${totals.leads} leads · ${totals.sales} vendas`}
+            tone="green"
+            relevance="primary"
+          />
+          <AtlasMetric
+            icon="🗂️"
+            label="Taxa de descarte"
+            value={totals.leads > 0 ? `${Math.round((totals.discarded / totals.leads) * 1000) / 10}%` : "—"}
+            detail={
+              totals.discarded > 0
+                ? `${totals.classifiedDiscards} de ${totals.discarded} com motivo (${Math.round((totals.classifiedDiscards / totals.discarded) * 100)}%)`
+                : "Nenhum descarte na janela"
+            }
+            tone={totals.leads > 0 && totals.discarded / totals.leads > 0.25 ? "rose" : "violet"}
+          />
+          <AtlasMetric
+            icon="💰"
+            label="CPL médio"
+            value={data?.policy.spendMeasured && totals.leads > 0 && totals.spend > 0 ? brl(totals.spend / totals.leads) : "—"}
+            detail={
+              data?.policy.spendMeasured
+                ? totals.qualified > 0 && totals.spend > 0
+                  ? `${brl(totals.spend)} · ${brl(totals.spend / totals.qualified)} por qualificada`
+                  : `${brl(totals.spend)} investidos`
+                : "marketing_spend indisponível"
+            }
             tone="amber"
           />
+          <AtlasMetric
+            icon="📊"
+            label="Campanhas com leads"
+            value={totals.campaignsRanked}
+            detail={`${totals.campaigns} na organização · janela de ${data?.period.days ?? days} dias`}
+            tone="blue"
+          />
         </section>
+      ) : null}
+
+      {data && (data.policy.windowComplete === false || !data.policy.spendMeasured) ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-4 py-3 text-xs text-slate-400">
+          <span className="font-semibold text-slate-300">Cobertura dos dados:</span>
+          {data.policy.windowComplete === false ? (
+            <span className="rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-1 text-amber-200">janela truncada no teto de paginação — números são piso, não total</span>
+          ) : null}
+          {!data.policy.spendMeasured ? (
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">custos indisponíveis (marketing_spend) — CPL omitido em vez de fingir zero</span>
+          ) : null}
+        </div>
       ) : null}
 
       {data && insufficient > 0 ? (
