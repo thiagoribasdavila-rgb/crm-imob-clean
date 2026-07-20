@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import {
-  AtlasBadge,
-  AtlasEmpty,
-  AtlasRecoverableError,
-  AtlasSkeleton,
-} from "@/components/ui/AtlasUI";
-import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from "react";
+import { supabase } from "@/lib/supabase";
+import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
+import { PageHeader } from "@/components/atlas/page-header";
+import { StatusBadge } from "@/components/atlas/status-badge";
+import { TiltShell } from "@/components/atlas/tilt-shell";
 
 type Item = {
   id: string;
@@ -36,18 +39,7 @@ type CalendarData = {
 };
 
 type Window = "today" | "week" | "month" | "overdue" | "all";
-
-const TONES = {
-  task: "neutral",
-  visit: "violet",
-  follow_up: "info",
-} as const;
-
-const LABELS = {
-  task: "TAREFA",
-  visit: "VISITA",
-  follow_up: "FOLLOW-UP",
-} as const;
+type Sev = "crit" | "warn" | null;
 
 const WINDOWS = [
   ["today", "Hoje"],
@@ -65,12 +57,15 @@ const WINDOW_TITLES: Record<Window, string> = {
   all: "Agenda completa",
 };
 
-const dayLabel = (value: string) =>
-  new Intl.DateTimeFormat("pt-BR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-  }).format(new Date(value));
+// O verbo já nomeia o tipo (tarefa/visita/lead): um dado só por linha.
+const KIND_ACTION = {
+  task: "Ver tarefa",
+  visit: "Preparar visita",
+  follow_up: "Abrir lead",
+} as const;
+
+// Semânticos CC-6: rose para atrasado, amber para hoje; futuro fica neutro.
+const SEV_INK = { crit: "#fb7185", warn: "#f5b544" } as const;
 
 const dayKey = (value: string) =>
   new Intl.DateTimeFormat("en-CA", {
@@ -79,11 +74,87 @@ const dayKey = (value: string) =>
     day: "2-digit",
   }).format(new Date(value));
 
+const weekdayName = (value: string) => {
+  const name = new Intl.DateTimeFormat("pt-BR", { weekday: "long" }).format(
+    new Date(value),
+  );
+  return name.charAt(0).toUpperCase() + name.slice(1);
+};
+
+const shortDate = (value: string) =>
+  new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date(value));
+
 const timeLabel = (value: string) =>
   new Intl.DateTimeFormat("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+
+function EventRow({
+  item,
+  sev,
+  withDate,
+  overdueTag,
+  divider,
+  delay,
+}: {
+  item: Item;
+  sev: Sev;
+  withDate?: boolean;
+  overdueTag?: boolean;
+  divider: boolean;
+  delay: number;
+}) {
+  return (
+    <Link
+      href={item.href}
+      className={`cc6-reveal group flex items-center gap-4 px-5 py-3 transition-colors hover:bg-[rgba(75,141,248,0.04)] ${divider ? "cc6-hairline" : ""} ${sev ? "cc6-sev-band" : ""}`}
+      style={
+        {
+          animationDelay: `${delay}ms`,
+          ...(sev ? { "--cc6-sev": SEV_INK[sev] } : {}),
+        } as CSSProperties
+      }
+      data-kind={item.kind}
+      data-overdue={item.overdue}
+    >
+      <time
+        dateTime={item.at}
+        className={`cc6-num shrink-0 text-[13px] ${withDate ? "w-24" : "w-12"} ${
+          sev === "crit"
+            ? "cc6-crit"
+            : sev === "warn"
+              ? "cc6-warn"
+              : "text-[#aab6ca]"
+        }`}
+      >
+        {withDate ? `${shortDate(item.at)} · ` : ""}
+        {timeLabel(item.at)}
+      </time>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <strong className="max-w-full truncate text-sm font-medium text-[#e8eef8]">
+            {item.title}
+          </strong>
+          {overdueTag ? (
+            <span className="cc6-crit cc6-num text-[10px] tracking-[0.14em] uppercase">
+              Em atraso
+            </span>
+          ) : null}
+        </span>
+        <span className="mt-0.5 block truncate text-xs text-[#6b7890]">
+          {item.detail}
+        </span>
+      </span>
+      <span className="shrink-0 text-xs font-medium text-[#aab6ca] transition-colors group-hover:text-[color:var(--atlas-accent)]">
+        {KIND_ACTION[item.kind]} <span aria-hidden="true">→</span>
+      </span>
+    </Link>
+  );
+}
 
 export default function CalendarPage() {
   const [data, setData] = useState<CalendarData | null>(null);
@@ -143,7 +214,7 @@ export default function CalendarPage() {
     };
   }, [load]);
 
-  const calendarSignals = useMemo(() => {
+  const signals = useMemo(() => {
     const now = new Date();
     const start = new Date(
       now.getFullYear(),
@@ -164,29 +235,7 @@ export default function CalendarPage() {
         const at = new Date(item.at).getTime();
         return at >= start && at < endWeek;
       }).length,
-      visits: items.filter((item) => item.kind === "visit").length,
     };
-  }, [data]);
-
-  const attention = useMemo(() => {
-    const now = new Date();
-    const start = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    ).getTime();
-    const endDay = start + 86_400_000;
-
-    return (data?.items ?? [])
-      .filter((item) => {
-        const at = new Date(item.at).getTime();
-        return item.overdue || (at >= start && at < endDay);
-      })
-      .sort((a, b) => {
-        if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
-        return new Date(a.at).getTime() - new Date(b.at).getTime();
-      })
-      .slice(0, 3);
   }, [data]);
 
   const visible = useMemo(() => {
@@ -214,132 +263,79 @@ export default function CalendarPage() {
     });
   }, [data, window]);
 
-  const groups = useMemo(
+  // Nos recortes futuros, todo o atraso fica fixado no topo (herda o papel do
+  // antigo card "Atenção imediata"); em "Atrasados"/"Todos" ele já está na lista.
+  const pinOverdue = window !== "overdue" && window !== "all";
+
+  const overdueItems = useMemo(
     () =>
-      visible.reduce<
-        Record<string, { label: string; items: Item[] }>
-      >((accumulator, item) => {
-        const key = dayKey(item.at);
-        const group = accumulator[key] ?? {
-          label: dayLabel(item.at),
+      (data?.items ?? [])
+        .filter((item) => item.overdue)
+        .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime()),
+    [data],
+  );
+
+  const groups = useMemo(() => {
+    const source = pinOverdue
+      ? visible.filter((item) => !item.overdue)
+      : visible;
+    const now = new Date();
+    const todayKey = dayKey(now.toISOString());
+    const tomorrowKey = dayKey(
+      new Date(now.getTime() + 86_400_000).toISOString(),
+    );
+    const map = new Map<
+      string,
+      { name: string; date: string; today: boolean; items: Item[] }
+    >();
+    for (const item of source) {
+      const key = dayKey(item.at);
+      let group = map.get(key);
+      if (!group) {
+        group = {
+          name:
+            key === todayKey
+              ? "Hoje"
+              : key === tomorrowKey
+                ? "Amanhã"
+                : weekdayName(item.at),
+          date: shortDate(item.at),
+          today: key === todayKey,
           items: [],
         };
-        group.items.push(item);
-        accumulator[key] = group;
-        return accumulator;
-      }, {}),
-    [visible],
-  );
+        map.set(key, group);
+      }
+      group.items.push(item);
+    }
+    return [...map.entries()].map(([key, group]) => ({ key, ...group }));
+  }, [visible, pinOverdue]);
+
+  const hasOverduePin = pinOverdue && overdueItems.length > 0;
+  const summary = data?.summary;
+  const composition = [
+    ["Tarefas", summary?.tasks],
+    ["Visitas", summary?.visits],
+    ["Follow-ups", summary?.followUps],
+    ["Total", summary?.total],
+  ] as const;
 
   return (
     <div
-      className="space-y-5 pb-10"
+      className="space-y-4 pb-8"
       data-phase="46-commercial-calendar"
       data-evolution-phase="39"
       data-calendar-layout="time-first"
     >
-      <section
-        className="atlas-calendar-hero"
-        aria-labelledby="atlas-calendar-title"
-      >
-        <div className="atlas-calendar-hero-copy">
-          <div className="flex flex-wrap gap-2">
-            <AtlasBadge
-              tone={
-                live === "connected"
-                  ? "success"
-                  : live === "degraded"
-                    ? "warning"
-                    : "neutral"
-              }
-            >
-              {live === "connected"
-                ? "SINCRONIZADA"
-                : live === "degraded"
-                  ? "ATUALIZAÇÃO MANUAL"
-                  : "CONECTANDO"}
-            </AtlasBadge>
-          </div>
-          <h1 id="atlas-calendar-title">Seu tempo comercial, em ordem</h1>
-          <p>
-            Veja primeiro o que atrasou, o que acontece hoje e os próximos
-            compromissos. Tarefas, visitas e follow-ups permanecem em uma única
-            linha do tempo.
-          </p>
-          <div className="atlas-calendar-hero-actions">
-            <CopilotContextAction
-              label="✦ Preparar meu dia"
-              prompt="Organize minha agenda comercial em uma sequência prática: atrasos primeiro, contatos de maior impacto e compromissos que exigem preparação. Apenas sugira; não conclua ou crie tarefas."
-              context={{
-                source: "commercial_calendar",
-                workspace: "calendar",
-                contextLabel: "Agenda comercial",
-                returnHref: "/calendar",
-              }}
-              className="atlas-button-primary"
-            />
-            <Link href="/tasks" className="atlas-button-primary">
-              Criar tarefa
-            </Link>
-            <button
-              type="button"
-              onClick={() => void load()}
-              disabled={loading}
-              className="atlas-button-secondary"
-            >
-              {loading ? "Atualizando…" : "Atualizar agenda"}
-            </button>
-          </div>
-        </div>
-
-        <div
-          className="atlas-calendar-signal-grid"
-          aria-label="Resumo temporal da agenda"
-          aria-busy={loading}
-        >
-          <button
-            type="button"
-            className="atlas-calendar-signal cursor-pointer text-left"
-            data-tone="danger"
-            onClick={() => setWindow("overdue")}
-            aria-pressed={window === "overdue"}
-            aria-label="Ver compromissos atrasados na linha do tempo"
-          >
-            <span>Atrasados</span>
-            <strong>{loading ? "—" : calendarSignals.overdue}</strong>
-            <small>Resolver primeiro</small>
-          </button>
-          <button
-            type="button"
-            className="atlas-calendar-signal cursor-pointer text-left"
-            data-tone="warning"
-            onClick={() => setWindow("today")}
-            aria-pressed={window === "today"}
-            aria-label="Ver compromissos de hoje na linha do tempo"
-          >
-            <span>Hoje</span>
-            <strong>{loading ? "—" : calendarSignals.today}</strong>
-            <small>Compromissos do dia</small>
-          </button>
-          <button
-            type="button"
-            className="atlas-calendar-signal cursor-pointer text-left"
-            data-tone="success"
-            onClick={() => setWindow("week")}
-            aria-pressed={window === "week"}
-            aria-label="Ver os próximos sete dias na linha do tempo"
-          >
-            <span>Próximos 7 dias</span>
-            <strong>{loading ? "—" : calendarSignals.nextSevenDays}</strong>
-            <small>Planejamento imediato</small>
-          </button>
-          <div className="atlas-calendar-signal" data-tone="violet">
-            <span>Visitas</span>
-            <strong>{loading ? "—" : calendarSignals.visits}</strong>
-            <small>Presencial ou vídeo</small>
-          </div>
-        </div>
-      </section>
+      <PageHeader
+        eyebrow="Agenda comercial · Fonte única"
+        title="Seu tempo comercial, em ordem"
+        description="Atrasos em rosa, hoje em âmbar — tarefas, visitas e follow-ups em uma única linha do tempo."
+        action={{
+          href: "/tasks",
+          label: "Criar tarefa",
+          priority: "secondary",
+        }}
+      />
 
       {error ? (
         <AtlasRecoverableError
@@ -349,217 +345,238 @@ export default function CalendarPage() {
         />
       ) : null}
 
-      <AtlasCard className="atlas-calendar-attention-card">
-        <AtlasCardHeader
-          eyebrow="ATENÇÃO IMEDIATA"
-          title="O que exige ação agora"
-          description="Até três compromissos vencidos ou previstos para hoje, ordenados por prazo."
-          action={
-            <Link href="/tasks" className="atlas-button-secondary">
-              Central de tarefas
-            </Link>
-          }
-        />
-        <div
-          className="atlas-calendar-attention-list"
-          aria-live="polite"
-          aria-busy={loading}
+      <section aria-labelledby="atlas-calendar-timeline-title">
+        <TiltShell
+          className="cc6-panel cc6-reveal overflow-hidden"
+          delayMs={40}
+          maxDeg={2}
         >
-          {loading ? (
-            [1, 2, 3].map((item) => (
-              <AtlasSkeleton key={item} className="h-20" />
-            ))
-          ) : attention.length ? (
-            attention.map((item, index) => (
-              <Link
-                href={item.href}
-                key={`attention-${item.kind}-${item.id}`}
-                className="atlas-calendar-attention-item"
-                data-overdue={item.overdue}
+          <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-1">
+            <div className="min-w-0">
+              <p className="cc6-eyebrow">Linha do tempo</p>
+              <h2
+                id="atlas-calendar-timeline-title"
+                className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
               >
-                <span className="atlas-calendar-attention-position">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span className="atlas-calendar-attention-copy">
-                  <small>
-                    {item.overdue ? "ATRASADO" : "HOJE"} · {LABELS[item.kind]}
-                  </small>
-                  <strong>{item.title}</strong>
-                  <span>
-                    {timeLabel(item.at)} · {item.detail}
-                  </span>
-                </span>
-                <span className="atlas-calendar-attention-action">
-                  {item.kind === "task"
-                    ? "Ver tarefa →"
-                    : item.kind === "visit"
-                      ? "Preparar visita →"
-                      : "Abrir lead →"}
-                </span>
-              </Link>
-            ))
-          ) : (
-            <div className="atlas-calendar-attention-clear" role="status">
-              <strong>Nenhum atraso ou compromisso para hoje.</strong>
-              <span>Consulte os próximos dias para preparar sua agenda.</span>
+                {WINDOW_TITLES[window]}
+              </h2>
             </div>
-          )}
-        </div>
-      </AtlasCard>
-
-      <AtlasCard className="atlas-calendar-timeline-card">
-        <AtlasCardHeader
-          eyebrow="LINHA DO TEMPO"
-          title={WINDOW_TITLES[window]}
-          description="Altere o período sem perder a fonte única de tarefas, visitas e próximos contatos."
-        />
-
-        <nav
-          className="atlas-calendar-periods"
-          aria-label="Período da agenda"
-        >
-          {WINDOWS.map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setWindow(key)}
-              aria-pressed={window === key}
-              className={`atlas-calendar-period ${window === key ? "is-active" : ""}`}
-            >
-              {key === "overdue" && !loading && calendarSignals.overdue > 0
-                ? `${label} · ${calendarSignals.overdue}`
-                : label}
-            </button>
-          ))}
-        </nav>
-
-        <div
-          className="atlas-calendar-timeline"
-          aria-live="polite"
-          aria-busy={loading}
-        >
-          {loading ? (
-            [1, 2, 3].map((item) => (
-              <AtlasSkeleton key={item} className="h-32" />
-            ))
-          ) : Object.keys(groups).length ? (
-            Object.entries(groups).map(([date, group]) => {
-              const now = new Date();
-              const todayKey = dayKey(now.toISOString());
-              const tomorrowKey = dayKey(
-                new Date(now.getTime() + 86_400_000).toISOString(),
-              );
-              const isToday = date === todayKey;
-              const isTomorrow = date === tomorrowKey;
-              return (
-              <section
-                key={date}
-                className="atlas-calendar-day"
-                data-today={isToday ? "true" : "false"}
-                style={
-                  isToday
-                    ? { borderColor: "rgba(56, 189, 248, 0.28)" }
-                    : undefined
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <StatusBadge
+                tone={
+                  live === "connected"
+                    ? "success"
+                    : live === "degraded"
+                      ? "warning"
+                      : "neutral"
                 }
               >
-                <header>
-                  <span aria-hidden="true" />
-                  <h2>
-                    {isToday ? "Hoje · " : isTomorrow ? "Amanhã · " : ""}
-                    {group.label}
-                  </h2>
-                  <small>
-                    {group.items.length} {group.items.length === 1 ? "item" : "itens"}
-                  </small>
-                </header>
-                <div className="atlas-calendar-day-items">
-                  {group.items.map((item) => (
-                    <Link
-                      href={item.href}
-                      key={`${item.kind}-${item.id}`}
-                      className="atlas-calendar-item"
-                      data-overdue={item.overdue}
-                      style={
-                        item.overdue
-                          ? {
-                              borderLeft:
-                                "3px solid rgba(244, 63, 94, 0.6)",
-                            }
-                          : undefined
-                      }
+                {live === "connected"
+                  ? "Sincronizada"
+                  : live === "degraded"
+                    ? "Atualização manual"
+                    : "Conectando"}
+              </StatusBadge>
+              <button
+                type="button"
+                onClick={() => void load()}
+                disabled={loading}
+                className="cc6-ghost-btn disabled:opacity-50"
+              >
+                {loading ? "Atualizando…" : "Atualizar"}
+              </button>
+              <CopilotContextAction
+                label="✦ Preparar meu dia"
+                prompt="Organize minha agenda comercial em uma sequência prática: atrasos primeiro, contatos de maior impacto e compromissos que exigem preparação. Apenas sugira; não conclua ou crie tarefas."
+                context={{
+                  source: "commercial_calendar",
+                  workspace: "calendar",
+                  contextLabel: "Agenda comercial",
+                  returnHref: "/calendar",
+                }}
+                className="atlas-button-primary"
+              />
+            </div>
+          </header>
+
+          <nav
+            className="mt-3 flex flex-wrap gap-1.5 px-5 pb-4"
+            aria-label="Período da agenda"
+          >
+            {WINDOWS.map(([key, label]) => {
+              const active = window === key;
+              const count =
+                key === "overdue"
+                  ? signals.overdue
+                  : key === "today"
+                    ? signals.today
+                    : key === "week"
+                      ? signals.nextSevenDays
+                      : null;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setWindow(key)}
+                  aria-pressed={active}
+                  className={`cc6-ghost-btn ${
+                    active
+                      ? "border-[color:var(--atlas-accent)]! bg-[rgba(75,141,248,0.08)]! text-[#e8eef8]!"
+                      : ""
+                  }`}
+                >
+                  {label}
+                  {!loading && count !== null ? (
+                    <strong
+                      className={`cc6-num font-semibold ${
+                        key === "overdue" && count
+                          ? "cc6-crit"
+                          : key === "today" && count
+                            ? "cc6-warn"
+                            : ""
+                      }`}
                     >
-                      <time dateTime={item.at}>{timeLabel(item.at)}</time>
-                      <span className="atlas-calendar-item-copy">
-                        <span className="flex flex-wrap items-center gap-2">
-                          <AtlasBadge tone={TONES[item.kind]}>
-                            {LABELS[item.kind]}
-                          </AtlasBadge>
-                          {item.overdue ? (
-                            <AtlasBadge tone="danger">ATRASADO</AtlasBadge>
-                          ) : null}
-                        </span>
-                        <strong>{item.title}</strong>
-                        <small>{item.detail}</small>
-                      </span>
-                      <span className="atlas-calendar-item-action">
-                        {item.kind === "task"
-                          ? "Ver tarefa →"
-                          : item.kind === "visit"
-                            ? "Preparar visita →"
-                            : "Abrir lead →"}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </section>
+                      {count}
+                    </strong>
+                  ) : null}
+                </button>
               );
-            })
-          ) : (
-            <AtlasEmpty
-              reason="completed"
-              eyebrow="Período sem pendências"
-              title="Agenda livre neste período"
-              description="Nenhum compromisso exige atenção neste recorte. Crie uma tarefa ou consulte outro período."
-              action={
-                <Link href="/tasks" className="atlas-button-primary">
-                  Criar tarefa
-                </Link>
-              }
-            />
-          )}
-        </div>
+            })}
+          </nav>
 
-        <details className="atlas-calendar-source-details">
-          <summary>Ver composição da agenda</summary>
-          <div className="atlas-calendar-source-grid">
-            <div>
-              <span>Tarefas</span>
-              <strong>{loading ? "—" : data?.summary.tasks ?? 0}</strong>
-              <small>Ações internas abertas</small>
-            </div>
-            <div>
-              <span>Visitas</span>
-              <strong>{loading ? "—" : data?.summary.visits ?? 0}</strong>
-              <small>Encontros ativos</small>
-            </div>
-            <div>
-              <span>Follow-ups</span>
-              <strong>{loading ? "—" : data?.summary.followUps ?? 0}</strong>
-              <small>Próximas ações da carteira</small>
-            </div>
-            <div>
-              <span>Total visível</span>
-              <strong>{loading ? "—" : data?.summary.total ?? 0}</strong>
-              <small>Sem duplicar visita e próxima ação</small>
-            </div>
+          <div className="flex flex-col" aria-live="polite" aria-busy={loading}>
+            {loading ? (
+              <div className="space-y-2 px-5 pb-5">
+                {[1, 2, 3].map((item) => (
+                  <AtlasSkeleton key={item} className="h-24" />
+                ))}
+              </div>
+            ) : hasOverduePin || groups.length ? (
+              <>
+                {hasOverduePin ? (
+                  <section
+                    className="cc6-reveal"
+                    style={{ animationDelay: "80ms" }}
+                    aria-labelledby="atlas-calendar-overdue-title"
+                  >
+                    <header className="cc6-hairline flex items-baseline justify-between gap-3 px-5 pt-3.5 pb-1">
+                      <h3
+                        id="atlas-calendar-overdue-title"
+                        className="flex items-baseline gap-2 text-sm font-semibold tracking-tight"
+                      >
+                        <span className="cc6-crit">Em atraso</span>
+                        <span className="cc6-num text-[11px] font-normal text-[#6b7890]">
+                          resolver primeiro
+                        </span>
+                      </h3>
+                      <span
+                        className="cc6-crit cc6-num text-[11px]"
+                        aria-label={`${overdueItems.length} compromissos em atraso`}
+                      >
+                        {overdueItems.length}
+                      </span>
+                    </header>
+                    {overdueItems.map((item, index) => (
+                      <EventRow
+                        key={`${item.kind}-${item.id}`}
+                        item={item}
+                        sev="crit"
+                        withDate
+                        divider={index > 0}
+                        delay={100 + Math.min(index, 6) * 45}
+                      />
+                    ))}
+                  </section>
+                ) : null}
+                {groups.map((group, groupIndex) => {
+                  const baseDelay = 120 + Math.min(groupIndex, 4) * 70;
+                  return (
+                    <section
+                      key={group.key}
+                      className="cc6-reveal"
+                      style={{ animationDelay: `${baseDelay}ms` }}
+                      data-today={group.today}
+                    >
+                      <header className="cc6-hairline flex items-baseline justify-between gap-3 px-5 pt-3.5 pb-1">
+                        <h3 className="flex items-baseline gap-2 text-sm font-semibold tracking-tight">
+                          <span
+                            className={
+                              group.today ? "cc6-warn" : "text-[#e8eef8]"
+                            }
+                          >
+                            {group.name}
+                          </span>
+                          <span className="cc6-num text-[11px] font-normal text-[#6b7890]">
+                            {group.date}
+                          </span>
+                        </h3>
+                        <span
+                          className="cc6-num text-[11px] text-[#6b7890]"
+                          aria-label={`${group.items.length} compromissos`}
+                        >
+                          {group.items.length}
+                        </span>
+                      </header>
+                      {group.items.map((item, index) => (
+                        <EventRow
+                          key={`${item.kind}-${item.id}`}
+                          item={item}
+                          sev={
+                            item.overdue
+                              ? "crit"
+                              : group.today
+                                ? "warn"
+                                : null
+                          }
+                          overdueTag={item.overdue && window === "all"}
+                          divider={index > 0}
+                          delay={baseDelay + 20 + Math.min(index, 6) * 40}
+                        />
+                      ))}
+                    </section>
+                  );
+                })}
+              </>
+            ) : (
+              <p className="px-5 py-6 text-sm text-[#6b7890]">
+                {window === "all" ? (
+                  "Agenda vazia — comece criando uma tarefa."
+                ) : (
+                  <>
+                    Agenda livre neste período.{" "}
+                    <button
+                      type="button"
+                      onClick={() => setWindow("all")}
+                      className="cursor-pointer font-medium text-[color:var(--atlas-accent)] hover:underline"
+                    >
+                      Ver agenda completa
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
           </div>
-        </details>
-      </AtlasCard>
 
-      <p className="atlas-calendar-governance-note">
-        A API aplica organização, hierarquia e RLS. Atualizações apenas
-        reorganizam a agenda; nenhuma ação é concluída e nenhum cliente é contatado automaticamente.
-      </p>
+          <div
+            className="cc6-hairline mt-3 flex flex-wrap items-center gap-1.5 px-5 py-3"
+            aria-label="Composição da agenda"
+          >
+            {composition.map(([label, value]) => (
+              <span key={label} className="cc6-chip">
+                {label}
+                <strong className="font-semibold text-[#e8eef8]">
+                  {loading || value === undefined ? "—" : value}
+                </strong>
+              </span>
+            ))}
+          </div>
+          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+            Organização, hierarquia e RLS aplicadas pela API · atualizações
+            apenas reorganizam a agenda · nenhuma ação é concluída e nenhum
+            cliente é contatado automaticamente.
+          </p>
+        </TiltShell>
+      </section>
     </div>
   );
 }
