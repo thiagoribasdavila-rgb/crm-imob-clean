@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import type { ProposalSignalKind } from "@/lib/ai/action-proposals";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import {
   AtlasBadge,
@@ -419,7 +420,20 @@ type ProactivePriority = {
   reason: string;
   primaryLabel: string;
   primaryHref: string;
+  // SALTO V4.1 — quando o sinal tem ação preparável a partir dos dados do
+  // cockpit, o card ganha "Preparar ação". `id` já é o leadId (fila do corretor).
+  actionSignal?: ProposalSignalKind;
+  actionMetric?: number;
 };
+
+// Sinais que produzem ação preparável só com o que o cockpit tem em mãos.
+// follow_up_overdue exige o id do followup (ausente aqui) — fica de fora para
+// não gerar proposta vazia; o corretor reagenda pela tela do lead ("Atender").
+const COCKPIT_ACTIONABLE_SIGNALS = new Set<ProposalSignalKind>([
+  "stale_stage",
+  "high_score_no_contact",
+  "objection_open",
+]);
 
 // Ordem de decisão: crítico → atenção → oportunidade.
 const PRIORITY_SEVERITY_RANK: Record<ProactiveSeverity, number> = {
@@ -1052,6 +1066,51 @@ export default function CommandCenterPage() {
     );
   }, []);
 
+  // SALTO V4.1 — "Preparar ação": transforma o sinal do herói numa proposta
+  // concreta que entra na Caixa de Aprovações. Estado por lead, honesto:
+  // idle → loading → (sent | deduped | error). Zero dado inventado.
+  const [proposalState, setProposalState] = useState<
+    Record<string, { status: "loading" | "sent" | "deduped" | "error"; message?: string }>
+  >({});
+  const prepareAction = useCallback(
+    async (leadId: string, signal: ProposalSignalKind, metric?: number) => {
+      setProposalState((current) => ({ ...current, [leadId]: { status: "loading" } }));
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const token = session.session?.access_token || "";
+        const context =
+          typeof metric === "number" && (signal === "stale_stage" || signal === "high_score_no_contact")
+            ? { daysStalled: metric }
+            : {};
+        const response = await fetch("/api/v2/approvals", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId, signal, context }),
+        });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
+          const message =
+            response.status >= 500
+              ? "Indisponível até a ativação do banco."
+              : payload?.error?.message || "Não foi possível preparar a ação.";
+          setProposalState((current) => ({ ...current, [leadId]: { status: "error", message } }));
+          return;
+        }
+        const payload = (await response.json()) as { data?: { deduped?: boolean } };
+        setProposalState((current) => ({
+          ...current,
+          [leadId]: { status: payload.data?.deduped ? "deduped" : "sent" },
+        }));
+      } catch {
+        setProposalState((current) => ({
+          ...current,
+          [leadId]: { status: "error", message: "Indisponível até a ativação do banco." },
+        }));
+      }
+    },
+    [],
+  );
+
   const referenceTime = lastUpdated?.getTime() ?? 0;
   const viewer = snapshot.profiles.find((profile) => String(profile.id) === viewerId);
   const viewerRole = viewer ? normalized(stringValue(viewer, "commercial_role", "role")) : "";
@@ -1517,6 +1576,13 @@ export default function CommandCenterPage() {
               : item.topSeverity === "warning"
                 ? "attention"
                 : "opportunity";
+          // O 1º sinal é o de maior severidade (ordenação do backend). Só
+          // oferecemos "Preparar ação" quando o kind é acionável do cockpit.
+          const top = item.signals[0];
+          const actionable =
+            top && COCKPIT_ACTIONABLE_SIGNALS.has(top.kind as ProposalSignalKind)
+              ? (top.kind as ProposalSignalKind)
+              : undefined;
           return {
             id: item.leadId,
             severity,
@@ -1525,6 +1591,8 @@ export default function CommandCenterPage() {
             reason: item.topReason,
             primaryLabel: "Atender",
             primaryHref: `/leads/${item.leadId}`,
+            actionSignal: actionable,
+            actionMetric: actionable ? top?.metric : undefined,
           };
         })
       : visibleBriefingSignals
@@ -2135,6 +2203,47 @@ export default function CommandCenterPage() {
                   >
                     {card.primaryLabel}
                   </Link>
+                  {card.actionSignal ? (
+                    (() => {
+                      const state = proposalState[card.id];
+                      if (state?.status === "sent" || state?.status === "deduped") {
+                        return (
+                          <span className="cc6-chip tabular-nums" role="status">
+                            {state.status === "deduped"
+                              ? "Já havia proposta · aguarda aprovação"
+                              : "Proposta enviada · aguarda aprovação"}
+                            <Link
+                              href="/approvals"
+                              className="ml-2 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                            >
+                              Abrir aprovações →
+                            </Link>
+                          </span>
+                        );
+                      }
+                      if (state?.status === "error") {
+                        return (
+                          <span className="cc6-crit text-sm" role="status">
+                            {state.message}
+                          </span>
+                        );
+                      }
+                      return (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            prepareAction(card.id, card.actionSignal as ProposalSignalKind, card.actionMetric)
+                          }
+                          className="cc5-action"
+                          aria-busy={state?.status === "loading"}
+                          disabled={state?.status === "loading"}
+                          aria-label={`Preparar ação para ${card.title}`}
+                        >
+                          {state?.status === "loading" ? "Preparando…" : "Preparar ação"}
+                        </button>
+                      );
+                    })()
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => toggleSignalSeen(card.id)}
