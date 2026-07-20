@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import { LIVE_LEAD_SELECT, leadAsOpportunity, mapLegacyLead } from "@/lib/compat/legacy-v2";
+import { PageHeader } from "@/components/atlas/page-header";
+import { TiltShell } from "@/components/atlas/tilt-shell";
 
 type Period = "day" | "week" | "month" | "all";
 type Lead = { id: string; status: string | null; source: string | null; score: number | null; created_at: string };
@@ -12,6 +14,9 @@ type WeeklyReport = { totals: { leads: number; spend: number; cpl: number | null
 type WeeklyReview = { outcomes:{completedTasks:number;completedVisits:number;interactions:number;newLeads:number};backlog:{openTasks:number;overdueTasks:number;leadsWithoutNextAction:number;hotLeadsWithoutNextAction:number;noShows:number};quality:{completionRate:number|null;sampleSize:number;minimumSample:number;sufficientSample:boolean};plan:Array<{key:string;title:string;evidence:string;action:string;href:string}>;method:{llmCost:number;peopleRanking:boolean;humanDecisionRequired:boolean} };
 
 const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
+const TH_CLASS = "px-3 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#6b7890]";
+const PERIOD_LABEL: Record<Period, string> = { day: "Hoje", week: "7 dias", month: "30 dias", all: "Histórico" };
 
 export default function ReportsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -80,21 +85,243 @@ export default function ReportsPage() {
     total: periodData.leads.filter((lead) => (lead.source || "não informada") === source).length,
   })).sort((a, b) => b.total - a.total);
 
-  return <div className="space-y-8">
-    <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-400">Analytics</p><h1 className="mt-2 text-3xl font-black">Relatórios executivos</h1><p className="mt-2 text-sm text-zinc-400">VGV, forecast, conversão, marketing e qualidade da base comercial.</p></div><div className="flex flex-wrap gap-2" role="group" aria-label="Período do relatório">{(["day", "week", "month", "all"] as Period[]).map((key) => <button key={key} type="button" aria-pressed={period === key} onClick={() => setPeriod(key)} className={`rounded-full px-4 py-2 text-xs font-bold transition ${period === key ? "bg-white text-zinc-950" : "border border-zinc-800 text-zinc-400 hover:text-white"}`}>{key === "day" ? "Hoje" : key === "week" ? "7 dias" : key === "month" ? "30 dias" : "Histórico"}</button>)}</div></header>
-    {error ? <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div> : null}
-    {weeklyReview ? <section className="space-y-5 rounded-3xl border border-cyan-400/15 bg-gradient-to-br from-cyan-500/[.07] to-violet-500/[.04] p-5 sm:p-7" data-phase="49-weekly-review"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-300">Fase 49 · Revisão semanal pessoal</p><h2 className="mt-2 text-2xl font-black">O que avançou e o que merece foco</h2><p className="mt-2 text-sm text-zinc-400">Últimos 7 dias, somente sua operação. Sem ranking de pessoas e sem decisões automáticas.</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[["Tarefas concluídas",weeklyReview.outcomes.completedTasks],["Visitas realizadas",weeklyReview.outcomes.completedVisits],["Interações registradas",weeklyReview.outcomes.interactions],["Novas leads",weeklyReview.outcomes.newLeads]].map(([label,value])=><div key={String(label)} className="rounded-2xl border border-white/[.07] bg-black/15 p-4"><p className="text-xs text-zinc-500">{label}</p><strong className="mt-2 block text-xl">{value}</strong></div>)}</div><div className="grid gap-5 lg:grid-cols-[.8fr_1.2fr]"><article className="rounded-2xl border border-white/[.07] bg-black/15 p-5"><h3 className="font-bold">Pendências reais</h3><div className="mt-4 space-y-3 text-sm text-zinc-400"><p><strong className="text-rose-200">{weeklyReview.backlog.overdueTasks}</strong> tarefas vencidas</p><p><strong className="text-amber-200">{weeklyReview.backlog.leadsWithoutNextAction}</strong> leads sem próxima ação</p><p><strong className="text-violet-200">{weeklyReview.backlog.hotLeadsWithoutNextAction}</strong> quentes sem agenda</p><p><strong className="text-zinc-200">{weeklyReview.backlog.noShows}</strong> ausências em visitas</p></div><p className="mt-5 text-[11px] leading-5 text-zinc-500">{weeklyReview.quality.sufficientSample?`Cumprimento observado: ${weeklyReview.quality.completionRate}% em ${weeklyReview.quality.sampleSize} tarefas.`:`Amostra pequena (${weeklyReview.quality.sampleSize}/${weeklyReview.quality.minimumSample}); sem percentual para evitar conclusão frágil.`}</p></article><article className="rounded-2xl border border-white/[.07] bg-black/15 p-5"><h3 className="font-bold">Plano da próxima semana</h3><div className="mt-4 space-y-3">{weeklyReview.plan.map((item,index)=><a key={item.key} href={item.href} className="flex gap-3 rounded-xl border border-white/[.06] p-3 transition hover:border-cyan-300/20"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-cyan-400/10 text-xs font-bold text-cyan-200">{index+1}</span><span><strong className="text-sm text-white">{item.title}</strong><span className="mt-1 block text-xs text-zinc-500">{item.evidence}</span><span className="mt-1 block text-xs text-cyan-200">{item.action} →</span></span></a>)}</div></article></div><p className="text-[10px] text-zinc-500">Plano explicável, custo LLM zero e aprovação humana obrigatória.</p></section> : null}
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {[
-        ["VGV em oportunidades", money(metrics.vgv)], ["Forecast ponderado", money(metrics.forecast)],
-        ["Conversão", `${metrics.conversion.toFixed(1)}%`], ["Score médio", metrics.averageScore.toFixed(0)],
-      ].map(([label, value]) => <article key={String(label)} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5"><p className="text-sm text-zinc-400">{label}</p><p className="mt-3 text-2xl font-black">{loading ? "—" : value}</p></article>)}
-    </section>
-    {weekly ? <section className="space-y-5 rounded-3xl border border-blue-400/15 bg-gradient-to-br from-blue-500/[.08] to-cyan-500/[.03] p-5 sm:p-7"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-300">Relatório semanal de aquisição</p><h2 className="mt-2 text-2xl font-black">Leads e custo por campanha e incorporadora</h2><p className="mt-2 text-sm text-zinc-400">Últimos 7 dias · custo oficial da Meta quando conectado · sem decisões automáticas.</p></div><button type="button" onClick={() => window.print()} className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold text-zinc-200">Imprimir semanal</button></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{[["Leads", weekly.totals.leads],["Investimento", money(weekly.totals.spend)],["CPL", weekly.totals.cpl === null ? "—" : money(weekly.totals.cpl)],["Campanhas", weekly.totals.campaigns],["Incorporadoras", weekly.totals.developers]].map(([label,value]) => <div key={String(label)} className="rounded-2xl border border-white/[.07] bg-black/15 p-4"><p className="text-xs text-zinc-500">{label}</p><strong className="mt-2 block text-xl">{value}</strong></div>)}</div>{weekly.warnings?.map((warning) => <p key={warning} className="rounded-xl border border-amber-400/20 bg-amber-400/[.07] p-3 text-xs text-amber-100">{warning}</p>)}<div className="grid gap-5 xl:grid-cols-2"><div className="overflow-x-auto rounded-2xl border border-white/[.07] bg-black/15 p-4"><h3 className="font-bold">Por campanha</h3><table className="mt-4 w-full min-w-[560px] text-left text-sm"><thead className="text-zinc-500"><tr><th className="pb-3">Campanha</th><th>Leads</th><th>Qualificadas</th><th>Custo</th><th>CPL</th></tr></thead><tbody className="divide-y divide-white/[.06]">{weekly.campaigns.map((row) => <tr key={row.campaignId}><td className="py-3 font-semibold">{row.campaignName}</td><td>{row.leads}</td><td>{row.qualified}</td><td>{row.spend === null ? "Não conectado" : money(row.spend)}</td><td>{row.cpl === null ? "—" : money(row.cpl)}</td></tr>)}</tbody></table></div><div className="overflow-x-auto rounded-2xl border border-white/[.07] bg-black/15 p-4"><h3 className="font-bold">Por incorporadora</h3><table className="mt-4 w-full min-w-[520px] text-left text-sm"><thead className="text-zinc-500"><tr><th className="pb-3">Incorporadora</th><th>Leads</th><th>Campanhas</th><th>Custo</th><th>CPL</th></tr></thead><tbody className="divide-y divide-white/[.06]">{weekly.developers.map((row) => <tr key={row.developer}><td className="py-3"><span className="font-semibold">{row.developer}</span>{row.allocation !== "direct" ? <span className="mt-1 block text-[10px] text-amber-300">rateio proporcional por leads</span> : null}</td><td>{row.leads}</td><td>{row.campaigns}</td><td>{money(row.spend)}</td><td>{row.cpl === null ? "—" : money(row.cpl)}</td></tr>)}</tbody></table></div></div></section> : null}
-    <section className="grid gap-4 lg:grid-cols-[1.2fr_.8fr]"><article className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-blue-500/5 p-6"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-violet-300">IA preditiva explicável</p><h2 className="mt-2 text-xl font-black">{briefing?.signals[0]?.title || "Consolidando tendências"}</h2></div><span className="rounded-full border border-violet-400/20 px-3 py-1 text-[10px] font-bold text-violet-200">{briefing?.status?.toUpperCase() || "ANÁLISE"}</span></div><p className="mt-4 text-sm leading-6 text-zinc-300">{briefing?.signals[0]?.evidence || "O Atlas está reunindo sinais suficientes para calcular risco, oportunidade e próxima ação."}</p><p className="mt-3 text-sm font-semibold text-violet-100">{briefing?.signals[0]?.action}</p>{briefing?.signals[0] ? <a href={briefing.signals[0].href} className="mt-4 inline-flex text-xs font-bold text-blue-300">Abrir ação recomendada →</a> : null}</article><article className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6"><p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-300">Leitura do período</p><h2 className="mt-2 text-xl font-black">Decisão, não excesso de gráficos</h2><p className="mt-3 text-sm leading-6 text-zinc-400">O painel usa somente dados visíveis no seu escopo. Tendências são recomendações; forecast, campanhas e registros não mudam sem revisão humana.</p><button type="button" onClick={() => window.print()} className="mt-5 rounded-xl border border-zinc-700 px-4 py-2 text-xs font-bold text-zinc-200">Salvar ou imprimir relatório</button></article></section>
-    <section className="grid gap-6 xl:grid-cols-2">
-      <article className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6"><h2 className="text-xl font-black">Funil comercial</h2><div className="mt-6 space-y-4">{funnel.map((item) => { const width = periodData.leads.length ? Math.max(3, (item.total / periodData.leads.length) * 100) : 3; return <div key={item.status}><div className="flex justify-between text-sm"><span className="capitalize text-zinc-300">{item.status}</span><strong>{item.total}</strong></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-800"><div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500" style={{ width: `${width}%` }} /></div></div>; })}</div></article>
-      <article className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6"><h2 className="text-xl font-black">Origem dos leads</h2><div className="mt-6 divide-y divide-zinc-800">{sources.length === 0 ? <p className="text-sm text-zinc-500">Sem dados de origem.</p> : null}{sources.slice(0, 10).map((item) => <div key={item.source} className="flex items-center justify-between py-4"><span className="capitalize text-zinc-300">{item.source}</span><strong>{item.total}</strong></div>)}</div></article>
-    </section>
-  </div>;
+  /* Sem leads no recorte não há denominador: conversão e score exibem "—" em
+     vez de um 0 que pareceria medido. */
+  const decisive = [
+    { label: "VGV em oportunidades", value: money(metrics.vgv) },
+    { label: "forecast ponderado", value: money(metrics.forecast) },
+    { label: "conversão", value: periodData.leads.length ? `${metrics.conversion.toFixed(1)}%` : "—" },
+    { label: "score médio", value: periodData.leads.length ? metrics.averageScore.toFixed(0) : "—" },
+  ];
+
+  return (
+    <div className="space-y-4 pb-8">
+      <PageHeader
+        eyebrow="Analytics · Executivo"
+        title="Relatórios executivos"
+        description="VGV, forecast, conversão, marketing e qualidade da base — números para decidir, não coleção de gráficos."
+        action={{ href: "/decision-center", label: "Abrir decisões", priority: "secondary" }}
+      />
+
+      {/* Números decisivos primeiro, com o recorte de período na mesma régua.
+          Única superfície com 3D da página. */}
+      <section aria-label="Números decisivos do período">
+        <TiltShell className="cc6-panel cc6-reveal p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="cc6-eyebrow">Números decisivos</p>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Período do relatório">
+              {(["day", "week", "month", "all"] as Period[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={period === key}
+                  onClick={() => setPeriod(key)}
+                  className={`cc6-chip cursor-pointer transition-colors ${period === key ? "border-[color:var(--atlas-accent)]! text-[#e8eef8]!" : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!"} ${focusRing}`}
+                >
+                  {PERIOD_LABEL[key]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-x-10 gap-y-4" aria-busy={loading}>
+            {decisive.map((metric) => (
+              <div key={metric.label}>
+                <p className="cc6-metric-value text-2xl leading-none sm:text-3xl">{loading ? "—" : metric.value}</p>
+                <p className="cc6-metric-label mt-1.5">{metric.label}</p>
+              </div>
+            ))}
+          </div>
+        </TiltShell>
+      </section>
+
+      {error ? (
+        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[#fb7185]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div>
+      ) : null}
+
+      {weeklyReview ? (
+        <section className="cc6-panel cc6-reveal p-4 sm:p-5" style={{ animationDelay: "60ms" }} data-phase="49-weekly-review" aria-labelledby="weekly-review-title">
+          <header>
+            <p className="cc6-eyebrow">Fase 49 · Revisão semanal pessoal</p>
+            <h2 id="weekly-review-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">O que avançou e o que merece foco</h2>
+            <p className="mt-1 text-xs leading-5 text-[#6b7890]">Últimos 7 dias, somente sua operação.</p>
+          </header>
+          <div className="mt-4 flex flex-wrap gap-x-10 gap-y-4">
+            {([["tarefas concluídas", weeklyReview.outcomes.completedTasks], ["visitas realizadas", weeklyReview.outcomes.completedVisits], ["interações registradas", weeklyReview.outcomes.interactions], ["novas leads", weeklyReview.outcomes.newLeads]] as const).map(([label, value]) => (
+              <div key={label}>
+                <p className="cc6-metric-value text-xl leading-none">{value}</p>
+                <p className="cc6-metric-label mt-1.5">{label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-[.8fr_1.2fr]">
+            <article className="cc6-panel-quiet p-4">
+              <h3 className="text-sm font-semibold tracking-tight text-[#e8eef8]">Pendências reais</h3>
+              <div className="mt-3 space-y-1.5 text-xs leading-5 text-[#aab6ca]">
+                <p><strong className="cc6-num cc6-crit font-semibold">{weeklyReview.backlog.overdueTasks}</strong> tarefas vencidas</p>
+                <p><strong className="cc6-num cc6-warn font-semibold">{weeklyReview.backlog.leadsWithoutNextAction}</strong> leads sem próxima ação</p>
+                <p><strong className="cc6-num cc6-warn font-semibold">{weeklyReview.backlog.hotLeadsWithoutNextAction}</strong> quentes sem agenda</p>
+                <p><strong className="cc6-num font-semibold text-[#e8eef8]">{weeklyReview.backlog.noShows}</strong> ausências em visitas</p>
+              </div>
+              <p className="cc6-hairline mt-3 pt-3 text-[11px] leading-5 text-[#6b7890]">
+                {weeklyReview.quality.sufficientSample ? `Cumprimento observado: ${weeklyReview.quality.completionRate}% em ${weeklyReview.quality.sampleSize} tarefas.` : `Amostra pequena (${weeklyReview.quality.sampleSize}/${weeklyReview.quality.minimumSample}); sem percentual para evitar conclusão frágil.`}
+              </p>
+            </article>
+            <article className="cc6-panel-quiet p-4">
+              <h3 className="text-sm font-semibold tracking-tight text-[#e8eef8]">Plano da próxima semana</h3>
+              <div className="mt-3 space-y-2">
+                {weeklyReview.plan.map((item, index) => (
+                  <a key={item.key} href={item.href} className={`flex gap-3 rounded-xl border border-[rgba(148,163,184,0.12)] p-3 transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}>
+                    <span className="cc6-num text-xs text-[#6b7890]" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="min-w-0">
+                      <strong className="block text-[13px] font-semibold text-[#e8eef8]">{item.title}</strong>
+                      <span className="mt-0.5 block text-xs leading-5 text-[#6b7890]">{item.evidence}</span>
+                      <span className="mt-0.5 block text-xs font-medium text-[color:var(--atlas-accent-hover)]">{item.action} →</span>
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </article>
+          </div>
+        </section>
+      ) : null}
+
+      {weekly ? (
+        <section className="cc6-panel cc6-reveal p-4 sm:p-5" style={{ animationDelay: "120ms" }} aria-labelledby="weekly-acquisition-title">
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="cc6-eyebrow">Aquisição · Últimos 7 dias</p>
+              <h2 id="weekly-acquisition-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Leads e custo por campanha e incorporadora</h2>
+              <p className="mt-1 text-xs leading-5 text-[#6b7890]">Custo oficial da Meta quando conectado.</p>
+            </div>
+            <button type="button" onClick={() => window.print()} className="cc6-ghost-btn min-h-11 shrink-0">Imprimir relatório</button>
+          </header>
+          <div className="mt-4 flex flex-wrap gap-x-10 gap-y-4">
+            {([["leads", String(weekly.totals.leads)], ["investimento", money(weekly.totals.spend)], ["CPL", weekly.totals.cpl === null ? "—" : money(weekly.totals.cpl)], ["campanhas", String(weekly.totals.campaigns)], ["incorporadoras", String(weekly.totals.developers)]] as const).map(([label, value]) => (
+              <div key={label}>
+                <p className="cc6-metric-value text-xl leading-none">{value}</p>
+                <p className="cc6-metric-label mt-1.5">{label}</p>
+              </div>
+            ))}
+          </div>
+          {weekly.warnings?.length ? (
+            <div className="mt-4 grid gap-2">
+              {weekly.warnings.map((warning) => (
+                <p key={warning} className="cc6-sev-band cc6-panel-quiet py-2.5 pl-4 pr-3 text-xs leading-5 text-[#f5b544]" style={{ "--cc6-sev": "#f5b544" } as CSSProperties}>{warning}</p>
+              ))}
+            </div>
+          ) : null}
+          <div className="mt-4 grid gap-4 xl:grid-cols-2">
+            <div className="overflow-x-auto">
+              <h3 className="text-sm font-semibold tracking-tight text-[#e8eef8]">Por campanha</h3>
+              <table className="mt-2 w-full min-w-[560px] text-sm">
+                <thead>
+                  <tr className="border-b border-b-[rgba(148,163,184,0.12)]">
+                    <th scope="col" className={TH_CLASS}>Campanha</th>
+                    <th scope="col" className={TH_CLASS}>Leads</th>
+                    <th scope="col" className={TH_CLASS}>Qualificadas</th>
+                    <th scope="col" className={TH_CLASS}>Custo</th>
+                    <th scope="col" className={TH_CLASS}>CPL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weekly.campaigns.map((row) => (
+                    <tr key={row.campaignId} className="border-t border-[rgba(148,163,184,0.12)] first:border-t-0 hover:bg-white/[0.015]">
+                      <td className="px-3 py-3 font-semibold text-[#e8eef8]">{row.campaignName}</td>
+                      <td className="cc6-num px-3 py-3 text-[#aab6ca]">{row.leads}</td>
+                      <td className="cc6-num px-3 py-3 text-[#aab6ca]">{row.qualified}</td>
+                      <td className="cc6-num px-3 py-3 text-[#aab6ca]">{row.spend === null ? "Não conectado" : money(row.spend)}</td>
+                      <td className="cc6-num px-3 py-3 text-[#aab6ca]">{row.cpl === null ? "—" : money(row.cpl)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="overflow-x-auto">
+              <h3 className="text-sm font-semibold tracking-tight text-[#e8eef8]">Por incorporadora</h3>
+              <table className="mt-2 w-full min-w-[520px] text-sm">
+                <thead>
+                  <tr className="border-b border-b-[rgba(148,163,184,0.12)]">
+                    <th scope="col" className={TH_CLASS}>Incorporadora</th>
+                    <th scope="col" className={TH_CLASS}>Leads</th>
+                    <th scope="col" className={TH_CLASS}>Campanhas</th>
+                    <th scope="col" className={TH_CLASS}>Custo</th>
+                    <th scope="col" className={TH_CLASS}>CPL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weekly.developers.map((row) => (
+                    <tr key={row.developer} className="border-t border-[rgba(148,163,184,0.12)] first:border-t-0 hover:bg-white/[0.015]">
+                      <td className="px-3 py-3">
+                        <span className="font-semibold text-[#e8eef8]">{row.developer}</span>
+                        {row.allocation !== "direct" ? <span className="mt-0.5 block text-[10px] text-[#f5b544]">rateio proporcional por leads</span> : null}
+                      </td>
+                      <td className="cc6-num px-3 py-3 text-[#aab6ca]">{row.leads}</td>
+                      <td className="cc6-num px-3 py-3 text-[#aab6ca]">{row.campaigns}</td>
+                      <td className="cc6-num px-3 py-3 text-[#aab6ca]">{money(row.spend)}</td>
+                      <td className="cc6-num px-3 py-3 text-[#aab6ca]">{row.cpl === null ? "—" : money(row.cpl)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="cc6-panel cc6-reveal p-4 sm:p-5" style={{ animationDelay: "180ms" }} aria-labelledby="briefing-title">
+        <header className="flex flex-wrap items-center justify-between gap-2">
+          <p className="cc6-eyebrow">IA preditiva explicável</p>
+          <span className="cc6-chip">{briefing?.status?.toUpperCase() || "ANÁLISE"}</span>
+        </header>
+        <h2 id="briefing-title" className="mt-2 text-lg font-semibold tracking-tight text-[#e8eef8]">{briefing?.signals[0]?.title || "Consolidando tendências"}</h2>
+        <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[#aab6ca]">{briefing?.signals[0]?.evidence || "O Atlas está reunindo sinais suficientes para calcular risco, oportunidade e próxima ação."}</p>
+        {briefing?.signals[0]?.action ? <p className="mt-2 max-w-3xl text-[13px] font-medium leading-6 text-[#e8eef8]">{briefing.signals[0].action}</p> : null}
+        {briefing?.signals[0] ? (
+          <a href={briefing.signals[0].href} className="cc6-ghost-btn mt-3 min-h-11">Abrir ação recomendada →</a>
+        ) : null}
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <article className="cc6-panel cc6-reveal p-4 sm:p-5" style={{ animationDelay: "240ms" }} aria-labelledby="funnel-title">
+          <p className="cc6-eyebrow">Distribuição do período</p>
+          <h2 id="funnel-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Funil comercial</h2>
+          <div className="mt-4 space-y-3">
+            {funnel.map((item) => {
+              const width = periodData.leads.length ? Math.max(3, (item.total / periodData.leads.length) * 100) : 3;
+              return (
+                <div key={item.status}>
+                  <div className="flex items-baseline justify-between text-[13px]">
+                    <span className="capitalize text-[#aab6ca]">{item.status}</span>
+                    <strong className="cc6-num font-semibold text-[#e8eef8]">{item.total}</strong>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div className="h-full rounded-full bg-[color:var(--atlas-accent)] transition-[width]" style={{ width: `${width}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </article>
+        <article className="cc6-panel cc6-reveal p-4 sm:p-5" style={{ animationDelay: "300ms" }} aria-labelledby="sources-title">
+          <p className="cc6-eyebrow">Qualidade da base</p>
+          <h2 id="sources-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Origem dos leads</h2>
+          <div className="cc6-hairline mt-4">
+            {sources.length === 0 ? <p className="py-3 text-xs leading-5 text-[#6b7890]">Sem dados de origem no período.</p> : null}
+            {sources.slice(0, 10).map((item) => (
+              <div key={item.source} className="flex items-center justify-between border-t border-[rgba(148,163,184,0.12)] py-3 first:border-t-0">
+                <span className="capitalize text-[13px] text-[#aab6ca]">{item.source}</span>
+                <strong className="cc6-num text-[13px] font-semibold text-[#e8eef8]">{item.total}</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      {/* Governança consolidada (antes repetida no cabeçalho da revisão semanal,
+          no semanal de aquisição e no cartão "Leitura do período"). */}
+      <p className="cc6-reveal text-[11px] leading-5 text-[#6b7890]" style={{ animationDelay: "360ms" }}>
+        Somente dados do seu escopo, sem ranking de pessoas e sem decisões automáticas — forecast, campanhas e registros só mudam com revisão humana; o plano semanal é explicável e tem custo LLM zero.
+      </p>
+    </div>
+  );
 }
