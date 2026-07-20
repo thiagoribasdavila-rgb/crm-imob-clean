@@ -3,6 +3,8 @@ import { requireApiIdentity } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
+import { resolveLeadOwner, recordDistribution } from "@/lib/distribution/hierarchical-cascade";
+import { ACTION_PROPOSAL_REQUEST_TYPE, type ActionProposalPayload } from "@/lib/ai/action-proposals";
 
 export const dynamic = "force-dynamic";
 
@@ -43,13 +45,58 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const { data: approval, error } = await admin
       .from("approval_requests")
-      .select("id,status,request_type,entity_type,entity_id,organization_id")
+      .select("id,status,request_type,entity_type,entity_id,organization_id,payload")
       .eq("id", id)
       .eq("organization_id", identity.organizationId)
       .single();
 
     if (error || !approval) return NextResponse.json({ error: "Aprovação não encontrada." }, { status: 404 });
     if (approval.status !== "pending") return NextResponse.json({ error: "Aprovação já decidida." }, { status: 409 });
+
+    // SALTO V4.1 — execução governada de proposta de ação. EXECUTA PRIMEIRO,
+    // marca approved DEPOIS: se a execução falhar, a proposta continua pending
+    // (retryável), nunca "aprovada sem efeito". Auditoria em lead_events.
+    if (approval.request_type === ACTION_PROPOSAL_REQUEST_TYPE && approval.entity_id) {
+      const proposal = approval.payload as ActionProposalPayload | null;
+      const kind = proposal?.kind;
+      const action = proposal?.action ?? {};
+      const decidedAt = new Date().toISOString();
+      if (body.decision === "rejected") {
+        const reason = String(body.reason || "").trim();
+        if (reason.length < 5) return NextResponse.json({ error: "Informe o motivo da rejeição." }, { status: 400 });
+        const { error: rejectError } = await admin.from("approval_requests").update({ status: "rejected", decision_reason: reason.slice(0, 500), decided_by: identity.userId, decided_at: decidedAt }).eq("id", id).eq("status", "pending");
+        if (rejectError) throw rejectError;
+        logger.info("approval.action_proposal_rejected", { approvalId: id, kind, userId: identity.userId });
+        return NextResponse.json({ id, status: "rejected", decidedAt });
+      }
+      if (!kind) return NextResponse.json({ error: "Proposta sem ação executável." }, { status: 422 });
+      let executed: Record<string, unknown> = {};
+      if (kind === "reschedule_followup") {
+        const { error: execError } = await admin.from("followups").update({ scheduled_at: String(action.scheduledAt), completed: false }).eq("id", String(action.followupId)).eq("organization_id", identity.organizationId);
+        if (execError) return NextResponse.json({ error: `Execução falhou (reagendamento): ${execError.message}` }, { status: 502 });
+        executed = { followupId: action.followupId, scheduledAt: action.scheduledAt };
+      } else if (kind === "create_task") {
+        const { data: leadRow } = await admin.from("leads").select("assigned_user_id").eq("id", approval.entity_id).eq("organization_id", identity.organizationId).maybeSingle();
+        const { data: task, error: execError } = await admin.from("tasks").insert({ organization_id: identity.organizationId, lead_id: approval.entity_id, title: String(action.title || "Ação aprovada"), priority: String(action.priority || "NORMAL"), due_date: String(action.dueAt), status: "OPEN", user_id: leadRow?.assigned_user_id || identity.userId }).select("id").single();
+        if (execError || !task) return NextResponse.json({ error: `Execução falhou (tarefa): ${execError?.message || "sem id"}` }, { status: 502 });
+        executed = { taskId: task.id, dueAt: action.dueAt };
+      } else if (kind === "reassign_lead") {
+        const ownership = await resolveLeadOwner(admin, identity.organizationId, null);
+        if (!ownership.ownerId) return NextResponse.json({ error: "Cascata sem elegíveis agora — nenhum corretor ou gerente disponível." }, { status: 409 });
+        const { error: execError } = await admin.from("leads").update({ assigned_to: ownership.ownerId, assigned_user_id: ownership.ownerId }).eq("id", approval.entity_id).eq("organization_id", identity.organizationId);
+        if (execError) return NextResponse.json({ error: `Execução falhou (redistribuição): ${execError.message}` }, { status: 502 });
+        await recordDistribution(admin, { organizationId: identity.organizationId, leadId: approval.entity_id, ownerId: ownership.ownerId, reason: `Aprovação de proposta: ${ownership.reason}` });
+        executed = { ownerId: ownership.ownerId, tier: ownership.tier };
+      } else {
+        // send_message não é emitido pelo motor v1 — recusa explícita (governança).
+        return NextResponse.json({ error: `Ação "${kind}" ainda não é executável nesta versão.` }, { status: 501 });
+      }
+      const { error: approveError } = await admin.from("approval_requests").update({ status: "approved", decision_reason: body.reason ?? null, decided_by: identity.userId, decided_at: decidedAt }).eq("id", id).eq("status", "pending");
+      if (approveError) throw approveError;
+      await admin.from("lead_events").insert({ organization_id: identity.organizationId, lead_id: approval.entity_id, event_type: "action_proposal_executed", created_by: identity.userId, metadata: { approvalId: id, kind, signal: proposal?.signal, executed, title: proposal?.title } });
+      logger.info("approval.action_proposal_executed", { approvalId: id, kind, userId: identity.userId });
+      return NextResponse.json({ id, status: "approved", decidedAt, executed: { kind, ...executed } });
+    }
     if (approval.entity_type === "commercial_simulation") {
       const reason = String(body.reason || "").trim();
       const { data, error: decisionError } = await admin.rpc("decide_commercial_proposal", { p_actor_id: identity.userId, p_organization_id: identity.organizationId, p_approval_id: approval.id, p_decision: body.decision, p_reason: reason.slice(0, 500) });
