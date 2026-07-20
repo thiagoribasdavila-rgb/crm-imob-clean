@@ -5046,21 +5046,21 @@ tbody tr:hover { background: rgba(56, 189, 248, .025); }
 .atlas-temperature.is-morno { border-color: rgba(251,191,36,.2); background: rgba(251,191,36,.07); color: #fde68a; }
 .atlas-temperature.is-frio { border-color: rgba(56,189,248,.16); background: rgba(56,189,248,.05); color: #bae6fd; }
 .atlas-kanban-primary-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
   gap: 6px;
   margin-top: 12px;
 }
 .atlas-kanban-primary-actions a {
   display: grid;
   min-height: 38px;
+  flex: 1 1 0;
   place-items: center;
   border: 1px solid rgba(56,189,248,.12);
   border-radius: 10px;
   background: rgba(56,189,248,.045);
   color: #b9dff1;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
   transition: .18s ease;
 }
 .atlas-kanban-primary-actions a:first-child {

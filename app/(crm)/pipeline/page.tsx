@@ -442,8 +442,11 @@ export default function PipelinePage() {
                     return (
                       <article key={lead.id} draggable={!savingId} tabIndex={0} aria-disabled={Boolean(savingId)} aria-label={`${lead.name || "Lead sem nome"}, etapa ${stage.label}. Alt mais seta move entre etapas.`} onKeyDown={(event) => { if (event.altKey && event.key === "ArrowLeft") { event.preventDefault(); moveByKeyboard(lead, -1); } if (event.altKey && event.key === "ArrowRight") { event.preventDefault(); moveByKeyboard(lead, 1); } }} onDragEnd={() => { setDraggedId(null); setDragOverStage(null); }} onDragStart={(event) => { if (savingId) { event.preventDefault(); return; } setDraggedId(lead.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""} ${draggedId === lead.id ? "is-dragging" : ""}`} data-risk={risk}>
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-1 truncate text-[11px] text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
-                          <AtlasBadge tone={riskTone(risk)}>Risco {risk}</AtlasBadge>
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <span className="atlas-lead-avatar" aria-hidden="true">{(lead.name || "??").slice(0, 2).toUpperCase()}</span>
+                            <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.temperature === "quente" ? "🔥 " : ""}{lead.name || "Lead sem nome"}</Link><p className="mt-0.5 truncate text-[11px] text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
+                          </div>
+                          {risk !== "baixo" ? <AtlasBadge tone={riskTone(risk)}>{risk === "alto" ? "⚠️" : "•"} {risk}</AtlasBadge> : null}
                         </div>
                         <div className="atlas-lead-origin"><span>{lead.project || lead.source || "Projeto não informado"}</span>{metaCampaign(lead) ? <small>{metaCampaign(lead)}</small> : null}</div>
                         <div className="atlas-kanban-signal-row">
@@ -453,7 +456,12 @@ export default function PipelinePage() {
                         </div>
                         {contactSla ? <div className="mt-3"><AtlasBadge tone={contactSla.tone}>{contactSla.label}</AtlasBadge></div> : null}
                         <div className="atlas-card-guidance"><span>Próxima melhor ação</span><strong>{guidance.action}</strong></div>
-                        <div className="atlas-kanban-primary-actions"><Link href={`/leads/${lead.id}`}>Abrir cliente</Link>{contact ? <a href={contact.whatsapp} target="_blank" rel="noreferrer">WhatsApp</a> : <Link href={`/leads/${lead.id}/messages`}>✦ Abordagem IA</Link>}</div>
+                        <div className="atlas-kanban-primary-actions" role="group" aria-label="Ações rápidas">
+                          <Link href={`/leads/${lead.id}`} title="Abrir Lead 360" aria-label="Abrir Lead 360">👁️</Link>
+                          {contact ? <a href={contact.call} title="Ligar" aria-label="Ligar para a lead">📞</a> : null}
+                          {contact ? <a href={contact.whatsapp} target="_blank" rel="noreferrer" title="WhatsApp" aria-label="Abrir WhatsApp">💬</a> : null}
+                          <Link href={`/leads/${lead.id}/messages`} title="Abordagem com IA" aria-label="Preparar abordagem com IA">✦</Link>
+                        </div>
                         <details className="atlas-kanban-card-details">
                           <summary>Ver contexto</summary>
                           <div className="atlas-lead-details">
