@@ -7,13 +7,23 @@ import {
   activityCategoryLabels,
   type ActivityCategory,
 } from "@/lib/atlas/activity-timeline";
-import {
-  AtlasBadge,
-  AtlasEmpty,
-  AtlasRecoverableError,
-  AtlasSkeleton,
-} from "@/components/ui/AtlasUI";
-import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
+import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { PageHeader } from "@/components/atlas/page-header";
+import { StatusBadge } from "@/components/atlas/status-badge";
+import { TiltShell } from "@/components/atlas/tilt-shell";
+
+/*
+ * CC-6 · Atividade — timeline de leitura.
+ * Consolidações do redesign (mesmos dados, zero fetch novo):
+ * - o card "Contexto recente" duplicava os 3 primeiros eventos da própria
+ *   timeline (título, categoria, hora, lead e ator) — removido;
+ * - o details "composição do histórico" repetia os contadores já visíveis
+ *   nos chips de categoria — removido;
+ * - "Contatos" no resumo era o mesmo número do chip Contatos
+ *   (summary.contacts === counts.contact na API) — removido do pulso;
+ * - hora aparece uma única vez por linha: relativa em HOJE (absoluta no
+ *   title) e HH:mm nos demais dias, porque a data já vive no cabeçalho.
+ */
 
 type ActivityEvent = {
   id: string;
@@ -47,7 +57,7 @@ const PERIODS = [
   ["today", "Hoje"],
   ["week", "7 dias"],
   ["month", "30 dias"],
-  ["all", "Até 500 registros"],
+  ["all", "Completo"],
 ] as const satisfies ReadonlyArray<readonly [Period, string]>;
 
 const CATEGORIES = [
@@ -60,44 +70,74 @@ const CATEGORIES = [
   ["external", "Integrações"],
 ] as const satisfies ReadonlyArray<readonly [CategoryFilter, string]>;
 
-const CATEGORY_TONES = {
-  change: "info",
-  contact: "success",
-  transfer: "warning",
-  ai: "violet",
-  proposal: "info",
-  external: "neutral",
-} as const;
+const TZ = "America/Sao_Paulo";
+const DAY_KEY_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const DAY_HEADING_FORMAT = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: TZ,
+  weekday: "short",
+  day: "2-digit",
+  month: "short",
+});
+const TIME_FORMAT = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: TZ,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const FULL_FORMAT = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: TZ,
+  dateStyle: "short",
+  timeStyle: "short",
+});
 
-const dayKey = (value: string) =>
-  new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(value));
+const dayKey = (value: string) => DAY_KEY_FORMAT.format(new Date(value));
+const timeLabel = (value: string) => TIME_FORMAT.format(new Date(value));
+const fullLabel = (value: string) => FULL_FORMAT.format(new Date(value));
 
-const dayLabel = (value: string) =>
-  new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(value));
+// Cabeçalho mono do dia: HOJE, ONTEM ou "SEX · 18 JUL" (ano só quando difere).
+function dayHeading(value: string, nowMs: number) {
+  const key = dayKey(value);
+  if (nowMs) {
+    if (key === dayKey(new Date(nowMs).toISOString())) return "Hoje";
+    if (key === dayKey(new Date(nowMs - 86_400_000).toISOString())) {
+      return "Ontem";
+    }
+  }
+  const compact = DAY_HEADING_FORMAT.format(new Date(value))
+    .replaceAll(".", "")
+    .replace(", ", " · ")
+    .replace(" de ", " ");
+  const year = key.slice(0, 4);
+  const currentYear = nowMs
+    ? dayKey(new Date(nowMs).toISOString()).slice(0, 4)
+    : year;
+  return year === currentYear ? compact : `${compact} ${year}`;
+}
 
-const timeLabel = (value: string) =>
-  new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+// Relativo só dentro de HOJE; o absoluto completo fica no title da linha.
+function relativeTime(value: string, nowMs: number) {
+  const diff = Math.max(0, nowMs - new Date(value).getTime());
+  if (diff < 60_000) return "agora";
+  if (diff < 3_600_000) return `há ${Math.floor(diff / 60_000)}min`;
+  return `há ${Math.floor(diff / 3_600_000)}h`;
+}
 
 const normalize = (value: unknown) =>
   String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+
+const chipClass = (active: boolean) =>
+  `cc6-chip cursor-pointer transition-colors ${
+    active
+      ? "border-[color:var(--atlas-accent)]! text-[#e8eef8]!"
+      : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!"
+  }`;
 
 export default function ActivityPage() {
   const [data, setData] = useState<ActivityData | null>(null);
@@ -107,6 +147,14 @@ export default function ActivityPage() {
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [query, setQuery] = useState("");
   const [live, setLive] = useState("connecting");
+  const [nowMs, setNowMs] = useState(0);
+
+  // Relógio de 1min: mantém "há 2h"/HOJE frescos sem tocar nos fetches.
+  useEffect(() => {
+    setNowMs(Date.now());
+    const timer = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const sessionToken = useCallback(async () => {
     const session = await supabase.auth.getSession();
@@ -185,102 +233,44 @@ export default function ActivityPage() {
     });
   }, [category, data, period, query]);
 
-  const groups = useMemo(
-    () =>
-      visible.reduce<Record<string, { label: string; items: ActivityEvent[] }>>(
-        (result, event) => {
-          const key = dayKey(event.occurredAt);
-          const group = result[key] ?? {
-            label: dayLabel(event.occurredAt),
-            items: [],
-          };
-          group.items.push(event);
-          result[key] = group;
-          return result;
-        },
-        {},
-      ),
-    [visible],
-  );
+  // Grupos por dia (fuso SP) com offset acumulado para a revelação escalonada.
+  const timelineGroups = useMemo(() => {
+    const byDay = visible.reduce<Record<string, ActivityEvent[]>>(
+      (result, event) => {
+        (result[dayKey(event.occurredAt)] ??= []).push(event);
+        return result;
+      },
+      {},
+    );
+    let offset = 0;
+    return Object.entries(byDay).map(([key, items]) => {
+      const group = { key, items, offset };
+      offset += items.length + 1;
+      return group;
+    });
+  }, [visible]);
 
-  const recent = visible.slice(0, 3);
   const categoryCount = (key: CategoryFilter) =>
     key === "all" ? data?.summary.total ?? 0 : data?.counts[key] ?? 0;
+  const todayKey = nowMs ? dayKey(new Date(nowMs).toISOString()) : "";
+  const filtersDirty = Boolean(query) || category !== "all" || period !== "week";
 
   return (
     <div
-      className="space-y-5 pb-10"
+      className="space-y-4 pb-10"
       data-evolution-phase="40"
-      data-activity-layout="explain-first"
+      data-activity-layout="cc6-reading-timeline"
     >
-      <section className="atlas-activity-hero" aria-labelledby="activity-title">
-        <div className="atlas-activity-hero-copy">
-          <div className="flex flex-wrap gap-2">
-            <AtlasBadge tone="violet">FASE 40 · HISTÓRICO EXPLICÁVEL</AtlasBadge>
-            <AtlasBadge tone="success">FONTE ÚNICA DO CRM</AtlasBadge>
-            <AtlasBadge
-              tone={
-                live === "connected"
-                  ? "success"
-                  : live === "degraded"
-                    ? "warning"
-                    : "neutral"
-              }
-            >
-              {live === "connected"
-                ? "ATUALIZAÇÃO AO VIVO"
-                : live === "degraded"
-                  ? "ATUALIZAÇÃO MANUAL"
-                  : "CONECTANDO"}
-            </AtlasBadge>
-          </div>
-          <h1 id="activity-title">O histórico que explica a operação</h1>
-          <p>
-            Contatos, movimentações, propostas e decisões permanecem em ordem
-            cronológica. Encontre rapidamente o contexto antes de agir.
-          </p>
-          <div className="atlas-activity-hero-actions">
-            <Link href="/leads" className="atlas-button-primary">
-              Abrir carteira
-            </Link>
-            <button
-              type="button"
-              onClick={() => void load()}
-              disabled={loading}
-              className="atlas-button-secondary"
-            >
-              {loading ? "Atualizando…" : "Atualizar histórico"}
-            </button>
-          </div>
-        </div>
-
-        <div
-          className="atlas-activity-signal-grid"
-          aria-label="Resumo do histórico visível"
-          aria-busy={loading}
-        >
-          <div className="atlas-activity-signal" data-tone="blue">
-            <span>Hoje</span>
-            <strong>{loading ? "—" : data?.summary.today ?? 0}</strong>
-            <small>Registros no dia</small>
-          </div>
-          <div className="atlas-activity-signal" data-tone="green">
-            <span>Contatos</span>
-            <strong>{loading ? "—" : data?.summary.contacts ?? 0}</strong>
-            <small>No histórico visível</small>
-          </div>
-          <div className="atlas-activity-signal" data-tone="violet">
-            <span>Clientes</span>
-            <strong>{loading ? "—" : data?.summary.leadsInMotion ?? 0}</strong>
-            <small>Com movimentação registrada</small>
-          </div>
-          <div className="atlas-activity-signal" data-tone="amber">
-            <span>Registros</span>
-            <strong>{loading ? "—" : data?.summary.total ?? 0}</strong>
-            <small>Últimos registros no seu escopo</small>
-          </div>
-        </div>
-      </section>
+      <PageHeader
+        eyebrow="CRM · Atividade"
+        title="O histórico que explica a operação"
+        description="Contatos, movimentações, propostas e decisões em ordem cronológica — o contexto antes de agir."
+        action={{
+          href: "/leads",
+          label: "Abrir carteira",
+          priority: "secondary",
+        }}
+      />
 
       {error ? (
         <AtlasRecoverableError
@@ -290,185 +280,234 @@ export default function ActivityPage() {
         />
       ) : null}
 
-      <AtlasCard className="atlas-activity-recent-card">
-        <AtlasCardHeader
-          eyebrow="CONTEXTO RECENTE"
-          title="Últimas movimentações registradas"
-          description="Até três registros em ordem cronológica. A posição não representa score, risco ou previsão."
-        />
-        <div
-          className="atlas-activity-recent-list"
-          aria-live="polite"
-          aria-busy={loading}
-        >
-          {loading ? (
-            [1, 2, 3].map((item) => (
-              <AtlasSkeleton key={item} className="h-20" />
-            ))
-          ) : recent.length ? (
-            recent.map((event, index) => {
-              const content = (
-                <>
-                  <span className="atlas-activity-recent-position">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span className="atlas-activity-recent-copy">
-                    <small>
-                      {activityCategoryLabels[event.category]} · {timeLabel(event.occurredAt)}
-                    </small>
-                    <strong>{event.title}</strong>
-                    <span>
-                      {event.leadName || "Operação Atlas"} · {event.actorName}
-                    </span>
-                  </span>
-                  {event.leadId ? (
-                    <span className="atlas-activity-recent-action">Abrir lead →</span>
-                  ) : null}
-                </>
-              );
-              return event.leadId ? (
-                <Link
-                  href={`/leads/${event.leadId}`}
-                  key={event.id}
-                  className="atlas-activity-recent-item"
-                >
-                  {content}
-                </Link>
-              ) : (
-                <div key={event.id} className="atlas-activity-recent-item">
-                  {content}
-                </div>
-              );
-            })
-          ) : (
-            <div className="atlas-activity-recent-clear" role="status">
-              <strong>Nenhuma movimentação neste recorte.</strong>
-              <span>Altere os filtros ou consulte todo o histórico.</span>
-            </div>
-          )}
-        </div>
-      </AtlasCard>
-
-      <AtlasCard className="atlas-activity-timeline-card">
-        <AtlasCardHeader
-          eyebrow="HISTÓRICO COMERCIAL"
-          title="Linha do tempo pesquisável"
-          description="Use período, categoria ou busca sem alterar os registros originais."
-          action={
-            query || category !== "all" || period !== "week" ? (
+      <section aria-label="Pulso do histórico">
+        <TiltShell className="cc6-panel cc6-reveal p-5" delayMs={40}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="cc6-eyebrow">Pulso do histórico</p>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <StatusBadge
+                tone={
+                  live === "connected"
+                    ? "success"
+                    : live === "degraded"
+                      ? "warning"
+                      : "neutral"
+                }
+              >
+                {live === "connected"
+                  ? "Ao vivo"
+                  : live === "degraded"
+                    ? "Atualização manual"
+                    : "Conectando"}
+              </StatusBadge>
               <button
                 type="button"
-                className="atlas-button-secondary"
-                onClick={() => {
-                  setQuery("");
-                  setCategory("all");
-                  setPeriod("week");
-                }}
+                onClick={() => void load()}
+                disabled={loading}
+                className="cc6-ghost-btn disabled:opacity-50"
               >
-                Limpar filtros
+                {loading ? "Atualizando…" : "Atualizar"}
               </button>
-            ) : null
-          }
-        />
+            </div>
+          </div>
+          <div
+            className="cc6-hairline mt-4 flex flex-wrap gap-x-10 gap-y-4 pt-4"
+            aria-label="Resumo do histórico visível"
+            aria-busy={loading}
+          >
+            <div>
+              <p className="cc6-metric-value text-3xl leading-none">
+                {loading ? "—" : data?.summary.today ?? 0}
+              </p>
+              <p className="cc6-metric-label mt-1.5">Registros hoje</p>
+            </div>
+            <div>
+              <p className="cc6-metric-value text-3xl leading-none">
+                {loading ? "—" : data?.summary.leadsInMotion ?? 0}
+              </p>
+              <p className="cc6-metric-label mt-1.5">
+                Clientes com movimentação
+              </p>
+            </div>
+            <div>
+              <p className="cc6-metric-value text-3xl leading-none">
+                {loading ? "—" : data?.summary.total ?? 0}
+              </p>
+              <p className="cc6-metric-label mt-1.5">Registros no escopo</p>
+            </div>
+          </div>
+        </TiltShell>
+      </section>
 
-        <div className="atlas-activity-controls">
-          <label className="atlas-activity-search">
-            <span>Buscar no histórico</span>
+      <section
+        className="cc6-panel cc6-reveal overflow-hidden"
+        style={{ animationDelay: "120ms" }}
+        aria-labelledby="activity-timeline-title"
+      >
+        <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
+          <div className="min-w-0">
+            <p className="cc6-eyebrow">Histórico comercial</p>
+            <h2
+              id="activity-timeline-title"
+              className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+            >
+              Linha do tempo
+            </h2>
+          </div>
+          {filtersDirty ? (
+            <button
+              type="button"
+              className="cc6-ghost-btn shrink-0"
+              onClick={() => {
+                setQuery("");
+                setCategory("all");
+                setPeriod("week");
+              }}
+            >
+              Limpar filtros
+            </button>
+          ) : null}
+        </header>
+
+        <div className="mt-4 flex flex-col gap-3 px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
+              type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Cliente, atividade ou responsável"
-              type="search"
+              aria-label="Buscar no histórico"
+              className="w-full min-w-0 rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[#e8eef8] outline-none transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] sm:max-w-xs"
             />
-          </label>
-          <nav className="atlas-activity-periods" aria-label="Período do histórico">
-            {PERIODS.map(([key, label]) => (
+            <nav
+              className="flex flex-wrap gap-1.5"
+              aria-label="Período do histórico"
+            >
+              {PERIODS.map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setPeriod(key)}
+                  aria-pressed={period === key}
+                  className={chipClass(period === key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </div>
+          <nav
+            className="flex flex-wrap gap-1.5"
+            aria-label="Categoria do histórico"
+          >
+            {CATEGORIES.map(([key, label]) => (
               <button
                 key={key}
                 type="button"
-                onClick={() => setPeriod(key)}
-                aria-pressed={period === key}
-                className={period === key ? "is-active" : ""}
+                onClick={() => setCategory(key)}
+                aria-pressed={category === key}
+                className={chipClass(category === key)}
               >
                 {label}
+                <strong className="font-semibold">{categoryCount(key)}</strong>
               </button>
             ))}
           </nav>
         </div>
 
-        <nav className="atlas-activity-categories" aria-label="Categoria do histórico">
-          {CATEGORIES.map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setCategory(key)}
-              aria-pressed={category === key}
-              className={category === key ? "is-active" : ""}
-            >
-              <span>{label}</span>
-              <strong>{categoryCount(key)}</strong>
-            </button>
-          ))}
-        </nav>
-
-        <div
-          className="atlas-activity-timeline"
-          aria-live="polite"
-          aria-busy={loading}
-        >
+        <div className="mt-2 pb-2" aria-live="polite" aria-busy={loading}>
           {loading ? (
-            [1, 2, 3].map((item) => (
-              <AtlasSkeleton key={item} className="h-32" />
-            ))
-          ) : Object.keys(groups).length ? (
-            Object.entries(groups).map(([date, group]) => (
-              <section key={date} className="atlas-activity-day">
-                <header>
-                  <span aria-hidden="true" />
-                  <h2>{group.label}</h2>
-                  <small>
-                    {group.items.length} {group.items.length === 1 ? "registro" : "registros"}
-                  </small>
+            <div className="space-y-2 px-5 pb-3 pt-2">
+              {[1, 2, 3].map((item) => (
+                <AtlasSkeleton key={item} className="h-24" />
+              ))}
+            </div>
+          ) : timelineGroups.length ? (
+            timelineGroups.map((group) => (
+              <section
+                key={group.key}
+                className="cc6-reveal"
+                style={{
+                  animationDelay: `${Math.min(group.offset, 10) * 40}ms`,
+                }}
+              >
+                <header className="flex items-center gap-3 px-5 pb-1.5 pt-4">
+                  <h3 className="cc6-eyebrow text-[#aab6ca]!">
+                    {dayHeading(group.items[0].occurredAt, nowMs)}
+                  </h3>
+                  <span
+                    className="cc6-hairline min-w-4 flex-1 self-center"
+                    aria-hidden="true"
+                  />
+                  <span className="cc6-num text-[10px] text-[#6b7890]">
+                    {group.items.length}{" "}
+                    {group.items.length === 1 ? "registro" : "registros"}
+                  </span>
                 </header>
-                <div className="atlas-activity-day-items">
-                  {group.items.map((event) => {
+                <div>
+                  {group.items.map((event, index) => {
+                    const isToday =
+                      Boolean(todayKey) && dayKey(event.occurredAt) === todayKey;
+                    const rowClass = `cc6-reveal group flex items-start gap-4 px-5 py-3 transition-colors hover:bg-[rgba(75,141,248,0.04)] ${
+                      index ? "cc6-hairline" : ""
+                    }`;
+                    const rowDelay = {
+                      animationDelay: `${Math.min(group.offset + index + 1, 10) * 40}ms`,
+                    };
                     const content = (
                       <>
-                        <time dateTime={event.occurredAt}>
-                          {timeLabel(event.occurredAt)}
+                        <time
+                          dateTime={event.occurredAt}
+                          title={fullLabel(event.occurredAt)}
+                          className="cc6-num w-16 shrink-0 pt-px text-right text-[11px] leading-6 text-[#6b7890]"
+                        >
+                          {isToday
+                            ? relativeTime(event.occurredAt, nowMs)
+                            : timeLabel(event.occurredAt)}
                         </time>
-                        <span className="atlas-activity-event-copy">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <AtlasBadge tone={CATEGORY_TONES[event.category]}>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                            <strong className="text-sm font-medium leading-6 text-[#e8eef8]">
+                              {event.title}
+                            </strong>
+                            <span className="cc6-chip text-[10px]!">
                               {activityCategoryLabels[event.category]}
-                            </AtlasBadge>
+                            </span>
                             {event.leadStatus ? (
-                              <span className="atlas-activity-status">
+                              <span className="cc6-num text-[10px] uppercase tracking-[0.12em] text-[#6b7890]">
                                 {event.leadStatus.replaceAll("_", " ")}
                               </span>
                             ) : null}
                           </span>
-                          <strong>{event.title}</strong>
-                          {event.description ? <p>{event.description}</p> : null}
-                          <small>
-                            {event.leadName || "Operação Atlas"} · {event.actorName}
-                          </small>
+                          {event.description ? (
+                            <span className="mt-0.5 block max-w-[70ch] text-[13px] leading-relaxed text-[#aab6ca]">
+                              {event.description}
+                            </span>
+                          ) : null}
+                          <span className="mt-1 block text-[11px] leading-5 text-[#6b7890]">
+                            {[event.leadName, event.actorName]
+                              .filter(Boolean)
+                              .join(" · ") || "Operação Atlas"}
+                          </span>
                         </span>
                         {event.leadId ? (
-                          <span className="atlas-activity-event-action">Lead 360 →</span>
+                          <span className="shrink-0 self-center text-xs font-medium text-[#aab6ca] transition-colors group-hover:text-[color:var(--atlas-accent)]">
+                            Lead 360 <span aria-hidden="true">→</span>
+                          </span>
                         ) : null}
                       </>
                     );
                     return event.leadId ? (
                       <Link
-                        href={`/leads/${event.leadId}`}
                         key={event.id}
-                        className="atlas-activity-event"
+                        href={`/leads/${event.leadId}`}
+                        className={rowClass}
+                        style={rowDelay}
                       >
                         {content}
                       </Link>
                     ) : (
-                      <article key={event.id} className="atlas-activity-event">
+                      <article key={event.id} className={rowClass} style={rowDelay}>
                         {content}
                       </article>
                     );
@@ -477,53 +516,36 @@ export default function ActivityPage() {
               </section>
             ))
           ) : (
-            <AtlasEmpty
-              reason={data?.events.length ? "no-results" : "no-activity"}
-              eyebrow="Histórico preservado"
-              title={data?.events.length ? "Nenhum registro encontrado" : "Ainda sem movimentações visíveis"}
-              description={
-                data?.events.length
-                  ? "Altere o período, a categoria ou a busca para ampliar o recorte."
-                  : "Novos contatos e movimentações autorizadas aparecerão aqui em ordem cronológica."
-              }
-              action={
-                data?.events.length ? (
+            <p className="cc6-hairline mt-2 px-5 py-6 text-sm text-[#6b7890]">
+              {data?.events.length ? (
+                <>
+                  Nenhum registro neste recorte —{" "}
                   <button
                     type="button"
-                    className="atlas-button-primary"
+                    className="cursor-pointer font-medium text-[color:var(--atlas-accent)] hover:underline"
                     onClick={() => {
                       setQuery("");
                       setCategory("all");
                       setPeriod("all");
                     }}
                   >
-                    Ver todo o histórico
+                    ver todo o histórico
                   </button>
-                ) : undefined
-              }
-            />
+                  .
+                </>
+              ) : (
+                "Ainda sem movimentações — novos contatos e registros autorizados aparecerão aqui."
+              )}
+            </p>
           )}
         </div>
 
-        <details className="atlas-activity-source-details">
-          <summary>Ver composição do histórico</summary>
-          <div className="atlas-activity-source-grid">
-            {(Object.keys(activityCategoryLabels) as ActivityCategory[]).map((key) => (
-              <div key={key}>
-                <span>{activityCategoryLabels[key]}</span>
-                <strong>{loading ? "—" : data?.counts[key] ?? 0}</strong>
-                <small>Registros visíveis desta categoria</small>
-              </div>
-            ))}
-          </div>
-        </details>
-      </AtlasCard>
-
-      <p className="atlas-activity-governance-note">
-        O histórico é somente leitura nesta tela e respeita organização,
-        hierarquia e RLS. A ordem é cronológica; nenhuma prioridade, decisão,
-        mensagem ou ação é criada automaticamente.
-      </p>
+        <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+          Somente leitura · até 500 registros no escopo, respeitando
+          organização, hierarquia e RLS · ordem cronológica, sem prioridade ou
+          ação automática.
+        </p>
+      </section>
     </div>
   );
 }
