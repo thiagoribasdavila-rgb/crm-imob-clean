@@ -238,25 +238,25 @@ function LoginExperience() {
           <div className="relative z-10">
           <Link href="/" className="inline-flex items-center gap-4" aria-label="Voltar para a página inicial do Atlas">
             <span className="grid h-12 w-12 place-items-center rounded-2xl border border-sky-300/20 bg-sky-400/[.09] text-lg font-black text-sky-200 shadow-[0_0_32px_rgba(56,189,248,.10)]">A</span>
-            <div><p className="text-2xl font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[10px] font-semibold uppercase tracking-[.25em] text-slate-500">Real Estate Intelligence</p></div>
+            <div><p className="text-2xl font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[11px] font-medium text-slate-500">Real Estate Intelligence</p></div>
           </Link>
-          <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-sky-300/10 bg-sky-300/[.045] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.18em] text-sky-200"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-300" /> AI Brain conectado ao comercial</div>
-          <h1 className="mt-6 max-w-[520px] text-5xl font-semibold leading-[.98] tracking-[-.06em] xl:max-w-[580px] xl:text-6xl">Seu command center para <span className="bg-gradient-to-r from-white via-sky-200 to-blue-400 bg-clip-text text-transparent">decidir e vender.</span></h1>
+          <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-sky-300/10 bg-sky-300/[.045] px-3 py-1.5 text-[11px] font-medium text-sky-200"><span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-sky-300" /> AI Brain conectado ao comercial</div>
+          <h1 className="mt-6 max-w-[520px] text-5xl font-semibold leading-[.98] tracking-[-.06em] xl:max-w-[580px] xl:text-6xl">Seu command center para <span className="text-sky-300">decidir e vender.</span></h1>
           <p className="mt-6 max-w-sm text-base leading-7 text-slate-400">Um ambiente único para leads, imóveis, equipe, campanhas e decisões comerciais.</p>
           </div>
           <div className="relative z-10 grid max-w-[360px] grid-cols-3 border-y border-white/[.07] py-5">
-            {[ ["Lead Intelligence", "Prioridade clara"], ["Copiloto único", "Próxima ação"], ["Operação viva", "Aprendizado contínuo"] ].map(([title, detail], index) => <div key={title} className={`px-4 ${index ? "border-l border-white/[.07]" : ""}`}><p className="text-[9px] font-semibold uppercase tracking-[.15em] text-slate-600">{title}</p><p className="mt-2 text-sm font-semibold text-slate-200">{detail}</p></div>)}
+            {[ ["Lead Intelligence", "Prioridade clara"], ["Copiloto único", "Próxima ação"], ["Operação viva", "Aprendizado contínuo"] ].map(([title, detail], index) => <div key={title} className={`px-4 ${index ? "border-l border-white/[.07]" : ""}`}><p className="text-[11px] font-medium text-slate-500">{title}</p><p className="mt-2 text-sm font-semibold text-slate-200">{detail}</p></div>)}
           </div>
         </section>
 
         <section className="mx-auto w-full max-w-lg">
-          <div className="mb-6 flex items-center justify-between gap-3 lg:hidden"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-400/15 font-black text-sky-300">A</span><div><p className="text-xl font-black">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[9px] uppercase tracking-[.2em] text-slate-500">Real Estate Intelligence</p></div></div><span role="img" aria-label="Assistente Atlas" className="h-16 w-12 bg-[url('/brand/atlas-robot-assistant.png')] bg-contain bg-center bg-no-repeat drop-shadow-[0_12px_20px_rgba(14,165,233,.18)]" /></div>
+          <div className="mb-6 flex items-center justify-between gap-3 lg:hidden"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-400/15 font-black text-sky-300">A</span><div><p className="text-xl font-black">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[10px] font-medium text-slate-500">Real Estate Intelligence</p></div></div><span role="img" aria-label="Assistente Atlas" className="h-16 w-12 bg-[url('/brand/atlas-robot-assistant.png')] bg-contain bg-center bg-no-repeat drop-shadow-[0_12px_20px_rgba(14,165,233,.18)]" /></div>
           <div className="relative overflow-hidden rounded-[32px] border border-white/[.09] bg-[#070d15]/92 p-6 shadow-[0_40px_120px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.035)] backdrop-blur-2xl sm:p-9">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-300/70 to-transparent" />
             <div>
               <div className="flex items-center justify-between gap-4">
-                <p className="text-[10px] font-bold uppercase tracking-[.18em] text-slate-500">Acesso privado</p>
-                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[.12em] ${systemStatus === "online" ? "border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300" : systemStatus === "offline" ? "border-amber-400/15 bg-amber-400/[0.07] text-amber-300" : "border-white/10 bg-white/[.04] text-slate-400"}`}><span className={`h-1.5 w-1.5 rounded-full ${systemStatus === "online" ? "bg-emerald-400" : systemStatus === "offline" ? "bg-amber-400" : "animate-pulse bg-slate-500"}`} /> {systemStatus === "online" ? "Sistema disponível" : systemStatus === "offline" ? "Conexão instável" : "Verificando"}</span>
+                <p className="text-xs font-medium text-slate-500">Acesso privado</p>
+                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-medium ${systemStatus === "online" ? "border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300" : systemStatus === "offline" ? "border-amber-400/15 bg-amber-400/[0.07] text-amber-300" : "border-white/10 bg-white/[.04] text-slate-400"}`}><span className={`h-1.5 w-1.5 rounded-full ${systemStatus === "online" ? "bg-emerald-400" : systemStatus === "offline" ? "bg-amber-400" : "animate-pulse bg-slate-500"}`} /> {systemStatus === "online" ? "Sistema disponível" : systemStatus === "offline" ? "Conexão instável" : "Verificando"}</span>
               </div>
               <h2 className="mt-5 text-4xl font-semibold tracking-[-.05em]">Bem-vindo.</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">Entre para continuar sua operação comercial.</p>
@@ -264,7 +264,7 @@ function LoginExperience() {
 
             <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
               <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">E-mail corporativo</span>
+                <span className="mb-2 block text-xs font-medium text-slate-400">E-mail corporativo</span>
                 <div className="relative">
                   <input
                     ref={emailRef}
@@ -286,13 +286,14 @@ function LoginExperience() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Senha</span>
+                <span className="mb-2 block text-xs font-medium text-slate-400">Senha</span>
                 <div className="relative">
                   <input
                     ref={passwordRef}
                     required
                     type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
+                    enterKeyHint="go"
                     value={password}
                     onChange={(event) => { setPassword(event.target.value); if (error) setError(""); }}
                     onKeyDown={updateCapsLock}
@@ -319,7 +320,7 @@ function LoginExperience() {
 
               <div className="flex items-center justify-between gap-4">
                 <label className="flex cursor-pointer items-center gap-2.5 text-xs text-slate-400">
-                  <input type="checkbox" checked={rememberEmail} onChange={(event) => setRememberEmail(event.target.checked)} className="h-4 w-4 rounded border-white/20 bg-white/5 text-sky-400" />
+                  <input type="checkbox" checked={rememberEmail} onChange={(event) => setRememberEmail(event.target.checked)} className="h-4 w-4 rounded border-white/20 bg-white/5 accent-sky-400" />
                   Lembrar meu e-mail
                 </label>
                 <Link href="/forgot-password" className="text-xs font-medium text-sky-300 transition hover:text-sky-200">Esqueci minha senha</Link>
@@ -337,7 +338,7 @@ function LoginExperience() {
             </form>
 
             <div className="mt-7 border-t border-white/[0.07] pt-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[.12em] text-slate-600"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" /> Sessão protegida</span><span>Dados isolados</span><span>Atlas V3</span></div>
+              <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] font-medium text-slate-600"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" /> Sessão protegida</span><span>Dados isolados</span><span>Atlas V3</span></div>
             </div>
           </div>
           <Link href="/" className="mx-auto mt-5 flex w-fit items-center gap-2 text-xs text-slate-600 transition hover:text-slate-300"><span aria-hidden="true">←</span> Voltar para o início</Link>
