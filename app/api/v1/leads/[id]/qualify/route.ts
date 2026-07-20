@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { qualifyRealEstateLead } from "@/lib/ai/lead-qualification";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +70,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       metadata: { score: qualification.score, confidence: qualification.confidence, historicalDataConfidence: qualification.historicalIntelligence.dataConfidence, historicalAdjustment: qualification.historicalIntelligence.adjustment, temperature: qualification.temperature, answered: Object.keys(newAnswers) },
       occurred_at: new Date().toISOString(),
     });
-    if (Object.keys(newAnswers).length) { const answerSignature = Object.entries(answers).sort(([a],[b]) => a.localeCompare(b)).map(([key,value]) => `${key}-${value}`).join("-"); await admin.from("campaign_events").upsert({ organization_id: identity.organizationId, lead_id: id, event_type: "qualification_signal", source: "crm-qualification", external_event_id: `qualification-${id}-${answerSignature}`, payload: { decision_signals: Object.entries(newAnswers).map(([key, value]) => `${key}:${value}`) }, occurred_at: new Date().toISOString() }, { onConflict: "organization_id,source,external_event_id", ignoreDuplicates: true }); }
+    if (Object.keys(newAnswers).length) { const answerSignature = Object.entries(answers).sort(([a],[b]) => a.localeCompare(b)).map(([key,value]) => `${key}-${value}`).join("-"); const { error: campaignEventError } = await admin.from("campaign_events").upsert({ organization_id: identity.organizationId, lead_id: id, event_type: "qualification_signal", source: "crm-qualification", external_event_id: `qualification-${id}-${answerSignature}`, payload: { decision_signals: Object.entries(newAnswers).map(([key, value]) => `${key}:${value}`) }, occurred_at: new Date().toISOString() }, { onConflict: "organization_id,source,external_event_id", ignoreDuplicates: true });
+    // O 200 de sucesso era devolvido mesmo com o upsert falhando (ex.: tabela
+    // ausente pelo schema drift) — a resposta continua igual, mas a falha do
+    // sinal de aprendizado agora fica registrada.
+    if (campaignEventError) logger.warn("lead.qualify.campaign_event_failed", { organizationId: identity.organizationId, leadId: id, error: campaignEventError.message }); }
     return NextResponse.json({ qualification: { ...qualification, progress: { answered: Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length, total: 3, percent: Math.round(Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length / 3 * 100) }, scoreChange: { previous: Number(lead.score || 0), current: qualification.score, delta: qualification.score - Number(lead.score || 0) } } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha na qualificação.";
