@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { readCompatibleLeads, readCompatibleTasks } from "@/lib/atlas/core-v2/live-repositories";
+import { isMissingRelation } from "@/lib/compat/legacy-v2";
 
 export const dynamic = "force-dynamic";
 
@@ -27,17 +28,26 @@ export async function GET(request: NextRequest) {
   if (!identity.ok) return identity.response;
   const organizationId = identity.access.organization.id;
   const now = Date.now();
-  const [tasks, leads] = await Promise.all([
+  const [tasks, leads, visits] = await Promise.all([
     readCompatibleTasks(identity.supabase, { organizationId, limit: 2000 }),
     readCompatibleLeads(identity.supabase, { organizationId, limit: 2000 }),
+    identity.supabase
+      .from("lead_visits")
+      .select("id,lead_id,scheduled_at,status,format,location")
+      .eq("organization_id", organizationId)
+      .order("scheduled_at", { ascending: true })
+      .limit(2000),
   ]);
   if (!tasks.ok || !leads.ok) return apiError("CALENDAR_LOAD_FAILED", "Não foi possível carregar a agenda comercial.", identity.meta, { status: 500 });
+  const visitsTableMissing = Boolean(visits.error && isMissingRelation(visits.error));
+  if (visits.error && !visitsTableMissing) return apiError("CALENDAR_LOAD_FAILED", "Não foi possível carregar a agenda comercial.", identity.meta, { status: 500 });
   const leadRows = leads.rows;
   const leadMap = new Map(leadRows.map((lead) => [String(lead.id), lead]));
   const taskRows = tasks.rows;
-  // Visitas são um complemento do calendário. Bases V2 podem não ter esta
-  // relação; tarefas e follow-ups continuam disponíveis sem bloquear a agenda.
-  const visitRows: Array<Record<string, unknown>> = [];
+  // Visitas são um complemento do calendário. Bases V2 (ou ambientes onde a
+  // migration de lead_visits ainda não foi aplicada) não têm esta relação;
+  // tarefas e follow-ups continuam disponíveis sem bloquear a agenda.
+  const visitRows: Array<Record<string, unknown>> = visitsTableMissing ? [] : (visits.data ?? []);
 
   const activeVisitKeys = new Set(visitRows.filter((visit) => !terminalVisits.has(String(visit.status))).map((visit) => `${visit.lead_id}:${new Date(String(visit.scheduled_at)).toISOString()}`));
   const items: CalendarItem[] = [];
