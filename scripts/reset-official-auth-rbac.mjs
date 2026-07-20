@@ -15,13 +15,25 @@ const recoveryInbox = process.env.ATLAS_RECOVERY_INBOX.trim().toLowerCase();
 if (!/^\S+@\S+\.\S+$/.test(recoveryInbox)) throw new Error("ATLAS_RECOVERY_INBOX inválido.");
 const [recoveryLocal, recoveryDomain] = recoveryInbox.split("@");
 
+// Roster oficial do piloto (aprovado 2026-07-20).
+// O trigger private.validate_commercial_hierarchy (migration official_auth_rbac) impõe
+// APENAS 3 níveis de access_role, com commercial_role e supervisor determinados:
+//   • director_decisor / admin -> commercial_role='director', SEM supervisor (raiz)
+//   • director                 -> commercial_role='manager', supervisor.access_role='director_decisor'
+//   • broker                   -> commercial_role='broker',  supervisor.access_role='director'
+// Não existe um 4º nível "gerente" separado: DIRETOR e GERENTE caem no MESMO nível de
+// acesso (access_role='director' / commercial_role='manager'); só o rótulo `role`
+// (livre, sem CHECK) distingue "director" de "manager" para exibição e RLS grosseira
+// (role in ('admin','manager') libera edição da organização/feature-flags).
+// Thiago é a raiz decisora: access_role='director_decisor' (para poder supervisionar os
+// diretores operacionais) + role='admin' (poderes de admin na RLS). Perfis inativos
+// pulam a validação de hierarquia — é assim que o reset aposenta os antigos como legado.
 const definitions = [
-  { key: "ADMIN", name: "Administrador Atlas", accessRole: "admin", role: "admin", commercialRole: "director", supervisor: null },
-  { key: "THIAGO", name: "Thiago", accessRole: "director_decisor", role: "director_decisor", commercialRole: "director", supervisor: null },
-  { key: "SENNA", name: "Senna", accessRole: "director", role: "director", commercialRole: "manager", supervisor: "THIAGO" },
-  { key: "DIEGO", name: "Diego", accessRole: "broker", role: "broker", commercialRole: "broker", supervisor: "SENNA" },
-  { key: "LUCIANO", name: "Luciano", accessRole: "broker", role: "broker", commercialRole: "broker", supervisor: "SENNA" },
-  { key: "ADOLFO", name: "Adolfo", accessRole: "broker", role: "broker", commercialRole: "broker", supervisor: "SENNA" },
+  { key: "THIAGO",  name: "Thiago Ribas D'Avila", accessRole: "director_decisor", role: "admin",    commercialRole: "director", supervisor: null },
+  { key: "SENNA",   name: "Senna",                accessRole: "director",         role: "director", commercialRole: "manager",  supervisor: "THIAGO" },
+  { key: "DIEGO",   name: "Diego",                accessRole: "director",         role: "manager",  commercialRole: "manager",  supervisor: "THIAGO" },
+  { key: "LUCIANO", name: "Luciano",              accessRole: "director",         role: "manager",  commercialRole: "manager",  supervisor: "THIAGO" },
+  { key: "ADOLFO",  name: "Adolfo",               accessRole: "broker",           role: "broker",   commercialRole: "broker",   supervisor: "DIEGO" },
 ].map((item) => ({ ...item, email: (process.env[`ATLAS_INITIAL_${item.key}_EMAIL`] || `${recoveryLocal}+atlas-${item.key.toLowerCase()}@${recoveryDomain}`).trim().toLowerCase() }));
 
 const invalid = definitions.filter((item) => !/^\S+@\S+\.\S+$/.test(item.email));
@@ -92,4 +104,4 @@ if (credentials.length) {
   chmodSync(outputFile, 0o600);
   console.log(`Credenciais novas gravadas localmente em ${outputFile}.`);
 }
-console.log("RBAC oficial aplicado: 6 acessos ativos; demais contas bloqueadas; senhas não armazenadas.");
+console.log(`RBAC oficial aplicado: ${definitions.length} acessos ativos; contas antigas classificadas como legado (bloqueadas, NÃO excluídas); dados (leads/clientes/histórico/projetos) intactos; senhas não armazenadas.`);
