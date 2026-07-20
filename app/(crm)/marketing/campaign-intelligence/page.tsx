@@ -1,19 +1,184 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { PageHeader } from "@/components/atlas/page-header";
+import { StatusBadge } from "@/components/atlas/status-badge";
+import { TiltShell } from "@/components/atlas/tilt-shell";
 
 type Payload = { summary: Record<string, number | string | boolean | null>; platforms: Array<Record<string, number | string | boolean | null>>; ranking: Array<Record<string, number | string | boolean | null>> };
 const brl = (value: unknown) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(Number(value || 0));
+
+/*
+ * CC-6 · Inteligência de campanhas — consolidação do redesign: a página vivia
+ * em cards brancos claros dentro do shell escuro, com um <main> aninhado no
+ * <main> do AppShell e um hero gradiente que repetia os canais duas vezes.
+ * Agora o resumo é uma linha de métricas mono, canais e ranking são painéis da
+ * identidade e a página aponta para a central de campanhas. Fetch, período e
+ * regra de amostra mínima preservados.
+ */
 
 export default function CampaignIntelligencePage() {
   const [days, setDays] = useState(30); const [data, setData] = useState<Payload | null>(null); const [error, setError] = useState("");
   useEffect(() => { let active = true; fetch(`/api/v1/campaign-intelligence?days=${days}`, { cache: "no-store" }).then(async (response) => { const json = await response.json(); if (!response.ok) throw new Error(json?.error?.message || "Painel indisponível"); return json.data as Payload; }).then((value) => active && setData(value)).catch((reason) => active && setError(reason.message)); return () => { active = false; }; }, [days]);
   const summary = data?.summary || {};
-  return <main data-phase="91-multichannel-campaign-intelligence" className="mx-auto max-w-7xl space-y-8 p-4 md:p-8">
-    <header className="rounded-[28px] border border-blue-500/20 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-7 text-white shadow-2xl"><div className="text-xs font-semibold tracking-[.24em] text-blue-300">META · GOOGLE · TIKTOK · YOUTUBE · PORTAIS</div><h1 className="mt-3 text-3xl font-semibold tracking-tight">Inteligência de campanhas</h1><p className="mt-2 max-w-3xl text-sm text-slate-300">Custos comparáveis, funil imobiliário real e decisões da diretoria com origem auditável.</p><div className="mt-5 flex flex-wrap items-center gap-3"><span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs text-emerald-300">CRM É A VERDADE DA CONVERSÃO</span><select aria-label="Período" value={days} onChange={(event) => setDays(Number(event.target.value))} className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs"><option className="text-slate-900" value={7}>7 dias</option><option className="text-slate-900" value={30}>30 dias</option><option className="text-slate-900" value={90}>90 dias</option></select><Link href="/integrations/meta/andromeda" className="rounded-full border border-violet-300/30 px-3 py-1 text-xs text-violet-200">Abrir loop Andromeda</Link></div></header>
-    {error ? <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">{error}</div> : null}
-    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Investimento", brl(summary.spend)], ["Leads CRM", summary.crmLeads || 0], ["Vendas", summary.wins || 0], ["ROAS", summary.roas == null ? "—" : `${summary.roas}x`]].map(([label, value]) => <article key={String(label)} className="rounded-3xl border bg-white p-5 shadow-sm"><p className="text-xs uppercase tracking-wider text-slate-500">{label}</p><strong className="mt-2 block text-2xl text-slate-950">{value}</strong></article>)}</section>
-    <section><h2 className="text-lg font-semibold">Comparativo por canal</h2><div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-5">{(data?.platforms || []).map((item) => <article key={String(item.platform)} className="rounded-3xl border bg-white p-5"><div className="text-xs font-semibold uppercase tracking-wider text-blue-700">{String(item.platform).replace("_ads", "")}</div><div className="mt-4 text-xl font-semibold">{brl(item.spend)}</div><div className="mt-2 text-sm text-slate-500">{Number(item.crmLeads || 0)} leads · {Number(item.wins || 0)} vendas</div><div className="mt-4 text-xs text-slate-400">CPL {item.cpl == null ? "—" : brl(item.cpl)} · ROAS {item.roas == null ? "—" : `${item.roas}x`}</div></article>)}</div></section>
-    <section className="rounded-3xl border bg-white p-5"><div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold">Ranking de performance</h2><p className="text-sm text-slate-500">RANKING COM AMOSTRA MÍNIMA: 30 leads confirmadas no CRM.</p></div></div><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="text-xs uppercase text-slate-400"><tr><th className="py-3">Campanha</th><th>Canal</th><th>Leads</th><th>Qualificadas</th><th>Visitas</th><th>Vendas</th><th>CPL</th><th>ROAS</th><th>Confiança</th></tr></thead><tbody>{(data?.ranking || []).map((item) => <tr key={`${item.platform}-${item.campaignKey}`} className="border-t"><td className="py-4 font-medium">{String(item.campaignName)}</td><td>{String(item.platform)}</td><td>{Number(item.crmLeads || 0)}</td><td>{Number(item.qualifiedLeads || 0)}</td><td>{Number(item.visits || 0)}</td><td>{Number(item.wins || 0)}</td><td>{item.cpl == null ? "—" : brl(item.cpl)}</td><td>{item.roas == null ? "—" : `${item.roas}x`}</td><td><span className={`rounded-full px-2 py-1 text-xs ${item.sampleSufficient ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{item.sampleSufficient ? String(item.confidence) : "aguardar amostra"}</span></td></tr>)}</tbody></table>{data?.ranking?.length === 0 ? <p className="py-10 text-center text-sm text-slate-500">Conectores prontos para receber os primeiros snapshots homologados.</p> : null}</div></section>
-  </main>;
+  const loading = !data && !error;
+
+  return (
+    <div data-phase="91-multichannel-campaign-intelligence" className="space-y-4 pb-10">
+      <PageHeader
+        eyebrow="Marketing · Meta · Google · TikTok · YouTube · Portais"
+        title="Inteligência de campanhas"
+        description="Custos comparáveis, funil imobiliário real e decisões com origem auditável."
+        action={{ href: "/marketing/campaigns", label: "Central de campanhas", priority: "secondary" }}
+      />
+
+      {error ? (
+        <p
+          role="status"
+          className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[#f5b544]"
+          style={{ "--cc6-sev": "#f5b544" } as CSSProperties}
+        >
+          {error}
+        </p>
+      ) : null}
+
+      <section aria-label="Resumo do período">
+        <TiltShell className="cc6-panel cc6-reveal p-5" delayMs={40}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="cc6-eyebrow">Resumo do período</p>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <span className="cc6-chip">CRM é a verdade da conversão</span>
+              <select
+                aria-label="Período"
+                value={days}
+                onChange={(event) => setDays(Number(event.target.value))}
+                className="rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-1.5 text-xs text-[#e8eef8] outline-none transition-colors focus:border-[color:var(--atlas-accent)]"
+              >
+                <option value={7}>7 dias</option>
+                <option value={30}>30 dias</option>
+                <option value={90}>90 dias</option>
+              </select>
+              <Link href="/integrations/meta/andromeda" className="cc6-ghost-btn">
+                Loop Andromeda
+              </Link>
+            </div>
+          </div>
+          <div className="cc6-hairline mt-4 flex flex-wrap gap-x-10 gap-y-4 pt-4" aria-busy={loading}>
+            {[
+              ["Investimento", brl(summary.spend)],
+              ["Leads CRM", String(summary.crmLeads || 0)],
+              ["Vendas", String(summary.wins || 0)],
+              ["ROAS", summary.roas == null ? "—" : `${summary.roas}x`],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <p className="cc6-metric-value text-3xl leading-none">{loading ? "—" : value}</p>
+                <p className="cc6-metric-label mt-1.5">{label}</p>
+              </div>
+            ))}
+          </div>
+        </TiltShell>
+      </section>
+
+      <section
+        aria-labelledby="ci-platforms-title"
+        className="cc6-panel cc6-reveal overflow-hidden"
+        style={{ animationDelay: "120ms" }}
+      >
+        <header className="px-5 pt-5 pb-4">
+          <p className="cc6-eyebrow">Comparativo por canal</p>
+          <h2 id="ci-platforms-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">
+            Custo e resultado confirmado
+          </h2>
+        </header>
+        {(data?.platforms || []).length === 0 ? (
+          <p className="cc6-hairline px-5 py-6 text-sm text-[#6b7890]" aria-busy={loading}>
+            {loading ? "Carregando canais…" : "Nenhum snapshot de canal no período."}
+          </p>
+        ) : (
+          (data?.platforms || []).map((item) => (
+            <article
+              key={String(item.platform)}
+              className="cc6-hairline flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-5 py-3.5"
+            >
+              <div className="min-w-[120px]">
+                <p className="text-sm font-semibold uppercase tracking-wide text-[#e8eef8]">
+                  {String(item.platform).replace("_ads", "")}
+                </p>
+                <p className="cc6-num mt-0.5 text-[11px] text-[#6b7890]">
+                  {Number(item.crmLeads || 0)} leads · {Number(item.wins || 0)} vendas
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="cc6-chip">{brl(item.spend)}</span>
+                <span className="cc6-chip">CPL {item.cpl == null ? "—" : brl(item.cpl)}</span>
+                <span className="cc6-chip">ROAS {item.roas == null ? "—" : `${item.roas}x`}</span>
+              </div>
+            </article>
+          ))
+        )}
+      </section>
+
+      <section
+        aria-labelledby="ci-ranking-title"
+        className="cc6-panel cc6-reveal overflow-hidden"
+        style={{ animationDelay: "200ms" }}
+      >
+        <header className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5 pb-4">
+          <div>
+            <p className="cc6-eyebrow">Ranking de performance</p>
+            <h2 id="ci-ranking-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">
+              Campanhas por resultado no CRM
+            </h2>
+          </div>
+          <p className="cc6-num text-[11px] text-[#6b7890]">Amostra mínima: 30 leads confirmadas</p>
+        </header>
+        <div className="cc6-hairline overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead>
+              <tr className="cc6-eyebrow text-[10px]!">
+                <th className="px-5 py-3 font-medium">Campanha</th>
+                <th className="py-3 font-medium">Canal</th>
+                <th className="py-3 font-medium">Leads</th>
+                <th className="py-3 font-medium">Qualificadas</th>
+                <th className="py-3 font-medium">Visitas</th>
+                <th className="py-3 font-medium">Vendas</th>
+                <th className="py-3 font-medium">CPL</th>
+                <th className="py-3 font-medium">ROAS</th>
+                <th className="py-3 pr-5 font-medium">Confiança</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data?.ranking || []).map((item) => (
+                <tr key={`${item.platform}-${item.campaignKey}`} className="cc6-hairline">
+                  <td className="px-5 py-3.5 font-medium text-[#e8eef8]">{String(item.campaignName)}</td>
+                  <td className="py-3.5 text-[#aab6ca]">{String(item.platform)}</td>
+                  <td className="cc6-num py-3.5 text-[#aab6ca]">{Number(item.crmLeads || 0)}</td>
+                  <td className="cc6-num py-3.5 text-[#aab6ca]">{Number(item.qualifiedLeads || 0)}</td>
+                  <td className="cc6-num py-3.5 text-[#aab6ca]">{Number(item.visits || 0)}</td>
+                  <td className="cc6-num py-3.5 text-[#aab6ca]">{Number(item.wins || 0)}</td>
+                  <td className="cc6-num py-3.5 text-[#aab6ca]">{item.cpl == null ? "—" : brl(item.cpl)}</td>
+                  <td className="cc6-num py-3.5 text-[#aab6ca]">{item.roas == null ? "—" : `${item.roas}x`}</td>
+                  <td className="py-3.5 pr-5">
+                    <StatusBadge tone={item.sampleSufficient ? "success" : "neutral"}>
+                      {item.sampleSufficient ? String(item.confidence) : "aguardar amostra"}
+                    </StatusBadge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {data?.ranking?.length === 0 ? (
+            <p className="py-8 text-center text-sm text-[#6b7890]">
+              Conectores prontos para receber os primeiros snapshots homologados.
+            </p>
+          ) : null}
+          {loading ? (
+            <p className="py-8 text-center text-sm text-[#6b7890]" aria-busy="true">
+              Carregando ranking…
+            </p>
+          ) : null}
+        </div>
+      </section>
+    </div>
+  );
 }

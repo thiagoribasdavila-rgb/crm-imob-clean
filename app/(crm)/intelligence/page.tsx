@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
-import { AtlasBadge, AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
-import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
+import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { PageHeader } from "@/components/atlas/page-header";
+import { StatusBadge } from "@/components/atlas/status-badge";
+import { TiltShell } from "@/components/atlas/tilt-shell";
 import { isMissingRelation, mapLegacyLead, mapLegacyTask } from "@/lib/compat/legacy-v2";
 
 type Insight = {
@@ -33,6 +35,25 @@ function localInsights(leads: Row[], tasks: Row[]): Insight[] {
     { id: "local-overdue", title: `${overdue.length} tarefas atrasadas`, summary: "Compromissos abertos cujo prazo já venceu.", recommendation: overdue.length ? "Recupere os atrasos antes de iniciar ações de menor prioridade." : "A agenda comercial está em dia.", score: overdue.length, confidence: 100, status: overdue.length ? "atenção" : "saudável", created_at: new Date(now).toISOString() },
   ];
 }
+
+/*
+ * CC-6 · Central de inteligência — consolidação do redesign: o grid antigo de
+ * cards repetia o número do título no rodapé ("3 leads…" e depois "Score: 3"),
+ * usava fúcsia fora da identidade para o status e escondia a recomendação num
+ * bloco azul genérico. Agora cada sinal é uma linha com um único estado
+ * semântico (badge + banda lateral), a recomendação fica em evidência e os
+ * sinais determinísticos locais declaram origem em vez de fingir "confiança
+ * 100". A garantia "sem decisão automática sobre pessoas" virou faixa "Seguro
+ * por padrão". Fetch e fallback local preservados.
+ */
+
+const STATUS_META: Record<string, { tone: "warning" | "success" | "info" | "neutral"; sev: string | null }> = {
+  "atenção": { tone: "warning", sev: "#f5b544" },
+  "oportunidade": { tone: "info", sev: "var(--atlas-accent)" },
+  "saudável": { tone: "success", sev: null },
+  "monitorando": { tone: "neutral", sev: null },
+  "ativo": { tone: "info", sev: "var(--atlas-accent)" },
+};
 
 export default function IntelligencePage() {
   const [items, setItems] = useState<Insight[]>([]);
@@ -65,30 +86,103 @@ export default function IntelligencePage() {
   useEffect(() => { void load(); }, [load]);
 
   return (
-    <div className="space-y-6">
-      <div><AtlasBadge tone="violet">ATLAS INTELLIGENCE</AtlasBadge><h1 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-white sm:text-4xl">Central de inteligência</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Sinais, previsões e recomendações explicáveis para a operação imobiliária, sem decisões automáticas sobre pessoas.</p></div>
+    <div className="space-y-4 pb-10">
+      <PageHeader
+        eyebrow="Inteligência · Sinais explicáveis"
+        title="Central de inteligência"
+        description="Sinais e recomendações explicáveis para a operação imobiliária."
+      />
 
-      {error && <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200"><span>{error}</span><button type="button" onClick={() => void load()} className="atlas-button-secondary">Tentar novamente</button></div>}
+      {error ? (
+        <div
+          role="status"
+          className="cc6-sev-band cc6-panel-quiet cc6-reveal flex flex-wrap items-center justify-between gap-3 py-3 pl-5 pr-4"
+          style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
+        >
+          <span className="text-sm text-[#fb7185]">{error}</span>
+          <button type="button" onClick={() => void load()} className="cc6-ghost-btn">
+            Tentar novamente
+          </button>
+        </div>
+      ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {loading ? (
-          [1,2,3,4].map((item) => <AtlasSkeleton key={item} className="h-48" />)
-        ) : items.length === 0 ? (
-          <AtlasCard className="lg:col-span-2"><AtlasCardHeader eyebrow="Motor preparado" title="Nenhum sinal exige atenção agora" description="A inteligência local analisou os dados visíveis e continuará pronta para novos eventos."/><div className="p-5"><AtlasEmpty title="Operação sem alertas" description="Novos sinais aparecerão aqui sem depender de uma IA externa." /></div></AtlasCard>
-        ) : (
-          items.map((item) => (
-            <article key={item.id} className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-              <div className="flex items-start justify-between gap-4">
-                <h2 className="font-bold">{item.title}</h2>
-                <span className="rounded-full bg-fuchsia-500/10 px-3 py-1 text-xs text-fuchsia-300">{item.status}</span>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-zinc-400">{item.summary || "Insight sem resumo."}</p>
-              {item.recommendation && <div className="mt-4 rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-100">{item.recommendation}</div>}
-              <div className="mt-4 flex gap-4 text-xs text-zinc-500"><span>Score: {item.score ?? "—"}</span><span>Confiança: {item.confidence ?? "—"}</span></div>
-            </article>
-          ))
-        )}
-      </div>
+      <section aria-label="Sinais da operação">
+        <TiltShell className="cc6-panel cc6-reveal overflow-hidden" delayMs={40}>
+          <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5 pb-4">
+            <p className="cc6-eyebrow">Sinais da operação</p>
+            <p className="cc6-num text-[11px] text-[#6b7890]" aria-live="polite">
+              {loading ? "analisando…" : `${items.length} ${items.length === 1 ? "sinal" : "sinais"}`}
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="cc6-hairline space-y-2 px-5 py-4" aria-busy="true">
+              {[1, 2, 3].map((item) => (
+                <AtlasSkeleton key={item} className="h-16" />
+              ))}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="cc6-hairline px-5 py-8 text-center">
+              <p className="text-sm font-medium text-[#e8eef8]">Nenhum sinal exige atenção agora</p>
+              <p className="mt-1 text-sm text-[#6b7890]">
+                A inteligência analisou os dados visíveis e continuará observando novos eventos.
+              </p>
+            </div>
+          ) : (
+            items.map((item) => {
+              const meta = STATUS_META[item.status.toLowerCase()] ?? { tone: "neutral" as const, sev: null };
+              return (
+                <article
+                  key={item.id}
+                  className={`cc6-hairline px-5 py-4 ${meta.sev ? "cc6-sev-band" : ""}`}
+                  style={meta.sev ? ({ "--cc6-sev": meta.sev } as CSSProperties) : undefined}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                    <h2 className="min-w-0 text-base font-semibold tracking-tight text-[#e8eef8]">
+                      {item.title}
+                    </h2>
+                    <StatusBadge tone={meta.tone}>{item.status}</StatusBadge>
+                  </div>
+                  <p className="mt-1 text-sm leading-6 text-[#aab6ca]">
+                    {item.summary || "Insight sem resumo."}
+                  </p>
+                  {item.recommendation ? (
+                    <div className="mt-3">
+                      <p className="cc6-eyebrow text-[10px]!">Recomendação</p>
+                      <p className="mt-1 text-sm font-medium leading-6 text-[#e8eef8]">
+                        {item.recommendation}
+                      </p>
+                    </div>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {item.id.startsWith("local-") ? (
+                      <span className="cc6-chip">Regra local · dados visíveis</span>
+                    ) : (
+                      <>
+                        {item.score != null ? <span className="cc6-chip">Score {item.score}</span> : null}
+                        {item.confidence != null ? (
+                          <span className="cc6-chip">Confiança {item.confidence}</span>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </TiltShell>
+      </section>
+
+      <section
+        aria-label="Garantias de segurança"
+        className="cc6-panel-quiet cc6-reveal flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3"
+        style={{ animationDelay: "120ms" }}
+      >
+        <StatusBadge tone="success">Seguro por padrão</StatusBadge>
+        <p className="text-sm leading-6 text-[#aab6ca]">
+          Nenhuma decisão automática sobre pessoas — os sinais explicam; a execução é sempre humana.
+        </p>
+      </section>
     </div>
   );
 }
