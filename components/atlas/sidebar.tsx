@@ -91,22 +91,12 @@ export function Sidebar({
     return () => window.removeEventListener("keydown", focusSearch);
   }, [collapsed, mobileOpen]);
 
-  const permittedItems = useMemo<NavigationItem[]>(() => {
-    // Fusão Início + Command Center: /dashboard virou redirect para
-    // /command-center, então o antigo "Início" passa a ser o único item da
-    // home ("Sala de comando", mantendo o ícone do Início) e o item separado
-    // da mesma rota sai da lista — nunca dois itens para o mesmo destino.
-    const items = getAtlasNavigationForIdentity({ role, accessRole });
-    const merged: NavigationItem[] = items.map((item) =>
-      item.href === "/dashboard"
-        ? { ...item, label: "Sala de comando", href: "/command-center" }
-        : item,
-    );
-    const hasMergedHome = items.some((item) => item.href === "/dashboard");
-    return merged.filter(
-      (item) => !(hasMergedHome && item.id === "command-center-live"),
-    );
-  }, [accessRole, role]);
+  const permittedItems = useMemo<NavigationItem[]>(
+    // Fonte de navegação já consolidada (home única "Sala de comando" em
+    // lib/atlas/navigation.ts) — sem remapeamento em runtime.
+    () => getAtlasNavigationForIdentity({ role, accessRole }),
+    [accessRole, role],
+  );
   const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
   const visibleItems = useMemo(() => normalizedQuery
     ? permittedItems.filter((item) => `${item.label} ${item.group} ${item.keywords} ${item.businessOutcome}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery))

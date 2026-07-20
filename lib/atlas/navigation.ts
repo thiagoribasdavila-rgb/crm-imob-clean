@@ -55,18 +55,13 @@ export function canAccessAtlasItem(
 
 export const atlasNavigation = [
   {
-    id: "command-center", surface: "canonical", group: "Operação diária", label: "Início", href: "/dashboard", icon: "⌘",
-    roles: ["director", "superintendent", "manager", "broker"], keywords: "dashboard início indicadores prioridades decisões hoje",
-    businessOutcome: "Mostrar a prioridade comercial que exige decisão ou execução agora.",
+    // Fusão Início + Command Center consolidada NA FONTE (o sidebar não precisa
+    // mais remapear em runtime): uma única home de decisão.
+    id: "command-center", surface: "canonical", group: "Operação diária", label: "Sala de comando", href: "/command-center", icon: "⌘",
+    roles: ["director", "superintendent", "manager", "broker"], keywords: "dashboard início sala de comando indicadores prioridades decisões hoje tempo real pulso ia",
+    businessOutcome: "Mostrar a prioridade comercial que exige decisão ou execução agora, com o pulso ao vivo.",
     primaryAction: { label: "Abrir prioridade", href: "/pipeline?focus=priority", outcome: "Avançar a oportunidade mais relevante." },
-    dataDomains: ["leads", "tasks", "opportunities"], mobilePrimary: true,
-  },
-  {
-    id: "command-center-live", surface: "canonical", group: "Operação diária", label: "Command Center", href: "/command-center", icon: "◐",
-    roles: ["director", "superintendent", "manager", "broker"], keywords: "sala de comando tempo real ao vivo pulso sinais ia operação camadas",
-    businessOutcome: "Acompanhar em tempo real o pulso da operação, os sinais da IA e a fila do dia.",
-    primaryAction: { label: "Abrir sala de comando", href: "/command-center", outcome: "Ver o que mudou agora e agir na prioridade ao vivo." },
-    dataDomains: ["leads", "tasks", "insights"],
+    dataDomains: ["leads", "tasks", "opportunities", "insights"], mobilePrimary: true,
   },
   {
     id: "leads", surface: "canonical", group: "Operação diária", label: "Leads", href: "/leads", icon: "◎",
@@ -124,13 +119,9 @@ export const atlasNavigation = [
     primaryAction: { label: "Abrir fila elegível", href: "/leads/import?view=eligible", outcome: "Priorizar contatos com dados válidos e consentimento." },
     dataDomains: ["reactivation-leads", "suppression-list", "lead-memory"],
   },
-  {
-    id: "copilot", surface: "canonical", group: "Clientes e portfólio", label: "Copilot", href: "/ai-dashboard", icon: "✦",
-    roles: ["director", "superintendent", "manager", "broker"], keywords: "inteligência assistente recomendação briefing próxima ação",
-    businessOutcome: "Traduzir dados comerciais em uma próxima ação explicável e supervisionada.",
-    primaryAction: { label: "Preparar meu dia", href: "/ai-dashboard?briefing=daily", outcome: "Receber um plano comercial baseado no escopo do usuário." },
-    dataDomains: ["leads", "tasks", "opportunities", "ai-memory"],
-  },
+  // "Copilot" (/ai-dashboard) removido do menu: o grupo (ai) é QUARENTENADO no
+  // build de produção (legacy-route-paths) — o item dava 404 em produção. O
+  // copiloto vive no dock global (AtlasCopilotDock), presente em toda página.
   {
     id: "brokers", surface: "canonical", group: "Gestão", label: "Corretores", href: "/brokers", icon: "◇",
     roles: ["director", "superintendent", "manager"], keywords: "equipe gerente corretor desempenho carteira hierarquia",
@@ -160,11 +151,14 @@ export const atlasNavigation = [
     dataDomains: ["analytics", "opportunities", "campaign-performance"],
   },
   {
-    id: "revenue-engine", surface: "canonical", group: "Gestão", label: "Revenue Engine", href: "/revenue-engine", icon: "⚡",
-    roles: ["director", "superintendent", "manager"], keywords: "meta conversão atendimento receita andromeda sinais",
-    businessOutcome: "Conectar aquisição, atendimento e resultado para melhorar a qualidade do público.",
-    primaryAction: { label: "Revisar conversões", href: "/revenue-engine?view=conversions", outcome: "Identificar campanhas que geram compradores reais." },
-    dataDomains: ["campaigns", "conversion-events", "opportunities"],
+    // Substitui "Revenue Engine" (/revenue-engine, grupo (autonomous) QUARENTENADO
+    // no build → 404 em produção) pela superfície real de decisão: menos telas,
+    // mais tomada de decisão.
+    id: "decision-center", surface: "canonical", group: "Gestão", label: "Decisões", href: "/decision-center", icon: "⚡",
+    roles: ["director", "superintendent", "manager"], keywords: "decisões alertas aprovações ação recomendada prioridade rastreável",
+    businessOutcome: "Converter indicadores e sinais da IA em decisões rastreáveis com aprovação humana.",
+    primaryAction: { label: "Abrir decisão prioritária", href: "/decision-center", outcome: "Agir na recomendação de maior impacto agora." },
+    dataDomains: ["decisions", "approvals", "insights"],
   },
   {
     id: "users", surface: "canonical", group: "Administração", label: "Usuários e acessos", href: "/users", icon: "♙",
@@ -196,15 +190,11 @@ export const atlasNavigation = [
   },
 ] as const satisfies readonly AtlasNavigationItem[];
 
-export const atlasInternalNavigation = [
-  {
-    id: "atlas-evolution", surface: "internal", group: "Interno", label: "Evolução V3", href: "/atlas-v3", icon: "◈",
-    roles: ["director"], accessRoles: ["admin", "director_decisor"], keywords: "fases percentual homologação evidência técnica",
-    businessOutcome: "Acompanhar evidências técnicas e gates de evolução fora da rotina comercial.",
-    primaryAction: { label: "Abrir homologação", href: "/atlas-v3/homologation", outcome: "Revisar gates e evidências da próxima entrega." },
-    dataDomains: ["evolution-evidence", "homologation-gates"],
-  },
-] as const satisfies readonly AtlasInternalNavigationItem[];
+// "Menos telas, menos ruído" (decisão do dono, 2026-07-20): as páginas-meta de
+// evolução (/atlas-v3/*) saíram do MENU — são documentação viva do projeto, não
+// rotina comercial. As rotas continuam acessíveis por URL direta para auditoria
+// e homologação; só a navegação deixou de anunciá-las.
+export const atlasInternalNavigation: readonly AtlasInternalNavigationItem[] = [];
 
 export const atlasContextCommands = [
   { label: "Novo lead", href: "/leads/new", group: "Ações", keywords: "cadastrar criar lead contato", roles: ["director", "superintendent", "manager", "broker"] },
@@ -212,7 +202,6 @@ export const atlasContextCommands = [
   { label: "Marketing AI", href: "/marketing", group: "Growth", keywords: "meta criativos campanhas roi", roles: ["director", "superintendent", "manager"] },
   { label: "Conversas", href: "/conversations", group: "Growth", keywords: "whatsapp instagram atendimento", roles: ["director", "superintendent", "manager", "broker"] },
   { label: "Centro de Decisão", href: "/decision-center", group: "Intelligence", keywords: "decisões alertas aprovações", roles: ["director", "superintendent", "manager"] },
-  { label: "Atlas 2030", href: "/atlas-2030", group: "Platform", keywords: "knowledge graph simulações plataforma", roles: ["director"], accessRoles: ["admin", "director_decisor"] },
 ] as const;
 
 export const atlasTaskActions = [
