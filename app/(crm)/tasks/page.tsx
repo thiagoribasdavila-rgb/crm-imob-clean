@@ -1,19 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from "react";
 import { supabase } from "@/lib/supabase";
-import {
-  AtlasBadge,
-  AtlasEmpty,
-  AtlasRecoverableError,
-  AtlasSkeleton,
-} from "@/components/ui/AtlasUI";
-import {
-  AtlasCard,
-  AtlasCardHeader,
-  AtlasMetric,
-} from "@/components/ui/AtlasCard";
+import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { PageHeader } from "@/components/atlas/page-header";
+import { StatusBadge } from "@/components/atlas/status-badge";
+import { TiltShell } from "@/components/atlas/tilt-shell";
 
 type Task = {
   id: string;
@@ -115,6 +114,16 @@ const KIND_LABEL = {
   visit: "Visita",
 } as const;
 
+const HIGH_PRIORITY = new Set(["alta", "high", "critical"]);
+
+// Semânticos CC-6: rose para vencido, amber para hoje; futuro fica neutro.
+const SEV_INK = { crit: "#fb7185", warn: "#f5b544" } as const;
+const STEP_SEV = { now: "crit", today: "warn", planned: null } as const;
+
+const FIELD_CLASS =
+  "mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[#e8eef8] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50";
+const LABEL_CLASS = "text-xs text-[#6b7890]";
+
 function dateLabel(value: string | null) {
   if (!value) return "Sem prazo";
   const parsed = new Date(value);
@@ -125,11 +134,31 @@ function dateLabel(value: string | null) {
   }).format(parsed);
 }
 
-function urgencyLabel(task: Task) {
-  if (task.overdue) return "Atrasada";
-  if (task.today) return "Hoje";
-  if (!task.due_at) return "Sem prazo";
-  return "Planejada";
+// Uma referência temporal por linha: relativa no texto, absoluta no title.
+function relativeDue(value: string | null, nowMs: number) {
+  if (!value) return "sem prazo";
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return "sem prazo";
+  const diff = time - nowMs;
+  const abs = Math.abs(diff);
+  if (abs < 60_000) return "agora";
+  const span =
+    abs < 3_600_000
+      ? `${Math.max(1, Math.round(abs / 60_000))}min`
+      : abs < 86_400_000
+        ? `${Math.round(abs / 3_600_000)}h`
+        : `${Math.round(abs / 86_400_000)}d`;
+  return diff < 0 ? `há ${span}` : `em ${span}`;
+}
+
+function taskSeverity(task: Task): "crit" | "warn" | null {
+  if (task.overdue) return "crit";
+  if (task.today) return "warn";
+  return null;
+}
+
+function sevTextClass(sev: "crit" | "warn" | null) {
+  return sev === "crit" ? "cc6-crit" : sev === "warn" ? "cc6-warn" : "";
 }
 
 export default function TasksPage() {
@@ -143,6 +172,14 @@ export default function TasksPage() {
   const [message, setMessage] = useState("");
   const [view, setView] = useState<View>("priority");
   const [form, setForm] = useState(EMPTY_FORM);
+  const [nowMs, setNowMs] = useState(0);
+
+  // Relógio de 1min: mantém "há 2d"/"em 3h" frescos sem tocar nos fetches.
+  useEffect(() => {
+    setNowMs(Date.now());
+    const timer = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const sessionToken = useCallback(async () => {
     const { data: session } = await supabase.auth.getSession();
@@ -219,7 +256,7 @@ export default function TasksPage() {
     setMessage("");
     try {
       const response = await fetch("/api/v1/tasks", {
-        method:"POST",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${await sessionToken()}`,
@@ -285,6 +322,16 @@ export default function TasksPage() {
     [data],
   );
 
+  // Uma tarefa-semente por recorrência ativa (mesma dedupe da versão anterior).
+  const recurrenceSeeds = useMemo(() => {
+    const seen = new Set<string>();
+    return (data?.tasks ?? []).filter((task) => {
+      if (!task.recurrence_id || seen.has(task.recurrence_id)) return false;
+      seen.add(task.recurrence_id);
+      return true;
+    });
+  }, [data]);
+
   const leadership = Boolean(
     data &&
       ["admin", "director", "superintendent", "manager"].includes(
@@ -296,63 +343,20 @@ export default function TasksPage() {
 
   return (
     <div
-      className="space-y-5 pb-8"
+      className="space-y-4 pb-8"
       data-phase="38-task-execution-workspace"
       data-task-layout="execution-first"
     >
-      <section className="atlas-task-hero" aria-labelledby="atlas-task-title">
-        <div className="atlas-task-hero-copy">
-          <AtlasBadge tone="violet">FASE 38 · EXECUÇÃO DIÁRIA</AtlasBadge>
-          <h1 id="atlas-task-title">O que precisa ser feito agora</h1>
-          <p>
-            Priorize atrasos, cumpra os combinados de hoje e mantenha o próximo
-            passo de cada lead visível.
-          </p>
-          <div className="atlas-task-hero-actions">
-            <button
-              type="button"
-              onClick={() => setShowCreate((current) => !current)}
-              className="atlas-button-primary"
-              aria-expanded={showCreate}
-              aria-controls="atlas-task-create"
-            >
-              {showCreate ? "Fechar criação" : "Nova tarefa"}
-            </button>
-            <Link href="/calendar" className="atlas-button-secondary">
-              Abrir agenda
-            </Link>
-          </div>
-        </div>
-
-        <div
-          className="atlas-task-signal-grid"
-          aria-label="Resumo da execução diária"
-          aria-busy={loading}
-        >
-          <div className="atlas-task-signal" data-tone="danger">
-            <span>Vencidas</span>
-            <strong>{loading ? "—" : data?.summary.overdue ?? 0}</strong>
-            <small>Resolver primeiro</small>
-          </div>
-          <div className="atlas-task-signal" data-tone="warning">
-            <span>Hoje</span>
-            <strong>{loading ? "—" : data?.summary.today ?? 0}</strong>
-            <small>Compromissos do dia</small>
-          </div>
-          <div className="atlas-task-signal" data-tone="success">
-            <span>Minha fila</span>
-            <strong>{loading ? "—" : data?.summary.mine ?? 0}</strong>
-            <small>Sob sua responsabilidade</small>
-          </div>
-          <div className="atlas-task-signal" data-tone="neutral">
-            <span>Sem prazo</span>
-            <strong>
-              {loading ? "—" : data?.summary.withoutDueDate ?? 0}
-            </strong>
-            <small>Planejar antes de executar</small>
-          </div>
-        </div>
-      </section>
+      <PageHeader
+        eyebrow="Central de tarefas · Execução diária"
+        title="O que precisa ser feito agora"
+        description="Vencidas em rosa, combinados de hoje em âmbar — decida e execute na ordem."
+        action={{
+          href: "/calendar",
+          label: "Abrir agenda",
+          priority: "secondary",
+        }}
+      />
 
       {error ? (
         <AtlasRecoverableError
@@ -363,7 +367,7 @@ export default function TasksPage() {
       ) : null}
       {message ? (
         <div
-          className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-200"
+          className="cc6-panel-quiet cc6-ok px-4 py-3 text-sm"
           role="status"
           aria-live="polite"
         >
@@ -371,445 +375,478 @@ export default function TasksPage() {
         </div>
       ) : null}
 
-      {showCreate ? (
-        <div id="atlas-task-create" data-phase="42-task-quick-create">
-          <AtlasCard>
-            <AtlasCardHeader
-              eyebrow="FASE 43 · TAREFAS RECORRENTES"
-              title="Criar em poucos segundos"
-              description="Título, prazo e prioridade vêm primeiro. Vínculo, responsável e repetição ficam disponíveis quando necessários."
-            />
-            <form
-              className="border-t border-white/[.06] p-5 sm:p-6"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void createTask();
-              }}
-            >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label
-                className="text-xs text-slate-400 sm:col-span-2"
-                htmlFor="task-title"
+      <section data-phase="48-daily-productivity" aria-labelledby="atlas-daily-focus">
+        <TiltShell className="cc6-panel cc6-reveal overflow-hidden" delayMs={40}>
+          <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-1">
+            <div>
+              <p className="cc6-eyebrow">Assistente diário</p>
+              <h2
+                id="atlas-daily-focus"
+                className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
               >
-                Título
-                <input
-                  id="task-title"
-                  value={form.title}
-                  maxLength={120}
-                  required
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      title: event.target.value,
-                    }))
-                  }
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
-                  placeholder="Ex.: Confirmar visita ao empreendimento"
-                />
-              </label>
-              <label className="text-xs text-slate-400" htmlFor="task-due-at">
-                Prazo
-                <input
-                  id="task-due-at"
-                  type="datetime-local"
-                  value={form.dueAt}
-                  required
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      dueAt: event.target.value,
-                    }))
-                  }
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
-                />
-              </label>
-              <label
-                className="text-xs text-slate-400"
-                htmlFor="task-priority"
-              >
-                Prioridade
-                <select
-                  id="task-priority"
-                  value={form.priority}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      priority: event.target.value,
-                    }))
-                  }
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
-                >
-                  <option value="baixa">Baixa</option>
-                  <option value="media">Média</option>
-                  <option value="alta">Alta</option>
-                </select>
-              </label>
+                Comece por aqui
+              </h2>
             </div>
-
-            <details className="atlas-task-form-more">
-              <summary>Adicionar vínculo, descrição ou repetição</summary>
-              <div className="grid gap-4 pt-4 sm:grid-cols-2">
-                <label
-                  className="text-xs text-slate-400 sm:col-span-2"
-                  htmlFor="task-description"
-                >
-                  Descrição opcional
-                  <textarea
-                    id="task-description"
-                    value={form.description}
-                    maxLength={2000}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        description: event.target.value,
-                      }))
-                    }
-                    rows={3}
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
-                  />
-                </label>
-                <label
-                  className="text-xs text-slate-400"
-                  htmlFor="task-lead"
-                >
-                  Lead opcional
-                  <select
-                    id="task-lead"
-                    value={form.leadId}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        leadId: event.target.value,
-                      }))
-                    }
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
-                  >
-                    <option value="">Sem lead vinculada</option>
-                    {data?.creationOptions.leads.map((lead) => (
-                      <option key={lead.id} value={lead.id}>
-                        {lead.name || "Lead sem nome"}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label
-                  className="text-xs text-slate-400"
-                  htmlFor="task-assignee"
-                >
-                  Responsável
-                  <select
-                    id="task-assignee"
-                    disabled={Boolean(form.leadId)}
-                    value={
-                      form.assigneeId ||
-                      data?.creationOptions.defaults.assigneeId ||
-                      ""
-                    }
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        assigneeId: event.target.value,
-                      }))
-                    }
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white disabled:opacity-50"
-                  >
-                    {data?.creationOptions.assignees.map((person) => (
-                      <option key={person.id} value={person.id}>
-                        {person.full_name || "Profissional sem nome"}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="mt-1 block text-[10px] text-slate-600">
-                    {form.leadId
-                      ? "Definido pelo corretor único da lead."
-                      : "Somente profissionais visíveis no seu escopo."}
-                  </span>
-                </label>
-                <label
-                  className="text-xs text-slate-400"
-                  htmlFor="task-cadence"
-                >
-                  Repetir tarefa
-                  <select
-                    id="task-cadence"
-                    value={form.cadence}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        cadence: event.target.value,
-                      }))
-                    }
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
-                  >
-                    <option value="">Não repetir</option>
-                    <option value="daily">Todos os dias</option>
-                    <option value="weekly">Toda semana</option>
-                    <option value="monthly">Todo mês</option>
-                  </select>
-                </label>
-                {form.cadence ? (
-                  <>
-                    <label
-                      className="text-xs text-slate-400"
-                      htmlFor="task-ends-at"
-                    >
-                      Encerrar em
-                      <input
-                        id="task-ends-at"
-                        type="date"
-                        value={form.endsAt}
-                        onChange={(event) =>
-                          setForm((current) => ({
-                            ...current,
-                            endsAt: event.target.value,
-                          }))
-                        }
-                        className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
-                      />
-                    </label>
-                    <label
-                      className="text-xs text-slate-400"
-                      htmlFor="task-max-occurrences"
-                    >
-                      Máximo de ocorrências
-                      <input
-                        id="task-max-occurrences"
-                        type="number"
-                        min={2}
-                        max={100}
-                        value={form.maxOccurrences}
-                        onChange={(event) =>
-                          setForm((current) => ({
-                            ...current,
-                            maxOccurrences: Number(event.target.value),
-                          }))
-                        }
-                        className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white"
-                      />
-                    </label>
-                    <p className="self-end rounded-xl border border-violet-400/15 bg-violet-400/[.05] p-3 text-[10px] leading-4 text-slate-500">
-                      A recorrência encerra na primeira condição atingida: data
-                      final ou limite.
-                    </p>
-                  </>
-                ) : null}
-              </div>
-            </details>
-
-            <div className="mt-5 flex justify-end">
-              <button
-                type="submit"
-                disabled={
-                  creating ||
-                  form.title.trim().length < 3 ||
-                  !form.dueAt ||
-                  Boolean(
-                    form.cadence &&
-                      (!form.endsAt ||
-                        form.maxOccurrences < 2 ||
-                        form.maxOccurrences > 100),
-                  )
-                }
-                className="atlas-button-primary disabled:opacity-50"
-              >
-                {creating
-                  ? "Criando..."
-                  : form.cadence
-                    ? "Criar recorrência"
-                    : "Criar tarefa"}
-              </button>
-            </div>
-            </form>
-          </AtlasCard>
-        </div>
-      ) : null}
-
-      <div data-phase="48-daily-productivity">
-        <AtlasCard className="atlas-task-focus border-cyan-400/15">
-          <AtlasCardHeader
-            eyebrow="Assistente diário"
-            title="Comece por aqui"
-            description="As três primeiras ações do recorte pessoal, ordenadas por SLA e impacto. Você decide e executa cada passo."
-            action={<AtlasBadge tone="success">CUSTO IA ZERO</AtlasBadge>}
-          />
+            <StatusBadge tone="success">Custo IA zero</StatusBadge>
+          </header>
           <div
-            className="atlas-task-focus-list"
+            className="mt-2 flex flex-col"
             aria-live="polite"
             aria-busy={loading}
           >
             {loading ? (
-              [1, 2, 3].map((item) => (
-                <AtlasSkeleton key={item} className="h-28" />
-              ))
+              <div className="space-y-2 px-5 pb-5">
+                {[1, 2, 3].map((item) => (
+                  <AtlasSkeleton key={item} className="h-14" />
+                ))}
+              </div>
             ) : primarySteps.length ? (
-              primarySteps.map((step) => (
-                <Link
-                  key={`${step.kind}-${step.id}`}
-                  href={step.href}
-                  className="atlas-task-focus-item"
-                  data-urgency={step.urgency}
-                >
-                  <span className="atlas-task-focus-position">
-                    {step.position}
-                  </span>
-                  <span className="atlas-task-focus-copy">
-                    <small>{KIND_LABEL[step.kind]}</small>
-                    <strong>{step.title}</strong>
-                    <span>{step.reason}</span>
-                  </span>
-                  <span className="atlas-task-focus-action">
-                    {step.action} <span aria-hidden="true">→</span>
-                  </span>
-                </Link>
-              ))
-            ) : (
-              <AtlasEmpty
-                reason="completed"
-                eyebrow="Prioridades concluídas"
-                title="Dia sob controle"
-                description="Nenhuma prioridade pessoal exige ação neste momento."
-                action={
-                  <Link href="/calendar" className="atlas-button-secondary">
-                    Revisar agenda
+              primarySteps.map((step, index) => {
+                const sev = STEP_SEV[step.urgency];
+                return (
+                  <Link
+                    key={`${step.kind}-${step.id}`}
+                    href={step.href}
+                    className={`cc6-reveal group flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-[rgba(75,141,248,0.05)] ${index ? "cc6-hairline" : ""} ${sev ? "cc6-sev-band" : ""}`}
+                    style={
+                      {
+                        animationDelay: `${100 + index * 60}ms`,
+                        ...(sev ? { "--cc6-sev": SEV_INK[sev] } : {}),
+                      } as CSSProperties
+                    }
+                    data-urgency={step.urgency}
+                  >
+                    <span
+                      className="cc6-metric-value w-6 shrink-0 text-center text-xl"
+                      aria-hidden="true"
+                    >
+                      {step.position}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <strong className="max-w-full truncate text-sm font-medium text-[#e8eef8]">
+                          {step.title}
+                        </strong>
+                        <span className="cc6-eyebrow text-[10px]!">
+                          {KIND_LABEL[step.kind]}
+                        </span>
+                        {step.dueAt ? (
+                          <span
+                            className={`cc6-num text-[11px] ${sevTextClass(sev) || "text-[#6b7890]"}`}
+                            title={dateLabel(step.dueAt)}
+                          >
+                            {relativeDue(step.dueAt, nowMs)}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="mt-0.5 block truncate text-xs text-[#6b7890]">
+                        {step.reason}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-xs font-medium text-[#aab6ca] transition-colors group-hover:text-[color:var(--atlas-accent)]">
+                      {step.action} <span aria-hidden="true">→</span>
+                    </span>
                   </Link>
-                }
-              />
+                );
+              })
+            ) : (
+              <p className="px-5 pb-5 pt-1 text-sm text-[#6b7890]">
+                Dia sob controle — nenhuma prioridade pessoal exige ação agora.{" "}
+                <Link
+                  href="/calendar"
+                  className="font-medium text-[color:var(--atlas-accent)] hover:underline"
+                >
+                  Revisar agenda
+                </Link>
+              </p>
             )}
           </div>
           {remainingSteps.length ? (
-            <details className="atlas-task-more-steps">
-              <summary>
-                Ver outras {remainingSteps.length} ações planejadas
+            <details className="cc6-hairline px-5 py-3">
+              <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[#aab6ca]">
+                +{remainingSteps.length} planejadas
               </summary>
-              <div className="atlas-task-more-steps-list">
+              <div className="mt-2 flex flex-col gap-1.5">
                 {remainingSteps.map((step) => (
-                  <Link key={`${step.kind}-${step.id}`} href={step.href}>
-                    <span>{step.position}</span>
-                    <strong>{step.title}</strong>
-                    <small>{step.action}</small>
+                  <Link
+                    key={`${step.kind}-${step.id}`}
+                    href={step.href}
+                    className="flex items-baseline gap-2 text-xs text-[#aab6ca] transition-colors hover:text-[#e8eef8]"
+                  >
+                    <span className="cc6-num text-[#6b7890]">
+                      {step.position}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{step.title}</span>
+                    <span className="shrink-0 text-[#6b7890]">
+                      {step.action}
+                    </span>
                   </Link>
                 ))}
               </div>
             </details>
           ) : null}
-          <div className="border-t border-white/[.06] px-5 py-3 text-[10px] leading-4 text-slate-500">
-            Ordem explicável por primeiro contato, follow-up, prazo, visita,
-            prioridade, temperatura e score. Sem ranking de pessoas e sem execução automática.
-          </div>
-        </AtlasCard>
-      </div>
+          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+            Ordem explicável por contato, follow-up, prazo, visita, prioridade,
+            temperatura e score · sem ranking de pessoas · sem execução
+            automática.
+          </p>
+        </TiltShell>
+      </section>
 
-      <details className="atlas-task-summary-details">
-        <summary>Ver indicadores completos da rotina</summary>
-        <section className="grid gap-4 pt-4 sm:grid-cols-2 xl:grid-cols-4">
-          <AtlasMetric
-            label="Pendentes"
-            value={loading ? "—" : data?.summary.open ?? 0}
-            detail="Ações visíveis"
-            trend="LIVE"
-            tone="blue"
-          />
-          <AtlasMetric
-            label="Concluídas"
-            value={loading ? "—" : data?.summary.completed ?? 0}
-            detail="Histórico preservado"
-            trend="FEITAS"
-            tone="green"
-          />
-          <AtlasMetric
-            label="Alta prioridade"
-            value={loading ? "—" : data?.summary.high ?? 0}
-            detail="Maior impacto"
-            trend="FOCO"
-            tone="violet"
-          />
-          <AtlasMetric
-            label="Sem responsável"
-            value={loading ? "—" : data?.summary.unassigned ?? 0}
-            detail="Exigem revisão humana"
-            trend="REVISAR"
-            tone="amber"
-          />
-        </section>
-      </details>
-
-      {data?.tasks.some((task) => task.recurrence_id) ? (
-        <details className="atlas-task-summary-details">
-          <summary>Gerenciar recorrências ativas</summary>
-          <AtlasCard className="mt-4">
-            <AtlasCardHeader
-              eyebrow="Recorrências ativas"
-              title="Controle explícito"
-              description="Encerre novas ocorrências sem apagar tarefas já criadas."
-            />
-            <div className="flex flex-wrap gap-2 p-5">
-              {data.tasks
-                .filter((task) => task.recurrence_id)
-                .filter(
-                  (task, index, all) =>
-                    all.findIndex(
-                      (item) => item.recurrence_id === task.recurrence_id,
-                    ) === index,
-                )
-                .map((task) => (
-                  <button
-                    type="button"
-                    key={task.recurrence_id}
-                    disabled={savingId === task.id}
-                    onClick={() => void act(task,"cancel_recurrence")}
-                    className="atlas-button-secondary"
+      {showCreate ? (
+        <div id="atlas-task-create" data-phase="42-task-quick-create">
+          <section
+            className="cc6-panel cc6-reveal overflow-hidden"
+            aria-labelledby="atlas-task-create-title"
+          >
+            <header className="px-5 pt-5">
+              <p className="cc6-eyebrow">Nova tarefa · Recorrência opcional</p>
+              <h2
+                id="atlas-task-create-title"
+                className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+              >
+                Criar em poucos segundos
+              </h2>
+            </header>
+            <form
+              className="cc6-hairline mt-4 p-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void createTask();
+              }}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label
+                  className={`${LABEL_CLASS} sm:col-span-2`}
+                  htmlFor="task-title"
+                >
+                  Título
+                  <input
+                    id="task-title"
+                    value={form.title}
+                    maxLength={120}
+                    required
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        title: event.target.value,
+                      }))
+                    }
+                    className={FIELD_CLASS}
+                    placeholder="Ex.: Confirmar visita ao empreendimento"
+                  />
+                </label>
+                <label className={LABEL_CLASS} htmlFor="task-due-at">
+                  Prazo
+                  <input
+                    id="task-due-at"
+                    type="datetime-local"
+                    value={form.dueAt}
+                    required
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        dueAt: event.target.value,
+                      }))
+                    }
+                    className={FIELD_CLASS}
+                  />
+                </label>
+                <label className={LABEL_CLASS} htmlFor="task-priority">
+                  Prioridade
+                  <select
+                    id="task-priority"
+                    value={form.priority}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        priority: event.target.value,
+                      }))
+                    }
+                    className={FIELD_CLASS}
                   >
-                    Encerrar repetição · {task.title}
-                  </button>
-                ))}
-            </div>
-          </AtlasCard>
+                    <option value="baixa">Baixa</option>
+                    <option value="media">Média</option>
+                    <option value="alta">Alta</option>
+                  </select>
+                </label>
+              </div>
+
+              <details className="mt-4">
+                <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[#aab6ca]">
+                  Adicionar vínculo, descrição ou repetição
+                </summary>
+                <div className="grid gap-4 pt-4 sm:grid-cols-2">
+                  <label
+                    className={`${LABEL_CLASS} sm:col-span-2`}
+                    htmlFor="task-description"
+                  >
+                    Descrição opcional
+                    <textarea
+                      id="task-description"
+                      value={form.description}
+                      maxLength={2000}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          description: event.target.value,
+                        }))
+                      }
+                      rows={3}
+                      className={FIELD_CLASS}
+                    />
+                  </label>
+                  <label className={LABEL_CLASS} htmlFor="task-lead">
+                    Lead opcional
+                    <select
+                      id="task-lead"
+                      value={form.leadId}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          leadId: event.target.value,
+                        }))
+                      }
+                      className={FIELD_CLASS}
+                    >
+                      <option value="">Sem lead vinculada</option>
+                      {data?.creationOptions.leads.map((lead) => (
+                        <option key={lead.id} value={lead.id}>
+                          {lead.name || "Lead sem nome"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className={LABEL_CLASS} htmlFor="task-assignee">
+                    Responsável
+                    <select
+                      id="task-assignee"
+                      disabled={Boolean(form.leadId)}
+                      value={
+                        form.assigneeId ||
+                        data?.creationOptions.defaults.assigneeId ||
+                        ""
+                      }
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          assigneeId: event.target.value,
+                        }))
+                      }
+                      className={FIELD_CLASS}
+                    >
+                      {data?.creationOptions.assignees.map((person) => (
+                        <option key={person.id} value={person.id}>
+                          {person.full_name || "Profissional sem nome"}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="mt-1 block text-[10px] text-[#6b7890]">
+                      {form.leadId
+                        ? "Definido pelo corretor único da lead."
+                        : "Somente profissionais visíveis no seu escopo."}
+                    </span>
+                  </label>
+                  <label className={LABEL_CLASS} htmlFor="task-cadence">
+                    Repetir tarefa
+                    <select
+                      id="task-cadence"
+                      value={form.cadence}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          cadence: event.target.value,
+                        }))
+                      }
+                      className={FIELD_CLASS}
+                    >
+                      <option value="">Não repetir</option>
+                      <option value="daily">Todos os dias</option>
+                      <option value="weekly">Toda semana</option>
+                      <option value="monthly">Todo mês</option>
+                    </select>
+                  </label>
+                  {form.cadence ? (
+                    <>
+                      <label className={LABEL_CLASS} htmlFor="task-ends-at">
+                        Encerrar em
+                        <input
+                          id="task-ends-at"
+                          type="date"
+                          value={form.endsAt}
+                          onChange={(event) =>
+                            setForm((current) => ({
+                              ...current,
+                              endsAt: event.target.value,
+                            }))
+                          }
+                          className={FIELD_CLASS}
+                        />
+                      </label>
+                      <label
+                        className={LABEL_CLASS}
+                        htmlFor="task-max-occurrences"
+                      >
+                        Máximo de ocorrências
+                        <input
+                          id="task-max-occurrences"
+                          type="number"
+                          min={2}
+                          max={100}
+                          value={form.maxOccurrences}
+                          onChange={(event) =>
+                            setForm((current) => ({
+                              ...current,
+                              maxOccurrences: Number(event.target.value),
+                            }))
+                          }
+                          className={FIELD_CLASS}
+                        />
+                      </label>
+                      <p className="cc6-panel-quiet self-end p-3 text-[10px] leading-4 text-[#6b7890]">
+                        A recorrência encerra na primeira condição atingida:
+                        data final ou limite.
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              </details>
+
+              <div className="mt-5 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={
+                    creating ||
+                    form.title.trim().length < 3 ||
+                    !form.dueAt ||
+                    Boolean(
+                      form.cadence &&
+                        (!form.endsAt ||
+                          form.maxOccurrences < 2 ||
+                          form.maxOccurrences > 100),
+                    )
+                  }
+                  className="atlas-button-primary disabled:opacity-50"
+                >
+                  {creating
+                    ? "Criando..."
+                    : form.cadence
+                      ? "Criar recorrência"
+                      : "Criar tarefa"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
+
+      {recurrenceSeeds.length ? (
+        <details
+          className="cc6-panel-quiet cc6-reveal px-4 py-3"
+          style={{ animationDelay: "140ms" }}
+        >
+          <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[#aab6ca]">
+            Recorrências ativas · {recurrenceSeeds.length}
+          </summary>
+          <p className="mt-2 text-[10px] leading-4 text-[#6b7890]">
+            Encerrar preserva as tarefas já criadas.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {recurrenceSeeds.map((task) => (
+              <button
+                type="button"
+                key={task.recurrence_id}
+                disabled={savingId === task.id}
+                onClick={() => void act(task, "cancel_recurrence")}
+                className="cc6-ghost-btn disabled:opacity-50"
+              >
+                Encerrar · {task.title}
+              </button>
+            ))}
+          </div>
         </details>
       ) : null}
 
       <div
-        className={`grid gap-5 ${leadership ? "xl:grid-cols-[minmax(0,1fr)_320px]" : ""}`}
+        className={`grid gap-4 ${leadership ? "xl:grid-cols-[minmax(0,1fr)_320px]" : ""}`}
       >
-        <AtlasCard className="atlas-task-queue-card">
-          <AtlasCardHeader
-            eyebrow="Execução diária"
-            title="Fila comercial priorizada"
-            description="Atraso, prazo e prioridade formam uma ordem explicável. A API reconfirma cada alteração no seu escopo."
-            action={
+        <section
+          className="cc6-panel cc6-reveal self-start overflow-hidden"
+          style={{ animationDelay: "180ms" }}
+          aria-labelledby="atlas-task-queue-title"
+        >
+          <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
+            <div className="min-w-0">
+              <p className="cc6-eyebrow">Fila comercial</p>
+              <h2
+                id="atlas-task-queue-title"
+                className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+              >
+                Priorizada por atraso e prazo
+              </h2>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => void load()}
-                className="atlas-button-secondary"
+                className="cc6-ghost-btn disabled:opacity-50"
                 disabled={loading}
               >
                 {loading ? "Atualizando..." : "Atualizar"}
               </button>
-            }
-          />
+              <button
+                type="button"
+                onClick={() => setShowCreate((current) => !current)}
+                className="atlas-button-primary"
+                aria-expanded={showCreate}
+                aria-controls="atlas-task-create"
+              >
+                {showCreate ? "Fechar criação" : "Nova tarefa"}
+              </button>
+            </div>
+          </header>
           <div
-            className="atlas-task-filters"
+            className="mt-4 flex flex-wrap gap-1.5 px-5 pb-4"
             role="tablist"
             aria-label="Filtrar tarefas"
           >
-            {TASK_VIEWS.map(([key, label]) => (
-              <button
-                key={key}
-                id={`task-view-${key}-tab`}
-                type="button"
-                role="tab"
-                aria-selected={view === key}
-                aria-controls="task-view-panel"
-                onClick={() => setView(key)}
-                className={`atlas-kanban-toggle atlas-task-filter ${view === key ? "is-active" : ""}`}
-              >
-                <span>{label}</span>
-                <strong>{viewCounts[key]}</strong>
-              </button>
-            ))}
+            {TASK_VIEWS.map(([key, label]) => {
+              const active = view === key;
+              const count = viewCounts[key];
+              return (
+                <button
+                  key={key}
+                  id={`task-view-${key}-tab`}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  aria-controls="task-view-panel"
+                  onClick={() => setView(key)}
+                  className={`cc6-chip cursor-pointer transition-colors ${
+                    active
+                      ? "border-[color:var(--atlas-accent)]! text-[#e8eef8]!"
+                      : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!"
+                  }`}
+                >
+                  {label}
+                  <strong
+                    className={`font-semibold ${
+                      key === "overdue" && count
+                        ? "cc6-crit"
+                        : key === "today" && count
+                          ? "cc6-warn"
+                          : ""
+                    }`}
+                  >
+                    {count}
+                  </strong>
+                </button>
+              );
+            })}
           </div>
           <div
             id="task-view-panel"
-            className="atlas-task-queue"
+            className="flex flex-col focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)]"
             role="tabpanel"
             aria-labelledby={`task-view-${view}-tab`}
             tabIndex={0}
@@ -817,176 +854,199 @@ export default function TasksPage() {
             aria-busy={loading}
           >
             {loading ? (
-              [1, 2, 3, 4].map((item) => (
-                <AtlasSkeleton key={item} className="h-32" />
-              ))
+              <div className="space-y-2 px-5 pb-5">
+                {[1, 2, 3, 4].map((item) => (
+                  <AtlasSkeleton key={item} className="h-12" />
+                ))}
+              </div>
             ) : visible.length ? (
-              visible.map((task) => {
+              visible.map((task, index) => {
                 const busy = savingId === task.id;
+                const sev = taskSeverity(task);
                 return (
                   <article
                     key={task.id}
-                    className={`atlas-task-item ${task.overdue ? "is-overdue" : ""}`}
+                    className={`cc6-reveal cc6-hairline group relative flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3.5 transition-colors hover:bg-[rgba(75,141,248,0.04)] ${sev ? "cc6-sev-band" : ""}`}
+                    style={
+                      {
+                        animationDelay: `${Math.min(index, 8) * 45}ms`,
+                        ...(sev ? { "--cc6-sev": SEV_INK[sev] } : {}),
+                      } as CSSProperties
+                    }
                     aria-busy={busy}
+                    data-urgency={
+                      task.overdue
+                        ? "overdue"
+                        : task.today
+                          ? "today"
+                          : task.due_at
+                            ? "planned"
+                            : "no-due"
+                    }
                   >
-                    <div className="atlas-task-item-main">
-                      <div className="flex min-w-0 items-start gap-3">
-                        <span
-                          className="atlas-task-status-dot"
-                          data-overdue={task.overdue}
-                          aria-hidden="true"
-                        />
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h2>{task.title}</h2>
-                            <AtlasBadge
-                              tone={
-                                task.overdue
-                                  ? "danger"
-                                  : ["alta", "high", "critical"].includes(
-                                        task.priority,
-                                      )
-                                    ? "warning"
-                                    : "neutral"
-                              }
-                            >
-                              {task.overdue
-                                ? "VENCIDA"
-                                : task.priority || "NORMAL"}
-                            </AtlasBadge>
-                          </div>
-                          <p className="atlas-task-lead-context">
-                            {task.lead?.name || "Sem lead vinculada"}
-                            {task.lead?.purpose
-                              ? ` · ${task.lead.purpose}`
-                              : ""}
-                          </p>
-                          <p className="atlas-task-description">
-                            {task.description ||
-                              "Execute a ação e registre o resultado na timeline da lead."}
-                          </p>
-                        </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="min-w-0 max-w-full truncate text-sm font-medium text-[#e8eef8]">
+                          {task.title}
+                        </h3>
+                        {HIGH_PRIORITY.has(task.priority) ? (
+                          <StatusBadge tone="warning">Alta</StatusBadge>
+                        ) : null}
                       </div>
-                    </div>
-                    <div className="atlas-task-item-meta">
-                      <span data-overdue={task.overdue}>
-                        {urgencyLabel(task)}
-                      </span>
-                      <strong>{dateLabel(task.due_at)}</strong>
-                      <small>{task.assigneeName}</small>
-                    </div>
-                    <div className="atlas-task-item-actions">
-                      {task.lead_id ? (
-                        <Link
-                          href={`/leads/${task.lead_id}`}
-                          className="atlas-button-secondary"
+                      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[#6b7890]">
+                        <span
+                          className={`cc6-num ${sevTextClass(sev)}`}
+                          title={dateLabel(task.due_at)}
                         >
-                          Abrir lead
-                        </Link>
+                          {relativeDue(task.due_at, nowMs)}
+                        </span>
+                        {task.lead_id ? (
+                          <Link
+                            href={`/leads/${task.lead_id}`}
+                            className="max-w-full truncate font-medium text-[color:var(--atlas-accent)] hover:underline"
+                          >
+                            {task.lead?.name || "Abrir lead"}
+                          </Link>
+                        ) : null}
+                        {!task.mine ? (
+                          <span className="max-w-full truncate">
+                            {task.assigneeName}
+                          </span>
+                        ) : null}
+                      </p>
+                      {task.description ? (
+                        <p className="mt-1 truncate text-xs text-[#6b7890]">
+                          {task.description}
+                        </p>
                       ) : null}
+                    </div>
+                    <div className="flex shrink-0 gap-2 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => void act(task,"postpone_one_day")}
-                        className="atlas-button-secondary disabled:opacity-50"
+                        onClick={() => void act(task, "postpone_one_day")}
+                        className="cc6-ghost-btn disabled:opacity-50"
+                        title="Reagendar para amanhã"
+                        aria-label={`Reagendar ${task.title} em um dia`}
                       >
-                        {busy ? "Salvando..." : "Reagendar +1 dia"}
+                        +1 dia
                       </button>
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => void act(task,"complete")}
-                        className="atlas-button-primary disabled:opacity-50"
+                        onClick={() => void act(task, "complete")}
+                        className="cc6-ghost-btn disabled:opacity-50"
+                        aria-label={`Concluir ${task.title}`}
                       >
-                        {busy ? "Salvando..." : "Concluir tarefa"}
+                        {busy ? "Salvando..." : "Concluir"}
                       </button>
                     </div>
                   </article>
                 );
               })
             ) : (
-              <AtlasEmpty
-                reason={data?.tasks.length ? "no-results" : "completed"}
-                eyebrow={
-                  data?.tasks.length
-                    ? "Filtro sem pendências"
-                    : "Rotina concluída"
-                }
-                title="Fila em dia"
-                description={
-                  data?.tasks.length
-                    ? "Nenhuma tarefa corresponde a este filtro. Volte às prioridades para revisar a fila completa."
-                    : "Nenhuma tarefa aberta exige ação neste momento."
-                }
-                action={
-                  data?.tasks.length ? (
+              <p className="cc6-hairline px-5 py-6 text-sm text-[#6b7890]">
+                {data?.tasks.length ? (
+                  <>
+                    Nenhuma tarefa neste filtro.{" "}
                     <button
                       type="button"
-                      className="atlas-button-secondary"
                       onClick={() => setView("priority")}
+                      className="cursor-pointer font-medium text-[color:var(--atlas-accent)] hover:underline"
                     >
                       Ver prioridades
                     </button>
-                  ) : (
+                  </>
+                ) : (
+                  <>
+                    Nenhuma tarefa aberta — rotina em dia.{" "}
                     <button
                       type="button"
-                      className="atlas-button-primary"
                       onClick={() => setShowCreate(true)}
+                      className="cursor-pointer font-medium text-[color:var(--atlas-accent)] hover:underline"
                     >
-                      Nova tarefa
+                      Criar tarefa
                     </button>
-                  )
-                }
-              />
+                  </>
+                )}
+              </p>
             )}
           </div>
-        </AtlasCard>
+          {data ? (
+            <footer
+              className="cc6-hairline flex flex-wrap items-center gap-1.5 px-5 py-3"
+              aria-label="Indicadores da rotina"
+            >
+              <span className="cc6-chip">
+                concluídas{" "}
+                <strong className="cc6-ok font-semibold">
+                  {data.summary.completed}
+                </strong>
+              </span>
+              <span className="cc6-chip">
+                alta prioridade{" "}
+                <strong className="font-semibold">{data.summary.high}</strong>
+              </span>
+              <span className="cc6-chip">
+                sem responsável{" "}
+                <strong
+                  className={`font-semibold ${data.summary.unassigned ? "cc6-warn" : ""}`}
+                >
+                  {data.summary.unassigned}
+                </strong>
+              </span>
+            </footer>
+          ) : null}
+        </section>
 
         {leadership ? (
-          <AtlasCard className="h-fit">
-            <AtlasCardHeader
-              eyebrow="Equipe visível"
-              title="Carga por responsável"
-              description="Consolidado operacional para coordenar apoio, não ranking de pessoas."
-            />
-            <div className="space-y-2 p-5">
-              {data?.byOwner.map((owner) => (
+          <section
+            className="cc6-panel-quiet cc6-reveal h-fit p-4"
+            style={{ animationDelay: "240ms" }}
+            aria-labelledby="atlas-team-load-title"
+          >
+            <p className="cc6-eyebrow">Equipe visível</p>
+            <h2
+              id="atlas-team-load-title"
+              className="mt-1 text-sm font-semibold tracking-tight text-[#e8eef8]"
+            >
+              Carga por responsável
+            </h2>
+            <div className="mt-2 flex flex-col">
+              {data?.byOwner.map((owner, index) => (
                 <div
                   key={owner.id}
-                  className="rounded-xl border border-white/[.06] p-3"
+                  className={`flex items-baseline justify-between gap-3 py-2 ${index ? "cc6-hairline" : ""}`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <strong className="text-xs text-white">{owner.name}</strong>
-                    <span
-                      className={
-                        owner.overdue
-                          ? "text-xs font-bold text-rose-200"
-                          : "text-xs font-bold text-emerald-200"
-                      }
-                    >
-                      {owner.overdue} vencidas
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[10px] text-slate-500">
-                    {owner.open} abertas · {owner.today} hoje · {owner.high}{" "}
-                    prioritárias
-                  </p>
+                  <span className="min-w-0 truncate text-xs font-medium text-[#e8eef8]">
+                    {owner.name}
+                  </span>
+                  <span className="cc6-num shrink-0 text-[11px] text-[#6b7890]">
+                    {owner.overdue ? (
+                      <>
+                        <span className="cc6-crit font-semibold">
+                          {owner.overdue} vencidas
+                        </span>
+                        {" · "}
+                      </>
+                    ) : null}
+                    {owner.open} abertas
+                    {owner.today ? ` · ${owner.today} hoje` : ""}
+                    {owner.high ? ` · ${owner.high} alta` : ""}
+                  </span>
                 </div>
               ))}
               {!data?.byOwner.length ? (
-                <AtlasEmpty
-                  reason="completed"
-                  eyebrow="Equipe sem pendências"
-                  title="Sem tarefas visíveis"
-                  description="A equipe ainda não possui ações abertas."
-                />
+                <p className="py-2 text-xs text-[#6b7890]">
+                  Sem tarefas visíveis na equipe.
+                </p>
               ) : null}
-              <p className="pt-2 text-[10px] leading-4 text-slate-600">
-                A central não atribui tarefas automaticamente e não usa volume
-                isolado para avaliar desempenho.
-              </p>
             </div>
-          </AtlasCard>
+            <p className="cc6-hairline mt-1 pt-2.5 text-[10px] leading-4 text-[#6b7890]">
+              Consolidado para coordenar apoio · sem ranking e sem atribuição
+              automática.
+            </p>
+          </section>
         ) : null}
       </div>
     </div>
