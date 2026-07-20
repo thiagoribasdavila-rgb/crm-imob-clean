@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import {
@@ -394,13 +402,22 @@ function useCountUp(target: number) {
 
 // Sparkline em <canvas> puro: redesenha apenas quando a série muda (dependência
 // do useEffect), com devicePixelRatio respeitado para nitidez em retina.
+// Interatividade sem tooltip DOM: o ponteiro encontra o bucket mais próximo e o
+// marcador (ponto + hairline + valor) é desenhado no próprio canvas, sem estado
+// React por frame — só refs e redesenho imperativo; pointerleave limpa.
 const SPARKLINE_WIDTH = 120;
 const SPARKLINE_HEIGHT = 28;
 
 function Sparkline({ points, label }: { points: number[]; label: string }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawRef = useRef<(highlightIndex: number | null) => void>(() => {});
+  const bucketCountRef = useRef(0);
+  const highlightRef = useRef<number | null>(null);
+
   useEffect(() => {
     const canvas = canvasRef.current;
+    bucketCountRef.current = points.length;
+    highlightRef.current = null;
     if (!canvas || !points.length) return;
     const ratio = Math.max(1, window.devicePixelRatio || 1);
     canvas.width = SPARKLINE_WIDTH * ratio;
@@ -408,7 +425,6 @@ function Sparkline({ points, label }: { points: number[]; label: string }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.clearRect(0, 0, SPARKLINE_WIDTH, SPARKLINE_HEIGHT);
     const max = Math.max(...points, 1);
     const stepX = points.length > 1 ? SPARKLINE_WIDTH / (points.length - 1) : SPARKLINE_WIDTH;
     const yFor = (value: number) => SPARKLINE_HEIGHT - 3 - (value / max) * (SPARKLINE_HEIGHT - 6);
@@ -418,33 +434,256 @@ function Sparkline({ points, label }: { points: number[]; label: string }) {
         else ctx.lineTo(index * stepX, yFor(value));
       });
     };
-    // Área sutil sob o traço.
-    ctx.beginPath();
-    trace();
-    ctx.lineTo((points.length - 1) * stepX, SPARKLINE_HEIGHT);
-    ctx.lineTo(0, SPARKLINE_HEIGHT);
-    ctx.closePath();
-    ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
-    ctx.fill();
-    // Traço fino na cor de acento.
-    ctx.beginPath();
-    trace();
-    ctx.strokeStyle = "#38bdf8";
-    ctx.lineWidth = 1.25;
-    ctx.stroke();
-    // Ponto final destacado.
-    ctx.beginPath();
-    ctx.arc((points.length - 1) * stepX, yFor(points[points.length - 1] ?? 0), 2, 0, Math.PI * 2);
-    ctx.fillStyle = "#38bdf8";
-    ctx.fill();
+    const draw = (highlightIndex: number | null) => {
+      ctx.clearRect(0, 0, SPARKLINE_WIDTH, SPARKLINE_HEIGHT);
+      // Área sutil sob o traço.
+      ctx.beginPath();
+      trace();
+      ctx.lineTo((points.length - 1) * stepX, SPARKLINE_HEIGHT);
+      ctx.lineTo(0, SPARKLINE_HEIGHT);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
+      ctx.fill();
+      // Traço fino na cor de acento.
+      ctx.beginPath();
+      trace();
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 1.25;
+      ctx.stroke();
+      // Ponto final destacado.
+      ctx.beginPath();
+      ctx.arc((points.length - 1) * stepX, yFor(points[points.length - 1] ?? 0), 2, 0, Math.PI * 2);
+      ctx.fillStyle = "#38bdf8";
+      ctx.fill();
+      if (highlightIndex === null) return;
+      // Marcador do bucket sob o ponteiro: hairline vertical + ponto + valor.
+      const value = points[highlightIndex] ?? 0;
+      const markerX = highlightIndex * stepX;
+      ctx.beginPath();
+      ctx.moveTo(markerX, 2);
+      ctx.lineTo(markerX, SPARKLINE_HEIGHT - 2);
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.45)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(markerX, yFor(value), 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#e2e8f0";
+      ctx.fill();
+      // Rótulo do valor dentro do canvas (10px mono, fundo discreto pra legibilidade).
+      const text = String(value);
+      ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textBaseline = "top";
+      const textWidth = ctx.measureText(text).width;
+      const labelX = Math.min(Math.max(markerX - textWidth / 2, 2), SPARKLINE_WIDTH - textWidth - 2);
+      ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.fillRect(labelX - 2, 0, textWidth + 4, 12);
+      ctx.fillStyle = "#e2e8f0";
+      ctx.fillText(text, labelX, 2);
+    };
+    drawRef.current = draw;
+    draw(null);
   }, [points]);
+
+  const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const count = bucketCountRef.current;
+    if (!canvas || !count) return;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width) return;
+    const pointerX = ((event.clientX - rect.left) / rect.width) * SPARKLINE_WIDTH;
+    const stepX = count > 1 ? SPARKLINE_WIDTH / (count - 1) : SPARKLINE_WIDTH;
+    const index = Math.min(count - 1, Math.max(0, Math.round(pointerX / stepX)));
+    if (highlightRef.current === index) return;
+    highlightRef.current = index;
+    drawRef.current(index);
+  }, []);
+
+  const clearHighlight = useCallback(() => {
+    if (highlightRef.current === null) return;
+    highlightRef.current = null;
+    drawRef.current(null);
+  }, []);
+
+  // Via acessível completa continua no aria-label (o canvas segue não-focável).
+  const lastValue = points.length ? points[points.length - 1] : 0;
+  const minValue = points.length ? Math.min(...points) : 0;
+  const maxValue = points.length ? Math.max(...points) : 0;
+  const detailedLabel = points.length
+    ? `${label}. Mínimo ${minValue}, máximo ${maxValue}, último ${lastValue}.`
+    : label;
+
   return (
     <canvas
       ref={canvasRef}
-      className="h-7 w-[120px]"
+      className="h-7 w-[120px] cursor-crosshair"
       role="img"
-      aria-label={label}
+      aria-label={detailedLabel}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={clearHighlight}
+      onPointerCancel={clearHighlight}
     />
+  );
+}
+
+// Tilt 3D interativo: segue o ponteiro mutando style.transform direto no
+// elemento (zero estado React por frame — refs e mutação de estilo). Gates
+// obrigatórios: prefers-reduced-motion: no-preference E pointer: fine — em
+// touch ou reduced-motion o card fica estático. Retorno suave no pointerleave.
+const TILT_MAX_DEG = 4;
+
+function TiltCard({ children }: { children: ReactNode }) {
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const enabledRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: no-preference)");
+    const pointerQuery = window.matchMedia("(pointer: fine)");
+    const sync = () => {
+      enabledRef.current = motionQuery.matches && pointerQuery.matches;
+      if (!enabledRef.current && shellRef.current) {
+        shellRef.current.style.transition = "";
+        shellRef.current.style.transform = "";
+      }
+    };
+    sync();
+    motionQuery.addEventListener("change", sync);
+    pointerQuery.addEventListener("change", sync);
+    return () => {
+      motionQuery.removeEventListener("change", sync);
+      pointerQuery.removeEventListener("change", sync);
+    };
+  }, []);
+
+  const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const shell = shellRef.current;
+    if (!shell || !enabledRef.current) return;
+    if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+    const rect = shell.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const offsetX = (event.clientX - rect.left) / rect.width - 0.5;
+    const offsetY = (event.clientY - rect.top) / rect.height - 0.5;
+    const rotateY = (offsetX * 2 * TILT_MAX_DEG).toFixed(2);
+    const rotateX = (-offsetY * 2 * TILT_MAX_DEG).toFixed(2);
+    shell.style.transition = "transform 0s";
+    shell.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+  }, []);
+
+  const resetTilt = useCallback(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.style.transition = "transform 260ms ease-out";
+    shell.style.transform = "";
+  }, []);
+
+  return (
+    <div
+      ref={shellRef}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={resetTilt}
+      onPointerCancel={resetTilt}
+      className="h-full [transform-style:preserve-3d]"
+    >
+      <div className="h-full motion-safe:[transform:translateZ(10px)]">{children}</div>
+    </div>
+  );
+}
+
+// Anel de profundidade: gauge em canvas (devicePixelRatio) com trilho discreto
+// e dupla passada do arco — um arco deslocado com alpha baixo por baixo dá a
+// sensação de espessura (transform/tinta, nunca glow/blur). O arco anima até o
+// valor com rAF ~500ms; sob reduced-motion pinta direto. Redesenha só quando o
+// valor muda (dependência do useEffect).
+const RING_SIZE = 64;
+const RING_STROKE = 5;
+
+function DepthRing({
+  fraction,
+  centerLabel,
+  detail,
+  label,
+}: {
+  fraction: number;
+  centerLabel: string;
+  detail: string;
+  label: string;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const shownRef = useRef(0);
+  const frameRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const target = Math.min(1, Math.max(0, fraction));
+    const ratio = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = RING_SIZE * ratio;
+    canvas.height = RING_SIZE * ratio;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    const center = RING_SIZE / 2;
+    const radius = center - RING_STROKE - 1;
+    const startAngle = -Math.PI / 2;
+    const paint = (value: number) => {
+      ctx.clearRect(0, 0, RING_SIZE, RING_SIZE);
+      ctx.lineCap = "round";
+      ctx.lineWidth = RING_STROKE;
+      // Trilho discreto.
+      ctx.beginPath();
+      ctx.arc(center, center, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.stroke();
+      if (value <= 0.002) return;
+      const endAngle = startAngle + Math.PI * 2 * value;
+      // Dupla passada: arco deslocado com alpha baixo por baixo = espessura.
+      ctx.beginPath();
+      ctx.arc(center, center + 1.5, radius, startAngle, endAngle);
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.28)";
+      ctx.stroke();
+      // Arco principal no acento, terminação arredondada.
+      ctx.beginPath();
+      ctx.arc(center, center, radius, startAngle, endAngle);
+      ctx.strokeStyle = "#38bdf8";
+      ctx.stroke();
+    };
+    cancelAnimationFrame(frameRef.current);
+    if (prefersReducedMotion() || Math.abs(shownRef.current - target) < 0.001) {
+      shownRef.current = target;
+      paint(target);
+      return;
+    }
+    const from = shownRef.current;
+    const startedAt = performance.now();
+    const duration = 500;
+    const step = (now: number) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      const value = from + (target - from) * eased;
+      shownRef.current = value;
+      paint(value);
+      if (progress < 1) frameRef.current = requestAnimationFrame(step);
+    };
+    frameRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frameRef.current);
+  }, [fraction]);
+
+  return (
+    <span
+      role="img"
+      tabIndex={0}
+      aria-label={`${label}: ${detail}`}
+      title={detail}
+      className="relative inline-grid place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+    >
+      <canvas ref={canvasRef} aria-hidden="true" className="h-16 w-16" />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute font-mono text-[11px] font-semibold tabular-nums text-slate-200"
+      >
+        {centerLabel}
+      </span>
+    </span>
   );
 }
 
@@ -984,6 +1223,59 @@ export default function CommandCenterPage() {
     return { leadsPerHour, activityPerHour };
   }, [snapshot.leads, snapshot.tasks, referenceTime]);
 
+  // Anéis de profundidade: razões derivadas apenas de dados já carregados na
+  // página. (a) módulos operacionais X/Y; (b) a razão mais relevante do papel.
+  const operationalModuleCount = moduleHealth.filter(
+    (module) => module.state === "operational",
+  ).length;
+  const moduleRing = moduleHealth.length
+    ? {
+        fraction: operationalModuleCount / moduleHealth.length,
+        centerLabel: `${operationalModuleCount}/${moduleHealth.length}`,
+        detail: `${operationalModuleCount} de ${moduleHealth.length} módulos operacionais`,
+        label: "Módulos operacionais",
+      }
+    : null;
+  const roleRing = useMemo(() => {
+    if (isBroker) {
+      if (!brokerDaily || brokerDaily.summary.activeLeads <= 0) return null;
+      const { activeLeads, leadsNeedingAttention } = brokerDaily.summary;
+      const attended = Math.max(0, activeLeads - leadsNeedingAttention);
+      const fraction = Math.min(1, Math.max(0, attended / activeLeads));
+      return {
+        fraction,
+        centerLabel: `${Math.round(fraction * 100)}%`,
+        detail: `${attended} de ${activeLeads} leads ativos sem sinal de atenção`,
+        label: "Fila atendida",
+        caption: "Fila atendida",
+      };
+    }
+    if (isManager && teamSla && teamSla.totals.followUpComplianceRate !== null) {
+      const rate = teamSla.totals.followUpComplianceRate;
+      return {
+        fraction: Math.min(1, Math.max(0, rate / 100)),
+        centerLabel: `${Math.round(rate)}%`,
+        detail: `Follow-up dentro do SLA em ${rate}% dos casos`,
+        label: "SLA de follow-up",
+        caption: "SLA follow-up",
+      };
+    }
+    if (briefing?.signals.length) {
+      const total = briefing.signals.length;
+      const underControl = briefing.signals.filter(
+        (signal) => signal.severity !== "critical",
+      ).length;
+      return {
+        fraction: underControl / total,
+        centerLabel: `${underControl}/${total}`,
+        detail: `${underControl} de ${total} sinais da IA sem severidade crítica`,
+        label: "Sinais sob controle",
+        caption: "Sinais IA",
+      };
+    }
+    return null;
+  }, [briefing, brokerDaily, isBroker, isManager, teamSla]);
+
   // Relógio efetivo: nunca anterior à última atualização (o interval é de 30s).
   const nowMs = Math.max(nowTick, referenceTime);
   const updatedAgoSeconds = lastUpdated
@@ -1279,6 +1571,28 @@ export default function CommandCenterPage() {
           <span className="text-[11px] tabular-nums text-slate-500">{updatedAgoLabel}</span>
         </div>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {moduleRing ? (
+            <span className="flex items-center gap-2">
+              <DepthRing
+                fraction={moduleRing.fraction}
+                centerLabel={moduleRing.centerLabel}
+                detail={moduleRing.detail}
+                label={moduleRing.label}
+              />
+              <span className="text-[11px] text-slate-500">Módulos</span>
+            </span>
+          ) : null}
+          {roleRing ? (
+            <span className="flex items-center gap-2">
+              <DepthRing
+                fraction={roleRing.fraction}
+                centerLabel={roleRing.centerLabel}
+                detail={roleRing.detail}
+                label={roleRing.label}
+              />
+              <span className="text-[11px] text-slate-500">{roleRing.caption}</span>
+            </span>
+          ) : null}
           <span className="flex items-center gap-2">
             <Sparkline
               points={sparkSeries.leadsPerHour}
@@ -1322,18 +1636,18 @@ export default function CommandCenterPage() {
         aria-label="Pulso da operação"
         className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [transform-style:preserve-3d]"
       >
-        <div className={depthShellSoft}>
+        <TiltCard>
           <AtlasMetric label="Leads ativos" value={<span className={metricValueClass}>{activeDisplay}</span>} detail="Base em atendimento no seu escopo" tone="blue" />
-        </div>
-        <div className={depthShellSoft}>
+        </TiltCard>
+        <TiltCard>
           <AtlasMetric label="Leads quentes" value={<span className={metricValueClass}>{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
-        </div>
-        <div className={depthShellSoft}>
+        </TiltCard>
+        <TiltCard>
           <AtlasMetric label="Tarefas atrasadas" value={<span className={metricValueClass}>{overdueDisplay}</span>} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
-        </div>
-        <div className={depthShellSoft}>
+        </TiltCard>
+        <TiltCard>
           <AtlasMetric label="Sem responsável" value={<span className={metricValueClass}>{unassignedDisplay}</span>} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
-        </div>
+        </TiltCard>
       </section>
 
       <section
