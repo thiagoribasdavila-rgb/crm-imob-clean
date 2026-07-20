@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { DragEvent, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { DragEvent, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import { DEFAULT_PIPELINE_STAGES, type PipelineStageDefinition, type PipelineStageKey } from "@/lib/atlas/pipeline-stages";
+import { DISCARD_REASONS } from "@/lib/atlas/discard-reasons";
 
 const defaultStages = DEFAULT_PIPELINE_STAGES.filter((stage) => stage.visible && stage.outcome !== "lost" && stage.outcome !== "buyer_profile");
 type StageKey = PipelineStageKey;
@@ -26,6 +27,19 @@ type PipelineScope = {
   archivedMemoryExcluded: boolean;
   limit: number;
 };
+type DiscardDraft = {
+  leadId: string;
+  leadName: string;
+  fromStage: StageKey;
+  reasonKey: string;
+  notes: string;
+};
+type DiscardReportSummary = {
+  period: { start: string; end: string; days: number };
+  totals: { lostMoves: number | null; discarded: number; uniqueLeads: number; classified: number; coveragePct: number | null };
+  byReason: Array<{ key: string; label: string; metaCategory: string; count: number; share: number }>;
+};
+type DiscardReportStatus = "loading" | "ready" | "restricted" | "error";
 type Lead = {
   id: string;
   name: string | null;
@@ -160,6 +174,15 @@ export default function PipelinePage() {
   const [dragOverStage, setDragOverStage] = useState<StageKey | null>(null);
   const [lastMove, setLastMove] = useState<{ moveId: string; leadId: string; leadName: string; from: StageKey; to: StageKey } | null>(null);
   const [preferencesHydrated, setPreferencesHydrated] = useState(false);
+  const [discardDraft, setDiscardDraft] = useState<DiscardDraft | null>(null);
+  const [discardReport, setDiscardReport] = useState<DiscardReportSummary | null>(null);
+  const [discardReportStatus, setDiscardReportStatus] = useState<DiscardReportStatus>("loading");
+  const discardPanelRef = useRef<HTMLDivElement | null>(null);
+  const discardOpenLeadId = discardDraft?.leadId ?? null;
+
+  useEffect(() => {
+    if (discardOpenLeadId) discardPanelRef.current?.focus();
+  }, [discardOpenLeadId]);
 
   useEffect(() => {
     try {
@@ -222,7 +245,22 @@ export default function PipelinePage() {
 
   useEffect(() => { void load(); }, []);
 
-  async function moveLead(id: string, stage: StageKey, reversalOf?: string) {
+  async function loadDiscardReport() {
+    try {
+      const response = await authenticatedFetch("/api/v1/analytics/discard-report?days=30");
+      if (response.status === 401 || response.status === 403) { setDiscardReportStatus("restricted"); return; }
+      const payload = await response.json();
+      if (!response.ok || payload?.ok !== true) throw new Error("discard-report-unavailable");
+      setDiscardReport(payload.data as DiscardReportSummary);
+      setDiscardReportStatus("ready");
+    } catch {
+      setDiscardReportStatus("error");
+    }
+  }
+
+  useEffect(() => { void loadDiscardReport(); }, []);
+
+  async function moveLead(id: string, stage: StageKey, reversalOf?: string, discard?: { key: string; notes: string }) {
     if (savingId) {
       setError("Aguarde a movimentação atual ser confirmada antes de mover outra lead.");
       return;
@@ -230,6 +268,15 @@ export default function PipelinePage() {
     const currentLead = leads.find((lead) => lead.id === id);
     const previousStage = (currentLead?.status || "novo") as StageKey;
     if (previousStage === stage) { setDraggedId(null); setDragOverStage(null); return; }
+    if (stage === "perdido" && !reversalOf && !discard) {
+      // A movimentação para o estágio de perda só acontece após o motivo ser
+      // confirmado no painel — cancelar deixa a lead exatamente onde estava.
+      setError("");
+      setDraggedId(null);
+      setDragOverStage(null);
+      setDiscardDraft({ leadId: id, leadName: currentLead?.name || "Lead sem nome", fromStage: previousStage, reasonKey: "", notes: "" });
+      return;
+    }
     let followUpDescription = "";
     if (stage === "comprou_outro") {
       followUpDescription = window.prompt("Descreva o que pesou na compra: projeto, região, preço, prazo, financiamento ou atendimento. Essa descrição ficará protegida no CRM.")?.trim() || "";
@@ -240,10 +287,11 @@ export default function PipelinePage() {
     setError("");
     setLeads((current) => current.map((lead) => (lead.id === id ? { ...lead, status: stage, updated_at: new Date().toISOString() } : lead)));
     try {
-      const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, expectedFromStage: previousStage, followUpDescription, reversalOf: reversalOf || null }) });
+      const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, expectedFromStage: previousStage, followUpDescription, reversalOf: reversalOf || null, discardReason: discard ? { key: discard.key, notes: discard.notes } : null }) });
       const payload = await response.json();
       if (!response.ok) throw new Error("A movimentação não foi confirmada. A lead permaneceu na etapa anterior.");
       if (!reversalOf && payload.move?.moveId) setLastMove({ moveId: payload.move.moveId, leadId: id, leadName: currentLead?.name || "Lead", from: previousStage, to: stage });
+      if (discard) void loadDiscardReport();
     } catch (moveError) {
       setLeads(previous);
       setError(moveError instanceof Error ? moveError.message : "Falha ao mover lead.");
@@ -252,6 +300,13 @@ export default function PipelinePage() {
       setDraggedId(null);
       setDragOverStage(null);
     }
+  }
+
+  function confirmDiscard() {
+    if (!discardDraft || !discardDraft.reasonKey || savingId) return;
+    const draft = discardDraft;
+    setDiscardDraft(null);
+    void moveLead(draft.leadId, "perdido", undefined, { key: draft.reasonKey, notes: draft.notes.trim() });
   }
 
   function onDrop(event: DragEvent<HTMLElement>, stage: StageKey) {
@@ -498,6 +553,45 @@ export default function PipelinePage() {
         <AtlasCardHeader eyebrow="Inteligência de compradores" title="Compraram em outro lugar" description="Base separada do funil ativo: compradores reais que ajudam a entender público, produto, preço e concorrência sem contar como venda da empresa." />
         <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">{leads.filter((lead) => lead.status === "comprou_outro").length ? leads.filter((lead) => lead.status === "comprou_outro").map((lead) => <article key={lead.id} className="rounded-2xl border border-emerald-400/10 bg-emerald-400/[.035] p-4"><div className="flex items-start justify-between gap-3"><div><Link href={`/leads/${lead.id}`} className="font-semibold text-white hover:text-emerald-300">{lead.name || "Cliente comprador"}</Link><p className="mt-1 text-xs text-slate-500">{lead.phone || lead.email || "Contato protegido"}</p></div><AtlasBadge tone="success">COMPRADOR</AtlasBadge></div><p className="mt-3 text-xs leading-5 text-slate-400">Perfil preservado para inteligência comercial e futuras estratégias de público.</p><select value={lead.status ?? "comprou_outro"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="mt-4 w-full rounded-xl border border-white/10 bg-white/[.035] px-3 py-2 text-xs text-slate-300">{destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select></article>) : <div className="sm:col-span-2 xl:col-span-3"><AtlasEmpty reason="no-activity" eyebrow="Aprendizado comprador" title="Nenhum perfil comprador separado" description="Ao registrar uma compra em outro lugar, o cliente aparecerá aqui com seu aprendizado preservado." action={<Link href="/external-sales" className="atlas-button-secondary">Registrar compra externa</Link>} /></div>}</div>
       </AtlasCard> : null}
+      {!focusMode && discardReportStatus !== "restricted" ? <AtlasCard>
+        <AtlasCardHeader eyebrow="Qualidade de descarte" title="Descartadas" description="Motivos estruturados dos últimos 30 dias. Sinais negativos permanecem internos até a decisão do diretor de sincronizar com a Meta." action={<Link href="/pipeline/discards" className="atlas-button-secondary">Ver relatório Andromeda</Link>} />
+        <div className="p-4 sm:p-6">
+          {discardReportStatus === "loading" ? <AtlasSkeleton className="h-24 w-full" /> : null}
+          {discardReportStatus === "error" ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status"><span>O resumo de descartes não pôde ser carregado agora.</span><button type="button" onClick={() => { setDiscardReportStatus("loading"); void loadDiscardReport(); }} className="font-semibold text-amber-50 underline decoration-amber-300/40 underline-offset-4">Tentar novamente</button></div> : null}
+          {discardReportStatus === "ready" && discardReport ? (discardReport.byReason.length ? <>
+            <div className="flex flex-wrap items-center gap-2">
+              <AtlasBadge tone="danger">{discardReport.totals.discarded} descarte(s) em {discardReport.period.days} dias</AtlasBadge>
+              <AtlasBadge tone="neutral">{discardReport.totals.uniqueLeads} lead(s)</AtlasBadge>
+              {discardReport.totals.coveragePct !== null ? <AtlasBadge tone={discardReport.totals.coveragePct >= 80 ? "success" : "warning"}>Cobertura {discardReport.totals.coveragePct}% das perdas</AtlasBadge> : null}
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {discardReport.byReason.map((item) => <article key={item.key} className="rounded-2xl border border-rose-400/10 bg-rose-400/[.03] p-4">
+                <div className="flex items-start justify-between gap-3"><p className="min-w-0 text-sm font-semibold text-white">{item.label}</p><span className="shrink-0 text-lg font-semibold tracking-tight text-rose-200">{item.count}</span></div>
+                <div className="mt-3 flex items-center justify-between gap-2"><AtlasBadge tone="violet">{item.metaCategory}</AtlasBadge><span className="text-[11px] text-slate-500">{item.share}% dos descartes</span></div>
+              </article>)}
+            </div>
+          </> : <AtlasEmpty reason="no-activity" eyebrow="Aprendizado de descarte" title="Nenhum descarte classificado ainda" description="Ao mover uma lead para a etapa de perda, o motivo escolhido aparece aqui e alimenta o relatório Andromeda." action={<Link href="/pipeline/discards" className="atlas-button-secondary">Abrir relatório Andromeda</Link>} />) : null}
+        </div>
+      </AtlasCard> : null}
+      {discardDraft ? <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center" role="presentation" onClick={() => setDiscardDraft(null)}>
+        <div ref={discardPanelRef} role="dialog" aria-modal="true" aria-labelledby="discard-panel-title" aria-describedby="discard-panel-description" tabIndex={-1} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setDiscardDraft(null); } }} className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-black/40 outline-none sm:p-6">
+          <p className="text-xs font-semibold uppercase tracking-[.14em] text-rose-300">Descarte com aprendizado</p>
+          <h3 id="discard-panel-title" className="mt-1 text-lg font-semibold text-white">Por que descartar {discardDraft.leadName}?</h3>
+          <p id="discard-panel-description" className="mt-1 text-xs leading-5 text-slate-500">O motivo alimenta o relatório Andromeda e permanece interno. A lead só sai de {destinationOptions.find((item) => item.key === discardDraft.fromStage)?.label || "sua etapa"} depois da confirmação.</p>
+          <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Motivo do descarte">
+            {DISCARD_REASONS.map((reason) => <button key={reason.key} type="button" role="radio" aria-checked={discardDraft.reasonKey === reason.key} onClick={() => setDiscardDraft((current) => (current ? { ...current, reasonKey: reason.key } : current))} className={`w-full rounded-2xl border px-4 py-3 text-left transition ${discardDraft.reasonKey === reason.key ? "border-rose-400/40 bg-rose-400/10" : "border-white/[0.07] bg-white/[0.025] hover:border-white/15"}`}>
+              <span className={`block text-sm font-semibold ${discardDraft.reasonKey === reason.key ? "text-rose-100" : "text-slate-200"}`}>{reason.label}</span>
+              <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">{reason.description}</span>
+            </button>)}
+          </div>
+          <label className="mt-4 block text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500" htmlFor="discard-notes">Observação (opcional)</label>
+          <input id="discard-notes" value={discardDraft.notes} maxLength={280} onChange={(event) => setDiscardDraft((current) => (current ? { ...current, notes: event.target.value } : current))} placeholder="Contexto curto para o time e para a IA..." className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-rose-400/30" />
+          <div className="mt-5 flex justify-end gap-2">
+            <button type="button" onClick={() => setDiscardDraft(null)} className="atlas-button-secondary">Cancelar</button>
+            <button type="button" onClick={confirmDiscard} disabled={!discardDraft.reasonKey || Boolean(savingId)} className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-50">Confirmar descarte</button>
+          </div>
+        </div>
+      </div> : null}
     </div>
   );
 }

@@ -80,13 +80,13 @@ export async function PATCH(request: Request) {
     const source = body.source === "atlas-copilot" ? "atlas-copilot" : "pipeline";
     const humanConfirmed = body.humanConfirmed === true;
 
-    // Descarte estruturado (padrão Meta lead quality / Andromeda): ao mover
-    // para o estágio de perda, o cliente PODE enviar
-    // { discardReason: { key, notes? } }. O campo é OPCIONAL por
-    // compatibilidade — a UI atual do Kanban ainda move para "perdido" sem
-    // motivo; ele será tornado obrigatório na próxima onda, quando o seletor
-    // de motivos entrar na UI. Chave enviada mas fora da taxonomia é 400,
-    // para o vocabulário nunca divergir de lib/atlas/discard-reasons.ts.
+    // Descarte estruturado (padrão Meta lead quality / Andromeda): mover para
+    // o estágio de perda EXIGE { discardReason: { key, notes? } } — o seletor
+    // de motivos do Kanban envia o campo desde a onda 2. Única exceção:
+    // desfazer (reversalOf) de volta para "perdido" não é um novo descarte e
+    // não pede motivo (o evento lead_discarded original permanece no
+    // histórico). Chave enviada fora da taxonomia é 400, para o vocabulário
+    // nunca divergir de lib/atlas/discard-reasons.ts.
     const discardInput = body.discardReason && typeof body.discardReason === "object" && !Array.isArray(body.discardReason)
       ? (body.discardReason as Record<string, unknown>)
       : null;
@@ -101,6 +101,16 @@ export async function PATCH(request: Request) {
         {
           error: `Motivo de descarte inválido. Use uma das chaves: ${DISCARD_REASON_KEYS.join(", ")}.`,
           code: "INVALID_DISCARD_REASON",
+          validKeys: DISCARD_REASON_KEYS,
+        },
+        { status: 400 },
+      );
+    }
+    if (stage === "perdido" && !reversalOf && !discardReason) {
+      return NextResponse.json(
+        {
+          error: "Informe o motivo do descarte para mover a lead para a etapa de perda.",
+          code: "DISCARD_REASON_REQUIRED",
           validKeys: DISCARD_REASON_KEYS,
         },
         { status: 400 },
