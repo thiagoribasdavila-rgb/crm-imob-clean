@@ -8,6 +8,35 @@ import { computeAttentionSignals } from "@/lib/atlas/attention-signals";
 
 export const dynamic = "force-dynamic";
 
+// Cache curto (60s) por organização para o cálculo de sinais de atenção —
+// mesmo padrão globalThis dos buckets de rate-limit (lib/api/security.ts).
+// Por instância; TTL curto o bastante para um briefing "da manhã" e longo o
+// bastante para absorver dashboard + /reports carregando em sequência.
+type AttentionCacheEntry = { at: number; value: Awaited<ReturnType<typeof computeAttentionSignals>> };
+const attentionCacheGlobal = globalThis as typeof globalThis & {
+  __atlasBriefingAttentionCache?: Map<string, AttentionCacheEntry>;
+};
+const attentionCache = attentionCacheGlobal.__atlasBriefingAttentionCache ?? new Map<string, AttentionCacheEntry>();
+attentionCacheGlobal.__atlasBriefingAttentionCache = attentionCache;
+const ATTENTION_CACHE_TTL_MS = 60_000;
+
+async function cachedOrganizationAttention(
+  organizationId: string,
+  compute: () => Promise<AttentionCacheEntry["value"]>,
+): Promise<AttentionCacheEntry["value"]> {
+  const cached = attentionCache.get(organizationId);
+  const now = Date.now();
+  if (cached && now - cached.at < ATTENTION_CACHE_TTL_MS) return cached.value;
+  const value = await compute();
+  attentionCache.set(organizationId, { at: now, value });
+  if (attentionCache.size > 500) {
+    for (const [key, entry] of attentionCache) {
+      if (now - entry.at >= ATTENTION_CACHE_TTL_MS) attentionCache.delete(key);
+    }
+  }
+  return value;
+}
+
 type Signal = {
   id: string;
   severity: "critical" | "attention" | "opportunity" | "healthy";
@@ -95,25 +124,31 @@ export async function GET(request: NextRequest) {
   // "arquivado" no servidor, o limit(1000) devolveria uma amostra arbitrária
   // quase toda de arquivados e os sinais sairiam subcontados. A exclusão dos
   // demais estados terminais (ganho/perdido) continua no módulo de sinais.
-  const { data: leadRows } = await access.supabase
-    .from("leads")
-    .select("id,status,score_ia,temperature,classificacao_ia,created_at")
-    .eq("organization_id", identity.organizationId)
-    .neq("status", "arquivado")
-    .neq("status", "ARQUIVADO")
-    .order("created_at", { ascending: false })
-    .limit(1000);
-  const attention = await computeAttentionSignals(
-    access.supabase,
-    identity.organizationId,
-    (leadRows ?? []).map((lead) => ({
-      id: String(lead.id),
-      status: canonicalLeadStatus(lead.status) || "novo",
-      score: Number(lead.score_ia || 0),
-      temperature: typeof lead.temperature === "string" ? lead.temperature : typeof lead.classificacao_ia === "string" ? lead.classificacao_ia : null,
-      createdAt: typeof lead.created_at === "string" ? lead.created_at : null,
-    })),
-  );
+  // Cache de 60s por organização (padrão globalThis do rate-limit): o briefing
+  // é chamado pelo dashboard E pelo /reports, e o cálculo org-wide dispara
+  // até ~20 sub-queries — recalcular a cada carregamento dobrava o custo sem
+  // ganho (sinais de "parado há dias" não mudam em segundos).
+  const attention = await cachedOrganizationAttention(identity.organizationId, async () => {
+    const { data: leadRows } = await access.supabase
+      .from("leads")
+      .select("id,status,score_ia,temperature,classificacao_ia,created_at")
+      .eq("organization_id", identity.organizationId)
+      .neq("status", "arquivado")
+      .neq("status", "ARQUIVADO")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    return computeAttentionSignals(
+      access.supabase,
+      identity.organizationId,
+      (leadRows ?? []).map((lead) => ({
+        id: String(lead.id),
+        status: canonicalLeadStatus(lead.status) || "novo",
+        score: Number(lead.score_ia || 0),
+        temperature: typeof lead.temperature === "string" ? lead.temperature : typeof lead.classificacao_ia === "string" ? lead.classificacao_ia : null,
+        createdAt: typeof lead.created_at === "string" ? lead.created_at : null,
+      })),
+    );
+  });
   const staleLeadIds = new Set(attention.filter((signal) => signal.kind === "stale_stage").map((signal) => signal.leadId));
   const objectionSignals = attention.filter((signal) => signal.kind === "objection_open");
   const objectionLeadIds = new Set(objectionSignals.map((signal) => signal.leadId));
