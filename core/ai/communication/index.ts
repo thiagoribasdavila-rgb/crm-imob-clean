@@ -1,5 +1,3 @@
-export * from "./WhatsAppAgent";
-
 export * from "./InstagramAgent";
 
 export * from "./EmailAgent";
