@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { MessageResponse } from "@/components/ai-elements/message";
-import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { PageHeader } from "@/components/atlas/page-header";
+import { StatusBadge } from "@/components/atlas/status-badge";
+import { TiltShell } from "@/components/atlas/tilt-shell";
 import { matchLeadToProperty } from "@/lib/atlas/matching";
 import { supabase } from "@/lib/supabase";
 import type { AtlasLead, AtlasProperty } from "@/types/atlas";
@@ -14,6 +17,20 @@ type ActivityRow = { id: string; type: string; metadata: { propertyId?: string; 
 type LeadPayload = { lead: LeadRow; properties: PropertyRow[]; activities: ActivityRow[] };
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+/* CC-6: recomendação vira estado semântico único por par lead↔imóvel. */
+const recommendationMeta: Record<"priorizar" | "avaliar" | "não recomendar", { label: string; tone: "success" | "info" | "danger"; band: string }> = {
+  priorizar: { label: "Priorizar", tone: "success", band: "#34d399" },
+  avaliar: { label: "Avaliar", tone: "info", band: "var(--atlas-accent)" },
+  "não recomendar": { label: "Não recomendar", tone: "danger", band: "#fb7185" },
+};
+
+const focusRing =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
+const selectClass =
+  `min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-[#0b1224] px-4 text-sm text-[#e8eef8] transition-colors focus:border-[color:var(--atlas-accent)] ${focusRing}`;
+const toggleClass = (active: boolean, activeInk: string) =>
+  `min-h-9 rounded-xl border px-3 text-xs font-semibold transition-colors disabled:opacity-40 ${active ? activeInk : "border-[rgba(148,163,184,0.2)] text-[#aab6ca] hover:border-[rgba(148,163,184,0.35)] hover:text-[#e8eef8]"} ${focusRing}`;
 
 export default function PropertyMatching() {
   const [leads, setLeads] = useState<LeadRow[]>([]);
@@ -153,37 +170,186 @@ export default function PropertyMatching() {
   })();
 
   return (
-    <div className="space-y-6 pb-12">
-      <section className="atlas-grid-glow rounded-[28px] border border-violet-400/15 bg-gradient-to-br from-violet-500/[.14] via-sky-500/[.06] to-transparent p-6 sm:p-8">
-        <AtlasBadge tone="violet">MATCHING INTELLIGENCE</AtlasBadge>
-        <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div><h1 className="text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">Imóvel certo, cliente certo.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">Compare orçamento, região, tipologia e estoque com justificativas claras. A disponibilidade deve ser confirmada antes da apresentação.</p></div>
-          <label className="min-w-72 text-xs font-semibold uppercase tracking-wider text-slate-400">Cliente
-            <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#0a1020] px-4 py-3 text-sm normal-case tracking-normal text-white">
-              {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name || "Lead sem nome"} · score {lead.score ?? 0}</option>)}
-            </select>
-          </label>
-        </div>
+    <div className="space-y-4 pb-12" data-matching-layout="cc6-explainable" aria-busy={loading}>
+      <PageHeader
+        eyebrow="Imóveis · Matching"
+        title="Imóvel certo, cliente certo"
+        description="Ranking explicável por orçamento, região, tipologia e estoque — confirme a disponibilidade antes de apresentar."
+      />
+
+      {/* Controle do par lead↔carteira (única superfície com 3D): seleção do
+          cliente + ações. Consolida o hero antigo e o sub-header "Ranking". */}
+      <section aria-label="Cliente em análise">
+        <TiltShell className="cc6-panel cc6-reveal p-5" delayMs={40}>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 lg:max-w-sm lg:flex-1">
+              <label htmlFor="matching-lead" className="cc6-eyebrow">Cliente</label>
+              <select id="matching-lead" value={selectedId} onChange={(event) => setSelectedId(event.target.value)} className={`${selectClass} mt-2`}>
+                {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.name || "Lead sem nome"} · score {lead.score ?? 0}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="cc6-chip" title="Selecione até 3 imóveis para montar a apresentação.">{selectedProperties.length}/3 selecionados</span>
+              <button type="button" onClick={() => void generatePresentation()} disabled={!selectedProperties.length || generating} className="atlas-button-primary disabled:opacity-40">
+                {generating ? "Preparando…" : "Apresentar selecionados"}
+              </button>
+              {payload ? <Link href={`/leads/${payload.lead.id}`} className="cc6-ghost-btn">Lead 360</Link> : null}
+            </div>
+          </div>
+        </TiltShell>
       </section>
 
-      {error ? <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-100">{error}</div> : null}
-      {loading ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"><AtlasSkeleton className="h-80" /><AtlasSkeleton className="h-80" /><AtlasSkeleton className="h-80" /></div> : null}
-      {!loading && !leads.length ? <AtlasEmpty title="Nenhum lead visível" description="Cadastre ou atribua um lead para iniciar o matching." action={<Link href="/leads" className="atlas-button-primary">Ir para leads</Link>} /> : null}
+      {error ? (
+        <div role="alert" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[#fb7185]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>
+          {error}
+        </div>
+      ) : null}
+      {loading ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <AtlasSkeleton className="h-64 w-full" /><AtlasSkeleton className="h-64 w-full" /><AtlasSkeleton className="h-64 w-full" />
+        </div>
+      ) : null}
+      {!loading && !leads.length ? (
+        <p className="text-sm text-[#6b7890]">
+          Nenhum lead visível — <Link href="/leads" className={`font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[#e8eef8] ${focusRing}`}>cadastre ou receba um lead</Link> para iniciar o matching.
+        </p>
+      ) : null}
 
       {!loading && payload ? <>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="atlas-eyebrow">Ranking explicável</p><h2 className="mt-1 text-2xl font-semibold text-white">Melhores opções para {payload.lead.name || "este lead"}</h2><p className="mt-2 text-xs text-slate-500">Selecione até 3 imóveis para montar a apresentação.</p></div><div className="flex gap-3"><button onClick={() => void generatePresentation()} disabled={!selectedProperties.length || generating} className="atlas-button-primary disabled:opacity-40">{generating ? "Preparando..." : `✦ Apresentar selecionados (${selectedProperties.length})`}</button><Link href={`/leads/${payload.lead.id}`} className="atlas-button-secondary">Lead 360</Link></div></div>
-        {draft ? <section className="rounded-3xl border border-emerald-400/20 bg-emerald-400/[.06] p-5 sm:p-6"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><AtlasBadge tone="success">RASCUNHO PARA APROVAÇÃO</AtlasBadge><p className="mt-3 text-xs text-slate-400">{draft.mode === "generative" ? "IA generativa" : "Motor local seguro"} · revise antes de enviar</p></div><div className="flex flex-wrap gap-2"><button onClick={() => void copyDraft()} className="atlas-button-secondary">{copied ? "Copiado ✓" : "Copiar mensagem"}</button>{whatsappUrl ? <a href={whatsappUrl} target="_blank" rel="noreferrer" className="atlas-button-primary">Abrir no WhatsApp</a> : null}<button onClick={() => void registerPresentation()} disabled={registered || registering} className="atlas-button-secondary disabled:opacity-50">{registered ? "Registrado ✓" : registering ? "Registrando..." : "Registrar no histórico"}</button></div></div><div className="mt-5 rounded-2xl border border-white/[.07] bg-[#070d1b]/70 p-5 text-sm text-slate-200"><MessageResponse>{draft.content}</MessageResponse></div>{!whatsappUrl ? <p className="mt-3 text-xs text-amber-300">Telefone ausente ou inválido. Copie a mensagem e atualize o cadastro do lead.</p> : null}{registered ? <p className="mt-3 text-xs text-emerald-300">Apresentação registrada na timeline. A IA poderá considerar esta ação nas próximas recomendações.</p> : null}</section> : null}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {matches.map(({ property, match }, index) => <article key={property.id} className="rounded-3xl border border-white/[.08] bg-white/[.035] p-5">
-            <div className="flex items-start justify-between gap-3"><div><button type="button" disabled={match.recommendation === "não recomendar"} onClick={() => toggleProperty(property.id)} className={`mb-3 rounded-full border px-3 py-1 text-[10px] font-bold uppercase transition disabled:opacity-30 ${selectedProperties.includes(property.id) ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-200" : "border-white/10 text-slate-400 hover:border-violet-400/40"}`}>{selectedProperties.includes(property.id) ? "✓ Selecionado" : "Selecionar"}</button><p className="text-xs font-bold text-violet-300">#{index + 1} · {match.recommendation.toUpperCase()}</p><h3 className="mt-2 text-lg font-semibold text-white">{property.title || "Imóvel sem título"}</h3><p className="mt-1 text-sm text-slate-400">{[property.city, property.state].filter(Boolean).join(" · ") || "Localização pendente"}</p></div><div className="text-right"><p className="text-3xl font-semibold text-white">{match.score}</p><p className="text-[10px] uppercase text-slate-500">aderência</p></div></div>
-            <div className="mt-5"><AtlasProgress value={match.score} label={`Confiança ${match.confidence}`} /></div>
-            <div className="mt-5 flex flex-wrap gap-2 text-xs text-slate-300"><span>{property.price ? money.format(property.price) : "Preço pendente"}</span><span>·</span><span>{property.bedrooms ?? "—"} dorm.</span><span>·</span><span>{property.area ?? "—"} m²</span></div>
-            <div className="mt-5 space-y-2">{match.reasons.slice(0, 3).map((reason) => <p key={reason} className="text-xs text-emerald-300">✓ {reason}</p>)}{match.risks.slice(0, 2).map((risk) => <p key={risk} className="text-xs text-amber-300">! {risk}</p>)}</div>
-            {presentedProperties.has(property.id) ? <div className="mt-5 border-t border-white/[.07] pt-4"><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Retorno do cliente</p><select value={feedbackReasons[property.id] || ""} onChange={(event) => setFeedbackReasons((current) => ({ ...current, [property.id]: event.target.value }))} className="mb-2 w-full rounded-xl border border-white/10 bg-[#0a1020] px-3 py-2 text-xs text-slate-300"><option value="">Motivo principal (necessário se não aderiu)</option><option value="price">Preço</option><option value="location">Localização</option><option value="typology">Tipologia</option><option value="payment">Condição de pagamento</option><option value="delivery">Prazo de entrega</option><option value="product">Produto/diferenciais</option><option value="other">Outro</option></select><div className="grid grid-cols-2 gap-2"><button disabled={feedbackSaving === property.id} onClick={() => void saveFeedback(property.id, "interested")} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${feedbackByProperty.get(property.id) === "interested" ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-200" : "border-white/10 text-slate-300"}`}>Gostou</button><button disabled={feedbackSaving === property.id || !feedbackReasons[property.id]} onClick={() => void saveFeedback(property.id, "rejected")} className={`rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-40 ${feedbackByProperty.get(property.id) === "rejected" ? "border-rose-400/40 bg-rose-400/15 text-rose-200" : "border-white/10 text-slate-300"}`}>Não aderiu</button></div></div> : null}
-            <button disabled={match.recommendation === "não recomendar"} className="atlas-button-primary mt-5 w-full disabled:cursor-not-allowed disabled:opacity-40" onClick={() => window.location.href = `/leads/${payload.lead.id}`}>Apresentar pelo Lead 360</button>
-          </article>)}
-        </div>
-        {!matches.length ? <AtlasEmpty title="Sem imóveis para comparar" description="Atualize o estoque para gerar recomendações." /> : null}
+        {draft ? (
+          <section className="cc6-sev-band cc6-panel cc6-reveal p-5" style={{ "--cc6-sev": "#34d399" } as CSSProperties} aria-labelledby="matching-draft-title">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 id="matching-draft-title" className="text-sm font-semibold tracking-tight text-[#e8eef8]">
+                    Apresentação para {payload.lead.name || "o lead"}
+                  </h2>
+                  <StatusBadge tone="success">Rascunho · aprovação humana</StatusBadge>
+                </div>
+                <p className="cc6-num mt-1 text-[11px] text-[#6b7890]">{draft.mode === "generative" ? "IA generativa" : "motor local seguro"} · revise antes de enviar</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => void copyDraft()} className="cc6-ghost-btn">{copied ? "Copiado ✓" : "Copiar mensagem"}</button>
+                {whatsappUrl ? <a href={whatsappUrl} target="_blank" rel="noreferrer" className="atlas-button-primary">Abrir no WhatsApp</a> : null}
+                <button type="button" onClick={() => void registerPresentation()} disabled={registered || registering} className="cc6-ghost-btn disabled:opacity-50">
+                  {registered ? "Registrado ✓" : registering ? "Registrando…" : "Registrar no histórico"}
+                </button>
+              </div>
+            </div>
+            <div className="cc6-panel-quiet mt-4 p-4 text-sm text-[#e8eef8]"><MessageResponse>{draft.content}</MessageResponse></div>
+            {!whatsappUrl ? <p className="cc6-warn mt-2 text-[12px] leading-5">Telefone ausente ou inválido — copie a mensagem e atualize o cadastro do lead.</p> : null}
+            {registered ? <p className="cc6-ok mt-2 text-[12px] leading-5">Apresentação registrada na timeline; entra nas próximas recomendações.</p> : null}
+          </section>
+        ) : null}
+
+        <section aria-label={`Melhores opções para ${payload.lead.name || "este lead"}`} className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {matches.map(({ property, match }, index) => {
+            const rec = recommendationMeta[match.recommendation];
+            const isSelected = selectedProperties.includes(property.id);
+            const feedback = feedbackByProperty.get(property.id);
+            return (
+              <article
+                key={property.id}
+                className="cc6-sev-band cc6-panel-quiet cc6-reveal flex flex-col gap-3 py-4 pl-5 pr-4 transition-colors hover:border-[rgba(148,163,184,0.22)]!"
+                style={{ animationDelay: `${Math.min(index, 8) * 45}ms`, "--cc6-sev": rec.band } as CSSProperties}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="cc6-num text-[11px] text-[#6b7890]">#{String(index + 1).padStart(2, "0")}</span>
+                      <StatusBadge tone={rec.tone}>{rec.label}</StatusBadge>
+                    </div>
+                    <h3 className="mt-1.5 truncate text-[15px] font-semibold tracking-tight text-[#e8eef8]" title={property.title || undefined}>
+                      {property.title || "Imóvel sem título"}
+                    </h3>
+                    <p className="cc6-num mt-0.5 truncate text-[11px] text-[#6b7890]">{[property.city, property.state].filter(Boolean).join(" · ") || "Localização pendente"}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="cc6-metric-value text-3xl leading-none">{match.score}</p>
+                    <p className="cc6-metric-label mt-1">aderência · conf. {match.confidence}</p>
+                  </div>
+                </div>
+
+                <p className="cc6-num text-[12px] text-[#aab6ca]">
+                  {property.price ? money.format(property.price) : "Preço pendente"} · {property.bedrooms ?? "—"} dorm. · {property.area ?? "—"} m²
+                </p>
+
+                {/* O porquê do match em uma linha mono (íntegra no title). */}
+                <div className="space-y-1">
+                  {match.reasons.length ? (
+                    <p className="cc6-num cc6-ok truncate text-[11px]" title={match.reasons.join(" · ")}>✓ {match.reasons.slice(0, 3).join(" · ")}</p>
+                  ) : null}
+                  {match.risks.length ? (
+                    <p className="cc6-num cc6-warn truncate text-[11px]" title={match.risks.join(" · ")}>! {match.risks.slice(0, 2).join(" · ")}</p>
+                  ) : null}
+                </div>
+
+                {presentedProperties.has(property.id) ? (
+                  <div className="cc6-hairline pt-3">
+                    <p className="cc6-eyebrow">Retorno do cliente</p>
+                    <label className="sr-only" htmlFor={`matching-reason-${property.id}`}>Motivo principal do retorno</label>
+                    <select
+                      id={`matching-reason-${property.id}`}
+                      value={feedbackReasons[property.id] || ""}
+                      onChange={(event) => setFeedbackReasons((current) => ({ ...current, [property.id]: event.target.value }))}
+                      className={`${selectClass} mt-2`}
+                    >
+                      <option value="">Motivo principal (necessário se não aderiu)</option>
+                      <option value="price">Preço</option>
+                      <option value="location">Localização</option>
+                      <option value="typology">Tipologia</option>
+                      <option value="payment">Condição de pagamento</option>
+                      <option value="delivery">Prazo de entrega</option>
+                      <option value="product">Produto/diferenciais</option>
+                      <option value="other">Outro</option>
+                    </select>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        disabled={feedbackSaving === property.id}
+                        onClick={() => void saveFeedback(property.id, "interested")}
+                        className={toggleClass(feedback === "interested", "border-[rgba(52,211,153,0.4)] bg-[rgba(52,211,153,0.1)] text-[#34d399]")}
+                      >
+                        Gostou
+                      </button>
+                      <button
+                        type="button"
+                        disabled={feedbackSaving === property.id || !feedbackReasons[property.id]}
+                        onClick={() => void saveFeedback(property.id, "rejected")}
+                        className={toggleClass(feedback === "rejected", "border-[rgba(251,113,133,0.4)] bg-[rgba(251,113,133,0.1)] text-[#fb7185]")}
+                      >
+                        Não aderiu
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="cc6-hairline mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
+                  <button
+                    type="button"
+                    aria-pressed={isSelected}
+                    disabled={match.recommendation === "não recomendar"}
+                    onClick={() => toggleProperty(property.id)}
+                    className={`rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors disabled:opacity-30 ${isSelected ? "border-[rgba(52,211,153,0.4)] bg-[rgba(52,211,153,0.1)] text-[#34d399]" : "border-[rgba(148,163,184,0.2)] text-[#aab6ca] hover:border-[rgba(148,163,184,0.35)] hover:text-[#e8eef8]"} ${focusRing}`}
+                  >
+                    {isSelected ? "✓ Selecionado" : "Selecionar"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={match.recommendation === "não recomendar"}
+                    onClick={() => { window.location.href = `/leads/${payload.lead.id}`; }}
+                    className={`rounded-md text-[12px] font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[#e8eef8] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
+                  >
+                    Apresentar pelo Lead 360 →
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+        {!matches.length ? (
+          <p className="text-sm text-[#6b7890]">Sem imóveis para comparar — atualize o estoque para gerar recomendações.</p>
+        ) : null}
       </> : null}
     </div>
   );
