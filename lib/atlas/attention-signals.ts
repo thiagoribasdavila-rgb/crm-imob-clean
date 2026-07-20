@@ -28,10 +28,10 @@ import { DEFAULT_PIPELINE_STAGES } from "@/lib/atlas/pipeline-stages";
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
 
-// Horários exibidos em detail sempre em horário de Brasília — o servidor roda
-// em UTC e sem isso o corretor veria +3h. (O corte de meia-noite de
-// businessDaysElapsed ainda usa o TZ do processo; margem de erro de horas na
-// virada do dia, documentado como limitação conhecida até haver TZ por org.)
+// Horários exibidos em detail e fronteiras de dia útil sempre em horário de
+// Brasília — o servidor roda em UTC e sem isso o corretor veria +3h e um
+// contato às 22h BRT contaria como "dia seguinte". Quando houver timezone
+// por organização, este é o único ponto a parametrizar.
 const DISPLAY_TIME_ZONE = "America/Sao_Paulo";
 
 export type AttentionSeverity = "critical" | "warning" | "info";
@@ -168,18 +168,31 @@ function toMs(value: unknown): number | null {
  * não depender do horário exato do evento. Fórmula fechada (sem loop dia a
  * dia) para permanecer O(1) mesmo quando o intervalo é de anos.
  */
+// Fronteira de dia no fuso do corretor (BRT), não do servidor (UTC em
+// produção): contato às 22h de Brasília pertence àquele dia, não ao
+// seguinte. "en-CA" garante o formato YYYY-MM-DD do formatToParts.
+const calendarDayFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: DISPLAY_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function calendarDayUtc(ms: number): number {
+  const [year, month, day] = calendarDayFormatter.format(ms).split("-").map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
 function businessDaysElapsed(fromMs: number, toMs: number): number {
   if (toMs <= fromMs) return 0;
-  const start = new Date(fromMs);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(toMs);
-  end.setHours(0, 0, 0, 0);
-  const totalDays = Math.round((end.getTime() - start.getTime()) / DAY_MS);
+  const start = calendarDayUtc(fromMs);
+  const end = calendarDayUtc(toMs);
+  const totalDays = Math.round((end - start) / DAY_MS);
   if (totalDays <= 0) return 0;
   const fullWeeks = Math.floor(totalDays / 7);
   let businessDays = fullWeeks * 5;
   const remainder = totalDays % 7;
-  const startDow = start.getDay();
+  const startDow = new Date(start).getUTCDay();
   for (let offset = 1; offset <= remainder; offset += 1) {
     const dow = (startDow + offset) % 7;
     if (dow !== 0 && dow !== 6) businessDays += 1;
