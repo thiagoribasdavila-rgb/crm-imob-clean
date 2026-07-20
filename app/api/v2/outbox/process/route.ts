@@ -5,6 +5,7 @@ import { hashMetaValue, queueMetaConversion } from "@/lib/meta/conversions";
 import { resilientFetch } from "@/lib/http/resilient-fetch";
 import { integrationCatalog } from "@/lib/integrations/catalog";
 import { analyzeInboundWhatsApp } from "@/lib/ai/whatsapp-conversation-intelligence";
+import { resolveLeadOwner, recordDistribution } from "@/lib/distribution/hierarchical-cascade";
 
 export const dynamic = "force-dynamic";
 
@@ -133,6 +134,11 @@ export async function POST(request: Request) {
           const email = metaField(fields, "email");
           const phone = metaField(fields, "phone_number", "phone");
           const { data: existingLead } = await admin.from("leads").select("id").eq("organization_id", metaEvent.organization_id).contains("metadata", { meta: { externalLeadId: metaEvent.external_lead_id } }).maybeSingle();
+          // Distribuição RBAC 10/10: dono padrão validado → cascata corretor→gerente→fila
+          // (determinística, capacity-aware, offline-safe). Auditoria em lead_distribution_history.
+          const ownership = existingLead
+            ? null
+            : await resolveLeadOwner(admin, metaEvent.organization_id, sourceResult.data?.default_owner_id || null);
           const leadInsert = existingLead ? { data: existingLead, error: null } : await admin.from("leads").insert({
             organization_id: metaEvent.organization_id,
             name,
@@ -142,13 +148,14 @@ export async function POST(request: Request) {
             status: "novo",
             temperature: "frio",
             score: 0,
-            assigned_to: sourceResult.data?.default_owner_id || null,
-            metadata: { meta: { externalLeadId: metaEvent.external_lead_id, pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id, sourceName: sourceResult.data?.name || null, dataSharingConsent: sourceResult.data?.conversion_sharing_enabled === true, consentBasis: sourceResult.data?.consent_basis || null } },
+            assigned_to: ownership?.ownerId ?? null,
+            metadata: { meta: { externalLeadId: metaEvent.external_lead_id, pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id, sourceName: sourceResult.data?.name || null, dataSharingConsent: sourceResult.data?.conversion_sharing_enabled === true, consentBasis: sourceResult.data?.consent_basis || null }, distribution: ownership ? { tier: ownership.tier, reason: ownership.reason } : undefined },
             created_at: leadData.created_time || now,
             next_action_at: new Date(Date.now() + 5 * 60_000).toISOString(),
           }).select("id").single();
           const { data: lead, error: leadError } = leadInsert;
           if (leadError || !lead) throw leadError ?? new Error("Falha ao criar lead Meta.");
+          if (ownership?.ownerId) await recordDistribution(admin, { organizationId: metaEvent.organization_id, leadId: lead.id, ownerId: ownership.ownerId, reason: ownership.reason });
           await Promise.all([
             admin.from("meta_lead_events").update({ status: "imported", lead_id: lead.id, processed_at: now, last_error: null }).eq("id", metaEvent.id),
             admin.from("campaign_events").insert({ organization_id: metaEvent.organization_id, lead_id: lead.id, event_type: "lead_created", source: "meta", external_event_id: metaEvent.external_lead_id, payload: { pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id }, occurred_at: leadData.created_time || now }),
@@ -223,6 +230,10 @@ export async function POST(request: Request) {
           const contact = portalEvent.contact && typeof portalEvent.contact === "object" ? portalEvent.contact as { name?: string; email?: string; phone?: string; message?: string } : {};
           const providerLabel = integrationCatalog.find((item) => item.provider === portalEvent.provider)?.name || portalEvent.provider;
           const { data: existingLead } = await admin.from("leads").select("id").eq("organization_id", portalEvent.organization_id).contains("metadata", { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id } }).maybeSingle();
+          // Mesma cascata RBAC do caminho Meta — portais tinham o mesmo gap.
+          const ownership = existingLead
+            ? null
+            : await resolveLeadOwner(admin, portalEvent.organization_id, sourceRow?.default_owner_id || null);
           const leadInsert = existingLead ? { data: existingLead, error: null } : await admin.from("leads").insert({
             organization_id: portalEvent.organization_id,
             name: contact.name || `Lead ${providerLabel}`,
@@ -232,13 +243,14 @@ export async function POST(request: Request) {
             status: "novo",
             temperature: "frio",
             score: 0,
-            assigned_to: sourceRow?.default_owner_id || null,
-            metadata: { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id, listingId: portalEvent.listing_id, sourceName: sourceRow?.name || null, message: contact.message || null } },
+            assigned_to: ownership?.ownerId ?? null,
+            metadata: { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id, listingId: portalEvent.listing_id, sourceName: sourceRow?.name || null, message: contact.message || null }, distribution: ownership ? { tier: ownership.tier, reason: ownership.reason } : undefined },
             created_at: now,
             next_action_at: new Date(Date.now() + 5 * 60_000).toISOString(),
           }).select("id").single();
           const { data: lead, error: leadError } = leadInsert;
           if (leadError || !lead) throw leadError ?? new Error("Falha ao criar lead de portal.");
+          if (ownership?.ownerId) await recordDistribution(admin, { organizationId: portalEvent.organization_id, leadId: lead.id, ownerId: ownership.ownerId, reason: ownership.reason });
           await Promise.all([
             admin.from("portal_lead_events").update({ status: "imported", lead_id: lead.id, processed_at: now, last_error: null }).eq("id", portalEvent.id),
             admin.from("campaign_events").insert({ organization_id: portalEvent.organization_id, lead_id: lead.id, event_type: "lead_created", source: "portal", external_event_id: portalEvent.external_lead_id, payload: { provider: portalEvent.provider, listingId: portalEvent.listing_id }, occurred_at: now }),

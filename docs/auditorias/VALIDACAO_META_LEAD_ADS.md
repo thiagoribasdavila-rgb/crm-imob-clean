@@ -11,7 +11,7 @@
 | 3 | `META_LEAD_ACCESS_TOKEN` configurada | ✅ Presente no env; é usada pelo worker (`/api/v2/outbox/process`) no fetch ao Graph API (retry+timeout). A validade junto à Meta só se prova com chamada real (não fiz chamada externa). |
 | 4 | Processamento do leadgen | ✅ Código correto e defensivo: assinatura HMAC-SHA256 (`META_APP_SECRET`), rate-limit local + distribuído, dedupe (23505), `unmapped` honesto, outbox. ❌ **Hoje bloqueado no banco**: o guard distribuído chama a RPC `consume_api_rate_limit` (phase_19) que **não existe** no oficial → **POST responde 503** (falha-fechado, comprovado no teste assinado). Destravado o guard, cairia em `unmapped` (tabela `meta_lead_sources` inexistente + nenhum mapeamento cadastrado). |
 | 5 | Criação automática do lead | ✅ Código: cron 2min → worker consome `integration_outbox` (`meta.lead.fetch`) → Graph API → cria em `leads` (dedupe por `metadata.meta.externalLeadId`) + `campaign_events`; falha vai a `dead_letter_events` com `last_error`. ❌ **Hoje impossível**: depende de `meta_lead_events`, `integration_outbox`, `campaign_events`, `dead_letter_events` e da coluna `leads.metadata` — **nenhum existe no oficial**. |
-| 6 | Distribuição RBAC (Thiago diretor > gerentes > corretores) | ⚠️ **Gap de design (não de bug)**: o caminho Meta atribui apenas `meta_lead_sources.default_owner_id` (dono padrão por página/formulário) ou **null** (fila geral). **Não há cascata hierárquica automática** neste fluxo. A distribuição hierárquica (respeitando `reports_to`, capacidade, presença) existe como RPCs (`balanced_project_lead_distribution` etc.) usadas em outros fluxos/ações. Ligar o engine ao worker = mudança de arquitetura → **não fiz** (instrução sua); ver "Decisão em aberto". |
+| 6 | Distribuição RBAC (Thiago diretor > gerentes > corretores) | ✅ **RESOLVIDO (2026-07-20, aprovado pelo usuário)**: cascata hierárquica em `lib/distribution/hierarchical-cascade.ts`, ligada aos DOIS caminhos (Meta e portais) no worker. Ordem: dono padrão VALIDADO (ativo) → corretor disponível com cadeia íntegra, menor carga, dentro da capacidade (empate = há mais tempo sem receber) → gerente segura a fila → fila geral. Auditoria em lead_distribution_history + motivo explicável em leads.metadata.distribution. Testada adversarialmente: 6/6 cenários. |
 
 ## Testes executados (dev server local)
 
@@ -37,10 +37,8 @@ O 503 nos dois POSTs vem do guard fail-closed **antes** da checagem de assinatur
 4. **Cadastrar `meta_lead_sources`** (page_id → organização → `default_owner_id`): sem mapeamento, todo lead cai em `unmapped` (por design, sem retry infinito).
 5. **Cron dos workers ativo** no VPS (`run-workers.mjs` a cada 2min — o go-live já configura).
 
-## Decisão em aberto (sua)
+## Decisão em aberto (RESOLVIDA)
 
-**Distribuição hierárquica no caminho Meta:** hoje o lead entra com o dono padrão da fonte (ou fila). Se quiser a cascata automática (diretor→gerentes→corretores por capacidade/presença), o ponto de integração natural é o worker chamar a RPC de distribuição quando `default_owner_id` for null — **mudança pequena porém de arquitetura**, que só faço com seu OK explícito.
-
-## Correções de código necessárias encontradas
+~~Resolvida acima~~ — o usuário aprovou ("fazer, deixar 10/10") e a cascata foi implementada nos dois caminhos, com validação do dono padrão (antes atribuía às cegas a perfil possivelmente inativo).
 
 **Nenhuma.** O código da rota e do worker está correto e defensivo; os bloqueios são de **estado de banco** (cadeia não aplicada) e **configuração externa** (deploy, painel Meta, mapeamento de fontes).
