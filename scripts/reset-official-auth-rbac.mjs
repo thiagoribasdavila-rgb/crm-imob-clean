@@ -39,6 +39,31 @@ const invalid = definitions.filter((item) => !/^\S+@\S+\.\S+$/.test(item.email))
 if (invalid.length) throw new Error(`Preencha os e-mails oficiais: ${invalid.map((item) => `ATLAS_INITIAL_${item.key}_EMAIL`).join(", ")}`);
 if (new Set(definitions.map((item) => item.email)).size !== definitions.length) throw new Error("Cada usuário inicial precisa de um e-mail exclusivo.");
 
+// Validação ESTÁTICA da hierarquia comercial — espelha private.validate_commercial_hierarchy
+// (migration official_auth_rbac). Prova o roster ANTES de qualquer escrita, inclusive no
+// dry-run (que não testa upserts). Roda em dry-run e apply (fail fast, sem tocar no banco).
+function assertCommercialHierarchy(defs) {
+  const byKey = new Map(defs.map((d) => [d.key, d]));
+  const VALID_ACCESS = new Set(["admin", "director_decisor", "director", "broker"]);
+  for (const d of defs) {
+    if (!VALID_ACCESS.has(d.accessRole)) throw new Error(`Hierarquia inválida em ${d.key}: access_role '${d.accessRole}' (use admin|director_decisor|director|broker).`);
+    if (d.accessRole === "admin" || d.accessRole === "director_decisor") {
+      if (d.commercialRole !== "director" || d.supervisor) throw new Error(`Hierarquia inválida em ${d.key}: raiz (${d.accessRole}) exige commercial_role='director' e sem supervisor.`);
+      continue;
+    }
+    if (!d.supervisor) throw new Error(`Hierarquia inválida em ${d.key}: access_role='${d.accessRole}' exige supervisor.`);
+    const sup = byKey.get(d.supervisor);
+    if (!sup) throw new Error(`Hierarquia inválida em ${d.key}: supervisor '${d.supervisor}' não está no roster.`);
+    if (d.accessRole === "director" && (d.commercialRole !== "manager" || sup.accessRole !== "director_decisor")) {
+      throw new Error(`Hierarquia inválida em ${d.key}: diretor operacional exige commercial_role='manager' e supervisor director_decisor (supervisor ${d.supervisor} é ${sup.accessRole}).`);
+    }
+    if (d.accessRole === "broker" && (d.commercialRole !== "broker" || sup.accessRole !== "director")) {
+      throw new Error(`Hierarquia inválida em ${d.key}: corretor exige commercial_role='broker' e supervisor director (supervisor ${d.supervisor} é ${sup.accessRole}).`);
+    }
+  }
+}
+assertCommercialHierarchy(definitions);
+
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 let organizationId = process.env.ATLAS_AUTH_ORGANIZATION_ID;
 if (!organizationId) {
@@ -59,7 +84,7 @@ for (let page = 1; ; page += 1) {
   authUsers.push(...batch);
   if (batch.length < 1000) break;
 }
-console.log(JSON.stringify({ mode: apply ? "apply" : "dry-run", existingAuthUsers: authUsers.length, officialUsers: definitions.length, usersToBlock: authUsers.filter((user) => !definitions.some((item) => item.email === user.email?.toLowerCase())).length, passwordsStored: false, personalDataPrinted: false }, null, 2));
+console.log(JSON.stringify({ mode: apply ? "apply" : "dry-run", existingAuthUsers: authUsers.length, officialUsers: definitions.length, usersToBlock: authUsers.filter((user) => !definitions.some((item) => item.email === user.email?.toLowerCase())).length, hierarchyValidated: true, passwordsStored: false, personalDataPrinted: false }, null, 2));
 if (!apply) {
   console.log(`Simulação concluída. Para executar, repita com --confirm=${APPLY_TOKEN}.`);
   process.exit(0);
