@@ -53,6 +53,22 @@ Como o histórico aplicado (33) não bate com o repo (124), um `db push` tentari
 - **Aplicação de migrations é ação do usuário** (minhas ferramentas de escrita em banco estão fora de escopo por protocolo). Eu preparo comandos, lista ordenada e checklist; valido por leitura depois.
 - Nada destrutivo. Nenhuma planilha importada nesta fase.
 
+## 5-bis. 🔴 ACHADO CRÍTICO — o repo NÃO reconstrói o banco do zero
+
+Ao validar a cadeia para "apply do zero" (premissa da homologação limpa), dois fatos derrubam essa mecânica:
+
+1. **A foundation é um stub de comentário.** `20260711040000_atlas_v3_foundation.sql` tem 11 linhas, **zero DDL**. O schema-base (`organizations`, `profiles`, `leads`, `customers`, `tasks`, `activities`…) foi aplicado **direto num projeto Supabase diferente** (`crm-imob-clean` / `pvvdfqbkqhfifylzgbkq`) e **não está reproduzível** por nenhum arquivo do repo. Ele só existe hoje dentro do banco vivo.
+
+2. **A cadeia tem FKs pendentes (dangling).** Migrations das phases (17→20/07) referenciam por FK tabelas que **nenhuma migration cria e a prod não tem**: **`developments`, `campaigns`, `properties`, `opportunities`, `ai_insights`, `units`**. Ex.: `... references public.developments(id)` em phase_57/63/64; `... references public.campaigns(id)` em lead_attribution_touches. Um apply real pararia nesses FKs.
+
+**Consequência:** as ~110 migrations pós-corte foram **escritas mas nunca aplicadas a Postgres real algum** (coerente com o histórico aplicado parar em 16/07). Elas não formam um schema válido e auto-contido.
+
+### Mecânica corrigida para "homologação limpa"
+Aplicar o repo num banco vazio **falha** (sem base + FKs pendentes). O caminho fiel e seguro é:
+
+- **Homolog = restauração de um dump do schema da produção atual** (`pg_dump` do `ietwopslgqxlenfyghqk`), não replay das migrations. Assim o homolog reflete exatamente o que funciona hoje (23 tabelas, RLS, funções), numa nova URL, com **produção 100% intocada**. Isso satisfaz "garantir banco, tabelas e CRM-núcleo funcionando".
+- **Ligar as 116 tabelas de feature é um projeto de remediação** (na minha alçada, no repo): criar as 6 tabelas-base ausentes (`developments`, `campaigns`, `properties`, `opportunities`, `ai_insights`, `units`) com as colunas que os FKs exigem, resolver as pendências, e validar a cadeia inteira contra um Postgres real **antes** de aplicar em qualquer lugar. Não é `apply` mecânico.
+
 ## 6. Manifesto
 
 Lista completa das 124 migrations faltantes (110 pós-corte + 14 pré-corte) gerada em
