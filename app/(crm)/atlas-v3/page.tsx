@@ -110,9 +110,9 @@ export default function AtlasV3Page() {
             <span className="atlas-gradient-text">próximo passo claro.</span>
           </h1>
           <p>
-            O percentual combina o peso de cada fase com entregas comprovadas no
-            código. Estrutura pronta não substitui dados reais, teste entre tenants
-            ou piloto operacional.
+            O percentual é uma autoavaliação de engenharia, atribuída manualmente
+            por fase — não uma medição automática. Estrutura pronta não substitui
+            dados reais, teste entre tenants ou piloto operacional.
           </p>
           <div className="atlas-command-actions">
             <Link href="/dashboard" className="atlas-button-primary">Abrir Command Center</Link>
