@@ -32,6 +32,94 @@
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
+-- 0) Restaurar a API de tenant que a CAUDA INTEIRA assume.
+--    Bug estrutural encontrado na validação isolada (PGlite, 2026-07-20): todas
+--    as ~110 migrations pós-corte referenciam public.current_organization_id()
+--    em policies/funções, mas o banco oficial só tem private.current_organization_id()
+--    (a versão pública foi removida pelo hardening 20260715032525_remove_public_
+--    tenant_helper_rpc). Sem isto, o primeiro apply real quebraria em toda parte.
+--    Recriamos a pública como wrapper fino da privada, MANTENDO o espírito do
+--    hardening: revoke de anon/public; execute só para authenticated/service_role.
+-- ---------------------------------------------------------------------------
+create or replace function public.current_organization_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select private.current_organization_id();
+$$;
+revoke all on function public.current_organization_id() from public;
+revoke all on function public.current_organization_id() from anon;
+grant execute on function public.current_organization_id() to authenticated, service_role;
+
+-- Idem para public.current_user_role(): usada por policies da cauda (feature_flags
+-- em level6_resilience) e por NADA criada. Papel normalizado em minúsculas, coerente
+-- com o modelo official_auth_rbac (commercial_role com fallback no role legado).
+-- plpgsql de propósito: o corpo referencia commercial_role, que só nasce no bridge
+-- (aplicado depois); plpgsql valida em runtime, quando a coluna já existe.
+create or replace function public.current_user_role()
+returns text
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  return (
+    select lower(coalesce(p.commercial_role, p.role))
+    from public.profiles p
+    where p.id = (select auth.uid()) and p.active = true
+    limit 1
+  );
+end;
+$$;
+revoke all on function public.current_user_role() from public;
+revoke all on function public.current_user_role() from anon;
+grant execute on function public.current_user_role() to authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- 0-bis) activities: a cauda (broker_lead_360, property_presentation/feedback,
+--    phase_35) cria policies org-scoped sobre public.activities, mas a tabela
+--    legada V1 não tem organization_id (0 linhas na prod — adição segura).
+--    Validação isolada 2026-07-20 pegou o gap.
+-- ---------------------------------------------------------------------------
+alter table public.activities
+  add column if not exists organization_id uuid references public.organizations(id) on delete cascade,
+  add column if not exists user_id uuid references public.profiles(id) on delete set null,
+  add column if not exists metadata jsonb not null default '{}'::jsonb,
+  add column if not exists occurred_at timestamptz not null default now();
+create index if not exists activities_organization_id_idx on public.activities (organization_id);
+create index if not exists activities_org_user_idx on public.activities (organization_id, user_id);
+
+-- profiles.manager_id: a phase_17 (rls_isolation_audit) cria um índice sobre
+-- profiles(organization_id, manager_id, commercial_role), mas manager_id não é
+-- criado por migration alguma (as phases 54/55 só têm p_target_manager_id como
+-- PARÂMETRO de função). Coluna fantasma — provável typo de reports_to. Criamos como
+-- FK nullable para o índice ser válido; sem escrita, sem efeito colateral.
+alter table public.profiles
+  add column if not exists manager_id uuid references public.profiles(id) on delete set null;
+
+-- organizations.active: o reset oficial (e código que espera paridade com profiles.active)
+-- lê organizations.active, mas a tabela só tem `status`. Coluna GERADA a partir de status
+-- (read-only, sempre coerente; nada escreve nela) — resolve sem duplicar verdade.
+alter table public.organizations
+  add column if not exists active boolean generated always as (status = 'ACTIVE') stored;
+
+-- profiles.role: o CHECK base exige português maiúsculo (ADMIN/DIRETOR/GERENTE/CORRETOR),
+-- mas o código novo (RLS `role in ('admin','manager')`) e o reset oficial gravam inglês
+-- minúsculo. official_auth_rbac relaxou só access_role e esqueceu do role legado — a
+-- inserção do 1º usuário oficial quebraria. Relaxamos para a UNIÃO: mantém os 4 usuários
+-- atuais (PT-BR) válidos, inclusive quando desativados como legado, e aceita os novos.
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles add constraint profiles_role_check
+  check (role in (
+    'ADMIN','DIRETOR_DECISOR','DIRETOR','GERENTE','CORRETOR',
+    'admin','director_decisor','director','superintendent','manager','broker'
+  ));
+
+-- ---------------------------------------------------------------------------
 -- 1) public.developments — evolução canônica de public.crm_projects
 --    Forma COMPLETA (núcleo legado + colunas que phase_62 adiciona) para que os
 --    ALTER ... ADD COLUMN IF NOT EXISTS das phases virem no-ops.

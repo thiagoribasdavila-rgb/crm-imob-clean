@@ -10,7 +10,7 @@
 ## Premissa
 O banco novo tem a **base** aplicada até o corte `20260716083708` (mesmo ponto do banco antigo — 23 tabelas). Confirme com: `select max(version) from supabase_migrations.schema_migrations;` — deve dar `20260716083708`. Se der outro valor, ajustar o intervalo.
 
-## Cadeia mínima (57 migrations, EM ORDEM) — remediação + até o bridge
+## Cadeia mínima (66 migrations (validadas), EM ORDEM) — remediação + até o bridge
 ```
 20260716210000_atlas_v3_canonical_base_tables.sql
 20260716212459_commercial_hierarchy_and_bulk_transfer.sql
