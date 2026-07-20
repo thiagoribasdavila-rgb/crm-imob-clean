@@ -6,15 +6,10 @@ import {
   CAMPAIGN_QUALITY_MINIMUM_LEADS,
   CAMPAIGN_QUALITY_QUALIFIED_SCORE,
   buildCampaignQuality,
-  type CampaignQualityCampaign,
-  type CampaignQualityDiscardEvent,
-  type CampaignQualityLead,
-  type CampaignQualitySpendRow,
 } from "@/lib/atlas/campaign-quality";
+import { fetchCampaignQualitySource } from "@/lib/atlas/campaign-quality-data";
 import { DISCARD_TAXONOMY_VERSION } from "@/lib/atlas/discard-reasons";
 import { logger } from "@/lib/observability/logger";
-import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { fetchAllRows } from "@/lib/supabase/fetch-all-rows";
 
 export const dynamic = "force-dynamic";
 
@@ -90,49 +85,12 @@ export async function GET(request: NextRequest) {
   const start = new Date(end.getTime() - days * DAY);
   const since = start.toISOString();
 
-  // Tenant scoping explícito (eq organization_id) em TODAS as queries.
-  const admin = getSupabaseAdmin();
-  // Paginação exaustiva (lição F1): a base viva tem 17k+ leads na janela —
-  // .limit() acima de 1000 é cortado em silêncio pelo PostgREST e o agregado
-  // sairia calculado sobre ~6% dos dados sem nenhum aviso.
-  const [campaignResult, leadFetch, eventFetch, spendFetch] = await Promise.all([
-    admin
-      .from("marketing_campaigns")
-      .select("id,name,platform,status,started_at,ended_at")
-      .eq("organization_id", organizationId)
-      .limit(1000),
-    fetchAllRows<CampaignQualityLead>((from, to) =>
-      admin
-        .from("leads")
-        .select("id,campaign_id,status,score_ia,temperature,created_at")
-        .eq("organization_id", organizationId)
-        .gte("created_at", since)
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true })
-        .range(from, to),
-    ),
-    fetchAllRows<CampaignQualityDiscardEvent>((from, to) =>
-      admin
-        .from("lead_events")
-        .select("lead_id,metadata,created_at")
-        .eq("organization_id", organizationId)
-        .eq("event_type", "lead_discarded")
-        .gte("created_at", since)
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true })
-        .range(from, to),
-    ),
-    fetchAllRows<CampaignQualitySpendRow>((from, to) =>
-      admin
-        .from("marketing_spend")
-        .select("campaign_id,spend_date,amount")
-        .eq("organization_id", organizationId)
-        .gte("spend_date", since.slice(0, 10))
-        .order("spend_date", { ascending: true })
-        .order("id", { ascending: true })
-        .range(from, to),
-    ),
-  ]);
+  // Tenant scoping explícito (eq organization_id) em TODAS as queries e
+  // paginação exaustiva (lição F1) vivem no loader compartilhado com o
+  // conselheiro Andromeda — lib/atlas/campaign-quality-data.ts. As queries
+  // são as MESMAS de antes da extração, só mudaram de arquivo.
+  const { campaignResult, leadFetch, eventFetch, spendFetch } =
+    await fetchCampaignQualitySource({ organizationId, since });
 
   if (campaignResult.error || leadFetch.error || eventFetch.error) {
     logger.warn("analytics.campaign_quality.read_failed", {
@@ -168,7 +126,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { ranking, totals } = buildCampaignQuality({
-    campaigns: (campaignResult.data ?? []) as CampaignQualityCampaign[],
+    campaigns: campaignResult.data ?? [],
     leads: leadFetch.rows,
     discardEvents: eventFetch.rows,
     spendRows: spendFetch.error ? [] : spendFetch.rows,

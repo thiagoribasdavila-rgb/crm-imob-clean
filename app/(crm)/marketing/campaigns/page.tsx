@@ -53,6 +53,47 @@ type Payload = {
   };
 };
 
+// Conselheiro Andromeda — consome /api/v1/ai/andromeda-advisor (gestor+;
+// só agregados, zero PII; nada é aplicado automaticamente na Meta).
+// Shape em lib/ai/andromeda-pipeline-advisor.ts.
+type AdvisorRecommendation = {
+  campaignId: string;
+  campaignName: string;
+  action: "scale" | "adjust_targeting" | "fix_form" | "pause_review" | "keep";
+  rationale: string;
+  confidence: "alta" | "media" | "baixa";
+  metaFeedbackHint: string;
+};
+
+type AdvisorPayload = {
+  engine: "generative" | "deterministic";
+  model: string | null;
+  recommendations: AdvisorRecommendation[];
+  humanApprovalRequired: boolean;
+};
+
+const advisorActionLabels: Record<AdvisorRecommendation["action"], string> = {
+  scale: "ESCALAR VERBA",
+  adjust_targeting: "AJUSTAR PÚBLICO",
+  fix_form: "CORRIGIR FORMULÁRIO",
+  pause_review: "REVISAR / PAUSAR",
+  keep: "MANTER",
+};
+
+const advisorActionTones: Record<AdvisorRecommendation["action"], "success" | "info" | "warning" | "danger" | "neutral"> = {
+  scale: "success",
+  adjust_targeting: "info",
+  fix_form: "warning",
+  pause_review: "danger",
+  keep: "neutral",
+};
+
+const advisorConfidenceLabels: Record<AdvisorRecommendation["confidence"], string> = {
+  alta: "alta",
+  media: "média",
+  baixa: "baixa",
+};
+
 const metaCategoryLabels: Record<string, string> = {
   duplicate: "Duplicado",
   invalid_contact_info: "Contato inválido",
@@ -78,6 +119,9 @@ export default function CampaignsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const [advisor, setAdvisor] = useState<AdvisorPayload | null>(null);
+  const [advisorError, setAdvisorError] = useState("");
+  const [advisorLoading, setAdvisorLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -97,6 +141,31 @@ export default function CampaignsPage() {
         if (active) setError(reason instanceof Error ? reason.message : "Painel indisponível");
       } finally {
         if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [days, reloadKey]);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setAdvisorLoading(true);
+      setAdvisorError("");
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token;
+        const response = await fetch(`/api/v1/ai/andromeda-advisor?days=${days}`, {
+          cache: "no-store",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json?.error?.message || "Conselheiro indisponível");
+        if (active) setAdvisor(json.data as AdvisorPayload);
+      } catch (reason) {
+        if (active) setAdvisorError(reason instanceof Error ? reason.message : "Conselheiro indisponível");
+      } finally {
+        if (active) setAdvisorLoading(false);
       }
     })();
     return () => {
@@ -170,6 +239,61 @@ export default function CampaignsPage() {
           sem nota de qualidade e sem decisão de verba até lá.
         </div>
       ) : null}
+
+      <AtlasCard>
+        <AtlasCardHeader
+          eyebrow="Conselheiro Andromeda"
+          title="Recomendações Pipeline × Andromeda"
+          description="Conselho explicável por campanha, gerado só com dados agregados (zero dados pessoais). Nada é aplicado automaticamente na Meta."
+          action={advisor ? (
+            <AtlasBadge tone={advisor.engine === "generative" ? "violet" : "info"}>
+              {advisor.engine === "generative"
+                ? `IA GENERATIVA${advisor.model ? ` · ${advisor.model}` : ""}`
+                : "REGRAS DETERMINÍSTICAS"}
+            </AtlasBadge>
+          ) : null}
+        />
+        <div className="space-y-4 px-5 pb-5">
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-200">
+            Aprovação humana obrigatória: cada recomendação é um conselho para o gestor executar —
+            o Atlas não altera verba, não pausa campanha e não envia nada à Meta automaticamente.
+          </div>
+          {advisorError ? (
+            <AtlasRecoverableError
+              description={advisorError}
+              onRetry={() => setReloadKey((value) => value + 1)}
+              busy={advisorLoading}
+              scope="module"
+            />
+          ) : advisorLoading && !advisor ? (
+            <AtlasSkeleton className="h-40 w-full" />
+          ) : !advisor || advisor.recommendations.length === 0 ? (
+            <AtlasEmpty
+              reason="no-activity"
+              title="Nenhuma recomendação na janela"
+              description="Assim que campanhas tiverem leads na janela, o conselheiro cruza qualidade, funil e descartes para sugerir o próximo passo — sempre sob aprovação humana."
+            />
+          ) : (
+            <ul className="space-y-3">
+              {advisor.recommendations.map((rec) => (
+                <li key={rec.campaignId} className="rounded-2xl border border-white/[.06] bg-white/[.03] p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AtlasBadge tone={advisorActionTones[rec.action]}>{advisorActionLabels[rec.action]}</AtlasBadge>
+                    <span className="font-medium text-white">{rec.campaignName}</span>
+                    <span className="text-xs uppercase tracking-wider text-slate-500">
+                      Confiança {advisorConfidenceLabels[rec.confidence]}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">{rec.rationale}</p>
+                  <p className="mt-2 text-xs leading-5 text-slate-400">
+                    <span className="font-semibold text-slate-300">Feedback para a Meta:</span> {rec.metaFeedbackHint}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </AtlasCard>
 
       {data ? (
         <AtlasCard>
