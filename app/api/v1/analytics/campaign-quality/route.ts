@@ -14,6 +14,7 @@ import {
 import { DISCARD_TAXONOMY_VERSION } from "@/lib/atlas/discard-reasons";
 import { logger } from "@/lib/observability/logger";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all-rows";
 
 export const dynamic = "force-dynamic";
 
@@ -91,39 +92,54 @@ export async function GET(request: NextRequest) {
 
   // Tenant scoping explícito (eq organization_id) em TODAS as queries.
   const admin = getSupabaseAdmin();
-  const [campaignResult, leadResult, eventResult, spendResult] = await Promise.all([
+  // Paginação exaustiva (lição F1): a base viva tem 17k+ leads na janela —
+  // .limit() acima de 1000 é cortado em silêncio pelo PostgREST e o agregado
+  // sairia calculado sobre ~6% dos dados sem nenhum aviso.
+  const [campaignResult, leadFetch, eventFetch, spendFetch] = await Promise.all([
     admin
       .from("marketing_campaigns")
       .select("id,name,platform,status,started_at,ended_at")
       .eq("organization_id", organizationId)
       .limit(1000),
-    admin
-      .from("leads")
-      .select("id,campaign_id,status,score_ia,temperature,created_at")
-      .eq("organization_id", organizationId)
-      .gte("created_at", since)
-      .limit(20000),
-    admin
-      .from("lead_events")
-      .select("lead_id,metadata,created_at")
-      .eq("organization_id", organizationId)
-      .eq("event_type", "lead_discarded")
-      .gte("created_at", since)
-      .limit(2000),
-    admin
-      .from("marketing_spend")
-      .select("campaign_id,spend_date,amount")
-      .eq("organization_id", organizationId)
-      .gte("spend_date", since.slice(0, 10))
-      .limit(5000),
+    fetchAllRows<CampaignQualityLead>((from, to) =>
+      admin
+        .from("leads")
+        .select("id,campaign_id,status,score_ia,temperature,created_at")
+        .eq("organization_id", organizationId)
+        .gte("created_at", since)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllRows<CampaignQualityDiscardEvent>((from, to) =>
+      admin
+        .from("lead_events")
+        .select("lead_id,metadata,created_at")
+        .eq("organization_id", organizationId)
+        .eq("event_type", "lead_discarded")
+        .gte("created_at", since)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllRows<CampaignQualitySpendRow>((from, to) =>
+      admin
+        .from("marketing_spend")
+        .select("campaign_id,spend_date,amount")
+        .eq("organization_id", organizationId)
+        .gte("spend_date", since.slice(0, 10))
+        .order("spend_date", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
   ]);
 
-  if (campaignResult.error || leadResult.error || eventResult.error) {
+  if (campaignResult.error || leadFetch.error || eventFetch.error) {
     logger.warn("analytics.campaign_quality.read_failed", {
       organizationId,
       campaignCode: campaignResult.error?.code,
-      leadCode: leadResult.error?.code,
-      eventCode: eventResult.error?.code,
+      leadCode: leadFetch.error?.code,
+      eventCode: eventFetch.error?.code,
     });
     return apiError(
       "CAMPAIGN_QUALITY_LOAD_FAILED",
@@ -132,22 +148,30 @@ export async function GET(request: NextRequest) {
       { status: 503 },
     );
   }
-  if (spendResult.error) {
+  if (spendFetch.error) {
     // Degradação graciosa: sem marketing_spend o relatório continua útil —
     // spend/CPL ficam zerados/nulos e policy.spendMeasured sinaliza o drift.
     logger.warn("analytics.campaign_quality.spend_unavailable", {
       organizationId,
-      code: spendResult.error.code,
+      code: spendFetch.error.code,
+    });
+  }
+  if (leadFetch.truncated || eventFetch.truncated || spendFetch.truncated) {
+    // Teto de páginas atingido (30k linhas) — sinalizado no payload em vez de
+    // fingir cobertura total.
+    logger.warn("analytics.campaign_quality.window_truncated", {
+      organizationId,
+      leads: leadFetch.truncated,
+      discards: eventFetch.truncated,
+      spend: spendFetch.truncated,
     });
   }
 
   const { ranking, totals } = buildCampaignQuality({
     campaigns: (campaignResult.data ?? []) as CampaignQualityCampaign[],
-    leads: (leadResult.data ?? []) as CampaignQualityLead[],
-    discardEvents: (eventResult.data ?? []) as CampaignQualityDiscardEvent[],
-    spendRows: spendResult.error
-      ? []
-      : ((spendResult.data ?? []) as CampaignQualitySpendRow[]),
+    leads: leadFetch.rows,
+    discardEvents: eventFetch.rows,
+    spendRows: spendFetch.error ? [] : spendFetch.rows,
   });
   // Só campanhas com leads na janela entram no ranking; o restante fica nos totais.
   const rankedCampaigns = ranking.filter((row) => row.leads > 0);
@@ -168,7 +192,10 @@ export async function GET(request: NextRequest) {
         qualifiedDefinition: `score_ia >= ${CAMPAIGN_QUALITY_QUALIFIED_SCORE} || temperature === "quente"`,
         qualityGradeRule: CAMPAIGN_QUALITY_GRADE_RULE,
         crmIsConversionTruth: true,
-        spendMeasured: !spendResult.error,
+        spendMeasured: !spendFetch.error,
+        // Honestidade de cobertura: true somente se nenhuma dimensão bateu o
+        // teto de paginação — consumidores podem exibir aviso quando false.
+        windowComplete: !leadFetch.truncated && !eventFetch.truncated && !spendFetch.truncated,
         taxonomyVersion: DISCARD_TAXONOMY_VERSION,
       },
       generatedAt: new Date().toISOString(),

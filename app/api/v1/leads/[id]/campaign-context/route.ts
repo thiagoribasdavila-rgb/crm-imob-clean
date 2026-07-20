@@ -12,6 +12,7 @@ import {
   type CampaignQualitySpendRow,
 } from "@/lib/atlas/campaign-quality";
 import { DISCARD_TAXONOMY_VERSION } from "@/lib/atlas/discard-reasons";
+import { fetchAllRows } from "@/lib/supabase/fetch-all-rows";
 import { logger } from "@/lib/observability/logger";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -96,39 +97,55 @@ export async function GET(
 
   // Tenant scoping explícito (eq organization_id) em TODAS as queries.
   const admin = getSupabaseAdmin();
-  const [campaignResult, leadResult, eventResult, spendResult] = await Promise.all([
+  // Paginação exaustiva (lição F1) + descartes filtrados PELA campanha via
+  // metadata->>campaignId (gravado no momento do descarte) em vez de varrer
+  // todos os descartes da organização e cortar em 1000.
+  const [campaignResult, leadFetch, eventFetch, spendFetch] = await Promise.all([
     admin
       .from("marketing_campaigns")
       .select("id,name,platform,status")
       .eq("organization_id", organizationId)
       .eq("id", campaignId)
       .maybeSingle(),
-    admin
-      .from("leads")
-      .select("id,campaign_id,status,score_ia,temperature")
-      .eq("organization_id", organizationId)
-      .eq("campaign_id", campaignId)
-      .limit(20000),
-    admin
-      .from("lead_events")
-      .select("lead_id,metadata")
-      .eq("organization_id", organizationId)
-      .eq("event_type", "lead_discarded")
-      .limit(2000),
-    admin
-      .from("marketing_spend")
-      .select("campaign_id,amount")
-      .eq("organization_id", organizationId)
-      .eq("campaign_id", campaignId)
-      .limit(5000),
+    fetchAllRows<CampaignQualityLead>((from, to) =>
+      admin
+        .from("leads")
+        .select("id,campaign_id,status,score_ia,temperature")
+        .eq("organization_id", organizationId)
+        .eq("campaign_id", campaignId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllRows<CampaignQualityDiscardEvent>((from, to) =>
+      admin
+        .from("lead_events")
+        .select("lead_id,metadata")
+        .eq("organization_id", organizationId)
+        .eq("event_type", "lead_discarded")
+        .eq("metadata->>campaignId", campaignId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllRows<CampaignQualitySpendRow>((from, to) =>
+      admin
+        .from("marketing_spend")
+        .select("campaign_id,amount")
+        .eq("organization_id", organizationId)
+        .eq("campaign_id", campaignId)
+        .order("spend_date", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
   ]);
 
-  if (campaignResult.error || leadResult.error) {
+  if (campaignResult.error || leadFetch.error) {
     logger.warn("lead.campaign_context.read_failed", {
       organizationId,
       leadId: id,
       campaignCode: campaignResult.error?.code,
-      leadCode: leadResult.error?.code,
+      leadCode: leadFetch.error?.code,
     });
     return apiError(
       "CAMPAIGN_CONTEXT_LOAD_FAILED",
@@ -137,13 +154,13 @@ export async function GET(
       { status: 503 },
     );
   }
-  if (eventResult.error || spendResult.error) {
+  if (eventFetch.error || spendFetch.error) {
     // Degradação graciosa: o card do corretor continua útil sem descartes/custo.
     logger.warn("lead.campaign_context.enrichment_degraded", {
       organizationId,
       leadId: id,
-      eventCode: eventResult.error?.code,
-      spendCode: spendResult.error?.code,
+      eventCode: eventFetch.error?.code,
+      spendCode: spendFetch.error?.code,
     });
   }
 
@@ -163,13 +180,9 @@ export async function GET(
 
   const { ranking } = buildCampaignQuality({
     campaigns: [campaign],
-    leads: (leadResult.data ?? []) as CampaignQualityLead[],
-    discardEvents: eventResult.error
-      ? []
-      : ((eventResult.data ?? []) as CampaignQualityDiscardEvent[]),
-    spendRows: spendResult.error
-      ? []
-      : ((spendResult.data ?? []) as CampaignQualitySpendRow[]),
+    leads: leadFetch.rows,
+    discardEvents: eventFetch.error ? [] : eventFetch.rows,
+    spendRows: spendFetch.error ? [] : spendFetch.rows,
   });
 
   return apiSuccess(
