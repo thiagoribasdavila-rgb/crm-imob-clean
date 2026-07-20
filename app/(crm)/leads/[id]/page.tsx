@@ -2,21 +2,23 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  CSSProperties,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { matchLeadToProperty } from "@/lib/atlas/matching";
 import { supabase } from "@/lib/supabase";
 import type { AtlasLead, AtlasProperty } from "@/types/atlas";
 import {
-  AtlasBadge,
   AtlasEmpty,
   AtlasProgress,
   AtlasSkeleton,
 } from "@/components/ui/AtlasUI";
-import {
-  AtlasCard,
-  AtlasCardHeader,
-  AtlasMetric,
-} from "@/components/ui/AtlasCard";
+import { StatusBadge } from "@/components/atlas/status-badge";
+import { TiltShell } from "@/components/atlas/tilt-shell";
 import { LeadOperationalBar } from "@/components/crm/lead-operational-bar";
 import {
   LeadContextCorrection,
@@ -278,8 +280,15 @@ type Qualification = {
   scoreChange: { previous: number; current: number; delta: number };
 };
 
+/* CC-6: campos com hairline neutra, foco no acento único e tinta oficial.
+   Os placeholders são contrato: actOnGap e as perguntas de qualificação fazem
+   querySelector por eles — não renomear. */
 const inputClass =
-  "w-full rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-sky-400/40 focus:bg-sky-400/[0.035]";
+  "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[rgba(15,24,48,0.55)] px-4 py-3 text-sm text-[#e8eef8] outline-none transition placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] focus:bg-[rgba(75,141,248,0.05)]";
+const focusRing =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)]";
+const chipButtonClass = `cc6-chip cursor-pointer transition-colors hover:border-[color:var(--atlas-accent)] hover:text-[#e8eef8] disabled:cursor-default disabled:opacity-50 ${focusRing}`;
+const summaryClass = `flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 rounded-xl p-4 [&::-webkit-details-marker]:hidden ${focusRing}`;
 const brl = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -295,6 +304,25 @@ function temperatureTone(
   if (value === "frio") return "info";
   return "neutral";
 }
+
+// Sinais determinísticos do strip: só aritmética sobre timestamps já carregados.
+function daysSince(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const time = new Date(iso).getTime();
+  if (!Number.isFinite(time)) return null;
+  return Math.max(0, Math.floor((Date.now() - time) / 86_400_000));
+}
+
+const attentionSeverityRank: Record<AttentionSignalRow["severity"], number> = {
+  critical: 0,
+  warning: 1,
+  info: 2,
+};
+const attentionChipClass: Record<AttentionSignalRow["severity"], string> = {
+  critical: "cc6-crit border-[rgba(251,113,133,0.35)]",
+  warning: "cc6-warn border-[rgba(245,181,68,0.35)]",
+  info: "",
+};
 
 export default function LeadDetailPage() {
   const { id: leadId } = useParams<{ id: string }>();
@@ -332,6 +360,7 @@ export default function LeadDetailPage() {
   );
   const [qualifying, setQualifying] = useState(false);
   const [moreActionsOpen, setMoreActionsOpen] = useState(false);
+  const [copiedContact, setCopiedContact] = useState<string | null>(null);
   const [simulation, setSimulation] = useState<{
     id: string;
     property_price: number;
@@ -459,7 +488,6 @@ export default function LeadDetailPage() {
         readiness: 0,
         nextAction: "Carregando contexto...",
         risk: "unknown",
-        summary: "",
       };
     let readiness = 20;
     if (lead.phone || lead.email) readiness += 15;
@@ -481,9 +509,8 @@ export default function LeadDetailPage() {
         : opportunities.length === 0
           ? "Apresentar o imóvel com maior aderência e abrir oportunidade."
           : "Validar objeções e avançar a oportunidade para a próxima etapa.";
-    const summary = `${lead.name || "Este lead"} entrou por ${lead.source || "origem não informada"}, possui score ${lead.score ?? 0} e está na etapa ${lead.status || "novo"}. ${matches.length ? `Há ${matches.length} imóveis com aderência comercial.` : "Ainda não há imóveis compatíveis suficientes."}`;
-    return { readiness, nextAction, risk, summary };
-  }, [activities.length, lead, matches.length, opportunities.length]);
+    return { readiness, nextAction, risk };
+  }, [activities.length, lead, opportunities.length]);
 
   async function saveLead(event: FormEvent) {
     event.preventDefault();
@@ -726,14 +753,29 @@ export default function LeadDetailPage() {
       ?.focus();
   }
 
+  async function copyContact(field: "phone" | "email", value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedContact(field);
+      window.setTimeout(
+        () => setCopiedContact((current) => (current === field ? null : current)),
+        1600,
+      );
+    } catch {
+      setMessage("Não foi possível copiar automaticamente. Copie manualmente.");
+    }
+  }
+
   if (loading)
     return (
-      <div className="space-y-5">
-        <AtlasSkeleton className="h-36 w-full" />
-        <div className="grid gap-4 md:grid-cols-3">
-          <AtlasSkeleton className="h-28 w-full" />
-          <AtlasSkeleton className="h-28 w-full" />
-          <AtlasSkeleton className="h-28 w-full" />
+      <div className="space-y-4">
+        <AtlasSkeleton className="h-56 w-full" />
+        <AtlasSkeleton className="h-16 w-full" />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <AtlasSkeleton className="h-24 w-full" />
+          <AtlasSkeleton className="h-24 w-full" />
+          <AtlasSkeleton className="h-24 w-full" />
+          <AtlasSkeleton className="h-24 w-full" />
         </div>
         <AtlasSkeleton className="h-96 w-full" />
       </div>
@@ -754,130 +796,265 @@ export default function LeadDetailPage() {
       />
     );
 
+  // Derivações determinísticas do strip de sinais (zero fetch novo).
+  const leadAgeDays = daysSince(lead.created_at);
+  const lastTouchAt = contactBriefing?.lastInteractionAt ?? null;
+  const lastTouchDays = daysSince(lastTouchAt);
+  const orderedAttentionSignals = [...attentionSignals].sort(
+    (a, b) => attentionSeverityRank[a.severity] - attentionSeverityRank[b.severity],
+  );
+  const ownerName = relationshipContext?.owner?.full_name || null;
+  const ownerRole =
+    relationshipContext?.owner?.commercial_role ||
+    relationshipContext?.owner?.role ||
+    null;
+
   return (
-    <div className="space-y-6 pb-10" data-phase="26-lead-360">
-      <section id="lead-overview" className="atlas-grid-glow overflow-hidden rounded-[28px] border border-sky-400/10 bg-gradient-to-br from-sky-500/[.12] via-blue-500/[.05] to-violet-500/[.1] p-6 sm:p-8">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <Link href="/leads" className="text-xs font-semibold text-sky-300">
-              ← Voltar para leads
-            </Link>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <AtlasBadge tone="info">LEAD INTELLIGENCE 360</AtlasBadge>
-              <AtlasBadge tone={temperatureTone(lead.temperature)}>
-                {lead.temperature || "não classificado"}
-              </AtlasBadge>
-              <AtlasBadge tone="violet">{lead.status || "novo"}</AtlasBadge>
+    <div className="space-y-5 pb-10" data-phase="26-lead-360">
+      {/* ── Cartão de identidade: único lugar da página com nome, status,
+          temperatura, score, contatos e dono. Nenhuma seção abaixo repete. ── */}
+      <section id="lead-overview" className="scroll-mt-28 [perspective:1400px]">
+        <TiltShell maxDeg={2} className="cc6-reveal cc6-panel p-6 sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <Link
+                  href="/leads"
+                  className={`rounded-sm text-xs text-[#6b7890] transition-colors hover:text-[#aab6ca] ${focusRing}`}
+                >
+                  ← Leads
+                </Link>
+                <p className="cc6-eyebrow">Lead 360</p>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#e8eef8] sm:text-[32px] sm:leading-10">
+                  {lead.name || "Lead sem nome"}
+                </h1>
+                <StatusBadge tone="violet">{lead.status || "novo"}</StatusBadge>
+                <StatusBadge tone={temperatureTone(lead.temperature)}>
+                  {lead.temperature || "não classificado"}
+                </StatusBadge>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {([
+                  ["phone", lead.phone, "telefone"],
+                  ["email", lead.email, "e-mail"],
+                ] as const).map(([field, value, label]) =>
+                  value ? (
+                    <button
+                      key={field}
+                      type="button"
+                      onClick={() => void copyContact(field, value)}
+                      title={`Copiar ${label}`}
+                      aria-label={`Copiar ${label} ${value}`}
+                      className={chipButtonClass}
+                    >
+                      <span>{value}</span>
+                      <span
+                        aria-hidden="true"
+                        className={
+                          copiedContact === field ? "cc6-ok" : "text-[#6b7890]"
+                        }
+                      >
+                        {copiedContact === field ? "✓" : "⧉"}
+                      </span>
+                    </button>
+                  ) : null,
+                )}
+                {!lead.phone && !lead.email ? (
+                  <span className="cc6-chip">
+                    sem contatos — preencha no formulário
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#6b7890]">
+                <span className="cc6-eyebrow text-[10px]">dono</span>
+                <span className="text-[#aab6ca]">
+                  {ownerName || "Sem responsável"}
+                </span>
+                <span>· {ownerRole || "distribuição necessária"}</span>
+                <Link
+                  href={`/leads/${lead.id}/transfer`}
+                  className={`rounded-sm text-[color:var(--atlas-accent)] transition-colors hover:underline ${focusRing}`}
+                >
+                  {ownerName ? "transferir" : "atribuir"}
+                </Link>
+              </p>
             </div>
-            <h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">
-              {lead.name || "Lead sem nome"}
-            </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400">
-              {intelligence.summary}
-            </p>
-            <div className="atlas-lead-primary-actions mt-6">
-              <CopilotContextAction
-                label="✦ Preparar próxima ação"
-                prompt="Analise esta lead e prepare a próxima melhor ação com justificativa, abordagem sugerida e ponto que exige confirmação humana."
-                context={{
-                  leadId: lead.id,
-                  source: "lead_360",
-                  workspace: "lead",
-                  contextLabel: "Lead 360",
-                  returnHref: `/leads/${lead.id}`,
-                }}
-                className="atlas-button-primary"
-              />
+            <div className="shrink-0 text-right">
+              <p className="cc6-eyebrow">Score</p>
+              <p className="mt-1">
+                <span className="cc6-metric-value text-[40px] leading-none">
+                  {lead.score ?? 0}
+                </span>
+                <span className="cc6-num ml-1 text-sm text-[#6b7890]">/100</span>
+              </p>
+              <p className="cc6-metric-label mt-2">
+                prontidão{" "}
+                <span className="cc6-num text-[#aab6ca]">
+                  {intelligence.readiness}%
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <CopilotContextAction
+              label="✦ Preparar próxima ação"
+              prompt="Analise esta lead e prepare a próxima melhor ação com justificativa, abordagem sugerida e ponto que exige confirmação humana."
+              context={{
+                leadId: lead.id,
+                source: "lead_360",
+                workspace: "lead",
+                contextLabel: "Lead 360",
+                returnHref: `/leads/${lead.id}`,
+              }}
+              className="atlas-button-primary"
+            />
+            <Link href={`/leads/${lead.id}/messages`} className="cc6-ghost-btn">
+              Criar mensagem
+            </Link>
+            <Link
+              href={`/leads/${lead.id}/qualification`}
+              className="cc6-ghost-btn"
+            >
+              Qualificar
+            </Link>
+            <a href="#historico" className="cc6-ghost-btn">
+              Registrar contato
+            </a>
+            <button
+              type="button"
+              className="cc6-ghost-btn"
+              aria-expanded={moreActionsOpen}
+              aria-controls="atlas-lead-more-actions"
+              onClick={() => setMoreActionsOpen((current) => !current)}
+            >
+              {moreActionsOpen ? "Menos ações" : "Mais ações"}{" "}
+              <span aria-hidden="true">{moreActionsOpen ? "−" : "+"}</span>
+            </button>
+          </div>
+          {moreActionsOpen ? (
+            <div
+              id="atlas-lead-more-actions"
+              className="mt-3 flex flex-wrap gap-2"
+            >
               <Link
-                href={`/leads/${lead.id}/messages`}
-                className="atlas-button-secondary"
+                href={`/leads/${lead.id}/simulation`}
+                className="cc6-ghost-btn"
               >
-                Criar mensagem
+                Simular condições
               </Link>
               <Link
-                href={`/leads/${lead.id}/qualification`}
-                className="atlas-button-secondary"
+                href={`/leads/${lead.id}/visit-assistant`}
+                className="cc6-ghost-btn"
               >
-                Qualificar
+                Visita e proposta
               </Link>
-              <a href="#historico" className="atlas-button-secondary">
-                Registrar contato
-              </a>
               <button
                 type="button"
-                className="atlas-button-secondary"
-                aria-expanded={moreActionsOpen}
-                aria-controls="atlas-lead-more-actions"
-                onClick={() => setMoreActionsOpen((current) => !current)}
+                onClick={() => void qualifyLead()}
+                disabled={qualifying}
+                className="cc6-ghost-btn disabled:opacity-50"
               >
-                {moreActionsOpen ? "Menos ações" : "Mais ações"}{" "}
-                <span aria-hidden="true">{moreActionsOpen ? "−" : "+"}</span>
+                {qualifying ? "Recalibrando..." : "Recalibrar com IA"}
+              </button>
+              <Link
+                href={`/leads/${lead.id}/prediction`}
+                className="cc6-ghost-btn"
+              >
+                Previsão explicada
+              </Link>
+              <Link href={`/leads/${lead.id}/memory`} className="cc6-ghost-btn">
+                Memória segura
+              </Link>
+              <Link
+                href={`/leads/${lead.id}/behavior`}
+                className="cc6-ghost-btn"
+              >
+                Jornada inteligente
+              </Link>
+              <Link
+                href={`/leads/${lead.id}/attribution`}
+                className="cc6-ghost-btn"
+              >
+                Origem e atribuição
+              </Link>
+              <Link
+                href={`/leads/${lead.id}/contact-preferences`}
+                className="cc6-ghost-btn"
+              >
+                Consentimento
+              </Link>
+              <Link
+                href={`/leads/${lead.id}/objections`}
+                className="cc6-ghost-btn"
+              >
+                Objeções de venda
+              </Link>
+              <button
+                type="button"
+                onClick={() => void createOpportunity()}
+                className="cc6-ghost-btn"
+              >
+                Criar oportunidade
               </button>
             </div>
-            {moreActionsOpen ? (
-              <div
-                className="atlas-lead-more-actions"
-                id="atlas-lead-more-actions"
-              >
-                <Link href={`/leads/${lead.id}/simulation`}>
-                  Simular condições
-                </Link>
-                <Link href={`/leads/${lead.id}/visit-assistant`}>
-                  Visita e proposta
-                </Link>
-                <button
-                  onClick={() => void qualifyLead()}
-                  disabled={qualifying}
+          ) : null}
+
+          {/* Strip de sinais: mono, discreto, determinístico — title explica cada chip. */}
+          <div
+            className="cc6-hairline mt-6 pt-4"
+            data-phase="100-proactive-attention-signals"
+          >
+            <ul
+              className="m-0 flex list-none flex-wrap items-center gap-2 p-0"
+              aria-label="Sinais operacionais do lead"
+            >
+              <li className="cc6-eyebrow mr-1">Sinais</li>
+              {lead.created_at && leadAgeDays !== null ? (
+                <li
+                  className="cc6-chip"
+                  title={`No CRM desde ${new Date(lead.created_at).toLocaleDateString("pt-BR")}.`}
                 >
-                  {qualifying ? "Recalibrando..." : "Recalibrar com IA"}
-                </button>
-                <Link href={`/leads/${lead.id}/prediction`}>
-                  Previsão explicada
-                </Link>
-                <Link href={`/leads/${lead.id}/memory`}>Memória segura</Link>
-                <Link href={`/leads/${lead.id}/behavior`}>
-                  Jornada inteligente
-                </Link>
-                <Link href={`/leads/${lead.id}/attribution`}>
-                  Origem e atribuição
-                </Link>
-                <Link href={`/leads/${lead.id}/contact-preferences`}>
-                  Consentimento
-                </Link>
-                <Link href={`/leads/${lead.id}/objections`}>
-                  Objeções de venda
-                </Link>
-                <button onClick={() => void createOpportunity()}>
-                  Criar oportunidade
-                </button>
-              </div>
-            ) : null}
+                  criado há {leadAgeDays}d
+                </li>
+              ) : null}
+              {lastTouchAt && lastTouchDays !== null ? (
+                <li
+                  className="cc6-chip"
+                  title={`Última interação em ${new Date(lastTouchAt).toLocaleString("pt-BR")}.`}
+                >
+                  último toque há {lastTouchDays}d
+                </li>
+              ) : (
+                <li
+                  className="cc6-chip cc6-warn border-[rgba(245,181,68,0.35)]"
+                  title="Nenhuma interação registrada na timeline até agora."
+                >
+                  sem contato registrado
+                </li>
+              )}
+              {orderedAttentionSignals.map((signal) => (
+                <li
+                  key={signal.kind}
+                  className={`cc6-chip ${attentionChipClass[signal.severity]}`}
+                  title={
+                    signal.since
+                      ? `${signal.detail} Desde ${new Date(signal.since).toLocaleDateString("pt-BR")}.`
+                      : signal.detail
+                  }
+                >
+                  {signal.reason}
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="min-w-full rounded-3xl border border-white/[0.08] bg-[#070d1b]/75 p-5 backdrop-blur-xl xl:min-w-80">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="atlas-eyebrow">Readiness</p>
-                <p className="mt-2 text-xl font-semibold text-white">
-                  Prontidão comercial
-                </p>
-              </div>
-              <span className="text-3xl font-semibold text-emerald-300">
-                {intelligence.readiness}
-              </span>
-            </div>
-            <div className="mt-5">
-              <AtlasProgress
-                value={intelligence.readiness}
-                label="Qualidade do perfil"
-              />
-            </div>
-            <p className="mt-4 text-xs leading-5 text-slate-400">
-              {intelligence.nextAction}
-            </p>
-          </div>
-        </div>
+        </TiltShell>
       </section>
 
+      {/* ── Grau primário de decisão: a barra operacional já concentra próxima
+          ação, risco, tarefas, mensagens e atalhos — logo sob a identidade. ── */}
       <LeadOperationalBar
         leadId={lead.id}
         leadName={lead.name || "Lead sem nome"}
@@ -889,7 +1066,10 @@ export default function LeadDetailPage() {
       />
 
       {message ? (
-        <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 p-4 text-sm text-sky-100">
+        <div
+          role="status"
+          className="cc6-panel-quiet border-[rgba(75,141,248,0.35)] p-4 text-sm leading-6 text-[#aab6ca]"
+        >
           {message}
         </div>
       ) : null}
@@ -897,22 +1077,24 @@ export default function LeadDetailPage() {
       {assignmentReservation?.status === "pending" ? (
         <section
           data-phase="58-lead-reservation"
-          className="flex flex-col gap-4 rounded-3xl border border-amber-400/25 bg-amber-400/[.07] p-5 sm:flex-row sm:items-center sm:justify-between"
+          className="cc6-panel cc6-sev-band flex flex-col gap-4 p-5 pl-6 sm:flex-row sm:items-center sm:justify-between"
+          style={{ "--cc6-sev": "#f5b544" } as CSSProperties}
         >
           <div>
-            <p className="atlas-eyebrow text-amber-200">
-              Reserva aguardando aceite
-            </p>
-            <h2 className="mt-2 text-lg font-semibold text-white">
+            <p className="cc6-eyebrow cc6-warn">Reserva aguardando aceite</p>
+            <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
               Confirme que você assumirá este atendimento
             </h2>
-            <p className="mt-1 text-xs leading-5 text-slate-400">
+            <p className="mt-1 text-xs leading-5 text-[#6b7890]">
               Aceite até{" "}
-              {new Date(assignmentReservation.expires_at).toLocaleTimeString(
-                "pt-BR",
-                { hour: "2-digit", minute: "2-digit" },
-              )}
-              . Se houver interação registrada, a lead não será devolvida automaticamente.
+              <span className="cc6-num text-[#aab6ca]">
+                {new Date(assignmentReservation.expires_at).toLocaleTimeString(
+                  "pt-BR",
+                  { hour: "2-digit", minute: "2-digit" },
+                )}
+              </span>
+              . Se houver interação registrada, a lead não será devolvida
+              automaticamente.
             </p>
           </div>
           <button
@@ -925,161 +1107,165 @@ export default function LeadDetailPage() {
         </section>
       ) : null}
 
-      {attentionSignals.length ? (
+      {experienceSignals[0]?.status === "pending" ? (
         <section
-          data-phase="100-proactive-attention-signals"
-          className={`flex flex-col gap-3 rounded-3xl border p-5 ${
-            attentionSignals.some((signal) => signal.severity === "critical")
-              ? "border-rose-400/25 bg-rose-400/[.07]"
-              : "border-amber-400/25 bg-amber-400/[.07]"
-          }`}
+          className="cc6-panel cc6-sev-band p-5 pl-6"
+          style={
+            {
+              "--cc6-sev":
+                experienceSignals[0].severity === "critical"
+                  ? "#fb7185"
+                  : "#f5b544",
+            } as CSSProperties
+          }
         >
-          <div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <p
-              className={`atlas-eyebrow ${
-                attentionSignals.some((signal) => signal.severity === "critical")
-                  ? "text-rose-200"
-                  : "text-amber-200"
+              className={`cc6-eyebrow ${
+                experienceSignals[0].severity === "critical"
+                  ? "cc6-crit"
+                  : "cc6-warn"
               }`}
             >
-              Sinais de atenção
+              IA de experiência · atenção ao atendimento
             </p>
-            <h2 className="mt-2 text-lg font-semibold text-white">
-              Este lead precisa de atenção agora
-            </h2>
+            <StatusBadge
+              tone={
+                experienceSignals[0].severity === "critical"
+                  ? "danger"
+                  : "warning"
+              }
+            >
+              {experienceSignals[0].confidence}% confiança
+            </StatusBadge>
           </div>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {attentionSignals.map((signal) => (
-              <li
-                key={signal.kind}
-                className="rounded-2xl border border-white/[0.08] bg-[#070d1b]/40 p-3"
-              >
-                <div className="flex items-center gap-2">
-                  <AtlasBadge
-                    tone={
-                      signal.severity === "critical"
-                        ? "danger"
-                        : signal.severity === "warning"
-                          ? "warning"
-                          : "info"
-                    }
-                  >
-                    {signal.severity === "critical" ? "CRÍTICO" : signal.severity === "warning" ? "ATENÇÃO" : "INFO"}
-                  </AtlasBadge>
-                  <strong className="text-sm text-white">{signal.reason}</strong>
-                </div>
-                <p className="mt-2 text-xs leading-5 text-slate-400">
-                  {signal.detail}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <p className="mt-3 text-sm font-medium leading-6 text-[#e8eef8]">
+            {experienceSignals[0].evidence}
+          </p>
+          <p className="mt-1 text-[13px] leading-6 text-[#aab6ca]">
+            Recomendação:{" "}
+            {experienceSignals[0].recommendation === "offer_broker_change"
+              ? "oferecer ao cliente a opção de manter ou trocar o corretor"
+              : "recuperar o atendimento com acompanhamento"}
+            . A troca nunca acontece automaticamente.
+          </p>
+          {experienceSignals[0].suggested_reply ? (
+            <div className="cc6-panel-quiet mt-3 p-3">
+              <p className="cc6-eyebrow text-[10px]">Resposta sugerida</p>
+              <p className="mt-1.5 text-[13px] leading-6 text-[#aab6ca]">
+                {experienceSignals[0].suggested_reply}
+              </p>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
       {dataQuality?.questions.length ? (
-        <AtlasCard>
-          <div data-phase="30-data-gaps">
-            <AtlasCardHeader
-              eyebrow="Dados úteis"
-              title="Dados que faltam"
-              description="As lacunas são priorizadas pelo impacto em contato, intenção, matching e continuidade. A análise local não gera custo de IA."
-            />
-            <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-3">
-              {dataQuality.questions.slice(0, 6).map((question, index) => (
-                <article
-                  key={question.key}
-                  className={`rounded-2xl border p-4 ${index === 0 ? "border-cyan-300/30 bg-cyan-400/[.07]" : "border-white/[.07] bg-white/[.025]"}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <AtlasBadge
-                      tone={
-                        question.priority === "critical"
-                          ? "danger"
-                          : question.priority === "high"
-                            ? "warning"
-                            : "info"
-                      }
-                    >
-                      {question.label}
-                    </AtlasBadge>
-                    {index === 0 ? (
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-cyan-200">
-                        Pergunte agora
-                      </span>
-                    ) : null}
-                  </div>
-                  <strong className="mt-3 block text-sm leading-6 text-white">
-                    {question.question}
-                  </strong>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    {question.why}
-                  </p>
-                  {question.options ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {question.options.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          disabled={qualifying}
-                          onClick={() =>
-                            void qualifyLead({ [question.key]: option.value })
-                          }
-                          className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-cyan-100 hover:border-cyan-400/40 disabled:opacity-50"
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => actOnGap(question)}
-                      className="atlas-button-secondary mt-3"
-                    >
-                      {question.action === "navigate"
-                        ? "Abrir ação"
-                        : "Preencher agora"}
-                    </button>
-                  )}
-                </article>
-              ))}
+        <section
+          data-phase="30-data-gaps"
+          className="cc6-reveal cc6-panel p-5 sm:p-6"
+          style={{ animationDelay: "60ms" }}
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div>
+              <p className="cc6-eyebrow">Dados que faltam</p>
+              <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+                O que perguntar agora
+              </h2>
             </div>
-            <div className="border-t border-white/[.06] px-5 py-4 text-[11px] leading-5 text-slate-500 sm:px-6">
-              CPF, CNPJ, endereço exato e documentos não aumentam score nem são
-              enviados às IAs.
-            </div>
+            <p className="cc6-num text-xs text-[#6b7890]">
+              {dataQuality.completeness}% completo ·{" "}
+              {dataQuality.completedFields}/{dataQuality.totalFields} campos
+            </p>
           </div>
-        </AtlasCard>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {dataQuality.questions.slice(0, 6).map((question, index) => (
+              <article
+                key={question.key}
+                className={`cc6-panel-quiet p-4 ${
+                  index === 0 ? "border-[rgba(75,141,248,0.45)]" : ""
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <StatusBadge
+                    tone={
+                      question.priority === "critical"
+                        ? "danger"
+                        : question.priority === "high"
+                          ? "warning"
+                          : "info"
+                    }
+                  >
+                    {question.label}
+                  </StatusBadge>
+                  {index === 0 ? (
+                    <span className="cc6-eyebrow text-[10px] text-[color:var(--atlas-accent)]">
+                      pergunte agora
+                    </span>
+                  ) : null}
+                </div>
+                <strong className="mt-3 block text-sm leading-6 text-[#e8eef8]">
+                  {question.question}
+                </strong>
+                <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+                  {question.why}
+                </p>
+                {question.options ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {question.options.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        disabled={qualifying}
+                        onClick={() =>
+                          void qualifyLead({ [question.key]: option.value })
+                        }
+                        className={chipButtonClass}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => actOnGap(question)}
+                    className="cc6-ghost-btn mt-3"
+                  >
+                    {question.action === "navigate"
+                      ? "Abrir ação"
+                      : "Preencher agora"}
+                  </button>
+                )}
+              </article>
+            ))}
+          </div>
+          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[#6b7890]">
+            Prioridade por impacto em contato, intenção, matching e
+            continuidade — análise local, sem custo de IA. CPF, CNPJ, endereço
+            exato e documentos não aumentam score nem são enviados às IAs.
+          </p>
+        </section>
       ) : dataQuality?.status === "complete" ? (
         <div
           data-phase="30-data-gaps"
-          className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[.06] p-5 text-sm text-emerald-100"
+          className="cc6-panel-quiet p-4 text-sm leading-6 text-[#aab6ca]"
         >
-          Perfil comercial completo. Confirme apenas mudanças naturais na
-          próxima conversa.
+          <span className="cc6-ok font-medium">Perfil comercial completo.</span>{" "}
+          Confirme apenas mudanças naturais na próxima conversa.
         </div>
       ) : null}
 
+      {/* Contexto comercial: só o que a identidade não cobre (projeto, origem,
+          comunicações, pipeline). Cada tile aponta para o registro canônico. */}
       {relationshipContext ? (
-        <AtlasCard>
-          <AtlasCardHeader
-            eyebrow="Lead 360"
-            title="Visão do relacionamento"
-            description="Identidade, origem, responsável, projeto, comunicações, histórico, score e pipeline reconciliados sob o mesmo escopo comercial."
-          />
-          <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-4">
+        <section
+          className="cc6-reveal"
+          style={{ animationDelay: "110ms" }}
+          aria-label="Contexto comercial do lead"
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              {
-                label: "Responsável único",
-                value:
-                  relationshipContext.owner?.full_name || "Sem responsável",
-                detail:
-                  relationshipContext.owner?.commercial_role ||
-                  relationshipContext.owner?.role ||
-                  "Distribuição necessária",
-                href: `/leads/${lead.id}/transfer`,
-              },
               {
                 label: "Projeto de interesse",
                 value:
@@ -1102,22 +1288,12 @@ export default function LeadDetailPage() {
               {
                 label: "Comunicações",
                 value: `${relationshipContext.communications.messages} mensagens`,
-                detail: `${relationshipContext.communications.inbound} recebidas · ${relationshipContext.communications.unread} não lidas`,
+                detail: `${relationshipContext.communications.inbound} recebidas${
+                  relationshipContext.communications.channels.length
+                    ? ` · ${relationshipContext.communications.channels.join(", ")}`
+                    : ""
+                }`,
                 href: `/leads/${lead.id}/messages`,
-              },
-              {
-                label: "Score atual",
-                value: `${lead.score ?? 0}/100`,
-                detail: `${lead.temperature || "sem temperatura"} · prontidão ${intelligence.readiness}%`,
-                href: "#qualificacao",
-              },
-              {
-                label: "Histórico",
-                value: `${activities.length} eventos`,
-                detail: contactBriefing?.lastInteractionAt
-                  ? `Último em ${new Date(contactBriefing.lastInteractionAt).toLocaleDateString("pt-BR")}`
-                  : "Primeiro contato pendente",
-                href: "#historico",
               },
               {
                 label: "Pipeline",
@@ -1125,34 +1301,26 @@ export default function LeadDetailPage() {
                 detail: `${contactBriefing?.activeOpportunities ?? 0} negócios ativos`,
                 href: "/pipeline",
               },
-              {
-                label: "Próxima ação",
-                value: intelligence.nextAction,
-                detail: `${unifiedProfile?.tasks.length ?? 0} tarefas vinculadas`,
-                href: `/leads/${lead.id}/tasks`,
-              },
             ].map((item) => (
               <Link
                 href={item.href}
                 key={item.label}
-                className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4 transition hover:border-cyan-400/20 hover:bg-cyan-400/[.035]"
+                className={`cc6-panel-quiet block p-4 transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}
               >
-                <span className="text-[10px] font-bold uppercase tracking-[.15em] text-slate-500">
-                  {item.label}
-                </span>
-                <strong className="mt-2 block text-sm leading-5 text-white">
+                <span className="cc6-eyebrow text-[10px]">{item.label}</span>
+                <strong
+                  className="mt-2 block truncate text-sm leading-5 text-[#e8eef8]"
+                  title={item.value}
+                >
                   {item.value}
                 </strong>
-                <p className="mt-2 text-[11px] leading-5 text-slate-500">
+                <p className="mt-1.5 truncate text-[11px] leading-5 text-[#6b7890]">
                   {item.detail}
                 </p>
               </Link>
             ))}
           </div>
-          <div className="border-t border-white/[.06] px-5 py-4 text-[11px] leading-5 text-slate-500 sm:px-6">
-            Todos os blocos apontam para o registro canônico.
-          </div>
-        </AtlasCard>
+        </section>
       ) : null}
 
       {relationshipContext ? (
@@ -1167,457 +1335,241 @@ export default function LeadDetailPage() {
         />
       ) : null}
 
-      {dataQuality && unifiedProfile ? (
-        <AtlasCard>
-          <AtlasCardHeader
-            eyebrow="Fonte única da verdade"
-            title="Perfil unificado e qualidade dos dados"
-            description="CRM, atendimento, vendas e marketing reunidos no mesmo cliente, com lacunas e inconsistências explicadas pela IA."
-            action={
-              <AtlasBadge
-                tone={
-                  dataQuality.status === "complete"
-                    ? "success"
-                    : dataQuality.status === "review"
-                      ? "danger"
-                      : "warning"
-                }
-              >
-                {dataQuality.completeness}% COMPLETO
-              </AtlasBadge>
-            }
-          />
-          <div className="grid gap-5 p-5 sm:p-6 xl:grid-cols-[.8fr_1.2fr]">
-            <div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-5">
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="atlas-eyebrow">Identidade canônica</p>
-                  <strong className="mt-2 block text-lg text-white">
-                    Um cliente, um histórico
-                  </strong>
-                </div>
-                <span className="text-3xl font-semibold text-cyan-200">
-                  {dataQuality.completedFields}/{dataQuality.totalFields}
-                </span>
-              </div>
-              <div className="mt-4">
-                <AtlasProgress
-                  value={dataQuality.completeness}
-                  label="Completude para personalização"
-                />
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {unifiedProfile.sources.map((source) => (
-                  <AtlasBadge key={source} tone="info">
-                    {source.toUpperCase()}
-                  </AtlasBadge>
-                ))}
-              </div>
-              <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-                {[
-                  ["Conversas", unifiedProfile.conversations.length],
-                  ["Tarefas", unifiedProfile.tasks.length],
-                  ["Sinais de campanha", unifiedProfile.campaignEvents.length],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-xl bg-white/[.03] p-3">
-                    <strong className="text-lg text-white">{value}</strong>
-                    <p className="mt-1 text-[10px] text-slate-500">{label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-violet-400/15 bg-violet-400/[.06] p-4">
-                <p className="atlas-eyebrow">Próximo dado mais valioso</p>
-                <p className="mt-2 text-sm leading-6 text-violet-100">
-                  {dataQuality.recommendation}
-                </p>
-              </div>
-              {dataQuality.missing.length ? (
-                <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[.05] p-4">
-                  <p className="text-xs font-bold uppercase tracking-[.14em] text-amber-300">
-                    Lacunas encontradas
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {dataQuality.missing.map((item) => (
-                      <span
-                        key={item.key}
-                        className="rounded-full border border-amber-300/15 px-3 py-1 text-xs text-amber-100"
-                      >
-                        {item.label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              {dataQuality.inconsistencies.length ? (
-                <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[.05] p-4">
-                  <p className="text-xs font-bold uppercase tracking-[.14em] text-rose-300">
-                    Revisão humana necessária
-                  </p>
-                  <ul className="mt-2 space-y-1 text-xs text-slate-300">
-                    {dataQuality.inconsistencies.map((item) => (
-                      <li key={item}>• {item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              <p className="text-[11px] leading-5 text-slate-500">
-                Cadastros ambíguos nunca são fundidos sem revisão humana.
-              </p>
-            </div>
-          </div>
-        </AtlasCard>
-      ) : null}
-
+      {/* Briefing: leitura secundária antes do contato — sem repetir contadores
+          que já vivem na barra operacional. */}
       {contactBriefing ? (
-        <AtlasCard>
-          <AtlasCardHeader
-            eyebrow="Briefing antes do contato"
-            title="Chegue preparado à conversa ou visita"
-            description="Resumo automático do relacionamento, pendências e próximos passos com base na fonte única do CRM."
-          />
-          <div className="grid gap-4 p-5 sm:p-6 lg:grid-cols-[.9fr_1.1fr]">
-            <div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-5">
-              <p className="atlas-eyebrow">Último contexto conhecido</p>
-              <p className="mt-3 text-sm leading-6 text-slate-300">
+        <section
+          className="cc6-reveal cc6-panel-quiet p-5 sm:p-6"
+          style={{ animationDelay: "160ms" }}
+        >
+          <p className="cc6-eyebrow">Briefing antes do contato</p>
+          <div className="mt-4 grid gap-5 lg:grid-cols-2">
+            <div>
+              <h3 className="text-sm font-medium text-[#e8eef8]">
+                Último contexto conhecido
+              </h3>
+              <p className="mt-2 max-w-prose text-[13.5px] leading-7 text-[#aab6ca]">
                 {contactBriefing.context}
               </p>
-              <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-                {[
-                  ["Não lidas", contactBriefing.unreadMessages],
-                  ["Tarefas abertas", contactBriefing.openTasks],
-                  ["Negócios ativos", contactBriefing.activeOpportunities],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-xl bg-white/[.03] p-3">
-                    <strong className="text-lg text-white">{value}</strong>
-                    <p className="mt-1 text-[10px] text-slate-500">{label}</p>
-                  </div>
-                ))}
-              </div>
             </div>
-            <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[.05] p-5">
-              <p className="atlas-eyebrow">Roteiro recomendado</p>
-              <ol className="mt-4 space-y-3">
+            <div>
+              <h3 className="text-sm font-medium text-[#e8eef8]">
+                Roteiro recomendado
+              </h3>
+              <ol className="mt-2 space-y-2">
                 {contactBriefing.actions.map((action, index) => (
                   <li
                     key={action}
-                    className="flex gap-3 text-sm leading-6 text-cyan-50"
+                    className="flex gap-3 text-[13.5px] leading-7 text-[#aab6ca]"
                   >
-                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-cyan-300/10 text-xs font-bold text-cyan-200">
-                      {index + 1}
+                    <span className="cc6-num shrink-0 text-xs leading-7 text-[#6b7890]">
+                      {String(index + 1).padStart(2, "0")}
                     </span>
                     {action}
                   </li>
                 ))}
               </ol>
-              <p className="mt-5 text-[11px] leading-5 text-slate-500">
-                Preparado por {contactBriefing.generatedBy}. O corretor revisa e
-                decide antes de qualquer envio ou alteração.
-              </p>
             </div>
           </div>
-        </AtlasCard>
+          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[#6b7890]">
+            Preparado por {contactBriefing.generatedBy}. O corretor revisa e
+            decide antes de qualquer envio ou alteração.
+          </p>
+        </section>
       ) : null}
 
-      {experienceSignals[0]?.status === "pending" ? (
-        <AtlasCard>
-          <AtlasCardHeader
-            eyebrow="IA de experiência"
-            title="Atenção ao atendimento"
-            description="A recomendação é explicável e a troca nunca acontece automaticamente."
-            action={
-              <AtlasBadge
-                tone={
-                  experienceSignals[0].severity === "critical"
-                    ? "danger"
-                    : "warning"
-                }
-              >
-                {experienceSignals[0].confidence}% confiança
-              </AtlasBadge>
-            }
-          />
-          <div className="grid gap-4 p-5 sm:p-6 xl:grid-cols-[1fr_.8fr]">
-            <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[.05] p-4">
-              <p className="font-semibold text-white">
-                {experienceSignals[0].evidence}
-              </p>
-              <p className="mt-2 text-sm text-slate-400">
-                Recomendação:{" "}
-                {experienceSignals[0].recommendation === "offer_broker_change"
-                  ? "oferecer ao cliente a opção de manter ou trocar o corretor"
-                  : "recuperar o atendimento com acompanhamento"}
+      {qualification ? (
+        <section
+          id="qualificacao"
+          className="cc6-reveal cc6-panel scroll-mt-28 p-5 sm:p-6"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="cc6-eyebrow">Qualificação rápida</p>
+              <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+                Como o Atlas chegou a esta qualificação
+              </h2>
+              <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+                Confiança de{" "}
+                <span className="cc6-num">{qualification.confidence}%</span> ·{" "}
+                <span className="cc6-num">
+                  {qualification.progress.answered}/3
+                </span>{" "}
+                respostas essenciais · recalculado em{" "}
+                <span className="cc6-num">
+                  {new Date(qualification.recalculatedAt).toLocaleString(
+                    "pt-BR",
+                  )}
+                </span>
                 .
               </p>
             </div>
-            <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/[.05] p-4">
-              <p className="atlas-eyebrow">Resposta sugerida</p>
-              <p className="mt-2 text-sm leading-6 text-cyan-50">
-                {experienceSignals[0].suggested_reply}
-              </p>
+            <div className="flex gap-2">
+              <StatusBadge
+                tone={
+                  qualification.scoreChange.delta >= 0 ? "success" : "warning"
+                }
+              >
+                {qualification.scoreChange.delta >= 0 ? "+" : ""}
+                {qualification.scoreChange.delta} pontos
+              </StatusBadge>
+              <StatusBadge tone={temperatureTone(qualification.temperature)}>
+                {qualification.score}/100 · {qualification.temperature}
+              </StatusBadge>
             </div>
           </div>
-        </AtlasCard>
-      ) : null}
-
-      {lead.source === "Meta Lead Ads" ? (
-        <AtlasCard>
-          <AtlasCardHeader
-            eyebrow="Meta campaign context"
-            title="Origem e aprendizado do lead"
-            description="Informações de campanha preservadas automaticamente para atribuição, qualidade e otimização posterior."
-          />
-          <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-5">
-            {[
-              ["Origem", lead.metadata?.meta?.sourceName || "Meta Lead Ads"],
-              [
-                "Campanha",
-                lead.metadata?.meta?.campaignId || "Não identificada",
-              ],
-              ["Conjunto", lead.metadata?.meta?.adsetId || "Não identificado"],
-              ["Anúncio", lead.metadata?.meta?.adId || "Não identificado"],
-              [
-                "Aprendizado",
-                lead.metadata?.meta?.dataSharingConsent
-                  ? "Autorizado"
-                  : "Sem autorização",
-              ],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                className="rounded-2xl border border-white/[.06] bg-white/[.025] p-4"
-              >
-                <span className="text-[10px] uppercase tracking-wider text-slate-500">
-                  {label}
-                </span>
-                <strong className="mt-2 block break-all text-sm text-white">
-                  {value}
-                </strong>
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-white/[.06] px-5 py-4 text-xs leading-5 text-slate-400 sm:px-6">
-            O corretor só precisa manter o estágio e o acompanhamento
-            atualizados. O CRM transforma essas ações em sinais estruturados;
-            textos livres e dados pessoais não são exibidos nos relatórios de
-            campanha.
-          </div>
-        </AtlasCard>
-      ) : null}
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <AtlasMetric
-          label="Score Atlas"
-          value={lead.score ?? 0}
-          detail="Qualificação atual"
-          tone="blue"
-        />
-        <AtlasMetric
-          label="Oportunidades"
-          value={opportunities.length}
-          detail="Negócios vinculados"
-          tone="violet"
-        />
-        <AtlasMetric
-          label="Interações"
-          value={activities.length}
-          detail="Eventos registrados"
-          tone="green"
-        />
-        <AtlasMetric
-          label="Matches"
-          value={matches.length}
-          detail="Imóveis recomendados"
-          tone="amber"
-        />
-        <AtlasMetric
-          label="Risco"
-          value={intelligence.risk}
-          detail="Risco de inércia"
-          tone={intelligence.risk === "alto" ? "rose" : "green"}
-        />
-      </section>
-
-      {qualification ? (
-        <div id="qualificacao">
-          <AtlasCard>
-            <AtlasCardHeader
-              eyebrow="Qualificação rápida"
-              title="Como o Atlas chegou a esta qualificação"
-              description={`Confiança de ${qualification.confidence}% · ${qualification.progress.answered}/3 respostas essenciais · recalculado em ${new Date(qualification.recalculatedAt).toLocaleString("pt-BR")}.`}
-              action={
-                <div className="flex gap-2">
-                  <AtlasBadge
-                    tone={
-                      qualification.scoreChange.delta >= 0
-                        ? "success"
-                        : "warning"
-                    }
-                  >
-                    {qualification.scoreChange.delta >= 0 ? "+" : ""}
-                    {qualification.scoreChange.delta} PONTOS
-                  </AtlasBadge>
-                  <AtlasBadge tone={temperatureTone(qualification.temperature)}>
-                    {qualification.score}/100 · {qualification.temperature}
-                  </AtlasBadge>
+          <div className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {qualification.dimensions.map((dimension) => (
+                <div key={dimension.key} className="cc6-panel-quiet p-4">
+                  <div className="flex items-center justify-between">
+                    <strong className="text-sm text-[#e8eef8]">
+                      {dimension.label}
+                    </strong>
+                    <span className="cc6-num text-xs text-[#aab6ca]">
+                      {dimension.score}/{dimension.maximum}
+                    </span>
+                  </div>
+                  <div className="mt-3">
+                    <AtlasProgress
+                      value={Math.round(
+                        (dimension.score / dimension.maximum) * 100,
+                      )}
+                    />
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-[#6b7890]">
+                    {dimension.reasons.slice(0, 2).join(" · ") ||
+                      "Ainda sem sinais suficientes"}
+                  </p>
                 </div>
-              }
-            />
-            <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-[1.2fr_.8fr]">
-              <div className="grid gap-3 sm:grid-cols-2">
-                {qualification.dimensions.map((dimension) => (
+              ))}
+            </div>
+            <div className="space-y-3">
+              <div className="cc6-panel-quiet cc6-sev-band p-4 pl-5">
+                <p className="cc6-eyebrow text-[10px]">Próxima melhor ação</p>
+                <p className="mt-2 text-sm leading-6 text-[#e8eef8]">
+                  {qualification.nextBestAction}
+                </p>
+              </div>
+              {qualification.risks.length ? (
+                <div
+                  className="cc6-panel-quiet cc6-sev-band p-4 pl-5"
+                  style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
+                >
+                  <p className="cc6-eyebrow cc6-crit text-[10px]">Riscos</p>
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-[#aab6ca]">
+                    {qualification.risks.map((risk) => (
+                      <li key={risk}>• {risk}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {qualification.missingData.length ? (
+                <div
+                  className="cc6-panel-quiet cc6-sev-band p-4 pl-5"
+                  style={{ "--cc6-sev": "#f5b544" } as CSSProperties}
+                >
+                  <p className="cc6-eyebrow cc6-warn text-[10px]">
+                    Dados que aumentam a confiança
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-[#aab6ca]">
+                    {qualification.missingData.join(" · ")}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+          {qualification.recommendedQuestions.length ? (
+            <div className="cc6-hairline mt-5 pt-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="cc6-eyebrow">Próxima pergunta mais relevante</p>
+                <span className="cc6-num text-xs text-[#6b7890]">
+                  {qualification.progress.percent}% essencial concluído
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                {qualification.recommendedQuestions.map((question, index) => (
                   <div
-                    key={dimension.key}
-                    className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4"
+                    key={question.key}
+                    className={`cc6-panel-quiet p-4 ${
+                      index === 0 ? "border-[rgba(75,141,248,0.45)]" : ""
+                    }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <strong className="text-sm text-white">
-                        {dimension.label}
-                      </strong>
-                      <span className="text-xs font-semibold text-sky-300">
-                        {dimension.score}/{dimension.maximum}
-                      </span>
-                    </div>
-                    <div className="mt-3">
-                      <AtlasProgress
-                        value={Math.round(
-                          (dimension.score / dimension.maximum) * 100,
-                        )}
-                      />
-                    </div>
-                    <p className="mt-3 text-xs leading-5 text-slate-500">
-                      {dimension.reasons.slice(0, 2).join(" · ") ||
-                        "Ainda sem sinais suficientes"}
+                    <strong className="text-sm leading-6 text-[#e8eef8]">
+                      {question.question}
+                    </strong>
+                    <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+                      {question.why}
                     </p>
+                    {question.options ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {question.options.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            disabled={qualifying}
+                            onClick={() =>
+                              void qualifyLead({
+                                [question.key]: option.value,
+                              })
+                            }
+                            className={chipButtonClass}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          document
+                            .querySelector<HTMLInputElement>(
+                              question.key === "budget"
+                                ? 'input[placeholder="Orçamento máximo"]'
+                                : 'input[placeholder="Regiões preferidas"]',
+                            )
+                            ?.focus()
+                        }
+                        className="cc6-ghost-btn mt-3"
+                      >
+                        Preencher perfil
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
-              <div className="space-y-3">
-                <div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.06] p-4">
-                  <p className="atlas-eyebrow">Próxima melhor ação</p>
-                  <p className="mt-2 text-sm leading-6 text-violet-100">
-                    {qualification.nextBestAction}
-                  </p>
-                </div>
-                {qualification.risks.length ? (
-                  <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[0.06] p-4">
-                    <p className="text-xs font-bold uppercase tracking-[.14em] text-rose-300">
-                      Riscos
-                    </p>
-                    <ul className="mt-2 space-y-1 text-xs text-slate-300">
-                      {qualification.risks.map((risk) => (
-                        <li key={risk}>• {risk}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                {qualification.missingData.length ? (
-                  <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.06] p-4">
-                    <p className="text-xs font-bold uppercase tracking-[.14em] text-amber-300">
-                      Dados que aumentam a confiança
-                    </p>
-                    <p className="mt-2 text-xs leading-5 text-slate-300">
-                      {qualification.missingData.join(" · ")}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
+              <p className="mt-4 text-[11px] leading-5 text-[#6b7890]">
+                Finalidade, prazo e pagamento recalibram score e próxima ação
+                imediatamente. Para a Meta saem apenas categorias agregadas;
+                conversa livre e dados pessoais permanecem no CRM.
+              </p>
             </div>
-            {qualification.recommendedQuestions.length ? (
-              <div className="border-t border-white/[.06] p-5 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <p className="atlas-eyebrow">
-                    Próxima pergunta mais relevante
-                  </p>
-                  <span className="text-xs text-cyan-200">
-                    {qualification.progress.percent}% essencial concluído
-                  </span>
-                </div>
-                <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                  {qualification.recommendedQuestions.map((question, index) => (
-                    <div
-                      key={question.key}
-                      className={`rounded-2xl border p-4 ${index === 0 ? "border-cyan-300/30 bg-cyan-400/[.07]" : "border-white/[.07] bg-white/[.025]"}`}
-                    >
-                      <strong className="text-sm text-white">
-                        {question.question}
-                      </strong>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        {question.why}
-                      </p>
-                      {question.options ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {question.options.map((option) => (
-                            <button
-                              key={option.value}
-                              disabled={qualifying}
-                              onClick={() =>
-                                void qualifyLead({
-                                  [question.key]: option.value,
-                                })
-                              }
-                              className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-cyan-100 hover:border-cyan-400/40"
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() =>
-                            document
-                              .querySelector<HTMLInputElement>(
-                                question.key === "budget"
-                                  ? 'input[placeholder="Orçamento máximo"]'
-                                  : 'input[placeholder="Regiões preferidas"]',
-                              )
-                              ?.focus()
-                          }
-                          className="atlas-button-secondary mt-3"
-                        >
-                          Preencher perfil
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-4 text-[11px] leading-5 text-slate-500">
-                  Finalidade, prazo e pagamento recalibram score e próxima ação
-                  imediatamente. Para a Meta saem apenas categorias agregadas;
-                  conversa livre e dados pessoais permanecem no CRM.
-                </p>
-              </div>
-            ) : null}
-          </AtlasCard>
-        </div>
+          ) : null}
+        </section>
       ) : null}
 
       {proposals.length ? (
-        <AtlasCard>
-          <AtlasCardHeader
-            eyebrow="SLA de proposta"
-            title="Preparação, envio e retorno"
-            description="Preço, estoque e regra continuam governados; agora o contato com o cliente também fica mensurado."
-          />
-          <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-2">
+        <section className="cc6-reveal cc6-panel p-5 sm:p-6">
+          <p className="cc6-eyebrow">SLA de proposta</p>
+          <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+            Preparação, envio e retorno
+          </h2>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {proposals.map((proposal) => (
-              <article
-                key={proposal.id}
-                className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"
-              >
+              <article key={proposal.id} className="cc6-panel-quiet p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <strong className="text-white">
+                  <div className="min-w-0">
+                    <strong className="block truncate text-sm text-[#e8eef8]">
                       {proposal.rule_snapshot?.propertyTitle ||
                         "Proposta comercial"}
                     </strong>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="cc6-num mt-1 text-xs text-[#6b7890]">
                       {brl.format(proposal.property_price)} · válida até{" "}
                       {new Date(proposal.valid_until).toLocaleString("pt-BR")}
                     </p>
                   </div>
-                  <AtlasBadge
+                  <StatusBadge
                     tone={
                       proposal.status === "accepted"
                         ? "success"
@@ -1629,31 +1581,26 @@ export default function LeadDetailPage() {
                             : "warning"
                     }
                   >
-                    {proposal.status.toUpperCase()}
-                  </AtlasBadge>
+                    {proposal.status}
+                  </StatusBadge>
                 </div>
-                <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-                  <div className="rounded-xl bg-white/[.03] p-2">
-                    <span className="text-slate-500">Preparação</span>
-                    <strong className="mt-1 block text-white">
-                      {proposal.preparation_minutes ?? "—"} min
-                    </strong>
-                  </div>
-                  <div className="rounded-xl bg-white/[.03] p-2">
-                    <span className="text-slate-500">Revisão</span>
-                    <strong className="mt-1 block text-white">
-                      {proposal.review_minutes ?? "—"} min
-                    </strong>
-                  </div>
-                  <div className="rounded-xl bg-white/[.03] p-2">
-                    <span className="text-slate-500">Resposta</span>
-                    <strong className="mt-1 block text-white">
-                      {proposal.response_minutes ?? "—"} min
-                    </strong>
-                  </div>
-                </div>
+                <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  {([
+                    ["Preparação", proposal.preparation_minutes],
+                    ["Revisão", proposal.review_minutes],
+                    ["Resposta", proposal.response_minutes],
+                  ] as const).map(([label, minutes]) => (
+                    <div key={label} className="cc6-panel-quiet p-2">
+                      <dt className="cc6-metric-label">{label}</dt>
+                      <dd className="cc6-num mt-1 text-sm text-[#e8eef8]">
+                        {minutes ?? "—"} min
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
                 {proposal.status === "approved" ? (
                   <button
+                    type="button"
                     onClick={() => void updateProposal(proposal.id, "sent")}
                     className="atlas-button-primary mt-4"
                   >
@@ -1661,8 +1608,9 @@ export default function LeadDetailPage() {
                   </button>
                 ) : null}
                 {proposal.status === "sent" ? (
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-4 flex flex-wrap gap-2">
                     <button
+                      type="button"
                       onClick={() =>
                         void updateProposal(proposal.id, "accepted")
                       }
@@ -1671,6 +1619,7 @@ export default function LeadDetailPage() {
                       Cliente aceitou
                     </button>
                     <button
+                      type="button"
                       onClick={() =>
                         void updateProposal(
                           proposal.id,
@@ -1678,7 +1627,7 @@ export default function LeadDetailPage() {
                           "Cliente recusou a condição apresentada.",
                         )
                       }
-                      className="atlas-button-secondary"
+                      className="cc6-ghost-btn"
                     >
                       Cliente recusou
                     </button>
@@ -1687,26 +1636,42 @@ export default function LeadDetailPage() {
               </article>
             ))}
           </div>
-        </AtlasCard>
+          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[#6b7890]">
+            Preço, estoque e regra continuam governados; o contato com o
+            cliente também fica mensurado.
+          </p>
+        </section>
       ) : null}
 
       {simulation ? (
-        <AtlasCard>
-          <AtlasCardHeader
-            eyebrow="Simulação, não promessa"
-            title={`${simulation.rule_snapshot.ruleName} · versão ${simulation.rule_snapshot.version}`}
-            description={`Regra vigente de ${simulation.rule_snapshot.developerName} fotografada no cálculo; mudanças futuras não alteram este histórico.`}
-            action={
-              <AtlasBadge tone="warning">
-                VÁLIDA ATÉ{" "}
-                {new Date(simulation.valid_until).toLocaleString("pt-BR")}
-              </AtlasBadge>
-            }
-          />
-          <div className="mx-5 mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/[.07] p-4 text-xs font-semibold leading-5 text-amber-100 sm:mx-6">
-            {simulation.rule_snapshot.disclaimer}
+        <section className="cc6-reveal cc6-panel p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="cc6-eyebrow">Simulação, não promessa</p>
+              <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+                {simulation.rule_snapshot.ruleName} · versão{" "}
+                <span className="cc6-num">
+                  {simulation.rule_snapshot.version}
+                </span>
+              </h2>
+              <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+                Regra vigente de {simulation.rule_snapshot.developerName}{" "}
+                fotografada no cálculo; mudanças futuras não alteram este
+                histórico.
+              </p>
+            </div>
+            <StatusBadge tone="warning">
+              válida até{" "}
+              {new Date(simulation.valid_until).toLocaleString("pt-BR")}
+            </StatusBadge>
           </div>
-          <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-4">
+          <p
+            className="cc6-panel-quiet cc6-sev-band mt-4 p-3 pl-4 text-xs font-medium leading-5 text-[#f5b544]"
+            style={{ "--cc6-sev": "#f5b544" } as CSSProperties}
+          >
+            {simulation.rule_snapshot.disclaimer}
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
               ["Preço de referência", brl.format(simulation.property_price)],
               [
@@ -1728,84 +1693,93 @@ export default function LeadDetailPage() {
                   : `${simulation.installments_count} × ${brl.format(simulation.installment_amount)}`,
               ],
             ].map(([label, value]) => (
-              <div
-                key={label}
-                className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"
-              >
-                <span className="text-xs text-slate-500">{label}</span>
-                <strong className="mt-2 block text-lg text-white">
+              <div key={label} className="cc6-panel-quiet p-4">
+                <span className="cc6-metric-label">{label}</span>
+                <strong className="cc6-metric-value mt-2 block text-lg">
                   {value}
                 </strong>
               </div>
             ))}
           </div>
-          <div className="border-t border-white/[.06] p-5 sm:p-6">
-            <p className="whitespace-pre-line text-xs leading-5 text-slate-300">
-              {simulation.rule_snapshot.paymentFlow}
-            </p>
-            {simulation.rule_snapshot.balloonPaymentNotes ? (
-              <p className="mt-3 text-xs text-slate-400">
-                <strong>Reforços:</strong>{" "}
-                {simulation.rule_snapshot.balloonPaymentNotes}
+          <details className="cc6-panel-quiet group mt-3">
+            <summary className={summaryClass}>
+              <span className="cc6-eyebrow">
+                Fluxo de pagamento e base de cálculo
+              </span>
+              <span
+                aria-hidden="true"
+                className="text-[#6b7890] transition-transform group-open:rotate-180"
+              >
+                ▾
+              </span>
+            </summary>
+            <div className="cc6-hairline p-4">
+              <p className="whitespace-pre-line text-xs leading-6 text-[#aab6ca]">
+                {simulation.rule_snapshot.paymentFlow}
               </p>
-            ) : null}
-            {simulation.rule_snapshot.financingNotes ? (
-              <p className="mt-2 text-xs text-slate-400">
-                <strong>Crédito:</strong>{" "}
-                {simulation.rule_snapshot.financingNotes}
+              {simulation.rule_snapshot.balloonPaymentNotes ? (
+                <p className="mt-3 text-xs leading-5 text-[#6b7890]">
+                  <strong className="text-[#aab6ca]">Reforços:</strong>{" "}
+                  {simulation.rule_snapshot.balloonPaymentNotes}
+                </p>
+              ) : null}
+              {simulation.rule_snapshot.financingNotes ? (
+                <p className="mt-2 text-xs leading-5 text-[#6b7890]">
+                  <strong className="text-[#aab6ca]">Crédito:</strong>{" "}
+                  {simulation.rule_snapshot.financingNotes}
+                </p>
+              ) : null}
+              <p className="cc6-num mt-3 text-[10px] leading-5 text-[#6b7890]">
+                Base do cálculo: {simulation.rule_snapshot.calculation}
               </p>
-            ) : null}
-            <p className="mt-4 rounded-xl bg-white/[.025] p-3 text-[10px] leading-5 text-slate-500">
-              Base do cálculo: {simulation.rule_snapshot.calculation}
-            </p>
-            <button
-              onClick={() => void requestProposal()}
-              className="atlas-button-primary mt-4"
-            >
-              Enviar para revisão humana
-            </button>
-          </div>
-        </AtlasCard>
+            </div>
+          </details>
+          <button
+            type="button"
+            onClick={() => void requestProposal()}
+            className="atlas-button-primary mt-4"
+          >
+            Enviar para revisão humana
+          </button>
+        </section>
       ) : null}
 
-      <section className="grid gap-6 2xl:grid-cols-[1.15fr_.85fr]">
-        <AtlasCard>
-          <AtlasCardHeader
-            eyebrow="Customer profile"
-            title="Dados e qualificação"
-            description="Perfil comercial, preferências e capacidade financeira do comprador."
-          />
-          <form onSubmit={saveLead} className="p-5 sm:p-6">
-            <div className="grid gap-4 sm:grid-cols-2">
+      <section
+        className="cc6-reveal grid gap-4 2xl:grid-cols-[1.15fr_.85fr]"
+        style={{ animationDelay: "210ms" }}
+      >
+        <section className="cc6-panel p-5 sm:p-6">
+          <p className="cc6-eyebrow">Perfil do comprador</p>
+          <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+            Dados e qualificação
+          </h2>
+          <form onSubmit={saveLead} className="mt-4">
+            <div className="grid gap-3 sm:grid-cols-2">
               <input
                 className={inputClass}
                 value={lead.name ?? ""}
                 placeholder="Nome"
+                aria-label="Nome"
                 onChange={(e) => setLead({ ...lead, name: e.target.value })}
               />
               <input
                 className={inputClass}
                 value={lead.phone ?? ""}
                 placeholder="Telefone"
+                aria-label="Telefone"
                 onChange={(e) => setLead({ ...lead, phone: e.target.value })}
               />
               <input
                 className={inputClass}
                 value={lead.email ?? ""}
                 placeholder="E-mail"
+                aria-label="E-mail"
                 onChange={(e) => setLead({ ...lead, email: e.target.value })}
-              />
-              <input
-                className={inputClass}
-                value={lead.source ?? ""}
-                placeholder="Origem não informada"
-                readOnly
-                aria-label="Origem comercial — use a correção governada acima"
-                title="Use Corrigir contexto para alterar a origem com justificativa auditável."
               />
               <select
                 className={inputClass}
                 value={lead.status ?? "novo"}
+                aria-label="Etapa do lead"
                 onChange={(e) => setLead({ ...lead, status: e.target.value })}
               >
                 {[
@@ -1829,6 +1803,7 @@ export default function LeadDetailPage() {
               <select
                 className={inputClass}
                 value={lead.temperature ?? "frio"}
+                aria-label="Temperatura do lead"
                 onChange={(e) =>
                   setLead({ ...lead, temperature: e.target.value })
                 }
@@ -1842,6 +1817,7 @@ export default function LeadDetailPage() {
                 type="number"
                 value={lead.budget_min ?? ""}
                 placeholder="Orçamento mínimo"
+                aria-label="Orçamento mínimo"
                 onChange={(e) =>
                   setLead({
                     ...lead,
@@ -1854,6 +1830,7 @@ export default function LeadDetailPage() {
                 type="number"
                 value={lead.budget_max ?? ""}
                 placeholder="Orçamento máximo"
+                aria-label="Orçamento máximo"
                 onChange={(e) =>
                   setLead({
                     ...lead,
@@ -1866,6 +1843,7 @@ export default function LeadDetailPage() {
                 type="number"
                 value={lead.bedrooms ?? ""}
                 placeholder="Dormitórios"
+                aria-label="Dormitórios"
                 onChange={(e) =>
                   setLead({
                     ...lead,
@@ -1877,6 +1855,7 @@ export default function LeadDetailPage() {
                 className={inputClass}
                 value={(lead.preferred_regions ?? []).join(", ")}
                 placeholder="Regiões preferidas"
+                aria-label="Regiões preferidas"
                 onChange={(e) =>
                   setLead({
                     ...lead,
@@ -1889,12 +1868,17 @@ export default function LeadDetailPage() {
               />
             </div>
             <textarea
-              className={`${inputClass} mt-4 min-h-32`}
+              className={`${inputClass} mt-3 min-h-32`}
               value={lead.notes ?? ""}
               placeholder="Observações estratégicas"
+              aria-label="Observações estratégicas"
               onChange={(e) => setLead({ ...lead, notes: e.target.value })}
             />
-            <div className="mt-5 flex justify-end">
+            <p className="mt-3 text-[11px] leading-5 text-[#6b7890]">
+              A origem comercial não é editada aqui — use &quot;Corrigir
+              contexto&quot; acima para alterá-la com justificativa auditável.
+            </p>
+            <div className="mt-4 flex justify-end">
               <button
                 disabled={saving}
                 className="atlas-button-primary disabled:opacity-50"
@@ -1903,103 +1887,98 @@ export default function LeadDetailPage() {
               </button>
             </div>
           </form>
-        </AtlasCard>
+        </section>
 
-        <div className="space-y-6">
-          <div id="historico">
-            <AtlasCard>
-              <AtlasCardHeader
-                eyebrow="Atlas AI"
-                title="Próxima ação recomendada"
-                description="Orientação calculada a partir do perfil, histórico e pipeline."
-              />
-              <div className="p-5 sm:p-6">
-                <div className="rounded-2xl border border-violet-400/15 bg-violet-400/[0.06] p-5">
-                  <p className="text-sm font-medium text-violet-100">
-                    {intelligence.nextAction}
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-slate-400">
-                    Risco atual: {intelligence.risk}. Atualize o histórico após
-                    cada contato para melhorar as recomendações.
-                  </p>
-                </div>
-                <form onSubmit={addActivity} className="mt-4 space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-[1fr_150px]">
-                    <input
-                      className={inputClass}
-                      value={activityTitle}
-                      onChange={(e) => setActivityTitle(e.target.value)}
-                      placeholder="Registrar ligação, mensagem ou visita"
-                    />
-                    <select
-                      className={inputClass}
-                      value={activityType}
-                      onChange={(e) => setActivityType(e.target.value)}
-                    >
-                      <option value="note">Nota</option>
-                      <option value="call">Ligação</option>
-                      <option value="whatsapp">WhatsApp</option>
-                      <option value="visit">Visita</option>
-                      <option value="email">E-mail</option>
-                    </select>
-                  </div>
-                  <textarea
-                    className={`${inputClass} min-h-24 resize-y`}
-                    value={activityDescription}
-                    onChange={(e) => setActivityDescription(e.target.value)}
-                    placeholder="O que o cliente falou? Ex.: achou o preço alto, prefere outro bairro, precisa financiar ou quer entrega imediata."
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      "Preço",
-                      "Localização",
-                      "Financiamento",
-                      "Prazo",
-                      "Produto",
-                      "Concorrência",
-                    ].map((signal) => (
-                      <button
-                        key={signal}
-                        type="button"
-                        onClick={() =>
-                          setActivityDescription(
-                            (current) =>
-                              `${current}${current ? " · " : ""}${signal}: `,
-                          )
-                        }
-                        className="rounded-full border border-white/10 bg-white/[.03] px-3 py-1.5 text-[11px] text-slate-300 hover:border-violet-400/30"
-                      >
-                        + {signal}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-[11px] leading-5 text-slate-500">
-                    A descrição fica protegida no CRM. A inteligência usa
-                    somente categorias anônimas para indicar melhorias de
-                    público e criativo.
-                  </p>
-                  <button className="atlas-button-secondary w-full">
-                    Salvar acompanhamento e aprendizado
-                  </button>
-                </form>
+        <div className="space-y-4">
+          <section id="historico" className="cc6-panel scroll-mt-28 p-5 sm:p-6">
+            <p className="cc6-eyebrow">Registrar</p>
+            <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+              Acompanhamento do contato
+            </h2>
+            <form onSubmit={addActivity} className="mt-4 space-y-3">
+              <div className="grid gap-3 sm:grid-cols-[1fr_150px]">
+                <input
+                  className={inputClass}
+                  value={activityTitle}
+                  onChange={(e) => setActivityTitle(e.target.value)}
+                  placeholder="Registrar ligação, mensagem ou visita"
+                  aria-label="Título da interação"
+                />
+                <select
+                  className={inputClass}
+                  value={activityType}
+                  aria-label="Tipo de interação"
+                  onChange={(e) => setActivityType(e.target.value)}
+                >
+                  <option value="note">Nota</option>
+                  <option value="call">Ligação</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="visit">Visita</option>
+                  <option value="email">E-mail</option>
+                </select>
               </div>
-            </AtlasCard>
-          </div>
+              <textarea
+                className={`${inputClass} min-h-24 resize-y`}
+                value={activityDescription}
+                onChange={(e) => setActivityDescription(e.target.value)}
+                placeholder="O que o cliente falou? Ex.: achou o preço alto, prefere outro bairro, precisa financiar ou quer entrega imediata."
+                aria-label="Descrição da interação"
+              />
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Preço",
+                  "Localização",
+                  "Financiamento",
+                  "Prazo",
+                  "Produto",
+                  "Concorrência",
+                ].map((signal) => (
+                  <button
+                    key={signal}
+                    type="button"
+                    onClick={() =>
+                      setActivityDescription(
+                        (current) =>
+                          `${current}${current ? " · " : ""}${signal}: `,
+                      )
+                    }
+                    className={chipButtonClass}
+                  >
+                    + {signal}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] leading-5 text-[#6b7890]">
+                A descrição fica protegida no CRM. A inteligência usa somente
+                categorias anônimas para indicar melhorias de público e
+                criativo.
+              </p>
+              <button className="cc6-ghost-btn w-full justify-center">
+                Salvar acompanhamento e aprendizado
+              </button>
+            </form>
+          </section>
 
-          <AtlasCard>
-            <AtlasCardHeader
-              eyebrow="Timeline"
-              title="Histórico do relacionamento"
-              description="Interações, mudanças e eventos recentes."
-            />
-            <div className="max-h-[420px] overflow-y-auto px-5 pb-5 sm:px-6 sm:pb-6">
+          <section className="cc6-panel">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-5 pb-0 sm:px-6">
+              <div>
+                <p className="cc6-eyebrow">Timeline</p>
+                <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+                  Histórico do relacionamento
+                </h2>
+              </div>
+              <span className="cc6-chip" title="Eventos registrados">
+                {activities.length}
+              </span>
+            </div>
+            <div className="mt-4 max-h-[420px] overflow-y-auto px-5 pb-5 sm:px-6 sm:pb-6">
               {activities.length === 0 ? (
                 <AtlasEmpty
                   title="Nenhuma interação"
                   description="Registre o primeiro contato para iniciar a memória comercial."
                 />
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {activities.map((activity) => {
                     const contextCorrection =
                       activity.type === "commercial_context_corrected"
@@ -2011,32 +1990,31 @@ export default function LeadDetailPage() {
                     return (
                       <article
                         key={activity.id}
-                        className="relative rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4 pl-12"
+                        className="cc6-panel-quiet p-4 transition-colors hover:border-[rgba(148,163,184,0.3)]"
                       >
-                        <span className="absolute left-4 top-4 grid h-7 w-7 place-items-center rounded-full border border-sky-400/20 bg-sky-400/10 text-xs text-sky-300">
-                          •
-                        </span>
                         <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium text-white">
-                              {activity.title}
-                            </p>
-                            {!contextCorrection && activity.description ? (
-                              <p className="mt-1 text-xs leading-5 text-slate-400">
-                                {activity.description}
-                              </p>
-                            ) : null}
-                          </div>
-                          <AtlasBadge tone="info">{activity.type}</AtlasBadge>
+                          <p className="text-sm font-medium leading-6 text-[#e8eef8]">
+                            {activity.title}
+                          </p>
+                          <span className="cc6-chip shrink-0">
+                            {activity.type}
+                          </span>
                         </div>
+                        {!contextCorrection && activity.description ? (
+                          <p className="mt-1.5 text-[13px] leading-6 text-[#aab6ca]">
+                            {activity.description}
+                          </p>
+                        ) : null}
                         {contextCorrection ? (
                           <CommercialContextTimelineEntry
                             correction={contextCorrection}
                           />
                         ) : null}
-                        <p className="mt-3 text-[10px] uppercase tracking-wider text-slate-600">
+                        <p className="cc6-num mt-3 text-[10px] uppercase tracking-wider text-[#6b7890]">
                           {activity.authorName || "Equipe Atlas"} ·{" "}
-                          {new Date(activity.occurred_at).toLocaleString("pt-BR")}
+                          {new Date(activity.occurred_at).toLocaleString(
+                            "pt-BR",
+                          )}
                         </p>
                       </article>
                     );
@@ -2044,26 +2022,30 @@ export default function LeadDetailPage() {
                 </div>
               )}
             </div>
-          </AtlasCard>
+          </section>
         </div>
       </section>
 
-      <div id="matching">
-        <AtlasCard>
-          <AtlasCardHeader
-          eyebrow="Matching Atlas"
-          title="Imóveis recomendados"
-          description="Ranking de aderência entre perfil, orçamento, tipologia e localização."
-          action={
-            <Link
-              href="/properties"
-              className="text-xs font-semibold text-sky-300"
-            >
-              Ver estoque →
-            </Link>
-          }
-          />
-          <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3 sm:p-6">
+      <section
+        id="matching"
+        className="cc6-reveal cc6-panel scroll-mt-28 p-5 sm:p-6"
+        style={{ animationDelay: "260ms" }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="cc6-eyebrow">Matching Atlas</p>
+            <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+              Imóveis recomendados
+            </h2>
+          </div>
+          <Link
+            href="/properties"
+            className={`rounded-sm text-xs font-semibold text-[color:var(--atlas-accent)] transition-colors hover:underline ${focusRing}`}
+          >
+            Ver estoque →
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {matches.length === 0 ? (
             <div className="md:col-span-2 xl:col-span-3">
               <AtlasEmpty
@@ -2075,16 +2057,13 @@ export default function LeadDetailPage() {
             matches.map(({ property, match }) => (
               <article
                 key={property.id}
-                className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5 transition hover:-translate-y-1 hover:border-sky-400/20"
+                className="cc6-panel-quiet p-4 transition-colors hover:border-[color:var(--atlas-accent)]"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="atlas-eyebrow">Aderência comercial</p>
-                    <h3 className="mt-2 font-semibold text-white">
-                      {property.title || "Imóvel sem título"}
-                    </h3>
-                  </div>
-                  <AtlasBadge
+                  <h3 className="text-sm font-semibold leading-6 text-[#e8eef8]">
+                    {property.title || "Imóvel sem título"}
+                  </h3>
+                  <StatusBadge
                     tone={
                       match.score >= 75
                         ? "success"
@@ -2094,30 +2073,32 @@ export default function LeadDetailPage() {
                     }
                   >
                     {match.score}%
-                  </AtlasBadge>
+                  </StatusBadge>
                 </div>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-1 text-xs text-[#6b7890]">
                   {property.city || "Localização não informada"}
                   {property.state ? ` · ${property.state}` : ""}
                 </p>
-                <p className="mt-4 text-xl font-semibold text-white">
+                <p className="cc6-metric-value mt-3 text-lg">
                   {property.price
                     ? brl.format(property.price)
                     : "Preço sob consulta"}
                 </p>
-                <ul className="mt-4 space-y-1.5 text-xs text-slate-400">
+                <ul className="mt-3 space-y-1 text-xs leading-5 text-[#6b7890]">
                   {match.reasons.slice(0, 3).map((reason) => (
                     <li key={reason}>• {reason}</li>
                   ))}
                 </ul>
-                <div className="mt-5 grid grid-cols-2 gap-2">
+                <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
+                    type="button"
                     onClick={() => void createOpportunity(property.id)}
-                    className="atlas-button-secondary"
+                    className="cc6-ghost-btn justify-center"
                   >
                     Oportunidade
                   </button>
                   <button
+                    type="button"
                     onClick={() => void simulate(property.id)}
                     className="atlas-button-primary"
                   >
@@ -2127,9 +2108,121 @@ export default function LeadDetailPage() {
               </article>
             ))
           )}
+        </div>
+      </section>
+
+      {/* ── Drill-down colapsável: auditoria de qualidade/fontes e contexto de
+          campanha Meta — fora do fluxo de decisão, sem repetir a identidade. ── */}
+      {dataQuality && unifiedProfile ? (
+        <details className="cc6-panel-quiet group">
+          <summary className={summaryClass}>
+            <span className="cc6-eyebrow">Qualidade e fontes dos dados</span>
+            <span className="cc6-num text-xs text-[#aab6ca]">
+              {dataQuality.completeness}% · {dataQuality.completedFields}/
+              {dataQuality.totalFields} campos
+              <span
+                aria-hidden="true"
+                className="ml-2 inline-block text-[#6b7890] transition-transform group-open:rotate-180"
+              >
+                ▾
+              </span>
+            </span>
+          </summary>
+          <div className="cc6-hairline space-y-4 p-4 sm:p-5">
+            <AtlasProgress
+              value={dataQuality.completeness}
+              label="Completude para personalização"
+            />
+            <div className="flex flex-wrap gap-2">
+              {unifiedProfile.sources.map((source) => (
+                <span key={source} className="cc6-chip uppercase">
+                  {source}
+                </span>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                ["Conversas", unifiedProfile.conversations.length],
+                ["Tarefas", unifiedProfile.tasks.length],
+                ["Sinais de campanha", unifiedProfile.campaignEvents.length],
+              ] as const).map(([label, value]) => (
+                <div key={label} className="cc6-panel-quiet p-3 text-center">
+                  <span className="cc6-metric-value text-lg">{value}</span>
+                  <p className="cc6-metric-label mt-1">{label}</p>
+                </div>
+              ))}
+            </div>
+            {dataQuality.inconsistencies.length ? (
+              <div
+                className="cc6-sev-band pl-3"
+                style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
+              >
+                <p className="cc6-eyebrow cc6-crit text-[10px]">
+                  Revisão humana necessária
+                </p>
+                <ul className="mt-2 space-y-1 text-xs leading-5 text-[#aab6ca]">
+                  {dataQuality.inconsistencies.map((item) => (
+                    <li key={item}>• {item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <p className="text-[11px] leading-5 text-[#6b7890]">
+              Cadastros ambíguos nunca são fundidos sem revisão humana.
+            </p>
           </div>
-        </AtlasCard>
-      </div>
+        </details>
+      ) : null}
+
+      {lead.source === "Meta Lead Ads" ? (
+        <details className="cc6-panel-quiet group">
+          <summary className={summaryClass}>
+            <span className="cc6-eyebrow">
+              Origem Meta · campanha e aprendizado
+            </span>
+            <span
+              aria-hidden="true"
+              className="text-[#6b7890] transition-transform group-open:rotate-180"
+            >
+              ▾
+            </span>
+          </summary>
+          <div className="cc6-hairline p-4 sm:p-5">
+            <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {[
+                ["Origem", lead.metadata?.meta?.sourceName || "Meta Lead Ads"],
+                [
+                  "Campanha",
+                  lead.metadata?.meta?.campaignId || "Não identificada",
+                ],
+                [
+                  "Conjunto",
+                  lead.metadata?.meta?.adsetId || "Não identificado",
+                ],
+                ["Anúncio", lead.metadata?.meta?.adId || "Não identificado"],
+                [
+                  "Aprendizado",
+                  lead.metadata?.meta?.dataSharingConsent
+                    ? "Autorizado"
+                    : "Sem autorização",
+                ],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt className="cc6-eyebrow text-[10px]">{label}</dt>
+                  <dd className="cc6-num mt-1.5 break-all text-sm text-[#e8eef8]">
+                    {value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[#6b7890]">
+              O corretor só mantém estágio e acompanhamento atualizados; o CRM
+              transforma essas ações em sinais estruturados. Textos livres e
+              dados pessoais não aparecem nos relatórios de campanha.
+            </p>
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 }
