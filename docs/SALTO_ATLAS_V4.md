@@ -68,15 +68,17 @@ Sem isso não há salto: **backup → cadeia 66 no oficial → 5 usuários por l
 
 ## Sequência proposta (ondas de ~1 sessão cada, padrão da casa: verificação adversarial + commit + push)
 
-| Onda | Entrega | Depende de |
-|---|---|---|
-| **0** | Lançamento (cadeia 66 + usuários + deploy) | dono (~3h) |
-| **V4.1** | Pilar 1 núcleo: proposals engine + Caixa de Aprovações + auditoria | Fase 0 |
-| **V4.2** | Pilar 2a: importador CSV/XLSX + carga histórica com relatório | Fase 0 |
-| **V4.3** | Pilar 2b: dataset→calibração→gate→drift + painel saúde do modelo | V4.2 |
-| **V4.4** | Pilar 3: WhatsApp vivo no Lead 360 + ponte para aprovações | Fase 0 + WABA |
-| **V4.5** | Pilar 4: nightly no cockpit + executivo diário | V4.1 |
-| **V4.6** | Loop externo: CAPI ligado (flag on em teste) + medição de qualidade de público | V4.3 |
+| Onda | Entrega | Depende de | Status |
+|---|---|---|---|
+| **0** | Lançamento (cadeia 66 + usuários + deploy) | dono (~3h) | ⏳ mão do dono |
+| **V4.1** | Pilar 1 núcleo: proposals engine + Caixa de Aprovações + auditoria + botão no cockpit | Fase 0 | ✅ **código completo** (motor 10/10, execução governada, UI no herói) — ativa na Fase 0 |
+| **V4.2** | Pilar 2a: importador CSV/TXT + carga histórica com relatório | Fase 0 | ✅ **código completo** (pipeline 16/16, rota dry-run/commit, wizard CC-6) — ativa na Fase 0 |
+| **V4.3** | Pilar 2b: dataset→calibração→gate→drift + painel saúde do modelo | V4.2 | ◻️ próxima |
+| **V4.4** | Pilar 3: WhatsApp vivo no Lead 360 + ponte para aprovações | Fase 0 + WABA | ◻️ |
+| **V4.5** | Pilar 4: nightly no cockpit + executivo diário | V4.1 | ◻️ |
+| **V4.6** | Loop externo: CAPI ligado (flag on em teste) + medição de qualidade de público | V4.3 | ◻️ |
+
+> **Nota de execução V4.1/V4.2 (2026-07-20):** ambas as ondas são additivas e guardadas — zero mudança nas trilhas existentes; degradam honestamente pré-Fase-0 ("indisponível até a ativação do banco"). O importador insere colunas (`project`/`campaign`/`legacy_broker`/`import_batch_id`/`source_row`/`notes`) que dependem da cadeia 66 aplicada; se alguma faltar no schema vivo, a rota devolve `IMPORT_PARTIAL` com o lote parcial registrado (fail-honest, nunca silencioso).
 
 ## Métricas de sucesso do salto
 - **Tempo sinal→ação executada**: de minutos/nunca para <30s (aprovação em 1 clique).
