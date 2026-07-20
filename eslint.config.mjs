@@ -19,19 +19,13 @@ const eslintConfig = defineConfig([
     ".atlas-route-quarantine-*/**",
     "next-env.d.ts",
 
-    // Somente superfícies legadas AINDA órfãs (pendentes de decisão de
-    // migração/remoção) ficam fora do gate. Código vivo é sempre lintado:
-    // lib/ai, lib/auth, lib/analytics, pipeline, tasks e kanban voltaram ao
-    // gate em 2026-07-20 (limpos por mérito próprio; órfãos com erro foram
-    // removidos em vez de silenciados). Entradas de caminhos já deletados
-    // foram podadas.
-    "domain/**",
+    // Única superfície fora do gate: core/** (471 arquivos de arquitetura
+    // legada/experimental). Auditada em 2026-07-20: ZERO imports de código
+    // vivo (alias e relativo verificados) — quarentena documentada; a
+    // decisão de remover ~500 arquivos é do dono do projeto, não do gate.
+    // Todo o resto do repositório é lintado; órfãos foram removidos em vez
+    // de silenciados (50 arquivos na última varredura).
     "core/**",
-    "components/crm/**",
-    "components/analytics/**",
-    "components/pipeline/**",
-    "components/ui/ProtectedRoute.tsx",
-    "lib/data/**",
   ]),
 ]);
 

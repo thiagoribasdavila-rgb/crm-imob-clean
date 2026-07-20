@@ -42,13 +42,6 @@
   ],
   "exclude": [
     "node_modules",
-    "components/crm/**",
-    "components/analytics/**",
-    "core/**",
-    "domain/**",
-    "lib/ai/**",
-    "lib/analytics/**",
-    "lib/auth/**",
-    "lib/data/**"
+    "core/**"
   ]
 }
