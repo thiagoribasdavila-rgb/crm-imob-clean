@@ -10,8 +10,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -21,6 +19,7 @@ import {
   storeAtlasAuthContext,
 } from "@/lib/auth/atlas-auth-context";
 import { AtlasLogo } from "@/components/atlas/atlas-logo";
+import { TiltShell } from "@/components/atlas/tilt-shell";
 
 const REMEMBERED_EMAIL_KEY = "atlas.remembered-email";
 
@@ -83,67 +82,6 @@ function EyeIcon({ hidden }: { hidden: boolean }) {
       <path d="M2.6 9.6C3.4 8.4 6.8 4 12 4s8.6 4.4 9.4 5.6a.8.8 0 0 1 0 .8C20.6 11.6 17.2 16 12 16s-8.6-4.4-9.4-5.6a.8.8 0 0 1 0-.8Z" />
       <circle cx="12" cy="10" r="2.5" />
     </svg>
-  );
-}
-
-// Tilt 3D do cartão de acesso — mesma receita do Command Center (CC-4/CC-5):
-// parallax ±4° mutando transform via ref (zero estado React por frame), gates
-// duplos reavaliados ao vivo (pointer: fine + prefers-reduced-motion), guarda de
-// pointerType para híbridos touch e retorno suave ao sair. Profundidade por
-// geometria: o conteúdo interno sobe em translateZ sob preserve-3d.
-const TILT_MAX_DEG = 4;
-function TiltShell({ children, className, delayMs = 0 }: { children: ReactNode; className?: string; delayMs?: number }) {
-  const shellRef = useRef<HTMLDivElement>(null);
-  const enabledRef = useRef(false);
-
-  useEffect(() => {
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: no-preference)");
-    const pointerQuery = window.matchMedia("(pointer: fine)");
-    const sync = () => {
-      enabledRef.current = motionQuery.matches && pointerQuery.matches;
-      if (!enabledRef.current && shellRef.current) {
-        shellRef.current.style.transition = "";
-        shellRef.current.style.transform = "";
-      }
-    };
-    sync();
-    motionQuery.addEventListener("change", sync);
-    pointerQuery.addEventListener("change", sync);
-    return () => {
-      motionQuery.removeEventListener("change", sync);
-      pointerQuery.removeEventListener("change", sync);
-    };
-  }, []);
-
-  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!enabledRef.current || (event.pointerType !== "mouse" && event.pointerType !== "pen")) return;
-    const shell = shellRef.current;
-    if (!shell) return;
-    const rect = shell.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width - 0.5;
-    const y = (event.clientY - rect.top) / rect.height - 0.5;
-    shell.style.transition = "";
-    shell.style.transform = `perspective(1000px) rotateX(${(-y * TILT_MAX_DEG).toFixed(2)}deg) rotateY(${(x * TILT_MAX_DEG).toFixed(2)}deg)`;
-  }
-
-  function resetTilt() {
-    const shell = shellRef.current;
-    if (!shell) return;
-    shell.style.transition = "transform 260ms ease-out";
-    shell.style.transform = "";
-  }
-
-  return (
-    <div
-      ref={shellRef}
-      className={className}
-      style={{ transformStyle: "preserve-3d", animationDelay: `${delayMs}ms` }}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={resetTilt}
-      onPointerCancel={resetTilt}
-    >
-      {children}
-    </div>
   );
 }
 
