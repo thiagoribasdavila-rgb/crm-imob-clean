@@ -1,16 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from "react";
 import { supabase } from "@/lib/supabase";
 import {
-  AtlasBadge,
   AtlasEmpty,
-  AtlasProgress,
   AtlasRecoverableError,
   AtlasSkeleton,
 } from "@/components/ui/AtlasUI";
-import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
+import { AtlasMetric } from "@/components/ui/AtlasCard";
+import { StatusBadge } from "@/components/atlas/status-badge";
+import { TiltShell } from "@/components/atlas/tilt-shell";
 
 type Metrics = {
   inventoryTotal: number;
@@ -105,6 +111,20 @@ const moduleLabels: Record<string, string> = {
   materials: "Materiais",
 };
 
+/* CC-6: anel de foco padrão do repositório e semânticos por significado. */
+const focusRing =
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
+const priorityBand: Record<Priority["tone"], string> = {
+  danger: "#fb7185",
+  warning: "#f5b544",
+  info: "var(--atlas-accent)",
+};
+const priorityInk: Record<Priority["tone"], string> = {
+  danger: "cc6-crit",
+  warning: "cc6-warn",
+  info: "text-[#aab6ca]",
+};
+
 function statusTone(status: string): "neutral" | "success" | "warning" | "danger" | "info" | "violet" {
   const value = status.toLowerCase();
   if (["lançado", "lancado", "ativo", "vendas"].includes(value)) return "success";
@@ -119,6 +139,30 @@ function moduleCopy(status: ModuleStatus) {
   if (status === "legacy") return { label: "Compatível", tone: "info" as const };
   if (status === "not-configured") return { label: "Preparar", tone: "warning" as const };
   return { label: "Revisar", tone: "danger" as const };
+}
+
+/* Barra CC-6: profundidade por geometria (trilho hairline + preenchimento),
+   percentual mono ao lado do rótulo — zero glow. */
+function CoverageBar({ label, value, fill }: { label: string; value: number; fill: string }) {
+  const safe = Math.min(100, Math.max(0, Math.round(value)));
+  return (
+    <div className="min-w-0">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="cc6-metric-label truncate">{label}</span>
+        <span className="cc6-num text-[12px] text-[#aab6ca]">{safe}%</span>
+      </div>
+      <div
+        className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.06]"
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={safe}
+      >
+        <div className="h-full rounded-full" style={{ width: `${safe}%`, background: fill }} />
+      </div>
+    </div>
+  );
 }
 
 export default function DevelopmentsPage() {
@@ -183,6 +227,16 @@ export default function DevelopmentsPage() {
     });
   }, [data, query, segment]);
 
+  const segmentCounts = useMemo(() => {
+    const items = data?.developments ?? [];
+    return {
+      all: items.length,
+      attention: items.filter((item) => Boolean(item.readiness.priority)).length,
+      active: items.filter((item) => item.metrics.inventoryTotal > 0).length,
+      complete: items.filter((item) => item.readiness.materialCoverage === 100).length,
+    } satisfies Record<Segment, number>;
+  }, [data]);
+
   const portfolioAbsorption = data?.portfolio.units
     ? Math.round((data.portfolio.sold / data.portfolio.units) * 100)
     : 0;
@@ -192,74 +246,91 @@ export default function DevelopmentsPage() {
 
   return (
     <div
-      className="space-y-6 pb-10"
+      className="space-y-4 pb-10"
       data-evolution-phase="42"
       data-projects-layout="decision-first"
       aria-busy={loading}
     >
-      <section className="atlas-grid-glow overflow-hidden rounded-[30px] border border-violet-400/10 bg-gradient-to-br from-violet-500/[.13] via-blue-500/[.055] to-cyan-500/[.08] p-6 shadow-[0_34px_120px_rgba(2,8,23,.42)] sm:p-8">
-        <div className="grid gap-8 xl:grid-cols-[1.45fr_.8fr] xl:items-end">
-          <div>
-            <div className="flex flex-wrap gap-2">
-              <AtlasBadge tone="violet">FASE 42 · PROJETOS</AtlasBadge>
-              <AtlasBadge tone="success">DADOS REAIS</AtlasBadge>
-              <AtlasBadge tone="info">INCORPORADORAS</AtlasBadge>
+      {/* Herói CC-6 (única superfície com 3D): identidade + ações + absorção +
+          régua financeira em um só painel. Consolida o hero antigo, os
+          contadores repetidos e a seção "Resumo financeiro" do rodapé. */}
+      <section aria-label="Resumo do portfólio e ações principais">
+        <TiltShell className="cc6-panel cc6-reveal p-5 sm:p-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className="cc6-eyebrow">FASE 42 · PROJETOS</p>
+              <h1 className="mt-2 max-w-2xl text-2xl font-semibold tracking-[-0.02em] text-[#e8eef8] sm:text-[27px] sm:leading-9">
+                Veja onde o portfólio precisa de decisão comercial.
+              </h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-[#aab6ca]">
+                Projeto, estoque, kit comercial vigente e receita potencial em uma única leitura.
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Link href="/developments/registry" className="atlas-button-primary">+ Novo empreendimento</Link>
+                <Link href="/developments/materials" className="cc6-ghost-btn min-h-11">Buscar materiais</Link>
+                <details className="atlas-project-actions relative">
+                  <summary className={`cc6-ghost-btn min-h-11 cursor-pointer list-none ${focusRing}`}>Mais gestão</summary>
+                  <div className="absolute left-0 top-[calc(100%+8px)] z-20 grid min-w-64 gap-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224]/95 p-2 backdrop-blur">
+                    <Link href="/developments/homologation">Homologar projetos</Link>
+                    <Link href="/developments/developers">Incorporadoras</Link>
+                    <Link href="/developments/payment-rules">Fluxos de pagamento</Link>
+                    <Link href="/properties">Estoque e unidades</Link>
+                    <Link href="/marketing">Marketing do portfólio</Link>
+                    <button type="button" onClick={() => void load()}>Atualizar dados</button>
+                  </div>
+                </details>
+              </div>
             </div>
-            <h1 className="mt-5 max-w-4xl text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">
-              Veja onde o portfólio precisa de <span className="atlas-gradient-text">decisão comercial.</span>
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">
-              Projeto, estoque, materiais vigentes e receita potencial reunidos sem misturar versões vencidas com o kit comercial atual.
-            </p>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Link href="/developments/registry" className="atlas-button-primary">Novo empreendimento</Link>
-              <Link href="/developments/materials" className="atlas-button-secondary">Buscar materiais</Link>
-              <details className="atlas-project-actions relative">
-                <summary className="atlas-button-secondary cursor-pointer list-none">Mais gestão</summary>
-                <div className="absolute left-0 top-[calc(100%+8px)] z-20 grid min-w-64 gap-1 rounded-2xl border border-white/10 bg-[#091121]/95 p-2 shadow-2xl backdrop-blur-xl">
-                  <Link href="/developments/homologation">Homologar projetos</Link>
-                  <Link href="/developments/developers">Incorporadoras</Link>
-                  <Link href="/developments/payment-rules">Fluxos de pagamento</Link>
-                  <Link href="/properties">Estoque e unidades</Link>
-                  <Link href="/marketing">Marketing do portfólio</Link>
-                  <button type="button" onClick={() => void load()}>Atualizar dados</button>
-                </div>
-              </details>
+            <div className="shrink-0 lg:w-60 lg:pl-6">
+              <p className="cc6-eyebrow">Absorção do portfólio</p>
+              <p className="cc6-metric-value mt-1 text-4xl leading-none">
+                {loading ? "—" : `${portfolioAbsorption}%`}
+              </p>
+              <div
+                className="mt-3 h-1 overflow-hidden rounded-full bg-white/[0.06]"
+                role="progressbar"
+                aria-label="Unidades vendidas"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={portfolioAbsorption}
+              >
+                <div
+                  className="h-full rounded-full bg-[color:var(--atlas-accent)]"
+                  style={{ width: `${portfolioAbsorption}%` }}
+                />
+              </div>
+              <p className="mt-2 text-[11px] leading-4 text-[#6b7890]">
+                <span className="cc6-num">{data?.portfolio.sold ?? 0}</span> de{" "}
+                <span className="cc6-num">{data?.portfolio.units ?? 0}</span> unidades vendidas
+              </p>
             </div>
           </div>
-
-          <div className="rounded-3xl border border-white/[0.08] bg-[#070d1b]/70 p-5 backdrop-blur-xl">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="atlas-eyebrow">Sell-through observado</p>
-                <p className="mt-2 text-xl font-semibold text-white">Absorção do portfólio</p>
-              </div>
-              <span className="text-3xl font-semibold text-emerald-300">{portfolioAbsorption}%</span>
+          <div className="cc6-hairline mt-5 grid grid-cols-1 gap-x-6 gap-y-3 pt-4 sm:grid-cols-3">
+            <div title="Reservas ativas registradas no portfólio.">
+              <p className="cc6-num text-[15px] text-[#e8eef8]">{loading ? "—" : data?.portfolio.reservations ?? 0}</p>
+              <p className="cc6-metric-label mt-0.5">Reservas ativas</p>
             </div>
-            <div className="mt-5"><AtlasProgress value={portfolioAbsorption} label="Unidades vendidas" /></div>
-            <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
-                <p className="text-sm font-semibold text-white">{data?.portfolio.units ?? 0}</p>
-                <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-500">Unidades</p>
-              </div>
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
-                <p className="text-sm font-semibold text-white">{data?.portfolio.reservations ?? 0}</p>
-                <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-500">Reservas</p>
-              </div>
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
-                <p className="text-sm font-semibold text-white">{data?.portfolio.needsReview ?? 0}</p>
-                <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-500">Revisar</p>
-              </div>
+            <div title="VGV das unidades efetivamente conectadas ao portfólio.">
+              <p className="cc6-num text-[15px] text-[#e8eef8]">{loading ? "—" : brl.format(data?.portfolio.totalVgv ?? 0)}</p>
+              <p className="cc6-metric-label mt-0.5">VGV observado</p>
+            </div>
+            <div title="Soma das oportunidades visíveis; previsão não garante fechamento.">
+              <p className="cc6-num text-[15px] text-[#e8eef8]">{loading ? "—" : brl.format(data?.portfolio.pipeline ?? 0)}</p>
+              <p className="cc6-metric-label mt-0.5">Em negociação</p>
             </div>
           </div>
-        </div>
+        </TiltShell>
       </section>
 
       <div aria-live="polite">
         {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
       </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Sinais do portfólio">
+      <section
+        className="cc6-reveal grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        style={{ animationDelay: "60ms" }}
+        aria-label="Sinais do portfólio"
+      >
         <AtlasMetric label="Projetos visíveis" value={loading ? "—" : String(data?.developments.length ?? 0)} detail="No seu escopo autorizado" trend="PORTFÓLIO" tone="violet" />
         <AtlasMetric label="Unidades disponíveis" value={loading ? "—" : String(data?.portfolio.available ?? 0)} detail={`${data?.portfolio.units ?? 0} unidades conectadas`} trend="ESTOQUE" tone="blue" />
         <AtlasMetric label="Kits comerciais completos" value={loading ? "—" : String(data?.portfolio.completeMaterialKits ?? 0)} detail="Book, tabela e espelho vigentes" trend="MATERIAIS" tone="green" />
@@ -267,82 +338,137 @@ export default function DevelopmentsPage() {
       </section>
 
       {(data?.priorities.length ?? 0) > 0 ? (
-        <AtlasCard>
-          <AtlasCardHeader
-            eyebrow="Revisão humana"
-            title="Até três decisões objetivas"
-            description="Ordenação explicável por vigência de material, cobertura do kit, validação e estoque. Nenhuma alteração é executada automaticamente."
-          />
-          <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-3">
-            {data?.priorities.map((priority) => (
+        <section
+          className="cc6-panel cc6-reveal p-4 sm:p-5"
+          style={{ animationDelay: "100ms" }}
+          aria-labelledby="atlas-projects-priorities-title"
+        >
+          <header className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="min-w-0">
+              <p className="cc6-eyebrow">Revisão humana</p>
+              <h2
+                id="atlas-projects-priorities-title"
+                className="mt-1 text-sm font-semibold tracking-tight text-[#e8eef8]"
+              >
+                Até três decisões objetivas
+              </h2>
+            </div>
+            <span className="cc6-chip">{data?.priorities.length ?? 0} de até 3</span>
+          </header>
+          <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+            Ordenação explicável por vigência de material, cobertura do kit, validação e estoque. Nenhuma alteração é executada automaticamente.
+          </p>
+          <div className="mt-3 grid gap-2">
+            {data?.priorities.map((priority, index) => (
               <Link
                 key={`${priority.developmentId}-${priority.label}`}
                 href={`/developments/${priority.developmentId}`}
-                className="atlas-project-priority"
+                className={`cc6-sev-band cc6-panel-quiet cc6-reveal group flex items-center gap-3 py-3 pl-4 pr-3 transition-colors hover:border-[rgba(148,163,184,0.22)]! ${focusRing}`}
+                style={{
+                  animationDelay: `${120 + index * 45}ms`,
+                  "--cc6-sev": priorityBand[priority.tone],
+                } as CSSProperties}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <AtlasBadge tone={priority.tone}>{priority.label}</AtlasBadge>
-                  <span aria-hidden="true">→</span>
-                </div>
-                <p className="mt-4 font-semibold text-white">{priority.developmentName}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-400">{priority.detail}</p>
+                <span className="cc6-num pt-0.5 text-xs text-[#6b7890]" aria-hidden="true">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <strong className="text-[13px] font-semibold text-[#e8eef8]">{priority.developmentName}</strong>
+                    <StatusBadge tone={priority.tone}>{priority.label}</StatusBadge>
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-[#aab6ca]">{priority.detail}</span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="text-[#6b7890] transition-colors group-hover:text-[color:var(--atlas-accent-hover)]"
+                >
+                  →
+                </span>
               </Link>
             ))}
           </div>
-        </AtlasCard>
+        </section>
       ) : null}
 
-      <details className="atlas-project-health rounded-2xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-white">
+      <details
+        className="atlas-project-health cc6-panel-quiet cc6-reveal px-4 py-2.5"
+        style={{ animationDelay: "130ms" }}
+      >
+        <summary className={`flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 rounded-lg text-sm font-medium text-[#e8eef8] ${focusRing}`}>
           <span>Saúde das conexões do portfólio</span>
-          <span className="text-xs text-slate-500">{unavailableModules ? `${unavailableModules} para preparar` : "Tudo conectado"}</span>
+          <span className="cc6-num text-xs text-[#6b7890]">
+            {unavailableModules ? `${unavailableModules} para preparar` : "Tudo conectado"}
+          </span>
         </summary>
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.06] pt-4">
+        <div className="cc6-hairline mt-2 flex flex-wrap gap-2 pt-3">
           {Object.entries(data?.moduleHealth ?? {}).map(([module, status]) => {
             const copy = moduleCopy(status);
-            return <AtlasBadge key={module} tone={copy.tone}>{moduleLabels[module] || module}: {copy.label}</AtlasBadge>;
+            return <StatusBadge key={module} tone={copy.tone}>{moduleLabels[module] || module}: {copy.label}</StatusBadge>;
           })}
         </div>
-        <p className="mt-3 text-xs leading-5 text-slate-500">Um módulo opcional indisponível não derruba os demais. O Atlas mantém visível somente o que foi carregado com segurança.</p>
+        <p className="mt-3 pb-1 text-xs leading-5 text-[#6b7890]">
+          Um módulo opcional indisponível não derruba os demais. O Atlas mantém visível somente o que foi carregado com segurança.
+        </p>
       </details>
 
-      <AtlasCard>
-        <AtlasCardHeader
-          eyebrow="Decisão por projeto"
-          title="Onde agir no portfólio"
-          description="Encontre um empreendimento e veja cadastro, estoque, kit comercial e resultado observado antes de decidir."
-        />
-        <div className="border-b border-white/[0.06] p-5 sm:p-6">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <label className="block lg:max-w-md lg:flex-1">
-              <span className="sr-only">Buscar empreendimento</span>
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar projeto, incorporadora ou região"
-                className="min-h-11 w-full rounded-xl border border-white/10 bg-white/[0.035] px-4 text-base text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30 sm:text-sm"
-              />
-            </label>
-            <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Filtros do portfólio">
-              {segments.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  aria-pressed={segment === item.id}
-                  onClick={() => setSegment(item.id)}
-                  className="atlas-project-segment"
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+      <section
+        className="cc6-panel cc6-reveal overflow-hidden"
+        style={{ animationDelay: "160ms" }}
+        aria-labelledby="atlas-projects-directory-title"
+      >
+        <header className="flex flex-wrap items-center justify-between gap-3 p-5 pb-4 sm:p-6 sm:pb-4">
+          <div className="min-w-0">
+            <p className="cc6-eyebrow">Decisão por projeto</p>
+            <h2
+              id="atlas-projects-directory-title"
+              className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+            >
+              Onde agir no portfólio
+            </h2>
+          </div>
+          <span className="cc6-chip" title="Projetos exibidos com a busca e o filtro atuais.">
+            {loading ? "sincronizando" : `${filtered.length} de ${data?.developments.length ?? 0}`}
+          </span>
+        </header>
+
+        <div className="cc6-hairline flex flex-col gap-3 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+          <label className="block lg:max-w-md lg:flex-1">
+            <span className="sr-only">Buscar empreendimento</span>
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar projeto, incorporadora ou região"
+              className={`min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] px-4 text-base text-[#e8eef8] transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] sm:text-sm ${focusRing}`}
+            />
+          </label>
+          <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtros do portfólio">
+            {segments.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={segment === item.id}
+                onClick={() => setSegment(item.id)}
+                className={`flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-3 text-[12px] font-medium transition-colors ${
+                  segment === item.id
+                    ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[#e8eef8]"
+                    : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[#aab6ca] hover:border-[rgba(148,163,184,0.3)] hover:text-[#e8eef8]"
+                } ${focusRing}`}
+              >
+                <span>{item.label}</span>
+                <span className={`cc6-num text-[12px] ${segment === item.id ? "text-[#e8eef8]" : "text-[#6b7890]"}`}>
+                  {loading ? "—" : segmentCounts[item.id]}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="p-5 sm:p-6">
+        <div className="cc6-hairline p-5 sm:p-6">
           {loading ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map((item) => <AtlasSkeleton key={item} className="h-80 w-full" />)}
+              {[1, 2, 3, 4, 5, 6].map((item) => <AtlasSkeleton key={item} className="h-64 w-full" />)}
             </div>
           ) : filtered.length === 0 ? (
             <AtlasEmpty
@@ -350,53 +476,96 @@ export default function DevelopmentsPage() {
               eyebrow={(data?.developments.length ?? 0) > 0 ? "Busca sem correspondência" : "Portfólio ainda vazio"}
               title="Nenhum empreendimento encontrado"
               description={(data?.developments.length ?? 0) > 0
-                ? "Nenhum projeto corresponde à busca e ao filtro atual. Limpe os filtros para recuperar o portfólio."
+                ? "Nenhum projeto corresponde à busca e ao filtro atuais."
                 : "Cadastre o primeiro empreendimento para reunir estoque, materiais, leads e VGV."}
               action={(data?.developments.length ?? 0) > 0
                 ? <button type="button" className="atlas-button-secondary" onClick={() => { setQuery(""); setSegment("all"); }}>Limpar filtros</button>
                 : <Link href="/developments/registry" className="atlas-button-primary">Cadastrar empreendimento</Link>}
             />
           ) : (
-            <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
-              {filtered.map((item) => {
+            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+              {filtered.map((item, index) => {
                 const metrics = item.metrics;
+                const priority = item.readiness.priority;
+                const kitComplete = item.readiness.materialCoverage === 100;
+                const place = [item.developer_name, item.neighborhood, item.city, item.state]
+                  .filter(Boolean)
+                  .join(" · ") || "Localização não informada";
+                const delivery = item.delivery_date
+                  ? new Date(item.delivery_date).toLocaleDateString("pt-BR")
+                  : "a definir";
                 return (
-                  <article key={item.id} className="atlas-project-card">
-                    <div className="flex items-start justify-between gap-4">
+                  <article
+                    key={item.id}
+                    className={`cc6-panel-quiet cc6-reveal flex flex-col gap-4 p-4 transition-colors hover:border-[rgba(148,163,184,0.22)]! focus-within:border-[rgba(148,163,184,0.22)]! ${priority ? "cc6-sev-band pl-5" : ""}`}
+                    style={{
+                      animationDelay: `${Math.min(index, 8) * 45}ms`,
+                      ...(priority ? { "--cc6-sev": priorityBand[priority.tone] } : null),
+                    } as CSSProperties}
+                  >
+                    <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-[10px] font-semibold uppercase tracking-[.2em] text-slate-500">{item.developer_name || "Incorporadora não informada"}</p>
-                        <h2 className="mt-2 truncate text-xl font-semibold text-white">{item.name}</h2>
-                        <p className="mt-2 truncate text-sm text-slate-400">{[item.neighborhood, item.city, item.state].filter(Boolean).join(" · ") || "Localização não informada"}</p>
+                        <h3 className="truncate text-[15px] font-semibold tracking-tight text-[#e8eef8]" title={item.name}>
+                          {item.name}
+                        </h3>
+                        <p className="mt-1 truncate font-mono text-[11px] text-[#6b7890]" title={place}>
+                          {place}
+                        </p>
                       </div>
-                      <AtlasBadge tone={statusTone(item.status)}>{item.status}</AtlasBadge>
+                      <StatusBadge tone={statusTone(item.status)}>{item.status}</StatusBadge>
                     </div>
 
-                    {item.readiness.priority ? (
-                      <div className="mt-4 rounded-xl border border-amber-300/10 bg-amber-300/[0.045] px-3 py-2.5">
-                        <p className="text-xs font-semibold text-amber-200">{item.readiness.priority.label}</p>
-                        <p className="mt-1 text-xs leading-5 text-slate-500">{item.readiness.priority.detail}</p>
-                      </div>
+                    {priority ? (
+                      <p className="-mt-1 truncate text-[12px] leading-5" title={`${priority.label} — ${priority.detail}`}>
+                        <span className={`font-medium ${priorityInk[priority.tone]}`}>{priority.label}</span>
+                        <span className="text-[#6b7890]"> · {priority.detail}</span>
+                      </p>
                     ) : null}
 
-                    <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-xl border border-white/[0.06] bg-black/10 p-3"><p className="text-lg font-semibold text-white">{metrics.inventoryTotal}</p><p className="text-[10px] uppercase text-slate-500">Unidades</p></div>
-                      <div className="rounded-xl border border-white/[0.06] bg-black/10 p-3"><p className="text-lg font-semibold text-emerald-300">{metrics.sold}</p><p className="text-[10px] uppercase text-slate-500">Vendidas</p></div>
-                      <div className="rounded-xl border border-white/[0.06] bg-black/10 p-3"><p className="text-lg font-semibold text-sky-300">{metrics.available}</p><p className="text-[10px] uppercase text-slate-500">Disponíveis</p></div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <p className="cc6-num text-lg leading-6 text-[#e8eef8]">{metrics.inventoryTotal}</p>
+                        <p className="cc6-metric-label">Unidades</p>
+                      </div>
+                      <div>
+                        <p className="cc6-num cc6-ok text-lg leading-6">{metrics.sold}</p>
+                        <p className="cc6-metric-label">Vendidas</p>
+                      </div>
+                      <div>
+                        <p className="cc6-num text-lg leading-6 text-[color:var(--atlas-accent-hover)]">{metrics.available}</p>
+                        <p className="cc6-metric-label">Disponíveis</p>
+                      </div>
                     </div>
 
-                    <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                      <AtlasProgress value={metrics.absorption} label="Absorção" />
-                      <AtlasProgress value={item.readiness.materialCoverage} label="Kit comercial" />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <CoverageBar label="Absorção" value={metrics.absorption} fill="var(--atlas-accent)" />
+                      <CoverageBar
+                        label="Kit comercial"
+                        value={item.readiness.materialCoverage}
+                        fill={kitComplete ? "#34d399" : "#f5b544"}
+                      />
                     </div>
 
-                    <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-                      <div><p className="text-xs text-slate-500">VGV observado</p><p className="mt-1 font-semibold text-white">{brl.format(metrics.totalVgv)}</p></div>
-                      <div><p className="text-xs text-slate-500">Receita provável</p><p className="mt-1 font-semibold text-white">{brl.format(metrics.forecast)}</p></div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="cc6-metric-label">VGV observado</p>
+                        <p className="cc6-num mt-0.5 text-[13px] text-[#e8eef8]">{brl.format(metrics.totalVgv)}</p>
+                      </div>
+                      <div title="Previsão não garante fechamento.">
+                        <p className="cc6-metric-label">Receita provável</p>
+                        <p className="cc6-num mt-0.5 text-[13px] text-[#e8eef8]">{brl.format(metrics.forecast)}</p>
+                      </div>
                     </div>
 
-                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
-                      <span className="truncate text-xs text-slate-500">Entrega {item.delivery_date ? new Date(item.delivery_date).toLocaleDateString("pt-BR") : "a definir"}</span>
-                      <Link href={`/developments/${item.id}`} className="shrink-0 text-xs font-semibold text-sky-300">Abrir projeto →</Link>
+                    <div className="cc6-hairline mt-auto flex items-center justify-between gap-3 pt-3">
+                      <span className="cc6-num truncate text-[11px] text-[#6b7890]">Entrega · {delivery}</span>
+                      <Link
+                        href={`/developments/${item.id}`}
+                        aria-label={`Abrir projeto ${item.name}`}
+                        className={`shrink-0 rounded-md text-[12px] font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[#e8eef8] ${focusRing}`}
+                      >
+                        Abrir projeto →
+                      </Link>
                     </div>
                   </article>
                 );
@@ -404,22 +573,9 @@ export default function DevelopmentsPage() {
             </div>
           )}
         </div>
-      </AtlasCard>
-
-      <section className="grid gap-4 md:grid-cols-2" aria-label="Resumo financeiro do portfólio">
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-          <p className="atlas-eyebrow">Valor observado</p>
-          <p className="mt-3 text-2xl font-semibold text-white">{brl.format(data?.portfolio.totalVgv ?? 0)}</p>
-          <p className="mt-2 text-sm text-slate-500">VGV das unidades efetivamente conectadas ao portfólio.</p>
-        </div>
-        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-          <p className="atlas-eyebrow">Receita em negociação</p>
-          <p className="mt-3 text-2xl font-semibold text-white">{brl.format(data?.portfolio.pipeline ?? 0)}</p>
-          <p className="mt-2 text-sm text-slate-500">Soma das oportunidades visíveis; previsão não garante fechamento.</p>
-        </div>
       </section>
 
-      <p className="text-xs leading-5 text-slate-600">
+      <p className="text-[11px] leading-5 text-[#6b7890]">
         A tela é somente leitura. Materiais pendentes, rejeitados ou vencidos não entram como kit comercial válido; qualquer correção exige ação humana nas áreas próprias.
       </p>
     </div>
