@@ -134,6 +134,15 @@ export default function ImportLeadsPage() {
         action={{ href: "#nova-base", label: "Adicionar uma base" }}
       />
 
+      {/* SALTO V4.2 · ponte para o importador governado da base histórica
+          (relatório de qualidade + dedupe contra a base viva antes da carga). */}
+      <a
+        href="/leads/import/historico"
+        className={`inline-flex w-fit items-center gap-2 text-sm text-[#aab6ca] underline underline-offset-2 hover:text-[#e8eef8] ${focusRing}`}
+      >
+        Importar base histórica com relatório de qualidade →
+      </a>
+
       {/* Fila elegível em números antes de qualquer formulário — única
           superfície com 3D da página. */}
       <section aria-label="Números decisivos da reativação">
