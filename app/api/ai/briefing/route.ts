@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAccessContext } from "@/lib/api/security";
 import { buildRealEstateContext } from "@/lib/ai/real-estate-context";
 import { aiProviderReadiness } from "@/lib/ai/provider-router";
-import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/legacy-v2";
+import { canonicalLeadStatus } from "@/lib/compat/legacy-v2";
 import { computeAttentionSignals } from "@/lib/atlas/attention-signals";
 
 export const dynamic = "force-dynamic";
@@ -91,20 +91,26 @@ export async function GET(request: NextRequest) {
   // Sinais de atenção proativos (Fase 100) — o briefing agrega duas dimensões
   // que os sinais acima não cobrem: leads parados no funil e objeções sem
   // resposta. Reaproveita o mesmo módulo determinístico do dashboard/Lead 360.
+  // A base viva é dominada por leads arquivados (16k+ de 17k) — sem excluir
+  // "arquivado" no servidor, o limit(1000) devolveria uma amostra arbitrária
+  // quase toda de arquivados e os sinais sairiam subcontados. A exclusão dos
+  // demais estados terminais (ganho/perdido) continua no módulo de sinais.
   const { data: leadRows } = await access.supabase
     .from("leads")
-    .select(LIVE_LEAD_SELECT)
+    .select("id,status,score_ia,temperature,classificacao_ia,created_at")
     .eq("organization_id", identity.organizationId)
+    .neq("status", "arquivado")
+    .neq("status", "ARQUIVADO")
+    .order("created_at", { ascending: false })
     .limit(1000);
-  const attentionLeads = ((leadRows ?? []) as unknown as CompatRow[]).map(mapLegacyLead);
   const attention = await computeAttentionSignals(
     access.supabase,
     identity.organizationId,
-    attentionLeads.map((lead) => ({
+    (leadRows ?? []).map((lead) => ({
       id: String(lead.id),
-      status: String(lead.status || "novo"),
-      score: Number(lead.score || 0),
-      temperature: typeof lead.temperature === "string" ? lead.temperature : null,
+      status: canonicalLeadStatus(lead.status) || "novo",
+      score: Number(lead.score_ia || 0),
+      temperature: typeof lead.temperature === "string" ? lead.temperature : typeof lead.classificacao_ia === "string" ? lead.classificacao_ia : null,
       createdAt: typeof lead.created_at === "string" ? lead.created_at : null,
     })),
   );

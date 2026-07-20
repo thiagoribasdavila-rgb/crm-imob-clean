@@ -385,7 +385,7 @@ export default function PipelinePage() {
             return <article key={lead.id} className="atlas-broker-action">
               <div className="flex items-start justify-between gap-3"><span className="atlas-broker-rank">{String(index + 1).padStart(2, "0")}</span>{risk !== "baixo" ? <AtlasBadge tone={riskTone(risk)}>{risk === "alto" ? "⚠️" : "•"} {risk}</AtlasBadge> : null}</div>
               <div className="mt-3 flex items-center gap-2.5">
-                <span className="atlas-lead-avatar" aria-hidden="true">{(lead.name || "??").slice(0, 2).toUpperCase()}</span>
+                <span className="atlas-lead-avatar" aria-hidden="true">{Array.from(lead.name || "??").slice(0, 2).join("").toUpperCase()}</span>
                 <Link href={`/leads/${lead.id}`} className="min-w-0 truncate text-sm font-semibold text-white hover:text-sky-300">{lead.temperature === "quente" ? "🔥 " : ""}{lead.name || "Lead sem nome"}</Link>
               </div>
               <div className="atlas-broker-stage"><span>{currentStage?.label || "Etapa atual"}</span><i aria-hidden="true">→</i><strong>{nextStage?.label || "Revisar fechamento"}</strong></div>
@@ -446,7 +446,7 @@ export default function PipelinePage() {
                       <article key={lead.id} draggable={!savingId} tabIndex={0} aria-disabled={Boolean(savingId)} aria-label={`${lead.name || "Lead sem nome"}, etapa ${stage.label}. Alt mais seta move entre etapas.`} onKeyDown={(event) => { if (event.altKey && event.key === "ArrowLeft") { event.preventDefault(); moveByKeyboard(lead, -1); } if (event.altKey && event.key === "ArrowRight") { event.preventDefault(); moveByKeyboard(lead, 1); } }} onDragEnd={() => { setDraggedId(null); setDragOverStage(null); }} onDragStart={(event) => { if (savingId) { event.preventDefault(); return; } setDraggedId(lead.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/lead-id", lead.id); }} className={`atlas-pipeline-lead group ${savingId === lead.id ? "opacity-60" : ""} ${draggedId === lead.id ? "is-dragging" : ""}`} data-risk={risk}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-2.5">
-                            <span className="atlas-lead-avatar" aria-hidden="true">{(lead.name || "??").slice(0, 2).toUpperCase()}</span>
+                            <span className="atlas-lead-avatar" aria-hidden="true">{Array.from(lead.name || "??").slice(0, 2).join("").toUpperCase()}</span>
                             <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.temperature === "quente" ? "🔥 " : ""}{lead.name || "Lead sem nome"}</Link><p className="mt-0.5 truncate text-[11px] text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
                           </div>
                           {risk !== "baixo" ? <AtlasBadge tone={riskTone(risk)}>{risk === "alto" ? "⚠️" : "•"} {risk}</AtlasBadge> : null}

@@ -59,7 +59,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return apiError("OBJECTION_OWNER_ONLY", "Somente o corretor responsável pode registrar objeções.", access.meta, { status: 403 });
   }
   const objectionType = String(body?.objectionType || "").toUpperCase();
-  const objectionText = String(body?.objectionText || "").trim();
+  // Truncagem defensiva (mesmo padrão de pipeline/route.ts): sem teto, um POST
+  // de megabytes seria aceito, persistido e devolvido a toda a organização.
+  const objectionText = String(body?.objectionText || "").trim().slice(0, 2000);
   if (!OBJECTION_TYPES.includes(objectionType as ObjectionType)) {
     return apiError("OBJECTION_TYPE_INVALID", "Selecione um tipo de objeção válido.", access.meta, { status: 400 });
   }
@@ -80,7 +82,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     })
     .select("id,objection_type,objection_text,detected_source,status,created_at")
     .single();
-  if (error || !created) return apiError("OBJECTION_CREATE_FAILED", "Não foi possível registrar a objeção.", access.meta, { status: 409, details: error?.message });
+  if (error || !created) {
+    structuredApiLog("warn", "lead.objection.create_failed", request, access.meta, { leadId: id, error: error?.message });
+    return apiError("OBJECTION_CREATE_FAILED", "Não foi possível registrar a objeção.", access.meta, { status: 409 });
+  }
   structuredApiLog("info", "lead.objection.created", request, access.meta, { leadId: id, objectionId: created.id, objectionType });
   return apiSuccess({ objection: created }, access.meta, { status: 201, headers: rate.headers });
 }
@@ -103,23 +108,32 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!["ANSWERED", "OVERCOME", "NOT_OVERCOME"].includes(status)) {
     return apiError("OBJECTION_STATUS_INVALID", "Status inválido para conclusão.", access.meta, { status: 400 });
   }
-  const responseText = String(body?.responseText || "").trim();
+  // Objeção com desfecho definitivo não regride nem é sobrescrita — evita
+  // apagar a resposta registrada de uma objeção já superada via API direta.
+  if (objection.status === "OVERCOME" || objection.status === "NOT_OVERCOME") {
+    return apiError("OBJECTION_ALREADY_RESOLVED", "Esta objeção já tem desfecho registrado.", access.meta, { status: 409 });
+  }
+  const responseText = String(body?.responseText || "").trim().slice(0, 2000);
   const admin = getSupabaseAdmin();
   const { data: updated, error } = await admin
     .from("lead_objections")
     .update({
-      response_text: responseText || null,
-      response_source: responseText ? "MANUAL" : null,
+      // Sem responseText novo, preserva a resposta já registrada.
+      response_text: responseText || objection.response_text || null,
+      response_source: responseText ? "MANUAL" : objection.response_source,
       status,
-      resolved_by: status === "OPEN" ? null : access.access.profile.id,
-      resolved_at: status === "OPEN" ? null : new Date().toISOString(),
+      resolved_by: access.access.profile.id,
+      resolved_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq("id", objection.id)
     .eq("organization_id", access.access.organization.id)
     .select("id,status,response_text,resolved_at")
     .single();
-  if (error || !updated) return apiError("OBJECTION_UPDATE_FAILED", "Não foi possível concluir a objeção.", access.meta, { status: 409, details: error?.message });
+  if (error || !updated) {
+    structuredApiLog("warn", "lead.objection.update_failed", request, access.meta, { leadId: id, objectionId: objection.id, error: error?.message });
+    return apiError("OBJECTION_UPDATE_FAILED", "Não foi possível concluir a objeção.", access.meta, { status: 409 });
+  }
   structuredApiLog("info", "lead.objection.resolved", request, access.meta, { leadId: id, objectionId: updated.id, status });
   return apiSuccess({ objection: updated }, access.meta, { headers: rate.headers });
 }

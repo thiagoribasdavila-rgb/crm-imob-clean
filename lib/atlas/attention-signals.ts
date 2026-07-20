@@ -28,6 +28,12 @@ import { DEFAULT_PIPELINE_STAGES } from "@/lib/atlas/pipeline-stages";
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
 
+// Horários exibidos em detail sempre em horário de Brasília — o servidor roda
+// em UTC e sem isso o corretor veria +3h. (O corte de meia-noite de
+// businessDaysElapsed ainda usa o TZ do processo; margem de erro de horas na
+// virada do dia, documentado como limitação conhecida até haver TZ por org.)
+const DISPLAY_TIME_ZONE = "America/Sao_Paulo";
+
 export type AttentionSeverity = "critical" | "warning" | "info";
 export type AttentionSignalKind = "stale_stage" | "follow_up_overdue" | "high_score_no_contact" | "objection_open";
 
@@ -120,6 +126,36 @@ function chunk<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+// O PostgREST corta silenciosamente qualquer resposta no max-rows do servidor
+// (1000 por padrão no Supabase) — sem .range() explícito, um chunk de 200
+// leads com histórico volumoso perderia linhas sem nenhum erro, gerando
+// falso positivo ("parado desde a criação") ou falso negativo (follow-up
+// vencido invisível). Paginamos até esgotar, com teto de segurança.
+const PAGE_SIZE = 1000;
+const MAX_PAGES_PER_CHUNK = 20;
+
+type QueryPage<T> = PromiseLike<{ data: T[] | null; error: { message?: string } | null }>;
+
+async function fetchAllRows<T>(
+  buildPage: (from: number, to: number) => QueryPage<T>,
+  context: string,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let page = 0; page < MAX_PAGES_PER_CHUNK; page += 1) {
+    const from = page * PAGE_SIZE;
+    const { data, error } = await buildPage(from, from + PAGE_SIZE - 1);
+    if (error) {
+      // Falha de query nunca deve ser indistinguível de "nenhum sinal".
+      console.warn(JSON.stringify({ level: "warn", event: "attention_signals.query_failed", context, error: error.message || "unknown" }));
+      break;
+    }
+    if (!data?.length) break;
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
 function toMs(value: unknown): number | null {
   if (typeof value !== "string" || !value) return null;
   const parsed = Date.parse(value);
@@ -163,17 +199,21 @@ async function latestPipelineStageEnteredAt(
   const map = new Map<string, number>();
   const batches = await Promise.all(
     chunk(leadIds, 200).map((ids) =>
-      supabase
-        .from("pipeline_history")
-        .select("lead_id,created_at")
-        .eq("organization_id", organizationId)
-        .in("lead_id", ids)
-        .order("created_at", { ascending: false }),
+      fetchAllRows<{ lead_id: string; created_at: string }>(
+        (from, to) =>
+          supabase
+            .from("pipeline_history")
+            .select("lead_id,created_at")
+            .eq("organization_id", organizationId)
+            .in("lead_id", ids)
+            .order("created_at", { ascending: false })
+            .range(from, to),
+        "pipeline_history",
+      ),
     ),
   );
-  for (const { data, error } of batches) {
-    if (error || !data) continue;
-    for (const row of data as Array<{ lead_id: string; created_at: string }>) {
+  for (const data of batches) {
+    for (const row of data) {
       if (map.has(row.lead_id)) continue;
       const parsed = toMs(row.created_at);
       if (parsed !== null) map.set(row.lead_id, parsed);
@@ -194,19 +234,23 @@ async function earliestOverdueFollowUp(
   const nowIso = new Date(now).toISOString();
   const batches = await Promise.all(
     chunk(leadIds, 200).map((ids) =>
-      supabase
-        .from("followups")
-        .select("lead_id,scheduled_at,action,message")
-        .eq("organization_id", organizationId)
-        .eq("completed", false)
-        .in("lead_id", ids)
-        .lt("scheduled_at", nowIso)
-        .order("scheduled_at", { ascending: true }),
+      fetchAllRows<{ lead_id: string; scheduled_at: string; action: string | null; message: string | null }>(
+        (from, to) =>
+          supabase
+            .from("followups")
+            .select("lead_id,scheduled_at,action,message")
+            .eq("organization_id", organizationId)
+            .eq("completed", false)
+            .in("lead_id", ids)
+            .lt("scheduled_at", nowIso)
+            .order("scheduled_at", { ascending: true })
+            .range(from, to),
+        "followups",
+      ),
     ),
   );
-  for (const { data, error } of batches) {
-    if (error || !data) continue;
-    for (const row of data as Array<{ lead_id: string; scheduled_at: string; action: string | null; message: string | null }>) {
+  for (const data of batches) {
+    for (const row of data) {
       const scheduledAt = toMs(row.scheduled_at);
       if (scheduledAt === null) continue;
       const existing = map.get(row.lead_id);
@@ -229,17 +273,21 @@ async function lastLeadEventAt(
   if (!leadIds.length) return map;
   const batches = await Promise.all(
     chunk(leadIds, 200).map((ids) =>
-      supabase
-        .from("lead_events")
-        .select("lead_id,created_at")
-        .eq("organization_id", organizationId)
-        .in("lead_id", ids)
-        .order("created_at", { ascending: false }),
+      fetchAllRows<{ lead_id: string; created_at: string }>(
+        (from, to) =>
+          supabase
+            .from("lead_events")
+            .select("lead_id,created_at")
+            .eq("organization_id", organizationId)
+            .in("lead_id", ids)
+            .order("created_at", { ascending: false })
+            .range(from, to),
+        "lead_events",
+      ),
     ),
   );
-  for (const { data, error } of batches) {
-    if (error || !data) continue;
-    for (const row of data as Array<{ lead_id: string; created_at: string }>) {
+  for (const data of batches) {
+    for (const row of data) {
       if (map.has(row.lead_id)) continue;
       const parsed = toMs(row.created_at);
       if (parsed !== null) map.set(row.lead_id, parsed);
@@ -258,18 +306,22 @@ async function earliestOpenObjection(
   const map = new Map<string, OpenObjection>();
   const batches = await Promise.all(
     chunk(leadIds, 200).map((ids) =>
-      supabase
-        .from("lead_objections")
-        .select("lead_id,objection_type,created_at")
-        .eq("organization_id", organizationId)
-        .eq("status", "OPEN")
-        .in("lead_id", ids)
-        .order("created_at", { ascending: true }),
+      fetchAllRows<{ lead_id: string; objection_type: string; created_at: string }>(
+        (from, to) =>
+          supabase
+            .from("lead_objections")
+            .select("lead_id,objection_type,created_at")
+            .eq("organization_id", organizationId)
+            .eq("status", "OPEN")
+            .in("lead_id", ids)
+            .order("created_at", { ascending: true })
+            .range(from, to),
+        "lead_objections",
+      ),
     ),
   );
-  for (const { data, error } of batches) {
-    if (error || !data) continue;
-    for (const row of data as Array<{ lead_id: string; objection_type: string; created_at: string }>) {
+  for (const data of batches) {
+    for (const row of data) {
       const createdAt = toMs(row.created_at);
       if (createdAt === null) continue;
       const existing = map.get(row.lead_id);
@@ -353,7 +405,7 @@ export async function computeAttentionSignals(
         kind: "follow_up_overdue",
         severity: overdueMinutes >= 1_440 ? "critical" : "warning",
         reason: `Follow-up vencido há ${overdueLabel}`,
-        detail: `followups.scheduled_at (${new Date(overdue.scheduledAt).toLocaleString("pt-BR")}) já passou e completed ainda é false${overdue.action ? `: "${overdue.action}"` : ""}.${overdue.extraCount ? ` Há mais ${overdue.extraCount} ${plural(overdue.extraCount, "follow-up vencido", "follow-ups vencidos")} para este lead.` : ""}`,
+        detail: `followups.scheduled_at (${new Date(overdue.scheduledAt).toLocaleString("pt-BR", { timeZone: DISPLAY_TIME_ZONE })}) já passou e completed ainda é false${overdue.action ? `: "${overdue.action}"` : ""}.${overdue.extraCount ? ` Há mais ${overdue.extraCount} ${plural(overdue.extraCount, "follow-up vencido", "follow-ups vencidos")} para este lead.` : ""}`,
         since: new Date(overdue.scheduledAt).toISOString(),
         metric: overdueMinutes,
       });
@@ -371,7 +423,7 @@ export async function computeAttentionSignals(
           kind: "objection_open",
           severity: hoursOpen >= OBJECTION_OPEN_CRITICAL_HOURS ? "critical" : "warning",
           reason: `Objeção de ${typeLabel} sem resposta há ${openLabel}`,
-          detail: `lead_objections tem uma objeção de "${typeLabel}" em aberto (status OPEN) desde ${new Date(openObjection.createdAt).toLocaleString("pt-BR")}, sem response_text registrado.${openObjection.extraCount ? ` Há mais ${openObjection.extraCount} ${plural(openObjection.extraCount, "objeção em aberto", "objeções em aberto")} para este lead.` : ""}`,
+          detail: `lead_objections tem uma objeção de "${typeLabel}" em aberto (status OPEN) desde ${new Date(openObjection.createdAt).toLocaleString("pt-BR", { timeZone: DISPLAY_TIME_ZONE })}, sem response_text registrado.${openObjection.extraCount ? ` Há mais ${openObjection.extraCount} ${plural(openObjection.extraCount, "objeção em aberto", "objeções em aberto")} para este lead.` : ""}`,
           since: new Date(openObjection.createdAt).toISOString(),
           metric: hoursOpen,
         });
@@ -392,7 +444,7 @@ export async function computeAttentionSignals(
         kind: "high_score_no_contact",
         severity: lead.score >= 85 || businessDays >= HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS * 2 ? "critical" : "warning",
         reason: `Lead quente sem contato há ${businessDays} ${plural(businessDays, "dia útil", "dias úteis")}`,
-        detail: `Score ${lead.score}${hotByTemperature ? " e classificado como quente" : ""}, mas lead_events não tem nenhum registro nos últimos ${businessDays} ${plural(businessDays, "dia útil", "dias úteis")} (limite: ${HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS} dias úteis).${hasEvent ? ` Última interação em ${new Date(lastEventAt).toLocaleString("pt-BR")}.` : " Nenhuma interação foi registrada desde a criação do lead."}`,
+        detail: `Score ${lead.score}${hotByTemperature ? " e classificado como quente" : ""}, mas lead_events não tem nenhum registro nos últimos ${businessDays} ${plural(businessDays, "dia útil", "dias úteis")} (limite: ${HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS} dias úteis).${hasEvent ? ` Última interação em ${new Date(lastEventAt).toLocaleString("pt-BR", { timeZone: DISPLAY_TIME_ZONE })}.` : " Nenhuma interação foi registrada desde a criação do lead."}`,
         since: new Date(lastEventAt).toISOString(),
         metric: businessDays,
       });
