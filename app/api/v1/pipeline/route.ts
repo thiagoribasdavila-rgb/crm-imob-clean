@@ -8,6 +8,7 @@ import { canonicalPipelineStage, mergePipelineStageSettings } from "@/lib/atlas/
 import { LIVE_LEAD_SELECT, mapLegacyLead } from "@/lib/compat/legacy-v2";
 import { recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { readCompatiblePipeline } from "@/lib/atlas/core-v2/live-repositories";
+import { DISCARD_REASON_KEYS, DISCARD_TAXONOMY_VERSION, getDiscardReason } from "@/lib/atlas/discard-reasons";
 
 export const dynamic = "force-dynamic";
 
@@ -79,8 +80,31 @@ export async function PATCH(request: Request) {
     const source = body.source === "atlas-copilot" ? "atlas-copilot" : "pipeline";
     const humanConfirmed = body.humanConfirmed === true;
 
+    // Descarte estruturado (padrão Meta lead quality / Andromeda): ao mover
+    // para o estágio de perda, o cliente PODE enviar
+    // { discardReason: { key, notes? } }. O campo é OPCIONAL por
+    // compatibilidade — a UI atual do Kanban ainda move para "perdido" sem
+    // motivo; ele será tornado obrigatório na próxima onda, quando o seletor
+    // de motivos entrar na UI. Chave enviada mas fora da taxonomia é 400,
+    // para o vocabulário nunca divergir de lib/atlas/discard-reasons.ts.
+    const discardInput = body.discardReason && typeof body.discardReason === "object" && !Array.isArray(body.discardReason)
+      ? (body.discardReason as Record<string, unknown>)
+      : null;
+    const discardReason = stage === "perdido" && discardInput ? getDiscardReason(discardInput.key) : null;
+    const discardNotes = discardInput && typeof discardInput.notes === "string" ? discardInput.notes.trim().slice(0, 2000) : "";
+
     if (!leadId || !stage || !expectedFromStage || (stage === "comprou_outro" && followUpDescription.length < 10)) {
       return NextResponse.json({ error: "Lead ou etapa inválida." }, { status: 400 });
+    }
+    if (stage === "perdido" && discardInput && !discardReason) {
+      return NextResponse.json(
+        {
+          error: `Motivo de descarte inválido. Use uma das chaves: ${DISCARD_REASON_KEYS.join(", ")}.`,
+          code: "INVALID_DISCARD_REASON",
+          validKeys: DISCARD_REASON_KEYS,
+        },
+        { status: 400 },
+      );
     }
     if (source === "atlas-copilot" && !humanConfirmed) {
       return NextResponse.json(
@@ -160,7 +184,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "A movimentação não foi registrada e foi desfeita para proteger o histórico.", code: "PIPELINE_AUDIT_FAILED" }, { status: 503 });
     }
 
-    await Promise.allSettled([
+    const liveEventWrites = [
       recordLiveLeadEvent(admin, {
         organizationId: identity.organizationId,
         leadId,
@@ -177,7 +201,55 @@ export async function PATCH(request: Request) {
           humanConfirmed: source === "atlas-copilot" ? humanConfirmed : null,
         },
       }),
-    ]);
+    ];
+    // Evento estruturado de descarte: só quando o motivo veio e a movimentação
+    // não é um desfazer (reversalOf) — desfazer não é um novo descarte. Vive no
+    // mesmo Promise.allSettled best-effort: o audit crítico é pipeline_history;
+    // falha aqui NÃO desfaz a movimentação (observabilidade no bloco abaixo,
+    // mesmo padrão do commit 31328039).
+    const shouldRecordDiscard = stage === "perdido" && discardReason !== null && !reversalOf;
+    if (shouldRecordDiscard && discardReason) {
+      liveEventWrites.push(
+        recordLiveLeadEvent(admin, {
+          organizationId: identity.organizationId,
+          leadId,
+          actorId: identity.userId,
+          type: "lead_discarded",
+          title: "Lead descartado",
+          description: discardNotes || discardReason.label,
+          metadata: {
+            reasonKey: discardReason.key,
+            reasonLabel: discardReason.label,
+            metaLeadStatus: discardReason.metaLeadStatus,
+            metaCategory: discardReason.metaCategory,
+            decisionSignal: discardReason.decisionSignal,
+            notes: discardNotes || null,
+            fromStage: previousStage,
+            source,
+            campaignId: (updated as unknown as Record<string, unknown>).campaign_id ?? null,
+            pipelineHistoryId: history.id,
+            taxonomyVersion: DISCARD_TAXONOMY_VERSION,
+          },
+        }),
+      );
+    }
+    const liveEventResults = await Promise.allSettled(liveEventWrites);
+    if (shouldRecordDiscard) {
+      const discardResult = liveEventResults[liveEventResults.length - 1];
+      const discardError: unknown = discardResult.status === "rejected" ? discardResult.reason : discardResult.value.error;
+      if (discardError) {
+        logger.warn("pipeline.discard_event_failed", {
+          organizationId: identity.organizationId,
+          leadId,
+          reasonKey: discardReason?.key,
+          message: discardError instanceof Error
+            ? discardError.message
+            : typeof (discardError as { message?: unknown })?.message === "string"
+              ? String((discardError as { message: string }).message)
+              : String(discardError),
+        });
+      }
+    }
 
     const data = mapLegacyLead(updated as unknown as Record<string, unknown>);
     await Promise.allSettled([recordFunnelLearning({ organizationId: identity.organizationId, leadId, previousStage, stage, occurredAt, description: followUpDescription })]);
@@ -189,6 +261,7 @@ export async function PATCH(request: Request) {
       organizationId: identity.organizationId,
       source,
       humanConfirmed: source === "atlas-copilot" ? humanConfirmed : null,
+      discardReason: discardReason?.key ?? null,
     });
     return NextResponse.json({
       lead: data,
@@ -200,6 +273,7 @@ export async function PATCH(request: Request) {
         reversalOf,
         source,
         humanConfirmed: source === "atlas-copilot" ? humanConfirmed : null,
+        discardReason: discardReason?.key ?? null,
         auditSource: "pipeline_history",
         writeSafety: "compensating-write",
       },
