@@ -10,6 +10,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -80,6 +82,67 @@ function EyeIcon({ hidden }: { hidden: boolean }) {
       <path d="M2.6 9.6C3.4 8.4 6.8 4 12 4s8.6 4.4 9.4 5.6a.8.8 0 0 1 0 .8C20.6 11.6 17.2 16 12 16s-8.6-4.4-9.4-5.6a.8.8 0 0 1 0-.8Z" />
       <circle cx="12" cy="10" r="2.5" />
     </svg>
+  );
+}
+
+// Tilt 3D do cartão de acesso — mesma receita do Command Center (CC-4/CC-5):
+// parallax ±4° mutando transform via ref (zero estado React por frame), gates
+// duplos reavaliados ao vivo (pointer: fine + prefers-reduced-motion), guarda de
+// pointerType para híbridos touch e retorno suave ao sair. Profundidade por
+// geometria: o conteúdo interno sobe em translateZ sob preserve-3d.
+const TILT_MAX_DEG = 4;
+function TiltShell({ children, className, delayMs = 0 }: { children: ReactNode; className?: string; delayMs?: number }) {
+  const shellRef = useRef<HTMLDivElement>(null);
+  const enabledRef = useRef(false);
+
+  useEffect(() => {
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: no-preference)");
+    const pointerQuery = window.matchMedia("(pointer: fine)");
+    const sync = () => {
+      enabledRef.current = motionQuery.matches && pointerQuery.matches;
+      if (!enabledRef.current && shellRef.current) {
+        shellRef.current.style.transition = "";
+        shellRef.current.style.transform = "";
+      }
+    };
+    sync();
+    motionQuery.addEventListener("change", sync);
+    pointerQuery.addEventListener("change", sync);
+    return () => {
+      motionQuery.removeEventListener("change", sync);
+      pointerQuery.removeEventListener("change", sync);
+    };
+  }, []);
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!enabledRef.current || (event.pointerType !== "mouse" && event.pointerType !== "pen")) return;
+    const shell = shellRef.current;
+    if (!shell) return;
+    const rect = shell.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width - 0.5;
+    const y = (event.clientY - rect.top) / rect.height - 0.5;
+    shell.style.transition = "";
+    shell.style.transform = `perspective(1000px) rotateX(${(-y * TILT_MAX_DEG).toFixed(2)}deg) rotateY(${(x * TILT_MAX_DEG).toFixed(2)}deg)`;
+  }
+
+  function resetTilt() {
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.style.transition = "transform 260ms ease-out";
+    shell.style.transform = "";
+  }
+
+  return (
+    <div
+      ref={shellRef}
+      className={className}
+      style={{ transformStyle: "preserve-3d", animationDelay: `${delayMs}ms` }}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={resetTilt}
+      onPointerCancel={resetTilt}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -229,44 +292,49 @@ function LoginExperience() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#03060b] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(14,165,233,.18),transparent_34rem),radial-gradient(circle_at_72%_76%,rgba(37,99,235,.10),transparent_30rem),linear-gradient(115deg,#03060b_0%,#07101c_48%,#03060b_100%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[.16] [background-image:linear-gradient(rgba(125,211,252,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(125,211,252,.08)_1px,transparent_1px)] [background-size:72px_72px] [mask-image:linear-gradient(to_bottom,black,transparent_88%)]" />
-      <div className="pointer-events-none absolute left-[12%] top-[18%] h-72 w-72 rounded-full bg-sky-400/[.08] blur-[100px]" />
+    <main className="relative min-h-screen overflow-hidden bg-[#070b16] text-white">
+      {/* Deck de comando 3D: céu limpo com um único wash do acento + chão em grade
+          que recede em perspectiva real (transform estático — custo zero de frame). */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1100px_520px_at_74%_-10%,rgba(56,189,248,.09),transparent_60%)]" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-[-35%] bottom-0 h-[78%] opacity-[.55] [transform:perspective(820px)_rotateX(58deg)] [transform-origin:50%_100%] [background-image:linear-gradient(rgba(56,189,248,.26)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,.26)_1px,transparent_1px)] [background-size:54px_54px] [mask-image:linear-gradient(to_top,black_26%,transparent_92%)]"
+      />
+      <div className="pointer-events-none absolute inset-x-0 bottom-[36%] h-px bg-gradient-to-r from-transparent via-sky-300/20 to-transparent" />
 
       <div className="relative mx-auto grid min-h-screen w-full max-w-[1440px] items-center gap-12 px-5 py-8 lg:grid-cols-[1.1fr_440px] lg:px-12 xl:gap-24">
-        <section className="relative hidden min-h-[720px] overflow-hidden border-r border-white/[.06] p-10 lg:flex lg:flex-col lg:justify-between xl:p-12">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_65%_42%,rgba(14,165,233,.13),transparent_24rem)]" />
+        <section className="cc5-reveal relative hidden min-h-[720px] overflow-hidden border-r border-[rgba(148,163,184,.12)] p-10 lg:flex lg:flex-col lg:justify-between xl:p-12" style={{ animationDelay: "0ms" }}>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_65%_42%,rgba(14,165,233,.11),transparent_24rem)]" />
           <Image src="/brand/atlas-robot-assistant.png" alt="Assistente de inteligência Atlas" width={420} height={630} priority className="pointer-events-none absolute -bottom-4 -right-20 h-[380px] w-auto select-none object-contain opacity-80 drop-shadow-[0_24px_42px_rgba(14,165,233,.14)] xl:-right-20 xl:h-[420px]" />
-          <div className="pointer-events-none absolute bottom-14 right-16 h-20 w-56 rounded-[50%] bg-sky-400/20 blur-3xl" />
+          <div className="pointer-events-none absolute bottom-14 right-16 h-20 w-56 rounded-[50%] bg-sky-400/15 blur-3xl" />
           <div className="relative z-10">
           <Link href="/" className="inline-flex items-center gap-4" aria-label="Voltar para a página inicial do Atlas">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl border border-sky-300/20 bg-sky-400/[.09] text-lg font-black text-sky-200 shadow-[0_0_32px_rgba(56,189,248,.10)]">A</span>
-            <div><p className="text-2xl font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[11px] font-medium text-slate-500">Real Estate Intelligence</p></div>
+            <span className="grid h-12 w-12 place-items-center rounded-2xl border border-sky-300/20 bg-sky-400/[.09] text-lg font-black text-sky-200">A</span>
+            <div><p className="text-2xl font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p><p className="font-mono text-[10px] font-medium uppercase tracking-[.22em] text-slate-500">Real Estate Intelligence</p></div>
           </Link>
-          <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-sky-300/10 bg-sky-300/[.045] px-3 py-1.5 text-[11px] font-medium text-sky-200"><span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-sky-300" /> AI Brain conectado ao comercial</div>
-          <h1 className="mt-6 max-w-[520px] text-5xl font-semibold leading-[.98] tracking-[-.06em] xl:max-w-[580px] xl:text-6xl">Seu command center para <span className="text-sky-300">decidir e vender.</span></h1>
-          <p className="mt-6 max-w-sm text-base leading-7 text-slate-400">Um ambiente único para leads, imóveis, equipe, campanhas e decisões comerciais.</p>
+          <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-sky-300/10 bg-sky-300/[.045] px-3 py-1.5 font-mono text-[11px] font-medium text-sky-200"><span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-sky-300" /> IA proativa conectada ao comercial</div>
+          <h1 className="mt-6 max-w-[520px] text-5xl font-semibold leading-[.98] tracking-[-.06em] xl:max-w-[580px] xl:text-6xl">Sua sala de comando para <span className="text-sky-300">decidir e vender.</span></h1>
+          <p className="mt-6 max-w-sm text-base leading-7 text-slate-400">A IA prioriza, a equipe decide: leads, imóveis, campanhas e a próxima ação — num só lugar.</p>
           </div>
-          <div className="relative z-10 grid max-w-[360px] grid-cols-3 border-y border-white/[.07] py-5">
-            {[ ["Lead Intelligence", "Prioridade clara"], ["Copiloto único", "Próxima ação"], ["Operação viva", "Aprendizado contínuo"] ].map(([title, detail], index) => <div key={title} className={`px-4 ${index ? "border-l border-white/[.07]" : ""}`}><p className="text-[11px] font-medium text-slate-500">{title}</p><p className="mt-2 text-sm font-semibold text-slate-200">{detail}</p></div>)}
+          <div className="relative z-10 grid max-w-[380px] grid-cols-3 border-y border-[rgba(148,163,184,.12)] py-5">
+            {[ ["Prioridades agora", "IA proativa"], ["Copiloto único", "Próxima ação"], ["Operação viva", "Tempo real"] ].map(([title, detail], index) => <div key={title} className={`px-4 ${index ? "border-l border-[rgba(148,163,184,.12)]" : ""}`}><p className="font-mono text-[10px] font-medium uppercase tracking-[.16em] text-slate-500">{title}</p><p className="mt-2 text-sm font-semibold text-slate-200">{detail}</p></div>)}
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-lg">
-          <div className="mb-6 flex items-center justify-between gap-3 lg:hidden"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-400/15 font-black text-sky-300">A</span><div><p className="text-xl font-black">ATLAS <span className="text-sky-400">AI</span></p><p className="text-[10px] font-medium text-slate-500">Real Estate Intelligence</p></div></div><span role="img" aria-label="Assistente Atlas" className="h-16 w-12 bg-[url('/brand/atlas-robot-assistant.png')] bg-contain bg-center bg-no-repeat drop-shadow-[0_12px_20px_rgba(14,165,233,.18)]" /></div>
-          <div className="relative overflow-hidden rounded-[32px] border border-white/[.09] bg-[#070d15]/92 p-6 shadow-[0_40px_120px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.035)] backdrop-blur-2xl sm:p-9">
+        <section className="mx-auto w-full max-w-lg [perspective:1400px]">
+          <div className="cc5-reveal mb-6 flex items-center justify-between gap-3 lg:hidden" style={{ animationDelay: "0ms" }}><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl border border-sky-300/20 bg-sky-400/[.09] font-black text-sky-300">A</span><div><p className="text-xl font-black tracking-[-.03em]">ATLAS <span className="text-sky-400">AI</span></p><p className="font-mono text-[10px] uppercase tracking-[.22em] text-slate-500">Real Estate Intelligence</p></div></div><span role="img" aria-label="Assistente Atlas" className="h-16 w-12 bg-[url('/brand/atlas-robot-assistant.png')] bg-contain bg-center bg-no-repeat drop-shadow-[0_12px_20px_rgba(14,165,233,.18)]" /></div>
+          <TiltShell delayMs={70} className="cc5-reveal relative overflow-hidden rounded-[28px] border border-[rgba(148,163,184,.16)] bg-[linear-gradient(180deg,#0f1830_0%,#0b1224_100%)] p-6 shadow-[0_40px_120px_rgba(0,0,0,.5)] sm:p-9">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-300/70 to-transparent" />
-            <div>
+            <div className="motion-safe:[transform:translateZ(14px)]">
               <div className="flex items-center justify-between gap-4">
-                <p className="text-xs font-medium text-slate-500">Acesso privado</p>
-                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-medium ${systemStatus === "online" ? "border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300" : systemStatus === "offline" ? "border-amber-400/15 bg-amber-400/[0.07] text-amber-300" : "border-white/10 bg-white/[.04] text-slate-400"}`}><span className={`h-1.5 w-1.5 rounded-full ${systemStatus === "online" ? "bg-emerald-400" : systemStatus === "offline" ? "bg-amber-400" : "animate-pulse bg-slate-500"}`} /> {systemStatus === "online" ? "Sistema disponível" : systemStatus === "offline" ? "Conexão instável" : "Verificando"}</span>
+                <p className="font-mono text-[11px] font-medium uppercase tracking-[.24em] text-slate-500">Sala de comando</p>
+                <span className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1 font-mono text-[11px] font-medium tabular-nums ${systemStatus === "online" ? "border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300" : systemStatus === "offline" ? "border-amber-400/15 bg-amber-400/[0.07] text-amber-300" : "border-[rgba(148,163,184,.22)] bg-white/[.04] text-slate-400"}`}><span className={`h-1.5 w-1.5 rounded-full ${systemStatus === "online" ? "bg-emerald-400" : systemStatus === "offline" ? "bg-amber-400" : "animate-pulse bg-slate-500"}`} /> {systemStatus === "online" ? "Sistema disponível" : systemStatus === "offline" ? "Conexão instável" : "Verificando"}</span>
               </div>
-              <h2 className="mt-5 text-4xl font-semibold tracking-[-.05em]">Bem-vindo.</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">Entre para continuar sua operação comercial.</p>
+              <h2 className="mt-5 text-4xl font-semibold tracking-[-.05em]">Bem-vindo de volta.</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Entre para abrir a sua sala de comando.</p>
             </div>
 
-            <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
+            <form className="mt-8 space-y-5 motion-safe:[transform:translateZ(8px)]" onSubmit={handleSubmit} noValidate>
               <label className="block">
                 <span className="mb-2 block text-xs font-medium text-slate-400">E-mail corporativo</span>
                 <div className="relative">
@@ -281,7 +349,7 @@ function LoginExperience() {
                     autoComplete="username"
                     value={email}
                     onChange={(event) => { setEmail(event.target.value); if (error) setError(""); }}
-                    className="h-14 w-full border-white/10 bg-white/[.03] px-4 pr-11 transition focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
+                    className="h-14 w-full border-[rgba(148,163,184,.16)] bg-white/[.03] px-4 pr-11 transition hover:border-[rgba(148,163,184,.22)] focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
                     placeholder="voce@empresa.com"
                     aria-invalid={Boolean(error)}
                   />
@@ -303,7 +371,7 @@ function LoginExperience() {
                     onKeyDown={updateCapsLock}
                     onKeyUp={updateCapsLock}
                     onBlur={() => setCapsLock(false)}
-                    className="h-14 w-full border-white/10 bg-white/[.03] px-4 pr-14 transition focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
+                    className="h-14 w-full border-[rgba(148,163,184,.16)] bg-white/[.03] px-4 pr-14 transition hover:border-[rgba(148,163,184,.22)] focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
                     placeholder="Digite sua senha"
                     aria-invalid={Boolean(error)}
                     aria-describedby={[capsLock ? "caps-lock-warning" : "", error ? "login-error" : ""].filter(Boolean).join(" ") || undefined}
@@ -341,11 +409,11 @@ function LoginExperience() {
               {systemStatus === "offline" ? <button type="button" onClick={() => window.location.reload()} className="w-full text-center text-xs font-semibold text-amber-200">Tentar reconectar</button> : null}
             </form>
 
-            <div className="mt-7 border-t border-white/[0.07] pt-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] font-medium text-slate-600"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" /> Sessão protegida</span><span>Dados isolados</span><span>Atlas V3</span></div>
+            <div className="mt-7 border-t border-[rgba(148,163,184,.12)] pt-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-[10px] font-medium uppercase tracking-[.14em] text-slate-600"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" /> Sessão protegida</span><span>Dados isolados</span><span className="tabular-nums">Atlas V3</span></div>
             </div>
-          </div>
-          <Link href="/" className="mx-auto mt-5 flex w-fit items-center gap-2 text-xs text-slate-600 transition hover:text-slate-300"><span aria-hidden="true">←</span> Voltar para o início</Link>
+          </TiltShell>
+          <Link href="/" className="cc5-reveal mx-auto mt-5 flex w-fit items-center gap-2 text-xs text-slate-600 transition hover:text-slate-300" style={{ animationDelay: "140ms" }}><span aria-hidden="true">←</span> Voltar para o início</Link>
         </section>
       </div>
     </main>
