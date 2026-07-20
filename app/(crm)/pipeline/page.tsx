@@ -340,7 +340,7 @@ export default function PipelinePage() {
         <Image className="atlas-pipeline-robot" src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas acompanhando o pipeline comercial" width={210} height={315} priority />
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <div className="flex flex-wrap gap-2"><AtlasBadge tone="success">PIPELINE AO VIVO</AtlasBadge><AtlasBadge tone="info">{metrics.open} NEGÓCIOS</AtlasBadge>{pipelineScope.totalOperational > 0 ? <AtlasBadge tone="info">{pipelineScope.loaded}/{pipelineScope.totalOperational} CARREGADOS</AtlasBadge> : null}</div>
+            <div className="flex flex-wrap gap-2"><AtlasBadge tone="info">{metrics.open} negócios</AtlasBadge></div>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Pipeline comercial</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Decida o próximo movimento, proteja SLAs e mantenha cada avanço registrado.</p>
           </div>
@@ -359,17 +359,17 @@ export default function PipelinePage() {
       {lastMove ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.07] px-4 py-3 text-sm text-sky-100" role="status"><span><strong>{lastMove.leadName}</strong> avançou para {destinationOptions.find((item) => item.key === lastMove.to)?.label}.</span><button type="button" onClick={() => void undoLastMove()} disabled={Boolean(savingId)} className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs font-semibold hover:bg-sky-300/15 disabled:opacity-50">Desfazer movimentação</button></div> : null}
 
       {!focusMode ? <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <AtlasMetric icon="📊" label="Negócios abertos" value={loading ? "—" : metrics.open} detail="Oportunidades em andamento" trend="LIVE" tone="blue" />
-        <AtlasMetric icon="💰" label="Pipeline bruto" value={loading ? "—" : brl.format(metrics.pipeline)} detail="Potencial comercial total" trend="VGV" tone="violet" />
-        <AtlasMetric icon="📈" label="Forecast" value={loading ? "—" : brl.format(metrics.forecast)} detail="Ponderado por etapa" trend="AI" tone="green" />
-        <AtlasMetric icon="🔥" label="Leads quentes" value={loading ? "—" : metrics.hot} detail="Prioridade imediata" trend="HOT" tone="rose" />
-        <AtlasMetric icon="⚠️" label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} trend="RISK" tone="amber" />
-        <AtlasMetric icon="🎯" label="Perfis compradores" value={loading ? "—" : metrics.buyerProfiles} detail="Compraram em outro lugar" trend="LEARN" tone="green" />
+        <AtlasMetric icon="📊" label="Negócios abertos" value={loading ? "—" : metrics.open} tone="blue" />
+        <AtlasMetric icon="💰" label="Pipeline bruto" value={loading ? "—" : brl.format(metrics.pipeline)} tone="violet" />
+        <AtlasMetric icon="📈" label="Forecast" value={loading ? "—" : brl.format(metrics.forecast)} detail="Ponderado por etapa" tone="green" />
+        <AtlasMetric icon="🔥" label="Leads quentes" value={loading ? "—" : metrics.hot} tone="rose" />
+        <AtlasMetric icon="⚠️" label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} tone="amber" />
+        <AtlasMetric icon="🎯" label="Perfis compradores" value={loading ? "—" : metrics.buyerProfiles} detail="Compraram em outro lugar" tone="green" />
       </section> : null}
 
       <section className="atlas-pipeline-priority-queue" aria-labelledby="atlas-pipeline-priority-title" aria-live="polite" data-priority-source="authorized-loaded-pipeline">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Movimentação prioritária</p><h3 id="atlas-pipeline-priority-title" className="mt-1 text-lg font-semibold text-white">Comece por aqui</h3><p className="mt-1 text-xs text-slate-500">As três ações com maior impacto operacional aparente no recorte atual; filtros e ordenação também organizam esta fila.</p></div>
+          <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Movimentação prioritária</p><h3 id="atlas-pipeline-priority-title" className="mt-1 text-lg font-semibold text-white">Comece por aqui</h3><p className="mt-1 text-xs text-slate-500">Suas três próximas ações.</p></div>
           <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar oportunidades do pipeline">
             {focusOptions.map((option) => <button key={option.key} type="button" onClick={() => setFocus(option.key)} aria-pressed={focus === option.key} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${focus === option.key ? "border-sky-400/30 bg-sky-400/10 text-sky-200" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><span>{option.label}</span><span className={`rounded-full px-1.5 py-0.5 text-[9px] ${focus === option.key ? "bg-sky-300/15 text-sky-100" : "bg-white/[0.05] text-slate-500"}`}>{option.count}</span></button>)}
           </div>
@@ -386,7 +386,7 @@ export default function PipelinePage() {
               <div className="flex items-start justify-between gap-3"><span className="atlas-broker-rank">{String(index + 1).padStart(2, "0")}</span>{risk !== "baixo" ? <AtlasBadge tone={riskTone(risk)}>{risk === "alto" ? "⚠️" : "•"} {risk}</AtlasBadge> : null}</div>
               <div className="mt-3 flex items-center gap-2.5">
                 <span className="atlas-lead-avatar" aria-hidden="true">{Array.from(lead.name || "??").slice(0, 2).join("").toUpperCase()}</span>
-                <Link href={`/leads/${lead.id}`} className="min-w-0 truncate text-sm font-semibold text-white hover:text-sky-300">{lead.temperature === "quente" ? "🔥 " : ""}{lead.name || "Lead sem nome"}</Link>
+                <Link href={`/leads/${lead.id}`} className="min-w-0 truncate text-sm font-semibold text-white hover:text-sky-300">{lead.name || "Lead sem nome"}</Link>
               </div>
               <div className="atlas-broker-stage"><span>{currentStage?.label || "Etapa atual"}</span><i aria-hidden="true">→</i><strong>{nextStage?.label || "Revisar fechamento"}</strong></div>
               <p className="mt-3 text-sm font-semibold text-sky-200">{guidance.action}</p><p className="mt-1 min-h-10 text-xs leading-5 text-slate-500">{guidance.reason}</p>
@@ -412,7 +412,7 @@ export default function PipelinePage() {
       </section> : null}
 
       <AtlasCard>
-        <AtlasCardHeader eyebrow="Fluxo comercial" title="Oportunidades por etapa" description="Arraste os cards ou use o seletor. Toda movimentação permanece registrada." action={<div className="flex gap-2"><AtlasBadge tone="info">{visibleLeads.length} VISÍVEIS</AtlasBadge><AtlasBadge tone="violet">{brl.format(metrics.forecast)} FORECAST</AtlasBadge></div>} />
+        <AtlasCardHeader eyebrow="Fluxo comercial" title="Oportunidades por etapa" description="Arraste os cards ou use o seletor. Toda movimentação permanece registrada." action={<span className="text-xs text-slate-500">{visibleLeads.length} visíveis · forecast {brl.format(metrics.forecast)}</span>} />
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-4 sm:px-6 xl:flex-row xl:items-center xl:justify-between" aria-label="Controles do Kanban">
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500" htmlFor="pipeline-sort">Ordenar</label>
@@ -447,7 +447,7 @@ export default function PipelinePage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-2.5">
                             <span className="atlas-lead-avatar" aria-hidden="true">{Array.from(lead.name || "??").slice(0, 2).join("").toUpperCase()}</span>
-                            <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.temperature === "quente" ? "🔥 " : ""}{lead.name || "Lead sem nome"}</Link><p className="mt-0.5 truncate text-[11px] text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
+                            <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-0.5 truncate text-[11px] text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
                           </div>
                           {risk !== "baixo" ? <AtlasBadge tone={riskTone(risk)}>{risk === "alto" ? "⚠️" : "•"} {risk}</AtlasBadge> : null}
                         </div>

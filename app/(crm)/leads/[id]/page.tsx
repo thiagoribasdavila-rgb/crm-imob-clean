@@ -790,7 +790,7 @@ export default function LeadDetailPage() {
               />
               <Link
                 href={`/leads/${lead.id}/messages`}
-                className="atlas-button-primary"
+                className="atlas-button-secondary"
               >
                 Criar mensagem
               </Link>
@@ -901,7 +901,7 @@ export default function LeadDetailPage() {
         >
           <div>
             <p className="atlas-eyebrow text-amber-200">
-              Fase 58 · Reserva aguardando aceite
+              Reserva aguardando aceite
             </p>
             <h2 className="mt-2 text-lg font-semibold text-white">
               Confirme que você assumirá este atendimento
@@ -942,7 +942,7 @@ export default function LeadDetailPage() {
                   : "text-amber-200"
               }`}
             >
-              Fase 100 · IA proativa
+              Sinais de atenção
             </p>
             <h2 className="mt-2 text-lg font-semibold text-white">
               Este lead precisa de atenção agora
@@ -981,14 +981,9 @@ export default function LeadDetailPage() {
         <AtlasCard>
           <div data-phase="30-data-gaps">
             <AtlasCardHeader
-              eyebrow="Fase 30 · Dados úteis"
-              title="Pergunte menos e descubra o que realmente ajuda a vender"
+              eyebrow="Dados úteis"
+              title="Dados que faltam"
               description="As lacunas são priorizadas pelo impacto em contato, intenção, matching e continuidade. A análise local não gera custo de IA."
-              action={
-                <AtlasBadge tone="warning">
-                  {dataQuality.completeness}% COMPLETO
-                </AtlasBadge>
-              }
             />
             <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-3">
               {dataQuality.questions.slice(0, 6).map((question, index) => (
@@ -1051,9 +1046,8 @@ export default function LeadDetailPage() {
               ))}
             </div>
             <div className="border-t border-white/[.06] px-5 py-4 text-[11px] leading-5 text-slate-500 sm:px-6">
-              A completude é ponderada pelo valor comercial do dado. CPF, CNPJ,
-              endereço exato e documentos não aumentam score nem são enviados às
-              IAs.
+              CPF, CNPJ, endereço exato e documentos não aumentam score nem são
+              enviados às IAs.
             </div>
           </div>
         </AtlasCard>
@@ -1070,10 +1064,9 @@ export default function LeadDetailPage() {
       {relationshipContext ? (
         <AtlasCard>
           <AtlasCardHeader
-            eyebrow="Fase 26 · Lead 360"
-            title="Tudo sobre esta relação em uma única tela"
+            eyebrow="Lead 360"
+            title="Visão do relacionamento"
             description="Identidade, origem, responsável, projeto, comunicações, histórico, score e pipeline reconciliados sob o mesmo escopo comercial."
-            action={<AtlasBadge tone="success">FONTE ÚNICA</AtlasBadge>}
           />
           <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-4">
             {[
@@ -1157,9 +1150,7 @@ export default function LeadDetailPage() {
             ))}
           </div>
           <div className="border-t border-white/[.06] px-5 py-4 text-[11px] leading-5 text-slate-500 sm:px-6">
-            A tela não cria uma segunda versão do cliente: cada bloco aponta
-            para o registro canônico e respeita o mesmo proprietário,
-            organização, RLS e histórico auditável.
+            Todos os blocos apontam para o registro canônico.
           </div>
         </AtlasCard>
       ) : null}
@@ -1272,9 +1263,7 @@ export default function LeadDetailPage() {
                 </div>
               ) : null}
               <p className="text-[11px] leading-5 text-slate-500">
-                O Atlas nunca funde cadastros ambíguos silenciosamente.
-                Sugestões de limpeza ou consolidação preservam proprietário,
-                consentimento, timeline e auditoria.
+                Cadastros ambíguos nunca são fundidos sem revisão humana.
               </p>
             </div>
           </div>
@@ -1287,12 +1276,6 @@ export default function LeadDetailPage() {
             eyebrow="Briefing antes do contato"
             title="Chegue preparado à conversa ou visita"
             description="Resumo automático do relacionamento, pendências e próximos passos com base na fonte única do CRM."
-            action={
-              <div className="flex gap-2">
-                <AtlasBadge tone="violet">IA LOCAL</AtlasBadge>
-                <AtlasBadge tone="success">CUSTO REDUZIDO</AtlasBadge>
-              </div>
-            }
           />
           <div className="grid gap-4 p-5 sm:p-6 lg:grid-cols-[.9fr_1.1fr]">
             <div className="rounded-2xl border border-white/[.07] bg-white/[.025] p-5">
@@ -1428,35 +1411,30 @@ export default function LeadDetailPage() {
           label="Score Atlas"
           value={lead.score ?? 0}
           detail="Qualificação atual"
-          trend="AI"
           tone="blue"
         />
         <AtlasMetric
           label="Oportunidades"
           value={opportunities.length}
           detail="Negócios vinculados"
-          trend="PIPE"
           tone="violet"
         />
         <AtlasMetric
           label="Interações"
           value={activities.length}
           detail="Eventos registrados"
-          trend="360"
           tone="green"
         />
         <AtlasMetric
           label="Matches"
           value={matches.length}
           detail="Imóveis recomendados"
-          trend="MATCH"
           tone="amber"
         />
         <AtlasMetric
           label="Risco"
           value={intelligence.risk}
           detail="Risco de inércia"
-          trend="SLA"
           tone={intelligence.risk === "alto" ? "rose" : "green"}
         />
       </section>
@@ -1465,7 +1443,7 @@ export default function LeadDetailPage() {
         <div id="qualificacao">
           <AtlasCard>
             <AtlasCardHeader
-              eyebrow="Fase 44 · Qualificação rápida"
+              eyebrow="Qualificação rápida"
               title="Como o Atlas chegou a esta qualificação"
               description={`Confiança de ${qualification.confidence}% · ${qualification.progress.answered}/3 respostas essenciais · recalculado em ${new Date(qualification.recalculatedAt).toLocaleString("pt-BR")}.`}
               action={
@@ -1618,7 +1596,7 @@ export default function LeadDetailPage() {
       {proposals.length ? (
         <AtlasCard>
           <AtlasCardHeader
-            eyebrow="Fase 37 · SLA de proposta"
+            eyebrow="SLA de proposta"
             title="Preparação, envio e retorno"
             description="Preço, estoque e regra continuam governados; agora o contato com o cliente também fica mensurado."
           />
@@ -1715,7 +1693,7 @@ export default function LeadDetailPage() {
       {simulation ? (
         <AtlasCard>
           <AtlasCardHeader
-            eyebrow="Fase 46 · Simulação, não promessa"
+            eyebrow="Simulação, não promessa"
             title={`${simulation.rule_snapshot.ruleName} · versão ${simulation.rule_snapshot.version}`}
             description={`Regra vigente de ${simulation.rule_snapshot.developerName} fotografada no cálculo; mudanças futuras não alteram este histórico.`}
             action={

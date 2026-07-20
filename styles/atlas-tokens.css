@@ -12,9 +12,9 @@
   --atlas-bg: var(--atlas-canvas);
   --atlas-surface-soft: rgba(255, 255, 255, 0.025);
 
-  --atlas-border-subtle: rgba(148, 163, 184, 0.09);
-  --atlas-border: rgba(148, 163, 184, 0.14);
-  --atlas-border-strong: rgba(148, 163, 184, 0.24);
+  --atlas-border-subtle: rgba(255, 255, 255, 0.05);
+  --atlas-border: rgba(255, 255, 255, 0.07);
+  --atlas-border-strong: rgba(255, 255, 255, 0.12);
 
   --atlas-text-primary: #f4f7fb;
   --atlas-text-secondary: #a8b3c2;
