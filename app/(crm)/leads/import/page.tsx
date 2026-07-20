@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import Link from "next/link";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -136,12 +137,12 @@ export default function ImportLeadsPage() {
 
       {/* SALTO V4.2 · ponte para o importador governado da base histórica
           (relatório de qualidade + dedupe contra a base viva antes da carga). */}
-      <a
+      <Link
         href="/leads/import/historico"
         className={`inline-flex w-fit items-center gap-2 text-sm text-[#aab6ca] underline underline-offset-2 hover:text-[#e8eef8] ${focusRing}`}
       >
         Importar base histórica com relatório de qualidade →
-      </a>
+      </Link>
 
       {/* Fila elegível em números antes de qualquer formulário — única
           superfície com 3D da página. */}
