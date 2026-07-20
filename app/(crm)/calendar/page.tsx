@@ -244,10 +244,6 @@ export default function CalendarPage() {
       >
         <div className="atlas-calendar-hero-copy">
           <div className="flex flex-wrap gap-2">
-            <AtlasBadge tone="violet">FASE 39 · AGENDA TEMPORAL</AtlasBadge>
-            <AtlasBadge tone="success">
-              FASE 46 · AGENDA COMERCIAL UNIFICADA
-            </AtlasBadge>
             <AtlasBadge
               tone={
                 live === "connected"
@@ -301,21 +297,42 @@ export default function CalendarPage() {
           aria-label="Resumo temporal da agenda"
           aria-busy={loading}
         >
-          <div className="atlas-calendar-signal" data-tone="danger">
+          <button
+            type="button"
+            className="atlas-calendar-signal cursor-pointer text-left"
+            data-tone="danger"
+            onClick={() => setWindow("overdue")}
+            aria-pressed={window === "overdue"}
+            aria-label="Ver compromissos atrasados na linha do tempo"
+          >
             <span>Atrasados</span>
             <strong>{loading ? "—" : calendarSignals.overdue}</strong>
             <small>Resolver primeiro</small>
-          </div>
-          <div className="atlas-calendar-signal" data-tone="warning">
+          </button>
+          <button
+            type="button"
+            className="atlas-calendar-signal cursor-pointer text-left"
+            data-tone="warning"
+            onClick={() => setWindow("today")}
+            aria-pressed={window === "today"}
+            aria-label="Ver compromissos de hoje na linha do tempo"
+          >
             <span>Hoje</span>
             <strong>{loading ? "—" : calendarSignals.today}</strong>
             <small>Compromissos do dia</small>
-          </div>
-          <div className="atlas-calendar-signal" data-tone="success">
+          </button>
+          <button
+            type="button"
+            className="atlas-calendar-signal cursor-pointer text-left"
+            data-tone="success"
+            onClick={() => setWindow("week")}
+            aria-pressed={window === "week"}
+            aria-label="Ver os próximos sete dias na linha do tempo"
+          >
             <span>Próximos 7 dias</span>
             <strong>{loading ? "—" : calendarSignals.nextSevenDays}</strong>
             <small>Planejamento imediato</small>
-          </div>
+          </button>
           <div className="atlas-calendar-signal" data-tone="violet">
             <span>Visitas</span>
             <strong>{loading ? "—" : calendarSignals.visits}</strong>
@@ -373,7 +390,11 @@ export default function CalendarPage() {
                   </span>
                 </span>
                 <span className="atlas-calendar-attention-action">
-                  Abrir →
+                  {item.kind === "task"
+                    ? "Ver tarefa →"
+                    : item.kind === "visit"
+                      ? "Preparar visita →"
+                      : "Abrir lead →"}
                 </span>
               </Link>
             ))
@@ -405,17 +426,11 @@ export default function CalendarPage() {
               aria-pressed={window === key}
               className={`atlas-calendar-period ${window === key ? "is-active" : ""}`}
             >
-              {label}
+              {key === "overdue" && !loading && calendarSignals.overdue > 0
+                ? `${label} · ${calendarSignals.overdue}`
+                : label}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={loading}
-            className="atlas-calendar-period"
-          >
-            Atualizar
-          </button>
         </nav>
 
         <div
@@ -428,11 +443,31 @@ export default function CalendarPage() {
               <AtlasSkeleton key={item} className="h-32" />
             ))
           ) : Object.keys(groups).length ? (
-            Object.entries(groups).map(([date, group]) => (
-              <section key={date} className="atlas-calendar-day">
+            Object.entries(groups).map(([date, group]) => {
+              const now = new Date();
+              const todayKey = dayKey(now.toISOString());
+              const tomorrowKey = dayKey(
+                new Date(now.getTime() + 86_400_000).toISOString(),
+              );
+              const isToday = date === todayKey;
+              const isTomorrow = date === tomorrowKey;
+              return (
+              <section
+                key={date}
+                className="atlas-calendar-day"
+                data-today={isToday ? "true" : "false"}
+                style={
+                  isToday
+                    ? { borderColor: "rgba(56, 189, 248, 0.28)" }
+                    : undefined
+                }
+              >
                 <header>
                   <span aria-hidden="true" />
-                  <h2>{group.label}</h2>
+                  <h2>
+                    {isToday ? "Hoje · " : isTomorrow ? "Amanhã · " : ""}
+                    {group.label}
+                  </h2>
                   <small>
                     {group.items.length} {group.items.length === 1 ? "item" : "itens"}
                   </small>
@@ -444,6 +479,14 @@ export default function CalendarPage() {
                       key={`${item.kind}-${item.id}`}
                       className="atlas-calendar-item"
                       data-overdue={item.overdue}
+                      style={
+                        item.overdue
+                          ? {
+                              borderLeft:
+                                "3px solid rgba(244, 63, 94, 0.6)",
+                            }
+                          : undefined
+                      }
                     >
                       <time dateTime={item.at}>{timeLabel(item.at)}</time>
                       <span className="atlas-calendar-item-copy">
@@ -459,13 +502,18 @@ export default function CalendarPage() {
                         <small>{item.detail}</small>
                       </span>
                       <span className="atlas-calendar-item-action">
-                        Abrir →
+                        {item.kind === "task"
+                          ? "Ver tarefa →"
+                          : item.kind === "visit"
+                            ? "Preparar visita →"
+                            : "Abrir lead →"}
                       </span>
                     </Link>
                   ))}
                 </div>
               </section>
-            ))
+              );
+            })
           ) : (
             <AtlasEmpty
               reason="completed"

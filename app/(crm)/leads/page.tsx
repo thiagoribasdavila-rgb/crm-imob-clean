@@ -160,6 +160,20 @@ function dueLabel(value: string | null, referenceTime: number) {
   };
 }
 
+function phoneLinks(phone: string | null) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  const international = digits.startsWith("55") ? digits : `55${digits}`;
+  return { call: `tel:+${international}`, whatsapp: `https://wa.me/${international}` };
+}
+
+function isHotLead(lead: Lead) {
+  return (
+    (lead.temperature ?? "").toLowerCase() === "quente" ||
+    Number(lead.score ?? 0) >= 70
+  );
+}
+
 function visibleLeadPriority(
   lead: Lead,
   referenceTime: number,
@@ -639,19 +653,18 @@ export default function LeadsPage() {
     >
       <section className="atlas-leads-hero atlas-leads-hero-compact">
         <div className="atlas-leads-source-filter">
-          <div className="flex flex-wrap gap-2">
-            <StatusBadge tone="info">LEADS INTELLIGENCE</StatusBadge>
-            <StatusBadge tone="success">TENANT-SAFE</StatusBadge>
-            <StatusBadge tone="violet">LEAD 360</StatusBadge>
-            {currentRole === "broker" ? (
-              <StatusBadge tone="success">CARTEIRA EXCLUSIVA</StatusBadge>
-            ) : null}
-            {currentRole === "manager" ? (
-              <StatusBadge tone="success">
-                MEU TIME · {teamBrokers.length} CORRETORES
-              </StatusBadge>
-            ) : null}
-          </div>
+          {currentRole === "broker" || currentRole === "manager" ? (
+            <div className="flex flex-wrap gap-2">
+              {currentRole === "broker" ? (
+                <StatusBadge tone="success">CARTEIRA EXCLUSIVA</StatusBadge>
+              ) : null}
+              {currentRole === "manager" ? (
+                <StatusBadge tone="success">
+                  MEU TIME · {teamBrokers.length} CORRETORES
+                </StatusBadge>
+              ) : null}
+            </div>
+          ) : null}
           <h1>
             {currentRole === "broker"
               ? "Sua fila de leads, pronta para agir."
@@ -741,7 +754,9 @@ export default function LeadsPage() {
           <LoadingState rows={3} />
         ) : visiblePriorityQueue.length ? (
           <div className="atlas-leads-action-list">
-            {visiblePriorityQueue.slice(0, 3).map((priority, index) => (
+            {visiblePriorityQueue.slice(0, 3).map((priority, index) => {
+              const contact = phoneLinks(priority.lead.phone);
+              return (
               <article key={priority.lead.id} data-tone={priority.tone}>
                 <div className="atlas-leads-action-rank">
                   <span>{String(index + 1).padStart(2, "0")}</span>
@@ -760,6 +775,24 @@ export default function LeadsPage() {
                 </div>
                 <div className="atlas-leads-action-buttons">
                   <Link href={`/leads/${priority.lead.id}`}>Abrir lead</Link>
+                  {contact ? (
+                    <a
+                      href={contact.call}
+                      aria-label={`Ligar para ${priority.lead.name || "lead"}`}
+                    >
+                      📞 Ligar
+                    </a>
+                  ) : null}
+                  {contact ? (
+                    <a
+                      href={contact.whatsapp}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Abrir WhatsApp com ${priority.lead.name || "lead"}`}
+                    >
+                      💬 WhatsApp
+                    </a>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() =>
@@ -786,7 +819,8 @@ export default function LeadsPage() {
                   </button>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="atlas-leads-action-clear">
@@ -914,7 +948,36 @@ export default function LeadsPage() {
               placeholder="Buscar por nome, e-mail ou telefone..."
               aria-label="Buscar leads"
             />
-            <kbd>⌘ K</kbd>
+          </div>
+          <div className="atlas-leads-sort w-full sm:w-56 sm:shrink-0">
+            <select
+              value={sort}
+              onChange={(event) => updateFilter(setSort, event.target.value)}
+              aria-label="Ordenar leads"
+              className="min-h-11 w-full min-w-0 rounded-xl border border-white/10 bg-[#0a1120] px-3 text-[11px] text-[#cdd7e5]"
+            >
+              <option value="created_at">Data de entrada</option>
+              <option value="updated_at">Última atualização</option>
+              <option value="score">Score</option>
+              <option value="name">Nome</option>
+            </select>
+            <button
+              type="button"
+              className="min-h-11"
+              onClick={() => {
+                setDirection((current) =>
+                  current === "asc" ? "desc" : "asc",
+                );
+                setPage(1);
+              }}
+              aria-label={
+                direction === "asc"
+                  ? "Ordenação crescente"
+                  : "Ordenação decrescente"
+              }
+            >
+              {direction === "asc" ? "↑" : "↓"}
+            </button>
           </div>
           <button
             type="button"
@@ -1045,34 +1108,6 @@ export default function LeadsPage() {
               <option value="next_7_days">Próximos 7 dias</option>
               <option value="scheduled">Todas as agendadas</option>
             </select>
-            <div className="atlas-leads-sort">
-              <select
-                value={sort}
-                onChange={(event) => updateFilter(setSort, event.target.value)}
-                aria-label="Ordenar leads"
-              >
-                <option value="created_at">Data de entrada</option>
-                <option value="updated_at">Última atualização</option>
-                <option value="score">Score</option>
-                <option value="name">Nome</option>
-              </select>
-              <button
-                type="button"
-                onClick={() => {
-                  setDirection((current) =>
-                    current === "asc" ? "desc" : "asc",
-                  );
-                  setPage(1);
-                }}
-                aria-label={
-                  direction === "asc"
-                    ? "Ordenação crescente"
-                    : "Ordenação decrescente"
-                }
-              >
-                {direction === "asc" ? "↑" : "↓"}
-              </button>
-            </div>
           </div>
         ) : null}
       </section>
@@ -1172,7 +1207,6 @@ export default function LeadsPage() {
                   : `${total} lead(s) · página ${page} de ${pages}`}
               </span>
             </div>
-            <StatusBadge tone="success">DADOS REAIS</StatusBadge>
           </div>
           {loading ? (
             <div className="p-5">
@@ -1241,15 +1275,23 @@ export default function LeadsPage() {
                       <th>Último contato</th>
                       <th>Próxima ação</th>
                       <th>
-                        <span className="sr-only">Abrir</span>
+                        <span className="sr-only">Ações rápidas</span>
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((lead) => {
                       const due = dueLabel(lead.next_action_at, referenceTime);
+                      const contact = phoneLinks(lead.phone);
+                      const hot = isHotLead(lead);
                       return (
-                        <tr key={lead.id}>
+                        <tr
+                          key={lead.id}
+                          data-overdue={due.overdue ? "true" : "false"}
+                          className={
+                            due.overdue ? "bg-rose-500/[0.04]" : undefined
+                          }
+                        >
                           {canTransfer ? (
                             <td>
                               <input
@@ -1273,10 +1315,13 @@ export default function LeadsPage() {
                                 {(lead.name || "L").slice(0, 2).toUpperCase()}
                               </span>
                               <span>
-                                <strong>{lead.name || "Lead sem nome"}</strong>
+                                <strong>
+                                  {hot ? "🔥 " : ""}
+                                  {lead.name || "Lead sem nome"}
+                                </strong>
                                 <small>
-                                  {lead.email ||
-                                    lead.phone ||
+                                  {lead.phone ||
+                                    lead.email ||
                                     "Contato não informado"}
                                 </small>
                               </span>
@@ -1289,25 +1334,26 @@ export default function LeadsPage() {
                             </small>
                             {lead.source === "Meta Lead Ads" ? (
                               <span className="mt-1 flex flex-wrap gap-1">
-                                <StatusBadge tone="info">META</StatusBadge>
                                 <StatusBadge
                                   tone={
                                     lead.metadata?.meta?.dataSharingConsent
                                       ? "success"
-                                      : "warning"
+                                      : "info"
                                   }
                                 >
-                                  {lead.metadata?.meta?.dataSharingConsent
-                                    ? "APRENDENDO"
-                                    : "SEM SINAL"}
+                                  <span
+                                    title={`${
+                                      lead.metadata?.meta?.dataSharingConsent
+                                        ? "Sinal de aprendizado ativo"
+                                        : "Sem sinal de aprendizado"
+                                    } · Campanha ${
+                                      lead.metadata?.meta?.campaignId ||
+                                      "não identificada"
+                                    }`}
+                                  >
+                                    META
+                                  </span>
                                 </StatusBadge>
-                                {lead.metadata?.meta?.campaignId ? (
-                                  <small>
-                                    Campanha {lead.metadata.meta.campaignId}
-                                  </small>
-                                ) : (
-                                  <small>Campanha não identificada</small>
-                                )}
                               </span>
                             ) : null}
                           </td>
@@ -1352,13 +1398,47 @@ export default function LeadsPage() {
                             </span>
                           </td>
                           <td>
-                            <Link
-                              href={`/leads/${lead.id}`}
-                              className="atlas-row-action"
-                              aria-label={`Abrir Lead 360 de ${lead.name || "lead"}`}
+                            <div
+                              className="atlas-kanban-primary-actions min-w-max"
+                              style={{ marginTop: 0 }}
+                              role="group"
+                              aria-label={`Ações rápidas para ${lead.name || "lead"}`}
                             >
-                              →
-                            </Link>
+                              <Link
+                                href={`/leads/${lead.id}`}
+                                title="Abrir Lead 360"
+                                aria-label={`Abrir Lead 360 de ${lead.name || "lead"}`}
+                              >
+                                👁️
+                              </Link>
+                              {contact ? (
+                                <a
+                                  href={contact.call}
+                                  title="Ligar"
+                                  aria-label={`Ligar para ${lead.name || "lead"}`}
+                                >
+                                  📞
+                                </a>
+                              ) : null}
+                              {contact ? (
+                                <a
+                                  href={contact.whatsapp}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="WhatsApp"
+                                  aria-label={`Abrir WhatsApp com ${lead.name || "lead"}`}
+                                >
+                                  💬
+                                </a>
+                              ) : null}
+                              <Link
+                                href={`/leads/${lead.id}/messages`}
+                                title="Abordagem com IA"
+                                aria-label={`Preparar abordagem com IA para ${lead.name || "lead"}`}
+                              >
+                                ✦
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1369,14 +1449,27 @@ export default function LeadsPage() {
               <div className="atlas-leads-mobile">
                 {items.map((lead) => {
                   const due = dueLabel(lead.next_action_at, referenceTime);
+                  const contact = phoneLinks(lead.phone);
+                  const hot = isHotLead(lead);
                   return (
-                    <Link href={`/leads/${lead.id}`} key={lead.id}>
-                      <div className="atlas-mobile-lead-head">
+                    <div
+                      key={lead.id}
+                      className="grid gap-3 border-t border-white/[0.06] px-0.5 py-4 first:border-t-0"
+                      data-overdue={due.overdue ? "true" : "false"}
+                    >
+                      <Link
+                        href={`/leads/${lead.id}`}
+                        className="atlas-mobile-lead-head min-h-11"
+                        aria-label={`Abrir Lead 360 de ${lead.name || "lead"}`}
+                      >
                         <span className="atlas-lead-avatar">
                           {(lead.name || "L").slice(0, 2).toUpperCase()}
                         </span>
                         <span>
-                          <strong>{lead.name || "Lead sem nome"}</strong>
+                          <strong>
+                            {hot ? "🔥 " : ""}
+                            {lead.name || "Lead sem nome"}
+                          </strong>
                           <small>{projectName(lead)}</small>
                         </span>
                         <span
@@ -1385,7 +1478,7 @@ export default function LeadsPage() {
                         >
                           {lead.score ?? 0}
                         </span>
-                      </div>
+                      </Link>
                       <div className="atlas-mobile-lead-meta">
                         <StatusBadge tone={statusTone(lead.status)}>
                           {lead.status || "novo"}
@@ -1427,7 +1520,43 @@ export default function LeadsPage() {
                           {due.label}
                         </span>
                       </div>
-                    </Link>
+                      <div
+                        className="atlas-leads-action-buttons"
+                        role="group"
+                        aria-label={`Ações rápidas para ${lead.name || "lead"}`}
+                      >
+                        <Link
+                          href={`/leads/${lead.id}`}
+                          aria-label={`Abrir Lead 360 de ${lead.name || "lead"}`}
+                        >
+                          👁️ Lead 360
+                        </Link>
+                        {contact ? (
+                          <a
+                            href={contact.call}
+                            aria-label={`Ligar para ${lead.name || "lead"}`}
+                          >
+                            📞 Ligar
+                          </a>
+                        ) : null}
+                        {contact ? (
+                          <a
+                            href={contact.whatsapp}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`Abrir WhatsApp com ${lead.name || "lead"}`}
+                          >
+                            💬 WhatsApp
+                          </a>
+                        ) : null}
+                        <Link
+                          href={`/leads/${lead.id}/messages`}
+                          aria-label={`Preparar abordagem com IA para ${lead.name || "lead"}`}
+                        >
+                          ✦ IA
+                        </Link>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
