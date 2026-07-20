@@ -6,6 +6,7 @@ import { resilientFetch } from "@/lib/http/resilient-fetch";
 import { integrationCatalog } from "@/lib/integrations/catalog";
 import { analyzeInboundWhatsApp } from "@/lib/ai/whatsapp-conversation-intelligence";
 import { resolveLeadOwner, recordDistribution } from "@/lib/distribution/hierarchical-cascade";
+import { metaGraphVersion, describeMetaGraphFailure } from "@/lib/meta/graph";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ type WhatsAppTemplate = { name: string; language: string };
 async function deliverWhatsApp(recipient: string, content: string, template?: WhatsAppTemplate) {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-  const apiVersion = process.env.META_GRAPH_API_VERSION || "v23.0";
+  const apiVersion = metaGraphVersion();
   if (!phoneNumberId || !accessToken) throw new Error("Credenciais do WhatsApp não configuradas.");
 
   const response = await resilientFetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
@@ -38,12 +39,12 @@ async function deliverWhatsApp(recipient: string, content: string, template?: Wh
 
 async function fetchMetaLead(externalLeadId: string) {
   const accessToken = process.env.META_LEAD_ACCESS_TOKEN;
-  const apiVersion = process.env.META_GRAPH_API_VERSION || "v23.0";
+  const apiVersion = metaGraphVersion();
   if (!accessToken) throw new Error("META_LEAD_ACCESS_TOKEN não configurado.");
   const fields = "id,created_time,ad_id,adset_id,campaign_id,form_id,field_data";
   const response = await resilientFetch(`https://graph.facebook.com/${apiVersion}/${encodeURIComponent(externalLeadId)}?fields=${fields}`, { headers: { Authorization: `Bearer ${accessToken}` } }, { timeoutMs: 30_000, retries: 2, operation: "Meta Lead Ads" });
   const data = await response.json() as { id?: string; created_time?: string; ad_id?: string; adset_id?: string; campaign_id?: string; form_id?: string; field_data?: Array<{ name: string; values?: string[] }>; error?: { message?: string } };
-  if (!response.ok) throw new Error(data.error?.message || `Meta Graph HTTP ${response.status}`);
+  if (!response.ok) throw new Error(describeMetaGraphFailure(response.status, data));
   return data;
 }
 
@@ -187,7 +188,7 @@ export async function POST(request: Request) {
         if (typeof meta.fbp === "string" && /^fb\.1\.\d{10,}\.\w+$/i.test(meta.fbp)) userData.fbp = meta.fbp.slice(0, 255);
         if (!userData.em && !userData.ph) throw new Error("Conversão sem e-mail ou telefone consentido para correspondência.");
         await admin.from("meta_conversion_events").update({ status: "processing", attempts: Number(conversion.attempts || 0) + 1, last_error: null }).eq("id", conversion.id);
-        const apiVersion = process.env.META_GRAPH_API_VERSION || "v23.0";
+        const apiVersion = metaGraphVersion();
         const response = await resilientFetch(`https://graph.facebook.com/${apiVersion}/${encodeURIComponent(config.dataset_id)}/events`, {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },

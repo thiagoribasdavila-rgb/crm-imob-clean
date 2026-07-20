@@ -24,6 +24,7 @@ import { createHash } from "node:crypto";
 import { canonicalPipelineStage } from "@/lib/atlas/pipeline-stages";
 import { DISCARD_TAXONOMY_VERSION, getDiscardReason } from "@/lib/atlas/discard-reasons";
 import { resilientFetch } from "@/lib/http/resilient-fetch";
+import { metaGraphVersion, describeMetaGraphFailure } from "@/lib/meta/graph";
 
 export const CAPI_SIGNAL_VERSION = "andromeda-v1";
 export const CAPI_QUALIFIED_SCORE_THRESHOLD = 70;
@@ -303,7 +304,7 @@ export async function sendCapiBatch(events: CapiEvent[]): Promise<CapiSendOutcom
     return { sent: false, reason: "empty_batch", message: "Nenhum evento elegível na janela — nada a enviar." };
   }
 
-  const apiVersion = process.env.META_GRAPH_API_VERSION || "v23.0";
+  const apiVersion = metaGraphVersion();
   const responses: unknown[] = [];
   for (let index = 0; index < events.length; index += CAPI_MAX_EVENTS_PER_REQUEST) {
     const batch = events.slice(index, index + CAPI_MAX_EVENTS_PER_REQUEST);
@@ -313,7 +314,7 @@ export async function sendCapiBatch(events: CapiEvent[]): Promise<CapiSendOutcom
       body: JSON.stringify({ data: batch }),
     }, { timeoutMs: 30_000, retries: 1, retryUnsafe: true, operation: "Meta Conversions API" });
     const data = await response.json() as { events_received?: number; error?: { message?: string } };
-    if (!response.ok) throw new Error(data.error?.message || `Meta CAPI HTTP ${response.status}`);
+    if (!response.ok) throw new Error(describeMetaGraphFailure(response.status, data));
     responses.push(data);
   }
 
