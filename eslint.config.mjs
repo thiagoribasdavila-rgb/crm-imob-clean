@@ -19,29 +19,19 @@ const eslintConfig = defineConfig([
     ".atlas-route-quarantine-*/**",
     "next-env.d.ts",
 
-    // Legacy and experimental surfaces preserved for architectural audit,
-    // but excluded from the V3 release gate until they are migrated.
-    "application/**",
+    // Somente superfícies legadas AINDA órfãs (pendentes de decisão de
+    // migração/remoção) ficam fora do gate. Código vivo é sempre lintado:
+    // lib/ai, lib/auth, lib/analytics, pipeline, tasks e kanban voltaram ao
+    // gate em 2026-07-20 (limpos por mérito próprio; órfãos com erro foram
+    // removidos em vez de silenciados). Entradas de caminhos já deletados
+    // foram podadas.
     "domain/**",
     "core/**",
     "components/crm/**",
     "components/analytics/**",
     "components/pipeline/**",
     "components/ui/ProtectedRoute.tsx",
-    "lib/ai/**",
-    "lib/analytics/**",
-    "lib/auth/**",
     "lib/data/**",
-    "lib/services/**",
-    "app/(atlas)/**",
-    "app/(crm)/kanban/**",
-    "app/(crm)/pipedrive/**",
-    "app/(crm)/pipeline/**",
-    "app/(crm)/leads/edit/**",
-    "app/(crm)/leads/table/**",
-    "app/(crm)/tasks/**",
-    "app/api/leads/**",
-    "middlewere.ts",
   ]),
 ]);
 

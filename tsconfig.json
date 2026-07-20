@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -13,9 +17,15 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [{ "name": "next" }],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
   "include": [
@@ -32,28 +42,13 @@
   ],
   "exclude": [
     "node_modules",
-    "app/(atlas)/**",
-    "app/(crm)/kanban/**",
-    "app/(crm)/pipedrive/**",
-    "app/(crm)/pipeline/[stage]/**",
-    "app/(crm)/pipeline/cold/**",
-    "app/(crm)/pipeline/hot/**",
-    "app/(crm)/pipeline/warm/**",
-    "app/(crm)/leads/edit/**",
-    "app/(crm)/leads/table/**",
-    "app/(crm)/tasks/[id]/**",
-    "app/api/leads/**",
     "components/crm/**",
     "components/analytics/**",
-    "components/providers/**",
-    "application/**",
     "core/**",
     "domain/**",
     "lib/ai/**",
     "lib/analytics/**",
     "lib/auth/**",
-    "lib/data/**",
-    "lib/services/**",
-    "middlewere.ts"
+    "lib/data/**"
   ]
 }
