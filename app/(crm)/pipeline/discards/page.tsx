@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
@@ -26,24 +26,38 @@ export default function PipelineDiscardsPage() {
   const [report, setReport] = useState<DiscardReport | null>(null);
   const [status, setStatus] = useState<ReportStatus>("loading");
 
+  // Aborta o request anterior ao trocar a janela (7→90 rápido) — sem isso,
+  // uma resposta fora de ordem podia exibir dados da janela errada.
+  const abortRef = useRef<AbortController | null>(null);
+
   const loadReport = useCallback(async (window: WindowDays) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setStatus("loading");
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
       if (!token) throw new Error("Sessão expirada. Entre novamente.");
-      const response = await fetch(`/api/v1/analytics/discard-report?days=${window}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const response = await fetch(`/api/v1/analytics/discard-report?days=${window}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: controller.signal });
+      if (controller.signal.aborted) return;
       if (response.status === 401 || response.status === 403) { setStatus("restricted"); return; }
       const payload = await response.json();
+      if (controller.signal.aborted) return;
       if (!response.ok || payload?.ok !== true) throw new Error("O relatório não pôde ser carregado.");
       setReport(payload.data as DiscardReport);
       setStatus("ready");
     } catch {
+      // Abort não é erro: o request mais novo é dono do estado da tela.
+      if (controller.signal.aborted) return;
       setStatus("error");
     }
   }, []);
 
-  useEffect(() => { void loadReport(days); }, [days, loadReport]);
+  useEffect(() => {
+    void loadReport(days);
+    return () => abortRef.current?.abort();
+  }, [days, loadReport]);
 
   const loading = status === "loading";
   const hasData = status === "ready" && report !== null && report.totals.discarded > 0;

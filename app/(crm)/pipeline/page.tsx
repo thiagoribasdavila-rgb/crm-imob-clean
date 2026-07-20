@@ -574,12 +574,39 @@ export default function PipelinePage() {
         </div>
       </AtlasCard> : null}
       {discardDraft ? <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center" role="presentation" onClick={() => setDiscardDraft(null)}>
-        <div ref={discardPanelRef} role="dialog" aria-modal="true" aria-labelledby="discard-panel-title" aria-describedby="discard-panel-description" tabIndex={-1} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setDiscardDraft(null); } }} className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-black/40 outline-none sm:p-6">
+        <div ref={discardPanelRef} role="dialog" aria-modal="true" aria-labelledby="discard-panel-title" aria-describedby="discard-panel-description" tabIndex={-1} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
+          if (event.key === "Escape") { event.preventDefault(); setDiscardDraft(null); return; }
+          // Focus trap: Tab circula dentro do painel (dívida registrada na onda 2).
+          if (event.key === "Tab") {
+            const panel = discardPanelRef.current;
+            if (!panel) return;
+            const focusables = Array.from(panel.querySelectorAll<HTMLElement>("button:not([disabled]), input, [tabindex='0']"));
+            if (!focusables.length) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            const active = document.activeElement as HTMLElement | null;
+            if (event.shiftKey) {
+              if (active === first || active === panel) { event.preventDefault(); last.focus(); }
+            } else if (active === last || active === panel) { event.preventDefault(); first.focus(); }
+          }
+        }} className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-black/40 outline-none sm:p-6">
           <p className="text-xs font-semibold uppercase tracking-[.14em] text-rose-300">Descarte com aprendizado</p>
           <h3 id="discard-panel-title" className="mt-1 text-lg font-semibold text-white">Por que descartar {discardDraft.leadName}?</h3>
           <p id="discard-panel-description" className="mt-1 text-xs leading-5 text-slate-500">O motivo alimenta o relatório Andromeda e permanece interno. A lead só sai de {destinationOptions.find((item) => item.key === discardDraft.fromStage)?.label || "sua etapa"} depois da confirmação.</p>
-          <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Motivo do descarte">
-            {DISCARD_REASONS.map((reason) => <button key={reason.key} type="button" role="radio" aria-checked={discardDraft.reasonKey === reason.key} onClick={() => setDiscardDraft((current) => (current ? { ...current, reasonKey: reason.key } : current))} className={`w-full rounded-2xl border px-4 py-3 text-left transition ${discardDraft.reasonKey === reason.key ? "border-rose-400/40 bg-rose-400/10" : "border-white/[0.07] bg-white/[0.025] hover:border-white/15"}`}>
+          <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Motivo do descarte" onKeyDown={(event) => {
+            // Navegação por setas com roving tabindex (dívida registrada na onda 2).
+            if (!["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) return;
+            event.preventDefault();
+            const keys = DISCARD_REASONS.map((item) => item.key);
+            const delta = event.key === "ArrowDown" || event.key === "ArrowRight" ? 1 : -1;
+            const currentIndex = discardDraft.reasonKey ? keys.indexOf(discardDraft.reasonKey) : -1;
+            const nextKey = currentIndex === -1
+              ? keys[delta > 0 ? 0 : keys.length - 1]
+              : keys[(currentIndex + delta + keys.length) % keys.length];
+            setDiscardDraft((current) => (current ? { ...current, reasonKey: nextKey } : current));
+            event.currentTarget.querySelector<HTMLButtonElement>(`[data-reason-key="${nextKey}"]`)?.focus();
+          }}>
+            {DISCARD_REASONS.map((reason, reasonIndex) => <button key={reason.key} type="button" role="radio" data-reason-key={reason.key} tabIndex={discardDraft.reasonKey === reason.key || (!discardDraft.reasonKey && reasonIndex === 0) ? 0 : -1} aria-checked={discardDraft.reasonKey === reason.key} onClick={() => setDiscardDraft((current) => (current ? { ...current, reasonKey: reason.key } : current))} className={`w-full rounded-2xl border px-4 py-3 text-left transition ${discardDraft.reasonKey === reason.key ? "border-rose-400/40 bg-rose-400/10" : "border-white/[0.07] bg-white/[0.025] hover:border-white/15"}`}>
               <span className={`block text-sm font-semibold ${discardDraft.reasonKey === reason.key ? "text-rose-100" : "text-slate-200"}`}>{reason.label}</span>
               <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">{reason.description}</span>
             </button>)}
