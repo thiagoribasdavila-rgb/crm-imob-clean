@@ -13,7 +13,6 @@ const baseUrl = process.env.ATLAS_BASE_URL.replace(/\/$/, "");
 if (!/^https:\/\//i.test(baseUrl) || /(?:seu-dom[ií]nio|example|localhost)/i.test(baseUrl)) throw new Error("ATLAS_BASE_URL deve ser o domínio HTTPS real da homologação.");
 const recoveryInbox = process.env.ATLAS_RECOVERY_INBOX.trim().toLowerCase();
 if (!/^\S+@\S+\.\S+$/.test(recoveryInbox)) throw new Error("ATLAS_RECOVERY_INBOX inválido.");
-const [recoveryLocal, recoveryDomain] = recoveryInbox.split("@");
 
 // Roster oficial do piloto (aprovado 2026-07-20).
 // O trigger private.validate_commercial_hierarchy (migration official_auth_rbac) impõe
@@ -29,12 +28,12 @@ const [recoveryLocal, recoveryDomain] = recoveryInbox.split("@");
 // diretores operacionais) + role='admin' (poderes de admin na RLS). Perfis inativos
 // pulam a validação de hierarquia — é assim que o reset aposenta os antigos como legado.
 const definitions = [
-  { key: "THIAGO",  name: "Thiago Ribas D'Avila", accessRole: "director_decisor", role: "admin",    commercialRole: "director", supervisor: null },
-  { key: "SENNA",   name: "Senna",                accessRole: "director",         role: "director", commercialRole: "manager",  supervisor: "THIAGO" },
-  { key: "DIEGO",   name: "Diego",                accessRole: "director",         role: "manager",  commercialRole: "manager",  supervisor: "THIAGO" },
-  { key: "LUCIANO", name: "Luciano",              accessRole: "director",         role: "manager",  commercialRole: "manager",  supervisor: "THIAGO" },
-  { key: "ADOLFO",  name: "Adolfo",               accessRole: "broker",           role: "broker",   commercialRole: "broker",   supervisor: "DIEGO" },
-].map((item) => ({ ...item, email: (process.env[`ATLAS_INITIAL_${item.key}_EMAIL`] || `${recoveryLocal}+atlas-${item.key.toLowerCase()}@${recoveryDomain}`).trim().toLowerCase() }));
+  { key: "THIAGO",  name: "Thiago Ribas D'Avila", accessRole: "director_decisor", role: "admin",    commercialRole: "director", supervisor: null,    defaultEmail: "thiago@atlasaios.com.br" },
+  { key: "SENNA",   name: "Senna",                accessRole: "director",         role: "director", commercialRole: "manager",  supervisor: "THIAGO", defaultEmail: "senna@atlasaios.com.br" },
+  { key: "DIEGO",   name: "Diego",                accessRole: "director",         role: "manager",  commercialRole: "manager",  supervisor: "THIAGO", defaultEmail: "diego@atlasaios.com.br" },
+  { key: "LUCIANO", name: "Luciano",              accessRole: "director",         role: "manager",  commercialRole: "manager",  supervisor: "THIAGO", defaultEmail: "luciano@atlasaios.com.br" },
+  { key: "ADOLFO",  name: "Adolfo",               accessRole: "broker",           role: "broker",   commercialRole: "broker",   supervisor: "DIEGO",  defaultEmail: "adolfo@atlasaios.com.br" },
+].map((item) => ({ ...item, email: (process.env[`ATLAS_INITIAL_${item.key}_EMAIL`] || item.defaultEmail).trim().toLowerCase() }));
 
 const invalid = definitions.filter((item) => !/^\S+@\S+\.\S+$/.test(item.email));
 if (invalid.length) throw new Error(`Preencha os e-mails oficiais: ${invalid.map((item) => `ATLAS_INITIAL_${item.key}_EMAIL`).join(", ")}`);
@@ -74,11 +73,10 @@ const { error: deactivateError } = await admin.from("profiles").update({ active:
 if (deactivateError) throw deactivateError;
 
 const ids = new Map();
-const credentials = [];
+const invites = [];
 for (const item of definitions) {
   const password = `${randomBytes(18).toString("base64url")}!Aa7`;
   let user = authUsers.find((candidate) => candidate.email?.toLowerCase() === item.email);
-  const isExisting = Boolean(user);
   if (!user) {
     const { data, error } = await admin.auth.admin.createUser({ email: item.email, password, email_confirm: true, user_metadata: { full_name: item.name }, app_metadata: { organization_id: organizationId, access_role: item.accessRole } });
     if (error || !data.user) throw error || new Error(`Falha ao criar ${item.key}.`);
@@ -89,19 +87,22 @@ for (const item of definitions) {
   const reportsTo = item.supervisor ? ids.get(item.supervisor) : null;
   const { error: profileError } = await admin.from("profiles").upsert({ id: user.id, organization_id: organizationId, full_name: item.name, role: item.role, access_role: item.accessRole, commercial_role: item.commercialRole, reports_to: reportsTo, active: true }, { onConflict: "id" });
   if (profileError) throw profileError;
-  if (isExisting) {
-    const { error: recoveryError } = await admin.auth.resetPasswordForEmail(item.email, { redirectTo: `${baseUrl}/auth/callback?next=/reset-password` });
-    if (recoveryError) throw recoveryError;
-  }
-  credentials.push({ name: item.name, email: item.email, password });
+  // Fluxo de LINK DE DEFINIÇÃO: todo usuário (novo ou existente) recebe um link para
+  // DEFINIR a própria senha no 1º acesso. A senha aleatória acima é descartável e nunca
+  // é exposta/gravada — obriga a definição real (não há senha conhecida para pular).
+  // Requer SMTP configurado no Supabase Auth para o e-mail sair.
+  const { error: recoveryError } = await admin.auth.resetPasswordForEmail(item.email, { redirectTo: `${baseUrl}/auth/callback?next=/reset-password` });
+  if (recoveryError) throw recoveryError;
+  invites.push({ name: item.name, email: item.email });
   ids.set(item.key, user.id);
 }
-if (credentials.length) {
+if (invites.length) {
+  // Resumo NÃO sensível (sem senha): quem recebeu o link de definição de senha.
   const outputDirectory = resolve(process.cwd(), "outputs");
-  const outputFile = resolve(outputDirectory, "official-access-credentials.txt");
+  const outputFile = resolve(outputDirectory, "official-access-invites.txt");
   mkdirSync(outputDirectory, { recursive: true, mode: 0o700 });
-  writeFileSync(outputFile, `${credentials.map((item) => `${item.name}\nLogin: ${item.email}\nSenha temporária: ${item.password}`).join("\n\n")}\n`, { mode: 0o600 });
+  writeFileSync(outputFile, `${invites.map((item) => `${item.name}\nLogin: ${item.email}\nLink de definição de senha enviado por e-mail (1º acesso).`).join("\n\n")}\n`, { mode: 0o600 });
   chmodSync(outputFile, 0o600);
-  console.log(`Credenciais novas gravadas localmente em ${outputFile}.`);
+  console.log(`Resumo (sem senha) gravado em ${outputFile}.`);
 }
-console.log(`RBAC oficial aplicado: ${definitions.length} acessos ativos; contas antigas classificadas como legado (bloqueadas, NÃO excluídas); dados (leads/clientes/histórico/projetos) intactos; senhas não armazenadas.`);
+console.log(`RBAC oficial aplicado: ${definitions.length} acessos criados com LINK DE DEFINIÇÃO de senha (1º acesso); nenhuma senha armazenada/logada; contas antigas = legado (bloqueadas, NÃO excluídas); dados (leads/clientes/histórico/projetos) intactos.`);
