@@ -221,6 +221,27 @@ const criticalGateLabels: Record<string, string> = {
   restoreEvidence: "Restauração",
 };
 
+// Preferências locais do Command Center (mesmo padrão do pipeline): chave
+// versionada em sessionStorage, hidratação com try/catch e flag antes de gravar.
+const COMMAND_CENTER_PREFERENCES_KEY = "atlas:command-center-preferences:v1";
+
+type LayerKey = "ia" | "operacao" | "fila" | "feed";
+
+type CollapsedLayers = Record<LayerKey, boolean>;
+
+const defaultCollapsedLayers: CollapsedLayers = {
+  ia: false,
+  operacao: false,
+  fila: false,
+  feed: false,
+};
+
+type CommandCenterPreferences = {
+  collapsed?: Partial<CollapsedLayers>;
+  density?: "compact" | "comfortable";
+  seenSignalIds?: string[];
+};
+
 // Profundidade 3D sutil: perspective própria no transform (autocontida) e tudo
 // condicionado a motion-safe — sob prefers-reduced-motion nada se move.
 const depthShell =
@@ -427,6 +448,35 @@ function Sparkline({ points, label }: { points: number[]; label: string }) {
   );
 }
 
+// Chevron de camada: recolhe apenas o corpo — os fetches continuam rodando e os
+// contadores do cabeçalho continuam vivos com a camada colapsada.
+function LayerToggle({
+  collapsed,
+  onToggle,
+  layerLabel,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+  layerLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? `Expandir camada ${layerLabel}` : `Recolher camada ${layerLabel}`}
+      className={quickActionClass}
+    >
+      <span
+        aria-hidden="true"
+        className={`inline-block motion-safe:transition-transform motion-safe:duration-200 ${collapsed ? "-rotate-90" : ""}`}
+      >
+        ⌄
+      </span>
+    </button>
+  );
+}
+
 export default function CommandCenterPage() {
   const [snapshot, setSnapshot] = useState<SnapshotData>(emptySnapshot);
   const [moduleHealth, setModuleHealth] = useState<ModuleHealth[]>([]);
@@ -448,6 +498,15 @@ export default function CommandCenterPage() {
   const [fetchLatency, setFetchLatency] = useState<Record<string, number>>({});
   // Relógio de 30s para "atualizado há Xs" e para o ticker do feed.
   const [nowTick, setNowTick] = useState(() => Date.now());
+  // CC-3 · experiência: modo apresentação, preferências locais e triagem de sinais.
+  const [presentationMode, setPresentationMode] = useState(false);
+  const [presentationAnnouncement, setPresentationAnnouncement] = useState("");
+  const presentationAnnouncedRef = useRef(false);
+  const [collapsedLayers, setCollapsedLayers] = useState<CollapsedLayers>(defaultCollapsedLayers);
+  const [density, setDensity] = useState<"compact" | "comfortable">("comfortable");
+  const [seenSignalIds, setSeenSignalIds] = useState<string[]>([]);
+  const [showSeenSignals, setShowSeenSignals] = useState(false);
+  const [preferencesHydrated, setPreferencesHydrated] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -535,6 +594,136 @@ export default function CommandCenterPage() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [load]);
+
+  // Preferências persistidas (mesmo padrão do pipeline): hidrata uma vez com
+  // try/catch e só grava depois de hidratado, em chave versionada.
+  useEffect(() => {
+    try {
+      const saved = window.sessionStorage.getItem(COMMAND_CENTER_PREFERENCES_KEY);
+      if (saved) {
+        const preferences = JSON.parse(saved) as CommandCenterPreferences;
+        if (preferences.collapsed) {
+          setCollapsedLayers((current) => ({ ...current, ...preferences.collapsed }));
+        }
+        if (preferences.density === "compact" || preferences.density === "comfortable") {
+          setDensity(preferences.density);
+        }
+        if (Array.isArray(preferences.seenSignalIds)) {
+          setSeenSignalIds(
+            preferences.seenSignalIds.filter((id): id is string => typeof id === "string"),
+          );
+        }
+      }
+    } catch {
+      window.sessionStorage.removeItem(COMMAND_CENTER_PREFERENCES_KEY);
+    } finally {
+      setPreferencesHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesHydrated) return;
+    window.sessionStorage.setItem(
+      COMMAND_CENTER_PREFERENCES_KEY,
+      JSON.stringify({ collapsed: collapsedLayers, density, seenSignalIds }),
+    );
+  }, [collapsedLayers, density, preferencesHydrated, seenSignalIds]);
+
+  // Modo apresentação: fullscreen quando a API existir; sem ela o modo segue
+  // apenas visual na página (fallback silencioso).
+  const togglePresentation = useCallback(() => {
+    setPresentationMode((current) => {
+      const next = !current;
+      try {
+        if (next && typeof document.documentElement.requestFullscreen === "function") {
+          void document.documentElement.requestFullscreen().catch(() => {});
+        } else if (
+          !next &&
+          document.fullscreenElement &&
+          typeof document.exitFullscreen === "function"
+        ) {
+          void document.exitFullscreen().catch(() => {});
+        }
+      } catch {
+        // Sem fullscreen disponível: o modo apresentação continua só visual.
+      }
+      return next;
+    });
+  }, []);
+
+  // Sincroniza o estado quando o usuário sai do fullscreen pelo próprio
+  // navegador (Esc nativo, gesto do sistema); listener com cleanup.
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) setPresentationMode(false);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  // Atalho f = modo apresentação (mesma disciplina do atalho r: ignora campos de
+  // texto e modificadores); Esc cobre o fallback sem fullscreen nativo.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const isF = event.key === "f" || event.key === "F";
+      const isEscape = event.key === "Escape";
+      if (!isF && !isEscape) return;
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) {
+          return;
+        }
+      }
+      if (isF) {
+        event.preventDefault();
+        togglePresentation();
+        return;
+      }
+      // Esc: dentro do fullscreen nativo quem responde é o fullscreenchange acima.
+      if (presentationMode && !document.fullscreenElement) setPresentationMode(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [presentationMode, togglePresentation]);
+
+  // Anúncio acessível do modo apresentação (aria-live polite), pulando o mount.
+  useEffect(() => {
+    if (!presentationAnnouncedRef.current) {
+      presentationAnnouncedRef.current = true;
+      return;
+    }
+    setPresentationAnnouncement(
+      presentationMode
+        ? "Modo apresentação ativado. Pressione Esc ou f para sair."
+        : "Modo apresentação desativado.",
+    );
+  }, [presentationMode]);
+
+  // Poda dos ids vistos: mantém apenas ids presentes na resposta atual, para o
+  // armazenamento local não crescer para sempre.
+  useEffect(() => {
+    if (!preferencesHydrated) return;
+    if (!briefing && !brokerDaily) return;
+    const currentIds = new Set<string>();
+    for (const signal of briefing?.signals ?? []) currentIds.add(signal.id);
+    for (const item of brokerDaily?.attention.queue ?? []) currentIds.add(item.leadId);
+    setSeenSignalIds((current) => {
+      const next = current.filter((id) => currentIds.has(id));
+      return next.length === current.length ? current : next;
+    });
+  }, [briefing, brokerDaily, preferencesHydrated]);
+
+  const toggleLayer = useCallback((layer: LayerKey) => {
+    setCollapsedLayers((current) => ({ ...current, [layer]: !current[layer] }));
+  }, []);
+
+  const toggleSignalSeen = useCallback((id: string) => {
+    setSeenSignalIds((current) =>
+      current.includes(id) ? current.filter((seenId) => seenId !== id) : [...current, id],
+    );
+  }, []);
 
   const referenceTime = lastUpdated?.getTime() ?? 0;
   const viewer = snapshot.profiles.find((profile) => String(profile.id) === viewerId);
@@ -810,6 +999,26 @@ export default function CommandCenterPage() {
     (key) => `${key} ${fetchLatency[key]}ms`,
   );
 
+  // CC-3 · derivados de experiência: densidade, escala de apresentação e triagem.
+  const layerBodyPad = density === "compact" ? "p-4" : "p-5 sm:p-6";
+  const metricValueClass = presentationMode
+    ? "tabular-nums text-[1.5em] leading-tight"
+    : "tabular-nums";
+  const seenSignalSet = useMemo(() => new Set(seenSignalIds), [seenSignalIds]);
+  const brokerAttentionQueue = brokerDaily?.attention.queue ?? [];
+  const briefingSignals = briefing?.signals ?? [];
+  const iaSignalIds = isBroker
+    ? brokerAttentionQueue.map((item) => item.leadId)
+    : briefingSignals.map((signal) => signal.id);
+  const iaSeenCount = iaSignalIds.filter((id) => seenSignalSet.has(id)).length;
+  const iaNewCount = iaSignalIds.length - iaSeenCount;
+  const visibleAttentionQueue = brokerAttentionQueue.filter(
+    (item) => showSeenSignals || !seenSignalSet.has(item.leadId),
+  );
+  const visibleBriefingSignals = briefingSignals.filter(
+    (signal) => showSeenSignals || !seenSignalSet.has(signal.id),
+  );
+
   const liveFeed = useMemo(() => {
     const reference = referenceTime;
     const dayMs = 86_400_000;
@@ -967,7 +1176,14 @@ export default function CommandCenterPage() {
   }
 
   return (
-    <div className="space-y-5 pb-12 [perspective:1400px]" data-page="command-center-live">
+    <div
+      className={`${density === "compact" ? "space-y-3" : "space-y-5"} pb-12 [perspective:1400px]`}
+      data-page="command-center-live"
+      data-presentation={presentationMode ? "true" : undefined}
+    >
+      <span role="status" aria-live="polite" className="sr-only">
+        {presentationAnnouncement}
+      </span>
       <section
         aria-label="Estado da sala de comando"
         className={`atlas-panel flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5 sm:p-6 ${depthShellSoft}`}
@@ -1000,14 +1216,37 @@ export default function CommandCenterPage() {
                 ? `Atualizado às ${lastUpdated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
                 : "Sincronizando"}
           </span>
+          {!presentationMode ? (
+            <button
+              type="button"
+              onClick={() =>
+                setDensity((current) => (current === "compact" ? "comfortable" : "compact"))
+              }
+              aria-pressed={density === "compact"}
+              aria-label="Alternar densidade entre compacta e confortável"
+              className="atlas-button-secondary min-h-11"
+            >
+              {density === "compact" ? "Compacta" : "Confortável"}
+            </button>
+          ) : null}
+          {!presentationMode ? (
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={loading}
+              aria-label="Atualizar a sala de comando"
+              className="atlas-button-secondary min-h-11 min-w-11 disabled:cursor-wait disabled:opacity-60"
+            >
+              ↻
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={() => void load()}
-            disabled={loading}
-            aria-label="Atualizar a sala de comando"
-            className="atlas-button-secondary min-h-11 min-w-11 disabled:cursor-wait disabled:opacity-60"
+            onClick={togglePresentation}
+            aria-pressed={presentationMode}
+            className="atlas-button-secondary min-h-11"
           >
-            ↻
+            {presentationMode ? "Sair da apresentação" : "Modo apresentação"}
           </button>
         </div>
       </section>
@@ -1060,6 +1299,12 @@ export default function CommandCenterPage() {
             </kbd>{" "}
             atualizar
           </span>
+          <span className="text-[11px] text-slate-600">
+            <kbd className="rounded border border-white/[.12] bg-white/[.03] px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+              f
+            </kbd>{" "}
+            apresentação
+          </span>
         </div>
       </section>
 
@@ -1078,16 +1323,16 @@ export default function CommandCenterPage() {
         className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [transform-style:preserve-3d]"
       >
         <div className={depthShellSoft}>
-          <AtlasMetric label="Leads ativos" value={<span className="tabular-nums">{activeDisplay}</span>} detail="Base em atendimento no seu escopo" tone="blue" />
+          <AtlasMetric label="Leads ativos" value={<span className={metricValueClass}>{activeDisplay}</span>} detail="Base em atendimento no seu escopo" tone="blue" />
         </div>
         <div className={depthShellSoft}>
-          <AtlasMetric label="Leads quentes" value={<span className="tabular-nums">{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
+          <AtlasMetric label="Leads quentes" value={<span className={metricValueClass}>{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
         </div>
         <div className={depthShellSoft}>
-          <AtlasMetric label="Tarefas atrasadas" value={<span className="tabular-nums">{overdueDisplay}</span>} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
+          <AtlasMetric label="Tarefas atrasadas" value={<span className={metricValueClass}>{overdueDisplay}</span>} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
         </div>
         <div className={depthShellSoft}>
-          <AtlasMetric label="Sem responsável" value={<span className="tabular-nums">{unassignedDisplay}</span>} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
+          <AtlasMetric label="Sem responsável" value={<span className={metricValueClass}>{unassignedDisplay}</span>} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
         </div>
       </section>
 
@@ -1102,12 +1347,23 @@ export default function CommandCenterPage() {
               title="Agora"
               description="Novos leads e movimentos recentes, atualizados automaticamente."
               action={
-                <AtlasBadge tone={liveConnected ? "success" : "neutral"}>
-                  {liveConnected ? "TEMPO REAL" : "ATUALIZAÇÃO SEGURA"}
-                </AtlasBadge>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <span className="text-xs tabular-nums text-slate-500">
+                    {liveFeed.length} movimento(s)
+                  </span>
+                  <AtlasBadge tone={liveConnected ? "success" : "neutral"}>
+                    {liveConnected ? "TEMPO REAL" : "ATUALIZAÇÃO SEGURA"}
+                  </AtlasBadge>
+                  <LayerToggle
+                    collapsed={collapsedLayers.feed}
+                    onToggle={() => toggleLayer("feed")}
+                    layerLabel="feed ao vivo"
+                  />
+                </div>
               }
             />
-            <div className="border-t border-white/[.06] p-5 sm:p-6">
+            {collapsedLayers.feed ? null : (
+            <div className={`border-t border-white/[.06] ${layerBodyPad}`}>
               {liveFeed.length ? (
                 <ul className="grid gap-2" aria-live="polite">
                   {liveFeed.map((event) => (
@@ -1138,6 +1394,7 @@ export default function CommandCenterPage() {
                 />
               )}
             </div>
+            )}
           </AtlasCard>
         </div>
 
@@ -1152,40 +1409,89 @@ export default function CommandCenterPage() {
                   : "Sinais priorizados por severidade dentro do seu escopo autorizado."
               }
               action={
-                briefing && !isBroker ? (
-                  <AtlasBadge tone={briefing.status === "critical" ? "danger" : briefing.status === "attention" ? "warning" : "success"}>
-                    {briefing.status === "critical" ? "CRÍTICO" : briefing.status === "attention" ? "ATENÇÃO" : "SAUDÁVEL"}
-                  </AtlasBadge>
-                ) : undefined
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <span className="text-xs tabular-nums text-slate-500">
+                    {iaNewCount} novos · {iaSeenCount} vistos
+                  </span>
+                  {iaSeenCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowSeenSignals((current) => !current)}
+                      aria-pressed={showSeenSignals}
+                      className="inline-flex min-h-11 items-center rounded-full border border-white/[.07] bg-white/[.02] px-4 text-xs font-medium text-slate-300 transition-colors hover:border-white/[.12] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                    >
+                      {showSeenSignals ? "Ocultar vistos" : "Mostrar vistos"}
+                    </button>
+                  ) : null}
+                  {briefing && !isBroker ? (
+                    <AtlasBadge tone={briefing.status === "critical" ? "danger" : briefing.status === "attention" ? "warning" : "success"}>
+                      {briefing.status === "critical" ? "CRÍTICO" : briefing.status === "attention" ? "ATENÇÃO" : "SAUDÁVEL"}
+                    </AtlasBadge>
+                  ) : null}
+                  <LayerToggle
+                    collapsed={collapsedLayers.ia}
+                    onToggle={() => toggleLayer("ia")}
+                    layerLabel="IA"
+                  />
+                </div>
               }
             />
-            <div className="border-t border-white/[.06] p-5 sm:p-6">
+            {collapsedLayers.ia ? null : (
+            <div className={`border-t border-white/[.06] ${layerBodyPad}`}>
               {isBroker ? (
                 !brokerDaily ? (
                   <AtlasSkeleton className="h-48 w-full" />
-                ) : brokerDaily.attention.queue.length ? (
+                ) : visibleAttentionQueue.length ? (
                   <ul className="grid gap-2">
-                    {brokerDaily.attention.queue.slice(0, 6).map((item) => (
-                      <li key={item.leadId}>
-                        <Link
-                          href={`/leads/${item.leadId}`}
-                          className="block rounded-xl border border-white/[.06] bg-white/[.02] p-4 transition-colors hover:border-white/[.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                    {visibleAttentionQueue.slice(0, 6).map((item) => {
+                      const seen = seenSignalSet.has(item.leadId);
+                      return (
+                        <li
+                          key={item.leadId}
+                          className={`rounded-xl border border-white/[.06] bg-white/[.02] p-4 transition-colors hover:border-white/[.12] ${seen ? "opacity-60" : ""}`}
                         >
-                          <span className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-sm font-medium text-white">{item.leadName}</span>
-                            <AtlasBadge tone={attentionTone(item.topSeverity)}>
-                              {item.topSeverity === "critical" ? "CRÍTICO" : item.topSeverity === "warning" ? "ATENÇÃO" : "INFO"}
-                            </AtlasBadge>
-                          </span>
-                          <span className="mt-1 block text-xs text-slate-400">{item.topReason}</span>
-                          <span className="mt-1 block text-xs text-slate-500">
-                            Score {item.score} · etapa {item.status}
-                            {item.signals.length > 1 ? ` · +${item.signals.length - 1} sinal(is)` : ""}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
+                          <div className="flex items-start justify-between gap-3">
+                            <Link
+                              href={`/leads/${item.leadId}`}
+                              className="min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                            >
+                              <span className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-sm font-medium text-white">{item.leadName}</span>
+                                <AtlasBadge tone={attentionTone(item.topSeverity)}>
+                                  {item.topSeverity === "critical" ? "CRÍTICO" : item.topSeverity === "warning" ? "ATENÇÃO" : "INFO"}
+                                </AtlasBadge>
+                              </span>
+                              <span className="mt-1 block text-xs text-slate-400">{item.topReason}</span>
+                              <span className="mt-1 block text-xs text-slate-500">
+                                Score {item.score} · etapa {item.status}
+                                {item.signals.length > 1 ? ` · +${item.signals.length - 1} sinal(is)` : ""}
+                              </span>
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => toggleSignalSeen(item.leadId)}
+                              aria-pressed={seen}
+                              aria-label={
+                                seen
+                                  ? `Marcar sinal de ${item.leadName} como não visto`
+                                  : `Marcar sinal de ${item.leadName} como visto`
+                              }
+                              title={seen ? "Marcar como não visto" : "Marcar como visto"}
+                              className={quickActionClass}
+                            >
+                              <span aria-hidden="true">✓</span>
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
+                ) : brokerAttentionQueue.length ? (
+                  <AtlasEmpty
+                    reason="completed"
+                    title="Sinais triados"
+                    description={`Todos os ${brokerAttentionQueue.length} sinais foram marcados como vistos. Use "Mostrar vistos" para revê-los.`}
+                  />
                 ) : (
                   <AtlasEmpty
                     reason="completed"
@@ -1201,34 +1507,63 @@ export default function CommandCenterPage() {
                 />
               ) : !briefing ? (
                 <AtlasSkeleton className="h-48 w-full" />
+              ) : !visibleBriefingSignals.length && briefingSignals.length ? (
+                <AtlasEmpty
+                  reason="completed"
+                  title="Sinais triados"
+                  description={`Todos os ${briefingSignals.length} sinais foram marcados como vistos. Use "Mostrar vistos" para revê-los.`}
+                />
               ) : (
                 <ul className="grid gap-2">
-                  {briefing.signals.slice(0, 6).map((signal) => (
-                    <li key={signal.id} className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-white">{signal.title}</span>
-                        <AtlasBadge tone={briefingTone(signal.severity)}>
-                          {signal.severity === "critical"
-                            ? "CRÍTICO"
-                            : signal.severity === "attention"
-                              ? "ATENÇÃO"
-                              : signal.severity === "opportunity"
-                                ? "OPORTUNIDADE"
-                                : "SAUDÁVEL"}
-                        </AtlasBadge>
-                      </div>
-                      <p className="mt-1 text-xs leading-5 text-slate-400">{signal.evidence}</p>
-                      <Link
-                        href={signal.href}
-                        className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                  {visibleBriefingSignals.slice(0, 6).map((signal) => {
+                    const seen = seenSignalSet.has(signal.id);
+                    return (
+                      <li
+                        key={signal.id}
+                        className={`rounded-xl border border-white/[.06] bg-white/[.02] p-4 ${seen ? "opacity-60" : ""}`}
                       >
-                        {signal.action} →
-                      </Link>
-                    </li>
-                  ))}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-sm font-medium text-white">{signal.title}</span>
+                          <span className="flex items-center gap-2">
+                            <AtlasBadge tone={briefingTone(signal.severity)}>
+                              {signal.severity === "critical"
+                                ? "CRÍTICO"
+                                : signal.severity === "attention"
+                                  ? "ATENÇÃO"
+                                  : signal.severity === "opportunity"
+                                    ? "OPORTUNIDADE"
+                                    : "SAUDÁVEL"}
+                            </AtlasBadge>
+                            <button
+                              type="button"
+                              onClick={() => toggleSignalSeen(signal.id)}
+                              aria-pressed={seen}
+                              aria-label={
+                                seen
+                                  ? `Marcar sinal ${signal.title} como não visto`
+                                  : `Marcar sinal ${signal.title} como visto`
+                              }
+                              title={seen ? "Marcar como não visto" : "Marcar como visto"}
+                              className={quickActionClass}
+                            >
+                              <span aria-hidden="true">✓</span>
+                            </button>
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-slate-400">{signal.evidence}</p>
+                        <Link
+                          href={signal.href}
+                          className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                        >
+                          {signal.action} →
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
+            )}
           </AtlasCard>
         </div>
       </section>
@@ -1242,16 +1577,24 @@ export default function CommandCenterPage() {
                 title="Fila do dia"
                 description="Quem atender agora, por que entrou na fila e a próxima melhor ação — com atalhos de um clique."
                 action={
-                  brokerDaily ? (
-                    <AtlasBadge tone={brokerDaily.priorities.length ? "info" : "success"}>
-                      {brokerDaily.priorities.length
-                        ? `${brokerDaily.priorities.length} NA FILA`
-                        : "FILA CONCLUÍDA"}
-                    </AtlasBadge>
-                  ) : undefined
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {brokerDaily ? (
+                      <AtlasBadge tone={brokerDaily.priorities.length ? "info" : "success"}>
+                        {brokerDaily.priorities.length
+                          ? `${brokerDaily.priorities.length} NA FILA`
+                          : "FILA CONCLUÍDA"}
+                      </AtlasBadge>
+                    ) : null}
+                    <LayerToggle
+                      collapsed={collapsedLayers.fila}
+                      onToggle={() => toggleLayer("fila")}
+                      layerLabel="fila do dia"
+                    />
+                  </div>
                 }
               />
-              <div className="border-t border-white/[.06] p-5 sm:p-6">
+              {collapsedLayers.fila ? null : (
+              <div className={`border-t border-white/[.06] ${layerBodyPad}`}>
                 {!brokerDaily ? (
                   <AtlasSkeleton className="h-56 w-full" />
                 ) : brokerDaily.priorities.length ? (
@@ -1363,6 +1706,7 @@ export default function CommandCenterPage() {
                   />
                 )}
               </div>
+              )}
             </AtlasCard>
           </div>
         </section>
@@ -1377,16 +1721,24 @@ export default function CommandCenterPage() {
                 title={managementQueue.title}
                 description={managementQueue.description}
                 action={
-                  managementQueue.ready ? (
-                    <AtlasBadge tone={managementQueue.items.length ? "warning" : "success"}>
-                      {managementQueue.items.length
-                        ? `${managementQueue.items.length} PARA REVISAR`
-                        : "SEM EXCEÇÕES"}
-                    </AtlasBadge>
-                  ) : undefined
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {managementQueue.ready ? (
+                      <AtlasBadge tone={managementQueue.items.length ? "warning" : "success"}>
+                        {managementQueue.items.length
+                          ? `${managementQueue.items.length} PARA REVISAR`
+                          : "SEM EXCEÇÕES"}
+                      </AtlasBadge>
+                    ) : null}
+                    <LayerToggle
+                      collapsed={collapsedLayers.fila}
+                      onToggle={() => toggleLayer("fila")}
+                      layerLabel="fila de gestão"
+                    />
+                  </div>
                 }
               />
-              <div className="border-t border-white/[.06] p-5 sm:p-6">
+              {collapsedLayers.fila ? null : (
+              <div className={`border-t border-white/[.06] ${layerBodyPad}`}>
                 {isManager && teamSla ? (
                   <div className="mb-4 flex flex-wrap gap-2 text-xs text-slate-400">
                     <span className="inline-flex min-h-11 items-center rounded-full border border-white/[.07] px-4">
@@ -1435,6 +1787,7 @@ export default function CommandCenterPage() {
                   />
                 )}
               </div>
+              )}
             </AtlasCard>
           </div>
         </section>
@@ -1450,8 +1803,22 @@ export default function CommandCenterPage() {
               eyebrow="Camada operação"
               title="Saúde dos módulos"
               description="Estado de leitura e escrita de cada módulo essencial da operação."
+              action={
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <span className="text-xs tabular-nums text-slate-500">
+                    {moduleHealth.filter((module) => module.state === "operational").length}/
+                    {moduleHealth.length} operacionais
+                  </span>
+                  <LayerToggle
+                    collapsed={collapsedLayers.operacao}
+                    onToggle={() => toggleLayer("operacao")}
+                    layerLabel="operação"
+                  />
+                </div>
+              }
             />
-            <div className="grid gap-3 border-t border-white/[.06] p-5 sm:grid-cols-2 sm:p-6">
+            {collapsedLayers.operacao ? null : (
+            <div className={`grid gap-3 border-t border-white/[.06] sm:grid-cols-2 ${layerBodyPad}`}>
               {moduleHealth.length ? (
                 moduleHealth.map((module) => (
                   <Link
@@ -1494,6 +1861,7 @@ export default function CommandCenterPage() {
                 </div>
               )}
             </div>
+            )}
           </AtlasCard>
         </div>
 
