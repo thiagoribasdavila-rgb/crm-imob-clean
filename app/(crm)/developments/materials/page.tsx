@@ -95,7 +95,7 @@ export default function ProjectMaterialsPage() {
       ]);
       const portfolio = await portfolioResponse.json();
       const me = await meResponse.json();
-      if (!portfolioResponse.ok) setError(portfolio.error || "Não foi possível carregar os projetos.");
+      if (!portfolioResponse.ok) setError(portfolio.error?.message || portfolio.error || "Não foi possível carregar os projetos.");
       else {
         const items = (portfolio.developments ?? []) as Development[];
         setDevelopments(items);
@@ -219,7 +219,7 @@ export default function ProjectMaterialsPage() {
     if (!token) { setError("Sessão expirada. Entre novamente para validar o material."); return; }
     const response = await fetch("/api/v1/developments/materials", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ materialId, status: "verified", note }) });
     const payload = await response.json();
-    if (!response.ok) setError(payload.error || "Falha ao validar material."); else { setNotice("Material validado e registrado no histórico."); await loadMaterials(selectedId); }
+    if (!response.ok) setError(payload.error?.message || payload.error || "Falha ao validar material."); else { setNotice("Material validado e registrado no histórico."); await loadMaterials(selectedId); }
   }
 
   return (
