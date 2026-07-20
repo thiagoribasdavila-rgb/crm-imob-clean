@@ -1,0 +1,355 @@
+import "server-only";
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { DEFAULT_PIPELINE_STAGES } from "@/lib/atlas/pipeline-stages";
+
+/**
+ * Fase 100 · Sinais de atenção proativos
+ *
+ * Calcula, para um conjunto de leads de uma organização, quais precisam de
+ * atenção AGORA para não perder a chance de conversão — sem o corretor
+ * precisar pedir. Cada sinal é determinístico e explicável: o corretor
+ * sempre consegue ver a regra exata (tabela, coluna, limiar) que disparou o
+ * alerta em `detail`.
+ *
+ * Usa apenas tabelas já vivas no banco: `leads` (dados já carregados pelo
+ * chamador — nenhuma leitura própria aqui), `pipeline_history`, `followups`
+ * e `lead_events`. Nenhuma tabela nova, nenhuma migration.
+ *
+ * Três sinais, cada um com sua própria regra:
+ *  1. stale_stage            — lead parado além do tempo tolerado na etapa atual.
+ *  2. follow_up_overdue      — followups.scheduled_at no passado com completed=false.
+ *  3. high_score_no_contact  — score_ia alto (ou temperatura "quente") sem
+ *                              nenhuma linha em lead_events nos últimos N dias úteis.
+ */
+
+const DAY_MS = 86_400_000;
+
+export type AttentionSeverity = "critical" | "warning" | "info";
+export type AttentionSignalKind = "stale_stage" | "follow_up_overdue" | "high_score_no_contact";
+
+export type AttentionSignal = {
+  leadId: string;
+  kind: AttentionSignalKind;
+  severity: AttentionSeverity;
+  /** Frase curta, pronta para badge/headline. */
+  reason: string;
+  /** Explicação completa (regra + números) para tooltip/corpo de card. */
+  detail: string;
+  /** Timestamp ISO desde quando a condição está ativa (nunca é o "agora"). */
+  since: string | null;
+  /** Métrica bruta (dias ou minutos, conforme o sinal) — útil para ordenar/exibir. */
+  metric: number;
+};
+
+export type AttentionSignalLeadInput = {
+  id: string;
+  /** Etapa já canônica (ex.: via canonicalLeadStatus/mapLegacyLead — "novo", "contato", ...). */
+  status: string;
+  /** leads.score_ia já coagido para número. */
+  score: number;
+  temperature: string | null;
+  /** leads.created_at em ISO. */
+  createdAt: string | null;
+};
+
+export type AttentionSignalSummary = {
+  leadId: string;
+  signals: AttentionSignal[];
+  topSeverity: AttentionSeverity;
+  topReason: string;
+};
+
+// Etapas terminais nunca recebem sinal: o lead já saiu do funil ativo.
+const TERMINAL_STAGES = new Set(["ganho", "perdido", "comprou_outro", "arquivado"]);
+
+// Quanto tempo é tolerável parado em cada etapa antes de virar sinal de
+// atenção. Etapas iniciais toleram menos (o lead esfria rápido); etapas
+// finais toleram mais porque dependem de decisão do cliente, financiamento
+// ou jurídico — processos que legitimamente demoram mais que uma qualificação.
+export const STAGE_STALE_THRESHOLD_DAYS: Record<string, number> = {
+  novo: 1,
+  contato: 3,
+  qualificacao: 4,
+  visita: 5,
+  proposta: 7,
+  contrato: 10,
+};
+
+const STAGE_LABEL: Record<string, string> = Object.fromEntries(
+  DEFAULT_PIPELINE_STAGES.map((stage) => [stage.key, stage.label]),
+);
+
+// Mesmo corte de "lead quente" já usado em broker-daily, team-sla,
+// manager-daily e director-daily — não inventamos um novo critério de score.
+export const HOT_SCORE_THRESHOLD = 70;
+
+// Dias úteis sem nenhum lead_event antes de um lead quente virar sinal.
+export const HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS = 3;
+
+const SEVERITY_RANK: Record<AttentionSeverity, number> = { critical: 3, warning: 2, info: 1 };
+
+export function severityRank(severity: AttentionSeverity): number {
+  return SEVERITY_RANK[severity];
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size));
+  return chunks;
+}
+
+function toMs(value: unknown): number | null {
+  if (typeof value !== "string" || !value) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/**
+ * Conta dias úteis (seg–sex) inteiros decorridos entre duas datas, ignorando
+ * sábado e domingo. Usa os limites de calendário (00:00) das duas datas para
+ * não depender do horário exato do evento. Fórmula fechada (sem loop dia a
+ * dia) para permanecer O(1) mesmo quando o intervalo é de anos.
+ */
+function businessDaysElapsed(fromMs: number, toMs: number): number {
+  if (toMs <= fromMs) return 0;
+  const start = new Date(fromMs);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(toMs);
+  end.setHours(0, 0, 0, 0);
+  const totalDays = Math.round((end.getTime() - start.getTime()) / DAY_MS);
+  if (totalDays <= 0) return 0;
+  const fullWeeks = Math.floor(totalDays / 7);
+  let businessDays = fullWeeks * 5;
+  const remainder = totalDays % 7;
+  const startDow = start.getDay();
+  for (let offset = 1; offset <= remainder; offset += 1) {
+    const dow = (startDow + offset) % 7;
+    if (dow !== 0 && dow !== 6) businessDays += 1;
+  }
+  return businessDays;
+}
+
+function plural(count: number, singular: string, pluralForm: string) {
+  return count === 1 ? singular : pluralForm;
+}
+
+async function latestPipelineStageEnteredAt(
+  supabase: SupabaseClient,
+  organizationId: string,
+  leadIds: string[],
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  const batches = await Promise.all(
+    chunk(leadIds, 200).map((ids) =>
+      supabase
+        .from("pipeline_history")
+        .select("lead_id,created_at")
+        .eq("organization_id", organizationId)
+        .in("lead_id", ids)
+        .order("created_at", { ascending: false }),
+    ),
+  );
+  for (const { data, error } of batches) {
+    if (error || !data) continue;
+    for (const row of data as Array<{ lead_id: string; created_at: string }>) {
+      if (map.has(row.lead_id)) continue;
+      const parsed = toMs(row.created_at);
+      if (parsed !== null) map.set(row.lead_id, parsed);
+    }
+  }
+  return map;
+}
+
+type OverdueFollowUp = { scheduledAt: number; action: string | null; extraCount: number };
+
+async function earliestOverdueFollowUp(
+  supabase: SupabaseClient,
+  organizationId: string,
+  leadIds: string[],
+  now: number,
+): Promise<Map<string, OverdueFollowUp>> {
+  const map = new Map<string, OverdueFollowUp>();
+  const nowIso = new Date(now).toISOString();
+  const batches = await Promise.all(
+    chunk(leadIds, 200).map((ids) =>
+      supabase
+        .from("followups")
+        .select("lead_id,scheduled_at,action,message")
+        .eq("organization_id", organizationId)
+        .eq("completed", false)
+        .in("lead_id", ids)
+        .lt("scheduled_at", nowIso)
+        .order("scheduled_at", { ascending: true }),
+    ),
+  );
+  for (const { data, error } of batches) {
+    if (error || !data) continue;
+    for (const row of data as Array<{ lead_id: string; scheduled_at: string; action: string | null; message: string | null }>) {
+      const scheduledAt = toMs(row.scheduled_at);
+      if (scheduledAt === null) continue;
+      const existing = map.get(row.lead_id);
+      if (!existing) {
+        map.set(row.lead_id, { scheduledAt, action: row.action || row.message || null, extraCount: 0 });
+      } else {
+        existing.extraCount += 1;
+      }
+    }
+  }
+  return map;
+}
+
+async function lastLeadEventAt(
+  supabase: SupabaseClient,
+  organizationId: string,
+  leadIds: string[],
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (!leadIds.length) return map;
+  const batches = await Promise.all(
+    chunk(leadIds, 200).map((ids) =>
+      supabase
+        .from("lead_events")
+        .select("lead_id,created_at")
+        .eq("organization_id", organizationId)
+        .in("lead_id", ids)
+        .order("created_at", { ascending: false }),
+    ),
+  );
+  for (const { data, error } of batches) {
+    if (error || !data) continue;
+    for (const row of data as Array<{ lead_id: string; created_at: string }>) {
+      if (map.has(row.lead_id)) continue;
+      const parsed = toMs(row.created_at);
+      if (parsed !== null) map.set(row.lead_id, parsed);
+    }
+  }
+  return map;
+}
+
+function isHot(lead: AttentionSignalLeadInput) {
+  return lead.score >= HOT_SCORE_THRESHOLD || String(lead.temperature || "").trim().toLowerCase() === "quente";
+}
+
+/**
+ * Calcula os sinais de atenção para um conjunto de leads já carregado pelo
+ * chamador (broker-daily, Lead 360, Copilot). Não busca `leads` — recebe os
+ * campos mínimos já normalizados para evitar uma segunda leitura da tabela.
+ */
+export async function computeAttentionSignals(
+  supabase: SupabaseClient,
+  organizationId: string,
+  leads: AttentionSignalLeadInput[],
+  options: { now?: number } = {},
+): Promise<AttentionSignal[]> {
+  const now = options.now ?? Date.now();
+  if (!organizationId) return [];
+  const openLeads = leads.filter((lead) => lead.id && !TERMINAL_STAGES.has(lead.status));
+  if (!openLeads.length) return [];
+
+  const openIds = openLeads.map((lead) => lead.id);
+  const hotLeads = openLeads.filter(isHot);
+  const hotIds = hotLeads.map((lead) => lead.id);
+
+  const [stageEnteredAtByLead, overdueFollowUpByLead, lastEventAtByLead] = await Promise.all([
+    latestPipelineStageEnteredAt(supabase, organizationId, openIds),
+    earliestOverdueFollowUp(supabase, organizationId, openIds, now),
+    lastLeadEventAt(supabase, organizationId, hotIds),
+  ]);
+
+  const signals: AttentionSignal[] = [];
+
+  for (const lead of openLeads) {
+    // Sinal 1 — parado na etapa além do limite recomendado.
+    const threshold = STAGE_STALE_THRESHOLD_DAYS[lead.status];
+    if (threshold) {
+      const hasHistory = stageEnteredAtByLead.has(lead.id);
+      const stageEnteredAt = stageEnteredAtByLead.get(lead.id) ?? toMs(lead.createdAt);
+      if (stageEnteredAt !== null) {
+        const daysInStage = Math.floor((now - stageEnteredAt) / DAY_MS);
+        if (daysInStage >= threshold) {
+          const stageLabel = STAGE_LABEL[lead.status] || lead.status;
+          signals.push({
+            leadId: lead.id,
+            kind: "stale_stage",
+            severity: daysInStage >= threshold * 2 ? "critical" : "warning",
+            reason: `Parado em "${stageLabel}" há ${daysInStage} ${plural(daysInStage, "dia", "dias")}`,
+            detail: `pipeline_history não registra mudança de etapa há ${daysInStage} ${plural(daysInStage, "dia", "dias")} (limite recomendado para "${stageLabel}": ${threshold} ${plural(threshold, "dia", "dias")}).${hasHistory ? "" : " Nenhuma movimentação registrada desde a criação do lead."}`,
+            since: new Date(stageEnteredAt).toISOString(),
+            metric: daysInStage,
+          });
+        }
+      }
+    }
+
+    // Sinal 2 — follow-up agendado (followups.scheduled_at) e vencido (completed=false).
+    const overdue = overdueFollowUpByLead.get(lead.id);
+    if (overdue) {
+      const overdueMinutes = Math.max(1, Math.floor((now - overdue.scheduledAt) / 60_000));
+      const overdueLabel = overdueMinutes < 60
+        ? `${overdueMinutes} min`
+        : overdueMinutes < 1_440
+          ? `${Math.floor(overdueMinutes / 60)}h`
+          : `${Math.floor(overdueMinutes / 1_440)} ${plural(Math.floor(overdueMinutes / 1_440), "dia", "dias")}`;
+      signals.push({
+        leadId: lead.id,
+        kind: "follow_up_overdue",
+        severity: overdueMinutes >= 1_440 ? "critical" : "warning",
+        reason: `Follow-up vencido há ${overdueLabel}`,
+        detail: `followups.scheduled_at (${new Date(overdue.scheduledAt).toLocaleString("pt-BR")}) já passou e completed ainda é false${overdue.action ? `: "${overdue.action}"` : ""}.${overdue.extraCount ? ` Há mais ${overdue.extraCount} ${plural(overdue.extraCount, "follow-up vencido", "follow-ups vencidos")} para este lead.` : ""}`,
+        since: new Date(overdue.scheduledAt).toISOString(),
+        metric: overdueMinutes,
+      });
+    }
+  }
+
+  // Sinal 3 — score alto (ou temperatura "quente") sem nenhum lead_event recente.
+  for (const lead of hotLeads) {
+    const hasEvent = lastEventAtByLead.has(lead.id);
+    const lastEventAt = lastEventAtByLead.get(lead.id) ?? toMs(lead.createdAt);
+    if (lastEventAt === null) continue;
+    const businessDays = businessDaysElapsed(lastEventAt, now);
+    if (businessDays >= HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS) {
+      const hotByTemperature = String(lead.temperature || "").trim().toLowerCase() === "quente";
+      signals.push({
+        leadId: lead.id,
+        kind: "high_score_no_contact",
+        severity: lead.score >= 85 || businessDays >= HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS * 2 ? "critical" : "warning",
+        reason: `Lead quente sem contato há ${businessDays} ${plural(businessDays, "dia útil", "dias úteis")}`,
+        detail: `Score ${lead.score}${hotByTemperature ? " e classificado como quente" : ""}, mas lead_events não tem nenhum registro nos últimos ${businessDays} ${plural(businessDays, "dia útil", "dias úteis")} (limite: ${HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS} dias úteis).${hasEvent ? ` Última interação em ${new Date(lastEventAt).toLocaleString("pt-BR")}.` : " Nenhuma interação foi registrada desde a criação do lead."}`,
+        since: new Date(lastEventAt).toISOString(),
+        metric: businessDays,
+      });
+    }
+  }
+
+  return signals.sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || b.metric - a.metric);
+}
+
+/** Conveniência para o caso de um único lead (Lead 360, Copilot). */
+export async function computeAttentionSignalsForLead(
+  supabase: SupabaseClient,
+  organizationId: string,
+  lead: AttentionSignalLeadInput,
+  options: { now?: number } = {},
+): Promise<AttentionSignal[]> {
+  return computeAttentionSignals(supabase, organizationId, [lead], options);
+}
+
+/** Agrupa a lista plana de sinais por lead — útil para listas/filas na UI. */
+export function groupAttentionSignalsByLead(signals: AttentionSignal[]): Map<string, AttentionSignalSummary> {
+  const grouped = new Map<string, AttentionSignalSummary>();
+  for (const signal of signals) {
+    const bucket = grouped.get(signal.leadId);
+    if (!bucket) {
+      grouped.set(signal.leadId, { leadId: signal.leadId, signals: [signal], topSeverity: signal.severity, topReason: signal.reason });
+      continue;
+    }
+    bucket.signals.push(signal);
+    if (SEVERITY_RANK[signal.severity] > SEVERITY_RANK[bucket.topSeverity]) {
+      bucket.topSeverity = signal.severity;
+      bucket.topReason = signal.reason;
+    }
+  }
+  return grouped;
+}

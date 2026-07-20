@@ -7,6 +7,14 @@ import {
   mapLegacyTask,
   type CompatRow,
 } from "@/lib/compat/legacy-v2";
+import {
+  computeAttentionSignals,
+  groupAttentionSignalsByLead,
+  severityRank,
+  HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS,
+  HOT_SCORE_THRESHOLD,
+  STAGE_STALE_THRESHOLD_DAYS,
+} from "@/lib/atlas/attention-signals";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +115,47 @@ export async function GET(request: NextRequest) {
       .map((task) => String(task.lead_id)),
   );
 
+  // Fase 100 · Sinais de atenção proativos: estende a mesma carteira já
+  // carregada acima (activeLeads) com sinais determinísticos de
+  // pipeline_history, followups e lead_events — sem duplicar a leitura de leads.
+  const attentionSignals = await computeAttentionSignals(
+    identity.supabase,
+    organizationId,
+    activeLeads.map((lead) => ({
+      id: String(lead.id),
+      status: String(lead.status || "novo"),
+      score: Number(lead.score || 0),
+      temperature: typeof lead.temperature === "string" ? lead.temperature : null,
+      createdAt: typeof lead.created_at === "string" ? lead.created_at : null,
+    })),
+    { now },
+  );
+  const attentionByLead = groupAttentionSignalsByLead(attentionSignals);
+  const attentionQueue = activeLeads
+    .map((lead) => {
+      const bucket = attentionByLead.get(String(lead.id));
+      if (!bucket) return null;
+      return {
+        leadId: String(lead.id),
+        leadName: String(lead.name || "Lead sem nome"),
+        status: String(lead.status || "novo"),
+        score: Number(lead.score || 0),
+        topSeverity: bucket.topSeverity,
+        topReason: bucket.topReason,
+        signals: bucket.signals.map((signal) => ({
+          kind: signal.kind,
+          severity: signal.severity,
+          reason: signal.reason,
+          detail: signal.detail,
+          since: signal.since,
+          metric: signal.metric,
+        })),
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((left, right) => severityRank(right.topSeverity) - severityRank(left.topSeverity) || right.signals.length - left.signals.length)
+    .slice(0, 20);
+
   const priorities = activeLeads
     .map((lead) => {
       const score = Number(lead.score || 0);
@@ -150,6 +199,7 @@ export async function GET(request: NextRequest) {
               : noNextAction
                 ? "Definir uma próxima ação com data"
                 : "Revisar o histórico e executar a ação programada";
+      const attentionBucket = attentionByLead.get(String(lead.id));
       return {
         leadId: String(lead.id),
         leadName: String(lead.name || "Lead sem nome"),
@@ -166,6 +216,18 @@ export async function GET(request: NextRequest) {
         developmentId: lead.development_id
           ? String(lead.development_id)
           : null,
+        // Fase 100 · sinais adicionais de atenção proativa para este lead
+        // (etapa parada, follow-up vencido, quente sem contato). Não altera
+        // `reason`/`priorityScore` acima para não mudar o comportamento
+        // já existente da fila explicável.
+        attentionSignals: (attentionBucket?.signals ?? []).map((signal) => ({
+          kind: signal.kind,
+          severity: signal.severity,
+          reason: signal.reason,
+          detail: signal.detail,
+          since: signal.since,
+          metric: signal.metric,
+        })),
       };
     })
     .sort((left, right) => right.priorityScore - left.priorityScore)
@@ -215,9 +277,24 @@ export async function GET(request: NextRequest) {
         firstContactOverdue,
         followUpOverdue,
         agendaNext7Days: agenda.length,
+        leadsNeedingAttention: attentionQueue.length,
       },
       priorities,
       agenda,
+      // Fase 100 · Sinais de atenção proativos: fila própria (não limitada a 7
+      // itens como `priorities`) só com leads que dispararam pelo menos um dos
+      // três sinais determinísticos abaixo. Reaproveita activeLeads já lido
+      // nesta rota; nenhuma tabela nova, nenhuma migration.
+      attention: {
+        explainable: true,
+        humanApprovalRequired: true,
+        rules: {
+          staleStage: `Sem mudança de etapa em pipeline_history além do limite por etapa (${Object.entries(STAGE_STALE_THRESHOLD_DAYS).map(([stage, days]) => `${stage}: ${days}d`).join(", ")}); usa leads.created_at quando o lead nunca mudou de etapa.`,
+          followUpOverdue: "followups.scheduled_at no passado com completed=false.",
+          highScoreNoContact: `score_ia >= ${HOT_SCORE_THRESHOLD} ou temperatura "quente" sem nenhuma linha em lead_events nos últimos ${HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS} dias úteis.`,
+        },
+        queue: attentionQueue,
+      },
       ranking: {
         explainable: true,
         driver: "conversion_probability",

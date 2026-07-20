@@ -9,6 +9,7 @@ import {
 } from "@/lib/atlas/governed-lead-context-correction";
 import { LIVE_LEAD_SELECT, canonicalLeadStatus, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
 import { liveLeadUpdatePayload, mapLiveLeadEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
+import { computeAttentionSignalsForLead } from "@/lib/atlas/attention-signals";
 import { logger } from "@/lib/observability/logger";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -112,12 +113,31 @@ export async function GET(request: Request, context: RouteContext) {
     const nextTask = openTasks[0];
     const nextAction = typeof lead.next_action_label === "string" ? lead.next_action_label : "Validar interesse atual e combinar a próxima ação com data.";
 
+    // Fase 100 · Sinais de atenção proativos para este lead específico (etapa
+    // parada, follow-up vencido, quente sem contato recente). Mesma função
+    // usada em broker-daily e no contexto do Copilot — nada duplicado aqui.
+    const attentionSignals = await computeAttentionSignalsForLead(admin, identity.organizationId, {
+      id: String(lead.id),
+      status: String(lead.status || "novo"),
+      score: Number(lead.score || 0),
+      temperature: typeof lead.temperature === "string" ? lead.temperature : null,
+      createdAt: typeof lead.created_at === "string" ? lead.created_at : null,
+    });
+
     return NextResponse.json({
       lead,
       activities,
       properties: [],
       opportunities: [],
       experienceSignals: [],
+      attentionSignals: attentionSignals.map((signal) => ({
+        kind: signal.kind,
+        severity: signal.severity,
+        reason: signal.reason,
+        detail: signal.detail,
+        since: signal.since,
+        metric: signal.metric,
+      })),
       proposals: [],
       unifiedProfile: {
         conversations: [],

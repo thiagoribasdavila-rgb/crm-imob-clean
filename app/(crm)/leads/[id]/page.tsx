@@ -98,6 +98,16 @@ type ExperienceRow = {
   status: string;
   created_at: string;
 };
+// Fase 100 · Sinais de atenção proativos — etapa parada, follow-up vencido ou
+// lead quente sem contato recente. Ver lib/atlas/attention-signals.ts.
+type AttentionSignalRow = {
+  kind: "stale_stage" | "follow_up_overdue" | "high_score_no_contact";
+  severity: "critical" | "warning" | "info";
+  reason: string;
+  detail: string;
+  since: string | null;
+  metric: number;
+};
 type ProposalRow = {
   id: string;
   status:
@@ -232,6 +242,7 @@ type Payload = {
   properties: PropertyRow[];
   opportunities: OpportunityRow[];
   experienceSignals: ExperienceRow[];
+  attentionSignals: AttentionSignalRow[];
   proposals: ProposalRow[];
   dataQuality: DataQuality;
   unifiedProfile: UnifiedProfile;
@@ -293,6 +304,9 @@ export default function LeadDetailPage() {
   const [experienceSignals, setExperienceSignals] = useState<ExperienceRow[]>(
     [],
   );
+  const [attentionSignals, setAttentionSignals] = useState<
+    AttentionSignalRow[]
+  >([]);
   const [proposals, setProposals] = useState<ProposalRow[]>([]);
   const [dataQuality, setDataQuality] = useState<DataQuality | null>(null);
   const [unifiedProfile, setUnifiedProfile] = useState<UnifiedProfile | null>(
@@ -365,6 +379,7 @@ export default function LeadDetailPage() {
       setProperties(data.properties);
       setOpportunities(data.opportunities);
       setExperienceSignals(data.experienceSignals ?? []);
+      setAttentionSignals(data.attentionSignals ?? []);
       setProposals(data.proposals ?? []);
       setDataQuality(data.dataQuality);
       setUnifiedProfile(data.unifiedProfile);
@@ -903,6 +918,58 @@ export default function LeadDetailPage() {
           >
             Aceitar lead
           </button>
+        </section>
+      ) : null}
+
+      {attentionSignals.length ? (
+        <section
+          data-phase="100-proactive-attention-signals"
+          className={`flex flex-col gap-3 rounded-3xl border p-5 ${
+            attentionSignals.some((signal) => signal.severity === "critical")
+              ? "border-rose-400/25 bg-rose-400/[.07]"
+              : "border-amber-400/25 bg-amber-400/[.07]"
+          }`}
+        >
+          <div>
+            <p
+              className={`atlas-eyebrow ${
+                attentionSignals.some((signal) => signal.severity === "critical")
+                  ? "text-rose-200"
+                  : "text-amber-200"
+              }`}
+            >
+              Fase 100 · IA proativa
+            </p>
+            <h2 className="mt-2 text-lg font-semibold text-white">
+              Este lead precisa de atenção agora
+            </h2>
+          </div>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {attentionSignals.map((signal) => (
+              <li
+                key={signal.kind}
+                className="rounded-2xl border border-white/[0.08] bg-[#070d1b]/40 p-3"
+              >
+                <div className="flex items-center gap-2">
+                  <AtlasBadge
+                    tone={
+                      signal.severity === "critical"
+                        ? "danger"
+                        : signal.severity === "warning"
+                          ? "warning"
+                          : "info"
+                    }
+                  >
+                    {signal.severity === "critical" ? "CRÍTICO" : signal.severity === "warning" ? "ATENÇÃO" : "INFO"}
+                  </AtlasBadge>
+                  <strong className="text-sm text-white">{signal.reason}</strong>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-400">
+                  {signal.detail}
+                </p>
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
 
