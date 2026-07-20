@@ -19,7 +19,11 @@ import {
   AtlasSkeleton,
 } from "@/components/ui/AtlasUI";
 
-// Command Center dedicado · sala de comando em camadas com dados 100% dos endpoints existentes.
+// Command Center · única home do Atlas (fusão com o antigo Início//dashboard).
+// Camadas por grau de importância — primário (a decisão do papel), secundário
+// (contexto operacional) e terciário (telemetria + régua de módulos) — com
+// dados 100% dos endpoints existentes; único fetch novo: campaign-quality
+// (Marketing · Meta, exclusivo da diretoria).
 
 type DataRow = Record<string, unknown>;
 
@@ -138,6 +142,15 @@ type ManagerDaily = {
     followUpOverdue: number;
     withoutNextAction: number;
   };
+  // Linhas por corretor que o endpoint já devolve (subconjunto consumido aqui).
+  brokers: Array<{
+    brokerId: string;
+    brokerName: string;
+    activeLeads: number;
+    firstContactOverdue: number;
+    followUpOverdue: number;
+    withoutNextAction: number;
+  }>;
   interventions: Array<{
     brokerId: string;
     brokerName: string;
@@ -182,7 +195,13 @@ type SuperintendentSummary = {
 };
 
 type DirectorDaily = {
-  commercial: { activeLeads: number; hotLeads: number; conversionRate: number };
+  commercial: {
+    activeLeads: number;
+    hotLeads: number;
+    conversionRate: number;
+    firstContactOverdue: number;
+    followUpOverdue: number;
+  };
   risks: Array<{
     severity: "critical" | "attention";
     area: string;
@@ -212,6 +231,26 @@ type GovernanceSummary = {
   critical: Record<string, boolean | null>;
 };
 
+// Marketing · Meta (diretoria): shape REAL de /api/v1/analytics/campaign-quality
+// (lib/atlas/campaign-quality.ts) — declarado só o subconjunto consumido aqui.
+type MarketingQuality = {
+  period: { start: string; end: string; days: number };
+  totals: {
+    campaigns: number;
+    campaignsRanked: number;
+    leads: number;
+    qualified: number;
+    sales: number;
+    discarded: number;
+    spend: number;
+  };
+  policy: {
+    minimumLeadsForDecision: number;
+    spendMeasured: boolean;
+    windowComplete?: boolean;
+  };
+};
+
 const emptySnapshot: SnapshotData = {
   leads: [],
   opportunities: [],
@@ -220,6 +259,23 @@ const emptySnapshot: SnapshotData = {
   developments: [],
   profiles: [],
 };
+
+const brl = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  maximumFractionDigits: 0,
+});
+
+// Fusão com o Início: mesma régua de estágios que o /dashboard usava no funil,
+// agora derivada do snapshot que esta página JÁ busca via module-health.
+const PIPELINE_STAGES = [
+  { key: "novo", label: "Novo" },
+  { key: "contato", label: "Contato" },
+  { key: "qualificacao", label: "Qualificação" },
+  { key: "visita", label: "Visita" },
+  { key: "proposta", label: "Proposta" },
+  { key: "negociacao", label: "Negociação" },
+] as const;
 
 const criticalGateLabels: Record<string, string> = {
   database: "Banco",
@@ -391,6 +447,7 @@ const TELEMETRY_ORDER = [
   "Rede",
   "Executivo",
   "Governança",
+  "Marketing",
 ] as const;
 
 function prefersReducedMotion() {
@@ -762,6 +819,8 @@ export default function CommandCenterPage() {
   const [directorDaily, setDirectorDaily] = useState<DirectorDaily | null>(null);
   const [governance, setGovernance] = useState<GovernanceSummary | null>(null);
   const [governanceNote, setGovernanceNote] = useState("");
+  // Marketing · Meta: null = sem painel (carregando, sem papel ou falha silenciosa).
+  const [marketingQuality, setMarketingQuality] = useState<MarketingQuality | null>(null);
   // Telemetria honesta: latência real medida por grupo de fetch (performance.now).
   const [fetchLatency, setFetchLatency] = useState<Record<string, number>>({});
   // Relógio de 30s para "atualizado há Xs" e para o ticker do feed.
@@ -1198,6 +1257,38 @@ export default function CommandCenterPage() {
     };
   }, [isDirector]);
 
+  // Marketing · Meta — único fetch NOVO da fusão com o Início, role-gated para
+  // a diretoria. Qualquer falha (rede, 403, shape) = painel ausente, sem erro
+  // na tela; a latência real ainda entra na telemetria quando há resposta.
+  useEffect(() => {
+    if (!isDirector) {
+      setMarketingQuality(null);
+      return;
+    }
+    let active = true;
+    void supabase.auth.getSession().then(async ({ data: session }) => {
+      const fetchStartedAt = performance.now();
+      const response = await fetch("/api/v1/analytics/campaign-quality?days=30", {
+        headers: { Authorization: `Bearer ${session.session?.access_token || ""}` },
+        cache: "no-store",
+      }).catch(() => null);
+      if (!active) return;
+      setFetchLatency((current) => ({
+        ...current,
+        "Marketing": Math.round(performance.now() - fetchStartedAt),
+      }));
+      if (!response?.ok) return;
+      const body = (await response.json().catch(() => null)) as
+        | { ok?: boolean; data?: MarketingQuality }
+        | null;
+      if (!active || !body?.ok || !body.data) return;
+      setMarketingQuality(body.data);
+    });
+    return () => {
+      active = false;
+    };
+  }, [isDirector]);
+
   const metrics = useMemo(() => {
     const active = snapshot.leads.filter(
       (lead) => !["ganho", "perdido", "arquivado", "comprou_outro"].includes(normalized(lead.status)),
@@ -1304,6 +1395,65 @@ export default function CommandCenterPage() {
     }
     return null;
   }, [briefing, brokerDaily, isBroker, isManager, teamSla]);
+
+  // Fusão com o Início · distribuição por estágio do pipeline, derivada apenas
+  // do snapshot já carregado (mesma contagem por status que o /dashboard fazia).
+  const stageDistribution = useMemo(() => {
+    const stages = PIPELINE_STAGES.map((stage) => ({
+      ...stage,
+      count: snapshot.leads.filter((lead) => normalized(lead.status) === stage.key).length,
+    }));
+    return { stages, total: stages.reduce((sum, stage) => sum + stage.count, 0) };
+  }, [snapshot.leads]);
+
+  // Primário do gerente: gargalos por corretor (SLA vencido + leads parados),
+  // linhas reais do manager-daily ordenadas pelo total de travas.
+  const managerBottlenecks = useMemo(() => {
+    if (!isManager || !managerDaily) return [];
+    return managerDaily.brokers
+      .map((broker) => ({
+        ...broker,
+        stuck: broker.firstContactOverdue + broker.followUpOverdue + broker.withoutNextAction,
+      }))
+      .filter((broker) => broker.stuck > 0)
+      .sort((a, b) => b.stuck - a.stuck)
+      .slice(0, 5);
+  }, [isManager, managerDaily]);
+
+  // Primário da diretoria: sinais críticos = riscos executivos + sinais da IA
+  // com severidade crítica (somente fontes que a página já busca).
+  const directorCriticalSignals = useMemo(() => {
+    if (!isDirector) return 0;
+    const briefingCritical = (briefing?.signals ?? []).filter(
+      (signal) => signal.severity === "critical",
+    ).length;
+    const riskCritical = (directorDaily?.risks ?? []).filter(
+      (risk) => risk.severity === "critical",
+    ).length;
+    return briefingCritical + riskCritical;
+  }, [briefing, directorDaily, isDirector]);
+
+  // Marketing · Meta: taxas decisivas derivadas do shape real, com as mesmas
+  // guardas de divisão por zero e de gasto não medido da página de campanhas.
+  const marketingRates = useMemo(() => {
+    if (!marketingQuality) return null;
+    const { totals, policy } = marketingQuality;
+    const rate = (part: number) =>
+      totals.leads > 0 ? `${Math.round((part / totals.leads) * 1000) / 10}%` : "—";
+    return {
+      qualificationRate: rate(totals.qualified),
+      discardRate: rate(totals.discarded),
+      discardHigh: totals.leads > 0 && totals.discarded / totals.leads > 0.25,
+      costPerLead:
+        policy.spendMeasured && totals.spend > 0 && totals.leads > 0
+          ? brl.format(totals.spend / totals.leads)
+          : null,
+      costPerQualified:
+        policy.spendMeasured && totals.spend > 0 && totals.qualified > 0
+          ? brl.format(totals.spend / totals.qualified)
+          : null,
+    };
+  }, [marketingQuality]);
 
   // Relógio efetivo: nunca anterior à última atualização (o interval é de 30s).
   const nowMs = Math.max(nowTick, referenceTime);
@@ -1632,6 +1782,315 @@ export default function CommandCenterPage() {
         </div>
       </section>
 
+      {/* PRIMÁRIO · gerente — a decisão do papel vem antes de tudo: gargalos da
+          equipe (team-sla + manager-daily). O herói de IA vira secundário. */}
+      {isManager ? (
+        <section
+          aria-label="Gargalos da equipe"
+          className="cc5-reveal atlas-panel rounded-2xl p-5 sm:p-6"
+          style={{ animationDelay: "40ms" }}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p
+                className="cc5-eyebrow"
+                title="Primário do gerente: cumprimento de follow-up, SLA por corretor e leads sem próxima ação, medidos por team-sla e manager-daily."
+              >
+                Equipe · Gargalos · SLA
+              </p>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                Onde o time está travando
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+                Follow-up dentro do prazo, SLA por corretor e leads parados — decida onde intervir
+                primeiro.
+              </p>
+            </div>
+            <Link
+              href="/distribution"
+              className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+            >
+              Abrir distribuição →
+            </Link>
+          </div>
+          {!managerDaily && !teamSla ? (
+            <AtlasSkeleton className="mt-4 h-40 w-full" />
+          ) : (
+            <div className="mt-4 grid gap-4 xl:grid-cols-[.9fr_1.1fr]">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">Follow-up no prazo</p>
+                  <p
+                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
+                      teamSla?.totals.followUpComplianceRate == null
+                        ? "text-slate-400"
+                        : teamSla.totals.followUpComplianceRate >= 80
+                          ? "text-[var(--atlas-success)]"
+                          : "text-[var(--atlas-warning)]"
+                    }`}
+                  >
+                    {teamSla?.totals.followUpComplianceRate == null
+                      ? "—"
+                      : `${Math.round(teamSla.totals.followUpComplianceRate)}%`}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {teamSla?.totals.followUpComplianceRate == null
+                      ? "Sem amostra medida"
+                      : "Cumprimento do time direto"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">Sem 1º contato</p>
+                  <p
+                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
+                      (teamSla?.totals.firstContactOverdue ?? managerDaily?.totals.firstContactOverdue ?? 0) > 0
+                        ? "text-[var(--atlas-danger)]"
+                        : "text-white"
+                    }`}
+                  >
+                    {teamSla?.totals.firstContactOverdue ?? managerDaily?.totals.firstContactOverdue ?? 0}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">SLA inicial vencido</p>
+                </div>
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">Follow-ups vencidos</p>
+                  <p
+                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
+                      (teamSla?.totals.followUpOverdue ?? managerDaily?.totals.followUpOverdue ?? 0) > 0
+                        ? "text-[var(--atlas-warning)]"
+                        : "text-white"
+                    }`}
+                  >
+                    {teamSla?.totals.followUpOverdue ?? managerDaily?.totals.followUpOverdue ?? 0}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">Próxima ação atrasada</p>
+                </div>
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">Sem próxima ação</p>
+                  <p
+                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
+                      (managerDaily?.totals.withoutNextAction ?? 0) > 0
+                        ? "text-[var(--atlas-warning)]"
+                        : "text-white"
+                    }`}
+                  >
+                    {managerDaily?.totals.withoutNextAction ?? 0}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">Leads parados na carteira</p>
+                </div>
+              </div>
+              {managerBottlenecks.length ? (
+                <ul className="grid content-start gap-2" aria-label="Corretores com gargalos">
+                  {managerBottlenecks.map((broker) => (
+                    <li key={broker.brokerId}>
+                      <Link
+                        href={`/leads?assigned_to=${broker.brokerId}`}
+                        title={`${broker.brokerName}: ${broker.firstContactOverdue} sem 1º contato, ${broker.followUpOverdue} follow-ups vencidos, ${broker.withoutNextAction} sem próxima ação`}
+                        className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-white/[.06] bg-white/[.02] px-4 py-2.5 transition-colors hover:border-white/[.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                      >
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <span
+                            aria-hidden="true"
+                            className={`h-2 w-2 shrink-0 rounded-full ${
+                              broker.firstContactOverdue > 0
+                                ? "bg-[var(--atlas-danger)]"
+                                : "bg-[var(--atlas-warning)]"
+                            }`}
+                          />
+                          <span className="truncate text-sm font-medium text-white">
+                            {broker.brokerName}
+                          </span>
+                        </span>
+                        <span className="shrink-0 font-mono text-[11px] tabular-nums text-slate-400">
+                          {broker.firstContactOverdue + broker.followUpOverdue} SLA ·{" "}
+                          {broker.withoutNextAction} sem ação
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : managerDaily ? (
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4 text-sm leading-6 text-slate-400">
+                  Nenhum corretor direto com SLA vencido ou leads parados neste momento.
+                </div>
+              ) : (
+                <AtlasSkeleton className="h-40 w-full" />
+              )}
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {/* PRIMÁRIO · diretoria — saúde do negócio (director-daily + briefing) e o
+          módulo de Marketing · Meta (único fetch novo, ausente em falha/403). */}
+      {isDirector ? (
+        <section
+          aria-label="Saúde do negócio e marketing"
+          className={`cc5-reveal grid gap-4 ${marketingRates ? "xl:grid-cols-[1.05fr_.95fr]" : ""}`}
+          style={{ animationDelay: "40ms" }}
+        >
+          <div className="atlas-panel rounded-2xl p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p
+                  className="cc5-eyebrow"
+                  title="Primário da diretoria: conversão, SLA agregado e sinais críticos, medidos por director-daily e pelo briefing da IA."
+                >
+                  Negócio · Saúde · Agora
+                </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                  Saúde do negócio
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+                  Conversão, SLA agregado e sinais críticos do escopo inteiro — o essencial antes de
+                  qualquer decisão.
+                </p>
+              </div>
+              <Link
+                href="/reports"
+                className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+              >
+                Abrir relatórios →
+              </Link>
+            </div>
+            {!directorDaily ? (
+              <AtlasSkeleton className="mt-4 h-32 w-full" />
+            ) : (
+              <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">Conversão geral</p>
+                  <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-white">
+                    {directorDaily.commercial.conversionRate}%
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {directorDaily.commercial.activeLeads} ativos ·{" "}
+                    {directorDaily.commercial.hotLeads} quentes
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">Sem 1º contato</p>
+                  <p
+                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
+                      directorDaily.commercial.firstContactOverdue > 0
+                        ? "text-[var(--atlas-danger)]"
+                        : "text-white"
+                    }`}
+                  >
+                    {directorDaily.commercial.firstContactOverdue}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">SLA inicial vencido</p>
+                </div>
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">Follow-ups vencidos</p>
+                  <p
+                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
+                      directorDaily.commercial.followUpOverdue > 0
+                        ? "text-[var(--atlas-warning)]"
+                        : "text-white"
+                    }`}
+                  >
+                    {directorDaily.commercial.followUpOverdue}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">Próxima ação atrasada</p>
+                </div>
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">Sinais críticos</p>
+                  <p
+                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
+                      directorCriticalSignals > 0 ? "text-[var(--atlas-danger)]" : "text-white"
+                    }`}
+                  >
+                    {directorCriticalSignals}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">Riscos executivos + IA</p>
+                </div>
+              </div>
+            )}
+          </div>
+          {marketingQuality && marketingRates ? (
+            <div className="atlas-panel rounded-2xl p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p
+                    className="cc5-eyebrow"
+                    title="Qualidade dos leads de campanha medida no CRM: quem qualifica, quem é descartado e quanto custou — janela de 30 dias."
+                  >
+                    Marketing · Meta · {marketingQuality.period.days}d
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                    Qualidade das campanhas
+                  </h2>
+                </div>
+                <Link
+                  href="/marketing/campaigns"
+                  className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                >
+                  Abrir campanhas →
+                </Link>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">Qualificação</p>
+                  <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-white">
+                    {marketingRates.qualificationRate}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {marketingQuality.totals.qualified} de {marketingQuality.totals.leads} leads ·{" "}
+                    {marketingQuality.totals.sales} vendas
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">Descarte</p>
+                  <p
+                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
+                      marketingRates.discardHigh ? "text-[var(--atlas-danger)]" : "text-white"
+                    }`}
+                  >
+                    {marketingRates.discardRate}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {marketingQuality.totals.discarded} descartados na janela
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">CPL</p>
+                  <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-white">
+                    {marketingRates.costPerLead ?? "—"}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {marketingRates.costPerQualified
+                      ? `${marketingRates.costPerQualified} por qualificado`
+                      : marketingQuality.policy.spendMeasured
+                        ? `${brl.format(marketingQuality.totals.spend)} investidos`
+                        : "Custo não medido"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
+                  <p className="text-[11px] text-slate-500">Campanhas com leads</p>
+                  <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-white">
+                    {marketingQuality.totals.campaignsRanked}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {marketingQuality.totals.campaigns} na organização
+                  </p>
+                </div>
+              </div>
+              {marketingQuality.policy.windowComplete === false ||
+              !marketingQuality.policy.spendMeasured ? (
+                <p className="mt-3 rounded-xl border border-white/[.06] bg-white/[.02] px-4 py-2.5 text-[11px] leading-5 text-[var(--atlas-warning)]">
+                  {marketingQuality.policy.windowComplete === false
+                    ? "Janela truncada no teto de paginação — números são piso, não total. "
+                    : ""}
+                  {!marketingQuality.policy.spendMeasured
+                    ? "Gasto não medido (marketing_spend indisponível) — CPL omitido em vez de fingir zero."
+                    : ""}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       <section
         aria-label="Prioridades agora"
         className="cc5-reveal atlas-panel rounded-2xl p-5 sm:p-6"
@@ -1699,6 +2158,93 @@ export default function CommandCenterPage() {
         )}
       </section>
 
+      {/* SECUNDÁRIO · corretor — números do dia direto do broker-daily. */}
+      {isBroker ? (
+        <section
+          aria-label="Meus números do dia"
+          className="cc5-reveal atlas-panel rounded-2xl px-5 py-4 sm:px-6"
+          style={{ animationDelay: "100ms" }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p
+              className="cc5-eyebrow"
+              title="Secundário do corretor: contexto operacional do seu dia — carteira, tarefas e agenda, direto do broker-daily."
+            >
+              Meu dia · Números
+            </p>
+            <Link
+              href="/tasks"
+              className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+            >
+              Abrir tarefas →
+            </Link>
+          </div>
+          {!brokerDaily ? (
+            <AtlasSkeleton className="mt-3 h-16 w-full" />
+          ) : (
+            <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              <div
+                className="rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2.5"
+                title="Leads da sua carteira em atendimento"
+              >
+                <dt className="text-[11px] text-slate-500">Leads ativos</dt>
+                <dd className="mt-0.5 font-mono text-xl font-semibold tabular-nums text-white">
+                  {brokerDaily.summary.activeLeads}
+                </dd>
+              </div>
+              <div
+                className="rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2.5"
+                title="Alta intenção ou score elevado"
+              >
+                <dt className="text-[11px] text-slate-500">Quentes</dt>
+                <dd
+                  className={`mt-0.5 font-mono text-xl font-semibold tabular-nums ${
+                    brokerDaily.summary.hotLeads > 0
+                      ? "text-[var(--atlas-warning)]"
+                      : "text-white"
+                  }`}
+                >
+                  {brokerDaily.summary.hotLeads}
+                </dd>
+              </div>
+              <div
+                className="rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2.5"
+                title="Tarefas em aberto na sua fila"
+              >
+                <dt className="text-[11px] text-slate-500">Tarefas abertas</dt>
+                <dd className="mt-0.5 font-mono text-xl font-semibold tabular-nums text-white">
+                  {brokerDaily.summary.openTasks}
+                </dd>
+              </div>
+              <div
+                className="rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2.5"
+                title="Prazos vencidos aguardando ação"
+              >
+                <dt className="text-[11px] text-slate-500">Atrasadas</dt>
+                <dd
+                  className={`mt-0.5 font-mono text-xl font-semibold tabular-nums ${
+                    brokerDaily.summary.overdueTasks > 0
+                      ? "text-[var(--atlas-danger)]"
+                      : "text-white"
+                  }`}
+                >
+                  {brokerDaily.summary.overdueTasks}
+                </dd>
+              </div>
+              <div
+                className="rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2.5"
+                title="Compromissos com prazo nos próximos 7 dias"
+              >
+                <dt className="text-[11px] text-slate-500">Agenda 7 dias</dt>
+                <dd className="mt-0.5 font-mono text-xl font-semibold tabular-nums text-white">
+                  {brokerDaily.summary.agendaNext7Days}
+                </dd>
+              </div>
+            </dl>
+          )}
+        </section>
+      ) : null}
+
       <section
         aria-label="Pulso da operação"
         className="cc5-reveal grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [transform-style:preserve-3d]"
@@ -1718,11 +2264,106 @@ export default function CommandCenterPage() {
         </TiltCard>
       </section>
 
+      {/* SECUNDÁRIO · herança do Início — distribuição por estágio derivada do
+          snapshot já buscado: barra segmentada fina, um acento em rampa. */}
       <section
-        aria-label="Telemetria da sala de comando"
-        className="cc5-reveal atlas-panel flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-2xl px-5 py-3"
+        aria-label="Distribuição do pipeline por estágio"
+        className="cc5-reveal atlas-panel rounded-2xl px-5 py-4 sm:px-6"
+        style={{ animationDelay: "170ms" }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p
+            className="cc5-eyebrow"
+            title="Quantos leads do snapshot atual estão em cada estágio do funil: novo → contato → qualificação → visita → proposta → negociação."
+          >
+            Pipeline · Estágios
+          </p>
+          <Link
+            href="/pipeline"
+            className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+          >
+            Abrir pipeline →
+          </Link>
+        </div>
+        {stageDistribution.total ? (
+          <>
+            <div
+              role="img"
+              aria-label={`Distribuição por estágio: ${stageDistribution.stages
+                .map((stage) => `${stage.label} ${stage.count}`)
+                .join(", ")}.`}
+              className="mt-3 flex h-2 w-full gap-px overflow-hidden rounded-full bg-white/[.04]"
+            >
+              {stageDistribution.stages.map((stage, index) =>
+                stage.count > 0 ? (
+                  <span
+                    key={stage.key}
+                    title={`${stage.label}: ${stage.count} lead(s)`}
+                    className="h-full min-w-[6px] bg-[var(--atlas-accent)]"
+                    style={{
+                      width: `${(stage.count / stageDistribution.total) * 100}%`,
+                      opacity: 0.92 - index * 0.12,
+                    }}
+                  />
+                ) : null,
+              )}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              {stageDistribution.stages.map((stage, index) => (
+                <span
+                  key={stage.key}
+                  className="inline-flex items-center gap-1.5 text-[11px] text-slate-500"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-1.5 w-1.5 rounded-[2px] bg-[var(--atlas-accent)]"
+                    style={{ opacity: 0.92 - index * 0.12 }}
+                  />
+                  {stage.label}
+                  <span className="font-mono font-semibold tabular-nums text-slate-300">
+                    {stage.count}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="mt-3 text-xs text-slate-500">
+            Nenhum lead nos estágios do funil neste escopo agora.
+          </p>
+        )}
+      </section>
+
+      {/* TERCIÁRIO · telemetria + régua de módulos — discreto e colapsável
+          (reusa collapsedLayers; contadores do cabeçalho seguem vivos). */}
+      <section
+        aria-label="Telemetria e régua de módulos"
+        className="cc5-reveal atlas-panel rounded-2xl px-5 py-3"
         style={{ animationDelay: "210ms" }}
       >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p
+            className="cc5-eyebrow"
+            title="Camada terciária: latência real medida por grupo de dados, séries das últimas 24h e a régua de módulos com contagem e estado de saúde."
+          >
+            Telemetria · Módulos
+          </p>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-[11px] tabular-nums text-slate-500">
+              {moduleHealth.length
+                ? `${operationalModuleCount}/${moduleHealth.length} módulos · ${updatedAgoLabel}`
+                : updatedAgoLabel}
+            </span>
+            <LayerToggle
+              collapsed={collapsedLayers.operacao}
+              onToggle={() => toggleLayer("operacao")}
+              layerLabel="telemetria e módulos"
+            />
+          </div>
+        </div>
+        {collapsedLayers.operacao ? null : (
+        <>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <span
             className={`inline-flex items-center gap-2 text-[11px] font-medium ${
@@ -1796,6 +2437,51 @@ export default function CommandCenterPage() {
             apresentação
           </span>
         </div>
+        </div>
+        <nav
+          aria-label="Régua de módulos"
+          className="mt-3 grid gap-2 border-t border-white/[.06] pt-3 sm:grid-cols-2 xl:grid-cols-5"
+        >
+          {moduleHealth.length ? (
+            moduleHealth.map((module) => (
+              <Link
+                key={module.id}
+                href={module.href}
+                title={`${module.label}: ${module.detail}`}
+                className="flex min-h-11 items-center gap-2.5 rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2 transition-colors hover:border-white/[.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                    module.state === "operational"
+                      ? "bg-[var(--atlas-success)]"
+                      : module.state === "degraded"
+                        ? "bg-[var(--atlas-warning)]"
+                        : "bg-[var(--atlas-danger)]"
+                  }`}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-medium text-white">
+                    {module.label}
+                  </span>
+                  <span className="block truncate text-[10px] text-slate-500">
+                    {module.detail}
+                  </span>
+                </span>
+                <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-slate-300">
+                  {module.count ?? "—"}
+                </span>
+              </Link>
+            ))
+          ) : (
+            <p className="text-xs text-slate-500 sm:col-span-2 xl:col-span-5">
+              Régua de módulos indisponível — restabeleça a conexão para voltar a navegar com
+              contagens e estado de saúde.
+            </p>
+          )}
+        </nav>
+        </>
+        )}
       </section>
 
       {warnings.length ? (
@@ -2265,79 +2951,13 @@ export default function CommandCenterPage() {
         </section>
       ) : null}
 
-      <section
-        aria-label="Camada operação"
-        className={`grid gap-4 [transform-style:preserve-3d] ${isDirector ? "xl:grid-cols-[.95fr_1.05fr]" : ""}`}
-      >
-        <div className={depthShell}>
-          <AtlasCard>
-            <AtlasCardHeader
-              eyebrow="Camada operação"
-              title="Saúde dos módulos"
-              description="Estado de leitura e escrita de cada módulo essencial da operação."
-              action={
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <span className="text-xs tabular-nums text-slate-500">
-                    {moduleHealth.filter((module) => module.state === "operational").length}/
-                    {moduleHealth.length} operacionais
-                  </span>
-                  <LayerToggle
-                    collapsed={collapsedLayers.operacao}
-                    onToggle={() => toggleLayer("operacao")}
-                    layerLabel="operação"
-                  />
-                </div>
-              }
-            />
-            {collapsedLayers.operacao ? null : (
-            <div className={`grid gap-3 border-t border-white/[.06] sm:grid-cols-2 ${layerBodyPad}`}>
-              {moduleHealth.length ? (
-                moduleHealth.map((module) => (
-                  <Link
-                    key={module.id}
-                    href={module.href}
-                    className="flex min-h-11 items-center gap-3 rounded-xl border border-white/[.06] bg-white/[.02] p-4 transition-colors hover:border-white/[.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                        module.state === "operational"
-                          ? "bg-[var(--atlas-success)]"
-                          : module.state === "degraded"
-                            ? "bg-[var(--atlas-warning)]"
-                            : "bg-[var(--atlas-danger)]"
-                      }`}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-white">{module.label}</span>
-                      <span className="block truncate text-xs text-slate-500">{module.detail}</span>
-                    </span>
-                    {module.count !== null ? (
-                      <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-400">
-                        {module.count}
-                      </span>
-                    ) : (
-                      <span className="shrink-0 text-xs text-slate-600" aria-hidden="true">
-                        →
-                      </span>
-                    )}
-                  </Link>
-                ))
-              ) : (
-                <div className="sm:col-span-2">
-                  <AtlasEmpty
-                    reason="not-configured"
-                    title="Saúde dos módulos indisponível"
-                    description="Restabeleça a conexão para voltar a acompanhar leitura e escrita dos módulos."
-                  />
-                </div>
-              )}
-            </div>
-            )}
-          </AtlasCard>
-        </div>
-
-        {isDirector ? (
+      {/* A antiga "Saúde dos módulos" foi fundida na régua de módulos da camada
+          terciária; a governança segue exclusiva da diretoria. */}
+      {isDirector ? (
+        <section
+          aria-label="Governança e pulso do sistema"
+          className="[transform-style:preserve-3d]"
+        >
           <div className={depthShell}>
             <AtlasCard>
               <AtlasCardHeader
@@ -2426,8 +3046,8 @@ export default function CommandCenterPage() {
               </div>
             </AtlasCard>
           </div>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
 
       <p className="text-center text-[11px] text-slate-600">
         A IA sugere e explica; nenhuma ação é executada sem a sua confirmação.
