@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/atlas/page-header";
-import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
-import { AtlasBadge, AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { StatusBadge } from "@/components/atlas/status-badge";
+import { TiltShell } from "@/components/atlas/tilt-shell";
+import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { isMissingRelation, leadAsOpportunity, mapLegacyLead } from "@/lib/compat/legacy-v2";
 
 type Opportunity = {
@@ -19,6 +19,21 @@ type Opportunity = {
 };
 type View = "all" | "attention" | "closing" | "won";
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+/* CC-6: tinta semântica por significado — vencido/urgente em rose, revisão em
+   amber. Rótulos de comissão em pt-BR no lugar do enum técnico. */
+const SEV_INK = { crit: "#fb7185", warn: "#f5b544" } as const;
+const COMMISSION_LABEL: Record<string, string> = {
+  received: "Recebida",
+  partial: "Parcial",
+  divergent: "Divergente",
+  overdue: "Vencida",
+  due_soon: "Vence em 7d",
+  pending: "Pendente",
+  not_applicable: "—",
+};
+const TH_CLASS = "px-4 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#6b7890]";
+const VIEW_OPTIONS: Array<[View, string]> = [["all", "Todas"], ["attention", "Atenção"], ["closing", "Fecha em 30d"], ["won", "Ganhas"]];
 
 export default function SalesPage() {
   const [items, setItems] = useState<Opportunity[]>([]);
@@ -137,30 +152,225 @@ export default function SalesPage() {
     } }));
   }
 
-  return <div className="space-y-6 pb-8" data-evolution-phase="47" data-sales-layout="revenue-decision-first">
-    <section className="relative overflow-hidden rounded-[28px] border border-white/[.08] bg-white/[.025] p-6 pr-32 sm:p-8 sm:pr-44">
-      <Image src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas" width={84} height={126} className="pointer-events-none absolute -bottom-8 right-5 h-auto w-20 opacity-70" />
-      <PageHeader eyebrow="Revenue engine · Opportunity workspace" title="Vendas e oportunidades" description="Valor, probabilidade, prazo e risco organizados para o time saber quais negócios exigem ação agora." action={{ href: "/atlas-v3/forecast", label: "Abrir forecast", priority: "secondary" }} />
-    </section>
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5"><AtlasMetric label="VGV total" value={brl.format(metrics.total)} detail="Base total visível" trend="VGV" tone="blue"/><AtlasMetric label="Forecast ponderado" value={brl.format(metrics.weighted)} detail="Valor × probabilidade" trend="PREVISÃO" tone="violet"/><AtlasMetric label="Vendas ganhas" value={brl.format(metrics.won)} detail="Receita comercial confirmada" trend="GANHO" tone="green"/><AtlasMetric label="Oportunidades abertas" value={metrics.open} detail="Negócios em andamento" trend="PIPE" tone="blue"/><AtlasMetric label="Exigem atenção" value={attentionCount} detail="Prazo, valor ou previsão" trend="AGIR" tone={attentionCount ? "rose" : "green"}/></section>
-    {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
-    <section data-phase="47-revenue-decision-queue">
-      <AtlasCard>
-        <AtlasCardHeader eyebrow="Fase 47 · Decisões de receita" title="O que precisa de confirmação para avançar" description="Até três sinais verificáveis de fechamento ou recebimento. O forecast orienta a revisão, mas não promete venda nem receita." action={<AtlasBadge tone="violet">APROVAÇÃO HUMANA</AtlasBadge>}/>
-        <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-3">
-          {revenueDecisionQueue.map((decision) => <article key={`${decision.item.id}-${decision.title}`} className="rounded-2xl border border-violet-300/15 bg-violet-300/[.04] p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="text-sm font-semibold text-white">{decision.title}</h2><p className="mt-1 text-xs text-slate-500">{decision.item.leads?.name || "Oportunidade"} · {decision.item.stage}</p></div><AtlasBadge tone={decision.urgency >= 6 ? "danger" : "warning"}>{decision.urgency >= 6 ? "URGENTE" : "REVISAR"}</AtlasBadge></div><p className="mt-3 text-xs leading-5 text-slate-400">{decision.detail}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => openRevenueCopilot(decision)} className="atlas-button-secondary">Preparar decisão com IA</button>{decision.item.leads?.id ? <Link href={`/leads/${decision.item.leads.id}`} className="atlas-button-secondary">Abrir negócio</Link> : null}</div></article>)}
-          {!loading && !revenueDecisionQueue.length ? <div className="lg:col-span-3"><AtlasEmpty reason="completed" eyebrow="Receita sob controle" title="Nenhuma confirmação crítica neste recorte" description="Continue revisando valor, probabilidade, prazo e comissão com evidência humana." /></div> : null}
-          {loading ? [1,2,3].map((item) => <AtlasSkeleton key={item} className="h-44"/>) : null}
+  const decisive = [
+    { label: "VGV total", value: brl.format(metrics.total), ink: "" },
+    { label: "forecast ponderado", value: brl.format(metrics.weighted), ink: "" },
+    { label: "vendas ganhas", value: brl.format(metrics.won), ink: metrics.won ? "cc6-ok" : "" },
+    { label: "abertas", value: String(metrics.open), ink: "" },
+    { label: "exigem atenção", value: String(attentionCount), ink: attentionCount ? "cc6-crit" : "cc6-ok" },
+  ];
+
+  return (
+    <div className="space-y-4 pb-8" data-evolution-phase="47" data-sales-layout="revenue-decision-first">
+      <PageHeader
+        eyebrow="Revenue engine · Oportunidades"
+        title="Vendas e oportunidades"
+        description="Os negócios de maior risco aparecem primeiro — a previsão orienta a revisão, não garante fechamento."
+        action={{ href: "/atlas-v3/forecast", label: "Abrir forecast", priority: "secondary" }}
+      />
+
+      {/* Números decisivos antes de qualquer lista: base, previsão, ganho e
+          pressão de atenção na mesma régua mono. */}
+      <section aria-label="Números decisivos da receita">
+        <TiltShell className="cc6-panel cc6-reveal p-5 sm:p-6" delayMs={0}>
+          <div className="flex flex-wrap gap-x-10 gap-y-4" aria-busy={loading}>
+            {decisive.map((metric) => (
+              <div key={metric.label}>
+                <p className={`cc6-metric-value text-2xl leading-none sm:text-3xl ${loading ? "" : metric.ink}`}>
+                  {loading ? "—" : metric.value}
+                </p>
+                <p className="cc6-metric-label mt-1.5">{metric.label}</p>
+              </div>
+            ))}
+          </div>
+        </TiltShell>
+      </section>
+
+      {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
+
+      <section data-phase="47-revenue-decision-queue">
+        <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "60ms" }}>
+          <header className="px-5 pt-5 pb-3">
+            <p className="cc6-eyebrow">Fase 47 · Decisões de receita</p>
+            <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">O que precisa de confirmação para avançar</h2>
+          </header>
+          <div aria-busy={loading}>
+            {loading ? (
+              <div className="cc6-hairline space-y-2 p-5">
+                {[1, 2, 3].map((item) => <AtlasSkeleton key={item} className="h-16" />)}
+              </div>
+            ) : revenueDecisionQueue.length ? (
+              revenueDecisionQueue.map((decision, index) => {
+                const crit = decision.urgency >= 6;
+                return (
+                  <article
+                    key={`${decision.item.id}-${decision.title}`}
+                    className="cc6-reveal cc6-hairline cc6-sev-band flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3.5"
+                    style={{ animationDelay: `${100 + index * 60}ms`, "--cc6-sev": crit ? SEV_INK.crit : SEV_INK.warn } as CSSProperties}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-sm font-medium text-[#e8eef8]">{decision.title}</h3>
+                        <StatusBadge tone={crit ? "danger" : "warning"}>{crit ? "Urgente" : "Revisar"}</StatusBadge>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-[#6b7890]">
+                        {decision.item.leads?.name || "Oportunidade"} · {decision.item.stage} · {decision.detail}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button type="button" onClick={() => openRevenueCopilot(decision)} className="cc6-ghost-btn">✦ Preparar com IA</button>
+                      {decision.item.leads?.id ? (
+                        <Link href={`/leads/${decision.item.leads.id}`} className="cc6-ghost-btn">Abrir negócio</Link>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <p className="cc6-hairline px-5 py-5 text-sm leading-6 text-[#6b7890]">
+                Nenhuma confirmação crítica neste recorte — valor, probabilidade, prazo e comissão seguem com evidência humana.
+              </p>
+            )}
+          </div>
+          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+            Até três sinais verificáveis · a IA prepara a revisão, decisão e registro permanecem humanos.
+          </p>
         </div>
-        <div className="border-t border-white/[.06] px-5 py-3 text-[10px] text-slate-500">IA prepara a revisão · decisão e registro permanecem humanos · previsão não é garantia de fechamento.</div>
-      </AtlasCard>
-    </section>
-    <AtlasCard><AtlasCardHeader eyebrow="Pipeline de receita" title="Fila de oportunidades" description="Os negócios de maior risco aparecem primeiro. A previsão orienta, mas não garante fechamento." action={<AtlasBadge tone="violet">REVISÃO HUMANA</AtlasBadge>}/>
-      <div className="grid gap-3 border-t border-white/[.06] p-4 sm:grid-cols-[1fr_auto] sm:p-5"><input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full px-4" placeholder="Buscar lead, imóvel ou etapa"/><div className="flex gap-2 overflow-x-auto">{([['all','Todas'],['attention',`Atenção ${attentionCount}`],['closing','Fecha em 30d'],['won','Ganhas']] as const).map(([key,label]) => <button key={key} onClick={() => setView(key)} className={`atlas-kanban-toggle shrink-0 ${view === key ? "is-active" : ""}`}>{label}</button>)}</div></div>
-      {loading ? <div className="grid gap-3 p-5">{[1,2,3].map((item) => <AtlasSkeleton key={item} className="h-20"/>)}</div> : visible.length ? <div className="overflow-x-auto"><table className="min-w-[1040px] text-sm"><thead><tr><th>Lead</th><th>Imóvel</th><th>Etapa</th><th>Valor</th><th>Forecast</th><th>Fechamento</th><th>Risco</th>{canManage ? <><th>SLA comissão</th><th>Ações</th></> : null}</tr></thead><tbody>{visible.map((item) => {
-        const risk = opportunityRisk(item); const status = commissionStatus(item); const commissionTone = status === "received" ? "success" : ["overdue", "divergent"].includes(status) ? "danger" : "warning";
-        return <tr key={item.id}><td>{item.leads?.id ? <Link className="font-semibold text-white hover:text-cyan-200" href={`/leads/${item.leads.id}`}>{item.leads.name || "Lead sem nome"} →</Link> : "Sem lead"}</td><td className="text-slate-400">{item.properties?.title || "Sem imóvel"}</td><td><AtlasBadge tone="info">{item.stage}</AtlasBadge></td><td className="font-semibold text-white">{brl.format(Number(item.value || 0))}</td><td><strong className="text-violet-200">{brl.format(Number(item.value || 0) * item.probability / 100)}</strong><span className="mt-1 block text-[10px] text-slate-600">{item.probability}%</span></td><td className="text-slate-400">{item.expected_close_at ? new Date(item.expected_close_at).toLocaleDateString("pt-BR") : "Definir data"}</td><td><AtlasBadge tone={risk.tone}>{risk.label}</AtlasBadge></td>{canManage ? <><td>{item.won_at ? <div><AtlasBadge tone={commissionTone}>{status.replaceAll("_", " ").toUpperCase()}</AtlasBadge><p className="mt-2 text-[10px] text-slate-500">{item.commission_sla_days ?? 30} dias{item.commission_net ? ` · ${brl.format(item.commission_received_amount || 0)} de ${brl.format(item.commission_net)}` : ""}</p></div> : <span className="text-slate-600">Após a venda</span>}</td><td>{item.won_at ? <div className="flex min-w-36 flex-col gap-2"><button disabled={savingId === item.id} onClick={() => configureCommission(item)} className="atlas-button-secondary">Configurar</button><button disabled={savingId === item.id || !item.commission_net} onClick={() => registerPayment(item)} className="atlas-button-primary">Recebimento</button></div> : item.leads?.id ? <Link className="atlas-button-secondary" href={`/leads/${item.leads.id}`}>Abrir negócio</Link> : null}</td></> : null}</tr>;
-      })}</tbody></table></div> : <div className="p-5"><AtlasEmpty reason={items.length ? "no-results" : "first-use"} eyebrow={items.length ? "Fila filtrada" : "Pipeline de receita ainda vazio"} title={items.length ? "Nenhuma oportunidade neste filtro" : "Nenhuma oportunidade registrada"} description={items.length ? "Limpe a busca ou altere o filtro para ampliar a fila." : "As oportunidades aparecerão quando uma lead avançar para um negócio comercial."} action={items.length ? <button type="button" className="atlas-button-secondary" onClick={() => { setQuery(""); setView("all"); }}>Limpar filtros</button> : <Link href="/pipeline" className="atlas-button-primary">Abrir pipeline</Link>}/></div>}
-    </AtlasCard>
-  </div>;
+      </section>
+
+      <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "120ms" }} aria-labelledby="sales-queue-title">
+        <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
+          <div>
+            <p className="cc6-eyebrow">Pipeline de receita</p>
+            <h2 id="sales-queue-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Fila de oportunidades</h2>
+          </div>
+          {!loading ? <span className="cc6-chip">{visible.length} visíveis</span> : null}
+        </header>
+        <div className="mt-4 flex flex-wrap items-center gap-2 px-5 pb-4">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="min-w-56 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[#e8eef8] outline-none transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)]"
+            placeholder="Buscar lead, imóvel ou etapa"
+            aria-label="Buscar oportunidades"
+          />
+          <div className="flex gap-1.5 overflow-x-auto" role="group" aria-label="Filtrar oportunidades">
+            {VIEW_OPTIONS.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setView(key)}
+                aria-pressed={view === key}
+                className={`cc6-chip shrink-0 cursor-pointer transition-colors ${
+                  view === key
+                    ? "border-[color:var(--atlas-accent)]! text-[#e8eef8]!"
+                    : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!"
+                }`}
+              >
+                {label}
+                {key === "attention" ? (
+                  <strong className={`font-semibold ${attentionCount ? "cc6-crit" : ""}`}>{attentionCount}</strong>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </div>
+        {loading ? (
+          <div className="cc6-hairline space-y-2 p-5">
+            {[1, 2, 3].map((item) => <AtlasSkeleton key={item} className="h-14" />)}
+          </div>
+        ) : visible.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1040px] text-sm">
+              <thead>
+                <tr className="border-b border-b-[rgba(148,163,184,0.12)]">
+                  <th className={TH_CLASS}>Lead</th>
+                  <th className={TH_CLASS}>Imóvel</th>
+                  <th className={TH_CLASS}>Etapa</th>
+                  <th className={TH_CLASS}>Valor</th>
+                  <th className={TH_CLASS}>Forecast</th>
+                  <th className={TH_CLASS}>Fechamento</th>
+                  <th className={TH_CLASS}>Risco</th>
+                  {canManage ? <><th className={TH_CLASS}>SLA comissão</th><th className={TH_CLASS}>Ações</th></> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((item) => {
+                  const risk = opportunityRisk(item); const status = commissionStatus(item); const commissionTone = status === "received" ? "success" : ["overdue", "divergent"].includes(status) ? "danger" : "warning";
+                  return (
+                    <tr key={item.id} className="border-t border-t-[rgba(148,163,184,0.08)] align-top transition-colors hover:bg-[rgba(75,141,248,0.04)]">
+                      <td className="px-4 py-3">
+                        {item.leads?.id ? (
+                          <Link className="font-medium text-[#e8eef8] transition-colors hover:text-[color:var(--atlas-accent-hover)]" href={`/leads/${item.leads.id}`}>
+                            {item.leads.name || "Lead sem nome"}
+                          </Link>
+                        ) : (
+                          <span className="text-[#6b7890]">Sem lead</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-[#aab6ca]">{item.properties?.title || "—"}</td>
+                      <td className="px-4 py-3 text-[#aab6ca]">{item.stage}</td>
+                      <td className="cc6-num px-4 py-3 font-medium text-[#e8eef8]">{item.value == null ? "—" : brl.format(Number(item.value))}</td>
+                      <td className="px-4 py-3">
+                        <span className="cc6-num block text-[#e8eef8]">{item.value == null ? "—" : brl.format(Number(item.value) * item.probability / 100)}</span>
+                        <span className="cc6-num mt-0.5 block text-[10px] text-[#6b7890]">{item.probability}%</span>
+                      </td>
+                      <td className="cc6-num px-4 py-3 text-[#aab6ca]">
+                        {item.expected_close_at ? new Date(item.expected_close_at).toLocaleDateString("pt-BR") : <span className="cc6-warn">Definir data</span>}
+                      </td>
+                      <td className="px-4 py-3"><StatusBadge tone={risk.tone}>{risk.label}</StatusBadge></td>
+                      {canManage ? (
+                        <>
+                          <td className="px-4 py-3">
+                            {item.won_at ? (
+                              <div>
+                                <StatusBadge tone={commissionTone}>{COMMISSION_LABEL[status] ?? status}</StatusBadge>
+                                <p className="cc6-num mt-1.5 text-[10px] text-[#6b7890]">
+                                  {item.commission_sla_days ?? 30} dias{item.commission_net ? ` · ${brl.format(item.commission_received_amount || 0)} de ${brl.format(item.commission_net)}` : ""}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-[#6b7890]">Após a venda</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {item.won_at ? (
+                              <div className="flex min-w-36 flex-col gap-2">
+                                <button disabled={savingId === item.id} onClick={() => configureCommission(item)} className="cc6-ghost-btn justify-center disabled:opacity-50">Configurar</button>
+                                <button disabled={savingId === item.id || !item.commission_net} onClick={() => registerPayment(item)} className="atlas-button-primary disabled:opacity-50">Recebimento</button>
+                              </div>
+                            ) : item.leads?.id ? (
+                              <Link className="cc6-ghost-btn" href={`/leads/${item.leads.id}`}>Abrir negócio</Link>
+                            ) : null}
+                          </td>
+                        </>
+                      ) : null}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="cc6-hairline px-5 py-6 text-sm leading-6 text-[#6b7890]">
+            {items.length ? (
+              <>
+                Nenhuma oportunidade neste filtro.{" "}
+                <button type="button" className="cursor-pointer font-medium text-[color:var(--atlas-accent)] hover:underline" onClick={() => { setQuery(""); setView("all"); }}>
+                  Limpar filtros
+                </button>
+              </>
+            ) : (
+              <>
+                Nenhuma oportunidade registrada — elas nascem quando uma lead avança para um negócio comercial.{" "}
+                <Link href="/pipeline" className="font-medium text-[color:var(--atlas-accent)] hover:underline">
+                  Abrir pipeline
+                </Link>
+              </>
+            )}
+          </p>
+        )}
+      </section>
+    </div>
+  );
 }
