@@ -7002,3 +7002,240 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ===== CC-5 cockpit ===== */
+/* Redesign da sala de comando (Command Center): saudação personalizada, herói
+   proativo "Prioridades agora" e revelação escalonada na entrada. Bloco novo e
+   isolado — nenhuma regra acima é reescrita. Namespaced .cc5-*. Profundidade por
+   geometria (hairlines, faixa de severidade), acento único e semânticos via
+   tokens do design system. Zero glow / drop-shadow novo. */
+
+/* Cabeçalho: eyebrow mono uppercase + data operacional mono. */
+.cc5-eyebrow {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--atlas-text-tertiary);
+}
+.cc5-opdate {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--atlas-text-tertiary);
+}
+
+/* Herói proativo "Prioridades agora". */
+.cc5-hero-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.cc5-hero-title {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--atlas-text-primary);
+}
+.cc5-tag {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: var(--atlas-radius-pill);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--atlas-text-secondary);
+}
+
+.cc5-priority-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.cc5-priority {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px 14px 18px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: var(--atlas-radius-lg);
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+.cc5-priority:hover {
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(255, 255, 255, 0.03);
+}
+/* Faixa de severidade: pura geometria, 3px, sem glow. */
+.cc5-priority-band {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--cc5-sev, var(--atlas-text-tertiary));
+}
+.cc5-sev-critical {
+  --cc5-sev: var(--atlas-danger);
+}
+.cc5-sev-attention {
+  --cc5-sev: var(--atlas-warning);
+}
+.cc5-sev-opportunity {
+  --cc5-sev: var(--atlas-success);
+}
+/* Primeiro card (mais crítico): leve ênfase com o acento único. */
+.cc5-priority-lead {
+  border-color: color-mix(in srgb, var(--atlas-accent) 45%, transparent);
+}
+.cc5-priority-lead:hover {
+  border-color: color-mix(in srgb, var(--atlas-accent) 60%, transparent);
+}
+.cc5-priority-glyph {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--cc5-sev, var(--atlas-text-tertiary));
+}
+.cc5-priority-body {
+  min-width: 0;
+}
+.cc5-priority-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--atlas-text-primary);
+}
+.cc5-priority-reason {
+  margin: 3px 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  color: var(--atlas-text-tertiary);
+}
+.cc5-priority-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.cc5-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: var(--atlas-radius-md);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    color 180ms ease,
+    background-color 180ms ease;
+}
+.cc5-action:hover {
+  border-color: rgba(148, 163, 184, 0.36);
+  color: var(--atlas-text-primary);
+  background: rgba(255, 255, 255, 0.03);
+}
+.cc5-action:focus-visible {
+  outline: 2px solid var(--atlas-accent);
+  outline-offset: 2px;
+}
+.cc5-action-primary {
+  border-color: color-mix(in srgb, var(--atlas-accent) 55%, transparent);
+  color: var(--atlas-accent);
+}
+.cc5-action-primary:hover {
+  border-color: var(--atlas-accent);
+  color: var(--atlas-text-primary);
+  background: var(--atlas-accent-soft);
+}
+
+/* Estado vazio elegante. */
+.cc5-hero-empty {
+  margin-top: 16px;
+  padding: 28px 20px;
+  border: 1px dashed rgba(148, 163, 184, 0.18);
+  border-radius: var(--atlas-radius-lg);
+  text-align: center;
+}
+.cc5-hero-empty-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--atlas-text-secondary);
+}
+.cc5-hero-empty-detail {
+  margin: 6px auto 0;
+  max-width: 46ch;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--atlas-text-tertiary);
+}
+
+/* Telas estreitas: as ações descem para uma linha própria. */
+@media (max-width: 640px) {
+  .cc5-priority {
+    grid-template-columns: auto 1fr;
+    row-gap: 10px;
+  }
+  .cc5-priority-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+/* Revelação escalonada (fade + rise ~10px). Só sob motion-safe: fora do
+   no-preference nada anima e o conteúdo já nasce visível. Fill "backwards"
+   segura o estado inicial durante o delay (sem flash) e — por não ser
+   "forwards" — não sobrescreve o transform de hover/tilt das camadas CC-1..4
+   depois que a animação termina. O animation-delay vem inline por seção. */
+@media (prefers-reduced-motion: no-preference) {
+  .cc5-reveal {
+    animation-name: cc5-rise;
+    animation-duration: 460ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: backwards;
+  }
+}
+@keyframes cc5-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -350,6 +350,35 @@ function interventionTone(severity: "critical" | "attention" | "opportunity") {
   return "info" as const;
 }
 
+// CC-5 · herói "Prioridades agora": normaliza os sinais proativos que a página já
+// busca (briefing.signals para gestão, brokerDaily.attention.queue para corretor)
+// em cards de decisão unificados. Nenhum dado novo é inventado nem buscado.
+type ProactiveSeverity = "critical" | "attention" | "opportunity";
+
+type ProactivePriority = {
+  id: string;
+  severity: ProactiveSeverity;
+  glyph: string;
+  title: string;
+  reason: string;
+  primaryLabel: string;
+  primaryHref: string;
+};
+
+// Ordem de decisão: crítico → atenção → oportunidade.
+const PRIORITY_SEVERITY_RANK: Record<ProactiveSeverity, number> = {
+  critical: 0,
+  attention: 1,
+  opportunity: 2,
+};
+
+// Glyph mono geométrico por severidade (a cor vem da faixa, via CSS).
+function priorityGlyph(severity: ProactiveSeverity) {
+  if (severity === "critical") return "▲";
+  if (severity === "attention") return "●";
+  return "◆";
+}
+
 // ——— Camada tecnológica local (sem lib nova, sem backend novo) ———
 
 // Ordem fixa dos grupos de fetch na telemetria de latência.
@@ -1291,6 +1320,21 @@ export default function CommandCenterPage() {
     (key) => `${key} ${fetchLatency[key]}ms`,
   );
 
+  // CC-5 · saudação personalizada e data operacional (Intl/Date nativos, sem lib).
+  // Período pela hora local; nome real do viewer; data pt-BR capitalizada.
+  const viewerFirstName = displayName(viewer ?? {}, "").trim().split(/\s+/)[0] ?? "";
+  const greetingHour = new Date(nowTick).getHours();
+  const greetingPeriod =
+    greetingHour < 12 ? "Bom dia" : greetingHour < 18 ? "Boa tarde" : "Boa noite";
+  const greeting = viewerFirstName ? `${greetingPeriod}, ${viewerFirstName}.` : `${greetingPeriod}.`;
+  const operationalDateRaw = new Date(nowTick).toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const operationalDate =
+    operationalDateRaw.charAt(0).toUpperCase() + operationalDateRaw.slice(1);
+
   // CC-3 · derivados de experiência: densidade, escala de apresentação e triagem.
   const layerBodyPad = density === "compact" ? "p-4" : "p-5 sm:p-6";
   const metricValueClass = presentationMode
@@ -1310,6 +1354,50 @@ export default function CommandCenterPage() {
   const visibleBriefingSignals = briefingSignals.filter(
     (signal) => showSeenSignals || !seenSignalSet.has(signal.id),
   );
+
+  // CC-5 · sinais elevados para o herói "Prioridades agora", respeitando a mesma
+  // triagem (seenSignalIds/showSeenSignals) das camadas existentes. Sinais
+  // "healthy" não pedem decisão, então caem fora e alimentam o estado vazio.
+  const priorities: ProactivePriority[] = (
+    isBroker
+      ? visibleAttentionQueue.map((item) => {
+          const severity: ProactiveSeverity =
+            item.topSeverity === "critical"
+              ? "critical"
+              : item.topSeverity === "warning"
+                ? "attention"
+                : "opportunity";
+          return {
+            id: item.leadId,
+            severity,
+            glyph: priorityGlyph(severity),
+            title: item.leadName,
+            reason: item.topReason,
+            primaryLabel: "Atender",
+            primaryHref: `/leads/${item.leadId}`,
+          };
+        })
+      : visibleBriefingSignals
+          .filter((signal) => signal.severity !== "healthy")
+          .map((signal) => {
+            const severity = signal.severity as ProactiveSeverity;
+            return {
+              id: signal.id,
+              severity,
+              glyph: priorityGlyph(severity),
+              title: signal.title,
+              reason: signal.evidence,
+              primaryLabel: signal.action,
+              primaryHref: signal.href,
+            };
+          })
+  )
+    .sort((a, b) => PRIORITY_SEVERITY_RANK[a.severity] - PRIORITY_SEVERITY_RANK[b.severity])
+    .slice(0, 6);
+  // Enquanto a fonte do papel ainda carrega, o herói mostra skeleton (não vazio).
+  const prioritiesLoading = isBroker
+    ? brokerDaily === null
+    : briefing === null && !briefingUnavailable;
 
   const liveFeed = useMemo(() => {
     const reference = referenceTime;
@@ -1478,11 +1566,12 @@ export default function CommandCenterPage() {
       </span>
       <section
         aria-label="Estado da sala de comando"
-        className={`atlas-panel flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5 sm:p-6 ${depthShellSoft}`}
+        className={`cc5-reveal atlas-panel flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5 sm:p-6 ${depthShellSoft}`}
       >
         <div className="min-w-0">
-          <p className="atlas-page-eyebrow">Sala de comando · {roleLabel}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">Command Center</h1>
+          <p className="cc5-eyebrow">Sala de comando · {roleLabel}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">{greeting}</h1>
+          <p className="cc5-opdate mt-1">{operationalDate}</p>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">{roleDescription}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -1544,8 +1633,95 @@ export default function CommandCenterPage() {
       </section>
 
       <section
+        aria-label="Prioridades agora"
+        className="cc5-reveal atlas-panel rounded-2xl p-5 sm:p-6"
+        style={{ animationDelay: "70ms" }}
+      >
+        <div className="cc5-hero-head">
+          <div className="min-w-0">
+            <p className="cc5-eyebrow">Prioridades agora</p>
+            <h2 className="cc5-hero-title">
+              {isBroker ? "O que atender primeiro" : "O que pede a sua decisão"}
+            </h2>
+          </div>
+          <span className="cc5-tag">
+            <span aria-hidden="true">◇</span> IA proativa · {priorities.length}
+          </span>
+        </div>
+        {prioritiesLoading ? (
+          <AtlasSkeleton className="mt-4 h-40 w-full" />
+        ) : priorities.length ? (
+          <ul className="cc5-priority-list">
+            {priorities.map((card, index) => (
+              <li
+                key={card.id}
+                className={`cc5-priority cc5-sev-${card.severity}${index === 0 ? " cc5-priority-lead" : ""}`}
+              >
+                <span aria-hidden="true" className="cc5-priority-band" />
+                <span aria-hidden="true" className="cc5-priority-glyph">
+                  {card.glyph}
+                </span>
+                <div className="cc5-priority-body">
+                  <p className="cc5-priority-title">{card.title}</p>
+                  <p className="cc5-priority-reason">{card.reason}</p>
+                </div>
+                <div
+                  className="cc5-priority-actions"
+                  role="group"
+                  aria-label={`Ações para ${card.title}`}
+                >
+                  <Link
+                    href={card.primaryHref}
+                    className="cc5-action cc5-action-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                  >
+                    {card.primaryLabel}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => toggleSignalSeen(card.id)}
+                    className="cc5-action"
+                    aria-label={`Adiar o sinal ${card.title}`}
+                  >
+                    Adiar
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="cc5-hero-empty">
+            <p className="cc5-hero-empty-title">Nada pede sua decisão agora.</p>
+            <p className="cc5-hero-empty-detail">
+              A IA proativa não encontrou sinais que exijam sua decisão neste momento. Assim que
+              algo mudar no seu escopo, aparece aqui primeiro.
+            </p>
+          </div>
+        )}
+      </section>
+
+      <section
+        aria-label="Pulso da operação"
+        className="cc5-reveal grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [transform-style:preserve-3d]"
+        style={{ animationDelay: "140ms" }}
+      >
+        <TiltCard>
+          <AtlasMetric label="Leads ativos" value={<span className={metricValueClass}>{activeDisplay}</span>} detail="Base em atendimento no seu escopo" tone="blue" />
+        </TiltCard>
+        <TiltCard>
+          <AtlasMetric label="Leads quentes" value={<span className={metricValueClass}>{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
+        </TiltCard>
+        <TiltCard>
+          <AtlasMetric label="Tarefas atrasadas" value={<span className={metricValueClass}>{overdueDisplay}</span>} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
+        </TiltCard>
+        <TiltCard>
+          <AtlasMetric label="Sem responsável" value={<span className={metricValueClass}>{unassignedDisplay}</span>} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
+        </TiltCard>
+      </section>
+
+      <section
         aria-label="Telemetria da sala de comando"
-        className="atlas-panel flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-2xl px-5 py-3"
+        className="cc5-reveal atlas-panel flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-2xl px-5 py-3"
+        style={{ animationDelay: "210ms" }}
       >
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <span
@@ -1631,24 +1807,6 @@ export default function CommandCenterPage() {
           scope="page"
         />
       ) : null}
-
-      <section
-        aria-label="Pulso da operação"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [transform-style:preserve-3d]"
-      >
-        <TiltCard>
-          <AtlasMetric label="Leads ativos" value={<span className={metricValueClass}>{activeDisplay}</span>} detail="Base em atendimento no seu escopo" tone="blue" />
-        </TiltCard>
-        <TiltCard>
-          <AtlasMetric label="Leads quentes" value={<span className={metricValueClass}>{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
-        </TiltCard>
-        <TiltCard>
-          <AtlasMetric label="Tarefas atrasadas" value={<span className={metricValueClass}>{overdueDisplay}</span>} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
-        </TiltCard>
-        <TiltCard>
-          <AtlasMetric label="Sem responsável" value={<span className={metricValueClass}>{unassignedDisplay}</span>} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
-        </TiltCard>
-      </section>
 
       <section
         aria-label="Agora e sinais da IA"
