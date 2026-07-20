@@ -375,6 +375,21 @@ textarea:focus {
 .atlas-metric-rose::after {
   background: #fb7185;
 }
+.atlas-metric-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 11px;
+  font-size: 16px;
+  line-height: 1;
+}
+.atlas-metric-blue .atlas-metric-icon { background: rgba(56, 189, 248, 0.12); }
+.atlas-metric-green .atlas-metric-icon { background: rgba(52, 211, 153, 0.12); }
+.atlas-metric-amber .atlas-metric-icon { background: rgba(251, 191, 36, 0.12); }
+.atlas-metric-violet .atlas-metric-icon { background: rgba(139, 92, 246, 0.12); }
+.atlas-metric-rose .atlas-metric-icon { background: rgba(251, 113, 133, 0.12); }
 .atlas-eyebrow {
   margin: 0;
   font-size: 10px;

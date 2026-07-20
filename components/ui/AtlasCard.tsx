@@ -56,6 +56,7 @@ export function AtlasMetric({
   value,
   detail,
   trend,
+  icon,
   tone = "blue",
   relevance = "supporting",
 }: {
@@ -63,6 +64,7 @@ export function AtlasMetric({
   value: ReactNode;
   detail?: ReactNode;
   trend?: ReactNode;
+  icon?: ReactNode;
   tone?: "blue" | "green" | "amber" | "violet" | "rose";
   relevance?: "primary" | "supporting";
 }) {
@@ -73,7 +75,14 @@ export function AtlasMetric({
       data-relevance={relevance}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm text-slate-400">{label}</p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          {icon ? (
+            <span className="atlas-metric-icon" aria-hidden="true">
+              {icon}
+            </span>
+          ) : null}
+          <p className="text-sm text-slate-400">{label}</p>
+        </div>
         {trend ? (
           <span className="atlas-metric-trend">
             {trend}

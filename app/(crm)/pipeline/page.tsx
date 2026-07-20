@@ -359,12 +359,12 @@ export default function PipelinePage() {
       {lastMove ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.07] px-4 py-3 text-sm text-sky-100" role="status"><span><strong>{lastMove.leadName}</strong> avançou para {destinationOptions.find((item) => item.key === lastMove.to)?.label}.</span><button type="button" onClick={() => void undoLastMove()} disabled={Boolean(savingId)} className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs font-semibold hover:bg-sky-300/15 disabled:opacity-50">Desfazer movimentação</button></div> : null}
 
       {!focusMode ? <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <AtlasMetric label="Negócios abertos" value={loading ? "—" : metrics.open} detail="Oportunidades em andamento" trend="LIVE" tone="blue" />
-        <AtlasMetric label="Pipeline bruto" value={loading ? "—" : brl.format(metrics.pipeline)} detail="Potencial comercial total" trend="VGV" tone="violet" />
-        <AtlasMetric label="Forecast" value={loading ? "—" : brl.format(metrics.forecast)} detail="Ponderado por etapa" trend="AI" tone="green" />
-        <AtlasMetric label="Leads quentes" value={loading ? "—" : metrics.hot} detail="Prioridade imediata" trend="HOT" tone="rose" />
-        <AtlasMetric label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} trend="RISK" tone="amber" />
-        <AtlasMetric label="Perfis compradores" value={loading ? "—" : metrics.buyerProfiles} detail="Compraram em outro lugar" trend="LEARN" tone="green" />
+        <AtlasMetric icon="📊" label="Negócios abertos" value={loading ? "—" : metrics.open} detail="Oportunidades em andamento" trend="LIVE" tone="blue" />
+        <AtlasMetric icon="💰" label="Pipeline bruto" value={loading ? "—" : brl.format(metrics.pipeline)} detail="Potencial comercial total" trend="VGV" tone="violet" />
+        <AtlasMetric icon="📈" label="Forecast" value={loading ? "—" : brl.format(metrics.forecast)} detail="Ponderado por etapa" trend="AI" tone="green" />
+        <AtlasMetric icon="🔥" label="Leads quentes" value={loading ? "—" : metrics.hot} detail="Prioridade imediata" trend="HOT" tone="rose" />
+        <AtlasMetric icon="⚠️" label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} trend="RISK" tone="amber" />
+        <AtlasMetric icon="🎯" label="Perfis compradores" value={loading ? "—" : metrics.buyerProfiles} detail="Compraram em outro lugar" trend="LEARN" tone="green" />
       </section> : null}
 
       <section className="atlas-pipeline-priority-queue" aria-labelledby="atlas-pipeline-priority-title" aria-live="polite" data-priority-source="authorized-loaded-pipeline">
@@ -383,15 +383,18 @@ export default function PipelinePage() {
             const currentStage = stages[currentStageIndex];
             const nextStage = currentStageIndex >= 0 ? stages[currentStageIndex + 1] : undefined;
             return <article key={lead.id} className="atlas-broker-action">
-              <div className="flex items-start justify-between gap-3"><span className="atlas-broker-rank">{String(index + 1).padStart(2, "0")}</span><AtlasBadge tone={riskTone(risk)}>Risco {risk}</AtlasBadge></div>
-              <Link href={`/leads/${lead.id}`} className="mt-3 block truncate text-sm font-semibold text-white hover:text-sky-300">{lead.name || "Lead sem nome"}</Link>
+              <div className="flex items-start justify-between gap-3"><span className="atlas-broker-rank">{String(index + 1).padStart(2, "0")}</span>{risk !== "baixo" ? <AtlasBadge tone={riskTone(risk)}>{risk === "alto" ? "⚠️" : "•"} {risk}</AtlasBadge> : null}</div>
+              <div className="mt-3 flex items-center gap-2.5">
+                <span className="atlas-lead-avatar" aria-hidden="true">{(lead.name || "??").slice(0, 2).toUpperCase()}</span>
+                <Link href={`/leads/${lead.id}`} className="min-w-0 truncate text-sm font-semibold text-white hover:text-sky-300">{lead.temperature === "quente" ? "🔥 " : ""}{lead.name || "Lead sem nome"}</Link>
+              </div>
               <div className="atlas-broker-stage"><span>{currentStage?.label || "Etapa atual"}</span><i aria-hidden="true">→</i><strong>{nextStage?.label || "Revisar fechamento"}</strong></div>
               <p className="mt-3 text-sm font-semibold text-sky-200">{guidance.action}</p><p className="mt-1 min-h-10 text-xs leading-5 text-slate-500">{guidance.reason}</p>
               <label className="atlas-broker-move-label" htmlFor={`priority-stage-${lead.id}`}>Movimentar após validar</label>
               <select id={`priority-stage-${lead.id}`} value={lead.status ?? "novo"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="atlas-broker-move-select">
                 {destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
               </select>
-              <div className="mt-3 grid grid-cols-3 gap-2"><Link href={`/leads/${lead.id}`} className="atlas-broker-shortcut">Abrir Lead 360</Link><Link href={`/leads/${lead.id}/messages`} className="atlas-broker-shortcut">Preparar com IA</Link>{contact ? <a href={contact.call} className="atlas-broker-shortcut">Ligar</a> : <span className="atlas-broker-shortcut is-disabled">Sem telefone</span>}</div>
+              <div className="mt-3 grid grid-cols-3 gap-2"><Link href={`/leads/${lead.id}`} className="atlas-broker-shortcut">👁️ Lead 360</Link><Link href={`/leads/${lead.id}/messages`} className="atlas-broker-shortcut">✦ IA</Link>{contact ? <a href={contact.call} className="atlas-broker-shortcut">📞 Ligar</a> : <span className="atlas-broker-shortcut is-disabled">Sem telefone</span>}</div>
             </article>;
           })}
           {!loading && dailyFocus.length === 0 ? <div className="lg:col-span-3"><AtlasEmpty reason="completed" eyebrow="Fila prioritária concluída" title="Tudo em dia" description="Nenhuma oportunidade aberta exige ação neste momento." action={<Link href="/tasks" className="atlas-button-secondary">Revisar tarefas</Link>} /></div> : null}
