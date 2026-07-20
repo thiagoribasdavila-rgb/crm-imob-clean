@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import {
@@ -287,12 +287,13 @@ function openCopilot(prompt: string, context: DataRow) {
   );
 }
 
-function feedTimestamp(date: Date | null, referenceTime: number) {
+// Ticker: tempo relativo que se atualiza sozinho via nowTick (interval de 30s).
+function relativeTimestamp(date: Date | null, nowMs: number) {
   if (!date) return "Data não informada";
-  const sameDay = new Date(referenceTime).toDateString() === date.toDateString();
-  if (sameDay) {
-    return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  }
+  const diff = nowMs - date.getTime();
+  if (diff < 45_000) return "agora";
+  if (diff < 3_600_000) return `há ${Math.max(1, Math.round(diff / 60_000))}min`;
+  if (diff < 86_400_000) return `há ${Math.round(diff / 3_600_000)}h`;
   return date.toLocaleString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -320,6 +321,112 @@ function interventionTone(severity: "critical" | "attention" | "opportunity") {
   return "info" as const;
 }
 
+// ——— Camada tecnológica local (sem lib nova, sem backend novo) ———
+
+// Ordem fixa dos grupos de fetch na telemetria de latência.
+const TELEMETRY_ORDER = [
+  "Operação",
+  "IA",
+  "Fila",
+  "Gestão",
+  "SLA",
+  "Rede",
+  "Executivo",
+  "Governança",
+] as const;
+
+function prefersReducedMotion() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+// Count-up curto (~400ms) via requestAnimationFrame; sob reduced-motion o valor
+// troca sem animação. Cleanup cancela o frame pendente no unmount.
+function useCountUp(target: number) {
+  const [display, setDisplay] = useState(target);
+  const previousRef = useRef(target);
+  useEffect(() => {
+    const from = previousRef.current;
+    previousRef.current = target;
+    if (from === target) return;
+    if (prefersReducedMotion()) {
+      setDisplay(target);
+      return;
+    }
+    const duration = 400;
+    const startedAt = performance.now();
+    let frame = 0;
+    const step = (now: number) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      setDisplay(Math.round(from + (target - from) * eased));
+      if (progress < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+  return display;
+}
+
+// Sparkline em <canvas> puro: redesenha apenas quando a série muda (dependência
+// do useEffect), com devicePixelRatio respeitado para nitidez em retina.
+const SPARKLINE_WIDTH = 120;
+const SPARKLINE_HEIGHT = 28;
+
+function Sparkline({ points, label }: { points: number[]; label: string }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !points.length) return;
+    const ratio = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = SPARKLINE_WIDTH * ratio;
+    canvas.height = SPARKLINE_HEIGHT * ratio;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, SPARKLINE_WIDTH, SPARKLINE_HEIGHT);
+    const max = Math.max(...points, 1);
+    const stepX = points.length > 1 ? SPARKLINE_WIDTH / (points.length - 1) : SPARKLINE_WIDTH;
+    const yFor = (value: number) => SPARKLINE_HEIGHT - 3 - (value / max) * (SPARKLINE_HEIGHT - 6);
+    const trace = () => {
+      points.forEach((value, index) => {
+        if (index === 0) ctx.moveTo(0, yFor(value));
+        else ctx.lineTo(index * stepX, yFor(value));
+      });
+    };
+    // Área sutil sob o traço.
+    ctx.beginPath();
+    trace();
+    ctx.lineTo((points.length - 1) * stepX, SPARKLINE_HEIGHT);
+    ctx.lineTo(0, SPARKLINE_HEIGHT);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(56, 189, 248, 0.12)";
+    ctx.fill();
+    // Traço fino na cor de acento.
+    ctx.beginPath();
+    trace();
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 1.25;
+    ctx.stroke();
+    // Ponto final destacado.
+    ctx.beginPath();
+    ctx.arc((points.length - 1) * stepX, yFor(points[points.length - 1] ?? 0), 2, 0, Math.PI * 2);
+    ctx.fillStyle = "#38bdf8";
+    ctx.fill();
+  }, [points]);
+  return (
+    <canvas
+      ref={canvasRef}
+      className="h-7 w-[120px]"
+      role="img"
+      aria-label={label}
+    />
+  );
+}
+
 export default function CommandCenterPage() {
   const [snapshot, setSnapshot] = useState<SnapshotData>(emptySnapshot);
   const [moduleHealth, setModuleHealth] = useState<ModuleHealth[]>([]);
@@ -337,6 +444,10 @@ export default function CommandCenterPage() {
   const [directorDaily, setDirectorDaily] = useState<DirectorDaily | null>(null);
   const [governance, setGovernance] = useState<GovernanceSummary | null>(null);
   const [governanceNote, setGovernanceNote] = useState("");
+  // Telemetria honesta: latência real medida por grupo de fetch (performance.now).
+  const [fetchLatency, setFetchLatency] = useState<Record<string, number>>({});
+  // Relógio de 30s para "atualizado há Xs" e para o ticker do feed.
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -345,11 +456,16 @@ export default function CommandCenterPage() {
       const session = sessionData.session;
       if (!session) throw new Error("ATLAS_SESSION_REQUIRED");
 
+      const fetchStartedAt = performance.now();
       const response = await fetch("/api/v1/core-v2/module-health", {
         headers: { Authorization: `Bearer ${session.access_token}` },
         cache: "no-store",
       });
       const body = (await response.json().catch(() => null)) as ModuleHealthApiEnvelope | null;
+      setFetchLatency((current) => ({
+        ...current,
+        "Operação": Math.round(performance.now() - fetchStartedAt),
+      }));
       if (!response.ok || !body?.ok || !body.data) throw new Error("ATLAS_MODULE_HEALTH_UNAVAILABLE");
 
       setViewerId(session.user.id);
@@ -394,6 +510,32 @@ export default function CommandCenterPage() {
     };
   }, [load]);
 
+  // Relógio de 30s: re-render para "atualizado há Xs" e o ticker do feed.
+  useEffect(() => {
+    const timer = setInterval(() => setNowTick(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Atalho local: r = atualizar agora. Ignora campos de texto e combinações com
+  // meta/ctrl/alt; listener no window com cleanup no unmount.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "r" && event.key !== "R") return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) {
+          return;
+        }
+      }
+      event.preventDefault();
+      void load();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [load]);
+
   const referenceTime = lastUpdated?.getTime() ?? 0;
   const viewer = snapshot.profiles.find((profile) => String(profile.id) === viewerId);
   const viewerRole = viewer ? normalized(stringValue(viewer, "commercial_role", "role")) : "";
@@ -402,16 +544,27 @@ export default function CommandCenterPage() {
   const isManager = viewerRole === "manager";
   const isBroker = viewerRole === "broker";
 
+  // O briefing só é renderizado para papéis de gestão (o corretor vê a fila de
+  // atenção da própria carteira), então o fetch é condicionado a esses papéis.
   useEffect(() => {
-    if (!viewerId) return;
+    if (!viewerId || isBroker) {
+      setBriefing(null);
+      setBriefingUnavailable(false);
+      return;
+    }
     let active = true;
     setBriefingUnavailable(false);
     void supabase.auth.getSession().then(async ({ data: session }) => {
+      const fetchStartedAt = performance.now();
       const response = await fetch("/api/ai/briefing", {
         headers: { Authorization: `Bearer ${session.session?.access_token || ""}` },
         cache: "no-store",
       });
       if (!active) return;
+      setFetchLatency((current) => ({
+        ...current,
+        "IA": Math.round(performance.now() - fetchStartedAt),
+      }));
       if (!response.ok) {
         setBriefingUnavailable(true);
         return;
@@ -422,7 +575,7 @@ export default function CommandCenterPage() {
     return () => {
       active = false;
     };
-  }, [viewerId]);
+  }, [viewerId, isBroker]);
 
   useEffect(() => {
     if (!isBroker) {
@@ -431,12 +584,17 @@ export default function CommandCenterPage() {
     }
     let active = true;
     void supabase.auth.getSession().then(async ({ data: session }) => {
+      const fetchStartedAt = performance.now();
       const response = await fetch("/api/v1/analytics/broker-daily", {
         headers: { Authorization: `Bearer ${session.session?.access_token || ""}` },
         cache: "no-store",
       });
       const body = await response.json();
       if (!active) return;
+      setFetchLatency((current) => ({
+        ...current,
+        "Fila": Math.round(performance.now() - fetchStartedAt),
+      }));
       if (response.ok) setBrokerDaily(body.data as BrokerDaily);
       else setWarnings((current) => [...current, "Sua fila do dia está temporariamente indisponível."]);
     });
@@ -452,12 +610,17 @@ export default function CommandCenterPage() {
     }
     let active = true;
     void supabase.auth.getSession().then(async ({ data: session }) => {
+      const fetchStartedAt = performance.now();
       const response = await fetch("/api/v1/analytics/manager-daily", {
         headers: { Authorization: `Bearer ${session.session?.access_token || ""}` },
         cache: "no-store",
       });
       const body = await response.json();
       if (!active) return;
+      setFetchLatency((current) => ({
+        ...current,
+        "Gestão": Math.round(performance.now() - fetchStartedAt),
+      }));
       if (response.ok) setManagerDaily(body.data as ManagerDaily);
       else setWarnings((current) => [...current, "Cockpit do gerente temporariamente indisponível."]);
     });
@@ -473,12 +636,17 @@ export default function CommandCenterPage() {
     }
     let active = true;
     void supabase.auth.getSession().then(async ({ data: session }) => {
+      const fetchStartedAt = performance.now();
       const response = await fetch("/api/v1/analytics/team-sla", {
         headers: { Authorization: `Bearer ${session.session?.access_token || ""}` },
         cache: "no-store",
       });
       const body = await response.json();
       if (!active) return;
+      setFetchLatency((current) => ({
+        ...current,
+        "SLA": Math.round(performance.now() - fetchStartedAt),
+      }));
       if (response.ok) setTeamSla(body.data as TeamSla);
       else setWarnings((current) => [...current, "Fila de SLA temporariamente indisponível."]);
     });
@@ -494,12 +662,17 @@ export default function CommandCenterPage() {
     }
     let active = true;
     void supabase.auth.getSession().then(async ({ data: session }) => {
+      const fetchStartedAt = performance.now();
       const response = await fetch("/api/v1/analytics/dashboard", {
         headers: { Authorization: `Bearer ${session.session?.access_token || ""}` },
         cache: "no-store",
       });
       const body = await response.json();
       if (!active) return;
+      setFetchLatency((current) => ({
+        ...current,
+        "Rede": Math.round(performance.now() - fetchStartedAt),
+      }));
       if (response.ok) setSuperintendentSummary(body.data as SuperintendentSummary);
       else setWarnings((current) => [...current, "Painel da superintendência temporariamente indisponível."]);
     });
@@ -515,12 +688,17 @@ export default function CommandCenterPage() {
     }
     let active = true;
     void supabase.auth.getSession().then(async ({ data: session }) => {
+      const fetchStartedAt = performance.now();
       const response = await fetch("/api/v1/analytics/director-daily", {
         headers: { Authorization: `Bearer ${session.session?.access_token || ""}` },
         cache: "no-store",
       });
       const body = await response.json();
       if (!active) return;
+      setFetchLatency((current) => ({
+        ...current,
+        "Executivo": Math.round(performance.now() - fetchStartedAt),
+      }));
       if (response.ok) setDirectorDaily(body.data as DirectorDaily);
       else setWarnings((current) => [...current, "Visão executiva temporariamente indisponível."]);
     });
@@ -537,12 +715,17 @@ export default function CommandCenterPage() {
     }
     let active = true;
     void supabase.auth.getSession().then(async ({ data: session }) => {
+      const fetchStartedAt = performance.now();
       const response = await fetch("/api/v1/governance/command-center", {
         headers: { Authorization: `Bearer ${session.session?.access_token || ""}` },
         cache: "no-store",
       });
       const body = await response.json().catch(() => null);
       if (!active) return;
+      setFetchLatency((current) => ({
+        ...current,
+        "Governança": Math.round(performance.now() - fetchStartedAt),
+      }));
       if (response.status === 403) {
         setGovernanceNote("Visão executiva disponível somente para a diretoria.");
         return;
@@ -579,6 +762,53 @@ export default function CommandCenterPage() {
       overdueTasks: overdueTasks.length,
     };
   }, [snapshot.leads, snapshot.tasks, referenceTime]);
+
+  // Números vivos: count-up curto quando o valor muda (sem animação sob reduced-motion).
+  const activeDisplay = useCountUp(metrics.active);
+  const hotDisplay = useCountUp(metrics.hot);
+  const overdueDisplay = useCountUp(metrics.overdueTasks);
+  const unassignedDisplay = useCountUp(metrics.unassigned);
+
+  // Séries das últimas 24h derivadas apenas dos dados já carregados na página:
+  // leads por hora (created_at) e atividade do feed (updated_at de leads e tarefas).
+  const sparkSeries = useMemo(() => {
+    // referenceTime é sempre > 0 quando a barra renderiza (initialLoading cobre o resto).
+    const reference = referenceTime;
+    const hourMs = 3_600_000;
+    const bucketIndex = (date: Date | null) => {
+      if (!date) return -1;
+      const diff = reference - date.getTime();
+      if (diff < 0) return 23;
+      if (diff >= 24 * hourMs) return -1;
+      return 23 - Math.floor(diff / hourMs);
+    };
+    const leadsPerHour = Array.from({ length: 24 }, () => 0);
+    for (const lead of snapshot.leads) {
+      const index = bucketIndex(dateValue(lead, "created_at"));
+      if (index >= 0) leadsPerHour[index] += 1;
+    }
+    const activityPerHour = Array.from({ length: 24 }, () => 0);
+    for (const row of [...snapshot.leads, ...snapshot.tasks]) {
+      const index = bucketIndex(dateValue(row, "updated_at", "created_at"));
+      if (index >= 0) activityPerHour[index] += 1;
+    }
+    return { leadsPerHour, activityPerHour };
+  }, [snapshot.leads, snapshot.tasks, referenceTime]);
+
+  // Relógio efetivo: nunca anterior à última atualização (o interval é de 30s).
+  const nowMs = Math.max(nowTick, referenceTime);
+  const updatedAgoSeconds = lastUpdated
+    ? Math.max(0, Math.round((nowMs - lastUpdated.getTime()) / 1000))
+    : null;
+  const updatedAgoLabel =
+    updatedAgoSeconds === null
+      ? "Sincronizando"
+      : updatedAgoSeconds < 90
+        ? `atualizado há ${updatedAgoSeconds}s`
+        : `atualizado há ${Math.round(updatedAgoSeconds / 60)}min`;
+  const latencyEntries = TELEMETRY_ORDER.filter((key) => fetchLatency[key] !== undefined).map(
+    (key) => `${key} ${fetchLatency[key]}ms`,
+  );
 
   const liveFeed = useMemo(() => {
     const reference = referenceTime;
@@ -782,6 +1012,57 @@ export default function CommandCenterPage() {
         </div>
       </section>
 
+      <section
+        aria-label="Telemetria da sala de comando"
+        className="atlas-panel flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-2xl px-5 py-3"
+      >
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <span
+            className={`inline-flex items-center gap-2 text-[11px] font-medium ${
+              liveConnected ? "text-slate-300" : "text-[var(--atlas-warning)]"
+            }`}
+          >
+            <span aria-hidden="true" className="relative inline-flex h-1.5 w-1.5">
+              {liveConnected ? (
+                <span className="absolute inline-flex h-full w-full rounded-full bg-[var(--atlas-success)] opacity-60 motion-safe:animate-ping" />
+              ) : null}
+              <span
+                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${
+                  liveConnected ? "bg-[var(--atlas-success)]" : "bg-[var(--atlas-warning)]"
+                }`}
+              />
+            </span>
+            {liveConnected ? "canal ao vivo" : "canal reconectando"}
+          </span>
+          <span className="font-mono text-[11px] tabular-nums text-slate-500">
+            {latencyEntries.length ? latencyEntries.join(" · ") : "medindo latência…"}
+          </span>
+          <span className="text-[11px] tabular-nums text-slate-500">{updatedAgoLabel}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <span className="flex items-center gap-2">
+            <Sparkline
+              points={sparkSeries.leadsPerHour}
+              label="Leads criados nas últimas 24 horas, por hora"
+            />
+            <span className="text-[11px] text-slate-500">Leads · 24h</span>
+          </span>
+          <span className="flex items-center gap-2">
+            <Sparkline
+              points={sparkSeries.activityPerHour}
+              label="Atividade de leads e tarefas nas últimas 24 horas, por hora"
+            />
+            <span className="text-[11px] text-slate-500">Atividade · 24h</span>
+          </span>
+          <span className="text-[11px] text-slate-600">
+            <kbd className="rounded border border-white/[.12] bg-white/[.03] px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+              r
+            </kbd>{" "}
+            atualizar
+          </span>
+        </div>
+      </section>
+
       {warnings.length ? (
         <AtlasRecoverableError
           title="Atualização parcial da sala de comando"
@@ -797,16 +1078,16 @@ export default function CommandCenterPage() {
         className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [transform-style:preserve-3d]"
       >
         <div className={depthShellSoft}>
-          <AtlasMetric label="Leads ativos" value={metrics.active} detail="Base em atendimento no seu escopo" tone="blue" />
+          <AtlasMetric label="Leads ativos" value={<span className="tabular-nums">{activeDisplay}</span>} detail="Base em atendimento no seu escopo" tone="blue" />
         </div>
         <div className={depthShellSoft}>
-          <AtlasMetric label="Leads quentes" value={metrics.hot} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
+          <AtlasMetric label="Leads quentes" value={<span className="tabular-nums">{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
         </div>
         <div className={depthShellSoft}>
-          <AtlasMetric label="Tarefas atrasadas" value={metrics.overdueTasks} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
+          <AtlasMetric label="Tarefas atrasadas" value={<span className="tabular-nums">{overdueDisplay}</span>} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
         </div>
         <div className={depthShellSoft}>
-          <AtlasMetric label="Sem responsável" value={metrics.unassigned} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
+          <AtlasMetric label="Sem responsável" value={<span className="tabular-nums">{unassignedDisplay}</span>} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
         </div>
       </section>
 
@@ -828,7 +1109,7 @@ export default function CommandCenterPage() {
             />
             <div className="border-t border-white/[.06] p-5 sm:p-6">
               {liveFeed.length ? (
-                <ul className="grid gap-2">
+                <ul className="grid gap-2" aria-live="polite">
                   {liveFeed.map((event) => (
                     <li key={event.id}>
                       <Link
@@ -843,7 +1124,7 @@ export default function CommandCenterPage() {
                           {event.isNew ? <AtlasBadge tone="info">NOVO</AtlasBadge> : null}
                         </span>
                         <span className="shrink-0 text-xs tabular-nums text-slate-500">
-                          {feedTimestamp(event.when, referenceTime)}
+                          {relativeTimestamp(event.when, nowMs)}
                         </span>
                       </Link>
                     </li>
