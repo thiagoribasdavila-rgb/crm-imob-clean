@@ -1,5 +1,30 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { PageHeader } from "@/components/atlas/page-header";
+import { StatusBadge } from "@/components/atlas/status-badge";
+import { TiltShell } from "@/components/atlas/tilt-shell";
+
+/*
+ * CC-6 · Saúde operacional das integrações.
+ * Consolidações do redesign (mesmos dados, zero fetch novo):
+ * - os cards "Filas e falhas" e "Ambiente" repetiam dimensões do resumo em
+ *   caixas separadas (e claras, fora do tema) — tudo virou uma régua única de
+ *   sinais vitais mono tabular-nums, com o runtime como rodapé de uma linha;
+ * - "Ambiente ok · cadastro pendente · teste pendente" era prosa repetida por
+ *   provedor — virou tokens mono compactos por etapa (✓/—, título por token);
+ * - a linha de bloqueios duplicava exatamente o que os tokens, a evidência e
+ *   as falhas já mostram — o detalhe vive agora no title da linha e do
+ *   contador de falhas (rose quando > 0);
+ * - "Produção PRONTA/BLOQUEADA" era um card de resumo — virou chip único no
+ *   cabeçalho dos sinais vitais;
+ * - snapshots já vinham no payload e nunca eram exibidos — o último
+ *   diagnóstico agora aparece no rodapé do painel;
+ * - o <main> próprio aninhava um segundo landmark dentro do AppShell — a
+ *   página passa a usar o container padrão do CC-6.
+ */
+
 type Provider = {
   provider: string;
   state: string;
@@ -33,6 +58,53 @@ type Payload = {
   };
   snapshots: Array<{ id: string; created_at: string }>;
 };
+
+const PROVIDER_NAMES: Record<string, string> = {
+  meta: "Meta Ads",
+  whatsapp: "WhatsApp",
+  google_ads: "Google Ads",
+  youtube: "YouTube Ads",
+  tiktok_ads: "TikTok Ads",
+  openai: "OpenAI",
+  perplexity: "Perplexity",
+  storage: "Storage Supabase",
+  hostinger: "Hostinger",
+};
+
+// Estados reais do avaliador (operational-health) → chip único por linha.
+const STATE_META: Record<string, { tone: "success" | "danger" | "warning" | "neutral"; label: string }> = {
+  healthy: { tone: "success", label: "Saudável" },
+  degraded: { tone: "danger", label: "Degradada" },
+  stale: { tone: "warning", label: "Evidência antiga" },
+  ready_to_test: { tone: "warning", label: "Pronta p/ teste" },
+  environment_only: { tone: "warning", label: "Sem cadastro" },
+  registered_only: { tone: "warning", label: "Sem credenciais" },
+  not_configured: { tone: "neutral", label: "Não configurada" },
+};
+
+const BLOCKER_LABELS: Record<string, string> = {
+  environment_missing: "credenciais ausentes no servidor",
+  registration_missing: "sem cadastro no CRM",
+  verified_test_missing: "teste real pendente",
+  sync_evidence_missing: "sem evidência de sincronização",
+  sync_stale: "evidência com mais de 24h",
+  failed_queue_items: "itens falhos na fila",
+  last_error_present: "último erro registrado",
+};
+
+const SNAPSHOT_FORMAT = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeStyle: "short",
+});
+
+function StepToken({ label, done, hint }: { label: string; done: boolean; hint: string }) {
+  return (
+    <span title={hint}>
+      {label} {done ? <span className="cc6-ok">✓</span> : <span aria-label="pendente">—</span>}
+    </span>
+  );
+}
+
 export default function Page() {
   const [data, setData] = useState<Payload | null>(null),
     [notice, setNotice] = useState(""),
@@ -67,124 +139,228 @@ export default function Page() {
     }
   }
   const c = data?.current;
+  const lastSnapshotAt = data?.snapshots[0]?.created_at;
+
+  const vitals = [
+    { label: "Saudáveis", value: c?.summary.healthy, accent: c?.summary.healthy ? "cc6-ok" : "", hint: "Provedores com teste real e evidência fresca" },
+    { label: "Degradadas", value: c?.summary.degraded, accent: c?.summary.degraded ? "cc6-crit" : "", hint: "Provedores com falhas ou erro registrado" },
+    { label: "Prontas p/ teste", value: c?.summary.readyToTest, accent: c?.summary.readyToTest ? "cc6-warn" : "", hint: "Ambiente e cadastro prontos, sem teste real" },
+    { label: "Pendentes", value: c?.summary.notReady, accent: "", hint: "Sem ambiente ou sem cadastro" },
+    { label: "Fila", value: c?.queues.pending, accent: "", hint: "Eventos pendentes ou em processamento (30d)" },
+    { label: "Falhas", value: c?.queues.failed, accent: c?.queues.failed ? "cc6-crit" : "", hint: "Eventos falhos ou em dead letter (30d)" },
+    { label: "DLQ", value: c?.queues.unresolvedDeadLetters, accent: c?.queues.unresolvedDeadLetters ? "cc6-crit" : "", hint: "Dead letters sem resolução" },
+  ];
+
   return (
-    <main
+    <div
       data-phase="97-integration-operational-health"
-      className="mx-auto max-w-7xl space-y-7 p-4 md:p-8"
+      data-health-layout="cc6-vitals"
+      className="space-y-4 pb-10"
     >
-      <header className="rounded-[30px] bg-gradient-to-br from-slate-950 via-cyan-950 to-blue-950 p-7 text-white">
-        <p className="text-xs font-semibold tracking-[.22em] text-cyan-300">
-          HOSTINGER · APIS · FILAS · WEBHOOKS
-        </p>
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold">Saúde operacional</h1>
-            <p className="mt-2 text-sm text-slate-300">
-              Configurado, testado e saudável são estados diferentes.
-            </p>
-          </div>
-          <button
-            disabled={busy}
-            onClick={snapshot}
-            className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-950"
-          >
-            Registrar diagnóstico
-          </button>
-        </div>
-        <div className="mt-5 flex gap-2 text-[11px]">
-          <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-emerald-200">
-            SEGREDOS MASCARADOS
-          </span>
-          <span className="rounded-full bg-amber-400/10 px-3 py-1 text-amber-200">
-            TESTE REAL OBRIGATÓRIO
-          </span>
-        </div>
-      </header>
-      {notice && (
-        <div className="rounded-2xl border bg-blue-50 p-4 text-sm text-blue-900">
+      <PageHeader
+        eyebrow="Integrações · Hostinger · APIs · Filas"
+        title="Saúde operacional"
+        description="Configurado, testado e saudável são estados diferentes — teste real obrigatório e segredos sempre mascarados."
+        action={{
+          href: "/integrations",
+          label: "Voltar às integrações",
+          priority: "secondary",
+        }}
+      />
+
+      {notice ? (
+        <p
+          role="status"
+          className="cc6-panel-quiet cc6-reveal px-4 py-3 text-sm text-[#aab6ca]"
+        >
           {notice}
-        </div>
-      )}
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        {[
-          ["Saudáveis", c?.summary.healthy || 0],
-          ["Degradadas", c?.summary.degraded || 0],
-          ["Prontas p/ teste", c?.summary.readyToTest || 0],
-          ["Pendentes", c?.summary.notReady || 0],
-          ["Produção", c?.summary.productionReady ? "PRONTA" : "BLOQUEADA"],
-        ].map(([l, v]) => (
-          <div key={String(l)} className="rounded-3xl border bg-white p-5">
-            <small className="text-slate-400">{l}</small>
-            <strong className="mt-2 block text-xl">{v}</strong>
-          </div>
-        ))}
-      </section>
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {c?.providers.map((p) => (
-          <article key={p.provider} className="rounded-3xl border bg-white p-5">
-            <div className="flex justify-between">
-              <strong className="uppercase">{p.provider}</strong>
-              <span
-                className={`rounded-full px-2 py-1 text-[10px] ${p.healthy ? "bg-emerald-50 text-emerald-700" : p.state === "degraded" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}
+        </p>
+      ) : null}
+
+      <section aria-label="Sinais vitais das integrações">
+        <TiltShell className="cc6-panel cc6-reveal p-5" delayMs={40}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="cc6-eyebrow">Sinais vitais</p>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {c ? (
+                <StatusBadge tone={c.summary.productionReady ? "success" : "warning"}>
+                  {c.summary.productionReady ? "Produção pronta" : "Produção bloqueada"}
+                </StatusBadge>
+              ) : null}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={snapshot}
+                className="cc6-ghost-btn disabled:opacity-50"
               >
-                {p.state.replaceAll("_", " ")}
-              </span>
-            </div>
-            <p className="mt-3 text-xs text-slate-500">
-              Ambiente {p.environmentReady ? "ok" : "pendente"} · cadastro{" "}
-              {p.registered ? "ok" : "pendente"} · teste{" "}
-              {p.verified ? "ok" : "pendente"}
-            </p>
-            <p className="mt-2 text-xs text-slate-400">
-              Evidência:{" "}
-              {p.freshnessHours == null ? "ausente" : `${p.freshnessHours}h`} ·
-              fila {p.pending} · falhas {p.failed}
-            </p>
-            {p.blockers.length ? (
-              <p className="mt-3 text-[11px] text-amber-700">
-                {p.blockers.join(" · ")}
-              </p>
-            ) : null}
-          </article>
-        ))}
-      </section>
-      <section className="grid gap-4 md:grid-cols-2">
-        <article className="rounded-3xl border bg-white p-5">
-          <h2 className="font-semibold">Filas e falhas</h2>
-          <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-            <div>
-              <strong className="block text-2xl">
-                {c?.queues.pending || 0}
-              </strong>
-              <small>Pendentes</small>
-            </div>
-            <div>
-              <strong className="block text-2xl">
-                {c?.queues.failed || 0}
-              </strong>
-              <small>Falhas</small>
-            </div>
-            <div>
-              <strong className="block text-2xl">
-                {c?.queues.unresolvedDeadLetters || 0}
-              </strong>
-              <small>DLQ</small>
+                {busy ? "Registrando…" : "Registrar diagnóstico"}
+              </button>
             </div>
           </div>
-        </article>
-        <article className="rounded-3xl border bg-white p-5">
-          <h2 className="font-semibold">Ambiente</h2>
-          <p className="mt-3 text-sm text-slate-500">
-            {c?.runtime.hostingProvider} · HTTPS{" "}
-            {c?.runtime.publicHttps ? "válido" : "pendente"} ·{" "}
-            {c?.runtime.environment}
+          <div
+            className="cc6-hairline mt-4 flex flex-wrap gap-x-10 gap-y-4 pt-4"
+            aria-label="Resumo dos provedores e das filas"
+            aria-busy={!c}
+          >
+            {vitals.map((vital) => (
+              <div key={vital.label} title={vital.hint}>
+                <p className={`cc6-metric-value text-3xl leading-none ${vital.accent}`}>
+                  {c ? vital.value ?? 0 : "—"}
+                </p>
+                <p className="cc6-metric-label mt-1.5">{vital.label}</p>
+              </div>
+            ))}
+          </div>
+          <p className="cc6-hairline cc6-num mt-4 pt-3 text-[11px] leading-5 text-[#6b7890]">
+            {c ? (
+              <>
+                {c.runtime.hostingProvider} · HTTPS{" "}
+                <span className={c.runtime.publicHttps ? "cc6-ok" : "cc6-warn"}>
+                  {c.runtime.publicHttps ? "válido" : "pendente"}
+                </span>
+                {" · "}
+                {c.runtime.environment} · IA 30d US$ {c.runtime.aiCostUsd30d || 0} · segredos
+                mascarados
+                {lastSnapshotAt
+                  ? ` · último diagnóstico ${SNAPSHOT_FORMAT.format(new Date(lastSnapshotAt))}`
+                  : " · nenhum diagnóstico registrado"}
+              </>
+            ) : (
+              "Aguardando leitura do runtime…"
+            )}
           </p>
-          <p className="mt-2 text-xs text-slate-400">
-            Custo IA 30d: US$ {c?.runtime.aiCostUsd30d || 0} · segredos
-            expostos: não
-          </p>
-        </article>
+        </TiltShell>
       </section>
-    </main>
+
+      <section
+        className="cc6-panel cc6-reveal overflow-hidden"
+        style={{ animationDelay: "120ms" }}
+        aria-labelledby="health-providers-title"
+      >
+        <header className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5">
+          <div className="min-w-0">
+            <p className="cc6-eyebrow">Estado por provedor</p>
+            <h2
+              id="health-providers-title"
+              className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+            >
+              Credencial, cadastro e teste real
+            </h2>
+          </div>
+          <p className="cc6-num text-[11px] text-[#6b7890]">
+            {c ? `${c.summary.total} monitorados` : "—"}
+          </p>
+        </header>
+
+        <div className="mt-2 pb-2" aria-busy={!c}>
+          {!c ? (
+            <div className="space-y-2 px-5 py-3">
+              {[1, 2, 3].map((item) => (
+                <AtlasSkeleton key={item} className="h-14" />
+              ))}
+            </div>
+          ) : !c.providers.length ? (
+            <p className="px-5 py-6 text-sm text-[#6b7890]">
+              Nenhum provedor monitorado até agora.
+            </p>
+          ) : (
+            c.providers.map((provider, index) => {
+              const state = STATE_META[provider.state] ?? {
+                tone: "warning" as const,
+                label: provider.state.replaceAll("_", " "),
+              };
+              const blockers = provider.blockers
+                .map((blocker) => BLOCKER_LABELS[blocker] ?? blocker.replaceAll("_", " "))
+                .join(" · ");
+              const degraded = provider.state === "degraded";
+              return (
+                <article
+                  key={provider.provider}
+                  title={blockers || undefined}
+                  className={`cc6-reveal flex flex-wrap items-center gap-x-5 gap-y-1.5 px-5 py-3 transition-colors hover:bg-[rgba(75,141,248,0.04)] ${index ? "cc6-hairline" : ""} ${degraded ? "cc6-sev-band" : ""}`}
+                  style={
+                    {
+                      animationDelay: `${Math.min(index + 1, 12) * 35}ms`,
+                      ...(degraded ? { "--cc6-sev": "#fb7185" } : null),
+                    } as CSSProperties
+                  }
+                >
+                  <div className="min-w-0 flex-1 basis-48">
+                    <p className="text-sm font-medium leading-6 text-[#e8eef8]">
+                      {PROVIDER_NAMES[provider.provider] ??
+                        provider.provider.replaceAll("_", " ")}
+                    </p>
+                    <p className="cc6-num mt-0.5 text-[10px] tracking-wide text-[#6b7890]">
+                      <StepToken
+                        label="ambiente"
+                        done={provider.environmentReady}
+                        hint={
+                          provider.environmentReady
+                            ? "Credenciais detectadas no servidor"
+                            : "Credenciais pendentes no servidor"
+                        }
+                      />
+                      {" · "}
+                      <StepToken
+                        label="cadastro"
+                        done={provider.registered}
+                        hint={
+                          provider.registered
+                            ? "Cadastro presente no CRM"
+                            : "Cadastro pendente no CRM"
+                        }
+                      />
+                      {" · "}
+                      <StepToken
+                        label="teste"
+                        done={provider.verified}
+                        hint={
+                          provider.verified
+                            ? "Teste real comprovado"
+                            : "Teste real pendente"
+                        }
+                      />
+                    </p>
+                  </div>
+                  <p className="cc6-num shrink-0 text-[11px] text-[#aab6ca]">
+                    <span
+                      title="Idade da última evidência de sincronização"
+                      className={
+                        provider.freshnessHours == null
+                          ? "text-[#6b7890]"
+                          : provider.freshnessHours > 24
+                            ? "cc6-warn"
+                            : ""
+                      }
+                    >
+                      evid{" "}
+                      {provider.freshnessHours == null
+                        ? "—"
+                        : `${provider.freshnessHours}h`}
+                    </span>
+                    {" · "}
+                    <span title="Eventos pendentes na fila deste provedor">
+                      fila {provider.pending}
+                    </span>
+                    {" · "}
+                    <span
+                      className={provider.failed ? "cc6-crit" : ""}
+                      title={
+                        provider.failed
+                          ? `Falhas na fila deste provedor — ${blockers || "ver diagnóstico"}`
+                          : "Sem falhas na fila"
+                      }
+                    >
+                      falhas {provider.failed}
+                    </span>
+                  </p>
+                  <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
