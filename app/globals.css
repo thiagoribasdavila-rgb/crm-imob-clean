@@ -7239,3 +7239,128 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
     transform: translateY(0);
   }
 }
+
+/* ===== atlas-core-v2 shell harmonization (CC-5) ===== */
+/* Harmoniza o SHELL GLOBAL (sidebar + topbar + ambient) a linguagem CC-5 do
+   Command Center SEM trocar o data-visual-system (segue "atlas-core-v2") e SEM
+   redeclarar/desativar nenhuma regra do bloco atlas-core-v2 acima. Aditivo e
+   totalmente reversivel: basta remover este bloco. Como esta anexado DEPOIS do
+   bloco atlas-core-v2, em especificidade igual estas regras vencem por ordem de
+   origem; onde a base seria mais especifica, o proprio prefixo
+   .atlas-app-shell[...="atlas-core-v2"] (0,3,0)+ ja iguala/supera. Sobrepoe SO o
+   que muda de fato. Hairlines rgba(148,163,184,.12)/.22, raios 16/12 (tokens
+   --atlas-radius-*), acento UNICO via var(--atlas-accent) (identico ao CC-5),
+   micro-tipografia mono com tabular-nums. Profundidade por geometria — zero
+   glow/neon novo. */
+
+/* Ambient: o bloco v2 oculta (.atlas-ambient{display:none}); aqui reexibimos como
+   wash sutil e contido no acento unico, sem orbes concorrentes. */
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-ambient {
+  display: block;
+}
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-ambient-orb-one {
+  background: var(--atlas-accent);
+  opacity: 0.04;
+  filter: blur(150px);
+}
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-ambient-orb-two {
+  display: none;
+}
+
+/* Sidebar: hairlines CC-5 nos divisores. */
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-sidebar {
+  border-right-color: rgba(148, 163, 184, 0.12);
+}
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-sidebar-brand {
+  border-bottom-color: rgba(148, 163, 184, 0.12);
+}
+.atlas-app-shell[data-visual-system="atlas-core-v2"] :is(
+  .atlas-sidebar-footer,
+  .atlas-sidebar-search,
+  .atlas-nav-favorites
+) {
+  border-color: rgba(148, 163, 184, 0.12);
+}
+
+/* Rotulos de secao: mono uppercase com letter-spacing (eyebrow CC-5). */
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-sidebar-section {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--atlas-text-tertiary);
+}
+/* Secao do grupo atual: acento unico (barra + rotulo). Especificidade (0,5,0)
+   supera a base .atlas-nav-group[data-current] > .atlas-sidebar-section (0,3,0). */
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-nav-group[data-current="true"] > .atlas-sidebar-section {
+  border-left-color: var(--atlas-accent);
+  color: var(--atlas-accent);
+}
+
+/* Item ATIVO: barra fina do acento (geometria), sem preenchimento chapado nem glow. */
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-nav-link[data-active="true"] {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-nav-link[data-active="true"]::before {
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  background: var(--atlas-accent);
+  box-shadow: none;
+}
+/* Icone ativo: hairline + glifo no acento, sem fill/inset chamativo. */
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-nav-link[data-active="true"] .atlas-nav-icon {
+  border-color: rgba(148, 163, 184, 0.22);
+  color: var(--atlas-accent);
+  background: transparent;
+  box-shadow: none;
+}
+/* Hover discreto (geometria/hairline). */
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-nav-link:hover {
+  border-color: rgba(148, 163, 184, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Topbar: hairlines + micro-tipografia mono + tabular-nums, um acento so. */
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-app-topbar {
+  border-bottom-color: rgba(148, 163, 184, 0.12);
+  font-variant-numeric: tabular-nums;
+}
+.atlas-app-shell[data-visual-system="atlas-core-v2"] :is(
+  .atlas-command-trigger,
+  .atlas-mobile-search,
+  .atlas-quick-create,
+  .atlas-mobile-menu,
+  .atlas-notification-button,
+  .atlas-user-avatar,
+  .atlas-signout
+) {
+  border-color: rgba(148, 163, 184, 0.12);
+}
+.atlas-app-shell[data-visual-system="atlas-core-v2"] :is(
+  .atlas-command-trigger,
+  .atlas-quick-create,
+  .atlas-user-avatar
+):hover {
+  border-color: rgba(148, 163, 184, 0.22);
+}
+/* Eyebrow de contexto (organizacao . grupo): mono uppercase micro. */
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-topbar-context {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-topbar-context strong {
+  font-size: 10px;
+}
+/* Atalho de busca: hairline + tabular-nums (mono ja herdado da base). */
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-command-trigger kbd {
+  border-color: rgba(148, 163, 184, 0.12);
+  font-variant-numeric: tabular-nums;
+}
