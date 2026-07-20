@@ -70,7 +70,7 @@ export default function ResetPasswordPage() {
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-400/15 font-black text-sky-300">A</span>
           <div>
             <p className="text-xl font-black">ATLAS <span className="text-sky-400">AI</span></p>
-            <p className="text-[9px] uppercase tracking-[.2em] text-slate-500">Credencial protegida</p>
+            <p className="text-[11px] font-medium text-slate-500">Credencial protegida</p>
           </div>
         </div>
 
@@ -93,8 +93,8 @@ export default function ResetPasswordPage() {
           </div>
         ) : (
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-            <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Nova senha</span><input required minLength={12} maxLength={128} type="password" autoComplete="new-password" value={password} onChange={(event) => { setPassword(event.target.value); if(error)setError(""); }} className="w-full px-4 py-3.5" placeholder="12+ caracteres e 3 tipos" aria-describedby="password-strength" /><span id="password-strength" className={`mt-2 block text-xs ${strength.valid?"text-emerald-300":"text-slate-500"}`}>{strength.valid?"Senha atende à política.":`${password.length}/12+ caracteres · ${strength.categories}/3 tipos`}</span></label>
-            <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">Confirmar senha</span><input required minLength={12} type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="w-full px-4 py-3.5" placeholder="Repita a nova senha" /></label>
+            <label className="block"><span className="mb-2 block text-xs font-medium text-slate-400">Nova senha</span><input required minLength={12} maxLength={128} type="password" autoComplete="new-password" value={password} onChange={(event) => { setPassword(event.target.value); if(error)setError(""); }} className="w-full px-4 py-3.5" placeholder="12+ caracteres e 3 tipos" aria-describedby="password-strength" /><span id="password-strength" className={`mt-2 block text-xs ${strength.valid?"text-emerald-300":"text-slate-500"}`}>{strength.valid?"Senha atende à política.":`${password.length}/12+ caracteres · ${strength.categories}/3 tipos`}</span></label>
+            <label className="block"><span className="mb-2 block text-xs font-medium text-slate-400">Confirmar senha</span><input required minLength={12} type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="w-full px-4 py-3.5" placeholder="Repita a nova senha" /></label>
             {error ? <p role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
             <button type="submit" disabled={loading} className="atlas-button-primary w-full py-3.5 disabled:cursor-not-allowed disabled:opacity-60">{loading ? "Atualizando credencial..." : "Salvar nova senha"}</button>
           </form>

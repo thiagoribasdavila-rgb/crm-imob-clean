@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-400/15 font-black text-sky-300">A</span>
           <div>
             <p className="text-xl font-black">ATLAS <span className="text-sky-400">AI</span></p>
-            <p className="text-[9px] uppercase tracking-[.2em] text-slate-500">Recuperação segura</p>
+            <p className="text-[11px] font-medium text-slate-500">Recuperação segura</p>
           </div>
         </div>
 
@@ -95,7 +95,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
             <label className="block">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">E-mail corporativo</span>
+              <span className="mb-2 block text-xs font-medium text-slate-400">E-mail corporativo</span>
               <input required type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); if (error) setError(""); }} className="w-full px-4 py-3.5" placeholder="voce@empresa.com" />
             </label>
             {error ? <p role="alert" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}
