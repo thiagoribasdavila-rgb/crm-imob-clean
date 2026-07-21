@@ -1,0 +1,79 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 9,
+  "title": "Plano reversivel de hardening RLS e staging isolado",
+  "mode": "offline_reversible_hardening_plan",
+  "status": "planned_with_blockers",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-008.json",
+  "hardeningPlan": "config/fixtures/meta-rls-hardening-plan.json",
+  "executionEvidenceTemplate": "config/fixtures/meta-hardening-execution-evidence-template.json",
+  "catalogAuditSql": "scripts/sql/meta-rls-hardening-proposal.sql",
+  "existingMigrationEvidence": [
+    "supabase/migrations/20260716212459_commercial_hierarchy_and_bulk_transfer.sql",
+    "supabase/migrations/20260717072714_secure_commercial_profile_hierarchy.sql",
+    "supabase/migrations/20260717200655_official_auth_rbac.sql"
+  ],
+  "observedDrift": {
+    "localHierarchyColumns": ["commercial_role", "reports_to", "access_role"],
+    "remoteProfileColumns": ["active", "name", "organization_id", "role"],
+    "localLeadAssigneeColumn": "assigned_to",
+    "remoteLeadAssigneeColumn": "assigned_user_id",
+    "legacyMigrationReplaySafe": false,
+    "privilegedFunctionDefinitionVersioned": false,
+    "separateStagingDetected": false
+  },
+  "blockingFindings": [
+    "no_isolated_staging_environment",
+    "no_staging_backup_evidence",
+    "local_remote_migration_drift_unreconciled",
+    "lead_assignee_column_contract_mismatch",
+    "remote_role_distribution_not_mapped",
+    "search_knowledge_chunks_signature_and_body_not_versioned",
+    "search_knowledge_chunks_execute_scope_not_hardened",
+    "auth_leaked_password_protection_disabled",
+    "runtime_rls_evidence_not_approved"
+  ],
+  "releaseGate": {
+    "planDocumented": true,
+    "rollbackDocumented": true,
+    "catalogAuditReadOnly": true,
+    "isolatedStagingReady": false,
+    "backupVerified": false,
+    "migrationDriftReconciled": false,
+    "privilegedFunctionVersioned": false,
+    "passwordProtectionEnabled": false,
+    "runtimeEvidenceApproved": false,
+    "migrationReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "remoteCatalogRead": false,
+    "businessRowsRead": false,
+    "personalDataRead": false,
+    "secretsRead": false,
+    "databaseMutation": false,
+    "migrationCreated": false,
+    "migrationApplication": false,
+    "stagingProjectCreated": false,
+    "testUsersCreated": false,
+    "realEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "officialReferences": [
+    "https://supabase.com/docs/guides/database/postgres/row-level-security",
+    "https://supabase.com/docs/guides/database/functions",
+    "https://supabase.com/docs/guides/database/database-advisors?queryGroups=lint&lint=0028_anon_security_definer_function_executable",
+    "https://supabase.com/docs/guides/database/database-advisors?queryGroups=lint&lint=0029_authenticated_security_definer_function_executable",
+    "https://supabase.com/docs/guides/deployment/branching",
+    "https://supabase.com/docs/guides/deployment/managing-environments",
+    "https://supabase.com/docs/guides/auth/password-security"
+  ],
+  "nextPhase": {
+    "phase": 10,
+    "title": "Manifesto de reconciliacao entre migrations locais e schema remoto"
+  }
+}

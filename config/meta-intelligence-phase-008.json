@@ -1,0 +1,88 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 8,
+  "title": "Matriz RLS por perfil e gate de staging",
+  "mode": "remote_policy_static_audit",
+  "status": "verified_with_blockers",
+  "safeToApply": false,
+  "baselineFixture": "config/fixtures/meta-rls-policy-baseline-sanitized.json",
+  "evidenceTemplate": "config/fixtures/meta-rls-isolation-evidence-template.json",
+  "requiredScenarios": [
+    { "id": "anonymous_canonical_read_denied", "expectation": "denied_read", "role": "anon" },
+    { "id": "broker_cross_tenant_read_denied", "expectation": "denied_read", "role": "broker" },
+    { "id": "broker_same_tenant_assigned_lead_allowed", "expectation": "allowed_read", "role": "broker" },
+    { "id": "broker_same_tenant_other_broker_denied", "expectation": "denied_read", "role": "broker" },
+    { "id": "manager_same_team_lead_allowed", "expectation": "allowed_read", "role": "manager" },
+    { "id": "manager_other_team_lead_denied", "expectation": "denied_read", "role": "manager" },
+    { "id": "director_same_tenant_commercial_leads_allowed", "expectation": "allowed_read", "role": "director" },
+    { "id": "director_cross_tenant_denied", "expectation": "denied_read", "role": "director" },
+    { "id": "authenticated_direct_meta_write_denied", "expectation": "denied_write", "role": "authenticated" },
+    { "id": "knowledge_search_anonymous_denied", "expectation": "denied_read", "role": "anon" },
+    { "id": "knowledge_search_cross_tenant_denied", "expectation": "denied_read", "role": "authenticated" }
+  ],
+  "observedBaseline": {
+    "supabaseProjectsDetected": 1,
+    "separateStagingProjectDetected": false,
+    "canonicalPolicyCount": 11,
+    "tenantHelperPolicyCount": 11,
+    "directOrganizationPredicateCount": 11,
+    "directAuthUidPolicyCount": 0,
+    "leadVisibilityHelperPolicyCount": 0,
+    "reportsToPolicyCount": 0,
+    "assigneePolicyCount": 0,
+    "profileColumns": ["active", "name", "organization_id", "role"],
+    "leadColumns": ["assigned_user_id", "name", "organization_id", "status"],
+    "advisorWarningCount": 3
+  },
+  "blockingFindings": [
+    "no_separate_staging_project",
+    "runtime_tenant_isolation_not_executed",
+    "private_can_view_lead_missing",
+    "commercial_hierarchy_not_encoded_in_current_rls",
+    "commercial_hierarchy_columns_missing_remotely",
+    "public_security_definer_search_knowledge_chunks_executable_by_anon",
+    "public_security_definer_search_knowledge_chunks_executable_by_authenticated",
+    "public_security_definer_search_knowledge_chunks_missing_auth_uid_guard",
+    "public_security_definer_search_knowledge_chunks_search_path_not_hardened",
+    "public_security_definer_search_knowledge_chunks_not_versioned_locally",
+    "auth_leaked_password_protection_disabled"
+  ],
+  "releaseGate": {
+    "remotePolicyCatalogCollected": true,
+    "remotePolicyCatalogSanitized": true,
+    "tenantPredicateStaticallyDetected": true,
+    "hierarchyPredicateStaticallyDetected": false,
+    "separateStagingDetected": false,
+    "runtimeEvidenceApproved": false,
+    "tenantIsolationApproved": false,
+    "roleHierarchyApproved": false,
+    "migrationReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "remoteCatalogRead": true,
+    "securityAdvisorRead": true,
+    "businessRowsRead": false,
+    "personalDataRead": false,
+    "secretsRead": false,
+    "projectIdentifiersPersisted": false,
+    "databaseMutation": false,
+    "migrationCreated": false,
+    "migrationApplication": false,
+    "testUsersCreated": false,
+    "realEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "officialReferences": [
+    "https://supabase.com/docs/guides/database/postgres/row-level-security",
+    "https://supabase.com/docs/guides/api/securing-your-api",
+    "https://supabase.com/docs/guides/auth/password-security"
+  ],
+  "nextPhase": {
+    "phase": 9,
+    "title": "Plano SQL reversivel de hardening e provisionamento do staging isolado"
+  }
+}

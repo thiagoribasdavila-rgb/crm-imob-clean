@@ -1,0 +1,63 @@
+{
+  "format": "atlas_meta_rls_policy_baseline_v1",
+  "environment": "remote_read_only_policy_snapshot",
+  "collectedAt": "2026-07-19",
+  "collection": {
+    "catalogOnly": true,
+    "securityAdvisorOnly": true,
+    "businessRowsRead": false,
+    "personalDataRead": false,
+    "secretsRead": false,
+    "projectIdentifiersPersisted": false,
+    "databaseMutation": false
+  },
+  "projects": {
+    "detected": 1,
+    "separateStagingDetected": false,
+    "identifiersPersisted": false
+  },
+  "canonicalPolicies": {
+    "count": 11,
+    "tables": ["public.crm_projects", "public.marketing_campaigns", "public.leads", "public.profiles"],
+    "organizationHelperReferences": 11,
+    "organizationColumnReferences": 11,
+    "directAuthUidReferences": 0,
+    "leadVisibilityHelperReferences": 0,
+    "reportsToReferences": 0,
+    "assigneeReferences": 0
+  },
+  "remoteColumns": {
+    "public.profiles": ["active", "name", "organization_id", "role"],
+    "public.leads": ["assigned_user_id", "name", "organization_id", "status"]
+  },
+  "securityAdvisor": {
+    "warningCount": 3,
+    "warnings": [
+      { "code": "anon_security_definer_function_executable", "object": "public.search_knowledge_chunks" },
+      { "code": "authenticated_security_definer_function_executable", "object": "public.search_knowledge_chunks" },
+      { "code": "auth_leaked_password_protection", "object": "auth" }
+    ]
+  },
+  "privilegedFunctions": [
+    {
+      "name": "public.search_knowledge_chunks",
+      "securityDefiner": true,
+      "searchPath": "public, private",
+      "publicExecute": false,
+      "anonExecute": true,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "authUidGuardDetected": false,
+      "organizationPredicateDetected": true,
+      "rowSecuritySetting": "__not_set__",
+      "definitionPersisted": false,
+      "exposureConfirmed": false,
+      "potentialBypassRisk": true
+    }
+  ],
+  "runtimeEvidence": {
+    "scenarioCount": 0,
+    "tenantIsolationApproved": false,
+    "roleHierarchyApproved": false
+  }
+}

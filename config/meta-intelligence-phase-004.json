@@ -1,0 +1,170 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 4,
+  "title": "Plano seguro de compatibilidade do schema Meta",
+  "mode": "read_only_plan",
+  "status": "blocked",
+  "safeToApply": false,
+  "baseline": {
+    "remoteAppliedMigrations": 33,
+    "localMigrationFiles": 123,
+    "unreconciledMigrationFiles": 90,
+    "liveCoreDataPresent": true,
+    "canonicalTableDifferences": [
+      "crm_projects_to_developments",
+      "marketing_campaigns_to_campaigns"
+    ],
+    "helperDifferences": [
+      "private.current_organization_id_present",
+      "public.current_organization_id_absent",
+      "public.current_user_role_absent",
+      "private.can_view_lead_absent"
+    ],
+    "missingRuntimeTables": [
+      "integrations",
+      "integration_outbox",
+      "dead_letter_events",
+      "campaign_events",
+      "meta_lead_sources",
+      "meta_lead_events",
+      "meta_conversion_configs",
+      "meta_conversion_events",
+      "lead_attribution_touches",
+      "meta_andromeda_learning_cycles"
+    ]
+  },
+  "sourceMigrationReview": [
+    {
+      "file": "supabase/migrations/20260711060000_atlas_level6_resilience.sql",
+      "purpose": "outbox_and_resilience",
+      "decision": "rewrite_as_small_hardened_kernel",
+      "risks": ["public_helper_dependency", "missing_explicit_grants"]
+    },
+    {
+      "file": "supabase/migrations/20260711120000_atlas_v2_marketing_automation.sql",
+      "purpose": "marketing_integrations",
+      "decision": "extract_minimum_meta_subset",
+      "risks": ["campaigns_table_dependency", "omnibus_scope", "missing_explicit_grants"]
+    },
+    {
+      "file": "supabase/migrations/20260716222643_meta_lead_closed_loop.sql",
+      "purpose": "meta_lead_ingestion",
+      "decision": "reuse_after_compatibility_bridge",
+      "risks": ["integrations_dependency", "public_helper_dependency"]
+    },
+    {
+      "file": "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql",
+      "purpose": "meta_conversion_kernel",
+      "decision": "reuse_after_ingestion_kernel",
+      "risks": ["meta_lead_sources_dependency", "public_helper_dependency"]
+    },
+    {
+      "file": "supabase/migrations/20260719003000_phase_74_immutable_lead_attribution.sql",
+      "purpose": "immutable_attribution",
+      "decision": "defer_and_split_ddl_from_backfill",
+      "risks": ["campaigns_and_developments_dependency", "lead_columns_dependency", "hierarchy_helper_dependency", "large_inline_backfill"]
+    },
+    {
+      "file": "supabase/migrations/20260719143000_phase_92_meta_andromeda_learning_loop.sql",
+      "purpose": "andromeda_learning_loop",
+      "decision": "defer_until_operational_evidence",
+      "risks": ["commercial_role_dependency", "public_helper_dependency", "insufficient_real_outcomes", "security_definer_search_path_not_empty"]
+    }
+  ],
+  "reconciliationBundle": [
+    {
+      "order": 1,
+      "name": "schema_compatibility_preflight",
+      "kind": "assertions_only",
+      "applyNow": false,
+      "outcome": "fail_closed_on_unknown_schema"
+    },
+    {
+      "order": 2,
+      "name": "meta_runtime_compatibility_bridge",
+      "kind": "additive_schema",
+      "applyNow": false,
+      "outcome": "resolve_helpers_hierarchy_and_canonical_names"
+    },
+    {
+      "order": 3,
+      "name": "meta_outbox_kernel",
+      "kind": "additive_schema",
+      "applyNow": false,
+      "outcome": "tenant_safe_delivery_queue_with_explicit_grants"
+    },
+    {
+      "order": 4,
+      "name": "meta_ingestion_kernel",
+      "kind": "additive_schema",
+      "applyNow": false,
+      "outcome": "idempotent_lead_source_and_event_ledger"
+    },
+    {
+      "order": 5,
+      "name": "meta_conversion_kernel",
+      "kind": "additive_schema",
+      "applyNow": false,
+      "outcome": "test_only_conversion_ledger"
+    },
+    {
+      "order": 6,
+      "name": "meta_attribution_and_learning_deferred",
+      "kind": "separate_later_release",
+      "applyNow": false,
+      "outcome": "batched_attribution_then_supervised_learning"
+    }
+  ],
+  "securityRequirements": {
+    "rlsEnabledOnEveryExposedTable": true,
+    "explicitGrantsRequired": true,
+    "anonDeniedByDefault": true,
+    "serverWritesRestrictedToServiceRole": true,
+    "securityDefinerFixedSearchPath": true,
+    "securityDefinerPublicExecuteRevoked": true,
+    "tenantIsolationTestRequired": true,
+    "serviceRoleNeverExposed": true
+  },
+  "releaseGates": [
+    "fresh_backup_available",
+    "restore_rehearsal_evidenced",
+    "staging_clone_dry_run_passed",
+    "migration_preflight_passed",
+    "rls_and_grants_matrix_passed",
+    "security_advisors_clear",
+    "row_counts_and_checksums_preserved",
+    "rollback_rehearsed",
+    "director_approval_recorded"
+  ],
+  "rollback": {
+    "firstResponse": [
+      "disable_meta_feature_flags",
+      "stop_outbox_consumers",
+      "return_application_to_legacy_read_paths"
+    ],
+    "schemaStrategy": "leave_additive_objects_dormant_before_considering_drop",
+    "dataStrategy": "never_delete_live_leads",
+    "restoreOnlyWhen": ["data_corruption", "destructive_change", "rollback_validation_failed"]
+  },
+  "governance": {
+    "databaseMutation": false,
+    "migrationApplication": false,
+    "realEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "personalDataInOutput": false,
+    "assetIdentifiersInOutput": false,
+    "secretsInOutput": false,
+    "buildExecuted": false
+  },
+  "officialReferences": [
+    "https://supabase.com/docs/guides/api/securing-your-api",
+    "https://supabase.com/docs/guides/deployment/shared-responsibility-model",
+    "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically"
+  ],
+  "nextPhase": {
+    "phase": 5,
+    "title": "Especificacao do bridge de compatibilidade e matriz RLS/grants"
+  }
+}

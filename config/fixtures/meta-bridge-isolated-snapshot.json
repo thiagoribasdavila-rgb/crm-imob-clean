@@ -1,0 +1,164 @@
+{
+  "format": "atlas_meta_schema_snapshot_v1",
+  "environment": "isolated_fixture",
+  "postgresMajor": 15,
+  "dataApiExposedSchemas": ["public"],
+  "objects": [
+    {
+      "name": "public.crm_projects",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": ["select"], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id", "organization_id_created_at"]
+    },
+    {
+      "name": "public.marketing_campaigns",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": ["select"], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id", "organization_id_created_at"]
+    },
+    {
+      "name": "public.leads",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": ["select"], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id", "assigned_user_id"]
+    },
+    {
+      "name": "public.profiles",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": ["select"], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id", "reports_to"]
+    },
+    {
+      "name": "public.developments_compat",
+      "kind": "view",
+      "dataApiExposed": true,
+      "rlsEnabled": false,
+      "sourceRlsEnabled": true,
+      "securityInvoker": true,
+      "grants": { "anon": [], "authenticated": ["select"], "service_role": ["select"] },
+      "indexes": []
+    },
+    {
+      "name": "public.campaigns_compat",
+      "kind": "view",
+      "dataApiExposed": true,
+      "rlsEnabled": false,
+      "sourceRlsEnabled": true,
+      "securityInvoker": true,
+      "grants": { "anon": [], "authenticated": ["select"], "service_role": ["select"] },
+      "indexes": []
+    },
+    {
+      "name": "public.integration_connections",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": ["select"], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id", "organization_id_created_at"]
+    },
+    {
+      "name": "private.integration_credentials",
+      "kind": "table",
+      "dataApiExposed": false,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": [], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id", "provider"]
+    },
+    {
+      "name": "private.integration_outbox",
+      "kind": "table",
+      "dataApiExposed": false,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": [], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id_created_at", "pending_available_at_partial", "deduplication_key"]
+    },
+    {
+      "name": "private.dead_letter_events",
+      "kind": "table",
+      "dataApiExposed": false,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": [], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id_created_at", "source_event_id"]
+    },
+    {
+      "name": "public.meta_lead_sources",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": ["select"], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id_created_at", "lead_id", "organization_external_event_unique"]
+    },
+    {
+      "name": "public.meta_lead_events",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": ["select"], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id_created_at", "lead_id", "organization_meta_event_unique"]
+    },
+    {
+      "name": "public.meta_conversion_configs",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": ["select"], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id", "organization_id_created_at"]
+    },
+    {
+      "name": "public.meta_conversion_events",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "securityInvoker": false,
+      "grants": { "anon": [], "authenticated": ["select"], "service_role": ["select", "insert", "update", "delete"] },
+      "indexes": ["organization_id_created_at", "lead_id", "organization_meta_event_unique"]
+    }
+  ],
+  "functions": [
+    {
+      "name": "private.current_organization_id",
+      "securityDefiner": false,
+      "searchPath": "",
+      "publicExecute": false,
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "authUidCheck": true
+    },
+    {
+      "name": "private.can_view_lead",
+      "securityDefiner": true,
+      "searchPath": "",
+      "publicExecute": false,
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "authUidCheck": true
+    }
+  ],
+  "isolationScenarios": [
+    { "name": "anonymous_meta_access_denied", "passed": true, "visibleRows": 0 },
+    { "name": "broker_cross_tenant_read_denied", "passed": true, "visibleRows": 0 },
+    { "name": "broker_same_tenant_visible_lead_allowed", "passed": true, "visibleRows": 1 },
+    { "name": "broker_hidden_lead_denied", "passed": true, "visibleRows": 0 },
+    { "name": "leadership_same_tenant_reporting_allowed", "passed": true, "visibleRows": 2 },
+    { "name": "authenticated_direct_write_denied", "passed": true, "visibleRows": 0 }
+  ]
+}

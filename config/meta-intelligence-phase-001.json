@@ -1,0 +1,41 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 1,
+  "title": "Inventario real dos ativos Meta",
+  "mode": "read_only",
+  "statusVocabulary": [
+    "implemented",
+    "configured",
+    "operational",
+    "blocked",
+    "not_verified"
+  ],
+  "assetGroups": [
+    "ad_account",
+    "campaigns",
+    "pages_and_forms",
+    "lead_webhook",
+    "crm_conversion_dataset",
+    "attribution",
+    "signal_learning_loop"
+  ],
+  "operationalProof": {
+    "ads": "successful_read_only_graph_request",
+    "leadAds": "signed_webhook_and_imported_real_lead",
+    "conversionsApi": "events_received_equals_one_in_test_dataset",
+    "learningLoop": "consented_deep_events_with_attribution_and_freshness"
+  },
+  "governance": {
+    "secretsInOutput": false,
+    "personalDataInOutput": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "databaseMutation": false,
+    "directorDecisionRequired": true
+  },
+  "nextPhase": {
+    "phase": 2,
+    "title": "Permissoes, propriedade e destinos de dados"
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "format": "atlas_meta_rls_hardening_plan_v1",
+  "executionPolicy": "staging_only_after_human_approval",
+  "productionExecutionAllowed": false,
+  "legacyMigrationReplayAllowed": false,
+  "principles": [
+    "fail_closed",
+    "least_privilege",
+    "no_personal_data_in_test_evidence",
+    "no_service_role_in_browser",
+    "no_blind_replay_of_legacy_migrations",
+    "one_reviewed_change_set_per_gate",
+    "transactional_apply_and_separate_logical_rollback"
+  ],
+  "requiredEnvironment": {
+    "kind": "staging_clone",
+    "isolatedFromProduction": true,
+    "sanitizedSeedOnly": true,
+    "productionProject": false,
+    "backupBeforeApply": true,
+    "rollbackDryRunBeforePromotion": true
+  },
+  "canonicalContracts": {
+    "profileRoles": ["director", "superintendent", "manager", "broker"],
+    "profileHierarchyColumns": ["commercial_role", "reports_to"],
+    "remoteLeadAssigneeColumn": "assigned_user_id",
+    "legacyLocalLeadAssigneeColumn": "assigned_to",
+    "authorizationSource": "public.profiles_with_rls",
+    "userMetadataAuthorizationAllowed": false
+  },
+  "orderedActions": [
+    {
+      "order": 1,
+      "id": "provision_isolated_staging",
+      "kind": "environment",
+      "apply": "Create an isolated Supabase branch or dedicated staging project with sanitized seed data and independent credentials.",
+      "rollback": "Delete the isolated branch/project after preserving non-sensitive test evidence.",
+      "requires": ["human_approval", "no_production_credentials_in_client"],
+      "ready": false
+    },
+    {
+      "order": 2,
+      "id": "capture_prechange_fingerprint_and_backup",
+      "kind": "evidence",
+      "apply": "Capture catalog-only schema, policy, grants and function signatures; verify a restorable backup before any write.",
+      "rollback": "No schema rollback required; discard stale evidence and recapture.",
+      "requires": ["isolated_staging", "backup_verified"],
+      "ready": false
+    },
+    {
+      "order": 3,
+      "id": "reconcile_migration_drift",
+      "kind": "migration_design",
+      "apply": "Generate a new Supabase CLI migration from the observed remote schema. Port the hierarchy contract to assigned_user_id; do not replay the legacy assigned_to migration.",
+      "rollback": "Revert the new migration in staging and restore the captured policy/grant snapshot; retain additive nullable columns if dropping them could destroy data.",
+      "requires": ["remote_fingerprint_match", "role_mapping_reviewed", "new_cli_migration"],
+      "ready": false
+    },
+    {
+      "order": 4,
+      "id": "install_private_hierarchy_helpers",
+      "kind": "database_security",
+      "apply": "Create private, schema-qualified helpers for profile descendants and lead visibility with explicit auth.uid() checks and an empty search_path.",
+      "rollback": "Restore previous policies first, then revoke and drop only helpers introduced by the reviewed change set.",
+      "requires": ["commercial_role", "reports_to", "assigned_user_id", "signature_review"],
+      "ready": false
+    },
+    {
+      "order": 5,
+      "id": "replace_profiles_and_leads_policies",
+      "kind": "rls",
+      "apply": "Replace tenant-only profiles/leads policies with tenant plus commercial-hierarchy policies in one staging transaction; keep RLS enabled.",
+      "rollback": "Recreate the exact prechange policies from the catalog snapshot inside a rollback transaction.",
+      "requires": ["private_helpers_verified", "policy_snapshot_versioned"],
+      "ready": false
+    },
+    {
+      "order": 6,
+      "id": "reduce_canonical_table_grants",
+      "kind": "privileges",
+      "apply": "Revoke unnecessary anon CRUD grants and grant authenticated only the operations required by the reviewed UI/API contract.",
+      "rollback": "Restore only the prechange grants captured in the catalog snapshot; never grant broader privileges than the previous state.",
+      "requires": ["data_api_schema_verified", "application_access_matrix_approved"],
+      "ready": false
+    },
+    {
+      "order": 7,
+      "id": "version_and_harden_knowledge_search",
+      "kind": "privileged_function",
+      "apply": "Persist the exact search_knowledge_chunks signature and body, set a safe search_path, preserve the organization predicate, and remove anon/authenticated EXECUTE unless a reviewed server flow requires it.",
+      "rollback": "Restore the prior versioned definition and prechange EXECUTE grants from the snapshot.",
+      "requires": ["exact_signature_known", "definition_versioned", "server_call_path_verified"],
+      "ready": false
+    },
+    {
+      "order": 8,
+      "id": "enable_leaked_password_protection",
+      "kind": "auth_configuration",
+      "apply": "Enable leaked-password protection through Supabase Auth configuration after validating login and password recovery in staging.",
+      "rollback": "Restore the previous Auth setting only if staging authentication regresses and record the exception.",
+      "requires": ["dashboard_or_management_api_approval", "login_recovery_test"],
+      "sqlAllowed": false,
+      "ready": false
+    },
+    {
+      "order": 9,
+      "id": "execute_isolation_and_regression_matrix",
+      "kind": "verification",
+      "apply": "Run all Phase 8 tenant, role, denied-write and privileged-function scenarios with sanitized identities in isolated staging.",
+      "rollback": "Remove test identities and sanitized fixtures; preserve only approved non-sensitive evidence.",
+      "requires": ["eleven_scenarios_pass", "zero_cross_tenant_rows", "zero_denied_mutations"],
+      "ready": false
+    },
+    {
+      "order": 10,
+      "id": "promotion_decision",
+      "kind": "gate",
+      "apply": "Prepare a separate production migration proposal only after security, product and rollback approvals.",
+      "rollback": "Keep production unchanged when any gate is incomplete.",
+      "requires": ["director_approval", "security_approval", "runtime_evidence_approved", "rollback_dry_run_passed"],
+      "ready": false
+    }
+  ],
+  "forbiddenActions": [
+    "apply_to_production",
+    "replay_legacy_hierarchy_migration",
+    "read_personal_data_for_testing",
+    "expose_service_role_to_browser",
+    "send_real_meta_event",
+    "mutate_campaign",
+    "mutate_budget",
+    "mutate_audience",
+    "claim_security_approval_without_runtime_evidence"
+  ]
+}

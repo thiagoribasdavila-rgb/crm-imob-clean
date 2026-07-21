@@ -1,0 +1,83 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 10,
+  "title": "Manifesto de reconciliacao entre migrations locais e schema remoto",
+  "mode": "offline_schema_contract_reconciliation",
+  "status": "verified_with_blockers",
+  "safeToApply": false,
+  "sourceBaseline": "config/meta-intelligence-phase-009.json",
+  "reconciliationManifest": "config/fixtures/meta-schema-reconciliation-manifest.json",
+  "executionEvidenceTemplate": "config/fixtures/meta-schema-reconciliation-evidence-template.json",
+  "bridgeMigrationEvidence": "supabase/migrations/20260717213001_v3_legacy_runtime_schema_bridge.sql",
+  "compatibilityEvidence": [
+    "lib/compat/legacy-v2.ts",
+    "lib/compat/live-writes.ts",
+    "lib/atlas/core-v2/live-capability-resolver.ts"
+  ],
+  "observedContract": {
+    "bridgeExists": true,
+    "bridgeAdditive": true,
+    "historicalMigrationImmutable": true,
+    "scoreBackfillPreservesLegacy": false,
+    "ownerDualWriteGuard": false,
+    "projectDualWriteGuard": false,
+    "scoreDualWriteGuard": false,
+    "unknownRoleMappingSafe": false,
+    "reportsToAutomaticallyInferable": false,
+    "explicitDataApiGrants": false,
+    "applicationUsesLegacyAndCanonicalContracts": true
+  },
+  "blockingFindings": [
+    "no_isolated_staging_environment",
+    "historical_bridge_not_safe_to_replay",
+    "score_default_precedes_legacy_backfill",
+    "owner_contract_has_no_dual_write_guard",
+    "project_contract_has_no_dual_write_guard",
+    "score_contract_has_no_dual_write_guard",
+    "unknown_roles_silently_mapped_to_broker",
+    "reports_to_requires_human_mapping",
+    "explicit_data_api_grants_not_versioned",
+    "runtime_rls_evidence_not_approved"
+  ],
+  "releaseGate": {
+    "manifestDocumented": true,
+    "historicalBridgeReplaySafe": false,
+    "isolatedStagingReady": false,
+    "correctedCliMigrationCreated": false,
+    "backfillVerified": false,
+    "dualWriteVerified": false,
+    "explicitGrantsVerified": false,
+    "rlsVerified": false,
+    "rollbackVerified": false,
+    "runtimeEvidenceApproved": false,
+    "migrationReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "remoteCatalogRead": false,
+    "businessRowsRead": false,
+    "personalDataRead": false,
+    "secretsRead": false,
+    "historicalBridgeModified": false,
+    "databaseMutation": false,
+    "migrationCreated": false,
+    "migrationApplication": false,
+    "stagingProjectCreated": false,
+    "testUsersCreated": false,
+    "realEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "officialReferences": [
+    "https://supabase.com/docs/guides/deployment/managing-environments",
+    "https://supabase.com/docs/reference/cli/supabase-migration-new",
+    "https://supabase.com/docs/guides/database/postgres/row-level-security",
+    "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically"
+  ],
+  "nextPhase": {
+    "phase": 11,
+    "title": "Migration de reconciliacao canonica versionada e testes locais"
+  }
+}
