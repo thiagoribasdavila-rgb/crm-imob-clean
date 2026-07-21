@@ -15,6 +15,7 @@ import { CommandCenterModuleHealth } from "@/app/(crm)/dashboard/page";
 import type { ProposalSignalKind } from "@/lib/ai/action-proposals";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import { NextBestActionPanel } from "@/components/atlas/NextBestActionPanel";
+import { CampaignApprovalsPanel } from "@/components/atlas/CampaignApprovalsPanel";
 import {
   AtlasBadge,
   AtlasEmpty,
@@ -2365,6 +2366,18 @@ export default function CommandCenterPage() {
           style={{ animationDelay: "120ms" }}
         >
           <NextBestActionPanel max={5} />
+        </section>
+      ) : null}
+
+      {/* Governança · liderança — aprovar as campanhas Meta prontas (Arvo/Spin)
+          com 1 clique, direto para a Caixa de Aprovações. */}
+      {!isBroker ? (
+        <section
+          aria-label="Aprovar campanhas Meta"
+          className="cc5-reveal [transform-style:preserve-3d]"
+          style={{ animationDelay: "130ms" }}
+        >
+          <CampaignApprovalsPanel />
         </section>
       ) : null}
 
