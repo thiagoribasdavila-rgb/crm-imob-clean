@@ -1,4 +1,6 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { enforceRateLimit } from "@/lib/api/security";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
@@ -34,7 +36,10 @@ function compact(value: unknown, limit = 4000) {
     .slice(0, limit);
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  // Rota de IA paga: limite próprio para impedir consumo de orçamento de LLM em loop.
+  const rate = enforceRateLimit(request, { limit: 15, windowMs: 60_000, scope: "ai-copilot" });
+  if (!rate.ok) return rate.response;
   try {
     const identity = await requireApiIdentity(request);
 

@@ -1,4 +1,6 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { enforceRateLimit } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { buildMetaCampaignIntelligence } from "@/lib/meta/campaign-intelligence";
 import { logger } from "@/lib/observability/logger";
@@ -23,7 +25,10 @@ function reportDate() {
   }).format(new Date());
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  // Rota de IA paga (cron): limite próprio para impedir consumo de orçamento de LLM em loop.
+  const rate = enforceRateLimit(request, { limit: 15, windowMs: 60_000, scope: "meta-daily-report" });
+  if (!rate.ok) return rate.response;
   if (!authorized(request))
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   const admin = getSupabaseAdmin();

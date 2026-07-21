@@ -16,6 +16,7 @@
 
     { "name": "SUPABASE_SERVICE_ROLE_KEY", "scope": "server", "requirement": "required", "secret": true, "purpose": "Acesso administrativo do servidor ao Supabase." },
     { "name": "DATABASE_URL", "scope": "server", "requirement": "required", "secret": true, "purpose": "Conexão Prisma/Postgres exclusiva do ambiente." },
+    { "name": "SUPABASE_URL", "scope": "server", "requirement": "optional", "secret": false, "purpose": "Alternativa exclusiva do servidor à NEXT_PUBLIC_SUPABASE_URL, usada por scripts de verificação." },
     { "name": "ATLAS_CRON_SECRET", "scope": "server", "requirement": "required", "secret": true, "purpose": "Autenticação de workers e rotinas agendadas." },
     { "name": "ATLAS_BASE_URL", "scope": "server", "requirement": "required", "secret": false, "purpose": "URL canônica interna do ambiente." },
     { "name": "ATLAS_ENV", "scope": "server", "requirement": "required", "secret": false, "purpose": "Estágio Atlas: development, homologation ou production." },
@@ -38,8 +39,11 @@
     { "name": "ATLAS_IMPORT_ORGANIZATION_ID", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Tenant de uma importação supervisionada." },
     { "name": "ATLAS_IMPORT_OWNER_ID", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Responsável de uma importação supervisionada." },
     { "name": "ATLAS_IMPORT_ACTOR_ID", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Autor auditável de uma importação supervisionada." },
+    { "name": "ATLAS_DEFAULT_ORGANIZATION_ID", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Organização assumida em homologação quando a sessão não resolve tenant; proibida em produção." },
 
     { "name": "OPENAI_API_KEY", "scope": "server", "requirement": "conditional", "secret": true, "purpose": "IA comercial e raciocínio com dados pessoais governados." },
+    { "name": "ANTHROPIC_API_KEY", "scope": "server", "requirement": "conditional", "secret": true, "purpose": "Provedor Anthropic (Claude) para IA comercial e raciocínio governados." },
+    { "name": "ATLAS_ANTHROPIC_MODEL", "scope": "server", "requirement": "optional", "secret": false, "purpose": "Modelo Claude homologado usado pelo roteador de IA." },
     { "name": "PERPLEXITY_API_KEY", "scope": "server", "requirement": "conditional", "secret": true, "purpose": "Pesquisa externa sem dados pessoais." },
     { "name": "DEEPSEEK_API_KEY", "scope": "server", "requirement": "conditional", "secret": true, "purpose": "Provedor econômico opcional." },
     { "name": "QWEN_API_KEY", "scope": "server", "requirement": "conditional", "secret": true, "purpose": "Provedor econômico opcional." },
@@ -49,6 +53,8 @@
     { "name": "META_WEBHOOK_VERIFY_TOKEN", "scope": "server", "requirement": "conditional", "secret": true, "purpose": "Verificação do webhook Meta." },
     { "name": "META_LEAD_ACCESS_TOKEN", "scope": "server", "requirement": "conditional", "secret": true, "purpose": "Leitura de leads Meta." },
     { "name": "META_CONVERSIONS_ACCESS_TOKEN", "scope": "server", "requirement": "conditional", "secret": true, "purpose": "Envio governado de conversões Meta." },
+    { "name": "ATLAS_META_CAPI_ENABLED", "scope": "server", "requirement": "optional", "secret": false, "purpose": "Liga o envio governado de conversões Meta (CAPI); desligado por padrão." },
+    { "name": "META_CAPI_DATASET_ID", "scope": "server", "requirement": "conditional", "secret": false, "purpose": "Dataset Meta que recebe os eventos de conversão do CAPI." },
     { "name": "META_ADS_ACCESS_TOKEN", "scope": "server", "requirement": "conditional", "secret": true, "purpose": "Leitura de desempenho de anúncios Meta." },
     { "name": "WHATSAPP_ACCESS_TOKEN", "scope": "server", "requirement": "conditional", "secret": true, "purpose": "WhatsApp Cloud API oficial." },
     { "name": "GOOGLE_ADS_DEVELOPER_TOKEN", "scope": "server", "requirement": "conditional", "secret": true, "purpose": "Conector futuro Google Ads." },
@@ -91,9 +97,12 @@
     { "name": "META_GRAPH_API_VERSION", "scope": "server", "requirement": "optional", "secret": false, "purpose": "Versão homologada da Graph API." },
     { "name": "WHATSAPP_PHONE_NUMBER_ID", "scope": "server", "requirement": "optional", "secret": false, "purpose": "Número da WhatsApp Cloud API." },
     { "name": "WHATSAPP_NIGHTLY_APPROACH_TEMPLATE", "scope": "server", "requirement": "optional", "secret": false, "purpose": "Template aprovado para abordagem noturna." },
+    { "name": "ATLAS_WHATSAPP_NLU_ENABLED", "scope": "server", "requirement": "optional", "secret": false, "purpose": "Liga a interpretação NLU de mensagens recebidas no WhatsApp; desligada por padrão." },
+    { "name": "ATLAS_PIPELINE_STAGE_SETTINGS_ENABLED", "scope": "server", "requirement": "optional", "secret": false, "purpose": "Habilita etapas de pipeline configuráveis por organização; desligada por padrão." },
     { "name": "WHATSAPP_TEST_RECIPIENT", "scope": "server", "requirement": "temporary", "secret": false, "purpose": "Destino exclusivo do ensaio de homologação." },
 
     { "name": "ATLAS_PACKAGE_NAME", "scope": "build", "requirement": "optional", "secret": false, "purpose": "Nome controlado do artefato ZIP de release." },
+    { "name": "ATLAS_EVOLUTION_PHASE", "scope": "build", "requirement": "optional", "secret": false, "purpose": "Fase de evolução registrada no empacotamento de checkpoints e releases." },
     { "name": "NODE_ENV", "scope": "runtime", "requirement": "managed", "secret": false, "purpose": "Estágio técnico gerenciado por Node/Next." },
     { "name": "NODE_APP_INSTANCE", "scope": "runtime", "requirement": "managed", "secret": false, "purpose": "Identificador de processo gerenciado pelo PM2." },
     { "name": "NEXT_PHASE", "scope": "runtime", "requirement": "managed", "secret": false, "purpose": "Estado interno de build do Next.js." }

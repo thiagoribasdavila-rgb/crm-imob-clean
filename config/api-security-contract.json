@@ -16,7 +16,8 @@
   ],
   "webhookRoutes": [
     "app/api/webhooks/meta/route.ts",
-    "app/api/webhooks/whatsapp/route.ts"
+    "app/api/webhooks/whatsapp/route.ts",
+    "app/api/webhooks/portals/[provider]/route.ts"
   ],
   "workerRoutes": [
     "app/api/v1-v2/status/route.ts",

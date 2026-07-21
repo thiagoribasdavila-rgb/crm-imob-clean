@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { requireAccessContext } from "@/lib/api/security";
+import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { buildRealEstateContext } from "@/lib/ai/real-estate-context";
 import { aiProviderReadiness } from "@/lib/ai/provider-router";
 import { canonicalLeadStatus } from "@/lib/compat/legacy-v2";
@@ -58,6 +58,9 @@ type ProductLearning = {
 };
 
 export async function GET(request: NextRequest) {
+  // Rota de IA paga: limite próprio para impedir consumo de orçamento de LLM em loop.
+  const rate = enforceRateLimit(request, { limit: 15, windowMs: 60_000, scope: "ai-briefing" });
+  if (!rate.ok) return rate.response;
   const access = await requireAccessContext(request);
   if (!access.ok) return access.response;
   const identity = {
