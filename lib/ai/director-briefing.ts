@@ -242,13 +242,13 @@ function collectDecisions(input: BriefingInput): Decision[] {
 }
 
 /** Humor da semana: crítico > atenção > bom, sempre a partir de números concretos. */
-function resolveMood(input: BriefingInput, decisions: Decision[]): DirectorBriefing["mood"] {
+function resolveMood(input: BriefingInput, decisions: Decision[], urgencyAttention: number): DirectorBriefing["mood"] {
   const estouroCaro = (input.budget ?? []).some((l) => l.pacing === "estourou" && l.verdict === "caro");
   const criativoCritico = (input.creativeHealth ?? []).some(
     (c) => c.andromedaScore < BRIEFING_THRESHOLDS.andromedaCritico && hasRelevantSpend(input.campaigns, c.campaignName),
   );
   if (estouroCaro || criativoCritico) return "critico";
-  if (decisions.some((d) => d.urgency >= 4)) return "atencao";
+  if (decisions.some((d) => d.urgency >= urgencyAttention)) return "atencao";
   return "bom";
 }
 
@@ -396,13 +396,14 @@ function buildWatching(input: BriefingInput): string[] {
 export function buildDirectorBriefing(
   input: BriefingInput,
   /** Limiares calibráveis (lib/ai/calibration → briefing): teto de decisões
-   *  por briefing (anti-ruído). Headline/narrativa citam o total real. */
-  opts: { maxDecisions?: number } = {},
+   *  (anti-ruído) e urgência que liga o modo atenção. */
+  opts: { maxDecisions?: number; urgencyAttention?: number } = {},
 ): DirectorBriefing {
   const all = collectDecisions(input);
   const maxDecisions = Math.max(1, opts.maxDecisions ?? 6);
+  const urgencyAttention = Math.min(5, Math.max(2, opts.urgencyAttention ?? 4));
   const decisions = all.slice(0, maxDecisions);
-  const mood = resolveMood(input, all);
+  const mood = resolveMood(input, all, urgencyAttention);
   const base = buildKpis(input);
   return {
     headline: buildHeadline(input, all, base),

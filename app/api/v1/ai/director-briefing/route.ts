@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     const totalsSpend = (spend ?? []).reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
     const input: BriefingInput = { source: "db", totalsSpend, pendingApprovals, weekLeads };
     return apiSuccess({
-      briefing: buildDirectorBriefing(input, { maxDecisions: cal.briefing.maxDecisions }),
+      briefing: buildDirectorBriefing(input, { maxDecisions: cal.briefing.maxDecisions, urgencyAttention: cal.briefing.urgencyAttention }),
       source: "db",
     }, identity.meta, { headers: limited.headers });
   }
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
         weekLeads,
       };
       return apiSuccess({
-        briefing: buildDirectorBriefing(input, { maxDecisions: cal.briefing.maxDecisions }),
+        briefing: buildDirectorBriefing(input, { maxDecisions: cal.briefing.maxDecisions, urgencyAttention: cal.briefing.urgencyAttention }),
         source: "meta_live",
       }, identity.meta, { headers: limited.headers });
     }
