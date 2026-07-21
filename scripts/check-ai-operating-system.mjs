@@ -3,7 +3,7 @@ import fs from "node:fs";
 const required = {
   "lib/ai/operating-system.ts": ["prepared_offline", "humanApprovalRequired", "ATLAS_AI_OS_AGENTS", "autonomousExternalActions: false"],
   "app/api/ai/status/route.ts": ["resolveAtlasAIOS", "operatingSystem"],
-  "app/(crm)/settings/ai/page.tsx": ["AI OPERATING SYSTEM", "Atlas AI Brain", "Aguardando crédito"],
+  "app/(crm)/settings/ai/page.tsx": ["data-ai-settings-layout=\"cc6-governance\"", "data.operatingSystem", "Aguardando crédito"],
   "docs/ATLAS_AI_OPERATING_SYSTEM_SPEC.md": ["O modelo de IA é o motor", "Learning Loop", "HTTP 429", "Gates de produção"],
 };
 

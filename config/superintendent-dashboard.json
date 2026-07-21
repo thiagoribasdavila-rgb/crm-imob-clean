@@ -2,7 +2,7 @@
   "phase": 23,
   "role": "superintendent",
   "endpoint": "app/api/v1/analytics/dashboard/route.ts",
-  "page": "app/(crm)/dashboard/page.tsx",
+  "page": "app/(crm)/command-center/page.tsx",
   "requiredAreas": ["directManagers", "teamPresence", "activeLeads", "hotLeads", "firstContactOverdue", "followUpOverdue", "withoutNextAction", "distribution", "conversionBenchmark", "interventions"],
   "scopeControls": ["directManagersOnly", "directBrokersPerManagerOnly", "parallelStructuresExcluded", "unassignedExcluded", "organization_id"],
   "decisionControls": ["conversionSampleSufficient", "minimumLeadsPerTeam", "humanDecisionRequired", "automaticTransfer"]

@@ -28,8 +28,8 @@
       "label": "Administrador",
       "role": "director",
       "accessRole": "admin",
-      "expectedNavigationCount": 18,
-      "expectedContextCommandCount": 5,
+      "expectedNavigationCount": 16,
+      "expectedContextCommandCount": 7,
       "allowed": ["/users", "/settings", "/integrations", "/command-center"],
       "blocked": []
     },
@@ -38,8 +38,8 @@
       "label": "Diretor decisor",
       "role": "director",
       "accessRole": "director_decisor",
-      "expectedNavigationCount": 16,
-      "expectedContextCommandCount": 5,
+      "expectedNavigationCount": 14,
+      "expectedContextCommandCount": 7,
       "allowed": ["/reports", "/external-sales", "/integrations", "/command-center"],
       "blocked": ["/users", "/settings"]
     },
@@ -48,8 +48,8 @@
       "label": "Diretor comercial",
       "role": "director",
       "accessRole": "director",
-      "expectedNavigationCount": 14,
-      "expectedContextCommandCount": 5,
+      "expectedNavigationCount": 12,
+      "expectedContextCommandCount": 7,
       "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
       "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings"]
     },
@@ -58,8 +58,8 @@
       "label": "Superintendente",
       "role": "superintendent",
       "accessRole": "director",
-      "expectedNavigationCount": 14,
-      "expectedContextCommandCount": 5,
+      "expectedNavigationCount": 12,
+      "expectedContextCommandCount": 7,
       "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
       "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings"]
     },
@@ -68,8 +68,8 @@
       "label": "Gerente",
       "role": "manager",
       "accessRole": "director",
-      "expectedNavigationCount": 14,
-      "expectedContextCommandCount": 5,
+      "expectedNavigationCount": 12,
+      "expectedContextCommandCount": 7,
       "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
       "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings"]
     },
@@ -78,8 +78,8 @@
       "label": "Corretor",
       "role": "broker",
       "accessRole": "broker",
-      "expectedNavigationCount": 9,
-      "expectedContextCommandCount": 3,
+      "expectedNavigationCount": 7,
+      "expectedContextCommandCount": 5,
       "allowed": ["/leads", "/pipeline", "/properties", "/conversations"],
       "blocked": ["/brokers", "/distribution", "/reports", "/marketing", "/decision-center", "/users", "/settings"]
     }

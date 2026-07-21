@@ -27,7 +27,7 @@
     "errorComponent": "components/ui/AtlasUI.tsx#AtlasRecoverableError"
   },
   "structuralBaseline": {
-    "crmPages": 146,
+    "crmPages": 145,
     "emptyStateConsumers": 57,
     "emptyStateUses": 101,
     "explicitReasonsBefore": 0,

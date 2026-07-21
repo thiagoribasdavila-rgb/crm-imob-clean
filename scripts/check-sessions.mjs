@@ -12,7 +12,7 @@ const topbars = [readFileSync(resolve(root, "components/AtlasTopbar.tsx"), "utf8
 const errors = [];
 
 if (!middleware.includes("getClaims()") || !middleware.includes("setAll(cookiesToSet)")) errors.push("middleware não valida e renova cookies");
-if (!guard.includes("onAuthStateChange") || !guard.includes('router.replace("/login")')) errors.push("interface não reage à expiração");
+if (!guard.includes("onAuthStateChange") || !guard.includes("router.replace(`/login")) errors.push("interface não reage à expiração");
 for (const [action, scope] of Object.entries(contract.logoutScopes || {})) if (!route.includes(`action === "${action}"`) || !route.includes(`"${scope}"`)) errors.push(`escopo de logout ausente: ${action}`);
 if (!route.includes("auth.getUser()") || !route.includes("tokensReturned: false") || !route.includes("deviceEnumerationAvailable: false")) errors.push("API de sessão não valida usuário ou expõe estado indevido");
 if (!route.includes('limit: 10') || !route.includes("session-control")) errors.push("controle de sessão sem rate limit");

@@ -12,6 +12,6 @@ for (const marker of ['from("leads")', "emailDuplicate", "phoneDuplicate", "iden
 if (route.includes('rpc("create_lead_atomic"')) failures.push("rota ainda depende de função ausente no banco ativo");
 if (!route.includes('from("crm_projects")')) failures.push("projeto ainda não usa o cadastro ativo");
 if (!route.includes("visibleDuplicate") || !route.includes("duplicateLeadId")) failures.push("duplicidade lateral pode vazar identificação");
-for (const marker of ['data-phase="25-lead-registration"', "Cadastro rápido", "Adicionar qualificação agora", "errorField", "min-h-12", "Score previsto"]) if (!page.includes(marker)) failures.push(`experiência ausente: ${marker}`);
+for (const marker of ['data-phase="25-lead-registration"', "Nome e um contato bastam", "Qualificação opcional", "errorField", "min-h-12", "Score previsto"]) if (!page.includes(marker)) failures.push(`experiência ausente: ${marker}`);
 if (failures.length) { console.error("LEAD REGISTRATION Fase 25: REPROVADO"); for (const failure of failures) console.error(`- ${failure}`); process.exit(1); }
 console.log(`LEAD REGISTRATION: aprovado — ${contract.validationAreas.length} validações; escrita compatível com banco ativo; deduplicação por tenant; histórico real; cadastro progressivo.`);

@@ -22,7 +22,7 @@ for (const marker of [
   "confirmServerSession",
   "readSessionFailure",
   "storeAtlasAuthContext",
-  'return "/dashboard"',
+  'return "/command-center"',
 ]) if (!login.includes(marker)) failures.push(`cliente pós-login sem ${marker}`);
 
 for (const marker of [

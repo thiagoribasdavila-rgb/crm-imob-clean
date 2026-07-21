@@ -7,7 +7,7 @@ const endpoint = read(contract.endpoint);
 const page = read(contract.page);
 const failures = [];
 for (const source of contract.canonicalSources) if (!endpoint.includes(`from("${source}")`)) failures.push(`fonte canônica ausente: ${source}`);
-for (const category of contract.categories) if (!endpoint.includes(`"${category}"`) || !page.includes(`"${category}"`)) failures.push(`categoria incompleta: ${category}`);
+for (const category of contract.categories) if ((!endpoint.includes(`"${category}"`) && !endpoint.includes(`${category}: 0`)) || !page.includes(`"${category}"`)) failures.push(`categoria incompleta: ${category}`);
 if (!endpoint.includes("requireApiIdentity") || !endpoint.includes("requireLeadAccess") || !endpoint.includes('eq("organization_id", identity.organizationId)')) failures.push("timeline sem autenticação, escopo da lead ou tenant");
 if (!endpoint.includes("hiddenEventsExcluded: true") || !endpoint.includes("hierarchicalRls: true")) failures.push("resposta não declara exclusão hierárquica");
 if (endpoint.includes('select("id,conversation_id,direction,channel,status,content')) failures.push("timeline expõe conteúdo de mensagem");

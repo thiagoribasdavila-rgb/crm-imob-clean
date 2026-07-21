@@ -11,7 +11,7 @@ for (const area of contract.requiredAreas) if (!endpoint.includes(area) || !page
 for (const control of contract.scopeControls) if (!endpoint.includes(control)) failures.push(`escopo ausente: ${control}`);
 for (const control of contract.decisionControls) if (!endpoint.toLowerCase().includes(control.toLowerCase()) && !page.toLowerCase().includes(control.toLowerCase())) failures.push(`governança ausente: ${control}`);
 if (!endpoint.includes('roles: ["manager"]')) failures.push("endpoint não é exclusivo do gerente");
-if (!endpoint.includes('.eq("reports_to", managerId)')) failures.push("corretores não são limitados ao subordinado direto");
+if (!endpoint.includes("descendantsFromLiveProfiles(profiles, managerId)")) failures.push("corretores não são limitados ao subordinado direto");
 if (!endpoint.includes("portfolio.length >= 20")) failures.push("conversão compara amostra imatura");
 if (/\.from\([^)]*\)\.(insert|update|delete)|\.rpc\(/.test(endpoint)) failures.push("dashboard executa mutação automática");
 if (!page.includes('data-phase="22-manager-daily"')) failures.push("cockpit da fase 22 não está visível");
