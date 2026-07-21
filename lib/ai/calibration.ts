@@ -44,6 +44,10 @@ export type AiCalibration = {
     maxAdSets: number;             // teto de conjuntos recomendados (Andromeda premia consolidar)
     fallbackCplBrl: number;        // CPL assumido quando não há histórico (R$)
   };
+  forecast: {
+    minWeeksForTrend: number;   // semanas mínimas p/ confiar na tendência da previsão
+    anomalyLeadDropPct: number; // queda % de leads que dispara alerta preditivo
+  };
   audience: {
     minRadiusKm: number;          // POLÍTICA Meta HOUSING — travado
     ageMin: number;               // POLÍTICA — travado
@@ -74,6 +78,8 @@ export const CALIBRATION_RAILS: Record<string, CalibrationRail> = {
   "sizing.learningEventsPerWeek": { min: 20, max: 100, label: "Eventos/semana p/ sair do aprendizado (Meta)" },
   "sizing.maxAdSets": { min: 1, max: 10, label: "Conjuntos recomendados — teto" },
   "sizing.fallbackCplBrl": { min: 1, max: 100, label: "CPL assumido sem histórico (R$)" },
+  "forecast.minWeeksForTrend": { min: 2, max: 8, label: "Semanas mínimas p/ confiar na tendência" },
+  "forecast.anomalyLeadDropPct": { min: 5, max: 60, label: "Queda de leads que dispara alerta preditivo (%)" },
   "audience.minRadiusKm": { min: 24, max: 24, locked: true, label: "Raio mínimo HOUSING (política Meta)" },
   "audience.ageMin": { min: 18, max: 18, locked: true, label: "Idade mínima HOUSING (política Meta)" },
   "audience.ageMax": { min: 65, max: 65, locked: true, label: "Idade máxima HOUSING (política Meta)" },
@@ -87,6 +93,7 @@ export const DEFAULT_CALIBRATION: AiCalibration = {
   creative: { maxVariants: 5, primaryMaxChars: 200, headlineMaxChars: 40, descriptionMaxChars: 30, recommendedPrimaryChars: 125 },
   briefing: { maxDecisions: 6, urgencyAttention: 4 },
   sizing: { learningEventsPerWeek: 50, maxAdSets: 3, fallbackCplBrl: 8 },
+  forecast: { minWeeksForTrend: 3, anomalyLeadDropPct: 20 },
   audience: { minRadiusKm: 24, ageMin: 18, ageMax: 65 },
 };
 
@@ -144,6 +151,7 @@ export function calibrationSummary(c: AiCalibration): string[] {
     `Criativos: até ${c.creative.maxVariants} variações por campo; texto principal máx. ${c.creative.primaryMaxChars} (recomendado ${c.creative.recommendedPrimaryChars}), título ${c.creative.headlineMaxChars}, descrição ${c.creative.descriptionMaxChars}.`,
     `Briefing: no máximo ${c.briefing.maxDecisions} decisões por vez; urgência ${c.briefing.urgencyAttention}+ liga o modo atenção.`,
     `Dimensionamento: cada conjunto precisa de ~${c.sizing.learningEventsPerWeek} conversões/semana para sair do aprendizado; no máximo ${c.sizing.maxAdSets} conjuntos (sem histórico, CPL assumido R$ ${c.sizing.fallbackCplBrl}).`,
+    `Previsão: tendência exige ao menos ${c.forecast.minWeeksForTrend} semanas de histórico; queda de leads de ${c.forecast.anomalyLeadDropPct}% na semana dispara alerta preditivo.`,
     `Público (política Meta HOUSING, travado): idade ${c.audience.ageMin}–${c.audience.ageMax}+, raio mínimo ${c.audience.minRadiusKm} km, sem gênero/lookalike/CEP.`,
   ];
 }
