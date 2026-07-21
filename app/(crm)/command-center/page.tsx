@@ -16,6 +16,7 @@ import type { ProposalSignalKind } from "@/lib/ai/action-proposals";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import { NextBestActionPanel } from "@/components/atlas/NextBestActionPanel";
 import { CampaignApprovalsPanel } from "@/components/atlas/CampaignApprovalsPanel";
+import { ProactiveNudgesPanel } from "@/components/atlas/ProactiveNudgesPanel";
 import {
   AtlasBadge,
   AtlasEmpty,
@@ -2380,6 +2381,16 @@ export default function CommandCenterPage() {
           <CampaignApprovalsPanel />
         </section>
       ) : null}
+
+      {/* IA proativa · todos os papéis — os "próximos passos" endereçados ao papel
+          (motor proactive-hierarchy, antes sem UI). Cada papel só vê o seu mundo. */}
+      <section
+        aria-label="Próximos passos da IA"
+        className="cc5-reveal [transform-style:preserve-3d]"
+        style={{ animationDelay: "140ms" }}
+      >
+        <ProactiveNudgesPanel max={4} />
+      </section>
 
       <section
         aria-label="Pulso da operação"
