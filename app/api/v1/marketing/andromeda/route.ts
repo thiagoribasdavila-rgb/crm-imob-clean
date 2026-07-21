@@ -16,6 +16,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { fetchAdInsights, fetchBreakdownInsights } from "@/lib/meta/marketing/campaign-read";
 import { analyzeCreativeHealth, accountConsolidation } from "@/lib/meta/marketing/andromeda-report";
 import { placementReport, geoReport, demoReport, anglePerformance } from "@/lib/meta/marketing/audience-finder";
+import { forecastCampaign, anomalyForecast, type ForecastWeek } from "@/lib/meta/marketing/forecast";
 import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
 
@@ -62,6 +63,22 @@ export async function GET(request: NextRequest) {
   const liveCampaigns = new Set(rows.filter((r) => r.dateStart === lastWindow).map((r) => r.campaignId)).size;
   const monthlySpend = rows.reduce((sum, r) => sum + r.spend, 0);
 
+  // ANÁLISE PREDITIVA: agrega os anúncios em série semanal (spend+leads) e
+  // projeta para onde a conta caminha + alertas preditivos.
+  const weekMap = new Map<string, { spend: number; leads: number }>();
+  for (const r of rows) {
+    const cur = weekMap.get(r.dateStart) ?? { spend: 0, leads: 0 };
+    cur.spend += r.spend; cur.leads += r.leads;
+    weekMap.set(r.dateStart, cur);
+  }
+  const weeks: ForecastWeek[] = [...weekMap.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([weekStart, v]) => ({ weekStart, spend: v.spend, leads: v.leads }));
+  const forecast = {
+    campaign: forecastCampaign(weeks, { minWeeksForTrend: cal.forecast.minWeeksForTrend }),
+    anomalies: anomalyForecast(weeks, { anomalyLeadDropPct: cal.forecast.anomalyLeadDropPct }),
+  };
+
   return apiSuccess({
     source: "meta_live",
     health: analyzeCreativeHealth(rows, {
@@ -72,6 +89,7 @@ export async function GET(request: NextRequest) {
       maxActiveCampaignsSmall: cal.consolidation.maxActiveCampaignsSmall,
     }),
     consolidation: accountConsolidation(liveCampaigns, monthlySpend),
+    forecast, // análise preditiva: pace, projeção de leads/CPL, anomalias
     // Localizador de Público: onde responde, onde vaza, quem responde
     // (demografia = observação de entrega; segmentar por ela é proibido) e
     // CPL por ângulo criativo (anúncios na convenção [Atlas]).
