@@ -213,6 +213,27 @@ function isUploadError(x: unknown): x is MetaUploadError {
   return typeof x === "object" && x !== null && (x as { ok?: boolean }).ok === false;
 }
 
+/**
+ * Import DINÂMICO de resilientFetch — mantém o módulo sem import de VALOR no
+ * topo (validações puras seguem testáveis por strip de tipos) e só carrega a
+ * casca server-only quando um upload real acontece. Cacheado.
+ */
+let resilientMod: Promise<typeof import("../../http/resilient-fetch")> | null = null;
+function loadResilient(): Promise<typeof import("../../http/resilient-fetch")> {
+  return (resilientMod ??= import("../../http/resilient-fetch"));
+}
+
+/**
+ * Fetcher DEFAULT do upload: timeout de 30s e ZERO retries. Vale para o
+ * download dos bytes (GET) e para o POST /adimages|/advideos — o POST de
+ * upload pode ter criado a mídia, então não reexecuta. Injetável.
+ */
+const defaultWriteFetch: typeof fetch = async (input, init) => {
+  const { resilientFetch } = await loadResilient();
+  const url = typeof input === "string" || input instanceof URL ? input : input.url;
+  return resilientFetch(url, init, { timeoutMs: 30_000, retries: 0, operation: "Meta Marketing API (upload)" });
+};
+
 // ---------------------------------------------------------------------------
 // Uploads (casca efetful — dryRun default TRUE)
 // ---------------------------------------------------------------------------
@@ -239,7 +260,7 @@ export async function uploadImageFromUrl(
   const dryRun = opts.dryRun !== false;
   if (dryRun) return { hash: "DRYRUN_HASH" };
 
-  const fetcher = opts.fetcher ?? fetch;
+  const fetcher = opts.fetcher ?? defaultWriteFetch;
 
   // 1) baixa os bytes da imagem
   let bytesB64: string;
@@ -311,7 +332,7 @@ export async function uploadVideoFromUrl(
   const dryRun = opts.dryRun !== false;
   if (dryRun) return { videoId: "DRYRUN_VIDEO_ID" };
 
-  const fetcher = opts.fetcher ?? fetch;
+  const fetcher = opts.fetcher ?? defaultWriteFetch;
 
   try {
     const body = new URLSearchParams({ file_url: videoUrl });
@@ -350,7 +371,7 @@ export async function waitVideoReady(
   token: string,
   opts: { fetcher?: typeof fetch; graphVersion?: string; maxAttempts?: number; sleep?: (ms: number) => Promise<void> } = {},
 ): Promise<true | MetaUploadError> {
-  const fetcher = opts.fetcher ?? fetch;
+  const fetcher = opts.fetcher ?? defaultWriteFetch;
   const maxAttempts = opts.maxAttempts ?? 20;
   const sleep = opts.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {

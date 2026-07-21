@@ -276,6 +276,32 @@ export function validateExecutionPlan(steps: ExecutionStep[]): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// Fetcher DEFAULT resiliente para ESCRITAS (timeout + zero retry)
+// ---------------------------------------------------------------------------
+
+/**
+ * Import DINÂMICO (não estático) de resilientFetch: mantém este módulo sem
+ * import de VALOR no topo — o núcleo segue puro e testável por strip de tipos —
+ * e só carrega a casca de rede (server-only) quando um POST real acontece.
+ * Cacheado numa promise única.
+ */
+let resilientMod: Promise<typeof import("../../http/resilient-fetch")> | null = null;
+function loadResilient(): Promise<typeof import("../../http/resilient-fetch")> {
+  return (resilientMod ??= import("../../http/resilient-fetch"));
+}
+
+/**
+ * Fetcher DEFAULT das escritas: timeout de 30s e ZERO retries. Um POST que
+ * pode ter criado a estrutura na Meta NUNCA é reexecutado (evitar duplicar
+ * campanha/ad set/creative/ad). Continua injetável — opts.fetcher tem prioridade.
+ */
+const defaultWriteFetch: typeof fetch = async (input, init) => {
+  const { resilientFetch } = await loadResilient();
+  const url = typeof input === "string" || input instanceof URL ? input : input.url;
+  return resilientFetch(url, init, { timeoutMs: 30_000, retries: 0, operation: "Meta Marketing API (escrita)" });
+};
+
+// ---------------------------------------------------------------------------
 // Execução (casca efetful, fetcher injetável)
 // ---------------------------------------------------------------------------
 
@@ -317,7 +343,7 @@ export async function executeSteps(steps: ExecutionStep[], opts: ExecuteOptions)
   });
 
   const dryRun = opts.dryRun !== false;
-  const fetcher = opts.fetcher ?? fetch;
+  const fetcher = opts.fetcher ?? defaultWriteFetch;
   const version = opts.graphVersion || process.env.META_GRAPH_API_VERSION || "v23.0";
   const ids = new Map<number, string>();
   const results: StepResult[] = [];

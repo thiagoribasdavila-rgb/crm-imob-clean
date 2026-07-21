@@ -39,6 +39,27 @@ function sanitize(message: string, token: string): string {
   return token ? message.split(token).join("<token>") : message;
 }
 
+/**
+ * Import DINÂMICO de resilientFetch — mantém o módulo sem import de VALOR no
+ * topo (puro/testável) e só carrega a casca server-only quando um POST real
+ * de controle acontece. Cacheado.
+ */
+let resilientMod: Promise<typeof import("../../http/resilient-fetch")> | null = null;
+function loadResilient(): Promise<typeof import("../../http/resilient-fetch")> {
+  return (resilientMod ??= import("../../http/resilient-fetch"));
+}
+
+/**
+ * Fetcher DEFAULT do controle: timeout de 30s e ZERO retries — pausar/ativar/
+ * ajustar verba é POST; um reenvio poderia reaplicar em duplicidade, então não
+ * reexecuta. Injetável: opts.fetcher tem prioridade.
+ */
+const defaultWriteFetch: typeof fetch = async (input, init) => {
+  const { resilientFetch } = await loadResilient();
+  const url = typeof input === "string" || input instanceof URL ? input : input.url;
+  return resilientFetch(url, init, { timeoutMs: 30_000, retries: 0, operation: "Meta Marketing API (controle)" });
+};
+
 export function planPause(objectType: ControlObjectType, objectId: string): ControlStep {
   return { kind: "pause", objectType, objectId, payload: { status: "PAUSED" } };
 }
@@ -103,7 +124,7 @@ export async function executeControl(steps: ControlStep[], opts: ControlOptions)
     throw new Error(`Plano de controle inválido: ${problems.join(" | ")}`);
   }
   const version = opts.graphVersion || process.env.META_GRAPH_API_VERSION || "v23.0";
-  const fetcher = opts.fetcher ?? fetch;
+  const fetcher = opts.fetcher ?? defaultWriteFetch;
   const results: ControlResult[] = [];
 
   for (const step of steps) {
