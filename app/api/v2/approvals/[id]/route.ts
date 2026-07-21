@@ -45,13 +45,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const { data: approval, error } = await admin
       .from("approval_requests")
-      .select("id,status,request_type,entity_type,entity_id,organization_id,payload")
+      .select("id,status,request_type,entity_type,entity_id,organization_id,payload,expires_at")
       .eq("id", id)
       .eq("organization_id", identity.organizationId)
       .single();
 
     if (error || !approval) return NextResponse.json({ error: "Aprovação não encontrada." }, { status: 404 });
     if (approval.status !== "pending") return NextResponse.json({ error: "Aprovação já decidida." }, { status: 409 });
+    // expiração enforçada para TODO tipo (antes só commercial_simulation checava):
+    // aprovar uma proposta vencida executaria uma ação obsoleta.
+    if (body.decision === "approved" && approval.expires_at && new Date(approval.expires_at).getTime() < Date.now()) {
+      return NextResponse.json({ error: "Esta proposta expirou. Gere uma nova antes de aprovar." }, { status: 409 });
+    }
 
     // SALTO V4.1 — execução governada de proposta de ação. EXECUTA PRIMEIRO,
     // marca approved DEPOIS: se a execução falhar, a proposta continua pending
