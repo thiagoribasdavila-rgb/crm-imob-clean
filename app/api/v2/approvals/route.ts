@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
   const role = identity.access.profile.commercialRole || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
   if (!["director","superintendent","manager"].includes(role)) return apiError("FORBIDDEN", "Aprovações pertencem à liderança.", identity.meta, { status: 403 });
   const admin = getSupabaseAdmin(); const org = identity.access.organization.id;
-  const { data: approvals } = await admin.from("approval_requests").select("id,request_type,entity_type,entity_id,status,decision_reason,expires_at,created_at,payload").eq("organization_id", org).in("entity_type", ["message","commercial_simulation","lead_action"]).order("created_at", { ascending: false }).limit(100);
+  const { data: approvals } = await admin.from("approval_requests").select("id,request_type,entity_type,entity_id,status,decision_reason,expires_at,created_at,payload").eq("organization_id", org).in("entity_type", ["message","commercial_simulation","lead_action","meta_campaign"]).order("created_at", { ascending: false }).limit(100);
   const messageIds = (approvals ?? []).filter((item) => item.entity_type === "message").map((item) => item.entity_id).filter(Boolean) as string[];
   const simulationIds = (approvals ?? []).filter((item) => item.entity_type === "commercial_simulation").map((item) => item.entity_id).filter(Boolean) as string[];
   const { data: messages } = messageIds.length ? await admin.from("messages").select("id,conversation_id,channel,content").in("id", messageIds).eq("organization_id", org) : { data: [] };
@@ -103,7 +103,12 @@ export async function GET(request: NextRequest) {
   const [{ data: leads }, { data: properties }] = await Promise.all([leadIds.length ? admin.from("leads").select("id,name,assigned_to").in("id", leadIds).eq("organization_id", org) : Promise.resolve({ data: [] }), propertyIds.length ? admin.from("properties").select("id,title").in("id", propertyIds).eq("organization_id", org) : Promise.resolve({ data: [] })]);
   const { data: profiles } = await admin.from("profiles").select("id,full_name,reports_to").eq("organization_id", org).eq("active", true);
   const allowed = new Set<string>(); if (role === "director") for (const profile of profiles ?? []) allowed.add(profile.id); else if (role === "manager") for (const profile of profiles ?? []) { if (profile.reports_to === identity.access.profile.id) allowed.add(profile.id); } else { allowed.add(identity.access.profile.id); let changed = true; while (changed) { changed = false; for (const profile of profiles ?? []) if (profile.reports_to && allowed.has(profile.reports_to) && !allowed.has(profile.id)) { allowed.add(profile.id); changed = true; } } allowed.delete(identity.access.profile.id); }
-  const items = (approvals ?? []).flatMap((approval) => { if (approval.entity_type === "lead_action") {
+  const items = (approvals ?? []).flatMap((approval) => { if (approval.entity_type === "meta_campaign") {
+      // Campanha Meta — org-level, sem corretor/lead: preview vem do payload determinístico (sem JOIN).
+      const proposal = approval.payload as { title?: string; kind?: string; governance?: { note?: string } } | null;
+      return [{ ...approval, payload: undefined, leadName: proposal?.title || "Campanha", brokerName: "Marketing", channel: proposal?.kind || "campanha", preview: [proposal?.title, proposal?.governance?.note].filter(Boolean).join(" · ").slice(0, 300) }];
+    }
+    if (approval.entity_type === "lead_action") {
       // SALTO V4.1: proposta de ação — preview vem do próprio payload determinístico.
       const proposal = approval.payload as { title?: string; preview?: string; reason?: string; kind?: string } | null;
       const lead = (leads ?? []).find((l) => l.id === approval.entity_id);

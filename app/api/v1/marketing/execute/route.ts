@@ -17,6 +17,9 @@ import {
   planPause, planActivation, planDailyBudget, executeControl,
   type ControlStep, type ControlObjectType,
 } from "@/lib/meta/marketing/campaign-control";
+import {
+  executeSteps, validateExecutionPlan, type ExecutionStep,
+} from "@/lib/meta/marketing/campaign-executor";
 import { invalidateMetaReads } from "@/lib/meta/marketing/insights-cache";
 
 export const dynamic = "force-dynamic";
@@ -27,11 +30,13 @@ function roleOf(access: { profile: { commercialRole?: string | null; role: strin
 const isDirector = (role: string) => ["director", "superintendent"].includes(role);
 
 type Body = {
-  action?: "pause" | "activate" | "set_daily_budget";
+  action?: "pause" | "activate" | "set_daily_budget" | "create";
   objectType?: ControlObjectType;
   objectId?: string;
   dailyBudgetBrl?: number;
   approvalId?: string;
+  /** SÓ para action "create": proposta meta_campaign aprovada com o plano de publicação. */
+  proposalId?: string;
   dryRun?: boolean;
 };
 
@@ -55,9 +60,67 @@ export async function POST(request: NextRequest) {
   const objectType = body?.objectType ?? "campaign";
   const objectId = String(body?.objectId ?? "").trim();
   const dryRun = body?.dryRun !== false; // default TRUE
-  if (!action || !["pause", "activate", "set_daily_budget"].includes(action)) {
-    return apiError("ACTION_INVALID", "Informe action: pause | activate | set_daily_budget.", identity.meta, { status: 422 });
+  if (!action || !["pause", "activate", "set_daily_budget", "create"].includes(action)) {
+    return apiError("ACTION_INVALID", "Informe action: pause | activate | set_daily_budget | create.", identity.meta, { status: 422 });
   }
+
+  // action "create": cria a estrutura de campanha (campanha→adset→creative→ad)
+  // a partir do plano de publicação de uma proposta APROVADA (meta_campaign).
+  // Espelha o gate do resto: dryRun (default) simula; execução real exige
+  // proposta aprovada e verificável. Tudo nasce PAUSED (garantia do executor).
+  if (action === "create") {
+    const proposalId = body?.proposalId?.trim() || null;
+    if (!proposalId) {
+      return apiError("PROPOSAL_REQUIRED", "Criar campanha exige proposalId de uma proposta aprovada na Caixa de Aprovações.", identity.meta, { status: 422 });
+    }
+    const admin = getSupabaseAdmin();
+    const { data: approval, error } = await admin
+      .from("approval_requests").select("id,status,entity_type,payload,organization_id")
+      .eq("id", proposalId).eq("organization_id", identity.access.organization.id).maybeSingle();
+    if (error) {
+      return apiError("APPROVAL_UNAVAILABLE", "Aprovação não verificável até a ativação do banco (approval_requests) — execução real bloqueada.", identity.meta, { status: 503 });
+    }
+    if (!approval || approval.entity_type !== "meta_campaign") {
+      return apiError("PROPOSAL_NOT_FOUND", "Proposta de campanha não encontrada nesta organização.", identity.meta, { status: 404 });
+    }
+    const payload = approval.payload as { kind?: string; plan?: { accountId?: string; steps?: unknown } } | null;
+    if (payload?.kind !== "create" || !payload.plan) {
+      return apiError("PROPOSAL_NOT_CREATE", "A proposta informada não é de criação de campanha.", identity.meta, { status: 422 });
+    }
+    const steps = Array.isArray(payload.plan.steps) ? (payload.plan.steps as ExecutionStep[]) : [];
+    if (steps.length === 0) {
+      return apiError("PLAN_EMPTY", "Plano de publicação vazio — nada a executar.", identity.meta, { status: 422 });
+    }
+    // Execução real SÓ com proposta aprovada; dryRun pode simular a proposta pendente.
+    if (!dryRun && approval.status !== "approved") {
+      return apiError("APPROVAL_NOT_APPROVED", "A proposta informada não existe ou não está aprovada.", identity.meta, { status: 409 });
+    }
+    const problems = validateExecutionPlan(steps);
+    if (problems.length) {
+      return apiError("PLAN_INVALID", `Plano recusado: ${problems.join("; ")}`, identity.meta, { status: 422 });
+    }
+    try {
+      const results = await executeSteps(steps, {
+        token, dryRun, idempotencyKey: `${identity.access.organization.id}:${proposalId}`,
+      });
+      if (!dryRun && results.some((r) => r.ok)) invalidateMetaReads();
+      const failed = results.find((r) => !r.ok);
+      if (failed) {
+        return apiError("EXECUTION_FAILED", `Meta recusou: ${failed.error ?? "erro desconhecido"}`, identity.meta, { status: 502 });
+      }
+      return apiSuccess({
+        executed: !dryRun,
+        dryRun,
+        results,
+        governance: dryRun
+          ? "simulação — nada foi criado na Meta"
+          : `campanha criada sob aprovação ${proposalId} por ${identity.access.profile.id} (tudo PAUSED)`,
+      }, identity.meta, { headers: limited.headers });
+    } catch (err) {
+      return apiError("PLAN_INVALID", err instanceof Error ? err.message : "Plano de criação inválido.", identity.meta, { status: 422 });
+    }
+  }
+
   if (!/^\d{5,}$/.test(objectId)) {
     return apiError("OBJECT_ID_INVALID", "Informe o objectId da Meta (numérico).", identity.meta, { status: 422 });
   }
