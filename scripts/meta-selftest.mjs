@@ -39,6 +39,19 @@ await graph(
 );
 if (!acc) results[results.length - 1] = { name: "Ads · conta de anúncios", ok: false, note: "META_AD_ACCOUNT_ID vazio" };
 
+if (acc) {
+  await graph(
+    "Ads · campanhas (leitura)", `act_${acc}/campaigns?fields=id,name,effective_status&limit=50`,
+    process.env.META_ADS_ACCESS_TOKEN,
+    (j) => { const d = j.data || []; return `${d.length} campanhas · ${d.filter((c) => c.effective_status === "ACTIVE").length} ativas`; },
+  );
+  await graph(
+    "Ads · insights 7d", `act_${acc}/insights?fields=spend,impressions,clicks&date_preset=last_7d`,
+    process.env.META_ADS_ACCESS_TOKEN,
+    (j) => { const d = (j.data || [])[0]; return d ? `R$ ${d.spend} · ${d.impressions} impr. · ${d.clicks} cliques` : "sem gasto no período"; },
+  );
+}
+
 await graph(
   "Leads · página/dono", "me?fields=id,name",
   process.env.META_LEAD_ACCESS_TOKEN,
