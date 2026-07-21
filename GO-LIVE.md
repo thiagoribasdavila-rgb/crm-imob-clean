@@ -1,6 +1,10 @@
+> ## ⚠️ DESATUALIZADO — NÃO SEGUIR: o caminho vigente é [docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md](docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md)
+>
+> Este documento está preservado apenas como histórico. Em especial, **NÃO rode `supabase db push` contra o projeto de produção**: o repo acumula ~128 migrations e o banco vivo tem só 23 tabelas com drift conhecido — o push dispararia todas as migrations num banco que o repo NÃO reconstrói, com risco real de quebra. O deploy vigente usa homologação espelho (dump da prod, prod intocada).
+
 # 🚀 ATLAS AI OS V3 — GO-LIVE RÁPIDO
 
-**Você está aqui:** código validado ✅ · DNS ativo ✅ · VPS pronta ✅ · faltam **45 min de execução**.
+**Você está aqui:** documento histórico — o estado real e o caminho de deploy estão no runbook acima.
 
 ---
 
@@ -33,12 +37,16 @@ ssh root@85.209.93.32 'cp /tmp/.env.hostinger /var/www/atlas/.env && bash /tmp/a
 ---
 
 ### 3️⃣ Aplicar migrations (Supabase — 10 min)
+
+> ⚠️ **NÃO EXECUTAR.** Este `db push` apontava para o banco vivo (ietwopslgqxlenfyghqk) e dispararia ~128 migrations num banco com 23 tabelas e drift de schema. Siga docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md.
+
 ```bash
+# NÃO EXECUTAR — mantido apenas como histórico
 cd ~/atlas-v3
 supabase link --project-ref ietwopslgqxlenfyghqk
 supabase db push
 ```
-**Esperado:**
+**Esperado (à época; não reflete o estado real):**
 ```
 Applied migration: 20260720000000_portal_lead_ingestion
 Applied migration: 20260720010000_rbac_enterprise_foundation
@@ -147,7 +155,7 @@ Se Claude está ativo (`ANTHROPIC_API_KEY` preenchido), SmartReply usa Claude + 
 |---|---|---|---|
 | 1 | Preencher `.env.hostinger` | 3 min | ⏳ |
 | 2 | Rodar `atlas-go-live.sh` | 15 min | ⏳ |
-| 3 | Aplicar migrations (`supabase db push`) | 5 min | ⏳ |
+| 3 | ~~Aplicar migrations (`supabase db push`)~~ ⚠️ não fazer — ver runbook | 5 min | ❌ |
 | 4 | Configurar SMTP + proteção de senha | 5 min | ⏳ |
 | 5 | Primeiro login + remover BOOTSTRAP | 3 min | ⏳ |
 | 6 | Criar equipe (diretor/gerente/corretor) | 3 min | ⏳ |
@@ -195,10 +203,6 @@ pm2 logs atlas-v3-homolog
 
 ---
 
-## ✨ You're 45 minutes away from a live, fully functional Atlas AI OS V3.
+## ⚠️ Documento histórico — o caminho vigente é docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md
 
-**Próximo:** preencha o `.env.hostinger` e dispare os 3 comandos acima. 
-
-Quando o script terminar com ✅, me avisa (ou cole a saída final) → **eu rodo smoke test + confirmo o go-live**.
-
-Siga! 🚀
+O sistema NÃO estava "100% pronto" quando este arquivo foi escrito: há drift de schema conhecido (banco vivo com 23 tabelas vs ~128 migrations no repo) e o repo não reconstrói o banco. Não siga os comandos acima.

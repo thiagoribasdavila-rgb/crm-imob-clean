@@ -1,6 +1,10 @@
+> ## ⚠️ DESATUALIZADO — NÃO SEGUIR: o caminho vigente é [docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md](docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md)
+>
+> Este status é histórico e otimista demais: o banco vivo tem só 23 tabelas contra ~128 migrations no repo (drift conhecido; o repo NÃO reconstrói o banco). **Não rode `supabase db push` na produção** — dispararia ~128 migrations num banco vivo. O deploy vigente é homologação espelho (dump da prod, prod intocada).
+
 # ATLAS AI OS V3 — STATUS DE LANÇAMENTO
 
-**Data:** Jul 19, 2026 | **Versão:** 3.0.0-rc.2 | **Status:** 🟢 PRONTO PARA PRODUÇÃO
+**Data:** Jul 19, 2026 | **Versão:** 3.0.0-rc.2 | **Status:** ⚠️ HISTÓRICO — NÃO estava pronto para produção (ver banner acima)
 
 ---
 
@@ -12,7 +16,7 @@
 | **Funcionalidades** | ✅ 100% | CRM · RBAC · IA multi-modelo · portais · WhatsApp intelligence |
 | **Infraestrutura** | ✅ 100% | VPS KVM2 · Node 20 LTS · PM2 · Nginx · SSL Let's Encrypt |
 | **DNS** | ✅ 100% | atlasaios.com.br → 85.209.93.32 · propagado globalmente |
-| **Supabase** | ✅ 95% | 33 migrations aplicadas; 4 pendentes (portais, RBAC, WhatsApp, security fix) |
+| **Supabase** | ⚠️ DRIFT | Afirmação original ("95%, 4 pendentes") incorreta: banco vivo com 23 tabelas vs ~128 migrations no repo — ver docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md |
 | **Deploy** | 🟡 BLOQUEADO | Aguardando: .env.hostinger preenchido + script executado |
 
 ---
@@ -72,7 +76,7 @@ TOTAL: ~45 min → https://atlasaios.com.br OPERACIONAL
 
 ---
 
-## 🎯 O QUE ESTÁ 100% PRONTO
+## 🎯 O QUE FOI DECLARADO PRONTO À ÉPOCA (⚠️ não conferido contra o estado real — ver banner)
 
 ### Backend
 - Node.js 20 LTS + Next.js 16.2
@@ -119,7 +123,7 @@ TOTAL: ~45 min → https://atlasaios.com.br OPERACIONAL
 |---|---|---|---|
 | .env.hostinger preenchido | 🔴 SIM | Você | Preencher 7 credenciais (Supabase/IA) |
 | `atlas-go-live.sh` executado | 🔴 SIM | Você | Rodar SSH, aguardar ✅ |
-| 4 migrations aplicadas | 🔴 SIM | Você | `supabase db push` |
+| ~~4 migrations aplicadas~~ | 🔴 SIM | Você | ~~`supabase db push`~~ ⚠️ NÃO fazer — dispararia ~128 migrations no banco vivo; ver runbook |
 | SMTP Hostinger | 🔴 SIM | Você | Configurar no Supabase Auth |
 | Proteção de senha | 🟡 SIM | Você | 1 clique (Supabase) |
 | Primeiro admin criado | 🔴 SIM | Você | Sign up + confirmar e-mail |
@@ -140,9 +144,11 @@ ssh root@85.209.93.32 'cp /tmp/.env.hostinger /var/www/atlas/.env && bash /tmp/a
 # (aguarde ✅ GO-LIVE CONCLUÍDO)
 
 # 10 min: Você (navegador + CLI)
-cd ~/atlas-v3
-supabase link --project-ref ietwopslgqxlenfyghqk
-supabase db push
+# ⚠️ NÃO EXECUTAR os 3 comandos abaixo — db push no banco vivo dispararia ~128 migrations.
+# Caminho vigente: docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md
+# cd ~/atlas-v3
+# supabase link --project-ref ietwopslgqxlenfyghqk
+# supabase db push
 # (Supabase dashboard: SMTP + proteção de senha)
 
 # 3 min: Você (navegador)
@@ -186,15 +192,6 @@ pm2 restart atlas-v3-homolog
 
 ---
 
-## 📞 VOCÊ ESTÁ A 45 MINUTOS DO GO-LIVE
+## ⚠️ Documento histórico — o caminho vigente é docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md
 
-**Próximo passo:** preencha o `.env.hostinger` (3 valores por linha, sem aspas) e execute os 3 comandos em `GO-LIVE.md`.
-
-Quando o script terminar, eu rodo o smoke test automaticamente e confirmo que:
-- ✅ https://atlasaios.com.br abrindo
-- ✅ Login funcionando (SMTP)
-- ✅ CRM operacional (leads, timeline, etc)
-- ✅ IA respondendo (Claude + OpenAI)
-- ✅ Equipe pronta para primeiro dia
-
-**Vá!** 🚀
+A afirmação de "45 minutos do go-live" estava incorreta: existe drift de schema (23 tabelas no banco vivo vs ~128 migrations no repo) e o repo não reconstrói o banco. Não execute os comandos de `GO-LIVE.md`.
