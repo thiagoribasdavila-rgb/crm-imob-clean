@@ -133,14 +133,25 @@ const checks = [
   ["Push direto continua bloqueado", phaseNineteen.migrationReadiness.directDbPushAllowed === false && phaseNineteen.exitCriteria.phaseTwentyRemainsBlockedUntilRuntimeApproval === true],
   ["Fase 020 não inventa homologação", phaseTwenty.status === "blocked" && phaseTwenty.productionReleaseAllowed === false],
   ["Fase 021 inventaria navegação sem mutação", phaseTwentyOne.status === "completed" && phaseTwentyOne.productionDataModified === false && phaseTwentyOne.runtimeNavigationChanged === false],
-  ["Topologia CRM fecha em 141 rotas", phaseTwentyOne.topology.crmRoutes === 141 && phaseTwentyOne.topology.canonicalDestinationsPresent === 25 && phaseTwentyOne.topology.missingCanonicalDestinations === 0],
-  ["Fase 022 orienta navegação a resultado", phaseTwentyTwo.status === "completed" && phaseTwentyTwo.canonicalOutcomes.length === 25],
+  // Re-inventariado à fonte (repricedNote em 021, commit e20f8931): a poda intencional
+  // levou 25->22 destinos canônicos e 141->139 rotas CRM rastreadas (/command-center
+  // consolidou Início+Command Center; /ai-dashboard, /atlas-2030, /dashboard e
+  // /revenue-engine viraram topo não-canônico; /pipedrive legado removido). Zero destino canônico ausente.
+  ["Topologia CRM fecha em 139 rotas", phaseTwentyOne.topology.crmRoutes === 139 && phaseTwentyOne.topology.canonicalDestinationsPresent === 22 && phaseTwentyOne.topology.missingCanonicalDestinations === 0],
+  // Re-baseline documentado na fonte (repricedNote, commits ab71b83d/e20f8931):
+  // a fusão Início+Command Center trocou /dashboard por /command-center e removeu
+  // resultados de rotas quarentenadas (ex.: /ai-dashboard), levando 25->22 outcomes canônicos.
+  ["Fase 022 orienta navegação a resultado", phaseTwentyTwo.status === "completed" && phaseTwentyTwo.canonicalOutcomes.length === 22],
   ["Jornadas críticas limitam o esforço", phaseTwentyTwo.criticalJourneys.every((journey) => journey.maximumActions <= 3) && phaseTwentyTwo.successModel.inventedBehaviorMetricAllowed === false],
   ["Fase 023 mede a arquitetura sem inventar uso", phaseTwentyThree.status === "completed" && phaseTwentyThree.structuralBaseline.crmRoutes === 141 && phaseTwentyThree.behavioralTelemetry.status === "blocked-awaiting-runtime-telemetry"],
   ["Linha de base preserva privacidade e runtime", phaseTwentyThree.productionDataModified === false && phaseTwentyThree.runtimeNavigationChanged === false && phaseTwentyThree.measurementPolicy.personalDataCaptured === false],
   ["Fase 024 elimina interfaces duplicadas com compatibilidade", phaseTwentyFour.status === "completed" && phaseTwentyFour.aliasesConsolidated === 7 && phaseTwentyFour.aliasesPreserved === true],
   ["Consolidação não inventa uso nem apaga rota", phaseTwentyFour.routesDeleted === false && phaseTwentyFour.permanentRedirectUsed === false && phaseTwentyFour.behavioralTelemetry.inventedMetricPublished === false],
-  ["Fase 025 compacta informação sem esconder funções", phaseTwentyFive.status === "completed" && phaseTwentyFive.catalogPreservation.primaryDestinations === 19 && phaseTwentyFive.catalogPreservation.contextCommands === 6],
+  // Poda intencional na fonte (commit e20f8931, registrada em catalogRepricedAtCommit):
+  // 19->18 destinos principais e 6->5 comandos contextuais, pois /command-center
+  // consolidou Início+Command Center e os grupos (ai)/(autonomous) foram quarentenados.
+  // Guard re-baselinado para a fonte de verdade lib/atlas/navigation.ts.
+  ["Fase 025 compacta informação sem esconder funções", phaseTwentyFive.status === "completed" && phaseTwentyFive.catalogPreservation.primaryDestinations === 18 && phaseTwentyFive.catalogPreservation.contextCommands === 5],
   ["Compactação preserva busca, toque e RBAC", phaseTwentyFive.compactionChanges.favoriteDuplication.searchStillReturnsPinnedItems === true && phaseTwentyFive.compactionChanges.touchTargets.minimumNavigationTargetPx === 44 && phaseTwentyFive.safetyPolicy.rbacPreserved === true],
   ["Fase 026 clarifica contexto e estado atual", phaseTwentySix.status === "completed" && phaseTwentySix.contextResolution.staticParallelLabelMapRemoved === true && phaseTwentySix.hierarchyModel.activeSignals.length >= 6],
   ["Hierarquia preserva semântica, toque e RBAC", phaseTwentySix.semanticNavigation.groupsUseHeadingElement === true && phaseTwentySix.interactionTargets.favoriteActionMinimumPx === 44 && phaseTwentySix.safetyPolicy.rbacPreserved === true],
@@ -160,7 +171,10 @@ const checks = [
   ["Tablet adaptativo preserva dock, ações e verdade", phaseThirtyThree.exitCriteria.tabletDockRemainsAvailable === true && phaseThirtyThree.exitCriteria.commercialActionsRemoved === false && phaseThirtyThree.structuralBaseline.runtimeNavigationGainMeasured === false && phaseThirtyThree.safetyPolicy.rbacPreserved === true],
   ["Fase 034 leva a ação contextual à zona do polegar", phaseThirtyFour.status === "completed" && phaseThirtyFour.mobileContract.contextualActionPosition === 3 && appShell.includes('data-mobile-layout="thumb-first"')],
   ["Mobile preserva navegação, RBAC e verdade", phaseThirtyFour.exitCriteria.primaryNavigationStillComplete === true && phaseThirtyFour.structuralBaseline.runtimeOneHandSuccessMeasured === false && phaseThirtyFour.safetyPolicy.rbacPreserved === true],
-  ["Fase 035 orienta o dashboard à próxima decisão", phaseThirtyFive.status === "completed" && phaseThirtyFive.dashboardContract.syntheticHealthScoreRemoved === true && dashboard.includes('data-dashboard-layout="decision-first"')],
+  // CC-6 fundiu o Início na Sala de comando: /dashboard virou rota de
+  // compatibilidade (redirect para /command-center) e a orientação decision-first
+  // passou a ser declarada no shell canônico via data-information-strategy.
+  ["Fase 035 orienta o dashboard à próxima decisão", phaseThirtyFive.status === "completed" && phaseThirtyFive.dashboardContract.syntheticHealthScoreRemoved === true && appShell.includes('data-information-strategy="decision-first"')],
   ["Dashboard preserva análise, RBAC e verdade", phaseThirtyFive.dashboardContract.extendedPanelsPreserved === true && phaseThirtyFive.truthPolicy.runtimeProductivityClaimPublished === false && phaseThirtyFive.safetyPolicy.rbacPreserved === true],
   ["Fase 036 orienta Leads à próxima ação visível", phaseThirtySix.status === "completed" && phaseThirtySix.leadsContract.visiblePriorityLimit === 3 && leadsPage.includes('data-leads-layout="action-first"')],
   ["Leads preserva paginação, RBAC e verdade", phaseThirtySix.leadsContract.existingPaginationPreserved === true && phaseThirtySix.truthPolicy.queuePresentedAsGlobalPortfolio === false && phaseThirtySix.safetyPolicy.rbacPreserved === true],
@@ -170,7 +184,10 @@ const checks = [
   ["Tarefas preservam ações humanas, RBAC e verdade", phaseThirtyEight.executionPolicy.automaticTaskCompletion === false && phaseThirtyEight.truthPolicy.priorityIsExplainableHeuristicNotPrediction === true && phaseThirtyEight.safetyPolicy.rbacPreserved === true],
   ["Fase 039 orienta Agenda ao tempo comercial", phaseThirtyNine.status === "completed" && phaseThirtyNine.calendarContract.visibleAttentionLimit === 3 && calendarPage.includes('data-calendar-layout="time-first"')],
   ["Agenda preserva fontes, ações humanas e verdade", phaseThirtyNine.calendarContract.sources.length === 3 && phaseThirtyNine.executionPolicy.automaticCustomerContact === false && phaseThirtyNine.truthPolicy.orderingUsesDeadlineNotPrediction === true && phaseThirtyNine.safetyPolicy.rbacPreserved === true],
-  ["Fase 040 transforma Atividades em histórico explicável", phaseForty.status === "completed" && phaseForty.activityContract.latestVisibleLimit === 3 && activityPage.includes('data-activity-layout="explain-first"')],
+  // CC-6 renomeou o marcador de layout de Atividades de "explain-first" para
+  // "cc6-reading-timeline" (mesma página, data-evolution-phase="40" preservado,
+  // histórico cronológico explicável mantido conforme activityContract).
+  ["Fase 040 transforma Atividades em histórico explicável", phaseForty.status === "completed" && phaseForty.activityContract.latestVisibleLimit === 3 && activityPage.includes('data-activity-layout="cc6-reading-timeline"')],
   ["Atividades preserva leitura, RLS e verdade", phaseForty.activityContract.readOnly === true && phaseForty.truthPolicy.orderingIsChronologicalNotPrediction === true && phaseForty.safetyPolicy.rbacPreserved === true && activityApi.includes("requireAccessContext")],
   ["Fase 041 orienta Clientes 360 ao relacionamento", phaseFortyOne.status === "completed" && phaseFortyOne.customerContract.visibleReviewLimit === 3 && customersPage.includes('data-customers-layout="relationship-first"')],
   ["Clientes preserva fonte única, RLS e base fria separada", phaseFortyOne.customerContract.sourceOfTruth === "public.leads" && phaseFortyOne.customerContract.coldReactivationBaseExcluded === true && phaseFortyOne.safetyPolicy.hierarchicalRlsPreserved === true && customersApi.includes("requireAccessContext")],
