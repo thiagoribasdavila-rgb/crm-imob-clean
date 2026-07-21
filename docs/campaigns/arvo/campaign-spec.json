@@ -1,0 +1,604 @@
+{
+  "$schema": "./campaign-spec.schema (proposta governada — gerada por scripts/build-arvo-proposal.mjs)",
+  "id": "arvo-teixeira-da-silva-paraiso-2026-07",
+  "status": "draft",
+  "note": "PROPOSTA de conjunto de anúncios do Arvo (Kallas). NADA vai ao ar sem aprovação humana + Página/formulário/mídia + teto de verba. Gerado pelo pipeline real (creative-strategist + housing-audience + publication-plan + budget-sizing) — copy e estrutura são SAÍDA determinística, não texto avulso. Regenerar: node scripts/build-arvo-proposal.mjs.",
+  "generatedBy": "scripts/build-arvo-proposal.mjs",
+  "buildDate": "2026-07-21",
+  "product": {
+    "name": "Arvo Teixeira da Silva",
+    "developer": "Kallas Incorporadora",
+    "coDeveloper": "Paladin Realty",
+    "status": "lancamento",
+    "delivered": false,
+    "address": "Rua Mário Amaral, 267 — Paraíso, São Paulo/SP",
+    "faces": "Rua Teixeira da Silva (esquina com Rua Mário Amaral)",
+    "neighborhood": [
+      "Paraíso"
+    ],
+    "transit": "400 m da Av. Paulista · 800 m do Metrô Brigadeiro · 10 min do Parque Ibirapuera",
+    "building": {
+      "towers": 1,
+      "units_total": 262,
+      "floors": "Térreo + 1º (lazer) + 2º ao 21º (tipo) + ático",
+      "parking": "1 vaga utilitário"
+    },
+    "architects": {
+      "arquitetura": "Marcos Gavião Arquitetos",
+      "paisagismo": "Núcleo Arquitetura e Paisagismo",
+      "interiores": "DP Barros Interiores",
+      "colaboracao": "PSA / Pablo Slemenson"
+    },
+    "amenities": [
+      "piscina",
+      "solário",
+      "pool bar",
+      "sauna",
+      "sala de massagem",
+      "fitness",
+      "espaço wellness",
+      "coworking",
+      "lavanderia",
+      "sport bar",
+      "salão de festas",
+      "lounge externo",
+      "pet care",
+      "pet place",
+      "minimercado",
+      "delivery",
+      "bicicletário",
+      "churrasqueira (vista Av. Paulista)"
+    ],
+    "building_features": [
+      "infra de ar-condicionado nas áreas comuns",
+      "previsão para gerador de conforto",
+      "wi-fi nas áreas comuns",
+      "previsão para placas solares / usina fotovoltaica",
+      "aproveitamento de águas pluviais",
+      "lâmpadas LED",
+      "3 bicicletas elétricas",
+      "portaria multilaminada"
+    ]
+  },
+  "inventory_summary": {
+    "source": "book oficial Arvo Teixeira da Silva (Kallas, 2026-07) — ficha técnica + plantas",
+    "typologies": [
+      {
+        "type": "1_dorm_29m2_com_terraco",
+        "area_m2": 29,
+        "finais": "01 e 06 a 14",
+        "units": 182,
+        "note": "Tipologia A (100% R2V)"
+      },
+      {
+        "type": "1_dorm_24m2_com_terraco",
+        "area_m2": 24,
+        "finais": "02 a 05",
+        "units": 80,
+        "note": "Tipologia B (36 HMP · 37 HIS-2 · 07 R2V)"
+      }
+    ],
+    "price_hook": "Unidades a partir de R$ 399 mil (peça aprovada)",
+    "price_from_brl": 399000,
+    "reminder": "Confirmar disponibilidade e tabela vigente antes de publicar; faixa de renda (SM) não consta do book — não inventar no criativo."
+  },
+  "objective": "OUTCOME_LEADS",
+  "conversion_location": "INSTANT_FORM",
+  "budget": {
+    "daily_brl": 100,
+    "weekly_brl": 700,
+    "currency": "BRL",
+    "mode": "CBO (Advantage+ campaign budget)",
+    "schedule": "contínuo com revisão em 4–7 dias"
+  },
+  "generated": {
+    "copy": {
+      "product": "Arvo",
+      "angles": [
+        "localizacao",
+        "sair_do_aluguel",
+        "investimento",
+        "estilo_de_vida"
+      ],
+      "primaryTexts": [
+        "O Arvo fica a 800 m do metrô em Paraíso: padaria, feira e parque na rotina, tudo a pé. Plantas de 24 e 29 m² e a 400 m da Av. Paulista.",
+        "No Arvo em Paraíso, a parcela do financiamento fica na faixa de um aluguel da região — com a diferença de que o imóvel é seu. Unidades a partir de R$ 399.000. Simule sem compromisso.",
+        "Studios em Paraíso com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança. Unidades a partir de R$ 399.000. Potencial de renda em curta e longa estadia.",
+        "Morar em Paraíso é ter café, parque e vida cultural a poucos passos. O Arvo soma a 400 m da Av. Paulista e a 10 minutos do Parque Ibirapuera — a cidade como extensão de casa."
+      ],
+      "headlines": [
+        "A 800 m do metrô — Paraíso",
+        "Parcela na faixa do aluguel",
+        "Studio para investir em Paraíso",
+        "Viva Paraíso no dia a dia"
+      ],
+      "descriptions": [
+        "A 800 m do metrô",
+        "Parcela no lugar do aluguel",
+        "Alta demanda de locação",
+        "Vida de bairro a pé"
+      ],
+      "callToAction": "LEARN_MORE",
+      "complianceNotes": [
+        "Campanha imobiliária: special_ad_categories [\"HOUSING\"] obrigatório — idade (18-65+), gênero e CEP travados pela Meta; a diferenciação acontece 100% no criativo.",
+        "4 ângulos conceituais distintos — o Andromeda premia diversidade real; edições cosméticas não contam como criativo novo (refresh de conceito a cada 1-3 semanas).",
+        "Copy descreve o produto, o lugar e o programa de crédito — nunca atributos de quem vê (política Housing / Personal Attributes).",
+        "primaryTexts[0] com 135 caracteres — recomendado ≤125 para evitar truncamento no feed.",
+        "primaryTexts[1] com 182 caracteres — recomendado ≤125 para evitar truncamento no feed.",
+        "primaryTexts[2] com 190 caracteres — recomendado ≤125 para evitar truncamento no feed.",
+        "primaryTexts[3] com 174 caracteres — recomendado ≤125 para evitar truncamento no feed."
+      ]
+    },
+    "copyPolicyViolations": [],
+    "targeting": {
+      "age_min": 18,
+      "age_max": 65,
+      "genders": [],
+      "geo_locations": {
+        "cities": [
+          {
+            "key": "São Paulo"
+          }
+        ]
+      },
+      "targeting_automation": {
+        "advantage_audience": 1
+      }
+    },
+    "skeleton": {
+      "campaign": {
+        "name": "[Atlas] Leads — Arvo — São Paulo",
+        "objective": "OUTCOME_LEADS",
+        "status": "PAUSED",
+        "special_ad_categories": [
+          "HOUSING"
+        ],
+        "special_ad_category_country": [
+          "BR"
+        ],
+        "buying_type": "AUCTION",
+        "daily_budget": 10000,
+        "bid_strategy": "LOWEST_COST_WITHOUT_CAP"
+      },
+      "adSets": [
+        {
+          "name": "Broad — Paraíso",
+          "optimization_goal": "LEAD_GENERATION",
+          "billing_event": "IMPRESSIONS",
+          "destination_type": "ON_AD",
+          "targeting": {
+            "age_min": 18,
+            "age_max": 65,
+            "genders": [],
+            "geo_locations": {
+              "cities": [
+                {
+                  "key": "São Paulo"
+                }
+              ]
+            },
+            "targeting_automation": {
+              "advantage_audience": 1
+            }
+          },
+          "targetingNotes": {
+            "geo": "São Paulo + raio amplo (HOUSING impõe raio mínimo; hipersegmentação por bairro/CEP é bloqueada)",
+            "idade": "18-65+ (travado pela categoria HOUSING)",
+            "genero": "todos (travado pela categoria HOUSING)",
+            "interesses": "broad — segmentação fina bloqueada; a diferenciação acontece no criativo"
+          }
+        }
+      ],
+      "creativeStrategy": {
+        "conceitos": "5 a 10 criativos conceitualmente distintos por ad set (Andromeda pune similaridade >60%)",
+        "refresh": "revisar conceitos a cada 1-3 semanas; refresh proativo antes da fadiga",
+        "formato": "asset_feed_spec (Advantage+ creative) — flexible format não suporta OUTCOME_LEADS"
+      },
+      "learningNote": "Saída do learning pede ~50 conversões/ad set em 7 dias — com R$ 700/semana, o CPL alvo viável é ~R$ 14 ou menos; acima disso, manter 1 ad set único.",
+      "governance": {
+        "proposta": true,
+        "aprovacaoHumanaObrigatoria": true,
+        "executaContraMeta": false,
+        "developer": "Kallas Incorporações"
+      },
+      "weeklyBudgetBrl": 700
+    },
+    "assetFeedSpec": {
+      "images": [],
+      "videos": [],
+      "bodies": [
+        {
+          "text": "O Arvo fica a 800 m do metrô em Paraíso: padaria, feira e parque na rotina, tudo a pé. Plantas de 24 e 29 m² e a 400 m da Av. Paulista."
+        },
+        {
+          "text": "No Arvo em Paraíso, a parcela do financiamento fica na faixa de um aluguel da região — com a diferença de que o imóvel é seu. Unidades a partir de R$ 399.000. Simule sem compromisso."
+        },
+        {
+          "text": "Studios em Paraíso com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança. Unidades a partir de R$ 399.000. Potencial de renda em curta e longa estadia."
+        },
+        {
+          "text": "Morar em Paraíso é ter café, parque e vida cultural a poucos passos. O Arvo soma a 400 m da Av. Paulista e a 10 minutos do Parque Ibirapuera — a cidade como extensão de casa."
+        }
+      ],
+      "titles": [
+        {
+          "text": "A 800 m do metrô — Paraíso"
+        },
+        {
+          "text": "Parcela na faixa do aluguel"
+        },
+        {
+          "text": "Studio para investir em Paraíso"
+        },
+        {
+          "text": "Viva Paraíso no dia a dia"
+        }
+      ],
+      "descriptions": [
+        {
+          "text": "A 800 m do metrô"
+        },
+        {
+          "text": "Parcela no lugar do aluguel"
+        },
+        {
+          "text": "Alta demanda de locação"
+        },
+        {
+          "text": "Vida de bairro a pé"
+        }
+      ],
+      "ad_formats": [
+        "SINGLE_IMAGE"
+      ],
+      "call_to_action_types": [
+        "LEARN_MORE"
+      ],
+      "link_urls": [
+        {
+          "website_url": "http://fb.me/"
+        }
+      ],
+      "object_story_spec": {
+        "page_id": "<<PAGE_ID>>"
+      }
+    },
+    "publicationSteps": [
+      {
+        "kind": "create_campaign",
+        "path": "act_<<AD_ACCOUNT_ID>>/campaigns",
+        "payload": {
+          "name": "[Atlas] Leads — Arvo — São Paulo",
+          "objective": "OUTCOME_LEADS",
+          "status": "PAUSED",
+          "special_ad_categories": [
+            "HOUSING"
+          ],
+          "special_ad_category_country": [
+            "BR"
+          ],
+          "buying_type": "AUCTION",
+          "daily_budget": 10000,
+          "bid_strategy": "LOWEST_COST_WITHOUT_CAP"
+        }
+      },
+      {
+        "kind": "create_adset",
+        "path": "act_<<AD_ACCOUNT_ID>>/adsets",
+        "payload": {
+          "name": "Broad — Paraíso",
+          "optimization_goal": "LEAD_GENERATION",
+          "billing_event": "IMPRESSIONS",
+          "destination_type": "ON_AD",
+          "targeting": {
+            "age_min": 18,
+            "age_max": 65,
+            "genders": [],
+            "geo_locations": {
+              "cities": [
+                {
+                  "key": "São Paulo"
+                }
+              ]
+            },
+            "targeting_automation": {
+              "advantage_audience": 1
+            }
+          },
+          "campaign_id": "{{step0.id}}",
+          "promoted_object": {
+            "page_id": "<<PAGE_ID>>"
+          },
+          "status": "PAUSED"
+        },
+        "dependsOn": [
+          0
+        ]
+      },
+      {
+        "kind": "create_creative",
+        "path": "act_<<AD_ACCOUNT_ID>>/adcreatives",
+        "payload": {
+          "name": "[Atlas] Creative — Arvo",
+          "object_story_spec": {
+            "page_id": "<<PAGE_ID>>",
+            "link_data": {
+              "link": "http://fb.me/",
+              "call_to_action": {
+                "type": "LEARN_MORE",
+                "value": {
+                  "lead_gen_form_id": "<<LEAD_FORM_ID>>"
+                }
+              }
+            }
+          },
+          "asset_feed_spec": {
+            "images": [],
+            "videos": [],
+            "bodies": [
+              {
+                "text": "O Arvo fica a 800 m do metrô em Paraíso: padaria, feira e parque na rotina, tudo a pé. Plantas de 24 e 29 m² e a 400 m da Av. Paulista."
+              },
+              {
+                "text": "No Arvo em Paraíso, a parcela do financiamento fica na faixa de um aluguel da região — com a diferença de que o imóvel é seu. Unidades a partir de R$ 399.000. Simule sem compromisso."
+              },
+              {
+                "text": "Studios em Paraíso com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança. Unidades a partir de R$ 399.000. Potencial de renda em curta e longa estadia."
+              },
+              {
+                "text": "Morar em Paraíso é ter café, parque e vida cultural a poucos passos. O Arvo soma a 400 m da Av. Paulista e a 10 minutos do Parque Ibirapuera — a cidade como extensão de casa."
+              }
+            ],
+            "titles": [
+              {
+                "text": "A 800 m do metrô — Paraíso"
+              },
+              {
+                "text": "Parcela na faixa do aluguel"
+              },
+              {
+                "text": "Studio para investir em Paraíso"
+              },
+              {
+                "text": "Viva Paraíso no dia a dia"
+              }
+            ],
+            "descriptions": [
+              {
+                "text": "A 800 m do metrô"
+              },
+              {
+                "text": "Parcela no lugar do aluguel"
+              },
+              {
+                "text": "Alta demanda de locação"
+              },
+              {
+                "text": "Vida de bairro a pé"
+              }
+            ],
+            "ad_formats": [
+              "SINGLE_IMAGE"
+            ],
+            "call_to_action_types": [
+              "LEARN_MORE"
+            ],
+            "link_urls": [
+              {
+                "website_url": "http://fb.me/"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "kind": "create_ad",
+        "path": "act_<<AD_ACCOUNT_ID>>/ads",
+        "payload": {
+          "name": "[Atlas] Arvo · localizacao",
+          "adset_id": "{{step1.id}}",
+          "creative": {
+            "creative_id": "{{step2.id}}"
+          },
+          "status": "PAUSED"
+        },
+        "dependsOn": [
+          1,
+          2
+        ]
+      },
+      {
+        "kind": "create_ad",
+        "path": "act_<<AD_ACCOUNT_ID>>/ads",
+        "payload": {
+          "name": "[Atlas] Arvo · sair_do_aluguel",
+          "adset_id": "{{step1.id}}",
+          "creative": {
+            "creative_id": "{{step2.id}}"
+          },
+          "status": "PAUSED"
+        },
+        "dependsOn": [
+          1,
+          2
+        ]
+      },
+      {
+        "kind": "create_ad",
+        "path": "act_<<AD_ACCOUNT_ID>>/ads",
+        "payload": {
+          "name": "[Atlas] Arvo · investimento",
+          "adset_id": "{{step1.id}}",
+          "creative": {
+            "creative_id": "{{step2.id}}"
+          },
+          "status": "PAUSED"
+        },
+        "dependsOn": [
+          1,
+          2
+        ]
+      },
+      {
+        "kind": "create_ad",
+        "path": "act_<<AD_ACCOUNT_ID>>/ads",
+        "payload": {
+          "name": "[Atlas] Arvo · estilo_de_vida",
+          "adset_id": "{{step1.id}}",
+          "creative": {
+            "creative_id": "{{step2.id}}"
+          },
+          "status": "PAUSED"
+        },
+        "dependsOn": [
+          1,
+          2
+        ]
+      }
+    ],
+    "publicationSummary": "Esta publicação criará a campanha \"[Atlas] Leads — Arvo — São Paulo\" na categoria especial HOUSING (imobiliário) com 1 ad set, 1 criativo e 4 anúncios ([Atlas] Arvo · localizacao, [Atlas] Arvo · sair_do_aluguel, [Atlas] Arvo · investimento, [Atlas] Arvo · estilo_de_vida), todos com Advantage+ campaign budget (CBO na campanha, sem orçamento no ad set) e formulário instantâneo de leads. Tudo nasce PAUSADO: nada vai ao ar até uma ativação humana posterior, fora deste fluxo.",
+    "blockersToPublish": [
+      "mídia vazia — nenhum image hash nem video id fornecido (nem no asset_feed_spec nem em imageHashes/videoIds)."
+    ]
+  },
+  "sizing_calibration": {
+    "daily_brl": 100,
+    "weekly_brl": 700,
+    "break_even_cpl_brl": 14,
+    "doctrine": "50 conversões/conjunto em 7 dias p/ sair do aprendizado ⇒ verba mínima/conjunto = 50 × CPL. Sob HOUSING não se micro-segmenta público — o padrão honesto é 1 conjunto broad concentrando a verba. R$ 100/dia sustenta 1 conjunto que sai do aprendizado SE o CPL real ficar ≤ R$ 14; acima disso, manter 1 conjunto (nunca fragmentar) e esperar aprendizado mais lento/caro.",
+    "scenarios": [
+      {
+        "scenario": "otimista (default do pipeline)",
+        "cplBrl": 8,
+        "result": {
+          "maxAdSetsThatLearn": 1,
+          "recommendedAdSets": 1,
+          "dailyBudgetPerAdSetBrl": 100,
+          "expectedConversionsPerWeek": 88,
+          "exitsLearning": true,
+          "minWeeklyToExitLearningBrl": 400,
+          "verdict": "ok",
+          "reasoning": [
+            "Com R$ 700,00/semana ao CPL de R$ 8,00, a projeção é ~87.5 conversões/semana; a verba sustenta 1 conjunto(s) acima do piso de ~50/semana.",
+            "1 conjunto(s) é o ponto de equilíbrio: cada um fica acima do piso de aprendizado sem fragmentar o sinal.",
+            "Distribuindo R$ 700,00 em 1 conjunto(s): R$ 100,00/dia por conjunto (~88 conversões/semana cada)."
+          ],
+          "assumptions": []
+        }
+      },
+      {
+        "scenario": "break-even (1 conjunto sai do aprendizado)",
+        "cplBrl": 14,
+        "result": {
+          "maxAdSetsThatLearn": 1,
+          "recommendedAdSets": 1,
+          "dailyBudgetPerAdSetBrl": 100,
+          "expectedConversionsPerWeek": 50,
+          "exitsLearning": true,
+          "minWeeklyToExitLearningBrl": 700,
+          "verdict": "ok",
+          "reasoning": [
+            "Com R$ 700,00/semana ao CPL de R$ 14,00, a projeção é ~50 conversões/semana; a verba sustenta 1 conjunto(s) acima do piso de ~50/semana.",
+            "1 conjunto(s) é o ponto de equilíbrio: cada um fica acima do piso de aprendizado sem fragmentar o sinal.",
+            "Distribuindo R$ 700,00 em 1 conjunto(s): R$ 100,00/dia por conjunto (~50 conversões/semana cada)."
+          ],
+          "assumptions": []
+        }
+      },
+      {
+        "scenario": "realista Paulista/Paraíso",
+        "cplBrl": 25,
+        "result": {
+          "maxAdSetsThatLearn": 0,
+          "recommendedAdSets": 1,
+          "dailyBudgetPerAdSetBrl": 100,
+          "expectedConversionsPerWeek": 28,
+          "exitsLearning": false,
+          "minWeeklyToExitLearningBrl": 1250,
+          "verdict": "verba_insuficiente",
+          "reasoning": [
+            "Com R$ 700,00/semana ao CPL de R$ 25,00, a projeção é ~28 conversões/semana — abaixo das ~50 que um conjunto precisa para sair do aprendizado.",
+            "Suba a verba para pelo menos R$ 1.250,00/semana (50 × CPL) ou mantenha 1 conjunto único e broad para concentrar o pouco sinal disponível.",
+            "Distribuindo R$ 700,00 em 1 conjunto(s): R$ 100,00/dia por conjunto (~28 conversões/semana cada)."
+          ],
+          "assumptions": []
+        }
+      },
+      {
+        "scenario": "premium",
+        "cplBrl": 40,
+        "result": {
+          "maxAdSetsThatLearn": 0,
+          "recommendedAdSets": 1,
+          "dailyBudgetPerAdSetBrl": 100,
+          "expectedConversionsPerWeek": 18,
+          "exitsLearning": false,
+          "minWeeklyToExitLearningBrl": 2000,
+          "verdict": "verba_insuficiente",
+          "reasoning": [
+            "Com R$ 700,00/semana ao CPL de R$ 40,00, a projeção é ~17.5 conversões/semana — abaixo das ~50 que um conjunto precisa para sair do aprendizado.",
+            "Suba a verba para pelo menos R$ 2.000,00/semana (50 × CPL) ou mantenha 1 conjunto único e broad para concentrar o pouco sinal disponível.",
+            "Distribuindo R$ 700,00 em 1 conjunto(s): R$ 100,00/dia por conjunto (~18 conversões/semana cada)."
+          ],
+          "assumptions": []
+        }
+      }
+    ]
+  },
+  "governance": {
+    "human_approval_before_publish": true,
+    "born_paused": true,
+    "budget_cap_required": true,
+    "audit": "toda ação (criar/pausar/orçamento) gravada com quem/quando/o-quê",
+    "kill_switch": "por organização"
+  },
+  "materials": {
+    "note": "Binários fora do git — ficam na origem do dono; o módulo faz upload ao Meta na publicação.",
+    "creatives": [
+      {
+        "type": "image",
+        "role": "feed 4:5",
+        "file": "ARVO LEGENDA / peça estática (a partir de R$ 399 mil)"
+      },
+      {
+        "type": "video",
+        "role": "reels/stories 9:16",
+        "file": "arvo-reels-A.mp4"
+      },
+      {
+        "type": "video",
+        "role": "reels/stories 9:16",
+        "file": "arvo-reels-B.mp4"
+      },
+      {
+        "type": "video",
+        "role": "legendado",
+        "file": "ARVO LEGENDA (1).mp4"
+      },
+      {
+        "type": "video",
+        "role": "complementar",
+        "file": "WhatsApp Video 2026-07-07 at 10.22.08.mp4"
+      },
+      {
+        "type": "book",
+        "file": "Arvo Teixeira da Silva (1).pdf"
+      }
+    ]
+  },
+  "missing_before_publish": [
+    "conta Meta conectada (Windsor sem conta OU META_ADS_ACCESS_TOKEN + META_AD_ACCOUNT_ID no CRM)",
+    "page_id (Página do Facebook/Instagram do anunciante)",
+    "lead_gen_form_id (formulário instantâneo publicado)",
+    "hashes de imagem / video_ids (upload da mídia ao Meta)",
+    "confirmação da tabela/estoque vigente"
+  ],
+  "andromeda_loop": {
+    "ingest": "app/api/webhooks/meta (lead instantâneo → outbox → lead)",
+    "score": "lib/ai/conversion-predictor",
+    "distribute": "lib/distribution/hierarchical-cascade",
+    "next_best_action": "lib/ai/next-best-action",
+    "capi_feedback": "lib/meta/conversions",
+    "learning": "lib/ai/learning-loop + lib/ai/andromeda-learning"
+  }
+}

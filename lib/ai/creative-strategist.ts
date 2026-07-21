@@ -208,7 +208,7 @@ function angleCandidates(angle: CreativeAngle, brief: ProductBrief): AngleCandid
     case "investimento":
       return {
         primaries: [
-          `Studios${loc} com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança.${price ? ` Entrada a partir de ${price}.` : ""} Potencial de renda em curta e longa estadia.`,
+          `Studios${loc} com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança.${price ? ` Unidades a partir de ${price}.` : ""} Potencial de renda em curta e longa estadia.`,
           "Ativo real em bairro de alta demanda de locação, com liquidez de revenda. Estude os números com a incorporadora antes de decidir — sem promessa, com dados.",
         ],
         headlines: [place ? `Studio para investir em ${place}` : null, "Studio compacto para investir"],

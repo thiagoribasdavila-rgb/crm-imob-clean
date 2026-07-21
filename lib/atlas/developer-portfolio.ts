@@ -56,10 +56,34 @@ export const DEVELOPER_PORTFOLIO: PortfolioDeveloper[] = [
     aliases: ["kallas", "kalas"],
     products: [
       {
-        // Evidência: anúncio real "Kallas-Arvo-video" na conta (2026-07).
+        // Evidência: anúncio real "Kallas-Arvo-video" na conta + book oficial
+        // "Arvo Teixeira da Silva" (Kallas Incorporadora + Paladin Realty,
+        // 2026-07): ficha técnica, plantas e apresentação. Endereço Rua Mário
+        // Amaral, 267 — Paraíso/SP; 1 torre, 262 unidades; 1 dorm + terraço de
+        // 24 e 29 m². priceFrom R$ 399 mil vem da peça aprovada ("a partir de
+        // R$ 399 mil"). Sem faixa de renda no material (parte do estoque é
+        // HMP/HIS-2, mas o book não traz SM) — incomeMinSm/Max ficam de fora
+        // até o dono confirmar; a IA nunca inventa faixa de crédito.
         name: "Arvo",
-        aliases: ["arvo"],
-        brief: { product: "Arvo", developer: "Kallas Incorporações", city: "São Paulo" },
+        aliases: ["arvo", "arvo teixeira da silva", "arvo teixeira"],
+        brief: {
+          product: "Arvo",
+          developer: "Kallas Incorporações",
+          neighborhood: "Paraíso",
+          city: "São Paulo",
+          metroDistanceM: 800,
+          areaM2: "24 e 29 m²",
+          priceFrom: 399000,
+          delivered: false,
+          differentials: [
+            "a 400 m da Av. Paulista",
+            "a 10 minutos do Parque Ibirapuera",
+            "1 dormitório + terraço, plantas de 24 e 29 m²",
+            "lazer completo: piscina, sauna, fitness, coworking, sport bar, salão de festas, pet care e minimercado",
+            "churrasqueira com vista para a Av. Paulista",
+            "projeto de Marcos Gavião Arquitetos, paisagismo Núcleo e interiores DP Barros",
+          ],
+        },
       },
     ],
   },

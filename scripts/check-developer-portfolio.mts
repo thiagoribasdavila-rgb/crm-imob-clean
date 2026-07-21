@@ -27,6 +27,18 @@ t("'Aclimação' sozinho NÃO casa (evita falso positivo genérico)", matchCampa
 }
 t("brief por alias sem acento resolve", productBrief("tie aclimacao")?.product === "Tiê Aclimação");
 
+// Arvo (Kallas) — enriquecido com o book oficial "Arvo Teixeira da Silva" (2026-07)
+t("'[Atlas] Arvo Teixeira da Silva Leads' → Kallas/Arvo", (() => { const m = matchCampaign("[Atlas] Arvo Teixeira da Silva Leads"); return m.developer === "Kallas Incorporações" && m.product === "Arvo"; })());
+{
+  const b = productBrief("Arvo");
+  t("brief Arvo resolve → Kallas", b !== null && b?.developer === "Kallas Incorporações");
+  t("brief Arvo tem bairro Paraíso e priceFrom R$399k (peça aprovada)", b?.neighborhood === "Paraíso" && b?.priceFrom === 399000);
+  t("brief Arvo marca lançamento (delivered:false) e metrô 800m", b?.delivered === false && b?.metroDistanceM === 800);
+  t("brief Arvo NÃO inventa faixa de renda (HMP/HIS-2 sem SM no book)", b?.incomeMinSm === undefined && b?.incomeMaxSm === undefined);
+  t("brief Arvo tem ≥5 diferenciais reais (Paulista, Ibirapuera, lazer, terraço...)", (b?.differentials?.length ?? 0) >= 5);
+}
+t("brief Arvo por alias 'arvo teixeira da silva' resolve", productBrief("arvo teixeira da silva")?.product === "Arvo");
+
 // rotação recebe o novo produto
 {
   const briefs = briefsForRotation();
