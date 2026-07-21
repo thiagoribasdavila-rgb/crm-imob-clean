@@ -14,6 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { CommandCenterModuleHealth } from "@/app/(crm)/dashboard/page";
 import type { ProposalSignalKind } from "@/lib/ai/action-proposals";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
+import { NextBestActionPanel } from "@/components/atlas/NextBestActionPanel";
 import {
   AtlasBadge,
   AtlasEmpty,
@@ -2352,6 +2353,18 @@ export default function CommandCenterPage() {
               </div>
             </dl>
           )}
+        </section>
+      ) : null}
+
+      {/* IA mais ativa · corretor — a playlist de próxima-melhor-ação (motor que
+          já existia e não tinha UI), surfada direto na Sala de Comando. */}
+      {isBroker ? (
+        <section
+          aria-label="Próxima melhor ação"
+          className="cc5-reveal [transform-style:preserve-3d]"
+          style={{ animationDelay: "120ms" }}
+        >
+          <NextBestActionPanel max={5} />
         </section>
       ) : null}
 
