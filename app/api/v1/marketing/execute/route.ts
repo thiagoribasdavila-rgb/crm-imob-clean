@@ -75,13 +75,17 @@ export async function POST(request: NextRequest) {
     }
     const admin = getSupabaseAdmin();
     const { data: approval, error } = await admin
-      .from("approval_requests").select("id,status,entity_type,payload,organization_id")
+      .from("approval_requests").select("id,status,entity_type,payload,expires_at,organization_id")
       .eq("id", proposalId).eq("organization_id", identity.access.organization.id).maybeSingle();
     if (error) {
       return apiError("APPROVAL_UNAVAILABLE", "Aprovação não verificável até a ativação do banco (approval_requests) — execução real bloqueada.", identity.meta, { status: 503 });
     }
     if (!approval || approval.entity_type !== "meta_campaign") {
       return apiError("PROPOSAL_NOT_FOUND", "Proposta de campanha não encontrada nesta organização.", identity.meta, { status: 404 });
+    }
+    // expiração enforçada (não decorativa): proposta vencida não executa
+    if (!dryRun && approval.expires_at && new Date(approval.expires_at).getTime() < Date.now()) {
+      return apiError("PROPOSAL_EXPIRED", "Esta proposta expirou — gere uma nova antes de executar.", identity.meta, { status: 409 });
     }
     const payload = approval.payload as { kind?: string; plan?: { accountId?: string; steps?: unknown } } | null;
     if (payload?.kind !== "create" || !payload.plan) {
@@ -133,13 +137,17 @@ export async function POST(request: NextRequest) {
     }
     const admin = getSupabaseAdmin();
     const { data: approval, error } = await admin
-      .from("approval_requests").select("id,status,organization_id")
+      .from("approval_requests").select("id,status,expires_at,organization_id")
       .eq("id", approvalId).eq("organization_id", identity.access.organization.id).maybeSingle();
     if (error) {
       return apiError("APPROVAL_UNAVAILABLE", "Aprovação não verificável até a ativação do banco (approval_requests) — execução real bloqueada.", identity.meta, { status: 503 });
     }
     if (!approval || approval.status !== "approved") {
       return apiError("APPROVAL_NOT_APPROVED", "A proposta informada não existe ou não está aprovada.", identity.meta, { status: 409 });
+    }
+    // expiração enforçada: aprovação vencida não executa
+    if (approval.expires_at && new Date(approval.expires_at).getTime() < Date.now()) {
+      return apiError("APPROVAL_EXPIRED", "Esta aprovação expirou — gere e aprove uma nova antes de executar.", identity.meta, { status: 409 });
     }
   }
 
