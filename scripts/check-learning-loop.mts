@@ -1,7 +1,7 @@
 import { evaluateOutcome, trustByMoveKind, correctProjection, learningSummary, type ProjectionRecord, type RealizedRecord, type CalibrationOutcome } from "../lib/ai/learning-loop.ts";
 
 let pass = 0, fail = 0;
-const t = (name: string, ok: boolean, extra = "") => { ok ? pass++ : fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
+const t = (name: string, ok: boolean, extra = "") => { if (ok) pass++; else fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
 
 const proj = (moveKind: string, esperado: number, pess: number, otim: number): ProjectionRecord =>
   ({ moveKind, target: "Camp", projected: { pessimista: pess, esperado, otimista: otim }, confidenceAtDecision: "media", decidedAtWeek: "2026-W29" });

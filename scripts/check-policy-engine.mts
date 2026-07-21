@@ -1,7 +1,7 @@
 import { proposePolicies, policySummary, type PolicyInput } from "../lib/meta/marketing/policy-engine.ts";
 
 let pass = 0, fail = 0;
-const t = (name: string, ok: boolean, extra = "") => { ok ? pass++ : fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
+const t = (name: string, ok: boolean, extra = "") => { if (ok) pass++; else fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
 
 const placement = (platform: string, position: string, spend: number, leads: number, verdict: string) =>
   ({ platform, position, spend, leads, cpl: leads > 0 ? spend / leads : null, sharePct: 0, verdict, reason: "" }) as PolicyInput["placements"][number];

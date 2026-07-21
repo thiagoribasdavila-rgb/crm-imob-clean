@@ -1,7 +1,7 @@
 import { normalizeIntent, intentToken, missingForCommit, canCommit, assembleMediaRefs } from "/Users/thiagoribasdavila/atlas-v3/lib/marketing/campaign-intake.ts";
 
 let pass = 0, fail = 0;
-const t = (name: string, ok: boolean, extra = "") => { ok ? pass++ : fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
+const t = (name: string, ok: boolean, extra = "") => { if (ok) pass++; else fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
 
 // 1. normalização: trim, dedupe, sort de URLs; budget inválido → null
 {

@@ -29,8 +29,8 @@ const mobilePrimaryCount = atlasNavigation.filter((item) => item.mobilePrimary =
 const checks = [
   ["Fase 025 concluída sem mutação de dados", config.status === "completed" && config.runtimeNavigationChanged === true && config.productionDataModified === false],
   // Catálogo podado na fonte de propósito (commit e20f8931): 19->18 principais, 6->5 contextuais. Guard re-baselinado à fonte de verdade lib/atlas/navigation.ts; o config carrega catalogRepricedAtCommit como rastro.
-  ["Catálogo principal permanece completo", primaryCount === 18 && config.catalogPreservation.primaryDestinations === primaryCount],
-  ["Comandos contextuais permanecem completos", contextCount === 5 && config.catalogPreservation.contextCommands === contextCount],
+  ["Catálogo principal reflete o trim intencional da rail (16 destinos)", primaryCount === 16 && config.catalogPreservation.primaryDestinations === primaryCount],
+  ["Comandos contextuais recebem os destinos movidos da rail (7)", contextCount === 7 && config.catalogPreservation.contextCommands === contextCount],
   ["Navegação móvel permanece completa", mobilePrimaryCount === 4 && config.catalogPreservation.mobilePrimaryDestinations === mobilePrimaryCount],
   ["Favoritos deixam o grupo somente fora da busca", sidebar.includes("normalizedQuery\n    ? visibleItems\n    : visibleItems.filter((item) => !favorites.includes(item.href))")],
   ["Busca continua incluindo favoritos", config.compactionChanges.favoriteDuplication.searchStillReturnsPinnedItems === true && sidebar.includes("const groupedItems = normalizedQuery")],

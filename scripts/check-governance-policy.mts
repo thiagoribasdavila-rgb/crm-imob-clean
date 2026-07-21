@@ -1,7 +1,7 @@
 import { classifyRisk, autonomyDecision, governanceHealth, type TrackRecord, type DecisionRecord } from "../lib/governance/policy.ts";
 
 let pass = 0, fail = 0;
-const t = (name: string, ok: boolean, extra = "") => { ok ? pass++ : fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
+const t = (name: string, ok: boolean, extra = "") => { if (ok) pass++; else fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
 
 // ---- classifyRisk ----
 t("pausar reversível campanha → baixo", classifyRisk({ kind: "pausar", reversible: true, scope: "campanha" }).riskTier === "baixo");

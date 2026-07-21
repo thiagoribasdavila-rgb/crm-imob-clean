@@ -1,7 +1,7 @@
 import { matchCampaign, productBrief, briefsForRotation, portfolioSummary, DEVELOPER_PORTFOLIO } from "../lib/atlas/developer-portfolio.ts";
 
 let pass = 0, fail = 0;
-const t = (name: string, ok: boolean, extra = "") => { ok ? pass++ : fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
+const t = (name: string, ok: boolean, extra = "") => { if (ok) pass++; else fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
 
 // campanhas reais da conta (histórico da sessão)
 t("'Spin Mood' → SPIN/Spin Mood", (() => { const m = matchCampaign("Spin Mood"); return m.developer === "SPIN Empreendimentos" && m.product === "Spin Mood"; })());

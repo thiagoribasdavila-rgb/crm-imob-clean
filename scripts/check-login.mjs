@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = process.cwd();
@@ -8,7 +8,10 @@ const browserSupabase = readFileSync(resolve(root, "lib/supabase.ts"), "utf8");
 const redirect = readFileSync(resolve(root, "lib/auth/safe-redirect.ts"), "utf8");
 const callback = readFileSync(resolve(root, "app/auth/callback/route.ts"), "utf8");
 const middleware = readFileSync(resolve(root, "utils/supabase/middleware.ts"), "utf8");
-const legacyGuard = readFileSync(resolve(root, "components/ui/ProtectedRoute.tsx"), "utf8");
+// ProtectedRoute foi APOSENTADO (o guard canônico é SupabaseGuard + middleware).
+// Ausente = nada de legado apontando para /auth/login — a checagem trivialmente vale.
+const legacyGuardPath = resolve(root, "components/ui/ProtectedRoute.tsx");
+const legacyGuard = existsSync(legacyGuardPath) ? readFileSync(legacyGuardPath, "utf8") : "";
 const proxy = readFileSync(resolve(root, "proxy.ts"), "utf8");
 const errors = [];
 

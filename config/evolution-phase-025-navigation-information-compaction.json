@@ -7,8 +7,9 @@
   "productionDataModified": false,
   "runtimeNavigationChanged": true,
   "catalogPreservation": {
-    "primaryDestinations": 18,
-    "contextCommands": 5,
+    "_reconciledNote": "Reconciliado 2026-07-21: trim intencional da rail (pedido do dono 'barra lateral mais enxuta') moveu 'Atividades' e 'Reativação' para o ⌘K — 18->16 destinos primários; acesso preservado por comando contextual.",
+    "primaryDestinations": 16,
+    "contextCommands": 7,
     "mobilePrimaryDestinations": 4,
     "routesRemoved": 0,
     "permissionsChanged": false,

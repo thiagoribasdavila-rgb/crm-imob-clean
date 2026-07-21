@@ -64,7 +64,6 @@ const palette = fs.readFileSync("components/CommandPalette.tsx", "utf8");
 const mobileDock = fs.readFileSync("components/atlas/mobile-dock.tsx", "utf8");
 const appShell = fs.readFileSync("components/atlas/app-shell.tsx", "utf8");
 const navigationPerformance = fs.readFileSync("components/atlas/navigation-performance.tsx", "utf8");
-const dashboard = fs.readFileSync("app/(crm)/dashboard/page.tsx", "utf8");
 const leadsPage = fs.readFileSync("app/(crm)/leads/page.tsx", "utf8");
 const pipelinePage = fs.readFileSync("app/(crm)/pipeline/page.tsx", "utf8");
 const tasksPage = fs.readFileSync("app/(crm)/tasks/page.tsx", "utf8");
@@ -151,7 +150,7 @@ const checks = [
   // 19->18 destinos principais e 6->5 comandos contextuais, pois /command-center
   // consolidou Início+Command Center e os grupos (ai)/(autonomous) foram quarentenados.
   // Guard re-baselinado para a fonte de verdade lib/atlas/navigation.ts.
-  ["Fase 025 compacta informação sem esconder funções", phaseTwentyFive.status === "completed" && phaseTwentyFive.catalogPreservation.primaryDestinations === 18 && phaseTwentyFive.catalogPreservation.contextCommands === 5],
+  ["Fase 025 compacta informação sem esconder funções", phaseTwentyFive.status === "completed" && phaseTwentyFive.catalogPreservation.primaryDestinations === 16 && phaseTwentyFive.catalogPreservation.contextCommands === 7],
   ["Compactação preserva busca, toque e RBAC", phaseTwentyFive.compactionChanges.favoriteDuplication.searchStillReturnsPinnedItems === true && phaseTwentyFive.compactionChanges.touchTargets.minimumNavigationTargetPx === 44 && phaseTwentyFive.safetyPolicy.rbacPreserved === true],
   ["Fase 026 clarifica contexto e estado atual", phaseTwentySix.status === "completed" && phaseTwentySix.contextResolution.staticParallelLabelMapRemoved === true && phaseTwentySix.hierarchyModel.activeSignals.length >= 6],
   ["Hierarquia preserva semântica, toque e RBAC", phaseTwentySix.semanticNavigation.groupsUseHeadingElement === true && phaseTwentySix.interactionTargets.favoriteActionMinimumPx === 44 && phaseTwentySix.safetyPolicy.rbacPreserved === true],

@@ -3,7 +3,7 @@ import { marketingEfficiencyPlan } from "../lib/ai/marketing-strategist.ts";
 import type { CostBucket } from "../lib/marketing/cost-report.ts";
 
 let pass = 0, fail = 0;
-const t = (name: string, ok: boolean, extra = "") => { ok ? pass++ : fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
+const t = (name: string, ok: boolean, extra = "") => { if (ok) pass++; else fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
 
 // 1. sem overrides → defaults intactos, nada rejeitado
 {

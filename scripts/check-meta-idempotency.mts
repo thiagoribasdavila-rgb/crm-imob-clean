@@ -1,7 +1,7 @@
 import { findPriorExecution, recordExecution, tryReserve, releaseReservation, IDEMPOTENCY_TTL_MS } from "/Users/thiagoribasdavila/atlas-v3/lib/meta/marketing/idempotency.ts";
 
 let pass = 0, fail = 0;
-const t = (name: string, ok: boolean, extra = "") => { ok ? pass++ : fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
+const t = (name: string, ok: boolean, extra = "") => { if (ok) pass++; else fail++; console.log(`${ok ? "✅" : "❌"} ${name}${extra ? " — " + extra : ""}`); };
 
 // sem banco (admin null) — camada de memória protege o caso comum
 // 1. chave nova → sem execução anterior
