@@ -40,9 +40,9 @@ await graph(
 if (!acc) results[results.length - 1] = { name: "Ads · conta de anúncios", ok: false, note: "META_AD_ACCOUNT_ID vazio" };
 
 await graph(
-  "Leads · página/dono", "me?fields=id,name,category",
+  "Leads · página/dono", "me?fields=id,name",
   process.env.META_LEAD_ACCESS_TOKEN,
-  (j) => `${j.name}${j.category ? " · " + j.category : ""} (id ${j.id})`,
+  (j) => `${j.name || j.id}${j.id ? " (id " + j.id + ")" : ""}`,
 );
 
 const waId = process.env.WHATSAPP_PHONE_NUMBER_ID;
