@@ -152,3 +152,44 @@ export async function fetchAdInsights(
     dateStop: String(r.date_stop ?? ""),
   }));
 }
+
+export type MetaBreakdownRow = {
+  keys: Record<string, string>;   // ex.: { publisher_platform: "facebook", platform_position: "feed" }
+  campaignId: string; campaignName: string;
+  spend: number; impressions: number; clicks: number; leads: number;
+  dateStart: string; dateStop: string;
+};
+
+/**
+ * Insights com BREAKDOWNS (placement/região/demografia) — a matéria-prima do
+ * localizador de público (lib/meta/marketing/audience-finder). Nota HOUSING:
+ * LER demografia é permitido (reporting); SEGMENTAR por ela é que é proibido.
+ */
+export async function fetchBreakdownInsights(
+  accountId: string, token: string,
+  opts: { breakdowns: string[]; level?: "account" | "campaign"; datePreset?: string }, v?: string,
+): Promise<MetaBreakdownRow[] | MetaReadError> {
+  const level = opts.level ?? "campaign";
+  const preset = opts.datePreset ?? "last_30d";
+  const breakdowns = opts.breakdowns.join(",");
+  const data = await graphGet<{ data?: Array<Record<string, unknown>> }>(
+    `${accPath(accountId)}/insights?level=${level}&fields=campaign_id,campaign_name,spend,impressions,clicks,actions&breakdowns=${breakdowns}&date_preset=${preset}&limit=500`,
+    token, v,
+  );
+  if (isErr(data)) return data;
+  return (data.data ?? []).map((r) => {
+    const keys: Record<string, string> = {};
+    for (const b of opts.breakdowns) keys[b] = String(r[b] ?? "");
+    return {
+      keys,
+      campaignId: String(r.campaign_id ?? ""),
+      campaignName: String(r.campaign_name ?? ""),
+      spend: Number(r.spend) || 0,
+      impressions: Number(r.impressions) || 0,
+      clicks: Number(r.clicks) || 0,
+      leads: leadsFromActions(r.actions),
+      dateStart: String(r.date_start ?? ""),
+      dateStop: String(r.date_stop ?? ""),
+    };
+  });
+}

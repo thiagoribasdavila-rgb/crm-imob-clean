@@ -13,8 +13,9 @@ import { type NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { fetchAdInsights } from "@/lib/meta/marketing/campaign-read";
+import { fetchAdInsights, fetchBreakdownInsights } from "@/lib/meta/marketing/campaign-read";
 import { analyzeCreativeHealth, accountConsolidation } from "@/lib/meta/marketing/andromeda-report";
+import { placementReport, geoReport, demoReport, anglePerformance } from "@/lib/meta/marketing/audience-finder";
 import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
 
@@ -42,10 +43,13 @@ export async function GET(request: NextRequest) {
     return apiError("META_NOT_CONFIGURED", "Meta não configurada: defina META_ADS_ACCESS_TOKEN e META_AD_ACCOUNT_ID.", identity.meta, { status: 503 });
   }
 
-  // leitura cacheada (TTL 5 min) + calibração em paralelo — nada sequencial
-  const [rows, cal] = await Promise.all([
+  // leituras cacheadas (TTL 5 min) + calibração — tudo em paralelo
+  const [rows, cal, placementRows, regionRows, demoRows] = await Promise.all([
     cachedMetaRead(`ad-insights:${account}:last_30d`, () => fetchAdInsights(account, token, { datePreset: "last_30d" })),
     loadOrgCalibration(getSupabaseAdmin(), identity.access.organization.id),
+    cachedMetaRead(`bd-placement:${account}:last_30d`, () => fetchBreakdownInsights(account, token, { breakdowns: ["publisher_platform", "platform_position"] })),
+    cachedMetaRead(`bd-region:${account}:last_30d`, () => fetchBreakdownInsights(account, token, { breakdowns: ["region"], level: "account" })),
+    cachedMetaRead(`bd-demo:${account}:last_30d`, () => fetchBreakdownInsights(account, token, { breakdowns: ["age", "gender"], level: "account" })),
   ]);
   if (!Array.isArray(rows)) {
     // MetaReadError estruturado — repassa a mensagem, nunca o token
@@ -68,5 +72,14 @@ export async function GET(request: NextRequest) {
       maxActiveCampaignsSmall: cal.consolidation.maxActiveCampaignsSmall,
     }),
     consolidation: accountConsolidation(liveCampaigns, monthlySpend),
+    // Localizador de Público: onde responde, onde vaza, quem responde
+    // (demografia = observação de entrega; segmentar por ela é proibido) e
+    // CPL por ângulo criativo (anúncios na convenção [Atlas]).
+    audience: {
+      placements: Array.isArray(placementRows) ? placementReport(placementRows) : null,
+      geo: Array.isArray(regionRows) ? geoReport(regionRows) : null,
+      demo: Array.isArray(demoRows) ? demoReport(demoRows) : null,
+      angles: anglePerformance(rows.map((r) => ({ adName: r.adName, spend: r.spend, leads: r.leads }))),
+    },
   }, identity.meta, { headers: limited.headers });
 }
