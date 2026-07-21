@@ -158,7 +158,12 @@ export default function Home() {
         </section>
 
         <footer className="flex flex-col items-center justify-between gap-3 py-8 text-[10px] uppercase tracking-[.16em] text-slate-700 sm:flex-row">
-          <span>Atlas AI · Inteligência comercial imobiliária</span><span>Leads · Receita · Marketing · Previsibilidade</span>
+          <span>Atlas AI · Inteligência comercial imobiliária</span>
+          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2" aria-label="Documentos legais">
+            <Link href="/privacy" className="transition hover:text-sky-300">Privacidade</Link>
+            <Link href="/terms" className="transition hover:text-sky-300">Termos</Link>
+            <Link href="/data-deletion" className="transition hover:text-sky-300">Exclusão de dados</Link>
+          </nav>
         </footer>
       </div>
     </main>

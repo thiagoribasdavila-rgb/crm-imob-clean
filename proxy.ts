@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { refreshSession } from "@/utils/supabase/middleware";
 
-const publicPages = new Set(["/", "/login", "/forgot-password", "/reset-password", "/auth/callback"]);
+// Rotas alcançáveis SEM sessão. /privacy, /terms e /data-deletion são exigidas
+// publicamente pelo App Review da Meta: o revisor e o rastreador abrem essas URLs
+// anonimamente. Se caírem no redirect de login, a revisão do app é reprovada.
+const publicPages = new Set([
+  "/",
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/auth/callback",
+  "/privacy",
+  "/terms",
+  "/data-deletion",
+]);
 
 export async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
