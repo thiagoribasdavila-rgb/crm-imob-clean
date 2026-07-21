@@ -139,7 +139,7 @@ export default function ApprovalsPage() {
                         onClick={() => decide(item.id, "approved")}
                         className="atlas-button-primary px-4 py-2 text-xs disabled:opacity-40"
                       >
-                        {item.entity_type === "commercial_simulation" ? "Aprovar proposta" : "Aprovar e enfileirar"}
+                        {item.entity_type === "commercial_simulation" ? "Aprovar proposta" : item.entity_type === "meta_campaign" ? "Aprovar campanha" : "Aprovar e enfileirar"}
                       </button>
                     </div>
                   </>
