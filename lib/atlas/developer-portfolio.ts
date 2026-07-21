@@ -66,7 +66,31 @@ export const DEVELOPER_PORTFOLIO: PortfolioDeveloper[] = [
   {
     name: "Construtora Shpaisman",
     aliases: ["shpaisman"],
-    products: [], // produtos a confirmar pelo dono — sem invenção
+    products: [
+      {
+        // Evidência: book oficial "Tiê Aclimação" (Shpaisman, 2026-07) — ficha
+        // técnica + apresentação. Pré-lançamento (delivered:false); sem tabela
+        // de preço/renda-alvo no material — não inventado, incomeMinSm/Max e
+        // priceFrom ficam de fora até o dono confirmar.
+        name: "Tiê Aclimação",
+        aliases: ["tiê aclimação", "tie aclimacao", "tiê aclimacao", "tie aclimação"],
+        brief: {
+          product: "Tiê Aclimação",
+          developer: "Construtora Shpaisman",
+          neighborhood: "Aclimação",
+          city: "São Paulo",
+          areaM2: "24 m² a 61 m²",
+          delivered: false,
+          differentials: [
+            "10 minutos a pé da Estação Vergueiro (Metrô)",
+            "a poucos minutos da Av. Paulista",
+            "arquitetura MCAA, paisagismo Martha Gavião e decoração Consuelo Jorge",
+            "lazer completo: piscina com solarium, spa com sauna, salão de festas com espaço gourmet e snooker, coworking, pet place e brinquedoteca",
+            "Construtora Shpaisman — mais de 45 anos de tradição e 2.000 famílias atendidas",
+          ],
+        },
+      },
+    ],
   },
   {
     name: "Paladin",
