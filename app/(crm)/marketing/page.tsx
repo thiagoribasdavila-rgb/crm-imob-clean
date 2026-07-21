@@ -87,7 +87,6 @@ const DIMS: Array<{ id: Dim; label: string }> = [
 ];
 
 const SATELLITES: Array<{ href: string; label: string }> = [
-  { href: "/marketing/ads", label: "ads" },
   { href: "/marketing/budget", label: "budget" },
   { href: "/marketing/campaigns", label: "campaigns" },
   { href: "/marketing/creatives", label: "creatives" },
