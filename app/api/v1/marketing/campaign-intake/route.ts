@@ -21,7 +21,12 @@ import { housingTargetingSpec } from "@/lib/meta/marketing/housing-audience";
 import { uploadImageFromUrl, uploadVideoFromUrl } from "@/lib/meta/marketing/media-upload";
 import { planFullPublication, validatePublication, publicationSummary } from "@/lib/meta/marketing/publication-plan";
 import { validateExecutionPlan, executeSteps } from "@/lib/meta/marketing/campaign-executor";
-import { invalidateMetaReads } from "@/lib/meta/marketing/insights-cache";
+import { fetchCampaignInsights, insightsToCostRows } from "@/lib/meta/marketing/campaign-read";
+import { cachedMetaRead, invalidateMetaReads } from "@/lib/meta/marketing/insights-cache";
+import { recommendAdSetSizing } from "@/lib/meta/marketing/budget-sizing";
+import { aggregate } from "@/lib/marketing/cost-report";
+import { loadOrgCalibration } from "@/lib/ai/calibration-server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeIntent, intentToken, missingForCommit, assembleMediaRefs } from "@/lib/marketing/campaign-intake";
 
 export const dynamic = "force-dynamic";
@@ -70,6 +75,27 @@ export async function POST(request: NextRequest) {
 
   // -------- PRÉVIA (sem token) --------
   if (!incomingToken) {
+    // recomendação conjunto×verba: a IA estuda a estrutura pela fase de
+    // aprendizado usando o CPL REAL da conta (cacheado) e a calibração da org.
+    let sizing = null;
+    if (intent.weeklyBudgetBrl != null) {
+      const cal = await loadOrgCalibration(getSupabaseAdmin(), identity.access.organization.id);
+      const insights = await cachedMetaRead(
+        `campaign-insights:${account}:last_30d:7`,
+        () => fetchCampaignInsights(account, token, { datePreset: "last_30d", timeIncrement: 7 }),
+      );
+      let accountCpl: number | null = null;
+      if (Array.isArray(insights)) {
+        const agg = aggregate(insightsToCostRows(insights), "campaign");
+        const spend = agg.reduce((s, a) => s + a.spend, 0);
+        const leads = agg.reduce((s, a) => s + a.leads, 0);
+        accountCpl = leads > 0 ? spend / leads : null;
+      }
+      sizing = recommendAdSetSizing(
+        { weeklyBudgetBrl: intent.weeklyBudgetBrl, expectedCplBrl: accountCpl },
+        { learningEventsPerWeek: cal.sizing.learningEventsPerWeek, maxAdSets: cal.sizing.maxAdSets, fallbackCplBrl: cal.sizing.fallbackCplBrl },
+      );
+    }
     // se já dá para montar a estrutura, mostra o plano simulado (mídia fictícia)
     let planPreview: ReturnType<typeof planFullPublication> | null = null;
     let summary: string | null = null;
@@ -95,6 +121,7 @@ export async function POST(request: NextRequest) {
       mode: "previa",
       copy, violations,
       structure: planPreview ? { steps: planPreview.length, summary } : null,
+      sizing, // recomendação conjunto×verba (fase de aprendizado, CPL real)
       missing, // o que ainda falta para poder criar
       confirmToken, // reenvie este token para CRIAR (se o material não mudar)
       governance: "prévia — nada foi criado na Meta. Reenvie com confirmToken para criar (pausado).",
