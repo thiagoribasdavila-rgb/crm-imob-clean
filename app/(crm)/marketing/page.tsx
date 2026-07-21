@@ -30,10 +30,14 @@ type CostReport = {
   byDeveloper: { aggregate: AggRow[] };
   budget: BudgetRow[];
   plan: { moves: Move[]; summary: { desperdicioSemanal: number; economiaPotencial: number; produtosEficientes: number; produtosCaros: number } };
+  projection?: { projections: MoveProjection[] };
 };
+type MoveProjection = { moveKind: string; target: string; weeklyLeadsDelta: { pessimista: number; esperado: number; otimista: number }; confidence: "baixa" | "media" | "alta" };
 type Fatigue = { adId: string; adName: string; kind: string; detail: string };
 type Health = { campaignId: string; campaignName: string; activeAds: number; diversityScore: number; fatigue: Fatigue[]; andromedaScore: number };
-type Andromeda = { source: string; health: Health[]; consolidation: { verdict: "consolidada" | "fragmentada"; reason: string } };
+type Rotation = { campaignName: string; replacement: { angle: string }; reason: string };
+type Forecast = { campaign: { pace: "acelerando" | "estavel" | "desacelerando"; projectedWeeklyLeads: { pessimista: number; esperado: number; otimista: number }; projectedCpl: number | null }; anomalies: string[] };
+type Andromeda = { source: string; health: Health[]; consolidation: { verdict: "consolidada" | "fragmentada"; reason: string }; forecast?: Forecast; rotations?: { proposals: Rotation[]; summary: string } };
 type Calibration = { summary: string[] };
 
 type FetchState<T> =
@@ -214,15 +218,24 @@ export default function MarketingPage() {
             {moves.length === 0 ? (
               <p className="cc6-hairline px-5 py-5 text-sm text-[#6b7890]">Nenhum movimento recomendado nesta janela.</p>
             ) : (
-              moves.map((move, index) => (
+              moves.map((move, index) => {
+                const proj = report.projection?.projections.find((p) => p.moveKind === move.kind && p.target === move.target);
+                const dl = proj?.weeklyLeadsDelta;
+                return (
                 <div key={`${move.kind}-${move.target}-${index}`} className="cc6-hairline flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-2.5">
                   <span className={`cc6-chip ${MOVE_META[move.kind].ink}`}>{MOVE_META[move.kind].label}</span>
                   <span className="text-sm font-medium text-[#e8eef8]">{move.target}</span>
                   <span className="cc6-num text-[10px] uppercase tracking-[.1em] text-[#6b7890]">{move.scope}</span>
                   {typeof move.amount === "number" ? <span className="cc6-num text-[11px] text-[#aab6ca]">{money.format(move.amount)}</span> : null}
+                  {dl && (dl.esperado !== 0 || dl.otimista !== 0 || dl.pessimista !== 0) ? (
+                    <span className={`cc6-chip cc6-num ${dl.esperado >= 0 ? "cc6-ok" : "cc6-crit"}`} title={`Projeção · confiança ${proj?.confidence}`}>
+                      {dl.esperado >= 0 ? "▲" : "▼"} {dl.pessimista > 0 ? "+" : ""}{dl.pessimista} a {dl.otimista > 0 ? "+" : ""}{dl.otimista} leads/sem
+                    </span>
+                  ) : null}
                   <span className="min-w-0 flex-1 basis-full text-[13px] leading-5 text-[#aab6ca] sm:basis-auto">{move.reason}</span>
                 </div>
-              ))
+                );
+              })
             )}
           </section>
 
@@ -320,10 +333,22 @@ export default function MarketingPage() {
         <section aria-label="Saúde criativa Andromeda" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "240ms" }}>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
             <p className="cc6-eyebrow">Andromeda · Saúde criativa</p>
+            {andromeda.data.forecast ? (
+              <span className={`cc6-chip ${andromeda.data.forecast.campaign.pace === "desacelerando" ? "cc6-crit" : andromeda.data.forecast.campaign.pace === "acelerando" ? "cc6-ok" : ""}`}
+                title={`Leads próx. semana: ${andromeda.data.forecast.campaign.projectedWeeklyLeads.pessimista}–${andromeda.data.forecast.campaign.projectedWeeklyLeads.otimista}`}>
+                {andromeda.data.forecast.campaign.pace === "desacelerando" ? "📉" : andromeda.data.forecast.campaign.pace === "acelerando" ? "📈" : "➡️"} {andromeda.data.forecast.campaign.pace}
+              </span>
+            ) : null}
             <span className={`cc6-chip ml-auto ${andromeda.data.consolidation.verdict === "fragmentada" ? "cc6-warn" : "cc6-ok"}`} title={andromeda.data.consolidation.reason}>
               conta {andromeda.data.consolidation.verdict}
             </span>
           </div>
+          {andromeda.data.forecast?.anomalies?.length ? (
+            <p className="cc6-hairline px-5 py-2.5 text-[12px] leading-5 text-[#f2b544]">🔮 {andromeda.data.forecast.anomalies[0]}</p>
+          ) : null}
+          {andromeda.data.rotations?.proposals?.length ? (
+            <p className="cc6-hairline px-5 py-2.5 text-[12px] leading-5 text-[#9db2d0]">🔄 {andromeda.data.rotations.summary}</p>
+          ) : null}
           {andromeda.data.health.map((item) => (
             <div key={item.campaignId} className="cc6-hairline flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
               <p className={`cc6-metric-value w-14 text-3xl leading-none ${item.andromedaScore < 50 ? "cc6-crit" : item.andromedaScore < 70 ? "cc6-warn" : "cc6-ok"}`}>
