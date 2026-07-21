@@ -11,6 +11,8 @@
  */
 
 import type { SpendRow } from "@/lib/marketing/cost-report";
+// Import de VALOR entre libs por caminho relativo (mesmo diretório).
+import { graphGetAll, type GraphReadError } from "./graph-client";
 
 const GRAPH = "https://graph.facebook.com";
 
@@ -49,6 +51,20 @@ function isErr(x: unknown): x is MetaReadError {
   return typeof x === "object" && x !== null && (x as { ok?: boolean }).ok === false;
 }
 
+/**
+ * Mapeia o erro do cliente Graph resiliente para o contrato externo MetaReadError,
+ * preservando a mensagem (já sanitizada de token pelo graph-client). A família
+ * `kind` é interna ao cliente e não faz parte do contrato público de leitura.
+ */
+function toMetaError(g: GraphReadError): MetaReadError {
+  return { ok: false, code: g.code, subcode: g.subcode, message: g.message };
+}
+
+/** URL completa da Graph para um path já montado. */
+function graphUrl(path: string, v?: string): string {
+  return `${GRAPH}/${version(v)}/${path}`;
+}
+
 /** Lista as campanhas do ad account. */
 export async function fetchCampaigns(accountId: string, token: string, v?: string): Promise<MetaCampaign[] | MetaReadError> {
   const data = await graphGet<{ data?: Array<{ id: string; name: string; status: string; objective: string; effective_status: string }> }>(
@@ -75,12 +91,12 @@ export async function fetchCampaignInsights(
 ): Promise<MetaCampaignInsight[] | MetaReadError> {
   const preset = opts.datePreset ?? "last_30d";
   const inc = opts.timeIncrement ?? 7;
-  const data = await graphGet<{ data?: Array<Record<string, unknown>> }>(
-    `${accPath(accountId)}/insights?level=campaign&fields=campaign_id,campaign_name,spend,impressions,clicks,actions&date_preset=${preset}&time_increment=${inc}&limit=500`,
-    token, v,
+  const rows = await graphGetAll<Record<string, unknown>>(
+    graphUrl(`${accPath(accountId)}/insights?level=campaign&fields=campaign_id,campaign_name,spend,impressions,clicks,actions&date_preset=${preset}&time_increment=${inc}&limit=500`, v),
+    token,
   );
-  if (isErr(data)) return data;
-  return (data.data ?? []).map((r) => ({
+  if (!Array.isArray(rows)) return toMetaError(rows);
+  return rows.map((r) => ({
     campaignId: String(r.campaign_id ?? ""),
     campaignName: String(r.campaign_name ?? ""),
     spend: Number(r.spend) || 0,
@@ -131,12 +147,12 @@ export async function fetchAdInsights(
 ): Promise<MetaAdInsight[] | MetaReadError> {
   const preset = opts.datePreset ?? "last_30d";
   const inc = opts.timeIncrement ?? 7;
-  const data = await graphGet<{ data?: Array<Record<string, unknown>> }>(
-    `${accPath(accountId)}/insights?level=ad&fields=campaign_id,campaign_name,ad_id,ad_name,spend,impressions,clicks,frequency,ctr,cpm,actions&date_preset=${preset}&time_increment=${inc}&limit=500`,
-    token, v,
+  const rows = await graphGetAll<Record<string, unknown>>(
+    graphUrl(`${accPath(accountId)}/insights?level=ad&fields=campaign_id,campaign_name,ad_id,ad_name,spend,impressions,clicks,frequency,ctr,cpm,actions&date_preset=${preset}&time_increment=${inc}&limit=500`, v),
+    token,
   );
-  if (isErr(data)) return data;
-  return (data.data ?? []).map((r) => ({
+  if (!Array.isArray(rows)) return toMetaError(rows);
+  return rows.map((r) => ({
     campaignId: String(r.campaign_id ?? ""),
     campaignName: String(r.campaign_name ?? ""),
     adId: String(r.ad_id ?? ""),
@@ -172,12 +188,12 @@ export async function fetchBreakdownInsights(
   const level = opts.level ?? "campaign";
   const preset = opts.datePreset ?? "last_30d";
   const breakdowns = opts.breakdowns.join(",");
-  const data = await graphGet<{ data?: Array<Record<string, unknown>> }>(
-    `${accPath(accountId)}/insights?level=${level}&fields=campaign_id,campaign_name,spend,impressions,clicks,actions&breakdowns=${breakdowns}&date_preset=${preset}&limit=500`,
-    token, v,
+  const rows = await graphGetAll<Record<string, unknown>>(
+    graphUrl(`${accPath(accountId)}/insights?level=${level}&fields=campaign_id,campaign_name,spend,impressions,clicks,actions&breakdowns=${breakdowns}&date_preset=${preset}&limit=500`, v),
+    token,
   );
-  if (isErr(data)) return data;
-  return (data.data ?? []).map((r) => {
+  if (!Array.isArray(rows)) return toMetaError(rows);
+  return rows.map((r) => {
     const keys: Record<string, string> = {};
     for (const b of opts.breakdowns) keys[b] = String(r[b] ?? "");
     return {
