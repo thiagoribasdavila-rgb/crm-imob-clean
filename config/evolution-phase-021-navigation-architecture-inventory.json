@@ -27,9 +27,9 @@
   "navigationChannels": [
     {
       "channel": "primary-sidebar",
-      "count": 18,
+      "count": 16,
       "source": "atlasNavigation",
-      "purpose": "Destinos recorrentes governados por perfil e agrupados por trabalho."
+      "purpose": "Destinos recorrentes governados por perfil e agrupados por trabalho. Trim 2026-07-21: Atividades e Reativação movidas para o ⌘K (rail mais enxuta, pedido do dono); acesso preservado por comando contextual."
     },
     {
       "channel": "contextual-command",

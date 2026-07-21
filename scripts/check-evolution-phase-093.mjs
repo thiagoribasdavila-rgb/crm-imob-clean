@@ -65,7 +65,7 @@ const checks = [
   ["Inventário cobre todas as 243 páginas", pageFiles.length === 243 && classification.unclassified === undefined],
   ["Contagens de superfície correspondem à evidência", ["canonical", "contextual", "internal", "experimental", "retired"].every((surface) => classification[surface] === phase.routeInventory[surface])],
   ["Arquivos canônicos existem", surfaces.canonicalExactFiles.every((file) => pageFiles.includes(file))],
-  ["Navegação produtiva possui 18 contratos canônicos", canonicalNavigationItems === 18 && phase.navigation.productiveItems === 18],
+  ["Navegação produtiva possui 16 contratos canônicos", canonicalNavigationItems === 16 && phase.navigation.productiveItems === 16],
   ["Evolução V3 permanece interna e fora do menu diário", internalNavigationItems === 0 && !primaryNavigationSource.includes('href: "/atlas-v3"') && navigation.includes("atlasInternalNavigation")],
   ["Cada item visível declara resultado, ação e dados", canonicalNavigationItems === primaryBusinessOutcomes && canonicalNavigationItems === primaryActions && canonicalNavigationItems === primaryDataDomains],
   ["Contratos profundos cobrem os 19 módulos produtivos", requiredModules.length === 19 && requiredModules.every((id) => registry.includes(`id: "${id}"`))],

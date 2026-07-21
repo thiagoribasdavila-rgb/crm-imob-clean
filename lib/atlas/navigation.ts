@@ -92,13 +92,6 @@ export const atlasNavigation = [
     dataDomains: ["tasks", "visits", "commercial-events"],
   },
   {
-    id: "activity", surface: "canonical", group: "Operação diária", label: "Atividades", href: "/activity", icon: "◷",
-    roles: ["director", "superintendent", "manager", "broker"], keywords: "histórico eventos registros contatos auditoria",
-    businessOutcome: "Explicar o que aconteceu com cada oportunidade e preservar continuidade.",
-    primaryAction: { label: "Ver atividade recente", href: "/activity?period=today", outcome: "Revisar a movimentação comercial mais recente." },
-    dataDomains: ["commercial-events", "lead-activities", "tasks"],
-  },
-  {
     id: "customers-360", surface: "canonical", group: "Clientes e portfólio", label: "Clientes 360", href: "/customers", icon: "◉",
     roles: ["director", "superintendent", "manager", "broker"], keywords: "customer intelligence compradores perfil histórico relacionamento",
     businessOutcome: "Reunir a história do comprador e indicar a melhor continuidade do relacionamento.",
@@ -111,13 +104,6 @@ export const atlasNavigation = [
     businessOutcome: "Encontrar o projeto, estoque e material adequados para cada comprador.",
     primaryAction: { label: "Buscar materiais", href: "/developments/materials", outcome: "Entregar conteúdo comercial vigente ao cliente." },
     dataDomains: ["developments", "inventory", "materials"],
-  },
-  {
-    id: "reactivation", surface: "canonical", group: "Clientes e portfólio", label: "Reativação", href: "/leads/import", icon: "↻",
-    roles: ["director", "superintendent", "manager", "broker"], keywords: "base antiga oferta ativa recuperação inativos higienização",
-    businessOutcome: "Recuperar oportunidades antigas sem poluir a carteira operacional.",
-    primaryAction: { label: "Abrir fila elegível", href: "/leads/import?view=eligible", outcome: "Priorizar contatos com dados válidos e consentimento." },
-    dataDomains: ["reactivation-leads", "suppression-list", "lead-memory"],
   },
   // "Copilot" (/ai-dashboard) removido do menu: o grupo (ai) é QUARENTENADO no
   // build de produção (legacy-route-paths) — o item dava 404 em produção. O
@@ -198,6 +184,10 @@ export const atlasInternalNavigation: readonly AtlasInternalNavigationItem[] = [
 
 export const atlasContextCommands = [
   { label: "Novo lead", href: "/leads/new", group: "Ações", keywords: "cadastrar criar lead contato", roles: ["director", "superintendent", "manager", "broker"] },
+  // Rail mais enxuta (2026-07-21): destinos de suporte (não rotina diária) saem da
+  // sidebar para o ⌘K — acesso preservado, menos ruído no menu principal.
+  { label: "Atividades", href: "/activity", group: "Operação", keywords: "histórico eventos registros contatos auditoria movimentação recente", roles: ["director", "superintendent", "manager", "broker"] },
+  { label: "Reativação", href: "/leads/import", group: "Carteira", keywords: "base antiga oferta ativa recuperação inativos higienização reativar importar", roles: ["director", "superintendent", "manager", "broker"] },
   { label: "Imóveis", href: "/properties", group: "Launch OS", keywords: "estoque produtos unidades", roles: ["director", "superintendent", "manager", "broker"] },
   { label: "Marketing AI", href: "/marketing", group: "Growth", keywords: "meta criativos campanhas roi", roles: ["director", "superintendent", "manager"] },
   { label: "Conversas", href: "/conversations", group: "Growth", keywords: "whatsapp instagram atendimento", roles: ["director", "superintendent", "manager", "broker"] },

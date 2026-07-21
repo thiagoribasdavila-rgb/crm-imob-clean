@@ -20,8 +20,8 @@
     "unclassified": 0
   },
   "navigation": {
-    "_reconciledNote": "Reconciliado 2026-07-21: drift pré-existente descoberto na varredura de validação (lib/atlas/navigation.ts não foi tocado nesta sessão — git diff vazio). productiveItems e internalItems reduziram em algum ponto anterior sem atualizar este snapshot.",
-    "productiveItems": 18,
+    "_reconciledNote": "Reconciliado 2026-07-21: drift pré-existente descoberto na varredura de validação (lib/atlas/navigation.ts não foi tocado nesta sessão — git diff vazio). productiveItems e internalItems reduziram em algum ponto anterior sem atualizar este snapshot. Trim de rail (pedido do dono 'barra lateral mais enxuta'): 'Atividades' (/activity) e 'Reativação' (/leads/import) saíram da sidebar para o ⌘K (atlasContextCommands) — acesso preservado; canônicos 18->16.",
+    "productiveItems": 16,
     "internalItems": 0,
     "visibleGroups": [
       "Operação diária",

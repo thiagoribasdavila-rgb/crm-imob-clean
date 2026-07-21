@@ -132,6 +132,19 @@ export function Topbar({
         </button>
         <button
           type="button"
+          className="atlas-command-trigger atlas-copilot-trigger"
+          aria-label="Abrir copiloto de IA"
+          title="Copiloto — Ctrl/⌘ J"
+          onClick={() =>
+            window.dispatchEvent(new Event("atlas:open-copilot"))
+          }
+        >
+          <span aria-hidden="true">✦</span>
+          <span>Copiloto</span>
+          <kbd>⌘ J</kbd>
+        </button>
+        <button
+          type="button"
           className="atlas-notification-button"
           aria-label="Notificações"
           onClick={() =>
