@@ -111,3 +111,44 @@ export function insightsToCostRows(
     };
   });
 }
+
+export type MetaAdInsight = {
+  campaignId: string; campaignName: string;
+  adId: string; adName: string;
+  spend: number; impressions: number; clicks: number; leads: number;
+  frequency: number; ctr: number; cpm: number;
+  dateStart: string; dateStop: string;
+};
+
+/**
+ * Insights por ANÚNCIO e por período (time_increment em dias — 7 = semanal).
+ * Retorna uma linha por anúncio × janela, com frequência/CTR/CPM — base do
+ * relatório de saúde criativa pós-Andromeda (lib/meta/marketing/andromeda-report).
+ */
+export async function fetchAdInsights(
+  accountId: string, token: string,
+  opts: { datePreset?: string; timeIncrement?: number } = {}, v?: string,
+): Promise<MetaAdInsight[] | MetaReadError> {
+  const preset = opts.datePreset ?? "last_30d";
+  const inc = opts.timeIncrement ?? 7;
+  const data = await graphGet<{ data?: Array<Record<string, unknown>> }>(
+    `${accPath(accountId)}/insights?level=ad&fields=campaign_id,campaign_name,ad_id,ad_name,spend,impressions,clicks,frequency,ctr,cpm,actions&date_preset=${preset}&time_increment=${inc}&limit=500`,
+    token, v,
+  );
+  if (isErr(data)) return data;
+  return (data.data ?? []).map((r) => ({
+    campaignId: String(r.campaign_id ?? ""),
+    campaignName: String(r.campaign_name ?? ""),
+    adId: String(r.ad_id ?? ""),
+    adName: String(r.ad_name ?? ""),
+    spend: Number(r.spend) || 0,
+    impressions: Number(r.impressions) || 0,
+    clicks: Number(r.clicks) || 0,
+    leads: leadsFromActions(r.actions),
+    frequency: Number(r.frequency) || 0,
+    ctr: Number(r.ctr) || 0,
+    cpm: Number(r.cpm) || 0,
+    dateStart: String(r.date_start ?? ""),
+    dateStop: String(r.date_stop ?? ""),
+  }));
+}
