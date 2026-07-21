@@ -569,7 +569,9 @@ export default function PipelinePage() {
             <button type="button" onClick={() => setHideEmpty((value) => !value)} aria-pressed={hideEmpty} className={`atlas-kanban-toggle ${hideEmpty ? "is-active" : ""}`}>{hideEmpty ? "Mostrando etapas ativas" : "Mostrar todas as etapas"}</button>
           </div>
         </div>
-        {aiSuggestion ? <div className="mx-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-[rgba(148,163,184,.12)] px-3 py-2 sm:mx-6" data-signal-source="deterministic-loaded-leads"><span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[.12em] text-[color:var(--atlas-accent)]">IA sugere</span><span className="min-w-0 font-mono text-[11px] leading-5 tabular-nums text-[#aab6ca]" title="Sugestão determinística calculada apenas com os leads já carregados neste quadro.">{aiSuggestion}</span></div> : null}
+        {/* A origem-IA passa a ser dita por 1px no acento (.cc23-seam) em vez de uma
+            caixa inteira: o mesmo significado sem competir com o quadro abaixo. */}
+        {aiSuggestion ? <div className="cc23-seam mx-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 py-2 sm:mx-6" data-signal-source="deterministic-loaded-leads"><span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[.12em] text-[color:var(--atlas-accent)]">IA sugere</span><span className="min-w-0 font-mono text-[11px] leading-5 tabular-nums text-[color:var(--atlas-text-secondary)]" title="Sugestão determinística calculada apenas com os leads já carregados neste quadro.">{aiSuggestion}</span></div> : null}
         <div className="atlas-kanban-mobile-nav" role="tablist" aria-label="Escolher etapa no celular">{boardStages.map((stage) => <button key={stage.key} type="button" role="tab" aria-selected={activeMobileStage === stage.key} onClick={() => setMobileStage(stage.key)} className={activeMobileStage === stage.key ? "is-active" : ""}><span>{stage.label}</span><b>{stage.items.length}</b></button>)}</div>
         <div className="atlas-kanban-scroll p-4 sm:p-6" tabIndex={0} aria-label="Quadro Kanban com rolagem horizontal" aria-busy={loading}>
           <div className={`atlas-kanban-board ${compact ? "is-compact" : ""}`} style={{ "--kanban-columns": boardStages.length } as CSSProperties} aria-busy={loading || Boolean(savingId)}>
@@ -578,7 +580,7 @@ export default function PipelinePage() {
               return (
               <section key={stage.key} role="tabpanel" aria-label={`${stage.label}: ${stage.items.length} leads${colSignals && colSignals.stalled > 0 ? `, ${colSignals.stalled} sem atualização há 3 ou mais dias` : ""}`} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""} ${activeMobileStage !== stage.key ? "is-mobile-hidden" : ""}`}>
                 <div className="atlas-pipeline-column-header mb-4 border-b border-white/[0.06] pb-3">
-                  <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white">{stage.label}</h3><div className="flex shrink-0 items-center gap-1.5">{colSignals && colSignals.stalled > 0 ? <span className={`rounded-full border border-[rgba(148,163,184,.22)] px-1.5 py-1 font-mono text-[9px] leading-none tabular-nums ${colSignals.rose > 0 || colSignals.hot > 0 ? "text-[#fb7185]" : "text-[#f5b544]"}`} title={`${colSignals.stalled} de ${stage.items.length} lead(s) desta etapa sem atualização registrada há 3 ou mais dias.`}>{colSignals.stalled} {colSignals.stalled === 1 ? "parado" : "parados"}</span> : null}<span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] font-semibold tabular-nums text-slate-300">{stage.items.length}</span></div></div>
+                  <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white">{stage.label}</h3><div className="flex shrink-0 items-center gap-1.5">{colSignals && colSignals.stalled > 0 ? <span className={`cc6-chip ${colSignals.rose > 0 || colSignals.hot > 0 ? "cc6-crit" : "cc6-warn"}`} title={`${colSignals.stalled} de ${stage.items.length} lead(s) desta etapa sem atualização registrada há 3 ou mais dias.`}>{colSignals.stalled} {colSignals.stalled === 1 ? "parado" : "parados"}</span> : null}<span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] font-semibold tabular-nums text-slate-300">{stage.items.length}</span></div></div>
                   <p className="mt-2 text-xs text-slate-500">{brl.format(stage.value)}</p>
                   <div className="mt-3"><AtlasProgress value={stage.probability} /></div>
                 </div>
@@ -606,7 +608,11 @@ export default function PipelinePage() {
                           <span>Score <strong>{lead.score ?? 0}</strong></span>
                           <span>{lead.budget_max ? brl.format(lead.budget_max) : "Sem valor"}</span>
                         </div>
-                        {signalView ? <span className={`mt-2.5 block w-fit max-w-full overflow-hidden rounded-full border border-[rgba(148,163,184,.22)] px-2 py-1 font-mono text-[9px] leading-none tabular-nums text-ellipsis whitespace-nowrap ${signalView.critical ? "text-[#fb7185]" : "text-[#f5b544]"}`} title={signalView.title}>{signalView.label}</span> : null}
+                        {/* Aqui o primitivo `cc6-chip` NÃO é aplicado de propósito: ele é
+                            `inline-flex` e mataria o `text-ellipsis` deste rótulo, que precisa
+                            truncar dentro da coluna. Só a face numérica e a cor migram para o
+                            vocabulário do sistema. */}
+                        {signalView ? <span className={`cc6-num mt-2.5 block w-fit max-w-full overflow-hidden rounded-full border border-[color:var(--atlas-border-strong)] px-2 py-1 text-[9px] leading-none text-ellipsis whitespace-nowrap ${signalView.critical ? "cc6-crit" : "cc6-warn"}`} title={signalView.title}>{signalView.label}</span> : null}
                         {contactSla ? <div className="mt-3"><AtlasBadge tone={contactSla.tone}>{contactSla.label}</AtlasBadge></div> : null}
                         <div className="atlas-card-guidance"><span>Próxima melhor ação</span><strong>{guidance.action}</strong></div>
                         <div className="atlas-kanban-primary-actions" role="group" aria-label="Ações rápidas">
@@ -651,7 +657,20 @@ export default function PipelinePage() {
       </AtlasCard>
       {!focusMode ? <AtlasCard>
         <AtlasCardHeader eyebrow="Inteligência de compradores" title="Compraram em outro lugar" description="Base separada do funil ativo: compradores reais que ajudam a entender público, produto, preço e concorrência sem contar como venda da empresa." />
-        <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-6 xl:grid-cols-3">{leads.filter((lead) => lead.status === "comprou_outro").length ? leads.filter((lead) => lead.status === "comprou_outro").map((lead) => <article key={lead.id} className="rounded-2xl border border-emerald-400/10 bg-emerald-400/[.035] p-4"><div className="flex items-start justify-between gap-3"><div><Link href={`/leads/${lead.id}`} className="font-semibold text-white hover:text-emerald-300">{lead.name || "Cliente comprador"}</Link><p className="mt-1 text-xs text-slate-500">{lead.phone || lead.email || "Contato protegido"}</p></div><AtlasBadge tone="success">COMPRADOR</AtlasBadge></div><p className="mt-3 text-xs leading-5 text-slate-400">Perfil preservado para inteligência comercial e futuras estratégias de público.</p><select value={lead.status ?? "comprou_outro"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="mt-4 w-full rounded-xl border border-white/10 bg-white/[.035] px-3 py-2 text-xs text-slate-300">{destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select></article>) : <div className="sm:col-span-2 xl:col-span-3"><AtlasEmpty reason="no-activity" eyebrow="Aprendizado comprador" title="Nenhum perfil comprador separado" description="Ao registrar uma compra em outro lugar, o cliente aparecerá aqui com seu aprendizado preservado." action={<Link href="/external-sales" className="atlas-button-secondary">Registrar compra externa</Link>} /></div>}</div>
+        {/* Seção de aprendizado (contexto, não decisão): N cards bordados dentro de um
+            AtlasCard viram lista densa. O `flex-wrap` é obrigatório porque `.cc23-row`
+            não quebra sozinho — sem ele o <select> disputaria a linha com o nome no
+            celular. O `self-start` alinha o selo ao topo sem depender de `items-start`,
+            que perderia para o `align-items:center` do próprio `.cc23-row`. */}
+        <div className="p-4 sm:p-6">{leads.filter((lead) => lead.status === "comprou_outro").length ? <ul className="cc23-rows">{leads.filter((lead) => lead.status === "comprou_outro").map((lead) => <li key={lead.id} className="cc23-row flex-wrap">
+          <div className="min-w-0 flex-1">
+            <Link href={`/leads/${lead.id}`} className="font-semibold text-white hover:text-emerald-300">{lead.name || "Cliente comprador"}</Link>
+            <p className="mt-1 text-xs text-slate-500">{lead.phone || lead.email || "Contato protegido"}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-400">Perfil preservado para inteligência comercial e futuras estratégias de público.</p>
+          </div>
+          <span className="shrink-0 self-start"><AtlasBadge tone="success">COMPRADOR</AtlasBadge></span>
+          <select aria-label={`Mover ${lead.name || "cliente comprador"} para outra etapa`} value={lead.status ?? "comprou_outro"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="min-h-11 w-full rounded-xl border border-white/10 bg-white/[.035] px-3 py-2 text-xs text-slate-300 sm:w-auto">{destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select>
+        </li>)}</ul> : <AtlasEmpty reason="no-activity" eyebrow="Aprendizado comprador" title="Nenhum perfil comprador separado" description="Ao registrar uma compra em outro lugar, o cliente aparecerá aqui com seu aprendizado preservado." action={<Link href="/external-sales" className="atlas-button-secondary">Registrar compra externa</Link>} />}</div>
       </AtlasCard> : null}
       {!focusMode && discardReportStatus !== "restricted" ? <AtlasCard>
         <AtlasCardHeader eyebrow="Qualidade de descarte" title="Descartadas" description="Motivos estruturados dos últimos 30 dias. Sinais negativos permanecem internos até a decisão do diretor de sincronizar com a Meta." action={<Link href="/pipeline/discards" className="atlas-button-secondary">Ver relatório Andromeda</Link>} />
@@ -664,11 +683,24 @@ export default function PipelinePage() {
               <AtlasBadge tone="neutral">{discardReport.totals.uniqueLeads} lead(s)</AtlasBadge>
               {discardReport.totals.coveragePct !== null ? <AtlasBadge tone={discardReport.totals.coveragePct >= 80 ? "success" : "warning"}>Cobertura {discardReport.totals.coveragePct}% das perdas</AtlasBadge> : null}
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {discardReport.byReason.map((item) => <article key={item.key} className="rounded-2xl border border-rose-400/10 bg-rose-400/[.03] p-4">
-                <div className="flex items-start justify-between gap-3"><p className="min-w-0 text-sm font-semibold text-white">{item.label}</p><span className="shrink-0 text-lg font-semibold tracking-tight text-rose-200">{item.count}</span></div>
-                <div className="mt-3 flex items-center justify-between gap-2"><AtlasBadge tone="violet">{item.metaCategory}</AtlasBadge><span className="text-[11px] text-slate-500">{item.share}% dos descartes</span></div>
-              </article>)}
+            {/* Ranking de motivos: `cc23-quiet` agrupa por fundo (sem desenhar mais uma
+                borda dentro do AtlasCard) e a face tabular do `cc23-display` deixa as
+                magnitudes comparáveis na vertical. A cor de risco vai num span FILHO
+                porque `.cc23-display` também declara `color` e, empatando em
+                especificidade, venceria `.cc6-crit` por vir depois no globals.css. */}
+            <div className="cc23-quiet mt-4">
+              <ul className="cc23-rows">
+                {discardReport.byReason.map((item) => <li key={item.key} className="cc23-row">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-white">{item.label}</p>
+                    <div className="mt-1"><AtlasBadge tone="violet">{item.metaCategory}</AtlasBadge></div>
+                  </div>
+                  <div className="flex shrink-0 items-baseline gap-2">
+                    <span className="cc23-display"><span className="cc6-crit">{item.count}</span></span>
+                    <span className="text-[11px] text-slate-500">{item.share}% dos descartes</span>
+                  </div>
+                </li>)}
+              </ul>
             </div>
           </> : <AtlasEmpty reason="no-activity" eyebrow="Aprendizado de descarte" title="Nenhum descarte classificado ainda" description="Ao mover uma lead para a etapa de perda, o motivo escolhido aparece aqui e alimenta o relatório Andromeda." action={<Link href="/pipeline/discards" className="atlas-button-secondary">Abrir relatório Andromeda</Link>} />) : null}
         </div>

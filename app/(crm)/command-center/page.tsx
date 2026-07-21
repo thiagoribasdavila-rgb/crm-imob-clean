@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { CommandCenterModuleHealth } from "@/app/(crm)/dashboard/page";
@@ -626,70 +625,6 @@ function Sparkline({ points, label }: { points: number[]; label: string }) {
       onPointerLeave={clearHighlight}
       onPointerCancel={clearHighlight}
     />
-  );
-}
-
-// Tilt 3D interativo: segue o ponteiro mutando style.transform direto no
-// elemento (zero estado React por frame — refs e mutação de estilo). Gates
-// obrigatórios: prefers-reduced-motion: no-preference E pointer: fine — em
-// touch ou reduced-motion o card fica estático. Retorno suave no pointerleave.
-const TILT_MAX_DEG = 4;
-
-function TiltCard({ children }: { children: ReactNode }) {
-  const shellRef = useRef<HTMLDivElement | null>(null);
-  const enabledRef = useRef(false);
-
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: no-preference)");
-    const pointerQuery = window.matchMedia("(pointer: fine)");
-    const sync = () => {
-      enabledRef.current = motionQuery.matches && pointerQuery.matches;
-      if (!enabledRef.current && shellRef.current) {
-        shellRef.current.style.transition = "";
-        shellRef.current.style.transform = "";
-      }
-    };
-    sync();
-    motionQuery.addEventListener("change", sync);
-    pointerQuery.addEventListener("change", sync);
-    return () => {
-      motionQuery.removeEventListener("change", sync);
-      pointerQuery.removeEventListener("change", sync);
-    };
-  }, []);
-
-  const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const shell = shellRef.current;
-    if (!shell || !enabledRef.current) return;
-    if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
-    const rect = shell.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const offsetX = (event.clientX - rect.left) / rect.width - 0.5;
-    const offsetY = (event.clientY - rect.top) / rect.height - 0.5;
-    const rotateY = (offsetX * 2 * TILT_MAX_DEG).toFixed(2);
-    const rotateX = (-offsetY * 2 * TILT_MAX_DEG).toFixed(2);
-    shell.style.transition = "transform 0s";
-    shell.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
-  }, []);
-
-  const resetTilt = useCallback(() => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    shell.style.transition = "transform 260ms ease-out";
-    shell.style.transform = "";
-  }, []);
-
-  return (
-    <div
-      ref={shellRef}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={resetTilt}
-      onPointerCancel={resetTilt}
-      className="h-full [transform-style:preserve-3d]"
-    >
-      <div className="h-full motion-safe:[transform:translateZ(10px)]">{children}</div>
-    </div>
   );
 }
 
@@ -1889,67 +1824,89 @@ export default function CommandCenterPage() {
             <AtlasSkeleton className="mt-4 h-40 w-full" />
           ) : (
             <div className="mt-4 grid gap-4 xl:grid-cols-[.9fr_1.1fr]">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">Follow-up no prazo</p>
-                  <p
-                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
-                      teamSla?.totals.followUpComplianceRate == null
-                        ? "text-slate-400"
-                        : teamSla.totals.followUpComplianceRate >= 80
-                          ? "text-[var(--atlas-success)]"
-                          : "text-[var(--atlas-warning)]"
-                    }`}
-                  >
-                    {teamSla?.totals.followUpComplianceRate == null
-                      ? "—"
-                      : `${Math.round(teamSla.totals.followUpComplianceRate)}%`}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    {teamSla?.totals.followUpComplianceRate == null
-                      ? "Sem amostra medida"
-                      : "Cumprimento do time direto"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">Sem 1º contato</p>
-                  <p
-                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
-                      (teamSla?.totals.firstContactOverdue ?? managerDaily?.totals.firstContactOverdue ?? 0) > 0
-                        ? "text-[var(--atlas-danger)]"
-                        : "text-white"
-                    }`}
-                  >
-                    {teamSla?.totals.firstContactOverdue ?? managerDaily?.totals.firstContactOverdue ?? 0}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">SLA inicial vencido</p>
-                </div>
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">Follow-ups vencidos</p>
-                  <p
-                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
-                      (teamSla?.totals.followUpOverdue ?? managerDaily?.totals.followUpOverdue ?? 0) > 0
-                        ? "text-[var(--atlas-warning)]"
-                        : "text-white"
-                    }`}
-                  >
-                    {teamSla?.totals.followUpOverdue ?? managerDaily?.totals.followUpOverdue ?? 0}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">Próxima ação atrasada</p>
-                </div>
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">Sem próxima ação</p>
-                  <p
-                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
-                      (managerDaily?.totals.withoutNextAction ?? 0) > 0
-                        ? "text-[var(--atlas-warning)]"
-                        : "text-white"
-                    }`}
-                  >
-                    {managerDaily?.totals.withoutNextAction ?? 0}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">Leads parados na carteira</p>
-                </div>
+              {/* Lista densa no lugar de 4 tiles bordados: a borda de cada tile competia
+                  com a do painel. O compliance é o número que decide, então é o único
+                  em escala de herói; os contadores ficam em peso de leitura tabular.
+                  As cores de limiar levam `!` porque `.cc23-display`/`.cc6-metric-value`
+                  moram fora de @layer e venceriam o utilitário de cor sem ele. */}
+              <div className="cc23-quiet">
+                <ul className="cc23-rows">
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">Follow-up no prazo</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        {teamSla?.totals.followUpComplianceRate == null
+                          ? "Sem amostra medida"
+                          : `Cumprimento do time direto · ${
+                              teamSla.totals.followUpComplianceRate >= 80
+                                ? "na meta"
+                                : "abaixo da meta (80%)"
+                            }`}
+                      </p>
+                    </div>
+                    {/* O limiar também é dito por texto na legenda acima — o sinal
+                        nunca depende só do matiz. */}
+                    {teamSla?.totals.followUpComplianceRate == null ? (
+                      <span className="cc23-display text-slate-400!">—</span>
+                    ) : (
+                      <span
+                        className={`cc23-display ${
+                          teamSla.totals.followUpComplianceRate >= 80
+                            ? "text-[var(--atlas-success)]!"
+                            : "text-[var(--atlas-warning)]!"
+                        }`}
+                      >
+                        {Math.round(teamSla.totals.followUpComplianceRate)}
+                        <span className="cc23-unit-label">%</span>
+                      </span>
+                    )}
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">Sem 1º contato</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">SLA inicial vencido</p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        (teamSla?.totals.firstContactOverdue ?? managerDaily?.totals.firstContactOverdue ?? 0) > 0
+                          ? "text-[var(--atlas-danger)]!"
+                          : ""
+                      }`}
+                    >
+                      {teamSla?.totals.firstContactOverdue ?? managerDaily?.totals.firstContactOverdue ?? 0}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">Follow-ups vencidos</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">Próxima ação atrasada</p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        (teamSla?.totals.followUpOverdue ?? managerDaily?.totals.followUpOverdue ?? 0) > 0
+                          ? "text-[var(--atlas-warning)]!"
+                          : ""
+                      }`}
+                    >
+                      {teamSla?.totals.followUpOverdue ?? managerDaily?.totals.followUpOverdue ?? 0}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">Sem próxima ação</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">Leads parados na carteira</p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        (managerDaily?.totals.withoutNextAction ?? 0) > 0
+                          ? "text-[var(--atlas-warning)]!"
+                          : ""
+                      }`}
+                    >
+                      {managerDaily?.totals.withoutNextAction ?? 0}
+                    </span>
+                  </li>
+                </ul>
               </div>
               {managerBottlenecks.length ? (
                 <ul className="grid content-start gap-2" aria-label="Corretores com gargalos">
@@ -2028,54 +1985,69 @@ export default function CommandCenterPage() {
             {!directorDaily ? (
               <AtlasSkeleton className="mt-4 h-32 w-full" />
             ) : (
-              <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">Conversão geral</p>
-                  <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-white">
-                    {directorDaily.commercial.conversionRate}%
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    {directorDaily.commercial.activeLeads} ativos ·{" "}
-                    {directorDaily.commercial.hotLeads} quentes
-                  </p>
-                </div>
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">Sem 1º contato</p>
-                  <p
-                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
-                      directorDaily.commercial.firstContactOverdue > 0
-                        ? "text-[var(--atlas-danger)]"
-                        : "text-white"
-                    }`}
-                  >
-                    {directorDaily.commercial.firstContactOverdue}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">SLA inicial vencido</p>
-                </div>
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">Follow-ups vencidos</p>
-                  <p
-                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
-                      directorDaily.commercial.followUpOverdue > 0
-                        ? "text-[var(--atlas-warning)]"
-                        : "text-white"
-                    }`}
-                  >
-                    {directorDaily.commercial.followUpOverdue}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">Próxima ação atrasada</p>
-                </div>
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">Sinais críticos</p>
-                  <p
-                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
-                      directorCriticalSignals > 0 ? "text-[var(--atlas-danger)]" : "text-white"
-                    }`}
-                  >
-                    {directorCriticalSignals}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">Riscos executivos + IA</p>
-                </div>
+              /* Mesma conversão do primário do gerente: 4 tiles bordados viram lista
+                 densa. Conversão geral é o número que abre a decisão, então recebe a
+                 escala de herói com a unidade recuada (aninhada, para o 0.5em resolver
+                 contra o display e não contra a linha). */
+              <div className="cc23-quiet mt-4">
+                <ul className="cc23-rows">
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">Conversão geral</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        {directorDaily.commercial.activeLeads} ativos ·{" "}
+                        {directorDaily.commercial.hotLeads} quentes
+                      </p>
+                    </div>
+                    <span className="cc23-display">
+                      {directorDaily.commercial.conversionRate}
+                      <span className="cc23-unit-label">%</span>
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">Sem 1º contato</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">SLA inicial vencido</p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        directorDaily.commercial.firstContactOverdue > 0
+                          ? "text-[var(--atlas-danger)]!"
+                          : ""
+                      }`}
+                    >
+                      {directorDaily.commercial.firstContactOverdue}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">Follow-ups vencidos</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">Próxima ação atrasada</p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        directorDaily.commercial.followUpOverdue > 0
+                          ? "text-[var(--atlas-warning)]!"
+                          : ""
+                      }`}
+                    >
+                      {directorDaily.commercial.followUpOverdue}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">Sinais críticos</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">Riscos executivos + IA</p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        directorCriticalSignals > 0 ? "text-[var(--atlas-danger)]!" : ""
+                      }`}
+                    >
+                      {directorCriticalSignals}
+                    </span>
+                  </li>
+                </ul>
               </div>
             )}
           </div>
@@ -2100,56 +2072,71 @@ export default function CommandCenterPage() {
                   Abrir campanhas →
                 </Link>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">Qualificação</p>
-                  <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-white">
-                    {marketingRates.qualificationRate}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    {marketingQuality.totals.qualified} de {marketingQuality.totals.leads} leads ·{" "}
-                    {marketingQuality.totals.sales} vendas
-                  </p>
-                </div>
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">Descarte</p>
-                  <p
-                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
-                      marketingRates.discardHigh ? "text-[var(--atlas-danger)]" : "text-white"
-                    }`}
-                  >
-                    {marketingRates.discardRate}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    {marketingQuality.totals.discarded} descartados na janela
-                  </p>
-                </div>
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">CPL</p>
-                  <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-white">
-                    {marketingRates.costPerLead ?? "—"}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    {marketingRates.costPerQualified
-                      ? `${marketingRates.costPerQualified} por qualificado`
-                      : marketingQuality.policy.spendMeasured
-                        ? `${brl.format(marketingQuality.totals.spend)} investidos`
-                        : "Custo não medido"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                  <p className="text-[11px] text-slate-500">Campanhas com leads</p>
-                  <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-white">
-                    {marketingQuality.totals.campaignsRanked}
-                  </p>
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    {marketingQuality.totals.campaigns} na organização
-                  </p>
-                </div>
+              {/* Descarte é a taxa que dispara decisão (tem limiar), então é o único
+                  herói do bloco. Qualificação, CPL e o custo por qualificado já chegam
+                  como string formatada pelo useMemo (Intl com NBSP), então entram
+                  inteiros — fatiar a unidade aqui quebraria o caso "—". */}
+              <div className="cc23-quiet mt-4">
+                <ul className="cc23-rows">
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">Qualificação</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        {marketingQuality.totals.qualified} de {marketingQuality.totals.leads} leads ·{" "}
+                        {marketingQuality.totals.sales} vendas
+                      </p>
+                    </div>
+                    <span className="cc6-metric-value text-xl">
+                      {marketingRates.qualificationRate}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">Descarte</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        {marketingQuality.totals.discarded} descartados na janela
+                        {marketingRates.discardHigh ? " · acima do limiar (25%)" : ""}
+                      </p>
+                    </div>
+                    <span
+                      className={`cc23-display ${
+                        marketingRates.discardHigh ? "text-[var(--atlas-danger)]!" : ""
+                      }`}
+                    >
+                      {marketingRates.discardRate}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">CPL</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        {marketingRates.costPerQualified
+                          ? `${marketingRates.costPerQualified} por qualificado`
+                          : marketingQuality.policy.spendMeasured
+                            ? `${brl.format(marketingQuality.totals.spend)} investidos`
+                            : "Custo não medido"}
+                      </p>
+                    </div>
+                    <span className="cc6-metric-value text-xl">
+                      {marketingRates.costPerLead ?? "—"}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-slate-500">Campanhas com leads</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        {marketingQuality.totals.campaigns} na organização
+                      </p>
+                    </div>
+                    <span className="cc6-metric-value text-xl">
+                      {marketingQuality.totals.campaignsRanked}
+                    </span>
+                  </li>
+                </ul>
               </div>
               {marketingQuality.policy.windowComplete === false ||
               !marketingQuality.policy.spendMeasured ? (
-                <p className="mt-3 rounded-xl border border-white/[.06] bg-white/[.02] px-4 py-2.5 text-[11px] leading-5 text-[var(--atlas-warning)]">
+                <p className="mt-3 text-[11px] leading-5 text-[var(--atlas-warning)]">
                   {marketingQuality.policy.windowComplete === false
                     ? "Janela truncada no teto de paginação — números são piso, não total. "
                     : ""}
@@ -2212,7 +2199,12 @@ export default function CommandCenterPage() {
                       const state = proposalState[card.id];
                       if (state?.status === "sent" || state?.status === "deduped") {
                         return (
-                          <span className="cc6-chip tabular-nums" role="status">
+                          /* "A IA propõe, o humano aprova": o tracejado vai para a borda
+                             que a pílula JÁ tem — o `.cc23-seam` desenharia uma reta de
+                             1px cruzando o raio de 999px, virando artefato. O `!` é
+                             obrigatório porque `.cc6-chip` declara `border: 1px solid`
+                             fora de @layer e venceria o utilitário. */
+                          <span className="cc6-chip border-dashed! tabular-nums" role="status">
                             {state.status === "deduped"
                               ? "Já havia proposta · aguarda aprovação"
                               : "Proposta enviada · aguarda aprovação"}
@@ -2295,61 +2287,45 @@ export default function CommandCenterPage() {
           {!brokerDaily ? (
             <AtlasSkeleton className="mt-3 h-16 w-full" />
           ) : (
-            <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-              <div
-                className="rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2.5"
-                title="Leads da sua carteira em atendimento"
-              >
+            /* Faixa de CONTEXTO: a densidade vem de matar as 5 bordas e agrupar por
+               fundo, não de empilhar — empilhar triplicaria a altura e faria números
+               de apoio gritarem logo abaixo do herói "Prioridades agora". */
+            <dl className="cc23-quiet mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              <div className="min-w-0" title="Leads da sua carteira em atendimento">
                 <dt className="text-[11px] text-slate-500">Leads ativos</dt>
-                <dd className="mt-0.5 font-mono text-xl font-semibold tabular-nums text-white">
+                <dd className="cc6-metric-value mt-0.5 text-xl">
                   {brokerDaily.summary.activeLeads}
                 </dd>
               </div>
-              <div
-                className="rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2.5"
-                title="Alta intenção ou score elevado"
-              >
+              <div className="min-w-0" title="Alta intenção ou score elevado">
                 <dt className="text-[11px] text-slate-500">Quentes</dt>
                 <dd
-                  className={`mt-0.5 font-mono text-xl font-semibold tabular-nums ${
-                    brokerDaily.summary.hotLeads > 0
-                      ? "text-[var(--atlas-warning)]"
-                      : "text-white"
+                  className={`cc6-metric-value mt-0.5 text-xl ${
+                    brokerDaily.summary.hotLeads > 0 ? "text-[var(--atlas-warning)]!" : ""
                   }`}
                 >
                   {brokerDaily.summary.hotLeads}
                 </dd>
               </div>
-              <div
-                className="rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2.5"
-                title="Tarefas em aberto na sua fila"
-              >
+              <div className="min-w-0" title="Tarefas em aberto na sua fila">
                 <dt className="text-[11px] text-slate-500">Tarefas abertas</dt>
-                <dd className="mt-0.5 font-mono text-xl font-semibold tabular-nums text-white">
+                <dd className="cc6-metric-value mt-0.5 text-xl">
                   {brokerDaily.summary.openTasks}
                 </dd>
               </div>
-              <div
-                className="rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2.5"
-                title="Prazos vencidos aguardando ação"
-              >
+              <div className="min-w-0" title="Prazos vencidos aguardando ação">
                 <dt className="text-[11px] text-slate-500">Atrasadas</dt>
                 <dd
-                  className={`mt-0.5 font-mono text-xl font-semibold tabular-nums ${
-                    brokerDaily.summary.overdueTasks > 0
-                      ? "text-[var(--atlas-danger)]"
-                      : "text-white"
+                  className={`cc6-metric-value mt-0.5 text-xl ${
+                    brokerDaily.summary.overdueTasks > 0 ? "text-[var(--atlas-danger)]!" : ""
                   }`}
                 >
                   {brokerDaily.summary.overdueTasks}
                 </dd>
               </div>
-              <div
-                className="rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2.5"
-                title="Compromissos com prazo nos próximos 7 dias"
-              >
+              <div className="min-w-0" title="Compromissos com prazo nos próximos 7 dias">
                 <dt className="text-[11px] text-slate-500">Agenda 7 dias</dt>
-                <dd className="mt-0.5 font-mono text-xl font-semibold tabular-nums text-white">
+                <dd className="cc6-metric-value mt-0.5 text-xl">
                   {brokerDaily.summary.agendaNext7Days}
                 </dd>
               </div>
@@ -2392,23 +2368,19 @@ export default function CommandCenterPage() {
         <ProactiveNudgesPanel max={4} />
       </section>
 
+      {/* O tilt 3D mutava style.transform a cada pointermove sem carregar informação
+          nenhuma; sai a mutação por frame e fica a métrica. Nada de `.cc23-lift` aqui:
+          `.atlas-metric` já desenha borda, raio, fundo e elevação — somar o lift criaria
+          o anel duplo que este redesenho existe para matar. */}
       <section
         aria-label="Pulso da operação"
-        className="cc5-reveal grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [transform-style:preserve-3d]"
+        className="cc5-reveal grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
         style={{ animationDelay: "140ms" }}
       >
-        <TiltCard>
-          <AtlasMetric label="Leads ativos" value={<span className={metricValueClass}>{activeDisplay}</span>} detail="Base em atendimento no seu escopo" tone="blue" />
-        </TiltCard>
-        <TiltCard>
-          <AtlasMetric label="Leads quentes" value={<span className={metricValueClass}>{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
-        </TiltCard>
-        <TiltCard>
-          <AtlasMetric label="Tarefas atrasadas" value={<span className={metricValueClass}>{overdueDisplay}</span>} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
-        </TiltCard>
-        <TiltCard>
-          <AtlasMetric label="Sem responsável" value={<span className={metricValueClass}>{unassignedDisplay}</span>} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
-        </TiltCard>
+        <AtlasMetric label="Leads ativos" value={<span className={metricValueClass}>{activeDisplay}</span>} detail="Base em atendimento no seu escopo" tone="blue" />
+        <AtlasMetric label="Leads quentes" value={<span className={metricValueClass}>{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
+        <AtlasMetric label="Tarefas atrasadas" value={<span className={metricValueClass}>{overdueDisplay}</span>} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
+        <AtlasMetric label="Sem responsável" value={<span className={metricValueClass}>{unassignedDisplay}</span>} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
       </section>
 
       {/* SECUNDÁRIO · herança do Início — distribuição por estágio derivada do
@@ -2535,15 +2507,22 @@ export default function CommandCenterPage() {
           <span className="text-[11px] tabular-nums text-slate-500">{updatedAgoLabel}</span>
         </div>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {/* O anel de módulos era um gauge em canvas rodando rAF só para redesenhar
+              "X/Y", que já aparece em texto no cabeçalho desta mesma faixa. Vira par
+              textual — e o `detail`, que antes só existia no aria-label do canvas,
+              passa a ser lido no fluxo (sr-only), em vez de ficar preso num `title`
+              inalcançável por teclado. O anel do papel (roleRing) fica. */}
           {moduleRing ? (
             <span className="flex items-center gap-2">
-              <DepthRing
-                fraction={moduleRing.fraction}
-                centerLabel={moduleRing.centerLabel}
-                detail={moduleRing.detail}
-                label={moduleRing.label}
-              />
-              <span className="text-[11px] text-slate-500">Módulos</span>
+              <span aria-hidden="true" className="cc6-num text-[11px] text-slate-300">
+                {moduleRing.centerLabel}
+              </span>
+              <span aria-hidden="true" className="text-[11px] text-slate-500">
+                Módulos
+              </span>
+              <span className="sr-only">
+                {moduleRing.label}: {moduleRing.detail}
+              </span>
             </span>
           ) : null}
           {roleRing ? (
@@ -2585,43 +2564,47 @@ export default function CommandCenterPage() {
           </span>
         </div>
         </div>
-        <nav
-          aria-label="Régua de módulos"
-          className="mt-3 grid gap-2 border-t border-white/[.06] pt-3 sm:grid-cols-2 xl:grid-cols-5"
-        >
+        {/* Bloco de menor valor decisório da tela: perde as até 10 bordas, mas MANTÉM
+            a grade (empilhar em coluna única faria a régua virar a lista mais alta da
+            página) e a hairline de topo que a separa da faixa de telemetria. Os itens
+            passam a ser <li> de verdade, então a AT volta a anunciar "lista de N". */}
+        <nav aria-label="Régua de módulos" className="mt-3 border-t border-white/[.06] pt-3">
           {moduleHealth.length ? (
-            moduleHealth.map((module) => (
-              <Link
-                key={module.id}
-                href={module.href}
-                title={`${module.label}: ${module.detail}`}
-                className="flex min-h-11 items-center gap-2.5 rounded-xl border border-white/[.06] bg-white/[.02] px-3 py-2 transition-colors hover:border-white/[.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-              >
-                <span
-                  aria-hidden="true"
-                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                    module.state === "operational"
-                      ? "bg-[var(--atlas-success)]"
-                      : module.state === "degraded"
-                        ? "bg-[var(--atlas-warning)]"
-                        : "bg-[var(--atlas-danger)]"
-                  }`}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs font-medium text-white">
-                    {module.label}
-                  </span>
-                  <span className="block truncate text-[10px] text-slate-500">
-                    {module.detail}
-                  </span>
-                </span>
-                <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-slate-300">
-                  {module.count ?? "—"}
-                </span>
-              </Link>
-            ))
+            <ul className="grid gap-x-4 sm:grid-cols-2 xl:grid-cols-5">
+              {moduleHealth.map((module) => (
+                <li key={module.id}>
+                  <Link
+                    href={module.href}
+                    title={`${module.label}: ${module.detail}`}
+                    className="flex min-h-11 items-center gap-2.5 rounded-lg px-2 transition-colors hover:bg-white/[.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                        module.state === "operational"
+                          ? "bg-[var(--atlas-success)]"
+                          : module.state === "degraded"
+                            ? "bg-[var(--atlas-warning)]"
+                            : "bg-[var(--atlas-danger)]"
+                      }`}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-medium text-white">
+                        {module.label}
+                      </span>
+                      <span className="block truncate text-[10px] text-slate-500">
+                        {module.detail}
+                      </span>
+                    </span>
+                    <span className="cc6-num shrink-0 text-xs font-semibold text-slate-300">
+                      {module.count ?? "—"}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           ) : (
-            <p className="text-xs text-slate-500 sm:col-span-2 xl:col-span-5">
+            <p className="text-xs text-slate-500">
               Régua de módulos indisponível — restabeleça a conexão para voltar a navegar com
               contagens e estado de saúde.
             </p>
@@ -2676,12 +2659,15 @@ export default function CommandCenterPage() {
             {collapsedLayers.feed ? null : (
             <div className={`border-t border-white/[.06] ${layerBodyPad}`}>
               {liveFeed.length ? (
-                <ul className="grid gap-2" aria-live="polite">
+                /* O `.cc23-row` fica no li (não no Link): assim o
+                   `.cc23-rows > .cc23-row:first-child` casa e o Link conserva o próprio
+                   anel de foco e os 44px de alvo de toque, que o `.cc23-row` engoliria. */
+                <ul className="cc23-rows" aria-live="polite">
                   {liveFeed.map((event) => (
-                    <li key={event.id}>
+                    <li key={event.id} className="cc23-row">
                       <Link
                         href={event.href}
-                        className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-white/[.06] bg-white/[.02] px-4 py-3 transition-colors hover:border-white/[.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-2 transition-colors hover:bg-white/[.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
                       >
                         <span className="flex min-w-0 items-center gap-3">
                           <span className="min-w-0">
@@ -2753,13 +2739,17 @@ export default function CommandCenterPage() {
                 !brokerDaily ? (
                   <AtlasSkeleton className="h-48 w-full" />
                 ) : visibleAttentionQueue.length ? (
-                  <ul className="grid gap-2">
-                    {visibleAttentionQueue.slice(0, 6).map((item) => {
+                  /* Borda cheia vira hairline e a origem-IA passa a ser marcada pelo seam
+                     de 1px no acento. A ordem do DOM não muda (o Tab continua seguindo a
+                     leitura). O primeiro item não leva hairline para não encostar na
+                     borda do corpo do card. */
+                  <ul className="cc23-rows">
+                    {visibleAttentionQueue.slice(0, 6).map((item, index) => {
                       const seen = seenSignalSet.has(item.leadId);
                       return (
                         <li
                           key={item.leadId}
-                          className={`rounded-xl border border-white/[.06] bg-white/[.02] p-4 transition-colors hover:border-white/[.12] ${seen ? "opacity-60" : ""}`}
+                          className={`cc23-seam py-3 transition-colors hover:bg-white/[.02] ${index === 0 ? "" : "cc6-hairline"} ${seen ? "opacity-60" : ""}`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <Link
@@ -2825,13 +2815,16 @@ export default function CommandCenterPage() {
                   description={`Todos os ${briefingSignals.length} sinais foram marcados como vistos. Use "Mostrar vistos" para revê-los.`}
                 />
               ) : (
-                <ul className="grid gap-2">
-                  {visibleBriefingSignals.slice(0, 6).map((signal) => {
+                /* Mesmo tratamento do card gêmeo do corretor: hairline + seam de IA, com
+                   a ordem do DOM preservada (título, badge, visto, evidência, ação), para
+                   foco e leitura visual continuarem casados. */
+                <ul className="cc23-rows">
+                  {visibleBriefingSignals.slice(0, 6).map((signal, index) => {
                     const seen = seenSignalSet.has(signal.id);
                     return (
                       <li
                         key={signal.id}
-                        className={`rounded-xl border border-white/[.06] bg-white/[.02] p-4 ${seen ? "opacity-60" : ""}`}
+                        className={`cc23-seam py-3 ${index === 0 ? "" : "cc6-hairline"} ${seen ? "opacity-60" : ""}`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="text-sm font-medium text-white">{signal.title}</span>
@@ -2909,20 +2902,25 @@ export default function CommandCenterPage() {
                 {!brokerDaily ? (
                   <AtlasSkeleton className="h-56 w-full" />
                 ) : brokerDaily.priorities.length ? (
-                  <div className="grid gap-3">
+                  /* Superfície de trabalho do corretor: N cards bordados dentro de um
+                     AtlasCard viravam caixa-dentro-de-caixa em série. O wrapper interno
+                     com flex-wrap FICA (é ele que empurra as 4 ações para a segunda linha
+                     no mobile) e ganha w-full para o justify-between não colapsar agora
+                     que o article virou flex container. */
+                  <div className="cc23-rows">
                     {brokerDaily.priorities.map((item, index) => {
                       const contact = phoneLinks(phoneByLead.get(item.leadId) ?? "");
                       const urgent = /sla|vencid|atrasad/i.test(item.reason);
                       return (
                         <article
                           key={item.leadId}
-                          className="rounded-2xl border border-white/[.07] bg-white/[.02] p-4 transition-colors hover:border-white/[.12]"
+                          className="cc23-row transition-colors hover:bg-white/[.02]"
                         >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="flex w-full flex-wrap items-start justify-between gap-3">
                             <div className="flex min-w-0 items-start gap-3">
                               <span
                                 aria-hidden="true"
-                                className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-white/[.07] text-xs font-semibold tabular-nums text-[var(--atlas-accent)]"
+                                className="grid h-8 w-8 shrink-0 place-items-center text-xs font-semibold tabular-nums text-[var(--atlas-accent)]"
                               >
                                 {index + 1}
                               </span>
@@ -3051,17 +3049,21 @@ export default function CommandCenterPage() {
               {collapsedLayers.fila ? null : (
               <div className={`border-t border-white/[.06] ${layerBodyPad}`}>
                 {isManager && teamSla ? (
+                  /* Três pílulas desenhadas à mão viram o primitivo que já existe.
+                     `whitespace-normal!` é necessário porque `.cc6-chip` fixa
+                     `white-space: nowrap` fora de @layer, e estes rótulos são longos o
+                     bastante para forçar rolagem horizontal em 320px. */
                   <div className="mb-4 flex flex-wrap gap-2 text-xs text-slate-400">
-                    <span className="inline-flex min-h-11 items-center rounded-full border border-white/[.07] px-4">
+                    <span className="cc6-chip whitespace-normal!">
                       SLA de follow-up:{" "}
                       {teamSla.totals.followUpComplianceRate === null
                         ? "sem amostra"
                         : `${teamSla.totals.followUpComplianceRate}%`}
                     </span>
-                    <span className="inline-flex min-h-11 items-center rounded-full border border-white/[.07] px-4">
+                    <span className="cc6-chip whitespace-normal!">
                       {teamSla.totals.firstContactOverdue} sem primeiro contato
                     </span>
-                    <span className="inline-flex min-h-11 items-center rounded-full border border-white/[.07] px-4">
+                    <span className="cc6-chip whitespace-normal!">
                       {teamSla.totals.brokersWithAlerts} corretor(es) com alerta
                     </span>
                   </div>
@@ -3069,27 +3071,34 @@ export default function CommandCenterPage() {
                 {!managementQueue.ready ? (
                   <AtlasSkeleton className="h-40 w-full" />
                 ) : managementQueue.items.length ? (
-                  <ul className="grid gap-2 lg:grid-cols-2">
-                    {managementQueue.items.map((item) => (
-                      <li key={item.key}>
-                        <Link
-                          href={item.href}
-                          className="block h-full rounded-xl border border-white/[.06] bg-white/[.02] p-4 transition-colors hover:border-white/[.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-                        >
-                          <span className="flex flex-wrap items-center gap-2">
-                            <AtlasBadge tone={interventionTone(item.severity)}>
-                              {item.severity === "critical" ? "AGORA" : item.severity === "attention" ? "ATENÇÃO" : "EQUILÍBRIO"}
-                            </AtlasBadge>
-                            <span className="text-sm font-medium text-white">{item.label}</span>
-                          </span>
-                          <span className="mt-2 block text-xs leading-5 text-slate-400">{item.reason}</span>
-                          <span className="mt-2 block text-xs font-semibold text-[var(--atlas-accent)]">
-                            {item.action} →
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+                  /* Fila de exceção da liderança: coluna única e densa, para a varredura
+                     ir do mais severo ao menos sem borda concorrente. O Link continua
+                     `block` (os três spans empilhados dependem disso) e mantém o próprio
+                     anel de foco — `.cc23-row` NÃO vai no focável, porque o
+                     `.cc23-row:focus-visible` do CSS resolve para outline inválido. */
+                  <div className="cc23-quiet">
+                    <ul className="cc23-rows">
+                      {managementQueue.items.map((item, index) => (
+                        <li key={item.key} className={index === 0 ? "" : "cc6-hairline"}>
+                          <Link
+                            href={item.href}
+                            className="block rounded-lg px-2 py-3 transition-colors hover:bg-white/[.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                          >
+                            <span className="flex flex-wrap items-center gap-2">
+                              <AtlasBadge tone={interventionTone(item.severity)}>
+                                {item.severity === "critical" ? "AGORA" : item.severity === "attention" ? "ATENÇÃO" : "EQUILÍBRIO"}
+                              </AtlasBadge>
+                              <span className="text-sm font-medium text-white">{item.label}</span>
+                            </span>
+                            <span className="mt-2 block text-xs leading-5 text-slate-400">{item.reason}</span>
+                            <span className="mt-2 block text-xs font-semibold text-[var(--atlas-accent)]">
+                              {item.action} →
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : (
                   <AtlasEmpty
                     reason="completed"
@@ -3127,48 +3136,63 @@ export default function CommandCenterPage() {
               />
               <div className="border-t border-white/[.06] p-5 sm:p-6">
                 {governanceNote ? (
-                  <p className="rounded-xl border border-white/[.06] bg-white/[.02] p-4 text-sm text-slate-400">
-                    {governanceNote}
-                  </p>
+                  <p className="cc23-quiet text-sm text-slate-400">{governanceNote}</p>
                 ) : !governance ? (
                   <AtlasSkeleton className="h-48 w-full" />
                 ) : (
                   <div className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                        <p className="text-xs text-slate-500">Banco</p>
-                        <p className="atlas-metric-number mt-1 text-xl font-semibold text-white">
-                          {governance.health.databaseLatencyMs} ms
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {governance.health.databaseOk ? "Consulta aprovada" : "Sem evidência"}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                        <p className="text-xs text-slate-500">Fila de integração</p>
-                        <p className="atlas-metric-number mt-1 text-xl font-semibold text-white">
-                          {governance.queues.pendingOutbox ?? "—"}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {governance.queues.failedOutbox ?? "—"} falhas ou dead letter
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                        <p className="text-xs text-slate-500">Custo IA · 30 dias</p>
-                        <p className="atlas-metric-number mt-1 text-xl font-semibold text-white">
-                          {governance.ai.measured ? `US$ ${governance.ai.estimatedCostUsd30d.toFixed(2)}` : "—"}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">{governance.ai.calls30d} chamadas medidas</p>
-                      </div>
-                      <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4">
-                        <p className="text-xs text-slate-500">Homologação</p>
-                        <p className="atlas-metric-number mt-1 text-xl font-semibold text-white">
-                          {governance.homologation.passed ?? "—"}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {governance.homologation.failed ?? "—"} reprovações
-                        </p>
-                      </div>
+                    {/* Números de SISTEMA: recuam para contexto em lista densa, sem
+                        escala de herói — quem decide aqui são os gates críticos e as
+                        métricas comerciais, não a latência do banco. */}
+                    <div className="cc23-quiet">
+                      <ul className="cc23-rows">
+                        <li className="cc23-row">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-slate-500">Banco</p>
+                            <p className="mt-0.5 text-xs text-slate-500">
+                              {governance.health.databaseOk ? "Consulta aprovada" : "Sem evidência"}
+                            </p>
+                          </div>
+                          <span className="cc6-metric-value text-xl">
+                            {governance.health.databaseLatencyMs} ms
+                          </span>
+                        </li>
+                        <li className="cc23-row">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-slate-500">Fila de integração</p>
+                            <p className="mt-0.5 text-xs text-slate-500">
+                              {governance.queues.failedOutbox ?? "—"} falhas ou dead letter
+                            </p>
+                          </div>
+                          <span className="cc6-metric-value text-xl">
+                            {governance.queues.pendingOutbox ?? "—"}
+                          </span>
+                        </li>
+                        <li className="cc23-row">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-slate-500">Custo IA · 30 dias</p>
+                            <p className="mt-0.5 text-xs text-slate-500">
+                              {governance.ai.calls30d} chamadas medidas
+                            </p>
+                          </div>
+                          <span className="cc6-metric-value text-xl">
+                            {governance.ai.measured
+                              ? `US$ ${governance.ai.estimatedCostUsd30d.toFixed(2)}`
+                              : "—"}
+                          </span>
+                        </li>
+                        <li className="cc23-row">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-slate-500">Homologação</p>
+                            <p className="mt-0.5 text-xs text-slate-500">
+                              {governance.homologation.failed ?? "—"} reprovações
+                            </p>
+                          </div>
+                          <span className="cc6-metric-value text-xl">
+                            {governance.homologation.passed ?? "—"}
+                          </span>
+                        </li>
+                      </ul>
                     </div>
                     <div className="flex flex-wrap gap-2" aria-label="Gates críticos">
                       {Object.entries(governance.critical).map(([key, value]) => (
