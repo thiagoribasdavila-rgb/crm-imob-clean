@@ -37,7 +37,15 @@ type Fatigue = { adId: string; adName: string; kind: string; detail: string };
 type Health = { campaignId: string; campaignName: string; activeAds: number; diversityScore: number; fatigue: Fatigue[]; andromedaScore: number };
 type Rotation = { campaignName: string; replacement: { angle: string }; reason: string };
 type Forecast = { account: { pace: "acelerando" | "estavel" | "desacelerando"; projectedWeeklyLeads: { pessimista: number; esperado: number; otimista: number }; projectedCpl: number | null; trendPct: number; confidence: "baixa" | "media" | "alta"; assumptions: string[] }; anomalies: string[] };
-type Andromeda = { source: string; health: Health[]; consolidation: { verdict: "consolidada" | "fragmentada"; reason: string }; forecast?: Forecast; rotations?: { proposals: Rotation[]; summary: string } };
+// Localizador de Público — a rota /marketing/andromeda JÁ devolvia isto (audience-finder
+// + policy-engine) e a tela descartava. Sob HOUSING a demografia é OBSERVAÇÃO da entrega,
+// nunca alvo: por isso o painel mostra o policyNote junto.
+type PlacementLine = { platform: string; position: string; spend: number; leads: number; cpl: number | null; sharePct: number; verdict: "escalar" | "manter" | "revisar" | "descartar"; reason: string };
+type GeoReport = { leak: { sharePct: number; topRegions: Array<{ region: string; spend: number; leads: number }> }; verdict: "focado" | "vazando" };
+type DemoLine = { age: string; gender: string; spend: number; leads: number; cpl?: number | null; sharePct?: number };
+type Audience = { placements: PlacementLine[]; geo: GeoReport | null; demo: { lines: DemoLine[]; policyNote: string } | null };
+type Prescription = { kind: string; target: string; reason: string; reversible?: boolean };
+type Andromeda = { source: string; health: Health[]; consolidation: { verdict: "consolidada" | "fragmentada"; reason: string }; forecast?: Forecast; rotations?: { proposals: Rotation[]; summary: string }; audience?: Audience; prescriptions?: { proposals: Prescription[]; summary: string } };
 type Calibration = { summary: string[] };
 
 type FetchState<T> =
@@ -380,6 +388,94 @@ export default function MarketingPage() {
       ) : andromeda.status === "error" ? (
         <AtlasRecoverableError description={andromeda.message} onRetry={retry} scope="module" />
       ) : null}
+
+      {/* Localizador de público — o motor (audience-finder) já vinha na rota e a tela
+          descartava. Demografia é OBSERVAÇÃO da entrega; segmentar por ela é proibido
+          sob HOUSING — por isso o policyNote aparece junto. */}
+      {(() => {
+        if (andromeda.status !== "ok") return null;
+        const a = andromeda.data.audience;
+        if (!a) return null;
+        const chip = (v: string) => (v === "escalar" || v === "manter" || v === "focado" ? "cc6-ok" : v === "descartar" || v === "vazando" ? "cc6-crit" : "cc6-warn");
+        const cpl = (v: number | null | undefined) => (v == null ? "—" : money.format(v));
+        return (
+          <section aria-label="Inteligência de público" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "280ms" }}>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
+              <p className="cc6-eyebrow">Localizador de público</p>
+              <span className="text-[11px] leading-5 text-[#6b7890]">onde responde · onde vaza · quem responde</span>
+            </div>
+            <div className="cc6-hairline grid gap-5 px-5 py-4 sm:grid-cols-3">
+              <div>
+                <p className="cc6-metric-label mb-2">Onde responde</p>
+                {a.placements.length ? a.placements.slice(0, 4).map((p, i) => (
+                  <div key={`${p.platform}-${p.position}-${i}`} className="mb-2 flex items-baseline justify-between gap-2">
+                    <span className="min-w-0 truncate text-[12.5px] text-[#c3ccdb]">{p.platform}{p.position ? ` · ${p.position}` : ""}</span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="cc6-num text-[12px] text-[#8b97ab]">{cpl(p.cpl)}</span>
+                      <span className={`cc6-chip ${chip(p.verdict)}`} title={p.reason}>{p.verdict}</span>
+                    </span>
+                  </div>
+                )) : <p className="text-[12px] leading-5 text-[#6b7890]">Sem dados de posicionamento ainda.</p>}
+              </div>
+              <div>
+                <p className="cc6-metric-label mb-2">Onde vaza</p>
+                {a.geo ? (
+                  <>
+                    <div className="mb-2 flex items-baseline justify-between gap-2">
+                      <span className="text-[12.5px] text-[#c3ccdb]">Fora da praça</span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="cc6-num text-[12px] text-[#8b97ab]">{a.geo.leak.sharePct}%</span>
+                        <span className={`cc6-chip ${chip(a.geo.verdict)}`}>{a.geo.verdict}</span>
+                      </span>
+                    </div>
+                    {a.geo.leak.topRegions.slice(0, 3).map((r) => (
+                      <p key={r.region} className="text-[12px] leading-5 text-[#6b7890]">{r.region} · {r.leads} leads</p>
+                    ))}
+                  </>
+                ) : <p className="text-[12px] leading-5 text-[#6b7890]">Sem quebra geográfica disponível.</p>}
+              </div>
+              <div>
+                <p className="cc6-metric-label mb-2">Quem responde</p>
+                {a.demo && a.demo.lines.length ? (
+                  <>
+                    {a.demo.lines.slice(0, 3).map((d, i) => (
+                      <div key={`${d.age}-${d.gender}-${i}`} className="mb-2 flex items-baseline justify-between gap-2">
+                        <span className="text-[12.5px] text-[#c3ccdb]">{d.age} · {d.gender}</span>
+                        <span className="cc6-num shrink-0 text-[12px] text-[#8b97ab]">{cpl(d.cpl)}</span>
+                      </div>
+                    ))}
+                    <p className="mt-2 text-[11px] leading-4 text-[#6b7890]">{a.demo.policyNote}</p>
+                  </>
+                ) : <p className="text-[12px] leading-5 text-[#6b7890]">Sem quebra demográfica disponível.</p>}
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* Prescrições governadas — verdicts viram propostas reversíveis (policy-engine),
+          que também já vinham na rota sem nenhum consumidor. */}
+      {(() => {
+        if (andromeda.status !== "ok") return null;
+        const pres = andromeda.data.prescriptions;
+        if (!pres || !pres.proposals.length) return null;
+        return (
+          <section aria-label="Prescrições da IA" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "300ms" }}>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
+              <p className="cc6-eyebrow">Prescrições · reversíveis</p>
+              <span className="text-[11px] leading-5 text-[#6b7890]">{pres.summary}</span>
+            </div>
+            <div className="cc6-hairline px-5 py-3">
+              {pres.proposals.slice(0, 5).map((p, i) => (
+                <div key={`${p.kind}-${p.target}-${i}`} className="flex flex-wrap items-baseline justify-between gap-2 py-1.5">
+                  <span className="min-w-0 text-[12.5px] text-[#c3ccdb]"><b className="text-[#e8eef8]">{p.kind}</b> · {p.target}</span>
+                  <span className="text-[11.5px] leading-5 text-[#6b7890]">{p.reason}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Transparência: como as IAs decidem — linha discreta expansível. */}
       {calibration.status === "ok" && calibration.data.summary.length > 0 ? (
