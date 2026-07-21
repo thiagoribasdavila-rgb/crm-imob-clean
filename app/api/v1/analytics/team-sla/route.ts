@@ -1,5 +1,6 @@
 import { type NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
+import { cacheHeaders } from "@/lib/api/cache-headers";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   LIVE_LEAD_SELECT,
@@ -187,6 +188,6 @@ export async function GET(request: NextRequest) {
       generatedAt: new Date().toISOString(),
     },
     identity.meta,
-    { headers: limited.headers },
+    { headers: { ...limited.headers, ...cacheHeaders({ maxAge: 60, swr: 120 }) } },
   );
 }

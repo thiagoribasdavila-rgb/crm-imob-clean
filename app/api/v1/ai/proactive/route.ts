@@ -11,7 +11,8 @@
  */
 
 import { type NextRequest } from "next/server";
-import { apiError, apiSuccess } from "@/lib/api/core";
+import { apiSuccess } from "@/lib/api/core";
+import { cacheHeaders } from "@/lib/api/cache-headers";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { aggregate, budgetView, type ProductBudget } from "@/lib/marketing/cost-report";
@@ -101,5 +102,5 @@ export async function GET(request: NextRequest) {
   }
 
   const nudges = proactiveNudges(role, input);
-  return apiSuccess({ role, nudges, digest: nudgeDigest(nudges) }, identity.meta, { headers: limited.headers });
+  return apiSuccess({ role, nudges, digest: nudgeDigest(nudges) }, identity.meta, { headers: { ...limited.headers, ...cacheHeaders({ maxAge: 30, swr: 60 }) } });
 }

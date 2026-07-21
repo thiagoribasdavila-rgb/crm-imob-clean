@@ -11,6 +11,7 @@
 
 import { type NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
+import { cacheHeaders } from "@/lib/api/cache-headers";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { aggregate, budgetView, type ProductBudget } from "@/lib/marketing/cost-report";
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
     return apiSuccess({
       briefing: buildDirectorBriefing(input, { maxDecisions: cal.briefing.maxDecisions, urgencyAttention: cal.briefing.urgencyAttention }),
       source: "db",
-    }, identity.meta, { headers: limited.headers });
+    }, identity.meta, { headers: { ...limited.headers, ...cacheHeaders({ maxAge: 60, swr: 120 }) } });
   }
 
   // fallback: Meta ao vivo (gasto 30d + verba + plano + saúde criativa)
@@ -94,9 +95,17 @@ export async function GET(request: NextRequest) {
     if (Array.isArray(insights)) {
       const rows = insightsToCostRows(insights);
       const agg = aggregate(rows, "campaign");
-      const { data: budgets } = await admin
-        .from("product_budgets").select("product,developer,weekly_budget,target_cac,active")
-        .eq("organization_id", org).eq("active", true);
+      // Perf: verba (banco) e saúde criativa (Meta ad-level) são independentes —
+      // buscam em paralelo em vez de uma após a outra.
+      const [budgetsResult, adRows] = await Promise.all([
+        admin.from("product_budgets").select("product,developer,weekly_budget,target_cac,active")
+          .eq("organization_id", org).eq("active", true),
+        cachedMetaRead(
+          `ad-insights:${account}:last_30d`,
+          () => fetchAdInsights(account, token, { datePreset: "last_30d" }),
+        ),
+      ]);
+      const budgets = budgetsResult.data;
       const pb: ProductBudget[] = (budgets ?? []).map((b) => ({
         product: b.product,
         developer: b.developer,
@@ -110,11 +119,8 @@ export async function GET(request: NextRequest) {
         cplRatioReview: cal.marketing.cplRatioReview,
         minSpendCplReviewBrl: cal.marketing.minSpendCplReviewBrl,
       });
-      // saúde criativa — best-effort (se a leitura ad-level falhar, omite)
-      const adRows = await cachedMetaRead(
-        `ad-insights:${account}:last_30d`,
-        () => fetchAdInsights(account, token, { datePreset: "last_30d" }),
-      );
+      // saúde criativa — best-effort (se a leitura ad-level falhar, omite);
+      // adRows já foi lido em paralelo com a verba acima.
       const creativeHealth = Array.isArray(adRows)
         ? toHealthCards(analyzeCreativeHealth(adRows, {
             freqLimit: cal.fatigue.freqLimit,
@@ -141,7 +147,7 @@ export async function GET(request: NextRequest) {
       return apiSuccess({
         briefing: buildDirectorBriefing(input, { maxDecisions: cal.briefing.maxDecisions, urgencyAttention: cal.briefing.urgencyAttention }),
         source: "meta_live",
-      }, identity.meta, { headers: limited.headers });
+      }, identity.meta, { headers: { ...limited.headers, ...cacheHeaders({ maxAge: 60, swr: 120 }) } });
     }
   }
 

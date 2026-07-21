@@ -1,5 +1,6 @@
 import { type NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
+import { cacheHeaders } from "@/lib/api/cache-headers";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { aggregate, weekly, budgetView, type SpendRow, type ProductBudget } from "@/lib/marketing/cost-report";
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
           plan: livePlan,
           // projeção de cada movimento ANTES de aprovar (dado 30d → semanal)
           projection: simulatePlan(livePlan, { campaigns: agg, budget: bud, period: "30d" }),
-        }, identity.meta, { headers: limited.headers });
+        }, identity.meta, { headers: { ...limited.headers, ...cacheHeaders({ maxAge: 60, swr: 120 }) } });
       }
     }
     if (spendErr) return apiError("REPORT_UNAVAILABLE", "Relatório indisponível: banco sem marketing_spend e Meta não configurada/legível.", identity.meta, { status: 503 });
@@ -94,18 +95,26 @@ export async function GET(request: NextRequest) {
   }
   const campMap = new Map(campaigns.map((c) => [c.id, c]));
 
-  // developments (produto) → developers (incorporador), best-effort
+  // developments (produto) → developers (incorporador), best-effort.
+  // Perf: developments (por campanha), leads e verbas são independentes entre
+  // si — buscam em paralelo. Só developers depende de developments (chain).
   const devIds = [...new Set(campaigns.map((c) => c.development_id).filter(Boolean))] as string[];
   const prodMap = new Map<string, { name: string; developerId?: string | null }>();
   const devrMap = new Map<string, string>();
-  if (devIds.length) {
-    const dvs = await admin.from("developments").select("id,name,developer_id").in("id", devIds).eq("organization_id", org);
-    for (const d of dvs.data ?? []) prodMap.set(d.id, { name: d.name, developerId: d.developer_id });
-    const developerIds = [...new Set((dvs.data ?? []).map((d) => d.developer_id).filter(Boolean))] as string[];
-    if (developerIds.length) {
-      const drs = await admin.from("developers").select("id,name").in("id", developerIds).eq("organization_id", org);
-      for (const dr of drs.data ?? []) devrMap.set(dr.id, dr.name);
-    }
+  const [dvs, leadsResult, budgetsResult] = await Promise.all([
+    devIds.length
+      ? admin.from("developments").select("id,name,developer_id").in("id", devIds).eq("organization_id", org)
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string; developer_id: string | null }> }),
+    // leads/vendas por campanha (venda = status 'ganho')
+    admin.from("leads").select("campaign_id,status").eq("organization_id", org).not("campaign_id", "is", null),
+    // verba por produto
+    admin.from("product_budgets").select("product,developer,weekly_budget,target_cac,active").eq("organization_id", org).eq("active", true),
+  ]);
+  for (const d of dvs.data ?? []) prodMap.set(d.id, { name: d.name, developerId: d.developer_id });
+  const developerIds = [...new Set((dvs.data ?? []).map((d) => d.developer_id).filter(Boolean))] as string[];
+  if (developerIds.length) {
+    const drs = await admin.from("developers").select("id,name").in("id", developerIds).eq("organization_id", org);
+    for (const dr of drs.data ?? []) devrMap.set(dr.id, dr.name);
   }
   const productOf = (campaignId: string) => {
     const c = campMap.get(campaignId);
@@ -113,8 +122,7 @@ export async function GET(request: NextRequest) {
     return { product: dev?.name ?? null, developer: dev?.developerId ? devrMap.get(dev.developerId) ?? null : null };
   };
 
-  // leads/vendas por campanha (venda = status 'ganho')
-  const { data: leads } = await admin.from("leads").select("campaign_id,status").eq("organization_id", org).not("campaign_id", "is", null);
+  const leads = leadsResult.data;
 
   const spendRows: SpendRow[] = (spend ?? []).map((s) => {
     const pd = productOf(s.campaign_id);
@@ -126,8 +134,8 @@ export async function GET(request: NextRequest) {
   });
   const all = [...spendRows, ...leadRows];
 
-  // verba por produto
-  const { data: budgets } = await admin.from("product_budgets").select("product,developer,weekly_budget,target_cac,active").eq("organization_id", org).eq("active", true);
+  // verba por produto (já buscada em paralelo acima)
+  const budgets = budgetsResult.data;
   const productBudgets: ProductBudget[] = (budgets ?? []).map((b) => ({ product: b.product, developer: b.developer, weeklyBudget: Number(b.weekly_budget) || 0, targetCac: b.target_cac != null ? Number(b.target_cac) : null }));
 
   const byCampaignAgg = aggregate(all, "campaign");
@@ -144,7 +152,7 @@ export async function GET(request: NextRequest) {
     plan: dbPlan,
     // projeção de cada movimento antes de aprovar (dado do banco = semanal)
     projection: simulatePlan(dbPlan, { campaigns: byCampaignAgg, budget, period: "7d" }),
-  }, identity.meta, { headers: limited.headers });
+  }, identity.meta, { headers: { ...limited.headers, ...cacheHeaders({ maxAge: 60, swr: 120 }) } });
 }
 
 // PUT — define/atualiza a verba de um produto (só diretor). O campo de estratégia.

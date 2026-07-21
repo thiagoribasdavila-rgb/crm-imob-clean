@@ -11,6 +11,7 @@
 
 import { type NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
+import { cacheHeaders } from "@/lib/api/cache-headers";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { fetchAdInsights, fetchBreakdownInsights } from "@/lib/meta/marketing/campaign-read";
@@ -124,5 +125,5 @@ export async function GET(request: NextRequest) {
       demo: Array.isArray(demoRows) ? demoReport(demoRows) : null,
       angles: anglePerformance(rows.map((r) => ({ adName: r.adName, spend: r.spend, leads: r.leads }))),
     },
-  }, identity.meta, { headers: limited.headers });
+  }, identity.meta, { headers: { ...limited.headers, ...cacheHeaders({ maxAge: 60, swr: 120 }) } });
 }
