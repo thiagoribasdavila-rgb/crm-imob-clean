@@ -40,7 +40,7 @@ export async function POST(request: Request, context: { params: Promise<{ provid
   const body = await request.text();
   const admin = getSupabaseAdmin();
 
-  const { data: source } = await admin
+  const { data: source, error: sourceError } = await admin
     .from("portal_lead_sources")
     .select("id,organization_id,secret,default_owner_id,name")
     .eq("provider", provider)
@@ -48,8 +48,19 @@ export async function POST(request: Request, context: { params: Promise<{ provid
     .eq("active", true)
     .maybeSingle();
 
+  if (sourceError) {
+    // Erro de consulta (transitório de banco) NÃO é "fonte desconhecida":
+    // responde 503 para o portal reenviar o webhook em vez de perder o lead.
+    logger.error("portal.webhook.source_lookup_failed", sourceError, { provider, accountId });
+    return NextResponse.json({ error: "source_lookup_failed" }, { status: 503, headers: { "Retry-After": "60" } });
+  }
+
   if (!source) {
-    logger.warn("portal.webhook.unknown_source", { provider, accountId });
+    // Fonte consultada com sucesso e realmente não mapeada: persiste o corpo
+    // cru no log estruturado (best-effort) para replay manual. Corpo ainda não
+    // autenticado neste ponto (o segredo HMAC pertence à fonte), por isso vai
+    // apenas para log, nunca para tabelas de leads.
+    logger.warn("portal.webhook.unknown_source", { provider, accountId, contentLength: body.length, payload: body });
     return NextResponse.json({ error: "unknown_source" }, { status: 404 });
   }
 
@@ -92,13 +103,19 @@ export async function POST(request: Request, context: { params: Promise<{ provid
     return NextResponse.json({ error: "persistence_failed" }, { status: 500 });
   }
 
-  await admin.from("integration_outbox").insert({
+  const { error: outboxError } = await admin.from("integration_outbox").insert({
     organization_id: source.organization_id,
     topic: "portal.lead.ingest",
     aggregate_type: "portal_lead_event",
     aggregate_id: inserted.id,
     payload: { provider, externalLeadId: normalized.externalLeadId },
   });
+
+  if (outboxError) {
+    // Sem outbox o lead nunca seria processado: 500 força o reenvio pelo portal.
+    logger.error("portal.webhook.outbox_failed", outboxError, { provider, eventId: inserted.id, externalLeadId: normalized.externalLeadId });
+    return NextResponse.json({ error: "outbox_failed" }, { status: 500 });
+  }
 
   logger.info("portal.webhook.accepted", { provider, sourceId: source.id, eventId: inserted.id });
   return NextResponse.json({ received: true, eventId: inserted.id }, { status: 200 });

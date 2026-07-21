@@ -62,12 +62,29 @@ export async function POST(request: Request) {
       if (change.field !== "leadgen" || !change.value?.leadgen_id) continue;
       const value = change.value;
       const pageId = value.page_id || entry.id;
-      if (!pageId) { unmapped += 1; continue; }
+      if (!pageId) {
+        unmapped += 1;
+        // Best-effort: persiste o payload no log estruturado para replay manual.
+        logger.warn("meta.webhook.unmapped_payload", { reason: "missing_page_id", leadgenId: value.leadgen_id, payload: value });
+        continue;
+      }
       let sourceQuery = admin.from("meta_lead_sources").select("id,organization_id").eq("page_id", pageId).eq("active", true);
       sourceQuery = value.form_id ? sourceQuery.or(`form_id.eq.${value.form_id},form_id.is.null`) : sourceQuery.is("form_id", null);
-      const { data: sources } = await sourceQuery.order("form_id", { ascending: false, nullsFirst: false }).limit(1);
+      const { data: sources, error: sourceError } = await sourceQuery.order("form_id", { ascending: false, nullsFirst: false }).limit(1);
+      if (sourceError) {
+        // Erro de consulta (transitório de banco) NÃO é "fonte não mapeada":
+        // responde 503 para a Meta reenviar o evento em vez de perder o lead.
+        logger.error("meta.webhook.source_lookup_failed", sourceError, { pageId, formId: value.form_id, leadgenId: value.leadgen_id });
+        return NextResponse.json({ error: "source_lookup_failed" }, { status: 503, headers: { "Retry-After": "60" } });
+      }
       const source = sources?.[0];
-      if (!source) { unmapped += 1; continue; }
+      if (!source) {
+        unmapped += 1;
+        // Fonte consultada com sucesso e realmente não mapeada: persiste o
+        // payload no log estruturado (best-effort) para replay manual.
+        logger.warn("meta.webhook.unmapped_payload", { reason: "unmapped_source", pageId, formId: value.form_id, leadgenId: value.leadgen_id, payload: value });
+        continue;
+      }
 
       const { data: inserted, error: insertError } = await admin.from("meta_lead_events").insert({
         organization_id: source.organization_id,
@@ -86,7 +103,12 @@ export async function POST(request: Request) {
         logger.error("meta.webhook.persistence_failed", insertError, { leadgenId: value.leadgen_id });
         return NextResponse.json({ error: "persistence_failed" }, { status: 500 });
       }
-      await admin.from("integration_outbox").insert({ organization_id: source.organization_id, topic: "meta.lead.fetch", aggregate_type: "meta_lead_event", aggregate_id: inserted.id, payload: { externalLeadId: value.leadgen_id } });
+      const { error: outboxError } = await admin.from("integration_outbox").insert({ organization_id: source.organization_id, topic: "meta.lead.fetch", aggregate_type: "meta_lead_event", aggregate_id: inserted.id, payload: { externalLeadId: value.leadgen_id } });
+      if (outboxError) {
+        // Sem outbox o lead nunca seria processado: 500 força o reenvio pela Meta.
+        logger.error("meta.webhook.outbox_failed", outboxError, { eventId: inserted.id, leadgenId: value.leadgen_id });
+        return NextResponse.json({ error: "outbox_failed" }, { status: 500 });
+      }
       accepted += 1;
     }
   }
