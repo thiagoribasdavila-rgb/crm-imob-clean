@@ -19,6 +19,7 @@ import { placementReport, geoReport, demoReport, anglePerformance } from "@/lib/
 import { forecastCampaign, anomalyForecast, type ForecastWeek } from "@/lib/meta/marketing/forecast";
 import { proposeRotations, rotationSummary } from "@/lib/ai/creative-rotation";
 import { briefsForRotation } from "@/lib/atlas/developer-portfolio";
+import { proposePolicies, policySummary } from "@/lib/meta/marketing/policy-engine";
 import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
 
@@ -92,18 +93,34 @@ export async function GET(request: NextRequest) {
   // Só para campanhas com brief conhecido no rol de incorporadoras.
   const rotations = proposeRotations(health, briefsForRotation());
 
+  const placements = Array.isArray(placementRows) ? placementReport(placementRows) : null;
+  const geo = Array.isArray(regionRows) ? geoReport(regionRows) : null;
+  const consolidation = accountConsolidation(liveCampaigns, monthlySpend);
+
+  // MOTOR DE POLÍTICA (prescritivo): os veredictos viram propostas de 1 clique,
+  // só reversíveis e confiantes — prontas para a Caixa de Aprovações.
+  const prescriptions = proposePolicies({
+    placements: placements ?? undefined,
+    creativeHealth: health,
+    anomalies: forecast.anomalies,
+    consolidation,
+    geo: geo ? { verdict: geo.verdict, leak: { sharePct: geo.leak.sharePct } } : undefined,
+  });
+
   return apiSuccess({
     source: "meta_live",
     health,
     rotations: { proposals: rotations, summary: rotationSummary(rotations) },
-    consolidation: accountConsolidation(liveCampaigns, monthlySpend),
+    consolidation,
     forecast, // análise preditiva: pace, projeção de leads/CPL, anomalias
+    // PRESCRIÇÕES governadas: verdicts → propostas reversíveis de 1 clique
+    prescriptions: { proposals: prescriptions, summary: policySummary(prescriptions) },
     // Localizador de Público: onde responde, onde vaza, quem responde
     // (demografia = observação de entrega; segmentar por ela é proibido) e
     // CPL por ângulo criativo (anúncios na convenção [Atlas]).
     audience: {
-      placements: Array.isArray(placementRows) ? placementReport(placementRows) : null,
-      geo: Array.isArray(regionRows) ? geoReport(regionRows) : null,
+      placements,
+      geo,
       demo: Array.isArray(demoRows) ? demoReport(demoRows) : null,
       angles: anglePerformance(rows.map((r) => ({ adName: r.adName, spend: r.spend, leads: r.leads }))),
     },
