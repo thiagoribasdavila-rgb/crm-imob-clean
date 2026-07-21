@@ -39,6 +39,11 @@ export type AiCalibration = {
     maxDecisions: number;         // decisões máximas por briefing (anti-ruído)
     urgencyAttention: number;     // urgency >= isto => mood "atencao"
   };
+  sizing: {
+    learningEventsPerWeek: number; // eventos/semana p/ um conjunto sair do aprendizado (Meta ~50)
+    maxAdSets: number;             // teto de conjuntos recomendados (Andromeda premia consolidar)
+    fallbackCplBrl: number;        // CPL assumido quando não há histórico (R$)
+  };
   audience: {
     minRadiusKm: number;          // POLÍTICA Meta HOUSING — travado
     ageMin: number;               // POLÍTICA — travado
@@ -66,6 +71,9 @@ export const CALIBRATION_RAILS: Record<string, CalibrationRail> = {
   "creative.recommendedPrimaryChars": { min: 80, max: 160, label: "Texto principal — recomendação visível" },
   "briefing.maxDecisions": { min: 1, max: 10, label: "Decisões máximas por briefing" },
   "briefing.urgencyAttention": { min: 2, max: 5, label: "Urgência que liga o modo atenção" },
+  "sizing.learningEventsPerWeek": { min: 20, max: 100, label: "Eventos/semana p/ sair do aprendizado (Meta)" },
+  "sizing.maxAdSets": { min: 1, max: 10, label: "Conjuntos recomendados — teto" },
+  "sizing.fallbackCplBrl": { min: 1, max: 100, label: "CPL assumido sem histórico (R$)" },
   "audience.minRadiusKm": { min: 24, max: 24, locked: true, label: "Raio mínimo HOUSING (política Meta)" },
   "audience.ageMin": { min: 18, max: 18, locked: true, label: "Idade mínima HOUSING (política Meta)" },
   "audience.ageMax": { min: 65, max: 65, locked: true, label: "Idade máxima HOUSING (política Meta)" },
@@ -78,6 +86,7 @@ export const DEFAULT_CALIBRATION: AiCalibration = {
   consolidation: { smallAccountMonthlyBrl: 5000, maxActiveCampaignsSmall: 3 },
   creative: { maxVariants: 5, primaryMaxChars: 200, headlineMaxChars: 40, descriptionMaxChars: 30, recommendedPrimaryChars: 125 },
   briefing: { maxDecisions: 6, urgencyAttention: 4 },
+  sizing: { learningEventsPerWeek: 50, maxAdSets: 3, fallbackCplBrl: 8 },
   audience: { minRadiusKm: 24, ageMin: 18, ageMax: 65 },
 };
 
@@ -134,6 +143,7 @@ export function calibrationSummary(c: AiCalibration): string[] {
     `Consolidação: conta até R$ ${c.consolidation.smallAccountMonthlyBrl}/mês deve ter no máximo ${c.consolidation.maxActiveCampaignsSmall} campanhas ativas.`,
     `Criativos: até ${c.creative.maxVariants} variações por campo; texto principal máx. ${c.creative.primaryMaxChars} (recomendado ${c.creative.recommendedPrimaryChars}), título ${c.creative.headlineMaxChars}, descrição ${c.creative.descriptionMaxChars}.`,
     `Briefing: no máximo ${c.briefing.maxDecisions} decisões por vez; urgência ${c.briefing.urgencyAttention}+ liga o modo atenção.`,
+    `Dimensionamento: cada conjunto precisa de ~${c.sizing.learningEventsPerWeek} conversões/semana para sair do aprendizado; no máximo ${c.sizing.maxAdSets} conjuntos (sem histórico, CPL assumido R$ ${c.sizing.fallbackCplBrl}).`,
     `Público (política Meta HOUSING, travado): idade ${c.audience.ageMin}–${c.audience.ageMax}+, raio mínimo ${c.audience.minRadiusKm} km, sem gênero/lookalike/CEP.`,
   ];
 }
