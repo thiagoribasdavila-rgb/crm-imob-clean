@@ -65,7 +65,10 @@ const ACCOUNT = "<<AD_ACCOUNT_ID>>";
 const EXISTING_CAMPAIGN = "<<SPIN_CAMPAIGN_ID (id real se a campanha já estiver no Meta; senão criada junto)>>";
 
 // --- Conjunto NOVO (refresh) gerado pelo pipeline ---------------------------
-const copy = buildAdCopy(brief); // 5 ângulos p/ Spin (renda_alvo + entrega_imediata entram)
+// Persona MORADOR / primeiro imóvel — pronto para morar na Vila Madalena/Perdizes.
+// NÃO usa renda_alvo: nomear faixa de renda no criativo é risco sob HOUSING.
+const SPIN_ANGLES = ["sair_do_aluguel", "entrega_imediata", "localizacao", "estilo_de_vida"];
+const copy = buildAdCopy(brief, SPIN_ANGLES);
 const copyViolations = validateCopy(copy);
 const targeting = housingTargetingSpec({ countries: ["BR"], cities: ["São Paulo"] });
 const skeleton = leadCampaignSkeleton(brief, weeklyBudgetBrl, targeting);
@@ -76,13 +79,23 @@ const fullSteps = planFullPublication({
 });
 // "Montar DENTRO do já existente": só o conjunto (ad set→creative→ads), sem criar
 // campanha nova — o ad set aponta para a campanha Spin existente.
+// Ao remover o create_campaign (step0 do full), os índices caem 1: ad set vira
+// step0 e creative step1 — RENUMERAMOS os placeholders dos anúncios (senão eles
+// apontariam adset_id p/ o creative e creative_id p/ um anúncio — quebra na Meta).
 const mountSteps = fullSteps
   .filter((s) => s.kind !== "create_campaign")
   .map((s) => {
     if (s.kind === "create_adset") {
       return { ...s, payload: { ...s.payload, campaign_id: EXISTING_CAMPAIGN }, dependsOn: [] };
     }
-    return s;
+    if (s.kind === "create_ad") {
+      return {
+        ...s,
+        payload: { ...s.payload, adset_id: "{{step0.id}}", creative: { creative_id: "{{step1.id}}" } },
+        dependsOn: [0, 1],
+      };
+    }
+    return s; // create_creative: sem placeholders/dependsOn
   });
 
 // --- Calibragem: 2 conjuntos na MESMA verba fragmentam o sinal? --------------
@@ -94,6 +107,8 @@ const sizingOne = recommendAdSetSizing(
   { weeklyBudgetBrl, expectedCplBrl: 8, audienceSplits: 1 },
   { learningEventsPerWeek: 50, maxAdSets: 3, fallbackCplBrl: 8 },
 );
+// Piso honesto p/ 2 conjuntos ativos: 2 × verba mínima de aprendizado / 7 (por dia).
+const twoAdsetDailyFloor = Math.ceil((2 * sizingOne.minWeeklyToExitLearningBrl) / 7);
 
 // --- Aditivo: formaliza campanha + ad_sets + bloco de refresh ---------------
 spec.campaign = {
@@ -148,17 +163,49 @@ spec.refresh_2026_07 = {
     weekly_brl: weeklyBudgetBrl,
     two_adsets_verdict: sizingTwo.verdict,
     one_adset_verdict: sizingOne.verdict,
+    two_adset_daily_floor_brl: twoAdsetDailyFloor,
     doctrine:
-      `Com R$ ${dailyBrl}/dia (R$ ${weeklyBudgetBrl}/sem), 2 conjuntos ativos AO MESMO TEMPO fragmentam o sinal de aprendizado (cada um abaixo das ~50 conv/sem). Recomendação honesta: rodar o refresh como ROTAÇÃO — ativar o conjunto novo e PAUSAR o original (troca de conceito), mantendo 1 conjunto ativo — OU subir a verba (~R$ ${dailyBrl * 2}/dia) se a diretoria quiser os dois ativos. Decisão vai à aprovação.`,
+      `Com R$ ${dailyBrl}/dia (R$ ${weeklyBudgetBrl}/sem), 2 conjuntos ativos AO MESMO TEMPO fragmentam o sinal de aprendizado (cada um abaixo das ~50 conv/sem). Recomendação honesta: rodar o refresh como ROTAÇÃO — ativar o conjunto novo e PAUSAR o original (troca de conceito), mantendo 1 conjunto ativo — OU subir a verba para ~R$ ${twoAdsetDailyFloor}/dia (2× o piso de aprendizado ao CPL de R$ 8; mais se o CPL real for maior) se a diretoria quiser os dois ativos. Decisão vai à aprovação.`,
   },
 };
 
-// Log de revisão + status honesto.
+// Persona do conjunto (público diferenciado no criativo — contraparte do Arvo).
+spec.persona = {
+  focus: "morador / primeiro imóvel",
+  audience_note:
+    "Público MORADOR — quem quer sair do aluguel e morar pronto na Vila Madalena/Perdizes. NÃO usa renda_alvo (faixa de renda no criativo é risco HOUSING). Contraparte: o conjunto do Arvo usa persona INVESTIDOR — públicos distintos 100% no criativo.",
+  angles: SPIN_ANGLES,
+};
+
+// Corrige o copy LEGADO hand-authored (2ª pessoa / atributo pessoal) → 3ª pessoa,
+// removendo "seu aluguel"/"saia do aluguel"/"seu apê" (vetados sob HOUSING /
+// Personal Attributes) e a equivalência categórica parcela=aluguel.
+if (spec.copy?.morador) {
+  spec.copy.morador = {
+    ...spec.copy.morador,
+    primary_text:
+      "Studios prontos para morar na Vila Madalena, a 700 m do metrô, com varanda — e um rooftop com piscina, academia e espaço gourmet no dia a dia.\n\n✅ 27 m² com varanda e depósito privativo\n✅ Café, parque e cultura por perto\n✅ A partir de R$ 275 mil — condições de financiamento direto com a incorporadora, sujeitas a análise de crédito\n\n👉 Toque em \"Saiba mais\" e receba a tabela de valores.",
+    headline: "Studios na Vila Madalena a partir de R$275 mil",
+    description: "Pronto para morar · varanda · 700m do metrô",
+    _compliance_note:
+      "Reescrito em 3ª pessoa (2026-07-21): removidos 'seu aluguel'/'saia do aluguel'/'seu apê' (atributos pessoais) e a equivalência categórica parcela=aluguel.",
+  };
+}
+if (spec.copy?.investidor) {
+  spec.copy.investidor = {
+    ...spec.copy.investidor,
+    headline: "Studio na Vila Madalena a partir de R$275 mil",
+    description: "Pronto para morar · rooftop completo · 700m do metrô",
+    _compliance_note: "Mantido em 3ª pessoa (descreve o produto).",
+  };
+}
+
+// Log de revisão + status honesto (idempotente — re-rodar não duplica).
 spec.revisions = Array.isArray(spec.revisions) ? spec.revisions : [];
-spec.revisions.push({
-  date: "2026-07-21",
-  change: "Refaz a campanha: conjunto 'refresh-2026-07' montado dentro da campanha existente (5 conceitos novos), campanha [Atlas] CBO/HOUSING formalizada. Tudo PAUSED.",
-});
+const revNote = "Refaz a campanha: conjunto 'refresh-2026-07' (persona MORADOR, 4 conceitos novos, sem renda_alvo) montado DENTRO da campanha existente (mount sem create_campaign, placeholders renumerados); campanha [Atlas] CBO/HOUSING formalizada; copy legado reescrito em 3ª pessoa. Tudo PAUSED.";
+if (!spec.revisions.some((r) => r?.change === revNote)) {
+  spec.revisions.push({ date: "2026-07-21", change: revNote });
+}
 
 if (copyViolations.length) {
   console.error(`❌ copy do refresh violou política (${copyViolations.length}) — abortando escrita.`);

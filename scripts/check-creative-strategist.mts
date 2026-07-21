@@ -185,6 +185,30 @@ check(
   validateCopy(minimo).length === 0 && minimo.primaryTexts.length >= 1 && minimo.headlines.length >= 1 && minimo.descriptions.length >= 1,
 );
 
+// 21) renda_alvo NÃO expõe faixa de renda no criativo (HOUSING — evita sinalizar grupo econômico)
+const rendaCopy = buildAdCopy(perdizes, ["renda_alvo"]);
+const rendaSerial = JSON.stringify(rendaCopy);
+check(
+  "caso 21: renda_alvo não nomeia faixa de renda no criativo",
+  validateCopy(rendaCopy).length === 0 &&
+  !/\d\s*a\s*\d\s*sal[áa]rios/i.test(rendaSerial) &&
+  !/renda\s+(familiar\s+)?de\s+\d/i.test(rendaSerial),
+);
+
+// 22) investimento NÃO inventa vizinhança ('universidades/polo gastronômico') nem promete 'curta estadia'
+const invCopy = buildAdCopy(perdizes, ["investimento"]);
+check(
+  "caso 22: investimento sem fatos inventados (universidades/gastronomia/curta estadia)",
+  !/universidades|polo\s+gastron[oô]mico|curta\s+(e\s+longa\s+)?estadia/i.test(JSON.stringify(invCopy)),
+);
+
+// 23) sair_do_aluguel NÃO afirma equivalência categórica parcela=aluguel (alegação financeira não substanciada)
+const alugCopy = buildAdCopy(perdizes, ["sair_do_aluguel"]);
+check(
+  "caso 23: sair_do_aluguel sem equivalência categórica parcela=aluguel",
+  !/parcela.{0,40}(faixa de um|no lugar do|que substitui o)\s+aluguel/i.test(JSON.stringify(alugCopy)),
+);
+
 if (failures.length) {
   console.error(`Estrategista de criativos: falhou (${failures.length} de ${failures.length + passed})\n- ${failures.join("\n- ")}`);
   process.exit(1);

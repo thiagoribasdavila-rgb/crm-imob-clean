@@ -171,15 +171,6 @@ function firstValid(candidates: Array<string | null>, maxChars: number, used: Se
   return null;
 }
 
-/** Faixa de renda do programa em texto ("6 a 10", "a partir de 6", "até 10"). */
-function incomeRange(brief: ProductBrief): string | null {
-  const { incomeMinSm: min, incomeMaxSm: max } = brief;
-  if (min != null && max != null) return `${min} a ${max}`;
-  if (min != null) return `a partir de ${min}`;
-  if (max != null) return `até ${max}`;
-  return null;
-}
-
 // ---------------------------------------------------------------------------
 // Geração de copy por ângulo — candidatos em ordem de preferência; o último de
 // cada lista é sempre um fallback curto, sem interpolação, garantidamente limpo.
@@ -193,26 +184,25 @@ function angleCandidates(angle: CreativeAngle, brief: ProductBrief): AngleCandid
   const price = brief.priceFrom != null ? brl(brief.priceFrom) : null;
   const metro = brief.metroDistanceM != null ? brief.metroDistanceM : null;
   const diffs = diffsOf(brief);
-  const faixa = incomeRange(brief);
 
   switch (angle) {
     case "sair_do_aluguel":
       return {
         primaries: [
-          `No ${brief.product}${loc}, a parcela do financiamento fica na faixa de um aluguel da região — com a diferença de que o imóvel é seu.${price ? ` Unidades a partir de ${price}.` : ""} Simule sem compromisso.`,
-          "A parcela que substitui o aluguel: financiamento na faixa do aluguel da região e escritura no seu nome. Condições direto com a incorporadora, sem compromisso.",
+          `Do aluguel para o imóvel próprio${loc}: financiamento com condições facilitadas direto com a incorporadora, sujeitas a análise de crédito.${price ? ` Unidades a partir de ${price}.` : ""} Simule sem compromisso.`,
+          "O primeiro passo para o imóvel próprio é uma simulação: condições de financiamento direto com a incorporadora, sujeitas a análise de crédito. Sem compromisso.",
         ],
-        headlines: ["Parcela na faixa do aluguel", "Do aluguel para o imóvel próprio"],
-        descriptions: ["Parcela no lugar do aluguel", "Simule sem compromisso"],
+        headlines: ["Do aluguel ao imóvel próprio", "Conquiste o imóvel próprio"],
+        descriptions: ["Rumo ao imóvel próprio", "Simule sem compromisso"],
       };
     case "investimento":
       return {
         primaries: [
-          `Studios${loc} com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança.${price ? ` Unidades a partir de ${price}.` : ""} Potencial de renda em curta e longa estadia.`,
-          "Ativo real em bairro de alta demanda de locação, com liquidez de revenda. Estude os números com a incorporadora antes de decidir — sem promessa, com dados.",
+          `Studio compacto${loc}, em endereço central${metro != null ? `, a ${metro} m do metrô` : ""}.${price ? ` Unidades a partir de ${price}.` : ""} Peça o estudo de rentabilidade direto com a incorporadora — sem promessa, com dados.`,
+          "Studio compacto em localização central, com a solidez de um ativo real. Estude os números com a incorporadora antes de decidir — sem promessa, com dados.",
         ],
         headlines: [place ? `Studio para investir em ${place}` : null, "Studio compacto para investir"],
-        descriptions: ["Alta demanda de locação", "Ativo real, bairro líquido"],
+        descriptions: [place ? `Studio central em ${place}` : null, "Ativo real e compacto"],
       };
     case "localizacao":
       return {
@@ -229,14 +219,15 @@ function angleCandidates(angle: CreativeAngle, brief: ProductBrief): AngleCandid
         descriptions: [metro != null ? `A ${metro} m do metrô` : null, "Metrô e comércio a pé"],
       };
     case "renda_alvo":
+      // HOUSING: descreve o PROGRAMA (subsídio/condições), nunca a faixa de renda
+      // — nomear "renda de N salários" no criativo sinaliza elegibilidade por
+      // grupo econômico; a qualificação de renda acontece no atendimento.
       return {
         primaries: [
-          faixa
-            ? `Unidades enquadradas em programa habitacional para renda familiar de ${faixa} salários mínimos — subsídio e entrada facilitada conforme as regras do programa. Simulação gratuita e sem compromisso.`
-            : null,
+          "Unidades enquadradas em programa habitacional com subsídio e entrada facilitada, conforme as regras vigentes do programa. Consulte as condições e simule gratuitamente, sem compromisso.",
           "Condições de financiamento com subsídio do programa habitacional, conforme regras vigentes. Simulação gratuita direto com a incorporadora.",
         ],
-        headlines: [faixa ? `Programa para renda de ${faixa} SM` : null, "Subsídio do programa habitacional"],
+        headlines: ["Subsídio do programa habitacional", "Programa habitacional com subsídio"],
         descriptions: ["Subsídio e entrada facilitada", "Simulação gratuita"],
       };
     case "estilo_de_vida":
@@ -291,6 +282,12 @@ function buildNotes(copy: FlexibleAdCopy): string[] {
       notes.push(`primaryTexts[${i}] com ${text.length} caracteres — recomendado ≤${LIMITS.primaryTexts.recommendedChars} para evitar truncamento no feed.`);
     }
   });
+  // Flag de revisão (não bloqueio): mencionar faixa de renda no criativo pode ser
+  // lido pela Meta como elegibilidade por grupo econômico sob HOUSING.
+  const allText = [...copy.primaryTexts, ...copy.headlines, ...copy.descriptions].join(" | ");
+  if (/\brenda\s+(familiar\s+)?de\s+\d|\d\s*a\s*\d\s*sal[áa]rios\s+m[íi]nimos/i.test(allText)) {
+    notes.push("Atenção HOUSING: o criativo menciona faixa de renda — a Meta pode ler como elegibilidade por grupo econômico. Revisar/remover antes de publicar; a qualificação de renda deve ocorrer no atendimento, não no anúncio.");
+  }
   return notes;
 }
 

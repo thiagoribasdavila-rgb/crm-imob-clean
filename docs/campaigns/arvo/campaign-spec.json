@@ -82,6 +82,16 @@
     "price_from_brl": 399000,
     "reminder": "Confirmar disponibilidade e tabela vigente antes de publicar; faixa de renda (SM) não consta do book — não inventar no criativo."
   },
+  "persona": {
+    "focus": "investidor",
+    "audience_note": "Público INVESTIDOR — quem compra o studio compacto no Paraíso (a 400 m da Paulista) para investir/rentabilizar. Diferenciado 100% no criativo: HOUSING trava o targeting (idade 18-65+, sem gênero, só geo), então o 'público diferente' vive nos descritivos, não na segmentação.",
+    "angles": [
+      "investimento",
+      "localizacao",
+      "estilo_de_vida"
+    ],
+    "contraparte": "O conjunto do Spin usa a persona MORADOR/primeiro imóvel — públicos distintos por criativo."
+  },
   "objective": "OUTCOME_LEADS",
   "conversion_location": "INSTANT_FORM",
   "budget": {
@@ -95,38 +105,33 @@
     "copy": {
       "product": "Arvo",
       "angles": [
-        "localizacao",
-        "sair_do_aluguel",
         "investimento",
+        "localizacao",
         "estilo_de_vida"
       ],
       "primaryTexts": [
+        "Studio compacto em Paraíso, em endereço central, a 800 m do metrô. Unidades a partir de R$ 399.000. Peça o estudo de rentabilidade direto com a incorporadora — sem promessa, com dados.",
         "O Arvo fica a 800 m do metrô em Paraíso: padaria, feira e parque na rotina, tudo a pé. Plantas de 24 e 29 m² e a 400 m da Av. Paulista.",
-        "No Arvo em Paraíso, a parcela do financiamento fica na faixa de um aluguel da região — com a diferença de que o imóvel é seu. Unidades a partir de R$ 399.000. Simule sem compromisso.",
-        "Studios em Paraíso com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança. Unidades a partir de R$ 399.000. Potencial de renda em curta e longa estadia.",
         "Morar em Paraíso é ter café, parque e vida cultural a poucos passos. O Arvo soma a 400 m da Av. Paulista e a 10 minutos do Parque Ibirapuera — a cidade como extensão de casa."
       ],
       "headlines": [
-        "A 800 m do metrô — Paraíso",
-        "Parcela na faixa do aluguel",
         "Studio para investir em Paraíso",
+        "A 800 m do metrô — Paraíso",
         "Viva Paraíso no dia a dia"
       ],
       "descriptions": [
+        "Studio central em Paraíso",
         "A 800 m do metrô",
-        "Parcela no lugar do aluguel",
-        "Alta demanda de locação",
         "Vida de bairro a pé"
       ],
       "callToAction": "LEARN_MORE",
       "complianceNotes": [
         "Campanha imobiliária: special_ad_categories [\"HOUSING\"] obrigatório — idade (18-65+), gênero e CEP travados pela Meta; a diferenciação acontece 100% no criativo.",
-        "4 ângulos conceituais distintos — o Andromeda premia diversidade real; edições cosméticas não contam como criativo novo (refresh de conceito a cada 1-3 semanas).",
+        "3 ângulos conceituais distintos — o Andromeda premia diversidade real; edições cosméticas não contam como criativo novo (refresh de conceito a cada 1-3 semanas).",
         "Copy descreve o produto, o lugar e o programa de crédito — nunca atributos de quem vê (política Housing / Personal Attributes).",
-        "primaryTexts[0] com 135 caracteres — recomendado ≤125 para evitar truncamento no feed.",
-        "primaryTexts[1] com 182 caracteres — recomendado ≤125 para evitar truncamento no feed.",
-        "primaryTexts[2] com 190 caracteres — recomendado ≤125 para evitar truncamento no feed.",
-        "primaryTexts[3] com 174 caracteres — recomendado ≤125 para evitar truncamento no feed."
+        "primaryTexts[0] com 184 caracteres — recomendado ≤125 para evitar truncamento no feed.",
+        "primaryTexts[1] com 135 caracteres — recomendado ≤125 para evitar truncamento no feed.",
+        "primaryTexts[2] com 174 caracteres — recomendado ≤125 para evitar truncamento no feed."
       ]
     },
     "copyPolicyViolations": [],
@@ -208,13 +213,10 @@
       "videos": [],
       "bodies": [
         {
+          "text": "Studio compacto em Paraíso, em endereço central, a 800 m do metrô. Unidades a partir de R$ 399.000. Peça o estudo de rentabilidade direto com a incorporadora — sem promessa, com dados."
+        },
+        {
           "text": "O Arvo fica a 800 m do metrô em Paraíso: padaria, feira e parque na rotina, tudo a pé. Plantas de 24 e 29 m² e a 400 m da Av. Paulista."
-        },
-        {
-          "text": "No Arvo em Paraíso, a parcela do financiamento fica na faixa de um aluguel da região — com a diferença de que o imóvel é seu. Unidades a partir de R$ 399.000. Simule sem compromisso."
-        },
-        {
-          "text": "Studios em Paraíso com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança. Unidades a partir de R$ 399.000. Potencial de renda em curta e longa estadia."
         },
         {
           "text": "Morar em Paraíso é ter café, parque e vida cultural a poucos passos. O Arvo soma a 400 m da Av. Paulista e a 10 minutos do Parque Ibirapuera — a cidade como extensão de casa."
@@ -222,13 +224,10 @@
       ],
       "titles": [
         {
-          "text": "A 800 m do metrô — Paraíso"
-        },
-        {
-          "text": "Parcela na faixa do aluguel"
-        },
-        {
           "text": "Studio para investir em Paraíso"
+        },
+        {
+          "text": "A 800 m do metrô — Paraíso"
         },
         {
           "text": "Viva Paraíso no dia a dia"
@@ -236,13 +235,10 @@
       ],
       "descriptions": [
         {
+          "text": "Studio central em Paraíso"
+        },
+        {
           "text": "A 800 m do metrô"
-        },
-        {
-          "text": "Parcela no lugar do aluguel"
-        },
-        {
-          "text": "Alta demanda de locação"
         },
         {
           "text": "Vida de bairro a pé"
@@ -337,13 +333,10 @@
             "videos": [],
             "bodies": [
               {
+                "text": "Studio compacto em Paraíso, em endereço central, a 800 m do metrô. Unidades a partir de R$ 399.000. Peça o estudo de rentabilidade direto com a incorporadora — sem promessa, com dados."
+              },
+              {
                 "text": "O Arvo fica a 800 m do metrô em Paraíso: padaria, feira e parque na rotina, tudo a pé. Plantas de 24 e 29 m² e a 400 m da Av. Paulista."
-              },
-              {
-                "text": "No Arvo em Paraíso, a parcela do financiamento fica na faixa de um aluguel da região — com a diferença de que o imóvel é seu. Unidades a partir de R$ 399.000. Simule sem compromisso."
-              },
-              {
-                "text": "Studios em Paraíso com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança. Unidades a partir de R$ 399.000. Potencial de renda em curta e longa estadia."
               },
               {
                 "text": "Morar em Paraíso é ter café, parque e vida cultural a poucos passos. O Arvo soma a 400 m da Av. Paulista e a 10 minutos do Parque Ibirapuera — a cidade como extensão de casa."
@@ -351,13 +344,10 @@
             ],
             "titles": [
               {
-                "text": "A 800 m do metrô — Paraíso"
-              },
-              {
-                "text": "Parcela na faixa do aluguel"
-              },
-              {
                 "text": "Studio para investir em Paraíso"
+              },
+              {
+                "text": "A 800 m do metrô — Paraíso"
               },
               {
                 "text": "Viva Paraíso no dia a dia"
@@ -365,13 +355,10 @@
             ],
             "descriptions": [
               {
+                "text": "Studio central em Paraíso"
+              },
+              {
                 "text": "A 800 m do metrô"
-              },
-              {
-                "text": "Parcela no lugar do aluguel"
-              },
-              {
-                "text": "Alta demanda de locação"
               },
               {
                 "text": "Vida de bairro a pé"
@@ -395,39 +382,23 @@
         "kind": "create_ad",
         "path": "act_<<AD_ACCOUNT_ID>>/ads",
         "payload": {
-          "name": "[Atlas] Arvo · localizacao",
-          "adset_id": "{{step1.id}}",
-          "creative": {
-            "creative_id": "{{step2.id}}"
-          },
-          "status": "PAUSED"
-        },
-        "dependsOn": [
-          1,
-          2
-        ]
-      },
-      {
-        "kind": "create_ad",
-        "path": "act_<<AD_ACCOUNT_ID>>/ads",
-        "payload": {
-          "name": "[Atlas] Arvo · sair_do_aluguel",
-          "adset_id": "{{step1.id}}",
-          "creative": {
-            "creative_id": "{{step2.id}}"
-          },
-          "status": "PAUSED"
-        },
-        "dependsOn": [
-          1,
-          2
-        ]
-      },
-      {
-        "kind": "create_ad",
-        "path": "act_<<AD_ACCOUNT_ID>>/ads",
-        "payload": {
           "name": "[Atlas] Arvo · investimento",
+          "adset_id": "{{step1.id}}",
+          "creative": {
+            "creative_id": "{{step2.id}}"
+          },
+          "status": "PAUSED"
+        },
+        "dependsOn": [
+          1,
+          2
+        ]
+      },
+      {
+        "kind": "create_ad",
+        "path": "act_<<AD_ACCOUNT_ID>>/ads",
+        "payload": {
+          "name": "[Atlas] Arvo · localizacao",
           "adset_id": "{{step1.id}}",
           "creative": {
             "creative_id": "{{step2.id}}"
@@ -456,7 +427,7 @@
         ]
       }
     ],
-    "publicationSummary": "Esta publicação criará a campanha \"[Atlas] Leads — Arvo — São Paulo\" na categoria especial HOUSING (imobiliário) com 1 ad set, 1 criativo e 4 anúncios ([Atlas] Arvo · localizacao, [Atlas] Arvo · sair_do_aluguel, [Atlas] Arvo · investimento, [Atlas] Arvo · estilo_de_vida), todos com Advantage+ campaign budget (CBO na campanha, sem orçamento no ad set) e formulário instantâneo de leads. Tudo nasce PAUSADO: nada vai ao ar até uma ativação humana posterior, fora deste fluxo.",
+    "publicationSummary": "Esta publicação criará a campanha \"[Atlas] Leads — Arvo — São Paulo\" na categoria especial HOUSING (imobiliário) com 1 ad set, 1 criativo e 3 anúncios ([Atlas] Arvo · investimento, [Atlas] Arvo · localizacao, [Atlas] Arvo · estilo_de_vida), todos com Advantage+ campaign budget (CBO na campanha, sem orçamento no ad set) e formulário instantâneo de leads. Tudo nasce PAUSADO: nada vai ao ar até uma ativação humana posterior, fora deste fluxo.",
     "blockersToPublish": [
       "mídia vazia — nenhum image hash nem video id fornecido (nem no asset_feed_spec nem em imageHashes/videoIds)."
     ]

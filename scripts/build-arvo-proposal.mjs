@@ -66,9 +66,12 @@ const LEAD_FORM = "<<LEAD_FORM_ID>>";
 const ACCOUNT = "<<AD_ACCOUNT_ID>>";
 
 // ---------------------------------------------------------------------------
-// 1) Copy flexível (uma variação por ângulo conceitual) + validação de política.
+// 1) Copy flexível — persona INVESTIDOR (studio compacto no Paraíso/Paulista para
+//    investir). Sob HOUSING o targeting é idêntico; a diferenciação de público
+//    acontece 100% no criativo (ângulos escolhidos).
 // ---------------------------------------------------------------------------
-const copy = buildAdCopy(brief);
+const ARVO_ANGLES = ["investimento", "localizacao", "estilo_de_vida"];
+const copy = buildAdCopy(brief, ARVO_ANGLES);
 const copyViolations = validateCopy(copy);
 
 // ---------------------------------------------------------------------------
@@ -166,6 +169,14 @@ const spec = {
     price_hook: "Unidades a partir de R$ 399 mil (peça aprovada)",
     price_from_brl: 399000,
     reminder: "Confirmar disponibilidade e tabela vigente antes de publicar; faixa de renda (SM) não consta do book — não inventar no criativo.",
+  },
+
+  persona: {
+    focus: "investidor",
+    audience_note:
+      "Público INVESTIDOR — quem compra o studio compacto no Paraíso (a 400 m da Paulista) para investir/rentabilizar. Diferenciado 100% no criativo: HOUSING trava o targeting (idade 18-65+, sem gênero, só geo), então o 'público diferente' vive nos descritivos, não na segmentação.",
+    angles: ARVO_ANGLES,
+    contraparte: "O conjunto do Spin usa a persona MORADOR/primeiro imóvel — públicos distintos por criativo.",
   },
 
   objective: "OUTCOME_LEADS",

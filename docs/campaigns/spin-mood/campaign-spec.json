@@ -103,15 +103,17 @@
   "assets_note": "Vídeos + book PDF + copy em ~/Downloads/Spin-Mood-Campanha (fora do git por serem binários). O módulo autônomo faz upload dos vídeos ao Meta.",
   "copy": {
     "morador": {
-      "primary_text": "Imagina morar na Vila Madalena. 🌆\n\nSeu studio pronto pra morar, com varanda, a 700m do metrô — no bairro mais vibrante de SP. E um rooftop com piscina, academia e gourmet que viram o seu dia a dia.\n\n✅ 27m² com varanda e depósito privativo\n✅ Café, parque e cultura na sua porta\n✅ A partir de R$275 mil — a parcela pode caber no seu aluguel\n\nSaia do aluguel sem sair da Vila. 🔑\n👉 Toque em \"Saiba mais\" e receba a tabela de valores.",
-      "headline": "Seu apê na Vila Madalena a partir de R$275 mil",
-      "description": "Pronto pra morar · varanda · 700m do metrô",
-      "cta": "LEARN_MORE"
+      "primary_text": "Studios prontos para morar na Vila Madalena, a 700 m do metrô, com varanda — e um rooftop com piscina, academia e espaço gourmet no dia a dia.\n\n✅ 27 m² com varanda e depósito privativo\n✅ Café, parque e cultura por perto\n✅ A partir de R$ 275 mil — condições de financiamento direto com a incorporadora, sujeitas a análise de crédito\n\n👉 Toque em \"Saiba mais\" e receba a tabela de valores.",
+      "headline": "Studios na Vila Madalena a partir de R$275 mil",
+      "description": "Pronto para morar · varanda · 700m do metrô",
+      "cta": "LEARN_MORE",
+      "_compliance_note": "Reescrito em 3ª pessoa (2026-07-21): removidos 'seu aluguel'/'saia do aluguel'/'seu apê' (atributos pessoais) e a equivalência categórica parcela=aluguel."
     },
     "investidor": {
       "headline": "Studio na Vila Madalena a partir de R$275 mil",
       "description": "Pronto para morar · rooftop completo · 700m do metrô",
-      "cta": "LEARN_MORE"
+      "cta": "LEARN_MORE",
+      "_compliance_note": "Mantido em 3ª pessoa (descreve o produto)."
     }
   },
   "targeting": {
@@ -233,14 +235,13 @@
     },
     {
       "id": "refresh-2026-07",
-      "name": "Refresh 2026-07 — localizacao, sair_do_aluguel, renda_alvo, entrega_imediata, investimento",
+      "name": "Refresh 2026-07 — sair_do_aluguel, entrega_imediata, localizacao, estilo_de_vida",
       "status": "PAUSED",
       "angles": [
-        "localizacao",
         "sair_do_aluguel",
-        "renda_alvo",
         "entrega_imediata",
-        "investimento"
+        "localizacao",
+        "estilo_de_vida"
       ],
       "creatives_ref": "novos conceitos gerados (asset_feed_spec abaixo) — 1 anúncio por ângulo",
       "note": "Conjunto NOVO montado dentro da campanha existente (o refresh que este pedido criou)."
@@ -253,43 +254,38 @@
     "copy": {
       "product": "Spin Mood",
       "angles": [
-        "localizacao",
         "sair_do_aluguel",
-        "renda_alvo",
         "entrega_imediata",
-        "investimento"
+        "localizacao",
+        "estilo_de_vida"
       ],
       "primaryTexts": [
-        "O Spin Mood fica a 700 m do metrô em Perdizes: padaria, feira e parque na rotina, tudo a pé. Plantas de 27 a 29 m² e rooftop com vista.",
-        "No Spin Mood em Perdizes, a parcela do financiamento fica na faixa de um aluguel da região — com a diferença de que o imóvel é seu. Simule sem compromisso.",
-        "Unidades enquadradas em programa habitacional para renda familiar de 6 a 10 salários mínimos — subsídio e entrada facilitada conforme as regras do programa. Simulação gratuita e sem compromisso.",
+        "Do aluguel para o imóvel próprio em Perdizes: financiamento com condições facilitadas direto com a incorporadora, sujeitas a análise de crédito. Simule sem compromisso.",
         "Pronto para morar: o Spin Mood em Perdizes tem unidades de entrega imediata. Visite a unidade real, confira o acabamento e mude sem esperar obra.",
-        "Studios em Perdizes com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança. Potencial de renda em curta e longa estadia."
+        "O Spin Mood fica a 700 m do metrô em Perdizes: padaria, feira e parque na rotina, tudo a pé. Plantas de 27 a 29 m² e rooftop com vista.",
+        "Morar em Perdizes é ter café, parque e vida cultural a poucos passos. O Spin Mood soma rooftop com vista e a 700 m do metrô Vila Madalena — a cidade como extensão de casa."
       ],
       "headlines": [
-        "A 700 m do metrô — Perdizes",
-        "Parcela na faixa do aluguel",
-        "Programa para renda de 6 a 10 SM",
+        "Do aluguel ao imóvel próprio",
         "Pronto para morar em Perdizes",
-        "Studio para investir em Perdizes"
+        "A 700 m do metrô — Perdizes",
+        "Viva Perdizes no dia a dia"
       ],
       "descriptions": [
-        "A 700 m do metrô",
-        "Parcela no lugar do aluguel",
-        "Subsídio e entrada facilitada",
+        "Rumo ao imóvel próprio",
         "Entrega imediata",
-        "Alta demanda de locação"
+        "A 700 m do metrô",
+        "Vida de bairro a pé"
       ],
-      "callToAction": "SIGN_UP",
+      "callToAction": "LEARN_MORE",
       "complianceNotes": [
         "Campanha imobiliária: special_ad_categories [\"HOUSING\"] obrigatório — idade (18-65+), gênero e CEP travados pela Meta; a diferenciação acontece 100% no criativo.",
-        "5 ângulos conceituais distintos — o Andromeda premia diversidade real; edições cosméticas não contam como criativo novo (refresh de conceito a cada 1-3 semanas).",
+        "4 ângulos conceituais distintos — o Andromeda premia diversidade real; edições cosméticas não contam como criativo novo (refresh de conceito a cada 1-3 semanas).",
         "Copy descreve o produto, o lugar e o programa de crédito — nunca atributos de quem vê (política Housing / Personal Attributes).",
-        "primaryTexts[0] com 135 caracteres — recomendado ≤125 para evitar truncamento no feed.",
-        "primaryTexts[1] com 155 caracteres — recomendado ≤125 para evitar truncamento no feed.",
-        "primaryTexts[2] com 194 caracteres — recomendado ≤125 para evitar truncamento no feed.",
-        "primaryTexts[3] com 145 caracteres — recomendado ≤125 para evitar truncamento no feed.",
-        "primaryTexts[4] com 158 caracteres — recomendado ≤125 para evitar truncamento no feed."
+        "primaryTexts[0] com 168 caracteres — recomendado ≤125 para evitar truncamento no feed.",
+        "primaryTexts[1] com 145 caracteres — recomendado ≤125 para evitar truncamento no feed.",
+        "primaryTexts[2] com 135 caracteres — recomendado ≤125 para evitar truncamento no feed.",
+        "primaryTexts[3] com 171 caracteres — recomendado ≤125 para evitar truncamento no feed."
       ]
     },
     "copy_policy_violations": [],
@@ -313,60 +309,51 @@
       "videos": [],
       "bodies": [
         {
-          "text": "O Spin Mood fica a 700 m do metrô em Perdizes: padaria, feira e parque na rotina, tudo a pé. Plantas de 27 a 29 m² e rooftop com vista."
-        },
-        {
-          "text": "No Spin Mood em Perdizes, a parcela do financiamento fica na faixa de um aluguel da região — com a diferença de que o imóvel é seu. Simule sem compromisso."
-        },
-        {
-          "text": "Unidades enquadradas em programa habitacional para renda familiar de 6 a 10 salários mínimos — subsídio e entrada facilitada conforme as regras do programa. Simulação gratuita e sem compromisso."
+          "text": "Do aluguel para o imóvel próprio em Perdizes: financiamento com condições facilitadas direto com a incorporadora, sujeitas a análise de crédito. Simule sem compromisso."
         },
         {
           "text": "Pronto para morar: o Spin Mood em Perdizes tem unidades de entrega imediata. Visite a unidade real, confira o acabamento e mude sem esperar obra."
         },
         {
-          "text": "Studios em Perdizes com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança. Potencial de renda em curta e longa estadia."
+          "text": "O Spin Mood fica a 700 m do metrô em Perdizes: padaria, feira e parque na rotina, tudo a pé. Plantas de 27 a 29 m² e rooftop com vista."
+        },
+        {
+          "text": "Morar em Perdizes é ter café, parque e vida cultural a poucos passos. O Spin Mood soma rooftop com vista e a 700 m do metrô Vila Madalena — a cidade como extensão de casa."
         }
       ],
       "titles": [
         {
-          "text": "A 700 m do metrô — Perdizes"
-        },
-        {
-          "text": "Parcela na faixa do aluguel"
-        },
-        {
-          "text": "Programa para renda de 6 a 10 SM"
+          "text": "Do aluguel ao imóvel próprio"
         },
         {
           "text": "Pronto para morar em Perdizes"
         },
         {
-          "text": "Studio para investir em Perdizes"
+          "text": "A 700 m do metrô — Perdizes"
+        },
+        {
+          "text": "Viva Perdizes no dia a dia"
         }
       ],
       "descriptions": [
         {
-          "text": "A 700 m do metrô"
-        },
-        {
-          "text": "Parcela no lugar do aluguel"
-        },
-        {
-          "text": "Subsídio e entrada facilitada"
+          "text": "Rumo ao imóvel próprio"
         },
         {
           "text": "Entrega imediata"
         },
         {
-          "text": "Alta demanda de locação"
+          "text": "A 700 m do metrô"
+        },
+        {
+          "text": "Vida de bairro a pé"
         }
       ],
       "ad_formats": [
         "SINGLE_IMAGE"
       ],
       "call_to_action_types": [
-        "SIGN_UP"
+        "LEARN_MORE"
       ],
       "link_urls": [
         {
@@ -421,7 +408,7 @@
               "link_data": {
                 "link": "http://fb.me/",
                 "call_to_action": {
-                  "type": "SIGN_UP",
+                  "type": "LEARN_MORE",
                   "value": {
                     "lead_gen_form_id": "<<LEAD_FORM_ID>>"
                   }
@@ -433,60 +420,51 @@
               "videos": [],
               "bodies": [
                 {
-                  "text": "O Spin Mood fica a 700 m do metrô em Perdizes: padaria, feira e parque na rotina, tudo a pé. Plantas de 27 a 29 m² e rooftop com vista."
-                },
-                {
-                  "text": "No Spin Mood em Perdizes, a parcela do financiamento fica na faixa de um aluguel da região — com a diferença de que o imóvel é seu. Simule sem compromisso."
-                },
-                {
-                  "text": "Unidades enquadradas em programa habitacional para renda familiar de 6 a 10 salários mínimos — subsídio e entrada facilitada conforme as regras do programa. Simulação gratuita e sem compromisso."
+                  "text": "Do aluguel para o imóvel próprio em Perdizes: financiamento com condições facilitadas direto com a incorporadora, sujeitas a análise de crédito. Simule sem compromisso."
                 },
                 {
                   "text": "Pronto para morar: o Spin Mood em Perdizes tem unidades de entrega imediata. Visite a unidade real, confira o acabamento e mude sem esperar obra."
                 },
                 {
-                  "text": "Studios em Perdizes com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança. Potencial de renda em curta e longa estadia."
+                  "text": "O Spin Mood fica a 700 m do metrô em Perdizes: padaria, feira e parque na rotina, tudo a pé. Plantas de 27 a 29 m² e rooftop com vista."
+                },
+                {
+                  "text": "Morar em Perdizes é ter café, parque e vida cultural a poucos passos. O Spin Mood soma rooftop com vista e a 700 m do metrô Vila Madalena — a cidade como extensão de casa."
                 }
               ],
               "titles": [
                 {
-                  "text": "A 700 m do metrô — Perdizes"
-                },
-                {
-                  "text": "Parcela na faixa do aluguel"
-                },
-                {
-                  "text": "Programa para renda de 6 a 10 SM"
+                  "text": "Do aluguel ao imóvel próprio"
                 },
                 {
                   "text": "Pronto para morar em Perdizes"
                 },
                 {
-                  "text": "Studio para investir em Perdizes"
+                  "text": "A 700 m do metrô — Perdizes"
+                },
+                {
+                  "text": "Viva Perdizes no dia a dia"
                 }
               ],
               "descriptions": [
                 {
-                  "text": "A 700 m do metrô"
-                },
-                {
-                  "text": "Parcela no lugar do aluguel"
-                },
-                {
-                  "text": "Subsídio e entrada facilitada"
+                  "text": "Rumo ao imóvel próprio"
                 },
                 {
                   "text": "Entrega imediata"
                 },
                 {
-                  "text": "Alta demanda de locação"
+                  "text": "A 700 m do metrô"
+                },
+                {
+                  "text": "Vida de bairro a pé"
                 }
               ],
               "ad_formats": [
                 "SINGLE_IMAGE"
               ],
               "call_to_action_types": [
-                "SIGN_UP"
+                "LEARN_MORE"
               ],
               "link_urls": [
                 {
@@ -500,48 +478,16 @@
           "kind": "create_ad",
           "path": "act_<<AD_ACCOUNT_ID>>/ads",
           "payload": {
-            "name": "[Atlas] Spin Mood · localizacao",
-            "adset_id": "{{step1.id}}",
-            "creative": {
-              "creative_id": "{{step2.id}}"
-            },
-            "status": "PAUSED"
-          },
-          "dependsOn": [
-            1,
-            2
-          ]
-        },
-        {
-          "kind": "create_ad",
-          "path": "act_<<AD_ACCOUNT_ID>>/ads",
-          "payload": {
             "name": "[Atlas] Spin Mood · sair_do_aluguel",
-            "adset_id": "{{step1.id}}",
+            "adset_id": "{{step0.id}}",
             "creative": {
-              "creative_id": "{{step2.id}}"
+              "creative_id": "{{step1.id}}"
             },
             "status": "PAUSED"
           },
           "dependsOn": [
-            1,
-            2
-          ]
-        },
-        {
-          "kind": "create_ad",
-          "path": "act_<<AD_ACCOUNT_ID>>/ads",
-          "payload": {
-            "name": "[Atlas] Spin Mood · renda_alvo",
-            "adset_id": "{{step1.id}}",
-            "creative": {
-              "creative_id": "{{step2.id}}"
-            },
-            "status": "PAUSED"
-          },
-          "dependsOn": [
-            1,
-            2
+            0,
+            1
           ]
         },
         {
@@ -549,35 +495,51 @@
           "path": "act_<<AD_ACCOUNT_ID>>/ads",
           "payload": {
             "name": "[Atlas] Spin Mood · entrega_imediata",
-            "adset_id": "{{step1.id}}",
+            "adset_id": "{{step0.id}}",
             "creative": {
-              "creative_id": "{{step2.id}}"
+              "creative_id": "{{step1.id}}"
             },
             "status": "PAUSED"
           },
           "dependsOn": [
-            1,
-            2
+            0,
+            1
           ]
         },
         {
           "kind": "create_ad",
           "path": "act_<<AD_ACCOUNT_ID>>/ads",
           "payload": {
-            "name": "[Atlas] Spin Mood · investimento",
-            "adset_id": "{{step1.id}}",
+            "name": "[Atlas] Spin Mood · localizacao",
+            "adset_id": "{{step0.id}}",
             "creative": {
-              "creative_id": "{{step2.id}}"
+              "creative_id": "{{step1.id}}"
             },
             "status": "PAUSED"
           },
           "dependsOn": [
-            1,
-            2
+            0,
+            1
+          ]
+        },
+        {
+          "kind": "create_ad",
+          "path": "act_<<AD_ACCOUNT_ID>>/ads",
+          "payload": {
+            "name": "[Atlas] Spin Mood · estilo_de_vida",
+            "adset_id": "{{step0.id}}",
+            "creative": {
+              "creative_id": "{{step1.id}}"
+            },
+            "status": "PAUSED"
+          },
+          "dependsOn": [
+            0,
+            1
           ]
         }
       ],
-      "summary": "Esta publicação adicionará à campanha existente o conjunto da campanha \"[Atlas] Leads — Spin Mood — São Paulo\" na categoria especial HOUSING (imobiliário) com 1 ad set, 1 criativo e 5 anúncios ([Atlas] Spin Mood · localizacao, [Atlas] Spin Mood · sair_do_aluguel, [Atlas] Spin Mood · renda_alvo, [Atlas] Spin Mood · entrega_imediata, [Atlas] Spin Mood · investimento), todos com Advantage+ campaign budget (CBO na campanha, sem orçamento no ad set) e formulário instantâneo de leads. Tudo nasce PAUSADO: nada vai ao ar até uma ativação humana posterior, fora deste fluxo.",
+      "summary": "Esta publicação adicionará à campanha existente o conjunto da campanha \"[Atlas] Leads — Spin Mood — São Paulo\" na categoria especial HOUSING (imobiliário) com 1 ad set, 1 criativo e 4 anúncios ([Atlas] Spin Mood · sair_do_aluguel, [Atlas] Spin Mood · entrega_imediata, [Atlas] Spin Mood · localizacao, [Atlas] Spin Mood · estilo_de_vida), todos com Advantage+ campaign budget (CBO na campanha, sem orçamento no ad set) e formulário instantâneo de leads. Tudo nasce PAUSADO: nada vai ao ar até uma ativação humana posterior, fora deste fluxo.",
       "note": "Se a campanha Spin já estiver no Meta, rodam só create_adset → create_creative → create_ads apontando para o campaign_id real. Se ainda for draft, sobe junto com a campanha (full_publication_if_not_live)."
     },
     "full_publication_if_not_live": [
@@ -642,7 +604,7 @@
             "link_data": {
               "link": "http://fb.me/",
               "call_to_action": {
-                "type": "SIGN_UP",
+                "type": "LEARN_MORE",
                 "value": {
                   "lead_gen_form_id": "<<LEAD_FORM_ID>>"
                 }
@@ -654,60 +616,51 @@
             "videos": [],
             "bodies": [
               {
-                "text": "O Spin Mood fica a 700 m do metrô em Perdizes: padaria, feira e parque na rotina, tudo a pé. Plantas de 27 a 29 m² e rooftop com vista."
-              },
-              {
-                "text": "No Spin Mood em Perdizes, a parcela do financiamento fica na faixa de um aluguel da região — com a diferença de que o imóvel é seu. Simule sem compromisso."
-              },
-              {
-                "text": "Unidades enquadradas em programa habitacional para renda familiar de 6 a 10 salários mínimos — subsídio e entrada facilitada conforme as regras do programa. Simulação gratuita e sem compromisso."
+                "text": "Do aluguel para o imóvel próprio em Perdizes: financiamento com condições facilitadas direto com a incorporadora, sujeitas a análise de crédito. Simule sem compromisso."
               },
               {
                 "text": "Pronto para morar: o Spin Mood em Perdizes tem unidades de entrega imediata. Visite a unidade real, confira o acabamento e mude sem esperar obra."
               },
               {
-                "text": "Studios em Perdizes com forte demanda de locação: metrô próximo, universidades e polo gastronômico na vizinhança. Potencial de renda em curta e longa estadia."
+                "text": "O Spin Mood fica a 700 m do metrô em Perdizes: padaria, feira e parque na rotina, tudo a pé. Plantas de 27 a 29 m² e rooftop com vista."
+              },
+              {
+                "text": "Morar em Perdizes é ter café, parque e vida cultural a poucos passos. O Spin Mood soma rooftop com vista e a 700 m do metrô Vila Madalena — a cidade como extensão de casa."
               }
             ],
             "titles": [
               {
-                "text": "A 700 m do metrô — Perdizes"
-              },
-              {
-                "text": "Parcela na faixa do aluguel"
-              },
-              {
-                "text": "Programa para renda de 6 a 10 SM"
+                "text": "Do aluguel ao imóvel próprio"
               },
               {
                 "text": "Pronto para morar em Perdizes"
               },
               {
-                "text": "Studio para investir em Perdizes"
+                "text": "A 700 m do metrô — Perdizes"
+              },
+              {
+                "text": "Viva Perdizes no dia a dia"
               }
             ],
             "descriptions": [
               {
-                "text": "A 700 m do metrô"
-              },
-              {
-                "text": "Parcela no lugar do aluguel"
-              },
-              {
-                "text": "Subsídio e entrada facilitada"
+                "text": "Rumo ao imóvel próprio"
               },
               {
                 "text": "Entrega imediata"
               },
               {
-                "text": "Alta demanda de locação"
+                "text": "A 700 m do metrô"
+              },
+              {
+                "text": "Vida de bairro a pé"
               }
             ],
             "ad_formats": [
               "SINGLE_IMAGE"
             ],
             "call_to_action_types": [
-              "SIGN_UP"
+              "LEARN_MORE"
             ],
             "link_urls": [
               {
@@ -721,39 +674,7 @@
         "kind": "create_ad",
         "path": "act_<<AD_ACCOUNT_ID>>/ads",
         "payload": {
-          "name": "[Atlas] Spin Mood · localizacao",
-          "adset_id": "{{step1.id}}",
-          "creative": {
-            "creative_id": "{{step2.id}}"
-          },
-          "status": "PAUSED"
-        },
-        "dependsOn": [
-          1,
-          2
-        ]
-      },
-      {
-        "kind": "create_ad",
-        "path": "act_<<AD_ACCOUNT_ID>>/ads",
-        "payload": {
           "name": "[Atlas] Spin Mood · sair_do_aluguel",
-          "adset_id": "{{step1.id}}",
-          "creative": {
-            "creative_id": "{{step2.id}}"
-          },
-          "status": "PAUSED"
-        },
-        "dependsOn": [
-          1,
-          2
-        ]
-      },
-      {
-        "kind": "create_ad",
-        "path": "act_<<AD_ACCOUNT_ID>>/ads",
-        "payload": {
-          "name": "[Atlas] Spin Mood · renda_alvo",
           "adset_id": "{{step1.id}}",
           "creative": {
             "creative_id": "{{step2.id}}"
@@ -785,7 +706,23 @@
         "kind": "create_ad",
         "path": "act_<<AD_ACCOUNT_ID>>/ads",
         "payload": {
-          "name": "[Atlas] Spin Mood · investimento",
+          "name": "[Atlas] Spin Mood · localizacao",
+          "adset_id": "{{step1.id}}",
+          "creative": {
+            "creative_id": "{{step2.id}}"
+          },
+          "status": "PAUSED"
+        },
+        "dependsOn": [
+          1,
+          2
+        ]
+      },
+      {
+        "kind": "create_ad",
+        "path": "act_<<AD_ACCOUNT_ID>>/ads",
+        "payload": {
+          "name": "[Atlas] Spin Mood · estilo_de_vida",
           "adset_id": "{{step1.id}}",
           "creative": {
             "creative_id": "{{step2.id}}"
@@ -803,13 +740,24 @@
       "weekly_brl": 420,
       "two_adsets_verdict": "consolidar",
       "one_adset_verdict": "ok",
-      "doctrine": "Com R$ 60/dia (R$ 420/sem), 2 conjuntos ativos AO MESMO TEMPO fragmentam o sinal de aprendizado (cada um abaixo das ~50 conv/sem). Recomendação honesta: rodar o refresh como ROTAÇÃO — ativar o conjunto novo e PAUSAR o original (troca de conceito), mantendo 1 conjunto ativo — OU subir a verba (~R$ 120/dia) se a diretoria quiser os dois ativos. Decisão vai à aprovação."
+      "two_adset_daily_floor_brl": 115,
+      "doctrine": "Com R$ 60/dia (R$ 420/sem), 2 conjuntos ativos AO MESMO TEMPO fragmentam o sinal de aprendizado (cada um abaixo das ~50 conv/sem). Recomendação honesta: rodar o refresh como ROTAÇÃO — ativar o conjunto novo e PAUSAR o original (troca de conceito), mantendo 1 conjunto ativo — OU subir a verba para ~R$ 115/dia (2× o piso de aprendizado ao CPL de R$ 8; mais se o CPL real for maior) se a diretoria quiser os dois ativos. Decisão vai à aprovação."
     }
+  },
+  "persona": {
+    "focus": "morador / primeiro imóvel",
+    "audience_note": "Público MORADOR — quem quer sair do aluguel e morar pronto na Vila Madalena/Perdizes. NÃO usa renda_alvo (faixa de renda no criativo é risco HOUSING). Contraparte: o conjunto do Arvo usa persona INVESTIDOR — públicos distintos 100% no criativo.",
+    "angles": [
+      "sair_do_aluguel",
+      "entrega_imediata",
+      "localizacao",
+      "estilo_de_vida"
+    ]
   },
   "revisions": [
     {
       "date": "2026-07-21",
-      "change": "Refaz a campanha: conjunto 'refresh-2026-07' montado dentro da campanha existente (5 conceitos novos), campanha [Atlas] CBO/HOUSING formalizada. Tudo PAUSED."
+      "change": "Refaz a campanha: conjunto 'refresh-2026-07' (persona MORADOR, 4 conceitos novos, sem renda_alvo) montado DENTRO da campanha existente (mount sem create_campaign, placeholders renumerados); campanha [Atlas] CBO/HOUSING formalizada; copy legado reescrito em 3ª pessoa. Tudo PAUSED."
     }
   ]
 }
