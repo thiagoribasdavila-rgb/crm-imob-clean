@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
-import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -355,7 +355,12 @@ export default function ProjectMaterialsPage() {
                 </button>
               ))}
               {!loading && filtered.length === 0 ? (
-                <p className="px-1 py-2 text-sm text-[#6b7890]">Nenhum projeto neste filtro — limpe a busca ou tente parte do nome.</p>
+                <AtlasEmpty
+                  reason="no-results"
+                  eyebrow="Busca sem correspondência"
+                  title="Nenhum projeto neste filtro"
+                  description="Limpe a busca ou tente parte do nome."
+                />
               ) : null}
             </div>
           </div>
@@ -460,11 +465,26 @@ export default function ProjectMaterialsPage() {
               {materialsLoading ? (
                 <div className="grid gap-2">{[1, 2, 3, 4].map((item) => <AtlasSkeleton key={item} className="h-20 w-full" />)}</div>
               ) : !selected ? (
-                <p className="text-sm text-[#6b7890]">Escolha uma incorporadora e um projeto para acessar o kit comercial.</p>
+                <AtlasEmpty
+                  reason="not-configured"
+                  eyebrow="Seleção necessária"
+                  title="Escolha uma incorporadora e um projeto"
+                  description="Selecione o projeto para acessar o kit comercial."
+                />
               ) : materials.length === 0 ? (
-                <p className="text-sm text-[#6b7890]">Kit ainda vazio — publique book, tabela ou espelho para liberar o material ao time.</p>
+                <AtlasEmpty
+                  reason="first-use"
+                  eyebrow="Kit ainda vazio"
+                  title="Nenhum material publicado"
+                  description="Publique book, tabela ou espelho para liberar o material ao time."
+                />
               ) : visibleMaterials.length === 0 ? (
-                <p className="text-sm text-[#6b7890]">Nenhum material neste filtro — escolha outro tipo ou limpe a busca.</p>
+                <AtlasEmpty
+                  reason="no-results"
+                  eyebrow="Filtro sem correspondência"
+                  title="Nenhum material neste filtro"
+                  description="Escolha outro tipo ou limpe a busca."
+                />
               ) : (
                 <div className="grid gap-2">
                   {visibleMaterials.map((material, index) => {

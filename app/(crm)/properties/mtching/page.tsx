@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { MessageResponse } from "@/components/ai-elements/message";
-import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -210,9 +210,17 @@ export default function PropertyMatching() {
         </div>
       ) : null}
       {!loading && !leads.length ? (
-        <p className="text-sm text-[#6b7890]">
-          Nenhum lead visível — <Link href="/leads" className={`font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[#e8eef8] ${focusRing}`}>cadastre ou receba um lead</Link> para iniciar o matching.
-        </p>
+        <AtlasEmpty
+          reason="first-use"
+          eyebrow="Matching ainda vazio"
+          title="Nenhum lead visível"
+          description="Cadastre ou receba um lead para iniciar o matching."
+          action={
+            <Link href="/leads" className="atlas-button-primary">
+              Ir para leads
+            </Link>
+          }
+        />
       ) : null}
 
       {!loading && payload ? <>
@@ -348,7 +356,12 @@ export default function PropertyMatching() {
           })}
         </section>
         {!matches.length ? (
-          <p className="text-sm text-[#6b7890]">Sem imóveis para comparar — atualize o estoque para gerar recomendações.</p>
+          <AtlasEmpty
+            reason="no-results"
+            eyebrow="Sem recomendações"
+            title="Sem imóveis para comparar"
+            description="Atualize o estoque para gerar recomendações."
+          />
         ) : null}
       </> : null}
     </div>

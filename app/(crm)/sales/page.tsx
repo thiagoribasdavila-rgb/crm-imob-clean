@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
-import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { isMissingRelation, leadAsOpportunity, mapLegacyLead } from "@/lib/compat/legacy-v2";
 
 type Opportunity = {
@@ -227,9 +227,14 @@ export default function SalesPage() {
                 );
               })
             ) : (
-              <p className="cc6-hairline px-5 py-5 text-sm leading-6 text-[#6b7890]">
-                Nenhuma confirmação crítica neste recorte — valor, probabilidade, prazo e comissão seguem com evidência humana.
-              </p>
+              <div className="cc6-hairline px-5 py-5">
+                <AtlasEmpty
+                  reason="no-activity"
+                  eyebrow="Sem confirmações críticas"
+                  title="Nenhuma confirmação crítica neste recorte"
+                  description="Valor, probabilidade, prazo e comissão seguem com evidência humana."
+                />
+              </div>
             )}
           </div>
           <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
@@ -352,23 +357,44 @@ export default function SalesPage() {
             </table>
           </div>
         ) : (
-          <p className="cc6-hairline px-5 py-6 text-sm leading-6 text-[#6b7890]">
-            {items.length ? (
-              <>
-                Nenhuma oportunidade neste filtro.{" "}
-                <button type="button" className="cursor-pointer font-medium text-[color:var(--atlas-accent)] hover:underline" onClick={() => { setQuery(""); setView("all"); }}>
-                  Limpar filtros
-                </button>
-              </>
-            ) : (
-              <>
-                Nenhuma oportunidade registrada — elas nascem quando uma lead avança para um negócio comercial.{" "}
-                <Link href="/pipeline" className="font-medium text-[color:var(--atlas-accent)] hover:underline">
-                  Abrir pipeline
-                </Link>
-              </>
-            )}
-          </p>
+          <div className="cc6-hairline px-5 py-6">
+            <AtlasEmpty
+              reason={items.length ? "no-results" : "first-use"}
+              eyebrow={
+                items.length
+                  ? "Fila filtrada"
+                  : "Pipeline de receita ainda vazio"
+              }
+              title={
+                items.length
+                  ? "Nenhuma oportunidade neste filtro"
+                  : "Nenhuma oportunidade registrada"
+              }
+              description={
+                items.length
+                  ? "Limpe a busca ou altere o filtro para ampliar a fila."
+                  : "As oportunidades aparecem quando uma lead avança para um negócio comercial."
+              }
+              action={
+                items.length ? (
+                  <button
+                    type="button"
+                    className="atlas-button-secondary"
+                    onClick={() => {
+                      setQuery("");
+                      setView("all");
+                    }}
+                  >
+                    Limpar filtros
+                  </button>
+                ) : (
+                  <Link href="/pipeline" className="atlas-button-primary">
+                    Abrir pipeline
+                  </Link>
+                )
+              }
+            />
+          </div>
         )}
       </section>
     </div>

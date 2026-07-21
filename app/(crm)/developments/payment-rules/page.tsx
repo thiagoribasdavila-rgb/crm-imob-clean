@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState, type CSSProperties } from "react";
-import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -277,7 +277,12 @@ export default function PaymentRulesPage() {
             {!data ? (
               <AtlasSkeleton className="h-60 w-full" />
             ) : !data.rules.length ? (
-              <p className="text-sm text-[#6b7890]">Nenhuma regra cadastrada — registre a primeira quando receber as condições da incorporadora.</p>
+              <AtlasEmpty
+                reason="first-use"
+                eyebrow="Condições ainda não registradas"
+                title="Nenhuma regra cadastrada"
+                description="Registre a primeira quando receber as condições da incorporadora."
+              />
             ) : (
               data.rules.map((rule, index) => (
                 <article

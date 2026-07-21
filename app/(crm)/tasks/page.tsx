@@ -9,7 +9,7 @@ import {
   type CSSProperties,
 } from "react";
 import { supabase } from "@/lib/supabase";
-import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -450,15 +450,19 @@ export default function TasksPage() {
                 );
               })
             ) : (
-              <p className="px-5 pb-5 pt-1 text-sm text-[#6b7890]">
-                Dia sob controle — nenhuma prioridade pessoal exige ação agora.{" "}
-                <Link
-                  href="/calendar"
-                  className="font-medium text-[color:var(--atlas-accent)] hover:underline"
-                >
-                  Revisar agenda
-                </Link>
-              </p>
+              <div className="px-5 pb-5 pt-1">
+                <AtlasEmpty
+                  reason="completed"
+                  eyebrow="Prioridades concluídas"
+                  title="Dia sob controle"
+                  description="Nenhuma prioridade pessoal exige ação neste momento."
+                  action={
+                    <Link href="/calendar" className="atlas-button-secondary">
+                      Revisar agenda
+                    </Link>
+                  }
+                />
+              </div>
             )}
           </div>
           {remainingSteps.length ? (
@@ -945,31 +949,41 @@ export default function TasksPage() {
                 );
               })
             ) : (
-              <p className="cc6-hairline px-5 py-6 text-sm text-[#6b7890]">
-                {data?.tasks.length ? (
-                  <>
-                    Nenhuma tarefa neste filtro.{" "}
-                    <button
-                      type="button"
-                      onClick={() => setView("priority")}
-                      className="cursor-pointer font-medium text-[color:var(--atlas-accent)] hover:underline"
-                    >
-                      Ver prioridades
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    Nenhuma tarefa aberta — rotina em dia.{" "}
-                    <button
-                      type="button"
-                      onClick={() => setShowCreate(true)}
-                      className="cursor-pointer font-medium text-[color:var(--atlas-accent)] hover:underline"
-                    >
-                      Criar tarefa
-                    </button>
-                  </>
-                )}
-              </p>
+              <div className="cc6-hairline px-5 py-6">
+                <AtlasEmpty
+                  reason={data?.tasks.length ? "no-results" : "completed"}
+                  eyebrow={
+                    data?.tasks.length
+                      ? "Filtro sem pendências"
+                      : "Rotina concluída"
+                  }
+                  title="Fila em dia"
+                  description={
+                    data?.tasks.length
+                      ? "Nenhuma tarefa corresponde a este filtro. Volte às prioridades para revisar a fila completa."
+                      : "Nenhuma tarefa aberta exige ação neste momento."
+                  }
+                  action={
+                    data?.tasks.length ? (
+                      <button
+                        type="button"
+                        onClick={() => setView("priority")}
+                        className="atlas-button-secondary"
+                      >
+                        Ver prioridades
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowCreate(true)}
+                        className="atlas-button-primary"
+                      >
+                        Criar tarefa
+                      </button>
+                    )
+                  }
+                />
+              </div>
             )}
           </div>
           {data ? (
@@ -1037,9 +1051,14 @@ export default function TasksPage() {
                 </div>
               ))}
               {!data?.byOwner.length ? (
-                <p className="py-2 text-xs text-[#6b7890]">
-                  Sem tarefas visíveis na equipe.
-                </p>
+                <div className="py-2">
+                  <AtlasEmpty
+                    reason="completed"
+                    eyebrow="Equipe sem pendências"
+                    title="Sem tarefas visíveis"
+                    description="A equipe ainda não possui ações abertas."
+                  />
+                </div>
               ) : null}
             </div>
             <p className="cc6-hairline mt-1 pt-2.5 text-[10px] leading-4 text-[#6b7890]">

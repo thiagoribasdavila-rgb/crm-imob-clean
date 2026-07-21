@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState, type CSSProperties } from "react";
-import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -1068,10 +1068,14 @@ export default function MetaIntegration() {
                 ))}
               </div>
             ) : !data.sources.length ? (
-              <p className="px-5 py-6 text-sm text-[#6b7890]">
-                Nenhuma origem cadastrada — conecte a primeira Página e
-                Formulário ao lado para aceitar webhooks.
-              </p>
+              <div className="px-5 py-6">
+                <AtlasEmpty
+                  reason="first-use"
+                  eyebrow="Integração ainda vazia"
+                  title="Nenhuma origem cadastrada"
+                  description="Conecte a primeira Página e Formulário ao lado para aceitar webhooks."
+                />
+              </div>
             ) : (
               data.sources.map((source, index) => (
                 <article
@@ -1904,12 +1908,17 @@ export default function MetaIntegration() {
                 ))}
               </tbody>
             </table>
+          ) : data ? (
+            <div className="py-4">
+              <AtlasEmpty
+                reason="no-activity"
+                eyebrow="Sem amostra de campanhas"
+                title="Ainda sem sinais de campanha"
+                description="Quando os leads entrarem com ID de campanha, qualidade, visitas, propostas e conversão aparecem aqui."
+              />
+            </div>
           ) : (
-            <p className="py-4 text-sm text-[#6b7890]">
-              {data
-                ? "Sem amostra de campanhas — quando os leads entrarem com ID de campanha, qualidade, visitas, propostas e conversão aparecem aqui."
-                : "—"}
-            </p>
+            <p className="py-4 text-sm text-[#6b7890]">—</p>
           )}
         </div>
       </section>
@@ -1944,10 +1953,12 @@ export default function MetaIntegration() {
               — o restante do time contribui por meio dos acompanhamentos.
             </p>
           ) : !data.dailyReports.length ? (
-            <p className="cc6-panel-quiet p-4 text-sm leading-6 text-[#6b7890]">
-              Primeiro relatório ainda não gerado — o worker diário consolidará
-              campanhas, sinais e recomendações para sua revisão.
-            </p>
+            <AtlasEmpty
+              reason="no-activity"
+              eyebrow="Consolidação pendente"
+              title="Primeiro relatório ainda não gerado"
+              description="O worker diário consolidará campanhas, sinais e recomendações para sua revisão."
+            />
           ) : (
             data.dailyReports.map((report, index) => (
               <article
@@ -2001,9 +2012,12 @@ export default function MetaIntegration() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs leading-5 text-[#6b7890]">
-                      Sem recomendações com amostra suficiente neste período.
-                    </p>
+                    <AtlasEmpty
+                      reason="no-activity"
+                      eyebrow="Amostra insuficiente"
+                      title="Sem recomendações neste período"
+                      description="As recomendações aparecem quando houver amostra suficiente no período."
+                    />
                   )}
                 </div>
               </article>

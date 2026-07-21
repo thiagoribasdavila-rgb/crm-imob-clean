@@ -9,7 +9,7 @@ import {
   type CSSProperties,
 } from "react";
 import { supabase } from "@/lib/supabase";
-import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
@@ -538,22 +538,41 @@ export default function CalendarPage() {
                 })}
               </>
             ) : (
-              <p className="px-5 py-6 text-sm text-[#6b7890]">
-                {window === "all" ? (
-                  "Agenda vazia — comece criando uma tarefa."
-                ) : (
-                  <>
-                    Agenda livre neste período.{" "}
-                    <button
-                      type="button"
-                      onClick={() => setWindow("all")}
-                      className="cursor-pointer font-medium text-[color:var(--atlas-accent)] hover:underline"
-                    >
-                      Ver agenda completa
-                    </button>
-                  </>
-                )}
-              </p>
+              <div className="px-5 py-6">
+                <AtlasEmpty
+                  reason="completed"
+                  eyebrow={
+                    window === "all"
+                      ? "Agenda sem compromissos"
+                      : "Período sem pendências"
+                  }
+                  title={
+                    window === "all"
+                      ? "Agenda vazia"
+                      : "Agenda livre neste período"
+                  }
+                  description={
+                    window === "all"
+                      ? "Nenhum compromisso registrado. Comece criando uma tarefa comercial."
+                      : "Nenhum compromisso exige atenção neste recorte. Crie uma tarefa ou consulte a agenda completa."
+                  }
+                  action={
+                    window === "all" ? (
+                      <Link href="/tasks" className="atlas-button-primary">
+                        Criar tarefa
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setWindow("all")}
+                        className="atlas-button-secondary"
+                      >
+                        Ver agenda completa
+                      </button>
+                    )
+                  }
+                />
+              </div>
             )}
           </div>
 

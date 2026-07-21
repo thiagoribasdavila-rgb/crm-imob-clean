@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import { CommandCenterModuleHealth } from "@/app/(crm)/dashboard/page";
 import type { ProposalSignalKind } from "@/lib/ai/action-proposals";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import {
@@ -2592,6 +2593,12 @@ export default function CommandCenterPage() {
         </>
         )}
       </section>
+
+      {/* TERCIÁRIO · saúde operacional dos módulos + orientação de escrita segura.
+          Fronteira protegida única (fetch a /api/v1/core-v2/module-health, sem
+          leitura direta ao banco). Restaura a governança CC-6 dos cinco módulos
+          prioritários com semáforo e ação de escrita segura. */}
+      <CommandCenterModuleHealth />
 
       {warnings.length ? (
         <AtlasRecoverableError

@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
-import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 
 type Member = { id: string; fullName: string; role: string; reportsTo: string | null; active: boolean; portfolio: number; hotLeads: number; overdue: number; withoutNextAction: number; hotWithoutNextAction: number; won: number };
 type Payload = { members: Member[]; supportQueue: Member[]; summary: { activePeople: number; brokers: number; portfolio: number; overdue: number }; method: { peopleRanking: boolean } };
@@ -120,7 +120,14 @@ export default function BrokersPage() {
             {loading ? (
               <div className="grid gap-2 py-4">{[1, 2, 3, 4, 5].map((row) => <AtlasSkeleton key={row} className="h-14" />)}</div>
             ) : !data?.members.length ? (
-              <p className="py-4 text-xs leading-5 text-[#6b7890]">Nenhuma pessoa no seu escopo — vincule os perfis na hierarquia comercial para montar o time.</p>
+              <div className="py-4">
+                <AtlasEmpty
+                  reason="not-configured"
+                  eyebrow="Escopo sem vínculos"
+                  title="Nenhuma pessoa no seu escopo"
+                  description="Vincule os perfis na hierarquia comercial para montar o time."
+                />
+              </div>
             ) : (
               data.members.map((member) => {
                 const leader = member.reportsTo ? memberMap.get(member.reportsTo) : null;

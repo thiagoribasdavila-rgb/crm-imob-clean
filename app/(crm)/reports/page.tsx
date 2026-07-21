@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import { LIVE_LEAD_SELECT, leadAsOpportunity, mapLegacyLead } from "@/lib/compat/legacy-v2";
+import { AtlasEmpty } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 
@@ -306,7 +307,14 @@ export default function ReportsPage() {
           <p className="cc6-eyebrow">Qualidade da base</p>
           <h2 id="sources-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Origem dos leads</h2>
           <div className="cc6-hairline mt-4">
-            {sources.length === 0 ? <p className="py-3 text-xs leading-5 text-[#6b7890]">Sem dados de origem no período.</p> : null}
+            {sources.length === 0 ? (
+              <AtlasEmpty
+                reason="no-activity"
+                eyebrow="Base sem origem"
+                title="Sem dados de origem no período"
+                description="As origens dos leads aparecem quando houver registros no recorte selecionado."
+              />
+            ) : null}
             {sources.slice(0, 10).map((item) => (
               <div key={item.source} className="flex items-center justify-between border-t border-[rgba(148,163,184,0.12)] py-3 first:border-t-0">
                 <span className="capitalize text-[13px] text-[#aab6ca]">{item.source}</span>

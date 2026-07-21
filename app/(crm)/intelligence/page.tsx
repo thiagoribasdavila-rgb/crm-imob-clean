@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
-import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -122,11 +122,13 @@ export default function IntelligencePage() {
               ))}
             </div>
           ) : items.length === 0 ? (
-            <div className="cc6-hairline px-5 py-8 text-center">
-              <p className="text-sm font-medium text-[#e8eef8]">Nenhum sinal exige atenção agora</p>
-              <p className="mt-1 text-sm text-[#6b7890]">
-                A inteligência analisou os dados visíveis e continuará observando novos eventos.
-              </p>
+            <div className="cc6-hairline px-5 py-8">
+              <AtlasEmpty
+                reason="completed"
+                eyebrow="Motor preparado"
+                title="Nenhum sinal exige atenção agora"
+                description="A inteligência analisou os dados visíveis e continuará observando novos eventos."
+              />
             </div>
           ) : (
             items.map((item) => {

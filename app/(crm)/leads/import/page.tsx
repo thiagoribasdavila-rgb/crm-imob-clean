@@ -5,7 +5,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
-import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { supabase } from "@/lib/supabase";
 
 type Target = { id: string; full_name: string | null };
@@ -233,7 +233,14 @@ export default function ImportLeadsPage() {
           {loading ? (
             <div className="grid gap-2 py-4">{[1, 2, 3].map((row) => <AtlasSkeleton key={row} className="h-16" />)}</div>
           ) : !data?.offers?.length ? (
-            <p className="py-4 text-xs leading-5 text-[#6b7890]">Nenhuma oferta ativa elegível — importe uma base autorizada ou aguarde novas respostas.</p>
+            <div className="py-4">
+              <AtlasEmpty
+                reason="no-activity"
+                eyebrow="Fila sem ofertas"
+                title="Nenhuma oferta ativa elegível"
+                description="Importe uma base autorizada ou aguarde novas respostas."
+              />
+            </div>
           ) : (
             data.offers.slice(0, 30).map((offer) => {
               const evidence = phoneEvidence[offer.lead.id] || "";
@@ -323,7 +330,14 @@ export default function ImportLeadsPage() {
           {loading ? (
             <div className="grid gap-2 py-4">{[1, 2, 3].map((row) => <AtlasSkeleton key={row} className="h-14" />)}</div>
           ) : !data?.batches.length ? (
-            <p className="py-4 text-xs leading-5 text-[#6b7890]">Nenhuma base importada — adicione a primeira base para iniciar a reativação.</p>
+            <div className="py-4">
+              <AtlasEmpty
+                reason="first-use"
+                eyebrow="Reativação ainda vazia"
+                title="Nenhuma base importada"
+                description="Adicione a primeira base para iniciar a reativação."
+              />
+            </div>
           ) : (
             data.batches.map((batch) => (
               <article key={batch.id} className="grid gap-3 border-t border-[rgba(148,163,184,0.12)] py-4 first:border-t-0 md:grid-cols-[1.3fr_.8fr_1fr_auto] md:items-center">

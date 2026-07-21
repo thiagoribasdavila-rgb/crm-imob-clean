@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "r
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
-import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { supabase } from "@/lib/supabase";
 
 type RecordRow = { id: string; lead_id: string; broker_id: string | null; external_company: string | null; external_project: string | null; estimated_value: number | null; purchase_date: string | null; reason_summary: string | null; evidence_status: string; director_notes: string | null; created_at: string };
@@ -97,7 +97,14 @@ export default function ExternalSalesPage() {
           {loading ? (
             <div className="grid gap-2 py-4">{[1, 2, 3].map((row) => <AtlasSkeleton key={row} className="h-16" />)}</div>
           ) : !data?.records.length ? (
-            <p className="py-4 text-xs leading-5 text-[#6b7890]">Nenhuma compra externa registrada — registre uma lead do time para iniciar o aprendizado.</p>
+            <div className="py-4">
+              <AtlasEmpty
+                reason="first-use"
+                eyebrow="Aprendizado ainda vazio"
+                title="Nenhuma compra externa registrada"
+                description="Registre uma lead do time para iniciar o aprendizado."
+              />
+            </div>
           ) : (
             data.records.map((item) => {
               const lead = leadMap.get(item.lead_id);

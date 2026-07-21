@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
-import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -290,9 +290,14 @@ export default function DistributionPage() {
               </article>
             ))
           ) : (
-            <p className="cc6-hairline px-5 py-4 text-sm leading-6 text-[#6b7890]">
-              Sem pressão crítica na fila selecionada — presença, espera e carga seguem monitoradas.
-            </p>
+            <div className="cc6-hairline px-5 py-4">
+              <AtlasEmpty
+                reason="no-activity"
+                eyebrow="Fila equilibrada"
+                title="Sem pressão crítica na fila selecionada"
+                description="Presença, espera e carga seguem monitoradas."
+              />
+            </div>
           )}
           <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
             IA analisa sem PII · distribuir, alterar limites e aprovar continuam decisões humanas.
@@ -342,10 +347,19 @@ export default function DistributionPage() {
               );
             })
           ) : (
-            <p className="cc6-hairline px-5 py-4 text-sm leading-6 text-[#6b7890]">
-              Fila sem pendências no projeto selecionado.{" "}
-              <Link href="/pipeline" className="font-medium text-[color:var(--atlas-accent)] hover:underline">Revisar pipeline</Link>
-            </p>
+            <div className="cc6-hairline px-5 py-4">
+              <AtlasEmpty
+                reason="completed"
+                eyebrow="Distribuição em dia"
+                title="Fila sem pendências"
+                description="Nenhuma lead sem responsável no projeto selecionado."
+                action={
+                  <Link href="/pipeline" className="atlas-button-secondary">
+                    Revisar pipeline
+                  </Link>
+                }
+              />
+            </div>
           )}
           <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
             Somente metadados, até 100 visíveis — sem nome, telefone ou e-mail · a distribuição atribui atomicamente a lead mais antiga do projeto, sempre por decisão explícita da liderança.
@@ -373,10 +387,19 @@ export default function DistributionPage() {
                 {[1, 2, 3].map((item) => <AtlasSkeleton key={item} className="h-14" />)}
               </div>
             ) : brokers.length === 0 ? (
-              <p className="cc6-hairline px-5 py-5 text-sm leading-6 text-[#6b7890]">
-                Nenhum corretor disponível — o corretor entra na fila ao acessar o Atlas com disponibilidade ativa.{" "}
-                <Link href="/brokers" className="font-medium text-[color:var(--atlas-accent)] hover:underline">Revisar equipe</Link>
-              </p>
+              <div className="cc6-hairline px-5 py-5">
+                <AtlasEmpty
+                  reason="not-configured"
+                  eyebrow="Fila aguardando disponibilidade"
+                  title="Nenhum corretor disponível"
+                  description="O corretor entra na fila ao acessar o Atlas com a disponibilidade ativa."
+                  action={
+                    <Link href="/brokers" className="atlas-button-secondary">
+                      Revisar equipe
+                    </Link>
+                  }
+                />
+              </div>
             ) : (
               brokers.map((broker, index) => {
                 const brokerLoad = loadMap.get(broker.id);
@@ -424,7 +447,14 @@ export default function DistributionPage() {
             {loading ? (
               <AtlasSkeleton className="h-24" />
             ) : managers.length === 0 ? (
-              <p className="py-2 text-xs leading-5 text-[#6b7890]">Nenhum gerente direto online — as regras automáticas seguem protegendo a fila.</p>
+              <div className="py-2">
+                <AtlasEmpty
+                  reason="no-activity"
+                  eyebrow="Liderança offline"
+                  title="Nenhum gerente direto online"
+                  description="As regras automáticas seguem protegendo a fila."
+                />
+              </div>
             ) : (
               managers.map((manager, index) => {
                 const teamOnline = brokers.filter((broker) => broker.reports_to === manager.id).length;
@@ -467,9 +497,14 @@ export default function DistributionPage() {
             );
           })
         ) : (
-          <p className="cc6-hairline px-5 py-4 text-sm leading-6 text-[#6b7890]">
-            Sem atribuições recentes — as próximas distribuições terão justificativa auditável.
-          </p>
+          <div className="cc6-hairline px-5 py-4">
+            <AtlasEmpty
+              reason="no-activity"
+              eyebrow="Sem atribuições recentes"
+              title="Nenhuma atribuição registrada"
+              description="As próximas distribuições terão justificativa auditável."
+            />
+          </div>
         )}
       </div>
 
@@ -502,9 +537,14 @@ export default function DistributionPage() {
                 </article>
               ))
             ) : (
-              <p className="cc6-hairline px-5 py-4 text-sm leading-6 text-[#6b7890]">
-                Histórico ainda vazio — os próximos movimentos aparecem aqui com rastreabilidade.
-              </p>
+              <div className="cc6-hairline px-5 py-4">
+                <AtlasEmpty
+                  reason="no-activity"
+                  eyebrow="Livro da carteira vazio"
+                  title="Histórico ainda vazio"
+                  description="Os próximos movimentos aparecem aqui com rastreabilidade."
+                />
+              </div>
             )}
             <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
               Escopo hierárquico · fontes operacionais preservadas · nome, telefone, e-mail e textos livres da lead não expostos.
@@ -558,9 +598,14 @@ export default function DistributionPage() {
                 );
               })
             ) : (
-              <p className="cc6-hairline px-5 py-4 text-sm leading-6 text-[#6b7890]">
-                Nenhum corretor direto — vincule corretores ao gerente antes de configurar projetos.
-              </p>
+              <div className="cc6-hairline px-5 py-4">
+                <AtlasEmpty
+                  reason="not-configured"
+                  eyebrow="Equipe sem vínculo"
+                  title="Nenhum corretor direto"
+                  description="Vincule corretores ao gerente antes de configurar projetos."
+                />
+              </div>
             )}
           </div>
         </section>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
-import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -322,10 +322,14 @@ export default function CustomersPage() {
             ))}
           </div>
         ) : (
-          <p className="mt-3 text-xs leading-5 text-[#6b7890]">
-            Nenhuma pendência objetiva nos registros analisados — registre a próxima ação para
-            manter o contexto comercial utilizável.
-          </p>
+          <div className="mt-3">
+            <AtlasEmpty
+              reason="completed"
+              eyebrow="Carteira sem pendências"
+              title="Nenhuma pendência objetiva"
+              description="Registre a próxima ação para manter o contexto comercial utilizável."
+            />
+          </div>
         )}
       </section>
 
@@ -408,17 +412,40 @@ export default function CustomersPage() {
             </div>
           ) : null}
           {!loading && !error && data?.items.length === 0 ? (
-            <div className="flex flex-wrap items-center gap-3 py-4">
-              <p className="text-xs leading-5 text-[#6b7890]">
-                {hasFilters
-                  ? "Nenhum relacionamento neste recorte — ajuste a busca ou o vínculo."
-                  : "Nenhum relacionamento visível ainda — cadastre o primeiro cliente para começar."}
-              </p>
-              {hasFilters ? (
-                <button type="button" className="cc6-ghost-btn" onClick={resetFilters}>
-                  Limpar filtros
-                </button>
-              ) : null}
+            <div className="py-4">
+              <AtlasEmpty
+                reason={hasFilters ? "no-results" : "first-use"}
+                eyebrow={
+                  hasFilters
+                    ? "Busca sem correspondência"
+                    : "Fonte única ainda vazia"
+                }
+                title={
+                  hasFilters
+                    ? "Nenhum cliente neste filtro"
+                    : "Nenhum cliente cadastrado"
+                }
+                description={
+                  hasFilters
+                    ? "Ajuste a busca ou o vínculo para ampliar os resultados."
+                    : "Cadastre a primeira lead para iniciar a memória comercial unificada."
+                }
+                action={
+                  hasFilters ? (
+                    <button
+                      type="button"
+                      className="atlas-button-secondary"
+                      onClick={resetFilters}
+                    >
+                      Limpar filtros
+                    </button>
+                  ) : (
+                    <Link href="/leads/new" className="atlas-button-primary">
+                      Cadastrar lead
+                    </Link>
+                  )
+                }
+              />
             </div>
           ) : null}
           {data?.items.map((customer) => {
