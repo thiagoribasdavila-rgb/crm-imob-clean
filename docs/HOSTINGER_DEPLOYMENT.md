@@ -10,7 +10,21 @@
 
 ## Aplicação
 
-Use Node.js 20.9 ou superior da linha 20, execute `npm ci`, `npm run prisma:generate`, `npm run validate` e inicie com `npm start`. Em VPS, `pm2 start ecosystem.config.cjs` mantém o processo ativo. Em Node.js Web Apps, configure o comando de inicialização como `npm start`.
+Use Node.js 20.9 ou superior da linha 20, execute `npm ci`, `npm run prisma:generate`, `npm run validate:deploy` e inicie com `npm start`.
+
+> **Qual gate rodar.** `npm run validate:deploy` é o **gate de deploy**: roda todas as
+> verificações que precisam valer para subir com segurança — segredos, dependências
+> (`npm audit`), RLS, segurança de API, observabilidade, orçamento de performance,
+> typecheck, lint, build e o empacotamento — e **pula apenas uma lista explícita de
+> lacunas de features já rastreadas no roadmap** (impressa na saída, com o motivo de
+> cada uma). `npm run validate` continua sendo a suíte COMPLETA (aspiracional): como
+> encadeia tudo com `&&`, uma feature inacabada trava o release de tudo o que está
+> pronto — por isso ela não serve de portão de deploy. Um gate deve barrar release
+> **insegura**, não release **incompleta**.
+>
+> O passo `build` exige que **nenhum `npm run dev` esteja ativo** na mesma pasta: a
+> quarentena de rotas usa um lock exclusivo e aborta se detectar outra execução. No
+> servidor isso não ocorre; localmente, pare o dev antes de rodar o gate. Em VPS, `pm2 start ecosystem.config.cjs` mantém o processo ativo. Em Node.js Web Apps, configure o comando de inicialização como `npm start`.
 
 O pacote enxuto e verificado é gerado com `npm run package:hostinger`. Use o ZIP e o SHA-256 criados em `dist/hostinger`; não compacte manualmente a pasta de desenvolvimento.
 
