@@ -53,8 +53,9 @@ export type FatigueEval = {
 
 /**
  * A fadiga prevista se confirmou? Fadiga real = CTR caiu OU CPM subiu (mesmo
- * critério do radar). A previsão conta como positiva se o outcome marca
- * predictedFatigue OU se a previsão trouxe algum sinal.
+ * critério do radar). A previsão conta como positiva SE E SOMENTE SE o outcome
+ * marca predictedFatigue — fonte única da verdade, coincidindo com fatigueAccuracy
+ * (invariante: quem grava o FatigueOutcome seta predictedFatigue = signals.length > 0).
  *
  * - previu + aconteceu           → acertou (hit)
  * - previu + não aconteceu       → alarme_falso
@@ -62,7 +63,7 @@ export type FatigueEval = {
  * - não previu + não aconteceu   → acertou (verdadeiro negativo)
  */
 export function evaluateFatiguePrediction(pred: FatiguePrediction, outcome: FatigueOutcome): FatigueEval {
-  const predicted = outcome.predictedFatigue || pred.signals.length > 0;
+  const predicted = outcome.predictedFatigue;
   const actual = outcome.actualCtrDropped || outcome.actualCpmRose;
   const adId = pred.adId || outcome.adId;
   if (predicted === actual) return { adId, hit: true, kind: "acertou" };

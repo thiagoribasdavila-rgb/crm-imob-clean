@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
-const STORAGE_KEY = "atlas:workspace-memory:v1";
+// Chave global LEGADA — podia conter leads de OUTRO usuário no mesmo navegador
+// (vazamento entre escopos / LGPD). Purgada no mount; a memória agora é por usuário.
+const LEGACY_STORAGE_KEY = "atlas:workspace-memory:v1";
+const keyFor = (userId: string) => `atlas:workspace-memory:v1:${userId}`;
 
 type WorkspaceItem = {
   path: string;
@@ -43,9 +47,9 @@ function getLabel(path: string) {
   return match ? labels[match] : "Atlas Workspace";
 }
 
-function readMemory(): WorkspaceItem[] {
+function readMemory(key: string): WorkspaceItem[] {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as WorkspaceItem[];
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]") as WorkspaceItem[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -56,13 +60,58 @@ export default function AtlasWorkspaceMemory() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<WorkspaceItem[]>([]);
-
+  const [userId, setUserId] = useState<string | null>(null);
+  const userIdRef = useRef<string | null>(null);
   useEffect(() => {
-    setItems(readMemory());
+    userIdRef.current = userId;
+  }, [userId]);
+
+  // Resolve o usuário e PURGA a chave global legada (sem migrar — podia ser de
+  // outro usuário). No logout, limpa o painel e remove a chave da sessão que saiu.
+  useEffect(() => {
+    try {
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch {
+      // localStorage indisponível — segue sem memória persistida
+    }
+    let active = true;
+    void supabase.auth.getUser().then(({ data }) => {
+      if (active) setUserId(data.user?.id ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        const previous = userIdRef.current;
+        if (previous) {
+          try {
+            localStorage.removeItem(keyFor(previous));
+          } catch {
+            // ignore
+          }
+        }
+        setItems([]);
+        setUserId(null);
+      } else {
+        setUserId(session?.user?.id ?? null);
+      }
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
+  // Carrega a memória DO USUÁRIO ATUAL (nunca a global) quando o usuário muda.
   useEffect(() => {
-    if (!pathname || pathname === "/") return;
+    if (!userId) {
+      setItems([]);
+      return;
+    }
+    setItems(readMemory(keyFor(userId)));
+  }, [userId]);
+
+  // Rastreia navegação — só grava com userId definido (nunca em chave global/errada).
+  useEffect(() => {
+    if (!userId || !pathname || pathname === "/") return;
     setItems((current) => {
       const previous = current.find((item) => item.path === pathname);
       const next: WorkspaceItem[] = [
@@ -74,10 +123,14 @@ export default function AtlasWorkspaceMemory() {
         },
         ...current.filter((item) => item.path !== pathname),
       ].slice(0, 20);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      try {
+        localStorage.setItem(keyFor(userId), JSON.stringify(next));
+      } catch {
+        // ignore
+      }
       return next;
     });
-  }, [pathname]);
+  }, [pathname, userId]);
 
   useEffect(() => {
     const openPanel = () => setOpen(true);
@@ -99,12 +152,21 @@ export default function AtlasWorkspaceMemory() {
   const favorites = useMemo(() => items.filter((item) => item.favorite), [items]);
   const recents = useMemo(() => items.filter((item) => !item.favorite).slice(0, 8), [items]);
 
+  function persist(next: WorkspaceItem[]) {
+    if (!userId) return;
+    try {
+      localStorage.setItem(keyFor(userId), JSON.stringify(next));
+    } catch {
+      // localStorage indisponível — mantém só em memória
+    }
+  }
+
   function toggleFavorite(path: string) {
     setItems((current) => {
       const next = current.map((item) =>
         item.path === path ? { ...item, favorite: !item.favorite } : item,
       );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      persist(next);
       return next;
     });
   }
@@ -112,7 +174,7 @@ export default function AtlasWorkspaceMemory() {
   function clearRecents() {
     setItems((current) => {
       const next = current.filter((item) => item.favorite);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      persist(next);
       return next;
     });
   }

@@ -45,10 +45,10 @@ const rot = (campaignId: string, paused: number | null, repl: number | null): Ro
   const e = evaluateFatiguePrediction(pred("a4", []), outc("a4", false, false, false));
   t("não previu + nada → acertou (VN)", e.kind === "acertou" && e.hit);
 }
-// 5. sinais na previsão contam mesmo com predictedFatigue=false no outcome
+// 5. previsão bem-formada (predictedFatigue=true, invariante signals→predictedFatigue) + aconteceu → acertou
 {
-  const e = evaluateFatiguePrediction(pred("a5", ["cpm_subindo"]), outc("a5", false, true, false));
-  t("signals[] força previsto → acertou", e.kind === "acertou" && e.hit);
+  const e = evaluateFatiguePrediction(pred("a5", ["cpm_subindo"]), outc("a5", true, true, false));
+  t("previu (predictedFatigue) + aconteceu → acertou", e.kind === "acertou" && e.hit);
 }
 // 6. precision: 2 previstos, 1 real → 0.5
 {

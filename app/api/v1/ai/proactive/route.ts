@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
   if (role === "broker") {
     const brokerId = identity.access.profile.id;
     const [overdue, hot] = await Promise.all([
-      admin.from("tasks").select("id", { count: "exact", head: true }).eq("assigned_to", brokerId).eq("status", "pending").lt("due_at", new Date().toISOString()),
+      admin.from("tasks").select("id", { count: "exact", head: true }).eq("assigned_to", brokerId).not("status", "in", "(done,concluido,concluida,completed,cancelado,cancelled)").lt("due_at", new Date().toISOString()),
       admin.from("leads").select("id", { count: "exact", head: true }).eq("assigned_to", brokerId).eq("temperature", "quente"),
     ]);
     if (!overdue.error && typeof overdue.count === "number") input.brokerOverdueTasks = overdue.count;

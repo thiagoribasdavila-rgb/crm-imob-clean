@@ -55,7 +55,9 @@ function toConversionSignals(row: Record<string, unknown>, now: number): Convers
   return {
     status: asString(row.status) ?? null,
     stage: asString(meta.stage) ?? asString(row.status) ?? null,
-    score: asNumber(row.score) ?? null,
+    // score_ia é a coluna canônica do scorer de IA; score é o legado (fallback).
+    // 0 é valor de IA válido (curto-circuita o ??), então só cai no legado se score_ia for null.
+    score: asNumber(row.score_ia) ?? asNumber(row.score) ?? null,
     daysSinceLastInteraction: lastInteraction,
     nextActionOverdue,
   };
@@ -102,7 +104,7 @@ export async function GET(request: NextRequest) {
   // Carteira do corretor — best-effort. Sem a tabela (schema drift) → 503 honesto.
   const { data, error } = await admin
     .from("leads")
-    .select("id, name, status, score, temperature, next_action_at, updated_at, created_at, metadata, arquivado")
+    .select("id, name, status, score_ia, score, temperature, next_action_at, updated_at, created_at, metadata, arquivado")
     .eq("organization_id", org)
     .eq("assigned_to", targetBrokerId)
     .limit(200);
