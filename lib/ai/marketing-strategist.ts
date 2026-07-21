@@ -33,8 +33,15 @@ export type MarketingPlan = {
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+export type PlanOptions = {
+  /** false quando a fonte não tem venda (ex.: meta_live — venda só existe no CRM).
+   *  Nesse caso a IA julga campanhas por CPL, nunca por "0 vendas". */
+  salesKnown?: boolean;
+};
+
 /** Plano de eficiência: escalar o que rende, cortar o que não, realocar a sobra. */
-export function marketingEfficiencyPlan(budget: BudgetLine[], campaigns: CostBucket[] = []): MarketingPlan {
+export function marketingEfficiencyPlan(budget: BudgetLine[], campaigns: CostBucket[] = [], opts: PlanOptions = {}): MarketingPlan {
+  const salesKnown = opts.salesKnown !== false;
   const moves: MarketingMove[] = [];
   let desperdicio = 0;
   let liberada = 0;
@@ -80,12 +87,29 @@ export function marketingEfficiencyPlan(budget: BudgetLine[], campaigns: CostBuc
       reason: `Mover R$ ${amount}/semana do que não rende para ${best.product}, que converte dentro da meta.` });
   }
 
-  // CAMPANHAS que queimam verba sem vender
-  for (const c of campaigns) {
-    if (c.spend >= 300 && c.sales === 0 && c.cac === null) {
-      moves.push({ kind: "pausar", scope: "campanha", target: c.label, priority: 5,
-        reason: `R$ ${c.spend} gastos, 0 vendas. Pausar e diagnosticar (criativo/público/oferta).` });
-      desperdicio += c.spend;
+  // CAMPANHAS que queimam verba sem vender (só quando a fonte TEM venda)
+  if (salesKnown) {
+    for (const c of campaigns) {
+      if (c.spend >= 300 && c.sales === 0 && c.cac === null) {
+        moves.push({ kind: "pausar", scope: "campanha", target: c.label, priority: 5,
+          reason: `R$ ${c.spend} gastos, 0 vendas. Pausar e diagnosticar (criativo/público/oferta).` });
+        desperdicio += c.spend;
+      }
+    }
+  } else {
+    // Venda desconhecida (fonte meta_live) — julgar por CPL, nunca por "0 vendas".
+    const cpls = campaigns.filter((c) => c.leads > 0 && c.cpl != null).map((c) => c.cpl as number).sort((a, b) => a - b);
+    const medianCpl = cpls.length ? cpls[Math.floor(cpls.length / 2)] : null;
+    for (const c of campaigns) {
+      if (c.spend >= 300 && c.leads === 0) {
+        moves.push({ kind: "pausar", scope: "campanha", target: c.label, priority: 5,
+          reason: `R$ ${c.spend} gastos e 0 leads. Pausar e diagnosticar (criativo/público/oferta).` });
+        desperdicio += c.spend;
+      } else if (medianCpl != null && c.cpl != null && c.spend >= 200 && c.cpl > 2 * medianCpl) {
+        moves.push({ kind: "revisar", scope: "campanha", target: c.label, priority: 4,
+          reason: `CPL R$ ${c.cpl} — mais de 2× a mediana da conta (R$ ${r2(medianCpl)}). Revisar criativo/público.` });
+        desperdicio += r2(c.spend * 0.5);
+      }
     }
   }
 
