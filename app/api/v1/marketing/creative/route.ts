@@ -21,6 +21,7 @@ import {
   type CreativeAngle,
 } from "@/lib/ai/creative-strategist";
 import { housingTargetingSpec, audienceDoctrine } from "@/lib/meta/marketing/housing-audience";
+import { productBrief } from "@/lib/atlas/developer-portfolio";
 
 export const dynamic = "force-dynamic";
 
@@ -47,10 +48,14 @@ export async function POST(request: NextRequest) {
     weeklyBudgetBrl?: number;
     linkUrl?: string;
   } | null;
-  const brief = body?.brief;
-  if (!brief || typeof brief.product !== "string" || !brief.product.trim()) {
+  const rawBrief = body?.brief;
+  if (!rawBrief || typeof rawBrief.product !== "string" || !rawBrief.product.trim()) {
     return apiError("BRIEF_PRODUCT_REQUIRED", "Informe o produto (empreendimento) no brief.", identity.meta, { status: 422 });
   }
+  // calibração pelo rol de incorporadoras: o registro completa os campos que
+  // o chamador não informou (o que veio no corpo sempre tem precedência)
+  const fromPortfolio = productBrief(rawBrief.product);
+  const brief: ProductBrief = fromPortfolio ? { ...fromPortfolio, ...rawBrief } : rawBrief;
 
   // núcleo determinístico: copy + auditoria de política, tudo em memória
   const copy = buildAdCopy(brief, body?.angles);

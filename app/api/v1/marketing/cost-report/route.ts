@@ -6,6 +6,7 @@ import { aggregate, weekly, budgetView, type SpendRow, type ProductBudget } from
 import { marketingEfficiencyPlan } from "@/lib/ai/marketing-strategist";
 import { fetchCampaignInsights, insightsToCostRows } from "@/lib/meta/marketing/campaign-read";
 import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
+import { matchCampaign } from "@/lib/atlas/developer-portfolio";
 
 export const dynamic = "force-dynamic";
 
@@ -55,8 +56,11 @@ export async function GET(request: NextRequest) {
           for (const d of dvs.data) devPairs.push({ name: d.name, developer: d.developer_id ? drMap.get(d.developer_id) ?? null : null });
         }
         const rows = insightsToCostRows(insights, (_id, name) => {
+          // 1º banco (developments), 2º o rol de incorporadoras em código
           const hit = devPairs.find((d) => name.toLowerCase().includes(d.name.toLowerCase()));
-          return hit ? { product: hit.name, developer: hit.developer } : {};
+          if (hit) return { product: hit.name, developer: hit.developer };
+          const rol = matchCampaign(name);
+          return rol.developer ? { product: rol.product, developer: rol.developer } : {};
         });
         const pb: ProductBudget[] = (budgetsResult.data ?? []).map((b) => ({ product: b.product, developer: b.developer, weeklyBudget: Number(b.weekly_budget) || 0, targetCac: b.target_cac != null ? Number(b.target_cac) : null }));
         const agg = aggregate(rows, "campaign");
