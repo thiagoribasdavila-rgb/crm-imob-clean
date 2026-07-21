@@ -36,7 +36,7 @@ type MoveProjection = { moveKind: string; target: string; weeklyLeadsDelta: { pe
 type Fatigue = { adId: string; adName: string; kind: string; detail: string };
 type Health = { campaignId: string; campaignName: string; activeAds: number; diversityScore: number; fatigue: Fatigue[]; andromedaScore: number };
 type Rotation = { campaignName: string; replacement: { angle: string }; reason: string };
-type Forecast = { campaign: { pace: "acelerando" | "estavel" | "desacelerando"; projectedWeeklyLeads: { pessimista: number; esperado: number; otimista: number }; projectedCpl: number | null }; anomalies: string[] };
+type Forecast = { account: { pace: "acelerando" | "estavel" | "desacelerando"; projectedWeeklyLeads: { pessimista: number; esperado: number; otimista: number }; projectedCpl: number | null; trendPct: number; confidence: "baixa" | "media" | "alta"; assumptions: string[] }; anomalies: string[] };
 type Andromeda = { source: string; health: Health[]; consolidation: { verdict: "consolidada" | "fragmentada"; reason: string }; forecast?: Forecast; rotations?: { proposals: Rotation[]; summary: string } };
 type Calibration = { summary: string[] };
 
@@ -333,18 +333,25 @@ export default function MarketingPage() {
         <section aria-label="Saúde criativa Andromeda" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "240ms" }}>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
             <p className="cc6-eyebrow">Andromeda · Saúde criativa</p>
-            {andromeda.data.forecast ? (
-              <span className={`cc6-chip ${andromeda.data.forecast.campaign.pace === "desacelerando" ? "cc6-crit" : andromeda.data.forecast.campaign.pace === "acelerando" ? "cc6-ok" : ""}`}
-                title={`Leads próx. semana: ${andromeda.data.forecast.campaign.projectedWeeklyLeads.pessimista}–${andromeda.data.forecast.campaign.projectedWeeklyLeads.otimista}`}>
-                {andromeda.data.forecast.campaign.pace === "desacelerando" ? "📉" : andromeda.data.forecast.campaign.pace === "acelerando" ? "📈" : "➡️"} {andromeda.data.forecast.campaign.pace}
-              </span>
-            ) : null}
+            {andromeda.data.forecast ? (() => {
+              const f = andromeda.data.forecast.account;
+              const p = f.projectedWeeklyLeads;
+              const leads = p.pessimista === p.otimista ? `${p.esperado} leads` : `${p.pessimista}–${p.otimista} leads`;
+              const conf = f.confidence === "media" ? "média" : f.confidence;
+              const cpl = f.projectedCpl != null ? ` · CPL ~R$ ${f.projectedCpl}` : "";
+              return (
+                <span className={`cc6-chip ${f.pace === "desacelerando" ? "cc6-crit" : f.pace === "acelerando" ? "cc6-ok" : ""}`}
+                  title={f.assumptions.length ? f.assumptions.join(" · ") : "Trajetória projetada da conta"}>
+                  {f.pace === "desacelerando" ? "📉" : f.pace === "acelerando" ? "📈" : "➡️"} conta {f.pace} · {leads}/sem · conf. {conf}{cpl}
+                </span>
+              );
+            })() : null}
             <span className={`cc6-chip ml-auto ${andromeda.data.consolidation.verdict === "fragmentada" ? "cc6-warn" : "cc6-ok"}`} title={andromeda.data.consolidation.reason}>
               conta {andromeda.data.consolidation.verdict}
             </span>
           </div>
           {andromeda.data.forecast?.anomalies?.length ? (
-            <p className="cc6-hairline px-5 py-2.5 text-[12px] leading-5 text-[#f2b544]">🔮 {andromeda.data.forecast.anomalies[0]}</p>
+            <p className="cc6-hairline px-5 py-2.5 text-[12px] leading-5 text-[#f2b544]">🔮 {andromeda.data.forecast.anomalies.join(" · ")}</p>
           ) : null}
           {andromeda.data.rotations?.proposals?.length ? (
             <p className="cc6-hairline px-5 py-2.5 text-[12px] leading-5 text-[#9db2d0]">🔄 {andromeda.data.rotations.summary}</p>

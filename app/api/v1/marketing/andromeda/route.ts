@@ -79,7 +79,9 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([weekStart, v]) => ({ weekStart, spend: v.spend, leads: v.leads }));
   const forecast = {
-    campaign: forecastCampaign(weeks, { minWeeksForTrend: cal.forecast.minWeeksForTrend }),
+    // 'account': o weekMap agrega TODOS os anúncios/campanhas por semana — é a
+    // trajetória da CONTA, não de uma campanha. Rótulo honesto para a UI.
+    account: forecastCampaign(weeks, { minWeeksForTrend: cal.forecast.minWeeksForTrend }),
     anomalies: anomalyForecast(weeks, { anomalyLeadDropPct: cal.forecast.anomalyLeadDropPct }),
   };
 
