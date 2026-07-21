@@ -51,6 +51,9 @@ export default function GlobalError({
               >
                 Tentar de novo
               </button>
+              {/* Navegação DURA proposital: num error boundary global o router
+                  do Next pode estar em estado inválido; <a> força recarga limpa. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a
                 href="/"
                 style={{ padding: "10px 18px", borderRadius: "11px", fontSize: "13px", fontWeight: 600, background: "transparent", color: "#f4f7fb", border: "1px solid rgba(255,255,255,.12)", textDecoration: "none" }}
