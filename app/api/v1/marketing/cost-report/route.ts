@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { aggregate, weekly, budgetView, type SpendRow, type ProductBudget } from "@/lib/marketing/cost-report";
+import { marketingEfficiencyPlan } from "@/lib/ai/marketing-strategist";
 
 export const dynamic = "force-dynamic";
 
@@ -77,12 +78,17 @@ export async function GET(request: NextRequest) {
   const { data: budgets } = await admin.from("product_budgets").select("product,developer,weekly_budget,target_cac,active").eq("organization_id", org).eq("active", true);
   const productBudgets: ProductBudget[] = (budgets ?? []).map((b) => ({ product: b.product, developer: b.developer, weeklyBudget: Number(b.weekly_budget) || 0, targetCac: b.target_cac != null ? Number(b.target_cac) : null }));
 
+  const byCampaignAgg = aggregate(all, "campaign");
+  const budget = budgetView(productBudgets, all);
+
   return apiSuccess({
-    totals: { spend: aggregate(all, "campaign").reduce((s, b) => s + b.spend, 0), campaigns: campaigns.length },
-    byCampaign: { aggregate: aggregate(all, "campaign"), weekly: weekly(spendRows, "campaign") },
+    totals: { spend: byCampaignAgg.reduce((s, b) => s + b.spend, 0), campaigns: campaigns.length },
+    byCampaign: { aggregate: byCampaignAgg, weekly: weekly(spendRows, "campaign") },
     byProject: { aggregate: aggregate(all, "product"), weekly: weekly(spendRows, "product") },
     byDeveloper: { aggregate: aggregate(all, "developer"), weekly: weekly(spendRows, "developer") },
-    budget: budgetView(productBudgets, all),
+    budget,
+    // IA de marketing (eficiência) — propostas de escalar/pausar/realocar verba
+    plan: marketingEfficiencyPlan(budget, byCampaignAgg),
   }, identity.meta, { headers: limited.headers });
 }
 
