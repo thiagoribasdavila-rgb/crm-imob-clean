@@ -7,6 +7,7 @@ import { integrationCatalog } from "@/lib/integrations/catalog";
 import { analyzeInboundWhatsApp } from "@/lib/ai/whatsapp-conversation-intelligence";
 import { resolveLeadOwner, recordDistribution } from "@/lib/distribution/hierarchical-cascade";
 import { metaGraphVersion, describeMetaGraphFailure } from "@/lib/meta/graph";
+import { classifyOutboxFailure } from "@/lib/meta/outbox-failure";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +33,10 @@ async function deliverWhatsApp(recipient: string, content: string, template?: Wh
       : { messaging_product: "whatsapp", to: recipient, type: "text", text: { body: content } }),
   }, { timeoutMs: 30_000, retries: 0, operation: "WhatsApp" });
 
-  const data = (await response.json()) as { messages?: Array<{ id: string }>; error?: { message?: string } };
-  if (!response.ok) throw new Error(data.error?.message || `WhatsApp HTTP ${response.status}`);
+  const data = (await response.json()) as { messages?: Array<{ id: string }>; error?: { message?: string; code?: number; error_subcode?: number } };
+  // describeMetaGraphFailure embute [code X/Y] na mensagem — é o que permite
+  // classificar token expirado (190/463/467) sem enterrar a fila lá no catch.
+  if (!response.ok) throw new Error(describeMetaGraphFailure(response.status, data));
   return data.messages?.[0]?.id ?? null;
 }
 
@@ -77,7 +80,8 @@ export async function POST(request: Request) {
   let failed = 0;
 
   for (const event of events ?? []) {
-    const attempts = Number(event.attempts || 0) + 1;
+    const originalAttempts = Number(event.attempts || 0);
+    const attempts = originalAttempts + 1;
     const { data: claimed } = await admin.from("integration_outbox").update({ status: "processing", attempts, locked_at: new Date().toISOString(), locked_by: workerId }).eq("id", event.id).in("status", ["pending", "failed"]).select("id").maybeSingle();
     if (!claimed) continue;
 
@@ -195,7 +199,9 @@ export async function POST(request: Request) {
           body: JSON.stringify({ data: [{ event_name: conversion.event_name, event_time: Math.floor(new Date(conversion.occurred_at).getTime() / 1000), event_id: conversion.event_id, action_source: conversion.action_source, user_data: userData, custom_data: { ...conversion.custom_data, atlas_signal_version: "andromeda-v1" } }], test_event_code: config.test_event_code }),
         }, { timeoutMs: 30_000, retries: 1, retryUnsafe: true, operation: "Meta Conversions API" });
         const metaResponse = await response.json() as Record<string, unknown>;
-        if (!response.ok) throw new Error(typeof metaResponse.error === "object" && metaResponse.error ? String((metaResponse.error as { message?: unknown }).message || `Meta HTTP ${response.status}`) : `Meta HTTP ${response.status}`);
+        // Mesma razão do WhatsApp: preserva code/subcode na mensagem para o
+        // catch distinguir token expirado de erro de dado da conversão.
+        if (!response.ok) throw new Error(describeMetaGraphFailure(response.status, metaResponse));
         await admin.from("meta_conversion_events").update({ status: "delivered", delivered_at: now, meta_response: metaResponse, last_error: null }).eq("id", conversion.id);
       } else if (event.topic === "whatsapp.inbound.analyze" && event.aggregate_id) {
         const { data: message } = await admin.from("messages").select("id,organization_id,conversation_id,content,direction").eq("id", event.aggregate_id).maybeSingle();
@@ -261,14 +267,36 @@ export async function POST(request: Request) {
         throw new Error(`Tópico não suportado: ${event.topic}`);
       }
 
-      await admin.from("integration_outbox").update({ status: "delivered", delivered_at: now, last_error: null }).eq("id", event.id);
+      await admin.from("integration_outbox").update({ status: "delivered", delivered_at: now, last_error: null, cause: null }).eq("id", event.id);
       delivered += 1;
     } catch (processingError) {
       const message = processingError instanceof Error ? processingError.message : "Falha desconhecida";
+      const cause = classifyOutboxFailure({ message });
+
+      // Erro de CREDENCIAL (token 190/463/467): não é culpa do evento. NÃO
+      // consome tentativa (reverte o incremento do claim), mantém o evento
+      // retryable com backoff longo e marca causa='token_unhealthy'. Assim,
+      // renovar o token faz a fila voltar a fluir sozinha — nada vai a
+      // dead_letter só porque o token expirou. Erro de dado continua abaixo.
+      if (cause === "token_unhealthy") {
+        const retryAt = new Date(Date.now() + 30 * 60_000).toISOString();
+        await admin.from("integration_outbox").update({ status: "failed", attempts: originalAttempts, available_at: retryAt, last_error: message, cause: "token_unhealthy" }).eq("id", event.id);
+        // Agregados aterrissam em estado retryable (nunca dead_letter/consumo):
+        // ao reprocessar com token são, os guards (status !== 'imported') deixam
+        // o fluxo seguir de novo.
+        if (event.topic === "meta.lead.fetch" && event.aggregate_id) await admin.from("meta_lead_events").update({ status: "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
+        if (event.topic === "meta.conversion.send" && event.aggregate_id) await admin.from("meta_conversion_events").update({ status: "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
+        if (event.topic === "portal.lead.ingest" && event.aggregate_id) await admin.from("portal_lead_events").update({ status: "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
+        // Sinal estruturado para readiness/observabilidade: token precisa renovar.
+        logger.warn("outbox.token_unhealthy", { eventId: event.id, topic: event.topic, organizationId: event.organization_id });
+        failed += 1;
+        continue;
+      }
+
       const terminal = attempts >= 5;
       const nextAttempt = new Date(Date.now() + Math.min(60, 2 ** attempts) * 60_000).toISOString();
 
-      await admin.from("integration_outbox").update({ status: terminal ? "dead_letter" : "failed", available_at: nextAttempt, last_error: message }).eq("id", event.id);
+      await admin.from("integration_outbox").update({ status: terminal ? "dead_letter" : "failed", available_at: nextAttempt, last_error: message, cause: null }).eq("id", event.id);
       if (event.topic === "meta.lead.fetch" && event.aggregate_id) await admin.from("meta_lead_events").update({ status: "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
       if (event.topic === "meta.conversion.send" && event.aggregate_id) await admin.from("meta_conversion_events").update({ status: terminal ? "dead_letter" : "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
       if (event.topic === "portal.lead.ingest" && event.aggregate_id) await admin.from("portal_lead_events").update({ status: terminal ? "dead_letter" : "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
