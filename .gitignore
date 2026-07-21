@@ -49,3 +49,15 @@ next-env.d.ts
 
 /app/generated/prisma
 .env.local
+
+# backups locais de env (nunca versionar)
+_env_bak_to_delete/
+*.bak
+*.env.bak
+
+# cache local do Supabase CLI (specific da máquina, nunca versionar)
+supabase/.temp/
+
+# output solto de `supabase migration list` (relatório pontual, não é fonte)
+migration-status.txt
+migrations.json
