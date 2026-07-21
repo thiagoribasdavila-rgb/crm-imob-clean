@@ -83,6 +83,9 @@ export async function GET(request: NextRequest) {
     // trajetória da CONTA, não de uma campanha. Rótulo honesto para a UI.
     account: forecastCampaign(weeks, { minWeeksForTrend: cal.forecast.minWeeksForTrend }),
     anomalies: anomalyForecast(weeks, { anomalyLeadDropPct: cal.forecast.anomalyLeadDropPct }),
+    // Série semanal REAL — já calculada aqui e antes descartada. A tela desenha a
+    // linha do histórico e projeta o tracejado; sem ela a previsão era só texto.
+    weeks,
   };
 
   const health = analyzeCreativeHealth(rows, {

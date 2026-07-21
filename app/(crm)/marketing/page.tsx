@@ -36,7 +36,7 @@ type MoveProjection = { moveKind: string; target: string; weeklyLeadsDelta: { pe
 type Fatigue = { adId: string; adName: string; kind: string; detail: string };
 type Health = { campaignId: string; campaignName: string; activeAds: number; diversityScore: number; fatigue: Fatigue[]; andromedaScore: number };
 type Rotation = { campaignName: string; replacement: { angle: string }; reason: string };
-type Forecast = { account: { pace: "acelerando" | "estavel" | "desacelerando"; projectedWeeklyLeads: { pessimista: number; esperado: number; otimista: number }; projectedCpl: number | null; trendPct: number; confidence: "baixa" | "media" | "alta"; assumptions: string[] }; anomalies: string[] };
+type Forecast = { account: { pace: "acelerando" | "estavel" | "desacelerando"; projectedWeeklyLeads: { pessimista: number; esperado: number; otimista: number }; projectedCpl: number | null; trendPct: number; confidence: "baixa" | "media" | "alta"; assumptions: string[] }; anomalies: string[]; weeks?: Array<{ weekStart: string; spend: number; leads: number }> };
 // Localizador de Público — a rota /marketing/andromeda JÁ devolvia isto (audience-finder
 // + policy-engine) e a tela descartava. Sob HOUSING a demografia é OBSERVAÇÃO da entrega,
 // nunca alvo: por isso o painel mostra o policyNote junto.
@@ -388,6 +388,51 @@ export default function MarketingPage() {
       ) : andromeda.status === "error" ? (
         <AtlasRecoverableError description={andromeda.message} onRetry={retry} scope="module" />
       ) : null}
+
+      {/* Análise preditiva — a série semanal REAL (linha) + a projeção (tracejado).
+          Antes a previsão só existia como texto num chip; a série era descartada. */}
+      {(() => {
+        if (andromeda.status !== "ok") return null;
+        const f = andromeda.data.forecast;
+        if (!f?.weeks || f.weeks.length < 2) return null;
+        const hist = f.weeks;
+        const p = f.account.projectedWeeklyLeads;
+        const vals = [...hist.map((x) => x.leads), p.esperado];
+        const max = Math.max(...vals, 1);
+        const W = 620, H = 112, pad = 10;
+        const stepX = (W - pad * 2) / Math.max(1, vals.length - 1);
+        const yOf = (v: number) => H - pad - (v / max) * (H - pad * 2);
+        const pts = hist.map((x, i) => ({ x: pad + i * stepX, y: yOf(x.leads) }));
+        const line = pts.map((q, i) => `${i ? "L" : "M"}${q.x.toFixed(1)},${q.y.toFixed(1)}`).join(" ");
+        const lastPt = pts[pts.length - 1];
+        const projPt = { x: pad + (vals.length - 1) * stepX, y: yOf(p.esperado) };
+        const conf = f.account.confidence === "media" ? "média" : f.account.confidence;
+        const accent = "var(--atlas-accent, #4b8df8)";
+        return (
+          <section aria-label="Análise preditiva" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "260ms" }}>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
+              <p className="cc6-eyebrow">Análise preditiva · conta</p>
+              <span className="text-[11px] leading-5 text-[#6b7890]">histórico real (linha) + projeção (tracejado) · confiança {conf}</span>
+            </div>
+            <div className="px-5 pb-2">
+              <svg viewBox={`0 0 ${W} ${H}`} className="h-[112px] w-full" role="img" aria-label={`Leads por semana em ${hist.length} semanas; projeção de ${p.pessimista} a ${p.otimista} na próxima`}>
+                <path d={line} fill="none" stroke={accent} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                <path d={`M${lastPt.x.toFixed(1)},${lastPt.y.toFixed(1)} L${projPt.x.toFixed(1)},${projPt.y.toFixed(1)}`} fill="none" stroke={accent} strokeWidth="2" strokeDasharray="5 4" opacity="0.7" />
+                {pts.map((q, i) => <circle key={i} cx={q.x} cy={q.y} r="2.5" fill={accent} />)}
+                <circle cx={projPt.x} cy={projPt.y} r="3.5" fill="none" stroke={accent} strokeWidth="2" />
+              </svg>
+            </div>
+            <div className="cc6-hairline grid gap-4 px-5 py-3 sm:grid-cols-3">
+              <div><p className="cc6-metric-label">Leads próx. semana</p><p className="cc6-metric-value mt-1 text-lg">{p.pessimista === p.otimista ? p.esperado : `${p.pessimista}–${p.otimista}`}</p></div>
+              <div><p className="cc6-metric-label">CPL projetado</p><p className="cc6-metric-value mt-1 text-lg">{f.account.projectedCpl == null ? "—" : money.format(f.account.projectedCpl)}</p></div>
+              <div><p className="cc6-metric-label">Semanas medidas</p><p className="cc6-metric-value mt-1 text-lg">{hist.length}</p></div>
+            </div>
+            {f.account.assumptions.length ? (
+              <p className="cc6-hairline px-5 py-2.5 text-[11px] leading-4 text-[#6b7890]">{f.account.assumptions.join(" · ")}</p>
+            ) : null}
+          </section>
+        );
+      })()}
 
       {/* Localizador de público — o motor (audience-finder) já vinha na rota e a tela
           descartava. Demografia é OBSERVAÇÃO da entrega; segmentar por ela é proibido
