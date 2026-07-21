@@ -21,6 +21,7 @@ import {
   executeSteps, validateExecutionPlan, type ExecutionStep,
 } from "@/lib/meta/marketing/campaign-executor";
 import { invalidateMetaReads } from "@/lib/meta/marketing/insights-cache";
+import { findPriorExecution, recordExecution } from "@/lib/meta/marketing/idempotency";
 
 export const dynamic = "force-dynamic";
 
@@ -103,15 +104,23 @@ export async function POST(request: NextRequest) {
     if (problems.length) {
       return apiError("PLAN_INVALID", `Plano recusado: ${problems.join("; ")}`, identity.meta, { status: 422 });
     }
+    // ONE-SHOT: a aprovação já executada não recria (idempotência) — reenviar o
+    // mesmo proposalId devolve o resultado anterior em vez de criar de novo.
+    const idemKey = `${identity.access.organization.id}:${proposalId}`;
+    if (!dryRun) {
+      const prior = await findPriorExecution(admin, idemKey);
+      if (prior) {
+        return apiSuccess({ executed: true, dryRun: false, results: prior, governance: `campanha desta proposta já foi criada (idempotência) — não recriamos. ${proposalId}` }, identity.meta, { headers: limited.headers });
+      }
+    }
     try {
-      const results = await executeSteps(steps, {
-        token, dryRun, idempotencyKey: `${identity.access.organization.id}:${proposalId}`,
-      });
+      const results = await executeSteps(steps, { token, dryRun, idempotencyKey: idemKey });
       if (!dryRun && results.some((r) => r.ok)) invalidateMetaReads();
       const failed = results.find((r) => !r.ok);
       if (failed) {
         return apiError("EXECUTION_FAILED", `Meta recusou: ${failed.error ?? "erro desconhecido"}`, identity.meta, { status: 502 });
       }
+      if (!dryRun) await recordExecution(admin, idemKey, identity.access.organization.id, results);
       return apiSuccess({
         executed: !dryRun,
         dryRun,
