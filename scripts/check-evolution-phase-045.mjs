@@ -8,7 +8,9 @@ const checks = [
   ["Fase 045 concluída sem mutação de dados ou schema", config.status === "completed" && config.productionDataModified === false && config.databaseSchemaChanged === false],
   ["Fase anterior encaminha gestão da equipe", previous.nextPhase.phase === 45],
   ["Equipe declara apoio à conversão", page.includes('data-evolution-phase="45"') && page.includes('data-team-layout="conversion-support"')],
-  ["Fila limita três carteiras sem ranking", api.includes(".slice(0, 3)") && api.includes("peopleRanking: false") && page.includes("não é um ranking de pessoas") && config.teamContract.visibleSupportLimit === 3],
+  // CC-6: copy anti-ranking reescrita ("apoio, não ranking de pessoas" no chip e
+  // "não há ranking punitivo de pessoas" na descrição). Governança preservada.
+  ["Fila limita três carteiras sem ranking", api.includes(".slice(0, 3)") && api.includes("peopleRanking: false") && page.includes("não ranking de pessoas") && config.teamContract.visibleSupportLimit === 3],
   ["Sinais de carga são explicáveis", api.includes("overdue.length * 4") && api.includes("hotWithoutNextAction.length * 3") && config.teamContract.explainableSignals.length === 3],
   ["API usa sessão autenticada e RLS", api.includes("requireAccessContext") && api.includes("identity.supabase") && !api.includes("getSupabaseAdmin") && config.safetyPolicy.authenticatedRlsClientUsed === true],
   ["Compatibilidade não remove organização", api.includes("LIVE_PROFILE_SELECT") && api.includes("LIVE_LEAD_SELECT") && api.includes("resolveLiveHierarchy") && (api.match(/eq\("organization_id", organizationId\)/g) || []).length >= 2 && !api.includes('.select("*")')],

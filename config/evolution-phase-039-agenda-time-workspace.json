@@ -23,7 +23,7 @@
       "overdue",
       "all"
     ],
-    "primarySignals": 4,
+    "primarySignals": 3,
     "visibleAttentionLimit": 3,
     "visitFollowUpDeduplicationPreserved": true,
     "existingRealtimePreserved": true,
@@ -41,7 +41,7 @@
     "immediateAttentionShowsOverdueAndToday": true,
     "immediateAttentionLimit": 3,
     "timelineGroupedByLocalDay": true,
-    "sourceCompositionProgressivelyDisclosed": true,
+    "sourceCompositionProgressivelyDisclosed": false,
     "allExistingPeriodsRemainAvailable": true,
     "functionalityRemoved": false
   },

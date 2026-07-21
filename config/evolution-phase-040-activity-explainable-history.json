@@ -10,7 +10,7 @@
   "databaseSchemaChanged": false,
   "routeBehaviorChanged": true,
   "activityContract": {
-    "layoutAttribute": "explain-first",
+    "layoutAttribute": "cc6-reading-timeline",
     "sourceOfTruth": "public.activities",
     "categories": [
       "change",
@@ -26,7 +26,7 @@
       "month",
       "all"
     ],
-    "primarySignals": 4,
+    "primarySignals": 3,
     "latestVisibleLimit": 3,
     "maximumVisibleRecords": 500,
     "realtimePreserved": true,
@@ -38,14 +38,14 @@
   "informationHierarchy": {
     "signals": [
       "today",
-      "contacts",
       "clients in motion",
       "visible records"
     ],
     "latestMovementsUseChronologicalOrder": true,
     "latestMovementLimit": 3,
     "timelineGroupedByLocalDay": true,
-    "categoryCompositionProgressivelyDisclosed": true,
+    "categoryCompositionProgressivelyDisclosed": false,
+    "categoryCompositionAlwaysVisible": true,
     "searchAndFiltersRemainVisible": true,
     "functionalityRemoved": false
   },

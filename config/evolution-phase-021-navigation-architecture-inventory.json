@@ -14,25 +14,26 @@
     "entryRedirect": "/ -> /dashboard"
   },
   "topology": {
-    "crmRoutes": 141,
+    "crmRoutes": 139,
     "rootRedirects": 1,
-    "canonicalNavigationDestinations": 25,
-    "canonicalDestinationsPresent": 25,
+    "canonicalNavigationDestinations": 22,
+    "canonicalDestinationsPresent": 22,
     "missingCanonicalDestinations": 0,
     "dynamicContextRoutes": 29,
-    "deepSupportRoutes": 71,
-    "topLevelNonCanonicalRoutes": 15
+    "deepSupportRoutes": 69,
+    "topLevelNonCanonicalRoutes": 18,
+    "repricedNote": "Re-inventariado à fonte lib/atlas/navigation.ts após a poda intencional (commit e20f8931): 25->22 destinos canônicos; /command-center consolida Início+Command Center; /ai-dashboard, /atlas-2030, /dashboard e /revenue-engine deixaram o catálogo e passaram a superfícies de topo não-canônicas; /pipedrive (adaptador legado) foi removido em commit anterior; total de rotas CRM rastreadas 141->139."
   },
   "navigationChannels": [
     {
       "channel": "primary-sidebar",
-      "count": 19,
+      "count": 18,
       "source": "atlasNavigation",
       "purpose": "Destinos recorrentes governados por perfil e agrupados por trabalho."
     },
     {
       "channel": "contextual-command",
-      "count": 6,
+      "count": 5,
       "source": "atlasContextCommands",
       "purpose": "Ações e workspaces acessados por busca, contexto ou comando, sem inflar a sidebar."
     },
@@ -46,7 +47,7 @@
   "routeBuckets": [
     {
       "bucket": "canonical",
-      "count": 25,
+      "count": 22,
       "disposition": "preserve"
     },
     {
@@ -56,12 +57,12 @@
     },
     {
       "bucket": "deep-support",
-      "count": 71,
+      "count": 69,
       "disposition": "keep-addressable-and-audit-discoverability"
     },
     {
       "bucket": "top-level-non-canonical",
-      "count": 15,
+      "count": 18,
       "disposition": "classify-before-consolidation"
     },
     {
@@ -137,8 +138,23 @@
       "targetToEvaluate": null
     },
     {
-      "route": "/pipedrive",
-      "classification": "legacy-adapter",
+      "route": "/dashboard",
+      "classification": "compatibility-redirect",
+      "targetToEvaluate": "/command-center"
+    },
+    {
+      "route": "/ai-dashboard",
+      "classification": "quarantined-legacy-surface",
+      "targetToEvaluate": "/intelligence"
+    },
+    {
+      "route": "/revenue-engine",
+      "classification": "quarantined-legacy-surface",
+      "targetToEvaluate": "/marketing"
+    },
+    {
+      "route": "/atlas-2030",
+      "classification": "quarantined-legacy-surface",
       "targetToEvaluate": null
     },
     {
@@ -166,7 +182,7 @@
   "findings": [
     {
       "priority": "high",
-      "finding": "Quinze superfícies de topo são acessíveis, mas não pertencem aos catálogos canônicos de navegação.",
+      "finding": "Dezoito superfícies de topo são acessíveis, mas não pertencem aos catálogos canônicos de navegação.",
       "nextAction": "Definir o resultado comercial e a descoberta correta antes de consolidar qualquer rota."
     },
     {
@@ -176,7 +192,7 @@
     },
     {
       "priority": "medium",
-      "finding": "As 141 rotas CRM compartilham um único layout, loading e error boundary no grupo principal.",
+      "finding": "As 139 rotas CRM compartilham um único layout, loading e error boundary no grupo principal.",
       "nextAction": "Avaliar limites aninhados por domínio quando a medição de falhas justificar isolamento."
     },
     {
@@ -186,7 +202,7 @@
     },
     {
       "priority": "positive",
-      "finding": "Os 25 destinos canônicos resolvem para páginas existentes.",
+      "finding": "Os 22 destinos canônicos resolvem para páginas existentes.",
       "nextAction": "Preservar cobertura integral durante a compactação futura."
     }
   ],

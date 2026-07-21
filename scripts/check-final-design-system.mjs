@@ -11,7 +11,11 @@ const program = JSON.parse(fs.readFileSync("config/final-10-phases-improvement.j
 checks.push(["config/final-10-phases-improvement.json: fase atual não regrediu", Number(program.current_phase) >= 2]);
 checks.push(["config/final-10-phases-improvement.json: fases 1 e 2 concluídas", [1, 2].every((phase) => program.completed?.includes(phase))]);
 need("components/atlas/metric-card.tsx", "AtlasMetric", "canonicalTone");
-need("components/atlas/status-badge.tsx", "AtlasBadge");
+// CC-5 renomeou o badge canônico deste arquivo de AtlasBadge para StatusBadge
+// (commit "AtlasCard/Metric, StatusBadge e PageHeader no padrão CC-5"). O
+// componente continua existindo aqui; AtlasBadge segue como badge legado em
+// components/ui/AtlasUI.tsx (source of truth em config/final-design-system.json).
+need("components/atlas/status-badge.tsx", "StatusBadge");
 need("components/atlas/empty-state.tsx", "AtlasEmpty");
 need("components/ui/AtlasUI.tsx", 'role="status"', 'role="progressbar"');
 need("app/globals.css", ":focus-visible", "prefers-reduced-motion: reduce");

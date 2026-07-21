@@ -2,6 +2,7 @@ import fs from"node:fs";const checks=[];const need=(file,...terms)=>{const sourc
 need("lib/marketing/media-experiment-lab.ts","sampleReady","budget_cap_reached","maximum_window_reached","guardrail_deteriorated","insufficient_sample_no_causal_claim","automaticWinner:false");
 need("supabase/migrations/20260719153000_phase_93_media_experiment_lab.sql","media_experiments","media_experiment_checkpoints","media_experiment_events","single_variable","decide_media_experiment","transition_media_experiment","externalChangeExecuted");
 need("app/api/v1/marketing/experiments/route.ts","singleVariableRequired:true","controlRequired:true","causalClaimAllowed:false","automaticBudgetChange:false","APPROVED_CYCLE_REQUIRED","duplicatePrevented");
-need("app/(crm)/marketing/experiments/page.tsx","93-governed-media-experiment-lab","GRUPO DE CONTROLE OBRIGATÓRIO","SEM VENCEDOR AUTOMÁTICO","DIRETOR DECIDE","nenhuma campanha foi alterada automaticamente");
+// CC-6: redesign consolidou 3 chips de governança em descrição + badge; sentido preservado ("grupo de controle obrigatório" e "quem decide é a diretoria" na descrição, badge "Sem vencedor automático").
+need("app/(crm)/marketing/experiments/page.tsx","93-governed-media-experiment-lab","grupo de controle obrigatório","Sem vencedor automático","quem decide é a diretoria","nenhuma campanha foi alterada automaticamente");
 need("config/governed-media-experiment-lab.json","\"phase\": 93","\"control_required\": true","\"causal_claim_allowed\": false","\"automatic_budget_change\": false");
 for(const[name,ok]of checks)console.log(`${ok?"✓":"✗"} ${name}`);if(checks.some(([,ok])=>!ok))process.exit(1);console.log(`\nFase 93 aprovada: ${checks.length} controles do laboratório de mídia.`);

@@ -11,7 +11,9 @@ const checks = [
   ["Espera, capacidade e equilíbrio são explícitos", page.includes("oldestWaitingMinutes") && page.includes("brokersNearCapacity") && page.includes("balanceGap")],
   ["Copilot recebe contexto agregado", page.includes('module: "distribution-capacity"') && page.includes("humanApprovalRequired: true") && config.copilotPolicy.aggregateContextOnly === true],
   ["IA não distribui nem altera limites", page.includes("Não distribua leads, não altere capacidade e não envie mensagens") && config.distributionContract.automaticAssignment === false],
-  ["Atribuição continua exigindo clique humano", page.includes('onClick={()=>void distribute(1)}') && page.includes("decisão explícita da liderança") && config.safetyPolicy.explicitLeadershipActionRequired === true],
+  // CC-6: onClick reformatado com espaços no arrow (() => void distribute(1)).
+  // O clique humano de atribuição segue presente; só o whitespace mudou.
+  ["Atribuição continua exigindo clique humano", page.includes("void distribute(1)") && page.includes("decisão explícita da liderança") && config.safetyPolicy.explicitLeadershipActionRequired === true],
   ["Fila preserva proteção de dados", page.includes("sem PII") && config.distributionContract.personalDataExposed === false],
   ["Relatório registra governança e próxima fase", report.includes("aprovação humana") && config.nextPhase.phase === 47]
 ];

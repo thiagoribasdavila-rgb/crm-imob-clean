@@ -7,11 +7,12 @@
   "productionDataModified": false,
   "runtimeNavigationChanged": true,
   "catalogPreservation": {
-    "primaryDestinations": 19,
-    "contextCommands": 6,
+    "primaryDestinations": 18,
+    "contextCommands": 5,
     "mobilePrimaryDestinations": 4,
     "routesRemoved": 0,
-    "permissionsChanged": false
+    "permissionsChanged": false,
+    "catalogRepricedAtCommit": "e20f8931 — poda intencional na fonte (navegação podada na fonte): 19->18 principais e 6->5 contextuais; /command-center consolida Início+Command Center e os grupos (ai)/(autonomous) foram quarentenados. Guard re-baselinado para a fonte de verdade lib/atlas/navigation.ts."
   },
   "compactionChanges": {
     "favoriteDuplication": {
@@ -31,7 +32,8 @@
       "groupSpacingBeforePx": 17,
       "groupSpacingAfterPx": 13,
       "separatorPaddingBeforePx": 14,
-      "separatorPaddingAfterPx": 10
+      "separatorPaddingAfterPx": 10,
+      "supersededByCc6": "Commit 9730415f (fundação do redesign global CC-6) reprecificou o espaçamento da sidebar para a grade do design system: grupo margin-top:20px e seção padding:0 10px 0 8px. Os px acima são o registro histórico da Fase 025."
     },
     "touchTargets": {
       "minimumNavigationTargetPx": 44,

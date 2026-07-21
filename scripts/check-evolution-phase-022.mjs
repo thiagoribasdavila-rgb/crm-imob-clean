@@ -36,10 +36,11 @@ const ambiguityRoutes = config.ambiguityDecisions.flatMap((item) => [item.primar
 
 const checks = [
   ["Fase 022 concluída sem alteração de runtime", config.status === "completed" && config.productionDataModified === false && config.runtimeNavigationChanged === false],
-  ["Inventário anterior está concluído", phaseTwentyOne.status === "completed" && phaseTwentyOne.topology.canonicalDestinationsPresent === 25],
-  ["Todos os destinos canônicos possuem resultado", JSON.stringify(canonicalRoutes) === JSON.stringify(outcomeRoutes) && canonicalRoutes.length === 25 && uniqueOutcomeRoutes],
-  ["Dezenove destinos principais estão definidos", primaryOutcomes.length === 19],
-  ["Seis comandos contextuais estão definidos", contextualOutcomes.length === 6],
+  ["Inventário anterior está concluído", phaseTwentyOne.status === "completed" && phaseTwentyOne.topology.canonicalDestinationsPresent === 22],
+  // Catálogo podado na fonte de propósito (commit e20f8931 "navegação podada na fonte"): 25->22 destinos canônicos. /command-center consolida Início+Command Center (substitui /dashboard); /ai-dashboard, /revenue-engine e /atlas-2030 saíram do catálogo (grupos (ai)/(autonomous)/estratégico quarentenados); /decision-center foi promovido a destino principal. Guard re-baselinado à fonte lib/atlas/navigation.ts.
+  ["Todos os destinos canônicos possuem resultado", JSON.stringify(canonicalRoutes) === JSON.stringify(outcomeRoutes) && canonicalRoutes.length === 22 && uniqueOutcomeRoutes],
+  ["Dezoito destinos principais estão definidos", primaryOutcomes.length === 18],
+  ["Quatro comandos contextuais estão definidos", contextualOutcomes.length === 4],
   ["Pergunta, ação e evidência são obrigatórias", requiredOutcomeFieldsPresent],
   ["Jornadas críticas respeitam até três ações", config.criticalJourneys.length >= 6 && journeysWithinBudget],
   ["Decisões ambíguas preservam compatibilidade", config.ambiguityDecisions.length === 7 && config.ambiguityDecisions.every((item) => item.aliasesToPreserveUntilUsageAudit.length > 0)],

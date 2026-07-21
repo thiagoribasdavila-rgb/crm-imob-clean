@@ -61,7 +61,11 @@ const checks = [
   ["Projetos disponíveis e projeto salvo vêm do tenant atual", route.includes('from("crm_projects")') && route.includes("projectOptions") && route.includes("LEAD_CONTEXT_PROJECT_OUT_OF_SCOPE")],
   ["API exige prévia e detecta alteração concorrente", route.includes("LEAD_CONTEXT_EXPECTATION_REQUIRED") && route.includes("sameGovernedLeadCommercialContext") && route.includes("LEAD_CONTEXT_CORRECTION_CONFLICT")],
   ["Correção registra evento auditável e tenta rollback", route.includes('type: "commercial_context_corrected"') && route.includes("buildGovernedLeadContextAuditMetadata") && route.includes("rollbackQuery")],
-  ["Formulário genérico preserva a origem atual", route.includes("source: currentLead.source") && page.includes("use a correção governada acima") && page.includes("readOnly")],
+  // CC-6: o formulário genérico deixou de ter campo de origem (antes um input
+  // readOnly) — agora omite o campo e direciona para o fluxo governado "Corrigir
+  // contexto", com nota explícita. O servidor segue forçando source: currentLead.source
+  // (ignora body.source), então a origem só muda pela correção auditável.
+  ["Formulário genérico preserva a origem atual", route.includes("source: currentLead.source") && page.includes("A origem comercial não é editada aqui") && page.includes("justificativa auditável")],
   ["Lead 360 mostra um bloco compacto com motivo e confirmação", component.includes('id="commercial-context"') && component.includes("Motivo auditável") && component.includes("Revisei projeto e origem")],
   ["Lead 360 envia expectativa revisada e recarrega após salvar", page.includes('action: "correct_commercial_context"') && component.includes("expectedProjectId") && component.includes("expectedSource") && page.includes("await load()")],
   ["Copilot abre diretamente o ponto de correção", dock.includes("#commercial-context") && dock.includes("Revisar cadastro da lead")],

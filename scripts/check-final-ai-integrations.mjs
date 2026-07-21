@@ -13,7 +13,12 @@ checks.push(["config/final-10-phases-improvement.json: fases 1 a 8 concluídas",
 need("lib/ai/provider-router.ts", "signal?: AbortSignal", "signal: input.signal", "input.signal?.aborted", "aiProviderReadiness", "localFallback");
 need("lib/ai/provider-router.ts", "testEconomyProviderConnection", "ATLAS_${provider.toUpperCase()}_OK");
 need("app/api/ai/provider-test/route.ts", "economy-ai-homologation", "PROVIDER_NOT_CONFIGURED", "fallbackUsed: false");
-need("app/(crm)/settings/ai/page.tsx", "/api/ai/provider-test", "Testar ${provider.name}", "AI Health Center");
+// CC-6 unificou Health Center + Orquestração V3 numa única superfície "Inteligência
+// sob governança". O botão de teste por provedor agora resolve o nome amigável do
+// catálogo (meta?.name ?? provider.name) e a antiga seção "AI Health Center" virou a
+// seção de provedores com id ai-providers-title ("Conexão comprovada, não presumida"),
+// que renderiza providerHealth por provedor. Capacidade preservada, só reorganizada.
+need("app/(crm)/settings/ai/page.tsx", "/api/ai/provider-test", "Testar ${meta?.name ?? provider.name}", "ai-providers-title");
 need("app/api/ai/copilot/route.ts", "signal: request.signal", "request.signal.aborted", "estimatedCostUsd", "pricingConfigured");
 need("components/AtlasCopilotDock.tsx", "new AbortController()", "signal: controller.signal", "Cancelar consulta", "custo medido", "preço pendente de configuração");
 need("docs/FINAL_PHASE_8_AI_AUTOMATIONS_INTEGRATIONS.md", "cancelamento ponta a ponta", "aprovação", "Hostinger");

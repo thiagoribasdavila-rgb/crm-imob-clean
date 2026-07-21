@@ -12,12 +12,13 @@ const expectedTopLevel = config.topLevelNonCanonical.map((entry) => entry.route)
 const measuredTopLevel = inventory.topLevelNonCanonicalRoutes.slice().sort();
 const checks = [
   ["Fase 021 concluída sem mutação de runtime", config.status === "completed" && config.productionDataModified === false && config.runtimeNavigationChanged === false],
-  ["Todas as rotas CRM foram classificadas", inventory.counts.crmRoutes === config.topology.crmRoutes && inventory.counts.crmRoutes === 141],
+  // Poda intencional na fonte (commit e20f8931): total de rotas CRM rastreadas 141->139 (/pipedrive removido em commit anterior) e catálogo canônico 25->22. Guard re-baselinado à fonte lib/atlas/navigation.ts + git ls-files.
+  ["Todas as rotas CRM foram classificadas", inventory.counts.crmRoutes === config.topology.crmRoutes && inventory.counts.crmRoutes === 139],
   ["Buckets fecham o inventário", config.topology.canonicalNavigationDestinations + config.topology.dynamicContextRoutes + config.topology.deepSupportRoutes + config.topology.topLevelNonCanonicalRoutes + config.topology.rootRedirects === config.topology.crmRoutes],
   ["Catálogo canônico possui cobertura integral", inventory.missingCanonicalDestinations.length === 0 && inventory.counts.canonicalDestinationsPresent === config.topology.canonicalDestinationsPresent],
   ["Rotas dinâmicas permanecem contextuais", inventory.counts.dynamicContextRoutes === config.topology.dynamicContextRoutes && config.topology.dynamicContextRoutes === 29],
-  ["Rotas profundas permanecem de apoio", inventory.counts.deepSupportRoutes === config.topology.deepSupportRoutes && config.topology.deepSupportRoutes === 71],
-  ["Superfícies de topo foram classificadas", JSON.stringify(measuredTopLevel) === JSON.stringify(expectedTopLevel) && expectedTopLevel.length === 15],
+  ["Rotas profundas permanecem de apoio", inventory.counts.deepSupportRoutes === config.topology.deepSupportRoutes && config.topology.deepSupportRoutes === 69],
+  ["Superfícies de topo foram classificadas", JSON.stringify(measuredTopLevel) === JSON.stringify(expectedTopLevel) && expectedTopLevel.length === 18],
   ["Ambiguidades críticas estão explícitas", expectedTopLevel.includes("/automation") && expectedTopLevel.includes("/automations") && expectedTopLevel.includes("/kanban") && expectedTopLevel.includes("/creatives")],
   ["Entrada autenticada continua no dashboard", inventory.entryRoute.redirectsToDashboard === true],
   ["Shell persistente continua governado pelo layout", layout.includes("<AppShell>") && layout.includes("<AtlasCopilotDock") && layout.includes("<AtlasNotificationCenter")],

@@ -11,7 +11,8 @@ const checks = [
   ["Fila limita três decisões verificáveis", page.includes(".slice(0, 3)") && config.revenueContract.visibleDecisionLimit === 3],
   ["Fechamento e comissão têm sinais explicáveis", page.includes("commission === \"overdue\"") && page.includes('risk.key === "at_risk"') && page.includes('risk.key === "incomplete"')],
   ["Copilot exige aprovação e não executa", page.includes('module: "sales-revenue-decision"') && page.includes("Não altere o forecast, não registre pagamento e não envie mensagens")],
-  ["Previsão não é promessa", page.includes("não promete venda nem receita") && config.revenueContract.forecastGuarantee === false],
+  // CC-6: anti-promessa reescrita para "a previsão orienta a revisão, não garante fechamento".
+  ["Previsão não é promessa", page.includes("não garante fechamento") && config.revenueContract.forecastGuarantee === false],
   ["Ações financeiras continuam explícitas", page.includes("configureCommission") && page.includes("registerPayment") && config.safetyPolicy.financialActionsRemainExplicit === true],
   ["Marco excepcional da fase 47 está programado", checkpoints.specialCheckpoints.includes(47) && config.checkpoint.specialFirstPackage === true && config.checkpoint.nextRecurringPackage === 100],
   ["Relatório registra o primeiro pacote e continuidade", report.includes("ZIP excepcional") && config.nextPhase.phase === 48]

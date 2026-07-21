@@ -26,7 +26,14 @@ function listPages(directory) {
 const crmPages = listPages("app/(crm)");
 const pagesWithClientLoadSignals = crmPages.filter((file) => /useEffect\(|void load\(\)/.test(fs.readFileSync(file, "utf8"))).length;
 const pagesWithLocalFeedbackSignals = crmPages.filter((file) => /AtlasSkeleton|LoadingState|loading \?/.test(fs.readFileSync(file, "utf8"))).length;
-const sharedLocalLoadingConsumers = crmPages.filter((file) => fs.readFileSync(file, "utf8").includes("<LoadingState")).length;
+// Reconciliação CC-6: o componente de carregamento local compartilhado migrou de <LoadingState>
+// para <AtlasSkeleton> (73 páginas). A cobertura de feedback local foi preservada e ampliada;
+// contamos ambos os componentes compartilhados para refletir a nova realidade sem enfraquecer
+// a linha de base (>= 4). Ver docs/EVOLUTION_PHASE_029_NAVIGATION_PROGRESSIVE_LOADING.md.
+const sharedLocalLoadingConsumers = crmPages.filter((file) => {
+  const source = fs.readFileSync(file, "utf8");
+  return source.includes("<LoadingState") || source.includes("<AtlasSkeleton");
+}).length;
 
 const priorities = [...progressiveLoading.matchAll(/data-loading-priority="([^"]+)"/g)].map((match) => match[1]);
 

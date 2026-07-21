@@ -19,12 +19,13 @@
   },
   "canonicalOutcomes": [
     {
-      "route": "/dashboard",
+      "route": "/command-center",
       "surface": "primary",
       "audience": "operação comercial",
-      "decisionQuestion": "O que exige atenção agora?",
-      "primaryAction": "Abrir a prioridade comercial de maior impacto.",
-      "completionEvidence": "A prioridade foi aberta e recebeu uma ação rastreável."
+      "decisionQuestion": "Qual prioridade comercial exige decisão ou execução agora?",
+      "primaryAction": "Abrir a prioridade de maior impacto com o pulso ao vivo de IA e corretor.",
+      "completionEvidence": "A prioridade foi aberta e recebeu uma ação comercial rastreável.",
+      "repricedNote": "Fusão Início+Command Center consolidada na fonte (commit ab71b83d/e20f8931). Substitui a antiga rota /dashboard, que agora apenas redireciona para /command-center."
     },
     {
       "route": "/leads",
@@ -91,14 +92,6 @@
       "completionEvidence": "Lote registra origem, duplicidade, consentimento e elegibilidade."
     },
     {
-      "route": "/ai-dashboard",
-      "surface": "primary",
-      "audience": "operação comercial",
-      "decisionQuestion": "Qual recomendação de IA merece revisão humana agora?",
-      "primaryAction": "Revisar a evidência e aceitar, ajustar ou rejeitar a sugestão.",
-      "completionEvidence": "Decisão humana e resultado esperado ficam registrados."
-    },
-    {
       "route": "/brokers",
       "surface": "primary",
       "audience": "liderança comercial",
@@ -129,14 +122,6 @@
       "decisionQuestion": "Qual decisão o período exige?",
       "primaryAction": "Abrir a recomendação sustentada por dados do escopo.",
       "completionEvidence": "Período, evidência e decisão podem ser revisados ou exportados."
-    },
-    {
-      "route": "/revenue-engine",
-      "surface": "primary",
-      "audience": "liderança comercial",
-      "decisionQuestion": "Qual campanha está gerando oportunidade e receita real?",
-      "primaryAction": "Investigar a campanha, o atendimento ou o evento de conversão.",
-      "completionEvidence": "Origem, custo, etapa e resultado permanecem atribuídos."
     },
     {
       "route": "/users",
@@ -204,19 +189,12 @@
     },
     {
       "route": "/decision-center",
-      "surface": "contextual-command",
+      "surface": "primary",
       "audience": "liderança comercial",
       "decisionQuestion": "Qual exceção precisa de decisão humana?",
       "primaryAction": "Aprovar, ajustar ou rejeitar com justificativa.",
-      "completionEvidence": "Decisão, autor, evidência e efeito ficam auditáveis."
-    },
-    {
-      "route": "/atlas-2030",
-      "surface": "contextual-command",
-      "audience": "diretoria",
-      "decisionQuestion": "Qual cenário estratégico merece simulação controlada?",
-      "primaryAction": "Executar ou revisar uma simulação sem mutação automática da operação.",
-      "completionEvidence": "Premissas, resultado e decisão permanecem versionados."
+      "completionEvidence": "Decisão, autor, evidência e efeito ficam auditáveis.",
+      "repricedNote": "Promovido de comando contextual a destino principal: a poda na fonte (commit e20f8931) o mantém em atlasNavigation. /atlas-2030 saiu do catálogo (grupo estratégico quarentenado)."
     }
   ],
   "criticalJourneys": [

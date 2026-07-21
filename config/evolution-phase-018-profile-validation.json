@@ -21,15 +21,16 @@
     "mutationPerformed": false,
     "nextAction": "apply approved migrations, then run audit:runtime-schema and audit:auth-hierarchy"
   },
+  "catalogRepricedAtCommit": "e20f8931 (navegação podada na fonte): catálogo intencionalmente reduzido em 1 destino por persona; /command-center consolida Início+Command Center e o comando contextual /atlas-2030 saiu do catálogo (grupos (ai)/(autonomous) quarentenados). Contagens e amostras allowed/blocked re-baselinadas à fonte lib/atlas/navigation.ts.",
   "personas": [
     {
       "id": "administrator",
       "label": "Administrador",
       "role": "director",
       "accessRole": "admin",
-      "expectedNavigationCount": 19,
-      "expectedContextCommandCount": 6,
-      "allowed": ["/users", "/settings", "/integrations", "/atlas-2030"],
+      "expectedNavigationCount": 18,
+      "expectedContextCommandCount": 5,
+      "allowed": ["/users", "/settings", "/integrations", "/command-center"],
       "blocked": []
     },
     {
@@ -37,9 +38,9 @@
       "label": "Diretor decisor",
       "role": "director",
       "accessRole": "director_decisor",
-      "expectedNavigationCount": 17,
-      "expectedContextCommandCount": 6,
-      "allowed": ["/reports", "/external-sales", "/integrations", "/atlas-2030"],
+      "expectedNavigationCount": 16,
+      "expectedContextCommandCount": 5,
+      "allowed": ["/reports", "/external-sales", "/integrations", "/command-center"],
       "blocked": ["/users", "/settings"]
     },
     {
@@ -47,40 +48,40 @@
       "label": "Diretor comercial",
       "role": "director",
       "accessRole": "director",
-      "expectedNavigationCount": 15,
+      "expectedNavigationCount": 14,
       "expectedContextCommandCount": 5,
       "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
-      "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings", "/atlas-2030"]
+      "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings"]
     },
     {
       "id": "superintendent",
       "label": "Superintendente",
       "role": "superintendent",
       "accessRole": "director",
-      "expectedNavigationCount": 15,
+      "expectedNavigationCount": 14,
       "expectedContextCommandCount": 5,
       "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
-      "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings", "/atlas-2030"]
+      "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings"]
     },
     {
       "id": "manager",
       "label": "Gerente",
       "role": "manager",
       "accessRole": "director",
-      "expectedNavigationCount": 15,
+      "expectedNavigationCount": 14,
       "expectedContextCommandCount": 5,
       "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
-      "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings", "/atlas-2030"]
+      "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings"]
     },
     {
       "id": "broker",
       "label": "Corretor",
       "role": "broker",
       "accessRole": "broker",
-      "expectedNavigationCount": 10,
+      "expectedNavigationCount": 9,
       "expectedContextCommandCount": 3,
       "allowed": ["/leads", "/pipeline", "/properties", "/conversations"],
-      "blocked": ["/brokers", "/distribution", "/reports", "/marketing", "/decision-center", "/atlas-2030", "/users", "/settings"]
+      "blocked": ["/brokers", "/distribution", "/reports", "/marketing", "/decision-center", "/users", "/settings"]
     }
   ],
   "exitCriteria": {

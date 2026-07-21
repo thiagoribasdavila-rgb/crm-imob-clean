@@ -6,7 +6,8 @@ const hierarchyAudit = fs.readFileSync("scripts/audit-auth-hierarchy-runtime.mjs
 const foundation = fs.readFileSync("supabase/migrations/20260711040000_atlas_v3_foundation.sql", "utf8");
 const hierarchyMigration = fs.readFileSync("supabase/migrations/20260716212459_commercial_hierarchy_and_bulk_transfer.sql", "utf8");
 const rbacMigration = fs.readFileSync("supabase/migrations/20260717200655_official_auth_rbac.sql", "utf8");
-const bridgeMigration = fs.readFileSync("supabase/migrations/20260717213000_v3_legacy_runtime_schema_bridge.sql", "utf8");
+// Migration renomeada (timestamp deduplicado em 1bd282f6: 213000 -> 213001); conteúdo idêntico, apenas o nome do arquivo mudou.
+const bridgeMigration = fs.readFileSync("supabase/migrations/20260717213001_v3_legacy_runtime_schema_bridge.sql", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_019_SCHEMA_CORRECTION.md", "utf8");
 
 const checks = [
