@@ -17,6 +17,8 @@ import { fetchAdInsights, fetchBreakdownInsights } from "@/lib/meta/marketing/ca
 import { analyzeCreativeHealth, accountConsolidation } from "@/lib/meta/marketing/andromeda-report";
 import { placementReport, geoReport, demoReport, anglePerformance } from "@/lib/meta/marketing/audience-finder";
 import { forecastCampaign, anomalyForecast, type ForecastWeek } from "@/lib/meta/marketing/forecast";
+import { proposeRotations, rotationSummary } from "@/lib/ai/creative-rotation";
+import { briefsForRotation } from "@/lib/atlas/developer-portfolio";
 import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
 
@@ -79,15 +81,21 @@ export async function GET(request: NextRequest) {
     anomalies: anomalyForecast(weeks, { anomalyLeadDropPct: cal.forecast.anomalyLeadDropPct }),
   };
 
+  const health = analyzeCreativeHealth(rows, {
+    freqLimit: cal.fatigue.freqLimit,
+    ctrDropPct: cal.fatigue.ctrDropPct,
+    cpmRisePct: cal.fatigue.cpmRisePct,
+    diversityTarget: cal.diversity.targetAdsPerCampaign,
+    maxActiveCampaignsSmall: cal.consolidation.maxActiveCampaignsSmall,
+  });
+  // ROTAÇÃO CRIATIVA: fadiga detectada → substituto já redigido (IAs conversando).
+  // Só para campanhas com brief conhecido no rol de incorporadoras.
+  const rotations = proposeRotations(health, briefsForRotation());
+
   return apiSuccess({
     source: "meta_live",
-    health: analyzeCreativeHealth(rows, {
-      freqLimit: cal.fatigue.freqLimit,
-      ctrDropPct: cal.fatigue.ctrDropPct,
-      cpmRisePct: cal.fatigue.cpmRisePct,
-      diversityTarget: cal.diversity.targetAdsPerCampaign,
-      maxActiveCampaignsSmall: cal.consolidation.maxActiveCampaignsSmall,
-    }),
+    health,
+    rotations: { proposals: rotations, summary: rotationSummary(rotations) },
     consolidation: accountConsolidation(liveCampaigns, monthlySpend),
     forecast, // análise preditiva: pace, projeção de leads/CPL, anomalias
     // Localizador de Público: onde responde, onde vaza, quem responde

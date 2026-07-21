@@ -4,6 +4,7 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { aggregate, weekly, budgetView, type SpendRow, type ProductBudget } from "@/lib/marketing/cost-report";
 import { marketingEfficiencyPlan } from "@/lib/ai/marketing-strategist";
+import { simulatePlan } from "@/lib/ai/decision-simulator";
 import { fetchCampaignInsights, insightsToCostRows } from "@/lib/meta/marketing/campaign-read";
 import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { matchCampaign } from "@/lib/atlas/developer-portfolio";
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
         const pb: ProductBudget[] = (budgetsResult.data ?? []).map((b) => ({ product: b.product, developer: b.developer, weeklyBudget: Number(b.weekly_budget) || 0, targetCac: b.target_cac != null ? Number(b.target_cac) : null }));
         const agg = aggregate(rows, "campaign");
         const bud = budgetView(pb, rows);
+        const livePlan = marketingEfficiencyPlan(bud, agg, { salesKnown: false });
         return apiSuccess({
           source: "meta_live", // gasto/leads direto da Meta (30d); venda só existe via CRM (Fase 0)
           totals: { spend: agg.reduce((s, b) => s + b.spend, 0), campaigns: new Set(rows.map((r) => r.campaignId)).size },
@@ -72,7 +74,9 @@ export async function GET(request: NextRequest) {
           byProject: { aggregate: aggregate(rows, "product"), weekly: weekly(rows, "product") },
           byDeveloper: { aggregate: aggregate(rows, "developer"), weekly: weekly(rows, "developer") },
           budget: bud,
-          plan: marketingEfficiencyPlan(bud, agg, { salesKnown: false }),
+          plan: livePlan,
+          // projeção de cada movimento ANTES de aprovar (dado 30d → semanal)
+          projection: simulatePlan(livePlan, { campaigns: agg, budget: bud, period: "30d" }),
         }, identity.meta, { headers: limited.headers });
       }
     }
@@ -128,6 +132,7 @@ export async function GET(request: NextRequest) {
 
   const byCampaignAgg = aggregate(all, "campaign");
   const budget = budgetView(productBudgets, all);
+  const dbPlan = marketingEfficiencyPlan(budget, byCampaignAgg);
 
   return apiSuccess({
     totals: { spend: byCampaignAgg.reduce((s, b) => s + b.spend, 0), campaigns: campaigns.length },
@@ -136,7 +141,9 @@ export async function GET(request: NextRequest) {
     byDeveloper: { aggregate: aggregate(all, "developer"), weekly: weekly(spendRows, "developer") },
     budget,
     // IA de marketing (eficiência) — propostas de escalar/pausar/realocar verba
-    plan: marketingEfficiencyPlan(budget, byCampaignAgg),
+    plan: dbPlan,
+    // projeção de cada movimento antes de aprovar (dado do banco = semanal)
+    projection: simulatePlan(dbPlan, { campaigns: byCampaignAgg, budget, period: "7d" }),
   }, identity.meta, { headers: limited.headers });
 }
 
