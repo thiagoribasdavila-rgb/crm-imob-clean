@@ -21,33 +21,50 @@
   --warning: #fbbf24;
   --danger: #fb7185;
   --radius: 16px;
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* ===== CC23 · reparo dos semânticos do shadcn =====
+     Estes tokens vinham do preset CLARO do shadcn e conviviam no mesmo :root com
+     a paleta escura do Atlas. Como não existe bloco .dark e o produto é dark-only,
+     eles resolviam para valores de tema claro dentro de uma interface escura.
+     O caso pior era real e verificável: em components/ui/button.tsx a variante
+     `outline` combina bg-background (#050812) com hover:text-foreground, que era
+     oklch(0.145) — quase preto sobre quase preto, ou seja, o rótulo sumia no hover.
+     Corrigimos na RAIZ, derivando cada semântico da paleta Atlas: nenhum componente
+     precisou ser editado e os utilitários do Tailwind (bg-card, text-foreground,
+     bg-popover…) passam a significar a coisa certa em toda a aplicação. */
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface-2);
+  --popover-foreground: var(--text);
+  /* Texto sobre o acento claro (#38bdf8) precisa ser escuro para manter AA. */
+  --primary-foreground: #041019;
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text);
+  --muted-foreground: var(--muted);
+  /* No vocabulário do shadcn, `accent` é a superfície de hover — não a cor de marca. */
+  --accent: var(--surface-3);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --input: var(--border-strong);
+  --ring: var(--primary);
+
+  /* Série de gráficos: era cinco tons de cinza (default do shadcn), indistinguíveis
+     no escuro. Agora é tonal e liderada pelo acento, com apoio semântico. */
+  --chart-1: var(--primary);
+  --chart-2: #7dd3fc;
+  --chart-3: var(--violet);
+  --chart-4: var(--success);
+  --chart-5: var(--muted);
+
+  --sidebar: var(--atlas-navigation, var(--surface));
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #041019;
+  --sidebar-accent: var(--surface-3);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
 }
 
 * {
@@ -6305,9 +6322,12 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 }
 
 @theme inline {
-  --font-heading: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
+  /* Apontavam para os nomes literais "Geist"/"Geist Mono", que nunca existiram:
+     nenhuma fonte era carregada e tudo caía no system-ui. Agora consomem as
+     variáveis reais que app/layout.tsx publica via next/font. */
+  --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -7390,7 +7410,11 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   color: #6b7890;
 }
 .cc6-metric-value {
-  font-family: ui-monospace, "SF Mono", "Geist Mono", Menlo, monospace;
+  /* A cadeia antiga listava "Geist Mono" depois de ui-monospace, então o sistema
+     sempre vencia e a fonte pretendida nunca era usada — além de não estar
+     carregada. Com o next/font publicando a variável, a intenção original passa
+     a valer de fato. */
+  font-family: var(--cc23-font-num);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -7398,7 +7422,11 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 }
 .cc6-metric-label { font-size: 11.5px; color: #6b7890; letter-spacing: 0.02em; }
 .cc6-num {
-  font-family: ui-monospace, "SF Mono", "Geist Mono", Menlo, monospace;
+  /* A cadeia antiga listava "Geist Mono" depois de ui-monospace, então o sistema
+     sempre vencia e a fonte pretendida nunca era usada — além de não estar
+     carregada. Com o next/font publicando a variável, a intenção original passa
+     a valer de fato. */
+  font-family: var(--cc23-font-num);
   font-variant-numeric: tabular-nums;
 }
 .cc6-hairline { border-top: 1px solid rgba(148, 163, 184, 0.12); }
@@ -7452,4 +7480,184 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
     animation-fill-mode: backwards;
   }
+}
+
+/* ==========================================================================
+   CC23 — a geração que fecha o redesenho global
+   ==========================================================================
+   Sucede o CC-6 e implementa o que ficou desenhado e não construído. É uma
+   camada ADITIVA: entra depois do bloco CC6, não reescreve nenhuma regra acima
+   e é opt-in por tela. Nada do CC6 quebra.
+
+   Cinco princípios, e o que cada um resolve de concreto neste produto:
+
+   1. Densidade instrumental — uma grade de 4px e listas de altura fixa, para ler
+      muitas linhas sem que o olho perca a coluna. Denso não é apertado: a
+      hairline continua separando.
+   2. Números como voz — o número é o conteúdo, não o rótulo. Face monoespaçada
+      com tabular-nums para que dígitos alinhem entre linhas, e hierarquia por
+      PESO e TAMANHO. Cor fica reservada para significado (variação, severidade),
+      nunca para decorar magnitude.
+   3. Profundidade por geometria — elevação por sombra deslocada e hairline, com
+      ZERO glow. Todo movimento passa por dois portões: só em ponteiro fino
+      (não rouba hover de toque) e só sem prefers-reduced-motion.
+   4. Costura de IA — origem-IA se marca com 1px no acento, não com ícone. O que
+      é rascunho (draft_only / humanReviewRequired) aparece tracejado: o olho
+      distingue proposta de fato consumado sem ler legenda.
+   5. Zero hex literal — tudo var(). É o que destrava white-label.
+   ========================================================================== */
+
+:root {
+  /* A grade. Todo espaçamento do CC23 é múltiplo disto. */
+  --cc23-unit: 4px;
+
+  /* Face numérica. Agora que o next/font publica --font-geist-mono, os números
+     têm uma fonte desenhada para tabela; antes caíam no monoespaçado do sistema. */
+  --cc23-font-num: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Elevação: sombra DESLOCADA (não `0 0`, que é glow) somada a uma hairline.
+     A profundidade vem da geometria, não do brilho. */
+  --cc23-lift-rest: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --cc23-lift-raised: 0 6px 20px rgba(0, 0, 0, 0.42);
+
+  /* Altura de linha das listas densas: 8 unidades = 32px. */
+  --cc23-row-height: calc(var(--cc23-unit) * 8);
+}
+
+/* --- 1. Densidade instrumental ------------------------------------------- */
+
+/* Escopo opt-in: quem quiser densidade Bloomberg marca o container com
+   data-cc23-density="compact". Sem o atributo, nada muda. */
+[data-cc23-density="compact"] .cc6-panel {
+  padding: calc(var(--cc23-unit) * 3);
+}
+[data-cc23-density="compact"] .cc23-row {
+  min-height: calc(var(--cc23-unit) * 7);
+}
+
+/* Lista densa: linhas de altura previsível separadas por hairline. Destino:
+   filas de leads, tarefas e prioridades da sala de comando, onde hoje cada item
+   é um card com borda própria — caixa dentro de caixa é o ruído mais caro. */
+.cc23-rows {
+  display: flex;
+  flex-direction: column;
+}
+.cc23-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--cc23-unit) * 3);
+  min-height: var(--cc23-row-height);
+  padding-block: calc(var(--cc23-unit) * 1.5);
+  border-top: 1px solid var(--atlas-border-subtle, var(--border));
+}
+.cc23-rows > .cc23-row:first-child {
+  border-top: 0;
+}
+
+/* --- 2. Números como voz -------------------------------------------------- */
+
+/* O número-herói. Escala ótica: acompanha a viewport sem estourar no mobile. */
+.cc23-display {
+  font-family: var(--cc23-font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.75rem, 1.2rem + 2vw, 2.75rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--atlas-text-primary, var(--text));
+}
+
+/* A unidade (R$, %, mil) recua para que a magnitude seja lida primeiro. */
+.cc23-unit-label {
+  font-family: var(--cc23-font-num);
+  font-size: 0.5em;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--atlas-text-tertiary, var(--muted));
+  margin-inline-start: 0.25em;
+}
+
+/* A variação é o ÚNICO número que recebe cor — porque aqui a cor é informação.
+   O sinal vem por atributo, para o significado não depender só do matiz
+   (quem não distingue cor ainda lê o "+" ou o "−"). */
+.cc23-delta {
+  font-family: var(--cc23-font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--atlas-text-secondary, var(--muted));
+}
+.cc23-delta[data-trend="up"] { color: var(--atlas-success, var(--success)); }
+.cc23-delta[data-trend="down"] { color: var(--atlas-danger, var(--danger)); }
+
+/* --- 3. Profundidade por geometria (zero glow) ---------------------------- */
+
+.cc23-lift {
+  border: 1px solid var(--atlas-border-subtle, var(--border));
+  border-radius: var(--atlas-radius-lg, var(--radius));
+  background: var(--atlas-surface, var(--surface));
+  box-shadow: var(--cc23-lift-rest);
+}
+
+/* Portão duplo: o movimento só existe com ponteiro fino E sem redução de
+   movimento pedida pelo sistema. Em toque, o hover nunca "gruda". */
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .cc23-lift {
+    transition:
+      box-shadow var(--atlas-transition, 180ms) ease,
+      transform var(--atlas-transition, 180ms) ease,
+      border-color var(--atlas-transition, 180ms) ease;
+  }
+  .cc23-lift:hover {
+    transform: translateY(-1px);
+    border-color: var(--atlas-border-strong, var(--border-strong));
+    box-shadow: var(--cc23-lift-raised);
+  }
+}
+
+/* --- 4. Costura de IA ----------------------------------------------------- */
+
+/* 1px no acento na borda inicial: diz "isto veio da IA" sem gastar um ícone
+   nem uma palavra. Destino: cartões de próxima-melhor-ação, prescrições e
+   qualquer bloco cuja origem seja proposta de agente. */
+.cc23-seam {
+  position: relative;
+  padding-inline-start: calc(var(--cc23-unit) * 3);
+}
+.cc23-seam::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 1px;
+  background: var(--atlas-accent, var(--primary));
+}
+
+/* Rascunho: tracejado. A doutrina do produto é "a IA proposta, o humano aprova";
+   o tracejado é essa doutrina virando forma — o olho vê que ainda não é fato. */
+.cc23-draft::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--atlas-accent, var(--primary)) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+/* --- Superfície silenciosa ----------------------------------------------- */
+
+/* Agrupa sem desenhar mais uma caixa: separa por fundo, não por borda.
+   Existe para matar o "card dentro de card", que é a fonte de ruído mais comum
+   nas telas densas deste produto. */
+.cc23-quiet {
+  background: var(--atlas-surface-subtle, var(--surface-2));
+  border-radius: var(--atlas-radius-md, 12px);
+  padding: calc(var(--cc23-unit) * 3);
+}
+
+/* --- Foco visível --------------------------------------------------------- */
+
+/* Um anel só, consistente, em tudo que o CC23 torna interativo. */
+.cc23-lift:focus-visible,
+.cc23-row:focus-visible {
+  outline: 2px solid var(--atlas-focus-ring, var(--primary));
+  outline-offset: 2px;
 }

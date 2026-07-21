@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import Providers from "./providers";
 
@@ -17,8 +19,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // As variáveis --font-geist-sans e --font-geist-mono já eram consumidas pelo
+  // globals.css, mas nunca eram definidas: a interface inteira caía na fonte do
+  // sistema. Carregá-las aqui cumpre a promessa que o CSS já fazia.
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
+      suppressHydrationWarning
+    >
       <body>
         <Providers>{children}</Providers>
       </body>
