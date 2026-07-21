@@ -338,3 +338,39 @@ export async function uploadVideoFromUrl(
 }
 
 export { isUploadError };
+
+/**
+ * Aguarda o encode assíncrono do vídeo terminar antes de usá-lo num creative.
+ * A Meta processa vídeo em background; criar o anúncio antes de status=ready
+ * gera creative quebrado (e, como o executor para na 1ª falha, órfãos PAUSED).
+ * Poll com backoff via sleep injetável; timeout devolve MetaUploadError.
+ */
+export async function waitVideoReady(
+  videoId: string,
+  token: string,
+  opts: { fetcher?: typeof fetch; graphVersion?: string; maxAttempts?: number; sleep?: (ms: number) => Promise<void> } = {},
+): Promise<true | MetaUploadError> {
+  const fetcher = opts.fetcher ?? fetch;
+  const maxAttempts = opts.maxAttempts ?? 20;
+  const sleep = opts.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    let json: { status?: { video_status?: string }; error?: { code?: number; message?: string } };
+    try {
+      const res = await fetcher(`${GRAPH}/${version(opts.graphVersion)}/${videoId}?fields=status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      json = (await res.json().catch(() => ({}))) as typeof json;
+    } catch (err) {
+      return { ok: false, code: "network", message: sanitize(err instanceof Error ? err.message : String(err), token) };
+    }
+    if (json.error) {
+      return { ok: false, code: json.error.code ?? "?", message: sanitize(String(json.error.message ?? "erro ao consultar status do vídeo"), token) };
+    }
+    const status = json.status?.video_status;
+    if (status === "ready") return true;
+    if (status === "error") return { ok: false, code: "encode_error", message: "a Meta falhou ao processar o vídeo." };
+    // "processing" / indefinido → espera com backoff (2s, 3s, 4s...)
+    await sleep(Math.min(2000 + attempt * 1000, 10000));
+  }
+  return { ok: false, code: "encode_timeout", message: "o vídeo ainda estava processando após o tempo limite — tente de novo em instantes." };
+}

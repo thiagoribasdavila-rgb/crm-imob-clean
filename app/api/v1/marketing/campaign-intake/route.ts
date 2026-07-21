@@ -18,7 +18,8 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { buildAdCopy, validateCopy, toAssetFeedSpec, leadCampaignSkeleton, type CreativeAngle, type ProductBrief } from "@/lib/ai/creative-strategist";
 import { productBrief } from "@/lib/atlas/developer-portfolio";
 import { housingTargetingSpec } from "@/lib/meta/marketing/housing-audience";
-import { uploadImageFromUrl, uploadVideoFromUrl } from "@/lib/meta/marketing/media-upload";
+import { uploadImageFromUrl, uploadVideoFromUrl, waitVideoReady } from "@/lib/meta/marketing/media-upload";
+import { findPriorExecution, recordExecution, tryReserve, releaseReservation } from "@/lib/meta/marketing/idempotency";
 import { planFullPublication, validatePublication, publicationSummary } from "@/lib/meta/marketing/publication-plan";
 import { validateExecutionPlan, executeSteps } from "@/lib/meta/marketing/campaign-executor";
 import { fetchCampaignInsights, insightsToCostRows } from "@/lib/meta/marketing/campaign-read";
@@ -139,6 +140,23 @@ export async function POST(request: NextRequest) {
     return apiError("MISSING_MATERIAL", `Faltam itens para criar: ${missing.join("; ")}.`, identity.meta, { status: 422, details: missing });
   }
 
+  // IDEMPOTÊNCIA: reenviar o mesmo confirmToken NÃO recria a campanha.
+  const admin = getSupabaseAdmin();
+  const idemKey = `${identity.access.organization.id}:intake:${confirmToken}`;
+  const prior = await findPriorExecution(admin, idemKey);
+  if (prior) {
+    return apiSuccess({ mode: "ja_criada", created: prior, product: intent.product, governance: "esta campanha já foi criada (idempotência) — não recriamos. PAUSADA." }, identity.meta, { headers: limited.headers });
+  }
+  if (!tryReserve(idemKey)) {
+    return apiError("IN_PROGRESS", "Esta criação já está em andamento — aguarde o resultado.", identity.meta, { status: 409 });
+  }
+
+  // a partir daqui, QUALQUER saída sem sucesso libera a reserva de idempotência
+  const fail = (code: string, message: string, status: number, details?: unknown) => {
+    releaseReservation(idemKey);
+    return apiError(code, message, identity.meta, { status, details });
+  };
+
   // sobe a mídia de verdade (imagens em paralelo; vídeos em paralelo)
   const [imgResults, vidResults] = await Promise.all([
     Promise.all(intent.imageUrls.map(async (url) => ({ url, res: await uploadImageFromUrl(account, token, url, { dryRun: false }) }))),
@@ -148,13 +166,22 @@ export async function POST(request: NextRequest) {
   const vidFail = vidResults.find((r) => "ok" in r.res && r.res.ok === false);
   if (imgFail || vidFail) {
     const err = (imgFail?.res ?? vidFail?.res) as { message?: string };
-    return apiError("MEDIA_UPLOAD_FAILED", `Falha ao subir a mídia: ${err.message ?? "erro"}`, identity.meta, { status: 502 });
+    return fail("MEDIA_UPLOAD_FAILED", `Falha ao subir a mídia: ${err.message ?? "erro"}`, 502);
   }
   const media = assembleMediaRefs(
     imgResults.map((r) => ({ url: r.url, hash: (r.res as { hash: string }).hash })),
     vidResults.map((r) => ({ url: r.url, videoId: (r.res as { videoId: string }).videoId })),
     intent,
   );
+
+  // AGUARDA o encode assíncrono dos vídeos antes de montar o creative —
+  // usar vídeo ainda "processing" cria creative quebrado e deixa órfãos.
+  for (const videoId of media.videoIds) {
+    const ready = await waitVideoReady(videoId, token);
+    if (ready !== true) {
+      return fail("VIDEO_NOT_READY", `Vídeo não ficou pronto: ${ready.message}`, 502);
+    }
+  }
 
   // monta o plano real e cria — tudo PAUSED (garantia do executor)
   const assetFeedSpec = toAssetFeedSpec(copy, { imageHashes: media.imageHashes, videoIds: media.videoIds, linkUrl: FB_LINK, pageId: intent.pageId ?? undefined });
@@ -166,23 +193,20 @@ export async function POST(request: NextRequest) {
     imageHashes: media.imageHashes, videoIds: media.videoIds, adAngles: copy.angles,
   };
   const pubProblems = validatePublication(pubInput);
-  if (pubProblems.length) {
-    return apiError("PLAN_INVALID", `Plano recusado: ${pubProblems.join("; ")}`, identity.meta, { status: 422 });
-  }
+  if (pubProblems.length) return fail("PLAN_INVALID", `Plano recusado: ${pubProblems.join("; ")}`, 422);
   const steps = planFullPublication(pubInput);
   const execProblems = validateExecutionPlan(steps);
-  if (execProblems.length) {
-    return apiError("PLAN_INVALID", `Plano recusado: ${execProblems.join("; ")}`, identity.meta, { status: 422 });
-  }
+  if (execProblems.length) return fail("PLAN_INVALID", `Plano recusado: ${execProblems.join("; ")}`, 422);
 
   try {
-    const results = await executeSteps(steps, {
-      token, dryRun: false, idempotencyKey: `${identity.access.organization.id}:intake:${confirmToken}`,
-    });
+    const results = await executeSteps(steps, { token, dryRun: false, idempotencyKey: idemKey });
     const failed = results.find((r) => !r.ok);
     if (failed) {
-      return apiError("CREATE_FAILED", `A Meta recusou a criação: ${failed.error ?? "erro"}`, identity.meta, { status: 502, details: results });
+      // órfãos possíveis (ids já criados PAUSED vêm em results) — não grava
+      // idempotência de sucesso, mas devolve o que foi criado para rastro.
+      return fail("CREATE_FAILED", `A Meta recusou a criação: ${failed.error ?? "erro"}`, 502, results);
     }
+    await recordExecution(admin, idemKey, identity.access.organization.id, results);
     invalidateMetaReads();
     return apiSuccess({
       mode: "criada",
@@ -191,6 +215,6 @@ export async function POST(request: NextRequest) {
       governance: "campanha criada na Meta — PAUSADA (não gasta). Ative em Marketing → Executar quando quiser começar.",
     }, identity.meta, { headers: limited.headers });
   } catch (err) {
-    return apiError("CREATE_FAILED", err instanceof Error ? err.message : "Falha na criação.", identity.meta, { status: 502 });
+    return fail("CREATE_FAILED", err instanceof Error ? err.message : "Falha na criação.", 502);
   }
 }

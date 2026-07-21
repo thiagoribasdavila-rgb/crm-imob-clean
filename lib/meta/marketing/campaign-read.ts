@@ -33,24 +33,6 @@ function accPath(accountId: string): string {
   return `act_${String(accountId).replace(/^act_/, "")}`;
 }
 
-async function graphGet<T>(path: string, token: string, v?: string): Promise<T | MetaReadError> {
-  try {
-    const res = await fetch(`${GRAPH}/${version(v)}/${path}`, { headers: { Authorization: `Bearer ${token}` } });
-    const json = (await res.json().catch(() => ({}))) as { error?: { code?: number; error_subcode?: number; message?: string; fbtrace_id?: string } } & T;
-    if (json && json.error) {
-      const e = json.error;
-      return { ok: false, code: e.code ?? "?", subcode: e.error_subcode, message: String(e.message ?? "erro Meta"), fbtrace: e.fbtrace_id };
-    }
-    return json as T;
-  } catch (err) {
-    return { ok: false, code: "network", message: err instanceof Error ? err.message : String(err) };
-  }
-}
-
-function isErr(x: unknown): x is MetaReadError {
-  return typeof x === "object" && x !== null && (x as { ok?: boolean }).ok === false;
-}
-
 /**
  * Mapeia o erro do cliente Graph resiliente para o contrato externo MetaReadError,
  * preservando a mensagem (já sanitizada de token pelo graph-client). A família
@@ -67,11 +49,14 @@ function graphUrl(path: string, v?: string): string {
 
 /** Lista as campanhas do ad account. */
 export async function fetchCampaigns(accountId: string, token: string, v?: string): Promise<MetaCampaign[] | MetaReadError> {
-  const data = await graphGet<{ data?: Array<{ id: string; name: string; status: string; objective: string; effective_status: string }> }>(
-    `${accPath(accountId)}/campaigns?fields=id,name,status,objective,effective_status&limit=200`, token, v,
+  // via graphGetAll: paginação por cursor + resiliência + erro real em vez de
+  // array-vazio falso (mesmo padrão das leituras de insights).
+  const rows = await graphGetAll<{ id: string; name: string; status: string; objective: string; effective_status: string }>(
+    graphUrl(`${accPath(accountId)}/campaigns?fields=id,name,status,objective,effective_status&limit=200`, v),
+    token,
   );
-  if (isErr(data)) return data;
-  return (data.data ?? []).map((c) => ({ id: c.id, name: c.name, status: c.status, objective: c.objective, effectiveStatus: c.effective_status }));
+  if (!Array.isArray(rows)) return toMetaError(rows);
+  return rows.map((c) => ({ id: c.id, name: c.name, status: c.status, objective: c.objective, effectiveStatus: c.effective_status }));
 }
 
 function leadsFromActions(actions: unknown): number {
