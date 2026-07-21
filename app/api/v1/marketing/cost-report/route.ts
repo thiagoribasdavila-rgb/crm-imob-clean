@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { aggregate, weekly, budgetView, type SpendRow, type ProductBudget } from "@/lib/marketing/cost-report";
 import { marketingEfficiencyPlan } from "@/lib/ai/marketing-strategist";
 import { fetchCampaignInsights, insightsToCostRows } from "@/lib/meta/marketing/campaign-read";
+import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +36,18 @@ export async function GET(request: NextRequest) {
     const token = process.env.META_ADS_ACCESS_TOKEN;
     const account = process.env.META_AD_ACCOUNT_ID;
     if (token && account) {
-      const insights = await fetchCampaignInsights(account, token, { datePreset: "last_30d", timeIncrement: 7 });
+      const insights = await cachedMetaRead(
+        `campaign-insights:${account}:last_30d:7`,
+        () => fetchCampaignInsights(account, token, { datePreset: "last_30d", timeIncrement: 7 }),
+      );
       if (Array.isArray(insights)) {
         // enriquecimento produto/incorporador best-effort pelo nome do empreendimento no nome da campanha
+        // (developments e verbas em paralelo — independentes)
         const devPairs: Array<{ name: string; developer: string | null }> = [];
-        const dvs = await admin.from("developments").select("name,developer_id").eq("organization_id", org);
+        const [dvs, budgetsResult] = await Promise.all([
+          admin.from("developments").select("name,developer_id").eq("organization_id", org),
+          admin.from("product_budgets").select("product,developer,weekly_budget,target_cac,active").eq("organization_id", org).eq("active", true),
+        ]);
         if (!dvs.error && dvs.data?.length) {
           const ids = [...new Set(dvs.data.map((d) => d.developer_id).filter(Boolean))] as string[];
           const drs = ids.length ? await admin.from("developers").select("id,name").in("id", ids) : { data: [] };
@@ -50,8 +58,7 @@ export async function GET(request: NextRequest) {
           const hit = devPairs.find((d) => name.toLowerCase().includes(d.name.toLowerCase()));
           return hit ? { product: hit.name, developer: hit.developer } : {};
         });
-        const { data: liveBudgets } = await admin.from("product_budgets").select("product,developer,weekly_budget,target_cac,active").eq("organization_id", org).eq("active", true);
-        const pb: ProductBudget[] = (liveBudgets ?? []).map((b) => ({ product: b.product, developer: b.developer, weeklyBudget: Number(b.weekly_budget) || 0, targetCac: b.target_cac != null ? Number(b.target_cac) : null }));
+        const pb: ProductBudget[] = (budgetsResult.data ?? []).map((b) => ({ product: b.product, developer: b.developer, weeklyBudget: Number(b.weekly_budget) || 0, targetCac: b.target_cac != null ? Number(b.target_cac) : null }));
         const agg = aggregate(rows, "campaign");
         const bud = budgetView(pb, rows);
         return apiSuccess({

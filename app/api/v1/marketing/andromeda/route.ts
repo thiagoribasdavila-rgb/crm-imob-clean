@@ -15,6 +15,7 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { fetchAdInsights } from "@/lib/meta/marketing/campaign-read";
 import { analyzeCreativeHealth, accountConsolidation } from "@/lib/meta/marketing/andromeda-report";
+import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
 
 export const dynamic = "force-dynamic";
@@ -41,14 +42,15 @@ export async function GET(request: NextRequest) {
     return apiError("META_NOT_CONFIGURED", "Meta não configurada: defina META_ADS_ACCESS_TOKEN e META_AD_ACCOUNT_ID.", identity.meta, { status: 503 });
   }
 
-  const rows = await fetchAdInsights(account, token, { datePreset: "last_30d" });
+  // leitura cacheada (TTL 5 min) + calibração em paralelo — nada sequencial
+  const [rows, cal] = await Promise.all([
+    cachedMetaRead(`ad-insights:${account}:last_30d`, () => fetchAdInsights(account, token, { datePreset: "last_30d" })),
+    loadOrgCalibration(getSupabaseAdmin(), identity.access.organization.id),
+  ]);
   if (!Array.isArray(rows)) {
     // MetaReadError estruturado — repassa a mensagem, nunca o token
     return apiError("META_READ_FAILED", `Meta recusou a leitura: ${rows.message}`, identity.meta, { status: 502 });
   }
-
-  // limiares calibráveis da organização (defaults do código se tabela ausente)
-  const cal = await loadOrgCalibration(getSupabaseAdmin(), identity.access.organization.id);
 
   // consolidação: só campanhas VIVAS (última janela) contam — o período de
   // 30 dias inclui campanhas pausadas antigas, que não fragmentam nada hoje.

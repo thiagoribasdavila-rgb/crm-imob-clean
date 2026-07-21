@@ -16,6 +16,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { aggregate, budgetView, type ProductBudget } from "@/lib/marketing/cost-report";
 import { marketingEfficiencyPlan } from "@/lib/ai/marketing-strategist";
 import { fetchCampaignInsights, insightsToCostRows, fetchAdInsights } from "@/lib/meta/marketing/campaign-read";
+import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { analyzeCreativeHealth, type CreativeHealth } from "@/lib/meta/marketing/andromeda-report";
 import { buildDirectorBriefing, type BriefingInput } from "@/lib/ai/director-briefing";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
@@ -50,26 +51,29 @@ export async function GET(request: NextRequest) {
   }
   const org = identity.access.organization.id;
   const admin = getSupabaseAdmin();
-  const cal: AiCalibration = await loadOrgCalibration(admin, org);
+
+  // tudo que é independente vai em paralelo (performance: eram 4 idas
+  // sequenciais ao banco antes de qualquer decisão)
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const [cal, approvals, leads, spendResult] = await Promise.all([
+    loadOrgCalibration(admin, org) as Promise<AiCalibration>,
+    admin.from("approval_requests").select("id", { count: "exact", head: true })
+      .eq("organization_id", org).eq("status", "pending"),
+    admin.from("leads").select("id", { count: "exact", head: true })
+      .eq("organization_id", org).gte("created_at", since),
+    admin.from("marketing_spend").select("campaign_id,amount").eq("organization_id", org),
+  ]);
 
   // aprovações pendentes — best-effort (tabela pode não existir; ignora erro)
   let pendingApprovals: number | undefined;
-  const approvals = await admin
-    .from("approval_requests").select("id", { count: "exact", head: true })
-    .eq("organization_id", org).eq("status", "pending");
   if (!approvals.error && typeof approvals.count === "number") pendingApprovals = approvals.count;
 
   // leads da última semana — best-effort
   let weekLeads: number | undefined;
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const leads = await admin
-    .from("leads").select("id", { count: "exact", head: true })
-    .eq("organization_id", org).gte("created_at", since);
   if (!leads.error && typeof leads.count === "number") weekLeads = leads.count;
 
   // gasto — preferência: banco (marketing_spend), igual cost-report
-  const { data: spend, error: spendErr } = await admin
-    .from("marketing_spend").select("campaign_id,amount").eq("organization_id", org);
+  const { data: spend, error: spendErr } = spendResult;
   if (!spendErr) {
     const totalsSpend = (spend ?? []).reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
     const input: BriefingInput = { source: "db", totalsSpend, pendingApprovals, weekLeads };
@@ -83,7 +87,10 @@ export async function GET(request: NextRequest) {
   const token = process.env.META_ADS_ACCESS_TOKEN;
   const account = process.env.META_AD_ACCOUNT_ID;
   if (token && account) {
-    const insights = await fetchCampaignInsights(account, token, { datePreset: "last_30d", timeIncrement: 7 });
+    const insights = await cachedMetaRead(
+      `campaign-insights:${account}:last_30d:7`,
+      () => fetchCampaignInsights(account, token, { datePreset: "last_30d", timeIncrement: 7 }),
+    );
     if (Array.isArray(insights)) {
       const rows = insightsToCostRows(insights);
       const agg = aggregate(rows, "campaign");
@@ -104,7 +111,10 @@ export async function GET(request: NextRequest) {
         minSpendCplReviewBrl: cal.marketing.minSpendCplReviewBrl,
       });
       // saúde criativa — best-effort (se a leitura ad-level falhar, omite)
-      const adRows = await fetchAdInsights(account, token, { datePreset: "last_30d" });
+      const adRows = await cachedMetaRead(
+        `ad-insights:${account}:last_30d`,
+        () => fetchAdInsights(account, token, { datePreset: "last_30d" }),
+      );
       const creativeHealth = Array.isArray(adRows)
         ? toHealthCards(analyzeCreativeHealth(adRows, {
             freqLimit: cal.fatigue.freqLimit,

@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { createHash } from "node:crypto";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { apiError, createRequestContext, getClientAddress } from "@/lib/api/core";
 import { createClient } from "@/utils/supabase/server";
@@ -72,10 +73,66 @@ type AccessContext = {
 
 const globalBuckets = globalThis as typeof globalThis & {
   __atlasRateBuckets?: Map<string, RateBucket>;
+  __atlasIdentityCache?: Map<string, IdentityCacheEntry>;
 };
 
 const buckets = globalBuckets.__atlasRateBuckets ?? new Map<string, RateBucket>();
 globalBuckets.__atlasRateBuckets = buckets;
+
+// ---------------------------------------------------------------------------
+// Cache de identidade (performance): cada request pagava 3 idas ao Supabase
+// (auth.getUser + profiles + organizations) antes de qualquer trabalho útil —
+// em páginas com 10 fetches, segundos de latência pura. Cacheamos os DADOS
+// (usuário do token, perfil, organização) por TTL curto; TODOS os guards
+// (ativo, papel, organização) continuam rodando a cada request sobre o dado
+// cacheado. Trade-off documentado: revogação de token/desativação de perfil
+// propaga em até IDENTITY_CACHE_TTL_MS (60s). ATLAS_IDENTITY_CACHE_TTL_MS=0
+// desliga o cache.
+// ---------------------------------------------------------------------------
+type IdentityCacheEntry = {
+  user: import("@supabase/supabase-js").User;
+  profileRecord: Record<string, unknown> | null;
+  organizationRecord: Record<string, unknown> | null;
+  organizationId: string;
+  expiresAt: number;
+};
+
+const identityCache = globalBuckets.__atlasIdentityCache ?? new Map<string, IdentityCacheEntry>();
+globalBuckets.__atlasIdentityCache = identityCache;
+const MAX_IDENTITY_ENTRIES = 2_000;
+
+function identityCacheTtlMs(): number {
+  const raw = Number(process.env.ATLAS_IDENTITY_CACHE_TTL_MS);
+  if (Number.isFinite(raw) && raw >= 0) return Math.min(raw, 5 * 60_000);
+  return 60_000;
+}
+
+function hashIdentityToken(token: string): string {
+  // hash para a chave — o token cru nunca fica pesquisável no mapa
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function readIdentityCache(key: string): IdentityCacheEntry | null {
+  const entry = identityCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    identityCache.delete(key);
+    return null;
+  }
+  return entry;
+}
+
+function writeIdentityCache(key: string, entry: IdentityCacheEntry): void {
+  if (identityCacheTtlMs() === 0) return;
+  if (identityCache.size >= MAX_IDENTITY_ENTRIES) {
+    const now = Date.now();
+    for (const [k, v] of identityCache) {
+      if (v.expiresAt <= now) identityCache.delete(k);
+    }
+    if (identityCache.size >= MAX_IDENTITY_ENTRIES) identityCache.clear();
+  }
+  identityCache.set(key, entry);
+}
 const MAX_RATE_BUCKETS = 10_000;
 
 function pruneRateBuckets(now: number) {
@@ -142,6 +199,14 @@ export async function requireAuthenticatedUser(request: NextRequest) {
       global: { headers: { Authorization: `Bearer ${bearerToken}` } },
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
+
+    // cache de identidade: token já validado há <TTL → pula a ida ao Supabase
+    const cacheKey = hashIdentityToken(bearerToken);
+    const cached = readIdentityCache(cacheKey);
+    if (cached) {
+      return { ok: true as const, user: cached.user, supabase, meta, authMode: "bearer" as const };
+    }
+
     const { data, error } = await supabase.auth.getUser(bearerToken);
 
     if (error || !data.user) {
@@ -151,6 +216,10 @@ export async function requireAuthenticatedUser(request: NextRequest) {
       };
     }
 
+    writeIdentityCache(cacheKey, {
+      user: data.user, profileRecord: null, organizationRecord: null, organizationId: "",
+      expiresAt: Date.now() + identityCacheTtlMs(),
+    });
     return { ok: true as const, user: data.user, supabase, meta, authMode: "bearer" as const };
   }
 
@@ -174,23 +243,33 @@ export async function requireAccessContext(
   const auth = await requireAuthenticatedUser(request);
   if (!auth.ok) return auth;
 
+  // cache de identidade: perfil/organização resolvidos há <TTL → pula as
+  // 2 idas ao banco; TODOS os guards abaixo continuam rodando normalmente.
+  const contextToken = readBearerToken(request);
+  const contextCacheKey = contextToken ? hashIdentityToken(contextToken) : null;
+  const cachedIdentity = contextCacheKey ? readIdentityCache(contextCacheKey) : null;
+
   const admin = getSupabaseAdmin();
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("*")
-    .eq("id", auth.user.id)
-    .maybeSingle();
+  let profileRecord: Record<string, unknown> | null;
+  if (cachedIdentity?.profileRecord) {
+    profileRecord = cachedIdentity.profileRecord;
+  } else {
+    const { data: profile, error: profileError } = await admin
+      .from("profiles")
+      .select("*")
+      .eq("id", auth.user.id)
+      .maybeSingle();
 
-  if (profileError) {
-    return {
-      ok: false as const,
-      response: apiError("PROFILE_LOOKUP_FAILED", "Não foi possível validar o perfil do usuário.", auth.meta, {
-        status: 500,
-      }),
-    };
+    if (profileError) {
+      return {
+        ok: false as const,
+        response: apiError("PROFILE_LOOKUP_FAILED", "Não foi possível validar o perfil do usuário.", auth.meta, {
+          status: 500,
+        }),
+      };
+    }
+    profileRecord = profile as Record<string, unknown> | null;
   }
-
-  const profileRecord = profile as Record<string, unknown> | null;
   if (!profileRecord) {
     return {
       ok: false as const,
@@ -215,11 +294,19 @@ export async function requireAccessContext(
   }
   if (!organizationId) return { ok: false as const, response: apiError("PROFILE_ORGANIZATION_REQUIRED", "O perfil não possui uma organização vinculada.", auth.meta, { status: 403 }) };
 
-  const { data: organization, error: organizationError } = await admin
-    .from("organizations")
-    .select("*")
-    .eq("id", organizationId)
-    .maybeSingle();
+  let organization: Record<string, unknown> | null = null;
+  let organizationError: unknown = null;
+  if (cachedIdentity?.organizationRecord && cachedIdentity.organizationId === organizationId) {
+    organization = cachedIdentity.organizationRecord;
+  } else {
+    const result = await admin
+      .from("organizations")
+      .select("*")
+      .eq("id", organizationId)
+      .maybeSingle();
+    organization = result.data as Record<string, unknown> | null;
+    organizationError = result.error;
+  }
 
   if (organizationError) {
     return {
@@ -312,6 +399,14 @@ export async function requireAccessContext(
     authMode: auth.authMode,
   });
   if (fallbackOrganizationApplied) logger.warn("fallback organization applied", { path: request.nextUrl.pathname, userId: auth.user.id, organizationId });
+
+  // sela o cache com a identidade completa (perfil + organização)
+  if (contextCacheKey) {
+    writeIdentityCache(contextCacheKey, {
+      user: auth.user, profileRecord, organizationRecord, organizationId,
+      expiresAt: Date.now() + identityCacheTtlMs(),
+    });
+  }
 
   return {
     ok: true as const,
