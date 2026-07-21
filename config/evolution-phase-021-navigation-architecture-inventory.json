@@ -11,18 +11,18 @@
     "nextVersion": "16.2.10",
     "reactVersion": "19.2.4",
     "persistentLayout": "app/(crm)/layout.tsx",
-    "entryRedirect": "/ -> /dashboard"
+    "entryRedirect": "/ -> /login -> /command-center (landing pública própria; ver repricedNote)"
   },
   "topology": {
-    "crmRoutes": 139,
-    "rootRedirects": 1,
+    "crmRoutes": 138,
+    "rootRedirects": 0,
     "canonicalNavigationDestinations": 22,
     "canonicalDestinationsPresent": 22,
     "missingCanonicalDestinations": 0,
     "dynamicContextRoutes": 29,
     "deepSupportRoutes": 69,
     "topLevelNonCanonicalRoutes": 18,
-    "repricedNote": "Re-inventariado à fonte lib/atlas/navigation.ts após a poda intencional (commit e20f8931): 25->22 destinos canônicos; /command-center consolida Início+Command Center; /ai-dashboard, /atlas-2030, /dashboard e /revenue-engine deixaram o catálogo e passaram a superfícies de topo não-canônicas; /pipedrive (adaptador legado) foi removido em commit anterior; total de rotas CRM rastreadas 141->139."
+    "repricedNote": "Re-inventariado à fonte lib/atlas/navigation.ts após a poda intencional (commit e20f8931): 25->22 destinos canônicos; /command-center consolida Início+Command Center; /ai-dashboard, /atlas-2030, /dashboard e /revenue-engine deixaram o catálogo e passaram a superfícies de topo não-canônicas; /pipedrive (adaptador legado) foi removido em commit anterior; total de rotas CRM rastreadas 141->139. Reconciliado 2026-07-21: app/(crm)/page.tsx (redirect(\"/dashboard\")) colidia de rota com a landing pública app/page.tsx (mesmo path resolvido — erro de build do Next.js) e foi removido; a raiz \"/\" agora é a landing real, entrada autenticada passa por /login->safeAuthDestination(\"/command-center\"). rootRedirects 1->0; crmRoutes 139->138."
   },
   "navigationChannels": [
     {

@@ -13,7 +13,7 @@ const measuredTopLevel = inventory.topLevelNonCanonicalRoutes.slice().sort();
 const checks = [
   ["Fase 021 concluída sem mutação de runtime", config.status === "completed" && config.productionDataModified === false && config.runtimeNavigationChanged === false],
   // Poda intencional na fonte (commit e20f8931): total de rotas CRM rastreadas 141->139 (/pipedrive removido em commit anterior) e catálogo canônico 25->22. Guard re-baselinado à fonte lib/atlas/navigation.ts + git ls-files.
-  ["Todas as rotas CRM foram classificadas", inventory.counts.crmRoutes === config.topology.crmRoutes && inventory.counts.crmRoutes === 139],
+  ["Todas as rotas CRM foram classificadas", inventory.counts.crmRoutes === config.topology.crmRoutes && inventory.counts.crmRoutes === 138],
   ["Buckets fecham o inventário", config.topology.canonicalNavigationDestinations + config.topology.dynamicContextRoutes + config.topology.deepSupportRoutes + config.topology.topLevelNonCanonicalRoutes + config.topology.rootRedirects === config.topology.crmRoutes],
   ["Catálogo canônico possui cobertura integral", inventory.missingCanonicalDestinations.length === 0 && inventory.counts.canonicalDestinationsPresent === config.topology.canonicalDestinationsPresent],
   ["Rotas dinâmicas permanecem contextuais", inventory.counts.dynamicContextRoutes === config.topology.dynamicContextRoutes && config.topology.dynamicContextRoutes === 29],

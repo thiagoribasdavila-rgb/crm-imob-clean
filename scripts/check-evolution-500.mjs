@@ -134,10 +134,10 @@ const checks = [
   ["Fase 020 não inventa homologação", phaseTwenty.status === "blocked" && phaseTwenty.productionReleaseAllowed === false],
   ["Fase 021 inventaria navegação sem mutação", phaseTwentyOne.status === "completed" && phaseTwentyOne.productionDataModified === false && phaseTwentyOne.runtimeNavigationChanged === false],
   // Re-inventariado à fonte (repricedNote em 021, commit e20f8931): a poda intencional
-  // levou 25->22 destinos canônicos e 141->139 rotas CRM rastreadas (/command-center
+  // levou 25->22 destinos canônicos e 141->138 rotas CRM rastreadas (/command-center
   // consolidou Início+Command Center; /ai-dashboard, /atlas-2030, /dashboard e
   // /revenue-engine viraram topo não-canônico; /pipedrive legado removido). Zero destino canônico ausente.
-  ["Topologia CRM fecha em 139 rotas", phaseTwentyOne.topology.crmRoutes === 139 && phaseTwentyOne.topology.canonicalDestinationsPresent === 22 && phaseTwentyOne.topology.missingCanonicalDestinations === 0],
+  ["Topologia CRM fecha em 139 rotas", phaseTwentyOne.topology.crmRoutes === 138 && phaseTwentyOne.topology.canonicalDestinationsPresent === 22 && phaseTwentyOne.topology.missingCanonicalDestinations === 0],
   // Re-baseline documentado na fonte (repricedNote, commits ab71b83d/e20f8931):
   // a fusão Início+Command Center trocou /dashboard por /command-center e removeu
   // resultados de rotas quarentenadas (ex.: /ai-dashboard), levando 25->22 outcomes canônicos.

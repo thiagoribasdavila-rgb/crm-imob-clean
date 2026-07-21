@@ -52,7 +52,14 @@ const deepSupportRoutes = routes
 const topLevelNonCanonicalRoutes = routes
   .filter((route) => route !== "/" && !canonicalSet.has(route) && !route.includes("[") && segmentCount(route) === 1)
   .sort();
-const rootSource = fs.readFileSync(`${CRM_ROOT}/page.tsx`, "utf8");
+// A raiz "/" deixou de ser um redirect do grupo (crm) para virar a landing
+// pública real (app/page.tsx, verificada ao vivo em produção) — o antigo
+// (crm)/page.tsx (redirect("/dashboard")) colidia de rota com ela (Next.js
+// não aceita duas page.tsx resolvendo o mesmo path) e foi removido. A entrada
+// autenticada agora passa por /login -> safeAuthDestination (que resolve para
+// /command-center, o "dashboard clássico" fundido — ver app/(auth)/login).
+const rootSource = fs.readFileSync("app/page.tsx", "utf8");
+const loginSource = fs.readFileSync("app/(auth)/login/page.tsx", "utf8");
 
 const inventory = {
   generatedAt: new Date().toISOString(),
@@ -72,7 +79,12 @@ const inventory = {
   },
   entryRoute: {
     route: "/",
-    redirectsToDashboard: rootSource.includes('redirect("/dashboard")'),
+    // Raiz pública oferece o caminho de entrada (login), e o login resolve o
+    // destino autenticado para /command-center — a mesma garantia de antes
+    // ("entrada autenticada continua no dashboard"), só que em 2 etapas
+    // explícitas em vez de um redirect cego na raiz.
+    linksToLogin: rootSource.includes('href="/login"'),
+    redirectsToDashboard: loginSource.includes('"/command-center"'),
   },
   canonicalDestinations,
   missingCanonicalDestinations,

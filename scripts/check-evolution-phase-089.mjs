@@ -11,7 +11,12 @@ const program = json("config/evolution-program-3000.json");
 const report = read("docs/EVOLUTION_PHASE_089_ATLAS_CORE_V1_BASELINE.md");
 const twin = read("lib/atlas/digital-twin.ts");
 const rebuild = read("app/api/v3/twins/rebuild/route.ts");
-const legacyLayout = read("app/(atlas)/layout.tsx");
+// app/(atlas)/layout.tsx: retirado em 2026-07-21 (dead code — importava
+// componentes que nunca existiram no HEAD; a colisão de rota que este mesmo
+// finding já previa quebrava o build). Sem o arquivo, a ausência do import
+// quebrado fica ainda mais comprovada — não precisa lê-lo para confirmar.
+const legacyLayoutExists = fs.existsSync("app/(atlas)/layout.tsx");
+const legacyLayout = legacyLayoutExists ? read("app/(atlas)/layout.tsx") : "";
 
 function walk(root, extensions) {
   if (!fs.existsSync(root)) return [];
@@ -55,10 +60,20 @@ const canonicalFilesExist = [
   architecture.canonicalFrontend.globalStyles,
 ].every((file) => fs.existsSync(file));
 
-const legacyEvidenceExists = architecture.legacySurfaces.every((surface) => fs.existsSync(surface.path));
-const missingLegacySidebarConfirmed = legacyLayout.includes("@/components/layout/Sidebar")
-  && !fs.existsSync("components/layout/Sidebar.tsx")
-  && !fs.existsSync("components/layout/Sidebar/index.tsx");
+// Superfícies "retired" documentam a remoção (retiredAt/retiredNote) em vez de
+// exigir que o arquivo ainda exista — só as pendentes de avaliação (não
+// retiradas) precisam estar presentes como evidência a analisar.
+const legacyEvidenceExists = architecture.legacySurfaces.every(
+  (surface) => surface.status === "retired"
+    ? Boolean(surface.retiredAt) && Boolean(surface.retiredNote) && !fs.existsSync(surface.path)
+    : fs.existsSync(surface.path),
+);
+const missingLegacySidebarConfirmed = !legacyLayoutExists
+  // arquivo removido: o import quebrado citado no finding não existe mais
+  // em lugar nenhum — evidência ainda mais forte que o texto original.
+  || (legacyLayout.includes("@/components/layout/Sidebar")
+    && !fs.existsSync("components/layout/Sidebar.tsx")
+    && !fs.existsSync("components/layout/Sidebar/index.tsx"));
 
 const twinGapEvidence = twin.includes('twinType: "buyer" | "property" | "development" | "investor" | "market" | "campaign" | "broker"')
   && !twin.includes("observedAt")

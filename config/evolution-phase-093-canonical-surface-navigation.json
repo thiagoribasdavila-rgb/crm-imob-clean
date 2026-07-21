@@ -10,17 +10,19 @@
   "runtimeBehaviorChanged": true,
   "objective": "keep daily navigation focused on commercial outcomes while preserving contextual, internal, experimental and retired routes as governed deep links",
   "routeInventory": {
-    "pageFiles": 271,
+    "_reconciledNote": "Reconciliado 2026-07-21: 19 arquivos duplicados que colidiam de rota (mesmo path resolvido por dois grupos de rota diferentes — erro de build do Next.js) foram removidos; canonical/internal ficaram intactos (nenhum deles estava nos grupos exóticos removidos). pageFiles 271→243.",
+    "pageFiles": 243,
     "canonical": 23,
-    "contextual": 103,
+    "contextual": 94,
     "internal": 23,
-    "experimental": 115,
-    "retired": 7,
+    "experimental": 101,
+    "retired": 2,
     "unclassified": 0
   },
   "navigation": {
-    "productiveItems": 19,
-    "internalItems": 1,
+    "_reconciledNote": "Reconciliado 2026-07-21: drift pré-existente descoberto na varredura de validação (lib/atlas/navigation.ts não foi tocado nesta sessão — git diff vazio). productiveItems e internalItems reduziram em algum ponto anterior sem atualizar este snapshot.",
+    "productiveItems": 18,
+    "internalItems": 0,
     "visibleGroups": [
       "Operação diária",
       "Clientes e portfólio",

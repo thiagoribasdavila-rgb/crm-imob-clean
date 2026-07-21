@@ -1,7 +1,8 @@
-export default function TaskDetail({ params }: any) {
+export default async function TaskDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   return (
     <div>
-      <h1>Tarefa {params.id}</h1>
+      <h1>Tarefa {id}</h1>
     </div>
   );
 }
