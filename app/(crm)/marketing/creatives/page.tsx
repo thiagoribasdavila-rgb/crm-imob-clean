@@ -27,6 +27,40 @@ const REVIEW_META: Record<string, { tone: "warning" | "success" | "danger" | "ne
   rejected: { tone: "danger", label: "Rejeitado", sev: "#fb7185" },
 };
 
+const CONFIDENCE_LABEL: Record<string, string> = { high: "alta", medium: "média", low: "baixa" };
+const INTERPRETATION_LABEL: Record<string, string> = {
+  association_for_controlled_test: "associação — hipótese para teste controlado, não causa",
+  insufficient_sample: "amostra insuficiente (menos de 30 leads) — sem leitura",
+};
+
+const readingOf = (p: Creative["performance"]) =>
+  INTERPRETATION_LABEL[String(p.interpretation)] ?? String(p.interpretation);
+
+/*
+ * O motor calcula o funil inteiro por versão (qualificação, visita, proposta,
+ * vitória, CPQL) e a tela mostrava três números. Agora mostra o funil — com uma
+ * regra dura: percentual só aparece com amostra suficiente E com o numerador
+ * efetivamente lançado. Zero nunca foi medido: creative_performance_daily_facts
+ * é preenchida à mão, então "0% de vitória" mataria o criativo vencedor por um
+ * número que ninguém apurou.
+ */
+function metricsOf(p: Creative["performance"]): Array<{ label: string; value: string }> {
+  const num = (value: unknown) => (Number.isFinite(Number(value)) ? Number(value) : 0);
+  const sample = Boolean(p.sampleSufficient);
+  const rate = (value: unknown, numerator: unknown) =>
+    !sample || num(numerator) <= 0 ? "—" : `${(Math.round(num(value) * 10) / 10).toFixed(1)}%`;
+  return [
+    { label: "Leads CRM", value: String(num(p.crmLeads)) },
+    { label: "CPL", value: p.cpl == null ? "—" : brl(p.cpl) },
+    { label: "CPQL", value: !sample || num(p.qualifiedLeads) <= 0 || p.cpql == null ? "—" : brl(p.cpql) },
+    { label: "Qualificação", value: rate(p.qualificationRate, p.qualifiedLeads) },
+    { label: "Visita", value: rate(p.visitRate, p.visits) },
+    { label: "Proposta", value: rate(p.proposalRate, p.proposals) },
+    { label: "Vitória", value: rate(p.winRate, p.wins) },
+    { label: "Confiança", value: CONFIDENCE_LABEL[String(p.confidence)] ?? "baixa" },
+  ];
+}
+
 export default function CreativesPage() {
   const [data, setData] = useState<Payload | null>(null), [busy, setBusy] = useState(false), [notice, setNotice] = useState("");
   const [form, setForm] = useState({ developmentId: "", name: "", funnelStage: "discovery", personaMoment: "unspecified", messageAngle: "location", format: "short_video", primaryPromise: "", objectionAddressed: "", hook: "", callToAction: "Conheça o projeto" });
@@ -167,11 +201,7 @@ export default function CreativesPage() {
                   ) : null}
                 </div>
                 <div className="cc6-hairline mt-4 flex flex-wrap gap-x-10 gap-y-3 pt-4">
-                  {[
-                    ["Leads CRM", String(Number(c.performance.crmLeads || 0))],
-                    ["CPL", c.performance.cpl == null ? "—" : brl(c.performance.cpl)],
-                    ["Confiança", String(c.performance.confidence || "low")],
-                  ].map(([label, value]) => (
+                  {metricsOf(c.performance).map(({ label, value }) => (
                     <div key={label}>
                       <p className="cc6-metric-value text-xl leading-none">{value}</p>
                       <p className="cc6-metric-label mt-1">{label}</p>
@@ -179,7 +209,11 @@ export default function CreativesPage() {
                   ))}
                 </div>
                 <p className="cc6-num mt-3 text-[11px] leading-5 text-[#6b7890]">
-                  Leitura: {String(c.performance.interpretation)} · fadiga: {String(c.performance.fatigueRisk)}
+                  Leitura: {readingOf(c.performance)} · fadiga: {String(c.performance.fatigueRisk)}
+                </p>
+                <p className="mt-1 text-[11px] leading-5 text-[#6b7890]">
+                  Desempenho informado manualmente pela diretoria (não reconciliado com o CRM). “—” significa
+                  métrica sem lastro — amostra abaixo de 30 leads ou numerador nunca lançado —, nunca 0%.
                 </p>
               </article>
             );

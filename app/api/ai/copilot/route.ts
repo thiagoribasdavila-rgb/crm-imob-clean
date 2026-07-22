@@ -15,7 +15,7 @@ import { generateAIText, selectCopilotTask } from "@/lib/ai/provider-router";
 import { assessAIComplexity } from "@/lib/ai/complexity";
 import { structuredMemoryFromGovernedContext } from "@/lib/ai/structured-commercial-memory";
 import { playbookForPrompt, resolveActivePlaybook } from "@/lib/ai/versioned-real-estate-playbooks";
-import { qualificationProgress } from "@/lib/ai/conversational-qualification";
+import { qualificationProgress, type QualificationProfile } from "@/lib/ai/conversational-qualification";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +57,10 @@ export async function POST(request: NextRequest) {
 
     let persistentCopilot: { id: string; copilot_key: string; broker_id: string; interaction_count: number; learning_version: number } | null = null;
     let leadDevelopmentId: string | null = null;
+    // Hasteada porque a qualificação confirmada pelo corretor é lida no bloco da lead e
+    // só é usada bem depois, na gravação da memória comercial estruturada.
+    let confirmedQualification: QualificationProfile | null = null;
+    let memoryDimensions: { confirmedByBroker: string[]; pendingConfirmation: string[] } | null = null;
     if (leadId) {
       if (!/^[0-9a-f-]{36}$/i.test(leadId)) return NextResponse.json({ error: "Lead inválida." }, { status: 400 });
       await requireLeadAccess(identity, leadId);
@@ -82,7 +86,7 @@ export async function POST(request: NextRequest) {
       const { data: memory } = await identity.supabase.from("lead_commercial_memory_states").select("interaction_count,memory_version,intent_key,timeline_key,financing_key,objection_keys,signal_keys,stage_key,recommended_action_key,last_interaction_at,expires_at").eq("lead_id", leadId).gt("expires_at", new Date().toISOString()).maybeSingle();
       if (memory) contextPackage.sections.continuity = { interactionCount: memory.interaction_count, memoryVersion: memory.memory_version, intent: memory.intent_key, timeline: memory.timeline_key, financing: memory.financing_key, objections: memory.objection_keys, signals: memory.signal_keys, stage: memory.stage_key, recommendedAction: memory.recommended_action_key, lastInteractionAt: memory.last_interaction_at, expiresAt: memory.expires_at, previousConversationTextIncluded: false };
       const { data: qualification } = await identity.supabase.from("lead_qualification_profiles").select("purpose_key,timeline_key,financing_key,budget_readiness_key,region_readiness_key,unit_profile_key,decision_role_key,contact_preference_key").eq("lead_id", leadId).maybeSingle();
-      if (qualification) { const profile = { purpose: qualification.purpose_key||undefined, timeline: qualification.timeline_key||undefined, financing: qualification.financing_key||undefined, budget_readiness: qualification.budget_readiness_key||undefined, region_readiness: qualification.region_readiness_key||undefined, unit_profile: qualification.unit_profile_key||undefined, decision_role: qualification.decision_role_key||undefined, contact_preference: qualification.contact_preference_key||undefined }; (contextPackage.sections as Record<string, unknown>).qualification = { profile, ...qualificationProgress(profile), rawConversationStored: false, brokerConfirmed: true }; }
+      if (qualification) { const profile: QualificationProfile = { purpose: qualification.purpose_key||undefined, timeline: qualification.timeline_key||undefined, financing: qualification.financing_key||undefined, budget_readiness: qualification.budget_readiness_key||undefined, region_readiness: qualification.region_readiness_key||undefined, unit_profile: qualification.unit_profile_key||undefined, decision_role: qualification.decision_role_key||undefined, contact_preference: qualification.contact_preference_key||undefined }; confirmedQualification = profile; (contextPackage.sections as Record<string, unknown>).qualification = { profile, ...qualificationProgress(profile), rawConversationStored: false, brokerConfirmed: true }; }
     }
     const operationalContext = contextPackage.sections.operation;
     const leadContext = contextPackage.sections.lead as { stage?: string } | undefined;
@@ -143,7 +147,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (leadId && persistentCopilot) {
-      const memory = structuredMemoryFromGovernedContext(contextPackage.sections);
+      // Prazo e forma de pagamento vêm da qualificação declarada pelo cliente e confirmada
+      // pelo corretor — sem ela as três dimensões continuam 'unknown', nunca inferidas.
+      const memory = structuredMemoryFromGovernedContext(contextPackage.sections, confirmedQualification);
+      if (memory.rejectedQualificationKeys.length) {
+        logger.warn("ai.copilot_qualification_taxonomy_rejected", { organizationId: identity.organizationId, leadId, fields: memory.rejectedQualificationKeys });
+      }
+      // Procedência visível: o que tem lastro humano e o que ainda falta perguntar.
+      memoryDimensions = {
+        confirmedByBroker: memory.brokerConfirmedKeys,
+        pendingConfirmation: Object.entries({ purpose: memory.intentKey, timeline: memory.timelineKey, financing: memory.financingKey })
+          .filter(([, value]) => value === "unknown")
+          .map(([field]) => field),
+      };
       const { error: memoryError } = await getSupabaseAdmin().rpc("record_structured_copilot_memory", {
         p_organization_id: identity.organizationId,
         p_lead_id: leadId,
@@ -178,7 +194,7 @@ export async function POST(request: NextRequest) {
         mode,
         playbook: { stage: activePlaybook.stage, version: activePlaybook.version, source: activePlaybook.source },
       },
-      copilot: persistentCopilot ? { id: persistentCopilot.id, key: persistentCopilot.copilot_key, leadId, brokerId: persistentCopilot.broker_id, learningVersion: persistentCopilot.learning_version, persistent: true, exclusive: true, memoryMode: "structured", rawConversationStored: false } : null,
+      copilot: persistentCopilot ? { id: persistentCopilot.id, key: persistentCopilot.copilot_key, leadId, brokerId: persistentCopilot.broker_id, learningVersion: persistentCopilot.learning_version, persistent: true, exclusive: true, memoryMode: "structured", rawConversationStored: false, memoryDimensions } : null,
     });
   } catch (error) {
     if (request.signal.aborted) {

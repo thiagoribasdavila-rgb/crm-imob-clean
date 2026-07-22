@@ -22,12 +22,22 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { canonicalPipelineStage } from "@/lib/atlas/pipeline-stages";
+import {
+  CAMPAIGN_QUALITY_COMMERCIAL_STAGES,
+  isCommerciallyQualifiedLead,
+  isQualifiedLead,
+} from "@/lib/atlas/campaign-quality";
 import { DISCARD_TAXONOMY_VERSION, getDiscardReason } from "@/lib/atlas/discard-reasons";
 import { resilientFetch } from "@/lib/http/resilient-fetch";
 import { metaGraphVersion, describeMetaGraphFailure } from "@/lib/meta/graph";
 
-export const CAPI_SIGNAL_VERSION = "andromeda-v1";
-export const CAPI_QUALIFIED_SCORE_THRESHOLD = 70;
+// v2: QualifiedLead deixou de ser score/temperatura (qualificação de CADASTRO,
+// que é soma de campos preenchidos) e passou a exigir lastro comercial
+// verificável. O sinal externo é composto: cada lote errado piora a entrega da
+// campanha seguinte, então aqui vale a régua mais dura do produto.
+export const CAPI_SIGNAL_VERSION = "andromeda-v2";
+/** Etapas que valem como evidência comercial para o sinal externo. */
+export const CAPI_QUALIFIED_STAGES = CAMPAIGN_QUALITY_COMMERCIAL_STAGES;
 
 // Vocabulário alinhado ao funil já reportado em meta_conversion_events
 // (QualifiedLead/ConvertedLead) + evento próprio de descarte. O descarte usa um
@@ -112,6 +122,12 @@ export type CapiBatch = {
     byEventName: Record<string, number>;
     byDisqualificationReason: Record<string, number>;
     skipped: { missingIdentifiers: number; invalidTimestamp: number; discardLeadMissing: number };
+    /**
+     * Leads com cadastro qualificado (score >= 70 ou "quente") que NÃO viraram
+     * QualifiedLead por falta de lastro comercial. Ausência explicada e
+     * contável: mede exatamente o que a régua nova deixou de ensinar à Meta.
+     */
+    suppressed: { registrationQualifiedWithoutCommercialEvidence: number };
   };
   taxonomyVersion: number;
   signalVersion: string;
@@ -144,15 +160,25 @@ function budgetValue(lead: CapiLeadRow): number | null {
   return null;
 }
 
+/**
+ * Qualificação COMERCIAL — o único lastro que vira sinal externo: o lead chegou
+ * a visita, proposta, contrato ou ganho. score_ia/temperature medem cadastro
+ * (quantos campos foram preenchidos), e ensinar isso à Meta faz o algoritmo
+ * trazer lead bem cadastrado em vez de comprador. Sem evidência, sem sinal.
+ */
 function isQualified(lead: CapiLeadRow) {
-  const score = Number(lead.score_ia);
-  if (Number.isFinite(score) && score >= CAPI_QUALIFIED_SCORE_THRESHOLD) return true;
-  return String(lead.temperature ?? "").trim().toLowerCase() === "quente";
+  return isCommerciallyQualifiedLead({ status: lead.status ?? null });
+}
+
+/** Qualificação de CADASTRO — usada só para CONTAR o que foi suprimido, nunca para emitir evento. */
+function isRegistrationQualified(lead: CapiLeadRow) {
+  return isQualifiedLead({ score_ia: lead.score_ia ?? null, temperature: lead.temperature ?? null });
 }
 
 /**
  * Converte linhas vivas do CRM em payloads CAPI:
- *   - qualificado (score_ia >= 70 OU temperature "quente") → QualifiedLead;
+ *   - qualificado COMERCIALMENTE (etapa canônica visita/proposta/contrato/ganho)
+ *     → QualifiedLead. Cadastro bem preenchido NÃO gera sinal;
  *   - ganho (status canônico "ganho") → ConvertedLead com currency BRL e value
  *     quando houver orçamento declarado;
  *   - descartado (lead_events event_type=lead_discarded) → LeadDisqualified com
@@ -169,6 +195,7 @@ export function buildCapiLeadEvents(input: {
   const byEventName: Record<string, number> = {};
   const byDisqualificationReason: Record<string, number> = {};
   const skipped = { missingIdentifiers: 0, invalidTimestamp: 0, discardLeadMissing: 0 };
+  const suppressed = { registrationQualifiedWithoutCommercialEvidence: 0 };
 
   const leadById = new Map(input.leads.map((lead) => [lead.id, lead]));
 
@@ -185,6 +212,9 @@ export function buildCapiLeadEvents(input: {
   for (const lead of input.leads) {
     const qualified = isQualified(lead);
     const won = canonicalPipelineStage(lead.status) === "ganho";
+    if (!qualified && isRegistrationQualified(lead)) {
+      suppressed.registrationQualifiedWithoutCommercialEvidence += 1;
+    }
     if (!qualified && !won) continue;
 
     const { userData, matchable } = buildUserData(input.organizationId, lead);
@@ -202,11 +232,23 @@ export function buildCapiLeadEvents(input: {
     if (qualified) {
       push({
         event_name: CAPI_EVENT_NAMES.qualified,
+        // LIMITAÇÃO CONHECIDA (não corrigida aqui): event_time continua sendo a
+        // criação do lead, não a data da visita/proposta — o CRM não tem, nas
+        // colunas de leads, a data da mudança de etapa, e derivá-la de
+        // updated_at/created_at seria fabricar data de evento. Corrigir exige
+        // ler o lead_event "pipeline_stage_changed" e mudar o critério de
+        // seleção do lote; enquanto isso, a data é a de origem do lead.
         event_time: eventTime,
         event_id: `crm-stage-${lead.id}-qualificacao`,
         action_source: "system_generated",
         user_data: userData,
-        custom_data: { ...baseCustomData(lead), lead_status: "qualified" },
+        custom_data: {
+          ...baseCustomData(lead),
+          lead_status: "qualified",
+          // Declara o lastro do sinal — auditável do lado da Meta.
+          qualification_basis: "commercial_stage",
+          qualification_stage: canonicalPipelineStage(lead.status),
+        },
       });
     }
     if (won) {
@@ -266,7 +308,7 @@ export function buildCapiLeadEvents(input: {
 
   return {
     events,
-    summary: { total: events.length, byEventName, byDisqualificationReason, skipped },
+    summary: { total: events.length, byEventName, byDisqualificationReason, skipped, suppressed },
     taxonomyVersion: DISCARD_TAXONOMY_VERSION,
     signalVersion: CAPI_SIGNAL_VERSION,
   };

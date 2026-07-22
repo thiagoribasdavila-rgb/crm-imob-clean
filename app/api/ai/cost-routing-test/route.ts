@@ -11,11 +11,14 @@ export async function POST(request: NextRequest) {
   if (!identity.ok) return identity.response;
   if (!(identity.access.profile.role === "admin" || identity.access.profile.commercialRole === "director")) return apiError("FORBIDDEN", "Ensaio de custo da IA é exclusivo da diretoria.", identity.meta, { status: 403 });
   const pricing = aiPricingReadiness();
-  if (!pricing.fast || !pricing.commercial || !pricing.reasoning) return apiError("AI_PRICING_NOT_CONFIGURED", "Configure os preços por milhão de tokens das rotas rápida, comercial e complexa na Hostinger.", identity.meta, { status: 503 });
+  // A tarifa agora é por par (provedor, modelo): o mesmo tier pode ser servido
+  // por modelos com preços muito distintos, e um preço por tier daria número
+  // plausível e errado ao ensaio que existe justamente para medir custo.
+  if (!pricing.fast || !pricing.commercial || !pricing.reasoning) return apiError("AI_PRICING_NOT_CONFIGURED", "Cadastre a tarifa por (provedor, modelo) em ATLAS_AI_PRICE_TABLE para as rotas rápida, comercial e complexa antes do ensaio de custo.", identity.meta, { status: 503 });
   try {
     const results = await testAICostRouting({ organizationId: identity.access.organization.id, userId: identity.access.profile.id });
     if (results.some((result) => result.provider !== "openai" || !result.providerRequestId || result.usage.totalTokens <= 0)) throw new Error("Uma das rotas não retornou telemetria real.");
-    return apiSuccess({ status: "passed", containsPersonalData: false, routes: results.map((result) => ({ task: result.task, provider: result.provider, model: result.model, latencyMs: result.latencyMs, tokens: result.usage, estimatedCostUsd: result.cost?.estimatedUsd || 0, providerRequestId: result.providerRequestId })), totalEstimatedCostUsd: results.reduce((sum, result) => sum + (result.cost?.estimatedUsd || 0), 0), testedAt: new Date().toISOString() }, identity.meta, { headers: rate.headers });
+    return apiSuccess({ status: "passed", containsPersonalData: false, routes: results.map((result) => ({ task: result.task, provider: result.provider, model: result.model, latencyMs: result.latencyMs, tokens: result.usage, estimatedCostUsd: result.cost?.estimatedUsd ?? null, pricingSource: result.cost?.pricingSource ?? "sem_tarifa", providerRequestId: result.providerRequestId })), totalEstimatedCostUsd: results.reduce((sum, result) => sum + (result.cost?.estimatedUsd || 0), 0), costBasis: "estimativa: tokens medidos × tarifa cadastrada, não fatura do provedor", testedAt: new Date().toISOString() }, identity.meta, { headers: rate.headers });
   } catch (error) {
     return apiError("AI_COST_ROUTING_TEST_FAILED", "Não foi possível comprovar as três rotas reais de IA.", identity.meta, { status: 502, details: error instanceof Error ? error.message.slice(0, 160) : "Falha" });
   }

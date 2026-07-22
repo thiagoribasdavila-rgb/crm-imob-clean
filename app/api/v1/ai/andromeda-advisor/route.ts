@@ -6,6 +6,7 @@ import {
   type AndromedaFunnelStage,
 } from "@/lib/ai/andromeda-pipeline-advisor";
 import {
+  CAMPAIGN_QUALITY_DEFINITIONS,
   CAMPAIGN_QUALITY_MINIMUM_LEADS,
   buildCampaignQuality,
 } from "@/lib/atlas/campaign-quality";
@@ -189,6 +190,7 @@ export async function GET(request: NextRequest) {
         aggregatesOnly: true,
         deterministicFallback: true,
         rules: ANDROMEDA_ADVISOR_RULES,
+        qualificationDefinitions: CAMPAIGN_QUALITY_DEFINITIONS,
         minimumLeadsForDecision: CAMPAIGN_QUALITY_MINIMUM_LEADS,
         spendMeasured: !spendFetch.error,
         windowComplete: !leadFetch.truncated && !eventFetch.truncated && !spendFetch.truncated,

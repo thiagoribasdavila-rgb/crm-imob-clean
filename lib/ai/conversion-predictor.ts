@@ -17,10 +17,34 @@ export type ConversionSignals = {
   invalidPhone?: boolean | null;
 };
 
+export type ConversionBand = "muito-baixa" | "baixa" | "media" | "alta" | "muito-alta";
+
+/**
+ * Sinais que ESTA função sabe cobrar (cada um vira uma linha de missingSignals
+ * quando não vem preenchido). É o denominador honesto da cobertura — o antigo
+ * literal 8 não batia com a lista e inflava a leitura em ~5 pontos.
+ */
+export const TRACKED_CONVERSION_SIGNALS = [
+  "score comercial",
+  "tempo da primeira resposta",
+  "recência da interação",
+  "quantidade de interações",
+  "respostas essenciais",
+  "aderência financeira",
+  "matching de imóvel",
+] as const;
+
 export type ConversionPrediction = {
   probability: number;
-  band: "muito-baixa" | "baixa" | "media" | "alta" | "muito-alta";
+  band: ConversionBand;
+  /**
+   * NÃO é confiança estatística: é função linear da cobertura de sinais, nunca
+   * confrontada com resultado ganho/perdido (sem Brier nem ECE sobre ESTE
+   * preditor). Não renderize como "confiança" — use signalCoverage.
+   */
   confidence: number;
+  /** Quantos dos sinais rastreados chegaram preenchidos (observed de total). */
+  signalCoverage: { observed: number; total: number };
   positiveFactors: string[];
   riskFactors: string[];
   missingSignals: string[];
@@ -97,10 +121,11 @@ export function predictConversionDetailed(lead: ConversionSignals): ConversionPr
   if (lead.invalidPhone) { logit -= 1.2; riskFactors.push("telefone inválido ou suprimido"); }
 
   const probability = Math.round(clamp(100 / (1 + Math.exp(-logit)), 1, 95));
-  const observed = 8 - missingSignals.length;
+  const total = TRACKED_CONVERSION_SIGNALS.length;
+  const observed = Math.max(0, total - missingSignals.length);
   const confidence = Math.round(clamp(42 + observed * 5.2, 42, 84));
   const band = probability >= 75 ? "muito-alta" : probability >= 58 ? "alta" : probability >= 38 ? "media" : probability >= 20 ? "baixa" : "muito-baixa";
-  return { probability, band, confidence, positiveFactors, riskFactors, missingSignals, modelVersion: "atlas-predictive-v2", requiresHumanReview: true, caveat: "Estimativa explicável para priorização; não garante compra, crédito, receita ou prazo. Recalibre com resultados locais ganhos e perdidos." };
+  return { probability, band, confidence, signalCoverage: { observed, total }, positiveFactors, riskFactors, missingSignals, modelVersion: "atlas-predictive-v2", requiresHumanReview: true, caveat: "Estimativa explicável para priorização; não garante compra, crédito, receita ou prazo. Recalibre com resultados locais ganhos e perdidos." };
 }
 
 export function predictConversion(lead: ConversionSignals) {

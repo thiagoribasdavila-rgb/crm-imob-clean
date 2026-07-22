@@ -63,7 +63,11 @@ function toConversionSignals(row: Record<string, unknown>, now: number): Convers
   };
 }
 
-/** Extrai o valor do imóvel dos campos best-effort (nunca inventa). */
+/**
+ * Extrai o valor do imóvel dos campos best-effort (nunca inventa).
+ * budget_max NÃO entra aqui de propósito: é teto declarado pelo cliente, não
+ * preço de imóvel. Ele viaja em declaredBudget, fora do score e do potencial.
+ */
 function readPropertyValue(row: Record<string, unknown>): number | undefined {
   const meta = readMetadata(row);
   return (
@@ -72,6 +76,12 @@ function readPropertyValue(row: Record<string, unknown>): number | undefined {
     asNumber(meta.ticket) ??
     undefined
   );
+}
+
+/** Teto de orçamento declarado pelo cliente (coluna do CRM), quando houver. */
+function readDeclaredBudget(row: Record<string, unknown>): number | undefined {
+  const value = asNumber(row.budget_max) ?? Number(row.budget_max);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
 export async function GET(request: NextRequest) {
@@ -104,7 +114,7 @@ export async function GET(request: NextRequest) {
   // Carteira do corretor — best-effort. Sem a tabela (schema drift) → 503 honesto.
   const { data, error } = await admin
     .from("leads")
-    .select("id, name, status, score_ia, score, temperature, next_action_at, updated_at, created_at, metadata, arquivado")
+    .select("id, name, status, score_ia, score, temperature, next_action_at, updated_at, created_at, metadata, budget_max, arquivado")
     .eq("organization_id", org)
     .eq("assigned_to", targetBrokerId)
     .limit(200);
@@ -134,14 +144,22 @@ export async function GET(request: NextRequest) {
       const signal: LeadSignal = {
         leadId: String(row.id),
         probability: prediction.probability,
-        factors: [...prediction.positiveFactors, ...prediction.riskFactors],
+        // Risco primeiro: o núcleo usa só o PRIMEIRO fator como "dominante", e
+        // com positivos na frente um risco real (telefone inválido, sete dias
+        // sem contato) nunca chegava ao corretor.
+        factors: [...prediction.riskFactors, ...prediction.positiveFactors],
         overdueTaskCount: overdue,
+        band: prediction.band,
+        missingSignals: prediction.missingSignals,
+        signalCoverage: prediction.signalCoverage,
       };
       const name = asString(row.name);
       if (name) signal.name = name;
       if (stage) signal.stage = stage;
       const value = readPropertyValue(row);
       if (value !== undefined) signal.propertyValue = value;
+      const declaredBudget = readDeclaredBudget(row);
+      if (declaredBudget !== undefined) signal.declaredBudget = declaredBudget;
       if (lastContactDays !== undefined) signal.lastContactDays = lastContactDays;
       return signal;
     });

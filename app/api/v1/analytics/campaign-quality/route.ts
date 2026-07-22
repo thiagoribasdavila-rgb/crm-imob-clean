@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
+  CAMPAIGN_QUALITY_DEFINITIONS,
   CAMPAIGN_QUALITY_GRADE_RULE,
   CAMPAIGN_QUALITY_MINIMUM_LEADS,
   CAMPAIGN_QUALITY_QUALIFIED_SCORE,
@@ -148,6 +149,10 @@ export async function GET(request: NextRequest) {
       policy: {
         minimumLeadsForDecision: CAMPAIGN_QUALITY_MINIMUM_LEADS,
         qualifiedDefinition: `score_ia >= ${CAMPAIGN_QUALITY_QUALIFIED_SCORE} || temperature === "quente"`,
+        // As DUAS qualificações publicadas lado a lado e nomeadas: cadastro é
+        // proxy, comercial é evidência de funil. Consumidor nenhum deve ler
+        // "qualificado" sem saber qual das duas está olhando.
+        qualificationDefinitions: CAMPAIGN_QUALITY_DEFINITIONS,
         qualityGradeRule: CAMPAIGN_QUALITY_GRADE_RULE,
         crmIsConversionTruth: true,
         spendMeasured: !spendFetch.error,

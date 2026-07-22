@@ -60,7 +60,10 @@ type Payload = {
 type AdvisorRecommendation = {
   campaignId: string;
   campaignName: string;
-  action: "scale" | "adjust_targeting" | "fix_form" | "pause_review" | "keep";
+  // scale_por_proxy: escalada apoiada em qualificação de CADASTRO porque ainda
+  // não há amostra de venda — rótulo próprio para não passar por escalada com
+  // lastro de conversão.
+  action: "scale" | "scale_por_proxy" | "adjust_targeting" | "fix_form" | "pause_review" | "keep";
   rationale: string;
   confidence: "alta" | "media" | "baixa";
   metaFeedbackHint: string;
@@ -123,6 +126,7 @@ const analystAnomalyDelta = (anomaly: AnalystAnomaly) => {
 
 const advisorActionLabels: Record<AdvisorRecommendation["action"], string> = {
   scale: "ESCALAR VERBA",
+  scale_por_proxy: "ESCALAR SEM AMOSTRA DE VENDA",
   adjust_targeting: "AJUSTAR PÚBLICO",
   fix_form: "CORRIGIR FORMULÁRIO",
   pause_review: "REVISAR / PAUSAR",
@@ -191,6 +195,7 @@ const semanticChip: Record<"success" | "warning" | "danger", string> = {
 
 const advisorActionChips: Record<AdvisorRecommendation["action"], ChipToneKey> = {
   scale: "emerald",
+  scale_por_proxy: "amber", // âmbar: proposta válida, lastro parcial
   adjust_targeting: "accent",
   fix_form: "amber",
   pause_review: "rose",
@@ -499,8 +504,8 @@ export default function CampaignsPage() {
           style={{ animationDelay: "70ms" }}
         >
           <MetricCard
-            eyebrow="Taxa de qualificação"
-            explain="Decisiva: parcela dos leads da janela que o time qualificou. Fonte: /api/v1/analytics/campaign-quality."
+            eyebrow="Qualificação de cadastro"
+            explain="Parcela dos leads da janela com cadastro qualificado (score alto ou lead quente) — é proxy de cadastro, NÃO é venda; a venda aparece no número de vendas ao lado. Fonte: /api/v1/analytics/campaign-quality."
             value={totals.leads > 0 ? `${Math.round((totals.qualified / totals.leads) * 1000) / 10}%` : "—"}
             detail={`${totals.qualified} de ${totals.leads} leads · ${totals.sales} vendas`}
             barClass="bg-[var(--atlas-accent)]"
@@ -635,7 +640,8 @@ export default function CampaignsPage() {
               Campanhas ordenadas pela qualidade da lead
             </h2>
             <p className="mt-1.5 max-w-3xl text-xs leading-5 text-[#6b7890]">
-              Qualificada = {data.policy.qualifiedDefinition}. Nota A: {data.policy.qualityGradeRule.A}. Nota
+              Qualificação de cadastro = {data.policy.qualifiedDefinition} (proxy de cadastro, não é venda —
+              a venda é a coluna Vendas, confirmada no CRM). Nota A: {data.policy.qualityGradeRule.A}. Nota
               B: {data.policy.qualityGradeRule.B}.
             </p>
           </div>
@@ -657,7 +663,7 @@ export default function CampaignsPage() {
                     <th scope="col" className="py-3 pr-4 font-semibold">Campanha</th>
                     <th scope="col" className="py-3 pr-4 font-semibold">Qualidade</th>
                     <th scope="col" className="py-3 pr-4 text-right font-semibold">Leads</th>
-                    <th scope="col" className="py-3 pr-4 text-right font-semibold">Qualificadas</th>
+                    <th scope="col" className="py-3 pr-4 text-right font-semibold">Qualif. cadastro</th>
                     <th scope="col" className="py-3 pr-4 text-right font-semibold">Score médio</th>
                     <th scope="col" className="py-3 pr-4 text-right font-semibold">Descartes</th>
                     <th scope="col" className="py-3 pr-4 text-right font-semibold">Vendas</th>

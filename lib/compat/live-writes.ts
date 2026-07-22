@@ -1,5 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { calculateLeadScore } from "@/lib/atlas/scoring";
+import type { AtlasLead } from "@/types/atlas";
 
 type LeadEventInput = {
   organizationId: string;
@@ -42,30 +44,131 @@ export function mapLiveLeadEvent(row: Record<string, unknown>) {
   };
 }
 
-export function liveLeadUpdatePayload(body: Record<string, unknown>, currentStatus: unknown) {
-  const budgetMin = body.budget_min === null || body.budget_min === "" ? null : Number(body.budget_min);
-  const budgetMax = body.budget_max === null || body.budget_max === "" ? null : Number(body.budget_max);
-  const bedrooms = body.bedrooms === null || body.bedrooms === "" ? null : Number(body.bedrooms);
-  const preferredNeighborhoods = Array.isArray(body.preferred_regions)
-    ? body.preferred_regions.map((value) => String(value).trim()).filter(Boolean).slice(0, 20)
+const PURPOSE_IN_NOTES = /Objetivo declarado:\s*(moradia|investimento|loca[cç][aã]o)\.?/i;
+
+/** Número finito 0–100 arredondado; null quando não há score declarado (0 inclusive). */
+function readDeclaredScore(value: unknown): number | null {
+  const parsed = typeof value === "number" || (typeof value === "string" && value.trim()) ? Number(value) : NaN;
+  if (!Number.isFinite(parsed)) return null;
+  const bounded = Math.min(100, Math.max(0, Math.round(parsed)));
+  // 0 nunca é declaração: o Lead 360 devolve 0 quando a coluna está null, e um
+  // lead válido (exige telefone ou e-mail) sempre pontua acima de zero.
+  return bounded > 0 ? bounded : null;
+}
+
+function readCurrentNumber(value: unknown): number | null {
+  const parsed = Number(value);
+  return value !== null && value !== undefined && value !== "" && Number.isFinite(parsed) ? parsed : null;
+}
+
+function purposeFromNotes(value: unknown): string {
+  const match = typeof value === "string" ? value.match(PURPOSE_IN_NOTES) : null;
+  if (!match) return "";
+  const normalized = match[1].toLocaleLowerCase("pt-BR");
+  return normalized.startsWith("loca") ? "locacao" : normalized;
+}
+
+/**
+ * Payload de UPDATE do lead (substituição total da linha).
+ *
+ * Regra de ouro desta função: campo AUSENTE no corpo preserva o valor atual —
+ * nunca vira null, 0 ou "frio". O PATCH parcial rebaixava o lead em silêncio
+ * (score_ia = 0 e temperature = "frio"), e esses dois campos comandam fila do
+ * dia, distribuição e filtro de min_score.
+ *
+ * score_ia é DERIVADO dos dados (mesma função da criação, lib/atlas/scoring),
+ * não declarado pelo cliente: a tela devolve o score que leu, então tratar esse
+ * eco como declaração congelaria o número para sempre — preencher orçamento e
+ * região nunca elevaria o score. Só um valor DIFERENTE do atual é aceito como
+ * override deliberado de um cliente de API.
+ */
+export function liveLeadUpdatePayload(
+  body: Record<string, unknown>,
+  currentStatus: unknown,
+  currentLead: Record<string, unknown> = {},
+) {
+  const sent = (key: string) => Object.prototype.hasOwnProperty.call(body, key);
+
+  const budgetMinRaw = body.budget_min === null || body.budget_min === "" ? null : Number(body.budget_min);
+  const budgetMaxRaw = body.budget_max === null || body.budget_max === "" ? null : Number(body.budget_max);
+  const bedroomsRaw = body.bedrooms === null || body.bedrooms === "" ? null : Number(body.bedrooms);
+  const budgetMin = sent("budget_min")
+    ? (Number.isFinite(budgetMinRaw) ? budgetMinRaw : null)
+    : readCurrentNumber(currentLead.budget_min);
+  const budgetMax = sent("budget_max")
+    ? (Number.isFinite(budgetMaxRaw) ? budgetMaxRaw : null)
+    : readCurrentNumber(currentLead.budget_max);
+  const bedrooms = sent("bedrooms")
+    ? (Number.isFinite(bedroomsRaw) ? bedroomsRaw : null)
+    : readCurrentNumber(currentLead.preferred_bedrooms);
+
+  const currentNeighborhoods = Array.isArray(currentLead.preferred_neighborhoods)
+    ? currentLead.preferred_neighborhoods.map((value) => String(value).trim()).filter(Boolean).slice(0, 20)
     : [];
-  const purpose = typeof body.purpose === "string" ? body.purpose.trim() : "";
-  const notes = typeof body.notes === "string"
-    ? body.notes.replace(/^Objetivo declarado:\s*(moradia|investimento|loca[cç][aã]o)\.?\s*/i, "").trim()
-    : "";
+  const preferredNeighborhoods = sent("preferred_regions")
+    ? (Array.isArray(body.preferred_regions)
+      ? body.preferred_regions.map((value) => String(value).trim()).filter(Boolean).slice(0, 20)
+      : [])
+    : currentNeighborhoods;
+
+  const currentNotes = typeof currentLead.notes === "string" ? currentLead.notes : "";
+  const purpose = sent("purpose") && typeof body.purpose === "string"
+    ? body.purpose.trim()
+    : purposeFromNotes(currentNotes);
+  const notesSource = sent("notes") && typeof body.notes === "string" ? body.notes : currentNotes;
+  const notes = notesSource
+    .replace(/^Objetivo declarado:\s*(moradia|investimento|loca[cç][aã]o)\.?\s*/i, "")
+    .trim();
   const enrichedNotes = [purpose ? `Objetivo declarado: ${purpose}.` : "", notes].filter(Boolean).join("\n").slice(0, 5000) || null;
+
+  const email = typeof body.email === "string" && body.email.trim() ? body.email.trim().toLowerCase() : null;
+  const phone = typeof body.phone === "string" && body.phone.trim() ? body.phone.replace(/\D/g, "") : null;
+  const status = typeof body.status === "string" && body.status.trim()
+    ? body.status.trim().toLowerCase()
+    : String(currentStatus || "novo").toLowerCase();
+
+  // Mapeamento snake→camel explícito: calculateLeadScore lê AtlasLead. Passar a
+  // linha do banco direto produziria score sobre objeto vazio.
+  // lastInteractionAt/nextActionAt ficam de fora de propósito — a criação também
+  // não os informa, e incluí-los aqui daria scores diferentes para o mesmo lead
+  // dependendo do caminho de escrita.
+  const scoringInput: Partial<AtlasLead> = {
+    email,
+    phone,
+    budgetMax: budgetMax ?? null,
+    preferredRegions: preferredNeighborhoods,
+    bedrooms: bedrooms ?? null,
+    purpose: purpose || null,
+    status,
+  };
+  const derived = calculateLeadScore(scoringInput);
+  const declaredScore = readDeclaredScore(body.score);
+  const storedScore = readDeclaredScore(currentLead.score_ia);
+  const scoreIa = declaredScore !== null && declaredScore !== storedScore ? declaredScore : derived.score;
+
+  const currentTemperature = typeof currentLead.temperature === "string" && currentLead.temperature.trim()
+    ? currentLead.temperature.trim().toLowerCase()
+    : null;
+  // Temperatura é declarada por humano na Lead 360: o valor enviado vence, o
+  // atual é preservado na omissão, e só na ausência dos dois cai na derivada.
+  const temperature = typeof body.temperature === "string" && body.temperature.trim()
+    ? body.temperature.trim().toLowerCase()
+    : currentTemperature ?? derived.temperature;
 
   return {
     name: typeof body.name === "string" ? body.name.trim() : null,
-    email: typeof body.email === "string" && body.email.trim() ? body.email.trim().toLowerCase() : null,
-    phone: typeof body.phone === "string" && body.phone.trim() ? body.phone.replace(/\D/g, "") : null,
+    email,
+    phone,
     source: typeof body.source === "string" && body.source.trim() ? body.source.trim() : null,
-    status: typeof body.status === "string" && body.status.trim() ? body.status.trim().toLowerCase() : String(currentStatus || "novo").toLowerCase(),
-    temperature: typeof body.temperature === "string" && body.temperature.trim() ? body.temperature.trim().toLowerCase() : "frio",
-    score_ia: Number.isFinite(Number(body.score)) ? Math.min(100, Math.max(0, Math.round(Number(body.score)))) : 0,
-    budget_min: Number.isFinite(budgetMin) ? budgetMin : null,
-    budget_max: Number.isFinite(budgetMax) ? budgetMax : null,
-    preferred_bedrooms: Number.isFinite(bedrooms) ? bedrooms : null,
+    status,
+    temperature,
+    // A criação grava as duas colunas de temperatura; o PATCH só gravava uma e
+    // deixava classificacao_ia congelada no valor do nascimento do lead.
+    classificacao_ia: temperature,
+    score_ia: scoreIa,
+    budget_min: budgetMin,
+    budget_max: budgetMax,
+    preferred_bedrooms: bedrooms,
     preferred_neighborhoods: preferredNeighborhoods,
     notes: enrichedNotes,
   };

@@ -50,6 +50,31 @@ export type ControlStepInput = {
 /** Projeção do decision-simulator (plano inteiro OU um movimento) — opcional. */
 export type ProposalProjection = PlanProjection | MoveProjection;
 
+/**
+ * Insumos CONGELADOS da projeção: o que se projetou e com que dado, no instante
+ * da proposta. Sem isso não há como comparar projetado × realizado depois — e
+ * projeção sem comparação nunca vira aprendizado. Quando `projection` é null,
+ * `reason` diz por quê (ausência explicada, nunca faixa de zeros).
+ */
+export type ProposalProjectionBasis = {
+  computedAt: string;
+  /** Origem dos agregados (ex.: "meta_insights"), para auditoria posterior. */
+  source: string;
+  /** Janela dos agregados usados (ex.: "last_30d"). */
+  window: string;
+  /** Sempre true: projeção do cliente NUNCA é aceita. */
+  serverComputed: true;
+  targetKey?: string;
+  targetLabel?: string;
+  windowSpend?: number;
+  windowLeads?: number;
+  cpl?: number | null;
+  sampleSufficient?: boolean;
+  minimumLeadsForProjection?: number;
+  /** Motivo textual quando não houve projeção. */
+  reason?: string | null;
+};
+
 export type CampaignProposalInput = {
   organizationId: string;
   requestedBy: string;
@@ -58,6 +83,8 @@ export type CampaignProposalInput = {
   /** Plano de publicação (create) OU passo de controle (demais kinds). */
   payload: PublishPlan | ControlStepInput;
   projection?: ProposalProjection | null;
+  /** Insumos congelados da projeção (ou o motivo da ausência dela). */
+  projectionBasis?: ProposalProjectionBasis | null;
   /** Default 72h; valores <= 0 são ignorados e caem no default. */
   expiresInHours?: number;
 };
@@ -68,6 +95,7 @@ export type CampaignProposalPayload = {
   title: string;
   plan: PublishPlan | ControlStepInput;
   projection: ProposalProjection | null;
+  projectionBasis: ProposalProjectionBasis | null;
   governance: { requiresApproval: true; source: "deterministic"; note: string };
 };
 
@@ -188,6 +216,7 @@ export function buildCampaignProposal(
     title: input.title,
     plan: input.payload,
     projection: input.projection ?? null,
+    projectionBasis: input.projectionBasis ?? null,
     governance: { requiresApproval: true, source: "deterministic", note: governanceNote(input.kind) },
   };
 

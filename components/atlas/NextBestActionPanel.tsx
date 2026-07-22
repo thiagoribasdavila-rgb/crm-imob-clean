@@ -118,9 +118,25 @@ export function NextBestActionPanel({ max = 5 }: { max?: number }) {
                         </span>
                       </div>
                       <p className="mt-0.5 truncate text-xs leading-5 text-[#6b7890]">{a.why}</p>
+                      {/* Probabilidade nunca aparece sozinha: a linha abaixo diz sobre
+                          quantos sinais ela se apoia e quais faltaram. */}
+                      {a.dataCaveat ? (
+                        <p className="mt-0.5 truncate text-[11px] leading-4 text-[#5f6b80]" title={a.dataCaveat}>
+                          {a.dataCaveat}
+                        </p>
+                      ) : null}
                     </div>
-                    <span className="shrink-0 font-mono text-sm text-[#aab6ca] [font-variant-numeric:tabular-nums]">
-                      {a.expectedValue != null ? brl(a.expectedValue) : "—"}
+                    <span className="flex shrink-0 flex-col items-end">
+                      <span className="font-mono text-sm text-[#aab6ca] [font-variant-numeric:tabular-nums]">
+                        {a.expectedValue != null ? brl(a.expectedValue) : "—"}
+                      </span>
+                      {a.expectedValue == null && a.declaredBudget != null ? (
+                        // Orçamento declarado NÃO é potencial calculado — rótulo explícito
+                        // para o corretor não ler teto do cliente como preço de imóvel.
+                        <span className="font-mono text-[10px] leading-4 text-[#6b7890] [font-variant-numeric:tabular-nums]">
+                          orç. declarado {brl(a.declaredBudget)}
+                        </span>
+                      ) : null}
                     </span>
                   </Link>
                 </li>

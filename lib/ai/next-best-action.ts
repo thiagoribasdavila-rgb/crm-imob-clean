@@ -30,6 +30,19 @@ export type LeadSignal = {
   overdueTaskCount?: number;
   /** Dias desde o último contato (quando conhecido). */
   lastContactDays?: number;
+  /** Banda qualitativa do preditor (muito-baixa … muito-alta). */
+  band?: string;
+  /** Sinais que o preditor não recebeu — a ausência que explica a leitura. */
+  missingSignals?: string[];
+  /** Cobertura de sinais do preditor (observados de rastreados). */
+  signalCoverage?: { observed: number; total: number };
+  /**
+   * Teto de orçamento DECLARADO pelo cliente. Fica fora do score e do
+   * expectedValue de propósito: misturar orçamento autodeclarado com preço de
+   * imóvel na mesma coluna monetária faria um orçamento fantasioso furar a fila
+   * na frente de um imóvel real.
+   */
+  declaredBudget?: number;
 };
 
 export type NextBestActionKind =
@@ -50,8 +63,22 @@ export type NextBestAction = {
   /** Porquê legível, citando o fator dominante. */
   why: string;
   emoji: string;
-  /** Potencial em R$ = probabilidade × valor; null quando o valor é desconhecido. */
+  /** Potencial em R$ = probabilidade × valor DO IMÓVEL; null quando desconhecido. */
   expectedValue: number | null;
+  /** Banda qualitativa da probabilidade; null quando a carteira não informou. */
+  band: string | null;
+  /** Sinais ausentes por extenso (vazio = leitura com cobertura completa). */
+  missingSignals: string[];
+  /** Cobertura de sinais do preditor; null quando não informada. */
+  signalCoverage: { observed: number; total: number } | null;
+  /** Orçamento declarado pelo cliente (só leitura; não ordena a playlist). */
+  declaredBudget: number | null;
+  /**
+   * Frase pronta de lastro da leitura ("apoiada em 3 de 7 sinais; faltam …").
+   * null quando todos os sinais rastreados chegaram. Existe para a tela nunca
+   * mostrar a probabilidade sem dizer sobre quanta informação ela se apoia.
+   */
+  dataCaveat: string | null;
 };
 
 // Limiares de temperatura por probabilidade (alinhados ao conversion-predictor:
@@ -149,6 +176,24 @@ function buildWhy(action: NextBestActionKind, signal: LeadSignal): string {
 }
 
 /**
+ * Lastro da leitura em uma frase — cobertura de sinais e o que faltou.
+ * Nunca vira percentual de "confiança": o preditor não foi confrontado com
+ * resultado real, então só publicamos contagem e nomes dos sinais ausentes.
+ */
+function buildDataCaveat(signal: LeadSignal): string | null {
+  const cobertura = signal.signalCoverage;
+  const faltando = (signal.missingSignals ?? []).map((s) => (s || "").trim()).filter(Boolean);
+  if (!cobertura && faltando.length === 0) return null;
+  const partes: string[] = [];
+  if (cobertura && finite(cobertura.observed) && finite(cobertura.total) && cobertura.total > 0) {
+    if (cobertura.observed >= cobertura.total && faltando.length === 0) return null;
+    partes.push(`leitura apoiada em ${cobertura.observed} de ${cobertura.total} sinais`);
+  }
+  if (faltando.length > 0) partes.push(`faltam: ${faltando.join(", ")}`);
+  return partes.length > 0 ? `${partes.join("; ")}.` : null;
+}
+
+/**
  * Monta a playlist priorizada da carteira.
  *
  * Ordenação (determinística e estável):
@@ -178,6 +223,11 @@ export function nextBestActions(leads: LeadSignal[], opts?: { max?: number }): N
         why: buildWhy(action, signal),
         emoji: ACTION_EMOJI[action],
         expectedValue,
+        band: typeof signal.band === "string" && signal.band.trim() ? signal.band.trim() : null,
+        missingSignals: (signal.missingSignals ?? []).map((s) => String(s || "").trim()).filter(Boolean),
+        signalCoverage: signal.signalCoverage ?? null,
+        declaredBudget: finite(signal.declaredBudget) && signal.declaredBudget > 0 ? signal.declaredBudget : null,
+        dataCaveat: buildDataCaveat(signal),
         // campos auxiliares só para o desempate determinístico
         _p: p,
         _value: value ?? -1,

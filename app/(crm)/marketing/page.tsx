@@ -22,8 +22,18 @@ type BudgetRow = {
 };
 type MoveKind = "escalar" | "pausar" | "revisar" | "definir_meta" | "realocar" | "manter";
 type Move = { kind: MoveKind; scope: string; target: string; reason: string; amount?: number; priority: number };
+type Coverage = {
+  window: string;
+  spendTruncated: boolean;
+  leadsTruncated: boolean;
+  campaignsTruncated: boolean;
+  complete: boolean;
+};
 type CostReport = {
   source?: string;
+  // Cobertura das consultas paginadas: quando incompleta a tela AVISA — número
+  // de vendas truncado em silêncio é pior que número ausente.
+  coverage?: Coverage;
   totals: { spend: number; campaigns: number };
   byCampaign: { aggregate: AggRow[] };
   byProject: { aggregate: AggRow[] };
@@ -32,10 +42,22 @@ type CostReport = {
   plan: { moves: Move[]; summary: { desperdicioSemanal: number; economiaPotencial: number; produtosEficientes: number; produtosCaros: number } };
   projection?: { projections: MoveProjection[] };
 };
-type MoveProjection = { moveKind: string; target: string; weeklyLeadsDelta: { pessimista: number; esperado: number; otimista: number }; confidence: "baixa" | "media" | "alta" };
+// assumptions: as premissas que sustentam a faixa. Sem elas, "+3 a +5 leads/sem"
+// é número sem lastro visível — o mesmo padrão que o forecast já respeita.
+type MoveProjection = { moveKind: string; target: string; weeklyLeadsDelta: { pessimista: number; esperado: number; otimista: number }; confidence: "baixa" | "media" | "alta"; assumptions?: string[] };
 type Fatigue = { adId: string; adName: string; kind: string; detail: string };
 type Health = { campaignId: string; campaignName: string; activeAds: number; diversityScore: number; fatigue: Fatigue[]; andromedaScore: number };
-type Rotation = { campaignName: string; replacement: { angle: string }; reason: string };
+// Par completo da rotação: o anúncio a pausar E o substituto já redigido pelo
+// estrategista. Sem o copy na tela o gestor não tem o que aprovar — a
+// governança "a IA propõe, o humano aprova" ficava travada por falta de
+// proposta visível.
+type Rotation = {
+  campaignName: string;
+  pauseAd?: { adId: string; adName: string; signals: string[] };
+  replacement: { angle: string; copy?: { primaryText: string; headline: string; description: string } };
+  reason: string;
+  priority?: number;
+};
 type Forecast = { account: { pace: "acelerando" | "estavel" | "desacelerando"; projectedWeeklyLeads: { pessimista: number; esperado: number; otimista: number }; projectedCpl: number | null; trendPct: number; confidence: "baixa" | "media" | "alta"; assumptions: string[] }; anomalies: string[]; weeks?: Array<{ weekStart: string; spend: number; leads: number }> };
 // Localizador de Público — a rota /marketing/andromeda JÁ devolvia isto (audience-finder
 // + policy-engine) e a tela descartava. Sob HOUSING a demografia é OBSERVAÇÃO da entrega,
@@ -43,7 +65,10 @@ type Forecast = { account: { pace: "acelerando" | "estavel" | "desacelerando"; p
 type PlacementLine = { platform: string; position: string; spend: number; leads: number; cpl: number | null; sharePct: number; verdict: "escalar" | "manter" | "revisar" | "descartar"; reason: string };
 type GeoReport = { leak: { sharePct: number; topRegions: Array<{ region: string; spend: number; leads: number }> }; verdict: "focado" | "vazando" };
 type DemoLine = { age: string; gender: string; spend: number; leads: number; cpl?: number | null; sharePct?: number };
-type Audience = { placements: PlacementLine[]; geo: GeoReport | null; demo: { lines: DemoLine[]; policyNote: string } | null };
+// angles: CPL por ângulo criativo (audience-finder). É o único sinal que liga
+// CONTEÚDO da peça a resultado, e vinha sendo descartado por omissão de tipo.
+type AngleLine = { angle: string; product: string; spend: number; leads: number; cpl: number | null; ads: number };
+type Audience = { placements: PlacementLine[]; geo: GeoReport | null; demo: { lines: DemoLine[]; policyNote: string } | null; angles?: AngleLine[] };
 type Prescription = { kind: string; target: string; reason: string; reversible?: boolean };
 type Andromeda = { source: string; health: Health[]; consolidation: { verdict: "consolidada" | "fragmentada"; reason: string }; forecast?: Forecast; rotations?: { proposals: Rotation[]; summary: string }; audience?: Audience; prescriptions?: { proposals: Prescription[]; summary: string } };
 type Calibration = { summary: string[] };
@@ -201,6 +226,17 @@ export default function MarketingPage() {
       ) : null}
       <GateCard state={cost} onRetry={retry} waiting="Relatório de custos aguardando ativação do banco." />
 
+      {report?.coverage && !report.coverage.complete ? (
+        <p role="status" className="cc6-panel-quiet cc6-reveal px-4 py-3 text-[12.5px] leading-5 text-[#f2b544]">
+          ⚠️ Leitura incompleta: {[
+            report.coverage.leadsTruncated ? "leads/vendas" : null,
+            report.coverage.spendTruncated ? "investimento" : null,
+            report.coverage.campaignsTruncated ? "campanhas" : null,
+          ].filter(Boolean).join(", ")} atingiram o teto de paginação. Os números abaixo são MÍNIMOS
+          observados, não totais — não decida pausa de campanha por eles.
+        </p>
+      ) : null}
+
       {report ? (
         <>
           {/* (a) Faixa de 4 números. */}
@@ -241,6 +277,11 @@ export default function MarketingPage() {
                     </span>
                   ) : null}
                   <span className="min-w-0 flex-1 basis-full text-[13px] leading-5 text-[#aab6ca] sm:basis-auto">{move.reason}</span>
+                  {/* Premissas visíveis: a faixa acima é derivada delas. Número
+                      sem lastro à vista é o que faz o gestor desconfiar da IA. */}
+                  {proj?.assumptions?.length ? (
+                    <span className="basis-full text-[11px] leading-4 text-[#6b7890]">{proj.assumptions.join(" · ")}</span>
+                  ) : null}
                 </div>
                 );
               })
@@ -362,7 +403,38 @@ export default function MarketingPage() {
             <p className="cc6-hairline px-5 py-2.5 text-[12px] leading-5 text-[#f2b544]">🔮 {andromeda.data.forecast.anomalies.join(" · ")}</p>
           ) : null}
           {andromeda.data.rotations?.proposals?.length ? (
-            <p className="cc6-hairline px-5 py-2.5 text-[12px] leading-5 text-[#9db2d0]">🔄 {andromeda.data.rotations.summary}</p>
+            <div className="cc6-hairline px-5 py-2.5">
+              <p className="text-[12px] leading-5 text-[#9db2d0]">🔄 {andromeda.data.rotations.summary}</p>
+              {andromeda.data.rotations.proposals.slice(0, 4).map((rot, index) => (
+                <div key={`${rot.campaignName}-${rot.pauseAd?.adId ?? index}`} className="mt-2.5 rounded-xl border border-[rgba(148,163,184,.12)] bg-white/[.02] p-3">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="cc6-chip cc6-crit" title={rot.pauseAd?.signals.join(" · ") || rot.reason}>pausar</span>
+                    <span className="min-w-0 truncate text-[12.5px] text-[#e8eef8]">{rot.pauseAd?.adName ?? "anúncio fatigado"}</span>
+                    <span className="cc6-num text-[10px] uppercase tracking-[.1em] text-[#6b7890]">{rot.campaignName}</span>
+                  </div>
+                  <p className="mt-1 text-[11.5px] leading-5 text-[#6b7890]">{rot.reason}</p>
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="cc6-chip cc6-ok">substituir por</span>
+                    <span className="cc6-num text-[11px] text-[#aab6ca]">ângulo {rot.replacement.angle}</span>
+                  </div>
+                  {rot.replacement.copy ? (
+                    <div className="mt-1.5 space-y-1">
+                      <p className="text-[12.5px] leading-5 text-[#c3ccdb]">{rot.replacement.copy.primaryText}</p>
+                      <p className="text-[11.5px] leading-5 text-[#8b97ab]">
+                        <b className="text-[#aab6ca]">{rot.replacement.copy.headline}</b>
+                        {rot.replacement.copy.description ? ` · ${rot.replacement.copy.description}` : ""}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-1.5 text-[11.5px] leading-5 text-[#6b7890]">Substituto sem copy redigido — a peça precisa de brief do produto para ser proposta.</p>
+                  )}
+                  <p className="cc6-num mt-2 text-[10px] uppercase tracking-[.1em] text-[#6b7890]">proposta · nada é pausado ou publicado automaticamente</p>
+                </div>
+              ))}
+              {andromeda.data.rotations.proposals.length > 4 ? (
+                <p className="cc6-num mt-2 text-[11px] text-[#6b7890]">+{andromeda.data.rotations.proposals.length - 4} rotações propostas</p>
+              ) : null}
+            </div>
           ) : null}
           {andromeda.data.health.map((item) => (
             <div key={item.campaignId} className="cc6-hairline flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
@@ -493,6 +565,29 @@ export default function MarketingPage() {
                   </>
                 ) : <p className="text-[12px] leading-5 text-[#6b7890]">Sem quebra demográfica disponível.</p>}
               </div>
+            </div>
+            {/* Qual MENSAGEM responde: CPL por ângulo criativo. Só anúncios na
+                convenção [Atlas] entram — os demais não têm ângulo legível e
+                por isso a lista pode vir vazia (ausência explicada). */}
+            <div className="cc6-hairline px-5 py-4">
+              <p className="cc6-metric-label mb-2">Qual mensagem responde · CPL por ângulo</p>
+              {a.angles?.length ? (
+                <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+                  {a.angles.slice(0, 6).map((line) => (
+                    <div key={`${line.product}-${line.angle}`} className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate text-[12.5px] text-[#c3ccdb]">{line.angle}<span className="text-[#6b7890]"> · {line.product}</span></span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="cc6-num text-[12px] text-[#8b97ab]">{cpl(line.cpl)}</span>
+                        <span className="cc6-num text-[11px] text-[#6b7890]">{line.leads} leads · {line.ads} peças</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[12px] leading-5 text-[#6b7890]">
+                  Sem ângulo legível nos anúncios da janela — o CPL por ângulo só existe para peças nomeadas na convenção do Atlas.
+                </p>
+              )}
             </div>
           </section>
         );

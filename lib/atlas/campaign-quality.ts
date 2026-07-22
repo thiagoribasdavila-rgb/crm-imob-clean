@@ -4,8 +4,13 @@
 // Consolida, por campanha de marketing_campaigns (tabela viva), somente sobre
 // tabelas vivas do banco:
 //   - volume de leads e vendas (leads.status === "ganho" — CRM é a verdade);
-//   - qualificação: score_ia >= 70 OU temperature === "quente" — MESMO corte
-//     de hotLeads do director-daily (app/api/v1/analytics/director-daily);
+//   - qualificação DE CADASTRO: score_ia >= 70 OU temperature === "quente" —
+//     MESMO corte de hotLeads do director-daily (app/api/v1/analytics/director-daily);
+//   - qualificação COMERCIAL: etapa canônica em visita/proposta/contrato/ganho.
+//     As duas convivem com NOMES DIFERENTES de propósito: cadastro é proxy
+//     (soma de campos preenchidos), comercial é evidência verificável no funil.
+//     Duas grandezas sob o mesmo rótulo "qualificado" foi o que permitiu o
+//     painel dizer 45% enquanto o sinal enviado à Meta valia outra coisa;
 //   - descartes: lead_events event_type=lead_discarded, atribuídos pela
 //     metadata.campaignId gravada no momento do descarte (pipeline/route.ts),
 //     com fallback de join em leads.campaign_id — mesmo padrão do
@@ -22,9 +27,22 @@
 // consumidor existente.
 
 import { getDiscardReason } from "@/lib/atlas/discard-reasons";
+import { canonicalPipelineStage } from "@/lib/atlas/pipeline-stages";
 
 export const CAMPAIGN_QUALITY_MINIMUM_LEADS = 30; // mesmo gate do director-daily
 export const CAMPAIGN_QUALITY_QUALIFIED_SCORE = 70; // mesmo corte de hotLeads
+
+// Etapas que constituem LASTRO COMERCIAL: o lead foi visto, recebeu proposta ou
+// fechou. É a única evidência de qualificação que não depende de cadastro bem
+// preenchido — e a que vale como sinal externo (Meta CAPI).
+export const CAMPAIGN_QUALITY_COMMERCIAL_STAGES = ["visita", "proposta", "contrato", "ganho"] as const;
+
+// Vocabulário publicado nos payloads: as duas qualificações têm nomes próprios
+// para nunca serem lidas como a mesma grandeza.
+export const CAMPAIGN_QUALITY_DEFINITIONS = {
+  qualificacaoDeCadastro: `score_ia >= ${CAMPAIGN_QUALITY_QUALIFIED_SCORE} OU temperature "quente" — proxy de cadastro completo/quente; NÃO é evidência de intenção de compra`,
+  qualificacaoComercial: `etapa canônica em ${CAMPAIGN_QUALITY_COMMERCIAL_STAGES.join(" | ")} — evidência verificável registrada por humano no funil`,
+} as const;
 
 // Regra explicável do qualityGrade — publicada no payload dos endpoints.
 export const CAMPAIGN_QUALITY_GRADE_RULE = {
@@ -67,8 +85,10 @@ export type CampaignQualityRow = {
   platform: string;
   status: string;
   leads: number;
-  qualifiedLeads: number;
-  qualificationRate: number; // % com 1 decimal
+  qualifiedLeads: number; // qualificação DE CADASTRO (proxy)
+  qualificationRate: number; // % com 1 decimal — cadastro
+  commercialQualifiedLeads: number; // etapa >= visita (evidência comercial)
+  commercialQualificationRate: number; // % com 1 decimal — comercial
   avgScore: number | null; // média de score_ia com 1 decimal (null sem scores)
   sales: number;
   conversionRate: number; // mesma fórmula do director-daily
@@ -86,7 +106,8 @@ export type CampaignQualityRow = {
 export type CampaignQualityTotals = {
   campaigns: number;
   leads: number;
-  qualified: number;
+  qualified: number; // cadastro
+  commercialQualified: number; // etapa >= visita
   sales: number;
   discarded: number;
   classifiedDiscards: number; // reasonKey pertence à taxonomia vigente
@@ -102,11 +123,18 @@ const pct = (count: number, total: number) =>
   total > 0 ? Math.round((count / total) * 1000) / 10 : 0;
 const money = (value: number) => Math.round(value * 100) / 100;
 
+/** Qualificação DE CADASTRO — proxy: cadastro completo/quente. Não é evidência comercial. */
 export function isQualifiedLead(lead: Pick<CampaignQualityLead, "score_ia" | "temperature">) {
   return (
     (toNumber(lead.score_ia) ?? 0) >= CAMPAIGN_QUALITY_QUALIFIED_SCORE
     || normalize(lead.temperature) === "quente"
   );
+}
+
+/** Qualificação COMERCIAL — etapa canônica em visita/proposta/contrato/ganho. */
+export function isCommerciallyQualifiedLead(lead: Pick<CampaignQualityLead, "status">) {
+  const stage = canonicalPipelineStage(lead.status);
+  return stage !== null && (CAMPAIGN_QUALITY_COMMERCIAL_STAGES as readonly string[]).includes(stage);
 }
 
 function gradeFor(
@@ -127,6 +155,7 @@ type Bucket = {
   campaign: CampaignQualityCampaign;
   leads: number;
   qualified: number;
+  commercialQualified: number;
   sales: number;
   scoreSum: number;
   scoreCount: number;
@@ -150,6 +179,7 @@ export function buildCampaignQuality(input: {
       campaign,
       leads: 0,
       qualified: 0,
+      commercialQualified: 0,
       sales: 0,
       scoreSum: 0,
       scoreCount: 0,
@@ -162,16 +192,20 @@ export function buildCampaignQuality(input: {
 
   const leadById = new Map(input.leads.map((lead) => [text(lead.id), lead]));
   let totalQualified = 0;
+  let totalCommercialQualified = 0;
   let totalSales = 0;
   for (const lead of input.leads) {
     const qualified = isQualifiedLead(lead);
+    const commercial = isCommerciallyQualifiedLead(lead);
     const won = normalize(lead.status) === "ganho";
     if (qualified) totalQualified += 1;
+    if (commercial) totalCommercialQualified += 1;
     if (won) totalSales += 1;
     const bucket = buckets.get(text(lead.campaign_id));
     if (!bucket) continue;
     bucket.leads += 1;
     if (qualified) bucket.qualified += 1;
+    if (commercial) bucket.commercialQualified += 1;
     if (won) bucket.sales += 1;
     const score = toNumber(lead.score_ia);
     if (score !== null) {
@@ -228,6 +262,8 @@ export function buildCampaignQuality(input: {
       leads: bucket.leads,
       qualifiedLeads: bucket.qualified,
       qualificationRate,
+      commercialQualifiedLeads: bucket.commercialQualified,
+      commercialQualificationRate: pct(bucket.commercialQualified, bucket.leads),
       avgScore: bucket.scoreCount > 0
         ? Math.round((bucket.scoreSum / bucket.scoreCount) * 10) / 10
         : null,
@@ -264,6 +300,7 @@ export function buildCampaignQuality(input: {
       campaigns: input.campaigns.length,
       leads: input.leads.length,
       qualified: totalQualified,
+      commercialQualified: totalCommercialQualified,
       sales: totalSales,
       discarded: input.discardEvents.length,
       classifiedDiscards,

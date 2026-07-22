@@ -194,7 +194,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const admin = getSupabaseAdmin();
     const { data: currentLead } = await admin
       .from("leads")
-      .select("status,source")
+      .select("status,source,temperature,score_ia,budget_min,budget_max,preferred_bedrooms,preferred_neighborhoods,notes")
       .eq("id", id)
       .eq("organization_id", identity.organizationId)
       .maybeSingle();
@@ -205,9 +205,13 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (nextStatus === "comprou_outro" && notes.length < 10) {
       return NextResponse.json({ error: "Descreva o acompanhamento da compra em outro lugar no campo de observações." }, { status: 400 });
     }
+    // O registro atual entra na conta para que campo ausente no PATCH preserve o
+    // valor gravado (e o score seja recalculado sobre o lead consolidado, não
+    // sobre o pedaço que a tela enviou).
     const update = liveLeadUpdatePayload(
       { ...body, source: currentLead.source, status: nextStatus },
       currentLead.status,
+      currentLead as JsonRow,
     );
     if (!update.name || String(update.name).length < 2) return NextResponse.json({ error: "Informe um nome válido." }, { status: 400 });
     if (!update.phone && !update.email) return NextResponse.json({ error: "Informe pelo menos telefone ou e-mail." }, { status: 400 });

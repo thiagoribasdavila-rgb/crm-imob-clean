@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { cacheHeaders } from "@/lib/api/cache-headers";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all-rows";
 import { aggregate, weekly, budgetView, type SpendRow, type ProductBudget } from "@/lib/marketing/cost-report";
 import { marketingEfficiencyPlan } from "@/lib/ai/marketing-strategist";
 import { simulatePlan } from "@/lib/ai/decision-simulator";
@@ -33,8 +34,23 @@ export async function GET(request: NextRequest) {
   const wantMeta = new URL(request.url).searchParams.get("source") === "meta";
 
   // gasto real — preferência: banco (marketing_spend); fallback/força: Meta ao vivo
-  const { data: spend, error: spendErr } = await admin
-    .from("marketing_spend").select("campaign_id,spend_date,amount").eq("organization_id", org);
+  //
+  // Lição F1: o PostgREST corta em 1000 linhas SEM erro. Aqui isso significava
+  // gasto e VENDAS truncados para baixo em silêncio — o diretor pausando
+  // campanha que vende. Paginação exaustiva com ordem determinística
+  // (spend_date+id / created_at+id): sem .order() estável, o range pode repetir
+  // e pular linhas entre páginas, trocando truncamento por erro não reprodutível.
+  const spendFetch = await fetchAllRows<{ campaign_id: string; spend_date: string; amount: number | string }>(
+    (from, to) => admin
+      .from("marketing_spend")
+      .select("campaign_id,spend_date,amount")
+      .eq("organization_id", org)
+      .order("spend_date", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
+  const spend = spendFetch.rows;
+  const spendErr = spendFetch.error;
   if (spendErr || wantMeta) {
     const token = process.env.META_ADS_ACCESS_TOKEN;
     const account = process.env.META_AD_ACCOUNT_ID;
@@ -70,6 +86,15 @@ export async function GET(request: NextRequest) {
         const livePlan = marketingEfficiencyPlan(bud, agg, { salesKnown: false });
         return apiSuccess({
           source: "meta_live", // gasto/leads direto da Meta (30d); venda só existe via CRM (Fase 0)
+          // Mesma chave do caminho de banco para a tela não precisar de dois
+          // contratos. Aqui a paginação é da Meta (graphGetAll segue o cursor).
+          coverage: {
+            window: "últimos 30 dias (Meta Insights) — vendas não entram por esta fonte",
+            spendTruncated: false,
+            leadsTruncated: false,
+            campaignsTruncated: false,
+            complete: true,
+          },
           totals: { spend: agg.reduce((s, b) => s + b.spend, 0), campaigns: new Set(rows.map((r) => r.campaignId)).size },
           byCampaign: { aggregate: agg, weekly: weekly(rows, "campaign") },
           byProject: { aggregate: aggregate(rows, "product"), weekly: weekly(rows, "product") },
@@ -84,14 +109,29 @@ export async function GET(request: NextRequest) {
     if (spendErr) return apiError("REPORT_UNAVAILABLE", "Relatório indisponível: banco sem marketing_spend e Meta não configurada/legível.", identity.meta, { status: 503 });
   }
 
-  // campanhas + mapeamento projeto/incorporador (tolerante a colunas ausentes)
-  let campaigns: Array<{ id: string; name?: string; development_id?: string | null }> = [];
-  const withDev = await admin.from("marketing_campaigns").select("id,name,development_id").eq("organization_id", org);
+  // campanhas + mapeamento projeto/incorporador (tolerante a colunas ausentes).
+  // Também paginado: acima de 1000 campanhas o campMap ficava incompleto e a
+  // linha aparecia com o uuid no lugar do nome, em silêncio.
+  type CampaignRow = { id: string; name?: string; development_id?: string | null };
+  let campaigns: CampaignRow[] = [];
+  const withDev = await fetchAllRows<CampaignRow>((from, to) => admin
+    .from("marketing_campaigns")
+    .select("id,name,development_id")
+    .eq("organization_id", org)
+    .order("id", { ascending: true })
+    .range(from, to));
+  let campaignsTruncated = withDev.truncated;
   if (withDev.error) {
-    const basic = await admin.from("marketing_campaigns").select("id,name").eq("organization_id", org);
-    campaigns = basic.data ?? [];
+    const basic = await fetchAllRows<CampaignRow>((from, to) => admin
+      .from("marketing_campaigns")
+      .select("id,name")
+      .eq("organization_id", org)
+      .order("id", { ascending: true })
+      .range(from, to));
+    campaigns = basic.rows;
+    campaignsTruncated = basic.truncated;
   } else {
-    campaigns = withDev.data ?? [];
+    campaigns = withDev.rows;
   }
   const campMap = new Map(campaigns.map((c) => [c.id, c]));
 
@@ -105,8 +145,17 @@ export async function GET(request: NextRequest) {
     devIds.length
       ? admin.from("developments").select("id,name,developer_id").in("id", devIds).eq("organization_id", org)
       : Promise.resolve({ data: [] as Array<{ id: string; name: string; developer_id: string | null }> }),
-    // leads/vendas por campanha (venda = status 'ganho')
-    admin.from("leads").select("campaign_id,status").eq("organization_id", org).not("campaign_id", "is", null),
+    // leads/vendas por campanha (venda = status 'ganho') — sem recorte de data,
+    // igual ao gasto acima: janela assimétrica (gasto histórico contra vendas de
+    // 7 dias) faria campanha boa parecer cara, que é pior que o truncamento.
+    fetchAllRows<{ campaign_id: string; status: string | null }>((from, to) => admin
+      .from("leads")
+      .select("campaign_id,status")
+      .eq("organization_id", org)
+      .not("campaign_id", "is", null)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to)),
     // verba por produto
     admin.from("product_budgets").select("product,developer,weekly_budget,target_cac,active").eq("organization_id", org).eq("active", true),
   ]);
@@ -122,7 +171,7 @@ export async function GET(request: NextRequest) {
     return { product: dev?.name ?? null, developer: dev?.developerId ? devrMap.get(dev.developerId) ?? null : null };
   };
 
-  const leads = leadsResult.data;
+  const leads = leadsResult.rows;
 
   const spendRows: SpendRow[] = (spend ?? []).map((s) => {
     const pd = productOf(s.campaign_id);
@@ -142,7 +191,18 @@ export async function GET(request: NextRequest) {
   const budget = budgetView(productBudgets, all);
   const dbPlan = marketingEfficiencyPlan(budget, byCampaignAgg);
 
+  // Cobertura declarada: a tela precisa poder avisar em vez de mentir por
+  // omissão quando alguma dimensão bateu o teto de paginação.
+  const coverage = {
+    window: "histórico completo — mesmo recorte (nenhum) para gasto e para leads/vendas",
+    spendTruncated: spendFetch.truncated,
+    leadsTruncated: leadsResult.truncated,
+    campaignsTruncated,
+    complete: !spendFetch.truncated && !leadsResult.truncated && !campaignsTruncated,
+  };
+
   return apiSuccess({
+    coverage,
     totals: { spend: byCampaignAgg.reduce((s, b) => s + b.spend, 0), campaigns: campaigns.length },
     byCampaign: { aggregate: byCampaignAgg, weekly: weekly(spendRows, "campaign") },
     byProject: { aggregate: aggregate(all, "product"), weekly: weekly(spendRows, "product") },

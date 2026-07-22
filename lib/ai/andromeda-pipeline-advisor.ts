@@ -23,18 +23,30 @@ import {
 // Governança inegociável (aplicada MESMO sobre a saída generativa):
 //   - campanha sem amostra suficiente (< 30 leads, mesmo gate do
 //     director-daily) SEMPRE recebe "keep" — nunca decisão de verba;
+//   - "scale" só existe com amostra de VENDA; sem ela a recomendação vira
+//     "scale_por_proxy", que diz no rótulo que está apoiada em qualificação de
+//     cadastro (proxy) e não em conversão;
 //   - nada aqui executa ação na Meta: é conselho para aprovação humana
 //     (o envio de lead_status = disqualified segue sob o gate do diretor do
 //     andromeda-loop, política negativeSignalsInternalOnly).
 
 export const ANDROMEDA_ADVISOR_ACTIONS = [
   "scale",
+  "scale_por_proxy",
   "adjust_targeting",
   "fix_form",
   "pause_review",
   "keep",
 ] as const;
 export type AndromedaAdvisorAction = (typeof ANDROMEDA_ADVISOR_ACTIONS)[number];
+
+// Amostra mínima para JULGAR CONVERSÃO (não para julgar qualificação: esse gate
+// continua sendo CAMPAIGN_QUALITY_MINIMUM_LEADS). Sem este piso, "escalar só com
+// conversão acima da mediana" silenciaria o conselheiro no ciclo imobiliário,
+// onde a venda demora — por isso existe o estado rotulado scale_por_proxy em vez
+// de simplesmente suprimir a recomendação.
+export const ANDROMEDA_ADVISOR_MIN_SALES_TO_JUDGE = 3;
+export const ANDROMEDA_ADVISOR_MIN_LEADS_TO_JUDGE_CONVERSION = 100;
 
 export const ANDROMEDA_ADVISOR_CONFIDENCES = ["alta", "media", "baixa"] as const;
 export type AndromedaAdvisorConfidence = (typeof ANDROMEDA_ADVISOR_CONFIDENCES)[number];
@@ -70,11 +82,16 @@ export type AndromedaAdvice = {
 // Regras explícitas do fallback determinístico — publicadas no payload do
 // endpoint (padrão rules/formula do broker-daily) para explicabilidade.
 export const ANDROMEDA_ADVISOR_RULES = {
+  qualificationVocabulary:
+    "qualificationRate = QUALIFICAÇÃO DE CADASTRO (score >= 70 ou temperature quente — proxy); conversionRate/sales = VENDA confirmada no CRM. As duas nunca são a mesma grandeza e o rationale sempre diz qual usou",
+  conversionSample: `amostra para julgar conversão: >= ${ANDROMEDA_ADVISOR_MIN_SALES_TO_JUDGE} vendas na janela OU >= ${ANDROMEDA_ADVISOR_MIN_LEADS_TO_JUDGE_CONVERSION} leads`,
   keepInsufficientSample: `leads < ${CAMPAIGN_QUALITY_MINIMUM_LEADS} => keep (amostra insuficiente; nenhuma decisão de verba — mesmo gate do director-daily)`,
   fixForm: "descartes >= 5 e (invalid_contact_info + spam) >= 40% dos descartes => fix_form (problema de captação, não de público)",
   adjustTargeting: "descartes >= 5 e (out_of_service_area + wrong_product + budget_mismatch) >= 40% dos descartes => adjust_targeting",
+  pauseReviewNoSales: "amostra de conversão suficiente e 0 vendas => pause_review, mesmo com qualificação de cadastro alta (cadastro bom que não vende é o pior gasto)",
   pauseReview: "amostra suficiente e nota C e (discardRate >= 50% ou qualificationRate < 10% ou CPL qualificado > 2x a mediana) => pause_review (revisão humana antes de qualquer pausa)",
-  scale: "amostra suficiente e nota A e CPL qualificado <= mediana das campanhas ranqueadas (ou custo não medido => confiança média) => scale",
+  scale: "amostra suficiente e nota A e CPL qualificado <= mediana e conversão >= mediana de conversão das campanhas com amostra de venda => scale (verba sustentada por VENDA)",
+  scalePorProxy: "mesmas condições de scale, mas sem amostra de venda suficiente => scale_por_proxy (escalada sustentada por qualificação de cadastro; conversão ainda sem amostra — o rationale declara isso)",
   keep: "demais casos => keep (seguir alimentando o ciclo de qualidade)",
 } as const;
 
@@ -95,6 +112,21 @@ function categoryCount(row: CampaignQualityRow, categories: string[]) {
   return row.discardsByMetaCategory
     .filter((item) => categories.includes(item.category))
     .reduce((sum, item) => sum + item.count, 0);
+}
+
+/** A campanha já produziu evidência suficiente para a CONVERSÃO ser julgada? */
+function conversionJudgeable(row: CampaignQualityRow) {
+  return (
+    row.sales >= ANDROMEDA_ADVISOR_MIN_SALES_TO_JUDGE
+    || row.leads >= ANDROMEDA_ADVISOR_MIN_LEADS_TO_JUDGE_CONVERSION
+  );
+}
+
+/** Trecho de venda citado em todo rationale — o número, nunca o adjetivo. */
+function salesNote(row: CampaignQualityRow) {
+  return conversionJudgeable(row)
+    ? `${row.sales} venda(s) em ${row.leads} leads (${row.conversionRate}% de conversão)`
+    : `${row.sales} venda(s) em ${row.leads} leads — amostra ainda insuficiente para julgar conversão (mínimo ${ANDROMEDA_ADVISOR_MIN_SALES_TO_JUDGE} vendas ou ${ANDROMEDA_ADVISOR_MIN_LEADS_TO_JUDGE_CONVERSION} leads)`;
 }
 
 function insufficientSampleRecommendation(row: CampaignQualityRow): AndromedaRecommendation {
@@ -118,6 +150,14 @@ export function deterministicAndromedaAdvice(
     aggregates.ranking
       .filter((row) => row.sampleSufficient && row.costPerQualifiedLead !== null)
       .map((row) => row.costPerQualifiedLead as number),
+  );
+  // Mediana de conversão calculada SÓ sobre campanhas cuja conversão é
+  // julgável — incluir campanhas sem amostra rebaixaria a mediana a zero e
+  // faria qualquer campanha parecer boa.
+  const conversionMedian = median(
+    aggregates.ranking
+      .filter((row) => row.sampleSufficient && conversionJudgeable(row))
+      .map((row) => row.conversionRate),
   );
 
   return aggregates.ranking.map((row): AndromedaRecommendation => {
@@ -155,6 +195,20 @@ export function deterministicAndromedaAdvice(
       }
     }
 
+    // Cadastro bonito que não vende: com amostra de conversão julgável e ZERO
+    // vendas, a verba não pode ser decidida pela qualificação de cadastro.
+    if (conversionJudgeable(row) && row.sales === 0 && row.qualificationRate >= 40) {
+      return {
+        campaignId: row.id,
+        campaignName: row.name,
+        action: "pause_review",
+        rationale: `Qualificação de cadastro alta (${row.qualificationRate}%, ${row.qualifiedLeads} de ${row.leads} leads) e ${salesNote(row)} — cadastro bem preenchido não é venda. Levar à revisão do gestor, checando antes se o ciclo de venda é maior que a janela analisada. Nada é pausado automaticamente.`,
+        confidence: "media",
+        metaFeedbackHint:
+          "Reportar à Meta as VENDAS do CRM (ConvertedLead), não só o cadastro qualificado: enquanto o sinal enviado for cadastro, o Andromeda otimiza para lead bem preenchido, não para comprador.",
+      };
+    }
+
     if (
       row.qualityGrade === "C"
       && (discardRate >= 50
@@ -168,7 +222,7 @@ export function deterministicAndromedaAdvice(
         campaignId: row.id,
         campaignName: row.name,
         action: "pause_review",
-        rationale: `Nota C com ${row.qualificationRate}% de qualificação, ${discardRate}% de descarte${costNote} — levar à revisão do gestor antes de qualquer pausa. Nada é pausado automaticamente.`,
+        rationale: `Nota C com ${row.qualificationRate}% de qualificação de cadastro, ${discardRate}% de descarte${costNote} e ${salesNote(row)} — levar à revisão do gestor antes de qualquer pausa. Nada é pausado automaticamente.`,
         confidence: "media",
         metaFeedbackHint:
           "Antes de decidir, reportar o lote acumulado de disqualified categorizados para fechar o ciclo de aprendizado do Andromeda sobre esta campanha.",
@@ -182,14 +236,49 @@ export function deterministicAndromedaAdvice(
         const costNote = cheapEnough
           ? ` e CPL qualificado de ${brl(cpql as number)} (mediana ${brl(cpqlMedian as number)})`
           : " — custo por qualificado não medido (marketing_spend indisponível ou sem investimento lançado)";
+        const judgeable = conversionJudgeable(row);
+        const convertsAtLeastMedian =
+          judgeable && conversionMedian !== null && row.conversionRate >= conversionMedian;
+
+        // Escalar por VENDA: nota A, custo sob controle e conversão pelo menos
+        // na mediana das campanhas com amostra de venda.
+        if (convertsAtLeastMedian) {
+          return {
+            campaignId: row.id,
+            campaignName: row.name,
+            action: "scale",
+            rationale: `Nota A com ${row.qualificationRate}% de qualificação de cadastro (${row.qualifiedLeads} de ${row.leads} leads)${costNote} e ${salesNote(row)} — conversão na mediana ou acima (mediana ${conversionMedian}%). Candidata a receber mais verba, sob aprovação do diretor.`,
+            confidence: cheapEnough ? "alta" : "media",
+            metaFeedbackHint:
+              "Reportar as VENDAS do CRM (ConvertedLead) além dos qualificados — é a venda que ensina o Andromeda a procurar comprador — antes de escalar a verba.",
+          };
+        }
+
+        // Amostra de venda existe e a conversão está ABAIXO da mediana: nota A
+        // de cadastro não compra escalada de verba.
+        if (judgeable) {
+          return {
+            campaignId: row.id,
+            campaignName: row.name,
+            action: "keep",
+            rationale: `Nota A de cadastro (${row.qualificationRate}%)${costNote}, mas ${salesNote(row)} — abaixo da mediana de conversão (${conversionMedian}%). Manter a verba como está: qualificação de cadastro sozinha não sustenta escalada.`,
+            confidence: "media",
+            metaFeedbackHint:
+              "Reportar vendas e descartes categorizados para o Andromeda separar cadastro bom de comprador antes de qualquer aumento de verba.",
+          };
+        }
+
+        // Sem amostra de venda: a escalada é rotulada como apoiada em proxy —
+        // "sem amostra, sem recomendação" honrado pela rotulagem, não pelo
+        // silêncio (que devolveria o conselheiro à monocultura de keep).
         return {
           campaignId: row.id,
           campaignName: row.name,
-          action: "scale",
-          rationale: `Nota A com ${row.qualificationRate}% de qualificação (${row.qualifiedLeads} de ${row.leads} leads)${costNote} — candidata a receber mais verba, sob aprovação do diretor.`,
-          confidence: cheapEnough ? "alta" : "media",
+          action: "scale_por_proxy",
+          rationale: `Nota A com ${row.qualificationRate}% de qualificação de cadastro (${row.qualifiedLeads} de ${row.leads} leads)${costNote} — escalada sustentada por QUALIFICAÇÃO DE CADASTRO, não por venda: ${salesNote(row)}.`,
+          confidence: "baixa",
           metaFeedbackHint:
-            "Reportar os leads qualificados e as vendas do CRM (CRM é a verdade da conversão) para reforçar o lookalike vencedor antes de escalar a verba.",
+            "Antes de escalar, acumular vendas atribuídas e reportá-las à Meta (ConvertedLead): sem venda reportada, o aprendizado do Andromeda fica preso no cadastro.",
         };
       }
     }
@@ -198,7 +287,7 @@ export function deterministicAndromedaAdvice(
       campaignId: row.id,
       campaignName: row.name,
       action: "keep",
-      rationale: `Nota ${row.qualityGrade ?? "—"} com ${row.qualificationRate}% de qualificação e ${discardRate}% de descarte — manter como está e seguir alimentando o ciclo de qualidade.`,
+      rationale: `Nota ${row.qualityGrade ?? "—"} com ${row.qualificationRate}% de qualificação de cadastro, ${discardRate}% de descarte e ${salesNote(row)} — manter como está e seguir alimentando o ciclo de qualidade.`,
       confidence: "media",
       metaFeedbackHint:
         "Manter o envio contínuo de status de qualidade (qualified/disqualified categorizado) para o Andromeda continuar calibrando a entrega.",
@@ -217,10 +306,14 @@ const SYSTEM = [
   "Você recebe SOMENTE agregados por campanha (volumes, taxas, custos, descartes por categoria e funil) — nunca dados pessoais de lead.",
   "NUNCA invente números: cite apenas valores presentes nos agregados fornecidos.",
   "NUNCA recomende ação destrutiva automática: toda recomendação é conselho para aprovação humana; nada é aplicado na Meta automaticamente.",
-  "Ações permitidas: scale (mais verba), adjust_targeting (ajustar público), fix_form (corrigir captação/formulário), pause_review (levar à revisão humana antes de pausar), keep (manter).",
+  "Ações permitidas: scale (mais verba, sustentada por VENDA), scale_por_proxy (mais verba sustentada só por qualificação de cadastro, porque ainda não há amostra de venda — diga isso no rationale), adjust_targeting (ajustar público), fix_form (corrigir captação/formulário), pause_review (levar à revisão humana antes de pausar), keep (manter).",
   `Campanha com menos de ${CAMPAIGN_QUALITY_MINIMUM_LEADS} leads (sampleSufficient=false): sempre keep — amostra insuficiente não sustenta decisão de verba.`,
+  "qualificationRate é QUALIFICAÇÃO DE CADASTRO (score alto ou lead quente) — é proxy, não é venda. sales e conversionRate são VENDA confirmada no CRM. Nunca trate as duas como a mesma coisa e sempre diga no rationale qual delas sustentou a recomendação.",
+  `Só use scale quando houver amostra de venda (>= ${ANDROMEDA_ADVISOR_MIN_SALES_TO_JUDGE} vendas na janela OU >= ${ANDROMEDA_ADVISOR_MIN_LEADS_TO_JUDGE_CONVERSION} leads) e a conversão estiver na mediana ou acima; sem essa amostra use scale_por_proxy e declare o número de vendas.`,
+  "Campanha com amostra de venda e ZERO vendas, mesmo com qualificação de cadastro alta: pause_review, citando o número de vendas.",
+  "Cite sempre o número de vendas (sales) no rationale — o objetivo do investimento é venda, não cadastro.",
   "Em metaFeedbackHint, diga o que reportar à Meta (CRM lead status qualified/disqualified e categorias) para o Andromeda aprender — o CRM é a verdade da conversão.",
-  'Responda SOMENTE com um JSON válido, sem texto fora do JSON, no formato: {"recommendations":[{"campaignId":"<id existente nos agregados>","action":"scale|adjust_targeting|fix_form|pause_review|keep","rationale":"pt-BR citando os números","confidence":"alta|media|baixa","metaFeedbackHint":"o que reportar à Meta"}]}',
+  'Responda SOMENTE com um JSON válido, sem texto fora do JSON, no formato: {"recommendations":[{"campaignId":"<id existente nos agregados>","action":"scale|scale_por_proxy|adjust_targeting|fix_form|pause_review|keep","rationale":"pt-BR citando os números, inclusive vendas","confidence":"alta|media|baixa","metaFeedbackHint":"o que reportar à Meta"}]}',
 ].join("\n");
 
 export async function adviseAndromedaPipeline(input: {
@@ -285,10 +378,14 @@ export async function adviseAndromedaPipeline(input: {
       const rationale = typeof raw.rationale === "string" ? raw.rationale.trim().slice(0, 500) : "";
       const hint = typeof raw.metaFeedbackHint === "string" ? raw.metaFeedbackHint.trim().slice(0, 300) : "";
       if (!rationale || !hint) continue; // recomendação sem explicação não entra
+      const action = coerce(raw.action, ANDROMEDA_ADVISOR_ACTIONS, "keep");
       generativeById.set(row.id, {
         campaignId: row.id,
         campaignName: row.name, // nome sempre dos agregados, nunca da IA
-        action: coerce(raw.action, ANDROMEDA_ADVISOR_ACTIONS, "keep"),
+        // Governança sobre a saída generativa: "scale" afirma lastro de VENDA.
+        // Sem amostra de conversão a IA não promove proxy a evidência — o
+        // rótulo é rebaixado, a recomendação não é silenciada.
+        action: action === "scale" && !conversionJudgeable(row) ? "scale_por_proxy" : action,
         rationale,
         confidence: coerce(raw.confidence, ANDROMEDA_ADVISOR_CONFIDENCES, "media"),
         metaFeedbackHint: hint,
