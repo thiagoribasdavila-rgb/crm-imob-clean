@@ -23,7 +23,7 @@ export default function TermsPage() {
       <LegalSection id="aceite" title="1. Aceite">
         <p>
           O uso da plataforma pressupõe a aceitação integral destes termos e da{" "}
-          <Link className="text-sky-300 underline-offset-4 hover:underline" href="/privacy">Política de Privacidade</Link>.
+          <Link className="text-[color:var(--atlas-accent)] underline-offset-4 hover:underline" href="/privacy">Política de Privacidade</Link>.
           Se você não concorda, não utilize o serviço.
         </p>
         <p>
@@ -36,7 +36,7 @@ export default function TermsPage() {
       <LegalSection id="servico" title="2. O que a plataforma faz">
         <p>
           O Atlas AI organiza a operação comercial imobiliária: recebe e distribui leads, registra o atendimento,
-          acompanha o funil de vendas, integra campanhas de mídia e oferece <strong className="text-slate-200">sugestões
+          acompanha o funil de vendas, integra campanhas de mídia e oferece <strong className="text-[color:var(--atlas-text-primary)]">sugestões
           geradas por inteligência artificial</strong> para apoiar decisões humanas.
         </p>
         <LegalList
@@ -70,7 +70,7 @@ export default function TermsPage() {
         <LegalList
           items={[
             <>
-              Ser a <strong className="text-slate-200">controladora</strong> dos dados pessoais tratados na plataforma e
+              Ser a <strong className="text-[color:var(--atlas-text-primary)]">controladora</strong> dos dados pessoais tratados na plataforma e
               possuir base legal para o tratamento, incluindo consentimento quando exigido.
             </>,
             <>
@@ -102,7 +102,7 @@ export default function TermsPage() {
 
       <LegalSection id="ia" title="6. Natureza das sugestões de inteligência artificial">
         <p>
-          As saídas da IA são <strong className="text-slate-200">apoio à decisão</strong>, não aconselhamento
+          As saídas da IA são <strong className="text-[color:var(--atlas-text-primary)]">apoio à decisão</strong>, não aconselhamento
           profissional, jurídico, financeiro ou de investimento.
         </p>
         <LegalList
@@ -147,7 +147,7 @@ export default function TermsPage() {
           intransferível durante a vigência.
         </p>
         <p>
-          Os <strong className="text-slate-200">dados comerciais e pessoais inseridos pela contratante permanecem dela</strong>,
+          Os <strong className="text-[color:var(--atlas-text-primary)]">dados comerciais e pessoais inseridos pela contratante permanecem dela</strong>,
           que pode exportá-los na forma prevista em contrato.
         </p>
       </LegalSection>
@@ -165,7 +165,7 @@ export default function TermsPage() {
         <p>
           Estes termos vigoram enquanto durar o acesso. Encerrada a relação contratual, o acesso é desativado e os dados
           são tratados conforme o contrato e a{" "}
-          <Link className="text-sky-300 underline-offset-4 hover:underline" href="/privacy">Política de Privacidade</Link>,
+          <Link className="text-[color:var(--atlas-accent)] underline-offset-4 hover:underline" href="/privacy">Política de Privacidade</Link>,
           respeitados os prazos legais de guarda.
         </p>
       </LegalSection>
@@ -187,7 +187,7 @@ export default function TermsPage() {
       <LegalSection id="contato" title="14. Contato">
         <p>
           Dúvidas sobre estes termos:{" "}
-          <a className="text-sky-300 underline-offset-4 hover:underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
+          <a className="text-[color:var(--atlas-accent)] underline-offset-4 hover:underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
         </p>
       </LegalSection>
     </PublicPageShell>

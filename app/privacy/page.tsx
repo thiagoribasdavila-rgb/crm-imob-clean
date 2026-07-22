@@ -22,17 +22,17 @@ export default function PrivacyPage() {
     >
       <LegalSection id="papeis" title="1. Quem trata os dados">
         <p>
-          O <strong className="text-slate-200">Atlas AI</strong> é uma plataforma de inteligência comercial imobiliária
+          O <strong className="text-[color:var(--atlas-text-primary)]">Atlas AI</strong> é uma plataforma de inteligência comercial imobiliária
           fornecida a incorporadoras e imobiliárias (&ldquo;cliente contratante&rdquo;).
         </p>
         <LegalList
           items={[
             <>
-              <strong className="text-slate-200">Controlador:</strong> a incorporadora ou imobiliária contratante, que
+              <strong className="text-[color:var(--atlas-text-primary)]">Controlador:</strong> a incorporadora ou imobiliária contratante, que
               decide quais dados coleta e para quê.
             </>,
             <>
-              <strong className="text-slate-200">Operador:</strong> o Atlas AI, que trata os dados em nome do
+              <strong className="text-[color:var(--atlas-text-primary)]">Operador:</strong> o Atlas AI, que trata os dados em nome do
               controlante, seguindo suas instruções e esta política.
             </>,
           ]}
@@ -47,27 +47,27 @@ export default function PrivacyPage() {
         <LegalList
           items={[
             <>
-              <strong className="text-slate-200">Identificação e contato:</strong> nome, telefone, e-mail.
+              <strong className="text-[color:var(--atlas-text-primary)]">Identificação e contato:</strong> nome, telefone, e-mail.
             </>,
             <>
-              <strong className="text-slate-200">Interesse comercial:</strong> empreendimento de interesse, faixa de
+              <strong className="text-[color:var(--atlas-text-primary)]">Interesse comercial:</strong> empreendimento de interesse, faixa de
               orçamento informada, prazo de compra, forma de pagamento pretendida, região desejada — sempre conforme o
               que o próprio titular informa.
             </>,
             <>
-              <strong className="text-slate-200">Histórico de atendimento:</strong> registros de contato, tarefas,
+              <strong className="text-[color:var(--atlas-text-primary)]">Histórico de atendimento:</strong> registros de contato, tarefas,
               visitas, propostas e o estágio da negociação.
             </>,
             <>
-              <strong className="text-slate-200">Mensagens:</strong> conversas de WhatsApp trocadas com o corretor,
+              <strong className="text-[color:var(--atlas-text-primary)]">Mensagens:</strong> conversas de WhatsApp trocadas com o corretor,
               quando esse canal é utilizado.
             </>,
             <>
-              <strong className="text-slate-200">Origem:</strong> campanha, anúncio e formulário que originaram o
+              <strong className="text-[color:var(--atlas-text-primary)]">Origem:</strong> campanha, anúncio e formulário que originaram o
               contato.
             </>,
             <>
-              <strong className="text-slate-200">Uso da plataforma</strong> (apenas para usuários corretores e
+              <strong className="text-[color:var(--atlas-text-primary)]">Uso da plataforma</strong> (apenas para usuários corretores e
               gestores): identificação da conta, papel de acesso e registros de auditoria das ações realizadas.
             </>,
           ]}
@@ -93,24 +93,24 @@ export default function PrivacyPage() {
         <LegalList
           items={[
             <>
-              <strong className="text-slate-200">Atender e responder o interessado</strong> — execução de procedimentos
+              <strong className="text-[color:var(--atlas-text-primary)]">Atender e responder o interessado</strong> — execução de procedimentos
               preliminares a contrato, a pedido do titular (art. 7º, V).
             </>,
             <>
-              <strong className="text-slate-200">Organizar o atendimento</strong> (distribuição ao corretor, priorização
+              <strong className="text-[color:var(--atlas-text-primary)]">Organizar o atendimento</strong> (distribuição ao corretor, priorização
               da fila, lembretes de retorno) — legítimo interesse do controlador em prestar atendimento adequado (art.
               7º, IX).
             </>,
             <>
-              <strong className="text-slate-200">Comunicação comercial ativa</strong> (abordagens e reativação de base) —
+              <strong className="text-[color:var(--atlas-text-primary)]">Comunicação comercial ativa</strong> (abordagens e reativação de base) —
               consentimento do titular (art. 7º, I), revogável a qualquer momento.
             </>,
             <>
-              <strong className="text-slate-200">Medir e melhorar campanhas</strong> — legítimo interesse, com dados
+              <strong className="text-[color:var(--atlas-text-primary)]">Medir e melhorar campanhas</strong> — legítimo interesse, com dados
               agregados ou pseudonimizados sempre que suficiente.
             </>,
             <>
-              <strong className="text-slate-200">Cumprir obrigações legais e regulatórias</strong> e exercer direitos em
+              <strong className="text-[color:var(--atlas-text-primary)]">Cumprir obrigações legais e regulatórias</strong> e exercer direitos em
               processo (art. 7º, II e VI).
             </>,
           ]}
@@ -119,7 +119,7 @@ export default function PrivacyPage() {
 
       <LegalSection id="ia" title="5. Como a inteligência artificial é usada">
         <p>
-          O Atlas usa IA para <strong className="text-slate-200">priorizar e sugerir</strong> — nunca para decidir
+          O Atlas usa IA para <strong className="text-[color:var(--atlas-text-primary)]">priorizar e sugerir</strong> — nunca para decidir
           sozinho algo que afete direitos do titular.
         </p>
         <LegalList
@@ -130,11 +130,11 @@ export default function PrivacyPage() {
             </>,
             <>
               Ações com efeito externo (enviar mensagem, publicar ou alterar campanha, mudar orçamento) exigem
-              <strong className="text-slate-200"> aprovação humana registrada</strong>. Nada é executado automaticamente.
+              <strong className="text-[color:var(--atlas-text-primary)]"> aprovação humana registrada</strong>. Nada é executado automaticamente.
             </>,
             <>
-              A memória comercial guarda <strong className="text-slate-200">sinais estruturados</strong> (intenção,
-              objeção, estágio, próxima ação) e <strong className="text-slate-200">não armazena a conversa bruta</strong>.
+              A memória comercial guarda <strong className="text-[color:var(--atlas-text-primary)]">sinais estruturados</strong> (intenção,
+              objeção, estágio, próxima ação) e <strong className="text-[color:var(--atlas-text-primary)]">não armazena a conversa bruta</strong>.
             </>,
             <>
               O conteúdo dos anúncios não segmenta nem descreve características pessoais protegidas; campanhas
@@ -156,21 +156,21 @@ export default function PrivacyPage() {
         <LegalList
           items={[
             <>
-              <strong className="text-slate-200">Recebemos os leads</strong> gerados nos formulários instantâneos dos
+              <strong className="text-[color:var(--atlas-text-primary)]">Recebemos os leads</strong> gerados nos formulários instantâneos dos
               anúncios da própria empresa anunciante, para que o corretor possa responder.
             </>,
             <>
-              <strong className="text-slate-200">Lemos e gerenciamos campanhas</strong> da conta de anúncios do
+              <strong className="text-[color:var(--atlas-text-primary)]">Lemos e gerenciamos campanhas</strong> da conta de anúncios do
               contratante (desempenho, custo, criativos) para relatórios e recomendações — alterações só ocorrem após
               aprovação humana.
             </>,
             <>
-              <strong className="text-slate-200">Enviamos eventos de conversão</strong> à Meta para medir resultado de
+              <strong className="text-[color:var(--atlas-text-primary)]">Enviamos eventos de conversão</strong> à Meta para medir resultado de
               campanha. Identificadores usados nesse envio são transmitidos de forma criptografada (hash), conforme a
               especificação da plataforma.
             </>,
             <>
-              <strong className="text-slate-200">Trocamos mensagens de WhatsApp Business</strong> quando o titular
+              <strong className="text-[color:var(--atlas-text-primary)]">Trocamos mensagens de WhatsApp Business</strong> quando o titular
               inicia ou consente a conversa.
             </>,
           ]}
@@ -187,19 +187,19 @@ export default function PrivacyPage() {
         <LegalList
           items={[
             <>
-              <strong className="text-slate-200">Supabase</strong> — banco de dados, autenticação e armazenamento de
+              <strong className="text-[color:var(--atlas-text-primary)]">Supabase</strong> — banco de dados, autenticação e armazenamento de
               arquivos.
             </>,
             <>
-              <strong className="text-slate-200">Meta Platforms</strong> — recebimento de leads, gestão de campanhas e
+              <strong className="text-[color:var(--atlas-text-primary)]">Meta Platforms</strong> — recebimento de leads, gestão de campanhas e
               eventos de conversão.
             </>,
             <>
-              <strong className="text-slate-200">Provedores de modelos de IA</strong> — processamento de texto para
+              <strong className="text-[color:var(--atlas-text-primary)]">Provedores de modelos de IA</strong> — processamento de texto para
               gerar sugestões comerciais. Não são usados para treinar modelos de terceiros.
             </>,
             <>
-              <strong className="text-slate-200">Provedor de hospedagem</strong> — execução da aplicação.
+              <strong className="text-[color:var(--atlas-text-primary)]">Provedor de hospedagem</strong> — execução da aplicação.
             </>,
             <>Autoridades públicas, quando houver obrigação legal ou ordem judicial.</>,
           ]}
@@ -210,19 +210,19 @@ export default function PrivacyPage() {
         <LegalList
           items={[
             <>
-              <strong className="text-slate-200">Dados do lead e histórico comercial:</strong> pelo tempo da relação com
+              <strong className="text-[color:var(--atlas-text-primary)]">Dados do lead e histórico comercial:</strong> pelo tempo da relação com
               o controlador e pelos prazos legais aplicáveis; depois, eliminados ou anonimizados.
             </>,
             <>
-              <strong className="text-slate-200">Memória comercial estruturada da IA:</strong> expira automaticamente em
-              <strong className="text-slate-200"> 180 dias</strong> sem nova interação.
+              <strong className="text-[color:var(--atlas-text-primary)]">Memória comercial estruturada da IA:</strong> expira automaticamente em
+              <strong className="text-[color:var(--atlas-text-primary)]"> 180 dias</strong> sem nova interação.
             </>,
             <>
-              <strong className="text-slate-200">Registros de auditoria:</strong> mantidos pelo prazo necessário para
+              <strong className="text-[color:var(--atlas-text-primary)]">Registros de auditoria:</strong> mantidos pelo prazo necessário para
               comprovar a governança das ações.
             </>,
             <>
-              <strong className="text-slate-200">Lista de exclusão (opt-out):</strong> mantemos o registro mínimo para
+              <strong className="text-[color:var(--atlas-text-primary)]">Lista de exclusão (opt-out):</strong> mantemos o registro mínimo para
               garantir que o pedido de não contato seja respeitado.
             </>,
           ]}
@@ -247,7 +247,7 @@ export default function PrivacyPage() {
           items={[
             <>confirmação de que tratamos seus dados e acesso a eles;</>,
             <>correção de dados incompletos, inexatos ou desatualizados;</>,
-            <>anonimização, bloqueio ou <strong className="text-slate-200">eliminação</strong> de dados desnecessários ou excessivos;</>,
+            <>anonimização, bloqueio ou <strong className="text-[color:var(--atlas-text-primary)]">eliminação</strong> de dados desnecessários ou excessivos;</>,
             <>portabilidade a outro fornecedor;</>,
             <>informação sobre com quem compartilhamos;</>,
             <>revogação do consentimento e oposição a tratamento feito com base em legítimo interesse;</>,
@@ -255,9 +255,9 @@ export default function PrivacyPage() {
           ]}
         />
         <p>
-          Para exercer, escreva para <a className="text-sky-300 underline-offset-4 hover:underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
+          Para exercer, escreva para <a className="text-[color:var(--atlas-accent)] underline-offset-4 hover:underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
           Respondemos nos prazos da lei. Para apagar seus dados, veja também a página de{" "}
-          <Link className="text-sky-300 underline-offset-4 hover:underline" href="/data-deletion">exclusão de dados</Link>.
+          <Link className="text-[color:var(--atlas-accent)] underline-offset-4 hover:underline" href="/data-deletion">exclusão de dados</Link>.
         </p>
       </LegalSection>
 
@@ -285,7 +285,7 @@ export default function PrivacyPage() {
       <LegalSection id="contato" title="14. Contato e encarregado">
         <p>
           Dúvidas sobre privacidade, pedidos de titular ou comunicação de incidentes:{" "}
-          <a className="text-sky-300 underline-offset-4 hover:underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
+          <a className="text-[color:var(--atlas-accent)] underline-offset-4 hover:underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
         </p>
       </LegalSection>
     </PublicPageShell>

@@ -23,16 +23,16 @@ export default function DataDeletionPage() {
       <LegalSection id="como" title="1. Como solicitar">
         <p>
           Envie um e-mail para{" "}
-          <a className="text-sky-300 underline-offset-4 hover:underline" href={`mailto:${CONTACT}?subject=Solicita%C3%A7%C3%A3o%20de%20exclus%C3%A3o%20de%20dados`}>
+          <a className="text-[color:var(--atlas-accent)] underline-offset-4 hover:underline" href={`mailto:${CONTACT}?subject=Solicita%C3%A7%C3%A3o%20de%20exclus%C3%A3o%20de%20dados`}>
             {CONTACT}
           </a>{" "}
-          com o assunto <strong className="text-slate-200">&ldquo;Solicitação de exclusão de dados&rdquo;</strong>, informando:
+          com o assunto <strong className="text-[color:var(--atlas-text-primary)]">&ldquo;Solicitação de exclusão de dados&rdquo;</strong>, informando:
         </p>
         <LegalList
           items={[
-            <>o <strong className="text-slate-200">telefone e/ou e-mail</strong> que você usou ao ser contatado (é como localizamos seu registro);</>,
+            <>o <strong className="text-[color:var(--atlas-text-primary)]">telefone e/ou e-mail</strong> que você usou ao ser contatado (é como localizamos seu registro);</>,
             <>o nome da empresa/empreendimento com quem você falou, se lembrar;</>,
-            <>se prefere a <strong className="text-slate-200">exclusão total</strong> ou apenas <strong className="text-slate-200">não ser mais contatado</strong>.</>,
+            <>se prefere a <strong className="text-[color:var(--atlas-text-primary)]">exclusão total</strong> ou apenas <strong className="text-[color:var(--atlas-text-primary)]">não ser mais contatado</strong>.</>,
           ]}
         />
         <p>
@@ -51,7 +51,7 @@ export default function DataDeletionPage() {
             <>escreva para o endereço acima — isso cobre os dados recebidos via Meta e as conversas de WhatsApp;</>,
             <>
               você também pode remover a permissão do aplicativo nas configurações da sua conta Meta, em
-              <strong className="text-slate-200"> Configurações → Aplicativos e sites</strong>. Isso interrompe novos
+              <strong className="text-[color:var(--atlas-text-primary)]"> Configurações → Aplicativos e sites</strong>. Isso interrompe novos
               envios, mas <em>não</em> apaga por si só o que já foi recebido — para apagar, faça a solicitação por e-mail.
             </>,
           ]}
@@ -72,8 +72,8 @@ export default function DataDeletionPage() {
 
       <LegalSection id="prazo" title="4. Prazo">
         <p>
-          Confirmamos o recebimento em até <strong className="text-slate-200">5 dias úteis</strong> e concluímos a
-          exclusão em até <strong className="text-slate-200">15 dias</strong>, salvo se a lei exigir prazo diverso.
+          Confirmamos o recebimento em até <strong className="text-[color:var(--atlas-text-primary)]">5 dias úteis</strong> e concluímos a
+          exclusão em até <strong className="text-[color:var(--atlas-text-primary)]">15 dias</strong>, salvo se a lei exigir prazo diverso.
           Backups de segurança são sobrescritos nos ciclos normais de retenção.
         </p>
       </LegalSection>
@@ -83,7 +83,7 @@ export default function DataDeletionPage() {
         <LegalList
           items={[
             <>
-              <strong className="text-slate-200">Registro de opt-out:</strong> guardamos o mínimo necessário (por
+              <strong className="text-[color:var(--atlas-text-primary)]">Registro de opt-out:</strong> guardamos o mínimo necessário (por
               exemplo, o telefone em forma protegida) exatamente para <em>garantir que você não volte a ser contatado</em>.
             </>,
             <>registros exigidos por obrigação legal ou regulatória, e para exercício de direitos em processo;</>,
@@ -95,7 +95,7 @@ export default function DataDeletionPage() {
       <LegalSection id="outros" title="6. Outros direitos">
         <p>
           Além da exclusão, você pode pedir acesso, correção, portabilidade e revogação de consentimento. Veja a{" "}
-          <Link className="text-sky-300 underline-offset-4 hover:underline" href="/privacy">Política de Privacidade</Link>{" "}
+          <Link className="text-[color:var(--atlas-accent)] underline-offset-4 hover:underline" href="/privacy">Política de Privacidade</Link>{" "}
           para a lista completa e as bases legais.
         </p>
         <p>
