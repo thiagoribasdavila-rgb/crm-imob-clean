@@ -103,6 +103,24 @@ for (const forbidden of ["executeSteps", "executeControl", "method: \"POST\"", "
   expect(!route.includes(forbidden), `rota de teste não pode executar criação/ativação: ${forbidden}`);
 }
 
+// 5) Self-test real de terminal precisa continuar read-only e sem impressão de tokens.
+const selftest = read("scripts/meta-campaign-dispatch-selftest.mjs");
+for (const marker of [
+  "META_ADS_ACCESS_TOKEN",
+  "META_AD_ACCOUNT_ID",
+  "META_PAGE_ID",
+  "META_LEAD_FORM_ID",
+  "method: \"GET\"",
+  "redact",
+  "Mutação externa: NÃO",
+  "gasto automático: NÃO",
+]) {
+  expect(selftest.includes(marker), `self-test incompleto: ${marker}`);
+}
+for (const forbidden of ["method: \"POST\"", "executeSteps", "executeControl", "status: \"ACTIVE\"", "dryRun: false"]) {
+  expect(!selftest.includes(forbidden), `self-test não pode executar criação/ativação: ${forbidden}`);
+}
+
 if (fail.length) {
   console.error("META CAMPAIGN DISPATCH PREFLIGHT: REPROVADO");
   fail.forEach((item) => console.error(`- ${item}`));

@@ -282,16 +282,23 @@ Antes de qualquer criação real de campanha, valide a conexão Meta nesta ordem
    - `META_LEAD_ACCESS_TOKEN` quando o token de Lead Ads for separado do token
      de Ads.
 
-2. Rode o pré-voo autenticado:
+2. Rode o pré-voo autenticado pela tela:
+   - `Integrações → Meta → Semáforo para preparar campanha`
+   - clique em **Testar pré-disparo**
+
+3. Ou rode o pré-voo pelo terminal:
+   - `npm run meta:campaign-dispatch:selftest`
+
+4. Endpoint autenticado equivalente:
    - `GET /api/v1/integrations/meta/campaign-dispatch-test`
 
-3. Resultado esperado:
+5. Resultado esperado:
    - `ok`: conta, campanhas, página e formulário legíveis;
    - `warning`: falta algo que impede publicação completa, mas a aplicação não
      executou mutação externa;
    - `blocked`: não avance para criação de campanha.
 
-4. Só depois do pré-voo:
+6. Só depois do pré-voo:
    - gerar preview em `POST /api/v1/marketing/campaign-intake`;
    - registrar aprovação humana em `approval_requests`;
    - criar campanha via executor governado, sempre com objetos `PAUSED`;

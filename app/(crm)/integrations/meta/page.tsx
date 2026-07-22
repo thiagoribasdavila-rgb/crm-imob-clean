@@ -131,6 +131,31 @@ type DailyReportTest = {
   generatedAt: string | null;
   testedAt: string;
 };
+type DispatchPreflightCheck = {
+  id: string;
+  label: string;
+  status: "ok" | "warning" | "blocked";
+  message: string;
+  technical?: string;
+};
+type DispatchPreflight = {
+  status: "ok" | "warning" | "blocked";
+  score: number;
+  graphVersion: string;
+  accountIdMasked: string | null;
+  pageIdMasked: string | null;
+  leadFormIdMasked: string | null;
+  checks: DispatchPreflightCheck[];
+  readiness: {
+    canReadMetaAccount: boolean;
+    canReadCampaigns: boolean;
+    canCreatePausedCampaign: boolean;
+    canActivateWithSpend: false;
+    activationRequiresHumanApproval: true;
+    externalMutationExecuted: false;
+  };
+  nextActions: string[];
+};
 type Payload = {
   sources: Source[];
   summary: Record<string, number>;
@@ -274,6 +299,7 @@ export default function MetaIntegration() {
     capi?: string;
     insights?: string;
     daily?: string;
+    dispatch?: string;
   }>({});
   const [webhookTest, setWebhookTest] = useState({
     sourceId: "",
@@ -313,6 +339,8 @@ export default function MetaIntegration() {
   );
   const [dailyReportTest, setDailyReportTest] =
     useState<DailyReportTest | null>(null);
+  const [dispatchPreflight, setDispatchPreflight] =
+    useState<DispatchPreflight | null>(null);
 
   async function request(init?: RequestInit) {
     const { data: session } = await supabase.auth.getSession();
@@ -572,6 +600,47 @@ export default function MetaIntegration() {
           cause instanceof Error
             ? cause.message
             : "Ensaio do relatório diário falhou.",
+      }));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function testCampaignDispatchPreflight() {
+    setSaving(true);
+    setError("");
+    setNotice("");
+    setTestErrors((prev) => ({ ...prev, dispatch: undefined }));
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const response = await fetch(
+        "/api/v1/integrations/meta/campaign-dispatch-test",
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${session.session?.access_token}` },
+        },
+      );
+      const body = await response.json();
+      const result = (body.ok ? body.data : body.error?.details) as
+        | DispatchPreflight
+        | undefined;
+      if (result?.checks) setDispatchPreflight(result);
+      if (!response.ok)
+        throw new Error(
+          describeTestFailure(body, "Pré-voo de disparo Meta bloqueado."),
+        );
+      setNotice(
+        result?.readiness.canCreatePausedCampaign
+          ? "Pré-voo aprovado: o Atlas pode seguir para prévia e criação pausada, sem gasto automático."
+          : "Pré-voo executado: revise os avisos antes da criação pausada.",
+      );
+    } catch (cause) {
+      setTestErrors((prev) => ({
+        ...prev,
+        dispatch:
+          cause instanceof Error
+            ? cause.message
+            : "Pré-voo de disparo Meta bloqueado.",
       }));
     } finally {
       setSaving(false);
@@ -1608,6 +1677,172 @@ export default function MetaIntegration() {
               Última execução: —
             </p>
           )}
+        </div>
+      </section>
+
+      {/* Pré-disparo — leitura real da conta, sem criação nem gasto. */}
+      <section
+        id="meta-dispatch"
+        aria-labelledby="meta-dispatch-title"
+        className="cc6-panel cc6-reveal p-5"
+        style={{ animationDelay: "285ms" }}
+      >
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="cc6-eyebrow">Homologação · Pré-disparo Meta</p>
+            <h2 id="meta-dispatch-title" className={sectionTitle}>
+              Semáforo para preparar campanha
+            </h2>
+            <p className={sectionHint}>
+              Consulta conta, campanhas, Página e Formulário em modo somente
+              leitura. O Atlas não cria campanha, não ativa verba e não executa
+              gasto nesta etapa.
+            </p>
+          </div>
+          {dispatchPreflight ? (
+            <StatusBadge
+              tone={
+                dispatchPreflight.status === "ok"
+                  ? "success"
+                  : dispatchPreflight.status === "warning"
+                    ? "warning"
+                    : "danger"
+              }
+            >
+              {dispatchPreflight.status === "ok"
+                ? "Pronto"
+                : dispatchPreflight.status === "warning"
+                  ? "Atenção"
+                  : "Bloqueado"}
+            </StatusBadge>
+          ) : (
+            <StatusBadge tone="neutral">Não testado</StatusBadge>
+          )}
+        </header>
+
+        <div className="cc6-hairline mt-4 grid gap-3 pt-4 lg:grid-cols-[280px_1fr]">
+          <div className="cc6-panel-quiet p-4">
+            <p className="cc6-eyebrow">Score de disparo</p>
+            <p className="cc6-metric-value mt-2 text-4xl leading-none">
+              {dispatchPreflight ? `${dispatchPreflight.score}%` : "—"}
+            </p>
+            <p className="cc6-metric-label mt-1.5">
+              {dispatchPreflight?.readiness.canCreatePausedCampaign
+                ? "pode criar campanha pausada após aprovação"
+                : "aguardando evidência suficiente"}
+            </p>
+            <button
+              type="button"
+              disabled={!data?.canManage || saving || !data?.readiness.adsInsights}
+              onClick={() => void testCampaignDispatchPreflight()}
+              title={
+                data && !data.canManage
+                  ? "Teste permitido para liderança comercial"
+                  : !data?.readiness.adsInsights
+                    ? "Configure token e conta Meta Ads antes do pré-voo"
+                    : undefined
+              }
+              className={`mt-4 w-full ${btnGhost}`}
+            >
+              {saving ? "Rodando pré-voo…" : "Testar pré-disparo"}
+            </button>
+            {!data?.readiness.adsInsights ? (
+              <p className="mt-3 text-[11px] leading-5 cc6-warn">
+                Token Meta Ads e conta de anúncios são obrigatórios para este
+                teste.
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-3">
+            {testErrors.dispatch ? (
+              <TestFailure message={testErrors.dispatch} />
+            ) : null}
+            {dispatchPreflight ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <div className="cc6-panel-quiet p-3">
+                    <p className="cc6-metric-label">Graph</p>
+                    <p className="cc6-num mt-1 text-sm text-[#e8eef8]">
+                      {dispatchPreflight.graphVersion}
+                    </p>
+                  </div>
+                  <div className="cc6-panel-quiet p-3">
+                    <p className="cc6-metric-label">Conta</p>
+                    <p className="cc6-num mt-1 text-sm text-[#e8eef8]">
+                      {dispatchPreflight.accountIdMasked || "—"}
+                    </p>
+                  </div>
+                  <div className="cc6-panel-quiet p-3">
+                    <p className="cc6-metric-label">Página</p>
+                    <p className="cc6-num mt-1 text-sm text-[#e8eef8]">
+                      {dispatchPreflight.pageIdMasked || "—"}
+                    </p>
+                  </div>
+                  <div className="cc6-panel-quiet p-3">
+                    <p className="cc6-metric-label">Formulário</p>
+                    <p className="cc6-num mt-1 text-sm text-[#e8eef8]">
+                      {dispatchPreflight.leadFormIdMasked || "—"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-2 md:grid-cols-2">
+                  {dispatchPreflight.checks.map((check) => (
+                    <div
+                      key={check.id}
+                      className="cc6-sev-band cc6-panel-quiet p-3 pl-4"
+                      style={
+                        {
+                          "--cc6-sev":
+                            check.status === "ok"
+                              ? "#34d399"
+                              : check.status === "warning"
+                                ? "#f5b544"
+                                : "#fb7185",
+                        } as CSSProperties
+                      }
+                    >
+                      <p className="text-xs font-medium text-[#e8eef8]">
+                        {check.label}
+                      </p>
+                      <p className="mt-1 text-[11px] leading-5 text-[#aab6ca]">
+                        {check.message}
+                      </p>
+                      {check.technical ? (
+                        <p className="cc6-num mt-1 text-[10px] leading-4 text-[#6b7890]">
+                          {check.technical}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="cc6-hairline pt-3">
+                  <p className="cc6-eyebrow">Próximas ações</p>
+                  <ul className="mt-2 space-y-1 text-[11px] leading-5 text-[#aab6ca]">
+                    {dispatchPreflight.nextActions.map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <span aria-hidden="true" className="cc6-ok">→</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="cc6-num mt-3 text-[10px] leading-4 text-[#6b7890]">
+                    Mutação externa: não · gasto automático: não · aprovação
+                    humana: obrigatória.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <AtlasEmpty
+                reason="first-use"
+                eyebrow="Pré-voo pendente"
+                title="Teste antes de preparar campanha"
+                description="Use este ensaio depois de confirmar conta, página e formulário. Ele dá segurança para avançar à criação pausada."
+              />
+            )}
+          </div>
         </div>
       </section>
 

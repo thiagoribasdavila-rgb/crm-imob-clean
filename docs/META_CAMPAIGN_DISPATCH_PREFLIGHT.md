@@ -31,6 +31,31 @@ Também é possível testar uma página/formulário específico:
 /api/v1/integrations/meta/campaign-dispatch-test?pageId=SEU_PAGE_ID&leadFormId=SEU_FORM_ID
 ```
 
+Na interface, abra:
+
+```txt
+Integrações → Meta → Semáforo para preparar campanha
+```
+
+Clique em **Testar pré-disparo**. O painel mostra:
+
+- score de prontidão;
+- versão da Graph API;
+- conta, Página e Formulário mascarados;
+- checks aprovados, avisos e bloqueios;
+- próximas ações antes da criação pausada.
+
+## Teste pelo terminal
+
+No Mac ou servidor, dentro da pasta do Atlas:
+
+```bash
+npm run meta:campaign-dispatch:selftest
+```
+
+Esse comando usa o `.env.local`, lê a Meta em modo somente leitura e não imprime
+tokens. Ele deve ser rodado antes de qualquer tentativa de criação de campanha.
+
 ## Interpretação
 
 - `ok`: conexão pronta para seguir para prévia/criação pausada.

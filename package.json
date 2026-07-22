@@ -22,6 +22,7 @@
     "audit:release-data-compatibility": "node --env-file=.env.local scripts/check-release-data-compatibility.mjs",
     "meta:selftest": "node --env-file=.env.local scripts/meta-selftest.mjs",
     "meta:campaign-dispatch:check": "node scripts/check-meta-campaign-dispatch-preflight.mjs",
+    "meta:campaign-dispatch:selftest": "node --env-file=.env.local scripts/meta-campaign-dispatch-selftest.mjs",
     "meta:phase-001:check": "node scripts/check-meta-intelligence-phase-001.mjs",
     "meta:phase-001:audit": "node --env-file=.env.local scripts/audit-meta-asset-inventory.mjs",
     "meta:phase-002:check": "node scripts/check-meta-intelligence-phase-002.mjs",
