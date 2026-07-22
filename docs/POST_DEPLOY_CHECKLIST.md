@@ -268,6 +268,43 @@ migration. Primeiro alinhe o banco; depois investigue aplicação.
 
 ---
 
+## ORDEM OBRIGATÓRIA — pré-voo Meta antes de publicar campanha
+
+O ATLAS nunca deve iniciar gasto de mídia apenas porque existe token no `.env`.
+Antes de qualquer criação real de campanha, valide a conexão Meta nesta ordem:
+
+1. Variáveis obrigatórias no servidor:
+   - `META_ADS_ACCESS_TOKEN`
+   - `META_AD_ACCOUNT_ID`
+   - `META_GRAPH_API_VERSION`
+   - `META_PAGE_ID`
+   - `META_LEAD_FORM_ID`
+   - `META_LEAD_ACCESS_TOKEN` quando o token de Lead Ads for separado do token
+     de Ads.
+
+2. Rode o pré-voo autenticado:
+   - `GET /api/v1/integrations/meta/campaign-dispatch-test`
+
+3. Resultado esperado:
+   - `ok`: conta, campanhas, página e formulário legíveis;
+   - `warning`: falta algo que impede publicação completa, mas a aplicação não
+     executou mutação externa;
+   - `blocked`: não avance para criação de campanha.
+
+4. Só depois do pré-voo:
+   - gerar preview em `POST /api/v1/marketing/campaign-intake`;
+   - registrar aprovação humana em `approval_requests`;
+   - criar campanha via executor governado, sempre com objetos `PAUSED`;
+   - conferir no Gerenciador de Anúncios;
+   - ativar somente por ação explícita do diretor.
+
+Andromeda não é uma API separada a ser "ligada". O aprendizado vem dos sinais
+que o CRM devolve para a Meta: lead recebido, lead qualificado, contato,
+visita, proposta, venda e perda qualificada. Se `atlas_events` ou a atribuição
+por campanha estiverem pendentes, primeiro aplique o DDL das seções acima.
+
+---
+
 ## ORDEM OBRIGATÓRIA — religamento de `leads.campaign_id` (atribuição por campanha)
 
 **O DDL vai ANTES do código.** As três migrations abaixo têm de estar aplicadas
