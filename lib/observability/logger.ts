@@ -8,6 +8,7 @@ type Metadata = Record<string, unknown>;
 // Reexportada aqui para não quebrar quem já importava sanitizeLogMetadata do logger.
 export { sanitizeLogMetadata } from "./redact";
 import { sanitizeLogMetadata as redact } from "./redact";
+import { normalizeError } from "./normalize-error";
 
 function write(level: LogLevel, event: string, metadata: Metadata = {}) {
   const { requestId = "system", correlationId = requestId, ...safeMetadata } = metadata;
@@ -32,10 +33,9 @@ export const logger = {
   info: (event: string, metadata?: Metadata) => write("info", event, metadata),
   warn: (event: string, metadata?: Metadata) => write("warn", event, metadata),
   error: (event: string, error?: unknown, metadata: Metadata = {}) => {
-    const normalized =
-      error instanceof Error
-        ? { name: error.name, message: error.message, stack: error.stack }
-        : { value: String(error ?? "unknown") };
-    write("error", event, { ...metadata, error: normalized });
+    // A normalização vive em ./normalize-error. Ela existe porque este ponto fazia
+    // String(error) para tudo que não fosse instância de Error — e erro do PostgREST é
+    // objeto simples, então virava "[object Object]" no log de produção.
+    write("error", event, { ...metadata, error: normalizeError(error) });
   },
 };
