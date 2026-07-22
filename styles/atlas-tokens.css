@@ -16,9 +16,9 @@
   --atlas-border: rgba(255, 255, 255, 0.07);
   --atlas-border-strong: rgba(255, 255, 255, 0.12);
 
-  --atlas-text-primary: #f4f7fb;
-  --atlas-text-secondary: #a8b3c2;
-  --atlas-text-tertiary: #738094;
+  --atlas-text-primary: #e8eef8;
+  --atlas-text-secondary: #aab6ca;
+  --atlas-text-tertiary: #7a8799;
   --atlas-text-disabled: #536074;
   --atlas-text: var(--atlas-text-primary);
   --atlas-text-muted: var(--atlas-text-secondary);
