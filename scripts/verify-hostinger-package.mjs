@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 const root = process.cwd(),
-  packageName = process.env.ATLAS_PACKAGE_NAME || "atlas-v3-hostinger-final.zip",
+  packageName = process.env.ATLAS_PACKAGE_NAME || "atlas-v3-hostinger-homologation.zip",
   zip = resolve(root, `dist/hostinger/${packageName}`),
   sumFile = `${zip}.sha256`;
 if (!existsSync(zip) || !existsSync(sumFile))
