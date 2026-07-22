@@ -22,6 +22,17 @@
 // director-daily (30 leads). qualityGrade só existe com amostra suficiente —
 // campanha sem amostra NUNCA recebe nota, para não induzir decisão de verba.
 //
+// O MESMO gate vale para TODA TAXA e TODO CUSTO derivado (qualificationRate,
+// commercialQualificationRate, conversionRate, costPerLead,
+// costPerQualifiedLead): sem amostra eles vêm `null` e `explanation` diz por
+// quê. Enquanto leads.campaign_id era sempre nulo, todo bucket tinha leads = 0
+// e esses campos saíam 0/null por acidente — invisíveis. Com o elo religado,
+// uma campanha de 3 leads e 1 venda estamparia "33,3%" e um CPL sobre 3 leads
+// no mesmo pixel em que a tela declara AMOSTRA INSUFICIENTE. Número derivado de
+// amostra que não sustenta decisão é número sem lastro.
+// CONTAGEM é fato observado e continua sempre visível (leads, qualificados,
+// vendas, descartes): o que some é a razão, não o fato.
+//
 // A fórmula de conversão é idêntica à do campaignRanking do director-daily
 // (Math.round(sales / leads * 1000) / 10) — extraída para cá sem alterar o
 // consumidor existente.
@@ -86,12 +97,12 @@ export type CampaignQualityRow = {
   status: string;
   leads: number;
   qualifiedLeads: number; // qualificação DE CADASTRO (proxy)
-  qualificationRate: number; // % com 1 decimal — cadastro
+  qualificationRate: number | null; // % com 1 decimal — cadastro; null sem amostra
   commercialQualifiedLeads: number; // etapa >= visita (evidência comercial)
-  commercialQualificationRate: number; // % com 1 decimal — comercial
+  commercialQualificationRate: number | null; // % com 1 decimal — comercial; null sem amostra
   avgScore: number | null; // média de score_ia com 1 decimal (null sem scores)
   sales: number;
-  conversionRate: number; // mesma fórmula do director-daily
+  conversionRate: number | null; // mesma fórmula do director-daily; null sem amostra
   discarded: number;
   discardRate: number | null; // % dos leads da janela; null quando leads = 0
   discardsByMetaCategory: Array<{ category: string; count: number }>;
@@ -101,6 +112,7 @@ export type CampaignQualityRow = {
   costPerQualifiedLead: number | null;
   qualityGrade: CampaignQualityGrade | null; // null quando !sampleSufficient
   sampleSufficient: boolean;
+  explanation: string | null; // por que taxas e custos vieram null
 };
 
 export type CampaignQualityTotals = {
@@ -261,14 +273,16 @@ export function buildCampaignQuality(input: {
       status: text(bucket.campaign.status) || "unknown",
       leads: bucket.leads,
       qualifiedLeads: bucket.qualified,
-      qualificationRate,
+      qualificationRate: sampleSufficient ? qualificationRate : null,
       commercialQualifiedLeads: bucket.commercialQualified,
-      commercialQualificationRate: pct(bucket.commercialQualified, bucket.leads),
+      commercialQualificationRate: sampleSufficient
+        ? pct(bucket.commercialQualified, bucket.leads)
+        : null,
       avgScore: bucket.scoreCount > 0
         ? Math.round((bucket.scoreSum / bucket.scoreCount) * 10) / 10
         : null,
       sales: bucket.sales,
-      conversionRate: pct(bucket.sales, bucket.leads),
+      conversionRate: sampleSufficient ? pct(bucket.sales, bucket.leads) : null,
       discarded: bucket.discarded,
       discardRate,
       discardsByMetaCategory: [...bucket.byMetaCategory.entries()]
@@ -276,20 +290,26 @@ export function buildCampaignQuality(input: {
         .sort((left, right) => right.count - left.count),
       topDiscardReason,
       spend: money(bucket.spend),
-      costPerLead: bucket.spend > 0 && bucket.leads > 0
+      costPerLead: sampleSufficient && bucket.spend > 0 && bucket.leads > 0
         ? money(bucket.spend / bucket.leads)
         : null,
-      costPerQualifiedLead: bucket.spend > 0 && bucket.qualified > 0
+      costPerQualifiedLead: sampleSufficient && bucket.spend > 0 && bucket.qualified > 0
         ? money(bucket.spend / bucket.qualified)
         : null,
       qualityGrade: gradeFor(qualificationRate, discardRate, sampleSufficient),
       sampleSufficient,
+      explanation: sampleSufficient
+        ? null
+        : `${bucket.leads} lead(s) contra o mínimo de ${CAMPAIGN_QUALITY_MINIMUM_LEADS} — taxas e custos omitidos; as contagens continuam sendo fato observado`,
     };
   }).sort((left, right) =>
     Number(right.sampleSufficient) - Number(left.sampleSufficient)
     || (left.qualityGrade ? GRADE_RANK[left.qualityGrade] : 3)
       - (right.qualityGrade ? GRADE_RANK[right.qualityGrade] : 3)
-    || right.qualificationRate - left.qualificationRate
+    // Sem amostra a taxa não existe: ordena por -1 para a linha sem lastro
+    // ficar atrás de qualquer taxa medida, em vez de virar 0% (que competiria
+    // de igual para igual com uma campanha que de fato qualificou 0%).
+    || (right.qualificationRate ?? -1) - (left.qualificationRate ?? -1)
     || right.qualifiedLeads - left.qualifiedLeads
     || right.leads - left.leads,
   );

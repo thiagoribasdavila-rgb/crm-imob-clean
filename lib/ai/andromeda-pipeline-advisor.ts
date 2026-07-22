@@ -124,7 +124,9 @@ function conversionJudgeable(row: CampaignQualityRow) {
 
 /** Trecho de venda citado em todo rationale — o número, nunca o adjetivo. */
 function salesNote(row: CampaignQualityRow) {
-  return conversionJudgeable(row)
+  // conversionRate é null quando a campanha não bateu a amostra mínima do
+  // campaign-quality: aí a conversão não é citada, nem como 0%.
+  return conversionJudgeable(row) && row.conversionRate !== null
     ? `${row.sales} venda(s) em ${row.leads} leads (${row.conversionRate}% de conversão)`
     : `${row.sales} venda(s) em ${row.leads} leads — amostra ainda insuficiente para julgar conversão (mínimo ${ANDROMEDA_ADVISOR_MIN_SALES_TO_JUDGE} vendas ou ${ANDROMEDA_ADVISOR_MIN_LEADS_TO_JUDGE_CONVERSION} leads)`;
 }
@@ -157,7 +159,7 @@ export function deterministicAndromedaAdvice(
   const conversionMedian = median(
     aggregates.ranking
       .filter((row) => row.sampleSufficient && conversionJudgeable(row))
-      .map((row) => row.conversionRate),
+      .flatMap((row) => (row.conversionRate === null ? [] : [row.conversionRate])),
   );
 
   return aggregates.ranking.map((row): AndromedaRecommendation => {
@@ -165,6 +167,11 @@ export function deterministicAndromedaAdvice(
 
     const discardRate = row.discardRate ?? 0;
     const cpql = row.costPerQualifiedLead;
+    // Depois do guard de amostra as taxas existem por construção
+    // (buildCampaignQuality só as omite quando !sampleSufficient); os fallbacks
+    // abaixo são o que o tipo exige, não caminho alcançável.
+    const qualificationRate = row.qualificationRate ?? 0;
+    const conversionRate = row.conversionRate;
 
     if (row.discarded >= 5) {
       const formCount = categoryCount(row, FORM_CATEGORIES);
@@ -187,7 +194,7 @@ export function deterministicAndromedaAdvice(
           campaignId: row.id,
           campaignName: row.name,
           action: "adjust_targeting",
-          rationale: `${targetingCount} de ${row.discarded} descartes (${Math.round(targetingShare * 100)}%) indicam público errado (fora de área, produto errado ou orçamento incompatível), com qualificação de ${row.qualificationRate}%.`,
+          rationale: `${targetingCount} de ${row.discarded} descartes (${Math.round(targetingShare * 100)}%) indicam público errado (fora de área, produto errado ou orçamento incompatível), com qualificação de ${qualificationRate}%.`,
           confidence: targetingShare >= 0.6 ? "alta" : "media",
           metaFeedbackHint:
             "Reportar disqualified com as categorias out_of_service_area/wrong_product/budget_mismatch para o Andromeda afastar perfis semelhantes; revisar segmentação geográfica e de renda.",
@@ -197,12 +204,12 @@ export function deterministicAndromedaAdvice(
 
     // Cadastro bonito que não vende: com amostra de conversão julgável e ZERO
     // vendas, a verba não pode ser decidida pela qualificação de cadastro.
-    if (conversionJudgeable(row) && row.sales === 0 && row.qualificationRate >= 40) {
+    if (conversionJudgeable(row) && row.sales === 0 && qualificationRate >= 40) {
       return {
         campaignId: row.id,
         campaignName: row.name,
         action: "pause_review",
-        rationale: `Qualificação de cadastro alta (${row.qualificationRate}%, ${row.qualifiedLeads} de ${row.leads} leads) e ${salesNote(row)} — cadastro bem preenchido não é venda. Levar à revisão do gestor, checando antes se o ciclo de venda é maior que a janela analisada. Nada é pausado automaticamente.`,
+        rationale: `Qualificação de cadastro alta (${qualificationRate}%, ${row.qualifiedLeads} de ${row.leads} leads) e ${salesNote(row)} — cadastro bem preenchido não é venda. Levar à revisão do gestor, checando antes se o ciclo de venda é maior que a janela analisada. Nada é pausado automaticamente.`,
         confidence: "media",
         metaFeedbackHint:
           "Reportar à Meta as VENDAS do CRM (ConvertedLead), não só o cadastro qualificado: enquanto o sinal enviado for cadastro, o Andromeda otimiza para lead bem preenchido, não para comprador.",
@@ -212,7 +219,7 @@ export function deterministicAndromedaAdvice(
     if (
       row.qualityGrade === "C"
       && (discardRate >= 50
-        || row.qualificationRate < 10
+        || qualificationRate < 10
         || (cpql !== null && cpqlMedian !== null && cpql > cpqlMedian * 2))
     ) {
       const costNote = cpql !== null && cpqlMedian !== null
@@ -222,7 +229,7 @@ export function deterministicAndromedaAdvice(
         campaignId: row.id,
         campaignName: row.name,
         action: "pause_review",
-        rationale: `Nota C com ${row.qualificationRate}% de qualificação de cadastro, ${discardRate}% de descarte${costNote} e ${salesNote(row)} — levar à revisão do gestor antes de qualquer pausa. Nada é pausado automaticamente.`,
+        rationale: `Nota C com ${qualificationRate}% de qualificação de cadastro, ${discardRate}% de descarte${costNote} e ${salesNote(row)} — levar à revisão do gestor antes de qualquer pausa. Nada é pausado automaticamente.`,
         confidence: "media",
         metaFeedbackHint:
           "Antes de decidir, reportar o lote acumulado de disqualified categorizados para fechar o ciclo de aprendizado do Andromeda sobre esta campanha.",
@@ -238,7 +245,7 @@ export function deterministicAndromedaAdvice(
           : " — custo por qualificado não medido (marketing_spend indisponível ou sem investimento lançado)";
         const judgeable = conversionJudgeable(row);
         const convertsAtLeastMedian =
-          judgeable && conversionMedian !== null && row.conversionRate >= conversionMedian;
+          judgeable && conversionMedian !== null && conversionRate !== null && conversionRate >= conversionMedian;
 
         // Escalar por VENDA: nota A, custo sob controle e conversão pelo menos
         // na mediana das campanhas com amostra de venda.
@@ -247,7 +254,7 @@ export function deterministicAndromedaAdvice(
             campaignId: row.id,
             campaignName: row.name,
             action: "scale",
-            rationale: `Nota A com ${row.qualificationRate}% de qualificação de cadastro (${row.qualifiedLeads} de ${row.leads} leads)${costNote} e ${salesNote(row)} — conversão na mediana ou acima (mediana ${conversionMedian}%). Candidata a receber mais verba, sob aprovação do diretor.`,
+            rationale: `Nota A com ${qualificationRate}% de qualificação de cadastro (${row.qualifiedLeads} de ${row.leads} leads)${costNote} e ${salesNote(row)} — conversão na mediana ou acima (mediana ${conversionMedian}%). Candidata a receber mais verba, sob aprovação do diretor.`,
             confidence: cheapEnough ? "alta" : "media",
             metaFeedbackHint:
               "Reportar as VENDAS do CRM (ConvertedLead) além dos qualificados — é a venda que ensina o Andromeda a procurar comprador — antes de escalar a verba.",
@@ -261,7 +268,7 @@ export function deterministicAndromedaAdvice(
             campaignId: row.id,
             campaignName: row.name,
             action: "keep",
-            rationale: `Nota A de cadastro (${row.qualificationRate}%)${costNote}, mas ${salesNote(row)} — abaixo da mediana de conversão (${conversionMedian}%). Manter a verba como está: qualificação de cadastro sozinha não sustenta escalada.`,
+            rationale: `Nota A de cadastro (${qualificationRate}%)${costNote}, mas ${salesNote(row)} — abaixo da mediana de conversão (${conversionMedian}%). Manter a verba como está: qualificação de cadastro sozinha não sustenta escalada.`,
             confidence: "media",
             metaFeedbackHint:
               "Reportar vendas e descartes categorizados para o Andromeda separar cadastro bom de comprador antes de qualquer aumento de verba.",
@@ -275,7 +282,7 @@ export function deterministicAndromedaAdvice(
           campaignId: row.id,
           campaignName: row.name,
           action: "scale_por_proxy",
-          rationale: `Nota A com ${row.qualificationRate}% de qualificação de cadastro (${row.qualifiedLeads} de ${row.leads} leads)${costNote} — escalada sustentada por QUALIFICAÇÃO DE CADASTRO, não por venda: ${salesNote(row)}.`,
+          rationale: `Nota A com ${qualificationRate}% de qualificação de cadastro (${row.qualifiedLeads} de ${row.leads} leads)${costNote} — escalada sustentada por QUALIFICAÇÃO DE CADASTRO, não por venda: ${salesNote(row)}.`,
           confidence: "baixa",
           metaFeedbackHint:
             "Antes de escalar, acumular vendas atribuídas e reportá-las à Meta (ConvertedLead): sem venda reportada, o aprendizado do Andromeda fica preso no cadastro.",
@@ -287,7 +294,7 @@ export function deterministicAndromedaAdvice(
       campaignId: row.id,
       campaignName: row.name,
       action: "keep",
-      rationale: `Nota ${row.qualityGrade ?? "—"} com ${row.qualificationRate}% de qualificação de cadastro, ${discardRate}% de descarte e ${salesNote(row)} — manter como está e seguir alimentando o ciclo de qualidade.`,
+      rationale: `Nota ${row.qualityGrade ?? "—"} com ${qualificationRate}% de qualificação de cadastro, ${discardRate}% de descarte e ${salesNote(row)} — manter como está e seguir alimentando o ciclo de qualidade.`,
       confidence: "media",
       metaFeedbackHint:
         "Manter o envio contínuo de status de qualidade (qualified/disqualified categorizado) para o Andromeda continuar calibrando a entrega.",

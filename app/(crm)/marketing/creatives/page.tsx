@@ -36,27 +36,57 @@ const INTERPRETATION_LABEL: Record<string, string> = {
 const readingOf = (p: Creative["performance"]) =>
   INTERPRETATION_LABEL[String(p.interpretation)] ?? String(p.interpretation);
 
+const num = (value: unknown) => (Number.isFinite(Number(value)) ? Number(value) : 0);
+
 /*
- * O motor calcula o funil inteiro por versão (qualificação, visita, proposta,
- * vitória, CPQL) e a tela mostrava três números. Agora mostra o funil — com uma
- * regra dura: percentual só aparece com amostra suficiente E com o numerador
- * efetivamente lançado. Zero nunca foi medido: creative_performance_daily_facts
- * é preenchida à mão, então "0% de vitória" mataria o criativo vencedor por um
- * número que ninguém apurou.
+ * O motor calcula o funil inteiro por versão e a tela mostrava só percentuais —
+ * que somem sob amostra pequena. Resultado: uma peça com 2 vendas e 12 leads
+ * aparecia igual a uma peça que nunca vendeu. A CONTAGEM é fato observado e
+ * aparece sempre; o PERCENTUAL só com amostra (30+ leads) e numerador lançado,
+ * porque taxa sobre 12 leads é ruído, não leitura.
+ *
+ * Zero só é exibido quando existe fato lançado para a versão: a API exige as 11
+ * métricas em cada linha de creative_performance_daily_facts, então com fato
+ * lançado o zero foi apurado. Sem nenhum fato, nada é zero — é AUSENTE, e a
+ * tela diz isso com palavra, não com "0".
+ *
+ * A presença de fato é lida da CONTAGEM DE LINHAS (performance.daysMeasured),
+ * não de "alguma métrica > 0". A heurística antiga invertia o erro de
+ * honestidade: uma versão com dias lançados e as 11 métricas zeradas — peça
+ * aprovada que rodou e não entregou nada — caía no ramo "nenhum número foi
+ * apurado", afirmando ausência de medição sobre um zero que a diretoria mediu.
  */
-function metricsOf(p: Creative["performance"]): Array<{ label: string; value: string }> {
-  const num = (value: unknown) => (Number.isFinite(Number(value)) ? Number(value) : 0);
+const hasFacts = (p: Creative["performance"]) => num(p.daysMeasured) > 0;
+
+/** Todos os totais em zero COM dias lançados: resultado medido, não ausência. */
+const measuredAllZero = (p: Creative["performance"]) =>
+  hasFacts(p)
+  && [p.spend, p.impressions, p.clicks, p.crmLeads, p.qualifiedLeads, p.visits, p.proposals, p.wins].every(
+    (value) => num(value) <= 0,
+  );
+
+function funnelOf(p: Creative["performance"]): Array<{ label: string; count: number; rate: string; sold: boolean }> {
   const sample = Boolean(p.sampleSufficient);
   const rate = (value: unknown, numerator: unknown) =>
-    !sample || num(numerator) <= 0 ? "—" : `${(Math.round(num(value) * 10) / 10).toFixed(1)}%`;
+    !sample || num(numerator) <= 0 ? "" : `${(Math.round(num(value) * 10) / 10).toFixed(1)}%`;
   return [
-    { label: "Leads CRM", value: String(num(p.crmLeads)) },
-    { label: "CPL", value: p.cpl == null ? "—" : brl(p.cpl) },
+    { label: "Leads CRM", count: num(p.crmLeads), rate: "", sold: false },
+    { label: "Qualificados", count: num(p.qualifiedLeads), rate: rate(p.qualificationRate, p.qualifiedLeads), sold: false },
+    { label: "Visitas", count: num(p.visits), rate: rate(p.visitRate, p.visits), sold: false },
+    { label: "Propostas", count: num(p.proposals), rate: rate(p.proposalRate, p.proposals), sold: false },
+    { label: "Vendas", count: num(p.wins), rate: rate(p.winRate, p.wins), sold: num(p.wins) > 0 },
+  ];
+}
+
+function costsOf(p: Creative["performance"]): Array<{ label: string; value: string }> {
+  const sample = Boolean(p.sampleSufficient);
+  return [
+    // CPL sob o MESMO gate do CPQL: uma versão com 1 lead e R$ 500 de gasto
+    // estampava "CPL R$ 500,00" com cara de medido, ao lado de uma nota de
+    // rodapé que prometia gate de 30 leads. CPL é justamente o número que o
+    // diretor usa para comparar peças.
+    { label: "CPL", value: !sample || num(p.crmLeads) <= 0 || p.cpl == null ? "—" : brl(p.cpl) },
     { label: "CPQL", value: !sample || num(p.qualifiedLeads) <= 0 || p.cpql == null ? "—" : brl(p.cpql) },
-    { label: "Qualificação", value: rate(p.qualificationRate, p.qualifiedLeads) },
-    { label: "Visita", value: rate(p.visitRate, p.visits) },
-    { label: "Proposta", value: rate(p.proposalRate, p.proposals) },
-    { label: "Vitória", value: rate(p.winRate, p.wins) },
     { label: "Confiança", value: CONFIDENCE_LABEL[String(p.confidence)] ?? "baixa" },
   ];
 }
@@ -200,21 +230,53 @@ export default function CreativesPage() {
                     </div>
                   ) : null}
                 </div>
-                <div className="cc6-hairline mt-4 flex flex-wrap gap-x-10 gap-y-3 pt-4">
-                  {metricsOf(c.performance).map(({ label, value }) => (
-                    <div key={label}>
-                      <p className="cc6-metric-value text-xl leading-none">{value}</p>
-                      <p className="cc6-metric-label mt-1">{label}</p>
+                {hasFacts(c.performance) ? (
+                  <>
+                    {/* Funil por versão: lead → qualificado → visita → proposta → VENDA.
+                        A contagem é o fato; o percentual entra sob a mesma linha só
+                        quando a amostra sustenta. "Qual criativo virou venda" para de
+                        depender de amostra: 2 vendas em 12 leads é fato, não é taxa. */}
+                    <div className="cc6-hairline mt-4 flex flex-wrap gap-x-10 gap-y-3 pt-4">
+                      {funnelOf(c.performance).map(({ label, count, rate, sold }) => (
+                        <div key={label}>
+                          <p className={`cc6-metric-value text-xl leading-none ${sold ? "cc6-ok" : ""}`}>
+                            {count}
+                            {rate ? <span className="ml-1.5 text-[11px] font-normal text-[#6b7890]">{rate}</span> : null}
+                          </p>
+                          <p className="cc6-metric-label mt-1">{label}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <p className="cc6-num mt-3 text-[11px] leading-5 text-[#6b7890]">
-                  Leitura: {readingOf(c.performance)} · fadiga: {String(c.performance.fatigueRisk)}
-                </p>
-                <p className="mt-1 text-[11px] leading-5 text-[#6b7890]">
-                  Desempenho informado manualmente pela diretoria (não reconciliado com o CRM). “—” significa
-                  métrica sem lastro — amostra abaixo de 30 leads ou numerador nunca lançado —, nunca 0%.
-                </p>
+                    <div className="mt-3 flex flex-wrap gap-x-10 gap-y-3">
+                      {costsOf(c.performance).map(({ label, value }) => (
+                        <div key={label}>
+                          <p className="cc6-metric-value text-base leading-none">{value}</p>
+                          <p className="cc6-metric-label mt-1">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="cc6-num mt-3 text-[11px] leading-5 text-[#6b7890]">
+                      Leitura: {readingOf(c.performance)} · fadiga: {String(c.performance.fatigueRisk)}
+                    </p>
+                    {measuredAllZero(c.performance) ? (
+                      <p className="mt-1 text-[11px] leading-5 text-[#f5b544]">
+                        {num(c.performance.daysMeasured)} dia(s) de fato lançado, todos zerados — resultado medido,
+                        não ausência de medição.
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-[11px] leading-5 text-[#6b7890]">
+                      Desempenho informado manualmente pela diretoria (não reconciliado com o CRM). Contagem é fato
+                      lançado; taxas e custos só aparecem com 30+ leads na versão, e “—” significa métrica sem
+                      lastro, nunca 0%.
+                    </p>
+                  </>
+                ) : (
+                  <p className="cc6-hairline mt-4 pt-4 text-[12px] leading-5 text-[#6b7890]">
+                    Sem desempenho lançado para esta versão — nenhum número foi apurado. Isso é ausência de medição,
+                    não resultado zero: enquanto a diretoria não lançar os fatos diários, esta peça não entra em
+                    comparação nenhuma.
+                  </p>
+                )}
               </article>
             );
           })}

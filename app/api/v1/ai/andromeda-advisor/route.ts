@@ -193,7 +193,11 @@ export async function GET(request: NextRequest) {
         qualificationDefinitions: CAMPAIGN_QUALITY_DEFINITIONS,
         minimumLeadsForDecision: CAMPAIGN_QUALITY_MINIMUM_LEADS,
         spendMeasured: !spendFetch.error,
-        windowComplete: !leadFetch.truncated && !eventFetch.truncated && !spendFetch.truncated,
+        windowComplete:
+          !leadFetch.truncated
+          && !eventFetch.truncated
+          && !spendFetch.truncated
+          && !campaignResult.truncated,
         taxonomyVersion: DISCARD_TAXONOMY_VERSION,
       },
       generatedAt: new Date().toISOString(),

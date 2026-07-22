@@ -44,6 +44,22 @@ export type PolicyInput = {
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
+ * Recupera o adId executável de uma recomendação de criativo. O relatório
+ * Andromeda usa o NOME do anúncio como `target` (é o que se lê na tela), mas o
+ * id — o único endereço que a Meta aceita — já vinha junto em cada sinal de
+ * fadiga. Sem isto o campo `targetId` do tipo nunca era preenchido por ninguém:
+ * a prescrição dizia "pausar X" sem dizer QUAL X, e nenhuma ação era possível.
+ *
+ * Nomes repetidos com ids diferentes = AMBIGUIDADE: devolve undefined em vez de
+ * chutar o primeiro. Prescrição que aponta o anúncio errado é pior que
+ * prescrição sem id — o id ausente o diretor resolve olhando; o id errado, não.
+ */
+function resolveAdId(fatigue: Array<{ adId: string; adName: string }>, target: string): string | undefined {
+  const ids = new Set(fatigue.filter((s) => s.adName === target).map((s) => s.adId).filter(Boolean));
+  return ids.size === 1 ? [...ids][0] : undefined;
+}
+
+/**
  * Compõe os veredictos em propostas governadas. Só reversíveis e confiantes:
  * uma prescrição errada tem que ser desfazível com um clique.
  */
@@ -75,15 +91,33 @@ export function proposePolicies(input: PolicyInput, opts: { minLeadsForConfidenc
   }
 
   // 2) Criativos fatigados (do relatório Andromeda) — pausar/renovar reversível
+  //
+  // O lastro é DO ANÚNCIO, não da campanha. h.fatigue é o vetor de sinais da
+  // campanha inteira (andromeda-report empurra os sinais de todos os anúncios
+  // para o mesmo array), mas a proposta é sobre UM anúncio: numa campanha com 3
+  // anúncios de 1 sinal cada, as três prescrições saíam com "confiança alta" e
+  // "3 sinal(is) de fadiga" enquanto o rationale ao lado dizia "sinal de
+  // ctr_caindo" no singular. A tela promove `evidence` a primeiro parágrafo e
+  // `confidence` a chip destacado — era selo de medido do nível errado.
   for (const h of input.creativeHealth ?? []) {
     for (const rec of h.recommendations) {
       if (rec.kind === "pausar_criativo" || rec.kind === "renovar_criativo") {
+        // No caminho real o alvo É o adName do sinal (andromeda-report monta
+        // target = signals[0].adName), então este filtro sempre casa.
+        const adSignals = h.fatigue.filter((s) => s.adName === rec.target);
+        const scopedToAd = adSignals.length > 0;
+        const signals = scopedToAd ? adSignals : h.fatigue;
         out.push({
           kind: rec.kind === "pausar_criativo" ? "pausar_criativo" : "renovar_criativo",
           target: rec.target,
-          confidence: h.fatigue.length >= 2 ? "alta" : "media", reversible: true,
+          targetId: resolveAdId(adSignals, rec.target),
+          confidence: signals.length >= 2 ? "alta" : "media", reversible: true,
           rationale: rec.reason,
-          evidence: `Campanha ${h.campaignName} · score ${h.andromedaScore}/100 · ${h.fatigue.length} sinal(is) de fadiga.`,
+          // Quando nenhum sinal traz o nome do alvo, o número existente é da
+          // CAMPANHA — e a frase diz isso, em vez de vendê-lo como do anúncio.
+          evidence: scopedToAd
+            ? `Campanha ${h.campaignName} · score ${h.andromedaScore}/100 · ${adSignals.length} sinal(is) neste anúncio: ${adSignals.map((s) => s.kind).join(", ")}.`
+            : `Campanha ${h.campaignName} · score ${h.andromedaScore}/100 · ${h.fatigue.length} sinal(is) de fadiga NA CAMPANHA — nenhum sinal identificado com o nome deste anúncio, então o número não mede este criativo.`,
           expectedEffect: rec.kind === "pausar_criativo" ? "Para de gastar num criativo saturado; substituto entra no lugar." : "Renova o conceito antes da fadiga derrubar a entrega.",
           priority: rec.priority,
         });

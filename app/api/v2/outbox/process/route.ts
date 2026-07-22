@@ -8,6 +8,7 @@ import { analyzeInboundWhatsApp } from "@/lib/ai/whatsapp-conversation-intellige
 import { resolveLeadOwner, recordDistribution } from "@/lib/distribution/hierarchical-cascade";
 import { metaGraphVersion, describeMetaGraphFailure } from "@/lib/meta/graph";
 import { classifyOutboxFailure } from "@/lib/meta/outbox-failure";
+import { AUTO_REGISTERED_CAMPAIGN_STATUS, autoRegisteredCampaignName } from "@/lib/marketing/campaign-provenance";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,127 @@ function metaField(fields: Array<{ name: string; values?: string[] }> | undefine
 function normalizeMetaPhone(value: string) {
   const digits = value.replace(/\D/g, "");
   return digits.length === 10 || digits.length === 11 ? `55${digits}` : digits;
+}
+
+// Linhagem publicada em metadata.meta.campaignLinkage: a única forma de saber
+// DEPOIS por que um lead ficou (ou não) preso a uma campanha. marketing_campaigns
+// não tem coluna de procedência, então a procedência mora no lead.
+type CampaignLinkage =
+  | "campanha_encontrada"
+  | "campanha_registrada_pela_ingestao"
+  | "sem_id_de_campanha_no_evento"
+  | "registro_de_campanha_indisponivel";
+
+// Código do Postgres para foreign_key_violation. Ver o fallback no insert do
+// lead: enquanto 20260722175000 não estiver aplicada, o gatilho de atribuição
+// repassa leads.campaign_id para uma FK que ainda aponta para public.campaigns.
+const FOREIGN_KEY_VIOLATION = "23503";
+
+/**
+ * Resolve o id externo da campanha Meta em leads.campaign_id.
+ *
+ * Sem isto o identificador vivia só dentro de metadata.meta e TODO agregado por
+ * campanha (campaign-quality, cost-report, conselheiro Andromeda) somava zero:
+ * o bucket é indexado por leads.campaign_id e a coluna nunca era escrita.
+ *
+ * A linha em marketing_campaigns é criada quando não existe porque campanha é
+ * REGISTRO do que a Meta já fez, não ação de efeito externo — nenhum caminho de
+ * execução lê marketing_campaigns (app/api/v1/marketing/execute age sobre ids
+ * informados na requisição + approval_requests aprovado). Sem essa criação o elo
+ * seguiria rompido na prática: a tabela está vazia no banco vivo, então todo
+ * lead cairia em campaign_id nulo de novo.
+ *
+ * NADA NASCE ATIVO: o CHECK da tabela só admite
+ * ACTIVE/PAUSED/COMPLETED/ARCHIVED e o Atlas nunca consultou o estado desta
+ * campanha na Meta (o webhook de leadgen não traz status e a Graph API não é
+ * chamada aqui). Gravar 'ACTIVE' seria asserir um estado que ninguém verificou
+ * — a lista de campanhas imprime "META · ACTIVE" como se fosse fato. Então a
+ * ingestão grava PAUSED (o valor que NÃO afirma "está no ar") e marca a
+ * procedência no início do nome, com o prefixo estável de
+ * lib/marketing/campaign-provenance: a tela troca o status por "estado não
+ * verificado". started_at fica nulo em vez de inferido, e o nome carrega o id
+ * externo porque o evento da Meta não traz nome de campanha.
+ *
+ * Falha de registro NUNCA derruba a ingestão: o lead entra com campaign_id nulo
+ * e a linhagem explica o motivo. Perder o lead seria pior que perder o elo.
+ */
+async function resolveMetaCampaign(
+  admin: ReturnType<typeof getSupabaseAdmin>,
+  organizationId: string,
+  externalCampaignId: string | null,
+): Promise<{ campaignId: string | null; linkage: CampaignLinkage }> {
+  if (!externalCampaignId) return { campaignId: null, linkage: "sem_id_de_campanha_no_evento" };
+
+  // A chave é (organization_id, platform, external_campaign_id) — a mesma do
+  // unique da produção e da migration 20260722174000. Filtrar platform não é
+  // detalhe: sem isso uma campanha cadastrada à mão como 'GOOGLE' com o mesmo id
+  // externo seria sequestrada para um lead da Meta, e o insert deste caminho
+  // colidiria com um índice que o lookup não enxerga.
+  // .order(created_at) garante escolha determinística mesmo em banco que ainda
+  // não recebeu o índice único (duas linhas herdadas de uma corrida antiga
+  // fariam .limit(1) escolher linha arbitrária a cada leitura).
+  const lookup = () => admin
+    .from("marketing_campaigns")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("platform", "META")
+    .eq("external_campaign_id", externalCampaignId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const existing = await lookup();
+  if (existing.error) {
+    logger.warn("outbox.campaign_lookup_failed", { organizationId, externalCampaignId, code: existing.error.code });
+    return { campaignId: null, linkage: "registro_de_campanha_indisponivel" };
+  }
+  if (existing.data?.id) return { campaignId: existing.data.id, linkage: "campanha_encontrada" };
+
+  const created = await admin.from("marketing_campaigns").insert({
+    organization_id: organizationId,
+    // O nome é o único canal de procedência que a tabela oferece (não há coluna
+    // de metadados, e criar uma tornaria a ingestão refém da ordem de deploy):
+    // quem abrir a lista vê que a linha veio da ingestão e que o nome real ainda
+    // não é conhecido, em vez de um rótulo inventado.
+    name: autoRegisteredCampaignName(externalCampaignId, "ingestao"),
+    platform: "META",
+    external_campaign_id: externalCampaignId,
+    status: AUTO_REGISTERED_CAMPAIGN_STATUS,
+  }).select("id").single();
+  if (created.data?.id) {
+    logger.info("outbox.campaign_autoregistered", { organizationId, externalCampaignId, campaignId: created.data.id });
+    return { campaignId: created.data.id, linkage: "campanha_registrada_pela_ingestao" };
+  }
+
+  // Corrida entre workers: com o unique de 20260722174000 aplicado (produção já
+  // tinha o equivalente), quem perde relê em vez de duplicar a campanha.
+  const retry = await lookup();
+  if (retry.data?.id) return { campaignId: retry.data.id, linkage: "campanha_encontrada" };
+  logger.warn("outbox.campaign_register_failed", { organizationId, externalCampaignId, code: created.error?.code });
+  return { campaignId: null, linkage: "registro_de_campanha_indisponivel" };
+}
+
+/**
+ * Campanha registrada NESTA iteração para um lead que não entrou = linha órfã.
+ * Ela apareceria no filtro de campanhas da tela de leads e nos relatórios com
+ * zero lead — registro de um lead que nunca existiu. Só apaga quando a linha
+ * nasceu aqui E não ficou com nenhum lead preso a ela; qualquer outra coisa é
+ * dado de outra pessoa e fica onde está.
+ */
+async function discardOrphanCampaign(
+  admin: ReturnType<typeof getSupabaseAdmin>,
+  link: { campaignId: string | null; linkage: CampaignLinkage } | null,
+  organizationId: string,
+) {
+  if (!link?.campaignId || link.linkage !== "campanha_registrada_pela_ingestao") return;
+  const { count, error } = await admin
+    .from("leads")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .eq("campaign_id", link.campaignId);
+  if (error || (count ?? 0) > 0) return;
+  await admin.from("marketing_campaigns").delete().eq("id", link.campaignId).eq("organization_id", organizationId);
+  logger.warn("outbox.campaign_autoregistered_discarded", { organizationId, campaignId: link.campaignId });
 }
 
 export async function POST(request: Request) {
@@ -139,12 +261,19 @@ export async function POST(request: Request) {
           const email = metaField(fields, "email");
           const phone = metaField(fields, "phone_number", "phone");
           const { data: existingLead } = await admin.from("leads").select("id").eq("organization_id", metaEvent.organization_id).contains("metadata", { meta: { externalLeadId: metaEvent.external_lead_id } }).maybeSingle();
+          // O evento do webhook (metaEvent) e a leitura da Graph (leadData) podem
+          // divergir; a Graph é a fonte mais fresca, o webhook é o fallback.
+          const campaignExternalId = String(leadData.campaign_id || metaEvent.campaign_external_id || "").trim() || null;
           // Distribuição RBAC 10/10: dono padrão validado → cascata corretor→gerente→fila
           // (determinística, capacity-aware, offline-safe). Auditoria em lead_distribution_history.
-          const ownership = existingLead
-            ? null
-            : await resolveLeadOwner(admin, metaEvent.organization_id, sourceResult.data?.default_owner_id || null);
-          const leadInsert = existingLead ? { data: existingLead, error: null } : await admin.from("leads").insert({
+          const [ownership, campaignLink] = existingLead
+            ? ([null, null] as const)
+            : await Promise.all([
+              resolveLeadOwner(admin, metaEvent.organization_id, sourceResult.data?.default_owner_id || null),
+              resolveMetaCampaign(admin, metaEvent.organization_id, campaignExternalId),
+            ]);
+          const leadMeta = { externalLeadId: metaEvent.external_lead_id, pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id, campaignLinkage: campaignLink?.linkage ?? null, sourceName: sourceResult.data?.name || null, dataSharingConsent: sourceResult.data?.conversion_sharing_enabled === true, consentBasis: sourceResult.data?.consent_basis || null };
+          const leadPayload = {
             organization_id: metaEvent.organization_id,
             name,
             email,
@@ -154,12 +283,46 @@ export async function POST(request: Request) {
             temperature: "frio",
             score: 0,
             assigned_to: ownership?.ownerId ?? null,
-            metadata: { meta: { externalLeadId: metaEvent.external_lead_id, pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id, sourceName: sourceResult.data?.name || null, dataSharingConsent: sourceResult.data?.conversion_sharing_enabled === true, consentBasis: sourceResult.data?.consent_basis || null }, distribution: ownership ? { tier: ownership.tier, reason: ownership.reason } : undefined },
+            // campaign_id é o elo que liga o lead ao dinheiro gasto; metadata.meta
+            // continua idêntico (nada removido) e ganha só a linhagem da resolução.
+            campaign_id: campaignLink?.campaignId ?? null,
+            metadata: { meta: leadMeta, distribution: ownership ? { tier: ownership.tier, reason: ownership.reason } : undefined },
             created_at: leadData.created_time || now,
             next_action_at: new Date(Date.now() + 5 * 60_000).toISOString(),
-          }).select("id").single();
+          };
+          const insertLead = (payload: typeof leadPayload) => admin.from("leads").insert(payload).select("id").single();
+          let leadInsert = existingLead ? { data: existingLead, error: null } : await insertLead(leadPayload);
+          // REDE DE SEGURANÇA DO ELO — a promessa desta rota ("falha de registro
+          // nunca derruba a ingestão") tem de valer também com o banco atrasado.
+          // private.capture_lead_attribution é AFTER INSERT em public.leads e
+          // repassa new.campaign_id para lead_attribution_touches.campaign_id,
+          // cuja FK ainda aponta para public.campaigns onde 20260722175000 não
+          // foi aplicada (medido na homologação em 2026-07-22: a FK antiga está
+          // lá, public.campaigns tem 0 linhas e o gatilho está ATIVO). Nesse
+          // banco, o primeiro lead com campanha resolvida derrubaria o próprio
+          // INSERT do lead na mesma transação e, na 5ª tentativa, o evento iria
+          // para dead_letter: lead pago PERDIDO. Perder o elo é ruim; perder o
+          // lead é pior. O elo volta sozinho assim que o DDL entrar.
+          //
+          // A condição é o CÓDIGO do erro + existir campaign_id, não o texto da
+          // mensagem: casar por texto é mais preciso, mas se a mensagem não
+          // trouxer o nome da tabela a rede de segurança falha calada e o lead
+          // se perde — exatamente o desastre que ela evita. Um 23503 de outra
+          // origem (assigned_to, por exemplo) só custa uma segunda tentativa
+          // que falha igual e segue para o catch. A mensagem vai no log.
+          if (leadInsert.error?.code === FOREIGN_KEY_VIOLATION && leadPayload.campaign_id) {
+            logger.warn("outbox.campaign_link_rejected_by_fk", { organizationId: metaEvent.organization_id, campaignId: leadPayload.campaign_id, code: leadInsert.error.code, detail: String(leadInsert.error.message || "").slice(0, 200) });
+            leadInsert = await insertLead({
+              ...leadPayload,
+              campaign_id: null,
+              metadata: { ...leadPayload.metadata, meta: { ...leadMeta, campaignLinkage: "registro_de_campanha_indisponivel" } },
+            });
+          }
           const { data: lead, error: leadError } = leadInsert;
-          if (leadError || !lead) throw leadError ?? new Error("Falha ao criar lead Meta.");
+          if (leadError || !lead) {
+            await discardOrphanCampaign(admin, campaignLink, metaEvent.organization_id);
+            throw leadError ?? new Error("Falha ao criar lead Meta.");
+          }
           if (ownership?.ownerId) await recordDistribution(admin, { organizationId: metaEvent.organization_id, leadId: lead.id, ownerId: ownership.ownerId, reason: ownership.reason });
           await Promise.all([
             admin.from("meta_lead_events").update({ status: "imported", lead_id: lead.id, processed_at: now, last_error: null }).eq("id", metaEvent.id),

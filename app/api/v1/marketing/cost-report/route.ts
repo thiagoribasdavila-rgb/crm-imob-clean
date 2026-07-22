@@ -10,6 +10,7 @@ import { simulatePlan } from "@/lib/ai/decision-simulator";
 import { fetchCampaignInsights, insightsToCostRows } from "@/lib/meta/marketing/campaign-read";
 import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { matchCampaign } from "@/lib/atlas/developer-portfolio";
+import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -112,11 +113,11 @@ export async function GET(request: NextRequest) {
   // campanhas + mapeamento projeto/incorporador (tolerante a colunas ausentes).
   // Também paginado: acima de 1000 campanhas o campMap ficava incompleto e a
   // linha aparecia com o uuid no lugar do nome, em silêncio.
-  type CampaignRow = { id: string; name?: string; development_id?: string | null };
+  type CampaignRow = { id: string; name?: string; development_id?: string | null; external_campaign_id?: string | null };
   let campaigns: CampaignRow[] = [];
   const withDev = await fetchAllRows<CampaignRow>((from, to) => admin
     .from("marketing_campaigns")
-    .select("id,name,development_id")
+    .select("id,name,development_id,external_campaign_id")
     .eq("organization_id", org)
     .order("id", { ascending: true })
     .range(from, to));
@@ -187,9 +188,82 @@ export async function GET(request: NextRequest) {
   const budgets = budgetsResult.data;
   const productBudgets: ProductBudget[] = (budgets ?? []).map((b) => ({ product: b.product, developer: b.developer, weeklyBudget: Number(b.weekly_budget) || 0, targetCac: b.target_cac != null ? Number(b.target_cac) : null }));
 
+  // ELO DE ATRIBUIÇÃO POR CAMPANHA — o que separa "0 vendas medido" de
+  // "0 vendas porque ninguém mediu".
+  //
+  // leads.campaign_id tem UM único escritor no repositório (a ingestão da Meta,
+  // app/api/v2/outbox/process). Lead de portal, WhatsApp, importação e todo o
+  // histórico entram com o elo nulo. Aqui contamos, por campanha, os leads
+  // ÓRFÃOS: sem campaign_id, mas carregando no metadata o mesmo id externo da
+  // campanha. Enquanto houver órfão, "0 vendas" é cegueira de atribuição — e o
+  // motor de decisão (marketingEfficiencyPlan) recusa a proposta de pausar.
+  //
+  // A leitura é TOLERANTE de propósito: na produção public.leads sequer tem a
+  // coluna metadata (o identificador histórico mora em leads.campaign, texto
+  // livre). Quando a consulta falha, leadsUnlinked fica NULL — "não medido",
+  // que também bloqueia a pausa. Ausência de medição jamais vira zero.
+  // Primeiro a forma barata (projeção do caminho JSON no próprio PostgREST);
+  // se o servidor recusar a sintaxe, cai para ler o metadata inteiro. Se as
+  // duas falharem (produção, onde a coluna não existe), fica NÃO MEDIDO.
+  let orphanFetch = await fetchAllRows<{ ext: string | null }>((from, to) => admin
+    .from("leads")
+    .select("ext:metadata->meta->>campaignId")
+    .eq("organization_id", org)
+    .is("campaign_id", null)
+    .order("id", { ascending: true })
+    .range(from, to));
+  if (orphanFetch.error) {
+    const raw = await fetchAllRows<{ metadata: unknown }>((from, to) => admin
+      .from("leads")
+      .select("metadata")
+      .eq("organization_id", org)
+      .is("campaign_id", null)
+      .order("id", { ascending: true })
+      .range(from, to));
+    orphanFetch = {
+      rows: raw.rows.map((row) => {
+        const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata as Record<string, unknown> : {};
+        const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as Record<string, unknown> : {};
+        return { ext: typeof meta.campaignId === "string" ? meta.campaignId : null };
+      }),
+      error: raw.error,
+      truncated: raw.truncated,
+    };
+  }
+  const attributionMeasurable = !orphanFetch.error && !orphanFetch.truncated;
+  const orphansByExternalId = new Map<string, number>();
+  if (attributionMeasurable) {
+    for (const row of orphanFetch.rows) {
+      const ext = String(row.ext ?? "").trim();
+      if (!ext) continue;
+      orphansByExternalId.set(ext, (orphansByExternalId.get(ext) ?? 0) + 1);
+    }
+  } else {
+    logger.warn("marketing.cost_report.orphan_leads_unmeasurable", {
+      organizationId: org,
+      code: orphanFetch.error?.code,
+      truncated: orphanFetch.truncated,
+    });
+  }
+  const linkedByCampaign = new Map<string, number>();
+  for (const lead of leads) {
+    const key = String(lead.campaign_id ?? "");
+    if (!key) continue;
+    linkedByCampaign.set(key, (linkedByCampaign.get(key) ?? 0) + 1);
+  }
+  const attributionByCampaign: Record<string, { leadsLinked: number; leadsUnlinked: number | null }> = {};
+  for (const campaign of campaigns) {
+    const ext = String(campaign.external_campaign_id ?? "").trim();
+    attributionByCampaign[campaign.id] = {
+      leadsLinked: linkedByCampaign.get(campaign.id) ?? 0,
+      // Sem id externo conhecido não há como procurar órfão: não medido.
+      leadsUnlinked: attributionMeasurable && ext ? orphansByExternalId.get(ext) ?? 0 : null,
+    };
+  }
+
   const byCampaignAgg = aggregate(all, "campaign");
   const budget = budgetView(productBudgets, all);
-  const dbPlan = marketingEfficiencyPlan(budget, byCampaignAgg);
+  const dbPlan = marketingEfficiencyPlan(budget, byCampaignAgg, { attributionByCampaign });
 
   // Cobertura declarada: a tela precisa poder avisar em vez de mentir por
   // omissão quando alguma dimensão bateu o teto de paginação.
@@ -203,6 +277,14 @@ export async function GET(request: NextRequest) {
 
   return apiSuccess({
     coverage,
+    // Publicado para a tela poder dizer "—" em vez de "0" onde o zero é
+    // ausência de medição (ver marketing/page.tsx, tabela Custo → CRM).
+    attribution: {
+      measurable: attributionMeasurable,
+      basis:
+        "leadsUnlinked = leads da organização SEM campaign_id cujo metadata.meta.campaignId é o id externo desta campanha. null = não medido neste banco (leads.metadata ausente ou leitura truncada) — nunca leia null como zero.",
+      byCampaign: attributionByCampaign,
+    },
     totals: { spend: byCampaignAgg.reduce((s, b) => s + b.spend, 0), campaigns: campaigns.length },
     byCampaign: { aggregate: byCampaignAgg, weekly: weekly(spendRows, "campaign") },
     byProject: { aggregate: aggregate(all, "product"), weekly: weekly(spendRows, "product") },

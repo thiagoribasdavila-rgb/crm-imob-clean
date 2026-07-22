@@ -6,6 +6,7 @@ import {
   isMissingRelation,
 } from "@/lib/compat/legacy-v2";
 import { readCompatibleDevelopments, readCompatiblePipeline } from "@/lib/atlas/core-v2/live-repositories";
+import { fetchAllRows } from "@/lib/supabase/fetch-all-rows";
 
 export const dynamic = "force-dynamic";
 
@@ -130,13 +131,15 @@ export async function GET(request: NextRequest) {
     const [propertyResult, leadResult, campaignResult, materialResult] = await Promise.all([
       db.from("inventory_units").select("id,project_id,price,status,unit_code,typology,bedrooms,private_area").eq("organization_id", organizationId).limit(5000),
       readCompatiblePipeline(db, { organizationId, limit: 5000 }),
-      db.from("marketing_campaigns").select("id,project_id,name,platform,status,created_at").eq("organization_id", organizationId).limit(1000),
+      // Paginado pelo mesmo motivo do director-daily: acima de 1000 campanhas o
+      // PostgREST corta sem erro e a campanha desaparece do painel em silêncio.
+      fetchAllRows<AnyRow>((from, to) => db.from("marketing_campaigns").select("id,project_id,name,platform,status,created_at").eq("organization_id", organizationId).order("id", { ascending: true }).range(from, to)),
       db.from("knowledge_documents").select("id,project_id,title,document_type,status,created_at").eq("organization_id", organizationId).limit(5000),
     ]);
     const opportunities: AnyRow[] = leadResult.ok ? leadResult.opportunities : [];
     const pipelineCompatibility: ModuleStatus = leadResult.ok ? "legacy" : "unavailable";
     const properties: AnyRow[] = propertyResult.error ? [] : ((propertyResult.data ?? []) as unknown as AnyRow[]).map((row) => ({ ...row, development_id: row.project_id }));
-    const campaigns: AnyRow[] = campaignResult.error ? [] : (campaignResult.data ?? []) as unknown as AnyRow[];
+    const campaigns: AnyRow[] = campaignResult.error ? [] : campaignResult.rows;
     const reservations: AnyRow[] = [];
     const intelligence: AnyRow[] = [];
     const materials: AnyRow[] = materialResult.error ? [] : ((materialResult.data ?? []) as unknown as AnyRow[]).map((row) => ({ ...row, development_id: row.project_id, material_type: row.document_type, is_current: true, review_status: "verified" }));

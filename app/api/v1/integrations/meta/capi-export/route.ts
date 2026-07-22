@@ -160,9 +160,32 @@ async function loadWindowBatch(
       budget_max: null,
     }));
 
+  // Id da campanha NA META por lead: o builder só pode emitir
+  // custom_data.campaign_id com o id externo, nunca com o uuid interno do CRM
+  // (que a Meta não reconhece e que não deve vazar para terceiro). A leitura é
+  // tolerante: sem marketing_campaigns legível o campo simplesmente fica nulo,
+  // e nenhum evento é perdido por causa disso.
+  const allLeads = [...leadResult.rows, ...identifierOnlyLeads];
+  const campaignIds = [...new Set(allLeads.map((lead) => lead.campaign_id).filter(Boolean))] as string[];
+  const externalByCampaignId = new Map<string, string>();
+  for (const ids of chunk(campaignIds, ID_CHUNK)) {
+    const campaignResult = await supabase
+      .from("marketing_campaigns")
+      .select("id,external_campaign_id")
+      .eq("organization_id", organizationId)
+      .in("id", ids);
+    for (const row of campaignResult.data ?? []) {
+      const external = String(row.external_campaign_id ?? "").trim();
+      if (external) externalByCampaignId.set(String(row.id), external);
+    }
+  }
+
   const batch = buildCapiLeadEvents({
     organizationId,
-    leads: [...leadResult.rows, ...identifierOnlyLeads],
+    leads: allLeads.map((lead) => ({
+      ...lead,
+      campaign_external_id: lead.campaign_id ? externalByCampaignId.get(lead.campaign_id) ?? null : null,
+    })),
     discardEvents: discardResult.rows,
   });
 

@@ -27,6 +27,7 @@ export type CampaignQualitySource = {
   campaignResult: {
     data: CampaignQualityCampaign[] | null;
     error: { code?: string; message?: string } | null;
+    truncated: boolean;
   };
   leadFetch: PagedRows<CampaignQualityLead>;
   eventFetch: PagedRows<CampaignQualityDiscardEvent>;
@@ -39,12 +40,22 @@ export async function fetchCampaignQualitySource(input: {
 }): Promise<CampaignQualitySource> {
   const { organizationId, since } = input;
   const admin = getSupabaseAdmin();
-  const [campaignQuery, leadFetch, eventFetch, spendFetch] = await Promise.all([
-    admin
-      .from("marketing_campaigns")
-      .select("id,name,platform,status,started_at,ended_at")
-      .eq("organization_id", organizationId)
-      .limit(1000),
+  const [campaignFetch, leadFetch, eventFetch, spendFetch] = await Promise.all([
+    // Paginado como as três irmãs abaixo. Era .limit(1000) sem paginação:
+    // inofensivo enquanto marketing_campaigns tinha 0 linha, letal depois do
+    // auto-registro (uma linha por campanha Meta já vista, para sempre). Passando
+    // de 1000 o PostgREST corta SEM erro, o bucket da campanha cortada deixa de
+    // existir e o `if (!bucket) continue` do buildCampaignQuality DESCARTA todos
+    // os leads e vendas dela — o defeito que esta entrega existe para consertar,
+    // ressuscitado em silêncio.
+    fetchAllRows<CampaignQualityCampaign>((from, to) =>
+      admin
+        .from("marketing_campaigns")
+        .select("id,name,platform,status,started_at,ended_at")
+        .eq("organization_id", organizationId)
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
     fetchAllRows<CampaignQualityLead>((from, to) =>
       admin
         .from("leads")
@@ -80,8 +91,9 @@ export async function fetchCampaignQualitySource(input: {
 
   return {
     campaignResult: {
-      data: (campaignQuery.data ?? null) as CampaignQualityCampaign[] | null,
-      error: campaignQuery.error,
+      data: campaignFetch.error ? null : campaignFetch.rows,
+      error: campaignFetch.error,
+      truncated: campaignFetch.truncated,
     },
     leadFetch,
     eventFetch,

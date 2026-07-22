@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import {
+  AUTO_REGISTERED_CAMPAIGN_STATUS_LABEL,
+  AUTO_REGISTERED_CAMPAIGN_STATUS_TITLE,
+  isAutoRegisteredCampaign,
+} from "@/lib/marketing/campaign-provenance";
 
 // Qualidade por campanha — consome /api/v1/analytics/campaign-quality
 // (gestor+; tabelas vivas: marketing_campaigns, leads, lead_events,
@@ -16,10 +21,13 @@ type QualityRow = {
   status: string;
   leads: number;
   qualifiedLeads: number;
-  qualificationRate: number;
+  // Taxas e custos são null sem amostra suficiente (o gate mora em
+  // buildCampaignQuality, não aqui): a tela não pode estampar "33,3%" no mesmo
+  // pixel em que declara AMOSTRA INSUFICIENTE. Contagem é fato e aparece sempre.
+  qualificationRate: number | null;
   avgScore: number | null;
   sales: number;
-  conversionRate: number;
+  conversionRate: number | null;
   discarded: number;
   discardRate: number | null;
   discardsByMetaCategory: Array<{ category: string; count: number }>;
@@ -29,6 +37,7 @@ type QualityRow = {
   costPerQualifiedLead: number | null;
   qualityGrade: "A" | "B" | "C" | null;
   sampleSufficient: boolean;
+  explanation?: string | null;
 };
 
 type Payload = {
@@ -155,6 +164,12 @@ const metaCategoryLabels: Record<string, string> = {
 
 const brl = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value);
+
+// Texto do "—": a rota já manda por que a taxa/custo foi omitido; quando não
+// mandar, a tela diz a regra em vez de deixar o traço mudo.
+const omission = (row: QualityRow) =>
+  row.explanation
+  ?? `Amostra insuficiente (${row.leads} lead(s)) — taxa e custo omitidos. A contagem continua sendo fato observado.`;
 
 /* ===== Vocabulário CC-5 desta central (só apresentação; globals.css intocável,
    por isso Tailwind arbitrary values). Painéis em linear-gradient 180deg
@@ -680,8 +695,16 @@ export default function CampaignsPage() {
                     >
                       <td className="py-4 pr-4">
                         <div className="font-medium text-[#e8eef8]">{row.name}</div>
-                        <div className="mt-1 font-mono text-[10px] uppercase tracking-[.08em] text-[#6b7890]">
-                          {row.platform} · {row.status}
+                        {/* Linha registrada por automação (ingestão/backfill) a
+                            partir de um id externo: o Atlas nunca consultou o
+                            estado dela na Meta, então o status não é impresso
+                            como se fosse fato verificado. */}
+                        <div
+                          className="mt-1 font-mono text-[10px] uppercase tracking-[.08em] text-[#6b7890]"
+                          title={isAutoRegisteredCampaign(row.name) ? AUTO_REGISTERED_CAMPAIGN_STATUS_TITLE : undefined}
+                        >
+                          {row.platform} ·{" "}
+                          {isAutoRegisteredCampaign(row.name) ? AUTO_REGISTERED_CAMPAIGN_STATUS_LABEL : row.status}
                         </div>
                       </td>
                       <td className="py-4 pr-4">
@@ -701,18 +724,23 @@ export default function CampaignsPage() {
                       <td className="py-4 pr-4 text-right font-mono tabular-nums text-[#e8eef8]">{row.leads}</td>
                       <td className="py-4 pr-4 text-right">
                         <span className="font-mono tabular-nums text-[#e8eef8]">{row.qualifiedLeads}</span>{" "}
-                        <span className="font-mono text-xs tabular-nums text-[#6b7890]">
-                          ({row.qualificationRate}%)
-                        </span>
                         <span
-                          aria-hidden="true"
-                          className="ml-auto mt-1.5 block h-[3px] w-16 overflow-hidden rounded-full bg-white/[.05]"
+                          className="font-mono text-xs tabular-nums text-[#6b7890]"
+                          title={row.qualificationRate === null ? omission(row) : undefined}
                         >
-                          <span
-                            className="block h-full rounded-full bg-[var(--atlas-accent)] opacity-80"
-                            style={{ width: `${Math.min(100, Math.max(0, row.qualificationRate))}%` }}
-                          />
+                          ({row.qualificationRate === null ? "—" : `${row.qualificationRate}%`})
                         </span>
+                        {row.qualificationRate !== null ? (
+                          <span
+                            aria-hidden="true"
+                            className="ml-auto mt-1.5 block h-[3px] w-16 overflow-hidden rounded-full bg-white/[.05]"
+                          >
+                            <span
+                              className="block h-full rounded-full bg-[var(--atlas-accent)] opacity-80"
+                              style={{ width: `${Math.min(100, Math.max(0, row.qualificationRate))}%` }}
+                            />
+                          </span>
+                        ) : null}
                       </td>
                       <td className="py-4 pr-4 text-right font-mono tabular-nums text-[#e8eef8]">
                         {row.avgScore ?? "—"}
@@ -746,15 +774,26 @@ export default function CampaignsPage() {
                       </td>
                       <td className="py-4 pr-4 text-right">
                         <span className="font-mono tabular-nums text-[#e8eef8]">{row.sales}</span>{" "}
-                        <span className="font-mono text-xs tabular-nums text-[#6b7890]">({row.conversionRate}%)</span>
+                        <span
+                          className="font-mono text-xs tabular-nums text-[#6b7890]"
+                          title={row.conversionRate === null ? omission(row) : undefined}
+                        >
+                          ({row.conversionRate === null ? "—" : `${row.conversionRate}%`})
+                        </span>
                       </td>
                       <td className="py-4 pr-4 text-right font-mono tabular-nums text-[#e8eef8]">
                         {row.spend > 0 ? brl(row.spend) : "—"}
                       </td>
-                      <td className="py-4 pr-4 text-right font-mono tabular-nums text-[#e8eef8]">
+                      <td
+                        className="py-4 pr-4 text-right font-mono tabular-nums text-[#e8eef8]"
+                        title={row.costPerLead === null && !row.sampleSufficient ? omission(row) : undefined}
+                      >
                         {row.costPerLead === null ? "—" : brl(row.costPerLead)}
                       </td>
-                      <td className="py-4 text-right font-mono tabular-nums text-[#e8eef8]">
+                      <td
+                        className="py-4 text-right font-mono tabular-nums text-[#e8eef8]"
+                        title={row.costPerQualifiedLead === null && !row.sampleSufficient ? omission(row) : undefined}
+                      >
                         {row.costPerQualifiedLead === null ? "—" : brl(row.costPerQualifiedLead)}
                       </td>
                     </tr>

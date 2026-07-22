@@ -158,7 +158,13 @@ export async function GET(request: NextRequest) {
         spendMeasured: !spendFetch.error,
         // Honestidade de cobertura: true somente se nenhuma dimensão bateu o
         // teto de paginação — consumidores podem exibir aviso quando false.
-        windowComplete: !leadFetch.truncated && !eventFetch.truncated && !spendFetch.truncated,
+        windowComplete:
+          !leadFetch.truncated
+          && !eventFetch.truncated
+          && !spendFetch.truncated
+          // Campanha cortada = bucket inexistente = leads e vendas dela DESCARTADOS
+          // pelo agregador, sem nenhum sinal. Entra na cobertura como as outras.
+          && !campaignResult.truncated,
         taxonomyVersion: DISCARD_TAXONOMY_VERSION,
       },
       generatedAt: new Date().toISOString(),

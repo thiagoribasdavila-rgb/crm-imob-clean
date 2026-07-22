@@ -409,7 +409,12 @@ export default function LeadsPage() {
       const [profileResult, campaignResult, developmentResult, meResult] =
         await Promise.all([
           supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("active", true).order("created_at"),
-          supabase.from("marketing_campaigns").select("id,name,platform,status,created_at").limit(500),
+          // Lista de referência do filtro (não é agregado): o teto de 500 fica,
+          // mas com ordem determinística — sem .order() o corte escolhia linhas
+          // arbitrárias e, com o auto-registro da ingestão fazendo a tabela
+          // crescer sozinha, a campanha recém-vista podia simplesmente não
+          // aparecer no filtro. Mais recentes primeiro.
+          supabase.from("marketing_campaigns").select("id,name,platform,status,created_at").order("created_at", { ascending: false }).limit(500),
           supabase.from("crm_projects").select("id,organization_id,name,developer_name,code,status,city,neighborhood,address,launch_date,delivery_date,created_at,updated_at").order("name").limit(100),
           fetch("/api/v1/auth/me").then((response) => response.json()),
         ]);

@@ -4,6 +4,7 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { LIVE_LEAD_SELECT, mapLegacyLead, mapLegacyProject, type CompatRow } from "@/lib/compat/legacy-v2";
 import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all-rows";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,10 @@ export async function GET(request: NextRequest) {
   const [profileResult, leadResult, campaignResult, projectResult] = await Promise.all([
     admin.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).eq("active", true).limit(2000),
     admin.from("leads").select(LIVE_LEAD_SELECT).eq("organization_id", organizationId).limit(20000),
-    admin.from("marketing_campaigns").select("id,name,platform,status,created_at").eq("organization_id", organizationId).limit(1000),
+    // Paginado: .limit(1000) era corte silencioso do PostgREST. Com o
+    // auto-registro da ingestão a tabela cresce sozinha (uma linha por campanha
+    // Meta já vista) e a campanha cortada sumiria do ranking sem aviso.
+    fetchAllRows<CompatRow>((from, to) => admin.from("marketing_campaigns").select("id,name,platform,status,created_at").eq("organization_id", organizationId).order("id", { ascending: true }).range(from, to)),
     admin.from("crm_projects").select("id,organization_id,name,developer_name,code,status,city,neighborhood,address,launch_date,delivery_date,created_at,updated_at").eq("organization_id", organizationId).limit(1000),
   ]);
   if (profileResult.error || leadResult.error || campaignResult.error || projectResult.error) {
@@ -38,7 +42,7 @@ export async function GET(request: NextRequest) {
   const profiles = resolveLiveHierarchy((profileResult.data ?? []) as unknown as CompatRow[]);
   const leads = ((leadResult.data ?? []) as unknown as CompatRow[]).map(mapLegacyLead);
   const projects = ((projectResult.data ?? []) as unknown as CompatRow[]).map(mapLegacyProject);
-  const campaigns = (campaignResult.data ?? []) as unknown as CompatRow[];
+  const campaigns = campaignResult.rows as unknown as CompatRow[];
   const now = Date.now();
   const activeLeads = leads.filter((lead) => !TERMINAL.has(normalize(lead.status)));
   const wonLeads = leads.filter((lead) => normalize(lead.status) === "ganho");

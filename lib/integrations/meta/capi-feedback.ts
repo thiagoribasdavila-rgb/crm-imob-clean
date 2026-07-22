@@ -95,6 +95,8 @@ export type CapiLeadRow = {
   score_ia?: number | string | null;
   temperature?: string | null;
   campaign_id?: string | null;
+  /** Id da campanha NA META (marketing_campaigns.external_campaign_id). */
+  campaign_external_id?: string | null;
   created_at?: string | null;
   budget_min?: number | string | null;
   budget_max?: number | string | null;
@@ -204,8 +206,15 @@ export function buildCapiLeadEvents(input: {
     byEventName[event.event_name] = (byEventName[event.event_name] ?? 0) + 1;
   };
 
+  // custom_data.campaign_id sai SEMPRE com o id da campanha NA META, nunca com
+  // o uuid interno de marketing_campaigns. Enquanto leads.campaign_id era
+  // sempre nulo o campo saía null e ninguém percebeu; com o elo religado, o
+  // uuid do CRM passaria a viajar para plataforma de terceiro sob um nome que
+  // promete o id da Meta — e o MESMO dataset já recebe o id EXTERNO por outro
+  // caminho (queueMetaConversion na ingestão), o que faria dois valores
+  // diferentes chegarem sob a mesma chave. Sem id externo conhecido: null.
   const baseCustomData = (lead: CapiLeadRow) => ({
-    campaign_id: lead.campaign_id ?? null,
+    campaign_id: lead.campaign_external_id ?? null,
     atlas_signal_version: CAPI_SIGNAL_VERSION,
   });
 

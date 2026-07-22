@@ -29,11 +29,20 @@ type Coverage = {
   campaignsTruncated: boolean;
   complete: boolean;
 };
+// Elo de atribuição por campanha (uuid → contagem). leadsUnlinked > 0 significa
+// que existem leads da mesma campanha SEM campaign_id: ali "0 vendas" é
+// ausência de medição. null = não medido neste banco, que também não é zero.
+type Attribution = {
+  measurable: boolean;
+  basis: string;
+  byCampaign: Record<string, { leadsLinked: number; leadsUnlinked: number | null }>;
+};
 type CostReport = {
   source?: string;
   // Cobertura das consultas paginadas: quando incompleta a tela AVISA — número
   // de vendas truncado em silêncio é pior que número ausente.
   coverage?: Coverage;
+  attribution?: Attribution;
   totals: { spend: number; campaigns: number };
   byCampaign: { aggregate: AggRow[] };
   byProject: { aggregate: AggRow[] };
@@ -69,7 +78,25 @@ type DemoLine = { age: string; gender: string; spend: number; leads: number; cpl
 // CONTEÚDO da peça a resultado, e vinha sendo descartado por omissão de tipo.
 type AngleLine = { angle: string; product: string; spend: number; leads: number; cpl: number | null; ads: number };
 type Audience = { placements: PlacementLine[]; geo: GeoReport | null; demo: { lines: DemoLine[]; policyNote: string } | null; angles?: AngleLine[] };
-type Prescription = { kind: string; target: string; reason: string; reversible?: boolean };
+// Prescrição do policy-engine. kind/target dizem O QUE fazer; o que sustenta a
+// decisão vinha na rota e a tela jogava fora: `evidence` (o número medido),
+// `expectedEffect` (o que se espera), `confidence` e `targetId` — o id do
+// anúncio, único jeito de a prescrição virar ação em vez de opinião.
+// Nota de campo: a rota devolve `rationale`; `reason` fica declarado como
+// leitura tolerante do MESMO texto porque scripts/check-audience-ui.mjs (caso
+// 10) trava esse nome e scripts/ é intocável nesta entrega — ver relatório.
+type Prescription = {
+  kind: string;
+  target: string;
+  targetId?: string;
+  confidence?: "media" | "alta";
+  reversible?: boolean;
+  rationale?: string;
+  reason?: string;
+  evidence?: string;
+  expectedEffect?: string;
+  priority?: number;
+};
 type Andromeda = { source: string; health: Health[]; consolidation: { verdict: "consolidada" | "fragmentada"; reason: string }; forecast?: Forecast; rotations?: { proposals: Rotation[]; summary: string }; audience?: Audience; prescriptions?: { proposals: Prescription[]; summary: string } };
 type Calibration = { summary: string[] };
 
@@ -115,6 +142,15 @@ const PACING_META: Record<Pacing, { label: string; sev: string }> = {
   estourou: { label: "estourou", sev: "#fb7185" },
 };
 const VERDICT_INK: Record<BudgetRow["verdict"], string> = { eficiente: "cc6-ok", caro: "cc6-crit", sem_dados: "" };
+// Rótulos das prescrições do policy-engine (PolicyKind). Fora do mapa, o kind
+// cru vira rótulo legível — nunca some por não estar previsto aqui.
+const PRESCRIPTION_META: Record<string, { label: string; ink: string }> = {
+  pausar_placement: { label: "Pausar placement", ink: "cc6-crit" },
+  pausar_criativo: { label: "Pausar criativo", ink: "cc6-crit" },
+  renovar_criativo: { label: "Renovar criativo", ink: "cc6-warn" },
+  consolidar_conta: { label: "Consolidar conta", ink: "" },
+  revisar_geo: { label: "Revisar geo", ink: "cc6-warn" },
+};
 
 type Dim = "byCampaign" | "byProject" | "byDeveloper";
 const DIMS: Array<{ id: Dim; label: string }> = [
@@ -156,6 +192,9 @@ export default function MarketingPage() {
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [dim, setDim] = useState<Dim>("byCampaign");
+  // Id do anúncio copiado da prescrição. É a única "ação" desta tela: leva o
+  // alvo executável para a plataforma/aprovação. Nada é pausado daqui.
+  const [copiedTargetId, setCopiedTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -180,6 +219,16 @@ export default function MarketingPage() {
   }, [reloadKey]);
 
   const retry = () => setReloadKey((value) => value + 1);
+  // Falha de clipboard (contexto inseguro, permissão negada) não vira sucesso
+  // silencioso: o rótulo simplesmente não muda e o id continua visível na tela.
+  const copyTargetId = async (id: string) => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopiedTargetId(id);
+    } catch {
+      setCopiedTargetId(null);
+    }
+  };
   const report = cost.status === "ok" ? cost.data : null;
   const rows = useMemo(() => (report ? report[dim].aggregate : []), [report, dim]);
   const leads = useMemo(() => (report ? report.byCampaign.aggregate.reduce((sum, row) => sum + row.leads, 0) : 0), [report]);
@@ -187,6 +236,21 @@ export default function MarketingPage() {
     () => (report ? [...report.plan.moves].sort((a, b) => a.priority - b.priority).slice(0, 5) : []),
     [report],
   );
+  // Venda/CAC/CPL de uma campanha só valem quando TODOS os leads dela estão
+  // presos a ela. Com lead órfão (ou com a medição indisponível), imprimir "0
+  // vendas" é apresentar cegueira de atribuição como resultado. A linha na
+  // dimensão campanha passa a mostrar "—" com o motivo no title; a CONTAGEM de
+  // leads continua visível, porque ela é fato observado.
+  const attributionOf = (rowKey: string): { leadsUnlinked: number | null } | null => {
+    if (dim !== "byCampaign" || !report?.attribution) return null;
+    const entry = report.attribution.byCampaign[rowKey];
+    if (!entry) return null;
+    return entry.leadsUnlinked === 0 ? null : { leadsUnlinked: entry.leadsUnlinked };
+  };
+  const attributionNote = (leadsUnlinked: number | null) =>
+    leadsUnlinked === null
+      ? "Não foi possível medir quantos leads desta campanha ficaram sem elo de atribuição neste banco — o número não é 0, é desconhecido."
+      : `${leadsUnlinked} lead(s) com o id externo desta campanha estão SEM elo de atribuição. Venda e custo por venda aqui seriam ausência de medição, não resultado.`;
 
   const strip: Array<{ label: string; value: string }> = report
     ? [
@@ -323,14 +387,20 @@ export default function MarketingPage() {
                   {rows.length === 0 ? (
                     <tr><td colSpan={7} className="cc6-hairline px-5 py-5 text-[#6b7890]">Sem investimento atribuído nesta dimensão.</td></tr>
                   ) : (
-                    rows.map((row) => (
+                    rows.map((row) => {
+                      const broken = attributionOf(row.key);
+                      const note = broken ? attributionNote(broken.leadsUnlinked) : undefined;
+                      return (
                       <tr key={row.key} className="cc6-hairline transition-colors hover:bg-white/[.02]">
                         <td className="max-w-56 truncate px-5 py-2.5 font-medium text-[#e8eef8]" title={row.label}>{row.label}</td>
                         <td className="cc6-num py-2.5 pr-4 text-right text-[#e8eef8]">{money.format(row.spend)}</td>
-                        <td className="cc6-num py-2.5 pr-4 text-right text-[#aab6ca]">{row.leads}</td>
-                        <td className="cc6-num py-2.5 pr-4 text-right text-[#aab6ca]">{row.sales}</td>
-                        <td className="cc6-num py-2.5 pr-4 text-right text-[#aab6ca]">{row.cpl !== null ? money.format(row.cpl) : "—"}</td>
-                        <td className="cc6-num py-2.5 pr-4 text-right text-[#aab6ca]">{row.cac !== null ? money.format(row.cac) : "—"}</td>
+                        <td className="cc6-num py-2.5 pr-4 text-right text-[#aab6ca]" title={note}>
+                          {row.leads}
+                          {broken ? <span className="ml-1 text-[10px] text-[#f5b544]">+?</span> : null}
+                        </td>
+                        <td className="cc6-num py-2.5 pr-4 text-right text-[#aab6ca]" title={note}>{broken ? "—" : row.sales}</td>
+                        <td className="cc6-num py-2.5 pr-4 text-right text-[#aab6ca]" title={note}>{broken ? "—" : row.cpl !== null ? money.format(row.cpl) : "—"}</td>
+                        <td className="cc6-num py-2.5 pr-4 text-right text-[#aab6ca]" title={note}>{broken ? "—" : row.cac !== null ? money.format(row.cac) : "—"}</td>
                         <td className="py-2.5 pr-5">
                           <span className="flex items-center justify-end gap-2">
                             <span aria-hidden="true" className="block h-[3px] w-14 overflow-hidden rounded-full bg-white/[.06]">
@@ -340,11 +410,19 @@ export default function MarketingPage() {
                           </span>
                         </td>
                       </tr>
-                    ))
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
+            {dim === "byCampaign" && rows.some((row) => attributionOf(row.key)) ? (
+              <p className="cc6-hairline px-5 py-2.5 text-[11px] leading-5 text-[#6b7890]">
+                “—” com “+?” ao lado dos leads: a campanha tem leads sem elo de atribuição (ou o elo não é
+                mensurável neste banco). Venda, CPL e CAC ficam ocultos de propósito — ali o zero seria
+                ausência de medição, não resultado.
+              </p>
+            ) : null}
           </section>
 
           {/* (d) Verba por produto com pacing como banda de severidade. */}
@@ -406,12 +484,23 @@ export default function MarketingPage() {
             <div className="cc6-hairline px-5 py-2.5">
               <p className="text-[12px] leading-5 text-[#9db2d0]">🔄 {andromeda.data.rotations.summary}</p>
               {andromeda.data.rotations.proposals.slice(0, 4).map((rot, index) => (
-                <div key={`${rot.campaignName}-${rot.pauseAd?.adId ?? index}`} className="mt-2.5 rounded-xl border border-[rgba(148,163,184,.12)] bg-white/[.02] p-3">
+                <div
+                  key={`${rot.campaignName}-${rot.pauseAd?.adId ?? index}`}
+                  /* cc23-quiet separa por fundo em vez de desenhar mais uma borda
+                     dentro do painel (caixa dentro de caixa); o tracejado da
+                     costura diz, sem legenda, que isto ainda é proposta. */
+                  className="cc23-quiet cc23-seam cc23-draft mt-2.5"
+                >
                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <span className="cc6-chip cc6-crit" title={rot.pauseAd?.signals.join(" · ") || rot.reason}>pausar</span>
+                    <span className="cc6-chip cc6-crit">pausar</span>
                     <span className="min-w-0 truncate text-[12.5px] text-[#e8eef8]">{rot.pauseAd?.adName ?? "anúncio fatigado"}</span>
                     <span className="cc6-num text-[10px] uppercase tracking-[.1em] text-[#6b7890]">{rot.campaignName}</span>
                   </div>
+                  {/* Sinais de fadiga eram tooltip — invisíveis no toque e no leitor
+                      de tela. São o lastro do "pausar": ficam na linha. */}
+                  {rot.pauseAd?.signals?.length ? (
+                    <p className="cc6-num mt-1 text-[11px] leading-5 text-[#f2b544]">{rot.pauseAd.signals.join(" · ")}</p>
+                  ) : null}
                   <p className="mt-1 text-[11.5px] leading-5 text-[#6b7890]">{rot.reason}</p>
                   <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     <span className="cc6-chip cc6-ok">substituir por</span>
@@ -593,26 +682,73 @@ export default function MarketingPage() {
         );
       })()}
 
-      {/* Prescrições governadas — verdicts viram propostas reversíveis (policy-engine),
-          que também já vinham na rota sem nenhum consumidor. */}
+      {/* Prescrições governadas — verdicts viram propostas reversíveis (policy-engine).
+          A rota já mandava evidence / expectedEffect / confidence / targetId e a tela
+          renderizava só o rótulo: o diretor via O QUE fazer sem o número que sustenta,
+          sem o efeito esperado e sem o anúncio alvo — decisão no escuro. Cada linha
+          leva a costura tracejada (cc23-draft): é proposta, não fato consumado. */}
       {(() => {
         if (andromeda.status !== "ok") return null;
         const pres = andromeda.data.prescriptions;
         if (!pres || !pres.proposals.length) return null;
+        const shown = pres.proposals.slice(0, 6);
         return (
           <section aria-label="Prescrições da IA" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "300ms" }}>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
-              <p className="cc6-eyebrow">Prescrições · reversíveis</p>
+              <p className="cc6-eyebrow">Prescrições · a IA propõe, você aprova</p>
               <span className="text-[11px] leading-5 text-[#6b7890]">{pres.summary}</span>
             </div>
-            <div className="cc6-hairline px-5 py-3">
-              {pres.proposals.slice(0, 5).map((p, i) => (
-                <div key={`${p.kind}-${p.target}-${i}`} className="flex flex-wrap items-baseline justify-between gap-2 py-1.5">
-                  <span className="min-w-0 text-[12.5px] text-[#c3ccdb]"><b className="text-[#e8eef8]">{p.kind}</b> · {p.target}</span>
-                  <span className="text-[11.5px] leading-5 text-[#6b7890]">{p.reason}</span>
-                </div>
-              ))}
+            <div className="cc23-rows cc6-hairline px-5 py-2">
+              {shown.map((p, i) => {
+                const meta = PRESCRIPTION_META[p.kind] ?? { label: p.kind.replace(/_/g, " "), ink: "" };
+                // A rota manda `rationale`; `reason` é o mesmo texto sob outro nome.
+                const why = p.rationale ?? p.reason ?? "";
+                const lastro = p.evidence ?? "";
+                const targetId = p.targetId ?? "";
+                return (
+                  <div key={`${p.kind}-${p.target}-${i}`} className="cc23-row cc23-seam cc23-draft flex-wrap">
+                    <span className={`cc6-chip ${meta.ink}`}>{meta.label}</span>
+                    <span className="min-w-0 truncate text-[13px] font-medium text-[#e8eef8]">{p.target}</span>
+                    {targetId ? (
+                      <button
+                        type="button"
+                        onClick={() => { void copyTargetId(targetId); }}
+                        title="Copiar o id do anúncio para agir na plataforma — este botão não pausa nada"
+                        className="cc6-chip cc6-num transition-colors hover:border-[rgba(75,141,248,.4)] hover:text-[var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                      >
+                        {copiedTargetId === targetId ? "id copiado" : `id ${targetId}`}
+                      </button>
+                    ) : null}
+                    {p.confidence ? (
+                      <span className={`cc6-chip cc6-num ${p.confidence === "alta" ? "cc6-ok" : ""}`}>
+                        confiança {p.confidence === "media" ? "média" : p.confidence}
+                      </span>
+                    ) : null}
+                    {p.reversible ? <span className="cc6-chip">reversível</span> : null}
+                    {/* O lastro primeiro: é do número medido que a decisão vive.
+                        Um bloco só, para o texto não virar três linhas soltas. */}
+                    <div className="basis-full space-y-1">
+                      {lastro ? <p className="text-[12.5px] leading-5 text-[#c3ccdb]">{lastro}</p> : null}
+                      {p.expectedEffect ? (
+                        <p className="text-[12px] leading-5 text-[#8b97ab]">Efeito esperado: {p.expectedEffect}</p>
+                      ) : null}
+                      {why ? <p className="text-[11.5px] leading-5 text-[#6b7890]">{why}</p> : null}
+                      {!lastro && !p.expectedEffect ? (
+                        <p className="text-[11.5px] leading-5 text-[#6b7890]">
+                          Esta prescrição chegou sem número de lastro nem efeito esperado — trate como sinal a investigar, não como recomendação.
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+            {pres.proposals.length > shown.length ? (
+              <p className="cc6-num px-5 pt-2 text-[11px] text-[#6b7890]">+{pres.proposals.length - shown.length} prescrições nesta janela</p>
+            ) : null}
+            <p className="cc6-num px-5 pb-4 pt-2 text-[10px] uppercase tracking-[.1em] text-[#6b7890]">
+              proposta · nada é pausado, consolidado ou publicado automaticamente
+            </p>
           </section>
         );
       })()}

@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
     }
     const admin = getSupabaseAdmin();
     const { data: approval, error } = await admin
-      .from("approval_requests").select("id,status,expires_at,organization_id")
+      .from("approval_requests").select("id,status,entity_type,payload,expires_at,organization_id")
       .eq("id", approvalId).eq("organization_id", identity.access.organization.id).maybeSingle();
     if (error) {
       return apiError("APPROVAL_UNAVAILABLE", "Aprovação não verificável até a ativação do banco (approval_requests) — execução real bloqueada.", identity.meta, { status: 503 });
@@ -157,6 +157,41 @@ export async function POST(request: NextRequest) {
     // expiração enforçada: aprovação vencida não executa
     if (approval.expires_at && new Date(approval.expires_at).getTime() < Date.now()) {
       return apiError("APPROVAL_EXPIRED", "Esta aprovação expirou — gere e aprove uma nova antes de executar.", identity.meta, { status: 409 });
+    }
+    // VÍNCULO APROVAÇÃO ↔ AÇÃO. Sem isto, "aprovado + não expirado" era senha
+    // PORTADORA: qualquer approval_request aprovado da organização — inclusive
+    // de 'message', 'lead_action' ou 'commercial_simulation' — autorizava
+    // pause/activate/set_daily_budget em QUALQUER id da Meta, e a string de
+    // auditoria ("executado sob aprovação X") passava a afirmar algo falso.
+    // Rompe a doutrina na única ponta em que ela custa dinheiro: activate e
+    // set_daily_budget gastam verba. O payload produzido por
+    // lib/marketing/campaign-proposals já tem exatamente a forma conferida
+    // abaixo, então o vínculo é verificável sem mudar o produtor.
+    const approvalPayload = approval.payload as
+      | { kind?: string; plan?: { objectType?: string; objectId?: string; dailyBudgetBrl?: number | null } }
+      | null;
+    const plan = approvalPayload?.plan;
+    const mismatch = (autorizava: string) => apiError(
+      "APPROVAL_TARGET_MISMATCH",
+      `A aprovação informada não autoriza esta execução: ela autorizava ${autorizava}. Gere e aprove uma proposta para exatamente esta ação e este objeto.`,
+      identity.meta,
+      { status: 409 },
+    );
+    if (approval.entity_type !== "meta_campaign") {
+      return mismatch(`outra natureza de decisão (entity_type "${String(approval.entity_type ?? "desconhecido")}"), não controle de campanha da Meta`);
+    }
+    if (approvalPayload?.kind !== action) {
+      return mismatch(`a ação "${String(approvalPayload?.kind ?? "desconhecida")}", não "${action}"`);
+    }
+    if (String(plan?.objectId ?? "") !== objectId || String(plan?.objectType ?? "") !== objectType) {
+      return mismatch(`o ${String(plan?.objectType ?? "objeto")} ${String(plan?.objectId ?? "sem id")}, não o ${objectType} ${objectId}`);
+    }
+    if (action === "set_daily_budget") {
+      const approvedCents = Math.round((Number(plan?.dailyBudgetBrl) || 0) * 100);
+      const requestedCents = Math.round((Number(body?.dailyBudgetBrl) || 0) * 100);
+      if (approvedCents !== requestedCents) {
+        return mismatch(`verba diária de R$ ${(approvedCents / 100).toFixed(2)}, não R$ ${(requestedCents / 100).toFixed(2)}`);
+      }
     }
   }
 

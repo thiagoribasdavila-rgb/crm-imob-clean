@@ -174,7 +174,10 @@ export async function GET(request: NextRequest) {
         previous: { start: doubleStart.toISOString(), end: boundaryIso, days },
       },
       windowComplete:
-        !leadFetch.truncated && !eventFetch.truncated && !spendFetch.truncated,
+        !leadFetch.truncated
+        && !eventFetch.truncated
+        && !spendFetch.truncated
+        && !campaignResult.truncated,
       thresholds: CAMPAIGN_ANALYST_THRESHOLDS,
       explainable: true,
       humanApprovalRequired: true,

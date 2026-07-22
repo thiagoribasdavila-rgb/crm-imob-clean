@@ -88,7 +88,9 @@ export function detectCampaignAnomalies(
     const bothSampled = current.sampleSufficient && previous.sampleSufficient;
 
     // (a) Qualificação variou >= 10 p.p. — só com amostra nas duas janelas.
-    if (bothSampled) {
+    // As taxas do campaign-quality são null sem amostra: com bothSampled elas
+    // existem por construção, e o teste explícito mantém o contrato à vista.
+    if (bothSampled && current.qualificationRate !== null && previous.qualificationRate !== null) {
       const delta = round1(current.qualificationRate - previous.qualificationRate);
       if (Math.abs(delta) >= ANALYST_QUALIFICATION_DELTA_PP) {
         anomalies.push({
@@ -200,8 +202,13 @@ function deterministicNarrative(input: {
 
   const best = ranking.find((row) => row.sampleSufficient) ?? ranking[0] ?? null;
   if (best) {
+    // Sem amostra a taxa não existe: a frase cita a CONTAGEM (fato observado) e
+    // diz que a taxa está omitida, em vez de imprimir "null%" ou inventar 0%.
+    const bestRate = best.qualificationRate !== null
+      ? `${best.qualificationRate}% de qualificação (${best.qualifiedLeads} de ${best.leads} leads)`
+      : `${best.qualifiedLeads} qualificados em ${best.leads} leads — taxa omitida por amostra insuficiente`;
     sentences.push(
-      `A melhor campanha é ${best.name}, com ${best.qualificationRate}% de qualificação (${best.qualifiedLeads} de ${best.leads} leads)${best.qualityGrade ? ` e nota ${best.qualityGrade}` : ""}.`,
+      `A melhor campanha é ${best.name}, com ${bestRate}${best.qualityGrade ? ` e nota ${best.qualityGrade}` : ""}.`,
     );
   }
 
