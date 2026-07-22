@@ -1315,15 +1315,15 @@ export default function AtlasCopilotDock() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-4 z-40 hidden items-center gap-3 rounded-2xl border border-sky-400/20 bg-[#07111f]/90 px-4 py-3 text-left shadow-[0_24px_80px_rgba(2,8,23,.55)] backdrop-blur-2xl transition hover:-translate-y-0.5 hover:border-sky-300/35 lg:flex"
+        className="atlas-copilot-launcher"
         aria-label="Abrir Atlas Copilot"
       >
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-sky-400/20 to-violet-500/20 text-sky-300">✦</span>
-        <span>
+        <span className="atlas-copilot-launcher-icon">✦</span>
+        <span className="atlas-copilot-launcher-copy">
           <span className="block text-[10px] font-bold uppercase tracking-[.18em] text-sky-300">Atlas Copilot</span>
           <span className="mt-0.5 block max-w-48 truncate text-xs text-slate-400">Próxima melhor ação</span>
         </span>
-        <kbd className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-slate-500">⌘J</kbd>
+        <kbd className="atlas-copilot-launcher-kbd">⌘J</kbd>
       </button>
 
       {open ? (
