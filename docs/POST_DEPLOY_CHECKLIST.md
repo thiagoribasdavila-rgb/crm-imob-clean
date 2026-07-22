@@ -245,3 +245,44 @@ da Meta (`app/api/v2/outbox/process/route.ts`). Aplique nesta ordem:
 `outbox.campaign_link_rejected_by_fk` com `campaignLinkage:
 registro_de_campanha_indisponivel`. O elo aparece sozinho depois do DDL — mas a
 rede de segurança existe para o acidente, não para substituir a ordem.
+
+---
+
+## ORDEM OBRIGATÓRIA — integridade da fila (outbox) e alarme de token
+
+Aplique **antes** de subir a versão que recupera lease no worker
+(`app/api/v2/outbox/process/route.ts`) e garante a tarefa no webhook
+(`app/api/webhooks/meta/route.ts`). As três são aditivas e idempotentes.
+
+1. `20260722150000_outbox_token_health.sql` *(já existia, pode estar pendente)*
+   Cria `integration_outbox.cause` e o índice parcial `token_unhealthy`. Sem
+   ela, o painel de saúde reporta `queues.tokenUnhealthy.measured: false` —
+   lacuna declarada, não zero — e o worker encerra os eventos por um caminho
+   degradado (sem gravar a causa), registrando `outbox.close_degraded` no log.
+
+2. `20260722190000_outbox_blocked_status.sql`
+   Acrescenta `'blocked'` ao `integration_outbox_status_check`. **Este é um bug
+   ativo, não preparação:** `public.register_whatsapp_opt_out` (20260717014400)
+   grava `status='blocked'`; enquanto o CHECK não admitir o valor, o pedido de
+   PARE do cliente falha com `23514`, a função aborta inteira (inclusive o
+   insert em `messaging_suppressions`) e `app/api/webhooks/whatsapp/route.ts:96`
+   devolve 500 enquanto a Meta reenvia. Validada contra Postgres real: antes o
+   insert de `'blocked'` é recusado, depois é aceito, e valor inventado continua
+   recusado.
+
+3. `20260722191000_outbox_live_task_unique.sql`
+   Índice único parcial `(organization_id, topic, aggregate_id)` sobre os estados
+   vivos. É o que fecha a corrida de dois reenvios simultâneos da Meta criando
+   duas tarefas para o mesmo lead. **Se já houver duplicata viva, a migration
+   PARA** e imprime a consulta de leitura para reconciliar — nada é apagado em
+   silêncio.
+
+**Se o código subir antes do DDL:** o webhook continua garantindo a tarefa
+(select → insert), só que sem proteção de corrida — o pior caso vira tarefa
+duplicada, que os guards do worker (`status !== 'imported'`) absorvem, em vez de
+tarefa nenhuma, que é lead pago perdido. O encerramento de evento no worker cai
+para a segunda tentativa degradada e registra `outbox.close_degraded`.
+
+**Efeito colateral esperado da migration 3:** `/api/v3/dlq/retry` passa a falhar
+quando o diretor reprocessa um dead letter cujo agregado JÁ tem tarefa viva —
+antes duplicava a tarefa em silêncio.

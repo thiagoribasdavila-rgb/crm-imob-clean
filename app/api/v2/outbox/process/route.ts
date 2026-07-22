@@ -8,6 +8,7 @@ import { analyzeInboundWhatsApp } from "@/lib/ai/whatsapp-conversation-intellige
 import { resolveLeadOwner, recordDistribution } from "@/lib/distribution/hierarchical-cascade";
 import { metaGraphVersion, describeMetaGraphFailure } from "@/lib/meta/graph";
 import { classifyOutboxFailure } from "@/lib/meta/outbox-failure";
+import { closeOutboxEvent, recoverExpiredLeases } from "@/lib/integrations/outbox-lease";
 import { AUTO_REGISTERED_CAMPAIGN_STATUS, autoRegisteredCampaignName } from "@/lib/marketing/campaign-provenance";
 
 export const dynamic = "force-dynamic";
@@ -183,11 +184,18 @@ async function discardOrphanCampaign(
   logger.warn("outbox.campaign_autoregistered_discarded", { organizationId, campaignId: link.campaignId });
 }
 
+// Falha de credencial em sequência: com o token morto, os 19 eventos seguintes
+// repetem a MESMA chamada condenada a cada rodada, empurrando a conta para o
+// rate limit. Três seguidas bastam para concluir que o problema é a credencial,
+// não o evento.
+const CREDENTIAL_FAILURE_BREAK = 3;
+
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
 
   const workerId = `hostinger-${crypto.randomUUID()}`;
   const admin = getSupabaseAdmin();
+  const leases = await recoverExpiredLeases(admin);
   const { data: events, error } = await admin
     .from("integration_outbox")
     .select("id,organization_id,topic,aggregate_id,payload,attempts")
@@ -200,12 +208,16 @@ export async function POST(request: Request) {
 
   let delivered = 0;
   let failed = 0;
+  let processed = 0;
+  let consecutiveCredentialFailures = 0;
+  let stoppedEarly: string | null = null;
 
   for (const event of events ?? []) {
     const originalAttempts = Number(event.attempts || 0);
     const attempts = originalAttempts + 1;
     const { data: claimed } = await admin.from("integration_outbox").update({ status: "processing", attempts, locked_at: new Date().toISOString(), locked_by: workerId }).eq("id", event.id).in("status", ["pending", "failed"]).select("id").maybeSingle();
     if (!claimed) continue;
+    processed += 1;
 
     try {
       const now = new Date().toISOString();
@@ -216,7 +228,13 @@ export async function POST(request: Request) {
         const normalizedRecipient = String(message.recipient || "").replace(/\D/g, "");
         const { data: universalSuppression } = await admin.from("messaging_suppressions").select("id").eq("organization_id", event.organization_id).eq("channel", "whatsapp").eq("recipient", normalizedRecipient).maybeSingle();
         if (universalSuppression) {
-          await Promise.all([admin.from("messages").update({ status: "failed", error: "Contato bloqueado por opt-out." }).eq("id", message.id), admin.from("integration_outbox").update({ status: "blocked", delivered_at: now, last_error: "Bloqueado por opt-out antes do envio." }).eq("id", event.id)]);
+          await admin.from("messages").update({ status: "failed", error: "Contato bloqueado por opt-out." }).eq("id", message.id);
+          // 'blocked' é terminal e diz a verdade (não foi entregue). Onde o
+          // CHECK ainda não admite o valor, cai para 'delivered' — o mesmo
+          // desfecho que o ramo de opt-out do lote de reativação já usa: sem
+          // entrega e sem reenvio. Ficar preso em 'processing' era o único
+          // resultado inaceitável.
+          await closeOutboxEvent(admin, event.id, { status: "blocked", delivered_at: now, locked_at: null, locked_by: null, last_error: "Bloqueado por opt-out antes do envio." }, "delivered");
           continue;
         }
         const media = Array.isArray(message.media) ? message.media : [];
@@ -227,15 +245,15 @@ export async function POST(request: Request) {
             admin.from("messaging_suppressions").select("id").eq("organization_id", event.organization_id).eq("channel", "whatsapp").eq("recipient", message.recipient).maybeSingle(),
           ]);
           if (!batch || !["queued", "running"].includes(batch.status) || batch.quality_status === "red") {
-            await admin.from("integration_outbox").update({ status: "pending", available_at: new Date(Date.now() + 60 * 60_000).toISOString(), last_error: "Campanha pausada por governança ou qualidade." }).eq("id", event.id);
+            await closeOutboxEvent(admin, event.id, { status: "pending", available_at: new Date(Date.now() + 60 * 60_000).toISOString(), locked_at: null, locked_by: null, last_error: "Campanha pausada por governança ou qualidade." });
             continue;
           }
           if (suppression) {
             await Promise.all([
               admin.from("messages").update({ status: "failed", error: "Contato bloqueado por opt-out." }).eq("id", message.id),
               admin.from("lead_reactivation_contacts").update({ status: "blocked", block_reason: "opt_out" }).eq("batch_id", templateItem.batchId).eq("message_id", message.id),
-              admin.from("integration_outbox").update({ status: "delivered", delivered_at: now, last_error: "Bloqueado por opt-out antes do envio." }).eq("id", event.id),
             ]);
+            await closeOutboxEvent(admin, event.id, { status: "delivered", delivered_at: now, locked_at: null, locked_by: null, last_error: "Bloqueado por opt-out antes do envio." });
             continue;
           }
         }
@@ -430,8 +448,9 @@ export async function POST(request: Request) {
         throw new Error(`Tópico não suportado: ${event.topic}`);
       }
 
-      await admin.from("integration_outbox").update({ status: "delivered", delivered_at: now, last_error: null, cause: null }).eq("id", event.id);
+      await closeOutboxEvent(admin, event.id, { status: "delivered", delivered_at: now, locked_at: null, locked_by: null, last_error: null, cause: null });
       delivered += 1;
+      consecutiveCredentialFailures = 0;
     } catch (processingError) {
       const message = processingError instanceof Error ? processingError.message : "Falha desconhecida";
       const cause = classifyOutboxFailure({ message });
@@ -443,7 +462,7 @@ export async function POST(request: Request) {
       // dead_letter só porque o token expirou. Erro de dado continua abaixo.
       if (cause === "token_unhealthy") {
         const retryAt = new Date(Date.now() + 30 * 60_000).toISOString();
-        await admin.from("integration_outbox").update({ status: "failed", attempts: originalAttempts, available_at: retryAt, last_error: message, cause: "token_unhealthy" }).eq("id", event.id);
+        await closeOutboxEvent(admin, event.id, { status: "failed", attempts: originalAttempts, available_at: retryAt, locked_at: null, locked_by: null, last_error: message, cause: "token_unhealthy" });
         // Agregados aterrissam em estado retryable (nunca dead_letter/consumo):
         // ao reprocessar com token são, os guards (status !== 'imported') deixam
         // o fluxo seguir de novo.
@@ -453,13 +472,20 @@ export async function POST(request: Request) {
         // Sinal estruturado para readiness/observabilidade: token precisa renovar.
         logger.warn("outbox.token_unhealthy", { eventId: event.id, topic: event.topic, organizationId: event.organization_id });
         failed += 1;
+        consecutiveCredentialFailures += 1;
+        if (consecutiveCredentialFailures >= CREDENTIAL_FAILURE_BREAK) {
+          stoppedEarly = "token_unhealthy";
+          logger.warn("outbox.batch_stopped_by_credential", { workerId, consecutiveCredentialFailures, remaining: (events ?? []).length - processed });
+          break;
+        }
         continue;
       }
+      consecutiveCredentialFailures = 0;
 
       const terminal = attempts >= 5;
       const nextAttempt = new Date(Date.now() + Math.min(60, 2 ** attempts) * 60_000).toISOString();
 
-      await admin.from("integration_outbox").update({ status: terminal ? "dead_letter" : "failed", available_at: nextAttempt, last_error: message, cause: null }).eq("id", event.id);
+      await closeOutboxEvent(admin, event.id, { status: terminal ? "dead_letter" : "failed", available_at: nextAttempt, locked_at: null, locked_by: null, last_error: message, cause: null });
       if (event.topic === "meta.lead.fetch" && event.aggregate_id) await admin.from("meta_lead_events").update({ status: "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
       if (event.topic === "meta.conversion.send" && event.aggregate_id) await admin.from("meta_conversion_events").update({ status: terminal ? "dead_letter" : "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
       if (event.topic === "portal.lead.ingest" && event.aggregate_id) await admin.from("portal_lead_events").update({ status: terminal ? "dead_letter" : "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
@@ -482,5 +508,16 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ workerId, processed: (events ?? []).length, delivered, failed });
+  // `processed` passa a contar o que foi REALMENTE reivindicado: com a parada
+  // por credencial, dizer que o lote inteiro foi processado seria mentira.
+  return NextResponse.json({
+    workerId,
+    claimed: (events ?? []).length,
+    processed,
+    delivered,
+    failed,
+    stoppedEarly,
+    remaining: stoppedEarly ? (events ?? []).length - processed : 0,
+    leases,
+  });
 }

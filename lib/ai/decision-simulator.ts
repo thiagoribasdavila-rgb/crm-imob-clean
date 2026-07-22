@@ -10,6 +10,20 @@
 
 import type { BudgetLine, CostBucket } from "@/lib/marketing/cost-report";
 
+/**
+ * Lastro declarado de uma projeção: quantos fatos observados a sustentam.
+ * Existe para a tela nunca imprimir número seco — `measured: false` significa
+ * "não sei", e "não sei" é uma resposta melhor do que um número inventado.
+ */
+export type ProjectionBasis = {
+  measured: boolean;
+  /** Tamanho da amostra observada (movimentações, leads, o que sustentar a conta). */
+  sample: number;
+  minimumSample: number;
+  /** Preenchido somente quando `measured` é false — o motivo por extenso. */
+  reason?: string;
+};
+
 export type MoveProjection = {
   moveKind: string;
   target: string;
@@ -18,6 +32,12 @@ export type MoveProjection = {
   confidence: "baixa" | "media" | "alta";
   assumptions: string[];
   horizon: "1 semana";
+  /**
+   * Opcional para não quebrar quem já consome MoveProjection. Ausência é
+   * tratada por `hasBasis` como SEM lastro: quem não declarou amostra não
+   * ganha o benefício da dúvida.
+   */
+  basis?: ProjectionBasis;
 };
 
 /** Forma mínima de um MarketingMove aceita pelo simulador. */
@@ -247,6 +267,270 @@ export function simulateMove(move: SimulatedMove, context: SimulationContext): M
   return zeroProjection(move, "baixa", [
     `Tipo de movimento desconhecido ("${move.kind}") — projeção zerada por precaução.`,
   ]);
+}
+
+/* ------------------------------------------------------------------------- *
+ * Capacidade comercial (contratar)
+ *
+ * Bloco estritamente aditivo: nenhuma assinatura acima muda. A decisão de folha
+ * é a de maior valor financeiro que a diretoria toma e hoje é tomada sem conta
+ * nenhuma; aqui ela ganha faixa, amostra declarada e — quando não há medição —
+ * um "ainda não sei" explícito, que é mais barato que um número errado.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Tipos de movimento que mexem em gente, não em verba.
+ *
+ * "remanejar" saiu: nenhuma rota o emite, e um kind sem chamador devolvendo
+ * projeção "medida" de zero é superfície que só pode envelhecer errada.
+ * Volta no commit da tela que o propuser.
+ */
+export const CAPACITY_KINDS = new Set(["contratar"]);
+
+/**
+ * Mínimo de movimentações ATRIBUÍDAS a corretor para aceitar um throughput como
+ * medido. Abaixo disto a média por corretor é ruído de uma semana atípica.
+ */
+export const MINIMUM_CAPACITY_SAMPLE = 20;
+
+/**
+ * Mínimo de PESSOAS distintas por trás da média. Média de duas pessoas em que
+ * uma fez 196 movimentações e a outra 2 não é média de nada — é bimodal, e
+ * projetar contratação sobre ela é projetar sobre uma pessoa só.
+ */
+export const MINIMUM_CAPACITY_ACTORS = 3;
+
+/**
+ * Mínimo de semanas REAIS de janela. Ritmo comercial tem sazonalidade semanal
+ * (segunda não é sexta); menos de duas semanas mede um episódio, não um ritmo.
+ */
+export const MINIMUM_CAPACITY_WEEKS = 2;
+
+/**
+ * Contexto de capacidade. Todo campo é CONTAGEM OBSERVADA, jamais meta:
+ * `null` quer dizer "não medido" e 0 quer dizer "medido, e é zero" — a
+ * diferença entre os dois é a diferença entre honestidade e invenção.
+ */
+export type CapacityContext = {
+  /** Leads abertos (não terminais) hoje — o estoque que precisa de gente. */
+  openLeads: number;
+  /** Corretores ativos no cadastro. */
+  activeBrokers: number;
+  /** CORRETORES que de fato movimentaram leads na janela observada. */
+  observedActors: number;
+  /** Leads distintos trabalhados por corretor por semana. null = não medido. */
+  observedLeadsPerBrokerPerWeek: number | null;
+  /**
+   * Movimentações lidas na janela — volume da fonte, JAMAIS a amostra. Inclui
+   * linha sem autor (trigger de banco, importação, automação), que não entra no
+   * numerador do throughput e por isso não pode validar porta de amostra.
+   */
+  observedMoves: number;
+  /**
+   * Movimentações com autor CORRETOR identificado: a mesma população que
+   * alimenta o numerador, e a única que pode servir de amostra.
+   */
+  observedAttributedMoves: number;
+  /** Semanas REAIS cobertas pela janela (sem piso) — usada como credencial. */
+  observedWeeks: number;
+  /** Fração das movimentações que avançaram etapa (0..1). null = não medido. */
+  observedAdvanceRate: number | null;
+  /** Ganhos registrados na mesma janela. 0 é o que tira o lastro da receita. */
+  observedWins: number;
+  /**
+   * Fração das movimentações atribuídas que terminaram em etapa terminal
+   * (0..1). Descarte em massa produz throughput alto sem trabalho comercial
+   * nenhum — quem lê a projeção precisa saber quanto do ritmo é encerramento.
+   */
+  observedTerminalShare: number | null;
+  /** O que a fonte do throughput NÃO enxerga. Vira suposição exibida na tela. */
+  sourceCoverage?: string | null;
+};
+
+/** A tela só pode imprimir número quando isto for verdadeiro. */
+export function hasBasis(projection: MoveProjection): boolean {
+  return projection.basis?.measured === true;
+}
+
+function headcount(move: SimulatedMove): number {
+  const parsed = Number(move.amount);
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 1;
+}
+
+function noBasis(move: SimulatedMove, assumptions: string[], sample: number, reason: string, note?: string): MoveProjection {
+  return {
+    ...zeroProjection(move, "baixa", [...assumptions, `Sem lastro: ${reason}${note ? ` — ${note}` : "."}`]),
+    basis: { measured: false, sample, minimumSample: MINIMUM_CAPACITY_SAMPLE, reason },
+  };
+}
+
+const MISSING_MEASUREMENT_NOTE =
+  "o ganho semanal sai 0 por ausência de medição, não porque o movimento seja inútil.";
+
+/**
+ * Projeta o efeito de 1 semana de um movimento de capacidade.
+ *
+ * O número projetado é LEAD TRABALHADO, nunca receita: nesta base não há ganho
+ * registrado, então converter capacidade em dinheiro seria chute com aparência
+ * de conta.
+ *
+ * Quatro portas precisam abrir ANTES de `basis.measured` virar true, e todas
+ * existem por um episódio real: corretor ativo no cadastro (senão a média não
+ * tem sujeito), amostra atribuída a corretor (senão movimentação de trigger
+ * valida uma conta de que não participa), pessoas suficientes (senão a média é
+ * de uma pessoa só) e janela real de semanas (senão um mutirão de três dias
+ * vira ritmo). Falhar em qualquer uma devolve "ainda não sei" — que é a
+ * resposta barata; o número errado é o caro.
+ */
+export function simulateCapacity(move: SimulatedMove, ctx: CapacityContext): MoveProjection {
+  if (!CAPACITY_KINDS.has(move.kind)) {
+    return noBasis(
+      move,
+      [],
+      0,
+      `"${move.kind}" não é movimento de capacidade (aceitos: ${[...CAPACITY_KINDS].join(", ")})`,
+    );
+  }
+
+  const heads = headcount(move);
+  const assumptions: string[] = [];
+
+  // A fonte declara o que não enxerga antes de qualquer número: quem lê a
+  // projeção precisa saber de qual metade da operação ela foi extraída.
+  if (ctx.sourceCoverage) assumptions.push(`Cobertura da fonte: ${ctx.sourceCoverage}`);
+
+  // Carga por corretor é aritmética pura sobre contagem viva — é o único
+  // número desta projeção que não depende de nenhum modelo.
+  if (ctx.activeBrokers > 0) {
+    assumptions.push(
+      `Carga atual: ${ctx.openLeads} leads abertos para ${ctx.activeBrokers} corretor(es) ativo(s) — ${r2(ctx.openLeads / ctx.activeBrokers)} por corretor.`,
+    );
+    const after = ctx.activeBrokers + heads;
+    assumptions.push(
+      `Com ${heads} corretor(es) a mais: os mesmos ${ctx.openLeads} leads abertos para ${after} corretores — ${r2(ctx.openLeads / after)} por corretor. É redistribuição de carga; contratar não cria demanda.`,
+    );
+  }
+
+  // Contratar mexe na folha e o Atlas não conhece salário: 0 aqui é ausência de
+  // dado, não gratuidade.
+  assumptions.push(
+    "Custo de folha não é conhecido pelo Atlas — delta de gasto semanal fica em 0 por falta de dado, não porque contratar seja de graça.",
+  );
+
+  // A amostra é a população ATRIBUÍDA: contar linha sem autor abriria a porta
+  // com movimentação que não entra no numerador — lastro de 430 sobre conta
+  // feita com 199.
+  const sample = ctx.observedAttributedMoves;
+  const throughput = ctx.observedLeadsPerBrokerPerWeek;
+  if (ctx.observedMoves > 0) {
+    assumptions.push(
+      `Amostra atribuída: ${sample} de ${ctx.observedMoves} movimentações lidas têm autor corretor identificado (${Math.round((1 - sample / ctx.observedMoves) * 1000) / 10}% do histórico não tem dono e fica fora da conta).`,
+    );
+  }
+
+  // Sem corretor ativo no cadastro, "leads por corretor por semana" não tem
+  // sujeito: qualquer número aqui seria média de um conjunto vazio.
+  if (ctx.activeBrokers <= 0) {
+    return noBasis(
+      move,
+      assumptions,
+      sample,
+      "não há corretor ativo no cadastro — throughput por corretor não tem sujeito",
+      MISSING_MEASUREMENT_NOTE,
+    );
+  }
+  if (throughput == null) {
+    return noBasis(move, assumptions, sample, "throughput por corretor não é medido nesta base", MISSING_MEASUREMENT_NOTE);
+  }
+  if (sample < MINIMUM_CAPACITY_SAMPLE) {
+    return noBasis(
+      move,
+      assumptions,
+      sample,
+      `amostra insuficiente: ${sample} movimentações de corretor contra o mínimo de ${MINIMUM_CAPACITY_SAMPLE}`,
+      MISSING_MEASUREMENT_NOTE,
+    );
+  }
+  if (ctx.observedActors < MINIMUM_CAPACITY_ACTORS) {
+    return noBasis(
+      move,
+      assumptions,
+      sample,
+      `${ctx.observedActors} corretor(es) movimentaram leads na janela, contra o mínimo de ${MINIMUM_CAPACITY_ACTORS} — média de tão poucas pessoas não é throughput de equipe`,
+      MISSING_MEASUREMENT_NOTE,
+    );
+  }
+  if (ctx.observedWeeks < MINIMUM_CAPACITY_WEEKS) {
+    return noBasis(
+      move,
+      assumptions,
+      sample,
+      `janela observada de ${r2(ctx.observedWeeks)} semana(s), abaixo do mínimo de ${MINIMUM_CAPACITY_WEEKS}`,
+      MISSING_MEASUREMENT_NOTE,
+    );
+  }
+  if (throughput <= 0) {
+    return noBasis(move, assumptions, sample, "nenhum corretor movimentou leads na janela observada", MISSING_MEASUREMENT_NOTE);
+  }
+
+  assumptions.push(
+    `Throughput observado: ${r2(throughput)} leads distintos trabalhados por corretor por semana (${sample} movimentações de ${ctx.observedActors} corretor(es) em ${r2(ctx.observedWeeks)} semana(s)).`,
+  );
+
+  // Descarte em massa é rápido e não é trabalho comercial. Sem esta linha, um
+  // mutirão de limpeza vira "ritmo de corretagem" na leitura da diretoria.
+  if (ctx.observedTerminalShare != null) {
+    assumptions.push(
+      `${Math.round(ctx.observedTerminalShare * 1000) / 10}% das movimentações observadas foram para etapa terminal (ganho/perda/arquivo) — essa parcela é velocidade de encerramento, não de trabalho comercial.`,
+    );
+  }
+
+  const raw = throughput * heads;
+  // Horizonte de 1 semana: leads trabalhados na semana e leads abertos hoje são
+  // a mesma unidade, então o estoque é teto legítimo — e a regra é declarada
+  // sempre, morda ou não, porque limite invisível é comentário, não regra.
+  const expected = Math.min(raw, ctx.openLeads);
+  assumptions.push(
+    `Ganho bruto = ${r2(throughput)} × ${heads} = ${r2(raw)} leads a mais trabalhados por semana.`,
+    `Teto do horizonte: no máximo os ${ctx.openLeads} leads abertos de hoje podem ser trabalhados na semana${expected < raw ? `, então o ganho para em ${r2(expected)}` : " (o teto não morde neste cenário)"}.`,
+    "Faixa de ±25% sobre o ganho projetado.",
+  );
+
+  if (ctx.observedAdvanceRate != null) {
+    assumptions.push(
+      `Taxa de avanço observada: ${Math.round(ctx.observedAdvanceRate * 1000) / 10}% das movimentações avançaram etapa — sustenta esperar avanço de funil, não venda.`,
+    );
+  }
+
+  // A regra que o dono cravou: sem ganho registrado, receita não se projeta.
+  if (ctx.observedWins <= 0) {
+    assumptions.push(
+      `Receita fica SEM LASTRO: ${sample} movimentações e nenhum ganho registrado na janela — não existe taxa de conversão observada para transformar lead trabalhado em venda. Esta projeção é de capacidade, não de faturamento.`,
+    );
+  } else {
+    assumptions.push(
+      `${ctx.observedWins} ganho(s) registrado(s) na janela — amostra ainda pequena demais para virar projeção de receita; a projeção segue sendo de capacidade.`,
+    );
+  }
+
+  // Decisão de folha não ganha confiança "alta" a partir de movimentação de
+  // kanban: o registro mede trabalho declarado, não resultado. E quando mais da
+  // metade do movimento observado é encerramento, o teto é "baixa" — ritmo de
+  // descarte não sustenta previsão de trabalho comercial.
+  const mostlyTerminal = (ctx.observedTerminalShare ?? 0) > 0.5;
+  const confidence: MoveProjection["confidence"] =
+    !mostlyTerminal && sample >= MINIMUM_CAPACITY_SAMPLE * 5 && ctx.observedWeeks >= MINIMUM_CAPACITY_WEEKS * 2 ? "media" : "baixa";
+
+  return {
+    moveKind: move.kind,
+    target: move.target,
+    weeklySpendDelta: 0,
+    weeklyLeadsDelta: band(expected),
+    confidence,
+    assumptions,
+    horizon: "1 semana",
+    basis: { measured: true, sample, minimumSample: MINIMUM_CAPACITY_SAMPLE },
+  };
 }
 
 /** Projeta o plano inteiro: uma projeção por movimento + totais somados. */

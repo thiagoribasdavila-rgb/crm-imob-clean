@@ -48,14 +48,41 @@ type Signal = {
   impact: number;
 };
 
-type ProductLearning = {
-  propertyId: string;
-  title: string;
-  presentations: number;
-  interested: number;
-  rejected: number;
-  interestRate: number;
-};
+/**
+ * Aprendizado por imóvel: a tabela `activities` viva tem só
+ * (id, lead_id, type, description, created_at). Sem `metadata` e sem
+ * `occurred_at` não existe como saber QUAL imóvel foi apresentado nem qual foi
+ * o retorno — a agregação antiga consultava colunas inexistentes, o erro era
+ * descartado com o `data` e o resultado saía como um objeto permanentemente
+ * vazio, que a tela lia como "ainda sem feedback suficiente". Amostra fina e
+ * ausência de coleta são coisas diferentes, e só uma delas se resolve
+ * atendendo mais gente.
+ */
+const PRODUCT_LEARNING_REASON =
+  "apresentação de imóvel não é registrada com metadados nesta base (activities não tem metadata nem occurred_at)";
+
+/**
+ * O contexto imobiliário pode declarar quais fontes não existem no banco vivo.
+ * A leitura é tolerante de propósito: o contrato de `buildRealEstateContext`
+ * evolui em outra frente, e o briefing não pode quebrar por causa disso — sem a
+ * declaração ele segue como hoje; com ela, cada fonte ausente vira um sinal.
+ */
+function coverageGaps(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (typeof entry === "string") return entry.trim();
+      if (entry && typeof entry === "object") {
+        const row = entry as Record<string, unknown>;
+        const source = typeof row.source === "string" ? row.source.trim() : "";
+        const reason = typeof row.reason === "string" ? row.reason.trim() : "";
+        if (source && reason) return `${source} (${reason})`;
+        return source || reason;
+      }
+      return "";
+    })
+    .filter(Boolean);
+}
 
 export async function GET(request: NextRequest) {
   // Rota de IA paga: limite próprio para impedir consumo de orçamento de LLM em loop.
@@ -69,43 +96,6 @@ export async function GET(request: NextRequest) {
     supabase: access.supabase,
   };
   const context = await buildRealEstateContext(identity);
-  const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: learningActivities } = await access.supabase
-    .from("activities")
-    .select("lead_id,type,metadata,occurred_at")
-    .in("type", ["property_presentation", "property_feedback"])
-    .gte("occurred_at", since)
-    .order("occurred_at", { ascending: false })
-    .limit(2_000);
-  const learning = new Map<string, Omit<ProductLearning, "title" | "interestRate">>();
-  const latestFeedback = new Set<string>();
-  for (const activity of learningActivities ?? []) {
-    const metadata = activity.metadata && typeof activity.metadata === "object" ? activity.metadata as Record<string, unknown> : {};
-    const propertyIds = activity.type === "property_presentation" && Array.isArray(metadata.propertyIds)
-      ? metadata.propertyIds.filter((value): value is string => typeof value === "string")
-      : activity.type === "property_feedback" && typeof metadata.propertyId === "string" ? [metadata.propertyId] : [];
-    for (const propertyId of propertyIds) {
-      const feedbackKey = `${activity.lead_id}:${propertyId}`;
-      if (activity.type === "property_feedback" && latestFeedback.has(feedbackKey)) continue;
-      if (activity.type === "property_feedback") latestFeedback.add(feedbackKey);
-      const current = learning.get(propertyId) ?? { propertyId, presentations: 0, interested: 0, rejected: 0 };
-      if (activity.type === "property_presentation") current.presentations += 1;
-      if (activity.type === "property_feedback" && metadata.signal === "interested") current.interested += 1;
-      if (activity.type === "property_feedback" && metadata.signal === "rejected") current.rejected += 1;
-      learning.set(propertyId, current);
-    }
-  }
-  const propertyIds = [...learning.keys()];
-  const { data: learningProperties } = propertyIds.length
-    ? await access.supabase.from("properties").select("id,title").in("id", propertyIds)
-    : { data: [] as Array<{ id: string; title: string | null }> };
-  const titles = new Map((learningProperties ?? []).map((property) => [property.id, property.title || "Imóvel sem título"]));
-  const allProductLearning: ProductLearning[] = [...learning.values()].filter((item) => titles.has(item.propertyId)).map((item) => {
-    const responses = item.interested + item.rejected;
-    return { ...item, title: titles.get(item.propertyId)!, interestRate: responses ? Math.round(item.interested / responses * 100) : 0 };
-  }).sort((a, b) => (b.interested + b.rejected) - (a.interested + a.rejected) || b.presentations - a.presentations);
-  const learningSummary = allProductLearning.reduce((total, item) => ({ presentations: total.presentations + item.presentations, interested: total.interested + item.interested, rejected: total.rejected + item.rejected }), { presentations: 0, interested: 0, rejected: 0 });
-  const productLearning = allProductLearning.slice(0, 8);
   const signals: Signal[] = [];
   const commercial = context.commercial;
   const portfolio = context.portfolio;
@@ -117,8 +107,34 @@ export async function GET(request: NextRequest) {
   if (materials.expired > 0) signals.push({ id: "expired-materials", severity: "critical", area: "materials", title: "Material comercial vencido", evidence: `${materials.expired} arquivos vigentes estão fora da validade.`, action: "Substituir tabela, espelho ou book antes do próximo compartilhamento.", href: "/developments/materials", impact: 95 + materials.expired });
   if (portfolio.inventory > 0 && portfolio.absorptionPercent < 20) signals.push({ id: "low-absorption", severity: "attention", area: "inventory", title: "Absorção abaixo de 20%", evidence: `O portfólio visível registra ${portfolio.absorptionPercent}% de absorção.`, action: "Revisar distribuição de leads, aderência de produto e posicionamento comercial.", href: "/developments", impact: 85 - portfolio.absorptionPercent });
   if (commercial.pipelineValue > 0) signals.push({ id: "forecast-gap", severity: commercial.weightedForecast < commercial.pipelineValue * 0.35 ? "attention" : "healthy", area: "forecast", title: "Qualidade do pipeline", evidence: `Forecast ponderado de ${Math.round(commercial.pipelineValue ? commercial.weightedForecast / commercial.pipelineValue * 100 : 0)}% sobre o pipeline bruto.`, action: "Revisar probabilidade, etapa e data prevista das oportunidades abertas.", href: "/pipeline", impact: 60 });
-  const responses = learningSummary.interested + learningSummary.rejected;
-  if (responses >= 3 && learningSummary.rejected / responses >= 0.5) signals.push({ id: "product-rejection", severity: "attention", area: "inventory", title: "Rejeição elevada nas apresentações", evidence: `${learningSummary.rejected} de ${responses} retornos recentes indicaram baixa aderência.`, action: "Revisar produto, faixa de preço e perfil dos leads antes de novas apresentações.", href: "/properties/mtching", impact: 75 + learningSummary.rejected });
+
+  // Cegueira declarada — mas FORA de `signals`. Um painel que diz "sem alertas"
+  // porque a fonte não existe desliga a operação; então a cegueira continua
+  // publicada, só que em bloco próprio. O motivo: alerta permanente que ninguém
+  // da operação comercial pode resolver treina o gestor a ignorar a lista
+  // inteira, empurra sinal acionável para baixo na fila e — pior — inflava o
+  // medidor "sinais sob controle" da Sala de Comando, que conta não-críticos:
+  // uma declaração de cegueira estava fazendo o painel de saúde parecer melhor.
+  const contextCoverage = (context as typeof context & { coverage?: { unavailable?: unknown } }).coverage;
+  const missingSources = coverageGaps(contextCoverage?.unavailable);
+  const blindSpots = [
+    {
+      id: "product-learning-uninstrumented",
+      title: "Aprendizado por imóvel não instrumentado",
+      reason: PRODUCT_LEARNING_REASON,
+      toInstrument: "Registrar apresentação e retorno do imóvel com o identificador do produto.",
+      href: "/developments",
+    },
+    ...(missingSources.length > 0
+      ? [{
+        id: "context-coverage",
+        title: "Dimensões do contexto sem fonte no banco",
+        reason: `${missingSources.length === 1 ? "uma fonte não está disponível" : `${missingSources.length} fontes não estão disponíveis`} nesta base: ${missingSources.join("; ")}`,
+        toInstrument: "Tratar como não medido, não como zero: decidir sobre estas dimensões exige instrumentar a origem primeiro.",
+        href: "/dashboard",
+      }]
+      : []),
+  ];
 
   // Sinais de atenção proativos (Fase 100) — o briefing agrega duas dimensões
   // que os sinais acima não cobrem: leads parados no funil e objeções sem
@@ -172,7 +188,22 @@ export async function GET(request: NextRequest) {
     generatedAt: new Date().toISOString(),
     status: signals.some((signal) => signal.severity === "critical") ? "critical" : signals.some((signal) => signal.severity === "attention") ? "attention" : "healthy",
     context,
-    productLearning: { periodDays: 90, summary: learningSummary, items: productLearning },
+    /**
+     * O que este briefing NÃO enxerga. É rodapé de cobertura, não fila de
+     * trabalho: a tela mostra como nota, e `status` volta a poder ser
+     * "healthy" quando os sinais reais estiverem limpos.
+     */
+    coverage: { blindSpots, productLearningInstrumented: false },
+    // `instrumented: false` é o campo que carrega a verdade. summary/items
+    // continuam presentes e zerados só para não quebrar quem já lê a forma
+    // antiga — quem entende `instrumented` deve mostrar o motivo, não o zero.
+    productLearning: {
+      instrumented: false,
+      reason: PRODUCT_LEARNING_REASON,
+      periodDays: 90,
+      summary: { presentations: 0, interested: 0, rejected: 0 },
+      items: [],
+    },
     signals,
     model: {
       generativeReady: aiProviderReadiness().openai,

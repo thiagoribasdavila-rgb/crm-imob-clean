@@ -4,6 +4,7 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   CAMPAIGN_QUALITY_DEFINITIONS,
   CAMPAIGN_QUALITY_GRADE_RULE,
+  CAMPAIGN_QUALITY_GRADE_VERSION,
   CAMPAIGN_QUALITY_MINIMUM_LEADS,
   CAMPAIGN_QUALITY_QUALIFIED_SCORE,
   buildCampaignQuality,
@@ -126,14 +127,25 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Três estados do gasto: "medido" exige linha lida na janela. Sem isso,
+  // marketing_spend vazia (estado padrão — nenhum escritor no repositório)
+  // publicava spendMeasured=true ao lado de spend 0, afirmando medição sobre
+  // tabela que ninguém alimenta.
+  const spendCoverage = spendFetch.error
+    ? "indisponivel"
+    : spendFetch.rows.length > 0
+      ? "medido"
+      : "sem_lancamento";
+
   const { ranking, totals } = buildCampaignQuality({
     campaigns: campaignResult.data ?? [],
     leads: leadFetch.rows,
     discardEvents: eventFetch.rows,
     spendRows: spendFetch.error ? [] : spendFetch.rows,
   });
-  // Só campanhas com leads na janela entram no ranking; o restante fica nos totais.
-  const rankedCampaigns = ranking.filter((row) => row.leads > 0);
+  // Campanha com gasto lançado e zero lead atribuído continua visível: gasto sem
+  // lead é fato observado, e escondê-lo era esconder o pior gasto possível.
+  const rankedCampaigns = ranking.filter((row) => row.leads > 0 || row.spend > 0);
 
   return apiSuccess(
     {
@@ -154,8 +166,14 @@ export async function GET(request: NextRequest) {
         // "qualificado" sem saber qual das duas está olhando.
         qualificationDefinitions: CAMPAIGN_QUALITY_DEFINITIONS,
         qualityGradeRule: CAMPAIGN_QUALITY_GRADE_RULE,
+        // Nota produzida por régua diferente não é comparável período a
+        // período: a versão viaja no payload e em cada linha do ranking.
+        qualityGradeVersion: CAMPAIGN_QUALITY_GRADE_VERSION,
         crmIsConversionTruth: true,
-        spendMeasured: !spendFetch.error,
+        spendMeasured: spendCoverage === "medido",
+        spendCoverage,
+        spendCoverageMeaning:
+          "medido = há lançamento de gasto lido na janela; sem_lancamento = marketing_spend legível e sem linha na janela (não é o mesmo que não gastar); indisponivel = leitura falhou",
         // Honestidade de cobertura: true somente se nenhuma dimensão bateu o
         // teto de paginação — consumidores podem exibir aviso quando false.
         windowComplete:

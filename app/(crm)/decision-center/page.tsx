@@ -6,14 +6,50 @@ import { LIVE_LEAD_SELECT, mapLegacyLead } from "@/lib/compat/legacy-v2";
 import { PageHeader } from "@/components/atlas/page-header";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 
-type Insight = { id: string; title: string; summary: string | null; recommendation: string | null; score: number | null; confidence: number | null; status: string; entity_type: string; created_at: string };
+type Insight = { id: string; title: string; summary: string | null; recommendation: string | null; score: number | null; status: string; entity_type: string; created_at: string };
 type Lead = { id: string; name: string | null; score: number | null; temperature: string | null; status: string | null; next_action_at: string | null };
 
 type Decision = { id: string; priority: number; title: string; reason: string; action: string; type: string };
 type BriefingResponse = {
   signals?: Array<{ id: string; severity: "critical" | "attention" | "opportunity" | "healthy"; title: string; evidence: string; action: string }>;
-  model?: { generativeReady?: boolean };
 };
+
+type CapacityScenario = {
+  id: string;
+  label: string;
+  hasBasis: boolean;
+  projection: {
+    weeklyLeadsDelta: { pessimista: number; esperado: number; otimista: number };
+    confidence: string;
+    assumptions: string[];
+    basis?: { measured: boolean; sample: number; minimumSample: number; reason?: string };
+  };
+};
+
+type CapacityBlock = {
+  windowDays: number;
+  openLeads: number;
+  unassignedOpenLeads: number;
+  activeBrokers: number;
+  minimumSample: number;
+  unavailableReason: string | null;
+  observed: {
+    moves: number;
+    /** Movimentações com autor corretor — a amostra real por trás do número. */
+    attributedMoves: number;
+    actors: number;
+    weeks: number;
+    leadsPerBrokerPerWeek: number | null;
+    advanceRatePct: number | null;
+    terminalMoveSharePct: number | null;
+    wins: number;
+    sourceCoverage?: string | null;
+  };
+  scenarios: CapacityScenario[];
+};
+
+/** "denied" = a simulação de capacidade é da diretoria; para os demais a seção some. */
+type CapacityStatus = "loading" | "ok" | "denied" | "error";
 
 /*
  * CC-6 · Centro de decisão — consolidação do redesign: o header antigo repetia
@@ -37,6 +73,8 @@ export default function DecisionCenterPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [capacity, setCapacity] = useState<CapacityBlock | null>(null);
+  const [capacityStatus, setCapacityStatus] = useState<CapacityStatus>("loading");
 
   useEffect(() => {
     let active = true;
@@ -45,16 +83,31 @@ export default function DecisionCenterPage() {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData.session?.access_token;
-        const [briefingResponse, leadResult] = await Promise.all([
+        const [briefingResponse, leadResult, capacityResponse] = await Promise.all([
           token
             ? fetch("/api/ai/briefing", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
             : Promise.resolve(null),
           supabase.from("leads").select(LIVE_LEAD_SELECT).order("created_at", { ascending: false }).limit(100),
+          token
+            ? fetch("/api/v1/analytics/director-daily", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null)
+            : Promise.resolve(null),
         ]);
         const briefing = briefingResponse?.ok ? ((await briefingResponse.json()) as BriefingResponse) : null;
         if (leadResult.error) throw leadResult.error;
+
+        if (active) {
+          if (!capacityResponse) setCapacityStatus("error");
+          else if (capacityResponse.status === 403 || capacityResponse.status === 401) setCapacityStatus("denied");
+          else if (!capacityResponse.ok) setCapacityStatus("error");
+          else {
+            const body = (await capacityResponse.json().catch(() => null)) as { data?: { capacity?: CapacityBlock } } | null;
+            const block = body?.data?.capacity ?? null;
+            setCapacity(block);
+            setCapacityStatus(block ? "ok" : "error");
+          }
+        }
+
         if (!active) return;
-        const confidence = briefing?.model?.generativeReady ? 0.9 : 0.74;
         const scoreBySeverity = { critical: 96, attention: 84, opportunity: 76, healthy: 60 };
         setInsights((briefing?.signals ?? []).map((signal) => ({
           id: signal.id,
@@ -62,7 +115,6 @@ export default function DecisionCenterPage() {
           summary: signal.evidence,
           recommendation: signal.action,
           score: scoreBySeverity[signal.severity],
-          confidence,
           status: "active",
           entity_type: signal.severity === "opportunity" ? "Oportunidade" : "Operação",
           created_at: new Date().toISOString(),
@@ -195,6 +247,106 @@ export default function DecisionCenterPage() {
           </p>
         </TiltShell>
       </section>
+
+      {/* Só aparece depois de resolvido: a seção é da diretoria, e piscar um
+          painel que some em seguida para o corretor é ruído, não informação. */}
+      {capacityStatus === "loading" || capacityStatus === "denied" ? null : (
+        <section aria-label="Sala de simulação de capacidade">
+          <TiltShell className="cc6-panel cc6-reveal overflow-hidden" delayMs={80}>
+            <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5">
+              <p className="cc6-eyebrow">Sala de simulação · capacidade comercial</p>
+              <p className="cc6-num text-[11px] text-[#6b7890]">
+                {capacity ? `janela de ${capacity.windowDays} dias` : "—"}
+              </p>
+            </div>
+            <p className="px-5 pt-2 text-sm leading-6 text-[#aab6ca]">
+              Projeção de <strong className="font-semibold text-[#e8eef8]">leads trabalhados por semana</strong> — não de receita.
+              Nada aqui contrata, atribui ou remaneja alguém.
+            </p>
+
+            {capacityStatus === "error" ? (
+              <p className="cc6-hairline mt-4 px-5 py-6 text-sm leading-6 text-[#f5b544]">
+                A capacidade não pôde ser medida agora — a leitura do painel executivo falhou. Nenhum número é exibido:
+                projeção sobre leitura incompleta seria pior do que a ausência dela.
+              </p>
+            ) : null}
+
+            {capacity ? (
+              <>
+                <div className="cc6-hairline mx-5 mt-4 flex flex-wrap gap-x-10 gap-y-4 pb-4 pt-4" aria-label="Capacidade observada">
+                  {[
+                    { label: "Leads abertos", value: String(capacity.openLeads), detail: null as string | null },
+                    { label: "Sem responsável", value: String(capacity.unassignedOpenLeads), detail: "entre os leads abertos" },
+                    { label: "Corretores ativos", value: String(capacity.activeBrokers), detail: null },
+                    {
+                      label: "Leads/corretor/semana",
+                      value: capacity.observed.leadsPerBrokerPerWeek === null ? "—" : String(capacity.observed.leadsPerBrokerPerWeek),
+                      // A amostra citada é a ATRIBUÍDA a corretor, não o total lido:
+                      // dizer "430" ao lado de uma conta feita com 199 é vender
+                      // lastro que a conta não tem.
+                      detail: capacity.observed.leadsPerBrokerPerWeek === null
+                        ? capacity.unavailableReason ?? "throughput não medido nesta base"
+                        : `${capacity.observed.attributedMoves} de ${capacity.observed.moves} movimentações têm autor corretor · ${capacity.observed.actors} corretor(es)`,
+                    },
+                  ].map((metric) => (
+                    <div key={metric.label} className="min-w-[140px]">
+                      <p className="cc6-metric-value text-3xl leading-none">{metric.value}</p>
+                      <p className="cc6-metric-label mt-1.5">{metric.label}</p>
+                      {metric.detail ? <p className="mt-1 max-w-[220px] text-[11px] leading-4 text-[#6b7890]">{metric.detail}</p> : null}
+                    </div>
+                  ))}
+                </div>
+
+                {capacity.scenarios.map((scenario) => (
+                  <article key={scenario.id} className="cc6-hairline px-5 py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="cc6-chip">{scenario.label}</span>
+                      <span className={`cc6-num text-[11px] ${scenario.hasBasis ? "text-[#6b7890]" : "cc6-warn"}`}>
+                        {scenario.hasBasis ? `confiança ${scenario.projection.confidence} · amostra ${scenario.projection.basis?.sample ?? 0}` : "sem lastro"}
+                      </span>
+                    </div>
+
+                    {scenario.hasBasis ? (
+                      <div className="mt-3 flex flex-wrap gap-x-8 gap-y-3">
+                        {[
+                          { label: "Pessimista", value: scenario.projection.weeklyLeadsDelta.pessimista },
+                          { label: "Esperado", value: scenario.projection.weeklyLeadsDelta.esperado },
+                          { label: "Otimista", value: scenario.projection.weeklyLeadsDelta.otimista },
+                        ].map((point) => (
+                          <div key={point.label}>
+                            <p className="cc6-metric-value text-2xl leading-none">{point.value}</p>
+                            <p className="cc6-metric-label mt-1">{point.label} · leads/semana</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm leading-6 text-[#f5b544]">
+                        Ainda não sei projetar este cenário
+                        {scenario.projection.basis?.reason ? `: ${scenario.projection.basis.reason}` : "."}
+                        {" "}Nenhum número é exibido de propósito — um número inventado aqui vira uma contratação errada.
+                      </p>
+                    )}
+
+                    <ul className="mt-3 space-y-1.5">
+                      {scenario.projection.assumptions.map((assumption) => (
+                        <li key={assumption} className="text-[12px] leading-5 text-[#aab6ca]">
+                          <span className="text-[#6b7890]">· </span>
+                          {assumption}
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </>
+            ) : null}
+
+            <p className="cc6-hairline px-5 py-3 text-[11px] leading-5 text-[#6b7890]">
+              Simulação determinística sobre o histórico de pipeline — sem modelo generativo e sem custo de token.
+              A decisão de contratar, remanejar ou distribuir continua inteiramente humana.
+            </p>
+          </TiltShell>
+        </section>
+      )}
     </div>
   );
 }

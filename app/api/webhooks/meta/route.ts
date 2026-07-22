@@ -4,6 +4,7 @@ import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { logger } from "@/lib/observability/logger";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { enforceDistributedRateLimit } from "@/lib/security/abuse-protection";
+import { ensureMetaLeadFetchTask, ensureOutboxTask } from "@/lib/integrations/outbox-task";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,8 @@ export async function POST(request: Request) {
   let accepted = 0;
   let duplicates = 0;
   let unmapped = 0;
+  let recovered = 0;
+  let unrecoverable = 0;
 
   for (const entry of event.entry ?? []) {
     for (const change of entry.changes ?? []) {
@@ -99,20 +102,48 @@ export async function POST(request: Request) {
         received_at: value.created_time ? new Date(value.created_time * 1000).toISOString() : new Date().toISOString(),
       }).select("id").single();
       if (insertError) {
-        if (insertError.code === "23505") { duplicates += 1; continue; }
-        logger.error("meta.webhook.persistence_failed", insertError, { leadgenId: value.leadgen_id });
-        return NextResponse.json({ error: "persistence_failed" }, { status: 500 });
+        if (insertError.code !== "23505") {
+          logger.error("meta.webhook.persistence_failed", insertError, { leadgenId: value.leadgen_id });
+          return NextResponse.json({ error: "persistence_failed" }, { status: 500 });
+        }
+        // O evento já tinha sido recebido — mas isso NÃO prova que a tarefa do
+        // outbox existe. O caminho anterior (`continue` cego) supunha que sim, e
+        // era exatamente a sequência do desastre: insert do evento OK, insert do
+        // outbox falho, 500 devolvido contando com o reenvio da Meta, reenvio
+        // batendo no unique e pulando fora — evento 'received' para sempre, sem
+        // tarefa, sem erro, sem dead letter. Lead pago perdido em silêncio.
+        duplicates += 1;
+        // String() só reafirma o guard da entrada do laço (leadgen_id é
+        // opcional no tipo do payload da Meta, nunca nulo aqui).
+        const healed = await ensureMetaLeadFetchTask(admin, { organizationId: source.organization_id, externalLeadId: String(value.leadgen_id) });
+        if (!healed.ok) {
+          logger.error("meta.webhook.outbox_recovery_failed", new Error(healed.reason), { leadgenId: value.leadgen_id, code: healed.code });
+          return NextResponse.json({ error: "outbox_failed" }, { status: 500 });
+        }
+        if (healed.state === "created") {
+          recovered += 1;
+          logger.warn("meta.webhook.outbox_task_recovered", { leadgenId: value.leadgen_id, organizationId: source.organization_id });
+        }
+        if (healed.state === "aggregate_not_visible") {
+          // external_lead_id é unique GLOBAL: a colisão veio de um evento que não
+          // pertence a esta organização. Não é recuperável aqui e não pode ser
+          // contado como se estivesse resolvido.
+          unrecoverable += 1;
+          logger.warn("meta.webhook.duplicate_outside_organization", { leadgenId: value.leadgen_id, organizationId: source.organization_id });
+        }
+        continue;
       }
-      const { error: outboxError } = await admin.from("integration_outbox").insert({ organization_id: source.organization_id, topic: "meta.lead.fetch", aggregate_type: "meta_lead_event", aggregate_id: inserted.id, payload: { externalLeadId: value.leadgen_id } });
-      if (outboxError) {
-        // Sem outbox o lead nunca seria processado: 500 força o reenvio pela Meta.
-        logger.error("meta.webhook.outbox_failed", outboxError, { eventId: inserted.id, leadgenId: value.leadgen_id });
+      const queued = await ensureOutboxTask(admin, { organizationId: source.organization_id, topic: "meta.lead.fetch", aggregateType: "meta_lead_event", aggregateId: inserted.id, payload: { externalLeadId: value.leadgen_id } });
+      if (!queued.ok) {
+        // Sem outbox o lead nunca seria processado: 500 força o reenvio pela Meta
+        // — e agora o reenvio REFAZ a tarefa em vez de pular fora.
+        logger.error("meta.webhook.outbox_failed", new Error(queued.reason), { eventId: inserted.id, leadgenId: value.leadgen_id, code: queued.code });
         return NextResponse.json({ error: "outbox_failed" }, { status: 500 });
       }
       accepted += 1;
     }
   }
 
-  logger.info("meta.webhook.processed", { object: event.object, accepted, duplicates, unmapped });
-  return NextResponse.json({ received: true, accepted, duplicates, unmapped }, { status: 200 });
+  logger.info("meta.webhook.processed", { object: event.object, accepted, duplicates, unmapped, recovered, unrecoverable });
+  return NextResponse.json({ received: true, accepted, duplicates, unmapped, recovered, unrecoverable }, { status: 200 });
 }

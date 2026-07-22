@@ -5,12 +5,22 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { evaluateIntegrationHealth } from "@/lib/integrations/operational-health";
 export const dynamic = "force-dynamic";
+// 'meta' e 'meta_marketing' são DUAS integrações, com tokens e escopos
+// diferentes: Lead Ads/CAPI recebe lead e devolve conversão; a Marketing API é
+// a camada que LÊ e GASTA verba. Medi-las na mesma linha fazia o painel ficar
+// verde com a camada do dinheiro morta — o token expirado da Marketing API foi
+// descoberto por um humano escrevendo docs/META_ASSET_INVENTORY.md, não pelo
+// produto.
 const envReady: Record<string, () => boolean> = {
   meta: () =>
     Boolean(
       process.env.META_APP_SECRET &&
       process.env.META_LEAD_ACCESS_TOKEN &&
       process.env.META_CONVERSIONS_ACCESS_TOKEN,
+    ),
+  meta_marketing: () =>
+    Boolean(
+      process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID,
     ),
   whatsapp: () =>
     Boolean(
@@ -31,6 +41,8 @@ const envReady: Record<string, () => boolean> = {
     /^https:\/\//.test(process.env.ATLAS_BASE_URL || "") &&
     Boolean(process.env.ATLAS_CRON_SECRET),
 };
+// meta_marketing não tem tópico de fila: ela é síncrona (leitura de insights e
+// execução sob aprovação). Fila zero aqui é FATO, não ausência de medição.
 const providerTopic = (p: string, t: string) =>
   p === "meta"
     ? t.startsWith("meta.")
@@ -46,6 +58,7 @@ async function live(org: string) {
     { count: dlq },
     { data: metaEvents },
     { data: usage },
+    { data: tokenStuck, error: tokenStuckError },
   ] = await Promise.all([
     admin
       .from("integrations")
@@ -76,13 +89,33 @@ async function live(org: string) {
       .eq("organization_id", org)
       .gte("created_at", since)
       .limit(20000),
+    // Sem janela de 30 dias DE PROPÓSITO: token expirado há mais tempo continua
+    // bloqueando a fila hoje. Consulta separada (e não uma coluna a mais no
+    // SELECT acima) porque `cause` depende da migration 20260722150000: se ela
+    // não estiver aplicada, o erro fica confinado aqui e vira "não medido", em
+    // vez de derrubar o painel inteiro.
+    admin
+      .from("integration_outbox")
+      .select("topic,created_at")
+      .eq("organization_id", org)
+      .eq("cause", "token_unhealthy")
+      .in("status", ["pending", "failed"])
+      .order("created_at", { ascending: true })
+      .limit(5000),
   ]);
   if (error) throw error;
+  const tokenMeasured = !tokenStuckError;
+  const tokenRows = tokenStuck || [];
   const providers = Object.keys(envReady).map((provider) => {
     const aliases =
         provider === "google_ads" || provider === "youtube"
           ? ["google", provider]
-          : [provider],
+          // A Marketing API não tem cadastro próprio em `integrations`: ela
+          // compartilha a conexão 'meta'. Sem o alias, a linha nova nasceria
+          // "sem cadastro" por artefato de nomenclatura.
+          : provider === "meta_marketing"
+            ? ["meta"]
+            : [provider],
       connection = (connections || []).find((c) =>
         aliases.includes(c.provider),
       ),
@@ -104,6 +137,9 @@ async function live(org: string) {
       ).length,
       failed: topics.filter((e) => ["failed", "dead_letter"].includes(e.status))
         .length,
+      tokenUnhealthy: tokenMeasured
+        ? tokenRows.filter((e) => providerTopic(provider, e.topic)).length
+        : undefined,
     });
   });
   const queues = {
@@ -119,6 +155,21 @@ async function live(org: string) {
         .filter((e) => ["pending", "processing"].includes(e.status))
         .map((e) => e.created_at)
         .sort()[0] || null,
+    // Fila presa por credencial: o worker mantém esses eventos retryable e sem
+    // consumir tentativa, então eles NÃO aparecem em dead letters — o alarme
+    // que existia ficava zero justamente durante o incidente. `measured: false`
+    // é lacuna declarada (migration 20260722150000 pendente), não zero.
+    tokenUnhealthy: tokenMeasured
+      ? {
+          measured: true,
+          count: tokenRows.length,
+          oldestAt: tokenRows[0]?.created_at || null,
+        }
+      : {
+          measured: false,
+          reason:
+            "coluna integration_outbox.cause indisponível (migration 20260722150000 pendente)",
+        },
   };
   const aiCostUsd =
     Math.round(
@@ -140,6 +191,10 @@ async function live(org: string) {
         ["meta", "whatsapp", "storage", "hostinger"].includes(p.provider),
       )
       .every((p) => p.healthy),
+    // A lista continua a mesma de antes (a Marketing API entrou como LINHA
+    // nova, não como novo requisito) — mas publicada, para "Produção pronta"
+    // não ser lido como "tudo pronto": o chip nunca falou da camada que gasta.
+    productionReadyCovers: ["meta", "whatsapp", "storage", "hostinger"],
   };
   return {
     summary,

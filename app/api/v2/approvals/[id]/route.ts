@@ -5,6 +5,7 @@ import { logger } from "@/lib/observability/logger";
 import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 import { resolveLeadOwner, recordDistribution } from "@/lib/distribution/hierarchical-cascade";
 import { ACTION_PROPOSAL_REQUEST_TYPE, type ActionProposalPayload } from "@/lib/ai/action-proposals";
+import { canDecideMetaCampaign, isMetaCampaignApproval, META_CAMPAIGN_AUTHORITY_MESSAGE } from "@/lib/meta/marketing/approval-authority";
 
 export const dynamic = "force-dynamic";
 
@@ -111,7 +112,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       logger.info("approval.commercial_proposal_decided", { approvalId: id, decision: body.decision, userId: identity.userId });
       return NextResponse.json(data);
     }
-    if (["meta_campaign_optimization", "meta_audience_change", "meta_budget_change", "meta_creative_change"].includes(approval.request_type) && profile.commercial_role !== "director" && profile.role !== "admin") return NextResponse.json({ error: "Decisões de campanha pertencem exclusivamente ao diretor." }, { status: 403 });
+    // Gate de campanha da Meta. A lista anterior ("meta_campaign_optimization",
+    // "meta_audience_change", "meta_budget_change", "meta_creative_change") não
+    // era emitida por nenhum código do repositório: o gate nunca disparava e um
+    // manager aprovava ativar campanha e mudar verba diária. Agora decide pelo
+    // que campaign-proposals realmente grava, com a MESMA alçada exigida para
+    // executar em /api/v1/marketing/execute.
+    if (
+      isMetaCampaignApproval({ entityType: approval.entity_type, requestType: approval.request_type }) &&
+      !canDecideMetaCampaign({ role: profile.role, commercialRole: profile.commercial_role })
+    ) {
+      return NextResponse.json({ error: META_CAMPAIGN_AUTHORITY_MESSAGE }, { status: 403 });
+    }
     if (approval.entity_type === "message") {
       const reason = String(body.reason || "").trim();
       if (body.decision === "rejected" && reason.length < 5) return NextResponse.json({ error: "Informe o motivo da rejeição." }, { status: 400 });
@@ -144,11 +156,20 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
 
     const decidedAt = new Date().toISOString();
-    const { error: updateError } = await admin
+    // .eq("status","pending") + linhas afetadas: a checagem lá em cima é TOCTOU
+    // (dois decisores leem "pending" e ambos gravam), e este é o UPDATE que
+    // autoriza gasto na Meta — uma rejeição podia ser sobrescrita por uma
+    // aprovação. Mesmo padrão já usado nos ramos de proposta de ação.
+    const { data: decidedRows, error: updateError } = await admin
       .from("approval_requests")
       .update({ status: body.decision, decision_reason: body.reason ?? null, decided_by: identity.userId, decided_at: decidedAt })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("status", "pending")
+      .select("id");
     if (updateError) throw updateError;
+    if (!decidedRows || decidedRows.length === 0) {
+      return NextResponse.json({ error: "Aprovação já decidida por outra pessoa." }, { status: 409 });
+    }
 
     if (approval.entity_type === "commercial_simulation" && approval.entity_id) {
       await admin.from("commercial_simulations").update({ status: body.decision, updated_at: decidedAt }).eq("id", approval.entity_id).eq("organization_id", identity.organizationId);

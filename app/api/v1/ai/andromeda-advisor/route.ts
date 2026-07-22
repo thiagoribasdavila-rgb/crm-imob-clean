@@ -4,9 +4,12 @@ import {
   adviseAndromedaPipeline,
   type AndromedaDiscardCategory,
   type AndromedaFunnelStage,
+  type AndromedaSpendCoverage,
 } from "@/lib/ai/andromeda-pipeline-advisor";
 import {
   CAMPAIGN_QUALITY_DEFINITIONS,
+  CAMPAIGN_QUALITY_GRADE_RULE,
+  CAMPAIGN_QUALITY_GRADE_VERSION,
   CAMPAIGN_QUALITY_MINIMUM_LEADS,
   buildCampaignQuality,
 } from "@/lib/atlas/campaign-quality";
@@ -35,7 +38,8 @@ export const dynamic = "force-dynamic";
 //   engine: "generative" | "deterministic",   // qual via gerou o conselho
 //   model,                                     // modelo quando generativa
 //   recommendations: [{ campaignId, campaignName,
-//     action: scale|adjust_targeting|fix_form|pause_review|keep,
+//     action: scale|scale_por_proxy|adjust_targeting|fix_form|pause_review|
+//             investigate_attribution|keep,
 //     rationale, confidence: alta|media|baixa, metaFeedbackHint }],
 //   aggregates: { campaignsRanked, leads, funnel, discardsByMetaCategory,
 //                 unattributedDiscards },      // o que a IA viu (auditável)
@@ -101,14 +105,26 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Três estados do gasto: "medido" exige linha lida na janela. Sem esta
+  // distinção, marketing_spend vazia (que é o estado padrão: nenhum escritor no
+  // repositório) publicava spendMeasured=true ao lado de spend 0 — "o gasto foi
+  // medido" sobre tabela que ninguém alimenta.
+  const spendCoverage: AndromedaSpendCoverage = spendFetch.error
+    ? "indisponivel"
+    : spendFetch.rows.length > 0
+      ? "medido"
+      : "sem_lancamento";
+  const spendMeasured = spendCoverage === "medido";
+
   const { ranking, totals } = buildCampaignQuality({
     campaigns: campaignResult.data ?? [],
     leads: leadFetch.rows,
     discardEvents: eventFetch.rows,
     spendRows: spendFetch.error ? [] : spendFetch.rows,
   });
-  // Mesmo recorte do campaign-quality: só campanhas com leads na janela.
-  const rankedCampaigns = ranking.filter((row) => row.leads > 0);
+  // Campanha com gasto lançado e ZERO lead atribuído é o pior gasto possível —
+  // era justamente o que o filtro por leads > 0 escondia do conselho.
+  const rankedCampaigns = ranking.filter((row) => row.leads > 0 || row.spend > 0);
 
   // Distribuição do funil — SOMENTE contagens por etapa canônica (zero PII).
   const stageCounts = new Map<string, number>();
@@ -149,7 +165,8 @@ export async function GET(request: NextRequest) {
       funnel,
       discardsByMetaCategory,
       unattributedDiscards: totals.unattributedDiscards,
-      spendMeasured: !spendFetch.error,
+      spendMeasured,
+      spendCoverage,
     },
   });
 
@@ -191,8 +208,15 @@ export async function GET(request: NextRequest) {
         deterministicFallback: true,
         rules: ANDROMEDA_ADVISOR_RULES,
         qualificationDefinitions: CAMPAIGN_QUALITY_DEFINITIONS,
+        qualityGradeRule: CAMPAIGN_QUALITY_GRADE_RULE,
+        // A nota decide verba: quem lê a recomendação precisa saber por qual
+        // régua ela foi produzida.
+        qualityGradeVersion: CAMPAIGN_QUALITY_GRADE_VERSION,
         minimumLeadsForDecision: CAMPAIGN_QUALITY_MINIMUM_LEADS,
-        spendMeasured: !spendFetch.error,
+        spendMeasured,
+        spendCoverage,
+        spendCoverageMeaning:
+          "medido = há lançamento de gasto lido na janela; sem_lancamento = marketing_spend legível e sem linha na janela (não é o mesmo que não gastar); indisponivel = leitura falhou",
         windowComplete:
           !leadFetch.truncated
           && !eventFetch.truncated

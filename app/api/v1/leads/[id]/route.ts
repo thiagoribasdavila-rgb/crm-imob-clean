@@ -7,8 +7,9 @@ import {
   sameGovernedLeadCommercialContext,
   validateGovernedLeadContextCorrection,
 } from "@/lib/atlas/governed-lead-context-correction";
+import { commercialOutcomeFromStages } from "@/lib/ai/learning-loop";
 import { LIVE_LEAD_SELECT, canonicalLeadStatus, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
-import { liveLeadUpdatePayload, mapLiveLeadEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
+import { liveLeadUpdatePayload, mapLiveLeadEvent, recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { computeAttentionSignalsForLead } from "@/lib/atlas/attention-signals";
 import { logger } from "@/lib/observability/logger";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
@@ -200,6 +201,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       .maybeSingle();
     if (!currentLead) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
 
+    const previousStatus = canonicalLeadStatus(currentLead.status);
     const nextStatus = canonicalLeadStatus(body.status || currentLead.status);
     const notes = String(body.notes || "").trim();
     if (nextStatus === "comprou_outro" && notes.length < 10) {
@@ -219,15 +221,30 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "O orçamento mínimo não pode superar o máximo." }, { status: 400 });
     }
 
-    const { data: stored, error } = await admin
+    // Guarda de concorrência espelhando a do Kanban: sem o `.eq("status", …)`,
+    // duas requisições simultâneas liam o mesmo status anterior e gravavam DOIS
+    // eventos de aprendizado para a mesma transição, inflando aquele desfecho.
+    // Só a requisição que de fato mudou a linha ensina alguma coisa.
+    const guarded = admin
       .from("leads")
       .update(update)
       .eq("id", id)
-      .eq("organization_id", identity.organizationId)
+      .eq("organization_id", identity.organizationId);
+    // `.eq(coluna, null)` não casa em SQL; linha sem status precisa de `.is`.
+    const { data: stored, error } = await (currentLead.status == null
+      ? guarded.is("status", null)
+      : guarded.eq("status", currentLead.status))
       .select(LIVE_LEAD_SELECT)
-      .single();
-    if (error || !stored) return NextResponse.json({ error: "Não foi possível salvar este lead agora." }, { status: 400 });
-    const lead = mapLegacyLead(stored as unknown as JsonRow);
+      .maybeSingle();
+    if (error) return NextResponse.json({ error: "Não foi possível salvar este lead agora." }, { status: 400 });
+    if (!stored) {
+      return NextResponse.json(
+        { error: "A etapa deste lead mudou em outra sessão. Recarregue a ficha antes de salvar.", code: "LEAD_STATUS_CONFLICT" },
+        { status: 409 },
+      );
+    }
+    const storedRow = stored as unknown as JsonRow;
+    const lead = mapLegacyLead(storedRow);
     const event = await recordLiveLeadEvent(admin, {
       organizationId: identity.organizationId,
       leadId: id,
@@ -235,9 +252,56 @@ export async function PATCH(request: Request, context: RouteContext) {
       type: "lead_updated",
       title: "Dados do lead atualizados",
       description: "Perfil comercial revisado no Lead 360.",
-      metadata: { previousStatus: canonicalLeadStatus(currentLead.status), status: lead.status },
+      metadata: { previousStatus, status: lead.status },
     });
     if (event.error) logger.warn("lead.update_event_failed", { leadId: id, message: event.error.message });
+
+    // Memória de operação: metade da operação move o lead no Kanban e a outra
+    // metade troca o status aqui na ficha. Instrumentar só um dos caminhos
+    // produziria amostra torta — e verba decidida sobre amostra torta custa mais
+    // caro do que não decidir. O núcleo puro filtra o que não é desfecho nem
+    // avanço (retrocesso, arquivamento, status inalterado).
+    const learningOutcome = commercialOutcomeFromStages(previousStatus, nextStatus);
+    if (learningOutcome) {
+      const [learning] = await Promise.allSettled([
+        recordCommercialLearningEvent(admin, {
+          organizationId: identity.organizationId,
+          leadId: id,
+          actorId: identity.userId,
+          outcome: learningOutcome,
+          fromStage: previousStatus,
+          // O fato nasce do que foi PERSISTIDO, não da intenção da requisição:
+          // o update é condicionado ao status lido, então `storedRow.status` é a
+          // única etapa que existe de verdade no banco neste instante.
+          toStage: canonicalLeadStatus(storedRow.status) || nextStatus,
+          // A Lead 360 não coleta motivo estruturado de descarte. null aqui
+          // significa "não coletado por este caminho" — e `writePath: lead_360`
+          // no metadata é o que separa isso de "o corretor não informou".
+          reasonKey: null,
+          source: typeof storedRow.source === "string" ? storedRow.source : null,
+          campaignId: storedRow.campaign_id == null ? null : String(storedRow.campaign_id),
+          writePath: "lead_360",
+        }),
+      ]);
+      const learningError: unknown = learning.status === "rejected" ? learning.reason : learning.value.error;
+      if (learningError) {
+        // Mesma regra do Kanban: schema ausente é erro permanente e sobe como
+        // erro; o resto é aviso.
+        const drift = learning.status === "fulfilled" && learning.value.drift === true;
+        const payload = {
+          leadId: id,
+          outcome: learningOutcome,
+          table: "ai_learning_events",
+          message: learningError instanceof Error
+            ? learningError.message
+            : typeof (learningError as { message?: unknown })?.message === "string"
+              ? String((learningError as { message: string }).message)
+              : String(learningError),
+        };
+        if (drift) logger.error("lead.learning_event_schema_drift", payload);
+        else logger.warn("lead.learning_event_failed", payload);
+      }
+    }
     return NextResponse.json({ lead });
   } catch (error) {
     logger.warn("lead.intelligence.update_failed", { error: error instanceof Error ? error.message : String(error) });

@@ -5,8 +5,9 @@ import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 import { canonicalPipelineStage, mergePipelineStageSettings } from "@/lib/atlas/pipeline-stages";
+import { commercialOutcomeFromStages } from "@/lib/ai/learning-loop";
 import { LIVE_LEAD_SELECT, mapLegacyLead } from "@/lib/compat/legacy-v2";
-import { recordLiveLeadEvent } from "@/lib/compat/live-writes";
+import { recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { readCompatiblePipeline } from "@/lib/atlas/core-v2/live-repositories";
 import { DISCARD_REASON_KEYS, DISCARD_TAXONOMY_VERSION, getDiscardReason } from "@/lib/atlas/discard-reasons";
 
@@ -261,8 +262,64 @@ export async function PATCH(request: Request) {
       }
     }
 
-    const data = mapLegacyLead(updated as unknown as Record<string, unknown>);
-    await Promise.allSettled([recordFunnelLearning({ organizationId: identity.organizationId, leadId, previousStage, stage, occurredAt, description: followUpDescription })]);
+    const updatedRow = updated as unknown as Record<string, unknown>;
+    const data = mapLegacyLead(updatedRow);
+
+    // Memória de operação: a movimentação de etapa é o ponto de maior densidade
+    // de fato comercial do sistema, e até aqui ela não ensinava nada. Vive no
+    // mesmo allSettled best-effort do aprendizado de funil — o audit crítico já
+    // é pipeline_history, então falha nesta linha não pode desfazer a venda.
+    //
+    // Desfazer não é desfecho novo: é a COMPENSAÇÃO de um. E desfazer é sempre
+    // retrocesso de etapa ("perdido" → "contato"), então classificar pela
+    // direção do movimento devolvia null e a correção nunca era gravada — a
+    // perda registrada por engano ficava na tabela para sempre. Por isso o fato
+    // da reversão é reconstruído na direção do movimento ORIGINAL (stage →
+    // previousStage) e viaja marcado, para a leitura abater o par.
+    const learningFromStage = reversalOf ? stage : previousStage;
+    const learningToStage = reversalOf ? previousStage : stage;
+    const learningOutcome = commercialOutcomeFromStages(learningFromStage, learningToStage);
+    const [, learningResult] = await Promise.allSettled([
+      recordFunnelLearning({ organizationId: identity.organizationId, leadId, previousStage, stage, occurredAt, description: followUpDescription }),
+      learningOutcome
+        ? recordCommercialLearningEvent(admin, {
+          organizationId: identity.organizationId,
+          leadId,
+          actorId: identity.userId,
+          outcome: learningOutcome,
+          fromStage: learningFromStage,
+          toStage: learningToStage,
+          reasonKey: discardReason?.key ?? null,
+          source: typeof updatedRow.source === "string" ? updatedRow.source : null,
+          campaignId: updatedRow.campaign_id == null ? null : String(updatedRow.campaign_id),
+          // Identidade da movimentação (chave de deduplicação na leitura) e,
+          // quando houver, o id da movimentação que esta linha cancela.
+          moveId: history.id,
+          reversalOf,
+          writePath: "pipeline",
+        })
+        : Promise.resolve(null),
+    ]);
+    const learningError: unknown = learningResult.status === "rejected" ? learningResult.reason : learningResult.value?.error;
+    if (learningError) {
+      // Drift de schema (tabela/coluna ausente) não é intermitência: é a
+      // garantia de que nenhuma linha será gravada nunca. Sobe como erro para
+      // aparecer na observabilidade em vez de morrer como aviso.
+      const drift = learningResult.status === "fulfilled" && learningResult.value?.drift === true;
+      const payload = {
+        organizationId: identity.organizationId,
+        leadId,
+        outcome: learningOutcome,
+        table: "ai_learning_events",
+        message: learningError instanceof Error
+          ? learningError.message
+          : typeof (learningError as { message?: unknown })?.message === "string"
+            ? String((learningError as { message: string }).message)
+            : String(learningError),
+      };
+      if (drift) logger.error("pipeline.learning_event_schema_drift", payload);
+      else logger.warn("pipeline.learning_event_failed", payload);
+    }
 
     logger.info("pipeline.stage_changed", {
       leadId,

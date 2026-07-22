@@ -13,11 +13,13 @@
 //     { sent: false, reason } antes de qualquer fetch.
 //   - Nenhuma migration: tudo deriva de leads e lead_events já existentes.
 //
-// Dedupe na Meta: os event_id são determinísticos e reutilizam os padrões já
-// enviados pelo sender do outbox (crm-stage-${leadId}-${stage} em
-// app/api/v2/outbox/process/route.ts), então se os dois caminhos coexistirem no
-// mesmo dataset a Meta deduplica em vez de contar em dobro. O descarte usa
-// crm-discard-${leadId} (idempotente por lead), conforme o blueprint.
+// Dedupe na Meta: os event_id são determinísticos e por isso reenvio do mesmo
+// lote não conta em dobro. O event_id da qualificação NÃO reaproveita mais o
+// padrão de etapa do sender do outbox (crm-stage-${leadId}-qualificacao): aqui o
+// lastro é a etapa comercial (visita/proposta/contrato/ganho), então nomear a
+// chave pela etapa "qualificacao" descreveria errado o que foi medido — e é por
+// essa chave que alguém reconciliaria o Events Manager contra o CRM. O descarte
+// usa crm-discard-${leadId} (idempotente por lead), conforme o blueprint.
 
 import "server-only";
 import { createHash } from "node:crypto";
@@ -30,12 +32,14 @@ import {
 import { DISCARD_TAXONOMY_VERSION, getDiscardReason } from "@/lib/atlas/discard-reasons";
 import { resilientFetch } from "@/lib/http/resilient-fetch";
 import { metaGraphVersion, describeMetaGraphFailure } from "@/lib/meta/graph";
+import { saleEvent } from "@/lib/meta/capi/quality-events";
 
-// v2: QualifiedLead deixou de ser score/temperatura (qualificação de CADASTRO,
-// que é soma de campos preenchidos) e passou a exigir lastro comercial
-// verificável. O sinal externo é composto: cada lote errado piora a entrega da
-// campanha seguinte, então aqui vale a régua mais dura do produto.
-export const CAPI_SIGNAL_VERSION = "andromeda-v2";
+// v3: além do lastro comercial da v2, a venda só sai com valor APURADO (e por
+// isso vira Purchase, evento padrão que a Meta usa para otimizar por valor) e a
+// chave da qualificação deixa de se chamar por uma etapa que o lead não
+// alcançou. Versão gravada em custom_data para a reconciliação saber a partir
+// de quando a régua e a chave mudaram.
+export const CAPI_SIGNAL_VERSION = "andromeda-v3";
 /** Etapas que valem como evidência comercial para o sinal externo. */
 export const CAPI_QUALIFIED_STAGES = CAMPAIGN_QUALITY_COMMERCIAL_STAGES;
 
@@ -45,9 +49,21 @@ export const CAPI_QUALIFIED_STAGES = CAMPAIGN_QUALITY_COMMERCIAL_STAGES;
 // como conversão — a categoria da taxonomia viaja em custom_data.
 export const CAPI_EVENT_NAMES = {
   qualified: "QualifiedLead",
-  won: "ConvertedLead",
+  // Venda passou de ConvertedLead (custom, sem valor) para o padrão Purchase,
+  // construído por lib/meta/capi/quality-events.ts — que recusa value <= 0 e
+  // currency fora de ISO-4217. Sem valor apurado não existe evento de venda.
+  won: "Purchase",
   discarded: "LeadDisqualified",
 } as const;
+
+// Categorias de descarte derivadas de capacidade de crédito/renda. Elas viajam
+// no MESMO evento que os identificadores hasheados — que para a Meta são uma
+// pessoa. Em categoria especial HABITAÇÃO, dizer "crédito reprovado" ou
+// "orçamento não alcança" atrelado a uma pessoa é insumo direto de otimização
+// discriminatória. A contagem agregada continua no summary interno (sem vínculo
+// com pessoa); o que sai para a Meta é generalizado.
+const CREDIT_SENSITIVE_META_CATEGORIES = new Set(["not_qualified", "budget_mismatch"]);
+const GENERALIZED_META_CATEGORY = "other";
 
 // --- Normalização + hash (especificação Meta: SHA-256 hex, lowercase/trim) ---
 
@@ -98,8 +114,13 @@ export type CapiLeadRow = {
   /** Id da campanha NA META (marketing_campaigns.external_campaign_id). */
   campaign_external_id?: string | null;
   created_at?: string | null;
-  budget_min?: number | string | null;
-  budget_max?: number | string | null;
+  /**
+   * Valor APURADO da venda em BRL — nunca orçamento declarado pelo lead. É o
+   * único insumo aceito para emitir Purchase. Enquanto o CRM não registrar
+   * venda fechada com valor, este campo chega ausente e o evento de venda é
+   * suprimido e contado, jamais preenchido por aproximação.
+   */
+  sale_value_brl?: number | string | null;
 };
 
 export type CapiDiscardEventRow = {
@@ -125,12 +146,24 @@ export type CapiBatch = {
     byDisqualificationReason: Record<string, number>;
     skipped: { missingIdentifiers: number; invalidTimestamp: number; discardLeadMissing: number };
     /**
-     * Leads com cadastro qualificado (score >= 70 ou "quente") que NÃO viraram
-     * QualifiedLead por falta de lastro comercial. Ausência explicada e
-     * contável: mede exatamente o que a régua nova deixou de ensinar à Meta.
+     * Ausências EXPLICADAS — cada número aqui é um evento que o produto sabia
+     * montar e escolheu não afirmar:
+     *   - registrationQualifiedWithoutCommercialEvidence: cadastro qualificado
+     *     (score >= 70 ou "quente") sem lastro comercial;
+     *   - saleWithoutMeasuredValue: lead ganho sem valor de venda apurado.
      */
-    suppressed: { registrationQualifiedWithoutCommercialEvidence: number };
+    suppressed: {
+      registrationQualifiedWithoutCommercialEvidence: number;
+      saleWithoutMeasuredValue: number;
+    };
+    /** Descartes cuja categoria foi generalizada por ser derivada de crédito/renda. */
+    generalizedForPrivacy: number;
   };
+  /**
+   * Lacunas que o painel precisa MOSTRAR, não só contar: ausência não declarada
+   * na tela é indistinguível de zero.
+   */
+  blockers: string[];
   taxonomyVersion: number;
   signalVersion: string;
 };
@@ -152,14 +185,17 @@ function buildUserData(organizationId: string, lead: CapiLeadRow) {
   return { userData, matchable: Boolean(em || ph) };
 }
 
-function budgetValue(lead: CapiLeadRow): number | null {
-  // Valor da conversão: melhor aproximação viva é o orçamento declarado
-  // (budget_max, com fallback budget_min). Sem orçamento → conversão sem valor.
-  for (const raw of [lead.budget_max, lead.budget_min]) {
-    const value = Number(raw);
-    if (Number.isFinite(value) && value > 0) return Math.round(value * 100) / 100;
-  }
-  return null;
+/**
+ * Valor da venda — APURADO, nunca declarado. budget_max/budget_min foram
+ * removidos daqui de propósito: são o teto que o próprio lead digitou no
+ * formulário e valem 20 dos 100 pontos do score. Usá-los como valor de venda
+ * ensina a Meta a caçar quem digita números grandes, e apresenta um número sem
+ * lastro como fato. Sem valor apurado, o evento de venda não é emitido.
+ */
+function measuredSaleValue(lead: CapiLeadRow): number | null {
+  const value = Number(lead.sale_value_brl);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return Math.round(value * 100) / 100;
 }
 
 /**
@@ -178,13 +214,24 @@ function isRegistrationQualified(lead: CapiLeadRow) {
 }
 
 /**
+ * O lead é candidato a virar evento neste lote? Exportado para que o chamador
+ * (rota de export) conte supressões de consentimento sobre quem REALMENTE
+ * geraria evento — contar todo lead da janela inflaria a lacuna e mentiria
+ * sobre o tamanho do problema.
+ */
+export function isCapiEventCandidate(lead: CapiLeadRow) {
+  return isQualified(lead) || canonicalPipelineStage(lead.status) === "ganho";
+}
+
+/**
  * Converte linhas vivas do CRM em payloads CAPI:
  *   - qualificado COMERCIALMENTE (etapa canônica visita/proposta/contrato/ganho)
  *     → QualifiedLead. Cadastro bem preenchido NÃO gera sinal;
- *   - ganho (status canônico "ganho") → ConvertedLead com currency BRL e value
- *     quando houver orçamento declarado;
+ *   - ganho (status canônico "ganho") → Purchase com currency BRL e value
+ *     APURADO. Sem valor apurado o evento é suprimido e contado, nunca
+ *     estimado a partir do orçamento que o lead declarou;
  *   - descartado (lead_events event_type=lead_discarded) → LeadDisqualified com
- *     metaCategory/reasonKey da taxonomia em custom_data.
+ *     a categoria agregada da taxonomia em custom_data (motivo cru fica fora).
  * Eventos sem pelo menos um identificador correspondível (em/ph) são
  * descartados e contados em summary.skipped — regra já vigente no sender.
  */
@@ -197,7 +244,8 @@ export function buildCapiLeadEvents(input: {
   const byEventName: Record<string, number> = {};
   const byDisqualificationReason: Record<string, number> = {};
   const skipped = { missingIdentifiers: 0, invalidTimestamp: 0, discardLeadMissing: 0 };
-  const suppressed = { registrationQualifiedWithoutCommercialEvidence: 0 };
+  const suppressed = { registrationQualifiedWithoutCommercialEvidence: 0, saleWithoutMeasuredValue: 0 };
+  let generalizedForPrivacy = 0;
 
   const leadById = new Map(input.leads.map((lead) => [lead.id, lead]));
 
@@ -248,7 +296,7 @@ export function buildCapiLeadEvents(input: {
         // ler o lead_event "pipeline_stage_changed" e mudar o critério de
         // seleção do lote; enquanto isso, a data é a de origem do lead.
         event_time: eventTime,
-        event_id: `crm-stage-${lead.id}-qualificacao`,
+        event_id: `crm-qualcom-${lead.id}`,
         action_source: "system_generated",
         user_data: userData,
         custom_data: {
@@ -261,19 +309,34 @@ export function buildCapiLeadEvents(input: {
       });
     }
     if (won) {
-      const value = budgetValue(lead);
-      push({
-        event_name: CAPI_EVENT_NAMES.won,
-        event_time: eventTime,
-        event_id: `crm-stage-${lead.id}-ganho`,
-        action_source: "system_generated",
-        user_data: userData,
-        custom_data: {
-          ...baseCustomData(lead),
-          lead_status: "converted",
-          ...(value !== null ? { currency: "BRL", value } : {}),
-        },
-      });
+      const value = measuredSaleValue(lead);
+      if (value === null) {
+        // Venda sem valor apurado não vira evento: Purchase sem value ensina a
+        // Meta que venda vale R$ 0 e ela passa a comprar tráfego barato.
+        suppressed.saleWithoutMeasuredValue += 1;
+      } else {
+        // saleEvent é a única porta que valida value > 0 + currency ISO-4217 —
+        // reaproveitada aqui para a régua do valor viver num lugar só.
+        const validated = saleEvent({
+          eventId: `crm-stage-${lead.id}-ganho`,
+          eventTime,
+          leadRef: { email: lead.email, phone: lead.phone },
+          value,
+          currency: "BRL",
+        });
+        push({
+          event_name: validated.event_name,
+          event_time: validated.event_time,
+          event_id: validated.event_id,
+          action_source: "system_generated",
+          user_data: userData,
+          custom_data: {
+            ...baseCustomData(lead),
+            lead_status: "converted",
+            ...validated.custom_data,
+          },
+        });
+      }
     }
   }
 
@@ -299,6 +362,8 @@ export function buildCapiLeadEvents(input: {
     const metaCategory = reason?.metaCategory
       ?? (typeof metadata.metaCategory === "string" && metadata.metaCategory ? metadata.metaCategory : "other");
     byDisqualificationReason[metaCategory] = (byDisqualificationReason[metaCategory] ?? 0) + 1;
+    const creditSensitive = CREDIT_SENSITIVE_META_CATEGORIES.has(metaCategory);
+    if (creditSensitive) generalizedForPrivacy += 1;
     push({
       event_name: CAPI_EVENT_NAMES.discarded,
       event_time: eventTime,
@@ -308,16 +373,26 @@ export function buildCapiLeadEvents(input: {
       custom_data: {
         ...baseCustomData(lead),
         lead_status: "disqualified",
-        disqualification_reason: metaCategory,
-        disqualification_reason_key: reasonKey || "motivo_ausente",
+        // disqualification_reason_key (o motivo CRU: financiamento_negado,
+        // orcamento_incompativel...) foi removido do payload: ele descreve a
+        // situação creditícia de uma pessoa identificável do outro lado. A
+        // categoria agregada basta para o loop de qualidade.
+        disqualification_reason: creditSensitive ? GENERALIZED_META_CATEGORY : metaCategory,
         taxonomy_version: DISCARD_TAXONOMY_VERSION,
       },
     });
   }
 
+  const blockers: string[] = [];
+  if (suppressed.saleWithoutMeasuredValue > 0) {
+    blockers.push(
+      `venda_sem_valor_apurado: ${suppressed.saleWithoutMeasuredValue} lead(s) ganho(s) não foram reportados à Meta porque o CRM não registra o valor apurado da venda. Nenhum valor foi estimado a partir do orçamento declarado.`,
+    );
+  }
   return {
     events,
-    summary: { total: events.length, byEventName, byDisqualificationReason, skipped, suppressed },
+    summary: { total: events.length, byEventName, byDisqualificationReason, skipped, suppressed, generalizedForPrivacy },
+    blockers,
     taxonomyVersion: DISCARD_TAXONOMY_VERSION,
     signalVersion: CAPI_SIGNAL_VERSION,
   };

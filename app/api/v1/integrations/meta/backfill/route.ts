@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { ensureMetaLeadFetchTask, ensureOutboxTask } from "@/lib/integrations/outbox-task";
 
 export const dynamic = "force-dynamic";
 
@@ -61,8 +62,8 @@ export async function POST(request: NextRequest) {
   if (!sources?.length) return NextResponse.json({ error: "Nenhuma fonte Meta ativa com formulário registrado." }, { status: 400 });
 
   const filtering = encodeURIComponent(JSON.stringify([{ field: "time_created", operator: "GREATER_THAN", value: sinceUnix }]));
-  let accepted = 0, duplicates = 0, fetched = 0;
-  const perForm: Array<{ formId: string; fetched: number; accepted: number; duplicates: number }> = [];
+  let accepted = 0, duplicates = 0, fetched = 0, recovered = 0, notQueued = 0;
+  const perForm: Array<{ formId: string; fetched: number; accepted: number; duplicates: number; recovered: number; notQueued: number }> = [];
 
   for (const source of sources) {
     const formId = source.form_id as string;
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
     // paging.next cru da Meta, que embutiria o token na URL.
     const baseUrl = `https://graph.facebook.com/${apiVersion}/${encodeURIComponent(formId)}/leads?limit=100&filtering=${filtering}`;
     let url: string | null = baseUrl;
-    let formFetched = 0, formAccepted = 0, formDuplicates = 0, guard = 0;
+    let formFetched = 0, formAccepted = 0, formDuplicates = 0, formRecovered = 0, formNotQueued = 0, guard = 0;
 
     while (url && guard < 50) {
       guard += 1;
@@ -113,28 +114,50 @@ export async function POST(request: NextRequest) {
           .select("id")
           .single();
         if (insertError) {
-          if (insertError.code === "23505") { formDuplicates += 1; continue; } // já ingerido
-          logger.error("meta.backfill.persistence_failed", insertError, { leadgenId: lead.id });
+          if (insertError.code !== "23505") {
+            logger.error("meta.backfill.persistence_failed", insertError, { leadgenId: lead.id });
+            formNotQueued += 1;
+            continue;
+          }
+          // Já ingerido — mas "ingerido" era só o evento. Mesmo buraco do
+          // webhook: sem tarefa no outbox o lead nunca vira registro no CRM, e
+          // o backfill existe justamente para recuperar lead que ficou de fora.
+          formDuplicates += 1;
+          const healed = await ensureMetaLeadFetchTask(admin, { organizationId, externalLeadId: lead.id });
+          if (!healed.ok) {
+            logger.error("meta.backfill.outbox_recovery_failed", new Error(healed.reason), { leadgenId: lead.id, code: healed.code });
+            formNotQueued += 1;
+          } else if (healed.state === "created") {
+            formRecovered += 1;
+          }
           continue;
         }
-        await admin.from("integration_outbox").insert({
-          organization_id: organizationId,
+        const queued = await ensureOutboxTask(admin, {
+          organizationId,
           topic: "meta.lead.fetch",
-          aggregate_type: "meta_lead_event",
-          aggregate_id: inserted.id,
+          aggregateType: "meta_lead_event",
+          aggregateId: inserted.id,
           payload: { externalLeadId: lead.id },
         });
+        // `accepted` significa ENFILEIRADO. Antes o insert do outbox nem tinha o
+        // erro conferido e o contador subia de qualquer jeito: o operador lia
+        // "accepted: N" sobre leads que nenhum worker jamais buscaria.
+        if (!queued.ok) {
+          logger.error("meta.backfill.outbox_failed", new Error(queued.reason), { eventId: inserted.id, leadgenId: lead.id, code: queued.code });
+          formNotQueued += 1;
+          continue;
+        }
         formAccepted += 1;
       }
       const after = page.paging?.cursors?.after;
       url = after ? `${baseUrl}&after=${encodeURIComponent(after)}` : null;
     }
 
-    fetched += formFetched; accepted += formAccepted; duplicates += formDuplicates;
-    perForm.push({ formId, fetched: formFetched, accepted: formAccepted, duplicates: formDuplicates });
+    fetched += formFetched; accepted += formAccepted; duplicates += formDuplicates; recovered += formRecovered; notQueued += formNotQueued;
+    perForm.push({ formId, fetched: formFetched, accepted: formAccepted, duplicates: formDuplicates, recovered: formRecovered, notQueued: formNotQueued });
   }
 
-  logger.info("meta.backfill.completed", { organizationId, sinceUnix, fetched, accepted, duplicates });
+  logger.info("meta.backfill.completed", { organizationId, sinceUnix, fetched, accepted, duplicates, recovered, notQueued });
   return NextResponse.json({
     ok: true,
     sinceUnix,
@@ -143,7 +166,15 @@ export async function POST(request: NextRequest) {
     fetched,
     accepted,
     duplicates,
+    recovered,
+    notQueued,
     perForm,
     note: "Leads enfileirados na mesma esteira do webhook; o worker /api/v2/outbox/process cria o registro no CRM.",
+    counterMeaning: {
+      accepted: "evento novo COM tarefa confirmada no outbox",
+      duplicates: "evento já existia (pode ter sido só o evento, sem tarefa)",
+      recovered: "duplicado cuja tarefa faltava e foi criada agora",
+      notQueued: "lido da Meta e NÃO enfileirado — nenhum worker vai buscar; reexecute o backfill",
+    },
   });
 }

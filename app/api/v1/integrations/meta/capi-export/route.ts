@@ -4,6 +4,7 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   buildCapiLeadEvents,
+  isCapiEventCandidate,
   sendCapiBatch,
   type CapiBatch,
   type CapiDiscardEventRow,
@@ -34,7 +35,32 @@ export const dynamic = "force-dynamic";
 const DAY = 86_400_000;
 const META_SEND_WINDOW_DAYS = 7;
 
-const LEAD_SELECT = "id,email,phone,status,score_ia,temperature,campaign_id,created_at,budget_min,budget_max";
+// budget_min/budget_max saíram do select porque orçamento DECLARADO deixou de
+// ser valor de venda (lib/integrations/meta/capi-feedback.ts) — carregá-los só
+// convidaria a reintroduzir a estimativa.
+const LEAD_BASE_SELECT = "id,email,phone,status,score_ia,temperature,campaign_id,created_at";
+// leads.metadata guarda o consentimento (metadata.meta.dataSharingConsent) e
+// NÃO existe em todo ambiente — no banco de produção a coluna não está lá.
+// Pedi-la direto no select derrubaria a rota inteira com 42703; por isso a
+// disponibilidade é sondada antes e a ausência vira lacuna declarada.
+const LEAD_SELECT_WITH_CONSENT = `${LEAD_BASE_SELECT},metadata`;
+
+type ExportLeadRow = CapiLeadRow & { metadata?: unknown };
+
+type ConsentState = "granted" | "denied" | "unverifiable";
+
+/**
+ * Estado do consentimento do lead. Ausência de campo, de coluna ou de objeto
+ * NUNCA é lida como consentimento — é "negado" ou "não verificável", que
+ * suprimem igual mas são contados em separado para o operador saber se o
+ * problema é do dado ou do ambiente.
+ */
+function consentStateOf(lead: ExportLeadRow, columnAvailable: boolean): ConsentState {
+  if (!columnAvailable) return "unverifiable";
+  const metadata = lead.metadata && typeof lead.metadata === "object" ? lead.metadata as Record<string, unknown> : {};
+  const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as Record<string, unknown> : {};
+  return meta.dataSharingConsent === true ? "granted" : "denied";
+}
 
 function clampDays(value: string | null | undefined, fallback: number, max: number) {
   // Number(null)/Number("") valem 0 — sem a guarda, chamada sem ?days viraria
@@ -76,12 +102,38 @@ function chunk<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+type ConsentReport = {
+  required: boolean;
+  policySource: "config" | "default_conservative";
+  columnAvailable: boolean;
+  suppressedLeads: { denied: number; unverifiable: number };
+  suppressedDiscardEvents: number;
+};
+
 type WindowBatch = {
   batch: CapiBatch;
   period: { start: string; end: string; days: number };
   truncated: boolean;
   olderThanSendWindow: number;
+  consent: ConsentReport;
+  blockers: string[];
 };
+
+/**
+ * Política de consentimento da organização. Sem linha legível em
+ * meta_conversion_configs (tabela que não existe no banco de produção) o
+ * default é EXIGIR consentimento: presumir o contrário faria a ausência de
+ * configuração autorizar a saída de PII.
+ */
+async function loadConsentPolicy(supabase: SupabaseClient, organizationId: string) {
+  const { data, error } = await supabase
+    .from("meta_conversion_configs")
+    .select("consent_required")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (error || !data) return { required: true, policySource: "default_conservative" as const };
+  return { required: data.consent_required !== false, policySource: "config" as const };
+}
 
 async function loadWindowBatch(
   supabase: SupabaseClient,
@@ -92,16 +144,26 @@ async function loadWindowBatch(
   const start = new Date(end.getTime() - days * DAY);
   const since = start.toISOString();
 
+  const [policy, consentProbe] = await Promise.all([
+    loadConsentPolicy(supabase, organizationId),
+    supabase.from("leads").select("id,metadata").eq("organization_id", organizationId).limit(1),
+  ]);
+  const consentColumnAvailable = !consentProbe.error;
+  const leadSelect = consentColumnAvailable ? LEAD_SELECT_WITH_CONSENT : LEAD_BASE_SELECT;
+
   const [leadResult, discardResult] = await Promise.all([
-    fetchAllRows<CapiLeadRow>((from, to) =>
+    // O select é escolhido em tempo de execução (a coluna de consentimento pode
+    // não existir), então o parser de tipos do PostgREST não consegue derivar a
+    // linha — o shape é declarado aqui por ExportLeadRow.
+    fetchAllRows<ExportLeadRow>((from, to) =>
       supabase
         .from("leads")
-        .select(LEAD_SELECT)
+        .select(leadSelect)
         .eq("organization_id", organizationId)
         .gte("created_at", since)
         .order("created_at", { ascending: true })
         .order("id", { ascending: true })
-        .range(from, to),
+        .range(from, to) as unknown as QueryPage<ExportLeadRow>,
     ),
     fetchAllRows<CapiDiscardEventRow & { id: string }>((from, to) =>
       supabase
@@ -127,16 +189,16 @@ async function loadWindowBatch(
       .map((row) => row.lead_id)
       .filter((value): value is string => Boolean(value) && !windowLeadIds.has(value as string)),
   )];
-  const extraLeads: CapiLeadRow[] = [];
+  const extraLeads: ExportLeadRow[] = [];
   for (const ids of chunk(missingIds, ID_CHUNK)) {
-    const extraResult = await fetchAllRows<CapiLeadRow>((from, to) =>
+    const extraResult = await fetchAllRows<ExportLeadRow>((from, to) =>
       supabase
         .from("leads")
-        .select(LEAD_SELECT)
+        .select(leadSelect)
         .eq("organization_id", organizationId)
         .in("id", ids)
         .order("id", { ascending: true })
-        .range(from, to),
+        .range(from, to) as unknown as QueryPage<ExportLeadRow>,
     );
     if (extraResult.error) return { ok: false, step: "leads_by_id", error: extraResult.error };
     extraLeads.push(...extraResult.rows);
@@ -145,19 +207,21 @@ async function loadWindowBatch(
   // Leads fora da janela entram SOMENTE como fonte de identificadores para os
   // descartes: score/temperatura/status neutralizados para o builder não gerar
   // QualifiedLead/ConvertedLead retroativos com event_time fora da janela.
-  const identifierOnlyLeads: CapiLeadRow[] = extraLeads
+  const identifierOnlyLeads: ExportLeadRow[] = extraLeads
     .filter((lead) => !windowLeadIds.has(lead.id))
     .map((lead) => ({
       id: lead.id,
       email: lead.email,
       phone: lead.phone,
       campaign_id: lead.campaign_id,
+      // metadata segue junto: mesmo entrando só como fonte de identificador, é
+      // a PII deste lead que viajaria no evento de descarte, então o
+      // consentimento dele também precisa ser avaliado.
+      metadata: lead.metadata,
       status: null,
       score_ia: null,
       temperature: null,
       created_at: null,
-      budget_min: null,
-      budget_max: null,
     }));
 
   // Id da campanha NA META por lead: o builder só pode emitir
@@ -180,17 +244,71 @@ async function loadWindowBatch(
     }
   }
 
+  // Consentimento: MESMA régua do caminho automático (lib/meta/conversions.ts),
+  // que já bloqueia quando falta consentimento. Sem isto, este caminho — o
+  // único que envia sinal sem test_event_code — hasheava e-mail e telefone de
+  // qualquer lead da janela. Falha FECHADA: quem não tem consentimento
+  // verificado não entra no lote, e a lacuna é contada e declarada.
+  const suppressedLeads = { denied: 0, unverifiable: 0 };
+  const allowedLeads = policy.required
+    ? allLeads.filter((lead) => {
+        const state = consentStateOf(lead, consentColumnAvailable);
+        if (state === "granted") return true;
+        // Só conta quem realmente geraria evento — contar a janela inteira
+        // inflaria a lacuna e mentiria sobre o tamanho do problema.
+        if (isCapiEventCandidate(lead)) {
+          if (state === "unverifiable") suppressedLeads.unverifiable += 1;
+          else suppressedLeads.denied += 1;
+        }
+        return false;
+      })
+    : allLeads;
+
+  const knownLeadIds = new Set(allLeads.map((lead) => lead.id));
+  const allowedLeadIds = new Set(allowedLeads.map((lead) => lead.id));
+  let suppressedDiscardEvents = 0;
+  const allowedDiscards = discardResult.rows.filter((row) => {
+    // O evento de descarte carrega a PII hasheada do lead — sem consentimento
+    // dele, o descarte também não sai. Lead desconhecido segue para o builder,
+    // que já o contabiliza em skipped.discardLeadMissing.
+    if (!row.lead_id || !knownLeadIds.has(row.lead_id)) return true;
+    if (allowedLeadIds.has(row.lead_id)) return true;
+    suppressedDiscardEvents += 1;
+    return false;
+  });
+
   const batch = buildCapiLeadEvents({
     organizationId,
-    leads: allLeads.map((lead) => ({
+    leads: allowedLeads.map((lead) => ({
       ...lead,
       campaign_external_id: lead.campaign_id ? externalByCampaignId.get(lead.campaign_id) ?? null : null,
+      // Não há no banco vivo fonte de valor APURADO de venda (a tabela
+      // opportunities não existe em produção e nenhum caminho do repositório a
+      // escreve), então o campo vai ausente de propósito: o builder suprime e
+      // conta a venda em vez de estimar valor.
     })),
-    discardEvents: discardResult.rows,
+    discardEvents: allowedDiscards,
   });
 
   const sendWindowFloor = Math.floor((Date.now() - META_SEND_WINDOW_DAYS * DAY) / 1000);
   const olderThanSendWindow = batch.events.filter((event) => event.event_time < sendWindowFloor).length;
+
+  const blockers = [...batch.blockers];
+  if (policy.required && !consentColumnAvailable) {
+    blockers.push(
+      "consentimento_nao_verificavel: leads.metadata não está disponível neste banco, então nenhum consentimento pôde ser verificado e NENHUM evento pode sair. Aplique a migration que cria a coluna antes de esperar lote.",
+    );
+  }
+  if (policy.required && policy.policySource === "default_conservative") {
+    blockers.push(
+      "politica_de_consentimento_presumida: meta_conversion_configs não está legível para esta organização — o export assume consentimento OBRIGATÓRIO até que a configuração exista.",
+    );
+  }
+  if (suppressedLeads.denied > 0 || suppressedDiscardEvents > 0) {
+    blockers.push(
+      `consentimento_ausente: ${suppressedLeads.denied} lead(s) e ${suppressedDiscardEvents} descarte(s) ficaram fora do lote por não terem consentimento de compartilhamento registrado.`,
+    );
+  }
 
   return {
     ok: true,
@@ -199,6 +317,14 @@ async function loadWindowBatch(
       period: { start: since, end: end.toISOString(), days },
       truncated: leadResult.truncated || discardResult.truncated,
       olderThanSendWindow,
+      consent: {
+        required: policy.required,
+        policySource: policy.policySource,
+        columnAvailable: consentColumnAvailable,
+        suppressedLeads,
+        suppressedDiscardEvents,
+      },
+      blockers,
     },
   };
 }
@@ -248,7 +374,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { batch, period, truncated, olderThanSendWindow } = loaded.value;
+  const { batch, period, truncated, olderThanSendWindow, consent, blockers } = loaded.value;
   return apiSuccess(
     {
       mode: "dry-run",
@@ -261,6 +387,8 @@ export async function GET(request: NextRequest) {
         olderThanSendWindow,
         sendWindowDays: META_SEND_WINDOW_DAYS,
       },
+      consent,
+      blockers,
       truncated,
       taxonomyVersion: batch.taxonomyVersion,
       signalVersion: batch.signalVersion,
@@ -277,8 +405,11 @@ export async function POST(request: NextRequest) {
   const rate = enforceRateLimit(request, { limit: 5, windowMs: 60_000, scope: "meta-capi-send" });
   if (!rate.ok) return rate.response;
 
+  // Enviar é efeito externo irreversível sobre dado pessoal de terceiro: sai da
+  // alçada de gestor e fica com a diretoria, a mesma régua de quem executa
+  // mudança na conta de anúncios. A prévia (GET) segue aberta à liderança.
   const identity = await requireAccessContext(request, {
-    roles: ["director", "superintendent", "manager"],
+    roles: ["director", "superintendent"],
   });
   if (!identity.ok) return identity.response;
 
@@ -307,7 +438,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { batch, period } = loaded.value;
+  const { batch, period, consent, blockers } = loaded.value;
 
   try {
     const outcome = await sendCapiBatch(batch.events);
@@ -315,7 +446,7 @@ export async function POST(request: NextRequest) {
     if (!outcome.sent) {
       if (outcome.reason === "empty_batch") {
         return apiSuccess(
-          { mode: "send", sent: false, reason: outcome.reason, message: outcome.message, period, summary: batch.summary, ...readiness },
+          { mode: "send", sent: false, reason: outcome.reason, message: outcome.message, period, summary: batch.summary, consent, blockers, ...readiness },
           identity.meta,
           { headers: { ...rate.headers, "Cache-Control": "no-store" } },
         );
@@ -351,6 +482,8 @@ export async function POST(request: NextRequest) {
         requestedDays,
         windowClampedTo: requestedDays > days ? days : null,
         summary: batch.summary,
+        consent,
+        blockers,
         metaResponses: outcome.responses,
         signalVersion: batch.signalVersion,
         generatedAt: new Date().toISOString(),

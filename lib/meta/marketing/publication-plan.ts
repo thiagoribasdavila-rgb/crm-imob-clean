@@ -252,18 +252,25 @@ export function validatePublication(input: PublicationInput): string[] {
     problems.push("mídia vazia — nenhum image hash nem video id fornecido (nem no asset_feed_spec nem em imageHashes/videoIds).");
   }
 
-  // Targeting HOUSING do primeiro ad set do esqueleto.
+  // Targeting HOUSING de TODOS os ad sets do esqueleto — olhar só o primeiro
+  // deixava passar segmentação discriminatória em qualquer ad set seguinte.
   const skeleton = asRecord(input.skeleton) ?? {};
   const adSets = Array.isArray(skeleton.adSets) ? skeleton.adSets : [];
-  const firstAdSet = asRecord(adSets[0]) ?? {};
-  const targeting = asRecord(firstAdSet.targeting);
-  if (!targeting) {
-    problems.push("targeting ausente no ad set do skeleton — HOUSING exige geo + travas explícitas (age 18–65, sem gênero).");
-  } else {
-    for (const v of validateHousingTargeting(targeting)) {
-      problems.push(`targeting HOUSING: ${v.field} — ${v.detail}`);
-    }
+  if (adSets.length === 0) {
+    problems.push("skeleton sem ad set — targeting ausente: HOUSING exige geo + travas explícitas (age 18–65, sem gênero).");
   }
+  adSets.forEach((raw, index) => {
+    const adSet = asRecord(raw) ?? {};
+    const targeting = asRecord(adSet.targeting);
+    const label = adSets.length > 1 ? ` ${index}` : "";
+    if (!targeting) {
+      problems.push(`targeting ausente no ad set${label} do skeleton — HOUSING exige geo + travas explícitas (age 18–65, sem gênero).`);
+      return;
+    }
+    for (const v of validateHousingTargeting(targeting)) {
+      problems.push(`targeting HOUSING (ad set${label}): ${v.field} — ${v.detail}`);
+    }
+  });
 
   // Qualquer status não-PAUSED em qualquer lugar do esqueleto.
   for (const status of collectValues(skeleton, "status")) {

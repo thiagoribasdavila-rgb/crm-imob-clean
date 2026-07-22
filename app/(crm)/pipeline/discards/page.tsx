@@ -8,13 +8,28 @@ import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 
+/* Denominador do descarte. Os campos são opcionais porque o relatório só passa
+   a apurá-los quando a base por origem/campanha da janela puder ser contada —
+   e um relatório que ainda não apura precisa dizer isso, não devolver uma taxa
+   calculada sobre denominador inexistente. */
+type DiscardBaseFields = {
+  leadsFromSource?: number | null;
+  leadsFromCampaign?: number | null;
+  discardRatePct?: number | null;
+  sampleSufficient?: boolean | null;
+  baseUnavailableReason?: string | null;
+  /** Leads DISTINTOS descartados — o numerador da taxa (o mesmo lead descartado
+   *  duas vezes é um lead perdido, não dois). */
+  uniqueLeads?: number | null;
+};
+
 type DiscardReport = {
   period: { start: string; end: string; days: number };
   totals: { lostMoves: number | null; discarded: number; uniqueLeads: number; classified: number; coveragePct: number | null };
   byReason: Array<{ key: string; label: string; metaCategory: string; count: number; share: number }>;
   byMetaCategory: Array<{ category: string; count: number; share: number }>;
-  bySource: Array<{ source: string; count: number; share: number }>;
-  byCampaign: Array<{ campaignId: string | null; campaign: string | null; count: number; share: number }>;
+  bySource: Array<{ source: string; count: number; share: number } & DiscardBaseFields>;
+  byCampaign: Array<{ campaignId: string | null; campaign: string | null; count: number; share: number } & DiscardBaseFields>;
   andromeda: { policy: string; directorDecisionRequired: boolean; readyForCrmLeadStatusSync: boolean; taxonomyVersion: number };
   generatedAt: string;
 };
@@ -29,6 +44,49 @@ function ShareMeter({ share }: { share: number }) {
   return (
     <div className="mt-2 h-1 overflow-hidden rounded-full bg-[rgba(148,163,184,0.12)]" aria-hidden="true">
       <div className="h-full rounded-full bg-[#fb7185]" style={{ width: `${Math.min(100, Math.max(0, share))}%` }} />
+    </div>
+  );
+}
+
+/* Taxa exige as duas pontas: quantos descartes e de quantos leads. Faltando
+   qualquer uma, a resposta é o motivo — nunca um número. */
+function readDiscardBase(item: DiscardBaseFields) {
+  const base = typeof item.leadsFromSource === "number"
+    ? item.leadsFromSource
+    : typeof item.leadsFromCampaign === "number"
+      ? item.leadsFromCampaign
+      : null;
+  const ratePct = typeof item.discardRatePct === "number" ? item.discardRatePct : null;
+  if (base === null || ratePct === null) {
+    // Sem motivo APURADO pela rota não há nada a dizer: um pedido de desculpas
+    // repetido linha a linha não muda decisão nenhuma. `null` = não renderiza.
+    const reason = typeof item.baseUnavailableReason === "string" && item.baseUnavailableReason.trim()
+      ? item.baseUnavailableReason.trim()
+      : null;
+    return { measured: false as const, reason };
+  }
+  return { measured: true as const, base, ratePct, insufficient: item.sampleSufficient === false };
+}
+
+/* "58 descartes" não decide nada sem "de quantos". Esta linha é o denominador —
+   e, quando a amostra é fina demais, o aviso de que a taxa ainda não autoriza
+   cortar a origem. */
+function DiscardRateLine({ item, count }: { item: DiscardBaseFields; count: number }) {
+  const base = readDiscardBase(item);
+  if (!base.measured) {
+    if (!base.reason) return null;
+    return (
+      <p className="mt-1 text-[11px] leading-4 text-[#6b7890]">
+        taxa de descarte <span className="cc6-num">—</span> · {base.reason}
+      </p>
+    );
+  }
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-4 text-[#6b7890]">
+      <span className="cc6-num">
+        <strong className={`font-semibold ${base.insufficient ? "text-[#aab6ca]" : "text-[#fb7185]"}`}>{base.ratePct}%</strong> descartados · {count} de {base.base} leads
+      </span>
+      {base.insufficient ? <span className="cc6-chip text-[10px]!">amostra insuficiente para decidir</span> : null}
     </div>
   );
 }
@@ -205,11 +263,14 @@ export default function PipelineDiscardsPage() {
                     </h2>
                   </header>
                   {report.bySource.map((item) => (
-                    <div key={item.source} className="cc6-hairline flex items-baseline justify-between gap-3 px-5 py-2.5">
-                      <span className="min-w-0 truncate text-sm text-[#aab6ca]">{item.source}</span>
-                      <span className="cc6-num shrink-0 text-xs text-[#6b7890]">
-                        <strong className="text-sm font-semibold text-[#e8eef8]">{item.count}</strong> · {item.share}%
-                      </span>
+                    <div key={item.source} className="cc6-hairline px-5 py-2.5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="min-w-0 truncate text-sm text-[#aab6ca]">{item.source}</span>
+                        <span className="cc6-num shrink-0 text-xs text-[#6b7890]">
+                          <strong className="text-sm font-semibold text-[#e8eef8]">{item.count}</strong> · {item.share}%
+                        </span>
+                      </div>
+                      <DiscardRateLine item={item} count={item.uniqueLeads ?? item.count} />
                     </div>
                   ))}
                 </section>
@@ -221,11 +282,14 @@ export default function PipelineDiscardsPage() {
                     </h2>
                   </header>
                   {report.byCampaign.map((item) => (
-                    <div key={item.campaignId ?? "sem_campanha"} className="cc6-hairline flex items-baseline justify-between gap-3 px-5 py-2.5">
-                      <span className="min-w-0 truncate text-sm text-[#aab6ca]">{item.campaign || item.campaignId || "Sem campanha"}</span>
-                      <span className="cc6-num shrink-0 text-xs text-[#6b7890]">
-                        <strong className="text-sm font-semibold text-[#e8eef8]">{item.count}</strong> · {item.share}%
-                      </span>
+                    <div key={item.campaignId ?? "sem_campanha"} className="cc6-hairline px-5 py-2.5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="min-w-0 truncate text-sm text-[#aab6ca]">{item.campaign || item.campaignId || "Sem campanha"}</span>
+                        <span className="cc6-num shrink-0 text-xs text-[#6b7890]">
+                          <strong className="text-sm font-semibold text-[#e8eef8]">{item.count}</strong> · {item.share}%
+                        </span>
+                      </div>
+                      <DiscardRateLine item={item} count={item.uniqueLeads ?? item.count} />
                     </div>
                   ))}
                 </section>

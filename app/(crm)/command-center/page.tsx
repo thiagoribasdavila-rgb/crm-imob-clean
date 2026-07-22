@@ -86,6 +86,8 @@ type Briefing = {
   generatedAt: string;
   status: "critical" | "attention" | "healthy";
   signals: BriefingSignal[];
+  /** O que o briefing não enxerga — rodapé de cobertura, nunca fila de trabalho. */
+  coverage?: { blindSpots?: Array<{ id: string; title: string; reason: string }> };
   model: { generativeReady: boolean; localIntelligenceReady: boolean };
 };
 
@@ -2346,6 +2348,25 @@ export default function CommandCenterPage() {
         </section>
       ) : null}
 
+      {/* IA · liderança — a fila dos leads ABERTOS sem responsável. O painel só
+          existia para o corretor, e a maior massa de receita parada da base não
+          está em carteira nenhuma: está sem dono, invisível em todas as telas.
+          Aditivo e sem automação — o painel leva ao lead, quem escolhe o dono
+          continua sendo gente.
+          A condição espelha o conjunto LEADERSHIP da rota (director |
+          superintendent | manager). Com `!isBroker`, papéis como marketing,
+          finance, developer e viewer renderizavam a seção e recebiam 403 —
+          erro fixo na tela para quem nunca deveria ver a seção. */}
+      {isDirector || isSuperintendent || isManager ? (
+        <section
+          aria-label="Leads abertos sem responsável"
+          className="cc5-reveal [transform-style:preserve-3d]"
+          style={{ animationDelay: "125ms" }}
+        >
+          <NextBestActionPanel max={5} scope="sem_dono" />
+        </section>
+      ) : null}
+
       {/* Governança · liderança — aprovar as campanhas Meta prontas (Arvo/Spin)
           com 1 clique, direto para a Caixa de Aprovações. */}
       {!isBroker ? (
@@ -2866,6 +2887,14 @@ export default function CommandCenterPage() {
                   })}
                 </ul>
               )}
+              {/* Rodapé de cobertura: o que a IA não enxerga fica FORA da fila
+                  de sinais — é propriedade do sistema, não alerta do dia. */}
+              {briefing?.coverage?.blindSpots?.length ? (
+                <p className="cc6-hairline mt-3 pt-3 text-[11px] leading-5 text-slate-500">
+                  O que este painel não enxerga:{" "}
+                  {briefing.coverage.blindSpots.map((spot) => `${spot.title} (${spot.reason})`).join("; ")}.
+                </p>
+              ) : null}
             </div>
             )}
           </AtlasCard>

@@ -57,6 +57,30 @@ export type PlanInput = {
 
 const GRAPH = "https://graph.facebook.com";
 const PLACEHOLDER_RE = /\{\{step(\d+)\.id\}\}/g;
+/** Placeholder de CONFIGURAÇÃO (ex.: "<<PAGE_ID>>") — nunca pode ir à Meta. */
+const CONFIG_PLACEHOLDER_RE = /<<[^<>]+>>/;
+
+/**
+ * Trilho de verba em centavos e travas HOUSING vivem DUPLICADOS aqui de
+ * propósito: este módulo não tem nenhum import de VALOR (é carregado isolado,
+ * por strip de tipos, pelos checks adversariais e pelo executor), então
+ * compartilhar a constante com campaign-control.ts/housing-audience.ts custaria
+ * essa propriedade. Ao mudar um trilho, mude os dois.
+ */
+export const EXEC_MIN_DAILY_BUDGET_CENTS = 500;
+export const EXEC_MAX_DAILY_BUDGET_CENTS = 100_000;
+/** Teto de lifetime_budget = teto diário × este fator (≈ um mês). */
+export const EXEC_MAX_LIFETIME_FACTOR = 30;
+const HOUSING_AGE_MIN = 18;
+const HOUSING_AGE_MAX = 65;
+const HOUSING_MIN_RADIUS_KM = 24;
+
+/** Trilho calibrável pelo chamador (por organização) — sem I/O neste módulo. */
+export type PlanLimits = {
+  minDailyBudgetCents?: number;
+  maxDailyBudgetCents?: number;
+  maxLifetimeFactor?: number;
+};
 
 // ---------------------------------------------------------------------------
 // Helpers puros
@@ -83,6 +107,75 @@ function collectValues(value: unknown, key: string, out: string[] = []): string[
   for (const [k, v] of Object.entries(rec)) {
     if (k === key && typeof v === "string") out.push(v);
     collectValues(v, key, out);
+  }
+  return out;
+}
+
+/** Todos os valores numéricos (number ou string numérica) sob `key` (profundo). */
+function collectNumbers(value: unknown, key: string, out: unknown[] = []): unknown[] {
+  if (Array.isArray(value)) {
+    for (const item of value) collectNumbers(item, key, out);
+    return out;
+  }
+  const rec = asRecord(value);
+  if (!rec) return out;
+  for (const [k, v] of Object.entries(rec)) {
+    if (k === key && (typeof v === "number" || typeof v === "string")) out.push(v);
+    collectNumbers(v, key, out);
+  }
+  return out;
+}
+
+/** Todas as strings do payload (profundo) — para caçar placeholder não resolvido. */
+function collectAllStrings(value: unknown, out: string[] = []): string[] {
+  if (typeof value === "string") { out.push(value); return out; }
+  if (Array.isArray(value)) {
+    for (const item of value) collectAllStrings(item, out);
+    return out;
+  }
+  const rec = asRecord(value);
+  if (rec) for (const v of Object.values(rec)) collectAllStrings(v, out);
+  return out;
+}
+
+/**
+ * Travas da categoria especial HOUSING sobre um targeting arbitrário — espelho
+ * de validateHousingTargeting (lib/meta/marketing/housing-audience.ts), repetido
+ * aqui pela regra de "zero import de valor" declarada acima.
+ */
+function housingTargetingProblems(spec: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  const ageMin = Number(spec.age_min);
+  const ageMax = Number(spec.age_max);
+  if (Number.isFinite(ageMin) && ageMin !== HOUSING_AGE_MIN) {
+    out.push(`age_min ${ageMin} — HOUSING exige ${HOUSING_AGE_MIN}`);
+  }
+  if (Number.isFinite(ageMax) && ageMax !== HOUSING_AGE_MAX) {
+    out.push(`age_max ${ageMax} — HOUSING exige ${HOUSING_AGE_MAX} ("65+")`);
+  }
+  if (Array.isArray(spec.genders) && spec.genders.length > 0) {
+    out.push("genders — HOUSING proíbe segmentar por gênero (use [])");
+  }
+  if (spec.exclusions != null) out.push("exclusions — HOUSING proíbe exclusões de segmentação detalhada");
+  if (spec.lookalike_audience_ids != null) out.push("lookalike_audience_ids — HOUSING proíbe públicos semelhantes");
+  if (Array.isArray(spec.custom_audiences)) {
+    const lookalike = spec.custom_audiences.some((a) => {
+      const sub = asRecord(a)?.subtype;
+      return typeof sub === "string" && sub.toUpperCase() === "LOOKALIKE";
+    });
+    if (lookalike) out.push("custom_audiences — HOUSING proíbe públicos semelhantes (lookalike)");
+  }
+  const geo = asRecord(spec.geo_locations);
+  if (geo?.zips != null) out.push("geo_locations.zips — HOUSING proíbe segmentação por CEP");
+  const custom = geo?.custom_locations;
+  if (Array.isArray(custom)) {
+    custom.forEach((loc, idx) => {
+      const l = asRecord(loc) ?? {};
+      const km = l.distance_unit === "mile" ? Number(l.radius) * 1.609 : Number(l.radius);
+      if (Number.isFinite(km) && km < HOUSING_MIN_RADIUS_KM) {
+        out.push(`geo_locations.custom_locations[${idx}] raio ${km.toFixed(1)} km abaixo do mínimo de ${HOUSING_MIN_RADIUS_KM} km`);
+      }
+    });
   }
   return out;
 }
@@ -237,13 +330,25 @@ export function planCampaignCreation(input: PlanInput): ExecutionStep[] {
 /**
  * Acusa tudo que tornaria o plano inseguro ou inexecutável:
  * - qualquer status !== "PAUSED" (ou ausência de status em campanha/ad set/ad);
- * - ausência de special_ad_categories na campanha;
+ * - special_ad_categories sem "HOUSING" na campanha;
+ * - targeting ausente ou fora das travas HOUSING em QUALQUER ad set;
+ * - verba (daily_budget/lifetime_budget) fora do trilho, em qualquer step;
+ * - placeholder de configuração não resolvido (ex.: "<<PAGE_ID>>");
  * - placeholder {{stepN.id}} órfão (step inexistente ou não-anterior);
  * - path fora do padrão act_<id>/<edge>.
+ *
+ * É a ÚNICA porta que as duas rotas de escrita atravessam (intake e /execute
+ * action create, que recebe os steps verbatim do payload da aprovação): o que
+ * não for barrado aqui chega à Meta como veio de quem propôs.
  * Vazio = plano aprovado para executeSteps.
  */
-export function validateExecutionPlan(steps: ExecutionStep[]): string[] {
+export function validateExecutionPlan(steps: ExecutionStep[], limits?: PlanLimits): string[] {
   const problems: string[] = [];
+  const minDaily = Number.isFinite(limits?.minDailyBudgetCents) ? Number(limits?.minDailyBudgetCents) : EXEC_MIN_DAILY_BUDGET_CENTS;
+  const maxDaily = Number.isFinite(limits?.maxDailyBudgetCents) ? Number(limits?.maxDailyBudgetCents) : EXEC_MAX_DAILY_BUDGET_CENTS;
+  const lifetimeFactor = Number.isFinite(limits?.maxLifetimeFactor) ? Number(limits?.maxLifetimeFactor) : EXEC_MAX_LIFETIME_FACTOR;
+  const maxLifetime = maxDaily * lifetimeFactor;
+
   steps.forEach((step, i) => {
     if (!/^act_\d+\/(campaigns|adsets|adcreatives|ads)$/.test(step.path)) {
       problems.push(`step ${i} (${step.kind}): path "${step.path}" fora do padrão act_<id>/{campaigns|adsets|adcreatives|ads}`);
@@ -261,8 +366,64 @@ export function validateExecutionPlan(steps: ExecutionStep[]): string[] {
 
     if (step.kind === "create_campaign") {
       const cats = asRecord(clean)?.special_ad_categories;
-      if (!Array.isArray(cats) || cats.length === 0) {
-        problems.push(`step ${i} (create_campaign): special_ad_categories ausente — obrigatório (imobiliário = ["HOUSING"])`);
+      // Array não-vazio não basta: ["EMPLOYMENT"] passava no gate antigo e a
+      // campanha imobiliária ia ao ar fora da categoria que a lei exige.
+      if (!Array.isArray(cats) || !cats.includes("HOUSING")) {
+        problems.push(
+          `step ${i} (create_campaign): special_ad_categories sem "HOUSING" ` +
+            `(veio ${JSON.stringify(cats ?? null)}) — imobiliário é categoria especial obrigatória`,
+        );
+      }
+    }
+
+    // Targeting de TODO ad set (não só o primeiro): sob HOUSING é aqui que a
+    // segmentação discriminatória entraria, e o executor não olhava nenhum.
+    if (step.kind === "create_adset") {
+      const targeting = asRecord(asRecord(clean)?.targeting);
+      if (!targeting) {
+        problems.push(`step ${i} (create_adset): targeting ausente — HOUSING exige geo explícito e travas de idade/gênero`);
+      } else {
+        for (const violation of housingTargetingProblems(targeting)) {
+          problems.push(`step ${i} (create_adset): targeting HOUSING — ${violation}`);
+        }
+      }
+    }
+
+    // Verba em QUALQUER profundidade e QUALQUER step (campanha CBO ou ad set):
+    // é o único ponto que as duas rotas de escrita atravessam, então o trilho
+    // anti-typo tem de morar aqui.
+    for (const raw of collectNumbers(clean, "daily_budget")) {
+      const cents = Number(raw);
+      if (!Number.isFinite(cents) || cents < minDaily) {
+        problems.push(`step ${i} (${step.kind}): daily_budget ${String(raw)} abaixo do trilho mínimo de ${minDaily} centavos`);
+      } else if (cents > maxDaily) {
+        problems.push(
+          `step ${i} (${step.kind}): daily_budget ${cents} centavos acima do teto de ${maxDaily} ` +
+            `(R$ ${(maxDaily / 100).toFixed(2)}/dia) — confirme o valor ou calibre o teto da organização`,
+        );
+      }
+    }
+    for (const raw of collectNumbers(clean, "lifetime_budget")) {
+      const cents = Number(raw);
+      if (!Number.isFinite(cents) || cents < minDaily) {
+        problems.push(`step ${i} (${step.kind}): lifetime_budget ${String(raw)} abaixo do trilho mínimo de ${minDaily} centavos`);
+      } else if (cents > maxLifetime) {
+        problems.push(
+          `step ${i} (${step.kind}): lifetime_budget ${cents} centavos acima do teto de ${maxLifetime} ` +
+            `(${lifetimeFactor}× o teto diário) — confirme o valor ou calibre o teto da organização`,
+        );
+      }
+    }
+
+    // Placeholder de configuração não resolvido: o step 0 (campanha, que não
+    // carrega pageId) seria criado e o ad set recusado — campanha órfã na conta.
+    for (const text of collectAllStrings(clean)) {
+      if (CONFIG_PLACEHOLDER_RE.test(text)) {
+        problems.push(
+          `step ${i} (${step.kind}): placeholder de configuração não resolvido em "${text.slice(0, 80)}" ` +
+            "— preencha Página/formulário antes de executar",
+        );
+        break; // um por step basta para recusar o plano
       }
     }
 

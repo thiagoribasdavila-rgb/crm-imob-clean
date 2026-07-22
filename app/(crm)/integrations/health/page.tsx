@@ -48,7 +48,17 @@ type Payload = {
       productionReady: boolean;
     };
     providers: Provider[];
-    queues: { pending: number; failed: number; unresolvedDeadLetters: number };
+    queues: {
+      pending: number;
+      failed: number;
+      unresolvedDeadLetters: number;
+      tokenUnhealthy?: {
+        measured: boolean;
+        count?: number;
+        oldestAt?: string | null;
+        reason?: string;
+      };
+    };
     runtime: {
       hostingProvider: string;
       publicHttps: boolean;
@@ -60,7 +70,8 @@ type Payload = {
 };
 
 const PROVIDER_NAMES: Record<string, string> = {
-  meta: "Meta Ads",
+  meta: "Meta Lead Ads + CAPI",
+  meta_marketing: "Meta Marketing API (verba)",
   whatsapp: "WhatsApp",
   google_ads: "Google Ads",
   youtube: "YouTube Ads",
@@ -89,6 +100,7 @@ const BLOCKER_LABELS: Record<string, string> = {
   sync_evidence_missing: "sem evidência de sincronização",
   sync_stale: "evidência com mais de 24h",
   failed_queue_items: "itens falhos na fila",
+  token_expired: "fila parada por credencial expirada — renove o token",
   last_error_present: "último erro registrado",
 };
 
@@ -140,6 +152,7 @@ export default function Page() {
   }
   const c = data?.current;
   const lastSnapshotAt = data?.snapshots[0]?.created_at;
+  const tokenStuck = c?.queues.tokenUnhealthy;
 
   const vitals = [
     { label: "Saudáveis", value: c?.summary.healthy, accent: c?.summary.healthy ? "cc6-ok" : "", hint: "Provedores com teste real e evidência fresca" },
@@ -149,6 +162,18 @@ export default function Page() {
     { label: "Fila", value: c?.queues.pending, accent: "", hint: "Eventos pendentes ou em processamento (30d)" },
     { label: "Falhas", value: c?.queues.failed, accent: c?.queues.failed ? "cc6-crit" : "", hint: "Eventos falhos ou em dead letter (30d)" },
     { label: "DLQ", value: c?.queues.unresolvedDeadLetters, accent: c?.queues.unresolvedDeadLetters ? "cc6-crit" : "", hint: "Dead letters sem resolução" },
+    // Presos por credencial não aparecem em DLQ (o worker os mantém retryable
+    // de propósito): sem esta coluna, o incidente de token não tem número.
+    {
+      label: "Token",
+      value: tokenStuck?.measured ? tokenStuck.count ?? 0 : "—",
+      accent: tokenStuck?.measured && tokenStuck.count ? "cc6-crit" : "",
+      hint: !tokenStuck
+        ? "Fila parada por credencial expirada"
+        : tokenStuck.measured
+          ? `Eventos parados por credencial expirada${tokenStuck.oldestAt ? ` · mais antigo ${SNAPSHOT_FORMAT.format(new Date(tokenStuck.oldestAt))}` : ""}`
+          : `Não medido — ${tokenStuck.reason ?? "leitura indisponível"}`,
+    },
   ];
 
   return (

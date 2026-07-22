@@ -26,8 +26,17 @@ export const dynamic = "force-dynamic";
 //   },
 //   byReason:       [{ key, label, metaCategory, count, share }],   // share em % do total de descartes
 //   byMetaCategory: [{ category, count, share }],
-//   bySource:       [{ source, count, share }],                     // source do LEAD (leads.source)
-//   byCampaign:     [{ campaignId, campaign, count, share }],       // campaign_id/campaign do LEAD
+//   bySource:       [{ source, count, uniqueLeads, share,
+//                      leadsFromSource, discardRatePct, sampleSufficient, baseUnavailableReason }],
+//   byCampaign:     [{ campaignId, campaign, count, uniqueLeads, share,
+//                      leadsFromCampaign, discardRatePct, sampleSufficient, baseUnavailableReason }],
+//
+// Denominador: "58 descartes" não decide nada sem "de quantos". leadsFromSource
+// é a contagem de leads da MESMA janela com aquela origem (COUNT no servidor,
+// sem trafegar linha), e discardRatePct é leads distintos descartados ÷ essa
+// base. Quando a base não é apurável (origem não informada, campanha ausente),
+// o campo sai null e baseUnavailableReason diz por quê — a tela nunca inventa
+// uma taxa e nunca pede desculpa sem motivo apurado.
 //   andromeda: {
 //     policy: "negative_signals_internal_only",  // motivos ficam internos (andromeda-loop)
 //     directorDecisionRequired: true,            // envio à Meta exige gate do diretor
@@ -58,6 +67,20 @@ function clampDays(value: string | null) {
 function sharePct(count: number, total: number) {
   return total > 0 ? Math.round((count / total) * 1000) / 10 : 0;
 }
+
+/**
+ * Amostra mínima para a taxa autorizar decisão de corte, alinhada ao
+ * minimumLeadsForDecision do painel executivo. Abaixo disto a taxa é exibida,
+ * mas marcada — 3 descartes em 4 leads dá 75% e não decide nada.
+ */
+const MINIMUM_BASE_FOR_DECISION = 30;
+
+/**
+ * Teto de denominadores apurados por chamada. Cada um é um COUNT no servidor
+ * (head: true, zero linha trafegada), mas contagem é custo: as caudas longas
+ * ficam sem base declarada em vez de multiplicar consultas.
+ */
+const MAX_BASE_LOOKUPS = 12;
 
 export async function GET(request: NextRequest) {
   const rate = enforceRateLimit(request, {
@@ -142,8 +165,11 @@ export async function GET(request: NextRequest) {
 
   const byReason = new Map<string, { key: string; label: string; metaCategory: string; count: number }>();
   const byMetaCategory = new Map<string, number>();
-  const bySource = new Map<string, number>();
-  const byCampaign = new Map<string, { campaignId: string | null; campaign: string | null; count: number }>();
+  // Leads DISTINTOS por bucket entram junto da contagem de eventos: o mesmo
+  // lead descartado duas vezes é um lead perdido, não dois — e é o lead que a
+  // taxa compara com a base.
+  const bySource = new Map<string, { count: number; leads: Set<string> }>();
+  const byCampaign = new Map<string, { campaignId: string | null; campaign: string | null; count: number; leads: Set<string> }>();
   let classified = 0;
 
   for (const row of rows) {
@@ -163,7 +189,10 @@ export async function GET(request: NextRequest) {
 
     const lead = row.lead_id ? leads.get(row.lead_id) : null;
     const source = typeof lead?.source === "string" && lead.source.trim() ? lead.source.trim() : "desconhecido";
-    bySource.set(source, (bySource.get(source) ?? 0) + 1);
+    const sourceBucket = bySource.get(source) ?? { count: 0, leads: new Set<string>() };
+    sourceBucket.count += 1;
+    if (row.lead_id) sourceBucket.leads.add(row.lead_id);
+    bySource.set(source, sourceBucket);
     const campaignId = lead?.campaign_id !== null && lead?.campaign_id !== undefined && lead?.campaign_id !== ""
       ? String(lead.campaign_id)
       : null;
@@ -172,10 +201,58 @@ export async function GET(request: NextRequest) {
       campaignId,
       campaign: typeof lead?.campaign === "string" && lead.campaign.trim() ? lead.campaign.trim() : null,
       count: 0,
+      leads: new Set<string>(),
     };
     campaignBucket.count += 1;
+    if (row.lead_id) campaignBucket.leads.add(row.lead_id);
     byCampaign.set(campaignKey, campaignBucket);
   }
+
+  // --- Denominador da taxa de descarte -------------------------------------
+  // Um COUNT por bucket, com head: true — o servidor conta e não devolve linha.
+  // Sem isto a tela mostrava "58 descartes" sem dizer de quantos, que é o
+  // número que decide se a origem é cortada.
+  const sourceEntries = [...bySource.entries()].sort((left, right) => right[1].count - left[1].count);
+  const campaignEntries = [...byCampaign.values()].sort((left, right) => right.count - left.count);
+  const countLeadsBy = async (column: "source" | "campaign_id", value: string) => {
+    const result = await identity.supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .gte("created_at", since)
+      .eq(column, value);
+    if (result.error) {
+      logger.warn("analytics.discard_report.base_unavailable", { organizationId, column, code: result.error.code });
+      return null;
+    }
+    return result.count ?? 0;
+  };
+  const sourceBase = new Map<string, number | null>();
+  await Promise.all(
+    sourceEntries.slice(0, MAX_BASE_LOOKUPS).map(async ([source]) => {
+      // "desconhecido" é rótulo nosso para origem ausente, não um valor do
+      // banco: contar leads com origem nula devolveria uma base que não
+      // corresponde a origem nenhuma.
+      if (source === "desconhecido") return;
+      sourceBase.set(source, await countLeadsBy("source", source));
+    }),
+  );
+  const campaignBase = new Map<string, number | null>();
+  await Promise.all(
+    campaignEntries.slice(0, MAX_BASE_LOOKUPS).map(async (bucket) => {
+      if (!bucket.campaignId) return;
+      campaignBase.set(bucket.campaignId, await countLeadsBy("campaign_id", bucket.campaignId));
+    }),
+  );
+  /** Base ausente sempre vem com motivo apurado — a tela não inventa o dela. */
+  const baseFields = (unique: number, base: number | null | undefined, missingReason: string) => {
+    if (base === null || base === undefined) return { discardRatePct: null, sampleSufficient: null, baseUnavailableReason: missingReason };
+    return {
+      discardRatePct: base > 0 ? Math.round((unique / base) * 1000) / 10 : null,
+      sampleSufficient: base >= MINIMUM_BASE_FOR_DECISION,
+      baseUnavailableReason: base > 0 ? null : "nenhum lead desta chave foi criado na janela",
+    };
+  };
 
   const discarded = rows.length;
   const lostMoves = lostMovesResult.error ? null : lostMovesResult.count ?? 0;
@@ -209,12 +286,35 @@ export async function GET(request: NextRequest) {
       byMetaCategory: [...byMetaCategory.entries()]
         .map(([category, count]) => ({ category, count, share: sharePct(count, discarded) }))
         .sort((left, right) => right.count - left.count),
-      bySource: [...bySource.entries()]
-        .map(([source, count]) => ({ source, count, share: sharePct(count, discarded) }))
-        .sort((left, right) => right.count - left.count),
-      byCampaign: [...byCampaign.values()]
-        .map((bucket) => ({ ...bucket, share: sharePct(bucket.count, discarded) }))
-        .sort((left, right) => right.count - left.count),
+      bySource: sourceEntries.map(([source, bucket]) => ({
+        source,
+        count: bucket.count,
+        uniqueLeads: bucket.leads.size,
+        share: sharePct(bucket.count, discarded),
+        leadsFromSource: sourceBase.get(source) ?? null,
+        ...baseFields(
+          bucket.leads.size,
+          sourceBase.get(source),
+          source === "desconhecido"
+            ? "origem não informada nesses leads — não há base comparável"
+            : "base desta origem não apurada nesta janela",
+        ),
+      })),
+      byCampaign: campaignEntries.map((bucket) => ({
+        campaignId: bucket.campaignId,
+        campaign: bucket.campaign,
+        count: bucket.count,
+        uniqueLeads: bucket.leads.size,
+        share: sharePct(bucket.count, discarded),
+        leadsFromCampaign: bucket.campaignId ? campaignBase.get(bucket.campaignId) ?? null : null,
+        ...baseFields(
+          bucket.leads.size,
+          bucket.campaignId ? campaignBase.get(bucket.campaignId) : null,
+          bucket.campaignId
+            ? "base desta campanha não apurada nesta janela"
+            : "esses leads não têm campanha vinculada — a ingestão ainda não grava campaign_id, então não há base por campanha",
+        ),
+      })),
       andromeda: {
         policy: "negative_signals_internal_only",
         directorDecisionRequired: true,
