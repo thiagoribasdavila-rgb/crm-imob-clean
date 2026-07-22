@@ -4,23 +4,10 @@ type LogLevel = "debug" | "info" | "warn" | "error";
 
 type Metadata = Record<string, unknown>;
 
-const SENSITIVE_KEY = /(authorization|cookie|password|passphrase|token|secret|api.?key|email|phone|mobile|whatsapp|cpf|cnpj|document|prompt|message|lead.?content)/i;
-const SENSITIVE_VALUE = /(bearer\s+[a-z0-9._-]+|\bsk-[a-z0-9_-]{12,}|\bpplx-[a-z0-9_-]{12,}|\beyJ[a-z0-9_-]+\.[a-z0-9_-]+\.[a-z0-9_-]+|[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}|\b\d{10,14}\b)/i;
-
-export function sanitizeLogMetadata(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(redact);
-  if (typeof value === "string") return SENSITIVE_VALUE.test(value) ? "[REDACTED]" : value.slice(0, 2_000);
-  if (!value || typeof value !== "object") return value;
-
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>).map(([key, nested]) => [
-      key,
-      SENSITIVE_KEY.test(key) ? "[REDACTED]" : sanitizeLogMetadata(nested),
-    ]),
-  );
-}
-
-const redact = sanitizeLogMetadata;
+// A redação vive em ./redact — função pura, testável fora do bundler do Next.
+// Reexportada aqui para não quebrar quem já importava sanitizeLogMetadata do logger.
+export { sanitizeLogMetadata } from "./redact";
+import { sanitizeLogMetadata as redact } from "./redact";
 
 function write(level: LogLevel, event: string, metadata: Metadata = {}) {
   const { requestId = "system", correlationId = requestId, ...safeMetadata } = metadata;
