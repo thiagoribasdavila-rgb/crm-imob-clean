@@ -29,6 +29,7 @@ import { aggregate } from "@/lib/marketing/cost-report";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeIntent, intentToken, missingForCommit, assembleMediaRefs } from "@/lib/marketing/campaign-intake";
+import { canDecideMetaCampaign, isMetaCampaignApproval, META_CAMPAIGN_AUTHORITY_MESSAGE } from "@/lib/meta/marketing/approval-authority";
 
 export const dynamic = "force-dynamic";
 
@@ -140,8 +141,58 @@ export async function POST(request: NextRequest) {
     return apiError("MISSING_MATERIAL", `Faltam itens para criar: ${missing.join("; ")}.`, identity.meta, { status: 422, details: missing });
   }
 
-  // IDEMPOTÊNCIA: reenviar o mesmo confirmToken NÃO recria a campanha.
+  // PORTÃO DE APROVAÇÃO — esta rota criava campanha, conjunto, criativo e anúncios na
+  // Meta com dryRun:false e NÃO consultava aprovação em ponto nenhum: a palavra
+  // "approval" não aparecia neste arquivo. Era o caminho que funcionava contornando o
+  // caminho governado, e gastava dinheiro real com autorização de gerente.
+  //
+  // O portão é o MESMO de /api/v1/marketing/execute, de propósito: um segundo mecanismo
+  // paralelo seria só mais uma superfície para divergir. E ele FALHA FECHADO — sem
+  // approval_requests disponível, a execução real é bloqueada em vez de seguir adiante.
+  // Gastar verba é exatamente o tipo de operação que não pode degradar graciosamente.
   const admin = getSupabaseAdmin();
+
+  if (!canDecideMetaCampaign({ role: identity.access.profile.role, commercialRole: identity.access.profile.commercialRole })) {
+    return apiError("FORBIDDEN", META_CAMPAIGN_AUTHORITY_MESSAGE, identity.meta, { status: 403 });
+  }
+
+  const approvalId = String((body as Record<string, unknown> | null)?.approvalId ?? "").trim();
+  if (!approvalId) {
+    return apiError(
+      "APPROVAL_REQUIRED",
+      "Criar campanha na Meta exige uma aprovação registrada. Envie approvalId de um pedido aprovado.",
+      identity.meta,
+      { status: 428 },
+    );
+  }
+
+  const { data: approval, error: approvalError } = await admin
+    .from("approval_requests")
+    .select("id,status,entity_type,request_type,organization_id,expires_at")
+    .eq("id", approvalId)
+    .maybeSingle();
+
+  if (approvalError) {
+    return apiError(
+      "APPROVAL_UNAVAILABLE",
+      "Aprovação não verificável (approval_requests indisponível) — criação real bloqueada.",
+      identity.meta,
+      { status: 503 },
+    );
+  }
+  if (
+    !approval ||
+    approval.organization_id !== identity.access.organization.id ||
+    approval.status !== "approved" ||
+    !isMetaCampaignApproval({ entityType: approval.entity_type, requestType: approval.request_type })
+  ) {
+    return apiError("APPROVAL_INVALID", "Aprovação inexistente, de outra organização, não aprovada ou de outro tipo.", identity.meta, { status: 403 });
+  }
+  if (approval.expires_at && new Date(approval.expires_at).getTime() < Date.now()) {
+    return apiError("APPROVAL_EXPIRED", "Esta aprovação expirou — peça uma nova antes de criar.", identity.meta, { status: 403 });
+  }
+
+  // IDEMPOTÊNCIA: reenviar o mesmo confirmToken NÃO recria a campanha.
   const idemKey = `${identity.access.organization.id}:intake:${confirmToken}`;
   const prior = await findPriorExecution(admin, idemKey);
   if (prior) {
