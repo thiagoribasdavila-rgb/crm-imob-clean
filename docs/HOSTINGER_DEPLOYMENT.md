@@ -74,7 +74,7 @@ Produção deve usar `ATLAS_ENV=production`, `ATLAS_DATABASE_ENVIRONMENT=product
 ## Publicação segura
 
 1. Criar a aplicação V3 no domínio ou subdomínio escolhido, sem reutilizar arquivos da instalação removida do V2.
-2. Aplicar migrações somente no projeto Supabase de homologação.
+2. Aplicar migrações somente no projeto Supabase de homologação. Siga `docs/POST_DEPLOY_CHECKLIST.md`: DDL antes do código. Confirme a fundação V3, especialmente `public.atlas_events`, antes de publicar rotas que registram eventos, IA operacional, webhooks ou auditoria.
 3. Executar preflight, rotas reais e roteiro por perfil.
 4. Criar snapshot/backup antes de qualquer promoção.
 5. Manter o ZIP e o commit da última versão V3 aprovada para rollback.

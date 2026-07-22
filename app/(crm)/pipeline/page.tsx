@@ -411,7 +411,10 @@ export default function PipelinePage() {
     const won = leads.filter((lead) => lead.status === "ganho").reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0);
     const buyerProfiles = leads.filter((lead) => lead.status === "comprou_outro").length;
     const firstContactOverdue = open.filter((lead) => firstContactSla(lead)?.overdue).length;
-    return { open: open.length, pipeline, forecast, hot, highRisk, won, buyerProfiles, firstContactOverdue };
+    const overdueActions = open.filter(isNextActionOverdue).length;
+    const noNextAction = open.filter((lead) => !lead.next_action_at).length;
+    const stalled = open.filter((lead) => Boolean(proactiveSignal(lead))).length;
+    return { open: open.length, pipeline, forecast, hot, highRisk, won, buyerProfiles, firstContactOverdue, overdueActions, noNextAction, stalled };
   }, [leads, stages]);
 
   const stageData = useMemo(() => stages.map((stage) => {
@@ -478,6 +481,13 @@ export default function PipelinePage() {
     ];
   }, [leads]);
 
+  const executionLanes = useMemo(() => [
+    { key: "sla", label: "Responder agora", value: metrics.firstContactOverdue, detail: "SLA inicial vencido", action: "Ver SLAs", tone: "danger", focus: "sla" as FocusKey, sort: "prioridade" as SortKey },
+    { key: "sem_acao", label: "Agendar próximo passo", value: metrics.noNextAction, detail: "Sem compromisso futuro", action: "Organizar agenda", tone: "warning", focus: "sem_acao" as FocusKey, sort: "prioridade" as SortKey },
+    { key: "quentes", label: "Atacar quentes", value: metrics.hot, detail: "Score ≥ 70 ou temperatura quente", action: "Avançar hoje", tone: "success", focus: "quentes" as FocusKey, sort: "score" as SortKey },
+    { key: "risco", label: "Reduzir risco", value: metrics.highRisk + metrics.stalled, detail: "Parados, atrasados ou críticos", action: "Revisar gargalos", tone: "info", focus: "prioridade" as FocusKey, sort: "prioridade" as SortKey },
+  ], [metrics.firstContactOverdue, metrics.highRisk, metrics.hot, metrics.noNextAction, metrics.stalled]);
+
   return (
     <div className="space-y-5 pb-8" data-phase="37-pipeline-movement-workspace" data-pipeline-layout="movement-first">
       <section className={`atlas-pipeline-hero atlas-grid-glow ${focusMode ? "is-focus-mode" : ""}`}>
@@ -513,10 +523,18 @@ export default function PipelinePage() {
 
       <section className="atlas-pipeline-priority-queue" aria-labelledby="atlas-pipeline-priority-title" aria-live="polite" data-priority-source="authorized-loaded-pipeline">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Movimentação prioritária</p><h3 id="atlas-pipeline-priority-title" className="mt-1 text-lg font-semibold text-white">Comece por aqui</h3><p className="mt-1 text-xs text-slate-500">Suas três próximas ações.</p></div>
+          <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Movimentação prioritária</p><h3 id="atlas-pipeline-priority-title" className="mt-1 text-lg font-semibold text-white">Comece por aqui</h3><p className="mt-1 text-xs text-slate-500">Mesa de execução: quatro decisões antes de olhar as colunas.</p></div>
           <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar oportunidades do pipeline">
             {focusOptions.map((option) => <button key={option.key} type="button" onClick={() => setFocus(option.key)} aria-pressed={focus === option.key} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${focus === option.key ? "border-sky-400/30 bg-sky-400/10 text-sky-200" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><span>{option.label}</span><span className={`rounded-full px-1.5 py-0.5 text-[9px] ${focus === option.key ? "bg-sky-300/15 text-sky-100" : "bg-white/[0.05] text-slate-500"}`}>{option.count}</span></button>)}
           </div>
+        </div>
+        <div className="atlas-kanban-execution-cockpit" data-kanban-execution-cockpit>
+          {executionLanes.map((lane) => <button key={lane.key} type="button" data-tone={lane.tone} data-state={lane.value > 0 ? "attention" : "clear"} onClick={() => { setFocus(lane.focus); setSort(lane.sort); }} aria-label={`${lane.label}: ${lane.value}. ${lane.detail}. ${lane.action}.`} className="atlas-kanban-execution-lane">
+            <span>{lane.label}</span>
+            <strong>{loading ? "—" : lane.value}</strong>
+            <small>{lane.detail}</small>
+            <em>{lane.value > 0 ? lane.action : "Em dia"}</em>
+          </button>)}
         </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           {dailyFocus.map((lead, index) => {

@@ -4763,6 +4763,82 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.02);
 }
+.atlas-kanban-execution-cockpit {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.atlas-kanban-execution-lane {
+  display: grid;
+  min-height: 118px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--lane-accent, #38bdf8) 16%, transparent), transparent 44%),
+    rgba(255, 255, 255, 0.024);
+  text-align: left;
+  outline: none;
+  transition:
+    border-color .18s ease,
+    background .18s ease,
+    transform .18s ease;
+}
+.atlas-kanban-execution-lane[data-tone="danger"] { --lane-accent: #fb7185; }
+.atlas-kanban-execution-lane[data-tone="warning"] { --lane-accent: #fbbf24; }
+.atlas-kanban-execution-lane[data-tone="success"] { --lane-accent: #34d399; }
+.atlas-kanban-execution-lane[data-tone="info"] { --lane-accent: #38bdf8; }
+.atlas-kanban-execution-lane:hover,
+.atlas-kanban-execution-lane:focus-visible {
+  border-color: color-mix(in srgb, var(--lane-accent, #38bdf8) 42%, transparent);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--lane-accent, #38bdf8) 22%, transparent), transparent 48%),
+    rgba(255, 255, 255, 0.038);
+}
+.atlas-kanban-execution-lane:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lane-accent, #38bdf8) 14%, transparent);
+}
+.atlas-kanban-execution-lane[data-state="attention"] {
+  border-color: color-mix(in srgb, var(--lane-accent, #38bdf8) 26%, transparent);
+}
+.atlas-kanban-execution-lane span,
+.atlas-kanban-execution-lane strong,
+.atlas-kanban-execution-lane small,
+.atlas-kanban-execution-lane em {
+  display: block;
+  min-width: 0;
+}
+.atlas-kanban-execution-lane span {
+  color: #8ea2b9;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.atlas-kanban-execution-lane strong {
+  margin-top: 10px;
+  color: #f8fafc;
+  font: 760 clamp(1.6rem, 3vw, 2.2rem)/1 var(--font-sans);
+  letter-spacing: -.05em;
+}
+.atlas-kanban-execution-lane small {
+  margin-top: 7px;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.atlas-kanban-execution-lane em {
+  align-self: end;
+  margin-top: 12px;
+  color: color-mix(in srgb, var(--lane-accent, #38bdf8) 82%, #e2e8f0);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 750;
+}
 .atlas-broker-focus-heading {
   display: flex;
   align-items: end;
@@ -5155,6 +5231,16 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
     opacity: 0.42;
   }
   .atlas-pipeline-priority-queue { padding: 15px; }
+  .atlas-kanban-execution-cockpit {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .atlas-kanban-execution-lane {
+    min-height: 104px;
+    padding: 12px;
+  }
+  .atlas-kanban-execution-lane small {
+    white-space: normal;
+  }
 }
 
 .atlas-evolution-hero {

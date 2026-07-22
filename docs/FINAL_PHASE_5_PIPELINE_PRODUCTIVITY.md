@@ -17,6 +17,17 @@ O funil mantém resposta visual imediata, mas agora só permite uma movimentaç�
 
 A fila prioriza SLA do primeiro contato, próxima ação atrasada, ausência de compromisso futuro, temperatura, risco e score. O corretor recebe ação recomendada, motivo e acesso rápido à lead, mensagem e ligação.
 
+## Cockpit de execução 10/10
+
+O Kanban agora abre com uma faixa de decisão objetiva antes das colunas. Ela condensa quatro movimentos comerciais:
+
+- Responder agora: SLAs iniciais vencidos.
+- Agendar próximo passo: oportunidades sem compromisso futuro.
+- Atacar quentes: leads com score alto ou temperatura quente.
+- Reduzir risco: leads parados, atrasados ou críticos.
+
+Cada bloco aplica o filtro e a ordenação adequada no próprio quadro. A intenção é reduzir leitura, acelerar a primeira ação do corretor e dar ao gerente uma visão imediata de onde está o gargalo.
+
 ## Continuidade
 
 Foco, ordenação, densidade, colunas vazias e etapa móvel permanecem durante a sessão. A busca não é preservada para evitar guardar nome, telefone ou e-mail digitado no navegador.

@@ -209,6 +209,65 @@ curl http://localhost:3000    # app roda local?
 
 ---
 
+## ORDEM OBRIGATÓRIA — fundação V3 (`atlas_events`) antes do código
+
+**DDL antes do código.** Antes de subir qualquer ZIP que use ingestão de eventos,
+webhooks, auditoria, IA operacional ou digital twin, confirme que a fundação V3
+já está aplicada no Supabase alvo.
+
+Migration crítica:
+
+1. `20260711150000_atlas_v3_unification.sql`
+   Cria `public.atlas_events`, índices, RLS, `atlas_decisions`,
+   `atlas_agent_runs` e `digital_twin_snapshots`.
+
+Por que isso bloqueia release:
+
+- a rota `POST /api/v3/events/ingest` grava em `public.atlas_events`;
+- se a tabela não existir, o log aparece como `v3.event_ingest_failed`;
+- o usuário pode enxergar o sistema online, mas a operação perde auditoria,
+  memória e sinais para IA.
+
+Verificação mínima no SQL Editor do Supabase:
+
+```sql
+select to_regclass('public.atlas_events') as atlas_events_table;
+```
+
+Resultado esperado:
+
+```text
+public.atlas_events
+```
+
+Verifique as colunas:
+
+```sql
+select column_name, data_type
+from information_schema.columns
+where table_schema = 'public'
+  and table_name = 'atlas_events'
+order by ordinal_position;
+```
+
+Colunas esperadas: `id`, `organization_id`, `event_type`, `source`,
+`aggregate_type`, `aggregate_id`, `payload`, `correlation_id`, `causation_id`,
+`occurred_at`, `processed_at`.
+
+Se `event_ingest_failed` continuar após a DDL, investigar nesta ordem:
+
+1. service role configurada no servidor;
+2. identidade/API token enviado à rota;
+3. `organization_id` resolvido pela sessão/integração;
+4. políticas RLS e função `current_organization_id()`;
+5. schema cache do Supabase;
+6. logs da Hostinger/PM2.
+
+Não faça workaround no código para compensar ausência de tabela já prevista em
+migration. Primeiro alinhe o banco; depois investigue aplicação.
+
+---
+
 ## ORDEM OBRIGATÓRIA — religamento de `leads.campaign_id` (atribuição por campanha)
 
 **O DDL vai ANTES do código.** As três migrations abaixo têm de estar aplicadas
