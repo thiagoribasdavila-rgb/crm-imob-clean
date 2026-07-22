@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/atlas/theme-toggle";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { clearAtlasAuthContext } from "@/lib/auth/atlas-auth-context";
@@ -130,6 +131,9 @@ export function Topbar({
             {desktopDensity === "compact" ? "Compacto" : "Confortável"}
           </span>
         </button>
+        {/* Vizinho do controle de densidade de propósito: as duas são preferência de
+            leitura da mesma pessoa, e ficam onde ela já procura por elas. */}
+        <ThemeToggle />
         <button
           type="button"
           className="atlas-command-trigger atlas-copilot-trigger"

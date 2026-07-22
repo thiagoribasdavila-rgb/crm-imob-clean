@@ -7661,3 +7661,131 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   outline: 2px solid var(--atlas-focus-ring, var(--primary));
   outline-offset: 2px;
 }
+
+/* ==========================================================================
+   TEMA CLARO — opt-in por [data-theme="light"] no <html>
+   ==========================================================================
+   O produto nasceu dark-only: não havia bloco .dark, nenhum prefers-color-scheme,
+   nenhuma dependência de tema. Este bloco cria a alternativa clara redefinindo os
+   MESMOS tokens que o escuro usa — não há CSS duplicado por tema, há uma paleta
+   trocada.
+
+   Isso só é possível por causa do reparo de tokens do CC23: os semânticos do shadcn
+   passaram a derivar da paleta Atlas em vez de trazerem valores próprios. Sem aquilo,
+   trocar de tema exigiria caçar cor em componente.
+
+   DESENHADA, NÃO INVERTIDA. Inverter luminância produz cinza sujo e acento estourado.
+   Cada valor foi escolhido e o contraste MEDIDO antes de entrar aqui:
+
+     texto primário / superfície     18,72:1
+     texto secundário / superfície    7,88:1
+     texto terciário / canvas         4,95:1   (calibrado: #64748b dava 4,48 e reprovava)
+     acento / superfície              5,82:1
+     branco sobre acento (botão)      5,82:1
+     sucesso · alerta · risco         5,48 · 5,19 · 6,29
+
+   Todos passam AA para texto normal. O terciário foi escurecido de propósito até
+   passar no fundo MAIS CLARO dos dois — o canvas — porque é onde ele reprovaria.
+
+   O canvas não é branco puro: #f6f8fc. Branco absoluto sob uma interface densa,
+   desenhada para o escuro, vira ofuscamento — a superfície branca fica reservada
+   para os painéis, criando a hierarquia que no escuro vem da elevação.
+   ========================================================================== */
+
+:root[data-theme="light"] {
+  /* base do produto */
+  --background: #f6f8fc;
+  --surface: #ffffff;
+  --surface-2: #eef2f8;
+  --surface-3: #e3e9f2;
+  --border: rgba(11, 18, 32, 0.10);
+  --border-strong: rgba(11, 18, 32, 0.18);
+  --text: #0b1220;
+  --muted: #5f6d81;
+  --primary: #0b63c5;
+  --primary-strong: #084a95;
+  --violet: #6d28d9;
+  --success: #047857;
+  --warning: #a45a06;
+  --danger: #be123c;
+
+  /* semânticos do shadcn — derivam da base, como no escuro */
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: #ffffff;
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text);
+  --muted-foreground: var(--muted);
+  --accent: var(--surface-3);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --input: var(--border-strong);
+  --ring: var(--primary);
+
+  --chart-1: var(--primary);
+  --chart-2: #2a7fd4;
+  --chart-3: var(--violet);
+  --chart-4: var(--success);
+  --chart-5: var(--muted);
+
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--surface-3);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--primary);
+
+  /* tokens Atlas — a superfície de estilo mais usada pelas telas */
+  --atlas-canvas: #f6f8fc;
+  --atlas-navigation: #ffffff;
+  --atlas-surface: #ffffff;
+  --atlas-surface-subtle: #eef2f8;
+  --atlas-surface-raised: #ffffff;
+  --atlas-surface-interactive: #e3e9f2;
+  --atlas-bg: #f6f8fc;
+  --atlas-surface-soft: #eef2f8;
+  --atlas-border-subtle: rgba(11, 18, 32, 0.08);
+  --atlas-border: rgba(11, 18, 32, 0.12);
+  --atlas-border-strong: rgba(11, 18, 32, 0.20);
+  --atlas-text-primary: #0b1220;
+  --atlas-text-secondary: #44526b;
+  --atlas-text-tertiary: #5f6d81;
+  --atlas-text-disabled: #94a3b8;
+  --atlas-text: #0b1220;
+  --atlas-text-muted: #5f6d81;
+  --atlas-accent: #0b63c5;
+  --atlas-accent-hover: #0a58ae;
+  --atlas-accent-pressed: #084a95;
+  --atlas-accent-soft: rgba(11, 99, 197, 0.10);
+  --atlas-accent-strong: #084a95;
+  --atlas-success: #047857;
+  --atlas-warning: #a45a06;
+  --atlas-danger: #be123c;
+  --atlas-info: #0b63c5;
+  --atlas-violet: #6d28d9;
+  --atlas-focus-ring: #0b63c5;
+
+  /* No escuro a elevação vem de sombra preta; no claro, de sombra suave e borda. */
+  --atlas-shadow-panel: 0 1px 2px rgba(11, 18, 32, 0.06), 0 1px 3px rgba(11, 18, 32, 0.04);
+  --atlas-shadow-overlay: 0 8px 28px rgba(11, 18, 32, 0.12);
+  --cc23-lift-rest: 0 1px 2px rgba(11, 18, 32, 0.08);
+  --cc23-lift-raised: 0 6px 20px rgba(11, 18, 32, 0.12);
+}
+
+/* O fundo do documento também é token: sem isto o gradiente escuro do body
+   permaneceria por baixo e o tema claro ficaria com moldura preta. */
+:root[data-theme="light"] body {
+  background: var(--background);
+  color: var(--text);
+}
+
+/* Os orbes ambientes existem para dar profundidade ao fundo escuro. No claro eles
+   viram manchas sujas — some com eles em vez de tentar recolori-los. */
+:root[data-theme="light"] .atlas-ambient {
+  display: none;
+}

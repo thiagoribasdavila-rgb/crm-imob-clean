@@ -232,8 +232,16 @@ if (camada) {
     `${blocosComMovimento.length} bloco(s) com movimento`,
   );
 
-  // Princípio 5: zero hex literal nas CLASSES (tokens no :root podem ter literal).
-  const classesCC23 = camada.replace(/:root\s*\{[\s\S]*?\n\}/g, "");
+  // Princípio 5: zero hex literal nas CLASSES.
+  //
+  // Blocos de DEFINIÇÃO de token ficam de fora, e a exceção não é conveniência: uma
+  // paleta é literal por natureza — é ela que dá valor a todo var() do resto. O padrão
+  // aceita qualquer seletor que comece em :root, porque o tema claro entra como
+  // `:root[data-theme="light"]` e antes só `:root {` era descontado. Comentários também
+  // saem: explicar por que uma cor foi calibrada exige citar a cor.
+  const classesCC23 = camada
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/:root[^{]*\{[\s\S]*?\n\}/g, "");
   const hexEmClasse = [...classesCC23.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map((m) => m[0]);
   check(
     "caso 19: nenhuma classe .cc23-* usa hex literal (destrava white-label)",
