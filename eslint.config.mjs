@@ -19,6 +19,13 @@ const eslintConfig = defineConfig([
     ".atlas-route-quarantine-*/**",
     "next-env.d.ts",
 
+    // Worktrees de sessão (git worktree add .claude/worktrees/<nome>) são
+    // CÓPIAS deste mesmo repositório: sem ignorá-las, `eslint .` lintaria o
+    // projeto inteiro em duplicidade e o gate `npm run lint --max-warnings=0`
+    // sai vermelho por causa de arquivos que já foram corrigidos aqui —
+    // verificado: 128 erros vindos só de .claude/worktrees/.
+    ".claude/**",
+
     // Única superfície fora do gate: core/** (471 arquivos de arquitetura
     // legada/experimental). Auditada em 2026-07-20: ZERO imports de código
     // vivo (alias e relativo verificados) — quarentena documentada; a

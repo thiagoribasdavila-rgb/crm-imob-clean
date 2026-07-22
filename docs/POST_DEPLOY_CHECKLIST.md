@@ -206,3 +206,42 @@ curl http://localhost:3000    # app roda local?
 2. **Loop de aprendizado de IA** (calibração de conversão realimentando o scoring)
 3. **Cutover para produção limpa** (novo Supabase quando o piloto validar)
 4. **SaaS multi-tenant** (billing, planos, limites por organização)
+
+---
+
+## ORDEM OBRIGATÓRIA — religamento de `leads.campaign_id` (atribuição por campanha)
+
+**O DDL vai ANTES do código.** As três migrations abaixo têm de estar aplicadas
+no banco alvo antes de subir a versão que grava `leads.campaign_id` na ingestão
+da Meta (`app/api/v2/outbox/process/route.ts`). Aplique nesta ordem:
+
+1. `20260722174000_marketing_campaigns_external_unique.sql`
+   Cria o índice único `(organization_id, platform, external_campaign_id)` que o
+   código já pressupõe. **Medido em 2026-07-22:** existe na produção
+   (`ietwopslgqxlenfyghqk`), **não existe** na homologação
+   (`pozbrcsfthnhmnebfoxv`). Sem ele, dois workers do outbox duplicam a campanha.
+   Se houver duplicata, a migration **para** com `raise exception` — reconcilie
+   antes (reaponte `leads.campaign_id` e `marketing_spend.campaign_id` para a
+   linha que fica) e rode de novo.
+
+2. `20260722175000_fix_lead_attribution_campaign_fk.sql`
+   Reaponta `lead_attribution_touches.campaign_id` para `marketing_campaigns`.
+   **Medido em 2026-07-22:** na homologação a FK ainda aponta para
+   `public.campaigns` (0 linhas) e o gatilho `capture_lead_attribution_after_insert`
+   está ATIVO. Sem esta migration, o primeiro lead da Meta com campanha resolvida
+   dispara `23503` dentro do gatilho.
+
+3. `20260722180000_backfill_lead_campaign_id.sql`
+   Registra as campanhas que o histórico prova e religa os leads antigos.
+   Idempotente. Lê os `NOTICE` no fim: eles dizem quantas campanhas foram
+   registradas, quantos leads foram religados e quantos ficaram **sem elo** por
+   id externo duplicado.
+   **Na produção esta migration sai cedo por guarda de coluna:** `public.leads`
+   não tem `metadata` (o identificador histórico mora em `leads.campaign`, texto
+   livre). Os ~17 mil leads históricos da produção **não** são cobertos por ela.
+
+**Se o código subir antes do DDL**, a ingestão não perde lead: o insert detecta o
+`23503`, reinsere o lead com `campaign_id` nulo e registra
+`outbox.campaign_link_rejected_by_fk` com `campaignLinkage:
+registro_de_campanha_indisponivel`. O elo aparece sozinho depois do DDL — mas a
+rede de segurança existe para o acidente, não para substituir a ordem.
