@@ -182,11 +182,36 @@ type Payload = {
   dailyReports: DailyReport[];
   andromedaReadiness: {
     score: number;
+    readiness: "blocked" | "learning" | "ready_for_controlled_test";
     eligibleLeads: number;
     deliveryRate: number;
     dualIdentifierRate: number;
     feedbackCoverage: number;
-    recommendations: string[];
+    attributionCoverage: number;
+    duplicateRate: number;
+    freshnessScore: number;
+    freshnessHours: number | null;
+    gates: {
+      consentedSample: boolean;
+      deliveryHealthy: boolean;
+      feedbackDeepEnough: boolean;
+      attributionReliable: boolean;
+      duplicatesControlled: boolean;
+      signalFresh: boolean;
+    };
+    blockers: string[];
+    recommendations: Array<{
+      type: string;
+      title: string;
+      action: string;
+    }>;
+    governance: {
+      aggregatedEvidenceOnly: boolean;
+      noPii: boolean;
+      noAutomaticAudienceChange: boolean;
+      noAutomaticBudgetChange: boolean;
+      directorDecisionRequired: boolean;
+    };
     privacy: string;
   };
   readiness: {
@@ -205,6 +230,57 @@ const scaleBlockerLabels: Record<string, string> = {
   cobertura_de_atendimento_menor_que_60: "cobertura de atendimento abaixo de 60%",
   qualidade_menor_que_20: "qualidade abaixo de 20%",
   conversao_menor_que_5: "conversão abaixo de 5%",
+};
+const andromedaReadinessLabels: Record<
+  Payload["andromedaReadiness"]["readiness"],
+  string
+> = {
+  blocked: "Bloqueado",
+  learning: "Aprendendo",
+  ready_for_controlled_test: "Pronto para teste controlado",
+};
+const andromedaGateLabels: Record<
+  keyof Payload["andromedaReadiness"]["gates"],
+  { label: string; pass: string; fail: string }
+> = {
+  consentedSample: {
+    label: "Amostra consentida",
+    pass: "volume mínimo pronto",
+    fail: "precisa de 50+ leads elegíveis",
+  },
+  deliveryHealthy: {
+    label: "Entrega",
+    pass: "eventos chegando",
+    fail: "corrigir falhas de envio",
+  },
+  feedbackDeepEnough: {
+    label: "Profundidade",
+    pass: "funil ensina compra",
+    fail: "faltam visita, proposta e venda",
+  },
+  attributionReliable: {
+    label: "Atribuição",
+    pass: "campanha rastreada",
+    fail: "origem/campanha incompleta",
+  },
+  duplicatesControlled: {
+    label: "Duplicidade",
+    pass: "sem ruído relevante",
+    fail: "dedupe acima do limite",
+  },
+  signalFresh: {
+    label: "Frescor",
+    pass: "sinal recente",
+    fail: "feedback acima de 48h",
+  },
+};
+const andromedaBlockerLabels: Record<string, string> = {
+  amostra_consentida_menor_que_50: "Aumentar a amostra consentida antes de escalar.",
+  entrega_abaixo_de_95: "Corrigir entrega da Conversions API antes de ampliar orçamento.",
+  feedback_profundo_abaixo_de_35: "Registrar mais qualificação, visita, proposta e venda.",
+  atribuicao_abaixo_de_80: "Completar campanha, conjunto, anúncio e formulário na origem.",
+  duplicidade_acima_de_2: "Reduzir eventos duplicados para proteger o aprendizado.",
+  sinal_com_mais_de_48h: "Atualizar eventos de feedback com janela mais curta.",
 };
 
 /* Anel de foco padrão CC-6 para interativos que não são cc6-ghost-btn. */
@@ -1911,15 +1987,32 @@ export default function MetaIntegration() {
         className="cc6-panel cc6-reveal p-5"
         style={{ animationDelay: "340ms" }}
       >
-        <header className="min-w-0">
-          <p className="cc6-eyebrow">Andromeda signal loop</p>
-          <h2 id="meta-andromeda-title" className={sectionTitle}>
-            Qualidade da conexão CRM → Meta
-          </h2>
-          <p className={sectionHint}>
-            Mede se o Andromeda recebe eventos confiáveis e profundos — é
-            diagnóstico, não gatilho.
-          </p>
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="cc6-eyebrow">Andromeda signal loop</p>
+            <h2 id="meta-andromeda-title" className={sectionTitle}>
+              Qualidade da conexão CRM → Meta
+            </h2>
+            <p className={sectionHint}>
+              Mede se o CRM está devolvendo sinais limpos, profundos e recentes
+              para o aprendizado do Meta. É diagnóstico; nenhuma audiência muda
+              automaticamente.
+            </p>
+          </div>
+          {data ? (
+            <StatusBadge
+              tone={
+                data.andromedaReadiness.readiness ===
+                "ready_for_controlled_test"
+                  ? "success"
+                  : data.andromedaReadiness.readiness === "learning"
+                    ? "warning"
+                    : "danger"
+              }
+            >
+              {andromedaReadinessLabels[data.andromedaReadiness.readiness]}
+            </StatusBadge>
+          ) : null}
         </header>
         <div aria-busy={!data}>
           {!data ? (
@@ -1928,7 +2021,7 @@ export default function MetaIntegration() {
             </div>
           ) : (
             <>
-              <div className="cc6-hairline mt-4 flex flex-wrap gap-x-10 gap-y-4 pt-4">
+              <div className="cc6-hairline mt-4 grid gap-3 pt-4 sm:grid-cols-2 xl:grid-cols-6">
                 <div>
                   <p className="cc6-metric-value text-3xl leading-none">
                     {data.andromedaReadiness.score}%
@@ -1939,7 +2032,13 @@ export default function MetaIntegration() {
                   </p>
                 </div>
                 <div>
-                  <p className="cc6-metric-value text-3xl leading-none">
+                  <p
+                    className={`cc6-metric-value text-3xl leading-none ${
+                      data.andromedaReadiness.deliveryRate >= 95
+                        ? "cc6-ok"
+                        : "cc6-warn"
+                    }`}
+                  >
                     {data.andromedaReadiness.deliveryRate}%
                   </p>
                   <p className="cc6-metric-label mt-1.5">entrega confirmada</p>
@@ -1956,14 +2055,72 @@ export default function MetaIntegration() {
                   </p>
                   <p className="cc6-metric-label mt-1.5">feedback profundo</p>
                 </div>
+                <div>
+                  <p className="cc6-metric-value text-3xl leading-none">
+                    {data.andromedaReadiness.attributionCoverage}%
+                  </p>
+                  <p className="cc6-metric-label mt-1.5">atribuição confiável</p>
+                </div>
+                <div>
+                  <p className="cc6-metric-value text-3xl leading-none">
+                    {data.andromedaReadiness.freshnessScore}%
+                  </p>
+                  <p className="cc6-metric-label mt-1.5">
+                    frescor
+                    {data.andromedaReadiness.freshnessHours !== null
+                      ? ` · ${data.andromedaReadiness.freshnessHours}h`
+                      : ""}
+                  </p>
+                </div>
               </div>
-              <div className="cc6-hairline mt-4 pt-3">
+
+              <div className="cc6-hairline mt-4 grid gap-2 pt-3 sm:grid-cols-2 xl:grid-cols-3">
+                {(
+                  Object.entries(data.andromedaReadiness.gates) as Array<
+                    [
+                      keyof Payload["andromedaReadiness"]["gates"],
+                      boolean,
+                    ]
+                  >
+                ).map(([key, passed]) => {
+                  const gate = andromedaGateLabels[key];
+                  return (
+                    <div
+                      key={key}
+                      className="cc6-panel-quiet rounded-xl px-3 py-2.5"
+                      title={passed ? gate.pass : gate.fail}
+                    >
+                      <p className="flex items-center justify-between gap-2 text-xs font-medium text-[#e8eef8]">
+                        <span>{gate.label}</span>
+                        <span
+                          aria-hidden="true"
+                          className={passed ? "cc6-ok" : "cc6-warn"}
+                        >
+                          {passed ? "✓" : "•"}
+                        </span>
+                      </p>
+                      <p className="mt-1 text-[11px] leading-4 text-[#6b7890]">
+                        {passed ? gate.pass : gate.fail}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="cc6-hairline mt-4 grid gap-4 pt-3 lg:grid-cols-[minmax(0,1fr)_280px]">
                 {data.andromedaReadiness.recommendations.length ? (
-                  <ul className="space-y-1 text-[11px] leading-5 text-[#aab6ca]">
+                  <ul className="space-y-2 text-[11px] leading-5 text-[#aab6ca]">
                     {data.andromedaReadiness.recommendations.map((item) => (
-                      <li key={item} className="flex gap-2">
-                        <span aria-hidden="true" className="cc6-warn">•</span>
-                        {item}
+                      <li key={`${item.type}:${item.title}`} className="flex gap-2">
+                        <span aria-hidden="true" className="cc6-warn">
+                          •
+                        </span>
+                        <span>
+                          <strong className="font-semibold text-[#e8eef8]">
+                            {item.title}:
+                          </strong>{" "}
+                          {item.action}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -1972,9 +2129,32 @@ export default function MetaIntegration() {
                     Sinal saudável para continuar a homologação controlada.
                   </p>
                 )}
-                <p className="mt-2 text-[10px] leading-4 text-[#6b7890]">
-                  {data.andromedaReadiness.privacy}
-                </p>
+                <div className="space-y-1 text-[10px] leading-4 text-[#6b7890]">
+                  <p className="cc6-num">
+                    duplicidade: {data.andromedaReadiness.duplicateRate}% ·{" "}
+                    {data.andromedaReadiness.blockers.length
+                      ? `${data.andromedaReadiness.blockers.length} trava(s)`
+                      : "sem travas críticas"}
+                  </p>
+                  {data.andromedaReadiness.blockers.length ? (
+                    <p>
+                      {data.andromedaReadiness.blockers
+                        .map((blocker) => andromedaBlockerLabels[blocker] || blocker)
+                        .join(" ")}
+                    </p>
+                  ) : null}
+                  <p>{data.andromedaReadiness.privacy}</p>
+                  <p>
+                    Dados agregados:{" "}
+                    {data.andromedaReadiness.governance.aggregatedEvidenceOnly
+                      ? "sim"
+                      : "não"}{" "}
+                    · decisão do diretor:{" "}
+                    {data.andromedaReadiness.governance.directorDecisionRequired
+                      ? "obrigatória"
+                      : "não"}
+                  </p>
+                </div>
               </div>
             </>
           )}
