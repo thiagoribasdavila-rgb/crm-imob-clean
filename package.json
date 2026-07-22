@@ -7,6 +7,7 @@
     "build": "node scripts/build.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
+    "test": "node --test \"tests/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "enterprise:check": "node scripts/enterprise-check.mjs",
     "security:secrets": "node scripts/scan-secrets.mjs",
