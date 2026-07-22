@@ -4763,6 +4763,131 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.02);
 }
+.atlas-kanban-next-best-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(230px, .8fr) minmax(220px, .55fr);
+  gap: 14px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid rgba(56, 189, 248, .16);
+  border-left-width: 3px;
+  border-radius: 20px;
+  border-left-color: rgba(56, 189, 248, .72);
+  background:
+    radial-gradient(circle at 5% 0%, rgba(56, 189, 248, .18), transparent 38%),
+    radial-gradient(circle at 92% 18%, rgba(124, 58, 237, .16), transparent 34%),
+    rgba(2, 8, 23, .58);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.atlas-kanban-next-best-action[data-risk="alto"] { border-left-color: rgba(251, 113, 133, .78); }
+.atlas-kanban-next-best-action[data-risk="medio"] { border-left-color: rgba(251, 191, 36, .72); }
+.atlas-kanban-next-best-action[data-risk="baixo"] { border-left-color: rgba(52, 211, 153, .62); }
+.atlas-kanban-next-best-action.is-empty {
+  display: block;
+  border-color: rgba(255,255,255,.07);
+  border-left-color: rgba(52, 211, 153, .55);
+  background: rgba(255,255,255,.025);
+}
+.atlas-kanban-next-best-action-copy {
+  min-width: 0;
+}
+.atlas-kanban-next-best-action-eyebrow {
+  color: #7dd3fc;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.atlas-kanban-next-best-action-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-self: stretch;
+  margin: 0;
+}
+.atlas-kanban-next-best-action-metrics div {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+  background: rgba(255,255,255,.032);
+}
+.atlas-kanban-next-best-action-metrics dt {
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.atlas-kanban-next-best-action-metrics dd {
+  overflow: hidden;
+  margin: 5px 0 0;
+  color: #e5f4ff;
+  font-size: 12px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.atlas-kanban-next-best-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-self: start;
+}
+.atlas-kanban-next-best-action-buttons a {
+  display: grid;
+  min-height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 13px;
+  background: rgba(255,255,255,.035);
+  color: #b8c7da;
+  font-size: 11px;
+  font-weight: 760;
+  text-align: center;
+  transition: .18s ease;
+}
+.atlas-kanban-next-best-action-buttons a.is-primary {
+  border-color: rgba(56, 189, 248, .32);
+  background: linear-gradient(135deg, rgba(37, 99, 235, .72), rgba(14, 165, 233, .34));
+  color: #f8fafc;
+}
+.atlas-kanban-next-best-action-buttons a:hover,
+.atlas-kanban-next-best-action-buttons a:focus-visible {
+  border-color: rgba(125, 211, 252, .35);
+  color: #f8fafc;
+}
+.atlas-kanban-next-best-action-move {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 4px;
+}
+.atlas-kanban-next-best-action-move label {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 780;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.atlas-kanban-next-best-action-move select {
+  min-height: 40px;
+  min-width: min(100%, 260px);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  background: #08101f;
+  padding: 8px 10px;
+  color: #dbeafe;
+  font-size: 11px;
+  outline: none;
+}
+.atlas-kanban-next-best-action-move select:focus-visible {
+  border-color: rgba(56,189,248,.45);
+  box-shadow: 0 0 0 3px rgba(56,189,248,.09);
+}
 .atlas-kanban-execution-cockpit {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -5231,6 +5356,12 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
     opacity: 0.42;
   }
   .atlas-pipeline-priority-queue { padding: 15px; }
+  .atlas-kanban-next-best-action {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .atlas-kanban-next-best-action-buttons {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
   .atlas-kanban-execution-cockpit {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -5240,6 +5371,17 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   }
   .atlas-kanban-execution-lane small {
     white-space: normal;
+  }
+}
+
+@media (max-width: 640px) {
+  .atlas-kanban-next-best-action-buttons,
+  .atlas-kanban-next-best-action-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .atlas-kanban-next-best-action-buttons a {
+    min-height: 40px;
+    font-size: 10px;
   }
 }
 

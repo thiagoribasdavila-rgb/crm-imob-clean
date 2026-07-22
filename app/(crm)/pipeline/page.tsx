@@ -434,6 +434,23 @@ export default function PipelinePage() {
     return map;
   }, [leads]);
 
+  const nextBestAction = useMemo(() => {
+    const lead = visibleLeads.find(isOpenLead);
+    if (!lead) return null;
+    const currentStageIndex = stages.findIndex((stage) => stage.key === (lead.status || "novo"));
+    const signal = proactiveSignals.get(lead.id);
+    return {
+      lead,
+      guidance: brokerGuidance(lead),
+      risk: leadRisk(lead),
+      contact: phoneLinks(lead.phone),
+      contactSla: firstContactSla(lead),
+      currentStage: stages[currentStageIndex],
+      nextStage: currentStageIndex >= 0 ? stages[currentStageIndex + 1] : undefined,
+      signalView: signal ? proactiveSignalView(signal, lead) : null,
+    };
+  }, [proactiveSignals, stages, visibleLeads]);
+
   const columnSignals = useMemo(() => {
     const map = new Map<StageKey, { stalled: number; rose: number; hot: number }>();
     for (const stage of stageData) {
@@ -528,6 +545,36 @@ export default function PipelinePage() {
             {focusOptions.map((option) => <button key={option.key} type="button" onClick={() => setFocus(option.key)} aria-pressed={focus === option.key} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${focus === option.key ? "border-sky-400/30 bg-sky-400/10 text-sky-200" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><span>{option.label}</span><span className={`rounded-full px-1.5 py-0.5 text-[9px] ${focus === option.key ? "bg-sky-300/15 text-sky-100" : "bg-white/[0.05] text-slate-500"}`}>{option.count}</span></button>)}
           </div>
         </div>
+        {nextBestAction ? <article className="atlas-kanban-next-best-action" data-kanban-next-best-action data-risk={nextBestAction.risk}>
+          <div className="atlas-kanban-next-best-action-copy">
+            <span className="atlas-kanban-next-best-action-eyebrow">Próxima melhor ação</span>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Link href={`/leads/${nextBestAction.lead.id}`} className="min-w-0 text-xl font-semibold tracking-[-.04em] text-white hover:text-sky-200">{nextBestAction.lead.name || "Lead sem nome"}</Link>
+              {nextBestAction.contactSla ? <AtlasBadge tone={nextBestAction.contactSla.tone}>{nextBestAction.contactSla.label}</AtlasBadge> : null}
+              {nextBestAction.signalView ? <AtlasBadge tone={nextBestAction.signalView.critical ? "danger" : "warning"}>{nextBestAction.signalView.label}</AtlasBadge> : null}
+            </div>
+            <p className="mt-2 text-sm font-semibold text-sky-100">Decisão recomendada: {nextBestAction.guidance.action}</p>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">{nextBestAction.guidance.reason}</p>
+          </div>
+          <dl className="atlas-kanban-next-best-action-metrics" aria-label="Resumo da oportunidade priorizada">
+            <div><dt>Etapa</dt><dd>{nextBestAction.currentStage?.label || "Atual"}</dd></div>
+            <div><dt>Score</dt><dd>{nextBestAction.lead.score ?? 0}</dd></div>
+            <div><dt>Valor</dt><dd>{nextBestAction.lead.budget_max ? brl.format(nextBestAction.lead.budget_max) : "A definir"}</dd></div>
+            <div><dt>Avanço</dt><dd>{nextBestAction.nextStage?.label || "Revisar"}</dd></div>
+          </dl>
+          <div className="atlas-kanban-next-best-action-buttons" role="group" aria-label="Executar próxima melhor ação">
+            <Link href={`/leads/${nextBestAction.lead.id}`} className="is-primary">Abrir Lead 360</Link>
+            {nextBestAction.contact ? <a href={nextBestAction.contact.whatsapp} target="_blank" rel="noreferrer">WhatsApp</a> : null}
+            {nextBestAction.contact ? <a href={nextBestAction.contact.call}>Ligar</a> : null}
+            <Link href={`/leads/${nextBestAction.lead.id}/messages`}>Abordagem IA</Link>
+          </div>
+          <div className="atlas-kanban-next-best-action-move">
+            <label htmlFor={`next-best-stage-${nextBestAction.lead.id}`}>Avançar após executar</label>
+            <select id={`next-best-stage-${nextBestAction.lead.id}`} value={nextBestAction.lead.status ?? "novo"} disabled={savingId === nextBestAction.lead.id} onChange={(event) => void moveLead(nextBestAction.lead.id, event.target.value as StageKey)}>
+              {destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
+            </select>
+          </div>
+        </article> : !loading ? <div className="atlas-kanban-next-best-action is-empty" data-kanban-next-best-action><span className="atlas-kanban-next-best-action-eyebrow">Próxima melhor ação</span><p className="mt-2 text-sm font-semibold text-white">Nenhuma ação crítica no filtro atual.</p><p className="mt-1 text-xs text-slate-500">Troque o filtro ou registre novas próximas ações para manter a carteira aquecida.</p></div> : null}
         <div className="atlas-kanban-execution-cockpit" data-kanban-execution-cockpit>
           {executionLanes.map((lane) => <button key={lane.key} type="button" data-tone={lane.tone} data-state={lane.value > 0 ? "attention" : "clear"} onClick={() => { setFocus(lane.focus); setSort(lane.sort); }} aria-label={`${lane.label}: ${lane.value}. ${lane.detail}. ${lane.action}.`} className="atlas-kanban-execution-lane">
             <span>{lane.label}</span>

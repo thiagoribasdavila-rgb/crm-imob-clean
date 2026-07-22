@@ -28,6 +28,21 @@ O Kanban agora abre com uma faixa de decisão objetiva antes das colunas. Ela co
 
 Cada bloco aplica o filtro e a ordenação adequada no próprio quadro. A intenção é reduzir leitura, acelerar a primeira ação do corretor e dar ao gerente uma visão imediata de onde está o gargalo.
 
+## Próxima melhor ação
+
+O pipeline passou a destacar uma única oportunidade principal antes dos blocos de execução. A recomendação usa apenas dados já carregados no quadro: SLA inicial, próxima ação, score, temperatura, risco, etapa atual, valor e sinais de estagnação.
+
+O corretor vê:
+
+- quem atender primeiro;
+- por que essa lead subiu para o topo;
+- etapa atual e próximo avanço sugerido;
+- score, valor e risco;
+- atalhos diretos para Lead 360, WhatsApp, ligação e abordagem com IA;
+- seletor seguro para avançar a etapa após executar.
+
+Isso transforma o Kanban em uma mesa de comando: primeiro agir, depois analisar as colunas.
+
 ## Continuidade
 
 Foco, ordenação, densidade, colunas vazias e etapa móvel permanecem durante a sessão. A busca não é preservada para evitar guardar nome, telefone ou e-mail digitado no navegador.
