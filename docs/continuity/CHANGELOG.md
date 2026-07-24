@@ -44,11 +44,10 @@
 - **21 conflitos manuais grandes** documentados e deixados em aberto — exigem decisão de produto.
 - **`supabase/**` não analisado**: gatilho de parada de banco/RLS respeitado.
 
-### Conhecido e não corrigido
+### Conhecido e não corrigido (na parte 1)
 
-- `npm run security:secrets` falha por **falso positivo pré-existente** (a regex casa o glob
-  `NEXT_PUBLIC_SUPABASE_*` escrito em prosa no runbook). Bloqueia a cadeia `validate` inteira no
-  primeiro passo. Não foi "corrigido para ficar verde" — fica para decisão do dono.
+- ~~`npm run security:secrets` falha por falso positivo pré-existente.~~
+  **RESOLVIDO na parte 2** (`af458ea7`), sem ampliar allowlist e detectando mais do que antes.
 
 ## 2026-07-24 (parte 2) — unificação definitiva + estabilização
 
@@ -79,14 +78,20 @@
 
 ### Corrigido — portões (de 24 vermelhos para 14)
 
-Seis portões voltaram ao verde, **nenhum afrouxado**, todos com prova negativa:
+**Dez portões** saíram do vermelho (24 → 14), **nenhum afrouxado**, todos com prova negativa —
+quebrei a proteção de propósito, confirmei que o portão reprova, restaurei:
 `observability` e `security:audit` (a redação migrou para `redact.ts` e os checks não
 seguiram) · `hierarchy-enforcement` (catálogo saiu do sidebar para `navigation.ts`) ·
 `abuse-protection` (a rota trata 23505 com guarda invertida, e estava certa) ·
 `unassigned-queue` (garantia verdadeira que a interface não declarava) ·
 `ready-campaigns` (o caso 16 contradizia o próprio check) · `manager-dashboard` ·
-`atlas-logo` (deriva de nome de token; agora reprova só pela decisão do favicon) ·
-`environment:variables` (união de 96 + 12 variáveis, sem perder nenhuma em uso).
+`environment:variables` (união de 96 + 12 variáveis, sem perder nenhuma em uso) ·
+`security:secrets` · `performance:check`.
+
+O `atlas-logo` melhorou de 4 falhas para 2 mas segue vermelho — as duas restantes são
+exclusivamente a decisão de produto do favicon (D-7). O `security:dependencies` ficou verde
+com a correção das 3 altas e voltou ao vermelho por um advisory publicado durante a execução,
+sem correção viável.
 
 ### Documentado
 
