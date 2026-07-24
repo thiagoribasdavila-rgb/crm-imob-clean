@@ -101,3 +101,23 @@ quebraria a gestão de equipe em produção.
 
 **Princípio aplicado em toda a sessão:** nenhum portão foi relaxado para produzir verde.
 Quando o verde exigia quebrar produção, o vermelho ficou — documentado.
+
+---
+
+## D-7 · O favicon simplificado é intencional?
+
+**Situação:** `check-atlas-logo` reprovava em 4 casos. Dois eram deriva de nome de token
+(corrigidos em `8fc5cfc7` — as cores da marca nunca mudaram, viraram tokens white-label).
+
+Os **dois restantes são sobre o favicon**: `app/icon.svg` desenha a estrela igual ao
+componente, mas **omite a órbita e o planeta**, e o caso 20 aponta uma referência de gradiente
+que o parser não consegue casar. O comentário dentro do próprio SVG justifica a simplificação —
+em 16×16 px, órbita e planeta viram ruído.
+
+| opção | consequência |
+|---|---|
+| **A. Ratificar a simplificação** (recomendado) | Ajustar os casos 20 e 22 para aceitarem que o favicon é uma redução deliberada da marca, não uma cópia. O portão fecha. |
+| B. Igualar a geometria | O favicon passa a ter órbita e planeta; fica fiel à marca e ilegível no tamanho real. |
+| C. Deixar como está | O portão segue vermelho por um motivo conhecido e aceito. |
+
+Hoje o portão reprova **apenas** por isto — todo o resto foi resolvido.
