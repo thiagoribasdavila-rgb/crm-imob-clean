@@ -25,6 +25,27 @@ export async function GET(request: NextRequest) {
   ]);
   if (profilesResult.error || projectsResult.error || leadsResult.error) return apiError("DISTRIBUTION_LOOKUP_FAILED", "Não foi possível carregar a fila comercial.", identity.meta, { status: 503 });
 
+  // Extrato de auditoria da carteira. A RPC já devolve o recorte hierárquico
+  // correto e sem PII — por isso a leitura é dela, não de uma montagem no Node.
+  // Onde a migration da fase 59 não subiu, mantém-se o extrato vazio de antes,
+  // com `available: false` dizendo a verdade em vez de fingir "nada aconteceu".
+  const auditResult = await getSupabaseAdmin().rpc("get_portfolio_audit_ledger", {
+    p_actor_id: identity.access.profile.id,
+    p_organization_id: organizationId,
+    p_limit: 100,
+  });
+  const extratoVazio = { events: [], summary: { total: 0, distributions: 0, transfers: 0, reservations: 0, returns: 0, absences: 0, capacityChanges: 0 } };
+  const auditLedger = {
+    ...extratoVazio,
+    ...(auditResult.error ? {} : (auditResult.data as Record<string, unknown> ?? {})),
+    available: !auditResult.error,
+    maximum: 100,
+    hierarchicalScope: true,
+    piiExposed: false,
+    immutableSources: true,
+    generatedAt: new Date().toISOString(),
+  };
+
   const hierarchy = resolveLiveHierarchy((profilesResult.data ?? []) as unknown as CompatRow[]);
   const allowed = role === "director" ? new Set(hierarchy.map((profile) => text(profile.id))) : descendantsFromLiveProfiles(hierarchy, identity.access.profile.id);
   const profiles = hierarchy.filter((profile) => allowed.has(text(profile.id)));
@@ -56,7 +77,7 @@ export async function GET(request: NextRequest) {
     priorityRules: [],
     recentAssignments: [],
     leadSources: [...new Set(leads.map((lead) => text(lead.source || "não informada").trim().toLowerCase()))].sort().slice(0, 100),
-    portfolioAudit: { events: [], summary: { total: 0, distributions: 0, transfers: 0, reservations: 0, returns: 0, absences: 0, capacityChanges: 0 }, maximum: 100, hierarchicalScope: true, piiExposed: false, immutableSources: true, generatedAt: new Date().toISOString() },
+    portfolioAudit: auditLedger,
     unassignedQueue,
     unassignedPolicy: { metadataOnly: true, piiExposed: false, automaticAssignment: false, explicitLeadershipAction: true, maximumVisible: 100 },
     loads: profiles.map((profile) => ({ profile_id: profile.id, total: leads.filter((lead) => text(lead.assigned_to) === text(profile.id)).length, by_project: Object.fromEntries(projects.map((project) => [project.id, leads.filter((lead) => text(lead.assigned_to) === text(profile.id) && text(lead.development_id) === project.id).length])) })),
@@ -71,7 +92,7 @@ export async function POST(request: NextRequest) {
   if (!limited.ok) return limited.response;
   const identity = await requireAccessContext(request);
   if (!identity.ok) return identity.response;
-  const body = await request.json().catch(() => null) as { action?: string; availability?: string; developmentId?: string; limit?: number } | null;
+  const body = await request.json().catch(() => null) as { action?: string; availability?: string; developmentId?: string; limit?: number; leadId?: string } | null;
 
   // Presence heartbeat (unchanged behaviour).
   if (body?.action === "heartbeat") {
@@ -79,6 +100,29 @@ export async function POST(request: NextRequest) {
     const { error } = await getSupabaseAdmin().from("profiles").update({ availability_status: availability.toUpperCase() }).eq("id", identity.access.profile.id).eq("organization_id", identity.access.organization.id);
     if (error) return apiError("PRESENCE_UPDATE_FAILED", "Não foi possível atualizar sua disponibilidade.", identity.meta, { status: 503 });
     return apiSuccess({ availability, online: availability !== "offline" }, identity.meta, { headers: limited.headers });
+  }
+
+  // Aceite da reserva. O corretor confirma que assume a lead que lhe foi
+  // atribuída; sem isso a reserva fica pendente e, quando o worker de expiração
+  // roda, a lead volta para a fila. É ação do PRÓPRIO corretor — não da
+  // liderança — por isso não passa pelo filtro de papel abaixo.
+  if (body?.action === "accept_assignment") {
+    const leadId = typeof body.leadId === "string" && /^[0-9a-f-]{36}$/i.test(body.leadId) ? body.leadId : null;
+    if (!leadId) return apiError("ASSIGNMENT_LEAD_INVALID", "Informe a lead cuja atribuição está sendo aceita.", identity.meta, { status: 400 });
+
+    const acceptResult = await getSupabaseAdmin().rpc("accept_lead_assignment", {
+      p_actor_id: identity.access.profile.id,
+      p_organization_id: identity.access.organization.id,
+      p_lead_id: leadId,
+    });
+    if (acceptResult.error) {
+      const missingFunction = acceptResult.error.code === "42883" || acceptResult.error.code === "PGRST202";
+      if (missingFunction) return apiError("DISTRIBUTION_CAPABILITY_PENDING", "O aceite de reserva depende de uma atualização do banco que ainda não foi aplicada neste ambiente.", identity.meta, { status: 503, headers: limited.headers });
+      structuredApiLog("warn", "crm.distribution.assignment_accept_rejected", request, identity.meta, { organizationId: identity.access.organization.id, code: acceptResult.error.code });
+      return apiError("ASSIGNMENT_ACCEPT_REJECTED", "Não foi possível aceitar esta atribuição — ela pode ter expirado ou ser de outro corretor.", identity.meta, { status: 409, headers: limited.headers });
+    }
+    structuredApiLog("info", "crm.distribution.assignment_accepted", request, identity.meta, { organizationId: identity.access.organization.id, actorId: identity.access.profile.id, leadId });
+    return apiSuccess({ accepted: true, leadId, result: acceptResult.data }, identity.meta, { headers: limited.headers });
   }
 
   // ---------------------------------------------------------------------------
