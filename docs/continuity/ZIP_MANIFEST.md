@@ -81,9 +81,9 @@ cd "/Users/thiagoribasdavila/Documents/Aplas v 3/dist/hostinger" && shasum -a 25
 |---|---|
 | Nome | `atlas-one-v100-completo-2026-07-24.zip` |
 | Local | `/Users/thiagoribasdavila/Documents/Aplas v 3/dist/hostinger/` |
-| Tamanho | 4,8 MB (10.776.051 bytes descompactados) |
+| Tamanho | 4,8 MB (10.781.210 bytes descompactados) |
 | Entradas | **2.988** = 2.259 arquivos rastreados + 729 diretórios |
-| SHA-256 | `09d79c44505834bc6ca6c00d7038102a4d0f28dcefb9edfccb7abb76bfbab4f1` |
+| SHA-256 | `d322eb29a1c7597a679309bb0ae47a3a72ec9f19826ca96cb5e52b4d22651f3e` |
 | Checksum externo | `atlas-one-v100-completo-2026-07-24.zip.sha256` |
 | Integridade | `unzip -t` → **No errors detected** |
 | Corresponde ao commit | **sim** — `git archive HEAD`, working tree limpo (0 modificações) |
