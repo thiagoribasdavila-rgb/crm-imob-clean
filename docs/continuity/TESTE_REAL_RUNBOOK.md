@@ -18,7 +18,14 @@ Verificado em 2026-07-24: a app sobe em ~300 ms, `/api/health` responde 200 e `/
 confirma conexão com o banco em ~1,1 s.
 
 O `.env.local` já aponta para homologação. **Não** troque para o outro projeto: ele tem
-17.151 leads reais.
+17.151 leads reais. Para confirmar a qualquer momento contra qual banco você está:
+
+```bash
+npm run database:target:check
+```
+
+Esperado em homologação: **APROVADO, 13 de 14 objetos**. Se aparecer REPROVADO, pare —
+o ambiente está apontando para o banco legado, que não sustenta a aplicação.
 
 ## Quem loga
 
@@ -89,7 +96,16 @@ confirmar que **carregam sem tela branca**:
 - [ ] em um lead: `/behavior`, `/contact-preferences`, `/attribution`
 - [ ] em um empreendimento: `/dossier`, `/region-study`
 
-### 6. Mobile (5 min)
+### 6. Tarefas recorrentes (5 min) — funcionalidade nova
+- [ ] Em `/tasks`, criar uma tarefa com **cadência** (diária/semanal/mensal), data final e
+      limite de ocorrências. Deve criar a série, não mais recusar com "liberada após homologação".
+- [ ] Tentar criar sem data final **e** sem limite: deve recusar — série infinita não é criada.
+- [ ] Tentar 1 ocorrência ou 200: deve recusar (o aceito é 2 a 100).
+- [ ] Abrir **Recorrências ativas** e clicar em **Encerrar repetição**.
+- [ ] Confirmar que as tarefas já criadas **continuam existindo** — encerrar para a geração
+      de novas, não apaga histórico.
+
+### 7. Mobile (5 min)
 - [ ] Reduzir a janela para largura de celular.
 - [ ] `/pipeline`: o bloco de execução deve virar 1 coluna e os sinais, 2 colunas.
 
@@ -97,7 +113,7 @@ confirmar que **carregam sem tela branca**:
 
 | item | por quê |
 |---|---|
-| Recorrência de tarefas | a rota devolve 503 de propósito; o RPC existe em homologação mas o código ainda não foi ligado |
+| ~~Recorrência de tarefas~~ | **Passou a funcionar.** Criar série com cadência, fim e limite, e encerrar pelo botão "Encerrar repetição" em Tarefas → Recorrências ativas. Teste isso. |
 | SLA de follow-up com números | a tabela existe e está vazia; exibir seria mostrar zero como se fosse medição |
 | `/leads/actions` | é um stub com 4 botões inertes — decisão de produto pendente (D-5) |
 | Favicon sem órbita/planeta | simplificação deliberada (D-7) |
