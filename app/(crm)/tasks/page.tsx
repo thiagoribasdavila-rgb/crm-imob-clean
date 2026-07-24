@@ -750,10 +750,10 @@ export default function TasksPage() {
           style={{ animationDelay: "140ms" }}
         >
           <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[#aab6ca]">
-            Recorrências ativas · {recurrenceSeeds.length}
+            FASE 43 · TAREFAS RECORRENTES · {recurrenceSeeds.length} ativa(s)
           </summary>
           <p className="mt-2 text-[10px] leading-4 text-[#6b7890]">
-            Encerrar preserva as tarefas já criadas.
+            Encerrar repetição para a geração de novas ocorrências e preserva as tarefas já criadas.
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {recurrenceSeeds.map((task) => (
@@ -764,7 +764,7 @@ export default function TasksPage() {
                 onClick={() => void act(task, "cancel_recurrence")}
                 className="cc6-ghost-btn disabled:opacity-50"
               >
-                Encerrar · {task.title}
+                Encerrar repetição · {task.title}
               </button>
             ))}
           </div>
