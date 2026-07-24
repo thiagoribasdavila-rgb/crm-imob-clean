@@ -83,10 +83,10 @@ da API corretamente.
 
 ---
 
-## D-6 · Os 20 portões de qualidade vermelhos
+## D-6 · Os 14 portões de qualidade vermelhos
 
-**Situação:** dos 80 portões da cadeia `validate`, **20 reprovam** — todos já reprovavam antes
-desta sessão (eram 24; três foram corrigidos aqui e nenhum novo foi criado).
+**Situação:** dos 80 portões da cadeia `validate`, **14 reprovam** — todos já reprovavam antes
+desta sessão (eram 24; dez foram corrigidos aqui e nenhum novo foi criado).
 
 O caso `commercial-hierarchy:check` mostra por que isso não é só "consertar o código": o portão
 exige que a rota de equipe chame o RPC `manage_commercial_profile`, **mas a migration que cria
