@@ -300,7 +300,7 @@ export default function DistributionPage() {
             </div>
           )}
           <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
-            IA analisa sem PII · distribuir, alterar limites e aprovar continuam decisões humanas.
+            IA analisa sem PII · a fila entra sem atribuição automática · distribuir, alterar limites e aprovar continuam decisões humanas.
           </p>
         </div>
       </section>

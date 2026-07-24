@@ -4,7 +4,13 @@ import { resolve } from "node:path";
 const root = process.cwd();
 const contract = JSON.parse(readFileSync(resolve(root, "config/hierarchy-enforcement.json"), "utf8"));
 const security = readFileSync(resolve(root, "lib/api/security.ts"), "utf8");
-const sidebar = readFileSync(resolve(root, "components/atlas/sidebar.tsx"), "utf8");
+// O catálogo por papel saiu do sidebar para lib/atlas/navigation.ts, que o
+// sidebar importa (getAtlasNavigationForIdentity). Procurar os papéis só no
+// componente virou falso negativo — a decisão de visibilidade continua
+// existindo, agora numa camada única e reaproveitável. Os dois são lidos juntos.
+const sidebar = ["components/atlas/sidebar.tsx", "lib/atlas/navigation.ts"]
+  .map((file) => readFileSync(resolve(root, file), "utf8"))
+  .join("\n");
 const hierarchyMigration = readFileSync(resolve(root, "supabase/migrations/20260716212459_commercial_hierarchy_and_bulk_transfer.sql"), "utf8");
 const profileMigration = readFileSync(resolve(root, "supabase/migrations/20260717072714_secure_commercial_profile_hierarchy.sql"), "utf8");
 const exportRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/export/route.ts"), "utf8");

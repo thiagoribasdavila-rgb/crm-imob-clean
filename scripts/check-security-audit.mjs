@@ -6,7 +6,13 @@ const contract = JSON.parse(fs.readFileSync(path.join(root, "config", "security-
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const headers = fs.readFileSync(path.join(root, "next.config.ts"), "utf8");
 const upload = fs.readFileSync(path.join(root, "app/api/v1/developments/[id]/materials/route.ts"), "utf8");
-const logger = fs.readFileSync(path.join(root, "lib/observability/logger.ts"), "utf8");
+// A política de redação vive em ./redact desde o commit 5f02aff9 (função pura,
+// testável fora do bundler). O logger só a consome e reexporta, então procurar
+// as chaves sensíveis apenas nele produzia falso negativo: a proteção existe,
+// só não está mais nesse arquivo. Os dois são lidos juntos.
+const logger = ["lib/observability/logger.ts", "lib/observability/redact.ts"]
+  .map((file) => fs.readFileSync(path.join(root, file), "utf8"))
+  .join("\n");
 const bootstrap = fs.readFileSync(path.join(root, "app/api/bootstrap/admin/route.ts"), "utf8");
 const failures = [];
 

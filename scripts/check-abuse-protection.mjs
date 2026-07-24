@@ -14,7 +14,10 @@ for (const route of contract.distributedRateLimitedRoutes) {
 for (const route of contract.signedWebhooks) {
   const source = fs.readFileSync(path.join(root, route), "utf8");
   if (!source.includes("verifyWebhookSignature") || !source.includes("request.text()")) failures.push(`${route}: assinatura não usa corpo bruto`);
-  if (!source.includes('code === "23505"')) failures.push(`${route}: duplicidade não tratada`);
+  // O que importa é a duplicidade ser TRATADA, não a forma da comparação: a rota
+  // da Meta usa a guarda invertida (`code !== "23505"`) para seguir curando o
+  // outbox no caminho feliz. Exigir o literal `===` reprovava código correto.
+  if (!/code\s*[!=]==\s*"23505"/.test(source)) failures.push(`${route}: duplicidade não tratada`);
 }
 for (const route of contract.idempotentRoutes) {
   const source = fs.readFileSync(path.join(root, route), "utf8");
