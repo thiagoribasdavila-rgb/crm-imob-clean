@@ -251,10 +251,17 @@ check(
 // --------------------------------------------------------------------------
 // Gradiente da assinatura
 // --------------------------------------------------------------------------
+// As constantes foram renomeadas (GRAD_* → BRAND_*) e passaram a ser tokens com
+// fallback — `var(--atlas-brand-from, #3ae7d7)` — para destravar white-label. As
+// cores da marca continuam exatamente as mesmas: o que muda é que agora podem
+// ser sobrescritas por tema sem editar o componente. O check aceita os dois
+// nomes e a forma tokenizada, mas continua exigindo o hexadecimal exato como
+// valor efetivo (dentro do var() ou solto).
 check(
   `caso 10: as cores da assinatura são teal ${TEAL} → violet ${VIOLET}`,
-  new RegExp(`GRAD_FROM\\s*=\\s*"${TEAL}"`, "i").test(logoSrc) && new RegExp(`GRAD_TO\\s*=\\s*"${VIOLET}"`, "i").test(logoSrc),
-  "GRAD_FROM/GRAD_TO não são exatamente as cores da marca",
+  new RegExp(`(GRAD|BRAND)_FROM\\s*=\\s*"(var\\([^,)]+,\\s*)?${TEAL}\\)?"`, "i").test(logoSrc) &&
+    new RegExp(`(GRAD|BRAND)_TO\\s*=\\s*"(var\\([^,)]+,\\s*)?${VIOLET}\\)?"`, "i").test(logoSrc),
+  "GRAD_FROM/GRAD_TO (ou BRAND_FROM/BRAND_TO) não são exatamente as cores da marca",
 );
 
 {
@@ -267,8 +274,11 @@ check(
     grads.length === 1 &&
       (grads[0].id ?? "").includes("GRAD_ID") &&
       stops.length === 2 &&
-      from?.color === "{grad_from}" &&
-      to?.color === "{grad_to}",
+      // O stop referencia a constante por expressão JSX, então o parser lê o
+      // nome dela, não a cor. Aceita GRAD_* e BRAND_* — o valor exato já é
+      // garantido pelo caso 10, que exige o hexadecimal da marca na constante.
+      /^\{(grad|brand)_from\}$/.test(from?.color ?? "") &&
+      /^\{(grad|brand)_to\}$/.test(to?.color ?? ""),
     JSON.stringify({ grads, stops }),
   );
 
