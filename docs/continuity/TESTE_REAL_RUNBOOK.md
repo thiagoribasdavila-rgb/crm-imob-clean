@@ -105,7 +105,16 @@ confirmar que **carregam sem tela branca**:
 - [ ] Confirmar que as tarefas já criadas **continuam existindo** — encerrar para a geração
       de novas, não apaga histórico.
 
-### 7. Mobile (5 min)
+### 7. Governança da distribuição (5 min) — funcionalidade nova
+Como **gerente** ou **diretor**, em `/distribution`:
+- [ ] **Cobertura por ausência**: escolher um corretor, período futuro e motivo. Sem motivo
+      de 10+ caracteres deve recusar — a decisão fica auditável com a razão.
+- [ ] **Limite de carteira**: ajustar o teto de um corretor com motivo. Fora de 1–500 recusa.
+- [ ] **Prioridade da fila**: definir prioridade por origem com motivo. Fora de 1–100 recusa.
+- [ ] Distribuir leads e conferir que a resposta indica o motor governado
+      (`priorityHonoured: true`) — é ele que respeita prioridade e limite de carteira.
+
+### 8. Mobile (5 min)
 - [ ] Reduzir a janela para largura de celular.
 - [ ] `/pipeline`: o bloco de execução deve virar 1 coluna e os sinais, 2 colunas.
 
