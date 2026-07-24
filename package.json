@@ -301,7 +301,7 @@
     "clsx": "^2.1.1",
     "geist": "^1.7.2",
     "lucide-react": "^1.24.0",
-    "next": "16.2.10",
+    "next": "16.2.11",
     "radix-ui": "^1.6.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -317,7 +317,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.2.11",
     "prisma": "^7.8.0",
     "supabase": "2.109.1",
     "tailwindcss": "^4",
@@ -327,7 +327,9 @@
     "node": ">=20.9 <21"
   },
   "overrides": {
-    "@hono/node-server": "1.19.13",
-    "postcss": "8.5.19"
+    "@hono/node-server": "^2.0.5",
+    "postcss": "8.5.19",
+    "sharp": "^0.35.0",
+    "fast-uri": "^3.1.4"
   }
 }
