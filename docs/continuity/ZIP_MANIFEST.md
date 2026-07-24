@@ -83,10 +83,16 @@ cd "/Users/thiagoribasdavila/Documents/Aplas v 3/dist/hostinger" && shasum -a 25
 | Local | `/Users/thiagoribasdavila/Documents/Aplas v 3/dist/hostinger/` |
 | Tamanho | 4,8 MB (10.781.210 bytes descompactados) |
 | Entradas | **2.988** = 2.259 arquivos rastreados + 729 diretórios |
-| SHA-256 | `d322eb29a1c7597a679309bb0ae47a3a72ec9f19826ca96cb5e52b4d22651f3e` |
+| SHA-256 | ver `atlas-one-v100-completo-2026-07-24.zip.sha256` (ao lado do ZIP) — ver nota abaixo |
 | Checksum externo | `atlas-one-v100-completo-2026-07-24.zip.sha256` |
 | Integridade | `unzip -t` → **No errors detected** |
 | Corresponde ao commit | **sim** — `git archive HEAD`, working tree limpo (0 modificações) |
+
+> **Nota sobre o checksum.** O hash do ZIP não pode ser fixado dentro do próprio ZIP: escrever
+> o valor neste arquivo cria um commit novo, que muda a árvore, que muda o hash. Por isso a
+> fonte da verdade é o arquivo `.sha256` gerado ao lado do pacote, e não este documento.
+> Para conferir, use o comando da seção "Como validar" — ele compara o ZIP com o `.sha256`
+> irmão, sem depender deste texto.
 
 ## Verificação executada antes de fechar
 
