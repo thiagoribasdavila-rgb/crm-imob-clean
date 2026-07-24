@@ -72,3 +72,52 @@ para que o diretório de logs exista na instalação — não contém dado nenhu
 ```bash
 cd "/Users/thiagoribasdavila/Documents/Aplas v 3/dist/hostinger" && shasum -a 256 -c atlas-one-v100-unificado-2026-07-24-checkpoint-01.zip.sha256
 ```
+
+---
+
+# ZIP FINAL DA EXECUÇÃO COMPLETA
+
+| campo | valor |
+|---|---|
+| Nome | `atlas-one-v100-completo-2026-07-24.zip` |
+| Local | `/Users/thiagoribasdavila/Documents/Aplas v 3/dist/hostinger/` |
+| Tamanho | 4,8 MB (10.776.051 bytes descompactados) |
+| Entradas | **2.988** = 2.259 arquivos rastreados + 729 diretórios |
+| SHA-256 | `09d79c44505834bc6ca6c00d7038102a4d0f28dcefb9edfccb7abb76bfbab4f1` |
+| Checksum externo | `atlas-one-v100-completo-2026-07-24.zip.sha256` |
+| Integridade | `unzip -t` → **No errors detected** |
+| Corresponde ao commit | **sim** — `git archive HEAD`, working tree limpo (0 modificações) |
+
+## Verificação executada antes de fechar
+
+| verificação | resultado |
+|---|---|
+| `npm run security:secrets` | **PASSED** — 2.252 arquivos, 0 credenciais |
+| `node_modules` / `.next` / `dist` / `build` / caches | **0 entradas** |
+| `.env` reais (`.env.local`, `.env.hostinger`, `hostinger.env`) | **0** — só `.env.example` |
+| ZIPs anteriores e o git bundle | **0** |
+| logs, dumps, dados pessoais, temporários | **0** |
+| integridade (`unzip -t`) | OK |
+| correspondência com o estado rastreado | exata |
+
+## Conteúdo
+
+Código-fonte completo · 151 migrations · 13 arquivos de teste (69 testes) ·
+`docs/` completo incluindo os **19 documentos de `docs/continuity/`** (relatório da unificação,
+matriz, decisões, riscos, rollback, restauração, melhorias, decisões de produto, changelog,
+manifesto e prompt de continuação) · configuração sem segredos · scripts de verificação.
+
+## Artefatos irmãos
+
+| artefato | SHA-256 |
+|---|---|
+| `atlas-one-v100-pre-complete-merge.bundle` (backup Git completo, 7,4 MB) | `310f6167a0839dc176ba4ef99c38d957a53491b20985bd2f0af2a391082d4789` |
+| `atlas-one-v100-unificado-2026-07-24-checkpoint-01.zip` (checkpoint anterior) | `c92113b502e823339008a462de8a91493bf707eeaca7eded92e75a1e56947aab` |
+
+O bundle é o único artefato que preserva história e branches — guarde-o fora desta máquina.
+
+## Como validar
+
+```bash
+cd "/Users/thiagoribasdavila/Documents/Aplas v 3/dist/hostinger" && shasum -a 256 -c atlas-one-v100-completo-2026-07-24.zip.sha256 && unzip -t atlas-one-v100-completo-2026-07-24.zip | tail -1
+```
