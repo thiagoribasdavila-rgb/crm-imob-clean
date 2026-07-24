@@ -93,11 +93,23 @@ exige que a rota de equipe chame o RPC `manage_commercial_profile`, **mas a migr
 esse RPC (`20260717072714`) não está aplicada no banco vivo**. Fazer o portão ficar verde
 quebraria a gestão de equipe em produção.
 
+**CORREÇÃO IMPORTANTE (verificado ao vivo em 2026-07-24):** o diagnóstico de "migrations não
+aplicadas" estava **errado**. O `atlas-v3-homologacao` tem **176 migrations aplicadas** e
+**todos os 12 RPCs** que os portões exigem. O que existe é uma separação entre schema e dado:
+
+| projeto | tabelas | leads | quem aponta |
+|---|---|---|---|
+| `atlas-v3-homologacao` | 176 | **0** | `.env.local` (dev) |
+| `atlas-ai-crm-v1` | 24 | **17.151** | `.env.hostinger` (deploy) |
+
+O deploy aponta para o banco **sem** os RPCs. Ligar o código a eles hoje funcionaria em
+desenvolvimento e quebraria no Hostinger.
+
 | opção | consequência |
 |---|---|
-| A. Aplicar as migrations pendentes | Destrava vários portões de uma vez. **Exige autorização de banco** e enfrentar o drift (a maioria das migrations não está aplicada). |
-| B. Corrigir só os portões que não dependem do banco | Progresso real e seguro; ver a triagem em [KNOWN_RISKS.md](KNOWN_RISKS.md). |
-| C. Aceitar conscientemente e documentar | O que está feito hoje: nenhum portão foi afrouxado para ficar verde. |
+| **A. Apontar o deploy para homologação** | Destrava os 12 portões de uma vez. Custo: a base está **vazia** — precisa da carga dos dados, que envolve 17.151 leads reais (PII). |
+| B. Migrar o `atlas-ai-crm-v1` para o schema V3 | Mantém o dado onde está, mas é operação sobre base com dado de cliente — não é exercício de schema. |
+| C. Manter como está | Os 12 portões seguem vermelhos por um motivo agora preciso e documentado. |
 
 **Princípio aplicado em toda a sessão:** nenhum portão foi relaxado para produzir verde.
 Quando o verde exigia quebrar produção, o vermelho ficou — documentado.
