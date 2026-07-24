@@ -36,6 +36,7 @@ if (existsSync(envPath)) {
 const packageJson = JSON.parse(readFileSync(packagePath, "utf8"));
 const branch = run("git branch --show-current");
 const remote = run("git remote get-url origin");
+const sourceSnapshot = branch === "indisponível" && remote === "indisponível";
 const nodeVersion = process.version;
 const npmVersion = run("npm --version");
 const hasReleaseCheck = Boolean(packageJson.scripts?.["release:check"]);
@@ -44,8 +45,12 @@ const hasSupabaseUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const hasSupabaseKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 ok("Projeto", `${packageJson.name}@${packageJson.version}`);
-report(branch === "develop/atlas-v3", "Branch", branch, `${branch} — esperado: develop/atlas-v3`);
-ok("Remote", remote);
+if (sourceSnapshot) {
+  ok("Origem", "snapshot-fonte validável sem metadados Git");
+} else {
+  report(branch === "develop/atlas-v3", "Branch", branch, `${branch} — esperado: develop/atlas-v3`);
+  ok("Remote", remote);
+}
 ok("Node", nodeVersion);
 ok("npm", npmVersion);
 report(hasReleaseCheck, "Script release:check", "disponível", "ausente");
@@ -54,14 +59,19 @@ report(hasSupabaseUrl, "NEXT_PUBLIC_SUPABASE_URL", "carregada no processo", "nã
 report(hasSupabaseKey, "Chave pública Supabase", "publishable/anon carregada", "configure NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
 console.log("\nSequência recomendada:\n");
-console.log("git fetch origin");
-console.log("git switch develop/atlas-v3");
-console.log("git pull --ff-only origin develop/atlas-v3");
+if (sourceSnapshot) {
+  console.log("# Snapshot local: confirme o fingerprint da fonte antes de publicar");
+  console.log("npm run consolidation:30:check");
+} else {
+  console.log("git fetch origin");
+  console.log("git switch develop/atlas-v3");
+  console.log("git pull --ff-only origin develop/atlas-v3");
+}
 console.log("npm ci");
 console.log("npm run doctor");
 console.log("npm run release:check");
 console.log("npm run dev\n");
 
-if (!hasReleaseCheck || branch !== "develop/atlas-v3") {
+if (!hasReleaseCheck || (!sourceSnapshot && branch !== "develop/atlas-v3")) {
   process.exitCode = 1;
 }

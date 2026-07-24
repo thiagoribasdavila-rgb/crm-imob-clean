@@ -4,6 +4,7 @@ import process from "node:process";
 const envPath = new URL("../.env.local", import.meta.url);
 
 function loadLocalEnv() {
+  if (process.env.ATLAS_PREFLIGHT_IGNORE_LOCAL_ENV === "1") return {};
   if (!existsSync(envPath)) return {};
   const lines = readFileSync(envPath, "utf8").split(/\r?\n/);
   return Object.fromEntries(
@@ -34,11 +35,27 @@ console.log("\nATLAS AI — Production Preflight\n");
 
 check("Ambiente Atlas", ["development", "homologation", "production"].includes(atlasEnvironment), atlasEnvironment || "configure ATLAS_ENV");
 check("Identidade do ambiente", Boolean(value("ATLAS_ENVIRONMENT_ID")), value("ATLAS_ENVIRONMENT_ID") ? "configurada" : "configure um identificador exclusivo");
-check("Banco isolado", value("ATLAS_DATABASE_ENVIRONMENT") === atlasEnvironment, value("ATLAS_DATABASE_ENVIRONMENT") ? `banco marcado como ${value("ATLAS_DATABASE_ENVIRONMENT")}` : "configure ATLAS_DATABASE_ENVIRONMENT");
+const databaseEnvironment = value("ATLAS_DATABASE_ENVIRONMENT");
+check(
+  "Banco isolado",
+  Boolean(atlasEnvironment && databaseEnvironment && databaseEnvironment === atlasEnvironment),
+  databaseEnvironment
+    ? `banco marcado como ${databaseEnvironment}; deve corresponder a ATLAS_ENV`
+    : "configure ATLAS_DATABASE_ENVIRONMENT",
+);
 check("URL segura", atlasEnvironment === "development" ? /^http:\/\/localhost(?::\d+)?$/i.test(baseUrl) : /^https:\/\//i.test(baseUrl), atlasEnvironment === "development" ? "localhost permitido somente em desenvolvimento" : "HTTPS obrigatório fora do desenvolvimento");
 let baseHostname = "";
 try { baseHostname = new URL(baseUrl).hostname; } catch {}
-const publicDomainReady = atlasEnvironment === "development" || Boolean(baseHostname && !placeholderHost.test(baseHostname));
+const publicDomainReady =
+  atlasEnvironment === "development"
+    ? /^http:\/\/localhost(?::\d+)?$/i.test(baseUrl)
+    : Boolean(
+        ["homologation", "production"].includes(atlasEnvironment) &&
+          /^https:\/\//i.test(baseUrl) &&
+          baseHostname &&
+          !placeholderHost.test(baseHostname) &&
+          baseHostname !== "localhost",
+      );
 check("Domínio público real", publicDomainReady, atlasEnvironment === "development" ? "não exigido em desenvolvimento" : publicDomainReady ? "configurado" : "substitua o domínio de exemplo pela URL da Hostinger");
 check("URLs da aplicação", Boolean(publicAppUrl && publicAppUrl === baseUrl), publicAppUrl === baseUrl ? "ATLAS_BASE_URL e NEXT_PUBLIC_APP_URL alinhadas" : "configure as duas URLs com o mesmo domínio HTTPS");
 if (atlasEnvironment === "production") {
@@ -46,26 +63,66 @@ if (atlasEnvironment === "production") {
   check("Credenciais de teste removidas", !value("ATLAS_TEST_EMAIL") && !value("ATLAS_TEST_PASSWORD"), "produção não usa conta automatizada");
 }
 
-check("NEXT_PUBLIC_SUPABASE_URL", Boolean(value("NEXT_PUBLIC_SUPABASE_URL")), "configurada");
+check(
+  "NEXT_PUBLIC_SUPABASE_URL",
+  Boolean(value("NEXT_PUBLIC_SUPABASE_URL")),
+  value("NEXT_PUBLIC_SUPABASE_URL")
+    ? "configurada"
+    : "configure NEXT_PUBLIC_SUPABASE_URL",
+);
 const publicSupabaseKey = value("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") || value("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 check("Chave pública Supabase", Boolean(publicSupabaseKey), publicSupabaseKey ? "publishable/anon configurada" : "configure NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ou NEXT_PUBLIC_SUPABASE_ANON_KEY");
-check("SUPABASE_SERVICE_ROLE_KEY", Boolean(value("SUPABASE_SERVICE_ROLE_KEY")), "configurada");
+check(
+  "SUPABASE_SERVICE_ROLE_KEY",
+  Boolean(value("SUPABASE_SERVICE_ROLE_KEY")),
+  value("SUPABASE_SERVICE_ROLE_KEY")
+    ? "configurada"
+    : "configure SUPABASE_SERVICE_ROLE_KEY somente no servidor",
+);
 let databaseUrlReady = false;
 try {
   const databaseUrl = new URL(value("DATABASE_URL"));
   databaseUrlReady = ["postgres:", "postgresql:"].includes(databaseUrl.protocol) && Boolean(databaseUrl.hostname && databaseUrl.pathname !== "/");
 } catch {}
 check("DATABASE_URL", databaseUrlReady, databaseUrlReady ? "conexão Postgres estruturalmente válida" : "informe uma URL postgresql válida para backup e migrations");
-check("ATLAS_CRON_SECRET", Boolean(value("ATLAS_CRON_SECRET")), "configurada");
+check(
+  "ATLAS_CRON_SECRET",
+  Boolean(value("ATLAS_CRON_SECRET")),
+  value("ATLAS_CRON_SECRET")
+    ? "configurada"
+    : "gere um segredo forte exclusivo para workers e cron",
+);
 const aiCredential = Boolean(value("OPENAI_API_KEY"));
 check("IA comercial", aiCredential, aiCredential ? "OpenAI direta disponível" : "configure OPENAI_API_KEY");
 check("Pesquisa web", Boolean(value("PERPLEXITY_API_KEY")), value("PERPLEXITY_API_KEY") ? "Perplexity disponível" : "opcional: configure PERPLEXITY_API_KEY", false);
 const economyProviders = ["DEEPSEEK", "QWEN", "KIMI", "GLM"].filter((provider) => Boolean(value(`${provider}_API_KEY`) && value(`ATLAS_${provider}_MODEL`)));
 check("IAs econômicas", economyProviders.length > 0, economyProviders.length ? `${economyProviders.join(", ")} pronta(s) para roteamento` : "opcional: configure chave e modelo de ao menos um provedor", false);
-check("Roteamento de modelos", Boolean(value("ATLAS_AI_FAST_MODEL") && value("ATLAS_AI_MODEL") && value("ATLAS_RESEARCH_MODEL")), "modelos rápido, comercial e pesquisa definidos");
+const modelRoutingReady = Boolean(
+  value("ATLAS_AI_FAST_MODEL") &&
+    value("ATLAS_AI_MODEL") &&
+    value("ATLAS_RESEARCH_MODEL"),
+);
+check(
+  "Roteamento de modelos",
+  modelRoutingReady,
+  modelRoutingReady
+    ? "modelos rápido, comercial e pesquisa definidos"
+    : "configure ATLAS_AI_FAST_MODEL, ATLAS_AI_MODEL e ATLAS_RESEARCH_MODEL",
+);
 const pricingReady = ["FAST", "COMMERCIAL", "REASONING", "RESEARCH"].every((tier) => Number(value(`ATLAS_AI_${tier}_INPUT_USD_PER_MILLION`)) > 0 && Number(value(`ATLAS_AI_${tier}_OUTPUT_USD_PER_MILLION`)) > 0);
 check("Custos de IA", pricingReady, pricingReady ? "preços por milhão configurados" : "configure preços atuais para medir custo real", false);
-check("Ambiente Hostinger", atlasEnvironment === "development" || value("ATLAS_HOSTING_PROVIDER") === "hostinger", atlasEnvironment === "development" ? "não exigido no desenvolvimento" : "ATLAS_HOSTING_PROVIDER=hostinger");
+const hostingerReady =
+  atlasEnvironment === "development" ||
+  value("ATLAS_HOSTING_PROVIDER") === "hostinger";
+check(
+  "Ambiente Hostinger",
+  hostingerReady,
+  atlasEnvironment === "development"
+    ? "não exigido no desenvolvimento"
+    : hostingerReady
+      ? "ATLAS_HOSTING_PROVIDER=hostinger"
+      : "configure ATLAS_HOSTING_PROVIDER=hostinger",
+);
 check("ATLAS_BOOTSTRAP_SECRET", Boolean(value("ATLAS_BOOTSTRAP_SECRET")), "necessária somente até criar o primeiro admin", false);
 check("META_APP_SECRET", Boolean(value("META_APP_SECRET")), "opcional para teste inicial", false);
 check("Meta Conversions", Boolean(value("META_CONVERSIONS_ACCESS_TOKEN") && value("META_AD_ACCOUNT_ID")), "necessária para fechar o ciclo CRM → Andromeda", false);

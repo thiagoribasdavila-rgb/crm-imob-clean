@@ -7,7 +7,30 @@ function runJsonScript(file) {
   return JSON.parse(execFileSync(process.execPath, [file], { encoding: "utf8" }));
 }
 
-function trackedSourceFiles() {
+function isGitWorkspace() {
+  try {
+    return execFileSync("git", ["rev-parse", "--is-inside-work-tree"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim() === "true";
+  } catch {
+    return false;
+  }
+}
+
+function snapshotSourceFiles(directory) {
+  return fs
+    .readdirSync(directory, { withFileTypes: true })
+    .flatMap((entry) => {
+      const path = `${directory}/${entry.name}`;
+      if (entry.isDirectory()) return snapshotSourceFiles(path);
+      return entry.isFile() && /\.(?:ts|tsx)$/.test(entry.name) ? [path] : [];
+    });
+}
+
+function sourceFiles() {
+  if (!isGitWorkspace())
+    return SOURCE_ROOTS.flatMap((root) => snapshotSourceFiles(root)).sort();
   return execFileSync("git", ["ls-files", "-z", ...SOURCE_ROOTS], { encoding: "utf8" })
     .split("\0")
     .filter((file) => /\.(?:ts|tsx)$/.test(file))
@@ -81,7 +104,8 @@ const inventory = runJsonScript("scripts/inventory-navigation-architecture.mjs")
 const outcomes = JSON.parse(
   fs.readFileSync("config/evolution-phase-022-navigation-commercial-outcomes.json", "utf8"),
 );
-const files = trackedSourceFiles();
+const gitWorkspace = isGitWorkspace();
+const files = sourceFiles();
 const sources = new Map(files.map((file) => [file, fs.readFileSync(file, "utf8")]));
 const references = files.flatMap((file) => extractReferences(file, sources.get(file)));
 const allRoutes = [
@@ -163,7 +187,9 @@ const baseline = {
   generatedAt: new Date().toISOString(),
   phase: 23,
   wave: 2,
-  scope: "tracked-source-navigation-baseline",
+  scope: gitWorkspace
+    ? "tracked-source-navigation-baseline"
+    : "snapshot-source-navigation-baseline",
   measurementBoundary: {
     structuralEvidence: "measured",
     behavioralEvidence: "blocked-awaiting-runtime-telemetry",

@@ -10,7 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { supabase } from "@/lib/supabase";
-import { CommandCenterModuleHealth } from "@/app/(crm)/dashboard/page";
+import { CommandCenterModuleHealth } from "@/components/atlas/command-center-module-health";
 import type { ProposalSignalKind } from "@/lib/ai/action-proposals";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import { NextBestActionPanel } from "@/components/atlas/NextBestActionPanel";
