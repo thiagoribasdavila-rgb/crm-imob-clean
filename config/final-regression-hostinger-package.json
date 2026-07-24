@@ -1,7 +1,7 @@
 {
   "phase": 10,
-  "artifact": "dist/hostinger/atlas-v3-hostinger-final.zip",
-  "checksum": "dist/hostinger/atlas-v3-hostinger-final.zip.sha256",
+  "artifact": "dist/hostinger/atlas-v3-hostinger-homologation.zip",
+  "checksum": "dist/hostinger/atlas-v3-hostinger-homologation.zip.sha256",
   "source": "committed_git_head",
   "runtime": "node_20_9_plus",
   "host": "hostinger",

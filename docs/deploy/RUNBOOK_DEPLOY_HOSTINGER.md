@@ -144,7 +144,7 @@ A v1 apontava mitigações em "Passo 8.2" e "Passo 8.3" que **não existiam**. C
 | R10 | Janela de indisponibilidade: PM2 fork, 1 instância. | médio → **baixo** | Blue/green: downtime = tempo de `mv` + boot do Next (segundos), não o build inteiro. |
 | R11 | O deploy leva ~4 dias e 282 commits de mudanças, não só as 3 páginas. Inclui endurecimento de CSP. | alto | Passo 1.5 (`validate:deploy`) passa a ser **obrigatório**; Fase 9 inclui regressão completa; Anexo D documenta o plano B cirúrgico. |
 | R12 | `.env.hostinger` local contém `ATLAS_TEST_EMAIL`, `ATLAS_TEST_PASSWORD`, `ATLAS_BOOTSTRAP_SECRET`; dois docs proíbem essas chaves no servidor, um terceiro manda copiar o arquivo inteiro. | alto | Este runbook **não transfere** `.env` nenhum. Passo 0.5 audita (só nomes). Passo 5.7 remove as três do `.env` do diretório novo. |
-| R13 | `npm run package:hostinger:clean-build` tem o nome do ZIP hardcoded em `atlas-v3-hostinger-final.zip` (artefato de 18/jul, commit `8f863e4`). | alto | Passo 1.6: **não rodar**. O ensaio de build limpo desta release é o build da Fase 5. |
+| R13 | ~~`npm run package:hostinger:clean-build` tem o nome do ZIP hardcoded em `atlas-v3-hostinger-final.zip` (artefato de 18/jul, commit `8f863e4`).~~ **RESOLVIDO em 24/07.** | ~~alto~~ baixo | O script passou a usar o mesmo contrato do produtor (`ATLAS_PACKAGE_NAME`, default `atlas-v3-hostinger-homologation.zip`); `config/final-hostinger-release.json` e `config/final-regression-hostinger-package.json` foram alinhados. Passo 1.6 continua opcional: o ensaio copia `.env.local` para `/tmp`. |
 | R14 | Chaves vazias (WhatsApp, object storage, Perplexity, IA) falham só em runtime, em silêncio. | médio | Fora do escopo; registrado em "Depois do deploy". |
 | **R15** | **O ZIP embarca `scripts/reset-official-auth-rbac.mjs` e `scripts/bootstrap-admin.mjs`** (confirmado por `unzip -Z1`), num host que carrega `SUPABASE_SERVICE_ROLE_KEY` do banco vivo. | alto | **Passo 5.6 remove os dois arquivos** antes do `npm ci`. |
 | **R16** | **O backup da Fase 4 inclui o `.env` de produção** (ele está dentro do `<APPDIR>`), e `sudo mkdir -p` cria 755 / `tar` sai 644 → tarball com segredos legível por qualquer usuário local. | alto | Passo 4.0 usa `install -d -m 700`; Passo 4.2 faz `chmod 600` no tarball; a limpeza final expurga **as três** cópias de segredo. |
@@ -442,7 +442,9 @@ Nome com **dois-pontos**. Requer: rodar da raiz, ter rede (faz `npm audit`), ter
 
 ## 1.6 — Sobre `package:hostinger:clean-build`
 
-❌ **Não rode nesta rodada.** `scripts/test-hostinger-package-build.mjs:7` aponta para `atlas-v3-hostinger-final.zip` (artefato de 18/jul, commit `8f863e4`) — testaria um pacote que não vai subir, e ainda copia o `.env.local` real para `/tmp`. O ensaio de build limpo desta release é o próprio build da Fase 5.
+⚠️ **O nome errado do artefato foi corrigido em 24/07** (unificação com o pacote Atlas One): o script agora abre `atlas-v3-hostinger-homologation.zip` — o pacote que o `package-hostinger.mjs` realmente gera — e respeita `ATLAS_PACKAGE_NAME`. Antes ele apontava para `atlas-v3-hostinger-final.zip` (artefato de 18/jul, commit `8f863e4`) e passava sobre um ZIP obsoleto que sobrara em disco, dando falsa confiança.
+
+Ainda assim, **avalie antes de rodar**: o ensaio copia o `.env.local` real para um diretório temporário em `/tmp` e executa `npm ci` + `build` completos. O ensaio de build limpo desta release continua sendo o próprio build da Fase 5.
 
 ---
 

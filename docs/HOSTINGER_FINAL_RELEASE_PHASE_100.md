@@ -4,8 +4,8 @@
 
 `npm run package:hostinger` cria e verifica:
 
-- `dist/hostinger/atlas-v3-hostinger-final.zip`;
-- `dist/hostinger/atlas-v3-hostinger-final.zip.sha256`;
+- `dist/hostinger/atlas-v3-hostinger-homologation.zip`;
+- `dist/hostinger/atlas-v3-hostinger-homologation.zip.sha256`;
 - manifesto interno `HOSTINGER_PACKAGE.json`;
 - inventário interno `RELEASE_FILES.sha256`.
 

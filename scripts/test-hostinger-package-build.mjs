@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const root = process.cwd();
-const zip = resolve(root, "dist/hostinger/atlas-v3-hostinger-final.zip");
+// Mesmo contrato de nome do produtor (scripts/package-hostinger.mjs): o ensaio
+// precisa abrir o pacote que o release realmente gera. Apontar para um nome
+// antigo faz o teste passar sobre um artefato obsoleto que sobrou em disco.
+const packageName = process.env.ATLAS_PACKAGE_NAME || "atlas-v3-hostinger-homologation.zip";
+const zip = resolve(root, "dist/hostinger", packageName);
 const envFile = resolve(root, process.env.ATLAS_PACKAGE_ENV_FILE || ".env.local");
 if (!existsSync(zip)) throw new Error("Gere o ZIP Hostinger antes do build limpo.");
 if (!existsSync(envFile)) throw new Error("Arquivo de ambiente local ausente para o ensaio.");
