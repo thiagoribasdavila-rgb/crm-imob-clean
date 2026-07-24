@@ -617,7 +617,7 @@ export default function DistributionPage() {
             <header className="px-5 pt-5 pb-3">
               <p className="cc6-eyebrow">Fase 57 · Ordem inteligente da fila</p>
               <h2 id="distribution-priority-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Prioridade por SLA e origem</h2>
-              <p className="mt-1 text-xs leading-5 text-[#6b7890]">Ordem: maior pressão de SLA → prioridade da origem → lead mais antiga · dados pessoais nunca entram na decisão.</p>
+              <p className="mt-1 text-xs leading-5 text-[#6b7890]">Ordem: maior pressão de SLA → prioridade da origem → lead mais antiga. Nome, renda, gênero, idade e qualquer outro dado pessoal nunca entram na decisão.</p>
             </header>
             <div className="cc6-hairline grid gap-4 p-5 lg:grid-cols-5">
               <label className={LABEL_CLASS}>
@@ -669,7 +669,7 @@ export default function DistributionPage() {
             <header className="px-5 pt-5 pb-3">
               <p className="cc6-eyebrow">Fase 56 · Proteção contra sobrecarga</p>
               <h2 id="distribution-capacity-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Limites de carteira por corretor</h2>
-              <p className="mt-1 text-xs leading-5 text-[#6b7890]">Capacidade operacional, não meta nem ranking — no teto, o banco bloqueia novas distribuições e transferências.</p>
+              <p className="mt-1 text-xs leading-5 text-[#6b7890]">Capacidade operacional, não meta nem ranking. Sem comparação pública entre corretores: o limite protege o atendimento, não classifica gente. No teto, o banco bloqueia novas distribuições e transferências.</p>
             </header>
             <div className="cc6-hairline grid gap-4 p-5 lg:grid-cols-5">
               <label className={LABEL_CLASS}>
@@ -723,7 +723,7 @@ export default function DistributionPage() {
             <header className="px-5 pt-5 pb-3">
               <p className="cc6-eyebrow">Fase 55 · Continuidade de atendimento</p>
               <h2 id="distribution-absence-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Cobertura por ausência</h2>
-              <p className="mt-1 text-xs leading-5 text-[#6b7890]">Não é acionada por queda de conexão — exige confirmação humana com período e motivo.</p>
+              <p className="mt-1 text-xs leading-5 text-[#6b7890]">Não é acionado por simples queda de conexão — exige confirmação humana, com período de ausência e motivo registrados.</p>
             </header>
             <div className="cc6-hairline grid gap-4 p-5 lg:grid-cols-4">
               <label className={LABEL_CLASS}>

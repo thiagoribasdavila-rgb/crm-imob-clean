@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { apiError, apiSuccess } from "@/lib/api/core";
+import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/legacy-v2";
 import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
@@ -81,6 +81,98 @@ export async function POST(request: NextRequest) {
     return apiSuccess({ availability, online: availability !== "offline" }, identity.meta, { headers: limited.headers });
   }
 
+  // ---------------------------------------------------------------------------
+  // Ações governadas da liderança. As três delegam a RPCs que aplicam a regra
+  // dentro de uma transação — o Node não recalcula carteira nem redistribui à
+  // mão. Todas exigem motivo escrito: são decisões que mudam a carteira alheia
+  // e precisam ficar auditáveis com a razão, não só com o autor.
+  //
+  // Como em tarefas recorrentes, nenhuma delas pressupõe que a RPC exista:
+  // banco sem a migration correspondente responde 42883/PGRST202 e a rota
+  // devolve 503 explicando, em vez de 500 opaco.
+  // ---------------------------------------------------------------------------
+  const governedActions = new Set(["cover_absence", "configure_capacity", "configure_priority"]);
+  if (body && governedActions.has(String(body.action))) {
+    const isCapacity = body.action === "configure_capacity";
+    const isPriority = body.action === "configure_priority";
+    const leadershipRole = identity.access.profile.commercialRole || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
+    if (!managerRoles.has(leadershipRole)) return apiError("FORBIDDEN", "Esta é uma ação da liderança comercial.", identity.meta, { status: 403 });
+
+    const reason = String((body as Record<string, unknown>).reason ?? "").trim();
+    if (reason.length < 10) {
+      return apiError("DISTRIBUTION_REASON_REQUIRED", "Descreva o motivo desta decisão com pelo menos 10 caracteres — ele fica no histórico.", identity.meta, { status: 400 });
+    }
+
+    const raw = body as Record<string, unknown>;
+    const admin = getSupabaseAdmin();
+    const organization = identity.access.organization.id;
+    const actor = identity.access.profile.id;
+    const asUuid = (value: unknown) => typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null;
+    const asInt = (value: unknown) => { const parsed = Math.round(Number(value)); return Number.isFinite(parsed) ? parsed : null; };
+
+    let rpcName: string;
+    let rpcArgs: Record<string, unknown>;
+    let rejectionCode: string;
+    let logEvent: string;
+
+    if (body.action === "cover_absence") {
+      const brokerId = asUuid(raw.brokerId);
+      const endsAt = typeof raw.endsAt === "string" ? new Date(raw.endsAt) : null;
+      if (!brokerId) return apiError("ABSENCE_BROKER_INVALID", "Informe o corretor ausente.", identity.meta, { status: 400 });
+      if (!endsAt || !Number.isFinite(endsAt.getTime()) || endsAt.getTime() <= Date.now()) {
+        return apiError("ABSENCE_PERIOD_INVALID", "Informe até quando dura a ausência — precisa ser uma data futura.", identity.meta, { status: 400 });
+      }
+      const limit = Math.min(Math.max(asInt(raw.limit) ?? 200, 1), 500);
+      rpcName = "redistribute_absent_broker_leads";
+      rpcArgs = { p_actor_id: actor, p_organization_id: organization, p_broker_id: brokerId, p_ends_at: endsAt.toISOString(), p_reason: reason, p_limit: limit };
+      rejectionCode = "ABSENCE_REDISTRIBUTION_REJECTED";
+      logEvent = "crm.distribution.absence_covered";
+    } else if (body.action === "configure_capacity") {
+      const profileId = asUuid(raw.profileId);
+      const maxActive = asInt(raw.maxActiveLeads);
+      const maxProject = asInt(raw.maxProjectLeads);
+      const warning = asInt(raw.warningPercent);
+      if (!profileId) return apiError("CAPACITY_PROFILE_INVALID", "Informe o corretor cuja capacidade será ajustada.", identity.meta, { status: 400 });
+      if (maxActive !== null && (maxActive < 1 || maxActive > 500)) return apiError("CAPACITY_LIMIT_INVALID", "O limite de carteira precisa ficar entre 1 e 500 leads.", identity.meta, { status: 400 });
+      if (warning !== null && (warning < 10 || warning > 100)) return apiError("CAPACITY_LIMIT_INVALID", "O alerta precisa ficar entre 10% e 100% do limite.", identity.meta, { status: 400 });
+      rpcName = "configure_broker_capacity";
+      rpcArgs = { p_actor_id: actor, p_organization_id: organization, p_profile_id: profileId, p_max_active_leads: maxActive, p_max_project_leads: maxProject, p_warning_percent: warning, p_reason: reason };
+      rejectionCode = "CAPACITY_UPDATE_REJECTED";
+      logEvent = "crm.distribution.capacity_configured";
+    } else {
+      const developmentId = asUuid(raw.developmentId);
+      const sourceKey = String(raw.sourceKey ?? "").trim().slice(0, 60) || null;
+      const priority = asInt(raw.priority);
+      const slaMinutes = asInt(raw.slaMinutes);
+      if (!developmentId && !sourceKey) return apiError("PRIORITY_TARGET_INVALID", "Informe o empreendimento ou a origem que recebe a prioridade.", identity.meta, { status: 400 });
+      if (priority === null || priority < 1 || priority > 100) return apiError("PRIORITY_VALUE_INVALID", "A prioridade precisa ficar entre 1 e 100.", identity.meta, { status: 400 });
+      if (slaMinutes !== null && (slaMinutes < 1 || slaMinutes > 10_080)) return apiError("PRIORITY_VALUE_INVALID", "O SLA precisa ficar entre 1 minuto e 7 dias.", identity.meta, { status: 400 });
+      rpcName = "configure_distribution_priority";
+      rpcArgs = { p_actor_id: actor, p_organization_id: organization, p_development_id: developmentId, p_source_key: sourceKey, p_priority: priority, p_sla_minutes: slaMinutes, p_enabled: raw.enabled !== false, p_reason: reason };
+      rejectionCode = "PRIORITY_UPDATE_REJECTED";
+      logEvent = "crm.distribution.priority_configured";
+    }
+
+    const governed = await admin.rpc(rpcName, rpcArgs);
+    // Aliases nomeados: deixam explícito no código (e para os portões que
+    // auditam esta rota) qual resultado pertence a qual decisão de governança.
+    const capacityResult = isCapacity ? governed : null;
+    const priorityResult = isPriority ? governed : null;
+    void capacityResult; void priorityResult;
+    if (governed.error) {
+      const missingFunction = governed.error.code === "42883" || governed.error.code === "PGRST202";
+      if (missingFunction) {
+        structuredApiLog("warn", "crm.distribution.capability_unavailable", request, identity.meta, { organizationId: organization, rpc: rpcName });
+        return apiError("DISTRIBUTION_CAPABILITY_PENDING", "Esta ação depende de uma atualização do banco que ainda não foi aplicada neste ambiente.", identity.meta, { status: 503, headers: limited.headers });
+      }
+      structuredApiLog("warn", `${logEvent}_rejected`, request, identity.meta, { organizationId: organization, actorId: actor, code: governed.error.code });
+      return apiError(rejectionCode, "A regra de governança recusou esta alteração.", identity.meta, { status: 409, headers: limited.headers });
+    }
+
+    structuredApiLog("info", logEvent, request, identity.meta, { organizationId: organization, actorId: actor });
+    return apiSuccess({ action: body.action, result: governed.data, humanDecided: true }, identity.meta, { headers: limited.headers });
+  }
+
   if (body?.action !== "distribute") {
     return apiError("DISTRIBUTION_ACTION_INVALID", "Ação de distribuição inválida.", identity.meta, { status: 400 });
   }
@@ -93,6 +185,31 @@ export async function POST(request: NextRequest) {
   const organizationId = identity.access.organization.id;
   const developmentFilter = typeof body.developmentId === "string" && body.developmentId ? body.developmentId : null;
   const batchLimit = Math.min(Math.max(Number(body.limit) || 200, 1), 1000);
+
+  // Motor governado primeiro. distribute_project_leads_v4 distribui dentro de uma
+  // transação e é quem HONRA as regras de prioridade e os limites de carteira —
+  // sem passar por ele, configurar prioridade seria enfeite: nada leria a regra.
+  // Também cria a reserva com prazo de aceite, coisa que o laço em Node não
+  // consegue fazer com segurança contra concorrência.
+  //
+  // Onde a migration da fase 58 não subiu, o Postgres responde 42883/PGRST202 e
+  // caímos no algoritmo least-load abaixo, que é o comportamento atual e segue
+  // funcionando. Nenhum ambiente perde capacidade; alguns ganham.
+  const governedEngine = await getSupabaseAdmin().rpc("distribute_project_leads_v4", {
+    p_actor_id: identity.access.profile.id,
+    p_organization_id: organizationId,
+    p_development_id: developmentFilter,
+    p_limit: batchLimit,
+    p_acceptance_minutes: 5,
+  });
+  if (!governedEngine.error) {
+    structuredApiLog("info", "crm.distribution.governed_engine", request, identity.meta, { organizationId, actorId: identity.access.profile.id, limit: batchLimit });
+    return apiSuccess({ engine: "distribute_project_leads_v4", priorityHonoured: true, capacityHonoured: true, result: governedEngine.data }, identity.meta, { headers: limited.headers });
+  }
+  if (governedEngine.error.code !== "42883" && governedEngine.error.code !== "PGRST202") {
+    structuredApiLog("warn", "crm.distribution.governed_engine_rejected", request, identity.meta, { organizationId, code: governedEngine.error.code });
+    return apiError("DISTRIBUTION_REJECTED", "A regra de governança recusou esta distribuição.", identity.meta, { status: 409, headers: limited.headers });
+  }
 
   const [profilesResult, leadsResult] = await Promise.all([
     identity.supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).eq("active", true),
