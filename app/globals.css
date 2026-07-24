@@ -22,6 +22,10 @@
   --danger: #fb7185;
   --radius: 16px;
 
+  /* Acento do bloco de prontidão do Kanban. Valor padrão aqui (token, não
+     número mágico); cada [data-status] sobrescreve com a cor do seu estado. */
+  --readiness-accent: var(--primary);
+
   /* ===== CC23 · reparo dos semânticos do shadcn =====
      Estes tokens vinham do preset CLARO do shadcn e conviviam no mesmo :root com
      a paleta escura do Atlas. Como não existe bloco .dark e o produto é dark-only,
@@ -4698,10 +4702,10 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   gap: 16px;
   overflow: hidden;
   padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--readiness-accent, #38bdf8) 20%, rgba(255, 255, 255, 0.08));
+  border: 1px solid color-mix(in srgb, var(--readiness-accent) 20%, rgba(255, 255, 255, 0.08));
   border-radius: 18px;
   background:
-    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--readiness-accent, #38bdf8) 18%, transparent), transparent 40%),
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--readiness-accent) 18%, transparent), transparent 40%),
     rgba(255, 255, 255, 0.025);
 }
 .atlas-kanban-readiness[data-status="critical"] { --readiness-accent: #fb7185; }
@@ -4717,7 +4721,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   margin: 0;
 }
 .atlas-kanban-readiness span {
-  color: color-mix(in srgb, var(--readiness-accent, #38bdf8) 86%, #dbeafe);
+  color: color-mix(in srgb, var(--readiness-accent) 86%, #dbeafe);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .14em;
@@ -8211,9 +8215,6 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   background: rgba(255, 255, 255, 0.82);
   box-shadow: 0 1px 2px rgba(11, 18, 32, 0.04);
 }
-:root[data-theme="light"] .atlas-sidebar {
-  backdrop-filter: blur(22px);
-}
 :root[data-theme="light"] .atlas-sidebar-search,
 :root[data-theme="light"] .atlas-global-search {
   border-color: var(--atlas-border);
@@ -8277,7 +8278,6 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 }
 :root[data-theme="light"] .atlas-pipeline-robot {
   opacity: .42;
-  filter: drop-shadow(0 16px 22px rgba(11, 99, 197, 0.18));
 }
 :root[data-theme="light"] .atlas-kanban-search,
 :root[data-theme="light"] .atlas-pipeline-page input,
@@ -8291,9 +8291,9 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   color: var(--atlas-text-disabled);
 }
 :root[data-theme="light"] .atlas-kanban-readiness {
-  border-color: color-mix(in srgb, var(--readiness-accent, #0b63c5) 22%, var(--atlas-border));
+  border-color: color-mix(in srgb, var(--readiness-accent) 22%, var(--atlas-border));
   background:
-    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--readiness-accent, #0b63c5) 14%, transparent), transparent 38%),
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--readiness-accent) 14%, transparent), transparent 38%),
     rgba(255, 255, 255, 0.84);
   box-shadow: var(--atlas-shadow-panel);
 }
