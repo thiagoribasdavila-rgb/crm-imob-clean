@@ -7,7 +7,12 @@ import { createRouteQuarantine } from "./route-quarantine.mjs";
 const root = process.cwd();
 const quarantine = createRouteQuarantine({ root, paths: legacyRoutePaths, mode: "build" });
 const nextBin = resolve(root, "node_modules/next/dist/bin/next");
-const requestedBundler = (process.env.ATLAS_NEXT_BUNDLER || "webpack").toLowerCase();
+// O padrão é o turbopack porque é o que este projeto já usava (`next build` sem
+// flag no Next 16) e é o perfil de chunking que o orçamento de performance mede:
+// com webpack o build gera 772 chunks contra o teto de 600 e reprova
+// check-performance-budget. Manter webpack como opção explícita ainda é útil —
+// ele valida o contrato de página do Next, que o turbopack não checa.
+const requestedBundler = (process.env.ATLAS_NEXT_BUNDLER || "turbopack").toLowerCase();
 
 if (!existsSync(nextBin)) {
   throw new Error(
