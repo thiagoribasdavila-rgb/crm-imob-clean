@@ -56,6 +56,7 @@
     "login:check": "node scripts/check-login.mjs",
     "legal-pages:check": "node scripts/check-legal-pages.mjs",
     "cc23:check": "node scripts/check-cc23-foundation.mjs",
+    "light-layout:check": "node scripts/check-light-layout-foundation.mjs",
     "post-login:check": "node scripts/check-post-login-flow.mjs",
     "password-recovery:check": "node scripts/check-password-recovery.mjs",
     "sessions:check": "node scripts/check-sessions.mjs",

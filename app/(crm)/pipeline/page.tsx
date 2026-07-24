@@ -505,18 +505,48 @@ export default function PipelinePage() {
     { key: "risco", label: "Reduzir risco", value: metrics.highRisk + metrics.stalled, detail: "Parados, atrasados ou críticos", action: "Revisar gargalos", tone: "info", focus: "prioridade" as FocusKey, sort: "prioridade" as SortKey },
   ], [metrics.firstContactOverdue, metrics.highRisk, metrics.hot, metrics.noNextAction, metrics.stalled]);
 
+  const kanbanReadiness = useMemo(() => {
+    const blocked = metrics.firstContactOverdue + metrics.overdueActions + metrics.noNextAction;
+    if (metrics.firstContactOverdue > 0) {
+      return {
+        status: "critical",
+        title: "Responder SLAs antes de mover o funil",
+        detail: `${metrics.firstContactOverdue} lead(s) precisam do primeiro contato para não esfriar a intenção.`,
+      };
+    }
+    if (blocked > 0) {
+      return {
+        status: "attention",
+        title: "Organizar próximas ações",
+        detail: `${blocked} pendência(s) de agenda ou follow-up estão bloqueando a fluidez do pipeline.`,
+      };
+    }
+    if (metrics.hot > 0) {
+      return {
+        status: "opportunity",
+        title: "Atacar oportunidades quentes",
+        detail: `${metrics.hot} lead(s) têm temperatura ou score alto. Priorize avanço para visita, proposta ou fechamento.`,
+      };
+    }
+    return {
+      status: "clear",
+      title: "Pipeline em modo limpo",
+      detail: "Sem gargalo crítico no recorte atual. Continue registrando próxima ação em cada oportunidade.",
+    };
+  }, [metrics.firstContactOverdue, metrics.hot, metrics.noNextAction, metrics.overdueActions]);
+
   return (
-    <div className="space-y-5 pb-8" data-phase="37-pipeline-movement-workspace" data-pipeline-layout="movement-first">
+    <div className="atlas-pipeline-page space-y-5 pb-8" data-phase="37-pipeline-movement-workspace" data-pipeline-layout="movement-first">
       <section className={`atlas-pipeline-hero atlas-grid-glow ${focusMode ? "is-focus-mode" : ""}`}>
         <Image className="atlas-pipeline-robot" src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas acompanhando o pipeline comercial" width={210} height={315} priority />
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="flex flex-wrap gap-2"><AtlasBadge tone="info">{metrics.open} negócios</AtlasBadge></div>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Pipeline comercial</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Decida o próximo movimento, proteja SLAs e mantenha cada avanço registrado.</p>
+            <h2 className="atlas-pipeline-title mt-3 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Pipeline comercial</h2>
+            <p className="atlas-pipeline-subtitle mt-2 max-w-2xl text-sm leading-6 text-slate-400">Decida o próximo movimento, proteja SLAs e mantenha cada avanço registrado.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead, região, origem ou campanha..." className="min-w-72 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead, região, origem ou campanha..." className="atlas-kanban-search min-w-72 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
             <button type="button" onClick={() => setFocusMode((value) => !value)} aria-pressed={focusMode} className={`atlas-button-secondary ${focusMode ? "border-sky-400/20 !text-sky-200" : ""}`}>{focusMode ? "Expandir inteligência" : "✦ Ativar modo foco"}</button>
             {canConfigureStages ? <Link href="/pipeline/settings" className="atlas-button-secondary">Configurar etapas</Link> : null}
             <Link href="/leads/new" className="atlas-button-primary">+ Novo lead</Link>
@@ -529,6 +559,20 @@ export default function PipelinePage() {
       {savingId ? <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status" aria-live="polite">Confirmando movimentação e registrando o histórico…</div> : null}
       {lastMove ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.07] px-4 py-3 text-sm text-sky-100" role="status"><span><strong>{lastMove.leadName}</strong> avançou para {destinationOptions.find((item) => item.key === lastMove.to)?.label}.</span><button type="button" onClick={() => void undoLastMove()} disabled={Boolean(savingId)} className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs font-semibold hover:bg-sky-300/15 disabled:opacity-50">Desfazer movimentação</button></div> : null}
 
+      <section className="atlas-kanban-readiness" data-status={kanbanReadiness.status} aria-label="Resumo de prontidão do Kanban">
+        <div>
+          <span>Kanban de execução</span>
+          <strong>{kanbanReadiness.title}</strong>
+          <p>{kanbanReadiness.detail}</p>
+        </div>
+        <dl aria-label="Sinais rápidos do pipeline">
+          <div><dt>SLA</dt><dd>{loading ? "—" : metrics.firstContactOverdue}</dd></div>
+          <div><dt>Sem ação</dt><dd>{loading ? "—" : metrics.noNextAction}</dd></div>
+          <div><dt>Quentes</dt><dd>{loading ? "—" : metrics.hot}</dd></div>
+          <div><dt>Visíveis</dt><dd>{loading ? "—" : visibleLeads.length}</dd></div>
+        </dl>
+      </section>
+
       {!focusMode ? <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <AtlasMetric icon="📊" label="Negócios abertos" value={loading ? "—" : metrics.open} tone="blue" />
         <AtlasMetric icon="💰" label="Pipeline bruto" value={loading ? "—" : brl.format(metrics.pipeline)} tone="violet" />
@@ -540,7 +584,7 @@ export default function PipelinePage() {
 
       <section className="atlas-pipeline-priority-queue" aria-labelledby="atlas-pipeline-priority-title" aria-live="polite" data-priority-source="authorized-loaded-pipeline">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Movimentação prioritária</p><h3 id="atlas-pipeline-priority-title" className="mt-1 text-lg font-semibold text-white">Comece por aqui</h3><p className="mt-1 text-xs text-slate-500">Mesa de execução: quatro decisões antes de olhar as colunas.</p></div>
+          <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Fila de execução</p><h3 id="atlas-pipeline-priority-title" className="mt-1 text-lg font-semibold text-white">Comece por aqui</h3><p className="mt-1 text-xs text-slate-500">Ordem prática por SLA, atraso, temperatura, risco e score — menos procura, mais ação.</p></div>
           <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar oportunidades do pipeline">
             {focusOptions.map((option) => <button key={option.key} type="button" onClick={() => setFocus(option.key)} aria-pressed={focus === option.key} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${focus === option.key ? "border-sky-400/30 bg-sky-400/10 text-sky-200" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><span>{option.label}</span><span className={`rounded-full px-1.5 py-0.5 text-[9px] ${focus === option.key ? "bg-sky-300/15 text-sky-100" : "bg-white/[0.05] text-slate-500"}`}>{option.count}</span></button>)}
           </div>
