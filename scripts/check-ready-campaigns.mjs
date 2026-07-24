@@ -445,9 +445,21 @@ const spin = campaigns.find((c) => c.id === "spin");
 
 // --------------------------------------------------------------------------
 // 16: cross-check — os planos gerados passam no validador do executor
+//
+// Aqui o que se testa é a ESTRUTURA do plano (dependências entre passos e
+// caminhos de referência), não se a configuração já está completa. Por isso o
+// cenário precisa ter Página e formulário resolvidos, como no caso 14: os
+// `campaigns` do topo vêm de propósito de um ambiente SEM page/form, para que os
+// casos 12 e 13 provem que o placeholder vira pendência. Usar aqueles mesmos
+// planos aqui punha o check em contradição com ele mesmo — exigia plano limpo de
+// um cenário desenhado para estar sujo.
 // --------------------------------------------------------------------------
 {
-  const problemas = campaigns.map((c) => ({ id: c.id, p: validateExecutionPlan(c.steps) }));
+  const configurado = await callGET({
+    env: { META_AD_ACCOUNT_ID: ACCOUNT, META_PAGE_ID: "PAGE_777", META_LEAD_FORM_ID: "FORM_888" },
+  });
+  const planos = configurado.__kind === "success" ? configurado.data.campaigns : [];
+  const problemas = planos.map((c) => ({ id: c.id, p: validateExecutionPlan(c.steps) }));
   t(
     "caso 16: planos das duas campanhas validam limpo no executor (dependências/paths)",
     problemas.every((x) => x.p.length === 0),

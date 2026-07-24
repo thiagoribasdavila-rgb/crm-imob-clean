@@ -1796,6 +1796,7 @@ export default function CommandCenterPage() {
       {isManager ? (
         <section
           aria-label="Gargalos da equipe"
+          data-phase="22-manager-daily"
           className="cc5-reveal atlas-panel rounded-2xl p-5 sm:p-6"
           style={{ animationDelay: "40ms" }}
         >
@@ -1949,6 +1950,10 @@ export default function CommandCenterPage() {
               )}
             </div>
           )}
+          <p className="cc6-hairline mt-4 pt-2.5 text-[10px] leading-4 text-[#6b7890]">
+            Leitura apenas · o painel mede e ordena, nunca redistribui sozinho. Decisão humana
+            em transferir, cobrar SLA e mudar prioridade.
+          </p>
         </section>
       ) : null}
 
