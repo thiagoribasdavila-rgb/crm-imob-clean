@@ -12,8 +12,10 @@ Abra `http://localhost:3000`.
 
 > **Não estranhe o `git status` enquanto o servidor roda.** O `dev` põe ~51 rotas legadas em
 > quarentena (move para fora da árvore) e o Git as mostra como apagadas. Elas voltam sozinhas
-> quando o servidor para — verificado. Não commite nesse estado e não tente "restaurar" nada. Verificado em 2026-07-24: a app sobe em ~300 ms, `/api/health`
-responde 200 e `/api/ready` confirma conexão com o banco em ~1,1 s.
+> quando o servidor para — verificado. Não commite nesse estado e não tente "restaurar" nada.
+
+Verificado em 2026-07-24: a app sobe em ~300 ms, `/api/health` responde 200 e `/api/ready`
+confirma conexão com o banco em ~1,1 s.
 
 O `.env.local` já aponta para homologação. **Não** troque para o outro projeto: ele tem
 17.151 leads reais.
