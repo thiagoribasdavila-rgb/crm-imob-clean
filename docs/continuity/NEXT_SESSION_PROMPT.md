@@ -12,41 +12,51 @@ A unificação com `ATLAS_ONE_FINAL_OPERACIONAL.zip` está **concluída no que �
 decidível** (24 commits). **Não refaça a análise.** Leia primeiro, nesta ordem:
 `COMPLETE_UNIFICATION_REPORT.md` → `CURRENT_STATE.md` → `PRODUCT_DECISIONS_REQUIRED.md`.
 
-Verifique antes de agir (não assuma):
+Verifique antes de agir (não assuma) — há um alvo único para isso agora:
+
+```
+npm run verify
+```
+
+Ele encadeia scanner de segredos, typecheck, lint, os 69 testes, `cc23:check` e
+`light-layout:check`. Existe porque os portões de design **não** estão em `npm test` nem no
+build, e uma regressão de CC23 passou despercebida por isso nesta sessão. Esperado: exit 0.
+
+Confira também:
 
 - `git status` limpo;
-- `npm test` → **69 testes, 0 falhas** (53 unitários + 16 contratos);
-- `npm run security:secrets` → PASSED;
-- `npm run cc23:check` → 30/30;
-- `npm run typecheck`, `npm run lint`, `npm run build` → exit 0;
+- `npm run build` → exit 0;
 - a cadeia `validate` tem **14 portões vermelhos de 80** — todos pré-existentes e
   categorizados; nenhum foi afrouxado para produzir verde.
 
 Se algum número divergir, pare e investigue antes de qualquer alteração.
 
-## O bloqueio que domina tudo
+## O bloqueio que domina tudo — e NÃO é o que a documentação antiga dizia
 
-A última migration aplicada no banco vivo é **`20260716083708`**. As **128 migrations locais
-posteriores nunca subiram**. Isso trava **12 dos 14 portões vermelhos**, a recorrência de
-tarefas, os SLAs medidos, a distribuição governada e a hierarquia comercial.
+Verificado ao vivo em 2026-07-24: **não faltam migrations.** Existem dois projetos Supabase e
+o schema está num, o dado está no outro.
 
-Não existe conserto de código para eles: os checks exigem RPCs e tabelas que só existem no
-repo. Fazê-los ficar verdes **quebraria produção** — o caso `commercial-hierarchy` é a prova
-(pede o RPC `manage_commercial_profile`, da migration `20260717072714`, não aplicada).
+| projeto | tabelas | leads | migrations | quem aponta |
+|---|---|---|---|---|
+| `atlas-v3-homologacao` (`pozbrcsfthnhmnebfoxv`) | 176 | **0** | **176 aplicadas** | `.env.local` (dev) |
+| `atlas-ai-crm-v1` (`ietwopslgqxlenfyghqk`) | 24 | **17.151** | schema legado | `.env.hostinger` (deploy) |
 
-**TAREFA RECOMENDADA: aplicar o bloco de migrations em HOMOLOGAÇÃO** (nunca direto em
-produção), nesta ordem — o ledger da fase 59 depende das cinco tabelas anteriores:
+Os 12 RPCs que os portões exigem **existem todos** em homologação (`manage_commercial_profile`,
+`create_recurring_task`, `distribute_project_leads_v4`, `get_portfolio_audit_ledger`…), assim
+como as colunas de SLA. **O `migration-status.txt` do repo descreve o projeto errado** — foi a
+fonte do diagnóstico equivocado.
 
-```
-20260716210000 (base canônica) → 20260716212459 → 20260717072714
-→ 34 → 35 → 37 → 43 → 55 → 56 → 57 → 58 → 59 (por último)
-```
+Portanto: os 12 portões estão travados porque **o deploy aponta para o banco sem os RPCs**.
+Ligar o código a eles funcionaria em desenvolvimento e quebraria no Hostinger.
 
-Isso exige autorização explícita de banco. **Peça antes de executar.**
+**A decisão é de infraestrutura e é do dono** (ver D-6 em `PRODUCT_DECISIONS_REQUIRED.md`):
+apontar o deploy para homologação (que tem o schema mas está vazia — precisa da carga de
+17.151 leads reais), ou levar o schema ao banco que tem os dados (operação sobre dado de
+cliente, não exercício técnico). **Não decida isso sozinho.**
 
-Se a autorização não vier, a alternativa é o **Bloco 1** de `NEXT_BLOCK.md` — mas atenção: os
-itens 5, 6 e 7 de lá também dependem do banco ou de decisão de produto; só as correções de
-código puro estão livres.
+Enquanto não houver decisão, o que está livre é trabalho que não toca banco: o tema claro nas
+telas restantes (Command Center, Leads, Projetos, Copilot — fundação e check já existem) e as
+correções de código puro do `NEXT_BLOCK.md`.
 
 ## Regras que continuam valendo
 

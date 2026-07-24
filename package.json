@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "test": "npm run test:unit && npm run test:contracts",
+    "verify": "npm run security:secrets && npm run typecheck && npm run lint && npm run test && npm run cc23:check && npm run light-layout:check",
     "test:unit": "node --test \"tests/*.test.ts\"",
     "test:contracts": "node --experimental-strip-types --test \"tests/contracts/*.test.mjs\"",
     "typecheck": "tsc --noEmit",
