@@ -65,7 +65,25 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
   const { data, error } = await admin.from("opportunities").update(update).eq("id", id).eq("organization_id", access.access.organization.id).select("id,commission_gross,commission_percentage,commission_split_percentage,commission_net,commission_received_amount,commission_due_at,commission_received_at,commission_status,commission_notes").single();
   if (error || !data) return apiError("COMMISSION_UPDATE_FAILED", "Não foi possível atualizar a comissão.", access.meta, { status: 400, headers: rate.headers });
-  await admin.from("commission_events").insert({ organization_id: access.access.organization.id, opportunity_id: id, actor_id: access.access.profile.id, event_type: eventType, amount: eventAmount, previous_value: current, current_value: data, notes });
+  // A trilha de auditoria não é acessório de um lançamento financeiro: se ela não
+  // grava, o valor não pode ficar no banco sem registro de quem mudou o quê.
+  const audit = await admin.from("commission_events").insert({ organization_id: access.access.organization.id, opportunity_id: id, actor_id: access.access.profile.id, event_type: eventType, amount: eventAmount, previous_value: current, current_value: data, notes });
+  if (audit.error) {
+    const revert: Record<string, unknown> = {};
+    for (const key of Object.keys(update)) revert[key] = (current as Record<string, unknown>)[key] ?? null;
+    const undo = await admin.from("opportunities").update(revert).eq("id", id).eq("organization_id", access.access.organization.id);
+    structuredApiLog("error", "sales.commission.audit_failed", request, access.meta, {
+      organizationId: access.access.organization.id, opportunityId: id, action, eventType, reverted: !undo.error,
+    });
+    return apiError(
+      "COMMISSION_AUDIT_FAILED",
+      undo.error
+        ? "A comissão foi alterada, mas não foi possível auditar nem desfazer. Não lance de novo: procure o responsável financeiro."
+        : "Não foi possível registrar a auditoria da comissão. A alteração foi desfeita — tente novamente.",
+      access.meta,
+      { status: 500, headers: rate.headers },
+    );
+  }
   structuredApiLog("info", "sales.commission.updated", request, access.meta, { organizationId: access.access.organization.id, opportunityId: id, action, eventType });
   return apiSuccess({ commission: data }, access.meta, { headers: rate.headers });
 }
