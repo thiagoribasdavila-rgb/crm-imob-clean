@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, liveStorageRole, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
+import { mapLegacyProfile, type CompatRow } from "@/lib/compat/legacy-v2";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { recordAuditLog, clientIp, userAgentOf } from "@/lib/api/authorization";
 
@@ -32,6 +34,28 @@ function publicProfile(profile: Record<string, unknown>) {
     phone: null,
     creci: null,
   };
+}
+
+
+/**
+ * Confere se o responsável direto escolhido está dentro da linha hierárquica de
+ * quem faz a alteração — lendo pelo cliente do USUÁRIO, não pelo admin, para que
+ * a RLS limite o que ele enxerga. A regra também existe no banco
+ * (`supervisor_outside_actor_hierarchy`); aqui ela vira uma recusa explicada,
+ * em vez de uma exceção genérica vinda do Postgres.
+ */
+async function validateSupervisor(db: SupabaseClient, organizationId: string, actorId: string, reportsTo: string | null) {
+  if (!reportsTo) return { ok: true as const };
+  const { data, error } = await db.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).eq("active", true).limit(1000);
+  if (error) return { ok: false as const, message: "Não foi possível validar a hierarquia comercial agora." };
+  const hierarchy = resolveLiveHierarchy((data ?? []) as unknown as CompatRow[]);
+  const supervisor = hierarchy.find((profile) => String(profile.id) === reportsTo);
+  if (!supervisor) return { ok: false as const, message: "Responsável direto fora do seu escopo de visão." };
+  const linhaDoAtor = descendantsFromLiveProfiles(hierarchy, actorId);
+  if (String(supervisor.id) !== actorId && !linhaDoAtor.has(String(supervisor.id))) {
+    return { ok: false as const, message: "O responsável direto precisa estar na sua linha hierárquica — estrutura paralela não é permitida." };
+  }
+  return { ok: true as const };
 }
 
 export async function GET(request: NextRequest) {
@@ -91,6 +115,35 @@ export async function PATCH(request: NextRequest) {
   const { data: target } = await admin.from("profiles").select(LIVE_PROFILE_SELECT).eq("id", body.profileId).eq("organization_id", identity.access.organization.id).maybeSingle();
   if (!target) return apiError("PROFILE_NOT_FOUND", "Usuário não encontrado nesta organização.", identity.meta, { status: 404 });
   if (String(target.role).toUpperCase() === "ADMIN") return apiError("PROTECTED_ADMIN", "O administrador principal é protegido.", identity.meta, { status: 403 });
+  // Escrita governada primeiro: manage_commercial_profile valida a hierarquia
+  // no banco (a regra `supervisor_outside_actor_hierarchy` já existe lá) e
+  // registra o evento em profile_hierarchy_events na mesma transação. O update
+  // direto abaixo não faz nenhuma das duas coisas — aceita qualquer supervisor
+  // e não deixa rastro da mudança de hierarquia.
+  const supervisorCheck = await validateSupervisor(identity.supabase, identity.access.organization.id, identity.access.profile.id, typeof body.reportsTo === "string" ? body.reportsTo : null);
+  if (!supervisorCheck.ok) return apiError("INVALID_SUPERVISOR", supervisorCheck.message, identity.meta, { status: 403, headers: rate.headers });
+
+  const governed = await getSupabaseAdmin().rpc("manage_commercial_profile", {
+    p_actor_id: identity.access.profile.id,
+    p_organization_id: identity.access.organization.id,
+    p_profile_id: body.profileId,
+    p_commercial_role: body.commercialRole,
+    p_reports_to: typeof body.reportsTo === "string" && /^[0-9a-f-]{36}$/i.test(body.reportsTo) ? body.reportsTo : null,
+    p_active: body.active,
+  });
+  if (!governed.error) {
+    const refreshed = await admin.from("profiles").select(LIVE_PROFILE_SELECT).eq("id", body.profileId).eq("organization_id", identity.access.organization.id).maybeSingle();
+    if (refreshed.data) {
+      await recordAuditLog({ organizationId: identity.access.organization.id, actorId: identity.access.profile.id, action: body.active ? "users.edit" : "users.deactivate", module: "users", resourceType: "profile", resourceId: body.profileId, ip: clientIp(request), userAgent: userAgentOf(request), metadata: { commercialRole: body.commercialRole, active: body.active, governed: true } });
+      return apiSuccess({ profile: mapLegacyProfile(refreshed.data as CompatRow), governed: true }, identity.meta, { headers: rate.headers });
+    }
+  } else if (governed.error.code !== "42883" && governed.error.code !== "PGRST202") {
+    // Recusa da regra de hierarquia (ex.: supervisor fora da linha do ator).
+    // É resposta legítima do banco — não se contorna com update direto.
+    return apiError("INVALID_SUPERVISOR", "A hierarquia comercial recusou esta alteração: confira o responsável direto escolhido.", identity.meta, { status: 403, headers: rate.headers });
+  }
+
+  // Banco sem a migration da hierarquia governada: caminho direto de sempre.
   const { data, error } = await admin.from("profiles").update({ role: liveStorageRole(body.commercialRole), active: body.active }).eq("id", body.profileId).eq("organization_id", identity.access.organization.id).select(LIVE_PROFILE_SELECT).single();
   if (error) return apiError("TEAM_UPDATE_REJECTED", "A alteração foi recusada pelas regras da hierarquia.", identity.meta, { status: 403 });
   structuredApiLog("info", "team.member_updated", request, identity.meta, { actorId: identity.access.profile.id, profileId: body.profileId, commercialRole: body.commercialRole, active: body.active });

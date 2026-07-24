@@ -6,7 +6,7 @@ import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 import { canonicalPipelineStage, mergePipelineStageSettings } from "@/lib/atlas/pipeline-stages";
 import { commercialOutcomeFromStages } from "@/lib/ai/learning-loop";
-import { LIVE_LEAD_SELECT, mapLegacyLead } from "@/lib/compat/legacy-v2";
+import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/legacy-v2";
 import { recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { readCompatiblePipeline } from "@/lib/atlas/core-v2/live-repositories";
 import { DISCARD_REASON_KEYS, DISCARD_TAXONOMY_VERSION, getDiscardReason } from "@/lib/atlas/discard-reasons";
@@ -154,9 +154,56 @@ export async function PATCH(request: Request) {
       }
     }
 
-    // The live V2 database does not expose the planned move_pipeline_lead RPC.
-    // We therefore use a compensating write: the stage is changed first and is
-    // restored immediately if the mandatory audit row cannot be persisted.
+    // Caminho preferencial: move_pipeline_lead faz a troca de etapa e o registro
+    // no histórico DENTRO de uma transação. Isso importa porque a alternativa
+    // abaixo é uma escrita compensatória — muda a etapa, tenta auditar, e desfaz
+    // se a auditoria falhar. Se o próprio desfazer falhar (rede, permissão), a
+    // lead fica numa etapa que o histórico não conhece. Com a RPC isso não é
+    // possível: ou as duas escritas acontecem, ou nenhuma.
+    //
+    // A RPC também confere `p_expected_from_stage` e valida a reversão no banco,
+    // eliminando a janela entre a leitura e a escrita em que outra pessoa pode
+    // mover a mesma lead.
+    const atomicMove = await admin.rpc("move_pipeline_lead", {
+      p_actor_id: identity.userId,
+      p_organization_id: identity.organizationId,
+      p_lead_id: leadId,
+      p_to_stage: stage,
+      p_expected_from_stage: expectedFromStage,
+      p_reason: followUpDescription || null,
+      p_reversal_of: reversalOf,
+    });
+
+    if (!atomicMove.error) {
+      const moved = (atomicMove.data ?? {}) as Record<string, unknown>;
+      const movedLead = (moved.lead ?? null) as Record<string, unknown> | null;
+      const movedHistoryId = typeof moved.moveId === "string" ? moved.moveId
+        : typeof moved.historyId === "string" ? moved.historyId
+        : null;
+      // Só seguimos pelo caminho atômico se a RPC devolveu o que o restante da
+      // rota precisa. Formato inesperado cai no caminho compensatório em vez de
+      // quebrar — a movimentação nunca fica sem resposta por detalhe de contrato.
+      if (movedLead && movedHistoryId) {
+        const refreshed = await admin.from("leads").select(LIVE_LEAD_SELECT).eq("id", leadId).eq("organization_id", identity.organizationId).maybeSingle();
+        if (refreshed.data) {
+          logger.info("pipeline.move_atomic", { leadId, fromStage: previousStage, toStage: stage, reversalOf });
+          return NextResponse.json({
+            ok: true,
+            atomic: true,
+            lead: mapLegacyLead(refreshed.data as unknown as CompatRow),
+            move: { id: movedHistoryId, fromStage: previousStage, toStage: stage, reversalOf },
+          });
+        }
+      }
+    } else if (atomicMove.error.code !== "42883" && atomicMove.error.code !== "PGRST202") {
+      // Recusa de regra do banco (etapa inválida, reversão inconsistente): é
+      // resposta legítima, não motivo para tentar a escrita manual por cima.
+      logger.warn("pipeline.move_rejected", { leadId, stage, code: atomicMove.error.code });
+      return NextResponse.json({ error: "A movimentação foi recusada pela regra do funil. Atualize o Kanban e confira a etapa atual.", code: "PIPELINE_STAGE_CONFLICT", currentStage: previousStage }, { status: 409 });
+    }
+
+    // Caminho compensatório: bancos que ainda não têm a RPC. Muda a etapa e
+    // restaura imediatamente se a linha de auditoria não puder ser gravada.
     const { data: updated, error: updateError } = await admin
       .from("leads")
       .update({ status: stage })

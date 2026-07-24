@@ -16,7 +16,21 @@ for (const marker of ['.from("pipeline_history")', 'old_status: previousStage', 
 for (const marker of ["moveId", "reversalOf", "undoLastMove", "expectedFromStage", "Desfazer movimentação"]) {
   if (!page.includes(marker)) failures.push(`desfazer seguro incompleto: ${marker}`);
 }
-if (api.includes('rpc("move_pipeline_lead"')) failures.push("API voltou a depender da RPC ausente no banco ativo");
+// A regra original era "nunca referenciar move_pipeline_lead", escrita quando o
+// único banco alvo não tinha a RPC — chamá-la seria quebrar em runtime. Isso
+// mudou: o banco de homologação TEM a função, e usá-la é melhor, porque a troca
+// de etapa e o registro no histórico passam a acontecer na mesma transação (a
+// escrita compensatória abaixo pode deixar a lead numa etapa que o histórico
+// não conhece, se o próprio desfazer falhar).
+//
+// A proteção não foi removida, ficou mais exata: PODE usar a RPC, DESDE QUE
+// trate a ausência dela em runtime e mantenha o caminho compensatório — que os
+// marcadores exigidos acima continuam garantindo. Assim o mesmo código serve o
+// banco que tem a função e o que não tem.
+if (api.includes('rpc("move_pipeline_lead"')) {
+  const detectaAusencia = api.includes('"42883"') && api.includes('"PGRST202"');
+  if (!detectaAusencia) failures.push("API usa move_pipeline_lead sem tratar a ausência da RPC (42883/PGRST202) — quebraria no banco que não a tem");
+}
 
 if (failures.length) {
   console.error("MOVIMENTAÇÃO SEGURA Fase 33: REPROVADO");
