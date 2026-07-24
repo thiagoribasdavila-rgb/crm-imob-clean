@@ -1,0 +1,16 @@
+# KNOWN_RISKS — depois da unificação de 2026-07-24
+
+| id | risco | severidade | evidência | mitigação / estado |
+|---|---|---|---|---|
+| R-01 | **593 commits locais sem push.** O trabalho inteiro existe só neste disco. | **alto** | `git rev-list --count main..HEAD` = 593 | Branch de segurança `checkpoint/pre-unificacao-2026-07-24` + ZIP de checkpoint. Nenhum substitui um remoto. **Só o usuário pode autorizar o push.** |
+| R-02 | **21 conflitos manuais grandes não resolvidos.** As duas linhas seguem divergindo. | **alto** | `MERGE_MATRIX.md` | Documentados um a um. Enquanto não forem decididos, qualquer novo ZIP da linha Atlas One aumenta a divergência. |
+| R-03 | **Drift de schema conhecido**: 127+ migrations no repo, banco vivo com ~23 tabelas. | **alto** | memória de projeto + `migration-status.txt` | Nada nesta sessão tocou banco. Mas isso limita o que pode ser importado (ex.: a recorrência de tarefas depende de um RPC que pode não existir no banco vivo). |
+| R-04 | **Os portões `*:check` não estão em `npm test` nem no build.** Uma entrega pode passar em tudo e ainda assim quebrar um contrato de design. | **médio** | `cc23:check` caiu para 27/30 sem que testes, tsc, lint ou build acusassem | Registrado em `TEST_RESULTS.md`. Recomendação: incluir `cc23:check` e `light-layout:check` num alvo executado por padrão. |
+| R-05 | **`app/api/v1/tasks` devolve `TASK_RECURRENCE_PENDING`** enquanto a migration que cria o RPC já está no repo. Feature possivelmente bloqueada sem motivo. | médio | `MERGE_DECISION_LOG.md` item 1 | Não alterado. Exige confirmar o RPC no banco vivo antes. |
+| R-06 | **`lib/compat/live-hierarchy.ts` liga todo corretor a `managers[0]`** — hierarquia potencialmente distorcida em relatórios de gerente. | médio | análise comparativa | Não alterado (toca hierarquia/permissão). Correção candidata registrada. |
+| R-07 | **Tema claro cobre só parte do produto**: páginas públicas, shell interno e pipeline. Command Center, Leads, Projetos e Copilot ainda não convertidos. | médio | `docs/LIGHT_LAYOUT_EVOLUTION.md` | Quem ativar o tema claro hoje verá telas inconsistentes. Próximo bloco. |
+| R-08 | **Validação de tema sem evidência perceptual** — contraste medido, mas nenhuma captura de tela. | médio | `THEME_VALIDATION.md` | Números provam contraste e não-regressão estrutural; não provam layout quebrado, sobreposição ou espaçamento. |
+| R-09 | **Duas worktrees residuais** em `.claude/worktrees/` apontando para `main`. | baixo | `git worktree list` | Intocadas. Podem ser removidas com `git worktree remove` quando confirmado que nenhuma sessão as usa. |
+| R-10 | **Múltiplas sessões editam o mesmo working tree.** | médio | histórico do projeto | Regra permanente respeitada nesta sessão: **nunca `git add -A`**; todo commit fez stage por caminho explícito. |
+| R-11 | **`dist/hostinger/` contém ZIPs antigos** (`atlas-v3-hostinger-final.zip` de 18/jul) que fazem checks passarem sobre artefatos obsoletos. | baixo | causa raiz do commit `b05775e6` | O script agora aponta para o nome correto. Os ZIPs velhos continuam em disco — considerar limpeza. |
+| R-12 | **`supabase/` do ZIP não analisado** — 7 migrations, 5 drafts, 6 testes SQL, incluindo endurecimento de RLS. | médio | `NEW_ZIP_INVENTORY.md` | Bloqueado por gatilho de parada, conforme instrução. Precisa de sessão com autorização explícita de banco. |
