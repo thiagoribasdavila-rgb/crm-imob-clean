@@ -3,14 +3,24 @@ import test from "node:test";
 
 import { scanContent, allowedPublic } from "../../scripts/secret-scan-rules.mjs";
 
-// Segredos DE MENTIRA, montados aqui só para provar que o scanner morde.
-// Nenhum valor abaixo é real nem já foi real em lugar nenhum.
-const FALSO_OPENAI = `sk-${"A1b2C3d4E5f6G7h8J9k0".repeat(2)}`;
+// Segredos DE MENTIRA. Nenhum valor abaixo é real nem já foi real.
+//
+// Todos são MONTADOS em tempo de execução, nunca escritos por extenso. O motivo
+// é concreto: este arquivo é varrido pelo próprio scanner que ele testa, e um
+// literal aqui deixaria o portão vermelho eternamente. Concatenar mantém o
+// scanner varrendo 100% dos arquivos — sem exclusão, sem allowlist de caminho,
+// sem afrouxar regra nenhuma para acomodar o teste.
+const FALSO_OPENAI = `${"sk"}-${"A1b2C3d4E5f6G7h8J9k0".repeat(2)}`;
 const FALSO_AWS = "AKIA" + "QWERTYUIOPASDFGH";
-const FALSO_GITHUB = `ghp_${"a1B2c3D4e5F6g7H8i9J0".repeat(2)}`;
-const FALSO_JWT_COMPLETO = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhdGxhcyJ9.c2lnbmF0dXJhX2xvbmdhX2RlX3Rlc3RlXzEyMzQ1";
-// Igual ao fixture que já existe em tests/observabilidade.test.ts: assinatura curta.
-const JWT_FIXTURE_CURTO = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc";
+const FALSO_GITHUB = `${"ghp"}_${"a1B2c3D4e5F6g7H8i9J0".repeat(2)}`;
+const FALSO_SLACK = `${"xox"}b-1234567890-abcdefghij`;
+const FALSA_CHAVE_PRIVADA = `-----${"BEGIN"} RSA PRIVATE KEY-----`;
+const FALSO_JWT_COMPLETO = `${"eyJ"}hbGciOiJIUzI1NiJ9.${"eyJ"}zdWIiOiJhdGxhcyJ9.c2lnbmF0dXJhX2xvbmdhX2RlX3Rlc3RlXzEyMzQ1`;
+// Mesmo formato do fixture que já existe em tests/observabilidade.test.ts: assinatura curta.
+const JWT_FIXTURE_CURTO = `${"eyJ"}hbGciOiJIUzI1NiJ9.${"eyJ"}zdWIiOiIxIn0.abc`;
+// Nomes de variável também são montados, pela mesma razão.
+const PUBLICA_NAO_APROVADA = `${"NEXT_PUBLIC"}_STRIPE_SECRET`;
+const FAMILIA_NAO_APROVADA = `${"NEXT_PUBLIC"}_PAGAMENTO_`;
 
 test("1. segredo fictício de formato real continua sendo detectado", () => {
   for (const [rotulo, valor] of [
@@ -18,8 +28,8 @@ test("1. segredo fictício de formato real continua sendo detectado", () => {
     ["AWS", FALSO_AWS],
     ["GitHub", FALSO_GITHUB],
     ["JWT", FALSO_JWT_COMPLETO],
-    ["chave privada", "-----BEGIN RSA PRIVATE KEY-----"],
-    ["Slack", "xoxb-1234567890-abcdefghij"],
+    ["chave privada", FALSA_CHAVE_PRIVADA],
+    ["Slack", FALSO_SLACK],
   ]) {
     const achados = scanContent("lib/qualquer.ts", `const credencial = "${valor}";`);
     assert.ok(
@@ -56,7 +66,7 @@ test("3. placeholder documental de família não gera falso positivo", () => {
   assert.deepEqual(alternacao, [], `alternação de família não deveria acusar — ${JSON.stringify(alternacao)}`);
 
   // A proteção continua: família DESCONHECIDA segue reprovada.
-  const desconhecida = scanContent("docs/x.md", "use `NEXT_PUBLIC_PAGAMENTO_*` para as chaves");
+  const desconhecida = scanContent("docs/x.md", `use ${FAMILIA_NAO_APROVADA}* para as chaves`);
   assert.ok(
     desconhecida.some((a) => a.includes("família pública não aprovada")),
     "família fora da allowlist deve continuar reprovando",
@@ -78,9 +88,9 @@ test("4. .env.example com placeholders seguros é aceito", () => {
 });
 
 test("5. variável pública fora da allowlist continua bloqueada", () => {
-  const achados = scanContent("app/page.tsx", "process.env.NEXT_PUBLIC_STRIPE_SECRET");
+  const achados = scanContent("app/page.tsx", `process.env.${PUBLICA_NAO_APROVADA}`);
   assert.ok(
-    achados.some((a) => a.includes("variável pública não aprovada NEXT_PUBLIC_STRIPE_SECRET")),
+    achados.some((a) => a.includes(`variável pública não aprovada ${PUBLICA_NAO_APROVADA}`)),
     `variável não aprovada deve acusar — ${JSON.stringify(achados)}`,
   );
 

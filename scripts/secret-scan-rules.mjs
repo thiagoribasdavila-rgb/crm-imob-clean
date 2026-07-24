@@ -10,10 +10,11 @@
  *    início de um arquivo podia escapar logo depois de outro arquivo dar match.
  *    Agora cada verificação zera o estado.
  * 2. Detecção de JWT passou a existir.
- * 3. Referência a FAMÍLIA de variável em documentação (`NEXT_PUBLIC_FOO_*` ou
- *    `NEXT_PUBLIC_FOO_(A|B)`) deixou de ser tratada como nome de variável — mas
- *    continua sendo verificada: a família só passa se existir alguma variável
- *    aprovada com aquele prefixo. Uma família desconhecida ainda é reprovada.
+ * 3. Referência a FAMÍLIA de variável em documentação — um prefixo público
+ *    seguido de curinga (`*`) ou de alternação (`(A|B)`) — deixou de ser tratada
+ *    como nome de variável, mas continua sendo verificada: a família só passa se
+ *    existir alguma variável aprovada com aquele prefixo. Família desconhecida
+ *    continua reprovando.
  */
 
 /** Variáveis públicas aprovadas — o bundle do cliente pode conter estas e só estas. */
