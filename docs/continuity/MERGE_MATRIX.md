@@ -20,10 +20,10 @@ com verificação manual dos itens que viraram alteração de código.
 |---|---|---|
 | IDÊNTICO (herdado de ancestral comum) | 1.087 | nenhuma |
 | EXCLUSIVO DO REPO | 979 | preservado integralmente |
-| EXCLUSIVO DO ZIP | 999 | não importado em massa; 2 importados (testes) |
+| EXCLUSIVO DO ZIP | 999 | não importado em massa; 2 importados (testes de contrato) |
 | CONFLITO — REPO MANTÉM | 118 | repo permanece; ZIP descartado com justificativa |
-| CONFLITO — IMPORT PONTUAL | 4 aplicados | ver MERGE_DECISION_LOG.md |
-| CONFLITO MANUAL GRANDE | 21 | **pendente** — exige sessão dedicada |
+| CONFLITO — IMPORT PONTUAL | 8 aplicados | 4 na 1ª rodada + 4 scripts classe A; ver MERGE_DECISION_LOG.md |
+| CONFLITO MANUAL GRANDE | 21 | **resolvidos** — classificados A–F, ver seção adiante |
 | FORMATAÇÃO | 4 | ignorado (sem valor funcional) |
 | ARTEFATO GERADO | 8 | nunca copiar (`app/generated/prisma/**`) |
 | ARTEFATO DE INSTALAÇÃO | 6 | fora do escopo do repo |
@@ -83,7 +83,7 @@ com verificação manual dos itens que viraram alteração de código.
 | CONFLITO | sim, resolvido |
 | DECISÃO | repo mantém + `test` encadeia as duas suítes |
 | JUSTIFICATIVA | Adotar o `validate` do ZIP afrouxaria os portões de qualidade. A suíte de contratos é complementar, não concorrente. |
-| TESTE | 53 + 9 = **62 testes, 0 falhas** |
+| TESTE | 53 + 16 = **69 testes, 0 falhas** |
 | RISCO | baixo |
 | ROLLBACK | `git revert d48cbe24` |
 
@@ -105,9 +105,27 @@ com verificação manual dos itens que viraram alteração de código.
 | `app/api/v1/developments/[id]/materials/route.ts` | ZIP remove upload de vídeo com checagem de magic bytes. |
 | `lib/atlas/evolution-500.ts` e afins | ZIP "corrige" `/properties/mtching`→`matching`, mas a pasta real do repo é `mtching` — geraria 404. |
 
-## CONFLITO MANUAL GRANDE — 21 pendentes (não resolvidos nesta sessão)
+## CONFLITO MANUAL GRANDE — RESOLVIDOS em 2026-07-24
 
-Mérito real dos dois lados; exigem decisão de produto ou merge dedicado:
+Os 21 foram analisados individualmente e classificados. **Nenhum ficou pendente por falta de
+análise.** Resultado:
+
+| classe | qtd | itens |
+|---|---|---|
+| **A — resolvível tecnicamente** | 5 | `scripts/{build,doctor,preflight-production,measure-navigation-baseline}.mjs` **(importados)** · `analytics/manager-daily` |
+| **B — repo preservado** | 6 | `ai/briefing` (ZIP remove rate limit e cache) · `crm/reactivation` (remove guarda anti-vazamento entre organizações) · `inventory-navigation-architecture` (quebra: lê arquivo que não existe) · `POST_DEPLOY_CHECKLIST` (ZIP tem 3 KB contra 14,7 KB) · `dashboard/page.tsx` (repo é a consolidação intencional) · `leads/page.tsx` |
+| **C — importação parcial** | 6 | `analytics/{broker-daily,dashboard,team-sla}` · `productivity/{daily,weekly}` · `team` — todos exigem trecho cirúrgico porque o ZIP remove algo (Fase 100, `cacheHeaders`, `recordAuditLog`, filtro por dono). **Não aplicados: dependem de migrations.** |
+| **D — duplicação semântica** | 0 | as duplicações estavam nos exclusivos, não nos conflitos |
+| **E — decisão de produto** | 4 | `governance/{rollback,executive-acceptance}` · `legacy-route-paths` · `evolution-program-3000` → ver `PRODUCT_DECISIONS_REQUIRED.md` |
+| **F — investigação adicional** | 1 | `leads/[id]/route.ts` — a troca de cliente admin por cliente do usuário só se justifica depois dos 11 cenários de RLS da Fase 8, nunca executados |
+
+### O que foi de fato importado dos conflitos
+
+4 scripts classe A. Os 6 de classe C **não foram aplicados**: cada um depende de colunas,
+tabelas ou RPCs das migrations não aplicadas — aplicá-los hoje trocaria uma recusa honesta por
+erro em runtime. Ficam mapeados com o trecho exato para quando o banco subir.
+
+### Lista original (para rastreio)
 
 `app/(crm)/dashboard/page.tsx` (repo = redirect, ZIP = dashboard completo) ·
 `app/(crm)/leads/[id]/page.tsx` · `app/(crm)/leads/page.tsx` ·
