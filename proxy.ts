@@ -27,7 +27,6 @@ export async function proxy(req: NextRequest) {
       pathname,
       message: error instanceof Error ? error.message : String(error),
     });
-
     if (isProtected) {
       const loginUrl = req.nextUrl.clone();
       loginUrl.pathname = "/login";
@@ -44,6 +43,7 @@ export const config = {
     "/login",
     "/forgot-password",
     "/reset-password",
+    "/redefinir-senha",
     "/auth/callback",
     "/crm/:path*",
     "/dashboard/:path*",
