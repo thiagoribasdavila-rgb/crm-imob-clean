@@ -25,7 +25,23 @@ subiu, e o código nunca foi ligado nela. Não é dívida de implementação —
 |---|---|---|
 | `move_pipeline_lead` | `PATCH /api/v1/pipeline` | etapa + histórico na mesma transação. A escrita compensatória podia deixar a lead numa etapa que o histórico não conhece, se o próprio desfazer falhasse. |
 | `manage_commercial_profile` | `PATCH /api/v1/team` | hierarquia validada no banco + rastro em `profile_hierarchy_events`. Antes aceitava qualquer supervisor, sem registro. |
-| `process_expired_lead_reservations` | `POST /api/v2/crm/reservations/process` | devolve à fila a reserva não aceita. Sem ele, "aceite em 5 minutos" não significava nada. |
+| ~~`process_expired_lead_reservations`~~ | **já existia** em `app/api/v2/distribution/reservations/process` desde 17/jul | erro meu de inventário — ver abaixo |
+
+### Erro de inventário que vale registrar
+
+Listei `process_expired_lead_reservations` como órfã e criei um worker para ela. **Já existia**
+um, em `app/api/v2/distribution/reservations/process/route.ts`, inclusive declarado em
+`config/api-security-contract.json`.
+
+Como passou: a varredura buscava o nome da RPC com `grep` em `app/`, `lib/` e `core/`, mas o
+worker original é **minificado numa linha só**, e eu conferi o resultado agrupado por
+diretório em vez de por arquivo. Quem denunciou foi o `check-api-security`, ao acusar meu
+arquivo novo como rota sem sessão comprovada — e ao listar, no contrato, o caminho onde o
+worker de fato mora.
+
+Lição para a próxima varredura: **conferir por arquivo, e cruzar com o contrato de rotas**
+(`config/api-security-contract.json`) antes de concluir que algo não existe. O contrato é um
+índice de tudo que o projeto já reconhece como rota.
 
 ## NÃO acopladas — com motivo verificado, não por falta de tempo
 
