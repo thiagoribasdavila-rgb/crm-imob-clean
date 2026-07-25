@@ -25,18 +25,27 @@ function authFailureUrl(origin: string, reason: string) {
   return destination;
 }
 
+function publicOrigin(request: NextRequest) {
+  if (process.env.NODE_ENV === "production") return "https://atlasaios.com.br";
+
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const protocol = request.headers.get("x-forwarded-proto") || "https";
+  return host ? `${protocol}://${host}` : new URL(request.url).origin;
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
+  const origin = publicOrigin(request);
   const code = requestUrl.searchParams.get("code");
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const rawType = requestUrl.searchParams.get("type");
   const errorCode = requestUrl.searchParams.get("error_code");
   const errorDescription = requestUrl.searchParams.get("error_description");
-  const fallback = rawType === "recovery" ? "/reset-password" : "/dashboard";
+  const fallback = rawType === "recovery" ? "/redefinir-senha" : "/dashboard";
   const next = safeNextPath(requestUrl.searchParams.get("next"), fallback);
 
   if (errorCode || errorDescription) {
-    return NextResponse.redirect(authFailureUrl(requestUrl.origin, "recovery_link_invalid"));
+    return NextResponse.redirect(authFailureUrl(origin, "recovery_link_invalid"));
   }
 
   const supabase = await createClient();
@@ -50,10 +59,10 @@ export async function GET(request: NextRequest) {
         status: error.status,
         code: error.code,
       });
-      return NextResponse.redirect(authFailureUrl(requestUrl.origin, "session_exchange_failed"));
+      return NextResponse.redirect(authFailureUrl(origin, "session_exchange_failed"));
     }
 
-    return NextResponse.redirect(new URL(next, requestUrl.origin));
+    return NextResponse.redirect(new URL(next, origin));
   }
 
   if (tokenHash && rawType && allowedOtpTypes.has(rawType as EmailOtpType)) {
@@ -69,11 +78,11 @@ export async function GET(request: NextRequest) {
         code: error.code,
         type: rawType,
       });
-      return NextResponse.redirect(authFailureUrl(requestUrl.origin, "token_verification_failed"));
+      return NextResponse.redirect(authFailureUrl(origin, "token_verification_failed"));
     }
 
-    return NextResponse.redirect(new URL(next, requestUrl.origin));
+    return NextResponse.redirect(new URL(next, origin));
   }
 
-  return NextResponse.redirect(authFailureUrl(requestUrl.origin, "missing_auth_token"));
+  return NextResponse.redirect(authFailureUrl(origin, "missing_auth_token"));
 }
