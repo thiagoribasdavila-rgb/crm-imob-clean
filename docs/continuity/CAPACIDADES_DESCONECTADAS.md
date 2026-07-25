@@ -19,27 +19,47 @@ subiu, e o código nunca foi ligado nela. Não é dívida de implementação —
 | `accept_lead_assignment` | idem | aceite da reserva pelo corretor |
 | `get_portfolio_audit_ledger` | `GET /api/v1/crm/distribution` | extrato deixou de ser zero fixo |
 
-## Ainda órfãs — nenhum chamador no código
+## Acopladas na segunda rodada
 
-| RPC | o que destravaria | esforço | risco |
-|---|---|---|---|
-| **`move_pipeline_lead`** | movimentação atômica no Kanban. Hoje o arrastar-e-soltar escreve direto; dois usuários movendo a mesma lead podem se sobrepor. **É a operação mais usada do produto.** | médio | médio — mexe no caminho quente |
-| **`manage_commercial_profile`** | criação e edição de usuário com validação de hierarquia no banco. Destrava `commercial-hierarchy:check`. A rota hoje escreve direto em `profiles`. | médio | médio — toca permissão |
-| **`create_lead_atomic`** | criação de lead sem risco de duplicata em concorrência | baixo | baixo |
-| **`mutate_crm_project_v1`** | escrita governada de projeto, com auditoria em `crm_project_events` | baixo | baixo |
-| **`version_project_material`** | versionamento de material do empreendimento | baixo | baixo |
-| **`import_historical_lead_memory`** | importação de memória de leads históricos | baixo | baixo |
-| `process_expired_lead_reservations` | worker que devolve à fila a reserva não aceita. **Sem ele o aceite é opcional na prática** — nada expira. | baixo | baixo |
+| RPC | onde | ganho real |
+|---|---|---|
+| `move_pipeline_lead` | `PATCH /api/v1/pipeline` | etapa + histórico na mesma transação. A escrita compensatória podia deixar a lead numa etapa que o histórico não conhece, se o próprio desfazer falhasse. |
+| `manage_commercial_profile` | `PATCH /api/v1/team` | hierarquia validada no banco + rastro em `profile_hierarchy_events`. Antes aceitava qualquer supervisor, sem registro. |
+| `process_expired_lead_reservations` | `POST /api/v2/crm/reservations/process` | devolve à fila a reserva não aceita. Sem ele, "aceite em 5 minutos" não significava nada. |
 
-## Recomendação de ordem
+## NÃO acopladas — com motivo verificado, não por falta de tempo
 
-1. **`process_expired_lead_reservations`** — pequeno e fecha o ciclo da reserva que esta
-   sessão abriu. Sem ele, "aceite em 5 minutos" não significa nada.
-2. **`move_pipeline_lead`** — maior retorno operacional: é o gesto que o corretor faz o dia
-   inteiro, e é onde concorrência dói.
-3. **`manage_commercial_profile`** — destrava um portão e move a governança de usuário para
-   o banco, onde a regra de hierarquia já existe.
-4. O resto, por oportunidade.
+### `create_lead_atomic` — **acoplar quebraria a listagem de leads**
+
+Parecia a mais barata da lista. Não é. O corpo da função grava nas colunas
+**canônicas V3**:
+
+```
+development_id, assigned_to, bedrooms, preferred_regions, score
+```
+
+...enquanto o resto da aplicação lê as **legadas**, via `LIVE_LEAD_SELECT` e `mapLegacyLead`:
+
+```
+project_id, assigned_user_id, preferred_bedrooms, preferred_neighborhoods, score_ia
+```
+
+Lead criada pela RPC teria `assigned_user_id` NULL. Toda tela que filtra por essa coluna —
+pipeline, carteira do corretor, distribuição — **não a enxergaria**. É exatamente a classe de
+bug já registrada: `register_lead` grava `assigned_to` e nada sincroniza `assigned_user_id`.
+
+**Para desbloquear:** ou um trigger de sincronização entre as duas grafias, ou a migração das
+leituras para as colunas canônicas. Os dois são decisão de arquitetura, não fiação.
+
+### `mutate_crm_project_v1` e `version_project_material` — não há rota para acoplar
+
+Nenhuma rota escreve `crm_projects` nem versiona material hoje. Ligar essas RPCs significaria
+**criar endpoint e tela novos**, o que é funcionalidade nova, não acoplamento. Fora do escopo
+desta varredura.
+
+### `import_historical_lead_memory` — mesma situação
+
+Depende de um fluxo de importação que não existe como rota.
 
 ## Os dois eixos que estão limpos
 
