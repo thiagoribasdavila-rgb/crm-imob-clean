@@ -17,7 +17,7 @@
 
 import { classifyGraphError } from "./marketing/graph-client";
 
-export type OutboxFailureCause = "token_unhealthy" | "data";
+export type OutboxFailureCause = "token_unhealthy" | "rate_limited" | "data";
 
 export type GraphCodeSignal = {
   code: number | null;
@@ -64,5 +64,11 @@ export function classifyOutboxFailure(input: {
     error_subcode: subcode ?? undefined,
     message,
   });
-  return kind === "auth_expired" ? "token_unhealthy" : "data";
+  if (kind === "auth_expired") return "token_unhealthy";
+  // Rate limit (codes 4/17/32/613/80004) tem a mesma natureza da credencial:
+  // não é culpa do evento. Queimar tentativa aqui enterrava mensagem válida em
+  // dead_letter só porque a Meta pediu para desacelerar — o certo é esperar e
+  // reentregar o MESMO evento.
+  if (kind === "rate_limit") return "rate_limited";
+  return "data";
 }

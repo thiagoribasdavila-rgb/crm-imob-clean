@@ -70,7 +70,21 @@ export async function POST(request: Request) {
       if (suppression) return NextResponse.json({ error: "Este contato solicitou a interrupção das mensagens no WhatsApp." }, { status: 409 });
     }
 
-    const requiresApproval = payload.channel !== "email";
+    // O worker de saída só entrega WhatsApp hoje. E-mail entrava na fila (e,
+    // pior, SEM aprovação humana), o worker o rejeitava com "canal não
+    // conectado", e após 5 tentativas a mensagem morria em dead_letter — no CRM
+    // ela ficava "queued" para sempre, parecendo enviada. Recusa honesta na
+    // porta é o único comportamento verdadeiro até o canal existir de fato.
+    if (payload.channel === "email") {
+      return NextResponse.json({
+        error: "O envio de e-mail pelo Atlas ainda não está conectado. Use o rascunho da tela da lead (botão copiar/mailto) até o canal ser ativado.",
+        code: "EMAIL_CHANNEL_NOT_CONNECTED",
+      }, { status: 501 });
+    }
+
+    // Com o e-mail recusado na porta, todo canal que chega aqui exige aprovação
+    // humana — era exatamente o e-mail que furava essa regra por engano.
+    const requiresApproval = true;
     const { data: message, error: messageError } = await admin
       .from("messages")
       .insert({

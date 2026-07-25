@@ -26,11 +26,35 @@ export async function GET(request: NextRequest) {
   }
 
   const ready = Object.values(checks).every((check) => check.ok);
+
+  // Status de configuração por integração. "configured" significa apenas que a
+  // credencial está PRESENTE no ambiente — não que ela é válida (validar aqui
+  // custaria chamadas externas a cada readiness probe). Nenhum valor, prefixo
+  // ou comprimento de segredo sai na resposta: só o tri-estado.
+  const present = (...names: string[]) => names.every((name) => Boolean(process.env[name]?.trim()));
+  const integrationStatus = (configured: boolean) => (configured ? "configured" : "not_configured");
+  const integrations = {
+    supabase: checks.database.ok ? "connected" : "error",
+    meta: integrationStatus(present("META_APP_SECRET", "META_WEBHOOK_VERIFY_TOKEN") && (present("META_LEAD_ACCESS_TOKEN") || present("META_ADS_ACCESS_TOKEN"))),
+    metaCapi: process.env.ATLAS_META_CAPI_ENABLED === "true"
+      ? integrationStatus(present("META_CONVERSIONS_ACCESS_TOKEN", "META_CAPI_DATASET_ID"))
+      : "disabled",
+    whatsapp: integrationStatus(present("WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID")),
+    openai: integrationStatus(present("OPENAI_API_KEY")),
+    anthropic: integrationStatus(present("ANTHROPIC_API_KEY")),
+    perplexity: integrationStatus(present("PERPLEXITY_API_KEY")),
+    // E-mail transacional (recuperação de senha, convite) sai pelo SMTP do
+    // Supabase Auth — não há cliente SMTP próprio nesta aplicação, então o
+    // status espelha a conexão com o Supabase.
+    smtp: checks.database.ok ? "via-supabase-auth" : "error",
+  };
+
   const data = {
     service: "atlas-api-platform",
     status: ready ? "ready" : "not_ready",
     latencyMs: Date.now() - startedAt,
     checks,
+    integrations,
   };
 
   structuredApiLog(ready ? "info" : "warn", "api.readiness.checked", request, meta, {

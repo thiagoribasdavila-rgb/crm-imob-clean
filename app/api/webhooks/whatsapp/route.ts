@@ -107,12 +107,30 @@ export async function POST(request: Request) {
           const conversationLeadId = conversation?.lead_id || null;
           const conversationOwnerId = conversation?.assigned_to || null;
           if (!conversationId) {
+            // Antes a conversa nascia SEM lead_id e nada fazia o match depois:
+            // a mensagem existia no inbox, mas nunca aparecia na timeline da
+            // lead — o corretor respondia sem contexto. O telefone é o elo
+            // natural: `sender` já vem normalizado (dígitos com DDI 55), e as
+            // leads guardam o mesmo formato em phone_normalized (trigger do
+            // contrato canônico) ou dígitos em phone. Match ambíguo (dois leads
+            // com o mesmo número) fica sem vínculo — errar por omissão é
+            // melhor que colar a conversa na lead errada.
+            let matchedLeadId: string | null = null;
+            const { data: phoneMatches } = await admin
+              .from("leads")
+              .select("id")
+              .eq("organization_id", integration.organization_id)
+              .or(`phone_normalized.eq.${sender},phone.eq.${sender}`)
+              .limit(2);
+            if (phoneMatches?.length === 1) matchedLeadId = phoneMatches[0].id;
+
             const { data: created, error: createError } = await admin
               .from("conversations")
               .insert({
                 organization_id: integration.organization_id,
                 channel: "whatsapp",
                 external_thread_id: sender,
+                lead_id: matchedLeadId,
                 status: "open",
                 unread_count: 1,
                 last_message_at: new Date().toISOString(),
@@ -121,6 +139,7 @@ export async function POST(request: Request) {
               .single();
             if (createError || !created) throw createError ?? new Error("Falha ao criar conversa.");
             conversationId = created.id;
+            if (matchedLeadId) logger.info("whatsapp.conversation_linked_by_phone", { organizationId: integration.organization_id, conversationId, leadId: matchedLeadId });
           } else {
             await admin
               .from("conversations")

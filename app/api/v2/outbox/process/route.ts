@@ -242,7 +242,10 @@ export async function POST(request: Request) {
         if (templateItem?.batchId) {
           const [{ data: batch }, { data: suppression }] = await Promise.all([
             admin.from("lead_reactivation_batches").select("status,quality_status").eq("id", templateItem.batchId).eq("organization_id", event.organization_id).single(),
-            admin.from("messaging_suppressions").select("id").eq("organization_id", event.organization_id).eq("channel", "whatsapp").eq("recipient", message.recipient).maybeSingle(),
+            // A supressão é gravada com o número só-dígitos (ver opt-out no webhook).
+            // Consultar com o recipient cru (com +, espaço, hífen) NUNCA achava a
+            // linha — o opt-out valia num caminho e falhava neste. Mesma chave sempre.
+            admin.from("messaging_suppressions").select("id").eq("organization_id", event.organization_id).eq("channel", "whatsapp").eq("recipient", message.recipient.replace(/\D/g, "")).maybeSingle(),
           ]);
           if (!batch || !["queued", "running"].includes(batch.status) || batch.quality_status === "red") {
             await closeOutboxEvent(admin, event.id, { status: "pending", available_at: new Date(Date.now() + 60 * 60_000).toISOString(), locked_at: null, locked_by: null, last_error: "Campanha pausada por governança ou qualidade." });
@@ -258,6 +261,51 @@ export async function POST(request: Request) {
           }
         }
         const template = templateItem?.name ? { name: templateItem.name, language: templateItem.language || "pt_BR" } : undefined;
+
+        // JANELA DE 24 HORAS (política da Meta): texto livre só pode ser
+        // enviado se o cliente mandou mensagem nas últimas 24h; fora disso,
+        // apenas template aprovado. Antes esta checagem não existia — o envio
+        // fora da janela virava erro da Meta (code 131047), consumia as 5
+        // tentativas e morria em dead_letter. Como a janela não reabre por
+        // insistência do NOSSO lado, reprocessar é inútil: falha TERMINAL, com
+        // status visível na mensagem e instrução de usar template.
+        if (!template) {
+          const digits = String(message.recipient || "").replace(/\D/g, "");
+          const windowStart = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+          const { data: lastInbound, error: inboundError } = await admin
+            .from("messages")
+            .select("id")
+            .eq("organization_id", event.organization_id)
+            .eq("channel", "whatsapp")
+            .eq("direction", "inbound")
+            .gte("created_at", windowStart)
+            .or(`recipient.eq.${digits},sender.eq.${digits}`)
+            .limit(1)
+            .maybeSingle();
+          // Erro de consulta não decide política: segue para o envio e deixa a
+          // Meta arbitrar (comportamento anterior). Só a AUSÊNCIA comprovada de
+          // inbound recente bloqueia aqui.
+          if (!inboundError && !lastInbound) {
+            const reason = "Fora da janela de 24h do WhatsApp: o cliente não escreveu nas últimas 24 horas. Use um template aprovado.";
+            await admin.from("messages").update({ status: "failed", error: reason }).eq("id", message.id);
+            await closeOutboxEvent(admin, event.id, { status: "dead_letter", locked_at: null, locked_by: null, last_error: reason });
+            // Entra na DLQ com retry HUMANO: se o cliente responder depois, a
+            // janela reabre e o reenvio deliberado passa — mas a decisão de
+            // reenviar uma mensagem antiga é de gente, não do worker.
+            await admin.from("dead_letter_events").insert({
+              organization_id: event.organization_id,
+              outbox_event_id: event.id,
+              topic: event.topic,
+              payload: event.payload,
+              error_message: reason,
+              attempts,
+            });
+            logger.warn("outbox.whatsapp_outside_window", { eventId: event.id, organizationId: event.organization_id, messageId: message.id });
+            failed += 1;
+            continue;
+          }
+        }
+
         const externalMessageId = await deliverWhatsApp(message.recipient, message.content, template);
         await admin.from("messages").update({ status: "sent", sent_at: now, external_message_id: externalMessageId, error: null }).eq("id", message.id);
         if (templateItem?.batchId) {
@@ -479,6 +527,21 @@ export async function POST(request: Request) {
           break;
         }
         continue;
+      }
+
+      // RATE LIMIT da Meta (codes 4/17/32/613/80004): mesma natureza da
+      // credencial — não é culpa do evento. Antes caía em causa='data' e
+      // queimava tentativa até dead_letter: mensagem VÁLIDA morria só porque a
+      // Meta pediu para desacelerar. Backoff curto (5 min, o limite renova por
+      // janela) sem consumir tentativa, e o lote para: continuar martelando a
+      // mesma janela só agrava o limite.
+      if (cause === "rate_limited") {
+        const retryAt = new Date(Date.now() + 5 * 60_000).toISOString();
+        await closeOutboxEvent(admin, event.id, { status: "failed", attempts: originalAttempts, available_at: retryAt, locked_at: null, locked_by: null, last_error: message, cause: "rate_limited" });
+        logger.warn("outbox.rate_limited", { eventId: event.id, topic: event.topic, organizationId: event.organization_id });
+        failed += 1;
+        stoppedEarly = "rate_limited";
+        break;
       }
       consecutiveCredentialFailures = 0;
 
