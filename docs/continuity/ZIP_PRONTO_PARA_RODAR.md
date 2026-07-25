@@ -25,6 +25,17 @@ Os passos 3 a 8 foram feitos com **variáveis de placeholder**, de propósito: p
 repetido com o `.env.local` real só para confirmar a conexão com homologação, e o arquivo foi
 removido do diretório de teste em seguida.
 
+## Qual pacote, exatamente, foi provado
+
+A prova rodou sobre o ZIP gerado imediatamente antes deste documento. O pacote atual difere
+dele em **um único arquivo: este próprio documento** — conferido por comparação da listagem
+completa (2.264 → 2.265 arquivos, diferença = `ZIP_PRONTO_PARA_RODAR.md`). Markdown em `docs/`
+não participa do build, então a prova continua valendo para o pacote atual.
+
+Nota sobre `next-env.d.ts`: ele **não vai no ZIP** (é gitignored) e apareceu no diretório de
+teste porque o **build o gera**. Não é ausência — é o comportamento correto, e o teste provou
+justamente esse caminho.
+
 ## O que isso significa
 
 O pacote é **auto-suficiente**: quem receber o ZIP consegue instalar, compilar e subir sem
