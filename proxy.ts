@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { refreshSession } from "@/utils/supabase/middleware";
 
-const publicPages = new Set(["/", "/login", "/forgot-password", "/reset-password", "/auth/callback"]);
+const publicPages = new Set([
+  "/",
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/redefinir-senha",
+  "/auth/callback",
+]);
 
 export async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
@@ -10,7 +17,19 @@ export async function proxy(req: NextRequest) {
   try {
     return await refreshSession(req, { protect: isProtected });
   } catch (error) {
-    console.warn(JSON.stringify({ timestamp: new Date().toISOString(), level: "warn", event: "auth.proxy.session_refresh_failed", service: "atlas-ai-os", requestId: req.headers.get("x-request-id") || "proxy", correlationId: req.headers.get("x-correlation-id") || req.headers.get("x-request-id") || "proxy", pathname, errorType: error instanceof Error ? error.name : "unknown" }));
+    console.warn(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: "warn",
+        event: "auth.proxy.session_refresh_failed",
+        service: "atlas-ai-os",
+        requestId: req.headers.get("x-request-id") || "proxy",
+        correlationId:
+          req.headers.get("x-correlation-id") || req.headers.get("x-request-id") || "proxy",
+        pathname,
+        errorType: error instanceof Error ? error.name : "unknown",
+      }),
+    );
 
     if (isProtected) {
       const loginUrl = req.nextUrl.clone();
