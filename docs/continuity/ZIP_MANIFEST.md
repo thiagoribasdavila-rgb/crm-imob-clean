@@ -122,6 +122,13 @@ manifesto e prompt de continuação) · configuração sem segredos · scripts d
 
 O bundle é o único artefato que preserva história e branches — guarde-o fora desta máquina.
 
+## Prova de execução
+
+O pacote não foi só verificado — foi **extraído, instalado, compilado e executado** num
+diretório limpo em 2026-07-24: `npm ci` exit 0, `npm run build` exit 0, `npm start` sobe,
+`/api/health` 200, `/api/ready` conecta no banco em 1,0 s. Detalhe e reprodução em
+[ZIP_PRONTO_PARA_RODAR.md](ZIP_PRONTO_PARA_RODAR.md).
+
 ## Como validar
 
 ```bash
