@@ -42,7 +42,12 @@ export default function ForgotPasswordPage() {
     setError("");
 
     try {
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent("/reset-password")}`;
+      const publicOrigin =
+        window.location.hostname === "atlasaios.com.br" ||
+        window.location.hostname === "www.atlasaios.com.br"
+          ? "https://atlasaios.com.br"
+          : window.location.origin;
+      const redirectTo = `${publicOrigin}/auth/callback?next=${encodeURIComponent("/redefinir-senha")}`;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
         redirectTo,
       });
