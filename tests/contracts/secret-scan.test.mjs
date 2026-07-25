@@ -85,6 +85,11 @@ test("4. .env.example com placeholders seguros é aceito", () => {
   // Qualquer outro .env versionado continua sendo achado, mesmo vazio.
   assert.ok(scanContent(".env.local", "").some((a) => a.includes("arquivo de ambiente versionado")));
   assert.ok(scanContent(".env", "").some((a) => a.includes("arquivo de ambiente versionado")));
+
+  // Templates *.example são o contrato público de variáveis: passam como
+  // ARQUIVO, mas o conteúdo continua sob os padrões de credencial (teste 6).
+  assert.deepEqual(scanContent(".env.production.example", "META_APP_SECRET=\n"), []);
+  assert.ok(scanContent(".env.production", "").some((a) => a.includes("arquivo de ambiente versionado")));
 });
 
 test("5. variável pública fora da allowlist continua bloqueada", () => {

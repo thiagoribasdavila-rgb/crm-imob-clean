@@ -73,7 +73,11 @@ export function scanContent(file, content) {
     if (!allowedPublic.has(name)) findings.push(`${file}: variável pública não aprovada ${name}`);
   }
 
-  if (/^\.env(?:\.|$)/.test(file) && file !== ".env.example") {
+  // Qualquer .env versionado é achado — EXCETO templates *.example, que são
+  // exatamente o contrato público de variáveis (sem valores). O conteúdo deles
+  // continua passando pelos padrões de credencial acima: um .example com valor
+  // real dentro é pego do mesmo jeito (coberto por teste).
+  if (/^\.env(?:\.|$)/.test(file) && !/\.example$/.test(file)) {
     findings.push(`${file}: arquivo de ambiente versionado`);
   }
 
