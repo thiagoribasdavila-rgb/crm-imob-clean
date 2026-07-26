@@ -112,6 +112,24 @@ type Calibration = { summary: string[] };
  * Descoberta de formulários da Meta. Não entra no carregamento automático: é
  * ação sob demanda da liderança, e a primeira resposta é sempre simulação.
  */
+/**
+ * Fila de represadas: o que já foi pago e ainda não entrou no CRM.
+ * Liberar é ato do diretor — cada lead liberada nasce com relógio correndo.
+ */
+type FilaDeRepresadas = {
+  disponivel: boolean;
+  motivo?: string;
+  totalRepresado: number;
+  formulariosComRepresa: number;
+  podeLiberar: boolean;
+  aviso: string | null;
+  represadas: Array<{
+    formId: string; nome: string | null;
+    leadsNaMeta: number; jaEntraram: number; represadas: number;
+    registrada: boolean; ativa: boolean; descartaLeadNova: boolean;
+  }>;
+};
+
 type DescobertaDeFormularios = {
   simulacao: boolean;
   encontradosNaMeta: number;
@@ -234,6 +252,50 @@ export default function MarketingPage() {
   const [performance, setPerformance] = useState<FetchState<CampaignPerformance>>({ status: "loading" });
   const [formularios, setFormularios] = useState<DescobertaDeFormularios | null>(null);
   const [descobrindo, setDescobrindo] = useState(false);
+  const [represa, setRepresa] = useState<FilaDeRepresadas | null>(null);
+  const [carregandoRepresa, setCarregandoRepresa] = useState(false);
+  const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [liberando, setLiberando] = useState(false);
+  const [resultadoDaLiberacao, setResultadoDaLiberacao] = useState<string[] | null>(null);
+
+  async function carregarRepresa() {
+    setCarregandoRepresa(true);
+    setResultadoDaLiberacao(null);
+    try {
+      const { data: sessao } = await supabase.auth.getSession();
+      const r = await fetch("/api/v1/marketing/held-leads", {
+        headers: { Authorization: `Bearer ${sessao.session?.access_token || ""}` },
+      });
+      const corpo = await r.json();
+      if (r.ok) setRepresa(corpo.data as FilaDeRepresadas);
+    } finally {
+      setCarregandoRepresa(false);
+    }
+  }
+
+  async function liberarSelecionados(distribuir: boolean) {
+    if (!selecionados.length) return;
+    setLiberando(true);
+    try {
+      const { data: sessao } = await supabase.auth.getSession();
+      const r = await fetch("/api/v1/marketing/held-leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessao.session?.access_token || ""}` },
+        body: JSON.stringify({ formIds: selecionados, distribuir }),
+      });
+      const corpo = await r.json();
+      const d = corpo?.data;
+      setResultadoDaLiberacao(
+        r.ok
+          ? [`${d?.aceitas ?? 0} lead(s) liberadas de ${d?.formulariosAtivados?.length ?? 0} formulário(s).`, d?.proximoPasso, ...(d?.avisos ?? [])].filter(Boolean)
+          : [corpo?.error?.message || "Não foi possível liberar."],
+      );
+      setSelecionados([]);
+      await carregarRepresa();
+    } finally {
+      setLiberando(false);
+    }
+  }
   const [erroDaDescoberta, setErroDaDescoberta] = useState<string | null>(null);
 
   async function descobrirFormularios(aplicar: boolean) {
@@ -362,6 +424,130 @@ export default function MarketingPage() {
           observados, não totais — não decida pausa de campanha por eles.
         </p>
       ) : null}
+
+      {/* Fila de represadas: lead que já custou verba e não está na operação.
+          Vem primeiro porque é o maior valor parado — e porque liberar sem
+          decidir a distribuição só troca "lead parada" por "SLA vencido". */}
+      <section aria-label="Leads represadas" className="cc6-panel cc6-reveal overflow-hidden">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2 px-5 pb-3 pt-4">
+          <p className="cc6-eyebrow">Leads represadas</p>
+          {represa?.disponivel ? (
+            <p className="cc6-num ml-auto text-[11px] text-[#6b7890]">
+              {represa.totalRepresado} lead(s) fora do CRM · {represa.formulariosComRepresa} formulário(s)
+            </p>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void carregarRepresa()}
+            disabled={carregandoRepresa}
+            className={`min-h-9 rounded-lg border border-white/10 px-3 text-[11px] font-semibold text-[#cdd7e5] transition hover:border-white/25 hover:text-white disabled:opacity-50 ${represa?.disponivel ? "" : "ml-auto"}`}
+          >
+            {carregandoRepresa ? "Apurando…" : represa ? "Atualizar" : "Apurar represa"}
+          </button>
+        </div>
+
+        {!represa ? (
+          <p className="px-5 pb-4 text-[12px] leading-5 text-[#6b7890]">
+            Mostra quantas leads já pagas estão na Meta e ainda não entraram no CRM, formulário a
+            formulário. Liberar é ato da diretoria: cada lead liberada nasce com o relógio de
+            primeiro contato correndo.
+          </p>
+        ) : !represa.disponivel ? (
+          <p className="px-5 pb-4 text-[12px] leading-5 text-[#6b7890]">{represa.motivo}</p>
+        ) : !represa.represadas.length ? (
+          <p className="px-5 pb-4 text-[12px] leading-5 text-[#93a2b8]">
+            Nenhuma lead represada — tudo que a Meta tem já está no CRM.
+          </p>
+        ) : (
+          <>
+            {represa.aviso ? (
+              <p className="mx-5 mb-3 rounded-xl border border-[rgba(245,181,68,0.28)] bg-[rgba(245,181,68,0.05)] px-4 py-3 text-[12px] leading-5 text-[#f2b544]">
+                {represa.aviso}
+              </p>
+            ) : null}
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] text-left text-[12px]">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-[.12em] text-[#6b7890]">
+                    <th className="px-5 py-2 font-semibold">Formulário</th>
+                    <th className="px-3 py-2 text-right font-semibold">Represadas</th>
+                    <th className="px-3 py-2 text-right font-semibold">Já entraram</th>
+                    <th className="px-5 py-2 font-semibold">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {represa.represadas.slice(0, 12).map((linha) => (
+                    <tr key={linha.formId} className="border-t border-white/5">
+                      <td className="px-5 py-2.5">
+                        <label className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={selecionados.includes(linha.formId)}
+                            disabled={!represa.podeLiberar || !linha.registrada}
+                            onChange={(e) => setSelecionados((atual) => e.target.checked
+                              ? [...atual, linha.formId]
+                              : atual.filter((id) => id !== linha.formId))}
+                            className="size-4 accent-[#38bdf8] disabled:opacity-40"
+                          />
+                          <span className="text-[#cdd7e5]">{linha.nome ?? linha.formId}</span>
+                        </label>
+                      </td>
+                      <td className="cc6-num px-3 py-2.5 text-right font-semibold text-[#e8eef8]">{linha.represadas}</td>
+                      <td className="cc6-num px-3 py-2.5 text-right text-[#6b7890]">{linha.jaEntraram}</td>
+                      <td className="px-5 py-2.5 text-[11px]">
+                        {!linha.registrada ? (
+                          <span className="text-[#fda4af]">não registrado — descarta lead nova</span>
+                        ) : linha.ativa ? (
+                          <span className="text-[#93a2b8]">ativo</span>
+                        ) : (
+                          <span className="text-[#f2b544]">inativo — descarta lead nova</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {represa.podeLiberar ? (
+              <div className="flex flex-wrap items-center gap-2 border-t border-white/5 px-5 py-3">
+                <span className="text-[11.5px] text-[#6b7890]">
+                  {selecionados.length
+                    ? `${selecionados.reduce((soma, id) => soma + (represa.represadas.find((l) => l.formId === id)?.represadas ?? 0), 0)} lead(s) em ${selecionados.length} formulário(s)`
+                    : "Selecione os formulários a liberar"}
+                </span>
+                <div className="ml-auto flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={!selecionados.length || liberando}
+                    onClick={() => void liberarSelecionados(false)}
+                    className="min-h-9 rounded-lg border border-white/10 px-3 text-[11px] font-semibold text-[#cdd7e5] transition hover:border-white/25 disabled:opacity-40"
+                  >
+                    Liberar sem distribuir
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selecionados.length || liberando}
+                    onClick={() => void liberarSelecionados(true)}
+                    className="min-h-9 rounded-lg border border-[rgba(125,211,252,0.4)] bg-[rgba(56,189,248,0.12)] px-3 text-[11px] font-semibold text-[#bae6fd] transition hover:bg-[rgba(56,189,248,0.2)] disabled:opacity-40"
+                  >
+                    {liberando ? "Liberando…" : "Liberar e distribuir"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="border-t border-white/5 px-5 py-3 text-[11.5px] text-[#6b7890]">
+                Liberar represa é da diretoria — move verba já gasta para a operação.
+              </p>
+            )}
+
+            {resultadoDaLiberacao?.map((linha) => (
+              <p key={linha} role="status" className="border-t border-white/5 px-5 py-2.5 text-[11.5px] leading-5 text-[#93a2b8]">{linha}</p>
+            ))}
+          </>
+        )}
+      </section>
 
       {/* Formulários da Meta: de onde a lead entra. Fica antes do desempenho
           porque campanha sem formulário registrado não gera lead nenhuma — e o
