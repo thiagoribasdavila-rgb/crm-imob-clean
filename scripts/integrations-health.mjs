@@ -193,6 +193,18 @@ await testar("IA gratuita", "Ollama (auto-hospedado)", async () => {
   }
 });
 
+// ──────────────────────────────────────────── ALERTA INTERNO
+await testar("Alerta interno", "Telegram (equipe)", async () => {
+  const token = env.TELEGRAM_BOT_TOKEN;
+  if (!temp(token)) return { status: "nao_configurado", detalhe: "TELEGRAM_BOT_TOKEN ausente — alerta de SLA fica só como tarefa no CRM" };
+  const r = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+  const corpo = await r.json().catch(() => ({}));
+  if (!r.ok || corpo.ok === false) {
+    return { status: "erro", detalhe: `${r.status} ${String(corpo?.description ?? "").slice(0, 90)}`, extra: { token: mascara(token) } };
+  }
+  return { detalhe: `bot @${corpo.result?.username ?? "?"} ativo — canal da EQUIPE, sem dado de cliente`, extra: { token: mascara(token) } };
+});
+
 // ─────────────────────────────────────────────────────────── META
 const versaoGraph = env.META_GRAPH_API_VERSION || "v23.0";
 const tokenAds = env.META_ADS_ACCESS_TOKEN;

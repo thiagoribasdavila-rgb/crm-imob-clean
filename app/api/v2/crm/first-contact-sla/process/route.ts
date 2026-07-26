@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { isMissingColumn } from "@/lib/compat/legacy-v2";
+import { enviarAlertaTelegram, montarAlertaDeSla, telegramConfigurado } from "@/lib/integrations/telegram";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -188,6 +189,56 @@ export async function POST(request: Request) {
       criadas = inseridas.data.length;
     }
 
+    // ── ALERTA NO TELEFONE ───────────────────────────────────────────────
+    // Tarefa no CRM só é vista por quem abre o CRM, e o corretor em visita não
+    // abre. Um alerta AGREGADO por corretor (não um por lead) leva o número ao
+    // telefone sem virar spam — e sem levar nome, telefone ou e-mail de
+    // ninguém: vai contagem, prazo e link para a fila.
+    //
+    // Enviar nunca pode derrubar o vigia: o alerta é conveniência, criar a
+    // tarefa é o essencial.
+    let alertasEnviados = 0;
+    if (telegramConfigurado() && novas.length) {
+      const base = (process.env.ATLAS_BASE_URL || "").replace(/\/$/, "");
+      const porCorretor = new Map<string, { vencidas: number; aVencer: number; minutos: number | null }>();
+      for (const p of pendentes) {
+        const dono = String(p.lead.assigned_user_id ?? "");
+        if (!dono) continue;
+        const atual = porCorretor.get(dono) ?? { vencidas: 0, aVencer: 0, minutos: null };
+        if (p.estagio === "vencido") atual.vencidas += 1;
+        else {
+          atual.aVencer += 1;
+          atual.minutos = atual.minutos === null ? p.atrasoMin : Math.min(atual.minutos, p.atrasoMin);
+        }
+        porCorretor.set(dono, atual);
+      }
+
+      const contatos = await admin
+        .from("profiles")
+        .select("id,telegram_chat_id")
+        .in("id", [...porCorretor.keys()])
+        .not("telegram_chat_id", "is", null);
+
+      // Coluna ausente (banco sem esta migration) não é erro: o alerta externo
+      // simplesmente não acontece e a tarefa no CRM continua valendo.
+      if (contatos.error && !isMissingColumn(contatos.error)) {
+        logger.warn("crm.first_contact_sla_alerta_indisponivel", { code: contatos.error.code });
+      }
+
+      for (const perfil of (contatos.data ?? []) as Array<{ id: string; telegram_chat_id: string }>) {
+        const resumo = porCorretor.get(perfil.id);
+        if (!resumo) continue;
+        const texto = montarAlertaDeSla({
+          vencidas: resumo.vencidas,
+          aVencer: resumo.aVencer,
+          minutosMaisProximo: resumo.minutos,
+          linkDaFila: `${base}/leads?sort=first_contact_sla&direction=asc`,
+        });
+        const envio = await enviarAlertaTelegram(perfil.telegram_chat_id, texto);
+        if (envio.status === "enviado") alertasEnviados += 1;
+      }
+    }
+
     const semDono = pendentes.filter((p) => !p.lead.assigned_user_id).length;
     logger.info("crm.first_contact_sla_worker_completed", {
       avaliadas: leads.data?.length ?? 0,
@@ -208,6 +259,8 @@ export async function POST(request: Request) {
       limitePorExecucao: MAX_TAREFAS_POR_EXECUCAO,
       // Quem lê o log precisa saber por qual chave a idempotência está passando.
       idempotencia: metadataDisponivel ? "metadata.slaKey" : "prefixo-de-titulo",
+      alertasEnviados,
+      canalDeAlerta: telegramConfigurado() ? "telegram" : "nenhum — só tarefa no CRM",
       // Diz explicitamente o que NÃO foi feito, para ninguém supor autonomia
       // que o worker não tem.
       naoExecutado: {
