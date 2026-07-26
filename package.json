@@ -287,7 +287,8 @@
     "arvo-spin:check": "node scripts/check-arvo-spin-proposals.mjs",
     "audience-ui:check": "node scripts/check-audience-ui.mjs",
     "database:target:check": "node --env-file=.env.local scripts/check-database-target.mjs",
-    "integrations:health": "node --env-file=.env.local scripts/integrations-health.mjs"
+    "integrations:health": "node --env-file=.env.local scripts/integrations-health.mjs",
+    "ai:pricing:check": "node --env-file=.env.local scripts/check-ai-pricing.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1089.0",
