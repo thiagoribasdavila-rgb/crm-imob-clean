@@ -22,8 +22,9 @@ destravar do meu lado.
 | Commits da entrega | 84 |
 | ZIP validado em sala limpa | ✅ instala, builda, inicia e responde |
 
-**Percentual real de conclusão: ~92%.** Os 15% restantes não são código — são
-credenciais, uma permissão no Business Manager e duas decisões operacionais.
+**Percentual real de conclusão: ~92%.** Os 8% restantes não são código desta
+entrega: são credenciais, uma permissão no Business Manager, duas decisões
+operacionais e o escopo de produto nunca construído que o `ai:calibration` afere.
 
 ---
 
