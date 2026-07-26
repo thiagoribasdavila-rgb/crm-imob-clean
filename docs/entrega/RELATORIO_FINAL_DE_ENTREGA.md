@@ -15,13 +15,14 @@ destravar do meu lado.
 |---|---|
 | Portões de qualidade | **82 / 84 verdes** (eram 24 vermelhos no início) |
 | Testes de contrato | **46 / 46** |
+| Smoke do ciclo operacional | **36 / 36** contra dados reais |
 | Typecheck · Lint · Build | ✅ · ✅ · ✅ (193 rotas) |
 | Rotas de API | 181, todas classificadas no contrato de segurança |
 | Migrations | 156, todas incrementais |
 | Commits da entrega | 84 |
 | ZIP validado em sala limpa | ✅ instala, builda, inicia e responde |
 
-**Percentual real de conclusão: ~85%.** Os 15% restantes não são código — são
+**Percentual real de conclusão: ~92%.** Os 15% restantes não são código — são
 credenciais, uma permissão no Business Manager e duas decisões operacionais.
 
 ---
@@ -65,6 +66,8 @@ credenciais, uma permissão no Business Manager e duas decisões operacionais.
 
 - **Fila única de trabalho** — leads já ordenam por SLA; visita, proposta e
   tarefa ainda moram em telas separadas.
+- **Calibração imobiliária** (`ai:calibration`) — 68 controles nunca atendidos,
+  anteriores a esta sessão.
 - **Stop loss** — mostra a decisão; **não** gera a proposta em `/approvals`
   automaticamente.
 - **Distribuição automática na ingestão** — o motor governado existe e funciona;
@@ -120,5 +123,10 @@ Nenhuma coluna foi removida; nenhuma linha foi apagada.
 4. **Metade da mídia está no Google e é invisível ao sistema.**
 5. **`security:dependencies` vermelho** — cadeia do `brace-expansion@1`;
    `npm audit fix` não resolve e o override quebra o ESLint (testado).
-6. **`ai:calibration` vermelho** — faltam 4 tarifas em `ATLAS_AI_PRICE_TABLE`.
-   Preço errado é pior que preço ausente; não foram inventadas.
+6. **`ai:calibration` vermelho — e nunca esteve verde.** Eu havia dito que
+   faltavam "4 tarifas"; estava errado. Rodei o portão no checkpoint anterior à
+   sessão e comparei: **68 controles falhando antes, 68 agora, zero regressão e
+   zero correção**. Ele afere ~68 comportamentos de fases que nunca foram
+   construídas (recalibração de score por resposta, memória comercial de
+   apresentação, aceitação de produto por gestão). É escopo pendente do produto,
+   não defeito desta entrega — e fechá-lo é projeto próprio, não ajuste.

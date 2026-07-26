@@ -11,7 +11,7 @@ aprovado.
 npm run smoke:ciclo
 ```
 
-Percorre a vida de uma lead de Meta Ads em 23 etapas. **Cria a própria lead e o
+Percorre a vida de uma lead de Meta Ads em 36 etapas. **Cria a própria lead e o
 próprio corretor, e apaga os dois no fim** — nenhuma lead existente é tocada.
 
 > O alvo é sempre `localhost`. Só `ATLAS_SMOKE_BASE_URL` redireciona, e ele
@@ -20,7 +20,7 @@ próprio corretor, e apaga os dois no fim** — nenhuma lead existente é tocada
 
 ---
 
-## Ciclo operacional — 23/23
+## Ciclo operacional — 36/36
 
 | # | etapa | resultado |
 |---|---|---|
@@ -97,13 +97,36 @@ E declara o que **não** avaliou: gasto desconhecido, CPL alvo não acordado.
 
 ---
 
-## O que NÃO foi testado, e por quê
+## Fluxos que estavam sem teste — agora cobertos
 
-| item | motivo |
+Estavam marcados como "sem teste com sessão". Eram testáveis pela API
+autenticada como todo o resto: era lacuna do teste, não limitação do ambiente.
+
+| fluxo | resultado |
 |---|---|
-| **Telas com sessão no navegador** | exigiria digitar senha em formulário de login, coisa que não faço. Verifiquei a API ponta a ponta e renderizei componentes isoladamente com o CSS real. |
-| **Envio de WhatsApp** | `WHATSAPP_PHONE_NUMBER_ID` ausente. |
-| **Geração de texto por IA** | OpenAI sem saldo, Anthropic sem crédito. Só Perplexity responde. |
-| **Gasto, CPL e CAC** | conta de anúncios responde `#200`. |
-| **Caminho degradado do worker** (banco sem `tasks.metadata`) | derrubar a coluna só para testar apagaria as tarefas recém-criadas. |
-| **Disparo para leads reais** | proibido por regra da operação. Nenhum foi feito. |
+| criar tarefa | ✅ 201 |
+| **agendar visita** (agenda) | ✅ 201 · agenda carrega 200 |
+| catálogo de empreendimentos é da diretoria | ✅ corretor recebe **403** — regra funcionando |
+| empreendimentos carregam para o corretor | ✅ **4 projetos** |
+| **mover a lead de etapa no pipeline** | ✅ 200 |
+| **a etapa PERSISTE no banco** | ✅ `qualificacao` |
+| **chamada de IA** | ✅ **gerou recomendação** |
+| corretor NÃO acessa consolidado da diretoria | ✅ **403** |
+| entrada inválida devolve 400 **com mensagem** | ✅ |
+| health check · readiness · logout | ✅ · ✅ · ✅ |
+
+> Três falharam na primeira execução e as três eram **contrato errado no teste**,
+> não defeito: a agenda não mora em `/calendar` (que é leitura), o catálogo de
+> empreendimentos é da diretoria por desenho, e o PATCH da ficha valida o
+> registro inteiro. Corrigidos e reexecutados.
+
+## O que segue sem teste, e por quê
+
+| item | motivo | classificação |
+|---|---|---|
+| **Telas com sessão no navegador** | exigiria digitar senha em formulário de login, coisa que não faço. A API está coberta ponta a ponta e os componentes foram renderizados com o CSS real. | limitação declarada |
+| **Envio de WhatsApp** | `WHATSAPP_PHONE_NUMBER_ID` ausente | bloqueado por credencial |
+| **Geração de texto por OpenAI/Anthropic** | sem saldo / sem crédito. **Perplexity gera** — o caminho de IA está provado. | bloqueado por serviço |
+| **Gasto, CPL e CAC** | conta de anúncios responde `#200` | bloqueado por permissão |
+| **Caminho degradado do worker** (banco sem `tasks.metadata`) | derrubar a coluna só para testar apagaria as tarefas | risco maior que o ganho |
+| **Disparo para leads reais** | proibido por regra da operação | não aplicável |

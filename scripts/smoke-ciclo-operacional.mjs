@@ -198,6 +198,84 @@ try {
   const medicaoFinal = await admin.from("leads").select("first_response_minutes").eq("id", leadId).single();
   conferir(medicaoFinal.data.first_response_minutes === dados?.medicao?.minutosDeResposta,
     "8. a medição original permanece intacta");
+  // ─────────────────────────── 10. tarefa, agenda, projeto e pipeline
+  // Fluxos que o relatório anterior marcou como "sem teste com sessão". Eles
+  // são testáveis pela API autenticada como todo o resto — não testá-los era
+  // lacuna minha, não limitação do ambiente.
+  const tarefa = await fetch(`${base}/api/v1/tasks`, comSessao({
+    method: "POST",
+    body: JSON.stringify({ title: "SMOKE — tarefa de teste", leadId, priority: "media", dueAt: new Date(Date.now() + 86_400_000).toISOString() }),
+  }));
+  conferir([200, 201].includes(tarefa.status), "10. criar tarefa", `veio ${tarefa.status}`);
+
+  // O compromisso não mora em /calendar (que é só leitura): agendar visita é
+  // ação da ficha do lead. A primeira versão deste teste bateu na rota errada e
+  // levou 405 — contrato errado no teste, não defeito no produto.
+  const compromisso = await fetch(`${base}/api/v1/leads/${leadId}/visits`, comSessao({
+    method: "POST",
+    body: JSON.stringify({
+      action: "schedule",
+      scheduledAt: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+      format: "onsite",
+      location: "SMOKE — endereço de teste",
+    }),
+  }));
+  conferir([200, 201].includes(compromisso.status), "10. agendar visita (agenda)", `veio ${compromisso.status}`);
+  const agenda = await fetch(`${base}/api/v1/calendar`, comSessao());
+  conferir(agenda.status === 200, "10. a agenda carrega", `veio ${agenda.status}`);
+
+  // O cadastro COMPLETO de empreendimentos é da diretoria por desenho — 403
+  // para corretor é a regra funcionando, não falha. O que o corretor precisa
+  // enxergar são os projetos disponíveis, que chegam pela ficha do lead.
+  const catalogo = await fetch(`${base}/api/v1/developments`, comSessao());
+  conferir(catalogo.status === 403, "11. catálogo de empreendimentos é da diretoria", `corretor recebeu ${catalogo.status}`);
+  const fichaComProjetos = await fetch(`${base}/api/v1/leads/${leadId}`, comSessao());
+  const projetosVisiveis = ((await fichaComProjetos.json().catch(() => ({})))?.projectOptions ?? []).length;
+  conferir(projetosVisiveis > 0, "11. os empreendimentos carregam para o corretor", `${projetosVisiveis} projeto(s)`);
+
+  // O PATCH da ficha valida o registro inteiro (nome e ao menos um contato) —
+  // mandar só o status devolve 400. Não é bug: a ficha salva por completo.
+  const mover = await fetch(`${base}/api/v1/leads/${leadId}`, comSessao({
+    method: "PATCH",
+    body: JSON.stringify({
+      status: "qualificacao",
+      name: "SMOKE CICLO — apagar",
+      phone: "+5511900000000",
+      email: "smoke@atlas-teste.local",
+    }),
+  }));
+  conferir(mover.status === 200, "12. mover a lead de etapa no pipeline", `veio ${mover.status}`);
+  const conferindo = await admin.from("leads").select("status").eq("id", leadId).single();
+  conferir(String(conferindo.data?.status ?? "").toLowerCase().startsWith("qualifica"),
+    "12. a etapa PERSISTE no banco", `status=${conferindo.data?.status}`);
+
+  // ─────────────────────────── 13. IA: uma chamada real
+  const ia = await fetch(`${base}/api/v1/ai/next-best-action?leadId=${leadId}`, comSessao());
+  conferir([200, 503].includes(ia.status),
+    "13. chamada de IA responde sem derrubar o CRM",
+    ia.status === 200 ? "gerou recomendação" : "503 declarado — provedor indisponível, CRM de pé");
+
+  // ─────────────────────────── 14. permissão: corretor não é diretoria
+  const proibido = await fetch(`${base}/api/v1/analytics/director-daily`, comSessao());
+  conferir(proibido.status === 403 || proibido.status === 401,
+    "14. corretor NÃO acessa consolidado da diretoria", `veio ${proibido.status}`);
+
+  // ─────────────────────────── 15. falha controlada tem mensagem, não silêncio
+  const invalido = await fetch(`${base}/api/v1/leads/${leadId}/first-contact`, comSessao({
+    method: "POST", body: JSON.stringify({ canal: "pombo-correio", resultado: "falou" }),
+  }));
+  const corpoInvalido = await invalido.json().catch(() => ({}));
+  conferir(invalido.status === 400 && Boolean(corpoInvalido?.error?.message),
+    "15. entrada inválida devolve 400 COM mensagem", corpoInvalido?.error?.message?.slice(0, 50));
+
+  // ─────────────────────────── 16. saúde e encerramento de sessão
+  const saude = await fetch(`${base}/api/health`);
+  conferir(saude.status === 200, "16. health check responde", `veio ${saude.status}`);
+  const prontidao = await fetch(`${base}/api/ready`);
+  conferir([200, 503].includes(prontidao.status),
+    "16. readiness declara estado real", prontidao.status === 200 ? "pronto" : "503 — integração faltando, e diz isso");
+  const saida = await anon.auth.signOut();
+  conferir(!saida.error, "16. logout encerra a sessão");
 } catch (erro) {
   falha("execução interrompida", erro instanceof Error ? erro.message : String(erro));
 } finally {
