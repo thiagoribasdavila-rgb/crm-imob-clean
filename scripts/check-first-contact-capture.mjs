@@ -162,6 +162,11 @@ if (componente) {
     "sem atualização o corretor lê 'vence em 4 min' de meia hora atrás",
   );
   check(
+    "caso 31: o relógio já nasce com hora, e não só depois do efeito",
+    /useState<number>\(\(\) => Date\.now\(\)\)/.test(componente),
+    "começar em null faz a PRIMEIRA renderização dizer 'sem prazo definido' para uma lead com prazo correndo — visto na inspeção visual, invisível para teste de API",
+  );
+  check(
     "caso 22: estado vencido é sinalizado para o CSS",
     /data-vencido/.test(componente) && Boolean(css) && css.includes('.atlas-first-contact[data-vencido="true"]'),
     "sem destaque visual o atraso passa despercebido",

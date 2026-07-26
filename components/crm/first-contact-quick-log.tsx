@@ -61,10 +61,15 @@ export function FirstContactQuickLog({ sla, onRegister }: Props) {
   const [erro, setErro] = useState<string | null>(null);
   // O prazo é um relógio: precisa andar sozinho na tela, senão o corretor lê um
   // "vence em 4 min" congelado de meia hora atrás.
-  const [agora, setAgora] = useState<number | null>(null);
+  //
+  // A hora inicial vem no próprio useState, e não num efeito. Começar em null
+  // fazia a primeira renderização cair no ramo de "sem prazo definido" — ou
+  // seja, uma lead COM prazo correndo aparecia como se não tivesse nenhum, até
+  // o efeito rodar. Isso apareceu na inspeção visual do componente e não teria
+  // aparecido em teste de API nenhum.
+  const [agora, setAgora] = useState<number>(() => Date.now());
 
   useEffect(() => {
-    setAgora(Date.now());
     const timer = setInterval(() => setAgora(Date.now()), 20_000);
     return () => clearInterval(timer);
   }, []);
@@ -73,7 +78,7 @@ export function FirstContactQuickLog({ sla, onRegister }: Props) {
   const prazo = useMemo(() => (sla.prazo ? Date.parse(sla.prazo) : NaN), [sla.prazo]);
 
   const relogio = useMemo(() => {
-    if (contatado || agora === null || !Number.isFinite(prazo)) return null;
+    if (contatado || !Number.isFinite(prazo)) return null;
     const minutos = Math.round((prazo - agora) / 60_000);
     if (minutos >= 0) return { vencido: false, texto: `vence em ${minutosEmTexto(minutos)}` };
     return { vencido: true, texto: `vencido há ${minutosEmTexto(Math.abs(minutos))}` };
