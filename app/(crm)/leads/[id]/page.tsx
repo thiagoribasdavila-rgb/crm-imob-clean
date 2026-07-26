@@ -25,6 +25,12 @@ import {
   type LeadContextProjectOption,
 } from "@/components/crm/lead-context-correction";
 import { CommercialContextTimelineEntry } from "@/components/crm/commercial-context-timeline-entry";
+import {
+  FirstContactQuickLog,
+  type FirstContactRegistration,
+  type FirstContactResult,
+  type FirstContactSla,
+} from "@/components/crm/first-contact-quick-log";
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
 import { parseCommercialContextCorrectionTimeline } from "@/lib/atlas/commercial-context-timeline";
 
@@ -253,6 +259,7 @@ type Payload = {
   relationshipContext: RelationshipContext;
   assignmentReservation: AssignmentReservation | null;
   projectOptions: LeadContextProjectOption[];
+  firstContactSla?: FirstContactSla;
 };
 type Qualification = {
   score: number;
@@ -327,6 +334,7 @@ const attentionChipClass: Record<AttentionSignalRow["severity"], string> = {
 export default function LeadDetailPage() {
   const { id: leadId } = useParams<{ id: string }>();
   const [lead, setLead] = useState<LeadRow | null>(null);
+  const [firstContactSla, setFirstContactSla] = useState<FirstContactSla | null>(null);
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [properties, setProperties] = useState<PropertyRow[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
@@ -395,8 +403,33 @@ export default function LeadDetailPage() {
       },
     });
     const body = await response.json();
-    if (!response.ok) throw new Error(body.error || "Falha na operação.");
+    if (!response.ok) {
+      // Duas famílias de erro convivem aqui: `{ error: "texto" }` das rotas
+      // antigas e `{ error: { code, message } }` do envelope novo. Sem esta
+      // distinção o corretor lia "[object Object]" na tela.
+      const detalhe = typeof body.error === "string" ? body.error : body.error?.message;
+      throw new Error(detalhe || "Falha na operação.");
+    }
     return body;
+  }
+
+  // Registro de primeiro contato: uma chamada, sem formulário. Devolve a
+  // medição para a barra mostrar na hora e recarrega a ficha em segundo plano,
+  // para a linha do tempo e o prazo virem do banco, não de um palpite da tela.
+  async function registrarPrimeiroContato(
+    input: FirstContactRegistration,
+  ): Promise<FirstContactResult> {
+    const resposta = await api(`/api/v1/leads/${leadId}/first-contact`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    const dados = (resposta?.data ?? resposta) as FirstContactResult;
+    void load();
+    return {
+      primeiroContato: Boolean(dados?.primeiroContato),
+      medicao: dados?.medicao ?? null,
+      aviso: dados?.aviso ?? null,
+    };
   }
 
   async function load() {
@@ -417,6 +450,7 @@ export default function LeadDetailPage() {
       setRelationshipContext(data.relationshipContext);
       setAssignmentReservation(data.assignmentReservation);
       setProjectOptions(data.projectOptions ?? []);
+      setFirstContactSla(data.firstContactSla ?? null);
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Falha ao carregar o lead.",
@@ -1063,6 +1097,11 @@ export default function LeadDetailPage() {
         risk={intelligence.risk}
         openTasks={contactBriefing?.openTasks ?? 0}
         unreadMessages={contactBriefing?.unreadMessages ?? 0}
+        firstContactSlot={
+          firstContactSla ? (
+            <FirstContactQuickLog sla={firstContactSla} onRegister={registrarPrimeiroContato} />
+          ) : null
+        }
       />
 
       {message ? (

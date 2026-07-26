@@ -3326,6 +3326,83 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
   color: white;
   background: rgba(255, 255, 255, 0.045);
 }
+
+/* Registro de primeiro contato: ocupa a linha inteira da barra sticky, porque é
+   a ação de maior consequência da tela e não pode competir por espaço. */
+.atlas-first-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 14px;
+  background: rgba(56, 189, 248, 0.05);
+}
+.atlas-first-contact[data-vencido="true"] {
+  border-color: rgba(248, 113, 113, 0.34);
+  background: rgba(248, 113, 113, 0.07);
+}
+.atlas-first-contact-head span,
+.atlas-first-contact-head small {
+  display: block;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.atlas-first-contact-head strong {
+  display: block;
+  margin: 2px 0;
+  color: #e0f2fe;
+  font-size: 12px;
+}
+.atlas-first-contact[data-vencido="true"] .atlas-first-contact-head strong {
+  color: #fecaca;
+}
+.atlas-first-contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.atlas-first-contact-actions button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 11px;
+  color: #dbeafe;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 10px;
+  font-weight: 700;
+  transition: border-color var(--atlas-transition), color var(--atlas-transition), background var(--atlas-transition);
+}
+.atlas-first-contact-actions button span {
+  color: #7dd3fc;
+  font-size: 13px;
+}
+.atlas-first-contact-actions button:hover:not(:disabled) {
+  border-color: rgba(125, 211, 252, 0.4);
+  color: white;
+  background: rgba(56, 189, 248, 0.12);
+}
+.atlas-first-contact-actions button:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+.atlas-first-contact-note {
+  flex-basis: 100%;
+  margin: 0;
+  color: #94a3b8;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 @media (max-width: 900px) {
   .atlas-lead-operational-bar {
     position: relative;
@@ -3338,6 +3415,13 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
   .atlas-lead-operational-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .atlas-first-contact-actions {
+    width: 100%;
+  }
+  .atlas-first-contact-actions button {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 }
 .atlas-command-close {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 type LeadOperationalBarProps = {
   leadId: string;
@@ -8,6 +9,13 @@ type LeadOperationalBarProps = {
   risk: string;
   openTasks: number;
   unreadMessages: number;
+  /**
+   * Registro de primeiro contato. Entra aqui, e não numa seção mais abaixo, por
+   * um motivo operacional: esta barra é sticky. Se o registro sair de vista
+   * quando o corretor rola a ficha, ele não é registrado — e é a única ação que
+   * alimenta a métrica de tempo de resposta.
+   */
+  firstContactSlot?: ReactNode;
 };
 
 export function LeadOperationalBar({
@@ -18,6 +26,7 @@ export function LeadOperationalBar({
   risk,
   openTasks,
   unreadMessages,
+  firstContactSlot,
 }: LeadOperationalBarProps) {
   const activities = [
     { label: "Mensagem", href: `/leads/${leadId}/messages`, icon: "↗" },
@@ -61,6 +70,7 @@ export function LeadOperationalBar({
           {unreadMessages ? `Responder (${unreadMessages})` : "Mensagem"}
         </Link>
       </div>
+      {firstContactSlot}
     </aside>
   );
 }

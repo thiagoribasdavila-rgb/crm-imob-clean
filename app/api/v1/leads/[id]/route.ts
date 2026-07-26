@@ -8,7 +8,7 @@ import {
   validateGovernedLeadContextCorrection,
 } from "@/lib/atlas/governed-lead-context-correction";
 import { commercialOutcomeFromStages } from "@/lib/ai/learning-loop";
-import { LIVE_LEAD_SELECT, canonicalLeadStatus, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
+import { LIVE_LEAD_SELECT, LIVE_LEAD_SELECT_WITH_SLA, canonicalLeadStatus, isMissingColumn, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
 import { liveLeadUpdatePayload, mapLiveLeadEvent, recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { computeAttentionSignalsForLead } from "@/lib/atlas/attention-signals";
 import { logger } from "@/lib/observability/logger";
@@ -49,12 +49,22 @@ export async function GET(request: Request, context: RouteContext) {
     await requireLeadAccess(identity, id);
     const admin = getSupabaseAdmin();
 
-    const { data: storedLead, error: leadError } = await admin
+    // As colunas de SLA vêm no select estendido; o banco legado não as tem e
+    // responde 42703. Sem esta degradação, ligar a medição na ficha derrubaria a
+    // ficha inteira — que é justamente o erro que a fase 34 pagou caro para achar.
+    const lerLead = (colunas: string) => admin
       .from("leads")
-      .select(LIVE_LEAD_SELECT)
+      .select(colunas)
       .eq("id", id)
       .eq("organization_id", identity.organizationId)
       .maybeSingle();
+
+    let slaMensuravel = true;
+    let { data: storedLead, error: leadError } = await lerLead(LIVE_LEAD_SELECT_WITH_SLA);
+    if (leadError && isMissingColumn(leadError)) {
+      slaMensuravel = false;
+      ({ data: storedLead, error: leadError } = await lerLead(LIVE_LEAD_SELECT));
+    }
     if (leadError || !storedLead) return NextResponse.json({ error: "Lead fora do seu escopo comercial." }, { status: 403 });
 
     const lead = mapLegacyLead(storedLead as unknown as JsonRow);
@@ -177,6 +187,17 @@ export async function GET(request: Request, context: RouteContext) {
         requiresApproval: true,
       },
       assignmentReservation: null,
+      // O relógio de primeiro contato, exposto para a tela poder mostrar quanto
+      // falta e oferecer o registro em 1 clique. `mensuravel: false` significa
+      // "este banco não mede", que é diferente de "ninguém contatou ainda".
+      firstContactSla: {
+        mensuravel: slaMensuravel,
+        prazo: lead.first_contact_due_at ?? null,
+        contatadoEm: lead.first_contacted_at ?? null,
+        minutosDePrazo: lead.first_contact_sla_minutes ?? null,
+        minutosDeResposta: lead.first_response_minutes ?? null,
+        dentroDoPrazo: lead.first_contact_sla_met ?? null,
+      },
       projectOptions: projectOptionsResult.data ?? [],
       compatibility: { source: "live_v2", history: "lead_events", projects: "crm_projects" },
     });
