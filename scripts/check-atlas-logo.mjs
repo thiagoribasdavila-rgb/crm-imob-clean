@@ -178,7 +178,14 @@ if (!logoSrc) {
 // Corpo do desenho (AtlasMark) — é onde a variante mono precisa ser respeitada.
 const markStart = logoSrc.indexOf("function AtlasMark");
 const markEnd = logoSrc.indexOf("type AtlasLogoProps");
-const markBody = markStart >= 0 && markEnd > markStart ? logoSrc.slice(markStart, markEnd) : "";
+let markBody = markStart >= 0 && markEnd > markStart ? logoSrc.slice(markStart, markEnd) : "";
+
+// A geometria da marca virou constante exportada (ATLAS_STAR_PATH), justamente
+// para que app/icon.svg use a MESMA fonte em vez de uma cópia. O portão resolve
+// a constante antes de analisar — assim continua checando o desenho, e não a
+// forma de escrevê-lo.
+const constantePath = /export const ATLAS_STAR_PATH\s*=\s*\n?\s*"([^"]+)"/.exec(logoSrc);
+if (constantePath) markBody = markBody.replace(/d=\{ATLAS_STAR_PATH\}/g, `d="${constantePath[1]}"`);
 
 check("caso 2: função AtlasMark (o desenho da marca) existe e é isolável", markBody.length > 0, "não achei o bloco function AtlasMark ... antes de type AtlasLogoProps");
 
@@ -224,28 +231,33 @@ check(
 );
 
 // --------------------------------------------------------------------------
-// Órbita e planeta
+// Forma única
 // --------------------------------------------------------------------------
+// REVISÃO 2026-07-26. Estes três casos exigiam órbita e planeta. Passaram a
+// exigir o contrário, e não por conveniência: enquanto a marca tinha detalhe
+// abaixo do limiar óptico, o favicon PRECISAVA divergir do componente — o que
+// deu dois desenhos para o mesmo produto e deixou o caso 22 (identidade entre
+// eles) impossível de satisfazer honestamente. Uma forma só resolve os dois
+// problemas de uma vez, e permite que o cross-check volte a ser exigível.
 const markEllipses = elements(markBody, "ellipse");
-const orbit = markEllipses.find((e) => /rotate\(\s*-?\d/.test(e.transform ?? "") && e.rx && e.ry);
-check(
-  "caso 7: a órbita existe (<ellipse> com transform rotate e rx/ry)",
-  Boolean(orbit),
-  markEllipses.length === 0 ? "nenhum <ellipse> no AtlasMark" : JSON.stringify(markEllipses),
-);
-
-check(
-  "caso 8: a órbita é elíptica (rx != ry) e traçada, não preenchida",
-  Boolean(orbit) && Number(orbit.rx) !== Number(orbit.ry) && (orbit.fill ?? "") === "none" && Boolean(orbit.stroke),
-  orbit ? JSON.stringify(orbit) : "sem órbita",
-);
-
 const markCircles = elements(markBody, "circle");
-const planet = markCircles.find((c) => Number(c.r) > 0);
+
 check(
-  "caso 9: o planeta existe (<circle> com raio > 0) e fica sobre a órbita",
-  Boolean(planet) && Number(planet.cx) > 50,
-  markCircles.length === 0 ? "nenhum <circle> no AtlasMark" : JSON.stringify(markCircles),
+  "caso 7: a marca é UMA forma só — sem órbita (<ellipse>)",
+  markEllipses.length === 0,
+  markEllipses.length ? `${markEllipses.length} <ellipse> no AtlasMark: detalhe que some abaixo de 24px e obriga o favicon a divergir` : "",
+);
+
+check(
+  "caso 8: a marca é UMA forma só — sem planeta (<circle>)",
+  markCircles.length === 0,
+  markCircles.length ? `${markCircles.length} <circle> no AtlasMark: a 16px vira 0,5px de borrão` : "",
+);
+
+check(
+  "caso 9: a marca não tem versão reduzida condicional (sem limiar de detalhe)",
+  !/DETAIL_THRESHOLD|detailed\s*[?&]/.test(logoSrc),
+  "renderizar formas diferentes por tamanho é ter duas marcas — foi assim que favicon e componente divergiram",
 );
 
 // --------------------------------------------------------------------------
@@ -313,9 +325,10 @@ check(
   // resolvido (fill), senão a variante mono vaza gradiente.
   const urlHits = markBody.match(/url\(#/g) ?? [];
   const hexHits = markBody.match(/#[0-9a-fA-F]{6}\b/g) ?? [];
-  const painted = [orbit?.stroke, planet?.fill, star?.attrs.fill];
+  // Uma forma, um pincel. A lista existia para cobrir órbita e planeta.
+  const painted = [star?.attrs.fill];
   check(
-    "caso 15: órbita, planeta e estrela usam o pincel resolvido ({fill}) — sem cor cravada",
+    "caso 15: a estrela usa o pincel resolvido ({fill}) — sem cor cravada",
     urlHits.length === 1 && hexHits.length === 0 && painted.every((p) => p === "{fill}"),
     `url(#=${urlHits.length} hex=${JSON.stringify(hexHits)} pinceis=${JSON.stringify(painted)}`,
   );
@@ -350,7 +363,9 @@ check(`caso 18: ${ICON_REL} é XML bem formado com raiz <svg>`, xml.ok && /^\s*<
   const refs = [...(iconSrc ?? "").matchAll(/url\(#([^)]+)\)/g)].map((m) => m[1]);
   check(
     `caso 20: ${ICON_REL} referencia o gradiente por um id que realmente existe`,
-    Boolean(gradId) && refs.length >= 3 && refs.every((r) => r === gradId),
+    // Uma forma, uma referência. O `>= 3` de antes pressupunha estrela + órbita
+    // + planeta, e passou a ser impossível quando a marca virou forma única.
+    Boolean(gradId) && refs.length >= 1 && refs.every((r) => r === gradId),
     JSON.stringify({ gradId, refs }),
   );
 }
@@ -367,19 +382,17 @@ check(`caso 18: ${ICON_REL} é XML bem formado com raiz <svg>`, xml.ok && /^\s*<
 
 {
   // Cross-check: o desenho do icon.svg é a MESMA marca do componente.
+  //
+  // Com a marca em forma única, isto deixou de ser aspiração e virou exigível:
+  // o path do favicon tem que ser o path do componente, número por número.
   const iconStar = iconSrc ? elements(iconSrc, "path").map((p) => ({ d: p.d, a: analyzeStarPath(p.d) })).find((p) => p.a.ok) : undefined;
-  const iconOrbit = iconSrc ? elements(iconSrc, "ellipse").find((e) => /rotate\(/.test(e.transform ?? "")) : undefined;
-  const iconPlanet = iconSrc ? elements(iconSrc, "circle").find((c) => Number(c.r) > 0) : undefined;
+  const iconOrbit = iconSrc ? elements(iconSrc, "ellipse").length : 0;
+  const iconPlanet = iconSrc ? elements(iconSrc, "circle").length : 0;
   const sameStar = Boolean(iconStar && star) && JSON.stringify(iconStar.a.nums) === JSON.stringify(star.analysis.nums);
-  const sameOrbit =
-    Boolean(iconOrbit && orbit) &&
-    ["cx", "cy", "rx", "ry", "transform"].every((k) => String(iconOrbit[k]) === String(orbit[k]));
-  const samePlanet =
-    Boolean(iconPlanet && planet) && ["cx", "cy", "r"].every((k) => String(iconPlanet[k]) === String(planet[k]));
   check(
-    `caso 22: a geometria de ${ICON_REL} é idêntica à do componente (estrela, órbita e planeta)`,
-    sameStar && sameOrbit && samePlanet,
-    JSON.stringify({ sameStar, sameOrbit, samePlanet, iconStar: iconStar?.d, iconOrbit, iconPlanet }),
+    `caso 22: a geometria de ${ICON_REL} é idêntica à do componente, e nada além dela`,
+    sameStar && iconOrbit === 0 && iconPlanet === 0,
+    JSON.stringify({ sameStar, ellipsesNoIcone: iconOrbit, circulosNoIcone: iconPlanet, iconStar: iconStar?.d }),
   );
 }
 

@@ -1,32 +1,48 @@
 import type { CSSProperties } from "react";
 
-// Marca Atlas — "estrela-guia". Uma estrela de 4 pontas com o eixo vertical alongado
-// (a north-star que guia a operação: a conversão que rege tudo), com uma ÓRBITA e um
-// PLANETA — o lead girando em torno do que importa. Une três almas: Atlas (mapa),
-// a north-star (a meta) e o ✦ da IA.
+// Marca Atlas — "estrela-guia". UMA forma só: uma estrela de 4 pontas com o eixo
+// vertical alongado. A north-star que rege a operação — a conversão.
 //
-// Três decisões de ofício que mudaram nesta revisão:
+// REVISÃO 2026-07-26: a órbita e o planeta saíram.
 //
-// 1. TAMANHO ÓPTICO. A geometria da marca é a mesma, mas o DETALHE não é. Numa caixa de
-//    100 unidades, a órbita tem traço de 1.3 e o planeta raio 3.4 — a 16px isso vira,
-//    respectivamente, 0,2px e 0,5px: borrão cinza, não desenho. Abaixo do limiar a marca
-//    passa a ser só a estrela, que é o que o olho reconhece nesse tamanho. Marca boa
-//    simplifica quando encolhe; a alternativa é entregar sujeira e chamar de detalhe.
+// Eles contavam uma história bonita (o lead girando em torno do que importa) e
+// custavam caro em todo tamanho abaixo de 24px: numa caixa de 100 unidades o
+// traço da órbita media 1.3 e o planeta 3.4 de raio, o que a 16px vira 0,2px e
+// 0,5px — borrão cinza em volta da marca, não desenho. A solução anterior foi
+// desenhar DOIS ativos: o componente com órbita e planeta, o favicon só com a
+// estrela. Duas marcas para o mesmo produto, divergindo em silêncio.
 //
-// 2. ZERO GLOW. A versão anterior usava drop-shadow difusa por padrão em toda superfície
-//    — e o princípio 3 do CC23 é justamente profundidade por geometria, com zero glow. A
-//    marca não pode ser a exceção da linguagem que ela representa. O realce continua
-//    disponível, mas é sombra DESLOCADA (que descola do fundo) e opt-in.
+// Agora é uma forma só, idêntica no favicon, no login e na sidebar. Marca boa
+// não precisa de versão reduzida — precisa de uma ideia que não dependa de
+// detalhe para ser reconhecida.
 //
-// 3. COR POR TOKEN. Os hexes viraram var() com fallback: white-label troca a marca sem
-//    tocar em componente. É a mesma regra que vale para o resto do CC23.
+// A geometria também foi afinada: as concavidades ficaram mais fechadas
+// (controle a 3.5 do centro, antes 5.5) e as pontas horizontais mais longas
+// (14→86, antes 16→84). O resultado é uma estrela mais aguda e menos "flor",
+// que é o que separa marca de ícone genérico.
+//
+// Duas decisões anteriores permanecem, e valem repetir:
+//
+// ZERO GLOW por padrão. O princípio da linguagem visual é profundidade por
+// geometria. O realce continua disponível, mas é sombra DESLOCADA — que descola
+// do fundo — e opt-in.
+//
+// COR POR TOKEN. Os hexadecimais são var() com fallback: white-label troca a
+// marca sem tocar em componente.
 
 const BRAND_FROM = "var(--atlas-brand-from, #3ae7d7)"; // teal
 const BRAND_TO = "var(--atlas-brand-to, #8b8cff)"; // violet
 const GRAD_ID = "atlas-star-gradient";
 
-/** Abaixo disto, órbita e planeta não têm pixels suficientes para existir. */
-const DETAIL_THRESHOLD_PX = 24;
+/**
+ * A marca, em uma constante.
+ *
+ * Fica exportada porque app/icon.svg precisa da MESMA geometria — e a única
+ * forma de garantir isso é ter uma fonte só. Duas cópias divergem; foi
+ * exatamente o que aconteceu antes desta revisão.
+ */
+export const ATLAS_STAR_PATH =
+  "M50,3 Q53.5,46.5 86,50 Q53.5,53.5 50,97 Q46.5,53.5 14,50 Q46.5,46.5 50,3 Z";
 
 type AtlasTone = "signature" | "mono";
 
@@ -45,7 +61,6 @@ type AtlasMarkProps = {
 function AtlasMark({ size, tone = "signature", glow = false, title, className, style }: AtlasMarkProps) {
   const mono = tone === "mono";
   const fill = mono ? "currentColor" : `url(#${GRAD_ID})`;
-  const detailed = size >= DETAIL_THRESHOLD_PX;
   // Deslocada no eixo Y, nunca `0 0`: sombra que descola, não halo que vaza.
   const filter = glow && !mono ? "drop-shadow(0 2px 6px rgba(0,0,0,.45))" : undefined;
 
@@ -71,27 +86,9 @@ function AtlasMark({ size, tone = "signature", glow = false, title, className, s
         </defs>
       ) : null}
 
-      {detailed ? (
-        <>
-          {/* órbita — a operação girando em torno da estrela */}
-          <ellipse
-            cx="50"
-            cy="50"
-            rx="45"
-            ry="16"
-            transform="rotate(-22 50 50)"
-            fill="none"
-            stroke={fill}
-            strokeWidth="1.3"
-            opacity={mono ? 0.35 : 0.5}
-          />
-          {/* planeta — o lead na órbita */}
-          <circle cx="88" cy="38" r="3.4" fill={fill} />
-        </>
-      ) : null}
-
-      {/* estrela-guia — eixo vertical alongado (north-star) */}
-      <path d="M50,4 Q55.5,44.5 84,50 Q55.5,55.5 50,96 Q44.5,55.5 16,50 Q44.5,44.5 50,4 Z" fill={fill} />
+      {/* estrela-guia — a marca inteira. Eixo vertical alongado (north-star),
+          concavidades fechadas. A MESMA geometria vai para app/icon.svg. */}
+      <path d={ATLAS_STAR_PATH} fill={fill} />
     </svg>
   );
 }
