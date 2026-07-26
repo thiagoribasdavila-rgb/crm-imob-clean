@@ -46,7 +46,58 @@ export function buildWeeklyAcquisitionReport(leads: LeadRow[], developments: Dev
     if (campaign.spend !== null && campaign.leads > 0) { row.allocatedSpend += campaign.spend * split.leads / campaign.leads; if (campaign.developers.length > 1) row.exactSpend = false; }
     developerMap.set(split.developer, row);
   }
-  const developers = [...developerMap.values()].map((row) => ({ developer: row.developer, leads: row.leads, spend: Math.round(row.allocatedSpend * 100) / 100, cpl: row.leads && row.allocatedSpend ? Math.round(row.allocatedSpend / row.leads * 100) / 100 : null, campaigns: row.campaigns.size, allocation: row.exactSpend ? "direct" : "proportional_by_leads" })).sort((a, b) => b.spend - a.spend || b.leads - a.leads);
-  const totalSpend = paid.reduce((sum, item) => sum + item.spend, 0);
-  return { totals: { leads: leads.length, spend: Math.round(totalSpend * 100) / 100, cpl: leads.length && totalSpend ? Math.round(totalSpend / leads.length * 100) / 100 : null, campaigns: campaignRows.length, developers: developers.length }, campaigns: campaignRows, developers, governance: { window: "last_7d", spendSource: paid.length ? "Meta Ads Insights" : "Não disponível", mixedCampaignAllocation: "Custo dividido proporcionalmente às leads quando uma campanha atende mais de uma incorporadora.", automaticDecisions: false } };
+  // Uma incorporadora só recebe valor de gasto quando ALGUMA campanha dela teve
+  // custo lido. `allocatedSpend` começa em zero e nada o alimenta quando a Meta
+  // não responde — publicar esse zero diria "esta parceira não custou nada",
+  // que é diferente de "não sabemos quanto custou".
+  const developers = [...developerMap.values()].map((row) => {
+    const temGasto = row.campaigns.size > 0 && campaignRows.some(
+      (campaign) => campaign.spend !== null && row.campaigns.has(campaign.campaignId),
+    );
+    const spend = temGasto ? Math.round(row.allocatedSpend * 100) / 100 : null;
+    return {
+      developer: row.developer,
+      leads: row.leads,
+      spend,
+      cpl: spend !== null && row.leads > 0 ? Math.round(spend / row.leads * 100) / 100 : null,
+      campaigns: row.campaigns.size,
+      allocation: row.exactSpend ? "direct" : "proportional_by_leads",
+    };
+  }).sort((a, b) => (b.spend ?? -1) - (a.spend ?? -1) || b.leads - a.leads);
+
+  // O TOTAL seguia a mesma armadilha, e era a mais visível: com a Meta fora do
+  // ar `paid` vem vazio, o reduce devolve 0, e o relatório do diretor anunciava
+  // "gasto na semana: R$ 0,00" enquanto TODA campanha logo abaixo dizia
+  // "não medido". A soma transformava "não sei" em "nada".
+  const gastoConhecido = paid.length > 0;
+  const totalSpend = gastoConhecido
+    ? Math.round(paid.reduce((sum, item) => sum + item.spend, 0) * 100) / 100
+    : null;
+  // Cobertura declarada: somar 2 de 7 campanhas e chamar de "gasto da semana"
+  // continua sendo meia verdade se ninguém disser que são 2 de 7.
+  const campanhasComGasto = campaignRows.filter((campaign) => campaign.spend !== null).length;
+
+  return {
+    totals: {
+      leads: leads.length,
+      spend: totalSpend,
+      cpl: totalSpend !== null && leads.length > 0
+        ? Math.round(totalSpend / leads.length * 100) / 100
+        : null,
+      campaigns: campaignRows.length,
+      developers: developers.length,
+      campanhasComGastoMedido: campanhasComGasto,
+    },
+    campaigns: campaignRows,
+    developers,
+    governance: {
+      window: "last_7d",
+      spendSource: gastoConhecido ? "Meta Ads Insights" : "Não disponível",
+      mixedCampaignAllocation: "Custo dividido proporcionalmente às leads quando uma campanha atende mais de uma incorporadora.",
+      // Dito no payload para quem lê a API sem abrir a tela: ausência de custo é
+      // ausência, nunca zero.
+      spendOmittedWhenUnknown: true,
+      automaticDecisions: false,
+    },
+  };
 }

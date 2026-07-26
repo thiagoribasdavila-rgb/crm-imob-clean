@@ -11,7 +11,7 @@ type Period = "day" | "week" | "month" | "all";
 type Lead = { id: string; status: string | null; source: string | null; score: number | null; created_at: string };
 type Opportunity = { id: string; stage: string; value: number | null; probability: number; created_at: string; won_at: string | null };
 type Briefing = { status: string; signals: Array<{ id: string; severity: string; title: string; evidence: string; action: string; href: string }> };
-type WeeklyReport = { totals: { leads: number; spend: number; cpl: number | null; campaigns: number; developers: number }; campaigns: Array<{ campaignId: string; campaignName: string; leads: number; qualified: number; spend: number | null; cpl: number | null; costSource: string }>; developers: Array<{ developer: string; leads: number; spend: number; cpl: number | null; campaigns: number; allocation: string }>; warnings: string[]; period: { start: string; end: string } };
+type WeeklyReport = { totals: { leads: number; spend: number | null; cpl: number | null; campaigns: number; developers: number }; campaigns: Array<{ campaignId: string; campaignName: string; leads: number; qualified: number; spend: number | null; cpl: number | null; costSource: string }>; developers: Array<{ developer: string; leads: number; spend: number | null; cpl: number | null; campaigns: number; allocation: string }>; warnings: string[]; period: { start: string; end: string } };
 type WeeklyReview = { outcomes:{completedTasks:number;completedVisits:number;interactions:number;newLeads:number};backlog:{openTasks:number;overdueTasks:number;leadsWithoutNextAction:number;hotLeadsWithoutNextAction:number;noShows:number};quality:{completionRate:number|null;sampleSize:number;minimumSample:number;sufficientSample:boolean};plan:Array<{key:string;title:string;evidence:string;action:string;href:string}>;method:{llmCost:number;peopleRanking:boolean;humanDecisionRequired:boolean} };
 
 const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -197,7 +197,7 @@ export default function ReportsPage() {
             <button type="button" onClick={() => window.print()} className="cc6-ghost-btn min-h-11 shrink-0">Imprimir relatório</button>
           </header>
           <div className="mt-4 flex flex-wrap gap-x-10 gap-y-4">
-            {([["leads", String(weekly.totals.leads)], ["investimento", money(weekly.totals.spend)], ["CPL", weekly.totals.cpl === null ? "—" : money(weekly.totals.cpl)], ["campanhas", String(weekly.totals.campaigns)], ["incorporadoras", String(weekly.totals.developers)]] as const).map(([label, value]) => (
+            {([["leads", String(weekly.totals.leads)], ["investimento", weekly.totals.spend === null ? "não medido" : money(weekly.totals.spend)], ["CPL", weekly.totals.cpl === null ? "—" : money(weekly.totals.cpl)], ["campanhas", String(weekly.totals.campaigns)], ["incorporadoras", String(weekly.totals.developers)]] as const).map(([label, value]) => (
               <div key={label}>
                 <p className="cc6-metric-value text-xl leading-none">{value}</p>
                 <p className="cc6-metric-label mt-1.5">{label}</p>
@@ -258,7 +258,7 @@ export default function ReportsPage() {
                       </td>
                       <td className="cc6-num px-3 py-3 text-[#aab6ca]">{row.leads}</td>
                       <td className="cc6-num px-3 py-3 text-[#aab6ca]">{row.campaigns}</td>
-                      <td className="cc6-num px-3 py-3 text-[#aab6ca]">{money(row.spend)}</td>
+                      <td className="cc6-num px-3 py-3 text-[#aab6ca]">{row.spend === null ? "Não conectado" : money(row.spend)}</td>
                       <td className="cc6-num px-3 py-3 text-[#aab6ca]">{row.cpl === null ? "—" : money(row.cpl)}</td>
                     </tr>
                   ))}
