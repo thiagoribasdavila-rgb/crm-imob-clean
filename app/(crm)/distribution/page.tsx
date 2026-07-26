@@ -516,10 +516,17 @@ export default function DistributionPage() {
                 <p className="cc6-eyebrow">Fase 59 · Livro da carteira</p>
                 <h2 id="distribution-audit-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Histórico gerencial unificado</h2>
               </div>
-              <span className="cc6-chip">até {data.portfolioAudit.maximum} eventos</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {/* A promessa de privacidade deste livro precisa estar NA TELA, e
+                    não só no contrato: quem lê um histórico gerencial tem que
+                    saber, olhando, que ali não há nome, telefone, e-mail nem
+                    texto livre da lead — só metadado de movimentação. */}
+                <span className="cc6-chip" title="Nome, telefone, e-mail e textos livres da lead não são expostos neste livro.">SEM PII</span>
+                <span className="cc6-chip">até {data.portfolioAudit.maximum} eventos</span>
+              </div>
             </header>
             <div className="mt-3 flex flex-wrap gap-1.5 px-5 pb-4" aria-label="Resumo por tipo de movimento">
-              {([["distribuições", data.portfolioAudit.summary.distributions], ["transferências", data.portfolioAudit.summary.transfers], ["reservas", data.portfolioAudit.summary.reservations], ["devoluções", data.portfolioAudit.summary.returns], ["ausências", data.portfolioAudit.summary.absences], ["capacidade", data.portfolioAudit.summary.capacityChanges]] as const).map(([label, value]) => (
+              {([["Distribuições", data.portfolioAudit.summary.distributions], ["Transferências", data.portfolioAudit.summary.transfers], ["Reservas", data.portfolioAudit.summary.reservations], ["Devoluções", data.portfolioAudit.summary.returns], ["Ausências", data.portfolioAudit.summary.absences], ["Capacidade", data.portfolioAudit.summary.capacityChanges]] as const).map(([label, value]) => (
                 <span key={label} className="cc6-chip">
                   {label} <strong className="font-semibold text-[#e8eef8]">{value}</strong>
                 </span>
