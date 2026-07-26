@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { chaveDaCampanhaDoGoogle, lerAtribuicaoDoGoogle, nomeDaCampanhaDoGoogle } from "@/lib/marketing/google-attribution";
 import { logger } from "@/lib/observability/logger";
 import { hashMetaValue, queueMetaConversion } from "@/lib/meta/conversions";
 import { resilientFetch } from "@/lib/http/resilient-fetch";
@@ -481,17 +482,59 @@ export async function POST(request: Request) {
           const ownership = existingLead
             ? null
             : await resolveLeadOwner(admin, portalEvent.organization_id, sourceRow?.default_owner_id || null);
+          // ── ATRIBUIÇÃO DO GOOGLE ────────────────────────────────────────
+          // Três dos quatro empreendimentos atendidos anunciam no Google, e o
+          // CRM tinha 2 leads de google_ads contra 201 da Meta — não porque o
+          // Google traga menos, mas porque ninguém lia o que ele manda. O gclid
+          // e as UTMs viajam no payload do portal e estavam sendo descartados.
+          //
+          // Sem identificador de clique isto devolve null e nada muda: UTM
+          // sozinha pode ser link de e-mail, e atribuir por palpite move verba.
+          const atribuicaoGoogle = lerAtribuicaoDoGoogle({ ...contact, ...(portalEvent.contact as Record<string, unknown> ?? {}) });
+          let campanhaDoGoogle: string | null = null;
+          if (atribuicaoGoogle) {
+            const chave = chaveDaCampanhaDoGoogle(atribuicaoGoogle);
+            if (chave) {
+              // Mesma disciplina do registro de campanha da Meta: a chave é o id
+              // estável, não o nome — renomear no Google não pode partir o
+              // histórico em duas campanhas.
+              const existente = await admin.from("marketing_campaigns").select("id")
+                .eq("organization_id", portalEvent.organization_id).eq("platform", "GOOGLE")
+                .eq("external_campaign_id", chave).maybeSingle();
+              if (existente.data?.id) campanhaDoGoogle = existente.data.id;
+              else {
+                const criada = await admin.from("marketing_campaigns").insert({
+                  organization_id: portalEvent.organization_id,
+                  name: nomeDaCampanhaDoGoogle(atribuicaoGoogle),
+                  platform: "GOOGLE",
+                  external_campaign_id: chave,
+                  status: "PAUSED",
+                }).select("id").maybeSingle();
+                campanhaDoGoogle = criada.data?.id ?? null;
+              }
+            }
+            logger.info("outbox.google_attribution_reconhecida", {
+              organizationId: portalEvent.organization_id,
+              clickIdTipo: atribuicaoGoogle.clickIdTipo,
+              campanha: chave,
+              campanhaRegistrada: Boolean(campanhaDoGoogle),
+            });
+          }
+
           const leadInsert = existingLead ? { data: existingLead, error: null } : await admin.from("leads").insert({
             organization_id: portalEvent.organization_id,
             name: contact.name || `Lead ${providerLabel}`,
             email: contact.email || null,
             phone: contact.phone || null,
-            source: providerLabel,
+            // Clique pago do Google identificado vence o rótulo do portal: a
+            // lead chegou POR ele, e é assim que o custo dela fica rastreável.
+            source: atribuicaoGoogle ? "google_ads" : providerLabel,
+            campaign_id: campanhaDoGoogle,
             status: "novo",
             temperature: "frio",
             score: 0,
             assigned_to: ownership?.ownerId ?? null,
-            metadata: { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id, listingId: portalEvent.listing_id, sourceName: sourceRow?.name || null, message: contact.message || null }, distribution: ownership ? { tier: ownership.tier, reason: ownership.reason } : undefined },
+            metadata: { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id, listingId: portalEvent.listing_id, sourceName: sourceRow?.name || null, message: contact.message || null }, ...(atribuicaoGoogle ? { google: atribuicaoGoogle } : {}), distribution: ownership ? { tier: ownership.tier, reason: ownership.reason } : undefined },
             created_at: now,
             next_action_at: new Date(Date.now() + 5 * 60_000).toISOString(),
           }).select("id").single();
