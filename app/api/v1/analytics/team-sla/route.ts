@@ -4,6 +4,8 @@ import { cacheHeaders } from "@/lib/api/cache-headers";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   LIVE_LEAD_SELECT,
+  LIVE_LEAD_SELECT_WITH_SLA,
+  isMissingColumn,
   mapLegacyLead,
   type CompatRow,
 } from "@/lib/compat/legacy-v2";
@@ -39,19 +41,34 @@ export async function GET(request: NextRequest) {
 
   const organizationId = identity.access.organization.id;
   const managerId = identity.access.profile.id;
-  const [profileResult, leadResult] = await Promise.all([
+  const [profileResult, leadResultInicial] = await Promise.all([
     identity.supabase
       .from("profiles")
       .select(LIVE_PROFILE_SELECT)
       .eq("organization_id", organizationId)
       .eq("active", true)
       .limit(1000),
+    // Select estendido com as colunas de SLA da fase 34; se o banco não as
+    // tiver, o bloco abaixo repete sem elas. Sem isso a medição seria calculada
+    // sobre campos que a query nunca trouxe — que é como este endpoint passou
+    // a vida devolvendo zero.
     identity.supabase
       .from("leads")
-      .select(LIVE_LEAD_SELECT)
+      .select(LIVE_LEAD_SELECT_WITH_SLA)
       .eq("organization_id", organizationId)
       .limit(10000),
   ]);
+
+  let slaMensuravel = true;
+  let leadResult = leadResultInicial;
+  if (leadResult.error && isMissingColumn(leadResult.error)) {
+    slaMensuravel = false;
+    leadResult = await identity.supabase
+      .from("leads")
+      .select(LIVE_LEAD_SELECT)
+      .eq("organization_id", organizationId)
+      .limit(10000);
+  }
 
   if (profileResult.error || leadResult.error) {
     return apiError(
@@ -91,12 +108,19 @@ export async function GET(request: NextRequest) {
         dueAt: string;
         overdueMinutes: number;
       }> = [];
+      // O prazo vem de first_contact_due_at, carimbado pelo gatilho conforme a
+      // origem (5 min para mídia social paga, 15 min para as demais). O valor
+      // cravado de 15 min que existia aqui ignorava a política e tratava lead
+      // de Lead Ads como lead de portal.
+      const prazoReal = lead.first_contact_due_at ? Date.parse(String(lead.first_contact_due_at)) : null;
+      const prazoDeContato = prazoReal ?? (createdAt !== null ? createdAt + 15 * 60_000 : null);
       if (
+        !lead.first_contacted_at &&
         normalize(lead.status) === "novo" &&
-        createdAt !== null &&
-        createdAt < now - 15 * 60_000
+        prazoDeContato !== null &&
+        prazoDeContato < now
       ) {
-        const dueAt = createdAt + 15 * 60_000;
+        const dueAt = prazoDeContato;
         rows.push({
           kind: "first_contact",
           dueAt: new Date(dueAt).toISOString(),
@@ -135,10 +159,12 @@ export async function GET(request: NextRequest) {
           (alert) =>
             alert.brokerId === brokerId && alert.kind === "follow_up",
         ).length,
-        measured: 0,
-        met: 0,
-        complianceRate: null,
-        averageResponseMinutes: null,
+        // first_response_minutes e first_contact_sla_met medidos de verdade,
+        // não derivados de idade do lead.
+        measured: medicaoPrimeiroContato.measured,
+        met: medicaoPrimeiroContato.met,
+        complianceRate: medicaoPrimeiroContato.complianceRate,
+        averageResponseMinutes: medicaoPrimeiroContato.averageResponseMinutes,
         followUpsMeasured: 0,
         followUpComplianceRate: null,
         recoveredFollowUps: 0,
@@ -149,6 +175,28 @@ export async function GET(request: NextRequest) {
         right.firstContactOverdue - left.firstContactOverdue ||
         right.followUpOverdue - left.followUpOverdue,
     );
+
+  // Medição de primeiro contato a partir das colunas reais. Só entra lead cujo
+  // contato foi efetivamente registrado; nada é inferido de idade nem de status.
+  const contatosMedidos = leads.filter(
+    (lead) => lead.first_contacted_at && lead.first_response_minutes != null,
+  );
+  const dentroDoPrazo = contatosMedidos.filter((lead) => lead.first_contact_sla_met === true);
+  const medicaoPrimeiroContato = {
+    measured: contatosMedidos.length,
+    met: dentroDoPrazo.length,
+    // Taxa exige amostra: 1 contato não define cumprimento de SLA da equipe.
+    complianceRate:
+      contatosMedidos.length >= 5
+        ? Number((dentroDoPrazo.length / contatosMedidos.length).toFixed(3))
+        : null,
+    averageResponseMinutes: contatosMedidos.length
+      ? Math.round(
+          contatosMedidos.reduce((soma, lead) => soma + Number(lead.first_response_minutes || 0), 0) /
+            contatosMedidos.length,
+        )
+      : null,
+  };
 
   return apiSuccess(
     {
@@ -168,10 +216,12 @@ export async function GET(request: NextRequest) {
           (broker) =>
             broker.firstContactOverdue + broker.followUpOverdue > 0,
         ).length,
-        measured: 0,
-        met: 0,
-        complianceRate: null,
-        averageResponseMinutes: null,
+        // first_response_minutes e first_contact_sla_met medidos de verdade,
+        // não derivados de idade do lead.
+        measured: medicaoPrimeiroContato.measured,
+        met: medicaoPrimeiroContato.met,
+        complianceRate: medicaoPrimeiroContato.complianceRate,
+        averageResponseMinutes: medicaoPrimeiroContato.averageResponseMinutes,
         followUpsMeasured: 0,
         followUpComplianceRate: null,
         recoveredFollowUps: 0,
@@ -179,11 +229,22 @@ export async function GET(request: NextRequest) {
       },
       alerts,
       byBroker,
-      measurement: {
-        status: "awaiting-live-contact-events",
-        reason:
-          "A base atual não registra duração e confirmação de SLA. Atrasos são derivados apenas de idade do lead e próxima ação.",
-      },
+      measurement: medicaoPrimeiroContato.measured > 0
+        ? {
+            status: "measured",
+            reason: `${medicaoPrimeiroContato.measured} contato(s) medidos por first_response_minutes e first_contact_sla_met.`,
+          }
+        : slaMensuravel
+          ? {
+              status: "no-contacts-yet",
+              reason:
+                "O banco sabe medir, mas nenhum primeiro contato foi registrado ainda. Registre pelo endpoint de primeiro contato para a medição começar.",
+            }
+          : {
+              status: "sla-columns-unavailable",
+              reason:
+                "Este banco não tem as colunas de SLA da fase 34. Os atrasos abaixo são derivados de idade do lead, não medidos.",
+            },
       compatibility: "live-schema-safe",
       generatedAt: new Date().toISOString(),
     },

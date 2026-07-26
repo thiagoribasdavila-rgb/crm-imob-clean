@@ -39,8 +39,35 @@ export async function GET(request: Request) {
     }
     const role = identity.commercialRole || identity.role;
     const leads = compatiblePipeline.rows.sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+
+    // Medição de SLA de primeiro contato. Sai daqui porque o Kanban já sabe
+    // renderizá-la (badge "No SLA" / "Fora do SLA") e só faltava a API mandar.
+    // `slaDisponivel` distingue "ninguém contatou ainda" de "este banco não sabe
+    // medir" — são coisas diferentes e a interface não pode confundi-las.
+    const agora = Date.now();
+    const emAberto = leads.filter((lead) => !lead.first_contacted_at && String(lead.status || "").toLowerCase() !== "perdido");
+    const contatadas = leads.filter((lead) => lead.first_contacted_at);
+    const medidas = contatadas.filter((lead) => lead.first_response_minutes != null);
+    const dentroDoSla = medidas.filter((lead) => lead.first_contact_sla_met === true);
+    const firstContactSla = {
+      disponivel: compatiblePipeline.slaDisponivel !== false,
+      emAberto: emAberto.length,
+      vencidas: emAberto.filter((lead) => lead.first_contact_due_at && Date.parse(String(lead.first_contact_due_at)) < agora).length,
+      contatadas: contatadas.length,
+      // first_response_minutes e first_contact_sla_met: as duas medições reais,
+      // nunca derivadas de idade do lead.
+      medidas: medidas.length,
+      dentroDoSla: dentroDoSla.length,
+      // Percentual só com amostra: taxa sobre 1 ou 2 leads é ruído.
+      complianceRate: medidas.length >= 5 ? Number((dentroDoSla.length / medidas.length).toFixed(3)) : null,
+      averageResponseMinutes: medidas.length
+        ? Math.round(medidas.reduce((soma, lead) => soma + Number(lead.first_response_minutes || 0), 0) / medidas.length)
+        : null,
+    };
+
     return NextResponse.json({
       leads,
+      firstContactSla,
       stages: mergePipelineStageSettings(settings),
       stageContract: "canonical-v1",
       stageSettingsSource,

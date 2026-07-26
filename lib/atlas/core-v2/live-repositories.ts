@@ -3,6 +3,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   LIVE_LEAD_SELECT,
+  LIVE_LEAD_SELECT_WITH_SLA,
+  isMissingColumn,
   leadAsOpportunity,
   mapLegacyLead,
   mapLegacyProject,
@@ -43,6 +45,8 @@ type CompatibleReadSuccess<T> = {
   tenantColumn: "organization_id";
   compatibility: typeof ATLAS_LIVE_READ_COMPATIBILITY_VERSION;
   generatedAt: string;
+  /** false quando o banco não tem as colunas de SLA da fase 34. */
+  slaDisponivel?: boolean;
 };
 
 export type CompatibleReadResult<T> = CompatibleReadSuccess<T> | CompatibleReadFailure;
@@ -91,20 +95,36 @@ export async function readCompatibleLeads(
   const { organizationId, limit } = normalizedInput(input);
   if (!organizationId) return invalidTenant();
 
-  let query = client
-    .from("leads")
-    .select(LIVE_LEAD_SELECT, { count: "exact" })
-    .eq("organization_id", organizationId);
+  // Tenta com as colunas de SLA; se o banco não as tiver (42703), repete sem
+  // elas. É o que permite o mesmo código servir o schema da fase 34 e o legado,
+  // sem que a ausência do SLA derrube a leitura inteira do pipeline.
+  const executar = async (colunas: string) => {
+    let query = client
+      .from("leads")
+      .select(colunas, { count: "exact" })
+      .eq("organization_id", organizationId);
+    if (!input.includeArchived) query = query.not("status", "in", archivedLeadStatuses);
+    return query.order("created_at", { ascending: false, nullsFirst: false }).limit(limit);
+  };
 
-  if (!input.includeArchived) query = query.not("status", "in", archivedLeadStatuses);
-  const result = await query.order("created_at", { ascending: false, nullsFirst: false }).limit(limit);
+  let comSla = true;
+  let result = await executar(LIVE_LEAD_SELECT_WITH_SLA);
+  if (result.error && isMissingColumn(result.error)) {
+    comSla = false;
+    result = await executar(LIVE_LEAD_SELECT);
+  }
   if (result.error) return unavailable(result.error.code);
 
-  return success(
-    ((result.data ?? []) as unknown as CompatRow[]).map(mapLegacyLead),
-    result.count,
-    "public.leads",
-  );
+  return {
+    ...success(
+      ((result.data ?? []) as unknown as CompatRow[]).map(mapLegacyLead),
+      result.count,
+      "public.leads",
+    ),
+    // Quem consome precisa saber se o SLA veio nulo por não ter sido medido ou
+    // por o banco não suportar a medição. São coisas diferentes.
+    slaDisponivel: comSla,
+  };
 }
 
 export async function readCompatiblePipeline(

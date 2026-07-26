@@ -46,6 +46,27 @@ export const LIVE_LEAD_SELECT = [
   "financial_notes",
 ].join(",");
 
+/**
+ * Colunas do SLA de primeiro contato (migration da fase 34).
+ *
+ * Ficam FORA do LIVE_LEAD_SELECT de propósito: o banco legado não as tem, e
+ * incluí-las no select base derrubaria com 42703 toda rota que o usa. Quem
+ * precisa da medição pede este select estendido e trata a ausência com
+ * `isMissingColumn` — ver `selectComSlaOuBase`.
+ *
+ * `mapLegacyLead` já mapeia estes campos desde sempre; o que faltava era alguém
+ * BUSCÁ-LOS. Sem isso o Kanban renderiza SLA eternamente nulo.
+ */
+export const FIRST_CONTACT_SLA_COLUMNS = [
+  "first_contact_due_at",
+  "first_contacted_at",
+  "first_contact_sla_minutes",
+  "first_response_minutes",
+  "first_contact_sla_met",
+] as const;
+
+export const LIVE_LEAD_SELECT_WITH_SLA = [LIVE_LEAD_SELECT, ...FIRST_CONTACT_SLA_COLUMNS].join(",");
+
 export const LIVE_PROFILE_SELECT = "id,name,email,role,active,organization_id,team,max_active_leads,availability_status";
 
 const statusAliases: Record<string, string> = {
