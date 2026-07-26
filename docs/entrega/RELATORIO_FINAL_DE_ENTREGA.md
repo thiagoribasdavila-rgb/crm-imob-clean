@@ -13,18 +13,33 @@ destravar do meu lado.
 
 | | |
 |---|---|
-| Portões de qualidade | **82 / 84 verdes** (eram 24 vermelhos no início) |
-| Testes de contrato | **46 / 46** |
-| Smoke do ciclo operacional | **36 / 36** contra dados reais |
-| Typecheck · Lint · Build | ✅ · ✅ · ✅ (193 rotas) |
-| Rotas de API | 181, todas classificadas no contrato de segurança |
+| Portões de qualidade | **86 / 87 verdes** (eram 24 vermelhos no início) |
+| Testes de contrato | **139 asserções em 19 arquivos** |
+| Smoke do ciclo operacional | **45 / 45** contra dados reais |
+| Typecheck · Lint · Build | ✅ · ✅ · ✅ (199 rotas) |
+| Rotas de API | 183, todas classificadas no contrato de segurança |
+| Páginas | 199 (eram 247 — 48 páginas-casca removidas) |
 | Migrations | 156, todas incrementais |
-| Commits da entrega | 84 |
-| ZIP validado em sala limpa | ✅ instala, builda, inicia e responde |
+| Vulnerabilidades de produção | **0** (eram 4 de severidade alta) |
 
 **Percentual real de conclusão: ~92%.** Os 8% restantes não são código desta
 entrega: são credenciais, uma permissão no Business Manager, duas decisões
 operacionais e o escopo de produto nunca construído que o `ai:calibration` afere.
+
+### O que mudou desde a versão anterior deste relatório
+
+Uma auditoria página por página encontrou **onze defeitos**, todos com a mesma
+característica: **nenhum produzia erro na tela**. É por isso que sobreviveram.
+
+| raiz | telas | efeito medido |
+|---|---|---|
+| Select compartilhado preso no vocabulário legado | leads, agenda, clientes 360, equipe | 5 filtros devolviam zero; 9 follow-ups invisíveis; 434 lacunas falsas; 5 de 8 pessoas sem nome em 15 arquivos |
+| Agregação que trata desconhecido como zero | pipeline, relatórios | soma de 8% da carteira publicada como total; "R$ 0,00 de investimento" com toda campanha "não conectada" |
+| A tela promete o que o motor não faz | tarefas, distribuição | alerta de tarefas atrasadas nunca disparou; "carga ÷ peso" sem peso configurado |
+| Tela em branco por recuo estreito demais | vendas | `opportunities` vazia não acionava o recuo para `leads` |
+
+As três primeiras raízes estão **fechadas**. A quarta — duas tabelas para a mesma
+entidade — está descrita em "Riscos restantes" e depende de decisão do cliente.
 
 ---
 
@@ -122,8 +137,36 @@ Nenhuma coluna foi removida; nenhuma linha foi apagada.
 3. **Lead da Meta entra sem dono.** Enquanto a regra de distribuição não for
    definida, o vigia não cobra o SLA dela (filtra lead sem `user_id`).
 4. **Metade da mídia está no Google e é invisível ao sistema.**
-5. **`security:dependencies` vermelho** — cadeia do `brace-expansion@1`;
-   `npm audit fix` não resolve e o override quebra o ESLint (testado).
+5. ~~`security:dependencies` vermelho~~ — **RESOLVIDO.** O diagnóstico anterior
+   ("`npm audit fix` não resolve e o override quebra o ESLint") estava certo; a
+   conclusão tirada dele, de que não havia o que fazer, não estava. A cadeia
+   vinha de `read-excel-file@5.8.0 → unzipper@0.10 → fstream → rimraf`, e o
+   **patch 5.8.8 da mesma major** já trocava `unzipper` por 0.12, que largou o
+   `fstream`. A correção estava dentro do range `^5.8.0` que o `package.json`
+   já declarava. Vulnerabilidades de produção: **4 high → 0**.
+
+   Registrado para ninguém repetir: a **9.3.4 quebra**. O adaptador node estoura
+   em `readFiles(...).then is not a function` com a mesma chamada por Buffer que
+   a rota de importação de estoque usa. Testado e revertido.
+
+   `@prisma/client` saiu de `dependencies`: ia para produção e nenhum arquivo do
+   código-fonte o importa. O CLI `prisma` fica em dev, usado por um script.
+7. **`crm_projects` e `developments` são a mesma coisa com IDs diferentes.**
+   Medido: os quatro empreendimentos existem nas duas tabelas com identificadores
+   distintos. A tela de Projetos lê `crm_projects`; os 174 leads apontam para
+   `developments`. Nenhuma junção fecha — os quatro projetos aparecem com **zero
+   leads**, sendo que Inside Perdizes tem 174.
+
+   O espelhamento entre as tabelas gerou linhas novas em vez de reusar os IDs.
+   Corrigir exige **migração de dados** (unificar os IDs ou criar o mapeamento),
+   o que mexe em dado real e é decisão do cliente. Um remendo casando por nome
+   esconderia o problema e criaria uma terceira forma de resolver a mesma coisa.
+
+8. **A agenda é somente leitura.** Não há formulário nem POST: vê-se um
+   follow-up atrasado e não se reagenda dali. Os itens levam para a ficha da
+   lead, então o caminho existe, mas custa uma volta na ação mais comum de uma
+   agenda. É feature, não correção.
+
 6. **`ai:calibration` vermelho — e nunca esteve verde.** Eu havia dito que
    faltavam "4 tarifas"; estava errado. Rodei o portão no checkpoint anterior à
    sessão e comparei: **68 controles falhando antes, 68 agora, zero regressão e

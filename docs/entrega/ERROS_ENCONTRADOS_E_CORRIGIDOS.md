@@ -142,3 +142,77 @@ comentário (22 ocorrências), `mock` em comentário sobre testabilidade,
 exemplo no OpenAPI. Nenhum é defeito.
 
 Reais: **dois `catch{}` mudos** em fluxo de produção, ambos corrigidos.
+
+---
+
+## Auditoria página por página (26/07/2026)
+
+Onze defeitos em nove telas. **Nenhum produzia erro visível** — é por isso que
+todos sobreviveram tanto tempo. Cada um foi medido contra o banco de homologação
+antes e depois da correção.
+
+### Raiz A — o select compartilhado ficou no vocabulário legado
+
+O mapeador (`mapLegacyLead`, `mapLegacyProfile`) sempre tentou a coluna canônica
+primeiro e caía na legada em silêncio quando ela não vinha no resultado. Como o
+select base nunca foi atualizado, a canônica nunca chegava — e nada quebrava.
+
+| coluna canônica | legada no select | cobertura | efeito |
+|---|---|---|---|
+| `development_id` | `project_id` | 174/217 vs **0/217** | filtro por empreendimento devolvia 0 com 174 leads dentro |
+| `next_action_at` | `next_contact` | 9/217 vs **0/217** | agenda com zero follow-ups; 4 filtros de próxima ação devolviam 0 |
+| `purpose` | — | 174/217, nunca buscada | 217 clientes marcados como "sem finalidade" |
+| `full_name` | `name` | 8/8 vs **3/8** | 5 de 8 pessoas sem nome em **15 arquivos** |
+
+Medições depois da correção: atrasadas 0 → 6; agendadas 0 → 3; Inside Perdizes
+0 → 174; agenda 6 → 15 itens; pessoas sem nome 5 → 0.
+
+**Armadilha registrada:** o grupo de colunas estendidas tem fallback *tudo ou
+nada*. Uma coluna ausente devolve 42703 e a leitura inteira cai para o select
+base, perdendo o grupo todo — inclusive as colunas de SLA. Aconteceu quando
+`next_action_label` (que não existe nesta base) entrou junto por engano: a
+agenda continuou vazia **e** o SLA parou de ser lido. O aviso está escrito no
+próprio bloco.
+
+### Raiz B — agregação que trata desconhecido como zero
+
+| tela | o que dizia | por quê |
+|---|---|---|
+| Pipeline | "Pipeline bruto: R$ X" | somava `budget_max` de 18 de 217 leads (8%) e apresentava como total |
+| Relatórios | "investimento: R$ 0,00" | `paid.reduce(...)` com lista vazia devolve 0 — enquanto toda campanha dizia "Não conectado" |
+
+Os dois são **números que decidem dinheiro**, e os dois passavam porque zero é
+uma resposta plausível: ninguém questiona um total baixo, questiona um ausente.
+Agora ambos publicam `null` com a cobertura declarada ao lado.
+
+### Raiz C — a tela promete o que o motor não faz
+
+- **Tarefas:** a IA proativa contava tarefas atrasadas por `assigned_to` e
+  `due_at`; a tabela tem `user_id` e `due_date`. A consulta devolvia `count:
+  null`, o `if (!error && typeof count === "number")` engolia, e o alerta nunca
+  existiu. Havia também **cinco definições diferentes** de "tarefa concluída",
+  uma por rota — "cancelada" ficava pendente para sempre em três delas.
+- **Distribuição:** rótulo "carga ÷ peso" com `project_distribution_members`
+  vazia — todo peso é 1 e a divisão nunca muda nada. A própria API já declarava
+  `weightedLoad: false`.
+
+### Raiz D — recuo estreito demais
+
+**Vendas:** `opportunities` existe com zero linhas. O recuo para `leads` só
+disparava em `isMissingRelation`, então a tela ficava em branco com leads
+`ganho` no banco. Tabela vazia e tabela ausente contam a mesma história.
+
+### Três erros meus nesta auditoria
+
+Registrados porque vão se repetir:
+
+1. **Um teste meu bloqueou uma correção legítima.** O contrato da agenda fixava
+   a lista literal `NEXT_ACTION_COLUMNS = ["next_action_at"]` e reprovou quando
+   a correção de Clientes 360 somou duas colunas ao mesmo grupo. Passou a aferir
+   pertencimento, não forma.
+2. **Um script de verificação lia o campo errado** (`gaps` em vez de
+   `contextGaps`) e acusou 15 divergências inexistentes por três medições
+   seguidas — inclusive depois de a correção já estar funcionando.
+3. **Adicionei uma coluna sem conferir que existia**, e o fallback tudo-ou-nada
+   derrubou o grupo inteiro, incluindo o SLA que não tinha relação com a
+   mudança.

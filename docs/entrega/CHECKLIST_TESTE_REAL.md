@@ -130,3 +130,41 @@ autenticada como todo o resto: era lacuna do teste, não limitação do ambiente
 | **Gasto, CPL e CAC** | conta de anúncios responde `#200` | bloqueado por permissão |
 | **Caminho degradado do worker** (banco sem `tasks.metadata`) | derrubar a coluna só para testar apagaria as tarefas | risco maior que o ganho |
 | **Disparo para leads reais** | proibido por regra da operação | não aplicável |
+
+---
+
+## Roteiro extra — o que a auditoria de 26/07 corrigiu
+
+Cada item abaixo estava quebrado e **não dava erro na tela**. Vale conferir os
+sete depois do deploy, porque são exatamente os que passariam despercebidos de
+novo.
+
+| # | tela | o que fazer | resultado esperado |
+|---|---|---|---|
+| 1 | Leads | filtrar por empreendimento "Inside Perdizes" | a lista mostra as leads dele, não vazia |
+| 2 | Leads | filtro de atenção → "Atrasadas" | devolve as leads com próxima ação vencida |
+| 3 | Leads | próxima ação → "Agendada" | devolve as leads com ação futura marcada |
+| 4 | Agenda | abrir a semana | aparecem follow-ups, não só tarefas |
+| 5 | Agenda | olhar uma visita agendada | mostra o NOME do cliente, não "Cliente" |
+| 6 | Clientes 360 | olhar as lacunas de um cliente com projeto e finalidade | não acusa "sem projeto" nem "sem finalidade" |
+| 7 | Distribuição / Corretores | listar as pessoas | todos com nome, ninguém como "Usuário Atlas" |
+
+### Números que precisam continuar honestos
+
+| onde | quando o dado falta | o que TEM que aparecer |
+|---|---|---|
+| Pipeline · "Pipeline" e "Forecast" | menos de 40% da carteira com orçamento | "—" e quantos negócios faltam preencher — nunca R$ 0 |
+| Pipeline · valor da coluna | nenhuma lead da etapa com orçamento | "orçamento não informado" — nunca R$ 0,00 |
+| Relatórios · "investimento" | Meta sem responder | "não medido" — nunca R$ 0 |
+| Relatórios · linha da incorporadora | idem | "Não conectado" — nunca R$ 0,00 |
+| Relatório do parceiro · CPL | gasto não lido | a ressalva declarada no book — nunca R$ 0,00 |
+
+**Se qualquer um desses mostrar zero em vez da ausência, é regressão.** O padrão
+que a auditoria desfez foi exatamente esse: soma vazia virando "nada" em vez de
+"não sei", em números que decidem verba.
+
+### Coluna do Kanban com muitos cards
+
+A etapa "novo" desenha os 25 mais prioritários e declara quantos ficaram de
+fora, com link para a fila completa. Se aparecer "+N nesta etapa" sem link, ou
+se a coluna voltar a desenhar tudo, é regressão.

@@ -40,3 +40,37 @@ tudo bem".
 
 A pergunta de revisão que fica: não *"isso está implementado?"*, mas
 **"quem chama isso, e o que aparece na tela quando chama?"**
+
+---
+
+## Estado em 26/07/2026
+
+| | |
+|---|---|
+| Portões | 86 / 87 verdes |
+| Testes de contrato | 139 asserções em 19 arquivos |
+| Smoke do ciclo operacional | 45 / 45 contra dados reais |
+| Build | 199 rotas |
+| Vulnerabilidades de produção | 0 |
+
+### Entregue desde a versão anterior
+
+- **Relatório semanal do incorporador parceiro**, com book de envio pronto e
+  worker de domingo que PREPARA a tarefa — não dispara e-mail ao parceiro.
+- **Stop loss → /approvals**: a decisão da IA vira proposta com um clique; o
+  servidor remede antes de aceitar e recusa decisão vencida com 409.
+- **Robô da IA no canto**, ligado a todos os chamadores de IA, mostrando
+  trabalho real — não animação perpétua.
+- **Teto de requisição unificado**: era duas implementações com mapas separados,
+  e a das rotas de IA perdia a contagem a cada bundle do Next.
+- **48 páginas-casca removidas** (247 → 199 páginas).
+- **Onze defeitos corrigidos** na auditoria página por página — detalhe em
+  `ERROS_ENCONTRADOS_E_CORRIGIDOS.md`.
+
+### O que continua aberto
+
+1. `ai:calibration` — 71 controles, nunca esteve verde. Afere comportamentos de
+   fases nunca construídas. É escopo de produto, não defeito.
+2. `crm_projects` vs `developments` — mesma entidade, IDs diferentes. Exige
+   migração de dados e decisão do cliente.
+3. Quatro integrações externas bloqueadas por credencial, saldo ou permissão.
