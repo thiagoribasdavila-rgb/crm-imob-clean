@@ -278,7 +278,63 @@ export async function GET(request: NextRequest) {
     };
   });
 
+  // ── CUSTO DE IA ─────────────────────────────────────────────────────────
+  // A área "ai" era exigida pelo contrato da fase 24 e simplesmente não existia
+  // no consolidado. O diretor via receita, pipeline e campanha, e não via quanto
+  // a inteligência custou para produzir aquilo.
+  //
+  // Custo é sempre um par: `medido` (o que a tabela de tarifas conseguiu
+  // precificar) e `semTarifa` (o que rodou sem preço conhecido). Somar os dois
+  // num número só faria uma operação sem tarifa cadastrada parecer barata.
+  const usoDeIa = await admin
+    .from("ai_usage_events")
+    .select("provider,model,input_tokens,output_tokens,total_tokens,cached_input_tokens,input_cost_usd,output_cost_usd,estimated_cost_usd,pricing_source,created_at")
+    .eq("organization_id", organizationId)
+    .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+    .limit(5000);
+
+  const eventosDeIa = (usoDeIa.data ?? []) as Array<{
+    provider: string | null; model: string | null;
+    input_tokens: number | null; output_tokens: number | null; total_tokens: number | null;
+    cached_input_tokens: number | null;
+    input_cost_usd: number | null; output_cost_usd: number | null; estimated_cost_usd: number | null;
+    pricing_source: string | null;
+  }>;
+  const precificados = eventosDeIa.filter((e) => e.estimated_cost_usd != null || e.input_cost_usd != null || e.output_cost_usd != null);
+  const tokensDeEntrada = eventosDeIa.reduce((soma, e) => soma + money(e.input_tokens), 0);
+  const tokensEmCache = eventosDeIa.reduce((soma, e) => soma + money(e.cached_input_tokens), 0);
+  const aiUsage = {
+    windowDays: 30,
+    // Tabela ausente (banco legado) é diferente de nenhum uso.
+    available: !usoDeIa.error,
+    unavailableReason: usoDeIa.error ? "Aplique a migration de rastreio de custo de IA." : null,
+    calls: eventosDeIa.length,
+    inputTokens: tokensDeEntrada,
+    outputTokens: eventosDeIa.reduce((soma, e) => soma + money(e.output_tokens), 0),
+    cachedInputTokens: tokensEmCache,
+    // Economia de cache só é afirmável quando há entrada suficiente para a razão
+    // significar algo — abaixo disso é ruído de duas chamadas.
+    cacheHitRate: tokensDeEntrada >= 10_000 ? Number((tokensEmCache / tokensDeEntrada).toFixed(3)) : null,
+    measuredCostUsd: precificados.length
+      ? Number(precificados.reduce((soma, e) => soma + money(e.estimated_cost_usd ?? (money(e.input_cost_usd) + money(e.output_cost_usd))), 0).toFixed(4))
+      : null,
+    callsWithoutPricing: eventosDeIa.length - precificados.length,
+    // Nunca somar precificado com não precificado: custo parcial apresentado como
+    // total é o jeito mais rápido de aprovar verba com número errado.
+    costIsPartial: precificados.length < eventosDeIa.length,
+    providers: [...new Set(eventosDeIa.map((e) => text(e.provider)).filter(Boolean))].sort(),
+    readOnly: true,
+  };
+
   const risks: Array<{ severity: "critical" | "attention"; area: string; reason: string; action: string }> = [];
+  if (aiUsage.available && aiUsage.callsWithoutPricing > 0) {
+    risks.push({
+      severity: "attention",
+      area: "Custo de IA",
+      reason: `${aiUsage.callsWithoutPricing} chamada(s) de IA sem tarifa cadastrada`,
+      action: "Preencher ATLAS_AI_PRICE_TABLE — custo parcial não sustenta decisão de verba",
+    });
+  }
   if (firstContactOverdue) risks.push({ severity: "critical", area: "Comercial", reason: `${firstContactOverdue} leads novas aguardam contato`, action: "Definir responsáveis e recuperar o SLA hoje" });
   // Sobre amostra cortada o número deixa de ser fato e vira piso: "ao menos N".
   // Nesse caso o risco também perde a severidade crítica — crítico é um veredito
@@ -297,6 +353,7 @@ export async function GET(request: NextRequest) {
     financial: { pipelineGross, forecastWeighted, forecastMethod: "lead_budget_by_canonical_stage", wonValue, commissionReceivable: 0, commissionOverdue: 0, sampleComplete: leadSampleComplete },
     marketing: { campaigns: campaigns.length, campaignsWithSample: campaignRanking.filter((item) => item.sampleSufficient).length, spend: 0, attributedRevenue: 0, roas: null, minimumLeadsForDecision: 30, ranking: campaignRanking, sampleComplete: leadSampleComplete },
     developers,
+    aiUsage,
     hierarchy: { superintendents: executives, gaps: hierarchyGaps, comparisonMinimumLeads: 50 },
     capacity: {
       windowDays: CAPACITY_WINDOW_DAYS,

@@ -208,6 +208,19 @@ type SuperintendentSummary = {
 };
 
 type DirectorDaily = {
+  // Fase 24 — custo de IA no consolidado da diretoria. `measuredCostUsd` é null
+  // quando nada pôde ser precificado, e `costIsPartial` avisa que há chamada sem
+  // tarifa: custo parcial apresentado como total aprova verba com número errado.
+  aiUsage?: {
+    available: boolean;
+    windowDays: number;
+    calls: number;
+    measuredCostUsd: number | null;
+    callsWithoutPricing: number;
+    costIsPartial: boolean;
+    cacheHitRate: number | null;
+    providers: string[];
+  };
   commercial: {
     activeLeads: number;
     hotLeads: number;
@@ -1996,6 +2009,40 @@ export default function CommandCenterPage() {
                 Abrir relatórios →
               </Link>
             </div>
+            {directorDaily?.aiUsage ? (
+              <div data-phase="24-director-command-center" className="mt-4 rounded-xl border border-white/[.07] px-4 py-3">
+                <p className="cc6-eyebrow">Custo de IA · {directorDaily.aiUsage.windowDays} dias</p>
+                <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-[#93a2b8]">
+                  <span className="cc6-num text-sm text-[#e8eef8]">
+                    {/* Sem tarifa não há custo. Traço, nunca US$ 0,00. */}
+                    {directorDaily.aiUsage.measuredCostUsd === null
+                      ? "—"
+                      : `US$ ${directorDaily.aiUsage.measuredCostUsd.toFixed(2)}`}
+                  </span>
+                  <span>{directorDaily.aiUsage.calls} chamada(s)</span>
+                  {directorDaily.aiUsage.cacheHitRate !== null ? (
+                    <span>{Math.round(directorDaily.aiUsage.cacheHitRate * 100)}% em cache</span>
+                  ) : null}
+                  {directorDaily.aiUsage.providers.length ? (
+                    <span>{directorDaily.aiUsage.providers.join(" · ")}</span>
+                  ) : null}
+                </div>
+                {directorDaily.aiUsage.costIsPartial ? (
+                  <p className="mt-2 text-[11.5px] leading-5 text-[#f2b544]">
+                    Custo parcial: {directorDaily.aiUsage.callsWithoutPricing} chamada(s) sem tarifa cadastrada.
+                    Não use este número para decidir verba enquanto a tabela de preços estiver incompleta.
+                  </p>
+                ) : null}
+                {!directorDaily.aiUsage.available ? (
+                  <p className="mt-2 text-[11.5px] leading-5 text-[#6b7890]">
+                    Sem snapshot anterior de custo neste banco — a migration de rastreio de IA ainda não foi aplicada.
+                  </p>
+                ) : null}
+                <p className="mt-2 text-[11px] leading-5 text-[#6b7890]">
+                  Este painel é somente leitura. Qualquer mudança de verba ou de time exige APROVAÇÃO HUMANA em /approvals.
+                </p>
+              </div>
+            ) : null}
             {!directorDaily ? (
               <AtlasSkeleton className="mt-4 h-32 w-full" />
             ) : (
