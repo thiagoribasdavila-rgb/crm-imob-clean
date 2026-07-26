@@ -130,9 +130,34 @@ Nenhuma coluna foi removida; nenhuma linha foi apagada.
 
 ## Riscos restantes
 
-1. **`atlasaios.com.br` serve um build anterior a esta entrega.** Verificado: as
-   rotas novas respondem 404 lá. Se a Meta já entrega leads nesse endereço, elas
-   chegam a um Atlas sem o relógio de SLA.
+1. **`atlasaios.com.br` está atrás do repositório — mas menos do que este
+   relatório dizia.** A versão anterior deste documento afirmava que a produção
+   servia um build sem o relógio de SLA. **Isso deixou de ser verdade**: alguém
+   publicou desde aquela medição.
+
+   Medido em 26/07/2026 (só leitura, sem publicar nada):
+
+   | rota | resposta | leitura |
+   |---|---|---|
+   | `/api/v2/crm/first-contact-sla/process` | 405 | **existe** — o vigia de SLA está em produção |
+   | `/api/v2/outbox/process` | 405 | **existe** — a fila de saída está em produção |
+   | `/api/v1/marketing/stop-loss` | 401 | **existe** |
+   | `/api/v1/marketing/held-leads` | 401 | **existe** |
+   | `/api/v1/developers/[id]/weekly-report` | 404 | não existe |
+   | `/api/v2/developers/weekly-reports/process` | 404 | não existe |
+
+   `405` e `401` significam rota presente — a primeira aceita só POST, a segunda
+   exige autenticação. **404 é ausência.**
+
+   Conclusão: a produção tem o trabalho até um ponto intermediário desta
+   sessão. Não tem o relatório do incorporador, o robô da IA, nem as **doze
+   correções** da auditoria página por página. Na prática, hoje ela roda com os
+   filtros de lead devolvendo vazio, Clientes 360 acusando 434 lacunas falsas,
+   cinco de oito pessoas sem nome e a agenda sem follow-ups.
+
+   `/api/ready` em produção: `status: ready`, banco em 109 ms, Supabase
+   conectado, Meta/OpenAI/Anthropic/Perplexity `configured` — lembrando que
+   `configured` diz que a chave existe, **não** que tem saldo.
 2. **116 leads represadas para 3 corretores.** Liberar tudo de uma vez são ~39
    por pessoa com relógio de 5 minutos — SLA nascido vencido. Libere em ondas.
 3. **Lead da Meta entra sem dono.** Enquanto a regra de distribuição não for
