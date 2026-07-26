@@ -293,7 +293,8 @@
     "auth-provisioning:check": "node scripts/check-auth-provisioning-safety.mjs",
     "workers:schedule:check": "node scripts/check-workers-schedule.mjs",
     "workers:crontab": "node scripts/run-workers.mjs --crontab",
-    "free-ai:check": "node scripts/check-free-ai-tier.mjs"
+    "free-ai:check": "node scripts/check-free-ai-tier.mjs",
+    "smoke:ciclo": "node scripts/smoke-ciclo-operacional.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1089.0",

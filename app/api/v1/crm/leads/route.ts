@@ -183,10 +183,22 @@ export async function GET(request: NextRequest) {
       .select(colunas, { count: usePagePagination ? "exact" : undefined })
       .eq("organization_id", access.access.organization.id)
       .not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)");
+    // Fora da janela de recuperação, a lead deixou de ser problema de SLA e virou
+    // problema de reativação. Medido no smoke de ciclo em 2026-07-26: com 201
+    // leads vencidas há mais de 48h, uma lead NOVA de 5 minutos caía além da
+    // posição 100 — ou seja, a fila "por urgência" abria pelas leads menos
+    // recuperáveis e escondia a única que ainda virava conversa.
+    //
+    // Ordenar cru por prazo crescente era literal e inútil. O recorte é o mesmo
+    // limite que o vigia já usa, e o mesmo motivo.
+    const janelaDeRecuperacaoMin = Number(process.env.ATLAS_SLA_JANELA_RECUPERACAO_MIN || 2880);
+    const inicioDaJanela = new Date(Date.now() - janelaDeRecuperacaoMin * 60_000).toISOString();
+
     query = comSla && ordenarPorSla
       // Prazo mais próximo primeiro, e quem não tem prazo vai para o fim: sem
       // nullsFirst:false o banco jogaria as leads sem medição para o topo da fila.
       ? query
+          .gte("first_contact_due_at", inicioDaJanela)
           .order("first_contact_due_at", { ascending: true, nullsFirst: false })
           .order("id", { ascending: true })
       : query
@@ -314,6 +326,10 @@ export async function GET(request: NextRequest) {
         // banco não mede prazo". Sem esse sinal, a fila por SLA cairia
         // silenciosamente para ordem por data de entrada sem avisar ninguém.
         firstContactSlaDisponivel: comSla,
+        // Quando a fila é a de urgência, ela mostra só o que ainda se recupera.
+        // Dizer isso evita que "20 leads na fila" seja lido como "20 leads na
+        // carteira" — o acervo antigo continua existindo, em outro lugar.
+        filaRecortadaPorRecuperacao: comSla && ordenarPorSla,
       },
     },
     access.meta,
