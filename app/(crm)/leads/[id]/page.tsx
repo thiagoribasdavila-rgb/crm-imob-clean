@@ -260,6 +260,7 @@ type Payload = {
   assignmentReservation: AssignmentReservation | null;
   projectOptions: LeadContextProjectOption[];
   firstContactSla?: FirstContactSla;
+  proposalsMensuraveis?: boolean;
 };
 type Qualification = {
   score: number;
@@ -1589,8 +1590,8 @@ export default function LeadDetailPage() {
       ) : null}
 
       {proposals.length ? (
-        <section className="cc6-reveal cc6-panel p-5 sm:p-6">
-          <p className="cc6-eyebrow">SLA de proposta</p>
+        <section data-phase="37-proposal-sla" className="cc6-reveal cc6-panel p-5 sm:p-6">
+          <p className="cc6-eyebrow">Fase 37 · SLA de proposta</p>
           <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
             Preparação, envio e retorno
           </h2>

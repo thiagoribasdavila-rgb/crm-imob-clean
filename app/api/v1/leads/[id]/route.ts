@@ -8,7 +8,7 @@ import {
   validateGovernedLeadContextCorrection,
 } from "@/lib/atlas/governed-lead-context-correction";
 import { commercialOutcomeFromStages } from "@/lib/ai/learning-loop";
-import { LIVE_LEAD_SELECT, LIVE_LEAD_SELECT_WITH_SLA, canonicalLeadStatus, isMissingColumn, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
+import { LIVE_LEAD_SELECT, LIVE_LEAD_SELECT_WITH_SLA, canonicalLeadStatus, isMissingColumn, isMissingRelation, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
 import { liveLeadUpdatePayload, mapLiveLeadEvent, recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { computeAttentionSignalsForLead } from "@/lib/atlas/attention-signals";
 import { logger } from "@/lib/observability/logger";
@@ -97,6 +97,29 @@ export async function GET(request: Request, context: RouteContext) {
         .limit(500),
     ]);
 
+    // As propostas da fase 37 vivem em commercial_simulations (a fase acrescentou
+    // status, marcos e os três tempos àquela tabela). Esta rota devolvia
+    // `proposals: []` cravado — a tela do lead tem o tipo completo, renderiza
+    // preparação/revisão/resposta e nunca teve o que mostrar. É o mesmo padrão
+    // do relógio que não fechava: a peça existe, a ligação não.
+    //
+    // Banco sem a fase 37 (relação ou coluna ausente) devolve lista vazia com
+    // aviso, em vez de derrubar a ficha inteira.
+    const COLUNAS_DE_PROPOSTA =
+      "id,status,property_price,valid_until,review_requested_at,approved_at,sent_at,responded_at,expired_at,preparation_minutes,review_minutes,response_minutes,response_note,rule_snapshot,created_at";
+    const propostas = await admin
+      .from("commercial_simulations")
+      .select(COLUNAS_DE_PROPOSTA)
+      .eq("lead_id", id)
+      .eq("organization_id", identity.organizationId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    const propostasMensuraveis = !propostas.error
+      || !(isMissingColumn(propostas.error) || isMissingRelation(propostas.error));
+    if (propostas.error && propostasMensuraveis) {
+      logger.warn("lead.proposals.read_failed", { leadId: id, code: propostas.error.code });
+    }
+
     const eventRows = (eventResult.data ?? []) as JsonRow[];
     const authorIds = [...new Set(eventRows.map((row) => String(row.created_by || "")).filter(Boolean))];
     const { data: authors } = authorIds.length
@@ -149,7 +172,10 @@ export async function GET(request: Request, context: RouteContext) {
         since: signal.since,
         metric: signal.metric,
       })),
-      proposals: [],
+      proposals: propostas.data ?? [],
+      // A tela precisa distinguir "nenhuma proposta" de "este banco não guarda
+      // proposta". Zero em cima de ausência é o erro que esta rota já cometia.
+      proposalsMensuraveis: propostasMensuraveis,
       unifiedProfile: {
         conversations: [],
         tasks,
