@@ -120,6 +120,20 @@ export async function GET(request: Request, context: RouteContext) {
       logger.warn("lead.proposals.read_failed", { leadId: id, code: propostas.error.code });
     }
 
+    // Reserva pendente de aceite (fase 58). Relação ausente não derruba a ficha.
+    const reserva = await admin
+      .from("lead_assignment_reservations")
+      .select("id,lead_id,broker_id,status,reserved_at,expires_at,accepted_at")
+      .eq("lead_id", id)
+      .eq("organization_id", identity.organizationId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (reserva.error && !isMissingRelation(reserva.error)) {
+      logger.warn("lead.reservation.read_failed", { leadId: id, code: reserva.error.code });
+    }
+
     const eventRows = (eventResult.data ?? []) as JsonRow[];
     const authorIds = [...new Set(eventRows.map((row) => String(row.created_by || "")).filter(Boolean))];
     const { data: authors } = authorIds.length
@@ -212,7 +226,10 @@ export async function GET(request: Request, context: RouteContext) {
         generatedBy: "Atlas Intelligence local",
         requiresApproval: true,
       },
-      assignmentReservation: null,
+      // A reserva de aceite da fase 58 vinha cravada em null. A tela do lead tem o
+      // bloco inteiro pronto — "Reserva aguardando aceite", contagem e o botão
+      // "Aceitar lead" — e ele nunca aparecia, porque nada era buscado.
+      assignmentReservation: reserva.data ?? null,
       // O relógio de primeiro contato, exposto para a tela poder mostrar quanto
       // falta e oferecer o registro em 1 clique. `mensuravel: false` significa
       // "este banco não mede", que é diferente de "ninguém contatou ainda".
@@ -546,6 +563,40 @@ export async function POST(request: Request, context: RouteContext) {
     if (body.action === "accept_assignment") {
       if (lead.assigned_user_id && lead.assigned_user_id !== identity.userId) {
         return NextResponse.json({ error: "Esta lead já possui um responsável. Solicite a transferência ao gestor." }, { status: 409 });
+      }
+
+      // O aceite passa por accept_lead_assignment, que é atômico: trava a
+      // reserva, confere validade e dono único, marca 'accepted' e libera a
+      // capacidade — tudo numa transação.
+      //
+      // O caminho anterior atribuía a lead na mão e NÃO fechava a reserva. Ela
+      // ficava 'pending' para sempre e o worker de expiração acabaria devolvendo
+      // uma lead que o corretor já tinha aceitado.
+      const aceite = await admin.rpc("accept_lead_assignment", {
+        p_actor_id: identity.userId,
+        p_organization_id: identity.organizationId,
+        p_lead_id: id,
+      });
+
+      if (!aceite.error) {
+        await recordLiveLeadEvent(admin, { organizationId: identity.organizationId, leadId: id, actorId: identity.userId, type: "assignment_accepted", title: "Responsabilidade aceita", description: "Lead assumida pelo corretor no Atlas." });
+        return NextResponse.json({ reservation: aceite.data });
+      }
+
+      // Erros de regra vêm da própria RPC e devem chegar ao corretor com nome.
+      const motivo = String(aceite.error.message || "");
+      if (/reservation_not_found/.test(motivo) && lead.assigned_user_id === identity.userId) {
+        return NextResponse.json({ error: "Esta lead já está com você — não há reserva pendente para aceitar." }, { status: 409 });
+      }
+      if (/reservation_expired/.test(motivo)) {
+        return NextResponse.json({ error: "A reserva expirou e a lead voltou para a distribuição." }, { status: 409 });
+      }
+
+      // Banco sem a fase 58: o aceite continua possível pelo caminho simples.
+      const semReserva = aceite.error.code === "42883" || aceite.error.code === "PGRST202" || /reservation_not_found/.test(motivo);
+      if (!semReserva) {
+        logger.warn("lead.assignment_accept_failed", { leadId: id, code: aceite.error.code, message: motivo });
+        return NextResponse.json({ error: "Não foi possível aceitar a lead agora." }, { status: 409 });
       }
       if (!lead.assigned_user_id) {
         await admin.from("leads").update({ assigned_user_id: identity.userId }).eq("id", id).eq("organization_id", identity.organizationId).is("assigned_user_id", null);
