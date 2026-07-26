@@ -14,7 +14,14 @@ import {
 import { ATLAS_LIVE_READ_COMPATIBILITY_VERSION } from "./live-capability-resolver";
 
 export const LIVE_TASK_SELECT = "id,title,description,status,user_id,lead_id,created_at,organization_id,priority,due_date";
-export const LIVE_DEVELOPMENT_SELECT = "id,organization_id,name,developer_name,code,status,city,neighborhood,address,launch_date,delivery_date,created_at,updated_at";
+/**
+ * Colunas do empreendimento, lidas de `developments`.
+ *
+ * `code` e `address` mudaram de nome na migração V3 (`project_code`,
+ * `address_line`). Os aliases mantêm a forma que `mapLegacyProject` e as telas
+ * já esperam, sem obrigar ninguém a renomear campo em cascata.
+ */
+export const LIVE_DEVELOPMENT_SELECT = "id,organization_id,name,developer_name,code:project_code,status,city,neighborhood,address:address_line,launch_date,delivery_date,created_at,updated_at";
 
 const MAX_READ_LIMIT = 5_000;
 const archivedLeadStatuses = "(arquivado,ARQUIVADO,archived,ARCHIVED)";
@@ -177,8 +184,24 @@ export async function readCompatibleDevelopments(
   const { organizationId, limit } = normalizedInput(input);
   if (!organizationId) return invalidTenant();
 
+  // Lê `developments`, e não `crm_projects`.
+  //
+  // As duas guardavam os MESMOS empreendimentos com identificadores
+  // DIFERENTES. Esta função lia a segunda; as 174 leads apontam para a
+  // primeira. Resultado medido: a tela de Projetos mostrava quatro
+  // empreendimentos com ZERO leads, sendo que Inside Perdizes tem 174.
+  //
+  // `developments` é a canônica sem discussão: 33 tabelas a referenciam,
+  // contra 6 de `crm_projects` — e nenhuma dessas 6 tem uma única linha
+  // apontando para lá. A tabela antiga tinha 4 linhas para as quais nada
+  // aponta.
+  //
+  // A migration 20260727010000 garantiu que todo projeto do cadastro antigo
+  // exista no novo (na prática, uma linha: o Spin Mood). `crm_projects` NÃO foi
+  // apagada — nada aponta para ela, então não há o que repontar, e derrubá-la
+  // seria destruição sem ganho.
   const result = await client
-    .from("crm_projects")
+    .from("developments")
     .select(LIVE_DEVELOPMENT_SELECT, { count: "exact" })
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false, nullsFirst: false })
@@ -188,6 +211,6 @@ export async function readCompatibleDevelopments(
   return success(
     ((result.data ?? []) as unknown as CompatRow[]).map(mapLegacyProject),
     result.count,
-    "public.crm_projects",
+    "public.developments",
   );
 }

@@ -128,14 +128,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [propertyResult, leadResult, campaignResult, materialResult] = await Promise.all([
+    const [propertyResult, leadResult, campaignResult, materialResult, leadsPorEmpreendimento] = await Promise.all([
       db.from("inventory_units").select("id,project_id,price,status,unit_code,typology,bedrooms,private_area").eq("organization_id", organizationId).limit(5000),
       readCompatiblePipeline(db, { organizationId, limit: 5000 }),
       // Paginado pelo mesmo motivo do director-daily: acima de 1000 campanhas o
       // PostgREST corta sem erro e a campanha desaparece do painel em silêncio.
       fetchAllRows<AnyRow>((from, to) => db.from("marketing_campaigns").select("id,project_id,name,platform,status,created_at").eq("organization_id", organizationId).order("id", { ascending: true }).range(from, to)),
       db.from("knowledge_documents").select("id,project_id,title,document_type,status,created_at").eq("organization_id", organizationId).limit(5000),
+      // Leads POR EMPREENDIMENTO, direto da fonte.
+      //
+      // A contagem exibida vinha de `marketing_campaigns.leads_count`, que só
+      // existe quando a campanha é registrada E ligada ao projeto. Nesta base a
+      // única campanha tem `project_id` nulo, então todo projeto mostrava zero
+      // — inclusive Inside Perdizes, com 174 leads.
+      //
+      // Campanha é UM caminho de entrada; a lead pode chegar por portal, site,
+      // indicação ou importação. Contar pela campanha era contar uma fatia e
+      // chamá-la de total.
+      db.from("leads").select("development_id").eq("organization_id", organizationId).not("development_id", "is", null).limit(20000),
     ]);
+    // Contagem real por empreendimento. Sem a linha, `campaignLeads` continua
+    // como estava — o painel degrada para a medição antiga em vez de mentir.
+    const contagemDeLeads = new Map<string, number>();
+    for (const linha of (leadsPorEmpreendimento.data ?? []) as Array<{ development_id: string | null }>) {
+      if (!linha.development_id) continue;
+      contagemDeLeads.set(linha.development_id, (contagemDeLeads.get(linha.development_id) ?? 0) + 1);
+    }
     const opportunities: AnyRow[] = leadResult.ok ? leadResult.opportunities : [];
     const pipelineCompatibility: ModuleStatus = leadResult.ok ? "legacy" : "unavailable";
     const properties: AnyRow[] = propertyResult.error ? [] : ((propertyResult.data ?? []) as unknown as AnyRow[]).map((row) => ({ ...row, development_id: row.project_id }));
@@ -228,6 +246,10 @@ export async function GET(request: NextRequest) {
           campaignSpend: spend,
           campaignRevenue: revenue,
           campaignLeads: leads,
+          // Total de leads do empreendimento, por qualquer origem. Fica ao lado
+          // de `campaignLeads` em vez de substituí-lo: uma coisa é quantas
+          // leads a MÍDIA trouxe, outra é quantas o empreendimento tem.
+          totalLeads: contagemDeLeads.get(id) ?? 0,
           cpl: leads > 0 ? spend / leads : 0,
           roi: spend > 0 ? ((revenue - spend) / spend) * 100 : 0,
           activeReservations: linkedReservations.filter((item) =>
