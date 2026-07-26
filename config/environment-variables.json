@@ -383,6 +383,13 @@
       "purpose": "Segredo do storage S3/R2."
     },
     {
+      "name": "ATLAS_OPENAI_MODEL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Modelo OpenAI usado nos testes de saúde e no roteador de IA."
+    },
+    {
       "name": "ATLAS_PACKAGE_ENV_FILE",
       "scope": "server",
       "requirement": "optional",
@@ -395,6 +402,13 @@
       "requirement": "optional",
       "secret": false,
       "purpose": "Nome controlado do artefato ZIP de release."
+    },
+    {
+      "name": "ATLAS_PERPLEXITY_MODEL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Modelo Perplexity usado pelo roteador de IA e pelo portão de tarifas."
     },
     {
       "name": "ATLAS_PGLITE_MODULE",
@@ -465,6 +479,27 @@
       "requirement": "temporary",
       "secret": false,
       "purpose": "Autoriza explicitamente que o ensaio de RLS execute escrita."
+    },
+    {
+      "name": "ATLAS_SLA_AUTO_REASSIGN",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Liga a reatribuição automática por SLA vencido (ação A2). Desligada por padrão: exige regra de distribuição aprovada."
+    },
+    {
+      "name": "ATLAS_SLA_JANELA_RECUPERACAO_MIN",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Minutos de atraso além dos quais a lead deixa de virar tarefa de SLA e passa a ser acervo de reativação (padrão 2880 = 48h)."
+    },
+    {
+      "name": "ATLAS_SLA_MAX_TAREFAS",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Teto de tarefas de SLA criadas por execução do vigia, para não soterrar a fila do corretor (padrão 25)."
     },
     {
       "name": "ATLAS_SMOKE_BASE_URL",
@@ -705,6 +740,13 @@
       "requirement": "conditional",
       "secret": true,
       "purpose": "IA comercial e raciocínio com dados pessoais governados."
+    },
+    {
+      "name": "OPENAI_MODEL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Grafia alternativa do modelo OpenAI, aceita como fallback de ATLAS_OPENAI_MODEL."
     },
     {
       "name": "PERPLEXITY_API_KEY",
