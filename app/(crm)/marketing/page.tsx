@@ -100,6 +100,27 @@ type Prescription = {
 type Andromeda = { source: string; health: Health[]; consolidation: { verdict: "consolidada" | "fragmentada"; reason: string }; forecast?: Forecast; rotations?: { proposals: Rotation[]; summary: string }; audience?: Audience; prescriptions?: { proposals: Prescription[]; summary: string } };
 type Calibration = { summary: string[] };
 
+/**
+ * Desempenho por campanha medido pelo CRM — não pela Meta.
+ *
+ * Esta é a metade da verdade que não depende de token nenhum: quantas leads a
+ * campanha trouxe, quantas foram atendidas, quantas avançaram. Gasto, CPL e
+ * impressão vêm da API de anúncios e chegam como null enquanto ela não estiver
+ * conectada; null é honesto, zero seria mentira.
+ */
+type CampaignPerformance = {
+  linhas: Array<{
+    campanha: string; conjunto: string | null; anuncio: string | null; formulario: string | null;
+    canal: string | null; empreendimento: string | null;
+    leads: number; comDono: number; contatados: number; avancaram: number; ganhos: number; perdidos: number;
+    taxaContato: number | null; taxaAvanco: number | null;
+    gasto: number | null; cpl: number | null;
+  }>;
+  resumo: { campanhas: number; leadsAtribuidas: number; contatadas: number; avancaram: number; ganhos: number };
+  alertas: Array<{ nivel: "critico" | "atencao"; titulo: string; detalhe: string; acao: string }>;
+  metricasDeMidia: { disponivel: boolean; motivo: string; proximaAcao: string };
+};
+
 type FetchState<T> =
   | { status: "loading" }
   | { status: "ok"; data: T }
@@ -195,6 +216,7 @@ export default function MarketingPage() {
   // Id do anúncio copiado da prescrição. É a única "ação" desta tela: leva o
   // alvo executável para a plataforma/aprovação. Nada é pausado daqui.
   const [copiedTargetId, setCopiedTargetId] = useState<string | null>(null);
+  const [performance, setPerformance] = useState<FetchState<CampaignPerformance>>({ status: "loading" });
 
   useEffect(() => {
     let active = true;
@@ -202,15 +224,17 @@ export default function MarketingPage() {
     const keep = <T,>(previous: FetchState<T>, next: FetchState<T>): FetchState<T> =>
       next.status === "error" && previous.status === "ok" ? previous : next;
     async function load() {
-      const [costNext, andromedaNext, calibrationNext] = await Promise.all([
+      const [costNext, andromedaNext, calibrationNext, performanceNext] = await Promise.all([
         fetchApi<CostReport>("/api/v1/marketing/cost-report"),
         fetchApi<Andromeda>("/api/v1/marketing/andromeda"),
         fetchApi<Calibration>("/api/v1/ai/calibration"),
+        fetchApi<CampaignPerformance>("/api/v1/marketing/campaign-performance"),
       ]);
       if (!active) return;
       setCost((previous) => keep(previous, costNext));
       setAndromeda((previous) => keep(previous, andromedaNext));
       setCalibration((previous) => keep(previous, calibrationNext));
+      setPerformance((previous) => keep(previous, performanceNext));
       if (costNext.status === "ok") setUpdatedAt(new Date());
     }
     load();
@@ -299,6 +323,81 @@ export default function MarketingPage() {
           ].filter(Boolean).join(", ")} atingiram o teto de paginação. Os números abaixo são MÍNIMOS
           observados, não totais — não decida pausa de campanha por eles.
         </p>
+      ) : null}
+
+      {/* (0) O que o CRM já sabe sobre a campanha, sem depender da Meta.
+           Vem primeiro de propósito: o alerta mais caro desta tela não é de
+           mídia, é de atendimento — campanha boa com lead não atendida queima
+           verba e ainda ensina o Andromeda a buscar o público errado. */}
+      {performance.status === "ok" && performance.data.resumo.leadsAtribuidas > 0 ? (
+        <section aria-label="Campanha medida pelo CRM" className="cc6-panel cc6-reveal overflow-hidden">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
+            <p className="cc6-eyebrow">Campanha medida pelo CRM</p>
+            <p className="cc6-num ml-auto text-[11px] text-[#6b7890]">
+              {performance.data.resumo.campanhas} campanha(s) · {performance.data.resumo.leadsAtribuidas} lead(s) atribuída(s)
+            </p>
+          </div>
+
+          {performance.data.alertas.map((alerta) => (
+            <div
+              key={alerta.titulo}
+              role={alerta.nivel === "critico" ? "alert" : "status"}
+              className={`mx-5 mb-3 rounded-xl border px-4 py-3 ${
+                alerta.nivel === "critico"
+                  ? "border-[rgba(251,113,133,0.32)] bg-[rgba(251,113,133,0.07)]"
+                  : "border-[rgba(245,181,68,0.28)] bg-[rgba(245,181,68,0.05)]"
+              }`}
+            >
+              <p className={`text-[12.5px] font-semibold ${alerta.nivel === "critico" ? "text-[#fda4af]" : "text-[#f2b544]"}`}>
+                {alerta.titulo}
+              </p>
+              <p className="mt-1 text-[12px] leading-5 text-[#93a2b8]">{alerta.detalhe}</p>
+              <p className="mt-1 text-[11.5px] leading-5 text-[#6b7890]">{alerta.acao}</p>
+            </div>
+          ))}
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-[12px]">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-[.12em] text-[#6b7890]">
+                  <th className="px-5 py-2 font-semibold">Campanha · anúncio</th>
+                  <th className="px-3 py-2 text-right font-semibold">Leads</th>
+                  <th className="px-3 py-2 text-right font-semibold">Contatadas</th>
+                  <th className="px-3 py-2 text-right font-semibold">Avançaram</th>
+                  <th className="px-5 py-2 text-right font-semibold">CPL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {performance.data.linhas.slice(0, 8).map((linha) => (
+                  <tr key={`${linha.campanha}-${linha.anuncio}-${linha.canal}`} className="border-t border-white/5">
+                    <td className="px-5 py-2.5">
+                      <span className="cc6-num text-[#cdd7e5]">{linha.campanha}</span>
+                      <span className="ml-2 text-[11px] text-[#6b7890]">{linha.canal ?? "—"}</span>
+                    </td>
+                    <td className="cc6-num px-3 py-2.5 text-right text-[#cdd7e5]">{linha.leads}</td>
+                    <td className={`cc6-num px-3 py-2.5 text-right ${linha.contatados === 0 ? "text-[#fda4af]" : "text-[#cdd7e5]"}`}>
+                      {linha.contatados}
+                      {linha.taxaContato !== null ? (
+                        <span className="ml-1 text-[10px] text-[#6b7890]">{Math.round(linha.taxaContato * 100)}%</span>
+                      ) : null}
+                    </td>
+                    <td className="cc6-num px-3 py-2.5 text-right text-[#cdd7e5]">{linha.avancaram}</td>
+                    {/* Sem a API de anúncios não há CPL. Traço, nunca R$ 0,00. */}
+                    <td className="cc6-num px-5 py-2.5 text-right text-[#6b7890]">
+                      {linha.cpl === null ? "—" : linha.cpl.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {!performance.data.metricasDeMidia.disponivel ? (
+            <p className="border-t border-white/5 px-5 py-3 text-[11.5px] leading-5 text-[#6b7890]">
+              {performance.data.metricasDeMidia.motivo} <span className="text-[#93a2b8]">{performance.data.metricasDeMidia.proximaAcao}</span>
+            </p>
+          ) : null}
+        </section>
       ) : null}
 
       {report ? (
