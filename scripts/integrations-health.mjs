@@ -143,6 +143,56 @@ await testar("IA", "Perplexity", async () => {
   return { detalhe: `modelo ${corpo.model ?? "sonar"}`, extra: { chave: mascara(chave), tokens: corpo.usage?.total_tokens } };
 });
 
+// ──────────────────────────────────────────────── IA GRATUITA
+// Todos falam o dialeto /chat/completions da OpenAI, então o teste é um só.
+// A prova é GERAÇÃO, não listagem de modelos: foi listando modelos que a OpenAI
+// passou por saudável enquanto estava sem saldo — chave válida e nenhuma
+// geração possível. Aqui só conta se voltou texto.
+const gratuitos = [
+  { nome: "Google Gemini", chave: "GEMINI_API_KEY", modelo: env.ATLAS_GEMINI_MODEL || "gemini-2.0-flash", url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" },
+  { nome: "Groq", chave: "GROQ_API_KEY", modelo: env.ATLAS_GROQ_MODEL || "llama-3.3-70b-versatile", url: "https://api.groq.com/openai/v1/chat/completions" },
+  { nome: "Cerebras", chave: "CEREBRAS_API_KEY", modelo: env.ATLAS_CEREBRAS_MODEL || "llama-3.3-70b", url: "https://api.cerebras.ai/v1/chat/completions" },
+  { nome: "Mistral", chave: "MISTRAL_API_KEY", modelo: env.ATLAS_MISTRAL_MODEL || "mistral-small-latest", url: "https://api.mistral.ai/v1/chat/completions" },
+  { nome: "OpenRouter", chave: "OPENROUTER_API_KEY", modelo: env.ATLAS_OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free", url: "https://openrouter.ai/api/v1/chat/completions" },
+];
+
+for (const provedor of gratuitos) {
+  await testar("IA gratuita", provedor.nome, async () => {
+    const chave = env[provedor.chave];
+    if (!temp(chave)) return { status: "nao_configurado", detalhe: `${provedor.chave} ausente — camada gratuita disponível em minutos` };
+    const r = await fetch(env[`ATLAS_${provedor.nome.split(" ").pop().toUpperCase()}_BASE_URL`] || provedor.url, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${chave}` },
+      body: JSON.stringify({ model: provedor.modelo, max_tokens: 16, messages: [{ role: "user", content: "responda ok" }] }),
+    });
+    const corpo = await r.json().catch(() => ({}));
+    if (!r.ok) return { status: "erro", detalhe: `${r.status} ${String(corpo?.error?.message ?? corpo?.message ?? "").slice(0, 90)}`, extra: { chave: mascara(chave), modelo: provedor.modelo } };
+    const texto = corpo?.choices?.[0]?.message?.content;
+    if (!texto) return { status: "erro", detalhe: "respondeu 200 sem texto — chave aceita, geração não", extra: { chave: mascara(chave), modelo: provedor.modelo } };
+    return { detalhe: `geração real, custo zero (${provedor.modelo})`, extra: { chave: mascara(chave), tokens: corpo.usage?.total_tokens } };
+  });
+}
+
+await testar("IA gratuita", "Ollama (auto-hospedado)", async () => {
+  const modelo = env.ATLAS_OLLAMA_MODEL;
+  if (!temp(modelo)) return { status: "nao_configurado", detalhe: "ATLAS_OLLAMA_MODEL ausente — roda no próprio servidor, sem chave e sem custo" };
+  const base = env.ATLAS_OLLAMA_BASE_URL || "http://127.0.0.1:11434/v1/chat/completions";
+  try {
+    const r = await fetch(base, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: modelo, max_tokens: 16, messages: [{ role: "user", content: "responda ok" }] }),
+    });
+    const corpo = await r.json().catch(() => ({}));
+    if (!r.ok) return { status: "erro", detalhe: `${r.status} ${String(corpo?.error?.message ?? "").slice(0, 90)}`, extra: { modelo } };
+    return { detalhe: `geração local — nenhum dado sai da máquina (${modelo})`, extra: { modelo } };
+  } catch {
+    // Servidor local fora do ar é estado esperado, não exceção: quem não subiu
+    // o Ollama precisa ler isso e não ver o centro de saúde inteiro estourar.
+    return { status: "erro", detalhe: `servidor Ollama inacessível em ${base}`, extra: { modelo } };
+  }
+});
+
 // ─────────────────────────────────────────────────────────── META
 const versaoGraph = env.META_GRAPH_API_VERSION || "v23.0";
 const tokenAds = env.META_ADS_ACCESS_TOKEN;

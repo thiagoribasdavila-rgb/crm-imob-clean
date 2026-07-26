@@ -20,7 +20,7 @@ export type GenerateInput = {
 };
 export type AIProviderResult = {
   text: string;
-  provider: "openai" | "anthropic" | "perplexity" | "deepseek" | "qwen" | "kimi" | "glm" | "local";
+  provider: "openai" | "anthropic" | "perplexity" | "local" | EconomyProvider;
   model: string;
   latencyMs: number;
   citations: string[];
@@ -38,13 +38,70 @@ export type AIProviderResult = {
   guardrail?: { risk: "low" | "medium" | "high"; blocked: boolean; humanReviewRequired: boolean; findingCodes: string[] };
 };
 
-export type EconomyProvider = "deepseek" | "qwen" | "kimi" | "glm";
-const economyProviders: Record<EconomyProvider, { key: string; model: string; baseUrl: string }> = {
-  deepseek: { key: "DEEPSEEK_API_KEY", model: "ATLAS_DEEPSEEK_MODEL", baseUrl: "https://api.deepseek.com/chat/completions" },
-  qwen: { key: "QWEN_API_KEY", model: "ATLAS_QWEN_MODEL", baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions" },
-  kimi: { key: "KIMI_API_KEY", model: "ATLAS_KIMI_MODEL", baseUrl: "https://api.moonshot.ai/v1/chat/completions" },
-  glm: { key: "GLM_API_KEY", model: "ATLAS_GLM_MODEL", baseUrl: "https://open.bigmodel.cn/api/paas/v4/chat/completions" },
+export type EconomyProvider =
+  | "deepseek" | "qwen" | "kimi" | "glm"
+  | "gemini" | "groq" | "cerebras" | "mistral" | "openrouter" | "ollama";
+
+/**
+ * Provedores compatíveis com a API da OpenAI (mesmo corpo /chat/completions).
+ * Todos passam pelo MESMO caminho de chamada, com os mesmos guardrails: bloqueio
+ * para dado pessoal, timeout, retry e registro de uso.
+ *
+ * `gratuito: true` marca os que têm camada sem custo. Isso NÃO significa "sem
+ * limite": significa que a tarifa é zero até o teto do provedor, e o teto é
+ * deles, não nosso. Por isso o custo continua sendo registrado como medido = 0
+ * em vez de "não precificado" — zero conhecido é diferente de preço ausente.
+ *
+ * `requerChave: false` existe para o Ollama, que roda no próprio servidor e não
+ * tem chave. Sem esse campo o guard de configuração o bloquearia para sempre.
+ */
+type ProvedorCompativel = {
+  key: string;
+  model: string;
+  baseUrl: string;
+  gratuito?: boolean;
+  requerChave?: boolean;
+  /** Onde obter a credencial. Aparece no diagnóstico, não em log de execução. */
+  origem: string;
 };
+
+const economyProviders: Record<EconomyProvider, ProvedorCompativel> = {
+  deepseek: { key: "DEEPSEEK_API_KEY", model: "ATLAS_DEEPSEEK_MODEL", baseUrl: "https://api.deepseek.com/chat/completions", origem: "platform.deepseek.com" },
+  qwen: { key: "QWEN_API_KEY", model: "ATLAS_QWEN_MODEL", baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions", origem: "dashscope.aliyun.com" },
+  kimi: { key: "KIMI_API_KEY", model: "ATLAS_KIMI_MODEL", baseUrl: "https://api.moonshot.ai/v1/chat/completions", origem: "platform.moonshot.ai" },
+  glm: { key: "GLM_API_KEY", model: "ATLAS_GLM_MODEL", baseUrl: "https://open.bigmodel.cn/api/paas/v4/chat/completions", origem: "open.bigmodel.cn" },
+
+  // ── Camada gratuita ────────────────────────────────────────────────────────
+  // Entram porque a camada paga está parada: OpenAI sem saldo e Anthropic com
+  // chave inválida, medidos em 2026-07-26. Sem alternativa sem custo, briefing,
+  // copy e qualificação simplesmente não rodam.
+  gemini: { key: "GEMINI_API_KEY", model: "ATLAS_GEMINI_MODEL", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", gratuito: true, origem: "aistudio.google.com/apikey" },
+  groq: { key: "GROQ_API_KEY", model: "ATLAS_GROQ_MODEL", baseUrl: "https://api.groq.com/openai/v1/chat/completions", gratuito: true, origem: "console.groq.com/keys" },
+  cerebras: { key: "CEREBRAS_API_KEY", model: "ATLAS_CEREBRAS_MODEL", baseUrl: "https://api.cerebras.ai/v1/chat/completions", gratuito: true, origem: "cloud.cerebras.ai" },
+  mistral: { key: "MISTRAL_API_KEY", model: "ATLAS_MISTRAL_MODEL", baseUrl: "https://api.mistral.ai/v1/chat/completions", gratuito: true, origem: "console.mistral.ai" },
+  openrouter: { key: "OPENROUTER_API_KEY", model: "ATLAS_OPENROUTER_MODEL", baseUrl: "https://openrouter.ai/api/v1/chat/completions", gratuito: true, origem: "openrouter.ai/keys (modelos com sufixo :free)" },
+  // Roda no próprio servidor. Custo zero de verdade e nenhum dado sai da
+  // máquina — é o único da lista que pode receber dado pessoal sem contrato.
+  ollama: { key: "", model: "ATLAS_OLLAMA_MODEL", baseUrl: "http://127.0.0.1:11434/v1/chat/completions", gratuito: true, requerChave: false, origem: "ollama.com (auto-hospedado)" },
+};
+
+/** Provedores com camada sem custo, na ordem em que costumam responder melhor. */
+export const provedoresGratuitos = (Object.keys(economyProviders) as EconomyProvider[])
+  .filter((nome) => economyProviders[nome].gratuito === true);
+
+export function catalogoDeProvedoresGratuitos() {
+  return provedoresGratuitos.map((nome) => {
+    const config = economyProviders[nome];
+    return {
+      provedor: nome,
+      variavelDeChave: config.key || null,
+      variavelDeModelo: config.model,
+      requerChave: config.requerChave !== false,
+      configurado: (config.requerChave === false || Boolean(process.env[config.key])) && Boolean(process.env[config.model]),
+      origem: config.origem,
+    };
+  });
+}
 
 export function aiModelProfiles() {
   return {
@@ -535,13 +592,15 @@ async function generateAnthropic(input: GenerateInput): Promise<AIProviderResult
 async function generateEconomyProvider(input: GenerateInput, provider: EconomyProvider): Promise<AIProviderResult> {
   if (input.containsPersonalData) throw new Error(`${provider} bloqueado para dados pessoais.`);
   const config = economyProviders[provider];
-  const apiKey = process.env[config.key];
+  const apiKey = config.key ? process.env[config.key] : "";
   const model = process.env[config.model];
-  if (!apiKey || !model) throw new Error(`${provider} não configurado.`);
+  // Ollama roda local e não tem chave; exigir uma o bloquearia para sempre.
+  const precisaDeChave = config.requerChave !== false;
+  if ((precisaDeChave && !apiKey) || !model) throw new Error(`${provider} não configurado.`);
   const startedAt = Date.now();
   const response = await resilientFetch(process.env[`ATLAS_${provider.toUpperCase()}_BASE_URL`] || config.baseUrl, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    headers: { ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}), "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
       messages: [{ role: "system", content: input.system }, { role: "user", content: input.prompt }],
@@ -568,7 +627,10 @@ async function generateEconomyProvider(input: GenerateInput, provider: EconomyPr
 
 function configuredEconomyProvider(provider: EconomyProvider) {
   const config = economyProviders[provider];
-  return Boolean(process.env[config.key] && process.env[config.model]);
+  // Provedor auto-hospedado (Ollama) não tem chave: exigir uma o deixaria
+  // eternamente "não configurado" mesmo rodando na máquina.
+  const chaveOk = config.requerChave === false ? true : Boolean(process.env[config.key]);
+  return Boolean(chaveOk && process.env[config.model]);
 }
 
 export function aiProviderReadiness() {
@@ -576,10 +638,12 @@ export function aiProviderReadiness() {
     openai: Boolean(process.env.OPENAI_API_KEY),
     anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
     perplexity: Boolean(process.env.PERPLEXITY_API_KEY),
-    deepseek: configuredEconomyProvider("deepseek"),
-    qwen: configuredEconomyProvider("qwen"),
-    kimi: configuredEconomyProvider("kimi"),
-    glm: configuredEconomyProvider("glm"),
+    // Gerado a partir do registro, e não escrito à mão: provedor novo entrava no
+    // catálogo e ficava fora da prontidão, o que o tornava inalcançável pela
+    // ordem de provedores sem ninguém perceber.
+    ...(Object.fromEntries(
+      (Object.keys(economyProviders) as EconomyProvider[]).map((nome) => [nome, configuredEconomyProvider(nome)]),
+    ) as Record<EconomyProvider, boolean>),
     localFallback: true,
     host: "hostinger" as const,
   };

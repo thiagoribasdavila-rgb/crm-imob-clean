@@ -166,6 +166,20 @@
       "purpose": "Criação inicial do administrador; proibido em produção."
     },
     {
+      "name": "ATLAS_CEREBRAS_BASE_URL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Sobrescreve o endpoint de Cerebras (proxy corporativo ou instância própria)."
+    },
+    {
+      "name": "ATLAS_CEREBRAS_MODEL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Modelo usado com Cerebras. Sem ele o provedor fica fora da ordem de roteamento."
+    },
+    {
       "name": "ATLAS_CLAUDE_MODEL",
       "scope": "server",
       "requirement": "optional",
@@ -229,11 +243,39 @@
       "purpose": "Fase de evolução registrada no empacotamento de checkpoints e releases."
     },
     {
+      "name": "ATLAS_GEMINI_BASE_URL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Sobrescreve o endpoint de Gemini (proxy corporativo ou instância própria)."
+    },
+    {
+      "name": "ATLAS_GEMINI_MODEL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Modelo usado com Gemini. Sem ele o provedor fica fora da ordem de roteamento."
+    },
+    {
       "name": "ATLAS_GLM_MODEL",
       "scope": "server",
       "requirement": "optional",
       "secret": false,
       "purpose": "Modelo GLM homologado."
+    },
+    {
+      "name": "ATLAS_GROQ_BASE_URL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Sobrescreve o endpoint de Groq (proxy corporativo ou instância própria)."
+    },
+    {
+      "name": "ATLAS_GROQ_MODEL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Modelo usado com Groq. Sem ele o provedor fica fora da ordem de roteamento."
     },
     {
       "name": "ATLAS_HOSTING_PROVIDER",
@@ -334,6 +376,20 @@
       "purpose": "Liga o envio governado de conversões Meta (CAPI); desligado por padrão."
     },
     {
+      "name": "ATLAS_MISTRAL_BASE_URL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Sobrescreve o endpoint de Mistral (proxy corporativo ou instância própria)."
+    },
+    {
+      "name": "ATLAS_MISTRAL_MODEL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Modelo usado com Mistral. Sem ele o provedor fica fora da ordem de roteamento."
+    },
+    {
       "name": "ATLAS_NEXT_BUNDLER",
       "scope": "build",
       "requirement": "optional",
@@ -383,11 +439,39 @@
       "purpose": "Segredo do storage S3/R2."
     },
     {
+      "name": "ATLAS_OLLAMA_BASE_URL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Sobrescreve o endpoint de Ollama (proxy corporativo ou instância própria)."
+    },
+    {
+      "name": "ATLAS_OLLAMA_MODEL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Modelo do Ollama auto-hospedado. Não exige chave e nenhum dado sai da máquina — é o único provedor que pode receber dado pessoal sem contrato com terceiro."
+    },
+    {
       "name": "ATLAS_OPENAI_MODEL",
       "scope": "server",
       "requirement": "optional",
       "secret": false,
       "purpose": "Modelo OpenAI usado nos testes de saúde e no roteador de IA."
+    },
+    {
+      "name": "ATLAS_OPENROUTER_BASE_URL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Sobrescreve o endpoint de Openrouter (proxy corporativo ou instância própria)."
+    },
+    {
+      "name": "ATLAS_OPENROUTER_MODEL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Modelo usado com Openrouter. Sem ele o provedor fica fora da ordem de roteamento."
     },
     {
       "name": "ATLAS_PACKAGE_ENV_FILE",
@@ -530,6 +614,13 @@
       "purpose": "Liga a interpretação NLU de mensagens recebidas no WhatsApp; desligada por padrão."
     },
     {
+      "name": "CEREBRAS_API_KEY",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": true,
+      "purpose": "Chave da camada gratuita de IA. Origem: Cerebras Cloud (cloud.cerebras.ai). Sem custo até o teto do provedor — o teto é deles, não nosso."
+    },
+    {
       "name": "DATABASE_URL",
       "scope": "server",
       "requirement": "required",
@@ -542,6 +633,13 @@
       "requirement": "conditional",
       "secret": true,
       "purpose": "Provedor econômico opcional."
+    },
+    {
+      "name": "GEMINI_API_KEY",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": true,
+      "purpose": "Chave da camada gratuita de IA. Origem: Google AI Studio (aistudio.google.com/apikey). Sem custo até o teto do provedor — o teto é deles, não nosso."
     },
     {
       "name": "GLM_API_KEY",
@@ -577,6 +675,13 @@
       "requirement": "conditional",
       "secret": false,
       "purpose": "Retorno OAuth exato do Google Calendar."
+    },
+    {
+      "name": "GROQ_API_KEY",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": true,
+      "purpose": "Chave da camada gratuita de IA. Origem: Groq Console (console.groq.com/keys). Sem custo até o teto do provedor — o teto é deles, não nosso."
     },
     {
       "name": "KIMI_API_KEY",
@@ -684,6 +789,13 @@
       "purpose": "Retorno OAuth exato do Microsoft Calendar."
     },
     {
+      "name": "MISTRAL_API_KEY",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": true,
+      "purpose": "Chave da camada gratuita de IA. Origem: Mistral Console (console.mistral.ai). Sem custo até o teto do provedor — o teto é deles, não nosso."
+    },
+    {
       "name": "NEXT_PHASE",
       "scope": "runtime",
       "requirement": "managed",
@@ -747,6 +859,13 @@
       "requirement": "optional",
       "secret": false,
       "purpose": "Grafia alternativa do modelo OpenAI, aceita como fallback de ATLAS_OPENAI_MODEL."
+    },
+    {
+      "name": "OPENROUTER_API_KEY",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": true,
+      "purpose": "Chave da camada gratuita de IA. Origem: OpenRouter (openrouter.ai/keys) — use modelos com sufixo :free. Sem custo até o teto do provedor — o teto é deles, não nosso."
     },
     {
       "name": "PERPLEXITY_API_KEY",
