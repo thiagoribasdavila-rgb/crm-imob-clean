@@ -426,9 +426,21 @@ export default function DistributionPage() {
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="cc6-metric-value text-lg leading-none">{projectLoad}</p>
-                      <p className="cc6-metric-label mt-1" title="Leads ativas neste projeto · carga ÷ peso">
-                        no projeto · pond. <span className="cc6-num">{Math.round((projectLoad / (state?.weight || 1)) * 10) / 10}</span>
-                      </p>
+                      {/* A ponderação só é anunciada quando existe peso diferente
+                          de 1. Sem `project_distribution_members` cadastrado —
+                          zero linhas nesta base — todo peso é 1, a divisão não
+                          muda nada, e "pond." prometia um critério que a fila
+                          não aplica. A API já declara `weightedLoad: false`; a
+                          tela agora concorda com ela. */}
+                      {state?.weight && state.weight !== 1 ? (
+                        <p className="cc6-metric-label mt-1" title={`Leads ativas neste projeto (${projectLoad}) divididas pelo peso do corretor (${state.weight})`}>
+                          no projeto · pond. <span className="cc6-num">{Math.round((projectLoad / state.weight) * 10) / 10}</span>
+                        </p>
+                      ) : (
+                        <p className="cc6-metric-label mt-1" title="Leads ativas deste corretor neste projeto. Sem peso cadastrado, a fila não pondera.">
+                          no projeto
+                        </p>
+                      )}
                     </div>
                   </article>
                 );

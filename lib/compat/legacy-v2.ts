@@ -111,7 +111,26 @@ export const LIVE_LEAD_SELECT_WITH_SLA = [
   ...NEXT_ACTION_COLUMNS,
 ].join(",");
 
-export const LIVE_PROFILE_SELECT = "id,name,email,role,active,organization_id,team,max_active_leads,availability_status";
+/**
+ * Colunas de perfil lidas por 15 arquivos — toda tela que mostra o nome de uma
+ * pessoa: Clientes 360, atividade, tarefas, leads, time, distribuição,
+ * conversão da equipe, SLA do time e os painéis diários.
+ *
+ * `full_name` entrou porque faltava. `mapLegacyProfile` faz
+ * `full_name: first(row, "full_name", "name")` desde sempre, tentando a
+ * canônica primeiro — mas ela não estava no select, então o mapeador caía em
+ * `name`.
+ *
+ * Medido nesta base: `full_name` preenchido em 8/8 perfis, `name` em 3/8.
+ * Cinco das oito pessoas apareciam sem nome (ou como "Usuário Atlas") em TODAS
+ * essas telas — inclusive os três corretores, que são justamente quem a
+ * distribuição precisa nomear para decidir a quem mandar a próxima lead.
+ *
+ * É a mesma doença do select de leads, uma tabela adiante: o select base ficou
+ * no vocabulário antigo enquanto o banco andou, e o mapeador mascarava a
+ * diferença caindo na coluna legada em silêncio.
+ */
+export const LIVE_PROFILE_SELECT = "id,name,full_name,email,role,active,organization_id,team,max_active_leads,availability_status";
 
 const statusAliases: Record<string, string> = {
   new: "novo",
