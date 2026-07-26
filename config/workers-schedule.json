@@ -69,6 +69,13 @@
       "cadencia": "0 7 * * *",
       "porque": "Relatório de mídia pronto antes do início do expediente comercial.",
       "timeoutMs": 55000
+    },
+    {
+      "nome": "developer-weekly-reports",
+      "rota": "/api/v2/developers/weekly-reports/process",
+      "cadencia": "0 7 * * 0",
+      "porque": "Domingo às 7h: a semana fechou à meia-noite e a liderança encontra o book pronto na segunda de manhã. Rodar à meia-noite em ponto arriscaria apurar antes de a última escrita do domingo cair no banco; rodar segunda já seria tarde para uma prestação de contas semanal.",
+      "timeoutMs": 110000
     }
   ],
   "sobDemanda": [

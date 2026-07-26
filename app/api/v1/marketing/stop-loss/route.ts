@@ -51,7 +51,14 @@ async function medirEAvaliar(
     // marketing_spend só tem linha quando a conta de anúncios responde. Zero
     // linhas significa "não sei", e não "gastou zero" — a diferença decide se o
     // stop loss avalia custo ou se declara cegueira.
-    admin.from("marketing_spend").select("amount").eq("organization_id", organizationId).gte("date", inicio.slice(0, 10)),
+    //
+    // A coluna é `spend_date`. Estava escrito `date`, que não existe: o Postgres
+    // devolvia 42703, o código lia o erro como "a conta de anúncios não libera
+    // gasto" e o stop loss declarava cegueira por um motivo que não era o
+    // verdadeiro. Seis outros arquivos do repositório sempre usaram o nome
+    // certo — este ficou sozinho no erro, e o erro se disfarçava de integração
+    // faltando.
+    admin.from("marketing_spend").select("amount").eq("organization_id", organizationId).gte("spend_date", inicio.slice(0, 10)),
     admin.from("leads").select("id", { count: "exact", head: true })
       .eq("organization_id", organizationId).not("campaign_id", "is", null).gte("created_at", inicio),
     admin.from("leads").select("id", { count: "exact", head: true })
