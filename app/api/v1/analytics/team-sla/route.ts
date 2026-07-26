@@ -5,6 +5,7 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   LIVE_LEAD_SELECT,
   LIVE_LEAD_SELECT_WITH_SLA,
+  isMissingRelation,
   isMissingColumn,
   mapLegacyLead,
   type CompatRow,
@@ -79,6 +80,19 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Ciclos de follow-up da fase 35. Tabela ausente (banco legado) não derruba o
+  // endpoint: a medição vem indisponível e é reportada como tal.
+  const ciclos = await identity.supabase
+    .from("follow_up_sla_events")
+    .select("lead_id,broker_id,status,response_minutes,delay_minutes,on_time,scheduled_at")
+    .eq("organization_id", organizationId)
+    .limit(10000);
+  const followUpMensuravel = !ciclos.error || !isMissingRelation(ciclos.error);
+  const ciclosLinhas = (ciclos.data ?? []) as Array<{
+    lead_id: string; broker_id: string | null; status: string;
+    response_minutes: number | null; delay_minutes: number | null; on_time: boolean | null;
+  }>;
+
   const profiles = resolveLiveHierarchy(
     (profileResult.data ?? []) as unknown as CompatRow[],
   );
@@ -145,6 +159,31 @@ export async function GET(request: NextRequest) {
     .sort((left, right) => right.overdueMinutes - left.overdueMinutes)
     .slice(0, 100);
 
+  // ── MEDIÇÃO DO FOLLOW-UP ────────────────────────────────────────────────
+  // Estes quatro indicadores viviam cravados em 0/null nesta rota. Zero cravado
+  // é pior que ausência: o painel lia "nenhum follow-up fora do prazo" quando a
+  // verdade era "nada foi medido". Agora saem de follow_up_sla_events.
+  const medirFollowUp = (linhas: typeof ciclosLinhas) => {
+    const concluidos = linhas.filter(
+      (c) => (c.status === "completed" || c.status === "recovered") && c.response_minutes != null,
+    );
+    const noPrazo = concluidos.filter((c) => c.on_time === true);
+    return {
+      followUpsMeasured: concluidos.length,
+      // Mesma regra do primeiro contato: taxa exige amostra.
+      followUpComplianceRate:
+        concluidos.length >= 5 ? Number((noPrazo.length / concluidos.length).toFixed(3)) : null,
+      recoveredFollowUps: linhas.filter((c) => c.status === "recovered").length,
+      averageFollowUpMinutes: concluidos.length
+        ? Math.round(concluidos.reduce((soma, c) => soma + Number(c.response_minutes || 0), 0) / concluidos.length)
+        : null,
+    };
+  };
+
+  const leadsVisiveis = new Set(leads.map((lead) => text(lead.id)));
+  const ciclosVisiveis = ciclosLinhas.filter((c) => leadsVisiveis.has(c.lead_id));
+  const medicaoFollowUp = medirFollowUp(ciclosVisiveis);
+
   const byBroker = brokers
     .map((broker) => {
       const brokerId = text(broker.id);
@@ -165,9 +204,7 @@ export async function GET(request: NextRequest) {
         met: medicaoPrimeiroContato.met,
         complianceRate: medicaoPrimeiroContato.complianceRate,
         averageResponseMinutes: medicaoPrimeiroContato.averageResponseMinutes,
-        followUpsMeasured: 0,
-        followUpComplianceRate: null,
-        recoveredFollowUps: 0,
+        ...medirFollowUp(ciclosVisiveis.filter((c) => c.broker_id === brokerId)),
       };
     })
     .sort(
@@ -222,10 +259,10 @@ export async function GET(request: NextRequest) {
         met: medicaoPrimeiroContato.met,
         complianceRate: medicaoPrimeiroContato.complianceRate,
         averageResponseMinutes: medicaoPrimeiroContato.averageResponseMinutes,
-        followUpsMeasured: 0,
-        followUpComplianceRate: null,
-        recoveredFollowUps: 0,
-        averageFollowUpMinutes: null,
+        ...medicaoFollowUp,
+        // "0 medidos" com a tabela ausente é diferente de "0 medidos" com a
+        // tabela vazia. A tela precisa saber qual dos dois está lendo.
+        followUpMensuravel,
       },
       alerts,
       byBroker,

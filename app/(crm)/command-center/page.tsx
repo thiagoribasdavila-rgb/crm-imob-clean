@@ -174,7 +174,14 @@ type TeamSla = {
     firstContactOverdue: number;
     followUpOverdue: number;
     brokersWithAlerts: number;
+    // Fase 35 — cadência de follow-up MEDIDA em follow_up_sla_events.
+    // followUpComplianceRate é razão 0–1, como complianceRate do primeiro
+    // contato. Quem exibe multiplica por 100; quem compara, não.
+    followUpsMeasured: number;
     followUpComplianceRate: number | null;
+    recoveredFollowUps: number;
+    averageFollowUpMinutes: number | null;
+    followUpMensuravel: boolean;
   };
   generatedAt: string;
 };
@@ -1841,7 +1848,7 @@ export default function CommandCenterPage() {
                         {teamSla?.totals.followUpComplianceRate == null
                           ? "Sem amostra medida"
                           : `Cumprimento do time direto · ${
-                              teamSla.totals.followUpComplianceRate >= 80
+                              teamSla.totals.followUpComplianceRate >= 0.8
                                 ? "na meta"
                                 : "abaixo da meta (80%)"
                             }`}
@@ -1854,12 +1861,12 @@ export default function CommandCenterPage() {
                     ) : (
                       <span
                         className={`cc23-display ${
-                          teamSla.totals.followUpComplianceRate >= 80
+                          teamSla.totals.followUpComplianceRate >= 0.8
                             ? "text-[var(--atlas-success)]!"
                             : "text-[var(--atlas-warning)]!"
                         }`}
                       >
-                        {Math.round(teamSla.totals.followUpComplianceRate)}
+                        {Math.round(teamSla.totals.followUpComplianceRate * 100)}
                         <span className="cc23-unit-label">%</span>
                       </span>
                     )}
@@ -3087,19 +3094,38 @@ export default function CommandCenterPage() {
                      `whitespace-normal!` é necessário porque `.cc6-chip` fixa
                      `white-space: nowrap` fora de @layer, e estes rótulos são longos o
                      bastante para forçar rolagem horizontal em 320px. */
-                  <div className="mb-4 flex flex-wrap gap-2 text-xs text-slate-400">
-                    <span className="cc6-chip whitespace-normal!">
-                      SLA de follow-up:{" "}
-                      {teamSla.totals.followUpComplianceRate === null
-                        ? "sem amostra"
-                        : `${teamSla.totals.followUpComplianceRate}%`}
-                    </span>
-                    <span className="cc6-chip whitespace-normal!">
-                      {teamSla.totals.firstContactOverdue} sem primeiro contato
-                    </span>
-                    <span className="cc6-chip whitespace-normal!">
-                      {teamSla.totals.brokersWithAlerts} corretor(es) com alerta
-                    </span>
+                  <div data-phase="35-follow-up-sla" className="mb-4">
+                    <p className="cc6-eyebrow mb-2">Cadência, atraso e recuperação</p>
+                    <div className="flex flex-wrap gap-2 text-xs text-slate-400">
+                      <span className="cc6-chip whitespace-normal!">
+                        SLA de follow-up:{" "}
+                        {/* A taxa vem como razão 0–1. Imprimi-la crua mostrava
+                            "1%" para 100% de cumprimento — e nunca cruzava
+                            nenhum limiar de cor. */}
+                        {teamSla.totals.followUpComplianceRate === null
+                          ? teamSla.totals.followUpMensuravel
+                            ? "sem amostra"
+                            : "não medido neste banco"
+                          : `${Math.round(teamSla.totals.followUpComplianceRate * 100)}%`}
+                      </span>
+                      <span className="cc6-chip whitespace-normal!">
+                        {teamSla.totals.followUpsMeasured} follow-up(s) medido(s)
+                      </span>
+                      <span className="cc6-chip whitespace-normal!">
+                        {teamSla.totals.averageFollowUpMinutes === null
+                          ? "tempo médio sem amostra"
+                          : `${teamSla.totals.averageFollowUpMinutes} min de resposta média`}
+                      </span>
+                      <span className="cc6-chip whitespace-normal!">
+                        {teamSla.totals.recoveredFollowUps} recuperado(s) após o prazo
+                      </span>
+                      <span className="cc6-chip whitespace-normal!">
+                        {teamSla.totals.firstContactOverdue} sem primeiro contato
+                      </span>
+                      <span className="cc6-chip whitespace-normal!">
+                        {teamSla.totals.brokersWithAlerts} corretor(es) com alerta
+                      </span>
+                    </div>
                   </div>
                 ) : null}
                 {!managementQueue.ready ? (

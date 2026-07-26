@@ -94,6 +94,32 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
   }
 
+  // O MESMO registro fecha o ciclo de follow-up, quando há um aberto.
+  //
+  // `complete_follow_up_sla` tem dois gatilhos no banco: um em `activities` e
+  // outro em `messages` — as duas tabelas legadas com ZERO linhas. O CRM escreve
+  // em `lead_events`, que não dispara nenhum dos dois. Resultado medido em
+  // 2026-07-26: 6 ciclos de follow-up agendados, 0 concluídos. É a mesma falha
+  // do primeiro contato, um andar acima: a função existe, está correta e ninguém
+  // a chama.
+  //
+  // A RPC já protege por conta própria (só age sobre ciclo `scheduled`), então
+  // chamá-la em todo registro é seguro: sem ciclo aberto, ela retorna sem efeito.
+  let followUpFechado = false;
+  const followUp = await admin.rpc("complete_follow_up_sla", {
+    p_organization_id: organizationId,
+    p_lead_id: leadId,
+    p_occurred_at: agora,
+    p_source: `lead_event:${canal}`,
+  });
+  if (followUp.error) {
+    structuredApiLog("warn", "lead.first_contact.follow_up_nao_fechado", request, access.meta, {
+      organizationId, leadId, code: followUp.error.code,
+    });
+  } else {
+    followUpFechado = true;
+  }
+
   const medicao = slaFechado
     ? await admin.from("leads").select("first_response_minutes,first_contact_sla_met,first_contact_due_at")
         .eq("id", leadId).eq("organization_id", organizationId).maybeSingle()
@@ -111,6 +137,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     primeiroContato: !jaContatada,
     eventoRegistrado: !evento.error,
     slaFechado,
+    // Distinto do SLA de primeiro contato: aqui "fechado" significa que a RPC
+    // rodou, e ela pode não ter tido ciclo aberto para fechar.
+    cicloDeFollowUpProcessado: followUpFechado,
     medicao: medicao?.data
       ? {
           minutosDeResposta: medicao.data.first_response_minutes,
