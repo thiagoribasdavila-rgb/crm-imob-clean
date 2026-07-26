@@ -211,31 +211,72 @@ export async function GET(request: NextRequest) {
 
     if (status) query = query.in("status", compatibleLeadStatuses(status));
     if (source) query = query.eq("source", source);
-    if (developmentId) query = query.eq("project_id", developmentId);
+    // O filtro por empreendimento consultava `project_id`, coluna vazia em
+    // TODAS as 217 leads desta base. A coluna com dado é `development_id`
+    // (174 leads). Resultado medido antes da correção: escolher "Inside
+    // Perdizes" devolvia ZERO — com 174 leads dentro dele.
+    //
+    // Filtro que devolve vazio é pior que filtro ausente: quem escolhe o
+    // empreendimento e vê a lista limpar conclui que não há lead ali, e vai
+    // embora. É o mesmo par legado/canônico que já mordeu a ingestão
+    // (assigned_user_id vs assigned_to); aqui aceitamos os DOIS, porque a base
+    // tem histórico nas duas colunas e escolher uma só perderia leads de um
+    // dos lados.
+    if (developmentId) {
+      query = query.or(`development_id.eq.${developmentId},project_id.eq.${developmentId}`);
+    }
     if (escopoDeEquipe) query = query.in("assigned_user_id", escopoDeEquipe);
     else if (donoUnico) query = query.eq("assigned_user_id", donoUnico);
     else if (assignedTo === "unassigned") query = query.is("assigned_user_id", null);
     if (minScore !== null) query = query.gte("score_ia", minScore);
     if (maxScore !== null) query = query.lte("score_ia", maxScore);
+    // ── Próxima ação: `next_action_at` é a coluna canônica ──────────────────
+    //
+    // Todos estes filtros consultavam `next_contact`, coluna vazia em TODAS as
+    // 217 leads desta base. A coluna com dado é `next_action_at`. Medido: as
+    // opções "Atrasadas", "Agendada", "Hoje" e "Próximos 7 dias" NUNCA
+    // devolviam nada — quatro filtros que o corretor tenta, vê a lista vazia, e
+    // conclui que não há trabalho.
+    //
+    // Aceitamos as DUAS colunas: a base tem histórico nas duas e escolher uma
+    // só perderia registros de um dos lados. Mesma decisão do filtro por
+    // empreendimento, logo acima.
+    const emAlgumaProxima = (expressao: (coluna: string) => string) =>
+      `${expressao("next_action_at")},${expressao("next_contact")}`;
+
     if (attention) {
       query = query.not("status", "in", `(${terminalStorageStatuses.join(",")})`);
-      if (attention === "overdue") query = query.lt("next_contact", new Date().toISOString());
-      if (attention === "no_action") query = query.is("next_contact", null);
+      const agora = new Date().toISOString();
+      if (attention === "overdue") {
+        query = query.or(emAlgumaProxima((c) => `${c}.lt.${agora}`));
+      }
+      if (attention === "no_action") {
+        // AND das duas: só é "sem próxima ação" quem não tem em nenhuma das
+        // colunas. Conferir só a legada devolveria a base inteira e continuaria
+        // dizendo "sem ação" para quem acabou de agendar uma.
+        query = query.is("next_action_at", null).is("next_contact", null);
+      }
       if (attention === "hot") query = query.or("temperature.ilike.quente,score_ia.gte.70");
       if (attention === "unassigned") query = query.is("assigned_user_id", null);
     }
     if (nextAction) {
-      query = query.not("status", "in", `(${terminalStorageStatuses.join(",")})`).not("next_contact", "is", null);
+      query = query
+        .not("status", "in", `(${terminalStorageStatuses.join(",")})`)
+        .or(emAlgumaProxima((c) => `${c}.not.is.null`));
       const now = new Date();
-      if (nextAction === "scheduled") query = query.gte("next_contact", now.toISOString());
+      const janela = (inicio: Date, fim?: Date) =>
+        emAlgumaProxima((c) => fim
+          ? `and(${c}.gte.${inicio.toISOString()},${c}.lte.${fim.toISOString()})`
+          : `${c}.gte.${inicio.toISOString()}`);
+
+      if (nextAction === "scheduled") query = query.or(janela(now));
       if (nextAction === "today") {
         const end = new Date(now);
         end.setHours(23, 59, 59, 999);
-        query = query.gte("next_contact", now.toISOString()).lte("next_contact", end.toISOString());
+        query = query.or(janela(now, end));
       }
       if (nextAction === "next_7_days") {
-        const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-        query = query.gte("next_contact", now.toISOString()).lte("next_contact", end.toISOString());
+        query = query.or(janela(now, new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)));
       }
     }
     if (campaignIds.length) query = query.in("campaign_id", campaignIds);
