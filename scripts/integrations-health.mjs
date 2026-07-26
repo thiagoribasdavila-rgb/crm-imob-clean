@@ -95,13 +95,39 @@ await testar("IA", "Anthropic", async () => {
 await testar("IA", "OpenAI", async () => {
   const chave = env.OPENAI_API_KEY;
   if (!temp(chave)) return { status: "nao_configurado", detalhe: "OPENAI_API_KEY ausente" };
-  // GET /models não gera custo nenhum e já prova a credencial.
-  const r = await fetch("https://api.openai.com/v1/models", { headers: { authorization: `Bearer ${chave}` } });
-  const corpo = await r.json().catch(() => ({}));
-  if (!r.ok) return { status: "erro", detalhe: `${r.status} ${String(corpo?.error?.message ?? "").slice(0, 90)}`, extra: { chave: mascara(chave) } };
-  const ids = (corpo.data ?? []).map((m) => m.id);
+
+  // GET /models prova só que a chave EXISTE. Não prova que ela gera: uma conta
+  // sem saldo lista os 117 modelos e falha em toda geração com insufficient_quota.
+  // Esta versão do teste chegou a dar verde numa conta sem crédito — por isso
+  // agora o veredito vem de uma geração real, com teto mínimo de tokens.
+  const listagem = await fetch("https://api.openai.com/v1/models", { headers: { authorization: `Bearer ${chave}` } });
+  const corpoLista = await listagem.json().catch(() => ({}));
+  if (!listagem.ok) return { status: "erro", detalhe: `${listagem.status} ${String(corpoLista?.error?.message ?? "").slice(0, 90)}`, extra: { chave: mascara(chave) } };
+  const ids = (corpoLista.data ?? []).map((m) => m.id);
   const imagem = ids.filter((id) => /gpt-image|dall-e/.test(id));
-  return { detalhe: `${ids.length} modelos`, extra: { chave: mascara(chave), modelosDeImagem: imagem.slice(0, 4) } };
+
+  const modelo = env.ATLAS_OPENAI_MODEL || env.OPENAI_MODEL || "gpt-4o-mini";
+  const geracao = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${chave}` },
+    body: JSON.stringify({ model: modelo, max_completion_tokens: 8, messages: [{ role: "user", content: "ok" }] }),
+  });
+  const corpoGer = await geracao.json().catch(() => ({}));
+  if (!geracao.ok) {
+    const codigo = corpoGer?.error?.code ?? geracao.status;
+    const semSaldo = codigo === "insufficient_quota" || /quota/i.test(String(corpoGer?.error?.message ?? ""));
+    return {
+      status: "erro",
+      detalhe: semSaldo
+        ? `chave válida, mas SEM SALDO (${codigo}) — nenhuma geração de texto funciona`
+        : `${codigo} ${String(corpoGer?.error?.message ?? "").slice(0, 80)}`,
+      extra: { chave: mascara(chave), modelo, modelosListados: ids.length, modelosDeImagem: imagem.slice(0, 3) },
+    };
+  }
+  return {
+    detalhe: `geração confirmada em ${corpoGer.model ?? modelo}`,
+    extra: { chave: mascara(chave), modelosListados: ids.length, modelosDeImagem: imagem.slice(0, 3), tokens: corpoGer.usage?.total_tokens },
+  };
 });
 
 await testar("IA", "Perplexity", async () => {
