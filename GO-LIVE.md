@@ -71,6 +71,31 @@ Applied migration: 20260720030000_security_revoke_anon_knowledge_search
    - ☑ Enable "Leaked Password Protection"
    - Save
 
+**No servidor (SSH): instalar o cron dos workers.**
+
+Sem esta etapa a fila não anda: nada sai do outbox, nenhum lembrete dispara e o
+vigia de SLA de primeiro contato — que existe justamente para o prazo de 5
+minutos das leads de Meta — nunca roda. As cadências são versionadas em
+`config/workers-schedule.json`; o comando abaixo imprime as linhas prontas, com
+o motivo de cada uma:
+
+```bash
+npm run workers:crontab
+```
+
+Copie a saída para `crontab -e`, trocando `CAMINHO_DO_PROJETO` pelo diretório do
+deploy. `ATLAS_BASE_URL` e `ATLAS_CRON_SECRET` precisam estar no ambiente do
+cron — se estiverem só no `.env` da app, o cron não os enxerga.
+
+Para conferir depois de instalar:
+
+```bash
+node scripts/run-workers.mjs first-contact-sla
+```
+
+Resposta esperada: JSON com `"status":200`. Se vier 401, o segredo do cron não
+bate com o da aplicação.
+
 ---
 
 ## ✅ VALIDAÇÕES (depois que tudo subir)

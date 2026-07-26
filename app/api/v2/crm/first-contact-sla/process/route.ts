@@ -24,6 +24,18 @@ export const maxDuration = 60;
 
 type Estagio = "aviso" | "vencido";
 
+/**
+ * Prefixos ESTÁVEIS de título. Existem porque a idempotência tem duas vias: a
+ * chave em `metadata.slaKey`, precisa, e — quando o banco não tem a coluna
+ * metadata em `tasks` — o prefixo do título, que é o que sobra para reconhecer
+ * uma cobrança que já foi feita. Se mudarem, o worker volta a duplicar tarefa a
+ * cada ciclo de 5 minutos.
+ */
+const PREFIXO_DE_TITULO: Record<Estagio, string> = {
+  vencido: "SLA vencido",
+  aviso: "Contatar em",
+};
+
 export async function POST(request: Request) {
   const esperado = process.env.ATLAS_CRON_SECRET;
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
@@ -90,16 +102,40 @@ export async function POST(request: Request) {
 
     // Uma consulta só para saber o que já foi avisado — evita N queries.
     const chaves = pendentes.map((p) => `sla:${p.lead.id}:${p.estagio}`);
+    const jaAvisado = new Set<string>();
+    let metadataDisponivel = true;
+
     const existentes = await admin
       .from("tasks")
       .select("id,metadata")
       .in("metadata->>slaKey", chaves)
       .limit(1000);
-    const jaAvisado = new Set(
-      ((existentes.data ?? []) as Array<{ metadata?: { slaKey?: string } }>)
-        .map((t) => t.metadata?.slaKey)
-        .filter(Boolean) as string[],
-    );
+
+    if (existentes.error) {
+      // Banco sem a coluna metadata em tasks (PGRST204/42703). Sem ela não há
+      // chave precisa, e a alternativa honesta é reconhecer a cobrança pelo
+      // prefixo do título. Menos preciso, mas ainda impede a enxurrada — que é o
+      // que importa quando o worker roda de 5 em 5 minutos.
+      if (!isMissingColumn(existentes.error) && existentes.error.code !== "PGRST204") throw existentes.error;
+      metadataDisponivel = false;
+      const porTitulo = await admin
+        .from("tasks")
+        .select("lead_id,title,status")
+        .in("lead_id", pendentes.map((p) => String(p.lead.id)))
+        .limit(1000);
+      if (porTitulo.error) throw porTitulo.error;
+      for (const tarefa of porTitulo.data ?? []) {
+        const titulo = String(tarefa.title ?? "");
+        for (const estagio of ["vencido", "aviso"] as Estagio[]) {
+          if (titulo.startsWith(PREFIXO_DE_TITULO[estagio])) jaAvisado.add(`sla:${tarefa.lead_id}:${estagio}`);
+        }
+      }
+      logger.info("crm.first_contact_sla_worker_degraded", { reason: "tasks.metadata ausente; idempotência por título" });
+    } else {
+      for (const tarefa of (existentes.data ?? []) as Array<{ metadata?: { slaKey?: string } }>) {
+        if (tarefa.metadata?.slaKey) jaAvisado.add(tarefa.metadata.slaKey);
+      }
+    }
 
     const novas = pendentes
       .filter((p) => !jaAvisado.has(`sla:${p.lead.id}:${p.estagio}`))
@@ -115,8 +151,8 @@ export async function POST(request: Request) {
           user_id: p.lead.assigned_user_id,
           lead_id: p.lead.id,
           title: vencido
-            ? `SLA vencido há ${p.atrasoMin} min — ${String(p.lead.name ?? "lead")}`
-            : `Contatar em ${p.atrasoMin} min — ${String(p.lead.name ?? "lead")}`,
+            ? `${PREFIXO_DE_TITULO.vencido} há ${p.atrasoMin} min — ${String(p.lead.name ?? "lead")}`
+            : `${PREFIXO_DE_TITULO.aviso} ${p.atrasoMin} min — ${String(p.lead.name ?? "lead")}`,
           description: vencido
             ? `Primeiro contato não registrado. Origem ${p.lead.source ?? "não informada"}, prazo de ${p.lead.first_contact_sla_minutes ?? "?"} min. Registre o contato assim que falar com a pessoa.`
             : `Prazo de primeiro contato encerra em ${p.atrasoMin} min. Origem ${p.lead.source ?? "não informada"}.`,
@@ -139,7 +175,15 @@ export async function POST(request: Request) {
 
     let criadas = 0;
     if (novas.length) {
-      const inseridas = await admin.from("tasks").insert(novas).select("id");
+      // Sem a coluna metadata, mandar o campo derrubaria o insert inteiro.
+      const carga = metadataDisponivel
+        ? novas
+        : novas.map((tarefa) => {
+          const copia: Record<string, unknown> = { ...tarefa };
+          delete copia.metadata;
+          return copia;
+        });
+      const inseridas = await admin.from("tasks").insert(carga).select("id");
       if (inseridas.error) throw inseridas.error;
       criadas = inseridas.data.length;
     }
@@ -162,6 +206,8 @@ export async function POST(request: Request) {
       semDono,
       foraDaJanelaDeRecuperacao: foraDaJanela,
       limitePorExecucao: MAX_TAREFAS_POR_EXECUCAO,
+      // Quem lê o log precisa saber por qual chave a idempotência está passando.
+      idempotencia: metadataDisponivel ? "metadata.slaKey" : "prefixo-de-titulo",
       // Diz explicitamente o que NÃO foi feito, para ninguém supor autonomia
       // que o worker não tem.
       naoExecutado: {

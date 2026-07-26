@@ -21,7 +21,7 @@ arquivo:linha para cada afirmação. Estados: **pronto** (produção), **parcial
 | **Custo de IA** | `provider-router.ts:140-197` | **parcial** | `ATLAS_AI_PRICE_TABLE` | painel `/api/ai/status` | — | preencher a tabela de preços | painel mostra US$ 0,00 com tabela vazia | pendência apontada |
 | **Calendar (Google/Microsoft)** | rotas `calendar/*` | **parcial (OAuth pendente)** | `GOOGLE_CALENDAR_*`, `MICROSOFT_CALENDAR_*` | callbacks em `/api/v1/calendar/*/callback` | — | criar apps OAuth e redirect URIs | — | redirect URIs no `.env.production.example` |
 | **Storage S3/R2 (materiais)** | catálogo de storage | **pronto (opcional)** | `ATLAS_OBJECT_STORAGE_*` | — | — | credenciais se optar por S3/R2 | — | — |
-| **Workers (fila inteira)** | `scripts/run-workers.mjs`, 13 rotas worker | **pronto; agendamento NÃO versionado** | `ATLAS_CRON_SECRET`, `ATLAS_BASE_URL` | `/api/v2/outbox/process` etc. | manual com Bearer | **crontab no VPS** | fila parada sem cron — nada sai | doc §4 com a linha exata de cron |
+| **Workers (fila inteira)** | `scripts/run-workers.mjs`, 14 rotas worker | **pronto; agendamento VERSIONADO em `config/workers-schedule.json`** | `ATLAS_CRON_SECRET`, `ATLAS_BASE_URL` | `/api/v2/outbox/process` etc. | manual com Bearer | `npm run workers:crontab` gera as linhas; instalar no VPS | fila parada enquanto o cron não for instalado | instalar o crontab gerado |
 
 ## Gaps de código que ficaram (com motivo)
 

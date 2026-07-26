@@ -1,0 +1,100 @@
+{
+  "$comentario": [
+    "Agendamento dos workers — fonte única da verdade.",
+    "",
+    "Existia um buraco documentado na matriz de integrações: 'workers prontos,",
+    "agendamento NÃO versionado'. Na prática isso significava que a fila só rodava",
+    "se alguém lembrasse de criar uma linha de crontab no VPS — e o vigia de SLA,",
+    "cujo prazo é de 5 minutos, dependia de alguém lembrar.",
+    "",
+    "Cada rota worter do config/api-security-contract.json precisa aparecer aqui:",
+    "ou com cadência, ou marcada como sobDemanda com o motivo. O portão",
+    "check-workers-schedule impede que uma rota nova fique órfã em silêncio.",
+    "",
+    "Gere as linhas de cron com: npm run workers:crontab"
+  ],
+  "workers": [
+    {
+      "nome": "first-contact-sla",
+      "rota": "/api/v2/crm/first-contact-sla/process",
+      "cadencia": "*/5 * * * *",
+      "porque": "O prazo mais curto de primeiro contato é de 5 minutos (origem Meta). Rodar mais espaçado que isso faz o aviso chegar depois do vencimento, que é o mesmo que não avisar.",
+      "timeoutMs": 55000
+    },
+    {
+      "nome": "outbox",
+      "rota": "/api/v2/outbox/process",
+      "cadencia": "*/2 * * * *",
+      "porque": "Fila de saída: mensagem represada é conversa perdida. Sem este worker, nada sai do Atlas.",
+      "timeoutMs": 55000
+    },
+    {
+      "nome": "task-reminders",
+      "rota": "/api/v2/tasks/reminders/process",
+      "cadencia": "*/5 * * * *",
+      "porque": "Lembretes precisam chegar perto da hora marcada para servirem de lembrete.",
+      "timeoutMs": 55000
+    },
+    {
+      "nome": "lead-reservations",
+      "rota": "/api/v2/distribution/reservations/process",
+      "cadencia": "*/10 * * * *",
+      "porque": "Expiração de reserva de lead: segurar por 10 minutos a mais é tolerável, segurar indefinidamente trava a distribuição.",
+      "timeoutMs": 55000
+    },
+    {
+      "nome": "task-recurrences",
+      "rota": "/api/v2/tasks/recurrences/process",
+      "cadencia": "10 0 * * *",
+      "porque": "Materializa as tarefas recorrentes do dia logo depois da virada, para o corretor já encontrar a agenda montada.",
+      "timeoutMs": 55000
+    },
+    {
+      "nome": "nightly-sales",
+      "rota": "/api/v2/ai/nightly-sales",
+      "cadencia": "0 3 * * *",
+      "porque": "Consolidação noturna, fora do horário comercial.",
+      "timeoutMs": 55000
+    },
+    {
+      "nome": "nightly-handoff",
+      "rota": "/api/v2/ai/nightly-handoff",
+      "cadencia": "30 3 * * *",
+      "porque": "Depois da consolidação de vendas, para trabalhar sobre o resultado dela.",
+      "timeoutMs": 55000
+    },
+    {
+      "nome": "meta-daily-report",
+      "rota": "/api/v2/meta/daily-report",
+      "cadencia": "0 7 * * *",
+      "porque": "Relatório de mídia pronto antes do início do expediente comercial.",
+      "timeoutMs": 55000
+    }
+  ],
+  "sobDemanda": [
+    {
+      "rota": "/api/v1-v2/status",
+      "porque": "Diagnóstico. Responde quando alguém pergunta; agendar não produz efeito nenhum."
+    },
+    {
+      "rota": "/api/v3/status",
+      "porque": "Diagnóstico, mesmo caso acima."
+    },
+    {
+      "rota": "/api/v3/agents/process",
+      "porque": "Consome geração de IA. Ligar em cadência automática gasta orçamento sem decisão humana, e a regra do produto é não movimentar verba sem aprovação. Fica sob demanda até alguém definir frequência e teto de custo."
+    },
+    {
+      "rota": "/api/v3/decisions/generate",
+      "porque": "Gera decisões que exigem aprovação humana. Agendar produziria fila de propostas que ninguém pediu."
+    },
+    {
+      "rota": "/api/v3/twins/rebuild",
+      "porque": "Reconstrução pesada de gêmeos digitais. Cadência ainda não decidida — agendar no escuro é risco de custo e de carga, não ganho."
+    },
+    {
+      "rota": "/api/atlas2030/recommendations/generate",
+      "porque": "Geração de recomendações sob custo de IA. Mesmo critério das demais rotas de geração."
+    }
+  ]
+}
