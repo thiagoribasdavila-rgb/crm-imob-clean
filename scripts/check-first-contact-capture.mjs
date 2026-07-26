@@ -38,6 +38,8 @@ const ROTA_REGISTRO = p("app", "api", "v1", "leads", "[id]", "first-contact", "r
 const ROTA_FICHA = p("app", "api", "v1", "leads", "[id]", "route.ts");
 const COMPAT = p("lib", "compat", "legacy-v2.ts");
 const CSS = p("app", "globals.css");
+const ROTA_LISTA = p("app", "api", "v1", "crm", "leads", "route.ts");
+const PAGINA_LISTA = p("app", "(crm)", "leads", "page.tsx");
 
 // Precisa casar a CHAMADA, não qualquer menção. O caminho do import
 // ("@/components/crm/first-contact-quick-log") contém "/first-contact" e fazia
@@ -60,6 +62,8 @@ const rotaRegistro = ler(ROTA_REGISTRO);
 const rotaFicha = ler(ROTA_FICHA);
 const compat = ler(COMPAT);
 const css = ler(CSS);
+const rotaLista = ler(ROTA_LISTA);
+const paginaLista = ler(PAGINA_LISTA);
 
 // --- as pontas existem -------------------------------------------------------
 check("caso 1: componente de registro em 1 clique existe", Boolean(componente), "components/crm/first-contact-quick-log.tsx ausente");
@@ -161,6 +165,53 @@ if (componente) {
     "caso 22: estado vencido é sinalizado para o CSS",
     /data-vencido/.test(componente) && Boolean(css) && css.includes('.atlas-first-contact[data-vencido="true"]'),
     "sem destaque visual o atraso passa despercebido",
+  );
+}
+
+// --- a fila de trabalho ordena por urgência, não por data de entrada --------
+if (rotaLista) {
+  check(
+    "caso 23: a lista de leads aceita ordenar por prazo de primeiro contato",
+    /allowedSorts = new Set\(\[[^\]]*"first_contact_sla"/.test(rotaLista),
+    "sem a chave na allowlist o pedido cai calado para ordem por data de entrada",
+  );
+  check(
+    "caso 24: a lista ordena pelo prazo real, não por proxy",
+    /\.order\(\s*"first_contact_due_at"/.test(rotaLista),
+    "ordenar por created_at fingindo ser SLA é o bug que este bloco existe para corrigir",
+  );
+  check(
+    "caso 25: lead sem prazo não vai para o topo da fila",
+    /first_contact_due_at"[\s\S]{0,80}nullsFirst:\s*false/.test(rotaLista),
+    "sem nullsFirst:false o Postgres joga os nulos para o começo e a fila abre com quem não tem prazo",
+  );
+  check(
+    "caso 26: a lista degrada em banco sem as colunas de SLA",
+    rotaLista.includes("LIVE_LEAD_SELECT_WITH_SLA") && /isMissingColumn\(/.test(rotaLista),
+    "sem degradação, ligar o SLA na lista derruba a tela inteira em banco legado",
+  );
+  check(
+    "caso 27: a resposta diz se este banco mede prazo",
+    /firstContactSlaDisponivel/.test(rotaLista),
+    "sem esse sinal a fila cai para ordem por data de entrada sem ninguém perceber",
+  );
+}
+
+if (paginaLista) {
+  check(
+    "caso 28: primeiro contato pendente fica ACIMA de follow-up e score na fila",
+    /rank: -2/.test(paginaLista) && /rank: -1/.test(paginaLista),
+    "sem rank negativo o prazo de 5 min disputa posição com lead de três semanas atrás — e perde",
+  );
+  check(
+    "caso 29: a tela oferece a ordenação por prazo de primeiro contato",
+    /value="first_contact_sla"/.test(paginaLista),
+    "a API ordena mas o corretor não tem como pedir",
+  );
+  check(
+    "caso 30: dentro da urgência, desempata pela proximidade do prazo",
+    /first_contact_due_at[\s\S]{0,200}referenceTime/.test(paginaLista),
+    "sem isso a fila abre pela lead vencida há 20 dias, que é a menos recuperável",
   );
 }
 

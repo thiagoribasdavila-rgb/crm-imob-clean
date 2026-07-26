@@ -26,6 +26,9 @@ type Lead = {
   budget_max: number | null;
   last_interaction_at: string | null;
   next_action_at: string | null;
+  first_contact_due_at: string | null;
+  first_contacted_at: string | null;
+  first_contact_sla_minutes: number | null;
   created_at: string | null;
   updated_at: string | null;
   metadata: {
@@ -242,6 +245,13 @@ function stalledChipView(signal: StalledSignal, lead: Lead) {
   };
 }
 
+function formatarMinutos(minutos: number) {
+  if (minutos < 60) return `${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `${horas}h${String(minutos % 60).padStart(2, "0")}`;
+  return `${Math.floor(horas / 24)} dia(s)`;
+}
+
 function visibleLeadPriority(
   lead: Lead,
   referenceTime: number,
@@ -255,6 +265,44 @@ function visibleLeadPriority(
     Number.isFinite(nextActionTime) &&
     nextActionTime < referenceTime;
   const hot = isHotLead(lead);
+
+  // O primeiro contato vem antes de tudo. Uma lead de Meta Ads tem 5 minutos de
+  // prazo: se ela disputar posição com follow-up agendado ou score alto, perde —
+  // e o prazo vence enquanto o corretor trabalha uma lead de três semanas atrás.
+  // Ranks negativos garantem que essa disputa não aconteça.
+  const prazoDoPrimeiroContato = lead.first_contact_due_at
+    ? new Date(lead.first_contact_due_at).getTime()
+    : Number.NaN;
+  if (
+    referenceTime > 0 &&
+    !lead.first_contacted_at &&
+    Number.isFinite(prazoDoPrimeiroContato)
+  ) {
+    const minutos = Math.round((prazoDoPrimeiroContato - referenceTime) / 60_000);
+    // Lead sem dono e com prazo correndo é a pior combinação da fila: para quem
+    // enxerga a equipe, a ação é distribuir, não ligar.
+    const semDono = includeOwnership && !lead.assigned_to;
+    if (minutos < 0) {
+      return {
+        lead,
+        label: semDono ? "1º contato vencido e sem responsável" : "1º contato vencido",
+        detail: semDono
+          ? `Prazo estourou há ${formatarMinutos(-minutos)} e a lead não tem dono. Distribua antes de qualquer outra coisa.`
+          : `Prazo estourou há ${formatarMinutos(-minutos)}. Ligue agora e registre o contato.`,
+        tone: "danger",
+        rank: -2,
+      };
+    }
+    return {
+      lead,
+      label: semDono ? "1º contato correndo, sem responsável" : "1º contato agora",
+      detail: semDono
+        ? `Faltam ${formatarMinutos(minutos)} e a lead ainda não tem dono. Distribua agora.`
+        : `Faltam ${formatarMinutos(minutos)} do prazo de ${lead.first_contact_sla_minutes ?? "?"} min desta origem.`,
+      tone: "danger",
+      rank: -1,
+    };
+  }
 
   if (overdue) {
     return {
@@ -616,6 +664,18 @@ export default function LeadsPage() {
       .filter((priority): priority is LeadPriority => priority !== null)
       .sort((left, right) => {
         if (left.rank !== right.rank) return left.rank - right.rank;
+        // Dentro da urgência de primeiro contato, quem está mais perto da
+        // fronteira do prazo vem primeiro: lead vencida há 2 minutos ainda vira
+        // conversa hoje, vencida há 2 dias virou trabalho de reativação. Score
+        // só desempata quando o relógio não distingue os dois.
+        if (left.rank < 0 && right.rank < 0) {
+          const distancia = (item: LeadPriority) =>
+            Math.abs(
+              new Date(item.lead.first_contact_due_at ?? 0).getTime() - referenceTime,
+            );
+          const diferenca = distancia(left) - distancia(right);
+          if (diferenca !== 0) return diferenca;
+        }
         return Number(right.lead.score ?? 0) - Number(left.lead.score ?? 0);
       });
   }, [currentRole, items, referenceTime]);
@@ -1064,6 +1124,7 @@ export default function LeadsPage() {
                 aria-label="Ordenar leads"
                 className={`min-h-11 w-full min-w-0 rounded-xl border border-white/10 bg-[#0a1120] px-3 text-[11px] text-[#cdd7e5] ${focusRing}`}
               >
+                <option value="first_contact_sla">Prazo de 1º contato</option>
                 <option value="created_at">Data de entrada</option>
                 <option value="updated_at">Última atualização</option>
                 <option value="score">Score</option>

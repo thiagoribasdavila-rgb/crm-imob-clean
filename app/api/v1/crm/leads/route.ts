@@ -5,7 +5,9 @@ import {
   canonicalCommercialRole,
   compatibleLeadStatuses,
   LIVE_LEAD_SELECT,
+  LIVE_LEAD_SELECT_WITH_SLA,
   LIVE_PROFILE_SELECT,
+  isMissingColumn,
   liveLeadSortColumn,
   mapLegacyLead,
   mapLegacyProfile,
@@ -13,7 +15,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const allowedSorts = new Set(["created_at", "updated_at", "score", "name"]);
+const allowedSorts = new Set(["created_at", "updated_at", "score", "name", "first_contact_sla"]);
 const allowedDirections = new Set(["asc", "desc"]);
 const allowedAttentionFilters = new Set(["overdue", "no_action", "hot", "unassigned"]);
 const allowedNextActionFilters = new Set(["today", "next_7_days", "scheduled"]);
@@ -143,21 +145,10 @@ export async function GET(request: NextRequest) {
   const usePagePagination = params.has("page");
   const offset = (page - 1) * limit;
   const storageSort = liveLeadSortColumn(sort);
-  let query = access.supabase
-    .from("leads")
-    .select(LIVE_LEAD_SELECT, { count: usePagePagination ? "exact" : undefined })
-    .eq("organization_id", access.access.organization.id)
-    .not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)")
-    .order(storageSort, { ascending: direction === "asc" })
-    .order("id", { ascending: direction === "asc" });
-
-  query = usePagePagination
-    ? query.range(offset, offset + limit - 1)
-    : query.limit(limit + 1);
-
-  if (status) query = query.in("status", compatibleLeadStatuses(status));
-  if (source) query = query.eq("source", source);
-  if (developmentId) query = query.eq("project_id", developmentId);
+  // Resolver o escopo da equipe exige consulta e pode recusar o pedido; fica
+  // fora do construtor da query, que precisa poder ser executado duas vezes.
+  let escopoDeEquipe: string[] | null = null;
+  let donoUnico: string | null = null;
   if (teamOwner || (assignedTo && assignedTo !== "unassigned")) {
     const { data: visibleProfiles, error: profilesError } = await access.supabase
       .from("profiles")
@@ -176,46 +167,90 @@ export async function GET(request: NextRequest) {
       if (!uuidPattern.test(teamOwner)) return apiError("INVALID_TEAM", "Gerente inválido.", access.meta, { status: 400, headers: rate.headers });
       const manager = profiles.find((profile) => profile.id === teamOwner);
       if (!manager || canonicalCommercialRole(manager.commercial_role) !== "manager") return apiError("TEAM_OUT_OF_SCOPE", "Equipe fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });
-      query = query.in("assigned_user_id", profileTeamScope(profiles, manager.id));
-    } else if (assignedTo) query = query.eq("assigned_user_id", assignedTo);
-  } else if (assignedTo === "unassigned") query = query.is("assigned_user_id", null);
-  if (minScore !== null) query = query.gte("score_ia", minScore);
-  if (maxScore !== null) query = query.lte("score_ia", maxScore);
-  if (attention) {
-    query = query.not("status", "in", `(${terminalStorageStatuses.join(",")})`);
-    if (attention === "overdue") query = query.lt("next_contact", new Date().toISOString());
-    if (attention === "no_action") query = query.is("next_contact", null);
-    if (attention === "hot") query = query.or("temperature.ilike.quente,score_ia.gte.70");
-    if (attention === "unassigned") query = query.is("assigned_user_id", null);
-  }
-  if (nextAction) {
-    query = query.not("status", "in", `(${terminalStorageStatuses.join(",")})`).not("next_contact", "is", null);
-    const now = new Date();
-    if (nextAction === "scheduled") query = query.gte("next_contact", now.toISOString());
-    if (nextAction === "today") {
-      const end = new Date(now);
-      end.setHours(23, 59, 59, 999);
-      query = query.gte("next_contact", now.toISOString()).lte("next_contact", end.toISOString());
-    }
-    if (nextAction === "next_7_days") {
-      const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      query = query.gte("next_contact", now.toISOString()).lte("next_contact", end.toISOString());
-    }
-  }
-  if (campaignIds.length) query = query.in("campaign_id", campaignIds);
-  if (search) {
-    const escaped = search.replace(/[,%()]/g, " ").trim();
-    if (escaped) query = query.or(`name.ilike.%${escaped}%,email.ilike.%${escaped}%,phone.ilike.%${escaped}%`);
+      escopoDeEquipe = profileTeamScope(profiles, manager.id);
+    } else if (assignedTo) donoUnico = assignedTo;
   }
 
-  if (!usePagePagination && cursor && sort === "created_at") {
-    const operator = direction === "desc" ? "lt" : "gt";
-    query = query.or(
-      `created_at.${operator}.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.${operator}.${cursor.id})`,
-    );
-  }
+  // A fila do corretor precisa poder ser ordenada por URGÊNCIA, não por data de
+  // entrada: lead que vence em 3 minutos vale mais que lead que chegou primeiro.
+  // Como a coluna do prazo só existe em banco com a fase 34 aplicada, a consulta
+  // é montável duas vezes — com e sem SLA — e a segunda cobre o banco legado.
+  const ordenarPorSla = sort === "first_contact_sla";
 
-  const { data, error, count } = await query;
+  const montarConsulta = (colunas: string, comSla: boolean) => {
+    let query = access.supabase
+      .from("leads")
+      .select(colunas, { count: usePagePagination ? "exact" : undefined })
+      .eq("organization_id", access.access.organization.id)
+      .not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)");
+    query = comSla && ordenarPorSla
+      // Prazo mais próximo primeiro, e quem não tem prazo vai para o fim: sem
+      // nullsFirst:false o banco jogaria as leads sem medição para o topo da fila.
+      ? query
+          .order("first_contact_due_at", { ascending: true, nullsFirst: false })
+          .order("id", { ascending: true })
+      : query
+          .order(storageSort, { ascending: direction === "asc" })
+          .order("id", { ascending: direction === "asc" });
+
+    query = usePagePagination
+      ? query.range(offset, offset + limit - 1)
+      : query.limit(limit + 1);
+
+    if (status) query = query.in("status", compatibleLeadStatuses(status));
+    if (source) query = query.eq("source", source);
+    if (developmentId) query = query.eq("project_id", developmentId);
+    if (escopoDeEquipe) query = query.in("assigned_user_id", escopoDeEquipe);
+    else if (donoUnico) query = query.eq("assigned_user_id", donoUnico);
+    else if (assignedTo === "unassigned") query = query.is("assigned_user_id", null);
+    if (minScore !== null) query = query.gte("score_ia", minScore);
+    if (maxScore !== null) query = query.lte("score_ia", maxScore);
+    if (attention) {
+      query = query.not("status", "in", `(${terminalStorageStatuses.join(",")})`);
+      if (attention === "overdue") query = query.lt("next_contact", new Date().toISOString());
+      if (attention === "no_action") query = query.is("next_contact", null);
+      if (attention === "hot") query = query.or("temperature.ilike.quente,score_ia.gte.70");
+      if (attention === "unassigned") query = query.is("assigned_user_id", null);
+    }
+    if (nextAction) {
+      query = query.not("status", "in", `(${terminalStorageStatuses.join(",")})`).not("next_contact", "is", null);
+      const now = new Date();
+      if (nextAction === "scheduled") query = query.gte("next_contact", now.toISOString());
+      if (nextAction === "today") {
+        const end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+        query = query.gte("next_contact", now.toISOString()).lte("next_contact", end.toISOString());
+      }
+      if (nextAction === "next_7_days") {
+        const end = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        query = query.gte("next_contact", now.toISOString()).lte("next_contact", end.toISOString());
+      }
+    }
+    if (campaignIds.length) query = query.in("campaign_id", campaignIds);
+    if (search) {
+      const escaped = search.replace(/[,%()]/g, " ").trim();
+      if (escaped) query = query.or(`name.ilike.%${escaped}%,email.ilike.%${escaped}%,phone.ilike.%${escaped}%`);
+    }
+
+    if (!usePagePagination && cursor && sort === "created_at") {
+      const operator = direction === "desc" ? "lt" : "gt";
+      query = query.or(
+        `created_at.${operator}.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.${operator}.${cursor.id})`,
+      );
+    }
+
+    return query;
+  };
+
+  let comSla = true;
+  let resultado = await montarConsulta(LIVE_LEAD_SELECT_WITH_SLA, true);
+  if (resultado.error && isMissingColumn(resultado.error)) {
+    // Banco sem a fase 34: a lista continua funcionando, apenas sem prazo — e a
+    // resposta diz isso, para a tela não confundir "sem medição" com "no prazo".
+    comSla = false;
+    resultado = await montarConsulta(LIVE_LEAD_SELECT, false);
+  }
+  const { data, error, count } = resultado;
 
   if (error) {
     structuredApiLog("error", "crm.leads.list_failed", request, access.meta, {
@@ -275,6 +310,10 @@ export async function GET(request: NextRequest) {
         canonicalContract: "lead-v1",
         storageContract: "atlas-live-legacy",
         databasePagination: true,
+        // A tela precisa saber a diferença entre "ninguém tinha prazo" e "este
+        // banco não mede prazo". Sem esse sinal, a fila por SLA cairia
+        // silenciosamente para ordem por data de entrada sem avisar ninguém.
+        firstContactSlaDisponivel: comSla,
       },
     },
     access.meta,
