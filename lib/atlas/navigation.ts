@@ -147,6 +147,19 @@ export const atlasNavigation = [
     dataDomains: ["decisions", "approvals", "insights"],
   },
   {
+    // Promovido do ⌘K para a rail em 2026-07-26. A regra "menos telas, menos
+    // ruído" tirou daqui os destinos de suporte — e levou junto a tela que hoje
+    // é o centro da operação de aquisição. Campanha da Meta com lead não
+    // atendida queima verba e ainda ensina o Andromeda a buscar o público
+    // errado; isso não pode morar escondido atrás de um atalho de teclado.
+    id: "marketing", surface: "canonical", group: "Gestão", label: "Marketing", href: "/marketing", icon: "◈",
+    roles: ["director", "superintendent", "manager"], accessRoles: ["admin", "director_decisor", "director"],
+    keywords: "meta andromeda criativos campanhas verba cpl roi aquisição",
+    businessOutcome: "Ver o que cada campanha trouxe, quanto foi atendido e o que a IA propõe — sem publicar nada sozinha.",
+    primaryAction: { label: "Nova campanha", href: "/marketing/nova-campanha", outcome: "Montar uma campanha para aprovação humana." },
+    dataDomains: ["marketing-campaigns", "lead-attribution", "ai-decisions"],
+  },
+  {
     id: "users", surface: "canonical", group: "Administração", label: "Usuários e acessos", href: "/users", icon: "♙",
     roles: ["director"], accessRoles: ["admin"], keywords: "permissões rbac equipe usuários segurança",
     businessOutcome: "Governar acesso, papel, vínculo organizacional e continuidade do histórico.",
@@ -189,7 +202,6 @@ export const atlasContextCommands = [
   { label: "Atividades", href: "/activity", group: "Operação", keywords: "histórico eventos registros contatos auditoria movimentação recente", roles: ["director", "superintendent", "manager", "broker"] },
   { label: "Reativação", href: "/leads/import", group: "Carteira", keywords: "base antiga oferta ativa recuperação inativos higienização reativar importar", roles: ["director", "superintendent", "manager", "broker"] },
   { label: "Imóveis", href: "/properties", group: "Launch OS", keywords: "estoque produtos unidades", roles: ["director", "superintendent", "manager", "broker"] },
-  { label: "Marketing AI", href: "/marketing", group: "Growth", keywords: "meta criativos campanhas roi", roles: ["director", "superintendent", "manager"] },
   { label: "Conversas", href: "/conversations", group: "Growth", keywords: "whatsapp instagram atendimento", roles: ["director", "superintendent", "manager", "broker"] },
   { label: "Centro de Decisão", href: "/decision-center", group: "Intelligence", keywords: "decisões alertas aprovações", roles: ["director", "superintendent", "manager"] },
 ] as const;
