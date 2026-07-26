@@ -320,7 +320,7 @@ export async function POST(request: Request) {
           await admin.from("meta_lead_events").update({ status: "processing", last_error: null }).eq("id", metaEvent.id);
           const [leadData, sourceResult] = await Promise.all([
             fetchMetaLead(metaEvent.external_lead_id),
-            admin.from("meta_lead_sources").select("default_owner_id,name,conversion_sharing_enabled,consent_basis").eq("id", metaEvent.source_id).single(),
+            admin.from("meta_lead_sources").select("default_owner_id,name,conversion_sharing_enabled,consent_basis,development_id").eq("id", metaEvent.source_id).single(),
           ]);
           const fields = leadData.field_data;
           const name = metaField(fields, "full_name", "name") || [metaField(fields, "first_name"), metaField(fields, "last_name")].filter(Boolean).join(" ") || "Lead Meta";
@@ -349,6 +349,17 @@ export async function POST(request: Request) {
             temperature: "frio",
             score: 0,
             assigned_to: ownership?.ownerId ?? null,
+            // MESMO dono nas duas colunas. `assigned_to` é a canônica da fase V3;
+            // `assigned_user_id` é a que a aplicação de fato consulta — fila do
+            // corretor, vigia de SLA, distribuição. Gravar só a canônica produz
+            // uma lead com dono no banco e ÓRFÃ na tela, e o vigia nem cobra o
+            // SLA dela (ele filtra lead sem user_id de propósito).
+            assigned_user_id: ownership?.ownerId ?? null,
+            // O empreendimento vem do formulário. Sem ele, nenhuma medição por
+            // projeto fecha: hoje as 174 leads com projeto apontam todas para o
+            // mesmo, e Arvo e Tiê estão zeradas mesmo tendo formulário ativo.
+            development_id: sourceResult.data?.development_id ?? null,
+            project_id: sourceResult.data?.development_id ?? null,
             // campaign_id é o elo que liga o lead ao dinheiro gasto; metadata.meta
             // continua idêntico (nada removido) e ganha só a linhagem da resolução.
             campaign_id: campaignLink?.campaignId ?? null,
