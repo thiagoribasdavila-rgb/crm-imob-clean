@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { comPresencaDeIa } from "@/lib/ai/presence";
 import { MessageResponse } from "@/components/ai-elements/message";
 import {
   canonicalPipelineStage,
@@ -450,7 +451,11 @@ export default function AtlasCopilotDock() {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData.session?.access_token;
-        const [briefingResponse, dailyQueueResponse] = await Promise.all([
+        // Briefing e fila do dia abrem juntos e são IA de verdade: um só
+        // anúncio cobre os dois, porque para quem olha é um trabalho só.
+        const [briefingResponse, dailyQueueResponse] = await comPresencaDeIa(
+          "Montando o briefing do dia",
+          () => Promise.all([
           token
             ? fetch("/api/ai/briefing", {
                 headers: { Authorization: `Bearer ${token}` },
@@ -468,7 +473,8 @@ export default function AtlasCopilotDock() {
                 cache: "no-store",
               })).catch(() => null)
             : Promise.resolve(null),
-        ]);
+        ]),
+        );
 
         const briefing = briefingResponse?.ok
           ? ((await briefingResponse.json()) as BriefingResponse)
@@ -1040,7 +1046,9 @@ export default function AtlasCopilotDock() {
       const token = data.session?.access_token;
       if (!token) throw new Error("Sessão expirada. Entre novamente para usar o Atlas Copilot.");
 
-      const response = await fetch("/api/ai/copilot", {
+      // A pergunta ao copiloto é a chamada de IA mais longa do produto e a que
+      // mais parece travada enquanto pensa. É a razão principal do robô existir.
+      const response = await comPresencaDeIa("Respondendo no copiloto", () => fetch("/api/ai/copilot", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1077,7 +1085,7 @@ export default function AtlasCopilotDock() {
           },
         }),
         signal: controller.signal,
-      });
+      }));
 
       const payload = (await response.json()) as { answer?: string; sources?: CopilotSource[]; calibration?: CopilotCalibration; copilot?: PersistentCopilot | null; error?: string };
       if (!response.ok) throw new Error(payload.error || "Falha ao consultar o Atlas Copilot.");

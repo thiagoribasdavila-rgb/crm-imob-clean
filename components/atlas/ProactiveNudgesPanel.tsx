@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
+import { comPresencaDeIa } from "@/lib/ai/presence";
 
 type Nudge = {
   emoji: string;
@@ -45,10 +46,12 @@ export function ProactiveNudgesPanel({ max = 4 }: { max?: number }) {
         setState({ kind: "unavailable" });
         return;
       }
-      const res = await fetch("/api/v1/ai/proactive", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        cache: "no-store",
-      });
+      const res = await comPresencaDeIa("Varrendo sinais da operação", () =>
+        fetch("/api/v1/ai/proactive", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: "no-store",
+        }),
+      );
       const body = (await res.json().catch(() => null)) as
         | { ok?: boolean; data?: { nudges?: Nudge[]; digest?: string } }
         | null;

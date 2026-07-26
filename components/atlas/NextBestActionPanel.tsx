@@ -13,6 +13,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
 import { brl, type NextBestAction } from "@/lib/ai/next-best-action";
+import { comPresencaDeIa } from "@/lib/ai/presence";
 
 /** A rota acrescenta o fator de risco dominante; o núcleo puro não o conhece. */
 type PlaylistAction = NextBestAction & { riskFactor?: string | null };
@@ -67,10 +68,15 @@ export function NextBestActionPanel({
       if (scope) query.set("scope", scope);
       if (brokerId) query.set("brokerId", brokerId);
       const suffix = query.toString() ? `?${query.toString()}` : "";
-      const res = await fetch(`/api/v1/ai/next-best-action${suffix}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        cache: "no-store",
-      });
+      // O robô do canto acende enquanto a IA decide a próxima ação. Sem isto
+      // o painel ficava mudo por segundos e não havia sinal nenhum de que algo
+      // corria — a pessoa clicava de novo achando que não tinha pegado.
+      const res = await comPresencaDeIa("Escolhendo a próxima melhor ação", () =>
+        fetch(`/api/v1/ai/next-best-action${suffix}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: "no-store",
+        }),
+      );
       if (res.status === 401 || res.status === 403) {
         setState({ kind: "denied" });
         return;

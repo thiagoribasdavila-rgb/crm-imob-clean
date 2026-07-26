@@ -60,6 +60,29 @@ export function anunciarTrabalhoDeIa(rotulo: string): () => void {
   };
 }
 
+/**
+ * Envolve uma chamada de IA anunciando o trabalho e encerrando sozinho.
+ *
+ * É a forma preferida. `anunciarTrabalhoDeIa` cru exige um `finally` que alguém
+ * um dia vai esquecer — e esquecer prende o robô em "trabalhando" para sempre,
+ * transformando o indicador na mentira que ele existe para evitar. Aqui o
+ * encerramento é estrutural: acontece no caminho de sucesso, no de erro e no de
+ * cancelamento, sem depender de disciplina de quem escreve.
+ *
+ *     const dados = await comPresencaDeIa("Lendo a carteira", () => fetch(...));
+ */
+export async function comPresencaDeIa<T>(
+  rotulo: string,
+  trabalho: () => Promise<T>,
+): Promise<T> {
+  const encerrar = anunciarTrabalhoDeIa(rotulo);
+  try {
+    return await trabalho();
+  } finally {
+    encerrar();
+  }
+}
+
 /** Assina as mudanças. Devolve a função de cancelamento. */
 export function observarPresencaDaIa(
   aoMudar: (trabalhos: TrabalhoDeIa[]) => void,
