@@ -1,5 +1,20 @@
 import type { NextConfig } from "next";
 
+/**
+ * `unsafe-eval` SÓ em desenvolvimento.
+ *
+ * O React em modo dev usa `eval()` para reconstruir pilha de chamada e alimentar
+ * o overlay de erro. Com a CSP de produção valendo também no `next dev`, o
+ * console enche de "eval() is not supported in this environment" e o overlay
+ * perde o rastreamento — quem for depurar um bug real vê o aviso da CSP no lugar
+ * do erro que procurava.
+ *
+ * Em produção o React não usa eval, e aqui a diretiva não entra: a CSP servida
+ * ao usuário final continua exatamente a mesma. Amarrado a NODE_ENV, e não a uma
+ * variável nossa, para que não exista jeito de ligar isto num build publicado.
+ */
+const emDesenvolvimento = process.env.NODE_ENV === "development";
+
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
@@ -9,7 +24,7 @@ const securityHeaders = [
       "object-src 'none'",
       "frame-ancestors 'none'",
       "form-action 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src 'self' 'unsafe-inline'${emDesenvolvimento ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",

@@ -75,6 +75,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     const next = desktopDensity === "compact" ? "comfortable" : "compact";
     setDesktopDensity(next);
     window.localStorage.setItem(DESKTOP_DENSITY_KEY, next);
+    // A sala de comando tinha o PRÓPRIO botão de densidade, com estado próprio:
+    // dava para ver a barra dizendo "Compacto" e a página "Confortável" na mesma
+    // tela. Agora a preferência é uma só e o shell avisa quem depende dela —
+    // localStorage sozinho não notifica a mesma aba.
+    window.dispatchEvent(new CustomEvent("atlas:density-changed", { detail: next }));
   }, [desktopDensity]);
 
   return (

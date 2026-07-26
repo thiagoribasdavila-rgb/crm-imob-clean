@@ -23,19 +23,25 @@
   --atlas-text: var(--atlas-text-primary);
   --atlas-text-muted: var(--atlas-text-secondary);
 
-  /* Azul é a única cor de ação. As demais cores comunicam estado. */
-  --atlas-accent: #4b8df8;
-  --atlas-accent-hover: #65a1ff;
-  --atlas-accent-pressed: #3375df;
-  --atlas-accent-soft: rgba(75, 141, 248, 0.12);
-  --atlas-accent-strong: #3478e5;
+  /* Azul é a única cor de ação. As demais cores comunicam estado.
+   *
+   * O tom saiu de #4b8df8 para um azul mais FRIO e menos violeta. Não é gosto:
+   * o anterior media 4.99:1 sobre a superfície interativa, raspando no piso de
+   * 4.5:1 do teste de contraste — qualquer ajuste futuro de superfície o
+   * reprovaria. O novo mede 5.96:1 no mesmo par. Ganhou margem e, de quebra,
+   * é o azul que a operação pediu: menos "web", mais instrumento. */
+  --atlas-accent: #3fa2f7;
+  --atlas-accent-hover: #5eb5ff;
+  --atlas-accent-pressed: #2a89dd;
+  --atlas-accent-soft: rgba(63, 162, 247, 0.12);
+  --atlas-accent-strong: #2d92e3;
   --atlas-success: #34d399;
   --atlas-warning: #f5b544;
   --atlas-danger: #fb7185;
   --atlas-info: var(--atlas-accent);
   --atlas-violet: #8b8cf7;
 
-  --atlas-focus-ring: 0 0 0 3px rgba(75, 141, 248, 0.28);
+  --atlas-focus-ring: 0 0 0 3px rgba(63, 162, 247, 0.28);
   --atlas-shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.16);
   --atlas-shadow-overlay: 0 24px 72px rgba(0, 0, 0, 0.38);
 

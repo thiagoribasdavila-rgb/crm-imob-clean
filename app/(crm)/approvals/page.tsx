@@ -139,7 +139,18 @@ export default function ApprovalsPage() {
                         onClick={() => decide(item.id, "approved")}
                         className="atlas-button-primary px-4 py-2 text-xs disabled:opacity-40"
                       >
-                        {item.entity_type === "commercial_simulation" ? "Aprovar proposta" : item.entity_type === "meta_campaign" ? "Aprovar campanha" : "Aprovar e enfileirar"}
+                        {/* O rótulo diz o que o clique FAZ. Uma decisão de stop
+                            loss chega como `meta_campaign` por ser de escopo
+                            org, mas "Aprovar campanha" prometia a coisa errada:
+                            não há campanha para aprovar, há corte de verba para
+                            autorizar — e a mudança na Meta é passo à parte. */}
+                        {item.entity_type === "commercial_simulation"
+                          ? "Aprovar proposta"
+                          : item.channel === "stop_loss"
+                            ? "Autorizar decisão"
+                            : item.entity_type === "meta_campaign"
+                              ? "Aprovar campanha"
+                              : "Aprovar e enfileirar"}
                       </button>
                     </div>
                   </>

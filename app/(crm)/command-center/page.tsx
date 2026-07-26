@@ -805,7 +805,11 @@ export default function CommandCenterPage() {
   const [presentationAnnouncement, setPresentationAnnouncement] = useState("");
   const presentationAnnouncedRef = useRef(false);
   const [collapsedLayers, setCollapsedLayers] = useState<CollapsedLayers>(defaultCollapsedLayers);
-  const [density, setDensity] = useState<"compact" | "comfortable">("comfortable");
+  // A densidade é preferência GLOBAL de leitura, não configuração desta página.
+  // Havia dois controles com o mesmo rótulo e estados independentes — a barra
+  // podia dizer "Compacto" enquanto a página dizia "Confortável", na mesma tela.
+  // Aqui a página passa a OBEDECER o shell; o botão daqui saiu.
+  const [density, setDensity] = useState<"compact" | "comfortable">("compact");
   const [seenSignalIds, setSeenSignalIds] = useState<string[]>([]);
   const [showSeenSignals, setShowSeenSignals] = useState(false);
   const [preferencesHydrated, setPreferencesHydrated] = useState(false);
@@ -907,9 +911,6 @@ export default function CommandCenterPage() {
         if (preferences.collapsed) {
           setCollapsedLayers((current) => ({ ...current, ...preferences.collapsed }));
         }
-        if (preferences.density === "compact" || preferences.density === "comfortable") {
-          setDensity(preferences.density);
-        }
         if (Array.isArray(preferences.seenSignalIds)) {
           setSeenSignalIds(
             preferences.seenSignalIds.filter((id): id is string => typeof id === "string"),
@@ -927,9 +928,30 @@ export default function CommandCenterPage() {
     if (!preferencesHydrated) return;
     window.sessionStorage.setItem(
       COMMAND_CENTER_PREFERENCES_KEY,
-      JSON.stringify({ collapsed: collapsedLayers, density, seenSignalIds }),
+      JSON.stringify({ collapsed: collapsedLayers, seenSignalIds }),
     );
-  }, [collapsedLayers, density, preferencesHydrated, seenSignalIds]);
+  }, [collapsedLayers, preferencesHydrated, seenSignalIds]);
+
+  // Segue a densidade do shell. O `storage` cobre a troca em OUTRA aba; o evento
+  // próprio cobre a mesma aba, que é onde a divergência aparecia.
+  useEffect(() => {
+    const ler = () => {
+      const salva = window.localStorage.getItem("atlas:desktop-density");
+      if (salva === "compact" || salva === "comfortable") setDensity(salva);
+    };
+    ler();
+    const aoMudar = (evento: Event) => {
+      const valor = (evento as CustomEvent<"compact" | "comfortable">).detail;
+      if (valor === "compact" || valor === "comfortable") setDensity(valor);
+      else ler();
+    };
+    window.addEventListener("atlas:density-changed", aoMudar);
+    window.addEventListener("storage", ler);
+    return () => {
+      window.removeEventListener("atlas:density-changed", aoMudar);
+      window.removeEventListener("storage", ler);
+    };
+  }, []);
 
   // Modo apresentação: fullscreen quando a API existir; sem ela o modo segue
   // apenas visual na página (fallback silencioso).
@@ -1776,19 +1798,6 @@ export default function CommandCenterPage() {
                 ? `Atualizado às ${lastUpdated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
                 : "Sincronizando"}
           </span>
-          {!presentationMode ? (
-            <button
-              type="button"
-              onClick={() =>
-                setDensity((current) => (current === "compact" ? "comfortable" : "compact"))
-              }
-              aria-pressed={density === "compact"}
-              aria-label="Alternar densidade entre compacta e confortável"
-              className="atlas-button-secondary min-h-11"
-            >
-              {density === "compact" ? "Compacta" : "Confortável"}
-            </button>
-          ) : null}
           {!presentationMode ? (
             <button
               type="button"

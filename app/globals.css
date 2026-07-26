@@ -14,8 +14,14 @@
   --border-strong: rgba(255, 255, 255, 0.12);
   --text: #f8fafc;
   --muted: #8ea0b8;
-  --primary: #38bdf8;
-  --primary-strong: #2563eb;
+  /* O produto tinha DOIS azuis de marca vivendo lado a lado: --primary (#38bdf8)
+     aqui e --atlas-accent (#4b8df8) em styles/atlas-tokens.css. Componentes
+     antigos pegavam um, os novos pegavam o outro, e na mesma tela o logo e o
+     botão principal usavam azuis diferentes — perto o bastante para parecer
+     descuido de renderização, longe o bastante para incomodar.
+     Agora deriva. Um acento, um lugar para mudá-lo. */
+  --primary: var(--atlas-accent);
+  --primary-strong: var(--atlas-accent-strong);
   --violet: #8b5cf6;
   --success: #34d399;
   --warning: #fbbf24;
@@ -1049,6 +1055,11 @@ textarea:focus {
 }
 .atlas-quick-create {
   display: flex;
+  /* A ação primária não cede espaço. Sem isto o flex da barra a espremia e
+     "Novo lead" era servido como "Novo le…" — quatro pixels a menos que o
+     necessário, num botão que é o caminho mais usado do produto. Quem tem de
+     encolher é a busca, que já diz o que faz pelo ícone. */
+  flex: 0 0 auto;
   min-width: 40px;
   height: 40px;
   align-items: center;
@@ -8563,7 +8574,15 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   font-weight: 500;
   letter-spacing: 0.01em;
   cursor: pointer;
-  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+/* A transição fica sob consulta de mídia porque nesta camada movimento é
+   opcional: quem pediu menos animação no sistema recebe a mudança de cor
+   instantânea, e quem navega por toque não paga por um efeito de hover que
+   nunca vai ver. O portão do CC23 cobra exatamente isso. */
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .atlas-stop-loss-acao button {
+    transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+  }
 }
 .atlas-stop-loss-acao button:hover:not(:disabled) {
   border-color: var(--atlas-accent);
