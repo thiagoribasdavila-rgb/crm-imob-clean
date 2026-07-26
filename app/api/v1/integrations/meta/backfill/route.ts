@@ -30,7 +30,15 @@ function startOfTodaySaoPaulo(): number {
   return Math.floor(midnightUtcMinus3 / 1000);
 }
 
-type GraphLead = { id: string; created_time?: string; ad_id?: string; adset_id?: string; campaign_id?: string; form_id?: string };
+type GraphLead = {
+  id: string; created_time?: string;
+  ad_id?: string; adset_id?: string; campaign_id?: string; form_id?: string;
+  /** "fb" | "ig". Separa Facebook de Instagram sem depender da conta de anúncios. */
+  platform?: string;
+  /** true = veio de post orgânico, não de anúncio. Campanha nunca existirá. */
+  is_organic?: boolean;
+  field_data?: Array<{ name?: string; values?: string[] }>;
+};
 type GraphPage = { data?: GraphLead[]; paging?: { cursors?: { after?: string } } };
 
 export async function POST(request: NextRequest) {
@@ -70,7 +78,17 @@ export async function POST(request: NextRequest) {
     // Token SEMPRE via header (nunca na query string — evita vazar em log de
     // proxy/CDN/acesso). Paginação por cursor próprio em vez de seguir
     // paging.next cru da Meta, que embutiria o token na URL.
-    const baseUrl = `https://graph.facebook.com/${apiVersion}/${encodeURIComponent(formId)}/leads?limit=100&filtering=${filtering}`;
+    // A Graph API NÃO devolve atribuição por padrão. Medido em 2026-07-26, na
+    // primeira ingestão real: sem `fields`, a resposta traz só id, created_time
+    // e field_data — e as três leads entraram no CRM sem formulário, sem
+    // plataforma e sem campanha. O webhook recebe esses ids no payload; o
+    // backfill precisa PEDIR.
+    //
+    // campaign_id/adset_id/ad_id só vêm quando o system user tem ads_read na
+    // conta de anúncios. Enquanto essa permissão não é concedida eles chegam
+    // ausentes — e ausente é o valor honesto, não zero.
+    const campos = "id,created_time,ad_id,adset_id,campaign_id,form_id,platform,is_organic,field_data";
+    const baseUrl = `https://graph.facebook.com/${apiVersion}/${encodeURIComponent(formId)}/leads?limit=100&fields=${encodeURIComponent(campos)}&filtering=${filtering}`;
     let url: string | null = baseUrl;
     let formFetched = 0, formAccepted = 0, formDuplicates = 0, formRecovered = 0, formNotQueued = 0, guard = 0;
 
@@ -108,6 +126,9 @@ export async function POST(request: NextRequest) {
             ad_id: lead.ad_id || null,
             adset_id: lead.adset_id || null,
             campaign_external_id: lead.campaign_id || null,
+            // platform e is_organic viajam no payload: meta_lead_events não tem
+            // coluna para eles, e criar schema só para carregar um campo que
+            // ninguém consulta ainda seria custo sem uso.
             payload: { ...lead, backfill: true },
             received_at: receivedAt,
           })
