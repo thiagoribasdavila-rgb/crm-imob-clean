@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { requireAccessContext } from "@/lib/api/security";
+import { requireAccessContext, enforceRateLimit } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +56,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // Regra de pagamento é escrita rara e de alto impacto financeiro.
+  const rate = enforceRateLimit(request, { limit: 20, windowMs: 60_000, scope: "developers.payment-rules" });
+  if (!rate.ok) return rate.response;
   const access = await requireAccessContext(request);
   if (!access.ok) return access.response;
   if (

@@ -11,7 +11,7 @@
 // -----------------------------------------------------------------------------
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { requireAccessContext } from "@/lib/api/security";
+import { requireAccessContext, enforceRateLimit } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { ensureMetaLeadFetchTask, ensureOutboxTask } from "@/lib/integrations/outbox-task";
@@ -42,6 +42,11 @@ type GraphLead = {
 type GraphPage = { data?: GraphLead[]; paging?: { cursors?: { after?: string } } };
 
 export async function POST(request: NextRequest) {
+  // Backfill pagina a Graph API em lote (até 50 páginas × 100 leads POR formulário).
+  // Clique repetido estoura cota da Meta e pode marcar o token. Três por minuto
+  // é generoso para uma operação que se faz uma vez por onda.
+  const rate = enforceRateLimit(request, { limit: 3, windowMs: 60_000, scope: "meta.backfill" });
+  if (!rate.ok) return rate.response;
   const access = await requireAccessContext(request);
   if (!access.ok) return access.response;
   if (!canManage(access.access.profile.commercialRole, access.access.profile.role)) {

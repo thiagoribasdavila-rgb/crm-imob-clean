@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { enforceRateLimit } from "@/lib/api/security";
 
 type RouteContext = { params: Promise<{ id: string }> };
 const STATES = new Set(["scheduled", "confirmed", "completed", "cancelled", "no_show"]);
@@ -26,7 +27,10 @@ export async function GET(request: Request, context: RouteContext) {
   } catch (error) { return unauthorized(error); }
 }
 
-export async function POST(request: Request, context: RouteContext) {
+export async function POST(request: NextRequest, context: RouteContext) {
+  // Agendamento escreve em lead_visits e mexe na próxima ação da lead.
+  const rate = enforceRateLimit(request, { limit: 30, windowMs: 60_000, scope: "lead.visits" });
+  if (!rate.ok) return rate.response;
   try {
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;

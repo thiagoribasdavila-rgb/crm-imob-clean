@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireApiIdentity } from "@/lib/security/api-auth";
+import { enforceRateLimit } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
@@ -23,7 +24,11 @@ function scheduledAt(index: number, dailyCap: number, intervalSeconds: number) {
   return candidate.toISOString();
 }
 
-export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  // Decisão de aprovação move verba e publica campanha. Vinte por minuto é muito
+    // acima do uso humano e barra qualquer laço automático.
+  const rate = enforceRateLimit(request, { limit: 20, windowMs: 60_000, scope: "approvals.decide" });
+  if (!rate.ok) return rate.response;
   try {
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;

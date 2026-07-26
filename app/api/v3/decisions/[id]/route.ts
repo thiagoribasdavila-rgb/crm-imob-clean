@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireApiIdentity } from "@/lib/security/api-auth";
+import { enforceRateLimit } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { resolveCommercialRole } from "@/lib/api/security";
@@ -8,7 +9,10 @@ export const dynamic = "force-dynamic";
 
 type Payload = { action?: "approve" | "reject" | "execute" | "cancel"; reason?: string };
 
-export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  // Mesma natureza da caixa de aprovações: decisão registrada, não consulta.
+  const rate = enforceRateLimit(request, { limit: 20, windowMs: 60_000, scope: "v3.decisions.decide" });
+  if (!rate.ok) return rate.response;
   try {
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;

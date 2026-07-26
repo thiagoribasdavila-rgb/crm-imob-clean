@@ -1,14 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireApiIdentity } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
-import { isDirectorProfile } from "@/lib/api/security";
+import { isDirectorProfile, enforceRateLimit } from "@/lib/api/security";
 
 export const dynamic = "force-dynamic";
 
 type RetryPayload = { eventId?: string };
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  // Reprocessar fila morta reenfileira trabalho; sem teto, um clique nervoso
+  // multiplica a fila em vez de drená-la.
+  const rate = enforceRateLimit(request, { limit: 10, windowMs: 60_000, scope: "v3.dlq.retry" });
+  if (!rate.ok) return rate.response;
   try {
     const identity = await requireApiIdentity(request);
     const body = (await request.json()) as RetryPayload;

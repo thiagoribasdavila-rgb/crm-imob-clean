@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { assessLeadCompleteness } from "@/lib/ai/data-completeness";
 import {
   buildGovernedLeadContextAuditMetadata,
@@ -14,6 +14,7 @@ import { computeAttentionSignalsForLead } from "@/lib/atlas/attention-signals";
 import { logger } from "@/lib/observability/logger";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { enforceRateLimit } from "@/lib/api/security";
 
 export const dynamic = "force-dynamic";
 
@@ -250,7 +251,11 @@ export async function GET(request: Request, context: RouteContext) {
   }
 }
 
-export async function PATCH(request: Request, context: RouteContext) {
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  // A escrita mais frequente do CRM. Teto alto o bastante para o corretor
+    // trabalhar sem tropeçar, e baixo o bastante para barrar laço de UI.
+  const rate = enforceRateLimit(request, { limit: 60, windowMs: 60_000, scope: "lead.patch" });
+  if (!rate.ok) return rate.response;
   try {
     const identity = await requireApiIdentity(request);
     const { id } = await context.params;
