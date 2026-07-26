@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { NextRequest } from "next/server";
+import { logger } from "@/lib/observability/logger";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -28,8 +29,16 @@ export async function GET(request: NextRequest) {
   const access=await requireAccessContext(request,{roles:managementRoles});if(!access.ok)return access.response;
   const admin=getSupabaseAdmin(); const {data:cycles,error}=await admin.from("meta_andromeda_learning_cycles").select("id,window_started_at,window_ended_at,signal_version,readiness_score,readiness,evidence,recommendations,blockers,status,decision_reason,decided_at,created_at").eq("organization_id",access.access.organization.id).order("created_at",{ascending:false}).limit(30);
   if(error)return apiError("ANDROMEDA_LOOP_UNAVAILABLE","Aplique a migration da Fase 92.",access.meta,{status:503});
-  let live=null;try{live=evaluateAndromedaLearning(await collectEvidence(access.access.organization.id));}catch{}
-  return apiSuccess({live,cycles:cycles||[],policy:{signalMode:"test_only",consentRequired:true,aggregatedEvidenceOnly:true,negativeSignalsInternalOnly:true,directorDecisionRequired:true,automaticAudienceChanges:false,automaticBudgetChanges:false,approvedCycleExecutesExternalChange:false}},access.meta,{headers:{...rate.headers,"Cache-Control":"no-store"}});
+  let live=null;let falhaAoAvaliar:string|null=null;
+  try{live=evaluateAndromedaLearning(await collectEvidence(access.access.organization.id));}
+  // Silêncio aqui fazia "sem aprendizado" parecer resultado quando era falha de
+  // leitura. O erro passa a ser registrado e devolvido de forma sanitizada.
+  catch(erro){falhaAoAvaliar=erro instanceof Error?erro.message.slice(0,160):"falha ao avaliar o aprendizado";logger.warn("meta.andromeda_loop.avaliacao_falhou",{motivo:falhaAoAvaliar});}
+  return apiSuccess({live,
+    // Distinguir "sem aprendizado" de "não consegui avaliar" — a tela não pode
+    // ler ausência de dado como ausência de sinal.
+    avaliacaoIndisponivel:falhaAoAvaliar,
+    cycles:cycles||[],policy:{signalMode:"test_only",consentRequired:true,aggregatedEvidenceOnly:true,negativeSignalsInternalOnly:true,directorDecisionRequired:true,automaticAudienceChanges:false,automaticBudgetChanges:false,approvedCycleExecutesExternalChange:false}},access.meta,{headers:{...rate.headers,"Cache-Control":"no-store"}});
 }
 
 export async function POST(request: NextRequest) {
