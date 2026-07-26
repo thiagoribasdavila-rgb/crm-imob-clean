@@ -65,7 +65,38 @@ export const FIRST_CONTACT_SLA_COLUMNS = [
   "first_contact_sla_met",
 ] as const;
 
-export const LIVE_LEAD_SELECT_WITH_SLA = [LIVE_LEAD_SELECT, ...FIRST_CONTACT_SLA_COLUMNS].join(",");
+/**
+ * Colunas V3 da PRÓXIMA AÇÃO. Mesma história do bloco acima, uma coluna adiante.
+ *
+ * `mapLegacyLead` faz `next_action_at: first(row, "next_action_at",
+ * "next_contact")` desde sempre — mas `next_action_at` não estava em nenhum
+ * select. A canônica nunca chegava na linha, o mapeador caía na legada, e a
+ * legada está vazia em 217/217 nesta base.
+ *
+ * Efeito medido: a AGENDA mostrava zero follow-ups com 9 leads tendo próxima
+ * ação marcada. O motor estava certo, a leitura é que não trazia o dado.
+ *
+ * Fica aqui, e não em LIVE_LEAD_SELECT, porque bases anteriores à migração V3
+ * não a têm e incluí-la no select base derrubaria com 42703 toda rota que o
+ * usa — a mesma razão que já valia para o SLA.
+ *
+ * ── CUIDADO AO ACRESCENTAR COLUNA AQUI ──────────────────────────────────────
+ *
+ * O fallback é TUDO OU NADA: uma coluna ausente devolve 42703 e a leitura cai
+ * para `LIVE_LEAD_SELECT`, perdendo o grupo inteiro — inclusive o SLA, que não
+ * tem nada a ver. Foi o que aconteceu na primeira tentativa desta correção: eu
+ * incluí `next_action_label` junto, ela NÃO existe neste banco, e o resultado
+ * foi a agenda continuar sem follow-up E o SLA parar de ser lido.
+ *
+ * Antes de somar uma coluna: confirme que ela existe no banco vivo.
+ */
+export const NEXT_ACTION_COLUMNS = ["next_action_at"] as const;
+
+export const LIVE_LEAD_SELECT_WITH_SLA = [
+  LIVE_LEAD_SELECT,
+  ...FIRST_CONTACT_SLA_COLUMNS,
+  ...NEXT_ACTION_COLUMNS,
+].join(",");
 
 export const LIVE_PROFILE_SELECT = "id,name,email,role,active,organization_id,team,max_active_leads,availability_status";
 

@@ -61,7 +61,14 @@ export async function GET(request: NextRequest) {
   }
   for (const visit of visitRows) {
     if (terminalVisits.has(String(visit.status))) continue;
-    const lead = Array.isArray(visit.lead) ? visit.lead[0] : visit.lead;
+    // `visit.lead` NUNCA existiu: o select acima pede
+    // "id,lead_id,scheduled_at,status,format,location" e não faz join. Toda
+    // visita da agenda aparecia como "Cliente · local a confirmar" — sem dizer
+    // com QUEM é, que é a única informação que importa numa agenda.
+    //
+    // O `leadMap` já está montado logo acima, com os mesmos leads. Resolver por
+    // ele custa nada e não precisa de join novo.
+    const lead = visit.lead_id ? leadMap.get(String(visit.lead_id)) : null;
     items.push({ id: String(visit.id), kind: "visit", title: visit.format === "video" ? "Videochamada" : "Visita ao projeto", at: String(visit.scheduled_at), status: String(visit.status||"agendado"), detail: `${lead?.name || "Cliente"} · ${visit.location || "local a confirmar"}`, href: `/leads/${visit.lead_id}/schedule`, leadId: visit.lead_id ? String(visit.lead_id) : null, overdue: new Date(String(visit.scheduled_at)).getTime() < now });
   }
   for (const lead of leadRows) {
