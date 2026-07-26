@@ -148,6 +148,7 @@ novo.
 | 5 | Agenda | olhar uma visita agendada | mostra o NOME do cliente, não "Cliente" |
 | 6 | Clientes 360 | olhar as lacunas de um cliente com projeto e finalidade | não acusa "sem projeto" nem "sem finalidade" |
 | 7 | Distribuição / Corretores | listar as pessoas | todos com nome, ninguém como "Usuário Atlas" |
+| 8 | Projetos | abrir a lista de empreendimentos | Inside Perdizes mostra as leads dele, não zero |
 
 ### Números que precisam continuar honestos
 

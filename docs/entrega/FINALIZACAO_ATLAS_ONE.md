@@ -71,6 +71,5 @@ A pergunta de revisão que fica: não *"isso está implementado?"*, mas
 
 1. `ai:calibration` — 71 controles, nunca esteve verde. Afere comportamentos de
    fases nunca construídas. É escopo de produto, não defeito.
-2. `crm_projects` vs `developments` — mesma entidade, IDs diferentes. Exige
-   migração de dados e decisão do cliente.
-3. Quatro integrações externas bloqueadas por credencial, saldo ou permissão.
+2. Quatro integrações externas bloqueadas por credencial, saldo ou permissão.
+3. A agenda é somente leitura: não dá para reagendar de dentro dela.

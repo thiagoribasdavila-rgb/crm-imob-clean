@@ -38,8 +38,9 @@ característica: **nenhum produzia erro na tela**. É por isso que sobreviveram.
 | A tela promete o que o motor não faz | tarefas, distribuição | alerta de tarefas atrasadas nunca disparou; "carga ÷ peso" sem peso configurado |
 | Tela em branco por recuo estreito demais | vendas | `opportunities` vazia não acionava o recuo para `leads` |
 
-As três primeiras raízes estão **fechadas**. A quarta — duas tabelas para a mesma
-entidade — está descrita em "Riscos restantes" e depende de decisão do cliente.
+| Duas tabelas para a mesma entidade | projetos | `crm_projects` e `developments` com IDs diferentes: 4 projetos com zero leads, sendo que um tem 174 |
+
+**As quatro raízes estão fechadas.**
 
 ---
 
@@ -151,16 +152,23 @@ Nenhuma coluna foi removida; nenhuma linha foi apagada.
 
    `@prisma/client` saiu de `dependencies`: ia para produção e nenhum arquivo do
    código-fonte o importa. O CLI `prisma` fica em dev, usado por um script.
-7. **`crm_projects` e `developments` são a mesma coisa com IDs diferentes.**
-   Medido: os quatro empreendimentos existem nas duas tabelas com identificadores
-   distintos. A tela de Projetos lê `crm_projects`; os 174 leads apontam para
-   `developments`. Nenhuma junção fecha — os quatro projetos aparecem com **zero
-   leads**, sendo que Inside Perdizes tem 174.
+7. ~~`crm_projects` e `developments` são a mesma coisa com IDs diferentes~~ —
+   **RESOLVIDO.** O risco tinha sido superestimado neste relatório: ao medir
+   quem depende de cada tabela, `crm_projects` revelou-se um cadastro de 4
+   linhas **para o qual nada aponta** — as 6 tabelas que a referenciam têm zero
+   linhas preenchidas, contra 33 tabelas que referenciam `developments`.
 
-   O espelhamento entre as tabelas gerou linhas novas em vez de reusar os IDs.
-   Corrigir exige **migração de dados** (unificar os IDs ou criar o mapeamento),
-   o que mexe em dado real e é decisão do cliente. Um remendo casando por nome
-   esconderia o problema e criaria uma terceira forma de resolver a mesma coisa.
+   Não havia dado para migrar nem chave para repontar. A migration
+   `20260727010000` garantiu que todo projeto do cadastro antigo exista no novo
+   (uma linha: o Spin Mood) e a leitura passou para `developments`.
+   `crm_projects` **não foi apagada** — nada aponta para ela e derrubá-la seria
+   destruição sem ganho.
+
+   Junto veio a correção que torna isso visível: a contagem de leads por projeto
+   vinha de `marketing_campaigns.leads_count`, que só existe quando a campanha é
+   registrada E ligada ao projeto — todo projeto mostrava zero. Agora
+   `totalLeads` vem de `leads.development_id`, ao lado de `campaignLeads` e não
+   no lugar dele. Inside Perdizes: 174, batendo com o banco.
 
 8. **A agenda é somente leitura.** Não há formulário nem POST: vê-se um
    follow-up atrasado e não se reagenda dali. Os itens levam para a ficha da
