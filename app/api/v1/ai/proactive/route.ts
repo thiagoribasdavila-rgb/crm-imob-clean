@@ -23,6 +23,7 @@ import { anomalyForecast, type ForecastWeek } from "@/lib/meta/marketing/forecas
 import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
 import { proactiveNudges, nudgeDigest, type Role, type ProactiveInput } from "@/lib/ai/proactive-hierarchy";
+import { sinaisDeAquisicao } from "@/lib/ai/acquisition-signals";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,40 @@ export async function GET(request: NextRequest) {
         input.forecast = { anomalies: anomalyForecast(weeks, { anomalyLeadDropPct: cal.forecast.anomalyLeadDropPct }) };
       }
     }
+  }
+
+  // ── SAÚDE DA PORTA DE ENTRADA ──────────────────────────────────────────
+  // Não depende de token da Meta nem de saldo de IA: é aritmética sobre o que o
+  // banco já sabe. Entra para liderança porque as ações — registrar formulário,
+  // distribuir fila, conceder permissão — não são do corretor.
+  if (role !== "broker") {
+    const [pagasSemCampanha, semDono, slaVencido, ultima] = await Promise.all([
+      admin.from("leads").select("id", { count: "exact", head: true })
+        .eq("organization_id", org).eq("source", "Meta Lead Ads").is("campaign_id", null),
+      admin.from("leads").select("id", { count: "exact", head: true })
+        .eq("organization_id", org).not("campaign_id", "is", null).is("assigned_user_id", null),
+      admin.from("leads").select("id", { count: "exact", head: true })
+        .eq("organization_id", org).not("campaign_id", "is", null)
+        .is("first_contacted_at", null).lt("first_contact_due_at", new Date().toISOString()),
+      admin.from("meta_lead_events").select("received_at")
+        .eq("organization_id", org).order("received_at", { ascending: false }).limit(1).maybeSingle(),
+    ]);
+
+    const recebidoEm = ultima.data?.received_at ? Date.parse(String(ultima.data.received_at)) : null;
+    input.acquisition = sinaisDeAquisicao({
+      // Descoberta de formulário exige chamada à Meta e é ação sob demanda; o
+      // motor proativo não a dispara sozinha para não gastar cota a cada visita.
+      fontesOrfas: 0,
+      formulariosForaDoCrm: 0,
+      leadsForaDoCrm: 0,
+      leadsPagasSemCampanha: pagasSemCampanha.count ?? 0,
+      leadsDeCampanhaSemDono: semDono.count ?? 0,
+      leadsDeCampanhaComSlaVencido: slaVencido.count ?? 0,
+      diasSemLeadNova: recebidoEm ? Math.floor((Date.now() - recebidoEm) / 86_400_000) : null,
+      // A conta de anúncios é considerada acessível quando há token E conta
+      // configurados; a prova real fica no centro de saúde, que faz a chamada.
+      contaDeAnunciosAcessivel: Boolean(process.env.META_ADS_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID),
+    });
   }
 
   // sinais de time/carteira — best-effort (dependem de tabelas da Fase 0)

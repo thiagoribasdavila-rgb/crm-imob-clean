@@ -24,6 +24,8 @@ import type { MarketingPlan } from "./marketing-strategist";
 
 export type Role = "director" | "superintendent" | "manager" | "broker";
 
+import type { SinalDeAquisicao } from "@/lib/ai/acquisition-signals";
+
 export type Nudge = {
   role: Role;
   emoji: string;
@@ -50,6 +52,17 @@ export type ProactiveInput = {
   brokerHotLeads?: number;
   /** Sinais preditivos do forecast (anomalias já detectadas por outro motor). */
   forecast?: { anomalies?: string[] };
+  /**
+   * Saúde da PORTA DE ENTRADA (lib/ai/acquisition-signals).
+   *
+   * O motor vigiava mídia, criativo, aprovação e SLA de time — e não vigiava se
+   * a lead sequer entra. Todos os defeitos de ingestão medidos em 2026-07-26
+   * eram silenciosos: nenhum gerava erro, todos geravam ausência.
+   *
+   * Só chega a quem pode agir: diretoria e gestão. Corretor não registra
+   * formulário nem concede permissão de conta de anúncios.
+   */
+  acquisition?: SinalDeAquisicao[];
 };
 
 /** Score criativo abaixo disto = crítico (mesmo limiar do briefing executivo). */
@@ -103,8 +116,28 @@ function calmNudge(role: Role): Nudge {
 
 // ---- geradores por papel (cada um enxerga SÓ o seu mundo) ----
 
+/**
+ * Sinais de aquisição viram nudge sem tradução: eles já nascem com título,
+ * detalhe, ação e urgência. Converter aqui evita duplicar o julgamento em dois
+ * lugares — se a gravidade mudar lá, muda aqui junto.
+ *
+ * Só diretoria e gestão recebem: registrar formulário e conceder permissão de
+ * conta de anúncios não são ações de corretor.
+ */
+function acquisitionNudges(input: ProactiveInput, role: Role): Nudge[] {
+  return (input.acquisition ?? []).map((sinal) => ({
+    role,
+    emoji: sinal.emoji,
+    title: sinal.titulo,
+    detail: sinal.detalhe,
+    action: sinal.acao,
+    urgency: sinal.urgencia,
+    scope: "marketing" as const,
+  }));
+}
+
 function directorNudges(input: ProactiveInput): Nudge[] {
-  const out: Nudge[] = [];
+  const out: Nudge[] = [...acquisitionNudges(input, "director")];
 
   // Anomalia PREDITIVA vira decisão do diretor (o forecast já detectou; ele decide).
   const anomalies = input.forecast?.anomalies ?? [];
@@ -192,7 +225,10 @@ function superintendentNudges(input: ProactiveInput): Nudge[] {
 }
 
 function managerNudges(input: ProactiveInput): Nudge[] {
-  const out: Nudge[] = [];
+  // O gestor recebe só o que é dele: lead sem dono e SLA estourado. Formulário
+  // e permissão de conta são da diretoria.
+  const out: Nudge[] = acquisitionNudges(input, "manager")
+    .filter((n) => /sem responsável|prazo estourado/.test(n.title));
 
   // SLA do SEU time.
   const sla = input.teamSlaBreaches ?? 0;
