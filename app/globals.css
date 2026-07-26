@@ -9001,3 +9001,25 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
     transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
   }
 }
+
+/* Rodapé da coluna do Kanban: o que ficou de fora do corte.
+   Existe porque coluna que desenha 25 de 205 sem avisar passa a impressão de
+   que aquilo é tudo — e a etapa "novo" desta operação tem 94% da carteira. */
+.atlas-pipeline-column-resto {
+  margin: 4px 0 0;
+  border-top: 1px dashed var(--atlas-border-strong);
+  padding-top: 10px;
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.atlas-pipeline-column-resto strong {
+  color: var(--atlas-text-primary);
+  font-family: var(--cc23-font-num);
+  font-variant-numeric: tabular-nums;
+}
+.atlas-pipeline-column-resto a {
+  color: var(--atlas-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

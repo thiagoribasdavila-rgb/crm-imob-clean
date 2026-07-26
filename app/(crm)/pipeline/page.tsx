@@ -399,13 +399,39 @@ export default function PipelinePage() {
     return DEFAULT_PIPELINE_STAGES.map((stage) => ({ key: stage.key, label: configured.get(stage.key) || stage.label }));
   }, [stages]);
 
+  /**
+   * Cobertura mínima de orçamento para publicar valor de pipeline.
+   *
+   * Na base real, 18 de 217 leads (8%) têm `budget_max`. "Pipeline bruto:
+   * R$ 12 mi" somava esses 8% e era lido como a base inteira — número que
+   * PARECE medido e não é. É o mesmo defeito que o CPL do marketing tinha, ao
+   * contrário: lá zero fingia de medido; aqui uma amostra finge de total.
+   *
+   * Abaixo deste piso o valor não é publicado: aparece o que falta preencher,
+   * que é acionável. Acima dele o valor sai com a cobertura declarada ao lado,
+   * porque somar 60% da base e chamar de "pipeline" continua sendo meia
+   * verdade se ninguém disser que são 60%.
+   */
+  const COBERTURA_MINIMA_DE_ORCAMENTO = 0.4;
+
   const metrics = useMemo(() => {
     const open = leads.filter((lead) => !["ganho", "perdido", "comprou_outro"].includes(lead.status ?? "novo"));
-    const pipeline = open.reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0);
-    const forecast = open.reduce((sum, lead) => {
-      const stage = stages.find((item) => item.key === (lead.status ?? "novo"));
-      return sum + Number(lead.budget_max ?? 0) * ((stage?.probability ?? 5) / 100);
-    }, 0);
+    const comOrcamento = open.filter((lead) => Number(lead.budget_max ?? 0) > 0);
+    const cobertura = open.length ? comOrcamento.length / open.length : 0;
+    const orcamentoConfiavel = cobertura >= COBERTURA_MINIMA_DE_ORCAMENTO;
+
+    // `null` quando a cobertura não sustenta o número. Null vira "—" na tela e
+    // a explicação vem junto; zero viraria "R$ 0" e ninguém pergunta nada.
+    const pipeline = orcamentoConfiavel
+      ? comOrcamento.reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0)
+      : null;
+    const forecast = orcamentoConfiavel
+      ? comOrcamento.reduce((sum, lead) => {
+          const stage = stages.find((item) => item.key === (lead.status ?? "novo"));
+          return sum + Number(lead.budget_max ?? 0) * ((stage?.probability ?? 5) / 100);
+        }, 0)
+      : null;
+
     const hot = open.filter((lead) => lead.temperature === "quente" || Number(lead.score ?? 0) >= 70).length;
     const highRisk = open.filter((lead) => leadRisk(lead) === "alto").length;
     const won = leads.filter((lead) => lead.status === "ganho").reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0);
@@ -414,12 +440,45 @@ export default function PipelinePage() {
     const overdueActions = open.filter(isNextActionOverdue).length;
     const noNextAction = open.filter((lead) => !lead.next_action_at).length;
     const stalled = open.filter((lead) => Boolean(proactiveSignal(lead))).length;
-    return { open: open.length, pipeline, forecast, hot, highRisk, won, buyerProfiles, firstContactOverdue, overdueActions, noNextAction, stalled };
+    return {
+      open: open.length, pipeline, forecast, hot, highRisk, won, buyerProfiles,
+      firstContactOverdue, overdueActions, noNextAction, stalled,
+      semOrcamento: open.length - comOrcamento.length,
+      coberturaDeOrcamento: cobertura,
+      orcamentoConfiavel,
+    };
   }, [leads, stages]);
+
+  /**
+   * Quantos cards uma coluna desenha antes de parar e dizer quantos faltam.
+   *
+   * A etapa "novo" tem 205 dos 217 negócios desta base — 94% num quadro de oito
+   * colunas. Desenhar os 205 não é completude: é 205 cards arrastáveis, com
+   * badge, telefone e sinal, empilhados numa coluna que ninguém rola até o fim.
+   * A décima quinta lead já não é encontrada; a centésima nem existe na prática.
+   *
+   * A ordenação já é por prioridade, então os primeiros são os que importam. O
+   * resto vira uma linha honesta com o caminho para a fila completa, que é a
+   * tela feita para trabalhar volume.
+   */
+  const LIMITE_DE_CARDS_POR_COLUNA = 25;
 
   const stageData = useMemo(() => stages.map((stage) => {
     const items = visibleLeads.filter((lead) => (lead.status ?? "novo") === stage.key);
-    return { ...stage, items, value: items.reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0) };
+    const comOrcamento = items.filter((lead) => Number(lead.budget_max ?? 0) > 0);
+    return {
+      ...stage,
+      items,
+      visiveis: items.slice(0, LIMITE_DE_CARDS_POR_COLUNA),
+      ocultos: Math.max(0, items.length - LIMITE_DE_CARDS_POR_COLUNA),
+      // `null` quando nenhuma lead da etapa tem orçamento. Antes saía
+      // "R$ 0,00" no topo de toda coluna, que lia como "esta etapa não vale
+      // nada" em vez de "ninguém preencheu o orçamento".
+      value: comOrcamento.length
+        ? comOrcamento.reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0)
+        : null,
+      semOrcamento: items.length - comOrcamento.length,
+    };
   }), [stages, visibleLeads]);
   const boardStages = useMemo(() => hideEmpty ? stageData.filter((stage) => stage.items.length > 0) : stageData, [hideEmpty, stageData]);
   const activeMobileStage = boardStages.some((stage) => stage.key === mobileStage) ? mobileStage : boardStages[0]?.key;
@@ -573,13 +632,29 @@ export default function PipelinePage() {
         </dl>
       </section>
 
-      {!focusMode ? <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      {/* Cinco métricas, não seis: "Perfis compradores" (comprou_outro) vale
+          zero e não muda decisão nenhuma — quem quiser vê a lista logo abaixo.
+          Dinheiro só aparece quando a base sustenta o número. */}
+      {!focusMode ? <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         <AtlasMetric icon="📊" label="Negócios abertos" value={loading ? "—" : metrics.open} tone="blue" />
-        <AtlasMetric icon="💰" label="Pipeline bruto" value={loading ? "—" : brl.format(metrics.pipeline)} tone="violet" />
-        <AtlasMetric icon="📈" label="Forecast" value={loading ? "—" : brl.format(metrics.forecast)} detail="Ponderado por etapa" tone="green" />
+        <AtlasMetric
+          icon="💰"
+          label="Pipeline"
+          value={loading ? "—" : metrics.pipeline === null ? "—" : brl.format(metrics.pipeline)}
+          detail={loading ? "" : metrics.pipeline === null
+            ? `${metrics.semOrcamento} negócio(s) sem orçamento — some com a base atual seria chute`
+            : `sobre ${Math.round(metrics.coberturaDeOrcamento * 100)}% da carteira com orçamento`}
+          tone="violet"
+        />
+        <AtlasMetric
+          icon="📈"
+          label="Forecast"
+          value={loading ? "—" : metrics.forecast === null ? "—" : brl.format(metrics.forecast)}
+          detail={metrics.forecast === null ? "depende do orçamento preenchido" : "ponderado por etapa"}
+          tone="green"
+        />
         <AtlasMetric icon="🔥" label="Leads quentes" value={loading ? "—" : metrics.hot} tone="rose" />
         <AtlasMetric icon="⚠️" label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} tone="amber" />
-        <AtlasMetric icon="🎯" label="Perfis compradores" value={loading ? "—" : metrics.buyerProfiles} detail="Compraram em outro lugar" tone="green" />
       </section> : null}
 
       <section className="atlas-pipeline-priority-queue" aria-labelledby="atlas-pipeline-priority-title" aria-live="polite" data-priority-source="authorized-loaded-pipeline">
@@ -658,14 +733,14 @@ export default function PipelinePage() {
         {stageData.map((stage, index) => (
           <div key={stage.key} style={{ "--flow": `${stage.probability}%` } as CSSProperties}>
             <span>{String(index + 1).padStart(2, "0")}</span>
-            <p><strong>{stage.label}</strong><small>{stage.items.length} leads · {brl.format(stage.value)}</small></p>
+            <p><strong>{stage.label}</strong><small>{stage.items.length} leads{stage.value !== null ? ` · ${brl.format(stage.value)}` : ""}</small></p>
             <i><b /></i>
           </div>
         ))}
       </section> : null}
 
       <AtlasCard>
-        <AtlasCardHeader eyebrow="Fluxo comercial" title="Oportunidades por etapa" description="Arraste os cards ou use o seletor. Toda movimentação permanece registrada." action={<span className="text-xs text-slate-500">{visibleLeads.length} visíveis · forecast {brl.format(metrics.forecast)}</span>} />
+        <AtlasCardHeader eyebrow="Fluxo comercial" title="Oportunidades por etapa" description="Arraste os cards ou use o seletor. Toda movimentação permanece registrada." action={<span className="text-xs text-slate-500">{visibleLeads.length} visíveis{metrics.forecast !== null ? ` · forecast ${brl.format(metrics.forecast)}` : ""}</span>} />
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-4 sm:px-6 xl:flex-row xl:items-center xl:justify-between" aria-label="Controles do Kanban">
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500" htmlFor="pipeline-sort">Ordenar</label>
@@ -690,12 +765,14 @@ export default function PipelinePage() {
               <section key={stage.key} role="tabpanel" aria-label={`${stage.label}: ${stage.items.length} leads${colSignals && colSignals.stalled > 0 ? `, ${colSignals.stalled} sem atualização há 3 ou mais dias` : ""}`} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""} ${activeMobileStage !== stage.key ? "is-mobile-hidden" : ""}`}>
                 <div className="atlas-pipeline-column-header mb-4 border-b border-white/[0.06] pb-3">
                   <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white">{stage.label}</h3><div className="flex shrink-0 items-center gap-1.5">{colSignals && colSignals.stalled > 0 ? <span className={`cc6-chip ${colSignals.rose > 0 || colSignals.hot > 0 ? "cc6-crit" : "cc6-warn"}`} title={`${colSignals.stalled} de ${stage.items.length} lead(s) desta etapa sem atualização registrada há 3 ou mais dias.`}>{colSignals.stalled} {colSignals.stalled === 1 ? "parado" : "parados"}</span> : null}<span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] font-semibold tabular-nums text-slate-300">{stage.items.length}</span></div></div>
-                  <p className="mt-2 text-xs text-slate-500">{brl.format(stage.value)}</p>
+                  <p className="mt-2 text-xs text-slate-500">{stage.value === null
+                    ? `${stage.items.length ? "orçamento não informado" : "—"}`
+                    : `${brl.format(stage.value)}${stage.semOrcamento ? ` · ${stage.semOrcamento} sem orçamento` : ""}`}</p>
                   <div className="mt-3"><AtlasProgress value={stage.probability} /></div>
                 </div>
 
                 {loading ? <div className="space-y-3">{[1,2,3].map((item) => <AtlasSkeleton key={item} className="h-36 w-full" />)}</div> : stage.items.length === 0 ? <AtlasEmpty reason="no-activity" eyebrow="Etapa disponível" title="Etapa vazia" description="Arraste uma oportunidade para esta etapa quando ela avançar no atendimento." /> : <div className="space-y-3">
-                  {stage.items.map((lead) => {
+                  {stage.visiveis.map((lead) => {
                     const risk = leadRisk(lead);
                     const contactSla = firstContactSla(lead);
                     const guidance = brokerGuidance(lead);
@@ -756,6 +833,18 @@ export default function PipelinePage() {
                       </article>
                     );
                   })}
+                  {/* Corte declarado, nunca silencioso. Uma coluna que desenha
+                      25 de 205 e não diz nada é pior que uma que desenha 205:
+                      passa a impressão de que aquilo é tudo. */}
+                  {stage.ocultos > 0 ? (
+                    <p className="atlas-pipeline-column-resto">
+                      Mostrando os {stage.visiveis.length} mais prioritários.
+                      {" "}<strong>+{stage.ocultos}</strong> nesta etapa.{" "}
+                      <Link href={`/leads?status=${encodeURIComponent(stage.key)}&sort=first_contact_sla`}>
+                        Abrir a fila completa
+                      </Link>
+                    </p>
+                  ) : null}
                 </div>}
               </section>
               );
