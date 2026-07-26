@@ -116,6 +116,20 @@ type Calibration = { summary: string[] };
  * Fila de represadas: o que já foi pago e ainda não entrou no CRM.
  * Liberar é ato do diretor — cada lead liberada nasce com relógio correndo.
  */
+/**
+ * Veredito do stop loss. `executaSozinho: false` viaja no payload de propósito:
+ * a tela precisa poder afirmar, sem interpretar, que nada foi executado.
+ */
+type StopLoss = {
+  acao: "seguir" | "reduzir" | "pausar";
+  resumo: string;
+  orcamento: { teto: number | null; gasto: number | null; cplAlvo: number | null };
+  decisoes: Array<{ regra: string; acao: string; motivo: string; proposta: string; gravidade: number }>;
+  naoAvaliado: string[];
+  ressalvas: string[];
+  governanca: { executaSozinho: boolean; exigeAprovacaoHumana: boolean; onde: string };
+};
+
 type FilaDeRepresadas = {
   disponivel: boolean;
   motivo?: string;
@@ -243,6 +257,7 @@ export default function MarketingPage() {
   const [cost, setCost] = useState<FetchState<CostReport>>({ status: "loading" });
   const [andromeda, setAndromeda] = useState<FetchState<Andromeda>>({ status: "loading" });
   const [calibration, setCalibration] = useState<FetchState<Calibration>>({ status: "loading" });
+  const [stopLoss, setStopLoss] = useState<StopLoss | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [dim, setDim] = useState<Dim>("byCampaign");
@@ -324,17 +339,19 @@ export default function MarketingPage() {
     const keep = <T,>(previous: FetchState<T>, next: FetchState<T>): FetchState<T> =>
       next.status === "error" && previous.status === "ok" ? previous : next;
     async function load() {
-      const [costNext, andromedaNext, calibrationNext, performanceNext] = await Promise.all([
+      const [costNext, andromedaNext, calibrationNext, performanceNext, stopLossNext] = await Promise.all([
         fetchApi<CostReport>("/api/v1/marketing/cost-report"),
         fetchApi<Andromeda>("/api/v1/marketing/andromeda"),
         fetchApi<Calibration>("/api/v1/ai/calibration"),
         fetchApi<CampaignPerformance>("/api/v1/marketing/campaign-performance"),
+        fetchApi<StopLoss>("/api/v1/marketing/stop-loss"),
       ]);
       if (!active) return;
       setCost((previous) => keep(previous, costNext));
       setAndromeda((previous) => keep(previous, andromedaNext));
       setCalibration((previous) => keep(previous, calibrationNext));
       setPerformance((previous) => keep(previous, performanceNext));
+      if (stopLossNext.status === "ok") setStopLoss(stopLossNext.data);
       if (costNext.status === "ok") setUpdatedAt(new Date());
     }
     load();
@@ -423,6 +440,56 @@ export default function MarketingPage() {
           ].filter(Boolean).join(", ")} atingiram o teto de paginação. Os números abaixo são MÍNIMOS
           observados, não totais — não decida pausa de campanha por eles.
         </p>
+      ) : null}
+
+      {/* STOP LOSS — primeiro de tudo. Se a recomendação é parar de comprar,
+          nenhum outro número desta tela deve ser lido antes. */}
+      {stopLoss ? (
+        <section
+          aria-label="Stop loss de verba"
+          data-acao={stopLoss.acao}
+          className="atlas-stop-loss cc6-reveal"
+        >
+          <div className="atlas-stop-loss-head">
+            <span className="atlas-stop-loss-flag">
+              {stopLoss.acao === "pausar" ? "PARAR" : stopLoss.acao === "reduzir" ? "REDUZIR" : "SEGUIR"}
+            </span>
+            <p>{stopLoss.resumo}</p>
+            {stopLoss.orcamento.teto ? (
+              <span className="atlas-stop-loss-budget cc6-num">
+                {stopLoss.orcamento.gasto === null ? "gasto não lido" : stopLoss.orcamento.gasto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                {" / "}
+                {stopLoss.orcamento.teto.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </span>
+            ) : null}
+          </div>
+
+          {stopLoss.decisoes.length ? (
+            <ul className="atlas-stop-loss-list">
+              {stopLoss.decisoes.map((d) => (
+                <li key={d.regra} data-acao={d.acao}>
+                  <p className="atlas-stop-loss-why">{d.motivo}</p>
+                  <p className="atlas-stop-loss-what">{d.proposta}</p>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {[...stopLoss.naoAvaliado, ...stopLoss.ressalvas].length ? (
+            <details className="atlas-stop-loss-gaps">
+              <summary>{stopLoss.naoAvaliado.length + stopLoss.ressalvas.length} regra(s) sem dado para avaliar</summary>
+              {[...stopLoss.naoAvaliado, ...stopLoss.ressalvas].map((linha) => (
+                <p key={linha}>{linha}</p>
+              ))}
+            </details>
+          ) : null}
+
+          {/* A frase que impede a leitura errada: nada foi executado. */}
+          <p className="atlas-stop-loss-rule">
+            Recomendação, não execução. Nenhuma campanha foi pausada e nenhuma verba foi alterada —
+            a decisão vale quando for aprovada em <a href={stopLoss.governanca.onde}>/approvals</a>.
+          </p>
+        </section>
       ) : null}
 
       {/* Fila de represadas: lead que já custou verba e não está na operação.

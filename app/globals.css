@@ -8451,3 +8451,122 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 :root[data-theme="light"] .atlas-kanban-scroll {
   scrollbar-color: rgba(11, 99, 197, 0.28) transparent;
 }
+
+/* ── STOP LOSS ──────────────────────────────────────────────────────────────
+   Um bloco, três estados, zero enfeite. A cor não é decoração: é a única
+   informação que precisa ser lida a três metros de distância. Todo o resto é
+   texto, porque motivo e proposta não cabem em ícone.
+
+   Sem glow e sem gradiente: a linguagem é profundidade por geometria, e uma
+   recomendação de parar de gastar não precisa de brilho para ser levada a sério.
+
+   Tudo por token, nenhum hex — o portão do CC23 cobra isso, e com razão: cor
+   cravada aqui trava o white-label e some do tema claro. As duas variáveis
+   locais (--stop-*) são declaradas no próprio bloco e derivadas dos tokens
+   semânticos, então mudar a paleta muda este componente junto. */
+.atlas-stop-loss {
+  --stop-tom: var(--atlas-border-strong);
+  --stop-tinta: var(--atlas-text-secondary);
+  overflow: hidden;
+  border: 1px solid var(--stop-tom);
+  border-left-width: 3px;
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--stop-tom) 8%, transparent);
+}
+.atlas-stop-loss[data-acao="reduzir"] {
+  --stop-tom: var(--atlas-warning);
+  --stop-tinta: var(--atlas-warning);
+}
+.atlas-stop-loss[data-acao="pausar"] {
+  --stop-tom: var(--atlas-danger);
+  --stop-tinta: var(--atlas-danger);
+}
+.atlas-stop-loss-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+}
+.atlas-stop-loss-head p {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  color: var(--atlas-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.atlas-stop-loss-flag {
+  padding: 4px 10px;
+  border: 1px solid var(--stop-tom);
+  border-radius: 999px;
+  color: var(--stop-tinta);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+.atlas-stop-loss-budget {
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+/* Em tela estreita os três itens do cabeçalho disputam a mesma linha e o resumo
+   — que é a frase mais importante do bloco — vira uma coluna de duas palavras.
+   O número da verba desce para a própria linha e devolve a largura ao texto. */
+@media (max-width: 640px) {
+  .atlas-stop-loss-head { row-gap: 6px; }
+  .atlas-stop-loss-head p { flex-basis: 100%; order: 3; }
+  .atlas-stop-loss-budget { order: 2; margin-left: auto; }
+}
+.atlas-stop-loss-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.atlas-stop-loss-list li {
+  padding: 10px 18px;
+  border-top: 1px solid var(--atlas-border-subtle);
+}
+/* O motivo é o fato; a proposta é o que se aprova. Hierarquia por peso e cor,
+   não por caixa nem por ícone — dois níveis bastam. */
+.atlas-stop-loss-why {
+  margin: 0;
+  color: var(--atlas-text-primary);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.atlas-stop-loss-what {
+  margin: 3px 0 0;
+  color: var(--atlas-text-tertiary);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.atlas-stop-loss-list li[data-acao="pausar"] .atlas-stop-loss-why { color: var(--atlas-danger); }
+.atlas-stop-loss-gaps {
+  border-top: 1px solid var(--atlas-border-subtle);
+  padding: 9px 18px;
+}
+.atlas-stop-loss-gaps summary {
+  cursor: pointer;
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  list-style: none;
+}
+.atlas-stop-loss-gaps summary::-webkit-details-marker { display: none; }
+.atlas-stop-loss-gaps summary::before { content: "+ "; }
+.atlas-stop-loss-gaps[open] summary::before { content: "\2013 "; }
+.atlas-stop-loss-gaps p {
+  margin: 7px 0 0;
+  color: var(--atlas-text-secondary);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.atlas-stop-loss-rule {
+  margin: 0;
+  padding: 9px 18px 12px;
+  border-top: 1px solid var(--atlas-border-subtle);
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.atlas-stop-loss-rule a { color: var(--atlas-accent); }

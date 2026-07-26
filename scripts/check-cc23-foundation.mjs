@@ -106,6 +106,15 @@ for (const m of `${tokens}\n${rootBlocos}`.matchAll(/^\s*(--[a-z0-9-]+)\s*:\s*([
   declaracoes.set(m[1], m[2].trim());
 }
 
+// Propriedade customizada declarada DENTRO de um componente é padrão de CSS, não
+// desvio: é como um bloco define uma variante local (`--stop-tom` mudando por
+// data-acao) sem poluir o :root. O caso 20 só olhava :root e reprovava esse uso
+// como "variável indefinida" — falso positivo. A intenção do caso ("nenhuma
+// var() aponta para o vazio") continua valendo; o que muda é onde ele procura.
+const declaracoesLocais = new Set(
+  [...css.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((m) => m[1]),
+);
+
 /** Resolve var(--x, fallback) recursivamente até chegar num valor de cor literal. */
 function resolver(valor, profundidade = 0) {
   if (profundidade > 12 || !valor) return valor;
@@ -253,7 +262,7 @@ if (camada) {
   // em runtime via className e por isso não aparecem em nenhum arquivo CSS.
   const INJETADAS_EM_RUNTIME = new Set(["--font-geist-sans", "--font-geist-mono"]);
   const usadas = [...new Set([...camada.matchAll(/var\(\s*(--[a-z0-9-]+)/g)].map((m) => m[1]))];
-  const semDefinicao = usadas.filter((v) => !declaracoes.has(v) && !INJETADAS_EM_RUNTIME.has(v));
+  const semDefinicao = usadas.filter((v) => !declaracoes.has(v) && !declaracoesLocais.has(v) && !INJETADAS_EM_RUNTIME.has(v));
   check(
     "caso 20: toda variável usada pelo CC23 tem definição",
     semDefinicao.length === 0,

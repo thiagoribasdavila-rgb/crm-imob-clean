@@ -362,6 +362,20 @@
       "purpose": "Modelo Kimi homologado."
     },
     {
+      "name": "ATLAS_MARKETING_BUDGET_CEILING",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Teto de verba do período para o stop loss de marketing. Sem ele as regras de orçamento não rodam — cobrar meta que ninguém combinou é inventar régua."
+    },
+    {
+      "name": "ATLAS_MARKETING_TARGET_CPL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "CPL alvo acordado. Sem ele o stop loss reporta a regra como não avaliada em vez de estimar um alvo."
+    },
+    {
       "name": "ATLAS_MATERIAL_STORAGE_PROVIDER",
       "scope": "server",
       "requirement": "optional",
