@@ -15,6 +15,7 @@ import { logger } from "@/lib/observability/logger";
 import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/api/security";
+import { tarefaEncerrada } from "@/lib/crm/task-status";
 
 export const dynamic = "force-dynamic";
 
@@ -150,7 +151,7 @@ export async function GET(request: Request, context: RouteContext) {
       due_at: task.due_date ?? task.created_at ?? null,
       assigned_to: task.user_id ?? null,
     }));
-    const openTasks = tasks.filter((task) => !["done", "concluida", "concluído", "completed", "cancelado"].includes(String(task.status || "").toLowerCase()));
+    const openTasks = tasks.filter((task) => !tarefaEncerrada(task.status));
     const completeness = assessLeadCompleteness(completenessInput(lead), activities.length > 0);
     const inconsistencies = [
       lead.budget_min != null && lead.budget_max != null && Number(lead.budget_min) > Number(lead.budget_max) ? "Orçamento mínimo maior que o máximo" : null,

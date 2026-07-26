@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { readCompatibleLeads, readCompatibleTasks } from "@/lib/atlas/core-v2/live-repositories";
 import { isMissingRelation } from "@/lib/compat/legacy-v2";
+import { tarefaEncerrada } from "@/lib/crm/task-status";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,9 @@ type CalendarItem = {
   overdue: boolean;
 };
 
-const terminalTasks = new Set(["concluida", "cancelada", "completed", "cancelled"]);
+// Esta lista nao reconhecia "done" — tarefa concluida pelo Copiloto continuava
+// ocupando a agenda.
+const terminalTasks = { has: (status: string) => tarefaEncerrada(status) };
 const terminalVisits = new Set(["completed", "cancelled", "no_show"]);
 
 export async function GET(request: NextRequest) {

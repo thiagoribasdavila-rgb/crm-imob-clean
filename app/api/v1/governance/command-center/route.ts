@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import commandCenterContract from "@/config/command-center.json";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { statusEncerradosParaPostgrest } from "@/lib/crm/task-status";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
   const organizationId = identity.access.organization.id;
   const [organization, tasks, approvals, queued, failed, backupsPassed, backupsPending, homologPassed, homologFailed, usage, activeLeads, memoryLeads, scoredLegacy, scoredCanonical, contactable, outcomes, classifiedMemory, focusMemory, watchMemory, suppressMemory, memoryBatch] = await Promise.all([
     identity.supabase.from("organizations").select("id", { count: "exact", head: true }).eq("id", identity.access.organization.id),
-    identity.supabase.from("tasks").select("id", { count: "exact", head: true }).not("status", "in", "(done,concluida)"),
+    identity.supabase.from("tasks").select("id", { count: "exact", head: true }).not("status", "in", statusEncerradosParaPostgrest()),
     identity.supabase.from("approval_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
     identity.supabase.from("integration_outbox").select("id", { count: "exact", head: true }).in("status", ["pending", "processing"]),
     identity.supabase.from("integration_outbox").select("id", { count: "exact", head: true }).in("status", ["failed", "dead_letter"]),

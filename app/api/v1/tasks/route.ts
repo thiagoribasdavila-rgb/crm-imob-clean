@@ -10,10 +10,14 @@ import {
   buildCommercialOutcomeContextPreview,
   sameCommercialOutcomeContextPreview,
 } from "@/lib/atlas/commercial-outcome-context-preview";
+import { tarefaEncerrada } from "@/lib/crm/task-status";
 
 export const dynamic = "force-dynamic";
 const uuid = (value: unknown) => typeof value === "string" && /^[0-9a-f-]{36}$/i.test(value) ? value : null;
-const completedTaskStatuses = new Set(["done", "concluido", "concluida", "completed"]);
+// A lista mora em lib/crm/task-status. Esta era a mais curta das cinco e nao
+// reconhecia "cancelada" nem "concluído" com acento — tarefa cancelada
+// aparecia como pendente para sempre.
+const completedTaskStatuses = { has: (status: string) => tarefaEncerrada(status) };
 const taskOutcomeLabels = {
   contacted: "Contato realizado",
   no_response: "Cliente não respondeu",

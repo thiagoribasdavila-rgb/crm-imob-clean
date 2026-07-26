@@ -24,6 +24,7 @@ import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
 import { proactiveNudges, nudgeDigest, type Role, type ProactiveInput } from "@/lib/ai/proactive-hierarchy";
 import { sinaisDeAquisicao } from "@/lib/ai/acquisition-signals";
+import { statusEncerradosParaPostgrest } from "@/lib/crm/task-status";
 
 export const dynamic = "force-dynamic";
 
@@ -129,7 +130,17 @@ export async function GET(request: NextRequest) {
   if (role === "broker") {
     const brokerId = identity.access.profile.id;
     const [overdue, hot] = await Promise.all([
-      admin.from("tasks").select("id", { count: "exact", head: true }).eq("assigned_to", brokerId).not("status", "in", "(done,concluido,concluida,completed,cancelado,cancelled)").lt("due_at", new Date().toISOString()),
+      // A tabela `tasks` tem `user_id` e `due_date`. Estava escrito
+      // `assigned_to` e `due_at`, que NÃO EXISTEM nela: a consulta devolvia
+      // 42703, o `if (!overdue.error)` logo abaixo engolia o erro sem definir
+      // o valor, e o alerta de tarefas atrasadas do corretor nunca disparava.
+      //
+      // Degradar em silêncio é o que torna este defeito caro: nada quebra na
+      // tela, o sinal só... não existe. E ninguém procura o que não aparece.
+      admin.from("tasks").select("id", { count: "exact", head: true })
+        .eq("user_id", brokerId)
+        .not("status", "in", statusEncerradosParaPostgrest())
+        .lt("due_date", new Date().toISOString()),
       admin.from("leads").select("id", { count: "exact", head: true }).eq("assigned_to", brokerId).eq("temperature", "quente"),
     ]);
     if (!overdue.error && typeof overdue.count === "number") input.brokerOverdueTasks = overdue.count;
