@@ -91,6 +91,8 @@ const token = sessao.data.session.access_token;
 const comSessao = (init = {}) => ({ ...init, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(init.headers || {}) } });
 
 let leadId = null;
+let diretorId = null;
+let propostaId = null;
 try {
   // ─────────────────────────── 1. a lead entra
   const nascida = await admin.from("leads").insert({
@@ -268,6 +270,90 @@ try {
   conferir(invalido.status === 400 && Boolean(corpoInvalido?.error?.message),
     "15. entrada inválida devolve 400 COM mensagem", corpoInvalido?.error?.message?.slice(0, 50));
 
+  // ─────────── 17. ciclo do stop loss: medir → propor → parar
+  //
+  // Precisa de alçada de liderança, então roda com um diretor descartável — o
+  // corretor do smoke serve justamente para provar o lado negativo primeiro.
+  const negado = await fetch(`${base}/api/v1/marketing/stop-loss`, comSessao({
+    method: "POST", body: JSON.stringify({ regra: "atendimento_critico" }),
+  }));
+  conferir(negado.status === 403, "17. corretor NÃO propõe corte de verba", `veio ${negado.status}`);
+
+  const emailDiretor = `smoke-diretor-${randomBytes(4).toString("hex")}@atlas-teste.local`;
+  const senhaDiretor = `${randomBytes(18).toString("base64url")}!Aa7`;
+  const diretor = await admin.auth.admin.createUser({
+    email: emailDiretor, password: senhaDiretor, email_confirm: true,
+    app_metadata: { organization_id: organizationId, access_role: "director" },
+  });
+  if (diretor.error) throw new Error(`criar diretor de teste: ${diretor.error.message}`);
+  diretorId = diretor.data.user.id;
+  // Forma-raiz do RBAC: access_role admin + commercial_role director +
+  // reports_to null. As outras combinações são recusadas pela validação de
+  // hierarquia, e a recusa é silenciosa (0 linhas atualizadas).
+  const perfilDiretor = await admin.from("profiles").update({
+    organization_id: organizationId, role: "admin", access_role: "admin",
+    commercial_role: "director", reports_to: null, active: true, name: "Diretor do smoke",
+  }).eq("id", diretorId).select("id");
+  if (perfilDiretor.error || !perfilDiretor.data?.length) {
+    throw new Error(`perfil de diretor: ${perfilDiretor.error?.message ?? "nenhuma linha atualizada"}`);
+  }
+
+  // Cliente próprio: reusar `anon` trocaria a sessão do corretor no meio do
+  // smoke, e os passos seguintes passariam a rodar com outra identidade.
+  const anonDiretor = createClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    { auth: { persistSession: false } },
+  );
+  const sessaoDiretor = await anonDiretor.auth.signInWithPassword({
+    email: emailDiretor, password: senhaDiretor,
+  });
+  if (sessaoDiretor.error) throw new Error(`login do diretor: ${sessaoDiretor.error.message}`);
+  const comDiretor = (init = {}) => ({
+    ...init,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessaoDiretor.data.session.access_token}`, ...(init.headers || {}) },
+  });
+
+  const leitura = await fetch(`${base}/api/v1/marketing/stop-loss?teto=10000`, comDiretor());
+  const vereditoLido = (await leitura.json().catch(() => ({})))?.data;
+  conferir(leitura.status === 200, "17. stop loss mede e conclui", `veio ${leitura.status}`);
+
+  // Decisão inexistente tem que ser recusada com 409 — é a guarda que impede
+  // propor corte por condição que já não vale.
+  const vencida = await fetch(`${base}/api/v1/marketing/stop-loss`, comDiretor({
+    method: "POST", body: JSON.stringify({ regra: "regra_que_nao_existe" }),
+  }));
+  conferir(vencida.status === 409, "17. decisão fora da medição é RECUSADA", `veio ${vencida.status}`);
+
+  const primeiraRegra = vereditoLido?.decisoes?.[0]?.regra;
+  if (primeiraRegra) {
+    const proposta = await fetch(`${base}/api/v1/marketing/stop-loss`, comDiretor({
+      method: "POST", body: JSON.stringify({ regra: primeiraRegra, teto: 10000 }),
+    }));
+    const corpoProposta = (await proposta.json().catch(() => ({})))?.data;
+    propostaId = corpoProposta?.id ?? null;
+    conferir([200, 201].includes(proposta.status) && Boolean(propostaId),
+      "17. decisão vira proposta em /approvals", `${proposta.status} · ${primeiraRegra}`);
+
+    const gravada = await admin.from("approval_requests")
+      .select("status,payload,expires_at").eq("id", propostaId).maybeSingle();
+    conferir(gravada.data?.status === "pending" && gravada.data?.payload?.kind === "stop_loss",
+      "17. a proposta EXISTE no banco, pendente", `status=${gravada.data?.status}`);
+    conferir(gravada.data?.payload?.governance?.executaAoAprovar === false,
+      "17. o payload declara que aprovar não executa");
+
+    // Reenviar não pode empilhar cópias na caixa da diretoria.
+    const repetida = await fetch(`${base}/api/v1/marketing/stop-loss`, comDiretor({
+      method: "POST", body: JSON.stringify({ regra: primeiraRegra, teto: 10000 }),
+    }));
+    const corpoRepetido = (await repetida.json().catch(() => ({})))?.data;
+    conferir(corpoRepetido?.jaExistia === true && corpoRepetido?.id === propostaId,
+      "17. reenviar devolve a MESMA proposta, não outra");
+  } else {
+    conferir(true, "17. sem decisão aberta no período — nada a propor",
+      `acao=${vereditoLido?.acao ?? "?"}`);
+  }
+
   // ─────────────────────────── 16. saúde e encerramento de sessão
   const saude = await fetch(`${base}/api/health`);
   conferir(saude.status === 200, "16. health check responde", `veio ${saude.status}`);
@@ -285,6 +371,17 @@ try {
     await admin.from("tasks").delete().eq("lead_id", leadId);
     const removida = await admin.from("leads").delete().eq("id", leadId).select("id");
     conferir((removida.data ?? []).length === 1, "9. lead de teste removida");
+  }
+  // A proposta e o diretor do smoke saem antes do corretor: linha de aprovação
+  // órfã na caixa da diretoria é lixo com aparência de trabalho pendente.
+  if (propostaId) {
+    const semProposta = await admin.from("approval_requests").delete().eq("id", propostaId).select("id");
+    conferir((semProposta.data ?? []).length === 1, "17. proposta de teste removida");
+  }
+  if (diretorId) {
+    await admin.from("profiles").delete().eq("id", diretorId);
+    const semDiretor = await admin.auth.admin.deleteUser(diretorId);
+    conferir(!semDiretor.error, "17. diretor de teste removido");
   }
   await admin.from("profiles").delete().eq("id", corretorId);
   const semUsuario = await admin.auth.admin.deleteUser(corretorId);

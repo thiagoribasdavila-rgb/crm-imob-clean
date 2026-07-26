@@ -328,6 +328,42 @@ export default function MarketingPage() {
       setLiberando(false);
     }
   }
+  // Estado por REGRA, não global: o diretor pode levar "CPL acima do alvo" para
+  // aprovação e deixar as outras decisões de lado. Um único `enviando` faria as
+  // três linhas piscarem juntas.
+  const [propondo, setPropondo] = useState<string | null>(null);
+  const [propostas, setPropostas] = useState<Record<string, string>>({});
+
+  /**
+   * Leva uma decisão do stop loss para /approvals.
+   *
+   * Manda só a `regra`. O texto, o valor e a ação são remedidos no servidor —
+   * se a tela pudesse ditar o conteúdo, o stop loss viraria formulário livre
+   * com cara de análise.
+   */
+  async function levarParaAprovacao(regra: string) {
+    setPropondo(regra);
+    try {
+      const { data: sessao } = await supabase.auth.getSession();
+      const r = await fetch("/api/v1/marketing/stop-loss", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessao.session?.access_token || ""}` },
+        body: JSON.stringify({ regra }),
+      });
+      const corpo = await r.json();
+      setPropostas((atual) => ({
+        ...atual,
+        [regra]: r.ok
+          ? (corpo?.data?.jaExistia ? "Já estava na caixa de aprovações." : "Enviado para /approvals.")
+          : (corpo?.error?.message || "Não foi possível enviar."),
+      }));
+    } catch {
+      setPropostas((atual) => ({ ...atual, [regra]: "Falha de rede ao enviar." }));
+    } finally {
+      setPropondo(null);
+    }
+  }
+
   const [erroDaDescoberta, setErroDaDescoberta] = useState<string | null>(null);
 
   async function descobrirFormularios(aplicar: boolean) {
@@ -517,6 +553,22 @@ export default function MarketingPage() {
                 <li key={d.regra} data-acao={d.acao}>
                   <p className="atlas-stop-loss-why">{d.motivo}</p>
                   <p className="atlas-stop-loss-what">{d.proposta}</p>
+                  {/* O botão que fechava o ciclo pela metade: a IA media e
+                      redigia, e a proposta tinha de ser reescrita à mão em
+                      /approvals. Recomendação que exige redigitação não vira
+                      ação em dia corrido. */}
+                  <div className="atlas-stop-loss-acao">
+                    <button
+                      type="button"
+                                            onClick={() => levarParaAprovacao(d.regra)}
+                      disabled={propondo === d.regra || Boolean(propostas[d.regra])}
+                    >
+                      {propondo === d.regra ? "Enviando…" : "Levar para aprovação"}
+                    </button>
+                    {propostas[d.regra] ? (
+                      <span className="atlas-stop-loss-feito">{propostas[d.regra]}</span>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -533,8 +585,9 @@ export default function MarketingPage() {
 
           {/* A frase que impede a leitura errada: nada foi executado. */}
           <p className="atlas-stop-loss-rule">
-            Recomendação, não execução. Nenhuma campanha foi pausada e nenhuma verba foi alterada —
-            a decisão vale quando for aprovada em <a href={stopLoss.governanca.onde}>/approvals</a>.
+            Recomendação, não execução. Nenhuma campanha foi pausada e nenhuma verba foi alterada.
+            Enviar leva a decisão redigida para <a href={stopLoss.governanca.onde}>/approvals</a>, onde
+            a liderança autoriza — e a mudança na Meta continua sendo um passo à parte.
           </p>
         </section>
       ) : null}

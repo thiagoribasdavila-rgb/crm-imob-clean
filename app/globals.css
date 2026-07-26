@@ -8542,6 +8542,42 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   line-height: 1.5;
 }
 .atlas-stop-loss-list li[data-acao="pausar"] .atlas-stop-loss-why { color: var(--atlas-danger); }
+
+/* A ação de cada decisão. Discreta por escolha: quem lê o stop loss está
+   decidindo, e um botão gritando em cada linha empurra para o clique — o
+   contrário do que uma tela que mexe em verba deve fazer. */
+.atlas-stop-loss-acao {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.atlas-stop-loss-acao button {
+  border: 1px solid var(--atlas-border-strong);
+  background: transparent;
+  color: var(--atlas-text-secondary);
+  border-radius: 7px;
+  padding: 4px 11px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+.atlas-stop-loss-acao button:hover:not(:disabled) {
+  border-color: var(--atlas-accent);
+  color: var(--atlas-accent);
+  background: var(--atlas-accent-soft);
+}
+.atlas-stop-loss-acao button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.atlas-stop-loss-feito {
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+}
 .atlas-stop-loss-gaps {
   border-top: 1px solid var(--atlas-border-subtle);
   padding: 9px 18px;
