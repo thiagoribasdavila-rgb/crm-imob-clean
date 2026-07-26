@@ -8570,3 +8570,61 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   line-height: 1.5;
 }
 .atlas-stop-loss-rule a { color: var(--atlas-accent); }
+
+/* ── ETAPAS DA OPERAÇÃO DE MÍDIA ────────────────────────────────────────────
+   Controle segmentado, não abas com moldura: o que separa uma etapa da outra é
+   o peso do texto e um filete embaixo da ativa. Caixa, sombra e fundo colorido
+   só somariam ruído a uma tela que já tinha painéis demais.
+
+   O contador só existe quando há o que contar — pastilha zerada é enfeite. */
+.atlas-etapas {
+  display: flex;
+  overflow-x: auto;
+  gap: 2px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--atlas-border-subtle);
+  scrollbar-width: none;
+}
+.atlas-etapas::-webkit-scrollbar { display: none; }
+.atlas-etapas button {
+  display: inline-flex;
+  min-height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--atlas-text-tertiary);
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.atlas-etapas button:hover { color: var(--atlas-text-secondary); }
+/* Movimento é opt-in por preferência do sistema, como manda o resto da camada:
+   quem pediu menos movimento troca de etapa sem transição — e continua vendo a
+   mudança, porque ela é de cor e de borda, não de animação. */
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .atlas-etapas button {
+    transition: color var(--atlas-transition, 180ms) ease, border-color var(--atlas-transition, 180ms) ease;
+  }
+}
+.atlas-etapas button[data-ativa="true"] {
+  border-bottom-color: var(--atlas-accent);
+  color: var(--atlas-text-primary);
+}
+.atlas-etapas button span {
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  color: var(--atlas-text-tertiary);
+  background: var(--atlas-surface-soft);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+/* Alerta só muda a cor do contador, nunca a do rótulo: pintar a aba inteira
+   faria três etapas gritarem ao mesmo tempo e nenhuma seria lida. */
+.atlas-etapas button[data-alerta="true"] span {
+  color: var(--atlas-danger);
+  background: color-mix(in oklab, var(--atlas-danger) 14%, transparent);
+}

@@ -258,6 +258,23 @@ export default function MarketingPage() {
   const [andromeda, setAndromeda] = useState<FetchState<Andromeda>>({ status: "loading" });
   const [calibration, setCalibration] = useState<FetchState<Calibration>>({ status: "loading" });
   const [stopLoss, setStopLoss] = useState<StopLoss | null>(null);
+
+  /**
+   * ETAPAS DA AGÊNCIA.
+   *
+   * A tela acumulou 14 painéis num scroll só — decisão de verba, entrada de
+   * lead, desempenho, criativo e prescrição, tudo junto. Cada um foi útil
+   * sozinho; empilhados, viram um relatório que ninguém termina de ler.
+   *
+   * O ciclo de uma agência tem ordem: decidir se compra, garantir que a lead
+   * entra, medir o que voltou, cuidar do criativo, e só então agir. As etapas
+   * respeitam essa ordem e mostram UMA de cada vez.
+   */
+  const [etapa, setEtapa] = useState<"decidir" | "entrada" | "desempenho" | "criativo" | "agir">("decidir");
+  // Cada seção declara a que etapa pertence; `hidden` é atributo nativo, então
+  // leitor de tela e busca do navegador respeitam junto — esconder por CSS
+  // deixaria o conteúdo acessível a quem não pediu por ele.
+  const foraDaEtapa = (dona: typeof etapa) => (etapa === dona ? undefined : true);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [dim, setDim] = useState<Dim>("byCampaign");
@@ -351,7 +368,12 @@ export default function MarketingPage() {
       setAndromeda((previous) => keep(previous, andromedaNext));
       setCalibration((previous) => keep(previous, calibrationNext));
       setPerformance((previous) => keep(previous, performanceNext));
-      if (stopLossNext.status === "ok") setStopLoss(stopLossNext.data);
+      if (stopLossNext.status === "ok") {
+        setStopLoss(stopLossNext.data);
+        // Abre onde a atenção é necessária. Sem gatilho, a pergunta do dia a dia
+        // é desempenho — não "devo parar?", que já foi respondida com um não.
+        setEtapa((atual) => (atual === "decidir" && stopLossNext.data.acao === "seguir" ? "desempenho" : atual));
+      }
       if (costNext.status === "ok") setUpdatedAt(new Date());
     }
     load();
@@ -442,11 +464,36 @@ export default function MarketingPage() {
         </p>
       ) : null}
 
+      {/* ETAPAS — o ciclo da agência, uma de cada vez.
+          O contador ao lado de "Decidir" é o único que precisa gritar: quando o
+          stop loss aciona, ele aparece mesmo com o operador em outra etapa. */}
+      <nav aria-label="Etapas da operação de mídia" className="atlas-etapas">
+        {([
+          ["decidir", "Decidir", stopLoss && stopLoss.acao !== "seguir" ? stopLoss.decisoes.length : 0],
+          ["entrada", "Entrada", represa?.disponivel ? represa.totalRepresado : 0],
+          ["desempenho", "Desempenho", 0],
+          ["criativo", "Criativo", 0],
+          ["agir", "Agir", 0],
+        ] as const).map(([chave, rotulo, alerta]) => (
+          <button
+            key={chave}
+            type="button"
+            onClick={() => setEtapa(chave)}
+            data-ativa={etapa === chave ? "true" : undefined}
+            data-alerta={alerta > 0 ? "true" : undefined}
+            aria-current={etapa === chave ? "step" : undefined}
+          >
+            {rotulo}
+            {alerta > 0 ? <span className="cc6-num">{alerta}</span> : null}
+          </button>
+        ))}
+      </nav>
+
       {/* STOP LOSS — primeiro de tudo. Se a recomendação é parar de comprar,
           nenhum outro número desta tela deve ser lido antes. */}
       {stopLoss ? (
         <section
-          aria-label="Stop loss de verba"
+          aria-label="Stop loss de verba" hidden={foraDaEtapa("decidir")}
           data-acao={stopLoss.acao}
           className="atlas-stop-loss cc6-reveal"
         >
@@ -495,7 +542,7 @@ export default function MarketingPage() {
       {/* Fila de represadas: lead que já custou verba e não está na operação.
           Vem primeiro porque é o maior valor parado — e porque liberar sem
           decidir a distribuição só troca "lead parada" por "SLA vencido". */}
-      <section aria-label="Leads represadas" className="cc6-panel cc6-reveal overflow-hidden">
+      <section aria-label="Leads represadas" hidden={foraDaEtapa("entrada")} className="cc6-panel cc6-reveal overflow-hidden">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2 px-5 pb-3 pt-4">
           <p className="cc6-eyebrow">Leads represadas</p>
           {represa?.disponivel ? (
@@ -619,7 +666,7 @@ export default function MarketingPage() {
       {/* Formulários da Meta: de onde a lead entra. Fica antes do desempenho
           porque campanha sem formulário registrado não gera lead nenhuma — e o
           erro é silencioso: o webhook recebe e descarta. */}
-      <section aria-label="Formulários de lead da Meta" className="cc6-panel cc6-reveal overflow-hidden">
+      <section aria-label="Formulários de lead da Meta" hidden={foraDaEtapa("entrada")} className="cc6-panel cc6-reveal overflow-hidden">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2 px-5 pb-3 pt-4">
           <p className="cc6-eyebrow">Formulários da Meta</p>
           <div className="ml-auto flex flex-wrap gap-2">
@@ -711,7 +758,7 @@ export default function MarketingPage() {
            mídia, é de atendimento — campanha boa com lead não atendida queima
            verba e ainda ensina o Andromeda a buscar o público errado. */}
       {performance.status === "ok" && performance.data.resumo.leadsAtribuidas > 0 ? (
-        <section aria-label="Campanha medida pelo CRM" className="cc6-panel cc6-reveal overflow-hidden">
+        <section aria-label="Campanha medida pelo CRM" hidden={foraDaEtapa("desempenho")} className="cc6-panel cc6-reveal overflow-hidden">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
             <p className="cc6-eyebrow">Campanha medida pelo CRM</p>
             <p className="cc6-num ml-auto text-[11px] text-[#6b7890]">
@@ -784,7 +831,7 @@ export default function MarketingPage() {
       {report ? (
         <>
           {/* (a) Faixa de 4 números. */}
-          <section aria-label="Números da semana" className="cc6-panel cc6-reveal grid grid-cols-2 gap-y-4 px-5 py-4 sm:grid-cols-4">
+          <section aria-label="Números da semana" hidden={foraDaEtapa("desempenho")} className="cc6-panel cc6-reveal grid grid-cols-2 gap-y-4 px-5 py-4 sm:grid-cols-4">
             {strip.map((item) => (
               <div key={item.label}>
                 <p className="cc6-metric-value text-2xl leading-none sm:text-[26px]">{item.value}</p>
@@ -794,7 +841,7 @@ export default function MarketingPage() {
           </section>
 
           {/* (b) Coração da tela: decisões do plano da IA. */}
-          <section aria-label="Decisões da IA" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "60ms" }}>
+          <section aria-label="Decisões da IA" hidden={foraDaEtapa("agir")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "60ms" }}>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
               <p className="cc6-eyebrow">Decisões da IA</p>
               <p className="cc6-num ml-auto text-[11px] text-[#6b7890]">
@@ -833,7 +880,7 @@ export default function MarketingPage() {
           </section>
 
           {/* (c) Agregado por dimensão com barra de share inline. */}
-          <section aria-label="Custos por dimensão" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "120ms" }}>
+          <section aria-label="Custos por dimensão" hidden={foraDaEtapa("desempenho")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "120ms" }}>
             <div className="flex flex-wrap items-center gap-2 px-5 pb-3 pt-4">
               <p className="cc6-eyebrow">Custo → CRM</p>
               <div role="tablist" aria-label="Dimensão do agregado" className="ml-auto flex gap-1.5">
@@ -906,7 +953,7 @@ export default function MarketingPage() {
           </section>
 
           {/* (d) Verba por produto com pacing como banda de severidade. */}
-          <section aria-label="Verba semanal" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "180ms" }}>
+          <section aria-label="Verba semanal" hidden={foraDaEtapa("desempenho")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "180ms" }}>
             <p className="cc6-eyebrow px-5 pb-3 pt-4">Verba semanal</p>
             {report.budget.length === 0 ? (
               <p className="cc6-hairline px-5 py-5 text-sm text-[#6b7890]">Nenhuma verba semanal definida — use as decisões acima para definir metas.</p>
@@ -937,7 +984,7 @@ export default function MarketingPage() {
 
       {/* (e) Andromeda — saúde criativa; degrada em silêncio se ainda não existe. */}
       {andromeda.status === "ok" ? (
-        <section aria-label="Saúde criativa Andromeda" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "240ms" }}>
+        <section aria-label="Saúde criativa Andromeda" hidden={foraDaEtapa("criativo")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "240ms" }}>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
             <p className="cc6-eyebrow">Andromeda · Saúde criativa</p>
             {andromeda.data.forecast ? (() => {
@@ -1050,7 +1097,7 @@ export default function MarketingPage() {
         const conf = f.account.confidence === "media" ? "média" : f.account.confidence;
         const accent = "var(--atlas-accent, #4b8df8)";
         return (
-          <section aria-label="Análise preditiva" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "260ms" }}>
+          <section aria-label="Análise preditiva" hidden={foraDaEtapa("criativo")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "260ms" }}>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
               <p className="cc6-eyebrow">Análise preditiva · conta</p>
               <span className="text-[11px] leading-5 text-[#6b7890]">histórico real (linha) + projeção (tracejado) · confiança {conf}</span>
@@ -1085,7 +1132,7 @@ export default function MarketingPage() {
         const chip = (v: string) => (v === "escalar" || v === "manter" || v === "focado" ? "cc6-ok" : v === "descartar" || v === "vazando" ? "cc6-crit" : "cc6-warn");
         const cpl = (v: number | null | undefined) => (v == null ? "—" : money.format(v));
         return (
-          <section aria-label="Inteligência de público" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "280ms" }}>
+          <section aria-label="Inteligência de público" hidden={foraDaEtapa("criativo")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "280ms" }}>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
               <p className="cc6-eyebrow">Localizador de público</p>
               <span className="text-[11px] leading-5 text-[#6b7890]">onde responde · onde vaza · quem responde</span>
@@ -1173,7 +1220,7 @@ export default function MarketingPage() {
         if (!pres || !pres.proposals.length) return null;
         const shown = pres.proposals.slice(0, 6);
         return (
-          <section aria-label="Prescrições da IA" className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "300ms" }}>
+          <section aria-label="Prescrições da IA" hidden={foraDaEtapa("agir")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "300ms" }}>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
               <p className="cc6-eyebrow">Prescrições · a IA propõe, você aprova</p>
               <span className="text-[11px] leading-5 text-[#6b7890]">{pres.summary}</span>
@@ -1246,7 +1293,7 @@ export default function MarketingPage() {
       ) : null}
 
       {/* (f) Satélites em uma linha discreta. */}
-      <nav aria-label="Módulos satélites" className="flex flex-wrap items-center gap-1.5 pt-1">
+      <nav aria-label="Módulos satélites" hidden={foraDaEtapa("agir")} className="flex flex-wrap items-center gap-1.5 pt-1">
         <span className="cc6-eyebrow mr-1.5">Módulos</span>
         {SATELLITES.map((satellite) => (
           <Link
