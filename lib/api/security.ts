@@ -2,12 +2,12 @@ import type { NextRequest } from "next/server";
 import { createHash } from "node:crypto";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { apiError, createRequestContext, getClientAddress } from "@/lib/api/core";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 import { createClient } from "@/utils/supabase/server";
 import { getSupabasePublicConfig } from "@/utils/supabase/env";
 import { logger } from "@/lib/observability/logger";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-type RateBucket = { count: number; resetAt: number };
 
 export type AtlasRole = "admin" | "director" | "superintendent" | "manager" | "broker" | "viewer" | string;
 export type CommercialRole = "director" | "superintendent" | "manager" | "broker";
@@ -72,12 +72,8 @@ type AccessContext = {
 };
 
 const globalBuckets = globalThis as typeof globalThis & {
-  __atlasRateBuckets?: Map<string, RateBucket>;
   __atlasIdentityCache?: Map<string, IdentityCacheEntry>;
 };
-
-const buckets = globalBuckets.__atlasRateBuckets ?? new Map<string, RateBucket>();
-globalBuckets.__atlasRateBuckets = buckets;
 
 // ---------------------------------------------------------------------------
 // Cache de identidade (performance): cada request pagava 3 idas ao Supabase
@@ -133,49 +129,42 @@ function writeIdentityCache(key: string, entry: IdentityCacheEntry): void {
   }
   identityCache.set(key, entry);
 }
-const MAX_RATE_BUCKETS = 10_000;
-
-function pruneRateBuckets(now: number) {
-  if (buckets.size < MAX_RATE_BUCKETS) return;
-  for (const [key, bucket] of buckets) if (bucket.resetAt <= now) buckets.delete(key);
-  if (buckets.size < MAX_RATE_BUCKETS) return;
-  const overflow = buckets.size - MAX_RATE_BUCKETS + Math.ceil(MAX_RATE_BUCKETS * 0.1);
-  const oldest = [...buckets.entries()].sort((a, b) => a[1].resetAt - b[1].resetAt).slice(0, overflow);
-  for (const [key] of oldest) buckets.delete(key);
-}
-
+/**
+ * Adaptador HTTP do teto de requisição.
+ *
+ * A contagem vive inteira em `lib/security/rate-limit.ts` — este arquivo apenas
+ * monta a chave a partir da rota e da origem, e traduz o veredito em 429 com os
+ * cabeçalhos `RateLimit-*`. Antes havia aqui uma segunda implementação, com
+ * mapa próprio: as 137 rotas que chamam daqui e as 22 que chamam de lá contavam
+ * em lugares diferentes, e a de lá ainda perdia a contagem a cada bundle do
+ * Next. Um projeto com duas formas de fazer a mesma coisa de segurança acaba
+ * com uma delas esquecida.
+ */
 export function enforceRateLimit(
   request: NextRequest,
   options: { limit?: number; windowMs?: number; scope?: string } = {},
 ) {
   const limit = options.limit ?? 60;
-  const windowMs = options.windowMs ?? 60_000;
   const scope = options.scope ?? request.nextUrl.pathname;
-  const now = Date.now();
-  pruneRateBuckets(now);
-  const key = `${scope}:${getClientAddress(request)}`;
-  const current = buckets.get(key);
-  const bucket = !current || current.resetAt <= now
-    ? { count: 0, resetAt: now + windowMs }
-    : current;
+  const veredito = checkRateLimit(`${scope}:${getClientAddress(request)}`, {
+    limit,
+    windowMs: options.windowMs,
+  });
 
-  bucket.count += 1;
-  buckets.set(key, bucket);
-
-  const remaining = Math.max(0, limit - bucket.count);
   const headers = {
     "RateLimit-Limit": String(limit),
-    "RateLimit-Remaining": String(remaining),
-    "RateLimit-Reset": String(Math.ceil(bucket.resetAt / 1000)),
+    "RateLimit-Remaining": String(veredito.remaining),
+    "RateLimit-Reset": String(Math.ceil(veredito.resetAt / 1000)),
   };
 
-  if (bucket.count > limit) {
+  if (!veredito.allowed) {
     const meta = createRequestContext(request);
+    const faltam = Math.max(1, Math.ceil((veredito.resetAt - Date.now()) / 1000));
     return {
       ok: false as const,
       response: apiError("RATE_LIMIT_EXCEEDED", "Limite de requisições excedido.", meta, {
         status: 429,
-        headers: { ...headers, "Retry-After": String(Math.ceil((bucket.resetAt - now) / 1000)) },
+        headers: { ...headers, "Retry-After": String(faltam) },
       }),
     };
   }
