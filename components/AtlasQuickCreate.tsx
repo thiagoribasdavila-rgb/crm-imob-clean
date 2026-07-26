@@ -52,17 +52,15 @@ export default function AtlasQuickCreate() {
     router.push(href);
   }
 
+  // O botão flutuante saiu. Ele era um "+" de 56px no canto inferior direito
+  // que duplicava o "Novo lead" da barra superior e cobria a última linha de
+  // toda tabela — em /leads, justamente a lead mais antiga da fila.
+  //
+  // O PAINEL continua inteiro e continua contextual: Alt+A, o ⌘K e o evento
+  // atlas:open-quick-create abrem do mesmo jeito. Tirar o botão redundante não
+  // tirou nenhum caminho; tirou a sobreposição.
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-2xl border border-sky-300/20 bg-gradient-to-br from-sky-400 to-blue-600 text-2xl font-light text-white shadow-[0_18px_60px_rgba(14,165,233,.35)] transition hover:-translate-y-1 hover:shadow-[0_24px_80px_rgba(14,165,233,.5)]"
-        aria-label="Abrir criação rápida"
-      >
-        +
-      </button>
-
       {open ? (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-md sm:items-center" role="dialog" aria-modal="true" aria-label="Criação rápida">
           <button className="absolute inset-0" onClick={() => setOpen(false)} aria-label="Fechar criação rápida" />

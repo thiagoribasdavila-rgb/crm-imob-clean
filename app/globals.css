@@ -8683,3 +8683,321 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   color: var(--atlas-danger);
   background: color-mix(in oklab, var(--atlas-danger) 14%, transparent);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROBÔ DA IA — canto inferior direito
+
+   Substitui DOIS flutuantes que dividiam este canto: o "+" de 56px da criação
+   rápida (que duplicava o "Novo lead" da barra) e a pílula de 360px do
+   copiloto. Somados, tapavam a última linha de qualquer tabela — em /leads,
+   justo a lead mais antiga da fila, que é a que mais precisa ser vista.
+
+   Regra deste elemento: só cresce quando tem o que dizer. Parado, ocupa 46px.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.atlas-ia-dock {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: 23px;
+  /* Fundo OPACO, sem backdrop-filter. Este elemento é fixo por cima de conteúdo
+     que rola: desfocar o que passa atrás obriga o navegador a recompor a camada
+     a cada quadro de rolagem, e o portão do CC23 barra isso — a profundidade
+     aqui vem da borda e da sombra deslocada, que não custam nada. */
+  background: var(--atlas-surface-raised);
+  color: var(--atlas-text-secondary);
+  box-shadow: var(--cc23-lift-rest);
+  cursor: pointer;
+  overflow: hidden;
+}
+.atlas-ia-dock:hover,
+.atlas-ia-dock:focus-visible {
+  border-color: var(--atlas-accent);
+  outline: none;
+}
+.atlas-ia-dock:focus-visible {
+  box-shadow: var(--atlas-focus-ring);
+}
+
+.atlas-ia-dock-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+}
+/* Enquadrado no ROSTO. A arte é de corpo inteiro; cabendo inteira num círculo de
+   34px o robô vira uma mancha de 8px de cabeça. `cover` recorta, e o
+   object-position escolhe a faixa da cabeça — que é a parte que se reconhece de
+   relance, e reconhecer de relance é a função de um ícone de canto. */
+.atlas-ia-dock-robo {
+  width: 38px;
+  height: 38px;
+  object-fit: cover;
+  object-position: 50% 16%;
+  opacity: 0.86;
+}
+.atlas-ia-dock[data-trabalhando="true"] .atlas-ia-dock-robo {
+  opacity: 1;
+}
+
+/* O anel só existe enquanto há trabalho. Sem `content` fora do estado ativo ele
+   nem entra na árvore de pintura. */
+.atlas-ia-dock-anel {
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  pointer-events: none;
+}
+.atlas-ia-dock[data-trabalhando="true"] .atlas-ia-dock-anel {
+  border-top-color: var(--atlas-accent);
+  border-right-color: color-mix(in srgb, var(--atlas-accent) 40%, transparent);
+}
+
+.atlas-ia-dock-copy {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  max-width: 0;
+  padding-right: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.atlas-ia-dock[data-expandido="true"] .atlas-ia-dock-copy {
+  max-width: 190px;
+  padding-right: 15px;
+}
+.atlas-ia-dock-titulo {
+  color: var(--atlas-text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.atlas-ia-dock-detalhe {
+  color: var(--atlas-text-tertiary);
+  font-size: 10.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Movimento fica sob consulta de mídia: quem pediu menos animação vê o anel
+   parado — e um anel parado ainda diz "trabalhando", porque a cor é o sinal e o
+   giro é só o reforço. Quem navega por toque não paga por hover que não existe. */
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .atlas-ia-dock {
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+  .atlas-ia-dock-copy {
+    transition: max-width 220ms cubic-bezier(0.22, 1, 0.36, 1), padding-right 220ms ease;
+  }
+  .atlas-ia-dock[data-trabalhando="true"] .atlas-ia-dock-anel {
+    animation: atlas-ia-girando 1100ms linear infinite;
+  }
+}
+@keyframes atlas-ia-girando {
+  to { transform: rotate(360deg); }
+}
+
+/* No celular o dock encosta acima da barra inferior de navegação, senão fica
+   por cima dela. */
+@media (max-width: 767px) {
+  .atlas-ia-dock {
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RELATÓRIO SEMANAL DO INCORPORADOR — tabela e book de envio
+
+   Documento que sai da casa. A tabela é lida de relance por quem vai mandar,
+   então o estado de cada linha vem por emoji e o número tem fonte tabular: a
+   coluna alinha e a comparação entre empreendimentos é visual, sem esforço.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.atlas-book {
+  margin-top: 16px;
+  border-top: 1px solid var(--atlas-border-subtle);
+  padding-top: 14px;
+}
+.atlas-book-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.atlas-book-head button {
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--atlas-text-tertiary);
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+.atlas-book-semana {
+  margin: 0;
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.atlas-book-resumo {
+  margin: 4px 0 0;
+  color: var(--atlas-text-primary);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.atlas-book-numeros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 12px;
+  color: var(--atlas-text-tertiary);
+  font-size: 11.5px;
+}
+.atlas-book-numeros strong {
+  color: var(--atlas-text-primary);
+  font-family: var(--cc23-font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.atlas-book-numeros span[data-alerta="true"] strong { color: var(--atlas-danger); }
+
+/* A tabela rola dentro do próprio contêiner. Sem isto, seis colunas num card de
+   duas colunas empurram a página inteira para o lado. */
+.atlas-book-tabela-wrap {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+.atlas-book-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+.atlas-book-tabela th,
+.atlas-book-tabela td {
+  padding: 7px 10px 7px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--atlas-border-subtle);
+  white-space: nowrap;
+}
+.atlas-book-tabela thead th {
+  color: var(--atlas-text-tertiary);
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.atlas-book-tabela tbody th {
+  color: var(--atlas-text-primary);
+  font-weight: 500;
+  white-space: normal;
+  min-width: 160px;
+}
+.atlas-book-tabela td {
+  color: var(--atlas-text-secondary);
+  text-align: right;
+  font-family: var(--cc23-font-num);
+  font-variant-numeric: tabular-nums;
+}
+.atlas-book-campanhas {
+  display: block;
+  margin-top: 2px;
+  color: var(--atlas-text-tertiary);
+  font-size: 10px;
+  font-weight: 400;
+}
+.atlas-book-pct {
+  margin-left: 5px;
+  color: var(--atlas-text-tertiary);
+  font-size: 10px;
+}
+
+.atlas-book-ressalva {
+  margin-top: 12px;
+  border-left: 2px solid var(--atlas-warning);
+  padding: 2px 0 2px 11px;
+}
+.atlas-book-ressalva p {
+  margin: 0 0 4px;
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.atlas-book-ressalva p:first-child {
+  color: var(--atlas-text-secondary);
+  font-weight: 500;
+}
+
+.atlas-book-texto {
+  margin-top: 12px;
+}
+.atlas-book-texto summary {
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+}
+.atlas-book-texto pre {
+  margin: 8px 0 0;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--atlas-border-subtle);
+  border-radius: 10px;
+  background: var(--atlas-surface-subtle);
+  padding: 12px;
+  color: var(--atlas-text-secondary);
+  font-family: var(--cc23-font-num);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.atlas-book-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.atlas-book-acoes button {
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--atlas-text-secondary);
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.atlas-book-acoes button:hover:not(:disabled) {
+  border-color: var(--atlas-accent);
+  color: var(--atlas-accent);
+  background: var(--atlas-accent-soft);
+}
+.atlas-book-acoes button:disabled { opacity: 0.5; cursor: default; }
+.atlas-book-aviso,
+.atlas-book-erro { font-size: 11px; color: var(--atlas-text-tertiary); }
+.atlas-book-erro { color: var(--atlas-danger); }
+.atlas-book-rodape {
+  margin: 10px 0 0;
+  color: var(--atlas-text-tertiary);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .atlas-book-acoes button,
+  .atlas-book-head button {
+    transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+  }
+}

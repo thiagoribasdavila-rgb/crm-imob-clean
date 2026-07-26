@@ -1312,19 +1312,10 @@ export default function AtlasCopilotDock() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="atlas-copilot-launcher"
-        aria-label="Abrir Atlas Copilot"
-      >
-        <span className="atlas-copilot-launcher-icon">✦</span>
-        <span className="atlas-copilot-launcher-copy">
-          <span className="block text-[10px] font-bold uppercase tracking-[.18em] text-sky-300">Atlas Copilot</span>
-          <span className="mt-0.5 block max-w-48 truncate text-xs text-slate-400">Próxima melhor ação</span>
-        </span>
-        <kbd className="atlas-copilot-launcher-kbd">⌘J</kbd>
-      </button>
+      {/* O lançador virou o robô, em components/atlas/ai-presence-dock.tsx:
+        mesma função de abrir o copiloto, e agora mostrando quando a IA está de
+        fato trabalhando. Esta pílula de 360px dividia o canto com o "+" da
+        criação rápida e os dois juntos tapavam a última linha das tabelas. */}
 
       {open ? (
         <div className="fixed inset-0 z-[80] flex justify-end bg-slate-950/70 backdrop-blur-sm" onMouseDown={closeCopilot}>
