@@ -24,11 +24,21 @@ const compat = fs.readFileSync(path.join(raiz, "lib", "compat", "legacy-v2.ts"),
 const agenda = fs.readFileSync(path.join(raiz, "app", "api", "v1", "calendar", "route.ts"), "utf8");
 
 test("o select estendido busca next_action_at", () => {
-  assert.match(compat, /export const NEXT_ACTION_COLUMNS = \["next_action_at"\]/);
+  // Afere PERTENCIMENTO, não a lista literal. A primeira versão deste teste
+  // fixava `["next_action_at"]` exato e reprovou assim que a auditoria de
+  // Clientes 360 somou `development_id` e `purpose` ao mesmo grupo — bloqueando
+  // uma correção legítima por causa da forma, não do comportamento.
+  const bloco = compat.slice(
+    compat.indexOf("NEXT_ACTION_COLUMNS = ["),
+    compat.indexOf("] as const", compat.indexOf("NEXT_ACTION_COLUMNS = [")),
+  );
+  const colunas = [...bloco.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
+  assert.ok(colunas.includes("next_action_at"),
+    "sem esta coluna o mapeador cai na legada e a agenda fica vazia");
   assert.match(
     compat,
     /LIVE_LEAD_SELECT_WITH_SLA = \[[\s\S]{0,200}\.\.\.NEXT_ACTION_COLUMNS,?[\s\S]{0,40}\]\.join/,
-    "sem isto o mapeador cai na coluna legada e a agenda fica vazia",
+    "o grupo precisa entrar no select estendido",
   );
 });
 

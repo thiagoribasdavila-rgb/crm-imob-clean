@@ -90,7 +90,20 @@ export const FIRST_CONTACT_SLA_COLUMNS = [
  *
  * Antes de somar uma coluna: confirme que ela existe no banco vivo.
  */
-export const NEXT_ACTION_COLUMNS = ["next_action_at"] as const;
+export const NEXT_ACTION_COLUMNS = [
+  "next_action_at",
+  // `development_id` é a coluna canônica do empreendimento — 174/217 nesta
+  // base, contra 0/217 da legada `project_id`, que está no select desde sempre.
+  // Sem ela, Clientes 360 marcava TODOS os 217 clientes como "sem projeto",
+  // inclusive os 174 que têm.
+  "development_id",
+  // `purpose` (finalidade da compra) — mesma história: 174/217 preenchidos e
+  // nunca buscados. Somadas, as duas produziam 434 lacunas falsas num painel
+  // cuja função é dizer o que falta preencher. Painel de qualidade que manda
+  // preencher o que já está preenchido é pior que painel nenhum: ensina a
+  // operação a ignorá-lo.
+  "purpose",
+] as const;
 
 export const LIVE_LEAD_SELECT_WITH_SLA = [
   LIVE_LEAD_SELECT,
