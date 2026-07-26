@@ -108,6 +108,21 @@ type Calibration = { summary: string[] };
  * impressão vêm da API de anúncios e chegam como null enquanto ela não estiver
  * conectada; null é honesto, zero seria mentira.
  */
+/**
+ * Descoberta de formulários da Meta. Não entra no carregamento automático: é
+ * ação sob demanda da liderança, e a primeira resposta é sempre simulação.
+ */
+type DescobertaDeFormularios = {
+  simulacao: boolean;
+  encontradosNaMeta: number;
+  leadsAcumuladosNaMeta: number;
+  jaRegistrados: number;
+  registrados: number;
+  novos: Array<{ formId: string; nome: string | null; leads: number }>;
+  fontesOrfas: Array<{ formId: string; nome: string | null; ativa: boolean }>;
+  avisos: string[];
+};
+
 type CampaignPerformance = {
   linhas: Array<{
     campanha: string; conjunto: string | null; anuncio: string | null; formulario: string | null;
@@ -217,6 +232,29 @@ export default function MarketingPage() {
   // alvo executável para a plataforma/aprovação. Nada é pausado daqui.
   const [copiedTargetId, setCopiedTargetId] = useState<string | null>(null);
   const [performance, setPerformance] = useState<FetchState<CampaignPerformance>>({ status: "loading" });
+  const [formularios, setFormularios] = useState<DescobertaDeFormularios | null>(null);
+  const [descobrindo, setDescobrindo] = useState(false);
+  const [erroDaDescoberta, setErroDaDescoberta] = useState<string | null>(null);
+
+  async function descobrirFormularios(aplicar: boolean) {
+    setDescobrindo(true);
+    setErroDaDescoberta(null);
+    try {
+      const { data: sessao } = await supabase.auth.getSession();
+      const resposta = await fetch("/api/v1/integrations/meta/discover-forms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessao.session?.access_token || ""}` },
+        body: JSON.stringify({ aplicar }),
+      });
+      const corpo = await resposta.json();
+      if (!resposta.ok) throw new Error(corpo?.error?.message || "Não foi possível ler os formulários da Meta.");
+      setFormularios(corpo.data as DescobertaDeFormularios);
+    } catch (falha) {
+      setErroDaDescoberta(falha instanceof Error ? falha.message : "Falha na descoberta.");
+    } finally {
+      setDescobrindo(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -324,6 +362,96 @@ export default function MarketingPage() {
           observados, não totais — não decida pausa de campanha por eles.
         </p>
       ) : null}
+
+      {/* Formulários da Meta: de onde a lead entra. Fica antes do desempenho
+          porque campanha sem formulário registrado não gera lead nenhuma — e o
+          erro é silencioso: o webhook recebe e descarta. */}
+      <section aria-label="Formulários de lead da Meta" className="cc6-panel cc6-reveal overflow-hidden">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2 px-5 pb-3 pt-4">
+          <p className="cc6-eyebrow">Formulários da Meta</p>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void descobrirFormularios(false)}
+              disabled={descobrindo}
+              className="min-h-9 rounded-lg border border-white/10 px-3 text-[11px] font-semibold text-[#cdd7e5] transition hover:border-white/25 hover:text-white disabled:opacity-50"
+            >
+              {descobrindo ? "Consultando…" : "Conferir na Meta"}
+            </button>
+            {formularios && formularios.novos.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => void descobrirFormularios(true)}
+                disabled={descobrindo}
+                className="min-h-9 rounded-lg border border-[rgba(125,211,252,0.4)] bg-[rgba(56,189,248,0.12)] px-3 text-[11px] font-semibold text-[#bae6fd] transition hover:bg-[rgba(56,189,248,0.2)] disabled:opacity-50"
+              >
+                Registrar {formularios.novos.length} (inativos)
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {erroDaDescoberta ? (
+          <p role="alert" className="mx-5 mb-4 rounded-xl border border-[rgba(251,113,133,0.32)] bg-[rgba(251,113,133,0.07)] px-4 py-3 text-[12.5px] text-[#fda4af]">
+            {erroDaDescoberta}
+          </p>
+        ) : null}
+
+        {!formularios ? (
+          <p className="px-5 pb-4 text-[12px] leading-5 text-[#6b7890]">
+            Confere quais formulários existem na Meta e quais o CRM conhece. Formulário não
+            registrado entrega lead que o webhook descarta em silêncio.
+          </p>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2 px-5 pb-3 text-[11px] text-[#93a2b8]">
+              <span className="cc6-chip">{formularios.encontradosNaMeta} na Meta</span>
+              <span className="cc6-chip">{formularios.leadsAcumuladosNaMeta} lead(s) acumulada(s) lá</span>
+              <span className="cc6-chip">{formularios.jaRegistrados} já no CRM</span>
+              {formularios.simulacao ? <span className="cc6-chip">simulação — nada foi gravado</span> : null}
+            </div>
+
+            {formularios.fontesOrfas.length ? (
+              <div role="alert" className="mx-5 mb-3 rounded-xl border border-[rgba(251,113,133,0.32)] bg-[rgba(251,113,133,0.07)] px-4 py-3">
+                <p className="text-[12.5px] font-semibold text-[#fda4af]">
+                  {formularios.fontesOrfas.length} fonte(s) apontam para formulário inexistente
+                </p>
+                <p className="mt-1 text-[12px] leading-5 text-[#93a2b8]">
+                  {formularios.fontesOrfas.map((f) => `${f.nome ?? "sem nome"} (${f.formId})`).join(" · ")}
+                </p>
+                <p className="mt-1 text-[11.5px] leading-5 text-[#6b7890]">
+                  O backfill dessas fontes sempre trará zero. Nenhuma foi removida — a decisão é humana.
+                </p>
+              </div>
+            ) : null}
+
+            {formularios.novos.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[420px] text-left text-[12px]">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-[.12em] text-[#6b7890]">
+                      <th className="px-5 py-2 font-semibold">Formulário fora do CRM</th>
+                      <th className="px-5 py-2 text-right font-semibold">Leads na Meta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formularios.novos.slice(0, 10).map((f) => (
+                      <tr key={f.formId} className="border-t border-white/5">
+                        <td className="px-5 py-2.5 text-[#cdd7e5]">{f.nome ?? f.formId}</td>
+                        <td className={`cc6-num px-5 py-2.5 text-right ${f.leads > 0 ? "text-[#e8eef8]" : "text-[#6b7890]"}`}>{f.leads}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+
+            {formularios.avisos.map((aviso) => (
+              <p key={aviso} className="border-t border-white/5 px-5 py-3 text-[11.5px] leading-5 text-[#93a2b8]">{aviso}</p>
+            ))}
+          </>
+        )}
+      </section>
 
       {/* (0) O que o CRM já sabe sobre a campanha, sem depender da Meta.
            Vem primeiro de propósito: o alerta mais caro desta tela não é de
