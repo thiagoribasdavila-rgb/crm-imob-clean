@@ -5,6 +5,7 @@ import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { requireApiIdentity } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { LIVE_LEAD_SELECT, mapLegacyLead } from "@/lib/compat/legacy-v2";
+import { chaveDaCampanhaDoGoogle, lerAtribuicaoDoGoogle, nomeDaCampanhaDoGoogle } from "@/lib/marketing/google-attribution";
 import { recordLiveLeadEvent } from "@/lib/compat/live-writes";
 
 export const dynamic = "force-dynamic";
@@ -116,6 +117,27 @@ export async function POST(request: Request) {
 
     const purposeNote = body.purpose ? `Objetivo declarado: ${body.purpose}.` : "";
     const notes = [purposeNote, body.notes?.trim()].filter(Boolean).join("\n").slice(0, 5000) || null;
+    // Atribuição do Google, se houver clique pago identificado. Sem
+    // identificador, devolve null e nada muda — UTM sozinha não atribui.
+    const atribuicaoGoogle = lerAtribuicaoDoGoogle(body as Record<string, unknown>);
+    let campanhaDoGoogle: string | null = null;
+    if (atribuicaoGoogle) {
+      const chave = chaveDaCampanhaDoGoogle(atribuicaoGoogle);
+      if (chave) {
+        const existente = await admin.from("marketing_campaigns").select("id")
+          .eq("organization_id", identity.organizationId).eq("platform", "GOOGLE")
+          .eq("external_campaign_id", chave).maybeSingle();
+        campanhaDoGoogle = existente.data?.id
+          ?? (await admin.from("marketing_campaigns").insert({
+            organization_id: identity.organizationId,
+            name: nomeDaCampanhaDoGoogle(atribuicaoGoogle),
+            platform: "GOOGLE",
+            external_campaign_id: chave,
+            status: "PAUSED",
+          }).select("id").maybeSingle()).data?.id ?? null;
+      }
+    }
+
     const { data: storedLead, error: leadError } = await admin
       .from("leads")
       .insert({
@@ -123,7 +145,11 @@ export async function POST(request: Request) {
         name,
         email,
         phone,
-        source: body.source?.trim() || "Manual",
+        // Formulário do site e criação direta também carregam gclid/UTM quando a
+        // pessoa veio de anúncio. O caminho de portal já lê isso; sem ler aqui,
+        // metade das entradas do Google continuaria invisível.
+        source: atribuicaoGoogle ? "google_ads" : (body.source?.trim() || "Manual"),
+        campaign_id: campanhaDoGoogle,
         status: "novo",
         score_ia: score.score,
         classificacao_ia: score.temperature,
