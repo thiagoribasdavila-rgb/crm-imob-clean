@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { SessionSecurityPanel } from "./SessionSecurityPanel";
+import { BrokerConnectionPanel } from "@/components/whatsapp/broker-connection-panel";
 
 type Profile = { id: string; name: string | null; role: string; availability_status: string | null };
 
@@ -115,6 +116,18 @@ export default function ProfileSettings() {
             </div>
           </form>
         </TiltShell>
+      </section>
+
+      {/* Conectar o WhatsApp fica no PERFIL, não em Integrações: o número é
+          pessoal do corretor e quem decide conectar é ele, não a empresa.
+          Integrações é onde a liderança configura o que é da empresa. */}
+      <section className="cc6-panel cc6-reveal p-5" aria-labelledby="profile-whatsapp-title" style={{ animationDelay: "110ms" }}>
+        <p className="atlas-eyebrow">Atendimento</p>
+        <h2 id="profile-whatsapp-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Meu WhatsApp</h2>
+        <p className="mt-1 mb-4 text-xs text-slate-500">
+          Conectando, cada conversa sua entra sozinha no histórico da lead — nada de copiar e colar no fim do dia.
+        </p>
+        <BrokerConnectionPanel />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.1fr_.9fr] xl:items-start">

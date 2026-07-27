@@ -130,7 +130,11 @@ export const LIVE_LEAD_SELECT_WITH_SLA = [
  * no vocabulário antigo enquanto o banco andou, e o mapeador mascarava a
  * diferença caindo na coluna legada em silêncio.
  */
-export const LIVE_PROFILE_SELECT = "id,name,full_name,email,role,active,organization_id,team,max_active_leads,availability_status";
+// `last_seen_at` foi adicionado em 20260727030000 e CONFERIDO no banco vivo
+// antes de entrar aqui. O recuo deste select é tudo-ou-nada: uma coluna
+// inexistente derruba o grupo inteiro com 42703, e a página perde também
+// `availability_status` e `max_active_leads` sem erro visível.
+export const LIVE_PROFILE_SELECT = "id,name,full_name,email,role,active,organization_id,team,max_active_leads,availability_status,last_seen_at";
 
 const statusAliases: Record<string, string> = {
   new: "novo",

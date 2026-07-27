@@ -64,3 +64,9 @@ supabase/.temp/
 # output solto de `supabase migration list` (relatório pontual, não é fonte)
 migration-status.txt
 migrations.json
+
+# Credenciais de sessão do WhatsApp — defesa em profundidade.
+# O lugar certo delas é ATLAS_WHATSAPP_SESSION_DIR, fora do repositório; esta
+# entrada existe para o caso de alguém apontar o diretório para cá por engano.
+whatsapp-sessions/
+.whatsapp-sessions/

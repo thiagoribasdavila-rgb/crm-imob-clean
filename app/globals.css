@@ -75,6 +75,11 @@
   --sidebar-accent-foreground: var(--text);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--primary);
+
+  /* Fundo que precisa continuar claro para leitura ÓPTICA (QR Code).
+     Não é decisão de marca: um QR escuro sobre fundo escuro não é lido pela
+     câmera. Fica como token para o white-label enxergar que é intencional. */
+  --atlas-scan-surface: #ffffff;
 }
 
 * {
@@ -9373,3 +9378,70 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   line-height: 1.5;
 }
 .atlas-intake-pool strong { color: var(--atlas-text-secondary); font-weight: 500; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONECTAR O WHATSAPP DO CORRETOR
+   O aviso de risco tem peso visual de propósito: quem corre o risco é o dono
+   do número, e ele decide na mesma tela do botão.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.atlas-wa-carregando { color: var(--atlas-text-tertiary); font-size: 12px; margin: 0; }
+.atlas-wa-cabeca { display: flex; align-items: flex-start; gap: 10px; }
+.atlas-wa-farol {
+  width: 9px; height: 9px; border-radius: 50%; margin-top: 4px; flex: none;
+  background: var(--atlas-text-tertiary);
+}
+/* Anel por geometria (outline), não por sombra: a camada CC23 proíbe glow —
+   profundidade vem de forma, não de brilho. */
+.atlas-wa-farol[data-cor="ok"] {
+  background: var(--atlas-success);
+  outline: 3px solid color-mix(in srgb, var(--atlas-success) 18%, transparent);
+}
+.atlas-wa-farol[data-cor="atencao"] { background: var(--atlas-warning); }
+.atlas-wa-farol[data-cor="erro"] { background: var(--atlas-danger); }
+.atlas-wa-status { margin: 0; color: var(--atlas-text-primary); font-size: 13px; font-weight: 600; }
+.atlas-wa-sub { margin: 2px 0 0; color: var(--atlas-text-tertiary); font-size: 11px; line-height: 1.5; }
+
+.atlas-wa-aviso, .atlas-wa-erro {
+  margin: 10px 0 0; font-size: 11px; line-height: 1.55;
+  border-left: 2px solid var(--atlas-warning); padding-left: 10px;
+  color: var(--atlas-text-tertiary);
+}
+.atlas-wa-erro { border-left-color: var(--atlas-danger); }
+.atlas-wa-aviso code {
+  font-size: 10.5px; padding: 1px 4px; border-radius: 4px;
+  background: var(--atlas-surface-subtle); color: var(--atlas-text-secondary);
+}
+
+.atlas-wa-qr {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+  margin-top: 14px; padding: 14px;
+  border: 1px solid var(--atlas-border-strong); border-radius: 12px;
+  background: var(--atlas-surface-subtle);
+}
+/* Fundo branco fixo: o leitor do WhatsApp precisa do contraste do QR, e no
+   tema escuro um QR sobre fundo escuro não é lido. */
+.atlas-wa-qr img { background: var(--atlas-scan-surface); padding: 8px; border-radius: 8px; }
+.atlas-wa-qr ol { margin: 0; padding-left: 18px; color: var(--atlas-text-tertiary); font-size: 11.5px; line-height: 1.9; }
+.atlas-wa-qr strong { color: var(--atlas-text-secondary); font-weight: 600; }
+
+.atlas-wa-risco {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-top: 14px; padding: 10px 12px;
+  border: 1px solid var(--atlas-warning); border-radius: 9px;
+  background: color-mix(in srgb, var(--atlas-warning) 7%, transparent);
+  cursor: pointer;
+}
+.atlas-wa-risco input { margin-top: 2px; flex: none; }
+.atlas-wa-risco span { color: var(--atlas-text-secondary); font-size: 11px; line-height: 1.55; }
+
+.atlas-wa-acoes { display: flex; gap: 8px; margin-top: 12px; }
+.atlas-wa-acoes button {
+  border: 1px solid var(--atlas-border-strong); border-radius: 8px;
+  background: transparent; color: var(--atlas-text-secondary);
+  padding: 7px 14px; font-size: 11.5px; font-weight: 500; cursor: pointer;
+}
+.atlas-wa-acoes button[data-primario="true"] {
+  border-color: var(--atlas-accent); background: var(--atlas-accent-soft); color: var(--atlas-accent);
+}
+.atlas-wa-acoes button:disabled { opacity: 0.5; cursor: default; }
+.atlas-wa-nota { margin: 10px 0 0; color: var(--atlas-text-tertiary); font-size: 11px; line-height: 1.55; }

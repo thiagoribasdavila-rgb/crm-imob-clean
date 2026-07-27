@@ -5,6 +5,15 @@ import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/le
 import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
+/**
+ * Quanto tempo depois do último batimento ainda contamos alguém como "na mesa".
+ *
+ * O heartbeat de `CommercialPresence` bate a cada poucos minutos e só quando a
+ * aba está visível. 5 minutos absorve uma pausa curta sem declarar presente
+ * quem fechou o notebook e foi embora.
+ */
+const JANELA_PRESENCA_MS = 5 * 60_000;
+
 const managerRoles = new Set(["director", "superintendent", "manager"]);
 const archived = new Set(["arquivado", "archived"]);
 const text = (value: unknown) => typeof value === "string" ? value : "";
@@ -54,7 +63,22 @@ export async function GET(request: NextRequest) {
   const leads = ((leadsResult.data ?? []) as unknown as CompatRow[]).map((row) => mapLegacyLead(row)).filter((lead) => !archived.has(text(lead.status).toLowerCase()));
   const presence = profiles.map((profile) => {
     const availability = text(profile.availability_status || "OFFLINE").toLowerCase();
-    return { profile_id: profile.id, availability, last_seen_at: profile.created_at, online: availability !== "offline" };
+    // `last_seen_at` era `profile.created_at` — a data em que a CONTA foi
+    // criada, devolvida com o nome de "visto por último". Quem lê o painel
+    // conclui que o corretor esteve ali; o número não tem relação nenhuma
+    // com presença.
+    const vistoEm = text(profile.last_seen_at) || null;
+    const naMesaAgora = vistoEm ? Date.now() - new Date(vistoEm).getTime() <= JANELA_PRESENCA_MS : false;
+    return {
+      profile_id: profile.id,
+      availability,
+      last_seen_at: vistoEm,
+      // `online` continua significando "aceita lead" — é o que a cascata usa,
+      // e ela distribui de propósito para quem está com a aba fechada.
+      online: availability !== "offline",
+      // `na_mesa_agora` é a pergunta nova: tem alguém aí NESTE momento.
+      na_mesa_agora: naMesaAgora,
+    };
   });
   const queue = profiles.filter((profile) => profile.commercial_role === "broker").flatMap((profile) => projects.map((project) => ({ profile_id: profile.id, development_id: project.id, enabled: true, weight: 1, assignments_count: 0, last_assigned_at: null })));
   const unassignedQueue = leads.filter((lead) => !lead.assigned_to).sort((a, b) => Date.parse(text(a.created_at)) - Date.parse(text(b.created_at))).slice(0, 100).map((lead) => ({
@@ -97,7 +121,13 @@ export async function POST(request: NextRequest) {
   // Presence heartbeat (unchanged behaviour).
   if (body?.action === "heartbeat") {
     const availability = ["available", "busy", "offline"].includes(body.availability || "") ? body.availability! : "available";
-    const { error } = await getSupabaseAdmin().from("profiles").update({ availability_status: availability.toUpperCase() }).eq("id", identity.access.profile.id).eq("organization_id", identity.access.organization.id);
+    // O carimbo é o que torna a presença verificável. `availability_status`
+    // sozinho é uma bandeira que ninguém abaixa: 7 de 7 perfis do banco vivo
+    // estavam AVAILABLE, inclusive a conta de sistema de ingestão.
+    const { error } = await getSupabaseAdmin().from("profiles").update({
+      availability_status: availability.toUpperCase(),
+      last_seen_at: new Date().toISOString(),
+    }).eq("id", identity.access.profile.id).eq("organization_id", identity.access.organization.id);
     if (error) return apiError("PRESENCE_UPDATE_FAILED", "Não foi possível atualizar sua disponibilidade.", identity.meta, { status: 503 });
     return apiSuccess({ availability, online: availability !== "offline" }, identity.meta, { headers: limited.headers });
   }
