@@ -27,7 +27,7 @@ Reconferir a qualquer momento: `npm run meta:conta`
 | **Meta Page** | `META_PAGE_ID` | Página que veicula o anúncio | **Sim** | facebook.com/<página> › Sobre | server | grátis | — | ✅ testado (`DA'Vila Consultoria`) | — |
 | **Meta Lead Form** | `META_LEAD_FORM_ID` | Formulário instantâneo | **Sim** | Gerenciador › Formulários | server | grátis | — | ✅ testado (`Spin Mood (v6)` ACTIVE) | — |
 | **Meta Pixel** | `META_PIXEL_ID` | Pixel do site (não é o do CAPI) | Não | Gerenciador de Eventos | server | grátis | — | ⬜ **vazia** | Só se for instrumentar site |
-| **Meta CAPI** (dataset) | `META_CAPI_DATASET_ID` | Para onde os eventos de conversão vão | Não⁴ | Gerenciador de Eventos › Conjunto de dados | server | grátis | — | ⬜ **vazia** | **Definir para ligar o CAPI** |
+| **Meta CAPI** (dataset) | — *(não é ENV)* | Para onde os eventos vão | Não⁴ | Gerenciador de Eventos › Conjunto de dados | **banco** | grátis | — | ⬜ **não configurado** | Definir em **Integrações › Meta › Conversões** — é por organização, não do ambiente |
 | **Meta CAPI** (token) | `META_CONVERSIONS_ACCESS_TOKEN` | Autentica o envio de conversões | Não⁴ | mesmo painel › Gerar token | **server** | grátis | — | ⬜ **vazia** | **Definir** |
 | **Meta CAPI** (chave geral) | `ATLAS_META_CAPI_ENABLED` | `true` libera o envio real | Não⁴ | você define | server | grátis | — | ⬜ **vazia** | **`true` só depois das duas acima** |
 | **Meta webhook** | `META_WEBHOOK_VERIFY_TOKEN` | Valida o webhook de leads | **Sim** | você inventa; cole igual no painel | server | grátis | — | ✅ SET | — |
@@ -46,6 +46,8 @@ Reconferir a qualquer momento: `npm run meta:conta`
 
 ¹ Deixou de ser obrigatória: a conta é escolhida por campanha na tela. O ENV é só o padrão.
 ² Pelo menos **um** provedor de IA é necessário para gerar copy. Os três juntos são redundância, não exigência.
+⁵ O dataset saiu do ambiente e passou a viver em `meta_conversion_configs`, por organização: um `META_CAPI_DATASET_ID` único mandaria a conversão de uma imobiliária para o dataset de outra. Configurar sempre nasce em modo **teste**; ir para produção é um segundo gesto, do diretor — evento de teste não entra no aprendizado do algoritmo.
+
 ⁴ Sem CAPI a Meta otimiza para **quem preenche formulário**, não para quem compra. Medido: `meta_conversion_events` tem **0 linhas** — nenhum evento de conversão jamais saiu. É a maior alavanca de eficiência de anúncio ainda desligada.
 
 ³ Obrigatórias **se** for usar WhatsApp por corretor. Sem elas a ponte fica desligada e **nenhum corretor recebe lead nova** — a regra exige WhatsApp conectado.

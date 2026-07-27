@@ -37,7 +37,11 @@ export async function GET(request: NextRequest) {
     supabase: checks.database.ok ? "connected" : "error",
     meta: integrationStatus(present("META_APP_SECRET", "META_WEBHOOK_VERIFY_TOKEN") && (present("META_LEAD_ACCESS_TOKEN") || present("META_ADS_ACCESS_TOKEN"))),
     metaCapi: process.env.ATLAS_META_CAPI_ENABLED === "true"
-      ? integrationStatus(present("META_CONVERSIONS_ACCESS_TOKEN", "META_CAPI_DATASET_ID"))
+      // O dataset saiu do ambiente e passou a viver em meta_conversion_configs,
+      // por organização. Checar META_CAPI_DATASET_ID aqui deixaria a tela VERDE
+      // enquanto o envio segue bloqueado — sinal verde que mente é pior que
+      // vermelho. Aqui só dá para conferir o que é global: o token e a chave.
+      ? integrationStatus(present("META_CONVERSIONS_ACCESS_TOKEN", "ATLAS_META_CAPI_ENABLED"))
       : "disabled",
     whatsapp: integrationStatus(present("WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID")),
     openai: integrationStatus(present("OPENAI_API_KEY")),

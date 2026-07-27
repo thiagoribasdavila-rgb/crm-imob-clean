@@ -3,7 +3,7 @@
 // Papel deste módulo: transformar sinais VIVOS do CRM (leads + lead_events) em
 // payloads CAPI prontos para revisão humana (export/dry-run) e, somente com o
 // gate duplo ATLAS_META_CAPI_ENABLED=true + META_CONVERSIONS_ACCESS_TOKEN,
-// enviá-los ao dataset configurado em META_CAPI_DATASET_ID.
+// enviá-los ao dataset configurado em meta_conversion_configs (por organização).
 //
 // Governança (inegociável):
 //   - PII NUNCA sai em claro: e-mail/telefone são normalizados e hasheados
@@ -408,7 +408,7 @@ const CAPI_MAX_EVENTS_PER_REQUEST = 500;
 
 /**
  * Envia o lote à Meta CAPI SOMENTE quando ATLAS_META_CAPI_ENABLED === "true",
- * META_CONVERSIONS_ACCESS_TOKEN existe e META_CAPI_DATASET_ID é válido. Fora
+ * META_CONVERSIONS_ACCESS_TOKEN existe e o dataset da organização é válido. Fora
  * disso retorna { sent: false, reason } SEM nenhuma chamada de rede — os gates
  * ficam antes de qualquer fetch, verificável por leitura. Erros HTTP da Meta
  * viram throw (o chamador decide status/retry); event_id determinístico torna

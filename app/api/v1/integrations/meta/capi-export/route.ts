@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 // POST (envio):   reconstrói o MESMO lote no servidor (payload do cliente nunca
 //      é aceito como evento) e chama sendCapiBatch — que só sai para a rede com
 //      ATLAS_META_CAPI_ENABLED=true + META_CONVERSIONS_ACCESS_TOKEN +
-//      META_CAPI_DATASET_ID válidos. Fora disso: 409 com o passo a passo do
+//      dataset configurado em meta_conversion_configs. Fora disso: 409 com o passo a passo do
 //      runbook (§5). Janela do envio é limitada a 7 dias — a Meta descarta
 //      event_time mais antigo que isso.
 //
@@ -38,14 +38,17 @@ function envReadiness() {
   return {
     flagEnabled: process.env.ATLAS_META_CAPI_ENABLED === "true",
     tokenPresent: Boolean(process.env.META_CONVERSIONS_ACCESS_TOKEN),
-    datasetConfigured: /^\d{5,30}$/.test(String(process.env.META_CAPI_DATASET_ID ?? "").trim()),
+    datasetConfigured: false, // agora vem de meta_conversion_configs, por organização — conferido na hora do envio
+
   };
 }
 
 const ACTIVATION_STEPS = [
   "1) Valide o dry-run (GET) por pelo menos 2 semanas — docs/ESTRATEGIA_META_ANDROMEDA.md §5.",
   "2) Defina ATLAS_META_CAPI_ENABLED=true no ambiente.",
-  "3) Configure META_CONVERSIONS_ACCESS_TOKEN e META_CAPI_DATASET_ID (somente dígitos).",
+  "3) Configure META_CONVERSIONS_ACCESS_TOKEN no servidor e o Dataset em Integrações › Meta › Conversões (o dataset é por organização, não do ambiente).",
+  "4) Veja o primeiro evento chegar na aba de TESTE do Gerenciador de Eventos.",
+  "5) Só então promova para produção — evento de teste não entra no aprendizado do algoritmo.",
   "4) Reinicie o app e repita o POST.",
 ];
 

@@ -69,7 +69,14 @@ export async function GET(request: NextRequest) {
     { chave: "meta_pagina", rotulo: "Página do Facebook", ok: preenchida(env.META_PAGE_ID), detalhe: preenchida(env.META_PAGE_ID) ? "configurada" : "META_PAGE_ID ausente" },
     { chave: "meta_form", rotulo: "Formulário de leads", ok: preenchida(env.META_LEAD_FORM_ID), detalhe: preenchida(env.META_LEAD_FORM_ID) ? "configurado" : "META_LEAD_FORM_ID ausente" },
     { chave: "webhook", rotulo: "Verificação do webhook", ok: preenchida(env.META_WEBHOOK_VERIFY_TOKEN), detalhe: preenchida(env.META_WEBHOOK_VERIFY_TOKEN) ? "configurada" : "META_WEBHOOK_VERIFY_TOKEN ausente" },
-    { chave: "capi", rotulo: "Conversions API", ok: preenchida(env.META_CONVERSIONS_ACCESS_TOKEN) && preenchida(env.META_CAPI_DATASET_ID), detalhe: preenchida(env.META_CAPI_DATASET_ID) ? "dataset configurado" : "opcional — melhora a otimização" },
+    { chave: "capi", rotulo: "Conversions API",
+      // O dataset é por organização (meta_conversion_configs), não do ambiente.
+      // Daqui só dá para ver a metade global; declarar "pronto" sem a outra
+      // metade seria prometer envio que não acontece.
+      ok: preenchida(env.META_CONVERSIONS_ACCESS_TOKEN) && env.ATLAS_META_CAPI_ENABLED === "true",
+      detalhe: preenchida(env.META_CONVERSIONS_ACCESS_TOKEN) && env.ATLAS_META_CAPI_ENABLED === "true"
+        ? "token e chave prontos — falta o Dataset em Integrações › Meta"
+        : "sem isto a Meta otimiza para quem preenche formulário, não para quem compra" },
   ];
 
   // ── CRM ───────────────────────────────────────────────────────────────
