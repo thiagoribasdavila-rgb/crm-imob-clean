@@ -144,9 +144,13 @@ const entries = execFileSync("unzip", ["-Z1", zipPath], { encoding: "utf8" })
   .filter(Boolean);
 const forbidden = entries.filter(
   (entry) =>
-    /(^|\/)(?:\.env\.local|hostinger\.env|node_modules|\.next|tmp|outputs|dist|\.git)(?:\/|$)/.test(
+    // Sessões de WhatsApp são credencial de acesso total à conta do corretor.
+    // O lugar delas é ATLAS_WHATSAPP_SESSION_DIR, fora do repositório — esta
+    // linha existe para o caso de alguém apontar o diretório para cá.
+    // `.env` sem sufixo também entra: o padrão anterior só pegava `.env.local`.
+    /(^|\/)(?:\.env|\.env\.local|hostinger\.env|node_modules|\.next|tmp|outputs|dist|\.git|whatsapp-sessions|\.whatsapp-sessions|logs)(?:\/|$)/.test(
       entry,
-    ) || /\.(?:xlsx?|csv|pdf)$/i.test(entry),
+    ) || /\.(?:xlsx?|csv|pdf)$/i.test(entry) || /(^|\/)qr-[^/]*\.png$/i.test(entry),
 );
 if (forbidden.length)
   throw new Error(
@@ -163,6 +167,9 @@ for (const required of [
   "docs/EVOLUTION_PHASE_101_HOMOLOGATION_PACKAGE.md",
   "lib/auth/safe-redirect.ts",
   "components/crm/lead-operational-bar.tsx",
+  "CREDENCIAIS_E_CUSTOS_ATLAS_ONE.md",
+  "workers/whatsapp-bridge.mjs",
+  "supabase/migrations/20260727030000_presenca_viva_e_sessao_whatsapp.sql",
 ]) {
   if (!entries.includes(required))
     throw new Error(`Arquivo obrigatório ausente no ZIP: ${required}`);
