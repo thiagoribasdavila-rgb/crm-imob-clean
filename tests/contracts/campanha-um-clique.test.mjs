@@ -277,3 +277,18 @@ test("nome de cidade é resolvido para a CHAVE da Meta", () => {
   assert.match(rota, /pareceChave\(brief\.city\)/,
     "quem já mandou a chave não deve passar por resolução");
 });
+
+test("existe portão que pega form_id truncado", () => {
+  // `meta_lead_sources` tinha duas "Spin Mood": uma com o id certo (17
+  // dígitos) e outra truncada em 15. A truncada estava ATIVA e com dono
+  // padrão — o backfill bateria num formulário inexistente.
+  //
+  // Nenhuma validação de FORMATO pega isso: 15 dígitos é tão plausível quanto
+  // 17. Só perguntando à Meta.
+  const portao = ler("scripts", "check-meta-forms-reachable.mjs");
+  assert.match(portao, /NÃO EXISTE NA META/);
+  assert.match(portao, /15 dígitos é tão plausível quanto/);
+  assert.match(portao, /process\.exit\(0\)/, "sem Meta configurada não é falha");
+  const pkg = JSON.parse(ler("package.json"));
+  assert.equal(pkg.scripts["meta:formularios"], "node scripts/check-meta-forms-reachable.mjs");
+});
