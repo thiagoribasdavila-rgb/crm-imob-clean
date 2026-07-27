@@ -35,7 +35,7 @@ function recusar(codigo: string, status: number, extras: Record<string, unknown>
 
 function authError(error: unknown) {
   const message = error instanceof Error ? error.message : "Não autorizado.";
-  const status = /sessão|token|autenticação|organização/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
+  const status = /sessão|token|autenticação|organização|autoriz/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   // A recusa de acesso é a MAIS comum de todas — "esta lead não é sua" — e era
   // a única que chegava sem saída, porque `requireLeadAccess` estoura por
   // exceção e desviava do caminho normal de recusa.
@@ -110,7 +110,7 @@ export async function GET(request: Request) {
   } catch (error) {
     logger.warn("pipeline.read_failed", { error: error instanceof Error ? error.message : String(error) });
     const message = error instanceof Error ? error.message : "";
-    if (!/sessão|token|autenticação|organização|escopo/i.test(message)) return recusar("PIPELINE_UNAVAILABLE", 503);
+    if (!/sessão|token|autenticação|organização|escopo|autoriz/i.test(message)) return recusar("PIPELINE_UNAVAILABLE", 503);
     return authError(error);
   }
 }

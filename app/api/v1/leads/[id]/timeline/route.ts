@@ -11,7 +11,7 @@ type TimelineEvent = { id: string; category: TimelineCategory; title: string; de
 
 function safeError(error: unknown) {
   const message = error instanceof Error ? error.message : "Não foi possível carregar a timeline.";
-  const status = /sessão|token|autenticação/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
+  const status = /sessão|token|autenticação|autoriz/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   return NextResponse.json({ error: message }, { status });
 }
 

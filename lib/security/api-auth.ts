@@ -48,8 +48,29 @@ export async function requireApiIdentity(request: Request): Promise<ApiIdentity>
     .eq("id", userData.user.id)
     .maybeSingle();
 
-  if (profileError || !profile) deny(request, "Perfil comercial não encontrado.");
-  if (profile.active === false) deny(request, "Perfil inativo.");
+  // ── POR QUE ESTAS DUAS MENSAGENS SÃO ASSIM ────────────────────────────────
+  //
+  // Todo usuário criado depois do primeiro nasce `active = false` (o gatilho
+  // `handle_new_auth_user` faz `active = primeiro_perfil`). É trava de segurança
+  // correta: ninguém entra sozinho numa empresa e começa a trabalhar.
+  //
+  // Só que as 51 rotas escolhem o status HTTP testando PALAVRAS da mensagem —
+  // `token`, `sessão`, `autenticação`, `autoriz`, `organização`, `escopo`. Nem
+  // "Perfil inativo." nem "Perfil comercial não encontrado." batiam com
+  // nenhuma, então caíam no `: 500` de todas elas.
+  //
+  // Resultado medido na varredura: o corretor recém-criado recebia HTTP 500 —
+  // "o servidor quebrou" — quando a verdade era "seu acesso ainda não foi
+  // liberado". Erro de servidor não tem o que fazer; falta de autorização tem.
+  //
+  // As mensagens agora dizem o caminho E contêm `autoriz`, que as rotas já
+  // reconhecem. Um contrato garante que toda recusa nova continue reconhecível.
+  if (profileError || !profile) {
+    deny(request, "Seu usuário não tem perfil comercial autorizado nesta empresa. O diretor cria o perfil em Configurações › Usuários.");
+  }
+  if (profile.active === false) {
+    deny(request, "Seu acesso ainda não foi autorizado. Peça ao diretor para ativar seu usuário em Configurações › Usuários — é o passo que falta.");
+  }
   let organizationId = uuid(profile.organization_id);
   let fallbackOrganizationApplied = false;
   if (!organizationId && process.env.ATLAS_ENV === "homologation") {

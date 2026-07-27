@@ -297,7 +297,9 @@
     "smoke:ciclo": "node scripts/smoke-ciclo-operacional.mjs",
     "meta:conta": "node scripts/check-meta-account-reachable.mjs",
     "whatsapp:conectar": "node scripts/whatsapp-conectar-terminal.mjs",
-    "meta:formularios": "node scripts/check-meta-forms-reachable.mjs"
+    "meta:formularios": "node scripts/check-meta-forms-reachable.mjs",
+    "teste:kanban": "node scripts/teste-kanban-vivo.mjs",
+    "teste:varredura": "node scripts/varredura-completa.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1089.0",

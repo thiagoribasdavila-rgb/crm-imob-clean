@@ -24,7 +24,7 @@ type JsonRow = Record<string, unknown>;
 
 function requestError(error: unknown) {
   const message = error instanceof Error ? error.message : "Não foi possível concluir a operação.";
-  const status = /sessão|token|autenticação/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
+  const status = /sessão|token|autenticação|autoriz/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   return NextResponse.json({ error: message }, { status });
 }
 
