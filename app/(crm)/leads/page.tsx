@@ -9,6 +9,7 @@ import { ErrorState } from "@/components/atlas/error-state";
 import { LoadingState } from "@/components/atlas/loading-state";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
+import { NextActionQuickSet } from "@/components/crm/next-action-quick-set";
 
 type Lead = {
   id: string;
@@ -26,6 +27,8 @@ type Lead = {
   budget_max: number | null;
   last_interaction_at: string | null;
   next_action_at: string | null;
+  /** O QUE fazer. Sem isto a fila mostra a data e não o compromisso. */
+  next_action: string | null;
   first_contact_due_at: string | null;
   first_contacted_at: string | null;
   first_contact_sla_minutes: number | null;
@@ -1789,6 +1792,16 @@ export default function LeadsPage() {
                           ✦ IA
                         </Link>
                       </div>
+                      {/* Marcar a próxima ação sem sair da fila. Antes disto, a
+                          única forma de gravar `next_action_at` era agendar uma
+                          VISITA ou submeter a ficha inteira — e 208 de 217 leads
+                          estavam sem próxima ação porque não havia onde clicar. */}
+                      <NextActionQuickSet
+                        leadId={lead.id}
+                        proximaAcaoEm={lead.next_action_at}
+                        descricaoAtual={lead.next_action}
+                        aoMarcar={() => setReloadKey((k) => k + 1)}
+                      />
                     </div>
                   );
                 })}

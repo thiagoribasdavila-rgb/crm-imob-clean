@@ -9023,3 +9023,50 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* Marcar a próxima ação sem sair da fila.
+   Fechado por padrão: numa fila de 25 leads, 25 blocos de botões abertos são
+   mais ruído do que a fila inteira. */
+.atlas-proxima-acao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.atlas-proxima-acao button {
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--atlas-text-secondary);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.atlas-proxima-acao button:hover:not(:disabled) {
+  border-color: var(--atlas-accent);
+  color: var(--atlas-accent);
+  background: var(--atlas-accent-soft);
+}
+.atlas-proxima-acao button:disabled { opacity: 0.5; cursor: default; }
+.atlas-proxima-acao button[data-secundario="true"] {
+  border-color: transparent;
+  color: var(--atlas-text-tertiary);
+}
+.atlas-proxima-acao-passo {
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  margin-right: 2px;
+}
+.atlas-proxima-acao-atual,
+.atlas-proxima-acao-feito {
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+}
+
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .atlas-proxima-acao button {
+    transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+  }
+}
