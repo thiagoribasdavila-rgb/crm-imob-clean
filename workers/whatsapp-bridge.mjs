@@ -94,6 +94,45 @@ async function avisarCrm(caminho, corpo) {
   }
 }
 
+// ── Quem é lead: a pergunta que vem ANTES do conteúdo ───────────────────────
+//
+// O CRM grava conversa de LEAD, não a vida particular do corretor. Se a ponte
+// mandasse tudo e o CRM descartasse, o texto da conversa com a mãe dele já
+// teria trafegado, entrado em log de requisição e passado pela memória do
+// servidor antes de ser jogado fora.
+//
+// Perguntando primeiro, a mensagem particular NUNCA SAI DAQUI. O que trafega é
+// um telefone e um sim/não. É a diferença entre "não guardamos" e "não
+// recebemos" — e só a segunda é uma promessa que dá para cumprir.
+
+/** contatoE164 → { ehLead, expiraEm } */
+const cacheDeLead = new Map();
+// Curto de propósito: uma lead recém-criada tem que passar a ser gravada em
+// poucos minutos, não no dia seguinte.
+const VALIDADE_CACHE_MS = 3 * 60_000;
+
+async function ehLead(organizationId, contatoE164) {
+  const cacheado = cacheDeLead.get(contatoE164);
+  if (cacheado && cacheado.expiraEm > Date.now()) return cacheado.ehLead;
+
+  try {
+    const r = await fetch(`${CRM}/api/v1/whatsapp/bridge/is-lead`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-atlas-bridge-secret": SEGREDO },
+      body: JSON.stringify({ organizationId, contatosE164: [contatoE164] }),
+    });
+    if (!r.ok) return false; // na dúvida, NÃO grava
+    const { leads } = await r.json();
+    const resposta = Array.isArray(leads) && leads.includes(contatoE164);
+    cacheDeLead.set(contatoE164, { ehLead: resposta, expiraEm: Date.now() + VALIDADE_CACHE_MS });
+    return resposta;
+  } catch {
+    // CRM fora do ar: não gravar é o lado seguro do erro. Perder o registro de
+    // uma conversa é recuperável; gravar a vida particular de alguém não é.
+    return false;
+  }
+}
+
 // ── Conectar ────────────────────────────────────────────────────────────────
 
 async function conectar(profileId, organizationId) {
@@ -208,10 +247,14 @@ async function conectar(profileId, organizationId) {
 
       sessao.ultimaAtividadeEm = agora();
 
+      const contato = jid.split("@")[0].replace(/\D/g, "");
+      // A PERGUNTA VEM ANTES. Se não é lead, o texto morre aqui dentro.
+      if (!(await ehLead(organizationId, contato))) continue;
+
       await avisarCrm("/api/v1/whatsapp/bridge/inbound", {
         profileId,
         organizationId,
-        contatoE164: jid.split("@")[0].replace(/\D/g, ""),
+        contatoE164: contato,
         externalMessageId: m.key?.id || "",
         direcao: m.key?.fromMe ? "saida" : "entrada",
         texto,

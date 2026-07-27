@@ -87,6 +87,20 @@ export async function POST(request: NextRequest) {
     .eq("phone_normalized", contato)
     .maybeSingle();
 
+  // ── SEGUNDA TRANCA ────────────────────────────────────────────────────────
+  //
+  // O CRM guarda conversa de LEAD. Conversa particular do corretor não entra —
+  // nem o texto, nem o nome do contato, nem o registro de que existiu.
+  //
+  // A ponte já pergunta antes de mandar (/bridge/is-lead), então em operação
+  // normal nada não-lead chega aqui. Esta segunda tranca existe porque a
+  // primeira depende da ponte estar na versão certa, e o custo de errar é
+  // gravar a vida particular de alguém — não é o tipo de erro que se conserta
+  // depois pedindo desculpa.
+  if (!lead?.id) {
+    return NextResponse.json({ ok: true, ignorada: "contato não é lead desta organização" });
+  }
+
   // A conversa é a linha do tempo daquele contato com aquele corretor.
   // `external_thread_id` junta o corretor e o contato: o mesmo cliente falando
   // com dois corretores são duas conversas, e é assim mesmo — são dois
@@ -108,7 +122,7 @@ export async function POST(request: NextRequest) {
       .from("conversations")
       .insert({
         organization_id: organizationId,
-        lead_id: lead?.id ?? null,
+        lead_id: lead.id,
         channel: "whatsapp",
         external_thread_id: threadId,
         status: "open",
@@ -126,9 +140,10 @@ export async function POST(request: NextRequest) {
       // Só o que ENTRA fica por ler. Contar o que o próprio corretor mandou
       // deixaria um badge que nunca zera.
       unread_count: corpo?.direcao === "entrada" ? (existente?.unread_count ?? 0) + 1 : (existente?.unread_count ?? 0),
-      // Se a lead foi criada DEPOIS da conversa começar, a conversa adota a
-      // lead agora — sem isto o histórico anterior ficaria órfão.
-      ...(lead?.id ? { lead_id: lead.id } : {}),
+      // A conversa sempre tem lead: sem lead a requisição já foi recusada
+      // acima. Reafirmar aqui cobre a conversa que nasceu antes de um
+      // recadastro trocar o id da lead.
+      lead_id: lead.id,
       updated_at: agora,
     }).eq("id", conversationId);
   }
@@ -155,6 +170,6 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     conversationId,
-    ligadaALead: Boolean(lead?.id),
+    leadId: lead.id,
   });
 }

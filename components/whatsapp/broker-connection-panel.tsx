@@ -109,7 +109,10 @@ export function BrokerConnectionPanel() {
                 : ""}
             </p>
           ) : (
-            <p className="atlas-wa-sub">Suas conversas ainda não estão sendo registradas no CRM.</p>
+            <p className="atlas-wa-sub">
+              <strong className="atlas-wa-consequencia">Você não está recebendo leads novas.</strong>{" "}
+              O rodízio só distribui para quem está com o WhatsApp conectado.
+            </p>
           )}
         </div>
       </div>
@@ -174,10 +177,20 @@ export function BrokerConnectionPanel() {
 
       {conectado ? (
         <p className="atlas-wa-nota">
-          A partir de agora cada conversa sua entra no histórico da lead — sem você copiar nada.
-          O aplicativo continua funcionando normalmente no seu celular.
+          Você está no rodízio de leads novas. Cada conversa <strong>com uma lead</strong> entra
+          sozinha no histórico dela — sem você copiar nada.
         </p>
       ) : null}
+
+      {/* O corretor está pondo o WhatsApp PESSOAL numa ferramenta da empresa.
+          O limite do que é gravado tem que estar escrito onde ele decide, com
+          a mesma clareza do aviso de risco. */}
+      <p className="atlas-wa-privacidade">
+        🔒 <strong>Só conversa de lead é gravada.</strong> Antes de guardar qualquer coisa, o
+        sistema confere se o número está cadastrado como lead da imobiliária. Se não estiver, a
+        mensagem não é registrada — e nem chega a sair do seu servidor: nem o texto, nem o
+        contato, nem o registro de que existiu. Suas conversas particulares continuam suas.
+      </p>
     </div>
   );
 }

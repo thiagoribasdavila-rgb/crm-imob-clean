@@ -18,10 +18,24 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *      porque alguém precisa ser o dono visível do lead.
  *   4. Ninguém → null (fila geral; o Command Center do diretor enxerga).
  *
- * Escolha consciente: NÃO exigimos presença online (commercial_presence, janela de
- * 90s) como a RPC de distribuição ao vivo — webhook chega de madrugada; a cascata
+ * Escolha consciente: NÃO exigimos presença online (aba aberta, janela de minutos)
+ * como a RPC de distribuição ao vivo — webhook chega de madrugada; a cascata
  * precisa funcionar offline. A auditoria vai para lead_distribution_history com o
  * motivo legível (melhor esforço — nunca derruba a criação do lead).
+ *
+ * ── MUDANÇA DE REGRA (2026-07-27), pedida pelo dono do produto ──────────────
+ *
+ * O corretor só entra no rodízio com o WhatsApp CONECTADO. Não é presença de
+ * aba aberta — é a conexão do número, que sobrevive ao notebook fechado e à
+ * madrugada, então a decisão acima continua valendo inteira.
+ *
+ * O motivo é operacional: lead de anúncio se atende por WhatsApp. Mandar lead
+ * para quem não tem o canal ligado é criar um SLA que já nasce estourado.
+ *
+ * Nenhuma lead se perde por causa disto: sem corretor conectado a cascata cai
+ * para o gerente (etapa 3) e depois para a fila geral (etapa 4), que já eram os
+ * degraus previstos. O motivo aparece por escrito no histórico — se as leads
+ * começarem a empilhar no gerente, a causa está escrita lá, não escondida.
  */
 
 const CLOSED_STATUSES = "(won,ganho,vendido,lost,perdido,descartado,discarded,archived,arquivado)";
@@ -124,11 +138,30 @@ export async function resolveLeadOwner(
   const defaultNote = defaultOwnerId ? "Dono padrão da fonte inativo/inexistente; " : "";
 
   // 2) Corretores elegíveis: ativos, disponíveis, cadeia íntegra, dentro da capacidade.
-  const brokers = active.filter((p) =>
+  // Quem está com o WhatsApp conectado AGORA. Uma consulta só para a
+  // organização inteira — perguntar por corretor faria N consultas dentro do
+  // laço, no caminho quente de toda lead que entra.
+  const conectados = new Set<string>();
+  {
+    const { data } = await admin
+      .from("whatsapp_broker_sessions")
+      .select("profile_id")
+      .eq("organization_id", organizationId)
+      .eq("status", "conectado");
+    for (const linha of data ?? []) {
+      if (typeof linha.profile_id === "string") conectados.add(linha.profile_id);
+    }
+  }
+
+  const brokersDisponiveis = active.filter((p) =>
     normalizedRole(p) === "broker" &&
     (p.availability_status ?? "AVAILABLE") === "AVAILABLE" &&
     p.reports_to !== null && activeIds.has(p.reports_to),
   );
+  // A regra nova, aplicada por último para que a contagem abaixo saiba
+  // distinguir "não tem corretor" de "os corretores estão sem WhatsApp".
+  const brokers = brokersDisponiveis.filter((p) => conectados.has(p.id));
+  const semWhatsapp = brokersDisponiveis.length - brokers.length;
   const brokerCandidates: Candidate[] = [];
   for (const profile of brokers) {
     const load = await openLeadCount(admin, organizationId, profile.id);
@@ -146,6 +179,12 @@ export async function resolveLeadOwner(
   }
 
   // 3) Gerentes seguram a fila (sem teto — alguém precisa ser o dono visível).
+  // Se corretores foram barrados por falta de WhatsApp, isso precisa estar
+  // ESCRITO no histórico. Lead empilhando no gerente sem explicação é o tipo de
+  // sintoma que se investiga por semanas.
+  const notaWhatsapp = semWhatsapp > 0
+    ? `${semWhatsapp} corretor(es) disponível(is) fora do rodízio por estar(em) sem WhatsApp conectado; `
+    : "";
   const managers = active.filter((p) => normalizedRole(p) === "manager");
   const managerCandidates: Candidate[] = [];
   for (const profile of managers) {
@@ -160,7 +199,7 @@ export async function resolveLeadOwner(
     return {
       ownerId: manager.profile.id,
       tier: "manager",
-      reason: `${defaultNote}sem corretor elegível (disponível e com capacidade); gerente com menor carga segura a fila (${displayName(manager.profile)}).`.trim(),
+      reason: `${defaultNote}${notaWhatsapp}sem corretor elegível (disponível, com WhatsApp conectado e com capacidade); gerente com menor carga segura a fila (${displayName(manager.profile)}).`.trim(),
     };
   }
 
@@ -168,7 +207,7 @@ export async function resolveLeadOwner(
   return {
     ownerId: null,
     tier: "unassigned",
-    reason: `${defaultNote}nenhum corretor ou gerente elegível; lead na fila geral da organização.`.trim(),
+    reason: `${defaultNote}${notaWhatsapp}nenhum corretor ou gerente elegível; lead na fila geral da organização.`.trim(),
   };
 }
 

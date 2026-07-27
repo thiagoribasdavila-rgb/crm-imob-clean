@@ -171,8 +171,14 @@ test("só o que ENTRA conta como não lido", () => {
     "contar o que o próprio corretor mandou deixaria um badge que nunca zera");
 });
 
-test("a conversa adota a lead se ela for criada depois", () => {
-  assert.match(rotaEntrada, /\.\.\.\(lead\?\.id \? \{ lead_id: lead\.id \} : \{\}\)/);
+test("toda conversa gravada tem lead — não existe conversa órfã", () => {
+  // Antes da regra de privacidade, a conversa podia nascer sem lead e "adotar"
+  // uma criada depois. Com a regra nova isso deixou de existir: mensagem de
+  // quem não é lead é recusada antes de qualquer escrita, então não há
+  // conversa órfã para adotar ninguém.
+  assert.match(rotaEntrada, /lead_id: lead\.id,/);
+  assert.ok(!/lead_id: lead\?\.id \?\? null/.test(rotaEntrada),
+    "conversa sem lead não é mais criada — a recusa acontece antes");
 });
 
 test("o telefone é normalizado do mesmo jeito nos dois lados", () => {
@@ -211,4 +217,97 @@ test("presença viva NÃO substitui a bandeira que a distribuição usa", () => 
 test("a janela de presença está declarada uma vez só", () => {
   assert.match(distribuicao, /const JANELA_PRESENCA_MS = 5 \* 60_000;/);
   assert.equal([...distribuicao.matchAll(/5 \* 60_000/g)].length, 1);
+});
+
+// ── REGRA: só conversa de LEAD é gravada ────────────────────────────────────
+
+test("a ponte PERGUNTA antes de mandar o conteúdo", () => {
+  // Receber tudo e descartar depois deixaria o texto da conversa particular do
+  // corretor trafegar, entrar em log de requisição e passar pela memória do
+  // servidor antes de ser jogado fora. Perguntando primeiro, a mensagem
+  // particular nunca sai do processo da ponte.
+  assert.match(ponte, /if \(!\(await ehLead\(organizationId, contato\)\)\) continue;/);
+  const i = ponte.indexOf("await ehLead(organizationId, contato)");
+  const j = ponte.indexOf('avisarCrm("/api/v1/whatsapp/bridge/inbound"');
+  assert.ok(i > -1 && j > i, "a pergunta tem que vir ANTES do envio do conteúdo");
+});
+
+test("na dúvida, NÃO grava", () => {
+  const fn = ponte.slice(ponte.indexOf("async function ehLead"), ponte.indexOf("// ── Conectar"));
+  assert.match(fn, /if \(!r\.ok\) return false;/, "CRM recusou → não grava");
+  assert.match(fn, /catch \{[\s\S]*?return false;/,
+    "CRM fora do ar → não grava; perder registro é recuperável, gravar a vida de alguém não");
+});
+
+test("a rota de consulta devolve só telefone — nem nome, nem histórico", () => {
+  const consulta = ler("app", "api", "v1", "whatsapp", "bridge", "is-lead", "route.ts");
+  assert.match(consulta, /\.select\("phone_normalized"\)/,
+    "a ponte precisa saber SE grava, não quem é a pessoa");
+  assert.ok(!/select\("[^"]*\b(name|email|full_name)\b/.test(consulta));
+  assert.match(consulta, /x-atlas-bridge-secret/);
+});
+
+test("segunda tranca: o CRM recusa gravar quem não é lead", () => {
+  // A primeira tranca depende de a ponte estar na versão certa. O custo de
+  // errar é gravar a vida particular de alguém.
+  assert.match(rotaEntrada, /if \(!lead\?\.id\) \{[\s\S]{0,200}ignorada/);
+  const iRecusa = rotaEntrada.indexOf("if (!lead?.id)");
+  const iInsert = rotaEntrada.indexOf('.from("messages").insert');
+  assert.ok(iRecusa > -1 && iInsert > iRecusa, "a recusa vem ANTES de qualquer escrita");
+  const iConversa = rotaEntrada.indexOf('.from("conversations")\n    .insert');
+  if (iConversa > -1) assert.ok(iConversa > iRecusa, "nem a conversa é criada");
+});
+
+test("o corretor lê na tela o que é e o que não é gravado", () => {
+  assert.match(painel, /Só conversa de lead é gravada/);
+  assert.match(painel, /Suas conversas particulares continuam suas/);
+  assert.match(painel, /atlas-wa-privacidade/);
+});
+
+// ── REGRA: sem WhatsApp conectado, sem lead nova ────────────────────────────
+
+test("o corretor só entra no rodízio com o WhatsApp conectado", () => {
+  const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
+  assert.match(cascata, /\.from\("whatsapp_broker_sessions"\)/);
+  assert.match(cascata, /\.eq\("status", "conectado"\)/);
+  assert.match(cascata, /const brokers = brokersDisponiveis\.filter\(\(p\) => conectados\.has\(p\.id\)\);/);
+});
+
+test("a consulta de conectados é UMA só, fora do laço", () => {
+  // Perguntar por corretor faria N consultas no caminho quente de toda lead
+  // que entra.
+  const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
+  assert.equal([...cascata.matchAll(/from\("whatsapp_broker_sessions"\)/g)].length, 1);
+  const iConsulta = cascata.indexOf('from("whatsapp_broker_sessions")');
+  const iLaco = cascata.indexOf("for (const profile of brokers)");
+  assert.ok(iConsulta < iLaco, "a consulta vem antes do laço");
+});
+
+test("nenhuma lead se perde quando ninguém está conectado", () => {
+  const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
+  // Os degraus 3 e 4 já existiam e continuam sendo a rede.
+  assert.match(cascata, /gerente com menor carga segura a fila/);
+  assert.match(cascata, /lead na fila geral da organização/);
+  assert.match(cascata, /Nenhuma lead se perde por causa disto/,
+    "a decisão precisa estar escrita junto da regra");
+});
+
+test("o motivo da barreira fica ESCRITO no histórico", () => {
+  // Lead empilhando no gerente sem explicação é sintoma que se investiga por
+  // semanas.
+  const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
+  assert.match(cascata, /fora do rodízio por estar\(em\) sem WhatsApp conectado/);
+  assert.equal([...cascata.matchAll(/\$\{notaWhatsapp\}/g)].length, 2,
+    "os dois motivos de queda (gerente e fila geral) precisam carregar a nota");
+});
+
+test("a mudança de regra está registrada, não contradiz o comentário em silêncio", () => {
+  const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
+  assert.match(cascata, /MUDANÇA DE REGRA \(2026-07-27\), pedida pelo dono do produto/);
+  assert.match(cascata, /NÃO exigimos presença online/,
+    "a decisão sobre presença de ABA continua valendo — conexão de número é outra coisa");
+});
+
+test("a tela diz a consequência de não conectar", () => {
+  assert.match(painel, /Você não está recebendo leads novas/);
 });

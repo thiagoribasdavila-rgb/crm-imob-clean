@@ -9445,3 +9445,16 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 }
 .atlas-wa-acoes button:disabled { opacity: 0.5; cursor: default; }
 .atlas-wa-nota { margin: 10px 0 0; color: var(--atlas-text-tertiary); font-size: 11px; line-height: 1.55; }
+.atlas-wa-consequencia { color: var(--atlas-warning); font-weight: 600; }
+/* A regra de privacidade fica sempre visível — conectado ou não. É a promessa
+   que faz o corretor aceitar ligar o WhatsApp pessoal, e promessa escondida
+   atrás de um estado não é promessa. */
+.atlas-wa-privacidade {
+  margin: 12px 0 0;
+  border-left: 2px solid var(--atlas-success);
+  padding: 4px 0 4px 11px;
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.atlas-wa-privacidade strong { color: var(--atlas-text-secondary); font-weight: 600; }
