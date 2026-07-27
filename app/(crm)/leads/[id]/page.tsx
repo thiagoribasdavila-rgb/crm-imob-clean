@@ -33,6 +33,8 @@ import {
 } from "@/components/crm/first-contact-quick-log";
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
 import { parseCommercialContextCorrectionTimeline } from "@/lib/atlas/commercial-context-timeline";
+import { MetaConsentControl } from "@/components/crm/meta-consent-control";
+import { lerEstado } from "@/lib/crm/meta-consent";
 
 type LeadRow = {
   id: string;
@@ -1091,6 +1093,7 @@ export default function LeadDetailPage() {
       {/* ── Grau primário de decisão: a barra operacional já concentra próxima
           ação, risco, tarefas, mensagens e atalhos — logo sob a identidade. ── */}
       <LeadOperationalBar
+        metaConsentSlot={<MetaConsentControl leadId={String(lead.id)} estadoInicial={lerEstado(lead.metadata)} />}
         leadId={lead.id}
         leadName={lead.name || "Lead sem nome"}
         phone={lead.phone}

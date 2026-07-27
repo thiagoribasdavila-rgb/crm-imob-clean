@@ -9473,3 +9473,39 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   border-color: var(--atlas-accent);
   box-shadow: var(--atlas-focus-ring);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONSENTIMENTO META — o único campo que faltava em 217 leads
+   ═══════════════════════════════════════════════════════════════════════════ */
+.atlas-consent { margin-top: 12px; }
+.atlas-consent-titulo {
+  margin: 0 0 6px;
+  color: var(--atlas-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+}
+.atlas-consent-consequencia { color: var(--atlas-text-tertiary); font-weight: 400; }
+.atlas-consent-opcoes { display: flex; flex-wrap: wrap; gap: 6px; }
+.atlas-consent-opcoes button {
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--atlas-text-tertiary);
+  padding: 5px 11px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.atlas-consent-opcoes button:hover:not(:disabled) { border-color: var(--atlas-accent); color: var(--atlas-text-secondary); }
+/* Só o "autorizou" ganha cor de confirmação. As outras duas são estados
+   legítimos, não erros — pintar "não perguntei" de vermelho empurraria o
+   corretor a marcar "sim" para limpar a tela. */
+.atlas-consent-opcoes button[data-ativo="true"][data-estado="concedido"] {
+  border-color: var(--atlas-success); background: color-mix(in srgb, var(--atlas-success) 12%, transparent); color: var(--atlas-success);
+}
+.atlas-consent-opcoes button[data-ativo="true"][data-estado="negado"],
+.atlas-consent-opcoes button[data-ativo="true"][data-estado="nao_perguntado"] {
+  border-color: var(--atlas-border-strong); background: var(--atlas-surface-subtle); color: var(--atlas-text-primary);
+}
+.atlas-consent-opcoes button:disabled { opacity: 0.5; cursor: default; }
+.atlas-consent-erro { margin: 6px 0 0; color: var(--atlas-danger); font-size: 10.5px; }
+.atlas-consent-nota { margin: 6px 0 0; color: var(--atlas-text-tertiary); font-size: 10.5px; }

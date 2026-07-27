@@ -16,6 +16,8 @@ type LeadOperationalBarProps = {
    * alimenta a métrica de tempo de resposta.
    */
   firstContactSlot?: ReactNode;
+  /** Registrar consentimento Meta — o único campo que faltava em 217 leads. */
+  metaConsentSlot?: React.ReactNode;
 };
 
 export function LeadOperationalBar({
@@ -27,6 +29,7 @@ export function LeadOperationalBar({
   openTasks,
   unreadMessages,
   firstContactSlot,
+  metaConsentSlot,
 }: LeadOperationalBarProps) {
   const activities = [
     { label: "Mensagem", href: `/leads/${leadId}/messages`, icon: "↗" },
@@ -71,6 +74,9 @@ export function LeadOperationalBar({
         </Link>
       </div>
       {firstContactSlot}
+      {/* Consentimento fica JUNTO das ações, não numa aba de configuração:
+          é o corretor que ouve a resposta do cliente, e é aqui que ele está. */}
+      {metaConsentSlot}
     </aside>
   );
 }
