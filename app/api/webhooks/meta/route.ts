@@ -80,13 +80,76 @@ export async function POST(request: Request) {
         logger.error("meta.webhook.source_lookup_failed", sourceError, { pageId, formId: value.form_id, leadgenId: value.leadgen_id });
         return NextResponse.json({ error: "source_lookup_failed" }, { status: 503, headers: { "Retry-After": "60" } });
       }
-      const source = sources?.[0];
+      let source = sources?.[0];
       if (!source) {
+        // ── NENHUMA LEAD PAGA É DESCARTADA ──────────────────────────────────
+        //
+        // Antes, fonte não mapeada ou INATIVA virava uma linha de log e a lead
+        // sumia. Medido nesta base: o único formulário ativo tinha ZERO leads,
+        // enquanto três inativos somavam 21 — a Meta versiona formulário a cada
+        // edição ("Arvo v4" → "Arvo v5"), o CRM ficou preso na versão antiga, e
+        // tudo que chegasse pela nova era jogado fora.
+        //
+        // Descartar lead que já custou verba para chegar é o pior desfecho
+        // possível. Agora a fonte desconhecida é REGISTRADA como inativa e o
+        // evento é gravado contra ela: a lead fica retida, aparece em
+        // Marketing → Leads represadas, e a liderança decide se aquele
+        // formulário entra na operação.
+        //
+        // Registrar NÃO é ativar. A fonte nasce `active: false` de propósito —
+        // ativar sozinho faria o Atlas aceitar qualquer formulário que alguém
+        // criasse na Meta, sem ninguém decidir.
+        const organizacaoDaPagina = await admin
+          .from("meta_lead_sources")
+          .select("organization_id")
+          .eq("page_id", pageId)
+          .limit(1)
+          .maybeSingle();
+
+        if (!organizacaoDaPagina.data?.organization_id) {
+          // Página que o Atlas não conhece de forma nenhuma: aí não há sequer a
+          // qual organização atribuir, e inventar uma seria pior que perder.
+          unmapped += 1;
+          logger.warn("meta.webhook.unmapped_payload", { reason: "unknown_page", pageId, formId: value.form_id, leadgenId: value.leadgen_id, payload: value });
+          continue;
+        }
+
+        const { data: fonteNova, error: erroDeRegistro } = await admin
+          .from("meta_lead_sources")
+          .insert({
+            organization_id: organizacaoDaPagina.data.organization_id,
+            page_id: pageId,
+            form_id: value.form_id ?? null,
+            name: `[auto] Formulário ${value.form_id ?? "sem id"} — descoberto pelo webhook`,
+            active: false,
+          })
+          .select("id,organization_id")
+          .single();
+
+        if (erroDeRegistro || !fonteNova) {
+          // Corrida: outro evento do mesmo lote pode ter acabado de registrar a
+          // mesma fonte. Tenta reler antes de desistir.
+          const relida = await admin
+            .from("meta_lead_sources")
+            .select("id,organization_id")
+            .eq("page_id", pageId)
+            .eq("form_id", value.form_id ?? "")
+            .limit(1)
+            .maybeSingle();
+          if (!relida.data) {
+            unmapped += 1;
+            logger.error("meta.webhook.source_autoregister_failed", erroDeRegistro, { pageId, formId: value.form_id, leadgenId: value.leadgen_id, payload: value });
+            continue;
+          }
+          source = relida.data;
+        } else {
+          source = fonteNova;
+          logger.warn("meta.webhook.source_autoregistered", {
+            pageId, formId: value.form_id, sourceId: fonteNova.id,
+            aviso: "Formulário novo retido para decisão humana em Marketing → Leads represadas.",
+          });
+        }
         unmapped += 1;
-        // Fonte consultada com sucesso e realmente não mapeada: persiste o
-        // payload no log estruturado (best-effort) para replay manual.
-        logger.warn("meta.webhook.unmapped_payload", { reason: "unmapped_source", pageId, formId: value.form_id, leadgenId: value.leadgen_id, payload: value });
-        continue;
       }
 
       const { data: inserted, error: insertError } = await admin.from("meta_lead_events").insert({

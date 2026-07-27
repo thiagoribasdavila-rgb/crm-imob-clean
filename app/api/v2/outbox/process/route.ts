@@ -321,13 +321,31 @@ export async function POST(request: Request) {
           await admin.from("meta_lead_events").update({ status: "processing", last_error: null }).eq("id", metaEvent.id);
           const [leadData, sourceResult] = await Promise.all([
             fetchMetaLead(metaEvent.external_lead_id),
-            admin.from("meta_lead_sources").select("default_owner_id,name,conversion_sharing_enabled,consent_basis,development_id").eq("id", metaEvent.source_id).single(),
+            admin.from("meta_lead_sources").select("active,default_owner_id,name,conversion_sharing_enabled,consent_basis,development_id").eq("id", metaEvent.source_id).single(),
           ]);
           const fields = leadData.field_data;
           const name = metaField(fields, "full_name", "name") || [metaField(fields, "first_name"), metaField(fields, "last_name")].filter(Boolean).join(" ") || "Lead Meta";
           const email = metaField(fields, "email");
           const phone = metaField(fields, "phone_number", "phone");
           const { data: existingLead } = await admin.from("leads").select("id").eq("organization_id", metaEvent.organization_id).contains("metadata", { meta: { externalLeadId: metaEvent.external_lead_id } }).maybeSingle();
+          // ── FONTE INATIVA RETÉM, NÃO CRIA ───────────────────────────────
+          //
+          // `active: false` significa "esta fonte ainda não foi aceita na
+          // operação". Sem esta guarda o processador criava a lead assim mesmo,
+          // e a flag não significava nada — qualquer formulário criado na
+          // página da Meta injetaria leads no CRM sem ninguém decidir.
+          //
+          // O evento fica gravado com o payload inteiro: nada se perde, e a
+          // lead aparece em Marketing → Leads represadas para a liderança
+          // liberar. Reter é diferente de descartar, e é o ponto todo.
+          if (sourceResult.data?.active === false) {
+            await admin.from("meta_lead_events").update({
+              status: "blocked",
+              last_error: "Fonte inativa: libere o formulário em Marketing → Leads represadas para esta lead entrar.",
+            }).eq("id", metaEvent.id);
+            continue;
+          }
+
           // O evento do webhook (metaEvent) e a leitura da Graph (leadData) podem
           // divergir; a Graph é a fonte mais fresca, o webhook é o fallback.
           const campaignExternalId = String(leadData.campaign_id || metaEvent.campaign_external_id || "").trim() || null;
