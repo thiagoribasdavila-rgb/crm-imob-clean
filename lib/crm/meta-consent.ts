@@ -50,6 +50,9 @@ export function ehEstadoValido(v: unknown): v is EstadoDeConsentimento {
  */
 export type OrigemDoConsentimento =
   | "formulario_meta"
+  /** Declarado pela diretoria — é ela que responde pela base legal. */
+  | "declarado_pelo_diretor"
+  /** Leads antigas: o registro dizia "corretor" antes da regra mudar. */
   | "declarado_pelo_corretor"
   | "importado";
 

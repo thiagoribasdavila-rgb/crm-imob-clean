@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -35,16 +35,49 @@ const OPCOES: Array<{ estado: Estado; rotulo: string; dica: string }> = [
 export function MetaConsentControl({
   leadId,
   estadoInicial = "nao_perguntado",
-  podeEditar = true,
+  podeEditar,
 }: {
   leadId: string;
   estadoInicial?: Estado;
+  /** Deixe indefinido para o componente decidir pelo papel da sessão. */
   podeEditar?: boolean;
 }) {
   const [estado, setEstado] = useState<Estado>(estadoInicial);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
+  /**
+   * Só o DIRETOR registra — ele responde pela base legal de todas as leads.
+   *
+   * O papel vem do PRÓPRIO token da sessão, que o navegador já tem: nenhuma
+   * chamada extra por lead. E o servidor recusa de qualquer jeito (403) — isto
+   * aqui existe para o corretor não descobrir a regra levando erro depois de
+   * clicar.
+   */
+  const [ehDiretor, setEhDiretor] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!vivo) return;
+      const t = data.session?.access_token;
+      if (!t) { setEhDiretor(false); return; }
+      try {
+        const carga = JSON.parse(atob(t.split(".")[1] ?? "")) as Record<string, unknown>;
+        const meta = (carga.app_metadata ?? {}) as Record<string, unknown>;
+        const papel = String(meta.access_role ?? meta.role ?? "");
+        setEhDiretor(papel === "director" || papel === "admin");
+      } catch {
+        // Token ilegível: assume que NÃO pode. Errar para o lado de não
+        // oferecer é melhor que oferecer e o servidor recusar.
+        setEhDiretor(false);
+      }
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  const editavel = podeEditar ?? ehDiretor ?? false;
 
   /**
    * Resolvido = já respondido. 204 das 217 leads do banco vivo já têm
@@ -93,13 +126,13 @@ export function MetaConsentControl({
         className="atlas-consent-resumo"
         data-estado={estado}
         onClick={() => setAberto(true)}
-        disabled={!podeEditar}
-        title={podeEditar ? "Clique para alterar" : undefined}
+        disabled={!editavel}
+        title={editavel ? "Clique para alterar" : undefined}
       >
         {estado === "concedido"
           ? "✓ Cliente autorizou compartilhar dados com a Meta"
           : "✕ Cliente não autorizou — esta lead não é enviada"}
-        {podeEditar ? <span> · alterar</span> : null}
+        {editavel ? <span> · alterar</span> : null}
       </button>
     );
   }
@@ -107,7 +140,11 @@ export function MetaConsentControl({
   return (
     <div className="atlas-consent" data-pendente={!resolvido}>
       <p className="atlas-consent-titulo">
-        {resolvido ? "Compartilhar dados com a Meta" : "O cliente autorizou compartilhar os dados com a Meta?"}
+        {resolvido
+          ? "Compartilhar dados com a Meta"
+          : editavel
+            ? "O cliente autorizou compartilhar os dados com a Meta?"
+            : "Consentimento ainda não registrado"}
         {resolvido ? null : (
           <span className="atlas-consent-consequencia">
             {" "}Enquanto você não responder, o resultado desta lead não volta para otimizar a campanha.
@@ -122,7 +159,7 @@ export function MetaConsentControl({
             title={o.dica}
             data-ativo={estado === o.estado}
             data-estado={o.estado}
-            disabled={!podeEditar || ocupado}
+            disabled={!editavel || ocupado}
             onClick={() => void registrar(o.estado)}
           >
             {o.rotulo}
@@ -130,8 +167,10 @@ export function MetaConsentControl({
         ))}
       </div>
       {erro ? <p className="atlas-consent-erro">{erro}</p> : null}
-      {!podeEditar ? (
-        <p className="atlas-consent-nota">Só quem atende a lead — ou a liderança — registra isto.</p>
+      {!editavel ? (
+        <p className="atlas-consent-nota">
+          Quem registra é o diretor — ele responde pela base legal de todas as leads e formulários.
+        </p>
       ) : null}
     </div>
   );

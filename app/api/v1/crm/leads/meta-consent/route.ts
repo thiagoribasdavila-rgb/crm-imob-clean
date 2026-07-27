@@ -7,9 +7,11 @@
  *
  * ── Quem pode registrar ─────────────────────────────────────────────────────
  *
- * Quem atende a lead: o corretor dono dela, ou a liderança. Um corretor não
- * registra consentimento de lead alheia — ele não esteve naquela conversa, e o
- * registro afirma que o cliente autorizou.
+ * Só o DIRETOR. Ele responde pela base legal de todas as leads e de todos os
+ * formulários com consentimento — e responsabilidade não se delega para quem
+ * não tem como assumi-la.
+ *
+ * Corretor e gerente enxergam o estado; registrar é outra coisa.
  *
  * ── O que fica gravado ──────────────────────────────────────────────────────
  *
@@ -29,7 +31,20 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const LIDERANCA = new Set(["director", "superintendent", "manager"]);
+/**
+ * Só o DIRETOR registra consentimento.
+ *
+ * Decisão do dono do produto (2026-07-27): ele responde por todas as leads e
+ * por todos os formulários com consentimento.
+ *
+ * Faz sentido: o consentimento não é observação sobre a lead, é declaração de
+ * BASE LEGAL para tratar dado pessoal de terceiro. Quem responde por ela numa
+ * fiscalização é a empresa, não quem atendeu a ligação — e não se transfere
+ * essa responsabilidade para quem não tem como assumi-la.
+ *
+ * Corretor e gerente continuam VENDO o estado; registrar é outra coisa.
+ */
+const QUEM_REGISTRA = new Set(["director"]);
 
 export async function POST(request: NextRequest) {
   const limited = enforceRateLimit(request, { limit: 120, scope: "meta-consent-write" });
@@ -67,21 +82,21 @@ export async function POST(request: NextRequest) {
     return apiError("LEAD_NOT_FOUND", "Lead não encontrada nesta organização.", identity.meta, { status: 404 });
   }
 
-  // O dono da lead ou a liderança. Registrar consentimento de lead alheia
-  // seria afirmar, em nome de outra pessoa, que o cliente autorizou.
-  const ehDono = lead.assigned_to === perfilId || lead.assigned_user_id === perfilId;
-  if (!ehDono && !LIDERANCA.has(String(papel))) {
+  // Nem o dono da lead escapa: registrar base legal é ato do diretor.
+  const ehAdmin = identity.access.profile.role === "admin";
+  if (!ehAdmin && !QUEM_REGISTRA.has(String(papel))) {
     return apiError("FORBIDDEN",
-      "Só quem atende a lead — ou a liderança — registra o consentimento dela.",
+      "Registrar o consentimento é do diretor — é ele quem responde pela base legal de todas as leads e formulários.",
       identity.meta, { status: 403 });
   }
 
-  // Origem: o corretor declara o que ouviu do cliente. `formulario_meta` não é
-  // aceito aqui de propósito — essa base vem do webhook da Meta, quando a lead
-  // preencheu o formulário dentro da plataforma. Deixar alguém marcá-la à mão
-  // transformaria uma base legal verificável numa afirmação sem lastro.
+  // `formulario_meta` não é aceito aqui de propósito: essa base vem do webhook,
+  // quando a lead preencheu o formulário DENTRO da Meta. Deixar marcá-la à mão
+  // transformaria base verificável em afirmação sem lastro.
+  //
+  // O registro manual é sempre declaração da diretoria — é ela quem assina.
   const origem: OrigemDoConsentimento = corpo?.origem === "importado"
-    ? "importado" : "declarado_pelo_corretor";
+    ? "importado" : "declarado_pelo_diretor";
 
   const metadata = aplicarConsentimento(lead.metadata, {
     estado: corpo.estado,

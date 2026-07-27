@@ -53,17 +53,36 @@ test("quem registrou e quando ficam gravados", () => {
   assert.equal(d.meta.origem, "declarado_pelo_corretor");
 });
 
-test("só o dono da lead ou a liderança registram", () => {
-  assert.match(rota, /lead\.assigned_to === perfilId \|\| lead\.assigned_user_id === perfilId/);
-  assert.match(rota, /Só quem atende a lead — ou a liderança/);
+test("SÓ o diretor registra — nem o dono da lead escapa", () => {
+  // Decisão do dono do produto: ele responde pela base legal de TODAS as leads
+  // e formulários. Consentimento não é observação sobre a lead — é declaração
+  // de base legal para tratar dado pessoal de terceiro, e responsabilidade não
+  // se delega para quem não tem como assumi-la.
+  assert.match(rota, /const QUEM_REGISTRA = new Set\(\["director"\]\);/);
+  assert.match(rota, /Registrar o consentimento é do diretor/);
   assert.match(rota, /status: 403/);
+  assert.ok(!/ehDono/.test(rota), "ser dono da lead deixou de bastar");
+});
+
+test("a tela decide pelo papel da sessão, sem chamada extra", () => {
+  // O corretor não pode descobrir a regra levando 403 depois de clicar.
+  assert.match(painel, /const \[ehDiretor, setEhDiretor\]/);
+  assert.match(painel, /app_metadata/, "o papel vem do próprio token");
+  assert.match(painel, /const editavel = podeEditar \?\? ehDiretor \?\? false;/);
+});
+
+test("token ilegível assume que NÃO pode", () => {
+  // Errar para o lado de não oferecer é melhor que oferecer e o servidor
+  // recusar.
+  assert.match(painel, /catch \{[\s\S]{0,200}setEhDiretor\(false\)/);
 });
 
 test("'formulario_meta' não pode ser marcado à mão", () => {
   // Essa base vem do webhook, quando a lead preencheu dentro da Meta. Deixar
   // marcar à mão transformaria base verificável em afirmação sem lastro.
   assert.match(rota, /`formulario_meta` não é\s*\n?\s*\/\/ aceito aqui|`formulario_meta` não é/);
-  assert.match(rota, /corpo\?\.origem === "importado"\s*\?\s*"importado" : "declarado_pelo_corretor"/);
+  assert.match(rota, /"importado" : "declarado_pelo_diretor"/,
+    "o registro manual é sempre declaração da diretoria — é ela que assina");
 });
 
 test("as três respostas existem, e 'não perguntei' é uma delas", () => {
