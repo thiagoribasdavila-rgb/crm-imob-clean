@@ -7,6 +7,18 @@
  * São situações opostas. A primeira é falha de atendimento; a segunda é lead
  * que provavelmente não presta. Tratar igual faz o corretor descartar a
  * primeira — que era boa — e insistir na segunda.
+ *
+ * ── O piso mudou de status: de regra para configuração ──────────────────────
+ *
+ * Até 2026-07-27 o descarte era RECUSADO abaixo de 3 tentativas. A justificativa
+ * segue válida em regime, mas pressupõe tentativas nascendo dentro do CRM.
+ *
+ * Na largada a base é importada: 195 leads cujo histórico de contato nunca
+ * virou evento aqui. O piso, nesse cenário, não protege atendimento nenhum —
+ * só impede de organizar a base, e ensina o corretor que o sistema atrapalha.
+ *
+ * Decisão do dono do produto: piso ZERO. Estes testes fixam as duas metades —
+ * que hoje FLUI, e que a trava volta inteira ao configurar o env.
  */
 
 import test from "node:test";
@@ -18,30 +30,66 @@ import { stripTypeScriptTypes } from "node:module";
 const raiz = path.resolve(import.meta.dirname, "..", "..");
 const ler = (...p) => fs.readFileSync(path.join(raiz, ...p), "utf8");
 const fonte = ler("lib", "crm", "contact-attempts.ts");
-const t = await import(`data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(fonte))}`);
+
+/**
+ * O módulo lê o env na avaliação. Importar uma cópia nova, com o env já
+ * ajustado, é o que permite exercitar os dois regimes no mesmo processo — o
+ * sufixo varia a URL para escapar do cache de módulos.
+ */
+const carregar = (sufixo = "") =>
+  import(`data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(fonte))}${sufixo}`);
+
+delete process.env.ATLAS_TENTATIVAS_MINIMAS;
+const t = await carregar();
 
 const ev = (tipo) => ({ event_type: tipo, created_at: new Date().toISOString() });
 
-test("lead sem NENHUMA tentativa não pode ser descartada", () => {
-  // "Não deu certo" e "ninguém tentou" são coisas diferentes. Só a primeira é
-  // informação; a segunda é o atendimento sendo apagado antes de existir.
+// ── Regime atual: sem piso ─────────────────────────────────────────────────
+
+test("sem piso configurado, o padrão é ZERO", () => {
+  // A falha segura nesta fase é DEIXAR FLUIR: um env ausente ou com erro de
+  // digitação não pode travar a operação do corretor.
+  assert.equal(t.TENTATIVAS_MINIMAS, 0);
+  assert.equal(t.HA_PISO, false);
+});
+
+test("lead sem NENHUMA tentativa pode ser descartada", () => {
   const r = t.contarTentativas([], false);
   assert.equal(r.total, 0);
-  assert.equal(r.podeDescartar, false);
-  assert.match(t.frasePara(r), /está no CRM, mas sem contato/);
+  assert.equal(r.podeDescartar, true, "é o destravamento que o início pediu");
+  assert.equal(t.SEM_TENTATIVA.podeDescartar, true, "a constante segue a mesma regra");
 });
 
-test("o piso é de 3 tentativas", () => {
-  assert.equal(t.TENTATIVAS_MINIMAS, 3);
-  assert.equal(t.contarTentativas([ev("call"), ev("whatsapp")], false).podeDescartar, false);
-  assert.equal(t.contarTentativas([ev("call"), ev("whatsapp"), ev("call")], false).podeDescartar, true);
+test("o cartão continua INFORMANDO que ninguém tentou", () => {
+  // Informar não custa nada; impedir custa. A contagem é a metade que fica.
+  assert.match(t.frasePara(t.contarTentativas([], false)), /está no CRM, mas sem contato/);
 });
 
-test("quem JÁ RESPONDEU pode ser descartada antes do piso", () => {
-  // Houve contato: a informação existe. O piso protege quem nunca atendeu.
+test("nenhuma frase promete uma trava que não existe", () => {
+  // O texto que dizia "mais 2 antes de poder descartar" viraria mentira: o
+  // corretor leria um impedimento e encontraria o caminho livre.
+  for (const n of [0, 1, 2, 3, 5]) {
+    const frase = t.frasePara(t.contarTentativas(Array.from({ length: n }, () => ev("call")), false));
+    if (frase) assert.ok(!/antes de poder descartar/.test(frase), `frase com ${n} tentativa(s) promete trava`);
+  }
+});
+
+test("o descarte com motivo continua sendo o que ensina o algoritmo", () => {
+  assert.match(
+    t.frasePara(t.contarTentativas([ev("call"), ev("call")], false)),
+    /diga o motivo — ele volta para a Meta/,
+  );
+});
+
+test("a contagem concorda em número e plural", () => {
+  assert.match(t.frasePara(t.contarTentativas([ev("call")], false)), /^1 tentativa /);
+  assert.match(t.frasePara(t.contarTentativas([ev("call"), ev("call")], false)), /^2 tentativas /);
+});
+
+test("quem JÁ RESPONDEU não recebe contador", () => {
   const r = t.contarTentativas([ev("whatsapp")], true);
   assert.equal(r.podeDescartar, true);
-  assert.equal(t.frasePara(r), null, "sem contato pendente, silêncio");
+  assert.equal(t.frasePara(r), null, "conversa em andamento: o assunto dela é outro");
 });
 
 test("só evento de CONTATO conta como tentativa", () => {
@@ -50,39 +98,54 @@ test("só evento de CONTATO conta como tentativa", () => {
 });
 
 test("nenhuma coluna nova — conta o que já é registrado", () => {
-  // Criar `leads.contact_attempts` daria duas verdades sobre o mesmo fato, e a
-  // coluna sairia do lugar no primeiro evento gravado por outro caminho.
   assert.match(fonte, /\.from\("lead_events"\)/);
-  // Sem comentários: o cabeçalho CITA `leads.contact_attempts` justamente para
-  // explicar por que essa coluna não foi criada.
   const codigo = fonte.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
   assert.ok(!/contact_attempts|tentativas_count/.test(codigo));
 });
 
-test("a frase muda o que o corretor faz", () => {
-  // "tentou 1 de 3" convida a tentar de novo; "3 tentativas, ninguém atendeu"
-  // autoriza a fechar o assunto.
-  assert.match(t.frasePara(t.contarTentativas([ev("call")], false)), /Mais 2 antes de poder descartar/);
-  assert.match(
-    t.frasePara(t.contarTentativas([ev("call"), ev("call"), ev("call")], false)),
-    /diga o motivo — ele volta para a Meta/,
-    "o descarte com motivo é o que ensina o algoritmo",
-  );
+// ── A trava não foi apagada: foi desligada ─────────────────────────────────
+
+test("configurar o env RELIGA o piso inteiro", () => {
+  // Apagar a regra obrigaria a reescrevê-la quando a operação entrar em regime.
+  // Este teste é o que garante que religar é mesmo uma linha de .env.
+  process.env.ATLAS_TENTATIVAS_MINIMAS = "3";
+  return carregar("//religado").then((comPiso) => {
+    delete process.env.ATLAS_TENTATIVAS_MINIMAS;
+    assert.equal(comPiso.TENTATIVAS_MINIMAS, 3);
+    assert.equal(comPiso.HA_PISO, true);
+    assert.equal(comPiso.contarTentativas([], false).podeDescartar, false);
+    assert.equal(comPiso.contarTentativas([ev("call"), ev("whatsapp")], false).podeDescartar, false);
+    assert.equal(comPiso.contarTentativas([ev("call"), ev("call"), ev("call")], false).podeDescartar, true);
+    assert.equal(comPiso.contarTentativas([ev("whatsapp")], true).podeDescartar, true,
+      "quem já respondeu escapa do piso: houve contato, a informação existe");
+    assert.match(comPiso.frasePara(comPiso.contarTentativas([ev("call")], false)),
+      /Mais 2 antes de poder descartar/);
+  });
 });
 
-test("o motivo do piso está escrito junto da regra", () => {
-  assert.match(fonte, /descartar quem nunca foi contatado ensina o algoritmo a/,
-    "a razão do piso precisa estar escrita junto da regra, não só no commit");
+test("valor inválido no env cai em ZERO, não em trava", () => {
+  process.env.ATLAS_TENTATIVAS_MINIMAS = "três";
+  return carregar("//invalido").then((m) => {
+    delete process.env.ATLAS_TENTATIVAS_MINIMAS;
+    assert.equal(m.TENTATIVAS_MINIMAS, 0, "erro de digitação não pode travar a operação");
+  });
 });
 
-// ── A trava está no SERVIDOR, não só na tela ───────────────────────────────
+test("por que o piso existe continua escrito junto da regra", () => {
+  // A razão precisa sobreviver ao desligamento: sem ela, religar vira decisão
+  // sem fundamento — e o próximo a ler o código apaga a regra de vez.
+  assert.match(fonte, /descartar quem nunca foi contatado ensina a\s*\* Meta a evitar um público que talvez fosse ótimo/);
+  assert.match(fonte, /ATLAS_TENTATIVAS_MINIMAS/, "e como religar");
+});
 
-test("o descarte é RECUSADO abaixo do piso", () => {
-  // Bloquear só o botão da tela é sugestão, não regra: qualquer chamada
-  // direta à API passaria por cima.
+// ── O servidor, quando a trava existe, é quem recusa ───────────────────────
+
+test("a rota respeita o piso configurado, e o pula quando não há", () => {
+  // Bloquear só o botão da tela é sugestão, não regra: qualquer chamada direta
+  // à API passaria por cima. E sem piso, nem consulta o banco.
   const pipeline = ler("app", "api", "v1", "pipeline", "route.ts");
+  assert.match(pipeline, /if \(HA_PISO && stage === "perdido" && !reversalOf\) \{/);
   assert.match(pipeline, /MINIMO_DE_TENTATIVAS/);
-  assert.match(pipeline, /if \(!tentativas\.podeDescartar\)/);
   assert.match(pipeline, /status: 422/);
 });
 
@@ -98,13 +161,15 @@ test("desfazer um descarte NÃO é barrado pelo piso", () => {
   // `reversalOf` é correção de erro, não novo descarte. Barrar impediria de
   // consertar justamente a lead descartada cedo demais.
   const pipeline = ler("app", "api", "v1", "pipeline", "route.ts");
-  assert.match(pipeline, /if \(stage === "perdido" && !reversalOf\) \{/);
+  assert.match(pipeline, /stage === "perdido" && !reversalOf/);
 });
 
-test("a mensagem distingue 'ninguém tentou' de 'faltam tentativas'", () => {
+test("o MOTIVO do descarte continua obrigatório", () => {
+  // O piso saiu; o motivo não. É ele que volta para a Meta como sinal — sem
+  // ele o descarte não ensina nada, só some com a lead.
   const pipeline = ler("app", "api", "v1", "pipeline", "route.ts");
-  assert.match(pipeline, /Ninguém tentou falar com esta lead ainda/);
-  assert.match(pipeline, /lead que ninguém alcançou não é lead ruim/);
+  assert.match(pipeline, /DISCARD_REASON_REQUIRED/);
+  assert.match(pipeline, /INVALID_DISCARD_REASON/);
 });
 
 test("a tela avisa ANTES, para a regra não ser descoberta no erro", () => {

@@ -57,7 +57,7 @@ export function ContactAttemptsBadge({ leadId }: { leadId: string }) {
       data-pode-descartar={estado.podeDescartar}
       title={
         estado.podeDescartar
-          ? "O descarte está liberado — informe o motivo."
+          ? "Ao descartar, informe o motivo — ele vira sinal para a Meta."
           : `Faltam ${estado.faltam} tentativa(s) para o descarte ficar disponível.`
       }
     >

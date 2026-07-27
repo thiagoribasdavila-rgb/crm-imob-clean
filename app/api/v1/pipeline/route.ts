@@ -10,7 +10,7 @@ import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/le
 import { recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { readCompatiblePipeline } from "@/lib/atlas/core-v2/live-repositories";
 import { DISCARD_REASON_KEYS, DISCARD_TAXONOMY_VERSION, getDiscardReason } from "@/lib/atlas/discard-reasons";
-import { tentativasDaLead, TENTATIVAS_MINIMAS } from "@/lib/crm/contact-attempts";
+import { tentativasDaLead, TENTATIVAS_MINIMAS, HA_PISO } from "@/lib/crm/contact-attempts";
 
 export const dynamic = "force-dynamic";
 
@@ -135,17 +135,19 @@ export async function PATCH(request: Request) {
         { status: 400 },
       );
     }
-    // ── PISO DE TENTATIVAS ────────────────────────────────────────────────
+    // ── PISO DE TENTATIVAS — DESLIGADO nesta fase ─────────────────────────
     //
-    // Lead que ninguém alcançou não é lead ruim. Descartar quem nunca foi
-    // contatado apaga o atendimento antes dele existir — e, agora que o
-    // descarte vira sinal para a Meta, ensina o algoritmo a evitar um público
-    // que talvez fosse ótimo.
+    // `TENTATIVAS_MINIMAS` vem de `ATLAS_TENTATIVAS_MINIMAS` e hoje vale 0:
+    // decisão do dono do produto para destravar a largada, quando a base é
+    // importada e as tentativas anteriores nunca viraram evento aqui.
     //
-    // A trava é no SERVIDOR de propósito: bloquear só o botão da tela é
-    // sugestão, não regra. Quem já respondeu escapa do piso — houve contato, a
-    // informação existe.
-    if (stage === "perdido" && !reversalOf) {
+    // Sem piso, nem consulta o banco: seria uma ida a mais em todo descarte
+    // para calcular um número que não decide nada.
+    //
+    // Quando religar, a trava continua no SERVIDOR de propósito — bloquear só o
+    // botão da tela é sugestão, não regra. Quem já respondeu escapa do piso:
+    // houve contato, a informação existe.
+    if (HA_PISO && stage === "perdido" && !reversalOf) {
       const tentativas = await tentativasDaLead(getSupabaseAdmin(), identity.organizationId, leadId);
       if (!tentativas.podeDescartar) {
         return NextResponse.json(
@@ -198,14 +200,42 @@ export async function PATCH(request: Request) {
     const previousStage = canonicalPipelineStage(current.status) || "novo";
     if (previousStage !== expectedFromStage) return NextResponse.json({ error: "A lead foi movimentada por outra pessoa. Atualize o Kanban antes de tentar novamente.", code: "PIPELINE_STAGE_CONFLICT", currentStage: previousStage }, { status: 409 });
     if (reversalOf) {
-      const { data: reversibleMove, error: reversalError } = await admin
-        .from("pipeline_history")
-        .select("id,lead_id,old_status,new_status,changed_by,created_at")
-        .eq("id", reversalOf)
-        .eq("lead_id", leadId)
-        .eq("organization_id", identity.organizationId)
-        .maybeSingle();
-      if (reversalError || !reversibleMove || canonicalPipelineStage(reversibleMove.new_status) !== previousStage || canonicalPipelineStage(reversibleMove.old_status) !== stage) {
+      // ── DUAS TABELAS, DOIS CAMINHOS ─────────────────────────────────────
+      //
+      // A RPC `move_pipeline_lead` (caminho atômico, o preferencial) grava em
+      // `pipeline_stage_moves` — colunas `from_stage`/`to_stage` — e devolve o
+      // id de LÁ. O caminho compensatório grava em `pipeline_history` —
+      // colunas `old_status`/`new_status`.
+      //
+      // Esta trava procurava só em `pipeline_history`. Como o caminho atômico é
+      // o que roda, o id nunca era encontrado e o desfazer devolvia 409
+      // SEMPRE: o aviso "Desfazer movimentação" aparecia e o botão não
+      // funcionava nunca. Medido com login real antes de corrigir.
+      //
+      // Procura nas duas, na ordem em que os caminhos são tentados.
+      const [atomico, compensatorio] = await Promise.all([
+        admin.from("pipeline_stage_moves")
+          .select("id,from_stage,to_stage,reversal_of")
+          .eq("id", reversalOf).eq("lead_id", leadId).eq("organization_id", identity.organizationId)
+          .maybeSingle(),
+        admin.from("pipeline_history")
+          .select("id,old_status,new_status")
+          .eq("id", reversalOf).eq("lead_id", leadId).eq("organization_id", identity.organizationId)
+          .maybeSingle(),
+      ]);
+
+      const origem = atomico.data
+        ? { de: atomico.data.from_stage, para: atomico.data.to_stage, jaDesfeito: atomico.data.reversal_of != null }
+        : compensatorio.data
+          ? { de: compensatorio.data.old_status, para: compensatorio.data.new_status, jaDesfeito: false }
+          : null;
+
+      // Desfazer é voltar: a etapa de DESTINO do movimento original tem que ser
+      // onde a lead está agora, e a de ORIGEM tem que ser para onde ela volta.
+      // `jaDesfeito` barra desfazer um desfazer, que viraria um vaivém sem fim.
+      if (!origem || origem.jaDesfeito
+        || canonicalPipelineStage(origem.para) !== previousStage
+        || canonicalPipelineStage(origem.de) !== stage) {
         return NextResponse.json({ error: "A movimentação mudou e não pode mais ser desfeita sem atualizar o Kanban.", code: "PIPELINE_STAGE_CONFLICT" }, { status: 409 });
       }
     }

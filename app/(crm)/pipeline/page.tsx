@@ -34,6 +34,21 @@ type DiscardDraft = {
   reasonKey: string;
   notes: string;
 };
+/**
+ * "Comprou em outro lugar" também exige texto — e antes pedia por
+ * `window.prompt`, uma caixa nativa ao lado de um painel desenhado.
+ *
+ * Três problemas concretos: o navegador pode bloquear a caixa (e aí a etapa
+ * simplesmente não acontece, sem explicação); escrever menos de 10 caracteres
+ * fechava a caixa, jogava o texto fora e mostrava o erro no topo da página; e
+ * ninguém consegue consultar o CRM enquanto a caixa nativa está aberta.
+ */
+type FollowUpDraft = {
+  leadId: string;
+  leadName: string;
+  fromStage: StageKey;
+  description: string;
+};
 type DiscardReportSummary = {
   period: { start: string; end: string; days: number };
   totals: { lostMoves: number | null; discarded: number; uniqueLeads: number; classified: number; coveragePct: number | null };
@@ -220,6 +235,7 @@ export default function PipelinePage() {
   const [lastMove, setLastMove] = useState<{ moveId: string; leadId: string; leadName: string; from: StageKey; to: StageKey } | null>(null);
   const [preferencesHydrated, setPreferencesHydrated] = useState(false);
   const [discardDraft, setDiscardDraft] = useState<DiscardDraft | null>(null);
+  const [followUpDraft, setFollowUpDraft] = useState<FollowUpDraft | null>(null);
   const [discardReport, setDiscardReport] = useState<DiscardReportSummary | null>(null);
   const [discardReportStatus, setDiscardReportStatus] = useState<DiscardReportStatus>("loading");
   const discardPanelRef = useRef<HTMLDivElement | null>(null);
@@ -305,7 +321,7 @@ export default function PipelinePage() {
 
   useEffect(() => { void loadDiscardReport(); }, []);
 
-  async function moveLead(id: string, stage: StageKey, reversalOf?: string, discard?: { key: string; notes: string }) {
+  async function moveLead(id: string, stage: StageKey, reversalOf?: string, discard?: { key: string; notes: string }, followUp?: string) {
     if (savingId) {
       setError("Aguarde a movimentação atual ser confirmada antes de mover outra lead.");
       return;
@@ -322,19 +338,35 @@ export default function PipelinePage() {
       setDiscardDraft({ leadId: id, leadName: currentLead?.name || "Lead sem nome", fromStage: previousStage, reasonKey: "", notes: "" });
       return;
     }
-    let followUpDescription = "";
-    if (stage === "comprou_outro") {
-      followUpDescription = window.prompt("Descreva o que pesou na compra: projeto, região, preço, prazo, financiamento ou atendimento. Essa descrição ficará protegida no CRM.")?.trim() || "";
-      if (followUpDescription.length < 10) { setError("Registre um acompanhamento com pelo menos 10 caracteres para preservar o aprendizado comercial."); return; }
+    // Mesmo caminho do descarte: o painel pergunta, a lead só sai da coluna
+    // depois de confirmado. Cancelar não move nada.
+    if (stage === "comprou_outro" && !reversalOf && !followUp) {
+      setError("");
+      setDraggedId(null);
+      setDragOverStage(null);
+      setFollowUpDraft({ leadId: id, leadName: currentLead?.name || "Lead sem nome", fromStage: previousStage, description: "" });
+      return;
     }
+    const followUpDescription = followUp?.trim() || "";
     const previous = leads;
     setSavingId(id);
     setError("");
     setLeads((current) => current.map((lead) => (lead.id === id ? { ...lead, status: stage, updated_at: new Date().toISOString() } : lead)));
     try {
       const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, expectedFromStage: previousStage, followUpDescription, reversalOf: reversalOf || null, discardReason: discard ? { key: discard.key, notes: discard.notes } : null }) });
-      const payload = await response.json();
-      if (!response.ok) throw new Error("A movimentação não foi confirmada. A lead permaneceu na etapa anterior.");
+      // `.json()` estoura se a resposta não for JSON (um 502 do proxy, por
+      // exemplo). Nesse caso o corpo não existe e a frase padrão assume.
+      const payload = await response.json().catch(() => ({} as Record<string, never>));
+      if (!response.ok) {
+        // A rota explica exatamente o que faltou: motivo de descarte fora da
+        // taxonomia, lead já movida por outra pessoa, confirmação humana
+        // pendente. Trocar tudo isso por uma frase única obrigava o corretor a
+        // adivinhar — e adivinhar errado é abandonar a lead.
+        throw new Error(
+          (typeof payload.error === "string" && payload.error)
+            || "A movimentação não foi confirmada. A lead permaneceu na etapa anterior.",
+        );
+      }
       // A rota devolve `move: { id, fromStage, toStage, reversalOf }` — nunca
       // `moveId`. Lendo a chave errada, `setLastMove` nunca disparava e o aviso
       // "Desfazer movimentação" jamais aparecia: a lead mudava de coluna e a tela
@@ -358,6 +390,15 @@ export default function PipelinePage() {
     const draft = discardDraft;
     setDiscardDraft(null);
     void moveLead(draft.leadId, "perdido", undefined, { key: draft.reasonKey, notes: draft.notes.trim() });
+  }
+
+  function confirmFollowUp() {
+    // O mesmo mínimo de 10 caracteres que a rota exige — validado aqui para o
+    // botão explicar antes, em vez de a lead voltar de coluna depois.
+    if (!followUpDraft || followUpDraft.description.trim().length < 10 || savingId) return;
+    const draft = followUpDraft;
+    setFollowUpDraft(null);
+    void moveLead(draft.leadId, "comprou_outro", undefined, undefined, draft.description.trim());
   }
 
   function onDrop(event: DragEvent<HTMLElement>, stage: StageKey) {
@@ -952,6 +993,37 @@ export default function PipelinePage() {
           <div className="mt-5 flex justify-end gap-2">
             <button type="button" onClick={() => setDiscardDraft(null)} className="atlas-button-secondary">Cancelar</button>
             <button type="button" onClick={confirmDiscard} disabled={!discardDraft.reasonKey || Boolean(savingId)} className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-50">Confirmar descarte</button>
+          </div>
+        </div>
+      </div> : null}
+
+      {followUpDraft ? <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center" role="presentation" onClick={() => setFollowUpDraft(null)}>
+        <div role="dialog" aria-modal="true" aria-labelledby="followup-panel-title" aria-describedby="followup-panel-description" tabIndex={-1} ref={(node) => { node?.focus(); }} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
+          if (event.key === "Escape") { event.preventDefault(); setFollowUpDraft(null); }
+        }} className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-black/40 outline-none sm:p-6">
+          <p className="text-xs font-semibold uppercase tracking-[.14em] text-amber-300">Comprou em outro lugar</p>
+          <h3 id="followup-panel-title" className="mt-1 text-lg font-semibold text-white">O que pesou na decisão de {followUpDraft.leadName}?</h3>
+          <p id="followup-panel-description" className="mt-1 text-xs leading-5 text-slate-500">Projeto, região, preço, prazo, financiamento ou atendimento. Fica interno ao CRM e é o que ensina onde o Atlas perde negócio.</p>
+          <textarea
+            id="followup-description"
+            autoFocus
+            rows={4}
+            maxLength={4000}
+            value={followUpDraft.description}
+            onChange={(event) => setFollowUpDraft((current) => (current ? { ...current, description: event.target.value } : current))}
+            placeholder="Ex.: fechou num lançamento a 2 km, entrega 8 meses antes e entrada parcelada em 36x."
+            className="mt-4 w-full resize-y rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm leading-6 text-white outline-none placeholder:text-slate-600 focus:border-amber-400/30"
+          />
+          {/* Diz quanto falta em vez de recusar depois: o botão desabilitado sem
+              explicação é a versão silenciosa do mesmo bloqueio. */}
+          <p className="mt-2 text-[11px] text-slate-500" role="status">
+            {followUpDraft.description.trim().length < 10
+              ? `Faltam ${10 - followUpDraft.description.trim().length} caractere(s) — uma linha basta.`
+              : "Pronto para registrar."}
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button type="button" onClick={() => setFollowUpDraft(null)} className="atlas-button-secondary">Cancelar</button>
+            <button type="button" onClick={confirmFollowUp} disabled={followUpDraft.description.trim().length < 10 || Boolean(savingId)} className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-50">Registrar e mover</button>
           </div>
         </div>
       </div> : null}
