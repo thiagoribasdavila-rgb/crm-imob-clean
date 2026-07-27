@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
@@ -12,22 +13,76 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [updated, setUpdated] = useState(false);
 
+  /**
+   * ── DOIS DEFEITOS QUE IMPEDIAM A TROCA DE SENHA ──────────────────────────
+   *
+   * O corretor abria o link e a tela nunca pedia a senha nova.
+   *
+   * 1. CORRIDA. A Supabase entrega o token de recuperação no FRAGMENTO da URL
+   *    (#access_token=…&type=recovery), que o navegador nunca envia ao
+   *    servidor. O cliente do navegador troca esse fragmento por sessão de
+   *    forma assíncrona — e esta tela perguntava ao servidor ANTES disso
+   *    terminar. O servidor respondia 401 e a tela desistia para sempre.
+   *
+   *    Agora esperamos a sessão do navegador primeiro. É ela que existe de
+   *    verdade nesse momento.
+   *
+   * 2. NAVEGADOR DIFERENTE. O cookie `atlas-recovery-intent` é gravado no
+   *    navegador que PEDIU o reset. Quem pede no computador e abre o e-mail no
+   *    celular nunca tinha esse cookie — e era barrado sem explicação.
+   *
+   *    Sessão de recuperação válida basta. O cookie deixa de ser exigência e
+   *    volta a ser o que é: um reforço, não o portão.
+   */
   useEffect(() => {
     let active = true;
 
-    async function verifyRecoverySession() {
-      const response = await fetch("/api/auth/password-reset", { cache: "no-store" });
+    async function liberar() {
+      // 1) A sessão do NAVEGADOR é a que carrega o token do fragmento.
+      //    `onAuthStateChange` entrega PASSWORD_RECOVERY assim que a troca
+      //    termina; `getSession` cobre o caso de já ter terminado antes de nós.
+      const { data: agora } = await supabase.auth.getSession();
       if (!active) return;
-      setReady(response.ok);
-      if (!response.ok) setError("O link expirou, já foi utilizado ou não criou uma sessão de recuperação.");
-      setChecking(false);
+      if (agora.session) {
+        setReady(true);
+        setChecking(false);
+        return;
+      }
+
+      // 2) Ainda não terminou: escuta o evento em vez de concluir que falhou.
+      const { data: sub } = supabase.auth.onAuthStateChange((evento, sessao) => {
+        if (!active) return;
+        if (sessao && (evento === "PASSWORD_RECOVERY" || evento === "SIGNED_IN" || evento === "INITIAL_SESSION")) {
+          setReady(true);
+          setChecking(false);
+          sub.subscription.unsubscribe();
+        }
+      });
+
+      // 3) Prazo para a troca acontecer. Sem isto a tela ficaria "verificando"
+      //    para sempre num link de fato inválido.
+      setTimeout(async () => {
+        if (!active) return;
+        const { data: ultima } = await supabase.auth.getSession();
+        if (ultima.session) { setReady(true); setChecking(false); return; }
+        // Último recuo: o caminho antigo, para o link que criou sessão só no
+        // servidor. Se também falhar, aí sim o link não presta.
+        const r = await fetch("/api/auth/password-reset", { cache: "no-store" }).catch(() => null);
+        if (!active) return;
+        setReady(Boolean(r?.ok));
+        if (!r?.ok) setError("O link expirou, já foi utilizado ou não criou uma sessão de recuperação. Peça um novo.");
+        setChecking(false);
+        sub.subscription.unsubscribe();
+      }, 3000);
     }
 
-    void verifyRecoverySession().catch(() => { if (active) { setError("Não foi possível validar o link de recuperação."); setChecking(false); } });
+    void liberar().catch(() => {
+      if (!active) return;
+      setError("Não foi possível validar o link de recuperação.");
+      setChecking(false);
+    });
 
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
 
   const strength = useMemo(() => {
@@ -50,12 +105,35 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
-    const response = await fetch("/api/auth/password-reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
-    const body = await response.json();
-    if (!response.ok) {
-      setError(body.error || "O link expirou ou já foi utilizado. Solicite uma nova recuperação de senha.");
-      setLoading(false);
-      return;
+    // A troca vai pela SESSÃO DO NAVEGADOR, que é a que carrega o token do
+    // fragmento. A rota do servidor exige o cookie `atlas-recovery-intent`, que
+    // só existe no navegador que PEDIU o reset — quem abre o e-mail no celular
+    // não o tem, e levaria erro depois de digitar a senha inteira.
+    //
+    // Liberar a tela e barrar o envio seria pior que barrar antes: o corretor
+    // faz o trabalho e perde.
+    const { data: sessao } = await supabase.auth.getSession();
+    if (sessao.session) {
+      const { error: erroTroca } = await supabase.auth.updateUser({ password });
+      if (erroTroca) {
+        setError(erroTroca.message || "Não foi possível trocar a senha. Peça um novo link.");
+        setLoading(false);
+        return;
+      }
+      // A rota do servidor ainda é chamada para limpar o cookie de intenção e
+      // registrar a troca — falha aqui não desfaz a senha já alterada.
+      await fetch("/api/auth/password-reset", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      }).catch(() => {});
+    } else {
+      const response = await fetch("/api/auth/password-reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+      const body = await response.json();
+      if (!response.ok) {
+        setError(body.error || "O link expirou ou já foi utilizado. Solicite uma nova recuperação de senha.");
+        setLoading(false);
+        return;
+      }
     }
     setPassword(""); setConfirmPassword("");
     setUpdated(true);
