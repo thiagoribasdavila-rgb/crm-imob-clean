@@ -122,6 +122,56 @@ export function aplicarConsentimento(
 }
 
 /**
+ * O CONSENTIMENTO QUE VEM DA FONTE, não de alguém afirmando depois.
+ *
+ * ── Por que isto virou função ───────────────────────────────────────────────
+ *
+ * A regra existia inline no processador da fila (`/api/v2/outbox/process`): se a
+ * fonte declara `conversion_sharing_enabled`, a lead nasce com consentimento de
+ * origem `formulario_meta`. Funciona — as leads que entram pelo webhook chegam
+ * corretas.
+ *
+ * Mas o caminho da IMPORTAÇÃO de arquivo (`/api/v1/leads/import`) criava a lead
+ * sem `metadata` nenhum: sem consentimento, sem formulário, sem origem. Foi
+ * assim que 173 das 199 leads entraram — e só têm consentimento porque alguém
+ * registrou em lote depois.
+ *
+ * Dois caminhos para o mesmo fato, um completo e o outro pela metade. É a
+ * terceira vez que essa forma de defeito aparece neste produto (ver o `move.id`
+ * do pipeline e as duas tabelas do desfazer). A regra agora mora num lugar só.
+ *
+ * ── O que a função NÃO faz ──────────────────────────────────────────────────
+ *
+ * Não inventa base legal. Fonte sem `conversion_sharing_enabled` devolve
+ * `nao_perguntado` — que é a resposta honesta para "esta planilha veio de onde,
+ * mesmo?". Marcar "sim" ali seria afirmar em nome de uma pessoa que nunca foi
+ * perguntada, e é exatamente isso que uma fiscalização procura.
+ */
+export type FonteDeLead = {
+  conversion_sharing_enabled?: boolean | null;
+  consent_basis?: string | null;
+  name?: string | null;
+} | null | undefined;
+
+export function consentimentoDaFonte(fonte: FonteDeLead): {
+  estado: EstadoDeConsentimento;
+  origem: OrigemDoConsentimento;
+  dataSharingConsent: boolean;
+  consentBasis: string | null;
+} {
+  const temClausula = fonte?.conversion_sharing_enabled === true;
+  return {
+    estado: temClausula ? "concedido" : "nao_perguntado",
+    // `formulario_meta` só se aplica quando a base veio de LÁ. Nos outros casos
+    // ninguém declarou nada ainda — e `lerEstado` devolve `nao_perguntado`, que
+    // a tela mostra para o diretor resolver.
+    origem: temClausula ? "formulario_meta" : "importado",
+    dataSharingConsent: temClausula,
+    consentBasis: temClausula ? (fonte?.consent_basis ?? null) : null,
+  };
+}
+
+/**
  * O que falta nesta lead para o evento de conversão poder sair.
  *
  * Devolve a lista em ordem de quem resolve: o que é do corretor primeiro.

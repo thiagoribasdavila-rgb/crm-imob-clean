@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { consentimentoDaFonte } from "@/lib/crm/meta-consent";
 import {
   parseDelimited,
   processRows,
@@ -31,6 +32,15 @@ type ImportBody = {
   mapping?: Record<string, LeadImportField>;
   sourceName?: string;
   sourceFile?: string;
+  /**
+   * Formulário da Meta de onde este arquivo foi exportado, quando for o caso.
+   *
+   * Opcional de propósito: é ele que traz a base legal do consentimento (a
+   * cláusula de compartilhamento fica registrada em `meta_lead_sources`). Sem
+   * ele, a lead nasce `nao_perguntado` — planilha de origem desconhecida não
+   * ganha base legal por estar no mesmo sistema que um formulário que tem.
+   */
+  formId?: string;
 };
 
 export async function POST(request: NextRequest) {
@@ -128,9 +138,43 @@ export async function POST(request: NextRequest) {
     .single();
   if (batchError || !batch) return apiError("BATCH_FAILED", `Não foi possível abrir o lote: ${batchError?.message ?? "sem id"}.`, identity.meta, { status: 500 });
 
+  // ── CONSENTIMENTO NA IMPORTAÇÃO ───────────────────────────────────────────
+  //
+  // A lead que entra pelo webhook nasce com consentimento quando a fonte declara
+  // a cláusula de compartilhamento. A que entra por arquivo nascia SEM metadata
+  // nenhum — sem consentimento, sem formulário, sem origem. Foi assim que 173
+  // das 199 leads chegaram, e elas só têm a base legal porque alguém registrou
+  // em lote depois, uma a uma.
+  //
+  // `formId` é opcional de propósito: quem importa o export de um formulário da
+  // Meta informa qual é, e a base legal daquele formulário se aplica. Planilha
+  // de origem desconhecida não informa nada — e aí a lead nasce
+  // `nao_perguntado`, que é a resposta honesta. A regra é a MESMA do webhook,
+  // na mesma função, para os dois caminhos não divergirem de novo.
+  const formId = typeof body?.formId === "string" ? body.formId.trim() : "";
+  const { data: fonte } = formId
+    ? await admin.from("meta_lead_sources")
+        .select("conversion_sharing_enabled,consent_basis,name")
+        .eq("organization_id", org).eq("form_id", formId).maybeSingle()
+    : { data: null };
+  const consentimento = consentimentoDaFonte(fonte);
+  const metadataDaImportacao = {
+    meta: {
+      ...(formId ? { form_id: formId, sourceName: fonte?.name ?? null } : {}),
+      estado: consentimento.estado,
+      origem: consentimento.origem,
+      dataSharingConsent: consentimento.dataSharingConsent,
+      consentBasis: consentimento.consentBasis,
+      registradoPor: identity.access.profile.id,
+      registradoEm: new Date().toISOString(),
+      importBatchId: batch.id,
+    },
+  };
+
   let imported = 0;
   for (let i = 0; i < fresh.length; i += INSERT_CHUNK) {
     const chunk = fresh.slice(i, i + INSERT_CHUNK).map((lead) => ({
+      metadata: metadataDaImportacao,
       organization_id: org,
       name: lead.name,
       phone: lead.phone,
