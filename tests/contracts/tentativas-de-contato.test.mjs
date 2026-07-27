@@ -16,7 +16,8 @@ import path from "node:path";
 import { stripTypeScriptTypes } from "node:module";
 
 const raiz = path.resolve(import.meta.dirname, "..", "..");
-const fonte = fs.readFileSync(path.join(raiz, "lib", "crm", "contact-attempts.ts"), "utf8");
+const ler = (...p) => fs.readFileSync(path.join(raiz, ...p), "utf8");
+const fonte = ler("lib", "crm", "contact-attempts.ts");
 const t = await import(`data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(fonte))}`);
 
 const ev = (tipo) => ({ event_type: tipo, created_at: new Date().toISOString() });
@@ -72,4 +73,51 @@ test("a frase muda o que o corretor faz", () => {
 test("o motivo do piso está escrito junto da regra", () => {
   assert.match(fonte, /descartar quem nunca foi contatado ensina o algoritmo a/,
     "a razão do piso precisa estar escrita junto da regra, não só no commit");
+});
+
+// ── A trava está no SERVIDOR, não só na tela ───────────────────────────────
+
+test("o descarte é RECUSADO abaixo do piso", () => {
+  // Bloquear só o botão da tela é sugestão, não regra: qualquer chamada
+  // direta à API passaria por cima.
+  const pipeline = ler("app", "api", "v1", "pipeline", "route.ts");
+  assert.match(pipeline, /MINIMO_DE_TENTATIVAS/);
+  assert.match(pipeline, /if \(!tentativas\.podeDescartar\)/);
+  assert.match(pipeline, /status: 422/);
+});
+
+test("a trava vem ANTES de qualquer escrita", () => {
+  const pipeline = ler("app", "api", "v1", "pipeline", "route.ts");
+  const iTrava = pipeline.indexOf("MINIMO_DE_TENTATIVAS");
+  const iEscrita = pipeline.indexOf('.from("leads").update');
+  assert.ok(iTrava > -1);
+  if (iEscrita > -1) assert.ok(iTrava < iEscrita, "recusar depois de gravar não recusa nada");
+});
+
+test("desfazer um descarte NÃO é barrado pelo piso", () => {
+  // `reversalOf` é correção de erro, não novo descarte. Barrar impediria de
+  // consertar justamente a lead descartada cedo demais.
+  const pipeline = ler("app", "api", "v1", "pipeline", "route.ts");
+  assert.match(pipeline, /if \(stage === "perdido" && !reversalOf\) \{/);
+});
+
+test("a mensagem distingue 'ninguém tentou' de 'faltam tentativas'", () => {
+  const pipeline = ler("app", "api", "v1", "pipeline", "route.ts");
+  assert.match(pipeline, /Ninguém tentou falar com esta lead ainda/);
+  assert.match(pipeline, /lead que ninguém alcançou não é lead ruim/);
+});
+
+test("a tela avisa ANTES, para a regra não ser descoberta no erro", () => {
+  const badge = ler("components", "crm", "contact-attempts-badge.tsx");
+  assert.match(badge, /if \(!estado \|\| estado\.houveResposta \|\| !estado\.frase\) return null;/,
+    "lead que já respondeu não precisa de contador");
+  const pagina = ler("app", "(crm)", "leads", "[id]", "page.tsx");
+  assert.match(pagina, /<ContactAttemptsBadge leadId=/);
+});
+
+test("a rota de leitura não pode gravar", () => {
+  const rota = ler("app", "api", "v1", "crm", "leads", "contact-attempts", "route.ts");
+  assert.match(rota, /export async function GET/);
+  assert.ok(!/export async function (POST|PATCH|PUT|DELETE)/.test(rota),
+    "a trava fica no servidor que grava, não aqui");
 });

@@ -10,6 +10,7 @@ import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/le
 import { recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { readCompatiblePipeline } from "@/lib/atlas/core-v2/live-repositories";
 import { DISCARD_REASON_KEYS, DISCARD_TAXONOMY_VERSION, getDiscardReason } from "@/lib/atlas/discard-reasons";
+import { tentativasDaLead, TENTATIVAS_MINIMAS } from "@/lib/crm/contact-attempts";
 
 export const dynamic = "force-dynamic";
 
@@ -134,6 +135,34 @@ export async function PATCH(request: Request) {
         { status: 400 },
       );
     }
+    // ── PISO DE TENTATIVAS ────────────────────────────────────────────────
+    //
+    // Lead que ninguém alcançou não é lead ruim. Descartar quem nunca foi
+    // contatado apaga o atendimento antes dele existir — e, agora que o
+    // descarte vira sinal para a Meta, ensina o algoritmo a evitar um público
+    // que talvez fosse ótimo.
+    //
+    // A trava é no SERVIDOR de propósito: bloquear só o botão da tela é
+    // sugestão, não regra. Quem já respondeu escapa do piso — houve contato, a
+    // informação existe.
+    if (stage === "perdido" && !reversalOf) {
+      const tentativas = await tentativasDaLead(getSupabaseAdmin(), identity.organizationId, leadId);
+      if (!tentativas.podeDescartar) {
+        return NextResponse.json(
+          {
+            error: tentativas.total === 0
+              ? "Ninguém tentou falar com esta lead ainda. Registre ao menos uma tentativa antes de descartar."
+              : `${tentativas.total} tentativa(s) registrada(s). São necessárias ${TENTATIVAS_MINIMAS} antes do descarte — lead que ninguém alcançou não é lead ruim.`,
+            code: "MINIMO_DE_TENTATIVAS",
+            tentativas: tentativas.total,
+            minimo: TENTATIVAS_MINIMAS,
+            faltam: tentativas.faltam,
+          },
+          { status: 422 },
+        );
+      }
+    }
+
     if (stage === "perdido" && !reversalOf && !discardReason) {
       return NextResponse.json(
         {

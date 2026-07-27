@@ -9537,3 +9537,17 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   border-left: 2px solid var(--atlas-warning);
   padding-left: 10px;
 }
+
+/* Contador de tentativas: aparece só quando ainda não houve resposta.
+   Ruído repetido em 200 leads treina a pessoa a não olhar mais o cartão. */
+.atlas-tentativas {
+  margin: 0 0 8px;
+  border-left: 2px solid var(--atlas-warning);
+  padding: 3px 0 3px 10px;
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  line-height: 1.55;
+}
+/* Piso fechado: deixa de pedir atenção — vira só informação. */
+.atlas-tentativas[data-pode-descartar="true"] { border-left-color: var(--atlas-border-strong); }
+.atlas-tentativas strong { color: var(--atlas-text-secondary); font-weight: 600; }
