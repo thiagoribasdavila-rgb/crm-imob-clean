@@ -480,7 +480,7 @@ async function generateOpenAI(input: GenerateInput): Promise<AIProviderResult> {
   if (resolved.problem) logger.error("ai.model_family_mismatch", { provider: "openai", task: input.task, feature: input.feature, problem: resolved.problem, effectiveModel: resolved.model });
   const model = resolved.model;
   const startedAt = Date.now();
-  const response = await resilientFetch("https://api.openai.com/v1/responses", {
+  const chamar = (effort: string) => resilientFetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -491,16 +491,17 @@ async function generateOpenAI(input: GenerateInput): Promise<AIProviderResult> {
       store: false,
       instructions: input.system,
       input: input.prompt,
-      reasoning: { effort: profile.effort },
+      reasoning: { effort },
       text: { verbosity: profile.verbosity },
       max_output_tokens: profile.maxOutputTokens,
       prompt_cache_key: `atlas:${input.feature}:${input.task}:v1`,
     }),
     signal: input.signal,
   }, { timeoutMs: input.timeoutMs ?? 30_000, retries: 1, retryUnsafe: true, operation: "OpenAI" });
-  const body = (await response.json()) as {
+
+  type CorpoOpenAI = {
     id?: string;
-    error?: { message?: string };
+    error?: { message?: string; code?: string };
     output?: unknown[];
     usage?: {
       input_tokens?: number;
@@ -509,6 +510,41 @@ async function generateOpenAI(input: GenerateInput): Promise<AIProviderResult> {
       input_tokens_details?: { cached_tokens?: number };
     };
   };
+
+  let response = await chamar(profile.effort);
+  let body = (await response.json()) as CorpoOpenAI;
+
+  // ── O VOCABULÁRIO DE `effort` MUDA ENTRE GERAÇÕES DE MODELO ───────────────
+  //
+  // Medido contra a API real em 2026-07-27:
+  //
+  //   gpt-5.6-luna  aceita  none, low, medium, high, xhigh   (NÃO aceita minimal)
+  //   gpt-5-mini    aceita  minimal, low, medium, high       (NÃO aceita none)
+  //
+  // Os conjuntos são disjuntos nas pontas. O tier rápido mandava `none` enquanto
+  // o padrão era `gpt-5-mini`: HTTP 400 em 100% das chamadas rápidas, com ou sem
+  // saldo, e o corretor via só "IA temporariamente indisponível".
+  //
+  // Fixar uma tabela modelo→vocabulário aqui envelheceria igual: foi assim que
+  // o defeito nasceu. Em vez disso, a própria mensagem de erro da OpenAI lista
+  // os valores aceitos ("Supported values are: 'none', 'low', ...") — dá para
+  // ler e repetir uma vez. Não presume nada sobre o modelo; reage ao que a API
+  // respondeu, e continua valendo para modelos que ainda não existem.
+  if (!response.ok && body.error?.code === "unsupported_value" && /effort/i.test(body.error?.message || "")) {
+    const aceitos = [...(body.error.message || "").matchAll(/'([a-z]+)'/g)].map((m) => m[1]);
+    // `low` primeiro: é o único que apareceu nas duas famílias medidas, e é o
+    // mais barato entre os que geram raciocínio.
+    const alternativa = ["low", "minimal", "medium"].find((v) => aceitos.includes(v));
+    if (alternativa) {
+      logger.warn("ai.effort_incompativel", {
+        provider: "openai", model, task: input.task,
+        enviado: profile.effort, aceitos, repetindoCom: alternativa,
+      });
+      response = await chamar(alternativa);
+      body = (await response.json()) as CorpoOpenAI;
+    }
+  }
+
   if (!response.ok)
     throw new Error(body.error?.message || `OpenAI HTTP ${response.status}`);
   const text = openAIText(body);
