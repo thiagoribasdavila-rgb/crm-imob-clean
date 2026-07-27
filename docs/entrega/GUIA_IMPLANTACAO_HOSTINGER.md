@@ -70,6 +70,24 @@ aplicado em `supabase/migrations/`. Todas são incrementais e idempotentes.
 Sem isto **a fila não anda**: nada sai do outbox, nenhum lembrete dispara e o
 vigia de SLA de primeiro contato nunca roda.
 
+### O que isso custa, medido na base em 26/07/2026
+
+| | |
+|---|---|
+| Leads | 217 |
+| Contatadas | **1** |
+| Com SLA de primeiro contato vencido | **216** |
+| Tarefas de cobrança criadas pelo vigia | 6 |
+
+O vigia de SLA existe, está testado e responde 200 quando chamado à mão. Ele só
+**não é chamado** — porque o cron não está instalado. Os 216 vencidos nunca
+viraram cobrança de ninguém.
+
+Esta é a etapa de melhor relação entre esforço e resultado de todo o deploy:
+custa minutos e liga o SLA, a fila de saída, os lembretes, a expiração de
+reserva, a consolidação noturna e o relatório de domingo dos incorporadores.
+Nove workers parados por falta de uma linha no crontab.
+
 ```bash
 npm run workers:crontab
 ```
