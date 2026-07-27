@@ -335,7 +335,13 @@ export default function PipelinePage() {
       const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, expectedFromStage: previousStage, followUpDescription, reversalOf: reversalOf || null, discardReason: discard ? { key: discard.key, notes: discard.notes } : null }) });
       const payload = await response.json();
       if (!response.ok) throw new Error("A movimentação não foi confirmada. A lead permaneceu na etapa anterior.");
-      if (!reversalOf && payload.move?.moveId) setLastMove({ moveId: payload.move.moveId, leadId: id, leadName: currentLead?.name || "Lead", from: previousStage, to: stage });
+      // A rota devolve `move: { id, fromStage, toStage, reversalOf }` — nunca
+      // `moveId`. Lendo a chave errada, `setLastMove` nunca disparava e o aviso
+      // "Desfazer movimentação" jamais aparecia: a lead mudava de coluna e a tela
+      // não confirmava nada. Aceita as duas para não depender de qual caminho da
+      // rota respondeu (atômico ou compensatório).
+      const moveIdRecebido = payload.move?.id ?? payload.move?.moveId ?? payload.moveId;
+      if (!reversalOf && moveIdRecebido) setLastMove({ moveId: moveIdRecebido, leadId: id, leadName: currentLead?.name || "Lead", from: previousStage, to: stage });
       if (discard) void loadDiscardReport();
     } catch (moveError) {
       setLeads(previous);
