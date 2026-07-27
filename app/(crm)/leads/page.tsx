@@ -749,8 +749,12 @@ export default function LeadsPage() {
       ? [
           {
             key: "unassigned" as AttentionFilter,
-            label: "Sem responsável",
-            description: "Distribuir para o time",
+            // A cascata grava o motivo dizendo "REPRESADA" quando ninguém tem
+            // WhatsApp conectado. Chamar o mesmo estado de "sem responsável"
+            // aqui faria o diretor procurar uma fila de represadas que não
+            // existe em lugar nenhum. Uma palavra só para uma coisa só.
+            label: "Represadas",
+            description: "Ninguém conectado no WhatsApp — distribuir ou pedir para conectar",
             count: pageMetrics.unassigned,
             countClass: "cc6-warn",
           },

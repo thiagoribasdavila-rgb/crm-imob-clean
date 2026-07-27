@@ -378,3 +378,23 @@ test("cada degrau barrado aparece no motivo, separadamente", () => {
     assert.match(cascata, new RegExp(`\\$\\{${nota}\\}`), `${nota} precisa entrar no motivo`);
   }
 });
+
+test("a tela e a cascata usam a MESMA palavra para o mesmo estado", () => {
+  // A cascata grava "REPRESADA" no motivo. Se a tela chamasse de outra coisa,
+  // o diretor procuraria uma fila de represadas que não existe em lugar nenhum.
+  const tela = ler("app", "(crm)", "leads", "page.tsx");
+  const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
+  assert.match(cascata, /REPRESADA/);
+  assert.match(tela, /label: "Represadas"/);
+  assert.match(tela, /Ninguém conectado no WhatsApp/,
+    "o cartão precisa dizer o motivo, não só o estado");
+});
+
+test("o filtro de represadas existe de ponta a ponta", () => {
+  // Sem isto a regra vira buraco negro: lead fica sem dono e ninguém a vê.
+  const rota = ler("app", "api", "v1", "crm", "leads", "route.ts");
+  assert.match(rota, /allowedAttentionFilters = new Set\(\[[^\]]*"unassigned"/);
+  const tela = ler("app", "(crm)", "leads", "page.tsx");
+  assert.match(tela, /if \(!lead\.assigned_to\) unassigned \+= 1;/, "precisa contar");
+  assert.match(tela, /currentRole !== "broker"/, "é fila de quem distribui, não do corretor");
+});
