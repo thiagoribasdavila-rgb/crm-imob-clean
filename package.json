@@ -301,7 +301,7 @@
     "teste:kanban": "node scripts/teste-kanban-vivo.mjs",
     "teste:varredura": "node scripts/varredura-completa.mjs",
     "teste:mutacoes": "node scripts/mutacoes.mjs",
-    "openai:diagnostico": "node scripts/openai-diagnostico.mjs"
+    "ia:diagnostico": "node scripts/ia-diagnostico.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1089.0",
