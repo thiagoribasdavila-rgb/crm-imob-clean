@@ -66,6 +66,41 @@ const gestor = await admin.from("profiles").select("id")
   .eq("organization_id", organizationId).eq("access_role", "director").eq("active", true).limit(1).maybeSingle();
 if (!gestor.data) { console.error("sem diretor operacional para servir de supervisor"); process.exit(1); }
 
+// ── LIMPEZA DE RESÍDUO, ANTES DE COMEÇAR ──────────────────────────────────
+//
+// O smoke cria corretor e diretor de teste e os remove NO FIM. Quando falha no
+// meio, a remoção não roda — e a rodada seguinte encontra perfis órfãos na
+// organização.
+//
+// Isso não é detalhe: perfil de teste esquecido muda a contagem de papéis, e a
+// contagem de papéis muda o comportamento da cascata de distribuição e das
+// decisões de marketing. O resultado é um smoke que falha por causa da falha
+// anterior, e um diagnóstico que aponta para o lugar errado.
+//
+// Aconteceu de verdade em 27/07/2026: dois "38/44" seguidos me levaram a
+// declarar um pacote quebrado e a suspeitar da porta. Os dois eram resíduo.
+//
+// Limpar no início é o que torna cada rodada independente da anterior.
+{
+  // Filtra por E-MAIL, não por nome. `name` fica null em perfil criado pelo
+  // gatilho de auth — o nome de teste vai para `full_name`. Minha primeira
+  // versão filtrava por `name` e não pegava nada, e o próprio teste de resíduo
+  // mostrou isso.
+  //
+  // O domínio @atlas-teste.local é o que marca perfil de teste sem ambiguidade:
+  // ninguém real tem esse e-mail.
+  const orfaos = await admin.from("profiles").select("id,email,full_name")
+    .eq("organization_id", organizationId)
+    .like("email", "smoke-%@atlas-teste.local");
+  let removidos = 0;
+  for (const p of orfaos.data ?? []) {
+    await admin.from("profiles").delete().eq("id", p.id);
+    await admin.auth.admin.deleteUser(p.id).catch(() => {});
+    removidos += 1;
+  }
+  if (removidos) console.log(`  (limpeza inicial: ${removidos} perfil(is) de teste da rodada anterior)`);
+}
+
 const email = `smoke-ciclo-${randomBytes(4).toString("hex")}@atlas-teste.local`;
 const senha = `${randomBytes(18).toString("base64url")}!Aa7`;
 const criado = await admin.auth.admin.createUser({
