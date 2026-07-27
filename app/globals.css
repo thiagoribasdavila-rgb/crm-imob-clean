@@ -9566,3 +9566,12 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 /* Piso fechado: deixa de pedir atenção — vira só informação. */
 .atlas-tentativas[data-pode-descartar="true"] { border-left-color: var(--atlas-border-strong); }
 .atlas-tentativas strong { color: var(--atlas-text-secondary); font-weight: 600; }
+
+/* Faixa de largura inteira dentro da barra operacional da lead.
+   A barra é grid de 3 colunas; sem isto, o conteúdo cai nas trilhas `auto` e
+   espreme a primeira coluna até uma palavra por linha. */
+.atlas-lead-bar-faixa {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.atlas-lead-bar-faixa:empty { display: none; }

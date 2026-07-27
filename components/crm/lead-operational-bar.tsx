@@ -73,10 +73,16 @@ export function LeadOperationalBar({
           {unreadMessages ? `Responder (${unreadMessages})` : "Mensagem"}
         </Link>
       </div>
-      {firstContactSlot}
+      {/* ── POR QUE ESTES BLOCOS FICAM NUMA FAIXA PRÓPRIA ──────────────────
+          A barra é um grid de TRÊS colunas (minmax(0,1fr) auto auto). Slots
+          soltos como filhos extras caem nas trilhas `auto`, que são estreitas
+          — o resultado foi o aviso de primeiro contato espremido a uma palavra
+          por linha, com o painel de consentimento por cima.
+          `grid-column: 1 / -1` devolve a linha inteira a eles. */}
+      <div className="atlas-lead-bar-faixa">{firstContactSlot}</div>
       {/* Consentimento fica JUNTO das ações, não numa aba de configuração:
           é o corretor que ouve a resposta do cliente, e é aqui que ele está. */}
-      {metaConsentSlot}
+      <div className="atlas-lead-bar-faixa">{metaConsentSlot}</div>
     </aside>
   );
 }
