@@ -59,6 +59,18 @@ test("o padrão da OpenAI tem UMA fonte só", () => {
     "openAIDefaultModel precisa derivar de aiModelProfiles, não repetir os nomes");
 });
 
+test("um modelo só, em todos os tiers da OpenAI", () => {
+  // Decisão do dono (2026-07-27): só `gpt-5.6-luna`, para o custo ser previsível
+  // na largada — uma tarifa, uma linha na tabela de preços. Espalhar o nome
+  // pelos três tiers traria de volta o problema que acabou de ser corrigido:
+  // trocar um e esquecer os outros.
+  assert.match(codigo, /const MODELO_OPENAI_PADRAO = "gpt-5\.6-luna"/);
+  const literais = [...codigo.matchAll(/"gpt-5\.6-[a-z]+"/g)].map((m) => m[0]);
+  assert.deepEqual([...new Set(literais)], ['"gpt-5.6-luna"'],
+    `só um modelo da OpenAI pode aparecer no roteador; achei ${literais.join(", ")}`);
+  assert.equal(literais.length, 1, "e uma vez só — os tiers usam a constante");
+});
+
 test("toda variável de ambiente continua tendo precedência", () => {
   // O padrão é rede de segurança para quem não configurou. Quem configurou
   // manda — inclusive para fixar um modelo que este contrato desconhece.
@@ -74,13 +86,25 @@ test("a razão da troca está escrita junto da regra", () => {
   assert.match(fonte, /deprecations|deprecia/i, "e o lugar onde conferir de novo");
 });
 
-test("o exemplo de produção traz tarifa para os modelos padrão", () => {
+test("o exemplo de produção traz a tarifa do modelo que roda", () => {
   // Modelo sem tarifa grava custo NULO: o painel de FinOps mostra zero e parece
-  // saudável quando não é. Os três padrões precisam estar cobertos no exemplo.
+  // saudável quando não é. O que roda é luna; os outros ficam documentados para
+  // quem trocar um tier por variável, e não precisar buscar preço de novo.
   const exemplo = fs.readFileSync(path.join(raiz, ".env.production.example"), "utf8");
-  for (const modelo of ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"]) {
-    assert.ok(exemplo.includes(`openai/${modelo}`), `sem tarifa de exemplo para ${modelo}`);
-  }
+  assert.ok(exemplo.includes("openai/gpt-5.6-luna"), "sem tarifa para o modelo que roda de fato");
   assert.match(exemplo, /2026-07-27/, "a tarifa precisa vir com a data em que foi conferida");
   assert.match(exemplo, /PRE[ÇC]O MUDA|confira antes de subir/i, "e com o aviso de que preço muda");
+});
+
+test("a tarifa do exemplo bate com o modelo padrão do roteador", () => {
+  // Divergir aqui é o pior caso silencioso: a IA roda num modelo e o custo é
+  // calculado por outro — ou por nenhum, gravando zero.
+  const exemplo = fs.readFileSync(path.join(raiz, ".env.production.example"), "utf8");
+  const padrao = codigo.match(/const MODELO_OPENAI_PADRAO = "([^"]+)"/)?.[1];
+  assert.ok(padrao, "não achei o modelo padrão no roteador");
+  assert.match(
+    exemplo,
+    new RegExp(`ATLAS_AI_PRICE_TABLE=\\{"openai/${padrao.replace(/[.]/g, "\\.")}"`),
+    `a linha pronta do .env precisa cobrir ${padrao}, que é o que o roteador usa`,
+  );
 });

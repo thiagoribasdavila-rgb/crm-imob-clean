@@ -121,29 +121,36 @@ export function catalogoDeProvedoresGratuitos() {
  * Ligar a chave sem trocar isto era arriscar que a primeira chamada de verdade
  * falhasse por modelo aposentado.
  *
- * ── Por que estes três ──────────────────────────────────────────────────────
+ * ── Por que LUNA em todos os tiers ──────────────────────────────────────────
  *
  * A linha atual é sol (trabalho complexo) · terra (equilíbrio) · luna (custo
- * baixo, alto volume). O mapeamento segue a intenção de cada tier:
+ * baixo, alto volume). Decisão do dono do produto (2026-07-27): **só luna**.
  *
- *   fast       → luna   · classificar, extrair, resumir. Volume alto, decisão simples.
- *   commercial → terra  · falar com o cliente. Erro aqui custa a venda.
- *   reasoning  → terra  · analisar funil e campanha. `sol` fica para quem
- *                         configurar explicitamente: custa 2x a entrada e 2x a
- *                         saída, e não há medição neste produto que justifique
- *                         gastar isso por padrão.
+ * Faz sentido para o momento. A operação começa com um corretor e 199 leads —
+ * o gasto é incerto e a chave é do dono. Um modelo só torna o custo previsível
+ * (uma tarifa, uma linha na tabela de preços) e evita a situação pior de todas:
+ * descobrir a conta no fim do mês.
  *
- * Toda variável de ambiente continua tendo precedência: quem quiser `sol` no
- * comercial define ATLAS_AI_COMMERCIAL_MODEL e nada aqui atrapalha.
+ * A contrapartida está no tier COMERCIAL, que é o que escreve para o cliente:
+ * luna é o modelo otimizado para custo. Se a qualidade das mensagens incomodar,
+ * `ATLAS_AI_COMMERCIAL_MODEL=gpt-5.6-terra` troca só esse tier, sem tocar em
+ * código nem reempacotar — por isso o padrão nunca foi fixado no código antes
+ * da variável.
+ *
+ * Toda variável de ambiente continua tendo precedência sobre estes padrões.
  *
  * Ao revisar: confira a página de depreciações. Modelo aposentado em produção é
  * uma falha que só aparece quando o cliente está esperando resposta.
  */
+
+/** O modelo único desta fase. Um lugar só para trocar quando a decisão mudar. */
+const MODELO_OPENAI_PADRAO = "gpt-5.6-luna";
+
 export function aiModelProfiles() {
   return {
-    fast: process.env.ATLAS_AI_FAST_MODEL || "gpt-5.6-luna",
-    commercial: process.env.ATLAS_AI_COMMERCIAL_MODEL || process.env.ATLAS_AI_MODEL || "gpt-5.6-terra",
-    reasoning: process.env.ATLAS_AI_REASONING_MODEL || process.env.ATLAS_AI_MODEL || "gpt-5.6-terra",
+    fast: process.env.ATLAS_AI_FAST_MODEL || MODELO_OPENAI_PADRAO,
+    commercial: process.env.ATLAS_AI_COMMERCIAL_MODEL || process.env.ATLAS_AI_MODEL || MODELO_OPENAI_PADRAO,
+    reasoning: process.env.ATLAS_AI_REASONING_MODEL || process.env.ATLAS_AI_MODEL || MODELO_OPENAI_PADRAO,
     research: process.env.ATLAS_RESEARCH_MODEL || "sonar",
   } as const;
 }
