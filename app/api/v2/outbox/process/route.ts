@@ -388,7 +388,19 @@ export async function POST(request: Request) {
               resolveLeadOwner(admin, metaEvent.organization_id, sourceResult.data?.default_owner_id || null),
               resolveMetaCampaign(admin, metaEvent.organization_id, campaignExternalId),
             ]);
-          const leadMeta = { externalLeadId: metaEvent.external_lead_id, pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id, campaignLinkage: campaignLink?.linkage ?? null, sourceName: sourceResult.data?.name || null, dataSharingConsent: sourceResult.data?.conversion_sharing_enabled === true, consentBasis: sourceResult.data?.consent_basis || null };
+          const leadMeta = { externalLeadId: metaEvent.external_lead_id, pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id, campaignLinkage: campaignLink?.linkage ?? null, sourceName: sourceResult.data?.name || null, dataSharingConsent: sourceResult.data?.conversion_sharing_enabled === true, consentBasis: sourceResult.data?.consent_basis || null,
+            // A base legal desta lead veio do FORMULÁRIO da Meta, onde a pessoa
+            // aceitou os termos antes de virar lead — não de alguém afirmando
+            // depois, em nome dela. `lib/crm/meta-consent.ts` recusa marcar
+            // "formulario_meta" à mão justamente para não confundir as duas.
+            //
+            // Só vale quando a FONTE declara `conversion_sharing_enabled`: é lá
+            // que fica registrado que aquele formulário tem a cláusula de
+            // compartilhamento. Formulário sem a cláusula não ganha base por
+            // estar no mesmo sistema que outro que tem.
+            estado: sourceResult.data?.conversion_sharing_enabled === true ? "concedido" : "nao_perguntado",
+            origem: sourceResult.data?.conversion_sharing_enabled === true ? "formulario_meta" : "declarado_pelo_corretor",
+            registradoEm: new Date().toISOString() };
           const leadPayload = {
             organization_id: metaEvent.organization_id,
             name,
