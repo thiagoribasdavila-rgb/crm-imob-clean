@@ -177,6 +177,10 @@ async function conectar(profileId, organizationId) {
 
     if (qr && qrcode) {
       sessao.qr = await qrcode.toDataURL(qr, { margin: 1, width: 300 });
+      // O texto cru serve para desenhar o QR no TERMINAL do servidor, sem
+      // gerar arquivo de imagem — arquivo de QR em disco é chave de pareamento
+      // esquecida no disco.
+      sessao.qrPayload = qr;
       sessao.status = "aguardando_qr";
       logar(profileId, "QR gerado, aguardando leitura");
       await sincronizar(profileId);
@@ -185,6 +189,7 @@ async function conectar(profileId, organizationId) {
     if (connection === "open") {
       sessao.status = "conectado";
       sessao.qr = null;
+      sessao.qrPayload = null;
       sessao.erro = null;
       sessao.tentativas = 0;
       sessao.conectadoEm = agora();
@@ -275,6 +280,7 @@ function estadoDe(profileId) {
     profileId,
     status: s.status,
     qr: s.status === "aguardando_qr" ? s.qr : null,
+    qrPayload: s.status === "aguardando_qr" ? s.qrPayload ?? null : null,
     phoneE164: s.phoneE164,
     erro: s.erro,
     conectadoEm: s.conectadoEm,
@@ -287,7 +293,7 @@ async function sincronizar(profileId) {
   const e = estadoDe(profileId);
   // O QR não vai para o banco: é efêmero, some em segundos, e é a chave de
   // pareamento — quem tiver ele entra na conta.
-  await avisarCrm("/api/v1/whatsapp/bridge/status", { ...e, qr: undefined });
+  await avisarCrm("/api/v1/whatsapp/bridge/status", { ...e, qr: undefined, qrPayload: undefined });
 }
 
 async function desconectar(profileId) {
