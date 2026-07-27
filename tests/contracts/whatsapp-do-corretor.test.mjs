@@ -296,12 +296,21 @@ test("a consulta de conectados é UMA só, fora do laço", () => {
 });
 
 test("nenhuma lead se perde quando ninguém está conectado", () => {
+  // A intenção continua a mesma: lead não some. O que MUDOU (regra nova do
+  // dono do produto) é o destino — antes caía no gerente mesmo desconectado,
+  // agora fica REPRESADA sem dono, visível para o diretor distribuir.
+  //
+  // É deliberadamente incômodo: lead sem dono aparece como problema no Command
+  // Center, e o problema tem solução de trinta segundos — alguém conectar.
+  // Atribuir a quem está desconectado esconderia isso e deixaria a lead
+  // esfriando no nome de quem não vai vê-la.
   const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
-  // Os degraus 3 e 4 já existiam e continuam sendo a rede.
-  assert.match(cascata, /gerente com menor carga segura a fila/);
-  assert.match(cascata, /lead na fila geral da organização/);
+  assert.match(cascata, /gerente conectado com menor carga segura a fila/);
+  assert.match(cascata, /REPRESADA: ninguém com WhatsApp conectado para receber/);
+  assert.match(cascata, /ou alguém conecta e a próxima entra sozinha/,
+    "o motivo precisa dizer como sair do estado, não só que se está nele");
   assert.match(cascata, /Nenhuma lead se perde por causa disto/,
-    "a decisão precisa estar escrita junto da regra");
+    "a decisão continua escrita junto da regra");
 });
 
 test("o motivo da barreira fica ESCRITO no histórico", () => {
@@ -322,4 +331,50 @@ test("a mudança de regra está registrada, não contradiz o comentário em sil�
 
 test("a tela diz a consequência de não conectar", () => {
   assert.match(painel, /Você não está recebendo leads novas/);
+});
+
+// ── A regra vale para TODOS, sem porta dos fundos ──────────────────────────
+
+test("nem o dono padrão da fonte escapa do WhatsApp", () => {
+  // O degrau 1 é o caminho que MAIS lead percorre quando a fonte tem dono
+  // definido. Isentá-lo seria a porta pela qual a regra deixaria de valer na
+  // prática.
+  const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
+  assert.match(cascata, /if \(owner && conectados\.has\(owner\.id\)\)/);
+  assert.match(cascata, /está sem WhatsApp conectado; /,
+    "o motivo distingue 'dono inativo' de 'dono sem WhatsApp'");
+});
+
+test("o gerente também precisa estar conectado", () => {
+  // Gerente que segura fila ESTÁ recebendo lead: fica no nome dele, o SLA
+  // corre contra ele, o cliente espera resposta dele. Isentá-lo faria dele o
+  // ralo por onde a regra escoaria.
+  const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
+  assert.match(cascata, /const managers = gerentesDisponiveis\.filter\(\(p\) => conectados\.has\(p\.id\)\);/);
+  assert.match(cascata, /gerentesSemWhatsapp/);
+});
+
+test("ninguém conectado ⇒ REPRESADA, não empurrada para quem não pode atender", () => {
+  const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
+  assert.match(cascata, /REPRESADA: ninguém com WhatsApp conectado para receber/);
+  assert.match(cascata, /O diretor distribui pelo Command Center/);
+  assert.match(cascata, /ownerId: null,\s*\n\s*tier: "unassigned"/);
+});
+
+test("a consulta de conectados vem ANTES do degrau 1", () => {
+  // Agora todo degrau depende dela.
+  const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
+  const iConsulta = cascata.indexOf('from("whatsapp_broker_sessions")');
+  const iDegrau1 = cascata.indexOf("// 1) Dono padrão da fonte");
+  assert.ok(iConsulta > -1 && iConsulta < iDegrau1);
+  assert.equal([...cascata.matchAll(/from\("whatsapp_broker_sessions"\)/g)].length, 1,
+    "uma consulta só, no caminho quente de toda lead que entra");
+});
+
+test("cada degrau barrado aparece no motivo, separadamente", () => {
+  // Lead represada sem explicação é sintoma que se investiga por semanas.
+  const cascata = ler("lib", "distribution", "hierarchical-cascade.ts");
+  for (const nota of ["defaultNote", "notaWhatsapp", "notaGerente"]) {
+    assert.match(cascata, new RegExp(`\\$\\{${nota}\\}`), `${nota} precisa entrar no motivo`);
+  }
 });

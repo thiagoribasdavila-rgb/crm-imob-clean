@@ -25,6 +25,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *
  * ── MUDANÇA DE REGRA (2026-07-27), pedida pelo dono do produto ──────────────
  *
+ * TODOS — corretor, gerente e dono padrão da fonte — só recebem lead com o
+ * WhatsApp CONECTADO. Sem ninguém conectado a lead fica REPRESADA (sem dono) e
+ * o diretor distribui.
+ *
  * O corretor só entra no rodízio com o WhatsApp CONECTADO. Não é presença de
  * aba aberta — é a conexão do número, que sobrevive ao notebook fechado e à
  * madrugada, então a decisão acima continua valendo inteira.
@@ -123,24 +127,10 @@ export async function resolveLeadOwner(
   const active = (profiles ?? []) as ProfileRow[];
   const activeIds = new Set(active.map((p) => p.id));
 
-  // 1) Dono padrão da fonte — validado, nunca às cegas.
-  if (defaultOwnerId) {
-    const owner = active.find((p) => p.id === defaultOwnerId);
-    if (owner) {
-      return {
-        ownerId: owner.id,
-        tier: "source_default",
-        reason: `Dono padrão da fonte: ${displayName(owner)} (ativo, validado).`,
-      };
-    }
-    // Cai para a cascata com o motivo registrado no reason final.
-  }
-  const defaultNote = defaultOwnerId ? "Dono padrão da fonte inativo/inexistente; " : "";
-
-  // 2) Corretores elegíveis: ativos, disponíveis, cadeia íntegra, dentro da capacidade.
   // Quem está com o WhatsApp conectado AGORA. Uma consulta só para a
-  // organização inteira — perguntar por corretor faria N consultas dentro do
-  // laço, no caminho quente de toda lead que entra.
+  // organização inteira — perguntar por pessoa faria N consultas no caminho
+  // quente de toda lead que entra. Levantada ANTES do degrau 1 porque agora
+  // TODO degrau depende dela.
   const conectados = new Set<string>();
   {
     const { data } = await admin
@@ -153,6 +143,32 @@ export async function resolveLeadOwner(
     }
   }
 
+  // 1) Dono padrão da fonte — validado, nunca às cegas.
+  if (defaultOwnerId) {
+    const owner = active.find((p) => p.id === defaultOwnerId);
+    // Nem o dono padrão escapa: a regra é receber lead exige WhatsApp
+    // conectado, e abrir exceção para o degrau 1 seria a porta pela qual a
+    // regra deixaria de valer na prática — é justamente o caminho que mais
+    // lead percorre quando a fonte tem dono definido.
+    if (owner && conectados.has(owner.id)) {
+      return {
+        ownerId: owner.id,
+        tier: "source_default",
+        reason: `Dono padrão da fonte: ${displayName(owner)} (ativo, validado).`,
+      };
+    }
+    // Cai para a cascata com o motivo registrado no reason final.
+  }
+  const donoPadrao = defaultOwnerId ? active.find((p) => p.id === defaultOwnerId) : null;
+  const defaultNote = !defaultOwnerId
+    ? ""
+    : !donoPadrao
+      ? "Dono padrão da fonte inativo/inexistente; "
+      : !conectados.has(donoPadrao.id)
+        ? `Dono padrão (${displayName(donoPadrao)}) está sem WhatsApp conectado; `
+        : "";
+
+  // 2) Corretores elegíveis: ativos, disponíveis, cadeia íntegra, dentro da capacidade.
   const brokersDisponiveis = active.filter((p) =>
     normalizedRole(p) === "broker" &&
     (p.availability_status ?? "AVAILABLE") === "AVAILABLE" &&
@@ -185,7 +201,15 @@ export async function resolveLeadOwner(
   const notaWhatsapp = semWhatsapp > 0
     ? `${semWhatsapp} corretor(es) disponível(is) fora do rodízio por estar(em) sem WhatsApp conectado; `
     : "";
-  const managers = active.filter((p) => normalizedRole(p) === "manager");
+  // O gerente também precisa estar conectado. A regra é "receber lead exige
+  // WhatsApp", e gerente que segura fila ESTÁ recebendo lead — a lead fica no
+  // nome dele, o SLA corre contra ele, e o cliente espera resposta dele.
+  //
+  // Isentar o gerente faria dele o ralo por onde a regra escoaria: bastaria
+  // ninguém conectar para tudo cair nele, e o incentivo de conectar sumiria.
+  const gerentesDisponiveis = active.filter((p) => normalizedRole(p) === "manager");
+  const managers = gerentesDisponiveis.filter((p) => conectados.has(p.id));
+  const gerentesSemWhatsapp = gerentesDisponiveis.length - managers.length;
   const managerCandidates: Candidate[] = [];
   for (const profile of managers) {
     managerCandidates.push({
@@ -199,15 +223,28 @@ export async function resolveLeadOwner(
     return {
       ownerId: manager.profile.id,
       tier: "manager",
-      reason: `${defaultNote}${notaWhatsapp}sem corretor elegível (disponível, com WhatsApp conectado e com capacidade); gerente com menor carga segura a fila (${displayName(manager.profile)}).`.trim(),
+      reason: `${defaultNote}${notaWhatsapp}sem corretor elegível (disponível, com WhatsApp conectado e com capacidade); gerente conectado com menor carga segura a fila (${displayName(manager.profile)}).`.trim(),
     };
   }
 
-  // 4) Fila geral — honesto; o diretor enxerga no Command Center.
+  // 4) REPRESADA — ninguém conectado, ninguém recebe.
+  //
+  // A regra do dono do produto: receber lead exige WhatsApp conectado, para
+  // corretor E para gerente. Quando ninguém está, a lead NÃO é empurrada para
+  // alguém que não pode atendê-la — fica sem dono, visível para o diretor
+  // distribuir à mão.
+  //
+  // É deliberadamente incômodo. Lead sem dono aparece como problema no
+  // Command Center, e o problema tem uma solução de trinta segundos: alguém
+  // conectar o WhatsApp. Atribuir a quem está desconectado seria esconder isso
+  // e deixar a lead esfriando no nome de quem não vai vê-la.
+  const notaGerente = gerentesSemWhatsapp > 0
+    ? `${gerentesSemWhatsapp} gerente(s) também sem WhatsApp conectado; `
+    : "";
   return {
     ownerId: null,
     tier: "unassigned",
-    reason: `${defaultNote}${notaWhatsapp}nenhum corretor ou gerente elegível; lead na fila geral da organização.`.trim(),
+    reason: `${defaultNote}${notaWhatsapp}${notaGerente}REPRESADA: ninguém com WhatsApp conectado para receber. O diretor distribui pelo Command Center, ou alguém conecta e a próxima entra sozinha.`.trim(),
   };
 }
 
