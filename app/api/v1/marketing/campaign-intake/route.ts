@@ -28,7 +28,7 @@ import { recommendAdSetSizing } from "@/lib/meta/marketing/budget-sizing";
 import { aggregate } from "@/lib/marketing/cost-report";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { normalizeIntent, intentToken, missingForCommit, assembleMediaRefs } from "@/lib/marketing/campaign-intake";
+import { normalizeIntent, withAccountDefaults, intentToken, missingForCommit, assembleMediaRefs } from "@/lib/marketing/campaign-intake";
 import { canDecideMetaCampaign, isMetaCampaignApproval, META_CAMPAIGN_AUTHORITY_MESSAGE } from "@/lib/meta/marketing/approval-authority";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  const intent = normalizeIntent(body);
+  const intent = withAccountDefaults(normalizeIntent(body));
   if (!intent.product) {
     return apiError("PRODUCT_REQUIRED", "Informe o produto (empreendimento) — é o mínimo para a IA escrever o anúncio.", identity.meta, { status: 422 });
   }

@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/atlas/page-header";
 import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { CreativeFunnelPanel } from "@/components/marketing/creative-funnel-panel";
+import { CampaignIntakePanel } from "@/components/marketing/campaign-intake-panel";
 
 /*
  * CC-6 · Hub de marketing vivo — menos ruído, mais informação por pixel.
@@ -895,6 +896,23 @@ export default function MarketingPage() {
           </section>
 
           {/* (b) Coração da tela: decisões do plano da IA. */}
+          {/* Subir campanha completa.
+              Primeira seção de "Agir" porque é a única aqui que CRIA alguma
+              coisa — o resto da etapa é decisão sobre o que já existe. */}
+          <section aria-label="Subir campanha completa na Meta" hidden={foraDaEtapa("agir")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "40ms" }}>
+            <div className="px-4 pt-4 sm:px-6 sm:pt-6">
+              <p className="atlas-eyebrow">Agência · publicação</p>
+              <h3 className="mt-2 text-lg font-semibold text-white">Subir campanha completa</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Copy por ângulo, política conferida, mídia enviada e a estrutura inteira montada —
+                campanha, conjunto, criativo e um anúncio para cada ângulo. Tudo nasce pausado.
+              </p>
+            </div>
+            <div className="px-4 pb-5 sm:px-6 sm:pb-6">
+              <CampaignIntakePanel empreendimentos={["Inside Perdizes", "Spin Mood", "Arvo Teixeira da Silva", "Tiê Aclimação"]} />
+            </div>
+          </section>
+
           <section aria-label="Decisões da IA" hidden={foraDaEtapa("agir")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "60ms" }}>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
               <p className="cc6-eyebrow">Decisões da IA</p>

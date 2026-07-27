@@ -48,6 +48,32 @@ export function normalizeIntent(raw: unknown): IntakeIntent {
 }
 
 /**
+ * Preenche o que é CONFIGURAÇÃO DA CONTA, não escolha por campanha.
+ *
+ * A Página que veicula e o formulário de lead são os mesmos em toda campanha
+ * da organização — `META_PAGE_ID` e `META_LEAD_FORM_ID` já são a fonte
+ * canônica em 6 rotas (readiness, ready-campaigns, discover-forms,
+ * dispatch-test, held-leads, preflight). `campaign-intake` era a única que
+ * não os lia, e por isso `missingForCommit` acusava falta de Página mesmo com
+ * o ambiente configurado — a campanha nunca ficava completa.
+ *
+ * O que vem no corpo tem precedência: o dono pode veicular por outra Página
+ * numa campanha específica sem mexer no ambiente.
+ *
+ * Aplicado ANTES de `intentToken` de propósito: o token precisa cobrir os
+ * valores EFETIVOS, senão prévia e criação discordariam sobre o que sobe.
+ */
+export function withAccountDefaults(intent: IntakeIntent): IntakeIntent {
+  const doAmbiente = (nome: string) => cleanStr(process.env[nome]) || null;
+  return {
+    ...intent,
+    pageId: intent.pageId ?? doAmbiente("META_PAGE_ID"),
+    leadFormId: intent.leadFormId ?? doAmbiente("META_LEAD_FORM_ID"),
+    instagramActorId: intent.instagramActorId ?? doAmbiente("META_INSTAGRAM_ACTOR_ID"),
+  };
+}
+
+/**
  * Token determinístico sobre a INTENÇÃO (não sobre hashes de mídia, que só
  * existem após o upload). Preview e commit concordam sobre o que será criado;
  * se o material mudar, o token muda e o commit é recusado — o dono revê.

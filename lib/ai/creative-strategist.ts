@@ -264,10 +264,27 @@ function defaultAngles(brief: ProductBrief): CreativeAngle[] {
   return angles.slice(0, LIMITS.primaryTexts.maxItems);
 }
 
+/** Os ângulos que existem de verdade — a fonte para validar entrada e para a UI. */
+export const CREATIVE_ANGLES: readonly CreativeAngle[] = [
+  "sair_do_aluguel", "investimento", "localizacao",
+  "renda_alvo", "estilo_de_vida", "entrega_imediata",
+] as const;
+
+export function isCreativeAngle(valor: unknown): valor is CreativeAngle {
+  return typeof valor === "string" && (CREATIVE_ANGLES as readonly string[]).includes(valor);
+}
+
 function normalizeAngles(brief: ProductBrief, angles?: CreativeAngle[]): CreativeAngle[] {
   if (!angles || !angles.length) return defaultAngles(brief);
   const unique: CreativeAngle[] = [];
-  for (const a of angles) if (!unique.includes(a)) unique.push(a);
+  // Filtrar aqui é o que impede um 500: `angleCandidates` é um switch sem
+  // `default`, então um ângulo desconhecido devolvia `undefined` e a linha
+  // seguinte estourava em `c.primaries`. O tipo protegia o compilador, não o
+  // servidor — a entrada vem do corpo de um POST, onde não há tipo nenhum.
+  for (const a of angles) if (isCreativeAngle(a) && !unique.includes(a)) unique.push(a);
+  // Se o cliente mandou SÓ ângulos inválidos, cair no default do brief é melhor
+  // que devolver campanha sem copy nenhuma.
+  if (!unique.length) return defaultAngles(brief);
   return unique.slice(0, LIMITS.primaryTexts.maxItems);
 }
 

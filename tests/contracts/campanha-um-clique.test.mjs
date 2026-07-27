@@ -1,0 +1,201 @@
+/**
+ * Contrato de SUBIR CAMPANHA COMPLETA.
+ *
+ * O orquestrador (`campaign-intake`, 271 linhas) já existia e estava sem um
+ * único chamador de interface. Este contrato guarda as duas coisas que fazem
+ * dele seguro — a prévia que não escreve e a criação pausada — e a forma da
+ * resposta, porque a primeira versão do painel INVENTOU os nomes dos campos
+ * (`planned`, `copy[]`) e teria renderizado vazio para sempre sem erro nenhum.
+ *
+ * Rodar: node --test tests/contracts/campanha-um-clique.test.mjs
+ */
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { stripTypeScriptTypes } from "node:module";
+
+const raiz = path.resolve(import.meta.dirname, "..", "..");
+const ler = (...p) => fs.readFileSync(path.join(raiz, ...p), "utf8");
+
+const rota = ler("app", "api", "v1", "marketing", "campaign-intake", "route.ts");
+const painel = ler("components", "marketing", "campaign-intake-panel.tsx");
+const pagina = ler("app", "(crm)", "marketing", "page.tsx");
+const fonteLib = ler("lib", "marketing", "campaign-intake.ts");
+
+const lib = await import(
+  `data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(fonteLib))}`
+);
+
+const intencao = (extra = {}) => lib.normalizeIntent({
+  product: "Inside Perdizes",
+  angles: ["location", "lifestyle"],
+  imageUrls: ["https://exemplo.com/a.jpg"],
+  weeklyBudgetBrl: 1400,
+  ...extra,
+});
+
+// ── A prévia não escreve ────────────────────────────────────────────────────
+
+test("sem confirmToken a rota devolve prévia e não cria nada", () => {
+  assert.match(rota, /mode: "previa"/);
+  assert.match(rota, /prévia — nada foi criado na Meta/);
+  // o ramo de criação só é alcançado depois da comparação de token
+  const posToken = rota.slice(rota.indexOf("-------- CRIAÇÃO (com token) --------"));
+  assert.ok(posToken.includes("uploadImageByUrl") || posToken.includes("assembleMediaRefs"),
+    "subir mídia pertence ao ramo de criação, nunca ao da prévia");
+});
+
+test("a prévia simula a mídia em vez de subir", () => {
+  const previa = rota.slice(rota.indexOf('mode: "previa"') - 2500, rota.indexOf('mode: "previa"'));
+  assert.match(previa, /DRYRUN_HASH/);
+  assert.match(previa, /DRYRUN_VIDEO_ID/);
+});
+
+test("material mudou depois da prévia ⇒ recusa, não cria o que ninguém viu", () => {
+  assert.match(rota, /MATERIAL_CHANGED/);
+  assert.match(rota, /incomingToken !== confirmToken/);
+});
+
+// ── A criação nasce pausada ─────────────────────────────────────────────────
+
+test("tudo é criado PAUSED — criar não gasta", () => {
+  assert.match(rota, /PAUSED/);
+  assert.match(painel, /pausad/i, "a tela precisa dizer isso, não só o servidor");
+});
+
+test("criar campanha pertence à liderança e exige aprovação vigente", () => {
+  assert.match(rota, /META_CAMPAIGN_AUTHORITY_MESSAGE/);
+  assert.match(rota, /APPROVAL_INVALID/);
+  assert.match(rota, /APPROVAL_EXPIRED/);
+});
+
+test("idempotência: a mesma intenção não cria a campanha duas vezes", () => {
+  assert.match(rota, /mode: "ja_criada"/);
+  assert.match(rota, /não recriamos/);
+});
+
+// ── O token cobre os valores EFETIVOS ───────────────────────────────────────
+
+test("Página e formulário vêm do ambiente quando o corpo não manda", () => {
+  const anterior = { p: process.env.META_PAGE_ID, f: process.env.META_LEAD_FORM_ID };
+  process.env.META_PAGE_ID = "111222333";
+  process.env.META_LEAD_FORM_ID = "444555666";
+  try {
+    const efetiva = lib.withAccountDefaults(intencao());
+    assert.equal(efetiva.pageId, "111222333");
+    assert.equal(efetiva.leadFormId, "444555666");
+    assert.deepEqual(lib.missingForCommit(efetiva), [],
+      "com ambiente configurado a campanha fica completa — era o que travava");
+  } finally {
+    if (anterior.p === undefined) delete process.env.META_PAGE_ID; else process.env.META_PAGE_ID = anterior.p;
+    if (anterior.f === undefined) delete process.env.META_LEAD_FORM_ID; else process.env.META_LEAD_FORM_ID = anterior.f;
+  }
+});
+
+test("o que vem no corpo tem precedência sobre o ambiente", () => {
+  const anterior = process.env.META_PAGE_ID;
+  process.env.META_PAGE_ID = "111222333";
+  try {
+    const efetiva = lib.withAccountDefaults(intencao({ pageId: "999888777" }));
+    assert.equal(efetiva.pageId, "999888777",
+      "veicular por outra Página numa campanha não pode exigir mexer no ambiente");
+  } finally {
+    if (anterior === undefined) delete process.env.META_PAGE_ID; else process.env.META_PAGE_ID = anterior;
+  }
+});
+
+test("o padrão de conta é aplicado ANTES do token", () => {
+  // Se o token fosse calculado sobre a intenção crua, prévia e criação
+  // discordariam sobre qual Página sobe — e o token não protegeria nada.
+  const iDefaults = rota.indexOf("withAccountDefaults(normalizeIntent(body))");
+  const iToken = rota.indexOf("intentToken(intent)");
+  assert.ok(iDefaults > -1 && iToken > iDefaults,
+    "o token precisa cobrir os valores efetivos");
+});
+
+// ── A tela lê os nomes que a rota realmente devolve ─────────────────────────
+
+test("o painel lê os campos reais da resposta, não campos inventados", () => {
+  for (const campo of ["confirmToken", "structure", "sizing", "missing", "violations"]) {
+    assert.match(painel, new RegExp(`\\b${campo}\\b`), `o painel precisa ler \`${campo}\``);
+  }
+  assert.ok(!/previa\.planned|previa\?\.planned/.test(painel),
+    "`planned` nunca existiu na resposta — foi suposição da primeira versão");
+});
+
+test("copy: angles é 1:1 com primaryTexts; headlines/descriptions são pool", () => {
+  assert.match(painel, /copy\?\.angles\?\.length/);
+  assert.match(painel, /primaryTexts\?\.\[i\]/, "o primário é pareado pelo índice do ângulo");
+  assert.match(painel, /Títulos \(/, "títulos são pool combinado pela Meta, não pareados");
+});
+
+test("o botão de criar some quando a criação já se sabe que falharia", () => {
+  assert.match(painel, /const podeCriar = Boolean\(previa\?\.confirmToken\) && !faltando\.length && !violacoes\.length/);
+  assert.match(painel, /\{podeCriar \? \(/);
+});
+
+test("violação de política é mostrada, não engolida", () => {
+  // A rota recusa a criação com 422 COPY_POLICY. Se a tela não mostrasse as
+  // violações, o usuário veria só "não foi possível criar" sem o motivo.
+  assert.match(rota, /COPY_POLICY/);
+  assert.match(painel, /viola a política de anúncio imobiliário/);
+});
+
+// ── A tela existe onde alguém a encontra ────────────────────────────────────
+
+test("o painel está montado na etapa Agir da página de marketing", () => {
+  assert.match(pagina, /import \{ CampaignIntakePanel \}/);
+  assert.match(pagina, /<CampaignIntakePanel/);
+  const trecho = pagina.slice(pagina.indexOf("<CampaignIntakePanel") - 900, pagina.indexOf("<CampaignIntakePanel"));
+  assert.match(trecho, /foraDaEtapa\("agir"\)/,
+    "criar campanha é ação — pertence a Agir, não a Entender");
+});
+
+test("o painel compõe o orquestrador em vez de repetir a montagem", () => {
+  assert.match(painel, /"\/api\/v1\/marketing\/campaign-intake"/);
+  const codigo = painel.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+  // Estreito de propósito: `adsets` solto casava dentro de `recommendedAdSets`,
+  // que é campo da RESPOSTA e legítimo na tela. O que não pode é endereço da
+  // Graph API — é isso que significaria a tela montando campanha por fora.
+  assert.ok(!/graph\.facebook\.com/i.test(codigo),
+    "a tela não fala com a Meta direto — quem monta a estrutura é o servidor");
+  // `access_token` cru pegaria `sessao.session?.access_token`, que é o token do
+  // Supabase para autenticar na NOSSA API — legítimo e igual em toda tela. O
+  // que não pode aparecer no cliente é credencial da Meta.
+  assert.ok(!/META_ADS_ACCESS_TOKEN|META_AD_ACCOUNT_ID|["'`]act_/i.test(codigo),
+    "credencial e conta de anúncio da Meta ficam no servidor");
+});
+
+// ── Ângulo desconhecido não derruba o servidor ──────────────────────────────
+
+test("ângulo inválido no corpo do POST não estoura a rota", async () => {
+  // Defeito real encontrado ao provar esta tela: `angleCandidates` é um switch
+  // SEM `default`. Ângulo fora do tipo devolvia `undefined` e a linha seguinte
+  // lia `c.primaries` — 500. O tipo `CreativeAngle` protegia o compilador; o
+  // corpo de um POST não passa pelo compilador.
+  const cs = await import(
+    `data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(ler("lib", "ai", "creative-strategist.ts")))}`
+  );
+  const brief = { product: "Inside Perdizes", city: "São Paulo", neighborhood: "Perdizes" };
+
+  const r = cs.buildAdCopy(brief, ["location", "lifestyle", "investment"]);
+  assert.ok(r.angles.length > 0, "ângulos inválidos caem no default do brief, não em campanha vazia");
+  assert.ok(r.angles.every((a) => cs.isCreativeAngle(a)));
+
+  assert.doesNotThrow(() => cs.buildAdCopy(brief, ["", "___", "DROP TABLE"]));
+  assert.equal(cs.buildAdCopy(brief, ["localizacao", "localizacao"]).angles.filter((a) => a === "localizacao").length, 1,
+    "repetido não vira anúncio duplicado");
+});
+
+test("a lista de ângulos da tela casa com o tipo, não com palpite", async () => {
+  const cs = await import(
+    `data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(ler("lib", "ai", "creative-strategist.ts")))}`
+  );
+  const naTela = [...painel.matchAll(/\{ chave: "([a-z_]+)"/g)].map((m) => m[1]);
+  assert.ok(naTela.length >= 6, "os seis ângulos precisam estar oferecidos");
+  for (const chave of naTela) {
+    assert.ok(cs.isCreativeAngle(chave), `"${chave}" não é um CreativeAngle — a tela ofereceria um 500`);
+  }
+});

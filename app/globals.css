@@ -9190,3 +9190,186 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 }
 .atlas-criativo-erro { color: var(--atlas-danger); }
 .atlas-criativo-rodape { margin: 12px 0 0; font-size: 10.5px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUBIR CAMPANHA COMPLETA — o formulário da agência
+
+   Dois cliques de propósito: prévia e confirmação. O primeiro não toca a Meta;
+   o segundo cria tudo PAUSED. Nenhum dos dois gasta — ativar é outro gesto,
+   em outra tela, com alçada de diretoria.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.atlas-intake-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+.atlas-intake-largo { grid-column: 1 / -1; }
+.atlas-intake-form label { display: block; }
+.atlas-intake-form label > span,
+.atlas-intake-form legend {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--atlas-text-tertiary);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+}
+.atlas-intake-form input[type="text"],
+.atlas-intake-form input[type="number"],
+.atlas-intake-form input:not([type]),
+.atlas-intake-form textarea {
+  width: 100%;
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: 9px;
+  background: var(--atlas-surface-subtle);
+  color: var(--atlas-text-primary);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.atlas-intake-form input:focus-visible,
+.atlas-intake-form textarea:focus-visible {
+  outline: none;
+  border-color: var(--atlas-accent);
+  box-shadow: var(--atlas-focus-ring);
+}
+.atlas-intake-form fieldset { border: 0; margin: 0; padding: 0; }
+.atlas-intake-angulos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.atlas-intake-angulos label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--atlas-text-secondary);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.atlas-intake-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.atlas-intake-acoes button {
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--atlas-text-secondary);
+  padding: 7px 14px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.atlas-intake-acoes button:hover:not(:disabled) {
+  border-color: var(--atlas-accent);
+  color: var(--atlas-accent);
+  background: var(--atlas-accent-soft);
+}
+/* A confirmação é a única com peso visual: é o botão que escreve na Meta. */
+.atlas-intake-acoes button[data-primario="true"] {
+  border-color: var(--atlas-accent);
+  background: var(--atlas-accent-soft);
+  color: var(--atlas-accent);
+}
+.atlas-intake-acoes button:disabled { opacity: 0.5; cursor: default; }
+
+.atlas-intake-previa {
+  margin-top: 16px;
+  border-top: 1px solid var(--atlas-border-subtle);
+  padding-top: 14px;
+}
+.atlas-intake-titulo {
+  margin: 0 0 6px;
+  color: var(--atlas-text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.atlas-intake-estrutura {
+  margin: 0 0 10px;
+  color: var(--atlas-text-primary);
+  font-size: 12.5px;
+}
+.atlas-intake-copy { margin: 0 0 10px; padding: 0; list-style: none; }
+.atlas-intake-copy li {
+  border-left: 2px solid var(--atlas-border-strong);
+  padding: 4px 0 4px 10px;
+  margin-bottom: 6px;
+}
+.atlas-intake-copy strong {
+  display: block;
+  color: var(--atlas-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.atlas-intake-copy span {
+  display: block;
+  margin-top: 2px;
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.atlas-intake-falta {
+  border-left: 2px solid var(--atlas-warning);
+  padding: 2px 0 2px 11px;
+  margin-bottom: 10px;
+}
+.atlas-intake-falta p {
+  margin: 0 0 4px;
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.atlas-intake-falta p:first-child {
+  color: var(--atlas-text-secondary);
+  font-weight: 500;
+}
+.atlas-intake-nota,
+.atlas-intake-erro,
+.atlas-intake-ok {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--atlas-text-tertiary);
+}
+.atlas-intake-erro { color: var(--atlas-danger); }
+.atlas-intake-ok { color: var(--atlas-success); }
+
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .atlas-intake-acoes button {
+    transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+  }
+}
+
+/* A verba sustenta a estrutura? O conselho mais caro da prévia: conjunto que
+   não sai do aprendizado queima verba sem a Meta conseguir otimizar. */
+.atlas-intake-verba {
+  border-left: 2px solid var(--atlas-border-strong);
+  padding: 2px 0 2px 11px;
+  margin-bottom: 10px;
+}
+.atlas-intake-verba[data-veredito="verba_insuficiente"] { border-left-color: var(--atlas-danger); }
+.atlas-intake-verba[data-veredito="consolidar"] { border-left-color: var(--atlas-warning); }
+.atlas-intake-verba[data-veredito="ok"],
+.atlas-intake-verba[data-veredito="pode_dividir"] { border-left-color: var(--atlas-success); }
+.atlas-intake-verba p {
+  margin: 0 0 3px;
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.atlas-intake-verba p:first-child {
+  color: var(--atlas-text-secondary);
+  font-weight: 500;
+}
+.atlas-intake-falta[data-bloqueio="true"] { border-left-color: var(--atlas-danger); }
+.atlas-intake-pool {
+  margin: 0 0 6px;
+  color: var(--atlas-text-tertiary);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+.atlas-intake-pool strong { color: var(--atlas-text-secondary); font-weight: 500; }
