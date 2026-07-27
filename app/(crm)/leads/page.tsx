@@ -382,6 +382,7 @@ export default function LeadsPage() {
   const [currentProfileId, setCurrentProfileId] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [transferTarget, setTransferTarget] = useState("");
+  const [bulkStage, setBulkStage] = useState("");
   const [transferReason, setTransferReason] = useState("");
   const [transferring, setTransferring] = useState(false);
   const [notice, setNotice] = useState("");
@@ -761,6 +762,40 @@ export default function LeadsPage() {
         ]
       : []),
   ];
+
+  /**
+   * Mover várias leads de etapa de uma vez.
+   *
+   * As 174 do Inside já estão trabalhadas — o histórico é que vive fora do
+   * CRM. Uma a uma seriam 174 telas abertas, e o que se perde aí não é tempo:
+   * é a vontade de manter o CRM em dia, que não volta depois que se perde.
+   */
+  async function moverEtapaEmLote() {
+    if (!bulkStage || selected.size === 0) return;
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Sessão expirada. Entre novamente.");
+      const r = await fetch("/api/v1/crm/leads/bulk-stage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ leadIds: [...selected], stage: bulkStage }),
+      });
+      const payload = await r.json();
+      if (!r.ok) throw new Error(payload?.error?.message || "Não foi possível mover as leads.");
+      // O que NÃO moveu aparece junto: silenciar a diferença faria o operador
+      // achar que foram todas e descobrir na semana seguinte.
+      setNotice(
+        payload.data?.aviso
+          ? `${payload.data.movidas} lead(s) movida(s). ${payload.data.aviso}`
+          : `${payload.data.movidas} lead(s) movida(s) para "${bulkStage}".`,
+      );
+      setSelected(new Set());
+      setBulkStage("");
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Não foi possível mover as leads.");
+    }
+  }
 
   async function transferSelected() {
     if (!selected.size || !transferTarget) return;
@@ -1334,6 +1369,34 @@ export default function LeadsPage() {
                 : "Ao escolher um gerente, as leads são equilibradas entre os corretores elegíveis. O gerente não se torna responsável."}
             </span>
           </div>
+
+          {/* Mover etapa vem ANTES de transferir na barra: com 174 leads já
+              trabalhadas para atualizar, é o que o operador faz o dia inteiro.
+              Transferir é ocasional. */}
+          <div className="flex items-center gap-2">
+            <select
+              value={bulkStage}
+              onChange={(e) => setBulkStage(e.target.value)}
+              className="rounded-lg border border-[rgba(75,141,248,0.35)] bg-[#0b1424] px-3 py-2 text-xs text-[#e8eef8]"
+              aria-label="Mover as leads selecionadas para a etapa"
+            >
+              <option value="">Mover para etapa…</option>
+              <option value="contato">Contato feito</option>
+              <option value="qualificacao">Qualificação</option>
+              <option value="visita">Visita</option>
+              <option value="proposta">Proposta</option>
+              <option value="contrato">Contrato</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => void moverEtapaEmLote()}
+              disabled={!bulkStage}
+              className="rounded-lg border border-[rgba(75,141,248,0.35)] px-3 py-2 text-xs text-[#e8eef8] disabled:opacity-50"
+            >
+              Mover {selected.size}
+            </button>
+          </div>
+
           <select
             className={`min-h-11 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-white/5 px-3 text-sm text-[#e8eef8] ${focusRing}`}
             value={transferTarget}
