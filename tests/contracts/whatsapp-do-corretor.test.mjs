@@ -126,13 +126,25 @@ test("o aviso de risco está na interface e precisa ser marcado", () => {
     "o botão de conectar fica travado até o corretor marcar que leu");
 });
 
-test("a biblioteca não oficial não é dependência do projeto", () => {
+test("a biblioteca não oficial está declarada e travada no lockfile", () => {
+  // MUDANÇA (2026-07-27): antes este contrato exigia que baileys NÃO fosse
+  // dependência — instalar era decisão do operador no servidor. O dono do
+  // produto decidiu instalar e versionar, para que o deploy seja reproduzível
+  // em vez de depender de alguém lembrar de rodar `npm install` extra.
+  //
+  // O que continua valendo é a resiliência: a ponte precisa subir mesmo sem a
+  // biblioteca. Um `npm ci` que falhe nela não pode derrubar o CRM inteiro.
   const pkg = JSON.parse(ler("package.json"));
-  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-  assert.ok(!Object.keys(deps).some((d) => /baileys|whatsapp-web|venom|wppconnect/i.test(d)),
-    "instalar é decisão consciente do operador no servidor, não efeito de um npm install");
+  assert.ok(pkg.dependencies["@whiskeysockets/baileys"], "declarada em dependencies");
+  assert.ok(pkg.dependencies.qrcode, "qrcode gera o QR");
+  assert.match(ler("package-lock.json"), /@whiskeysockets\/baileys/,
+    "travada no lockfile — deploy reproduzível");
+});
+
+test("a ponte sobe mesmo sem a biblioteca", () => {
   assert.match(ponte, /catch \{[\s\S]{0,200}não instalada/,
-    "sem a biblioteca a ponte sobe e responde estado honesto, em vez de estourar");
+    "estado honesto em vez de estourar: um npm ci que falhe nela não pode derrubar o CRM");
+  assert.match(ponte, /status: "falhou", erro: motivoAusencia/);
 });
 
 test("a ponte não sobe junto com a aplicação", () => {
