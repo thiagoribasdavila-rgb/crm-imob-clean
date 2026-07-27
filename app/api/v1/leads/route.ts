@@ -152,6 +152,11 @@ export async function POST(request: Request) {
         campaign_id: campanhaDoGoogle,
         status: "novo",
         score_ia: score.score,
+        // `score` junto de `score_ia`: eram duas colunas para a mesma coisa e
+        // discordavam — leads com score_ia 50 tinham score zero. Enquanto a
+        // coluna antiga existir, ela precisa carregar o mesmo valor, senão
+        // volta a mentir na tela que ainda a lê.
+        score: score.score,
         classificacao_ia: score.temperature,
         temperature: score.temperature,
         assigned_user_id: identity.userId,

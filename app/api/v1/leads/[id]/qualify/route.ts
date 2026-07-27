@@ -51,9 +51,28 @@ export async function POST(request: NextRequest, context: RouteContext) {
       historicalMemories: memoriesResult.data ?? [],
     });
 
+    // ── UMA PONTUAÇÃO, NÃO DUAS ──────────────────────────────────────────
+    //
+    // O banco tinha `score` e `score_ia` como se fossem a mesma coisa, e
+    // discordavam: leads com score_ia 35 e 50 tinham score ZERO.
+    //
+    // `score_ia` é a canônica — é o que `lib/compat/live-writes.ts` grava na
+    // criação, o que 27 arquivos leem, e o que `isQualifiedLead` consulta para
+    // decidir se a conversão vai para a Meta. Esta rota gravava só `score`, que
+    // ninguém lia para decidir nada.
+    //
+    // Gravamos as DUAS com o mesmo valor: `score_ia` porque é a verdade, e
+    // `score` porque telas antigas ainda a leem. Escrever as duas juntas é o
+    // que impede de divergirem de novo — remover a coluna antiga é migração
+    // para outro dia, e até lá o risco não é a coluna existir: é ela mentir.
+    //
+    // `classificacao_ia` entra junto pelo mesmo motivo: era ela que ficava
+    // congelada enquanto `temperature` avançava.
     const { error } = await admin.from("leads").update({
       score: qualification.score,
+      score_ia: qualification.score,
       temperature: qualification.temperature,
+      classificacao_ia: qualification.temperature,
       purpose: lead.purpose || null,
       metadata: { ...metadata, qualificationAnswers: answers, aiQualification: qualification },
       updated_at: new Date().toISOString(),
