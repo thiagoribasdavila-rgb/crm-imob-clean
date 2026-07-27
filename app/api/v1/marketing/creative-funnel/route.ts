@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
   const organizationId = access.access.organization.id;
   const admin = getSupabaseAdmin();
 
-  const [versoes, leads, empreendimentos] = await Promise.all([
+  const [versoes, leads, empreendimentos, toques] = await Promise.all([
     admin.from("creative_intelligence_versions")
       .select("id,creative_asset_id,development_id,format,message_angle,review_status,external_ad_id,external_platform,hook")
       .eq("organization_id", organizationId)
@@ -56,6 +56,22 @@ export async function GET(request: NextRequest) {
       .eq("organization_id", organizationId)
       .limit(20000),
     admin.from("developments").select("id,name").eq("organization_id", organizationId).limit(1000),
+    // ── A FONTE CANÔNICA DA ATRIBUIÇÃO ──────────────────────────────────────
+    //
+    // `lead_attribution_touches` é onde o anúncio de origem de fato mora: 394
+    // toques cobrindo os 217 leads, com 24 anúncios identificados — contra 21
+    // no `metadata` da lead.
+    //
+    // A primeira versão desta rota lia só o metadata, e isso era uma segunda
+    // forma de responder a mesma pergunta com dado pior. `/api/v1/marketing/
+    // ad-performance` já cruzava esta tabela com o status do lead e estava
+    // sem chamador — construir por cima do metadata repetia o trabalho e
+    // perdia três leads.
+    admin.from("lead_attribution_touches")
+      .select("lead_id,ad_external_id")
+      .eq("organization_id", organizationId)
+      .not("ad_external_id", "is", null)
+      .limit(50000),
   ]);
 
   if (versoes.error) {
@@ -74,14 +90,24 @@ export async function GET(request: NextRequest) {
     : { data: [] as Array<{ id: string; name: string }> };
   const nomeDoAtivo = new Map((ativos.data ?? []).map((a) => [a.id as string, a.name as string]));
 
-  // ── O par de convenções ────────────────────────────────────────────────────
+  // ── Toque de atribuição PRIMEIRO; metadata como recuo ──────────────────────
   //
-  // O backfill grava `ad_id` (snake) e o processador do outbox grava `adId`
-  // (camel). Ler só uma perderia metade das leads — e seria o mesmo defeito de
-  // coluna legada que esta base já teve em cinco lugares, agora dentro do JSON.
-  const anuncioDaLead = (metadata: unknown): string | null => {
+  // A tabela de toques é a fonte canônica e cobre mais leads. O metadata
+  // continua sendo lido porque o backfill grava lá e nem toda lead antiga tem
+  // toque registrado — descartá-lo perderia histórico.
+  const anuncioPorToque = new Map<string, string>();
+  for (const t of (toques.data ?? []) as Array<{ lead_id: string; ad_external_id: string }>) {
+    if (!anuncioPorToque.has(t.lead_id)) anuncioPorToque.set(t.lead_id, t.ad_external_id);
+  }
+
+  const anuncioDaLead = (leadId: string, metadata: unknown): string | null => {
+    const doToque = anuncioPorToque.get(leadId);
+    if (doToque) return doToque;
     if (!metadata || typeof metadata !== "object") return null;
     const m = metadata as Record<string, unknown>;
+    // O backfill grava `ad_id` (snake) e o outbox grava `adId` (camel). Ler só
+    // uma perderia metade — o mesmo defeito de coluna legada que esta base já
+    // teve em cinco lugares, agora dentro do JSON.
     const valor = m.ad_id ?? m.adId;
     return typeof valor === "string" && valor.trim() ? valor.trim() : null;
   };
@@ -100,7 +126,7 @@ export async function GET(request: NextRequest) {
   // Visitas e propostas por lead vêm das tabelas próprias — o status do lead diz
   // onde ele ESTÁ, não por onde passou. Uma lead que visitou e depois se perdeu
   // continua tendo visitado, e a peça que a trouxe merece o crédito.
-  const idsComAnuncio = linhasDeLead.filter((l) => anuncioDaLead(l.metadata)).map((l) => l.id);
+  const idsComAnuncio = linhasDeLead.filter((l) => anuncioDaLead(l.id, l.metadata)).map((l) => l.id);
   const [visitas, propostas] = idsComAnuncio.length
     ? await Promise.all([
         admin.from("lead_visits").select("lead_id").eq("organization_id", organizationId).in("lead_id", idsComAnuncio),
@@ -114,7 +140,7 @@ export async function GET(request: NextRequest) {
   const leadsPorAnuncio = new Map<string, LeadDoCriativo[]>();
   let leadsSemCriativo = 0;
   for (const lead of linhasDeLead) {
-    const anuncio = anuncioDaLead(lead.metadata);
+    const anuncio = anuncioDaLead(lead.id, lead.metadata);
     if (!anuncio) {
       leadsSemCriativo += 1;
       continue;
@@ -165,7 +191,7 @@ export async function GET(request: NextRequest) {
       // Dito no payload para quem lê a API sem abrir a tela.
       alegacaoCausalPermitida: false,
       executaSozinho: false,
-      fonte: "leads do CRM — não depende de ads_read",
+      fonte: "lead_attribution_touches (canônica) com recuo para o metadata da lead — não depende de ads_read",
       porQueNaoGrava: "as leads são a fonte da verdade; materializar criaria cópia que envelhece",
     },
   }, access.meta, { headers: rate.headers });

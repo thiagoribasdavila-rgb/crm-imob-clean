@@ -157,10 +157,21 @@ test("o módulo não afirma causa nem executa nada", () => {
 
 // ── A rota ──────────────────────────────────────────────────────────────────
 
-test("a rota lê as DUAS convenções de metadata", () => {
-  // O backfill grava `ad_id` (snake) e o outbox grava `adId` (camel). Ler só uma
-  // perderia metade das leads — o mesmo defeito de coluna legada que esta base
-  // já teve em cinco lugares, agora dentro do JSON.
+test("a fonte primária é a tabela canônica de atribuição", () => {
+  // `lead_attribution_touches` cobre os 217 leads com 24 anúncios; o metadata
+  // da lead cobre 21. A primeira versão desta rota lia SÓ o metadata — era uma
+  // segunda forma de responder a mesma pergunta, com dado pior, enquanto
+  // /api/v1/marketing/ad-performance já cruzava a tabela certa e estava sem
+  // chamador.
+  assert.match(rota, /\.from\("lead_attribution_touches"\)/);
+  assert.match(rota, /const doToque = anuncioPorToque\.get\(leadId\);/,
+    "o toque tem que ser consultado ANTES do metadata");
+});
+
+test("o metadata continua como recuo, com as duas convenções", () => {
+  // O backfill grava `ad_id` (snake) e o outbox grava `adId` (camel), e nem
+  // toda lead antiga tem toque registrado — descartar o metadata perderia
+  // histórico.
   assert.match(rota, /const valor = m\.ad_id \?\? m\.adId;/);
 });
 
