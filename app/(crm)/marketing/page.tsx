@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/atlas/page-header";
 import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { CreativeFunnelPanel } from "@/components/marketing/creative-funnel-panel";
 
 /*
  * CC-6 · Hub de marketing vivo — menos ruído, mais informação por pixel.
@@ -1034,6 +1035,23 @@ export default function MarketingPage() {
           </section>
         </>
       ) : null}
+
+      {/* Funil real de cada criativo.
+          Fica FORA do condicional da Andromeda de propósito: aquele bloco só
+          existe quando a Meta responde, e este painel mede as leads do CRM —
+          funciona sem credencial nenhuma. Amarrá-lo à Andromeda esconderia
+          justamente a parte que hoje é mensurável. */}
+      <section aria-label="Funil real de cada criativo" hidden={foraDaEtapa("criativo")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "220ms" }}>
+          <div className="px-4 pt-4 sm:px-6 sm:pt-6">
+            <p className="atlas-eyebrow">Agência · o que acontece depois do clique</p>
+            <h3 className="mt-2 text-lg font-semibold text-white">Qual peça traz lead que fecha</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              A Meta mostra CTR e custo por clique. Isto mostra atendimento, visita e venda —
+              a metade que decide criativo, e a única que não depende da permissão de leitura da conta.
+            </p>
+          </div>
+          <div className="px-4 pb-5 sm:px-6 sm:pb-6"><CreativeFunnelPanel /></div>
+        </section>
 
       {/* (e) Andromeda — saúde criativa; degrada em silêncio se ainda não existe. */}
       {andromeda.status === "ok" ? (

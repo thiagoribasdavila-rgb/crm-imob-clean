@@ -9070,3 +9070,123 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
     transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FUNIL REAL DE CADA CRIATIVO — o painel da agência
+
+   A Meta mostra CTR; isto mostra o que acontece depois do clique. Os anúncios
+   órfãos vêm primeiro e com destaque porque são a única coisa aqui que exige
+   ação hoje: peça no ar sem registro é medição perdida todo dia.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.atlas-criativo-resumo {
+  margin: 0 0 14px;
+  color: var(--atlas-text-primary);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.atlas-criativo-orfaos {
+  border-left: 2px solid var(--atlas-warning);
+  padding: 2px 0 2px 12px;
+  margin-bottom: 16px;
+}
+.atlas-criativo-orfaos > p {
+  margin: 0 0 8px;
+  color: var(--atlas-text-secondary);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.atlas-criativo-orfaos ul { margin: 0; padding: 0; list-style: none; }
+.atlas-criativo-orfaos li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 5px 0;
+  font-size: 11.5px;
+  color: var(--atlas-text-tertiary);
+}
+.atlas-criativo-orfaos code {
+  color: var(--atlas-text-primary);
+  font-family: var(--cc23-font-num);
+  font-size: 11px;
+}
+.atlas-criativo-orfaos select {
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: 7px;
+  background: var(--atlas-surface-subtle);
+  color: var(--atlas-text-secondary);
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+/* A tabela rola dentro do próprio contêiner — seis colunas num painel estreito
+   empurrariam a página inteira para o lado. */
+.atlas-criativo-tabela-wrap { overflow-x: auto; }
+.atlas-criativo-tabela { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.atlas-criativo-tabela th,
+.atlas-criativo-tabela td {
+  padding: 8px 10px 8px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--atlas-border-subtle);
+  white-space: nowrap;
+}
+.atlas-criativo-tabela thead th {
+  color: var(--atlas-text-tertiary);
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.atlas-criativo-tabela tbody th {
+  color: var(--atlas-text-primary);
+  font-weight: 500;
+  white-space: normal;
+  min-width: 180px;
+}
+.atlas-criativo-tabela td {
+  color: var(--atlas-text-secondary);
+  text-align: right;
+  font-family: var(--cc23-font-num);
+  font-variant-numeric: tabular-nums;
+}
+.atlas-criativo-tabela td span {
+  color: var(--atlas-text-tertiary);
+  font-size: 10px;
+}
+.atlas-criativo-meta,
+.atlas-criativo-nota {
+  display: block;
+  margin-top: 3px;
+  color: var(--atlas-text-tertiary);
+  font-size: 10px;
+  font-weight: 400;
+  white-space: normal;
+}
+.atlas-criativo-nota { color: var(--atlas-warning); }
+
+.atlas-criativo-ressalva {
+  margin-top: 14px;
+  border-top: 1px solid var(--atlas-border-subtle);
+  padding-top: 10px;
+}
+.atlas-criativo-ressalva p {
+  margin: 0 0 5px;
+  color: var(--atlas-text-tertiary);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+.atlas-criativo-ressalva p:first-child {
+  color: var(--atlas-text-secondary);
+  font-weight: 500;
+}
+.atlas-criativo-vazio,
+.atlas-criativo-erro,
+.atlas-criativo-aviso,
+.atlas-criativo-dica,
+.atlas-criativo-rodape {
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.atlas-criativo-erro { color: var(--atlas-danger); }
+.atlas-criativo-rodape { margin: 12px 0 0; font-size: 10.5px; }
