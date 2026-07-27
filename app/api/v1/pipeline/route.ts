@@ -11,13 +11,39 @@ import { recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat
 import { readCompatiblePipeline } from "@/lib/atlas/core-v2/live-repositories";
 import { DISCARD_REASON_KEYS, DISCARD_TAXONOMY_VERSION, getDiscardReason } from "@/lib/atlas/discard-reasons";
 import { tentativasDaLead, TENTATIVAS_MINIMAS, HA_PISO } from "@/lib/crm/contact-attempts";
+import { orientar, orientarAcesso } from "@/lib/crm/pipeline-guidance";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Recusa com o CAMINHO DE VOLTA junto.
+ *
+ * Toda recusa do pipeline passa por aqui. `error` continua sendo a frase curta
+ * (é o que clientes antigos leem) e `caminho` diz o que fazer — sem ele, metade
+ * das recusas manda o corretor atualizar uma tela que não vai mudar nada.
+ *
+ * `extras` carrega o que a tela precisa para agir: a etapa atual num conflito,
+ * as chaves válidas num motivo inválido.
+ */
+function recusar(codigo: string, status: number, extras: Record<string, unknown> = {}) {
+  const o = orientar(codigo);
+  return NextResponse.json(
+    { error: o.problema, caminho: o.caminho, acao: o.acao ?? null, code: codigo, ...extras },
+    { status },
+  );
+}
 
 function authError(error: unknown) {
   const message = error instanceof Error ? error.message : "Não autorizado.";
   const status = /sessão|token|autenticação|organização/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
-  return NextResponse.json({ error: message }, { status });
+  // A recusa de acesso é a MAIS comum de todas — "esta lead não é sua" — e era
+  // a única que chegava sem saída, porque `requireLeadAccess` estoura por
+  // exceção e desviava do caminho normal de recusa.
+  const o = orientarAcesso(message);
+  return NextResponse.json(
+    o ? { error: o.problema, caminho: o.caminho, acao: o.acao ?? null } : { error: message },
+    { status },
+  );
 }
 
 export async function GET(request: Request) {
@@ -84,7 +110,7 @@ export async function GET(request: Request) {
   } catch (error) {
     logger.warn("pipeline.read_failed", { error: error instanceof Error ? error.message : String(error) });
     const message = error instanceof Error ? error.message : "";
-    if (!/sessão|token|autenticação|organização|escopo/i.test(message)) return NextResponse.json({ error: "Pipeline temporariamente indisponível. O Atlas registrou o problema. Tente novamente." }, { status: 503 });
+    if (!/sessão|token|autenticação|organização|escopo/i.test(message)) return recusar("PIPELINE_UNAVAILABLE", 503);
     return authError(error);
   }
 }
@@ -92,9 +118,11 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const rate = checkRateLimit(clientKey(request, "v1-pipeline-move"), { limit: 120, windowMs: 60_000 });
   if (!rate.allowed) {
+    const espera = Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000));
+    const o = orientar("RATE_LIMITED");
     return NextResponse.json(
-      { error: "Muitas movimentações em sequência." },
-      { status: 429, headers: { "Retry-After": String(Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000))) } },
+      { error: o.problema, caminho: `${o.caminho} (${espera}s)`, acao: o.acao, code: "RATE_LIMITED" },
+      { status: 429, headers: { "Retry-After": String(espera) } },
     );
   }
 
@@ -122,18 +150,18 @@ export async function PATCH(request: Request) {
     const discardReason = stage === "perdido" && discardInput ? getDiscardReason(discardInput.key) : null;
     const discardNotes = discardInput && typeof discardInput.notes === "string" ? discardInput.notes.trim().slice(0, 2000) : "";
 
-    if (!leadId || !stage || !expectedFromStage || (stage === "comprou_outro" && followUpDescription.length < 10)) {
-      return NextResponse.json({ error: "Lead ou etapa inválida." }, { status: 400 });
+    // Antes: quatro problemas diferentes devolviam "Lead ou etapa inválida." —
+    // inclusive a justificativa curta de "comprou em outro lugar", que é o caso
+    // MAIS comum e o único em que o corretor tem o que fazer.
+    if (stage === "comprou_outro" && followUpDescription.length < 10) {
+      return recusar("FOLLOWUP_REQUIRED", 400);
+    }
+    if (!leadId || !stage || !expectedFromStage) {
+      return recusar("LEAD_OR_STAGE_MISSING", 400);
     }
     if (stage === "perdido" && discardInput && !discardReason) {
-      return NextResponse.json(
-        {
-          error: `Motivo de descarte inválido. Use uma das chaves: ${DISCARD_REASON_KEYS.join(", ")}.`,
-          code: "INVALID_DISCARD_REASON",
-          validKeys: DISCARD_REASON_KEYS,
-        },
-        { status: 400 },
-      );
+      // As chaves seguem na resposta para quem integra; o corretor lê o caminho.
+      return recusar("INVALID_DISCARD_REASON", 400, { validKeys: DISCARD_REASON_KEYS });
     }
     // ── PISO DE TENTATIVAS — DESLIGADO nesta fase ─────────────────────────
     //
@@ -166,23 +194,10 @@ export async function PATCH(request: Request) {
     }
 
     if (stage === "perdido" && !reversalOf && !discardReason) {
-      return NextResponse.json(
-        {
-          error: "Informe o motivo do descarte para mover a lead para a etapa de perda.",
-          code: "DISCARD_REASON_REQUIRED",
-          validKeys: DISCARD_REASON_KEYS,
-        },
-        { status: 400 },
-      );
+      return recusar("DISCARD_REASON_REQUIRED", 400, { validKeys: DISCARD_REASON_KEYS });
     }
     if (source === "atlas-copilot" && !humanConfirmed) {
-      return NextResponse.json(
-        {
-          error: "A movimentação sugerida pelo Copilot exige confirmação humana explícita.",
-          code: "COPILOT_PIPELINE_CONFIRMATION_REQUIRED",
-        },
-        { status: 400 },
-      );
+      return recusar("COPILOT_PIPELINE_CONFIRMATION_REQUIRED", 400);
     }
 
     await requireLeadAccess(identity, leadId);
@@ -195,10 +210,10 @@ export async function PATCH(request: Request) {
       .eq("organization_id", identity.organizationId)
       .single();
 
-    if (!current) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
+    if (!current) return recusar("LEAD_NOT_FOUND", 404);
 
     const previousStage = canonicalPipelineStage(current.status) || "novo";
-    if (previousStage !== expectedFromStage) return NextResponse.json({ error: "A lead foi movimentada por outra pessoa. Atualize o Kanban antes de tentar novamente.", code: "PIPELINE_STAGE_CONFLICT", currentStage: previousStage }, { status: 409 });
+    if (previousStage !== expectedFromStage) return recusar("PIPELINE_STAGE_CONFLICT", 409, { currentStage: previousStage });
     if (reversalOf) {
       // ── DUAS TABELAS, DOIS CAMINHOS ─────────────────────────────────────
       //
@@ -236,7 +251,7 @@ export async function PATCH(request: Request) {
       if (!origem || origem.jaDesfeito
         || canonicalPipelineStage(origem.para) !== previousStage
         || canonicalPipelineStage(origem.de) !== stage) {
-        return NextResponse.json({ error: "A movimentação mudou e não pode mais ser desfeita sem atualizar o Kanban.", code: "PIPELINE_STAGE_CONFLICT" }, { status: 409 });
+        return recusar("pipeline_undo_invalid", 409, { currentStage: previousStage });
       }
     }
 
@@ -295,8 +310,27 @@ export async function PATCH(request: Request) {
     } else if (atomicMove.error.code !== "42883" && atomicMove.error.code !== "PGRST202") {
       // Recusa de regra do banco (etapa inválida, reversão inconsistente): é
       // resposta legítima, não motivo para tentar a escrita manual por cima.
-      logger.warn("pipeline.move_rejected", { leadId, stage, code: atomicMove.error.code });
-      return NextResponse.json({ error: "A movimentação foi recusada pela regra do funil. Atualize o Kanban e confira a etapa atual.", code: "PIPELINE_STAGE_CONFLICT", currentStage: previousStage }, { status: 409 });
+      // ── OITO RECUSAS, OITO SAÍDAS ─────────────────────────────────────────
+      //
+      // A RPC levanta exceções distintas: etapa inválida, lead fora do escopo,
+      // conflito de etapa, desfazer inconsistente. Todas caíam numa frase só —
+      // "Atualize o Kanban e confira a etapa atual".
+      //
+      // Para `pipeline_move_out_of_scope` isso é um beco: a lead não muda de
+      // dono porque o corretor atualizou a tela. Ele atualiza, tenta de novo,
+      // lê a mesma frase, e conclui que o CRM está quebrado. O caminho ali é
+      // pedir a lead ao gestor — e ninguém dizia.
+      const motivo = String(atomicMove.error.message || "");
+      logger.warn("pipeline.move_rejected", { leadId, stage, code: atomicMove.error.code, motivo });
+      // Lead de outra carteira é permissão (403), não disputa de versão (409):
+      // devolver 409 faz cliente e tela tratarem como "tente de novo".
+      const foraDoEscopo = motivo.includes("pipeline_move_out_of_scope");
+      const naoEncontrada = motivo.includes("pipeline_lead_not_found");
+      return recusar(
+        motivo.match(/pipeline_[a-z_]+/)?.[0] ?? "PIPELINE_STAGE_CONFLICT",
+        foraDoEscopo ? 403 : naoEncontrada ? 404 : 409,
+        { currentStage: previousStage },
+      );
     }
 
     // Caminho compensatório: bancos que ainda não têm a RPC. Muda a etapa e
@@ -310,7 +344,7 @@ export async function PATCH(request: Request) {
       .select(LIVE_LEAD_SELECT)
       .maybeSingle();
     if (updateError || !updated) {
-      return NextResponse.json({ error: "A oportunidade mudou em outra sessão. Atualize o Kanban e tente novamente.", code: "PIPELINE_STAGE_CONFLICT", currentStage: previousStage }, { status: 409 });
+      return recusar("PIPELINE_STAGE_CONFLICT", 409, { currentStage: previousStage });
     }
 
     const occurredAt = new Date().toISOString();
@@ -336,7 +370,7 @@ export async function PATCH(request: Request) {
         .eq("organization_id", identity.organizationId)
         .eq("status", stage);
       logger.error("pipeline.history_failed", { leadId, stage, previousStage, rollbackError: rollback.error?.message, historyError: historyError?.message });
-      return NextResponse.json({ error: "A movimentação não foi registrada e foi desfeita para proteger o histórico.", code: "PIPELINE_AUDIT_FAILED" }, { status: 503 });
+      return recusar("PIPELINE_AUDIT_FAILED", 503);
     }
 
     const liveEventWrites = [

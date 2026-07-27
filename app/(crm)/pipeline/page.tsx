@@ -8,6 +8,7 @@ import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasRecoverableError, AtlasSkel
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import { DEFAULT_PIPELINE_STAGES, type PipelineStageDefinition, type PipelineStageKey } from "@/lib/atlas/pipeline-stages";
 import { DISCARD_REASONS } from "@/lib/atlas/discard-reasons";
+import { conhecimentoDaEtapa } from "@/lib/crm/pipeline-guidance";
 
 const defaultStages = DEFAULT_PIPELINE_STAGES.filter((stage) => stage.visible && stage.outcome !== "lost" && stage.outcome !== "buyer_profile");
 type StageKey = PipelineStageKey;
@@ -223,6 +224,14 @@ export default function PipelinePage() {
   const [mobileStage, setMobileStage] = useState<StageKey>(defaultStages[0]?.key || "novo");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  /**
+   * O CAMINHO DE VOLTA da última recusa.
+   *
+   * A rota manda `caminho` junto do erro. Sem mostrá-lo, o corretor lê o que
+   * deu errado e não o que fazer — e metade das recusas ("esta lead é de outra
+   * pessoa") não muda por mais que ele atualize a tela.
+   */
+  const [caminho, setCaminho] = useState<{ texto: string; acao: string | null } | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [focus, setFocus] = useState<FocusKey>("prioridade");
@@ -351,6 +360,7 @@ export default function PipelinePage() {
     const previous = leads;
     setSavingId(id);
     setError("");
+    setCaminho(null);
     setLeads((current) => current.map((lead) => (lead.id === id ? { ...lead, status: stage, updated_at: new Date().toISOString() } : lead)));
     try {
       const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, expectedFromStage: previousStage, followUpDescription, reversalOf: reversalOf || null, discardReason: discard ? { key: discard.key, notes: discard.notes } : null }) });
@@ -362,6 +372,12 @@ export default function PipelinePage() {
         // taxonomia, lead já movida por outra pessoa, confirmação humana
         // pendente. Trocar tudo isso por uma frase única obrigava o corretor a
         // adivinhar — e adivinhar errado é abandonar a lead.
+        //
+        // `caminho` é o próximo passo concreto, e vem da rota para o Copilot e
+        // qualquer integração receberem a mesma saída que o corretor vê.
+        if (typeof payload.caminho === "string" && payload.caminho) {
+          setCaminho({ texto: payload.caminho, acao: typeof payload.acao === "string" ? payload.acao : null });
+        }
         throw new Error(
           (typeof payload.error === "string" && payload.error)
             || "A movimentação não foi confirmada. A lead permaneceu na etapa anterior.",
@@ -661,6 +677,15 @@ export default function PipelinePage() {
       </section>
 
       {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
+      {/* O caminho de volta, logo abaixo do que deu errado. Erro sem saída faz
+          o corretor repetir a mesma tentativa até desistir da lead. */}
+      {caminho ? <div className="mt-2 flex flex-wrap items-center gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.06] px-4 py-3 text-xs leading-5 text-sky-100" role="status">
+        <span className="font-semibold uppercase tracking-[.12em] text-sky-300">O que fazer</span>
+        <span className="min-w-0 flex-1">{caminho.texto}</span>
+        {caminho.acao === "atualizar" ? <button type="button" onClick={() => { setCaminho(null); setError(""); void load(); }} className="atlas-button-secondary shrink-0">Atualizar Kanban</button> : null}
+        {caminho.acao === "tentar-de-novo" ? <button type="button" onClick={() => { setCaminho(null); setError(""); }} className="atlas-button-secondary shrink-0">Entendi</button> : null}
+        {caminho.acao === "falar-com-gestor" ? <Link href="/leads" className="atlas-button-secondary shrink-0">Ver minha carteira</Link> : null}
+      </div> : null}
       {!loading && pipelineScope.totalOperational > pipelineScope.loaded ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status"><span>Este quadro mostra {pipelineScope.loaded} de {pipelineScope.totalOperational} oportunidades operacionais. A memória arquivada continua isolada.</span><Link href="/leads" className="font-semibold text-amber-50 underline decoration-amber-300/40 underline-offset-4">Pesquisar a base completa</Link></div> : null}
       {savingId ? <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status" aria-live="polite">Confirmando movimentação e registrando o histórico…</div> : null}
       {lastMove ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.07] px-4 py-3 text-sm text-sky-100" role="status"><span><strong>{lastMove.leadName}</strong> avançou para {destinationOptions.find((item) => item.key === lastMove.to)?.label}.</span><button type="button" onClick={() => void undoLastMove()} disabled={Boolean(savingId)} className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs font-semibold hover:bg-sky-300/15 disabled:opacity-50">Desfazer movimentação</button></div> : null}
@@ -811,10 +836,21 @@ export default function PipelinePage() {
               return (
               <section key={stage.key} role="tabpanel" aria-label={`${stage.label}: ${stage.items.length} leads${colSignals && colSignals.stalled > 0 ? `, ${colSignals.stalled} sem atualização há 3 ou mais dias` : ""}`} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""} ${activeMobileStage !== stage.key ? "is-mobile-hidden" : ""}`}>
                 <div className="atlas-pipeline-column-header mb-4 border-b border-white/[0.06] pb-3">
-                  <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white">{stage.label}</h3><div className="flex shrink-0 items-center gap-1.5">{colSignals && colSignals.stalled > 0 ? <span className={`cc6-chip ${colSignals.rose > 0 || colSignals.hot > 0 ? "cc6-crit" : "cc6-warn"}`} title={`${colSignals.stalled} de ${stage.items.length} lead(s) desta etapa sem atualização registrada há 3 ou mais dias.`}>{colSignals.stalled} {colSignals.stalled === 1 ? "parado" : "parados"}</span> : null}<span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] font-semibold tabular-nums text-slate-300">{stage.items.length}</span></div></div>
+                  <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white" title={conhecimentoDaEtapa(stage.key)?.significa || undefined}>{stage.label}</h3><div className="flex shrink-0 items-center gap-1.5">{colSignals && colSignals.stalled > 0 ? <span className={`cc6-chip ${colSignals.rose > 0 || colSignals.hot > 0 ? "cc6-crit" : "cc6-warn"}`} title={`${colSignals.stalled} de ${stage.items.length} lead(s) desta etapa sem atualização registrada há 3 ou mais dias.`}>{colSignals.stalled} {colSignals.stalled === 1 ? "parado" : "parados"}</span> : null}<span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] font-semibold tabular-nums text-slate-300">{stage.items.length}</span></div></div>
                   <p className="mt-2 text-xs text-slate-500">{stage.value === null
                     ? `${stage.items.length ? "orçamento não informado" : "—"}`
                     : `${brl.format(stage.value)}${stage.semOrcamento ? ` · ${stage.semOrcamento} sem orçamento` : ""}`}</p>
+                  {/* PONTO DE CONHECIMENTO: o que fazer para a lead sair daqui.
+                      O corretor herdou 195 leads numa tela que nunca usou — sem
+                      isto, cada um decide sozinho o que "Qualificação" quer
+                      dizer e o funil deixa de medir a mesma coisa entre pessoas.
+                      Só na visão confortável: em 9 colunas compactas viraria
+                      parede de texto, e parede de texto ninguém lê. */}
+                  {!compact && conhecimentoDaEtapa(stage.key) ? (
+                    <p className="mt-2 text-[11px] leading-4 text-slate-500">
+                      <span className="text-slate-400">Para avançar:</span> {conhecimentoDaEtapa(stage.key)?.paraAvancar}
+                    </p>
+                  ) : null}
                   <div className="mt-3"><AtlasProgress value={stage.probability} /></div>
                 </div>
 

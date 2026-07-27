@@ -156,6 +156,47 @@ try {
   const leadInexistente = await mover({ leadId: "00000000-0000-0000-0000-000000000000", stage: "visita", expectedFromStage: "novo" });
   checa("lead inexistente não vira 500", leadInexistente.status >= 400 && leadInexistente.status < 500, `HTTP ${leadInexistente.status}`);
 
+  // ── 6b. Toda recusa diz o caminho de volta ───────────────────────────────
+  console.log("\n6b) Toda recusa carrega o CAMINHO de volta");
+  const recusas = [
+    ["motivo ausente", { leadId: ID, stage: "perdido", expectedFromStage: "comprou_outro" }],
+    ["motivo inválido", { leadId: ID, stage: "perdido", expectedFromStage: "comprou_outro", discardReason: { key: "xxx" } }],
+    ["descrição curta", { leadId: ID, stage: "comprou_outro", expectedFromStage: "comprou_outro", followUpDescription: "abc" }],
+    ["etapa de origem errada", { leadId: ID, stage: "ganho", expectedFromStage: "novo" }],
+    ["lead inexistente", { leadId: "00000000-0000-0000-0000-000000000000", stage: "visita", expectedFromStage: "novo" }],
+  ];
+  for (const [nome, corpo] of recusas) {
+    const r = await mover(corpo);
+    const c = r.corpo?.caminho;
+    checa(`${nome}: tem caminho`, typeof c === "string" && c.length > 25, `HTTP ${r.status} · caminho=${JSON.stringify(c)}`);
+    // O caminho tem que ser diferente do problema — repetir o erro com outras
+    // palavras não é orientação.
+    checa(`${nome}: caminho ≠ problema`, c !== r.corpo?.error);
+  }
+
+  // A recusa que era um beco: mandar "atualize o Kanban" para uma lead que não
+  // é do corretor faz ele atualizar para sempre. Prova com uma lead de outro dono.
+  console.log("\n6c) Lead de outra carteira: 403 e caminho que não é 'atualize'");
+  const { data: outroDono } = await admin.from("profiles")
+    .select("id").eq("organization_id", perfil.organization_id).neq("id", perfil.id).limit(1).maybeSingle();
+  if (outroDono) {
+    const { data: alheia } = await admin.from("leads").insert({
+      organization_id: perfil.organization_id, name: "TESTE ALHEIA (apagar)",
+      email: `${marca}-alheia@atlas-teste.local`, status: "novo",
+      source: "teste-automatizado", assigned_to: outroDono.id,
+    }).select("id").single();
+    const r = await mover({ leadId: alheia.id, stage: "visita", expectedFromStage: "novo" });
+    checa("é 403, não 409", r.status === 403, `HTTP ${r.status}`);
+    checa("o caminho manda falar com o gestor", /gestor|diretor|transfer/i.test(String(r.corpo?.caminho)),
+      JSON.stringify(r.corpo?.caminho));
+    checa("não manda atualizar a tela", !/^atualize/i.test(String(r.corpo?.caminho || "")));
+    await admin.from("lead_events").delete().eq("lead_id", alheia.id);
+    await admin.from("activities").delete().eq("lead_id", alheia.id);
+    await admin.from("leads").delete().eq("id", alheia.id);
+  } else {
+    console.log("  (sem segundo perfil na organização — pulado)");
+  }
+
   // ── 7. Estado final coerente no banco ────────────────────────────────────
   console.log("\n7) O banco concorda com a última resposta");
   const { data: final } = await admin.from("leads").select("status").eq("id", ID).single();
