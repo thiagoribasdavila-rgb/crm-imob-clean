@@ -103,11 +103,47 @@ export function catalogoDeProvedoresGratuitos() {
   });
 }
 
+/**
+ * MODELOS PADRÃO DA OPENAI — conferidos na fonte oficial em 2026-07-27.
+ *
+ * ── Por que isto mudou ──────────────────────────────────────────────────────
+ *
+ * Os padrões eram `gpt-5-mini` e `gpt-5.2`. Consultando a documentação da
+ * OpenAI hoje (developers.openai.com/api/docs/{pricing,models,deprecations}):
+ *
+ *   · `gpt-5-mini` está DEPRECIADO, desligamento em 11/12/2026. Ainda responde,
+ *     mas para de responder no meio da operação, sem aviso do nosso lado.
+ *   · `gpt-5.2` não aparece na lista de modelos NEM na de preços NEM na de
+ *     depreciações. `gpt-5.2-codex` foi desligado em 23/07/2026. O `gpt-5.2`
+ *     simples é um ponto cego: pode responder ou pode devolver 404 na primeira
+ *     chamada real — e o sintoma ("a IA não funciona") não aponta para a causa.
+ *
+ * Ligar a chave sem trocar isto era arriscar que a primeira chamada de verdade
+ * falhasse por modelo aposentado.
+ *
+ * ── Por que estes três ──────────────────────────────────────────────────────
+ *
+ * A linha atual é sol (trabalho complexo) · terra (equilíbrio) · luna (custo
+ * baixo, alto volume). O mapeamento segue a intenção de cada tier:
+ *
+ *   fast       → luna   · classificar, extrair, resumir. Volume alto, decisão simples.
+ *   commercial → terra  · falar com o cliente. Erro aqui custa a venda.
+ *   reasoning  → terra  · analisar funil e campanha. `sol` fica para quem
+ *                         configurar explicitamente: custa 2x a entrada e 2x a
+ *                         saída, e não há medição neste produto que justifique
+ *                         gastar isso por padrão.
+ *
+ * Toda variável de ambiente continua tendo precedência: quem quiser `sol` no
+ * comercial define ATLAS_AI_COMMERCIAL_MODEL e nada aqui atrapalha.
+ *
+ * Ao revisar: confira a página de depreciações. Modelo aposentado em produção é
+ * uma falha que só aparece quando o cliente está esperando resposta.
+ */
 export function aiModelProfiles() {
   return {
-    fast: process.env.ATLAS_AI_FAST_MODEL || "gpt-5-mini",
-    commercial: process.env.ATLAS_AI_COMMERCIAL_MODEL || process.env.ATLAS_AI_MODEL || "gpt-5.2",
-    reasoning: process.env.ATLAS_AI_REASONING_MODEL || process.env.ATLAS_AI_MODEL || "gpt-5.2",
+    fast: process.env.ATLAS_AI_FAST_MODEL || "gpt-5.6-luna",
+    commercial: process.env.ATLAS_AI_COMMERCIAL_MODEL || process.env.ATLAS_AI_MODEL || "gpt-5.6-terra",
+    reasoning: process.env.ATLAS_AI_REASONING_MODEL || process.env.ATLAS_AI_MODEL || "gpt-5.6-terra",
     research: process.env.ATLAS_RESEARCH_MODEL || "sonar",
   } as const;
 }
@@ -139,7 +175,19 @@ export function modelFamily(model: string): ModelFamily {
   return "desconhecida";
 }
 
-const openAIDefaultModel = (task: AITask) => (task === "fast" ? "gpt-5-mini" : "gpt-5.2");
+/**
+ * O padrão da OpenAI para um tier, quando a variável do tier não serve.
+ *
+ * Deriva de `aiModelProfiles()` em vez de repetir os nomes: eram duas cópias da
+ * mesma verdade, e a segunda continuaria em `gpt-5.2` (modelo que já não
+ * aparece na lista da OpenAI) depois de a primeira ser corrigida. Esta função é
+ * chamada justamente no caminho de recuperação — o pior lugar para servir um
+ * modelo aposentado, porque já se está tratando outro erro.
+ */
+const openAIDefaultModel = (task: AITask) => {
+  const perfis = aiModelProfiles();
+  return task === "fast" ? perfis.fast : task === "commercial" ? perfis.commercial : perfis.reasoning;
+};
 
 export type ResolvedModel = { model: string; source: string; problem: string | null };
 
