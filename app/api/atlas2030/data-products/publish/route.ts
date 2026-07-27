@@ -71,7 +71,7 @@ export async function POST(request: Request) {
   } catch (error) {
     logger.error("atlas2030.data_product_publish_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao publicar produto de dados.";
-    const status = /token|sessão|autoriz/i.test(message) ? 401 : 500;
+    const status = /token|sessão|autoriz|organiza|escopo/i.test(message) ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

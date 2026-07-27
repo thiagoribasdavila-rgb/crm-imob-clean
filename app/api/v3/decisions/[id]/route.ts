@@ -69,6 +69,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     return NextResponse.json({ id, status: "executing", runId: run.id }, { status: 202 });
   } catch (error) {
     logger.error("v3.decision_action_failed", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Falha ao processar decisão." }, { status: 500 });
+    // Recusa de ACESSO não é falha de servidor. Sem esta régua, perfil inativo,
+    // organização suspensa e sessão expirada viravam HTTP 500 — "o servidor
+    // quebrou" — e quem lê um 500 não procura o diretor.
+    const mensagem = error instanceof Error ? error.message : "Falha ao processar decisão.";
+    const acesso = /sess[ãa]o|token|autentica|autoriz|organiza|escopo/i.test(mensagem);
+    return NextResponse.json({ error: mensagem }, { status: acesso ? 401 : 500 });
   }
 }

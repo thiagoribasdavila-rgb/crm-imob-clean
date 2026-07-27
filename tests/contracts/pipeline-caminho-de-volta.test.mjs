@@ -136,12 +136,72 @@ test("orientarAcesso() cobre escopo, sessão e organização", () => {
 // ── A rota entrega isso de fato ────────────────────────────────────────────
 
 test("a rota não recusa sem passar pela orientação", () => {
+  // ── ESTE TESTE JÁ FOI DECORATIVO ──────────────────────────────────────────
+  //
+  // A versão anterior filtrava LINHA A LINHA procurando
+  // `NextResponse.json({ error:` na mesma linha. O arquivo é formatado em
+  // várias linhas: das 7 chamadas, o filtro enxergava ZERO. Ele comparava lista
+  // vazia com lista vazia — não existia nada capaz de fazê-lo falhar, e uma
+  // recusa sem caminho (a 422 do piso de tentativas) já estava no código,
+  // passando por baixo dele.
+  //
+  // Foi uma auditoria adversarial que achou; o mutation testing não pega este
+  // caso, porque a mutação certa aqui seria "adicionar uma recusa nova", e não
+  // "quebrar uma existente".
+  //
+  // Agora casa o objeto INTEIRO, atravessando quebras de linha.
   const rota = ler("app", "api", "v1", "pipeline", "route.ts");
-  // Recusa montada à mão volta a ser frase sem saída. A exceção é o authError,
-  // que tem seu próprio caminho, e o 503 de leitura do GET.
-  const cruas = rota.split("\n").filter((l) =>
-    /NextResponse\.json\(\s*\{\s*error:/.test(l) && !/orientarAcesso|o\.problema/.test(l));
-  assert.deepEqual(cruas, [], `recusas sem caminho:\n${cruas.join("\n")}`);
+  const semComentarios = rota.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+
+  const cruas = [...semComentarios.matchAll(/NextResponse\.json\(\s*\{[\s\S]{0,600}?\}\s*,\s*\{\s*status:/g)]
+    .map((m) => m[0])
+    // `authError` monta a resposta a partir de `orientarAcesso`; a de sucesso
+    // não tem `error`; a de rate limit usa `orientar` acima da chamada.
+    .filter((bloco) => /\berror:/.test(bloco))
+    .filter((bloco) => !/o\.problema|o\.caminho|caminho:/.test(bloco));
+
+  assert.deepEqual(cruas, [],
+    `estas recusas não carregam caminho:\n${cruas.map((c) => c.slice(0, 160)).join("\n---\n")}`);
+});
+
+test("o filtro acima TEM DENTES — pega uma violação plantada", () => {
+  // ── GUARDA DO GUARDA ──────────────────────────────────────────────────────
+  //
+  // O defeito anterior não era a régua estar errada: era ela não enxergar nada
+  // e mesmo assim declarar sucesso. Um teste que afirma "não achei problema"
+  // precisa provar primeiro que sabe achar.
+  //
+  // Contar recusas no arquivo real não serve: quanto MELHOR o código fica (tudo
+  // passando por `recusar()`), menos formas cruas sobram — e a contagem cairia
+  // sozinha até zero, reintroduzindo a cegueira por outro caminho.
+  //
+  // Então a régua é exercitada contra amostras sintéticas: uma que ela DEVE
+  // pegar, e uma que ela NÃO pode acusar.
+  const REGRA = /NextResponse\.json\(\s*\{[\s\S]{0,600}?\}\s*,\s*\{\s*status:/g;
+  const achar = (amostra) => [...amostra.matchAll(REGRA)]
+    .map((m) => m[0])
+    .filter((b) => /\berror:/.test(b))
+    .filter((b) => !/o\.problema|o\.caminho|caminho:/.test(b));
+
+  const violacao = `
+    return NextResponse.json(
+      {
+        error: "Alguma coisa deu errado.",
+        code: "SEM_SAIDA",
+      },
+      { status: 422 },
+    );`;
+  assert.equal(achar(violacao).length, 1, "a régua não pegou uma recusa sem caminho plantada de propósito");
+
+  const correta = `
+    return NextResponse.json(
+      {
+        error: "Alguma coisa deu errado.",
+        caminho: "Faça isto para resolver.",
+      },
+      { status: 422 },
+    );`;
+  assert.equal(achar(correta).length, 0, "a régua acusou uma recusa que TEM caminho");
 });
 
 test("lead fora do escopo é 403, não 409", () => {

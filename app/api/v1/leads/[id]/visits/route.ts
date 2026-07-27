@@ -12,7 +12,7 @@ const TRANSITIONS: Record<string, Set<string>> = {
 
 function unauthorized(error: unknown) {
   const message = error instanceof Error ? error.message : "Não autorizado.";
-  const status = /sessão|token|autenticação|autoriz/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
+  const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   return NextResponse.json({ error: message }, { status });
 }
 

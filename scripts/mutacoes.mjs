@@ -147,8 +147,42 @@ const MUTACOES = [
     id: "M13", arquivo: "app/api/v1/leads/[id]/qualify/route.ts",
     quebra: "uma rota volta a mandar recusa de autorização para 500",
     dor: "O usuário inativo recebe 'erro de servidor' naquela rota.",
-    de: `|autoriz/i.test(message)`,
+    de: `|autoriz|organiza|escopo/i.test(message)`,
     para: `/i.test(message)`,
+  },
+
+  // ── Quebras que uma AUDITORIA ADVERSARIAL achou e estas mutações não ──────
+  //
+  // As treze primeiras atacam a LIB. Estas atacam a COSTURA entre lib e rota —
+  // que era exatamente onde os quatro achados reais estavam. Lição registrada:
+  // mutação que só quebra a biblioteca mede a biblioteca, não o sistema.
+  {
+    id: "M15", arquivo: "app/api/v1/pipeline/route.ts",
+    quebra: "a decisão do piso é invertida na rota",
+    dor: "Com o piso ligado, descartaria quem ninguém contatou e barraria quem foi muito tentado — o inverso da regra.",
+    de: `      if (!tentativas.podeDescartar) {`,
+    para: `      if (tentativas.podeDescartar) {`,
+  },
+  {
+    id: "M16", arquivo: "app/api/v1/pipeline/route.ts",
+    quebra: "a recusa do piso perde o caminho",
+    dor: "O corretor lê 'faltam 2 tentativas' e não sabe que basta tentar por outro canal.",
+    de: `            caminho: tentativas.total === 0`,
+    para: `            naoUsado: tentativas.total === 0`,
+  },
+  {
+    id: "M17", arquivo: "app/(crm)/pipeline/page.tsx",
+    quebra: "o descarte volta a usar caixa nativa, sem o prefixo window.",
+    dor: "A forma mais comum de escrever `prompt(...)` passava batido no contrato antigo.",
+    de: `      setDiscardDraft({ leadId: id`,
+    para: `      prompt("Motivo?"); setDiscardDraft({ leadId: id`,
+  },
+  {
+    id: "M18", arquivo: "app/api/v1/leads/[id]/qualify/route.ts",
+    quebra: "uma rota da ficha da lead deixa de reconhecer 'organização'",
+    dor: "Empresa suspensa faz a ficha da lead devolver 'erro de servidor' em vez de dizer o que houve.",
+    de: `|organiza`,
+    para: ``,
   },
   {
     id: "M14", arquivo: "app/api/v1/pipeline/route.ts",

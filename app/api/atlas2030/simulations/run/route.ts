@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   } catch (error) {
     logger.error("atlas2030.simulation_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao executar simulação.";
-    const status = /token|sessão|autoriz/i.test(message) ? 401 : 500;
+    const status = /token|sessão|autoriz|organiza|escopo/i.test(message) ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

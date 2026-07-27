@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
     }
     logger.warn("ai.copilot_failed", { error: error instanceof Error ? error.message : String(error) });
     const message = error instanceof Error ? error.message : "Falha ao consultar o Atlas Copilot.";
-    const unauthorized = /token|sessão|autenticação|organização|autoriz/i.test(message);
+    const unauthorized = /token|sessão|autenticação|organização|autoriz|escopo/i.test(message);
     return NextResponse.json({ error: message }, { status: unauthorized ? 401 : 500 });
   }
 }

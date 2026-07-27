@@ -62,7 +62,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ draft: { content, channel, objective, tone, mode, warnings: audit.warnings, requiresHumanApproval: true }, lead: { id: lead.id, name: lead.name }, project: projectResult.data });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao criar rascunho.";
-    const status = /sessão|token|autenticação|autoriz/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
+    const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

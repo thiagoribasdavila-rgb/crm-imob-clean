@@ -74,7 +74,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ draft: { content, mode, warnings: audit.warnings, requiresHumanApproval: true }, propertyCount: orderedProperties.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao preparar apresentação.";
-    const status = /sessão|token|autenticação|autoriz/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
+    const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

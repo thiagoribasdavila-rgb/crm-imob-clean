@@ -97,7 +97,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ qualification: { ...qualification, progress: { answered: Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length, total: 3, percent: Math.round(Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length / 3 * 100) }, scoreChange: { previous: Number(lead.score || 0), current: qualification.score, delta: qualification.score - Number(lead.score || 0) } } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha na qualificação.";
-    const status = /sessão|token|autenticação|autoriz/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
+    const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

@@ -196,7 +196,7 @@ export async function POST(request: Request) {
   } catch (error) {
     logger.error("v1.lead_create_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao criar lead.";
-    const status = /token|sessão|organização|autoriz/i.test(message) ? 401 : 500;
+    const status = /token|sessão|organização|autoriz|escopo/i.test(message) ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

@@ -35,7 +35,7 @@ function recusar(codigo: string, status: number, extras: Record<string, unknown>
 
 function authError(error: unknown) {
   const message = error instanceof Error ? error.message : "Não autorizado.";
-  const status = /sessão|token|autenticação|organização|autoriz/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
+  const status = /sessão|token|autenticação|organização|autoriz|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   // A recusa de acesso é a MAIS comum de todas — "esta lead não é sua" — e era
   // a única que chegava sem saída, porque `requireLeadAccess` estoura por
   // exceção e desviava do caminho normal de recusa.
@@ -178,11 +178,19 @@ export async function PATCH(request: Request) {
     if (HA_PISO && stage === "perdido" && !reversalOf) {
       const tentativas = await tentativasDaLead(getSupabaseAdmin(), identity.organizationId, leadId);
       if (!tentativas.podeDescartar) {
+        // Esta recusa passava SEM `caminho` — e o contrato que deveria pegar
+        // isso estava quebrado (filtrava linha a linha num objeto de várias
+        // linhas, enxergando zero recusas). Uma auditoria adversarial achou as
+        // duas coisas. Aqui a recusa também explica o passo, como as outras.
         return NextResponse.json(
           {
             error: tentativas.total === 0
-              ? "Ninguém tentou falar com esta lead ainda. Registre ao menos uma tentativa antes de descartar."
-              : `${tentativas.total} tentativa(s) registrada(s). São necessárias ${TENTATIVAS_MINIMAS} antes do descarte — lead que ninguém alcançou não é lead ruim.`,
+              ? "Ninguém tentou falar com esta lead ainda."
+              : `${tentativas.total} tentativa(s) registrada(s) de ${TENTATIVAS_MINIMAS} necessárias.`,
+            caminho: tentativas.total === 0
+              ? "Registre ao menos uma ligação ou WhatsApp antes de descartar — lead que ninguém alcançou não é lead ruim, e descartá-la ensina a Meta a evitar um público que talvez fosse ótimo."
+              : `Faltam ${tentativas.faltam}. Tente de novo por outro canal ou em outro horário; se ninguém atender depois disso, o descarte libera.`,
+            acao: "tentar-de-novo",
             code: "MINIMO_DE_TENTATIVAS",
             tentativas: tentativas.total,
             minimo: TENTATIVAS_MINIMAS,

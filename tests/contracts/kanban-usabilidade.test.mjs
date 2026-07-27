@@ -38,8 +38,23 @@ test("resposta sem JSON não vira erro mudo", () => {
 test("nenhuma caixa nativa do navegador pede texto", () => {
   // `window.prompt` pode ser bloqueado pelo navegador — e aí a etapa não
   // acontece, sem explicação. Fora que jogava o texto fora ao validar.
-  assert.ok(!/window\.(prompt|confirm|alert)\s*\(/.test(codigo),
-    "diálogo nativo ao lado de um painel desenhado: use o painel");
+  //
+  // A versão anterior exigia o prefixo `window.` — e a forma mais comum de
+  // escrever é sem ele. `prompt("...")` passava batido. Achado por auditoria
+  // adversarial; o mutation testing não pegava porque minha mutação usava
+  // justamente a forma com prefixo.
+  const nativos = [...codigo.matchAll(/(?<![.\w$])(?:window\s*\.\s*)?(prompt|confirm|alert)\s*\(/g)].map((m) => m[0]);
+  assert.deepEqual(nativos, [],
+    `diálogo nativo ao lado de um painel desenhado: ${nativos.join(", ")}`);
+});
+
+test("o DESCARTE também abre painel, não caixa nativa", () => {
+  // Havia asserção positiva só para o follow-up. Trocar o painel de descarte
+  // por uma caixa nativa passava verde — e o descarte é o fluxo que alimenta o
+  // sinal de volta para a Meta.
+  assert.match(codigo, /setDiscardDraft\(\{ leadId: id/);
+  assert.match(codigo, /aria-labelledby="discard-panel-title"/);
+  assert.match(codigo, /role="radiogroup"/, "o motivo é escolhido de uma lista fechada, não digitado");
 });
 
 test("'comprou em outro lugar' pergunta num painel, como o descarte", () => {

@@ -138,7 +138,7 @@ export async function POST(request: Request) {
   } catch (error) {
     logger.error("message.queue_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao preparar mensagem.";
-    const unauthorized = /token|sessão|autoriz/i.test(message);
+    const unauthorized = /token|sessão|autoriz|organiza|escopo/i.test(message);
     return NextResponse.json({ error: message }, { status: unauthorized ? 401 : 500 });
   }
 }

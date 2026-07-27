@@ -107,7 +107,7 @@ export async function POST(request: Request) {
   } catch (error) {
     logger.error("atlas2030.inventory_reserve_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao reservar unidade.";
-    const status = /token|sessão|autoriz/i.test(message) ? 401 : 500;
+    const status = /token|sessão|autoriz|organiza|escopo/i.test(message) ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

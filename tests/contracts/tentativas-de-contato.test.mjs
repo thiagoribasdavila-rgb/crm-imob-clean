@@ -140,6 +140,31 @@ test("por que o piso existe continua escrito junto da regra", () => {
 
 // ── O servidor, quando a trava existe, é quem recusa ───────────────────────
 
+test("a rota recusa quando NÃO pode descartar — não o contrário", () => {
+  // Achado por auditoria adversarial: inverter a decisão na rota (de
+  // `!tentativas.podeDescartar` para `tentativas.podeDescartar`) deixava os 391
+  // contratos verdes. Com o piso religado, isso descartaria justamente a lead
+  // que ninguém contatou e barraria a lead muito tentada — o inverso exato da
+  // regra, e ninguém saberia.
+  //
+  // O mutation testing não pegou porque minhas mutações quebravam a LIB; esta
+  // quebra mora na costura entre lib e rota, que era o ponto sem contrato.
+  const pipeline = ler("app", "api", "v1", "pipeline", "route.ts");
+  assert.match(pipeline, /if \(!tentativas\.podeDescartar\) \{/,
+    "a recusa precisa disparar quando NÃO pode descartar");
+  assert.ok(!/if \(tentativas\.podeDescartar\) \{[\s\S]{0,120}?status: 422/.test(pipeline),
+    "a decisão está invertida: recusaria justamente quem já pode descartar");
+});
+
+test("a recusa do piso também diz o caminho", () => {
+  // Esta era a única recusa do arquivo sem `caminho` — e o contrato que deveria
+  // pegar isso estava quebrado (filtrava linha a linha num objeto multilinha).
+  const pipeline = ler("app", "api", "v1", "pipeline", "route.ts");
+  const bloco = pipeline.slice(pipeline.indexOf("MINIMO_DE_TENTATIVAS") - 900, pipeline.indexOf("MINIMO_DE_TENTATIVAS"));
+  assert.match(bloco, /caminho:/, "a recusa do piso precisa dizer o próximo passo, como as outras");
+  assert.match(bloco, /Registre ao menos uma liga[çc][ãa]o|Faltam \$\{tentativas\.faltam\}/);
+});
+
 test("a rota respeita o piso configurado, e o pula quando não há", () => {
   // Bloquear só o botão da tela é sugestão, não regra: qualquer chamada direta
   // à API passaria por cima. E sem piso, nem consulta o banco.

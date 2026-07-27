@@ -89,8 +89,16 @@ test("nenhuma rota devolve 500 para falta de permissão", () => {
   for (const arquivo of rotas) {
     const fonte = fs.readFileSync(arquivo, "utf8");
     for (const m of fonte.matchAll(/\/([^/\n]*(?:sess|token|autoriz|autentica)[^/\n]*)\/i\.test\(\s*message\s*\)/g)) {
-      // Se a rota decide status pela mensagem, tem que reconhecer autorização.
-      if (!/autoriz/.test(m[1])) frouxas.push(`${path.relative(raiz, arquivo)}: /${m[1]}/i`);
+      // Se a rota decide status pela mensagem, tem que reconhecer TODAS as
+      // famílias de recusa que `api-auth` produz. Exigir só `autoriz` deixava
+      // "Organização inativa.", "Organização não encontrada." e "Usuário sem
+      // organização vinculada." caindo no 500 de 14 rotas — sete delas da ficha
+      // da lead, que a tela chama. Achado por auditoria adversarial depois de
+      // eu ter declarado o problema resolvido.
+      const faltando = ["autoriz", "organiza"].filter((palavra) => !m[1].includes(palavra));
+      if (faltando.length) {
+        frouxas.push(`${path.relative(raiz, arquivo)}: /${m[1]}/i — não reconhece ${faltando.join(", ")}`);
+      }
     }
   }
   assert.deepEqual(frouxas, [],
