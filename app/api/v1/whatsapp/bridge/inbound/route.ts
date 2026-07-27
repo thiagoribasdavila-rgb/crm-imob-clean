@@ -21,6 +21,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { segredoDaPonte, paraE164 } from "@/lib/whatsapp/bridge-contract";
+import { fecharPrimeiroContatoPorWhatsapp } from "@/lib/crm/whatsapp-first-contact";
 
 export const dynamic = "force-dynamic";
 
@@ -163,6 +164,25 @@ export async function POST(request: NextRequest) {
   });
   if (erroMsg) return NextResponse.json({ error: erroMsg.message }, { status: 500 });
 
+  // ── O relógio de primeiro contato ─────────────────────────────────────────
+  //
+  // `fecharPrimeiroContatoPorWhatsapp` já era chamado pelo webhook da Cloud API
+  // e pelo outbox de envio. A ponte do corretor não chamava — então o corretor
+  // respondia pelo WhatsApp DELE e o CRM seguia achando que a lead nunca tinha
+  // sido atendida: vigia de SLA cobrando quem já atendeu, e a métrica de
+  // primeiro contato medindo o canal errado.
+  //
+  // Fecha nos DOIS sentidos, de propósito. Saída é o corretor atendendo.
+  // Entrada é a lead falando primeiro — e lead que já está conversando não
+  // pode continuar na fila de "ninguém atendeu"; o relógio dela perdeu o
+  // sentido no instante em que a conversa começou.
+  const fechamento = await fecharPrimeiroContatoPorWhatsapp(admin, {
+    organizationId,
+    leadId: lead.id,
+    origem: corpo?.direcao === "saida" ? "saida" : "entrada",
+    ocorridoEm: corpo?.enviadaEm ?? agora,
+  });
+
   await admin.from("whatsapp_broker_sessions")
     .update({ last_activity_at: agora, updated_at: agora })
     .eq("profile_id", profileId);
@@ -171,5 +191,6 @@ export async function POST(request: NextRequest) {
     ok: true,
     conversationId,
     leadId: lead.id,
+    primeiroContatoFechado: fechamento.fechou,
   });
 }
