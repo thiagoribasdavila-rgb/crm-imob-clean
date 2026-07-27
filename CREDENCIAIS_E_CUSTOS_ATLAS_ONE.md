@@ -54,6 +54,31 @@ Reconferir a qualquer momento: `npm run meta:conta`
 
 ---
 
+## Supabase — URL Configuration (não é variável de ambiente)
+
+**Sem isto a redefinição de senha não funciona**, e falha em silêncio: a
+Supabase ignora o `redirectTo` que o app envia e cai na Site URL do projeto.
+O corretor clica no link do e-mail e cai na **página inicial**, não na tela de
+nova senha.
+
+Medido em 27/07/2026: o app envia
+`https://atlasaios.com.br/auth/callback?next=/reset-password`, e o link
+recebido aponta para `http://atlasaios.com.br`.
+
+**Authentication › URL Configuration:**
+
+| Campo | Valor correto | Hoje |
+|---|---|---|
+| Site URL | `https://atlasaios.com.br` | ⚠️ `http://` — sem o S |
+| Redirect URLs | `https://atlasaios.com.br/auth/callback` | ⚠️ ausente |
+| Redirect URLs | `https://atlasaios.com.br/**` | ⚠️ ausente |
+
+O resto do ciclo está provado funcionando: login, pedido de recuperação, token
+virando sessão, troca de senha, senha nova valendo e antiga revogada. Falha
+apenas o destino do link.
+
+---
+
 ## Contas de anúncio válidas
 
 `META_AD_ACCOUNT_ID` aponta hoje para uma conta que o token **não alcança**.
