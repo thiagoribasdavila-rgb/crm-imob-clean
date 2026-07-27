@@ -9509,3 +9509,31 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 .atlas-consent-opcoes button:disabled { opacity: 0.5; cursor: default; }
 .atlas-consent-erro { margin: 6px 0 0; color: var(--atlas-danger); font-size: 10.5px; }
 .atlas-consent-nota { margin: 6px 0 0; color: var(--atlas-text-tertiary); font-size: 10.5px; }
+
+/* Consentimento já respondido: uma linha discreta, não três botões pedindo
+   reconfirmação. 204 de 217 leads já estão resolvidas — pedir decisão nelas
+   é ruído que treina o corretor a ignorar o painel inteiro. */
+.atlas-consent-resumo {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  border: 0;
+  border-left: 2px solid var(--atlas-success);
+  border-radius: 0;
+  background: transparent;
+  padding: 3px 0 3px 10px;
+  color: var(--atlas-text-tertiary);
+  font-size: 11px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.atlas-consent-resumo[data-estado="negado"] { border-left-color: var(--atlas-text-tertiary); }
+.atlas-consent-resumo span { color: var(--atlas-text-tertiary); opacity: 0.6; }
+.atlas-consent-resumo:hover:not(:disabled) span { opacity: 1; color: var(--atlas-accent); }
+.atlas-consent-resumo:disabled { cursor: default; }
+/* Pendente pede atenção de verdade: é o único estado que bloqueia o envio. */
+.atlas-consent[data-pendente="true"] {
+  border-left: 2px solid var(--atlas-warning);
+  padding-left: 10px;
+}

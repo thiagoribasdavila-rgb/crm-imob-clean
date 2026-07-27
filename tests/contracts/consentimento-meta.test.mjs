@@ -88,3 +88,31 @@ test("o controle está na tela da lead, junto das ações", () => {
   assert.match(pagina, /<MetaConsentControl/);
   assert.match(pagina, /estadoInicial=\{lerEstado\(lead\.metadata\)\}/);
 });
+
+// ── Assertivo para o corretor: só pede o que falta ─────────────────────────
+
+test("lead já respondida não pede decisão de novo", () => {
+  // 204 de 217 leads já têm consentimento. Três botões em todas elas é pedir
+  // 204 reconfirmações — e é assim que se treina alguém a ignorar o painel.
+  assert.match(painel, /const resolvido = estado !== "nao_perguntado";/);
+  assert.match(painel, /if \(resolvido && !aberto\)/);
+  assert.match(painel, /atlas-consent-resumo/);
+});
+
+test("resolvido continua alterável, sem estar no caminho", () => {
+  assert.match(painel, /onClick=\{\(\) => setAberto\(true\)\}/);
+  assert.match(painel, /· alterar/);
+});
+
+test("só o pendente pede atenção — é o único que bloqueia", () => {
+  assert.match(painel, /data-pendente=\{!resolvido\}/);
+  const css = ler("app", "globals.css");
+  assert.match(css, /\.atlas-consent\[data-pendente="true"\]/);
+  assert.match(css, /border-left: 2px solid var\(--atlas-warning\)/);
+});
+
+test("pendente pergunta, resolvido afirma", () => {
+  // Título em pergunta convida a responder; em afirmação, só informa.
+  assert.match(painel, /O cliente autorizou compartilhar os dados com a Meta\?/);
+  assert.match(painel, /Enquanto você não responder, o resultado desta lead não volta/);
+});

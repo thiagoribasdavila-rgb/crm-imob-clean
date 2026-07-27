@@ -44,6 +44,17 @@ export function MetaConsentControl({
   const [estado, setEstado] = useState<Estado>(estadoInicial);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [aberto, setAberto] = useState(false);
+
+  /**
+   * Resolvido = já respondido. 204 das 217 leads do banco vivo já têm
+   * consentimento; mostrar três botões pedindo decisão em todas elas é pedir
+   * ao corretor que reconfirme 204 vezes algo que já está feito.
+   *
+   * Resolvido vira uma linha discreta que ele pode abrir se quiser mudar. Só o
+   * "ainda não perguntei" continua pedindo atenção — porque só ele bloqueia.
+   */
+  const resolvido = estado !== "nao_perguntado";
 
   async function registrar(novo: Estado) {
     if (novo === estado || ocupado) return;
@@ -74,13 +85,32 @@ export function MetaConsentControl({
     }
   }
 
+  // Resolvido e fechado: uma linha, sem pedir nada.
+  if (resolvido && !aberto) {
+    return (
+      <button
+        type="button"
+        className="atlas-consent-resumo"
+        data-estado={estado}
+        onClick={() => setAberto(true)}
+        disabled={!podeEditar}
+        title={podeEditar ? "Clique para alterar" : undefined}
+      >
+        {estado === "concedido"
+          ? "✓ Cliente autorizou compartilhar dados com a Meta"
+          : "✕ Cliente não autorizou — esta lead não é enviada"}
+        {podeEditar ? <span> · alterar</span> : null}
+      </button>
+    );
+  }
+
   return (
-    <div className="atlas-consent">
+    <div className="atlas-consent" data-pendente={!resolvido}>
       <p className="atlas-consent-titulo">
-        Compartilhar dados com a Meta
-        {estado === "concedido" ? null : (
+        {resolvido ? "Compartilhar dados com a Meta" : "O cliente autorizou compartilhar os dados com a Meta?"}
+        {resolvido ? null : (
           <span className="atlas-consent-consequencia">
-            {" "}· sem isto, o resultado desta lead não volta para otimizar a campanha
+            {" "}Enquanto você não responder, o resultado desta lead não volta para otimizar a campanha.
           </span>
         )}
       </p>
