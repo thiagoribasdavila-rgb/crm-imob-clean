@@ -9458,3 +9458,18 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   line-height: 1.6;
 }
 .atlas-wa-privacidade strong { color: var(--atlas-text-secondary); font-weight: 600; }
+.atlas-intake-form select {
+  width: 100%;
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: 9px;
+  background: var(--atlas-surface-subtle);
+  color: var(--atlas-text-primary);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.atlas-intake-form select:focus-visible {
+  outline: none;
+  border-color: var(--atlas-accent);
+  box-shadow: var(--atlas-focus-ring);
+}

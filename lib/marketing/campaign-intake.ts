@@ -24,6 +24,8 @@ export type IntakeIntent = {
   leadFormId: string | null;
   pageId: string | null;
   instagramActorId: string | null;
+  /** Conta de anúncios onde a campanha será criada. Null = usa o padrão do ambiente. */
+  adAccountId: string | null;
 };
 
 const cleanStr = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
@@ -44,6 +46,7 @@ export function normalizeIntent(raw: unknown): IntakeIntent {
     leadFormId: cleanStr(r.leadFormId) || null,
     pageId: cleanStr(r.pageId) || null,
     instagramActorId: cleanStr(r.instagramActorId) || null,
+    adAccountId: cleanStr(r.adAccountId) || null,
   };
 }
 
@@ -70,6 +73,7 @@ export function withAccountDefaults(intent: IntakeIntent): IntakeIntent {
     pageId: intent.pageId ?? doAmbiente("META_PAGE_ID"),
     leadFormId: intent.leadFormId ?? doAmbiente("META_LEAD_FORM_ID"),
     instagramActorId: intent.instagramActorId ?? doAmbiente("META_INSTAGRAM_ACTOR_ID"),
+    adAccountId: intent.adAccountId ?? doAmbiente("META_AD_ACCOUNT_ID"),
   };
 }
 

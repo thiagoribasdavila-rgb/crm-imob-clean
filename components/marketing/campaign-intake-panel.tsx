@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { comPresencaDeIa } from "@/lib/ai/presence";
 
@@ -98,6 +98,26 @@ export function CampaignIntakePanel({ empreendimentos }: { empreendimentos: stri
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [criado, setCriado] = useState<string | null>(null);
+  const [contas, setContas] = useState<Array<{ id: string; nome: string; ativa: boolean }>>([]);
+  const [conta, setConta] = useState("");
+  const [avisoConta, setAvisoConta] = useState<string | null>(null);
+
+  // As contas vêm da Meta, não de uma lista nossa: lista mantida à mão
+  // envelhece, e a campanha falharia na criação em vez de na escolha.
+  useEffect(() => {
+    void (async () => {
+      const { data: sessao } = await supabase.auth.getSession();
+      const r = await fetch("/api/v1/marketing/ad-accounts", {
+        headers: { Authorization: `Bearer ${sessao.session?.access_token || ""}` },
+      });
+      if (!r.ok) return;
+      const { data } = await r.json();
+      setContas(data.contas ?? []);
+      setAvisoConta(data.aviso ?? null);
+      if (data.padraoValido && data.padrao) setConta(data.padrao);
+      else if (data.contas?.length === 1) setConta(data.contas[0].id);
+    })();
+  }, []);
 
   const urls = imagens.split(/[\s,]+/).map((u) => u.trim()).filter(Boolean);
 
@@ -120,6 +140,7 @@ export function CampaignIntakePanel({ empreendimentos }: { empreendimentos: stri
         angles: angulos,
         imageUrls: urls,
         weeklyBudgetBrl: verbaSemanal ? Number(verbaSemanal) : null,
+        adAccountId: conta || null,
       }, `Montando a campanha de ${produto.trim() || "empreendimento"}`);
       const corpo = await r.json();
       if (r.ok) setPrevia(corpo.data);
@@ -140,6 +161,7 @@ export function CampaignIntakePanel({ empreendimentos }: { empreendimentos: stri
         angles: angulos,
         imageUrls: urls,
         weeklyBudgetBrl: verbaSemanal ? Number(verbaSemanal) : null,
+        adAccountId: conta || null,
         confirmToken: previa.confirmToken,
       }, "Criando a estrutura na Meta");
       const corpo = await r.json();
@@ -190,6 +212,24 @@ export function CampaignIntakePanel({ empreendimentos }: { empreendimentos: stri
           />
         </label>
 
+        <label>
+          {/* A conta define DE ONDE a verba sai. Fica ao lado da verba de
+              propósito: são a mesma decisão. */}
+          <span>Conta de anúncios</span>
+          <select
+            value={conta}
+            onChange={(e) => { setConta(e.target.value); setPrevia(null); }}
+            disabled={ocupado || !contas.length}
+          >
+            <option value="">{contas.length ? "Escolha a conta…" : "carregando…"}</option>
+            {contas.map((c) => (
+              <option key={c.id} value={c.id} disabled={!c.ativa}>
+                {c.nome}{c.ativa ? "" : " (inativa)"}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <label className="atlas-intake-largo">
           <span>Imagens (uma URL por linha)</span>
           <textarea
@@ -228,7 +268,7 @@ export function CampaignIntakePanel({ empreendimentos }: { empreendimentos: stri
       </div>
 
       <div className="atlas-intake-acoes">
-        <button type="button" onClick={() => void gerarPrevia()} disabled={ocupado || !produto.trim() || !angulos.length}>
+        <button type="button" onClick={() => void gerarPrevia()} disabled={ocupado || !produto.trim() || !angulos.length || !conta}>
           {ocupado && !previa ? "Montando…" : "🔍 Ver o que será criado"}
         </button>
         {podeCriar ? (
@@ -238,6 +278,7 @@ export function CampaignIntakePanel({ empreendimentos }: { empreendimentos: stri
         ) : null}
       </div>
 
+      {avisoConta ? <p className="atlas-intake-erro">⚠️ {avisoConta}</p> : null}
       {erro ? <p className="atlas-intake-erro">{erro}</p> : null}
       {criado ? <p className="atlas-intake-ok">{criado}</p> : null}
 

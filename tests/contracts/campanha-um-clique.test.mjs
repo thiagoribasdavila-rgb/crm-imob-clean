@@ -199,3 +199,53 @@ test("a lista de ângulos da tela casa com o tipo, não com palpite", async () =
     assert.ok(cs.isCreativeAngle(chave), `"${chave}" não é um CreativeAngle — a tela ofereceria um 500`);
   }
 });
+
+// ── A conta de anúncios é escolha por campanha, e validada ──────────────────
+
+test("a conta vem da Meta, não de uma lista nossa", async () => {
+  // Lista mantida à mão envelhece: conta nova não aparece, conta removida
+  // continua oferecida, e a campanha falha na criação em vez de na escolha.
+  const rotaContas = ler("app", "api", "v1", "marketing", "ad-accounts", "route.ts");
+  assert.match(rotaContas, /me\/adaccounts/);
+  assert.ok(!/act_\d{6,}/.test(rotaContas), "nenhum id de conta escrito no código");
+  assert.match(rotaContas, /export async function contasAlcancaveis/,
+    "exportada para a criação validar contra a MESMA fonte que a tela ofereceu");
+});
+
+test("criar em conta que o token não alcança é recusado", () => {
+  // Não é hipótese: META_AD_ACCOUNT_ID apontava para uma conta fora do alcance
+  // do token, e a Meta responde a isso com "(#200) ... has NOT grant
+  // ads_management" — mensagem que manda conferir permissão quando o problema
+  // é o ID. Meses de diagnóstico no lado errado.
+  assert.match(rota, /AD_ACCOUNT_UNREACHABLE/);
+  assert.match(rota, /const alcancaveis = await contasAlcancaveis\(\);/);
+  const iValida = rota.indexOf("AD_ACCOUNT_UNREACHABLE");
+  const iCria = rota.indexOf("-------- CRIAÇÃO (com token) --------");
+  assert.ok(iValida > -1 && iValida < iCria, "a validação vem antes da criação");
+});
+
+test("a escolha da tela tem precedência sobre o padrão do ambiente", () => {
+  assert.match(rota, /const contaEscolhida = intent\.adAccountId \?\? account;/);
+  assert.match(rota, /accountId: contaEscolhida \?\? account,/,
+    "o plano precisa usar a conta escolhida, não a do ambiente");
+});
+
+test("a prévia não sai sem conta escolhida", () => {
+  assert.match(painel, /!angulos\.length \|\| !conta/,
+    "montar campanha sem saber de onde a verba sai é montar no escuro");
+});
+
+test("existe portão que denuncia o ID errado", () => {
+  const portao = ler("scripts", "check-meta-account-reachable.mjs");
+  assert.match(portao, /NÃO ESTÁ ENTRE AS QUE O TOKEN ALCANÇA/);
+  assert.match(portao, /O problema é o ID, não a permissão/);
+  assert.match(portao, /process\.exit\(0\)/, "sem Meta configurada não é falha");
+  const pkg = JSON.parse(ler("package.json"));
+  assert.equal(pkg.scripts["meta:conta"], "node scripts/check-meta-account-reachable.mjs");
+});
+
+test("escolher onde a verba sai pertence à liderança", () => {
+  const rotaContas = ler("app", "api", "v1", "marketing", "ad-accounts", "route.ts");
+  assert.match(rotaContas, /Escolher a conta de anúncios pertence à liderança/);
+  assert.match(rotaContas, /status: 403/);
+});

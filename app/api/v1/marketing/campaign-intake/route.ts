@@ -28,6 +28,7 @@ import { recommendAdSetSizing } from "@/lib/meta/marketing/budget-sizing";
 import { aggregate } from "@/lib/marketing/cost-report";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { contasAlcancaveis } from "@/app/api/v1/marketing/ad-accounts/route";
 import { normalizeIntent, withAccountDefaults, intentToken, missingForCommit, assembleMediaRefs } from "@/lib/marketing/campaign-intake";
 import { canDecideMetaCampaign, isMetaCampaignApproval, META_CAMPAIGN_AUTHORITY_MESSAGE } from "@/lib/meta/marketing/approval-authority";
 
@@ -49,6 +50,9 @@ export async function POST(request: NextRequest) {
   }
 
   const token = process.env.META_ADS_ACCESS_TOKEN;
+  // A conta vem da intenção (escolhida na tela) e cai para o padrão do
+  // ambiente. `withAccountDefaults` já resolveu essa precedência abaixo — aqui
+  // só lemos o valor efetivo depois de normalizar.
   const account = process.env.META_AD_ACCOUNT_ID;
   if (!token || !account) {
     return apiError("META_NOT_CONFIGURED", "Meta não configurada: defina META_ADS_ACCESS_TOKEN e META_AD_ACCOUNT_ID.", identity.meta, { status: 503 });
@@ -56,6 +60,19 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   const intent = withAccountDefaults(normalizeIntent(body));
+  // Criar campanha numa conta que o token não alcança gasta verba de outra
+  // pessoa — ou, mais provável, falha com a mensagem da Meta que fala de
+  // permissão quando o problema é o ID. Validamos contra a MESMA fonte que a
+  // tela ofereceu: duas listas divergiriam justamente no caso que importa.
+  const contaEscolhida = intent.adAccountId ?? account;
+  if (contaEscolhida) {
+    const alcancaveis = await contasAlcancaveis();
+    if (alcancaveis && !alcancaveis.some((c) => c.id === contaEscolhida)) {
+      return apiError("AD_ACCOUNT_UNREACHABLE",
+        `A conta ${contaEscolhida} não está entre as que este token alcança. Escolha uma da lista em Marketing › conta de anúncios.`,
+        identity.meta, { status: 422 });
+    }
+  }
   if (!intent.product) {
     return apiError("PRODUCT_REQUIRED", "Informe o produto (empreendimento) — é o mínimo para a IA escrever o anúncio.", identity.meta, { status: 422 });
   }
@@ -110,7 +127,7 @@ export async function POST(request: NextRequest) {
       });
       const skeleton = leadCampaignSkeleton(brief, intent.weeklyBudgetBrl ?? 0, housingTargetingSpec(brief.city ? { cities: [brief.city] } : {}));
       planPreview = planFullPublication({
-        accountId: account, pageId: intent.pageId!, leadFormId: intent.leadFormId!,
+        accountId: contaEscolhida ?? account, pageId: intent.pageId!, leadFormId: intent.leadFormId!,
         instagramActorId: intent.instagramActorId ?? undefined,
         product: intent.product, skeleton, assetFeedSpec,
         imageHashes: intent.imageUrls.map(() => "DRYRUN_HASH"),
