@@ -75,3 +75,51 @@ test("está registrado no agendador e no contrato de segurança", () => {
   const contrato = JSON.parse(ler("config", "api-security-contract.json"));
   assert.ok(contrato.workerRoutes.includes("app/api/v2/marketing/capi-feedback/process/route.ts"));
 });
+
+// ── A tabela manda no QUE e PARA ONDE; o ambiente guarda só o segredo ───────
+
+test("o envio lê dataset e modo da ORGANIZAÇÃO, não do ambiente", () => {
+  // `meta_conversion_configs` tinha dataset_id, enabled, mode e test_event_code,
+  // e o enviador lia tudo do env — a tabela era decorativa. Num produto
+  // multi-organização, um dataset global manda a conversão de uma imobiliária
+  // para o dataset de outra.
+  const envio = ler("lib", "integrations", "meta", "capi-feedback.ts");
+  assert.match(envio, /config: CapiOrgConfig/);
+  assert.match(envio, /const datasetId = String\(config\.datasetId \?\? ""\)\.trim\(\);/);
+  assert.ok(!/process\.env\.META_CAPI_DATASET_ID/.test(envio),
+    "o dataset não pode mais vir do ambiente");
+  // O segredo continua no ambiente: credencial em linha de banco vaza num dump.
+  assert.match(envio, /process\.env\.META_CONVERSIONS_ACCESS_TOKEN/);
+});
+
+test("mode='test' sem código é RECUSADO — o acidente que isso impede", () => {
+  // O default da tabela é mode='test'. Antes, o modo nunca chegava no envio:
+  // quem configurasse teste e ligasse a env mandaria os eventos como PRODUÇÃO,
+  // e dado de teste entraria no algoritmo real de otimização.
+  const envio = ler("lib", "integrations", "meta", "capi-feedback.ts");
+  assert.match(envio, /missing_test_event_code/);
+  assert.match(envio, /config\.mode === "test" && !testEventCode/);
+  assert.match(envio, /test_event_code: testEventCode/,
+    "em modo teste o código precisa ir no corpo, senão a Meta trata como produção");
+});
+
+test("valor desconhecido de mode cai para TESTE, não para produção", () => {
+  const nucleo = ler("lib", "integrations", "meta", "capi-window.ts");
+  assert.match(nucleo, /data\.mode === "live" \? "live" : "test"/,
+    "errar para o teste custa um evento; errar para o outro contamina a otimização");
+});
+
+test("sem linha de config, ninguém envia", () => {
+  const nucleo = ler("lib", "integrations", "meta", "capi-window.ts");
+  assert.match(nucleo, /if \(!data\?\.dataset_id\) return null;/);
+  assert.match(worker, /sem meta_conversion_configs para esta organização/);
+  assert.match(manual, /CAPI_NOT_CONFIGURED/);
+});
+
+test("os dois chamadores usam o MESMO leitor de config", () => {
+  for (const [nome, arquivo] of [["worker", worker], ["rota manual", manual]]) {
+    assert.match(arquivo, /loadOrgCapiConfig/, `${nome} precisa usar o leitor compartilhado`);
+    assert.ok(!/from\("meta_conversion_configs"\)/.test(arquivo),
+      `${nome} não pode ler a tabela por conta própria`);
+  }
+});

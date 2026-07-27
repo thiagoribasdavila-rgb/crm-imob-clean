@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
 // vive em `lib/integrations/meta/capi-window.ts`, compartilhado com o worker.
 // Duas cópias da régua de consentimento divergiriam, e o dia da divergência é
 // o dia em que sai PII de quem não consentiu.
-import { loadWindowBatch, META_SEND_WINDOW_DAYS } from "@/lib/integrations/meta/capi-window";
+import { loadWindowBatch, loadOrgCapiConfig, META_SEND_WINDOW_DAYS } from "@/lib/integrations/meta/capi-window";
 
 function clampDays(value: string | null | undefined, fallback: number, max: number) {
   const n = Number(value);
@@ -146,7 +146,16 @@ export async function POST(request: NextRequest) {
   const { batch, period, consent, blockers } = loaded.value;
 
   try {
-    const outcome = await sendCapiBatch(batch.events);
+    // Mesma config por organização que o worker usa. Antes daqui, o envio lia
+    // dataset e modo do AMBIENTE e ignorava a tabela — então `mode='test'`
+    // configurado ia como produção.
+    const configDaOrg = await loadOrgCapiConfig(identity.supabase, organizationId);
+    if (!configDaOrg) {
+      return apiError("CAPI_NOT_CONFIGURED",
+        "Esta organização não tem meta_conversion_configs — configure dataset e modo antes de enviar.",
+        identity.meta, { status: 422 });
+    }
+    const outcome = await sendCapiBatch(batch.events, configDaOrg);
 
     if (!outcome.sent) {
       if (outcome.reason === "empty_batch") {

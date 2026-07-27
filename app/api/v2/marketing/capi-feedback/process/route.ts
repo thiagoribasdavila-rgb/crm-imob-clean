@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
-import { loadWindowBatch } from "@/lib/integrations/meta/capi-window";
+import { loadWindowBatch, loadOrgCapiConfig } from "@/lib/integrations/meta/capi-window";
 import { sendCapiBatch } from "@/lib/integrations/meta/capi-feedback";
 
 export const dynamic = "force-dynamic";
@@ -88,7 +88,15 @@ export async function POST() {
     }
     if (!batch.events.length) continue;
 
-    const envio = await sendCapiBatch(batch.events);
+    // Config DA organização. Sem linha, não envia — ausência não vira permissão,
+    // e num produto multi-organização um dataset global mandaria a conversão de
+    // uma imobiliária para o dataset de outra.
+    const config = await loadOrgCapiConfig(admin, organizationId);
+    if (!config) {
+      resultado.bloqueados.push({ organizationId, motivo: "sem meta_conversion_configs para esta organização" });
+      continue;
+    }
+    const envio = await sendCapiBatch(batch.events, config);
     if (envio.sent) {
       resultado.eventosEnviados += batch.events.length;
     } else {

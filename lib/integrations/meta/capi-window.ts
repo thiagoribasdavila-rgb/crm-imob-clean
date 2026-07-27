@@ -33,6 +33,7 @@ import {
   type CapiBatch,
   type CapiDiscardEventRow,
   type CapiLeadRow,
+  type CapiOrgConfig,
 } from "@/lib/integrations/meta/capi-feedback";
 
 
@@ -325,3 +326,28 @@ export async function loadWindowBatch(
   };
 }
 
+
+/**
+ * Config de envio da organização. `null` quando não há linha — e ausência de
+ * linha NÃO vira envio: é o mesmo princípio do consentimento.
+ */
+export async function loadOrgCapiConfig(
+  supabase: SupabaseClient,
+  organizationId: string,
+): Promise<CapiOrgConfig | null> {
+  const { data } = await supabase
+    .from("meta_conversion_configs")
+    .select("dataset_id,mode,enabled,test_event_code")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!data?.dataset_id) return null;
+  return {
+    datasetId: String(data.dataset_id),
+    // Qualquer valor que não seja exatamente "live" é tratado como teste.
+    // Errar para o lado do teste custa um evento não contabilizado; errar para
+    // o outro contamina a otimização real.
+    mode: data.mode === "live" ? "live" : "test",
+    testEventCode: data.test_event_code ?? null,
+    enabled: data.enabled === true,
+  };
+}

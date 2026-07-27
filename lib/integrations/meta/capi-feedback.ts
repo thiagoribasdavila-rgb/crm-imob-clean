@@ -401,8 +401,8 @@ export function buildCapiLeadEvents(input: {
 // --- Envio (gated) ---
 
 export type CapiSendOutcome =
-  | { sent: false; reason: "flag_disabled" | "missing_token" | "missing_dataset" | "empty_batch"; message: string }
-  | { sent: true; datasetId: string; batches: number; eventsSent: number; responses: unknown[] };
+  | { sent: false; reason: "flag_disabled" | "org_disabled" | "missing_token" | "missing_dataset" | "missing_test_event_code" | "empty_batch"; message: string }
+  | { sent: true; datasetId: string; mode: "test" | "live"; batches: number; eventsSent: number; responses: unknown[] };
 
 const CAPI_MAX_EVENTS_PER_REQUEST = 500;
 
@@ -414,17 +414,63 @@ const CAPI_MAX_EVENTS_PER_REQUEST = 500;
  * viram throw (o chamador decide status/retry); event_id determinístico torna
  * o retryUnsafe do resilientFetch seguro (dedupe do lado da Meta).
  */
-export async function sendCapiBatch(events: CapiEvent[]): Promise<CapiSendOutcome> {
+/**
+ * Configuração de envio de UMA organização, vinda de `meta_conversion_configs`.
+ *
+ * O SEGREDO não entra aqui: token fica no ambiente, porque credencial em linha
+ * de banco é credencial que vaza num dump.
+ */
+export type CapiOrgConfig = {
+  datasetId: string;
+  /** "test" manda `test_event_code` junto — a Meta trata como teste e NÃO usa na otimização. */
+  mode: "test" | "live";
+  testEventCode?: string | null;
+  enabled: boolean;
+};
+
+export async function sendCapiBatch(
+  events: CapiEvent[],
+  /**
+   * Configuração DA ORGANIZAÇÃO. Obrigatória a partir de agora.
+   *
+   * ── O defeito que isto fecha ─────────────────────────────────────────────
+   *
+   * `meta_conversion_configs` tem `dataset_id`, `enabled`, `mode` e
+   * `test_event_code`, e o enviador lia TUDO do ambiente — a tabela era
+   * decorativa. O padrão da tabela é `mode='test'`, então quem configurasse a
+   * organização em teste e ligasse a variável de ambiente mandaria os eventos
+   * como PRODUÇÃO: dado de teste entrando no algoritmo real de otimização,
+   * sem nada avisando.
+   *
+   * E num produto multi-organização, um `META_CAPI_DATASET_ID` único mandaria
+   * a conversão de uma imobiliária para o dataset de outra.
+   *
+   * Agora a tabela manda no QUE e PARA ONDE; o ambiente guarda só o segredo e
+   * a chave geral de desligar tudo.
+   */
+  config: CapiOrgConfig,
+): Promise<CapiSendOutcome> {
+  // Chave geral: desliga o envio no servidor inteiro, independente do que cada
+  // organização configurou. Existe para o caso de precisar parar tudo agora.
   if (process.env.ATLAS_META_CAPI_ENABLED !== "true") {
     return { sent: false, reason: "flag_disabled", message: "ATLAS_META_CAPI_ENABLED está desligada — nenhum evento sai do Atlas (somente export/dry-run)." };
+  }
+  if (!config?.enabled) {
+    return { sent: false, reason: "org_disabled", message: "Esta organização não habilitou o envio de conversões (meta_conversion_configs.enabled)." };
   }
   const accessToken = process.env.META_CONVERSIONS_ACCESS_TOKEN;
   if (!accessToken) {
     return { sent: false, reason: "missing_token", message: "META_CONVERSIONS_ACCESS_TOKEN não configurado — envio bloqueado." };
   }
-  const datasetId = String(process.env.META_CAPI_DATASET_ID ?? "").trim();
+  const datasetId = String(config.datasetId ?? "").trim();
   if (!/^\d{5,30}$/.test(datasetId)) {
-    return { sent: false, reason: "missing_dataset", message: "META_CAPI_DATASET_ID ausente ou inválido (esperado apenas dígitos) — envio bloqueado." };
+    return { sent: false, reason: "missing_dataset", message: "dataset_id ausente ou inválido em meta_conversion_configs (esperado apenas dígitos) — envio bloqueado." };
+  }
+  // Falha FECHADA no modo teste: sem o código, o evento iria como produção —
+  // exatamente o acidente que este parâmetro existe para impedir.
+  const testEventCode = String(config.testEventCode ?? "").trim();
+  if (config.mode === "test" && !testEventCode) {
+    return { sent: false, reason: "missing_test_event_code", message: "mode='test' sem test_event_code: sem ele o evento iria como PRODUÇÃO e entraria na otimização real. Informe o código do Gerenciador de Eventos ou mude para mode='live'." };
   }
   if (!events.length) {
     return { sent: false, reason: "empty_batch", message: "Nenhum evento elegível na janela — nada a enviar." };
@@ -437,12 +483,12 @@ export async function sendCapiBatch(events: CapiEvent[]): Promise<CapiSendOutcom
     const response = await resilientFetch(`https://graph.facebook.com/${apiVersion}/${encodeURIComponent(datasetId)}/events`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ data: batch }),
+      body: JSON.stringify({ data: batch, ...(config.mode === "test" ? { test_event_code: testEventCode } : {}) }),
     }, { timeoutMs: 30_000, retries: 1, retryUnsafe: true, operation: "Meta Conversions API" });
     const data = await response.json() as { events_received?: number; error?: { message?: string } };
     if (!response.ok) throw new Error(describeMetaGraphFailure(response.status, data));
     responses.push(data);
   }
 
-  return { sent: true, datasetId, batches: responses.length, eventsSent: events.length, responses };
+  return { sent: true, datasetId, mode: config.mode, batches: responses.length, eventsSent: events.length, responses };
 }
