@@ -1,48 +1,64 @@
 import type { CSSProperties } from "react";
 
-// Marca Atlas — "estrela-guia". UMA forma só: uma estrela de 4 pontas com o eixo
-// vertical alongado. A north-star que rege a operação — a conversão.
+// Marca Atlas — MONOGRAMA. O "A" construído como um vão.
 //
-// REVISÃO 2026-07-26: a órbita e o planeta saíram.
+// REVISÃO 2026-07-26 (segunda): a estrela saiu.
 //
-// Eles contavam uma história bonita (o lead girando em torno do que importa) e
-// custavam caro em todo tamanho abaixo de 24px: numa caixa de 100 unidades o
-// traço da órbita media 1.3 e o planeta 3.4 de raio, o que a 16px vira 0,2px e
-// 0,5px — borrão cinza em volta da marca, não desenho. A solução anterior foi
-// desenhar DOIS ativos: o componente com órbita e planeta, o favicon só com a
-// estrela. Duas marcas para o mesmo produto, divergindo em silêncio.
+// O problema dela nunca foi o desenho — era a saturação. A estrela de quatro
+// pontas virou o símbolo padrão de qualquer produto com IA: num print ao lado
+// de um concorrente, ninguém distinguia. Ela dizia "tem IA aqui" e não dizia
+// Atlas, nem imobiliário, nem nada que separasse este produto de outro.
 //
-// Agora é uma forma só, idêntica no favicon, no login e na sidebar. Marca boa
-// não precisa de versão reduzida — precisa de uma ideia que não dependa de
-// detalhe para ser reconhecida.
+// A letra é a coisa mais específica que existe. Nenhuma outra empresa tem o
+// mesmo A com o mesmo corte.
 //
-// A geometria também foi afinada: as concavidades ficaram mais fechadas
-// (controle a 3.5 do centro, antes 5.5) e as pontas horizontais mais longas
-// (14→86, antes 16→84). O resultado é uma estrela mais aguda e menos "flor",
-// que é o que separa marca de ícone genérico.
+// ── AS TRÊS DECISÕES DE DESENHO ─────────────────────────────────────────────
+//
+// 1. APEX ACHATADO, não em ponta. Duas razões, e as duas importam:
+//    técnica — ponta aguda a 16px vira mancha serrilhada, porque não há pixel
+//    suficiente para descrevê-la; e de significado — Atlas é o titã que
+//    sustenta, e um topo plano é um topo que CARREGA. A ponta afiada diria
+//    velocidade; o platô diz suporte.
+//
+// 2. PERNAS GROSSAS (20 unidades de 100). A 16px isso dá 3,2px de traço —
+//    acima do limite em que uma haste some. Monograma fino é bonito no
+//    apresentação e desaparece na aba do navegador.
+//
+// 3. TRAVESSÃO SÓLIDO E BAIXO. Ele corta o vão em dois triângulos de tamanhos
+//    diferentes (14 unidades acima, 16 abaixo). Fossem iguais, a 16px os dois
+//    virariam um borrão simétrico; diferentes, o olho ainda lê "tem alguma
+//    coisa acontecendo ali dentro".
 //
 // Duas decisões anteriores permanecem, e valem repetir:
 //
-// ZERO GLOW por padrão. O princípio da linguagem visual é profundidade por
-// geometria. O realce continua disponível, mas é sombra DESLOCADA — que descola
-// do fundo — e opt-in.
+// UMA FORMA SÓ, idêntica no favicon, no login e na barra lateral. Marca boa não
+// precisa de versão reduzida — precisa de uma ideia que não dependa de detalhe.
+//
+// ZERO GLOW por padrão. Profundidade vem da geometria. O realce continua
+// disponível, mas é sombra DESLOCADA — que descola do fundo — e opt-in.
 //
 // COR POR TOKEN. Os hexadecimais são var() com fallback: white-label troca a
 // marca sem tocar em componente.
 
 const BRAND_FROM = "var(--atlas-brand-from, #3ae7d7)"; // teal
 const BRAND_TO = "var(--atlas-brand-to, #8b8cff)"; // violet
-const GRAD_ID = "atlas-star-gradient";
+const GRAD_ID = "atlas-monogram-gradient";
 
 /**
- * A marca, em uma constante.
+ * A marca, em constantes.
  *
- * Fica exportada porque app/icon.svg precisa da MESMA geometria — e a única
+ * Ficam exportadas porque app/icon.svg precisa da MESMA geometria — e a única
  * forma de garantir isso é ter uma fonte só. Duas cópias divergem; foi
- * exatamente o que aconteceu antes desta revisão.
+ * exatamente o que aconteceu antes da revisão anterior.
+ *
+ * Contorno do A: platô no topo (44→56), pernas abrindo até 12 e 88, vão interno
+ * fechando em (50,50). Simétrico em torno de x=50.
  */
-export const ATLAS_STAR_PATH =
-  "M50,3 Q53.5,46.5 86,50 Q53.5,53.5 50,97 Q46.5,53.5 14,50 Q46.5,46.5 50,3 Z";
+export const ATLAS_MONOGRAM_PATH =
+  "M44,8 L56,8 L88,92 L68,92 L50,50 L32,92 L12,92 Z";
+
+/** O travessão. Sólido e baixo, para o vão ficar assimétrico — ver o cabeçalho. */
+export const ATLAS_CROSSBAR = { x: 34, y: 64, width: 32, height: 12, rx: 2 } as const;
 
 type AtlasTone = "signature" | "mono";
 
@@ -86,9 +102,17 @@ function AtlasMark({ size, tone = "signature", glow = false, title, className, s
         </defs>
       ) : null}
 
-      {/* estrela-guia — a marca inteira. Eixo vertical alongado (north-star),
-          concavidades fechadas. A MESMA geometria vai para app/icon.svg. */}
-      <path d={ATLAS_STAR_PATH} fill={fill} />
+      {/* O monograma: contorno do A e o travessão. Duas formas que se leem como
+          uma. A MESMA geometria vai para app/icon.svg. */}
+      <path d={ATLAS_MONOGRAM_PATH} fill={fill} />
+      <rect
+        x={ATLAS_CROSSBAR.x}
+        y={ATLAS_CROSSBAR.y}
+        width={ATLAS_CROSSBAR.width}
+        height={ATLAS_CROSSBAR.height}
+        rx={ATLAS_CROSSBAR.rx}
+        fill={fill}
+      />
     </svg>
   );
 }

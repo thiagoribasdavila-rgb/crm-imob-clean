@@ -94,32 +94,56 @@ function gradientStops(src) {
  * Valida o path da estrela de 4 pontas e devolve as pontas.
  * Espera M <ponta> seguido de 4 curvas Q (uma por ponta) e Z.
  */
-function analyzeStarPath(d) {
+/**
+ * Analisa o contorno do MONOGRAMA.
+ *
+ * A marca deixou de ser estrela em 26/07/2026 — o problema dela era saturação,
+ * não desenho: a estrela de quatro pontas virou o símbolo padrão de qualquer
+ * produto com IA. Este analisador substituiu `analyzeStarPath`, que exigia
+ * quatro curvas Q e portanto reprovava a marca nova.
+ *
+ * O que ele cobra é o que faz o A ser o NOSSO A:
+ *   - só linhas retas (nenhuma curva): monograma é construção, não caligrafia;
+ *   - 7 vértices fechando em Z;
+ *   - simetria em torno de x=50;
+ *   - platô no topo, e não ponta — ver o cabeçalho do componente.
+ */
+function analyzeMonogramPath(d) {
   if (typeof d !== "string" || !d.trim()) return { ok: false, reason: "path sem atributo d" };
   const body = d.trim();
   if (!/^M/i.test(body)) return { ok: false, reason: `d não começa com M: ${body.slice(0, 24)}` };
   if (!/z\s*$/i.test(body)) return { ok: false, reason: "d não fecha com Z" };
-  const commands = body.match(/[MQZmqz]/g) ?? [];
-  const qCount = commands.filter((c) => c.toLowerCase() === "q").length;
+  if (/[QqCcSsTtAa]/.test(body)) {
+    return { ok: false, reason: "o monograma é construído com retas — nenhuma curva no contorno" };
+  }
+  const commands = body.match(/[MLZmlz]/g) ?? [];
   if (commands.some((c) => c !== c.toUpperCase())) {
     return { ok: false, reason: "path usa comandos relativos (esperado absoluto)" };
   }
-  if (qCount !== 4) return { ok: false, reason: `esperadas 4 curvas Q (4 pontas), achadas ${qCount}` };
-
   const nums = (body.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
-  // M(2) + 4 * Q(4) = 18 números
-  if (nums.length !== 18) return { ok: false, reason: `esperados 18 números no path, achados ${nums.length}` };
-  const start = [nums[0], nums[1]];
-  const tips = [start];
-  for (let i = 0; i < 4; i += 1) {
-    const base = 2 + i * 4;
-    tips.push([nums[base + 2], nums[base + 3]]);
+  if (nums.length !== 14) {
+    return { ok: false, reason: `esperados 14 números (7 vértices), achados ${nums.length}` };
   }
-  const last = tips.pop(); // a 4ª curva volta ao ponto inicial
-  if (Math.abs(last[0] - start[0]) > 0.001 || Math.abs(last[1] - start[1]) > 0.001) {
-    return { ok: false, reason: `a última curva não retorna à ponta inicial (${last} vs ${start})` };
+  const pontos = [];
+  for (let i = 0; i < nums.length; i += 2) pontos.push([nums[i], nums[i + 1]]);
+
+  const [pa, pb] = pontos;
+  if (Math.abs(pa[1] - pb[1]) > 0.001) {
+    return { ok: false, reason: "o topo tem que ser um platô horizontal, não uma ponta" };
   }
-  return { ok: true, tips, nums };
+  if (pb[0] - pa[0] < 6) {
+    return { ok: false, reason: `platô estreito demais (${(pb[0] - pa[0]).toFixed(1)}) — vira ponta a 16px` };
+  }
+
+  // Simetria: para cada x há o espelho em 100-x.
+  const xs = pontos.map((p) => p[0]).sort((a, b) => a - b);
+  for (let i = 0, j = xs.length - 1; i < j; i += 1, j -= 1) {
+    if (Math.abs(xs[i] + xs[j] - 100) > 0.001) {
+      return { ok: false, reason: `assimétrico em torno de x=50: ${xs[i]} e ${xs[j]}` };
+    }
+  }
+
+  return { ok: true, pontos, nums, plato: [pa, pb] };
 }
 
 /** XML bem formado: tags balanceadas, atributos com aspas, um único elemento raiz. */
@@ -184,8 +208,8 @@ let markBody = markStart >= 0 && markEnd > markStart ? logoSrc.slice(markStart, 
 // para que app/icon.svg use a MESMA fonte em vez de uma cópia. O portão resolve
 // a constante antes de analisar — assim continua checando o desenho, e não a
 // forma de escrevê-lo.
-const constantePath = /export const ATLAS_STAR_PATH\s*=\s*\n?\s*"([^"]+)"/.exec(logoSrc);
-if (constantePath) markBody = markBody.replace(/d=\{ATLAS_STAR_PATH\}/g, `d="${constantePath[1]}"`);
+const constantePath = /export const ATLAS_MONOGRAM_PATH\s*=\s*\n?\s*"([^"]+)"/.exec(logoSrc);
+if (constantePath) markBody = markBody.replace(/d=\{ATLAS_MONOGRAM_PATH\}/g, `d="${constantePath[1]}"`);
 
 check("caso 2: função AtlasMark (o desenho da marca) existe e é isolável", markBody.length > 0, "não achei o bloco function AtlasMark ... antes de type AtlasLogoProps");
 
@@ -193,41 +217,48 @@ check("caso 2: função AtlasMark (o desenho da marca) existe e é isolável", m
 // Estrela de 4 pontas
 // --------------------------------------------------------------------------
 const markPaths = elements(markBody, "path");
-const star = markPaths.map((p) => ({ attrs: p, analysis: analyzeStarPath(p.d) })).find((p) => p.analysis.ok);
+const star = markPaths.map((p) => ({ attrs: p, analysis: analyzeMonogramPath(p.d) })).find((p) => p.analysis.ok);
 
 check(
-  "caso 3: a marca tem o path da estrela de 4 pontas (M + 4 curvas Q + Z)",
+  "caso 3: a marca tem o contorno do monograma (retas, 7 vértices, fechado)",
   Boolean(star),
-  markPaths.length === 0 ? "nenhum <path> no AtlasMark" : markPaths.map((p) => analyzeStarPath(p.d).reason).join(" | "),
+  markPaths.length === 0 ? "nenhum <path> no AtlasMark" : markPaths.map((p) => analyzeMonogramPath(p.d).reason).join(" | "),
 );
 
+// REVISÃO 2026-07-26 (segunda). Os casos 4 e 5 cobravam propriedades da ESTRELA
+// — quatro pontas cardeais e eixo vertical alongado. Com o monograma no lugar
+// dela, eles reprovariam a marca certa. Passaram a cobrar o que faz ESTE
+// desenho funcionar, que é outra coisa.
 {
-  const tips = star?.analysis.tips ?? [];
-  const cx = 50;
-  const cy = 50;
-  const up = tips.find((t) => t[1] < cy && Math.abs(t[0] - cx) < 5);
-  const down = tips.find((t) => t[1] > cy && Math.abs(t[0] - cx) < 5);
-  const left = tips.find((t) => t[0] < cx && Math.abs(t[1] - cy) < 5);
-  const right = tips.find((t) => t[0] > cx && Math.abs(t[1] - cy) < 5);
+  const pontos = star?.analysis.pontos ?? [];
+  // Perna: a distância horizontal entre o vértice externo da base e o interno.
+  // 20 unidades de 100 dão 3,2px a 16px — acima do limiar em que uma haste some.
+  const base = pontos.filter((p) => p[1] === Math.max(...pontos.map((q) => q[1])));
+  const xsBase = base.map((p) => p[0]).sort((a, b) => a - b);
+  const pernaEsquerda = xsBase.length >= 2 ? xsBase[1] - xsBase[0] : 0;
+  const pernaDireita = xsBase.length >= 4 ? xsBase[3] - xsBase[2] : 0;
   check(
-    "caso 4: as 4 pontas apontam para cima/baixo/esquerda/direita (viewBox 0 0 100 100)",
-    tips.length === 4 && Boolean(up && down && left && right),
-    `pontas: ${JSON.stringify(tips)}`,
+    "caso 4: as pernas do A têm massa suficiente para sobreviver a 16px",
+    pernaEsquerda >= 18 && pernaDireita >= 18,
+    `perna esquerda=${pernaEsquerda} direita=${pernaDireita} (mínimo 18 — abaixo disso a haste some na aba do navegador)`,
   );
 
-  const vertical = up && down ? down[1] - up[1] : 0;
-  const horizontal = left && right ? right[0] - left[0] : 0;
+  // O vão: o vértice interno do A tem que estar acima da base, senão não há
+  // contraforma e a letra vira um triângulo cheio.
+  const apiceInterno = pontos.find((p) => Math.abs(p[0] - 50) < 0.001 && p[1] > 20);
+  const baseY = Math.max(...pontos.map((p) => p[1]));
+  const alturaDoVao = apiceInterno ? baseY - apiceInterno[1] : 0;
   check(
-    "caso 5: o eixo vertical é alongado (north-star: altura > largura)",
-    vertical > horizontal && horizontal > 0,
-    `vertical=${vertical} horizontal=${horizontal}`,
+    "caso 5: o A tem contraforma — o vão existe e ocupa altura de verdade",
+    alturaDoVao >= 30,
+    `vão=${alturaDoVao} (mínimo 30; sem ele o monograma vira um triângulo cheio)`,
   );
 }
 
 check(
   "caso 6: o SVG da marca usa viewBox 0 0 100 100 (a geometria do path pressupõe isso)",
   /viewBox="0 0 100 100"/.test(markBody),
-  "viewBox diferente invalida as coordenadas da estrela",
+  "viewBox diferente invalida as coordenadas do monograma",
 );
 
 // --------------------------------------------------------------------------
@@ -385,14 +416,28 @@ check(`caso 18: ${ICON_REL} é XML bem formado com raiz <svg>`, xml.ok && /^\s*<
   //
   // Com a marca em forma única, isto deixou de ser aspiração e virou exigível:
   // o path do favicon tem que ser o path do componente, número por número.
-  const iconStar = iconSrc ? elements(iconSrc, "path").map((p) => ({ d: p.d, a: analyzeStarPath(p.d) })).find((p) => p.a.ok) : undefined;
+  const iconStar = iconSrc ? elements(iconSrc, "path").map((p) => ({ d: p.d, a: analyzeMonogramPath(p.d) })).find((p) => p.a.ok) : undefined;
   const iconOrbit = iconSrc ? elements(iconSrc, "ellipse").length : 0;
   const iconPlanet = iconSrc ? elements(iconSrc, "circle").length : 0;
   const sameStar = Boolean(iconStar && star) && JSON.stringify(iconStar.a.nums) === JSON.stringify(star.analysis.nums);
+
+  // O travessão também precisa bater. O monograma são DUAS formas que se leem
+  // como uma; conferir só o contorno deixaria o favicon virar um "A" sem barra
+  // sem ninguém perceber.
+  const barraDoComponente = /ATLAS_CROSSBAR = \{ x: (\d+), y: (\d+), width: (\d+), height: (\d+), rx: (\d+) \}/.exec(logoSrc ?? "");
+  const retangulosDoIcone = iconSrc ? elements(iconSrc, "rect") : [];
+  // O primeiro <rect> é o tile arredondado do fundo; a barra é a que tem x/y.
+  const barraDoIcone = retangulosDoIcone.find((r) => r.x !== undefined && r.y !== undefined);
+  const mesmaBarra = Boolean(barraDoComponente && barraDoIcone)
+    && Number(barraDoIcone.x) === Number(barraDoComponente[1])
+    && Number(barraDoIcone.y) === Number(barraDoComponente[2])
+    && Number(barraDoIcone.width) === Number(barraDoComponente[3])
+    && Number(barraDoIcone.height) === Number(barraDoComponente[4]);
+
   check(
     `caso 22: a geometria de ${ICON_REL} é idêntica à do componente, e nada além dela`,
-    sameStar && iconOrbit === 0 && iconPlanet === 0,
-    JSON.stringify({ sameStar, ellipsesNoIcone: iconOrbit, circulosNoIcone: iconPlanet, iconStar: iconStar?.d }),
+    sameStar && mesmaBarra && iconOrbit === 0 && iconPlanet === 0,
+    JSON.stringify({ contornoIgual: sameStar, travessaoIgual: mesmaBarra, ellipsesNoIcone: iconOrbit, circulosNoIcone: iconPlanet }),
   );
 }
 
