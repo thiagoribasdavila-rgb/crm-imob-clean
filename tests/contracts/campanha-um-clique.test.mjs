@@ -249,3 +249,31 @@ test("escolher onde a verba sai pertence à liderança", () => {
   assert.match(rotaContas, /Escolher a conta de anúncios pertence à liderança/);
   assert.match(rotaContas, /status: 403/);
 });
+
+// ── Achados ao criar a estrutura DE VERDADE na conta ────────────────────────
+
+test("cidade vai com RAIO — HOUSING recusa sem ele", () => {
+  // Provado contra a conta real: sem raio a Meta responde "Inclua um raio de
+  // pelo menos 17 quilômetros"; com raio, o conjunto é criado.
+  const geo = ler("lib", "meta", "marketing", "housing-audience.ts");
+  assert.match(geo, /geoLocations\.cities = geo\.cities\.map\(\(key\) => \(\{\s*key,\s*radius: HOUSING_MIN_RADIUS_KM/);
+  assert.match(geo, /HOUSING_MIN_RADIUS_KM = 24/,
+    "24 km (~15 mi) é o piso da política; colar nos 17 da mensagem de erro é ficar a um arredondamento da recusa");
+});
+
+test("nome de cidade é resolvido para a CHAVE da Meta", () => {
+  // `housingTargetingSpec` monta `{ key }`, e a rota passava `brief.city`, que
+  // é "São Paulo". A Meta espera "269969". A campanha nascia e o conjunto
+  // falhava com "A localização para direcionamento não pode ser usada".
+  const resolver = ler("lib", "meta", "marketing", "geo-resolver.ts");
+  assert.match(resolver, /type=adgeolocation/);
+  assert.match(resolver, /const exato = candidatos\.find/,
+    "exato antes de aproximado: o primeiro da lista pode ser outra cidade");
+  assert.ok(!/return candidatos\[0\]/.test(resolver),
+    "pegar o primeiro anunciaria na cidade errada, gastando verba onde o imóvel não está");
+
+  // os DOIS ramos da rota (prévia e criação) precisam resolver
+  assert.equal([...rota.matchAll(/const chavesCidade = brief\.city/g)].length, 2);
+  assert.match(rota, /pareceChave\(brief\.city\)/,
+    "quem já mandou a chave não deve passar por resolução");
+});

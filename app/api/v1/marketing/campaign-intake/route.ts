@@ -28,6 +28,7 @@ import { recommendAdSetSizing } from "@/lib/meta/marketing/budget-sizing";
 import { aggregate } from "@/lib/marketing/cost-report";
 import { loadOrgCalibration } from "@/lib/ai/calibration-server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { chavesDasCidades, pareceChave } from "@/lib/meta/marketing/geo-resolver";
 import { contasAlcancaveis } from "@/app/api/v1/marketing/ad-accounts/route";
 import { normalizeIntent, withAccountDefaults, intentToken, missingForCommit, assembleMediaRefs } from "@/lib/marketing/campaign-intake";
 import { canDecideMetaCampaign, isMetaCampaignApproval, META_CAMPAIGN_AUTHORITY_MESSAGE } from "@/lib/meta/marketing/approval-authority";
@@ -125,7 +126,14 @@ export async function POST(request: NextRequest) {
         linkUrl: FB_LINK,
         pageId: intent.pageId ?? undefined,
       });
-      const skeleton = leadCampaignSkeleton(brief, intent.weeklyBudgetBrl ?? 0, housingTargetingSpec(brief.city ? { cities: [brief.city] } : {}));
+      // A Meta espera CHAVE de cidade ("269969"), não nome ("São Paulo"). Passar o
+      // nome cria a campanha e derruba o conjunto com "A localização para
+      // direcionamento não pode ser usada" — defeito que só apareceu ao criar de
+      // verdade na conta.
+      const chavesCidade = brief.city
+        ? (pareceChave(brief.city) ? [brief.city] : await chavesDasCidades([brief.city]))
+        : [];
+      const skeleton = leadCampaignSkeleton(brief, intent.weeklyBudgetBrl ?? 0, housingTargetingSpec(chavesCidade.length ? { cities: chavesCidade } : {}));
       planPreview = planFullPublication({
         accountId: contaEscolhida ?? account, pageId: intent.pageId!, leadFormId: intent.leadFormId!,
         instagramActorId: intent.instagramActorId ?? undefined,
@@ -253,7 +261,14 @@ export async function POST(request: NextRequest) {
 
   // monta o plano real e cria — tudo PAUSED (garantia do executor)
   const assetFeedSpec = toAssetFeedSpec(copy, { imageHashes: media.imageHashes, videoIds: media.videoIds, linkUrl: FB_LINK, pageId: intent.pageId ?? undefined });
-  const skeleton = leadCampaignSkeleton(brief, intent.weeklyBudgetBrl ?? 0, housingTargetingSpec(brief.city ? { cities: [brief.city] } : {}));
+  // A Meta espera CHAVE de cidade ("269969"), não nome ("São Paulo"). Passar o
+      // nome cria a campanha e derruba o conjunto com "A localização para
+      // direcionamento não pode ser usada" — defeito que só apareceu ao criar de
+      // verdade na conta.
+      const chavesCidade = brief.city
+        ? (pareceChave(brief.city) ? [brief.city] : await chavesDasCidades([brief.city]))
+        : [];
+      const skeleton = leadCampaignSkeleton(brief, intent.weeklyBudgetBrl ?? 0, housingTargetingSpec(chavesCidade.length ? { cities: chavesCidade } : {}));
   const pubInput = {
     accountId: account, pageId: intent.pageId!, leadFormId: intent.leadFormId!,
     instagramActorId: intent.instagramActorId ?? undefined,

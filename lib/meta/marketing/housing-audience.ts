@@ -30,7 +30,25 @@ export function housingTargetingSpec(geo: GeoTarget): Record<string, unknown> {
   const countries = geo.countries?.length ? geo.countries : ["BR"];
   const geoLocations: Record<string, unknown> = {};
   if (geo.cities?.length) {
-    geoLocations.cities = geo.cities.map((key) => ({ key }));
+    // O raio é OBRIGATÓRIO em HOUSING, também na cidade — não só em
+    // custom_locations. Sem ele a Meta recusa o conjunto com:
+    //   "O raio de localização que você selecionou está indisponível para
+    //    anúncios em veiculação nesta categoria de anúncio especial.
+    //    Inclua um raio de pelo menos 17 quilômetros"
+    //
+    // Só apareceu ao criar a estrutura de verdade na conta: a campanha nasce
+    // normalmente e é o CONJUNTO que falha. Ninguém tinha visto porque nada
+    // chegava a ser criado — o META_AD_ACCOUNT_ID apontava para uma conta fora
+    // do alcance do token e tudo parava antes.
+    //
+    // Usamos 24 km (~15 mi) e não os 17 do mínimo: é o piso da própria política
+    // HOUSING declarado em HOUSING_MIN_RADIUS_KM, e ficar colado no mínimo da
+    // mensagem de erro é ficar a um arredondamento da recusa.
+    geoLocations.cities = geo.cities.map((key) => ({
+      key,
+      radius: HOUSING_MIN_RADIUS_KM,
+      distance_unit: "kilometer",
+    }));
   } else if (geo.points?.length) {
     geoLocations.custom_locations = geo.points.map((p) => ({
       latitude: p.latitude,
