@@ -123,3 +123,38 @@ test("os dois chamadores usam o MESMO leitor de config", () => {
       `${nome} não pode ler a tabela por conta própria`);
   }
 });
+
+// ── Ir para produção é gesto deliberado ────────────────────────────────────
+
+test("configurar SEMPRE grava modo teste", () => {
+  const rota = ler("app", "api", "v1", "integrations", "meta", "route.ts");
+  assert.match(rota, /mode: "test", enabled: true/,
+    "ninguém liga envio de conversão em produção por engano");
+});
+
+test("existe caminho explícito de teste para produção", () => {
+  // Sem ele, o efeito era PIOR que não configurar: você veria os eventos na
+  // aba de TESTE do Gerenciador, concluiria que funciona, e a otimização nunca
+  // receberia nada. Evento de teste não entra no aprendizado do algoritmo.
+  const rota = ler("app", "api", "v1", "integrations", "meta", "route.ts");
+  assert.match(rota, /conversion_go_live/);
+  assert.match(rota, /mode: "live"/);
+});
+
+test("só promove o que já está configurado em teste", () => {
+  const rota = ler("app", "api", "v1", "integrations", "meta", "route.ts");
+  assert.match(rota, /Configure o Dataset em modo teste antes de ir para produção/);
+  assert.match(rota, /status: 422/);
+});
+
+test("promover é decisão de diretor", () => {
+  const rota = ler("app", "api", "v1", "integrations", "meta", "route.ts");
+  assert.match(rota, /body\.action === "conversion_go_live"[\s\S]{0,80}isDirector/);
+});
+
+test("o código de teste é limpo ao ir para produção", () => {
+  // Deixá-lo gravado faria a próxima volta para teste parecer configurada
+  // quando o código já pode ter expirado.
+  const rota = ler("app", "api", "v1", "integrations", "meta", "route.ts");
+  assert.match(rota, /test_event_code: null/);
+});

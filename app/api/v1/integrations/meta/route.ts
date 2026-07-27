@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
   if (!access.ok) return access.response;
   if (!canManage(access.access.profile.commercialRole, access.access.profile.role)) return NextResponse.json({ error: "Permissão insuficiente para configurar a Meta." }, { status: 403 });
   const body = await request.json() as { action?: string; pageId?: string; formId?: string; name?: string; defaultOwnerId?: string; conversionSharingEnabled?: boolean; consentBasis?: string; datasetId?: string; testEventCode?: string };
-  if ((body.action === "conversion_config" || body.action === "review_daily_report") && !isDirector(access.access.profile.commercialRole, access.access.profile.role)) return NextResponse.json({ error: "Somente o diretor pode decidir sobre otimização de campanhas." }, { status: 403 });
+  if ((body.action === "conversion_config" || body.action === "conversion_go_live" || body.action === "review_daily_report") && !isDirector(access.access.profile.commercialRole, access.access.profile.role)) return NextResponse.json({ error: "Somente o diretor pode decidir sobre otimização de campanhas." }, { status: 403 });
   if (body.action === "review_daily_report") {
     const reportId = String((body as { reportId?: string }).reportId || "");
     if (!/^[0-9a-f-]{36}$/i.test(reportId)) return NextResponse.json({ error: "Relatório inválido." }, { status: 400 });
@@ -99,6 +99,58 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: "Não foi possível registrar a revisão." }, { status: 400 });
     return NextResponse.json({ reportId, status: "reviewed" });
   }
+  /**
+   * PROMOVER O CAPI DE TESTE PARA PRODUÇÃO.
+   *
+   * `conversion_config` grava sempre `mode: "test"`, e é assim que deve ser:
+   * ninguém liga envio de conversão em produção por engano.
+   *
+   * Mas não existia caminho de volta. O efeito era pior que não configurar:
+   * você veria os eventos chegando na aba de TESTE do Gerenciador de Eventos,
+   * concluiria que funciona, e a otimização nunca receberia nada. Evento de
+   * teste não entra no aprendizado do algoritmo — é justamente para isso que a
+   * Meta separa os dois.
+   *
+   * A guarda: só promove o que JÁ ESTÁ configurado em teste. Assim a ordem é
+   * sempre configurar → ver o evento chegar → promover, e não "ligar direto e
+   * torcer".
+   */
+  if (body.action === "conversion_go_live") {
+    const admin = getSupabaseAdmin();
+    const { data: atual } = await admin
+      .from("meta_conversion_configs")
+      .select("dataset_id,mode,test_event_code")
+      .eq("organization_id", access.access.organization.id)
+      .maybeSingle();
+
+    if (!atual?.dataset_id) {
+      return NextResponse.json({ error: "Configure o Dataset em modo teste antes de ir para produção." }, { status: 422 });
+    }
+    if (atual.mode === "live") {
+      return NextResponse.json({ ok: true, data: { mode: "live", jaEstava: true } });
+    }
+
+    const { data, error } = await admin
+      .from("meta_conversion_configs")
+      .update({
+        mode: "live",
+        // `test_event_code` sai junto: deixá-lo gravado faria a próxima volta
+        // para teste parecer configurada quando o código já pode ter expirado.
+        test_event_code: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("organization_id", access.access.organization.id)
+      .select("dataset_id,mode,enabled,consent_required")
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 503 });
+    return NextResponse.json({
+      ok: true,
+      data,
+      aviso: "A partir de agora as conversões contam para a otimização das campanhas. Voltar para teste é reconfigurar o Dataset.",
+    });
+  }
+
   if (body.action === "conversion_config") {
     const datasetId = String(body.datasetId || "").trim();
     const testEventCode = String(body.testEventCode || "").trim();
