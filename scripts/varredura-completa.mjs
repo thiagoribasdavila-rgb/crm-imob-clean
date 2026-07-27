@@ -50,8 +50,23 @@ function paginas(dir = "app", prefixo = "") {
       continue;
     }
     if (nome === "api" || nome.startsWith("_")) continue;
-    // (grupos) não aparecem na URL; [dinâmicos] precisam de id real — fora.
-    const segmento = nome.startsWith("(") ? "" : nome.startsWith("[") ? null : `/${nome}`;
+    // ── PÁGINAS DINÂMICAS ─────────────────────────────────────────────────
+    //
+    // Antes eram puladas: "[dinâmicos] precisam de id real — fora". Isso tirava
+    // 29 telas da varredura, incluindo /leads/[id] — 2.272 linhas, a tela onde o
+    // corretor passa o dia. Um erro que impedisse TODAS as 199 leads de abrir
+    // passava com a varredura inteira verde.
+    //
+    // Agora o segmento vira um marcador e a lead descartável criada mais abaixo
+    // fornece o id. Catch-all ([...slug]) fica fora: não há um valor único que
+    // faça sentido, e chutar produziria 404 disfarçado de cobertura.
+    const segmento = nome.startsWith("(")
+      ? ""
+      : nome.startsWith("[...") || nome.startsWith("[[")
+        ? null
+        : nome.startsWith("[")
+          ? "/:id"
+          : `/${nome}`;
     if (segmento === null) continue;
     achados.push(...paginas(completo, prefixo + segmento));
   }
@@ -151,24 +166,67 @@ function anota(tipo, alvo, motivo) {
 }
 let okPaginas = 0, okRotas = 0;
 
+// ── Lead descartável para as páginas dinâmicas ─────────────────────────────
+//
+// Sem um id real, /leads/:id e as outras 28 telas com segmento dinâmico ficavam
+// fora da varredura. É onde o corretor passa o dia.
+const marcaLead = `smoke-varredura-${process.pid}`;
+const { data: leadTeste } = await admin.from("leads").insert({
+  organization_id: org.id,
+  name: "VARREDURA (apagar)",
+  email: `${marcaLead}@atlas-teste.local`,
+  status: "novo",
+  source: "teste-automatizado",
+}).select("id").single();
+
+async function limparLead() {
+  if (!leadTeste?.id) return;
+  await admin.from("lead_events").delete().eq("lead_id", leadTeste.id);
+  await admin.from("activities").delete().eq("lead_id", leadTeste.id);
+  await admin.from("leads").delete().eq("id", leadTeste.id);
+}
+
 // ── Páginas ────────────────────────────────────────────────────────────────
 const listaPaginas = [...new Set(paginas())].sort();
-console.log(`Páginas: ${listaPaginas.length}`);
+const dinamicas = listaPaginas.filter((p) => p.includes(":id")).length;
+console.log(`Páginas: ${listaPaginas.length} (${dinamicas} dinâmicas, com id de lead descartável)`);
+
+/**
+ * Contagem HONESTA.
+ *
+ * A versão anterior só reprovava acima de 500 — então 404, 401, 403 e
+ * redirecionamento entravam no total de "páginas ok". "171 páginas ok" prometia
+ * mais do que media: pelo menos 16 daquelas eram atalhos que só redirecionam e
+ * nunca renderizaram nada.
+ *
+ * Agora cada desfecho é contado pelo que é. 404 numa página dinâmica não é
+ * falha: significa que a tela tratou entidade inexistente sem cair — o id de
+ * uma LEAD não existe como obra nem como tarefa, e é justamente esse caminho
+ * que nunca tinha sido exercitado.
+ */
+const desfechos = { renderizou: 0, redirecionou: 0, semPermissao: 0, naoEncontrou: 0 };
 for (const p of listaPaginas) {
+  const url = `${BASE}${p.replace(/:id/g, leadTeste?.id ?? "00000000-0000-0000-0000-000000000000")}`;
   try {
-    const r = await buscar(`${BASE}${p}`, { headers: { Cookie: COOKIE }, redirect: "manual" });
+    const r = await buscar(url, { headers: { Cookie: COOKIE }, redirect: "manual" });
     if (r.status >= 500) { anota("página", p, `HTTP ${r.status}`); continue; }
     if (r.status === 200) {
       const corpo = await r.text();
       if (TELA_QUEBRADA.test(corpo)) { anota("página", p, "renderizou fronteira de erro (200 mentiroso)"); continue; }
       if (corpo.length < 800) { anota("página", p, `corpo de ${corpo.length} bytes — página vazia?`); continue; }
-    }
+      desfechos.renderizou++;
+    } else if (r.status === 404) desfechos.naoEncontrou++;
+    else if (r.status === 401 || r.status === 403) desfechos.semPermissao++;
+    else if (r.status >= 300 && r.status < 400) desfechos.redirecionou++;
+    else { anota("página", p, `HTTP ${r.status} inesperado`); continue; }
     okPaginas++;
   } catch (e) {
     anota("página", p, `não respondeu: ${e.message}`);
   }
 }
-console.log(`  ${okPaginas} ok · ${falhas.filter((f) => f.tipo === "página").length} com problema`);
+console.log(`  ${desfechos.renderizou} renderizaram conteúdo · ${desfechos.redirecionou} redirecionaram`
+  + ` · ${desfechos.semPermissao} sem permissão para este papel · ${desfechos.naoEncontrou} não encontraram a entidade`);
+console.log(`  ${falhas.filter((f) => f.tipo === "página").length} com problema`);
 
 // ── Rotas ──────────────────────────────────────────────────────────────────
 const listaRotas = rotas();
@@ -215,6 +273,7 @@ for (const rota of testaveis) {
 }
 console.log(`  ${okRotas} ok · ${falhas.filter((f) => f.tipo === "rota").length} com problema`);
 
+await limparLead();
 await limpar();
 
 console.log(`\n${"─".repeat(70)}`);
