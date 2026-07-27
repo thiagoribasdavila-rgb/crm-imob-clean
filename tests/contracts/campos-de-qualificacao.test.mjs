@@ -94,3 +94,42 @@ test("o mapeador é puro — nenhum acesso a banco", () => {
   assert.ok(!/supabase|fetch\(|\.from\(/.test(codigo),
     "a régua precisa ser revisável por quem entende do negócio, não do código");
 });
+
+// ── O documento de marketing e a régua não podem divergir ──────────────────
+
+test("as perguntas que o documento manda escrever CASAM com a régua", () => {
+  // Se divergirem, o marketing escreve as perguntas do documento e o CRM as
+  // recebe como "não mapeadas": eu teria construído uma régua para perguntas
+  // que ninguém vai fazer.
+  const c = q.mapearQualificacao([
+    r("Você procura um imóvel para:", "Morar"),
+    r("Qual faixa de investimento?", "R$ 300 mil a R$ 500 mil"),
+    r("Como pretende adquirir o imóvel?", "Financiamento"),
+  ]);
+  assert.equal(c.intencao, "morar");
+  assert.equal(c.faixaInvestimento, "R$ 300 mil a R$ 500 mil");
+  assert.equal(c.formaPagamento, "financiamento");
+  assert.equal(c.naoMapeadas.length, 0, "nenhuma das três pode cair como desconhecida");
+  assert.equal(q.daParaPriorizar(c), true);
+});
+
+test("TODAS as opções listadas no documento são reconhecidas", () => {
+  for (const [resposta, esperado] of [["Morar", "morar"], ["Investir", "investir"]]) {
+    assert.equal(q.mapearQualificacao([r("Você procura um imóvel para:", resposta)]).intencao, esperado);
+  }
+  for (const [resposta, esperado] of [
+    ["Financiamento", "financiamento"], ["À vista", "a_vista"],
+    ["FGTS", "fgts"], ["Consórcio", "consorcio"],
+  ]) {
+    assert.equal(q.mapearQualificacao([r("Como pretende adquirir o imóvel?", resposta)]).formaPagamento, esperado);
+  }
+});
+
+test("o documento existe e diz a contrapartida", () => {
+  const doc = fs.readFileSync(path.join(raiz, "docs", "marketing", "PERGUNTAS_DO_FORMULARIO_META.md"), "utf8");
+  assert.match(doc, /reduzem o volume de leads/, "prometer só ganho seria vender ilusão");
+  assert.match(doc, /Ligue o CAPI antes/, "sem CAPI, as perguntas só cortam volume");
+  assert.match(doc, /Você procura um imóvel para:/);
+  assert.match(doc, /Qual faixa de investimento\?/);
+  assert.match(doc, /Como pretende adquirir o imóvel\?/);
+});
