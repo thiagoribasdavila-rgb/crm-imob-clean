@@ -63,6 +63,59 @@ test("as oito exceções da RPC estão mapeadas", () => {
   }
 });
 
+test("orientar() devolve a orientação ESPECÍFICA de todo código da rota", () => {
+  // Mutation test M01: desligando a busca em RECUSAS_DA_ROTA, toda recusa de
+  // rota passava a cair na genérica — "atualize o Kanban" para tudo — e a suíte
+  // ficava verde, porque os testes liam o objeto direto e nunca chamavam a
+  // função. Aqui a função é EXERCITADA com cada código que a rota realmente usa.
+  const generica = g.orientar("codigo-que-nao-existe-em-lugar-nenhum");
+  for (const codigo of Object.keys(g.RECUSAS_DA_ROTA)) {
+    const o = g.orientar(codigo);
+    assert.equal(o.caminho, g.RECUSAS_DA_ROTA[codigo].caminho,
+      `orientar("${codigo}") não devolveu a orientação daquele código`);
+    assert.notEqual(o.caminho, generica.caminho,
+      `orientar("${codigo}") caiu na genérica — a recusa perdeu o caminho específico`);
+  }
+});
+
+test("orientar() devolve a orientação ESPECÍFICA de toda exceção da RPC", () => {
+  const generica = g.orientar("codigo-que-nao-existe-em-lugar-nenhum");
+  for (const chave of Object.keys(g.RECUSAS)) {
+    // Como o Postgres entrega: texto livre com a chave no meio.
+    const o = g.orientar(`erro do banco: ${chave} (P0001)`);
+    assert.equal(o.caminho, g.RECUSAS[chave].caminho, `${chave} não foi reconhecida na mensagem crua`);
+    assert.notEqual(o.caminho, generica.caminho, `${chave} caiu na genérica`);
+  }
+});
+
+// ── A tela recebe a recusa de verdade ──────────────────────────────────────
+
+test("extrairRecusa() entrega erro, caminho e ação do corpo da rota", () => {
+  // Mutation test M05: a leitura vivia dentro da página e o contrato fazia
+  // `grep` por "payload.caminho". Desligando o `if`, o texto continuava no
+  // arquivo (dentro do bloco) e a suíte ficava verde com o caminho nunca
+  // chegando ao corretor. Fora da página, a regra é exercitável.
+  const r = g.extrairRecusa({ error: "Esta lead está com outra pessoa.", caminho: "Peça ao gestor.", acao: "falar-com-gestor" });
+  assert.equal(r.erro, "Esta lead está com outra pessoa.");
+  assert.equal(r.caminho, "Peça ao gestor.");
+  assert.equal(r.acao, "falar-com-gestor");
+});
+
+test("extrairRecusa() não inventa caminho quando a rota não mandou", () => {
+  // Caminho vazio tem que virar null, não string vazia: a tela decide mostrar
+  // ou não pela presença, e "" apareceria como uma caixa azul sem texto.
+  for (const corpo of [{}, null, undefined, "não é json", { error: "x" }, { error: "x", caminho: "" }]) {
+    const r = g.extrairRecusa(corpo);
+    assert.equal(r.caminho, null, `corpo ${JSON.stringify(corpo)} produziu caminho`);
+    assert.ok(r.erro.length > 0, "nunca devolve erro vazio — a tela mostraria uma caixa muda");
+  }
+  // Sem `error` no corpo (um 502 do proxy, que devolve HTML), a frase padrão
+  // assume — e ela precisa dizer que a lead não se moveu, não só que falhou.
+  assert.match(g.extrairRecusa({}).erro, /permaneceu na etapa anterior/);
+  // Com `error`, o que a rota disse prevalece: é ela que sabe o que houve.
+  assert.equal(g.extrairRecusa({ error: "x" }).erro, "x");
+});
+
 test("orientar() acha pela mensagem crua do Postgres", () => {
   // `raise exception 'pipeline_undo_stale'` chega com prefixo do driver.
   assert.equal(
@@ -100,7 +153,12 @@ test("lead fora do escopo é 403, não 409", () => {
 
 test("a tela mostra o caminho, não só o erro", () => {
   const pagina = ler("app", "(crm)", "pipeline", "page.tsx");
-  assert.match(pagina, /payload\.caminho/);
+  // A leitura em si é provada pelos testes de `extrairRecusa` acima. Aqui só
+  // resta o que é JSX e não dá para exercitar: que a página CHAME a função e
+  // ALIMENTE o aviso com o resultado. As duas linhas juntas, não cada uma solta
+  // — foi separá-las que deixou o mutation test M05 passar.
+  assert.match(pagina, /const recusa = extrairRecusa\(payload\);\s*\n\s*if \(recusa\.caminho\) setCaminho\(/,
+    "a página precisa chamar extrairRecusa e alimentar o aviso com o resultado");
   assert.match(pagina, /O que fazer/);
   assert.match(pagina, /caminho\.acao === "falar-com-gestor"/);
 });

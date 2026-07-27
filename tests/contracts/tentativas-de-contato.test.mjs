@@ -167,9 +167,27 @@ test("desfazer um descarte NÃO é barrado pelo piso", () => {
 test("o MOTIVO do descarte continua obrigatório", () => {
   // O piso saiu; o motivo não. É ele que volta para a Meta como sinal — sem
   // ele o descarte não ensina nada, só some com a lead.
+  //
+  // Mutation test M14: a versão antiga só procurava a constante
+  // `DISCARD_REASON_REQUIRED` no arquivo. Trocando a CONDIÇÃO do `if` por
+  // `false`, a constante continuava lá — inalcançável — e a suíte ficava verde
+  // com o descarte sem motivo passando. Agora a GUARDA inteira é fixada:
+  // condição e retorno colados, do jeito que precisam estar para funcionar.
   const pipeline = ler("app", "api", "v1", "pipeline", "route.ts");
-  assert.match(pipeline, /DISCARD_REASON_REQUIRED/);
-  assert.match(pipeline, /INVALID_DISCARD_REASON/);
+  assert.match(
+    pipeline,
+    /if \(stage === "perdido" && !reversalOf && !discardReason\) \{\s*\n\s*return recusar\("DISCARD_REASON_REQUIRED"/,
+    "a guarda do motivo obrigatório precisa existir E devolver a recusa",
+  );
+  assert.match(
+    pipeline,
+    /if \(stage === "perdido" && discardInput && !discardReason\) \{[\s\S]{0,200}?return recusar\("INVALID_DISCARD_REASON"/,
+    "chave fora da taxonomia precisa ser recusada, não aceita em silêncio",
+  );
+  // E a bateria viva prova o comportamento contra a API real — este contrato
+  // só garante que a guarda não seja desligada sem alguém notar.
+  const bateria = ler("scripts", "teste-kanban-vivo.mjs");
+  assert.match(bateria, /sem motivo continua recusado/);
 });
 
 test("a tela avisa ANTES, para a regra não ser descoberta no erro", () => {

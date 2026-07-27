@@ -192,6 +192,31 @@ export function orientar(codigoOuMensagem: string | null | undefined): Orientaca
 }
 
 /**
+ * Extrai a recusa do corpo que a rota devolveu.
+ *
+ * ── Por que isto virou função ───────────────────────────────────────────────
+ *
+ * Esta lógica morava dentro do `catch` da página. O contrato que a protegia
+ * fazia `grep` por `payload.caminho` no arquivo — e um mutation test mostrou o
+ * buraco: desligando o `if` que faz a leitura, o texto `payload.caminho`
+ * continuava no arquivo (dentro do corpo do bloco), o grep casava, e a suíte
+ * ficava VERDE com o caminho nunca chegando ao corretor.
+ *
+ * Fora da página, a regra pode ser exercitada de verdade: dá para chamar com um
+ * corpo e conferir o que sai. Teste que roda a função não tem como confundir
+ * "o texto está escrito" com "o comportamento acontece".
+ */
+export function extrairRecusa(payload: unknown): { erro: string; caminho: string | null; acao: AcaoSugerida | null } {
+  const corpo = (payload && typeof payload === "object") ? payload as Record<string, unknown> : {};
+  const erro = typeof corpo.error === "string" && corpo.error
+    ? corpo.error
+    : "A movimentação não foi confirmada. A lead permaneceu na etapa anterior.";
+  const caminho = typeof corpo.caminho === "string" && corpo.caminho ? corpo.caminho : null;
+  const acao = typeof corpo.acao === "string" ? corpo.acao as AcaoSugerida : null;
+  return { erro, caminho, acao };
+}
+
+/**
  * A orientação para a mensagem de uma exceção de acesso.
  *
  * A mensagem é em português e livre (`requireLeadAccess` monta a frase), por

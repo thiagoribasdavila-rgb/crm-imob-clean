@@ -299,7 +299,8 @@
     "whatsapp:conectar": "node scripts/whatsapp-conectar-terminal.mjs",
     "meta:formularios": "node scripts/check-meta-forms-reachable.mjs",
     "teste:kanban": "node scripts/teste-kanban-vivo.mjs",
-    "teste:varredura": "node scripts/varredura-completa.mjs"
+    "teste:varredura": "node scripts/varredura-completa.mjs",
+    "teste:mutacoes": "node scripts/mutacoes.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1089.0",

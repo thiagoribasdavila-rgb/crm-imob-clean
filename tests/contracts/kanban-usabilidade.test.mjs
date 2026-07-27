@@ -20,8 +20,13 @@ test("a mensagem do servidor chega ao corretor", () => {
   // A rota explica exatamente o que faltou: motivo fora da taxonomia, lead já
   // movida por outra pessoa, confirmação humana pendente. Trocar tudo por uma
   // frase única obrigava a adivinhar — e adivinhar errado é abandonar a lead.
-  assert.match(codigo, /typeof payload\.error === "string" && payload\.error/);
-  assert.match(codigo, /A movimentação não foi confirmada/, "a frase padrão continua, como último recurso");
+  //
+  // A REGRA vive em `extrairRecusa` e é exercitada de verdade em
+  // pipeline-caminho-de-volta.test.mjs. Aqui resta o que é da página: que ela
+  // use a função e propague o erro que voltou dela.
+  assert.match(codigo, /const recusa = extrairRecusa\(payload\);/);
+  assert.match(codigo, /throw new Error\(recusa\.erro\)/,
+    "o erro mostrado tem que ser o que a rota disse, não uma frase fixa da tela");
 });
 
 test("resposta sem JSON não vira erro mudo", () => {

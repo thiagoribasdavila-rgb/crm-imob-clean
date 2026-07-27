@@ -8,7 +8,7 @@ import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasRecoverableError, AtlasSkel
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import { DEFAULT_PIPELINE_STAGES, type PipelineStageDefinition, type PipelineStageKey } from "@/lib/atlas/pipeline-stages";
 import { DISCARD_REASONS } from "@/lib/atlas/discard-reasons";
-import { conhecimentoDaEtapa } from "@/lib/crm/pipeline-guidance";
+import { conhecimentoDaEtapa, extrairRecusa } from "@/lib/crm/pipeline-guidance";
 
 const defaultStages = DEFAULT_PIPELINE_STAGES.filter((stage) => stage.visible && stage.outcome !== "lost" && stage.outcome !== "buyer_profile");
 type StageKey = PipelineStageKey;
@@ -373,15 +373,12 @@ export default function PipelinePage() {
         // pendente. Trocar tudo isso por uma frase única obrigava o corretor a
         // adivinhar — e adivinhar errado é abandonar a lead.
         //
-        // `caminho` é o próximo passo concreto, e vem da rota para o Copilot e
-        // qualquer integração receberem a mesma saída que o corretor vê.
-        if (typeof payload.caminho === "string" && payload.caminho) {
-          setCaminho({ texto: payload.caminho, acao: typeof payload.acao === "string" ? payload.acao : null });
-        }
-        throw new Error(
-          (typeof payload.error === "string" && payload.error)
-            || "A movimentação não foi confirmada. A lead permaneceu na etapa anterior.",
-        );
+        // A leitura vive em `extrairRecusa` (lib) e não aqui: dentro da página,
+        // o único teste possível era `grep` pelo texto — e um mutation test
+        // provou que desligar a leitura deixava a suíte verde do mesmo jeito.
+        const recusa = extrairRecusa(payload);
+        if (recusa.caminho) setCaminho({ texto: recusa.caminho, acao: recusa.acao });
+        throw new Error(recusa.erro);
       }
       // A rota devolve `move: { id, fromStage, toStage, reversalOf }` — nunca
       // `moveId`. Lendo a chave errada, `setLastMove` nunca disparava e o aviso
