@@ -55,6 +55,57 @@ async function fetchMetaLead(externalLeadId: string) {
   return data;
 }
 
+/**
+ * Campos que a Meta pergunta em TODO formulário e que já têm coluna própria na
+ * lead. Guardá-los também no metadata criaria duas verdades sobre o mesmo fato.
+ */
+const CAMPOS_PADRAO = new Set([
+  "full_name", "name", "first_name", "last_name",
+  "email", "phone", "phone_number",
+]);
+
+/**
+ * AS RESPOSTAS QUE QUALIFICAM A LEAD.
+ *
+ * ── O que se perdia ─────────────────────────────────────────────────────────
+ *
+ * A ingestão lia exatamente três campos de `field_data` — nome, e-mail e
+ * telefone — e descartava o resto. Toda pergunta de qualificação do formulário
+ * ia embora no mesmo instante em que chegava.
+ *
+ * Medido nos 26 formulários da conta: 12 têm pergunta própria, e são as que
+ * importam — "Você procura um imóvel para:", "Qual faixa de investimento?",
+ * "Como pretende adquirir o imóvel?". Intenção, verba e forma de pagamento:
+ * exatamente o que separa quem compra de quem está olhando.
+ *
+ * Por isso o corretor abre a lead e não sabe nada sobre ela. Não é falha dele
+ * nem da tela — a informação chegou e foi jogada fora.
+ *
+ * ── Guardamos a PERGUNTA, não só a resposta ─────────────────────────────────
+ *
+ * "morar" sozinho não significa nada daqui a seis meses, quando o formulário
+ * tiver mudado. `{ pergunta: "Você procura um imóvel para:", resposta: "morar" }`
+ * continua significando. A chave crua (`name`) vai junto, porque é ela que
+ * permite mapear para campo canônico depois sem depender do texto, que o
+ * marketing reescreve.
+ *
+ * A ordem é preservada: a ordem do formulário é a ordem em que a pessoa
+ * respondeu, e a primeira pergunta costuma ser a que mais qualifica.
+ */
+function respostasDeQualificacao(
+  fields: Array<{ name: string; values?: string[] }> | undefined,
+): Array<{ chave: string; resposta: string }> {
+  if (!Array.isArray(fields)) return [];
+  return fields
+    .filter((f) => f?.name && !CAMPOS_PADRAO.has(String(f.name).toLowerCase()))
+    .map((f) => ({
+      chave: String(f.name),
+      // Múltipla escolha vem como lista; juntar preserva tudo que foi marcado.
+      resposta: (f.values ?? []).map((v) => String(v).trim()).filter(Boolean).join(" | "),
+    }))
+    .filter((r) => r.resposta.length > 0);
+}
+
 function metaField(fields: Array<{ name: string; values?: string[] }> | undefined, ...names: string[]) {
   const wanted = new Set(names);
   return fields?.find((field) => wanted.has(field.name))?.values?.[0]?.trim() || null;
@@ -355,6 +406,7 @@ export async function POST(request: Request) {
             admin.from("meta_lead_sources").select("active,default_owner_id,name,conversion_sharing_enabled,consent_basis,development_id").eq("id", metaEvent.source_id).single(),
           ]);
           const fields = leadData.field_data;
+          const respostas = respostasDeQualificacao(fields);
           const name = metaField(fields, "full_name", "name") || [metaField(fields, "first_name"), metaField(fields, "last_name")].filter(Boolean).join(" ") || "Lead Meta";
           const email = metaField(fields, "email");
           const phone = metaField(fields, "phone_number", "phone");
@@ -400,7 +452,13 @@ export async function POST(request: Request) {
             // estar no mesmo sistema que outro que tem.
             estado: sourceResult.data?.conversion_sharing_enabled === true ? "concedido" : "nao_perguntado",
             origem: sourceResult.data?.conversion_sharing_enabled === true ? "formulario_meta" : "declarado_pelo_corretor",
-            registradoEm: new Date().toISOString() };
+            registradoEm: new Date().toISOString(),
+            // As respostas de qualificação, preservadas com a chave da pergunta.
+            // Vazio quando o formulário só pede nome/e-mail/telefone — e vazio
+            // aqui significa "o formulário não perguntou", não "a pessoa não
+            // respondeu". São coisas diferentes e quem lê precisa distinguir.
+            respostas,
+            formularioPerguntouQualificacao: respostas.length > 0 };
           const leadPayload = {
             organization_id: metaEvent.organization_id,
             name,
