@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { assessCustomerExperience } from "@/lib/atlas/customer-experience";
 import { enforceDistributedRateLimit } from "@/lib/security/abuse-protection";
+import { fecharPrimeiroContatoPorWhatsapp, descreverContatoDeWhatsapp } from "@/lib/crm/whatsapp-first-contact";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,11 @@ export async function POST(request: Request) {
 
           let conversationId = conversation?.id;
           const conversationLeadId = conversation?.lead_id || null;
+          // A lead pode vir da conversa existente OU do match por telefone feito
+          // logo abaixo, quando a conversa nasce agora. As duas pontas precisam
+          // chegar ao fechamento do relógio, senão a PRIMEIRA mensagem de uma
+          // lead nova — justamente a que mais importa — não fecharia nada.
+          let leadDesteEvento: string | null = conversationLeadId;
           const conversationOwnerId = conversation?.assigned_to || null;
           if (!conversationId) {
             // Antes a conversa nascia SEM lead_id e nada fazia o match depois:
@@ -122,7 +128,10 @@ export async function POST(request: Request) {
               .eq("organization_id", integration.organization_id)
               .or(`phone_normalized.eq.${sender},phone.eq.${sender}`)
               .limit(2);
-            if (phoneMatches?.length === 1) matchedLeadId = phoneMatches[0].id;
+            if (phoneMatches?.length === 1) {
+              matchedLeadId = phoneMatches[0].id;
+              leadDesteEvento = matchedLeadId;
+            }
 
             const { data: created, error: createError } = await admin
               .from("conversations")
@@ -160,6 +169,48 @@ export async function POST(request: Request) {
           }).select("id").single();
           if (messageError?.code === "23505") { duplicates += 1; continue; }
           if (messageError) throw messageError;
+
+          // ── A CONVERSA FECHA O RELÓGIO ──────────────────────────────────
+          //
+          // Medido: 217 leads, UMA contatada — e o WhatsApp, que é o canal que
+          // a operação de fato usa, não tocava em `first_contacted_at`. Uma
+          // conversa inteira acontecia e a lead seguia como "SLA vencido, sem
+          // primeiro contato". O corretor atendia e o painel cobrava.
+          //
+          // Entrada não é a empresa cumprindo prazo, mas é prova de que a
+          // conversa começou. Deixar o relógio correndo numa lead que está
+          // conversando faz o painel gritar sobre quem já está sendo atendido —
+          // e alarme falso é como um painel perde a confiança de quem olha.
+          //
+          // A origem fica registrada para separar "nós corremos atrás" de "ela
+          // veio". Best-effort de propósito: derrubar a entrega da mensagem
+          // porque a medição falhou seria trocar um dado por outro maior.
+          const leadDaConversa = leadDesteEvento;
+          if (leadDaConversa && !optedOut) {
+            const fechamento = await fecharPrimeiroContatoPorWhatsapp(admin, {
+              organizationId: integration.organization_id,
+              leadId: leadDaConversa,
+              origem: "entrada",
+              ocorridoEm: incoming.timestamp
+                ? new Date(Number(incoming.timestamp) * 1000).toISOString()
+                : new Date().toISOString(),
+            });
+            if (fechamento.fechou) {
+              logger.info("whatsapp.primeiro_contato_fechado", {
+                organizationId: integration.organization_id,
+                leadId: leadDaConversa,
+                origem: "entrada",
+                nota: descreverContatoDeWhatsapp("entrada"),
+              });
+            } else if (fechamento.motivo && !fechamento.jaEstavaFechado) {
+              logger.warn("whatsapp.primeiro_contato_nao_fechado", {
+                organizationId: integration.organization_id,
+                leadId: leadDaConversa,
+                motivo: fechamento.motivo,
+                indisponivel: fechamento.indisponivel,
+              });
+            }
+          }
           if (!optedOut && inboundMessage?.id) {
             const { error: journeyError } = await admin.rpc("route_nightly_journey_reply", { p_organization_id: integration.organization_id, p_conversation_id: conversationId, p_message_id: inboundMessage.id });
             if (journeyError) throw journeyError;

@@ -11,6 +11,7 @@ import { metaGraphVersion, describeMetaGraphFailure } from "@/lib/meta/graph";
 import { classifyOutboxFailure } from "@/lib/meta/outbox-failure";
 import { closeOutboxEvent, recoverExpiredLeases } from "@/lib/integrations/outbox-lease";
 import { AUTO_REGISTERED_CAMPAIGN_STATUS, autoRegisteredCampaignName } from "@/lib/marketing/campaign-provenance";
+import { fecharPrimeiroContatoPorWhatsapp } from "@/lib/crm/whatsapp-first-contact";
 
 export const dynamic = "force-dynamic";
 
@@ -223,7 +224,7 @@ export async function POST(request: Request) {
     try {
       const now = new Date().toISOString();
       if (event.topic === "message.send" && event.aggregate_id) {
-        const { data: message, error: messageError } = await admin.from("messages").select("id,channel,recipient,content,media").eq("id", event.aggregate_id).single();
+        const { data: message, error: messageError } = await admin.from("messages").select("id,channel,recipient,content,media,conversation_id").eq("id", event.aggregate_id).single();
         if (messageError || !message) throw messageError ?? new Error("Mensagem não encontrada.");
         if (message.channel !== "whatsapp") throw new Error(`Canal ainda não conectado ao worker: ${message.channel}`);
         const normalizedRecipient = String(message.recipient || "").replace(/\D/g, "");
@@ -309,6 +310,36 @@ export async function POST(request: Request) {
 
         const externalMessageId = await deliverWhatsApp(message.recipient, message.content, template);
         await admin.from("messages").update({ status: "sent", sent_at: now, external_message_id: externalMessageId, error: null }).eq("id", message.id);
+
+        // ── ENVIAR É PRIMEIRO CONTATO ─────────────────────────────────────
+        //
+        // Este é o sentido pleno: foi a empresa que buscou a pessoa, dentro do
+        // prazo. Sem isto, o corretor mandava WhatsApp PELO Atlas e o próprio
+        // Atlas continuava cobrando "sem primeiro contato" — medido: 217 leads,
+        // uma contatada.
+        //
+        // Best-effort: falha aqui não pode desfazer uma mensagem já entregue ao
+        // cliente.
+        if (message.conversation_id) {
+          const { data: conversa } = await admin
+            .from("conversations")
+            .select("lead_id")
+            .eq("id", message.conversation_id)
+            .maybeSingle();
+          if (conversa?.lead_id) {
+            const fechamento = await fecharPrimeiroContatoPorWhatsapp(admin, {
+              organizationId: event.organization_id,
+              leadId: conversa.lead_id,
+              origem: "saida",
+              ocorridoEm: now,
+            });
+            if (fechamento.fechou) {
+              logger.info("outbox.primeiro_contato_fechado", {
+                organizationId: event.organization_id, leadId: conversa.lead_id, origem: "saida",
+              });
+            }
+          }
+        }
         if (templateItem?.batchId) {
           await admin.from("lead_reactivation_contacts").update({ status: "sent" }).eq("batch_id", templateItem.batchId).eq("message_id", message.id);
           const { count: remaining } = await admin.from("lead_reactivation_contacts").select("id", { count: "exact", head: true }).eq("batch_id", templateItem.batchId).in("status", ["pending_approval", "queued"]);
