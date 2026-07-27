@@ -238,7 +238,24 @@ export default function PipelinePage() {
   const [sort, setSort] = useState<SortKey>("prioridade");
   const [compact, setCompact] = useState(true);
   const [focusMode, setFocusMode] = useState(true);
-  const [hideEmpty, setHideEmpty] = useState(false);
+  /**
+   * ESCONDER ETAPAS VAZIAS — ligado por padrão.
+   *
+   * Medido no banco vivo em 2026-07-27: 197 das 199 leads estão em "novo" e 2 em
+   * "perdido". SETE das nove colunas estão vazias. Com o padrão anterior
+   * (mostrar todas), a primeira tela que o corretor abre é uma coluna cheia e
+   * sete faixas vazias dividindo a largura — cada uma tirando espaço da única
+   * que tem trabalho dentro.
+   *
+   * Etapa vazia não informa nada que o corretor não saiba: ele sabe que ainda
+   * não marcou visita nenhuma. O que ele precisa é de espaço para as leads que
+   * existem.
+   *
+   * O botão continua ali, e a escolha dele é gravada nas preferências — quem
+   * quiser ver o funil inteiro clica uma vez e não é perguntado de novo. À
+   * medida que as etapas se preenchem, elas aparecem sozinhas.
+   */
+  const [hideEmpty, setHideEmpty] = useState(true);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<StageKey | null>(null);
   const [lastMove, setLastMove] = useState<{ moveId: string; leadId: string; leadName: string; from: StageKey; to: StageKey } | null>(null);
