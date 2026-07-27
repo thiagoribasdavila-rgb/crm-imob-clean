@@ -232,14 +232,25 @@ export async function PATCH(request: Request) {
 
     if (!atomicMove.error) {
       const moved = (atomicMove.data ?? {}) as Record<string, unknown>;
-      const movedLead = (moved.lead ?? null) as Record<string, unknown> | null;
       const movedHistoryId = typeof moved.moveId === "string" ? moved.moveId
         : typeof moved.historyId === "string" ? moved.historyId
         : null;
-      // Só seguimos pelo caminho atômico se a RPC devolveu o que o restante da
-      // rota precisa. Formato inesperado cai no caminho compensatório em vez de
-      // quebrar — a movimentação nunca fica sem resposta por detalhe de contrato.
-      if (movedLead && movedHistoryId) {
+      // ── POR QUE NÃO EXIGIMOS MAIS `moved.lead` ────────────────────────────
+      //
+      // `move_pipeline_lead` devolve {moveId, leadId, previousStage, stage,
+      // occurredAt, reversalOf} — nunca devolveu `lead`. A condição antiga
+      // exigia essa chave, então NUNCA entrava aqui: a movimentação acontecia
+      // no banco e a rota caía no caminho compensatório, que reconferia a etapa
+      // e a encontrava JÁ ALTERADA — devolvendo 409.
+      //
+      // O corretor arrastava o card, a lead mudava de etapa no banco, e a tela
+      // dizia "a lead foi movimentada por outra pessoa". Ele atualizava, via a
+      // lead no lugar certo, e não entendia.
+      //
+      // `movedLead` era redundante: `refreshed` logo abaixo busca a lead
+      // inteira e é ela que vai na resposta. O que precisa existir é o id do
+      // movimento — a prova de que a auditoria foi gravada.
+      if (movedHistoryId) {
         const refreshed = await admin.from("leads").select(LIVE_LEAD_SELECT).eq("id", leadId).eq("organization_id", identity.organizationId).maybeSingle();
         if (refreshed.data) {
           logger.info("pipeline.move_atomic", { leadId, fromStage: previousStage, toStage: stage, reversalOf });

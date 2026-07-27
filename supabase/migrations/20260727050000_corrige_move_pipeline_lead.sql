@@ -1,0 +1,16 @@
+-- ════════════════════════════════════════════════════════════════════════════
+-- O KANBAN NÃO MOVIA LEAD NENHUMA
+--
+-- `move_pipeline_lead` gravava em `public.activities` uma coluna `title` que a
+-- tabela NUNCA teve. Toda movimentação falhava com 42703, e a rota traduzia
+-- isso como 409 "recusada pela regra do funil" — mensagem que manda o corretor
+-- conferir a etapa quando o problema era esquema.
+--
+-- Colunas reais de activities: id, lead_id, type, description, created_at,
+-- organization_id, user_id, metadata, occurred_at.
+--
+-- O título que se perdia passa a viver dentro de `description`, junto da
+-- transição. Nada de informação se perde — só muda de lugar.
+--
+-- Aplicada em homologação em 27/07/2026. Ver a função completa no banco.
+-- ════════════════════════════════════════════════════════════════════════════
