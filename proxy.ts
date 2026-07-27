@@ -13,6 +13,10 @@ const publicPages = new Set([
   "/privacy",
   "/terms",
   "/data-deletion",
+  // Temporária: comparação das propostas de marca, para a decisão ser tomada
+  // olhando em vez de imaginando. Sai junto com a página quando a marca for
+  // escolhida.
+  "/marca",
 ]);
 
 export async function proxy(req: NextRequest) {
