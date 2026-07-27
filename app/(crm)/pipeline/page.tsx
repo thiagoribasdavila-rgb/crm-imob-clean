@@ -729,7 +729,7 @@ export default function PipelinePage() {
         </div>
       </section>
 
-      {!focusMode ? <section className="atlas-pipeline-flow" aria-label="Resumo visual das etapas do pipeline">
+      {!focusMode ? <section className="atlas-pipeline-flow" style={{ "--kanban-columns": stageData.length } as CSSProperties} aria-label="Resumo visual das etapas do pipeline">
         {stageData.map((stage, index) => (
           <div key={stage.key} style={{ "--flow": `${stage.probability}%` } as CSSProperties}>
             <span>{String(index + 1).padStart(2, "0")}</span>

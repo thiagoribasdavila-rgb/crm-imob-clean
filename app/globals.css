@@ -1579,7 +1579,13 @@ textarea:focus {
   bottom: max(8px, env(safe-area-inset-bottom));
   left: 10px;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  /* Era `repeat(5, …)` fixo. O dock renderiza os itens que o PAPEL alcança
+     (`atlasMobileNavigation.filter(canAccessAtlasItem)`) mais a ação rápida —
+     então o corretor tem menos que o diretor. Com contagem fixa, quem tem
+     menos ganha colunas largas demais e quem tem mais quebra linha sobre a
+     barra inferior. Fluxo automático acompanha o papel. */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   min-height: 64px;
   padding: 6px;
   border: 1px solid rgba(148, 163, 184, 0.14);
@@ -4885,9 +4891,18 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   font-weight: 800;
   letter-spacing: -.03em;
 }
+/* A faixa de resumo tinha `repeat(7, …)` fixo enquanto o funil tem NOVE
+   etapas (novo, contato, qualificacao, visita, proposta, contrato, ganho,
+   perdido, comprou_outro). As duas últimas quebravam para uma segunda linha —
+   e uma faixa que representa SEQUÊNCIA em duas linhas deixa de representar
+   sequência: vira dois blocos sem relação visível.
+
+   `--kanban-columns` já é publicado pela página com a contagem real, o mesmo
+   que o quadro de cards usa. Um número só, uma fonte só. */
 .atlas-pipeline-flow {
   display: grid;
-  grid-template-columns: repeat(7, minmax(150px, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(150px, 1fr);
   gap: 8px;
   overflow-x: auto;
   padding: 4px 2px 10px;
