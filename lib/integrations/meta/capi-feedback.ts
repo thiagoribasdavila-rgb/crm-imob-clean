@@ -400,8 +400,73 @@ export function buildCapiLeadEvents(input: {
 
 // --- Envio (gated) ---
 
+/**
+ * O token alcança o dataset? Um GET barato, antes de qualquer POST.
+ *
+ * A Meta descreve o sintoma no lugar errado com frequência neste produto — já
+ * custou semanas. Por isso a resposta traduz o código para a causa REAL e para
+ * quem resolve, em vez de repassar a mensagem crua.
+ *
+ * Não lança: quem chama precisa poder recusar com explicação, não estourar.
+ */
+async function verificarAlcanceDoDataset(
+  apiVersion: string,
+  datasetId: string,
+  accessToken: string,
+): Promise<{ ok: true } | { ok: false; motivo: string; caminho: string }> {
+  try {
+    const resposta = await fetch(
+      `https://graph.facebook.com/${apiVersion}/${encodeURIComponent(datasetId)}?fields=id&access_token=${encodeURIComponent(accessToken)}`,
+      { signal: AbortSignal.timeout(15_000) },
+    );
+    if (resposta.ok) return { ok: true };
+    const corpo = await resposta.json().catch(() => ({})) as { error?: { code?: number; error_subcode?: number; message?: string } };
+    const codigo = corpo.error?.code;
+    const sub = corpo.error?.error_subcode;
+
+    if (codigo === 190 && sub === 465) {
+      return {
+        ok: false,
+        motivo: "o token foi gerado por um app que não pertence ao Business dono do dataset (OAuthException 190/465)",
+        caminho: "No Business Manager, confirme em qual Business o dataset vive e gere o token A PARTIR DE LÁ. Não é permissão faltando — é app errado. Quem resolve: quem administra o Business Manager.",
+      };
+    }
+    if (codigo === 190) {
+      return { ok: false, motivo: "token inválido ou expirado", caminho: "Gere um token novo e substitua META_CONVERSIONS_ACCESS_TOKEN no servidor." };
+    }
+    if (codigo === 100) {
+      return {
+        ok: false,
+        motivo: "o token é válido, mas não tem permissão neste dataset",
+        caminho: "Atribua o dataset ao System User: Fontes de dados → Conjuntos de dados → o dataset → Atribuir parceiros/pessoas.",
+      };
+    }
+    return {
+      ok: false,
+      motivo: `HTTP ${resposta.status}${codigo ? ` (code ${codigo}${sub ? `/${sub}` : ""})` : ""}`,
+      caminho: `Rode \`npm run meta:diagnostico\` e guarde a saída: ${String(corpo.error?.message ?? "").slice(0, 140)}`,
+    };
+  } catch (erro) {
+    // Rede fora não é credencial errada: dizer que é mandaria alguém mexer no
+    // Business Manager por causa de um firewall.
+    return {
+      ok: false,
+      motivo: `a verificação não completou (${erro instanceof Error ? erro.message : String(erro)})`,
+      caminho: "Confira a saída de rede do servidor para graph.facebook.com antes de suspeitar da credencial.",
+    };
+  }
+}
+
 export type CapiSendOutcome =
-  | { sent: false; reason: "flag_disabled" | "org_disabled" | "missing_token" | "missing_dataset" | "missing_test_event_code" | "empty_batch"; message: string }
+  | {
+      sent: false;
+      reason:
+        | "flag_disabled" | "org_disabled" | "missing_token" | "missing_dataset"
+        | "missing_test_event_code" | "empty_batch"
+        /** O token não alcança o dataset — descoberto ANTES de enviar. */
+        | "dataset_unreachable";
+      message: string;
+    }
   | { sent: true; datasetId: string; mode: "test" | "live"; batches: number; eventsSent: number; responses: unknown[] };
 
 const CAPI_MAX_EVENTS_PER_REQUEST = 500;
@@ -477,6 +542,30 @@ export async function sendCapiBatch(
   }
 
   const apiVersion = metaGraphVersion();
+
+  // ── PREFLIGHT DE CREDENCIAL ─────────────────────────────────────────────
+  //
+  // Sem isto, credencial errada só aparecia ao ENVIAR: cada evento estourava,
+  // cada um consumia o retry, e o operador via ruído de log em vez de "seu
+  // token não alcança o dataset". Com a flag ligada, o painel diria "CAPI
+  // ativado" enquanto nenhuma conversão chegava — e o sintoma apareceria
+  // semanas depois como custo por lead subindo sem explicação.
+  //
+  // Medido em 2026-07-27: o token de conversões deste ambiente não passa nem
+  // no `/me` — "The application does not belong to system user's business".
+  // Foi gerado por um app que não é o do Business dono do dataset. Um GET
+  // barato revela isso antes de qualquer POST.
+  //
+  // Falha FECHADA, como o resto deste arquivo: não alcançou, não envia.
+  const alcance = await verificarAlcanceDoDataset(apiVersion, datasetId, accessToken);
+  if (!alcance.ok) {
+    return {
+      sent: false,
+      reason: "dataset_unreachable",
+      message: `O token não alcança o dataset ${datasetId}: ${alcance.motivo}. ${alcance.caminho}`,
+    };
+  }
+
   const responses: unknown[] = [];
   for (let index = 0; index < events.length; index += CAPI_MAX_EVENTS_PER_REQUEST) {
     const batch = events.slice(index, index + CAPI_MAX_EVENTS_PER_REQUEST);
