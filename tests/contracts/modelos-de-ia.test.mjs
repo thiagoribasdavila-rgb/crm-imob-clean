@@ -28,7 +28,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 const raiz = path.resolve(import.meta.dirname, "..", "..");
-const fonte = fs.readFileSync(path.join(raiz, "lib", "ai", "provider-router.ts"), "utf8");
+// Os modelos vivem em `model-profiles.ts` desde que o roteador (server-only)
+// impediu o portão de tarifas de perguntar e o obrigou a raspar o fonte.
+const fonte = fs.readFileSync(path.join(raiz, "lib", "ai", "model-profiles.ts"), "utf8");
 /** Sem comentários: o cabeçalho CITA os modelos aposentados para explicá-los. */
 const codigo = fonte.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
 
@@ -55,7 +57,10 @@ test("o padrão da OpenAI tem UMA fonte só", () => {
   // Havia duas cópias: `aiModelProfiles()` e `openAIDefaultModel()`. Corrigir
   // uma e esquecer a outra deixava o caminho de recuperação servindo o modelo
   // aposentado — justamente quando já se está tratando outro erro.
-  assert.match(codigo, /const openAIDefaultModel = \(task: AITask\) => \{[\s\S]{0,300}?aiModelProfiles\(\)/,
+  // `openAIDefaultModel` ficou no roteador (usa `AITask`, que é tipo de
+  // transporte); os nomes vieram para cá. A guarda é ele CHAMAR a função.
+  const roteador = fs.readFileSync(path.join(raiz, "lib", "ai", "provider-router.ts"), "utf8");
+  assert.match(roteador, /const openAIDefaultModel = \(task: AITask\) => \{[\s\S]{0,300}?aiModelProfiles\(\)/,
     "openAIDefaultModel precisa derivar de aiModelProfiles, não repetir os nomes");
 });
 
@@ -107,4 +112,40 @@ test("a tarifa do exemplo bate com o modelo padrão do roteador", () => {
     new RegExp(`ATLAS_AI_PRICE_TABLE=\\{"openai/${padrao.replace(/[.]/g, "\\.")}"`),
     `a linha pronta do .env precisa cobrir ${padrao}, que é o que o roteador usa`,
   );
+});
+
+// ── O PORTÃO DE TARIFAS PERGUNTA, NÃO RASPA ────────────────────────────────
+
+test("o portão de tarifas importa o módulo, em vez de ler o fonte com regex", () => {
+  // A versão antiga lia `provider-router.ts` com expressão regular. Acusava
+  // `openai/gpt-5.2` — que só existia num EXEMPLO dentro de um comentário — e
+  // devolvia nomes truncados. Pior: lia `ATLAS_OPENAI_MODEL`, `OPENAI_MODEL` e
+  // `ATLAS_PERPLEXITY_MODEL`, variáveis que não existem neste produto. Por isso
+  // nunca enxergou `gpt-5-mini`, o modelo que de fato rodava.
+  //
+  // Portão cego é pior que portão nenhum: ele diz "conferido".
+  const portaoBruto = fs.readFileSync(path.join(raiz, "scripts", "check-ai-pricing.mjs"), "utf8");
+  // Sem comentários: o cabeçalho CITA as variáveis inexistentes e a raspagem
+  // por regex justamente para explicar por que sumiram.
+  const portao = portaoBruto.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+  assert.match(portao, /modelosEmUso\(\)/, "tem que perguntar ao código quais modelos rodam");
+  assert.match(portao, /model-profiles\.ts/, "e importar o módulo puro, não o roteador");
+  assert.ok(!/matchAll\(/.test(portao), "raspar o fonte com regex foi o defeito — não pode voltar");
+  assert.ok(!/ATLAS_OPENAI_MODEL|ATLAS_PERPLEXITY_MODEL/.test(portao),
+    "variáveis inexistentes davam a impressão de cobertura");
+});
+
+test("modelosEmUso() enxerga o que o ambiente fixa, não só o padrão", () => {
+  // Era exatamente o buraco: com ATLAS_AI_FAST_MODEL apontando para um modelo
+  // aposentado, o portão passava verde.
+  assert.match(fonte, /export function modelosEmUso\(\)/);
+  assert.match(fonte, /perfis\.fast, perfis\.commercial, perfis\.reasoning, perfis\.research/);
+  assert.match(fonte, /ATLAS_ANTHROPIC_MODEL \|\| process\.env\.ATLAS_CLAUDE_MODEL/,
+    "sem o modelo da Anthropic, o consumo dela gravaria custo nulo");
+});
+
+test("modelo de família desconhecida entra na conferência", () => {
+  // Silenciar o desconhecido recria o custo nulo silencioso: um modelo que
+  // ninguém reconhece ainda vai ser cobrado.
+  assert.match(fonte, /desconhecida" \? "desconhecido"/);
 });

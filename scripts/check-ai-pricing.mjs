@@ -1,46 +1,27 @@
-/**
- * Confere se TODO modelo em uso tem tarifa cadastrada em ATLAS_AI_PRICE_TABLE.
- *
- * Por que este portão existe: o roteador se recusa — corretamente — a inferir
- * preço. Sem tarifa, `estimated_cost_usd` fica NULO e o consumo é registrado
- * sem custo. O resultado é pior que um número errado: é um painel de FinOps que
- * mostra zero e parece saudável.
- *
- * Aconteceu de verdade em 2026-07-26: o Creative Studio gastou 2.368 tokens em
- * perplexity/sonar e gravou custo nulo, porque não havia tarifa dessa dupla.
- * Nada avisou.
- *
- * Uso: node scripts/check-ai-pricing.mjs
- *      node --env-file=.env.local scripts/check-ai-pricing.mjs
- */
 import { readFileSync } from "node:fs";
+import { stripTypeScriptTypes } from "node:module";
 
-const roteador = readFileSync("lib/ai/provider-router.ts", "utf8");
-
-/** Extrai os modelos padrão de cada tier direto do roteador — fonte única. */
-function modelosDoRoteador() {
-  const encontrados = new Set();
-  // Formas usadas no roteador: "openai/gpt-5.2", ATLAS_*_MODEL || "modelo", etc.
-  for (const m of roteador.matchAll(/"(openai|anthropic|perplexity)\/([\w.\-]+)"/g)) {
-    encontrados.add(`${m[1]}/${m[2]}`);
-  }
-  for (const m of roteador.matchAll(/\|\|\s*"(gpt-[\w.\-]+|claude-[\w.\-]+|sonar[\w.\-]*)"/g)) {
-    const modelo = m[1];
-    const provedor = modelo.startsWith("gpt") ? "openai" : modelo.startsWith("claude") ? "anthropic" : "perplexity";
-    encontrados.add(`${provedor}/${modelo}`);
-  }
-  return [...encontrados].sort();
-}
-
-/** Modelos escolhidos por variável de ambiente — o que roda de fato em produção. */
-function modelosDoAmbiente() {
-  const pares = [
-    ["openai", process.env.ATLAS_OPENAI_MODEL || process.env.OPENAI_MODEL],
-    ["anthropic", process.env.ATLAS_ANTHROPIC_MODEL || process.env.ATLAS_CLAUDE_MODEL],
-    ["perplexity", process.env.ATLAS_PERPLEXITY_MODEL],
-  ];
-  return pares.filter(([, m]) => m).map(([p, m]) => `${p}/${m}`);
-}
+/**
+ * PERGUNTA ao código quais modelos rodam — não raspa o fonte.
+ *
+ * A versão anterior lia `lib/ai/provider-router.ts` com expressão regular. Dois
+ * defeitos, medidos em 2026-07-27:
+ *
+ *   · acusava `openai/gpt-5.2`, que só existia num EXEMPLO dentro de um
+ *     comentário, e devolvia nomes truncados (`openai/gpt-5.6-`);
+ *   · lia `ATLAS_OPENAI_MODEL`, `OPENAI_MODEL` e `ATLAS_PERPLEXITY_MODEL` —
+ *     nenhuma dessas variáveis existe neste produto.
+ *
+ * Resultado: nunca enxergou `gpt-5-mini`, que era o modelo do tier rápido. Um
+ * portão cego é pior que portão nenhum, porque diz "conferido".
+ *
+ * `model-profiles.ts` foi separado do roteador justamente para poder ser
+ * importado aqui: o roteador tem `import "server-only"` e nenhum script o
+ * carrega. O type-stripping do Node lê o `.ts` direto, mesmo caminho que os
+ * testes de contrato já usam.
+ */
+const fonte = readFileSync("lib/ai/model-profiles.ts", "utf8");
+const perfis = await import(`data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(fonte))}`);
 
 function tabela() {
   const bruto = process.env.ATLAS_AI_PRICE_TABLE || "";
@@ -54,7 +35,7 @@ function tabela() {
 }
 
 const { chaves, vazia, invalida } = tabela();
-const emUso = [...new Set([...modelosDoRoteador(), ...modelosDoAmbiente()])].sort();
+const emUso = perfis.modelosEmUso();
 
 /** Uma tarifa cobre o modelo se houver chave exata ou curinga do provedor. */
 const temTarifa = (par) => chaves.has(par.toLowerCase()) || chaves.has(`${par.split("/")[0]}/*`);

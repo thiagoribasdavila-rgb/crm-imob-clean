@@ -103,57 +103,12 @@ export function catalogoDeProvedoresGratuitos() {
   });
 }
 
-/**
- * MODELOS PADRÃO DA OPENAI — conferidos na fonte oficial em 2026-07-27.
- *
- * ── Por que isto mudou ──────────────────────────────────────────────────────
- *
- * Os padrões eram `gpt-5-mini` e `gpt-5.2`. Consultando a documentação da
- * OpenAI hoje (developers.openai.com/api/docs/{pricing,models,deprecations}):
- *
- *   · `gpt-5-mini` está DEPRECIADO, desligamento em 11/12/2026. Ainda responde,
- *     mas para de responder no meio da operação, sem aviso do nosso lado.
- *   · `gpt-5.2` não aparece na lista de modelos NEM na de preços NEM na de
- *     depreciações. `gpt-5.2-codex` foi desligado em 23/07/2026. O `gpt-5.2`
- *     simples é um ponto cego: pode responder ou pode devolver 404 na primeira
- *     chamada real — e o sintoma ("a IA não funciona") não aponta para a causa.
- *
- * Ligar a chave sem trocar isto era arriscar que a primeira chamada de verdade
- * falhasse por modelo aposentado.
- *
- * ── Por que LUNA em todos os tiers ──────────────────────────────────────────
- *
- * A linha atual é sol (trabalho complexo) · terra (equilíbrio) · luna (custo
- * baixo, alto volume). Decisão do dono do produto (2026-07-27): **só luna**.
- *
- * Faz sentido para o momento. A operação começa com um corretor e 199 leads —
- * o gasto é incerto e a chave é do dono. Um modelo só torna o custo previsível
- * (uma tarifa, uma linha na tabela de preços) e evita a situação pior de todas:
- * descobrir a conta no fim do mês.
- *
- * A contrapartida está no tier COMERCIAL, que é o que escreve para o cliente:
- * luna é o modelo otimizado para custo. Se a qualidade das mensagens incomodar,
- * `ATLAS_AI_COMMERCIAL_MODEL=gpt-5.6-terra` troca só esse tier, sem tocar em
- * código nem reempacotar — por isso o padrão nunca foi fixado no código antes
- * da variável.
- *
- * Toda variável de ambiente continua tendo precedência sobre estes padrões.
- *
- * Ao revisar: confira a página de depreciações. Modelo aposentado em produção é
- * uma falha que só aparece quando o cliente está esperando resposta.
- */
-
-/** O modelo único desta fase. Um lugar só para trocar quando a decisão mudar. */
-const MODELO_OPENAI_PADRAO = "gpt-5.6-luna";
-
-export function aiModelProfiles() {
-  return {
-    fast: process.env.ATLAS_AI_FAST_MODEL || MODELO_OPENAI_PADRAO,
-    commercial: process.env.ATLAS_AI_COMMERCIAL_MODEL || process.env.ATLAS_AI_MODEL || MODELO_OPENAI_PADRAO,
-    reasoning: process.env.ATLAS_AI_REASONING_MODEL || process.env.ATLAS_AI_MODEL || MODELO_OPENAI_PADRAO,
-    research: process.env.ATLAS_RESEARCH_MODEL || "sonar",
-  } as const;
-}
+// Os modelos padrão vivem em `model-profiles.ts`, fora deste arquivo, porque
+// aqui há `import "server-only"` e nenhum script consegue carregá-lo — foi por
+// isso que o portão de tarifas raspava o fonte com regex em vez de perguntar.
+// Reexportado para os 40 módulos que já importavam daqui não precisarem mudar.
+export { aiModelProfiles } from "./model-profiles";
+import { aiModelProfiles } from "./model-profiles";
 
 export function selectCopilotTask(prompt: string): Exclude<AITask, "research"> {
   return assessAIComplexity(prompt).task;
@@ -164,23 +119,11 @@ function tierPrefix(task: AITask): TierPrefix {
   return task === "fast" ? "FAST" : task === "commercial" ? "COMMERCIAL" : task === "research" ? "RESEARCH" : "REASONING";
 }
 
-export type ModelFamily = "openai" | "anthropic" | "perplexity" | "economy" | "desconhecida";
+// `ModelFamily`/`modelFamily` vivem em `model-profiles.ts`: são conhecimento
+// sobre MODELO, não sobre transporte, e o portão de tarifas precisa deles.
+export { modelFamily, type ModelFamily } from "./model-profiles";
+import { modelFamily } from "./model-profiles";
 
-/**
- * Família do modelo deduzida do nome. Enviar modelo de uma família para a API de
- * outra falha em 100% das chamadas — e a falha fica INVISÍVEL, porque o roteador
- * cai no fallback determinístico, ainda queima o retry e registra "completed".
- * Família desconhecida nunca bloqueia: só famílias comprovadamente incompatíveis.
- */
-export function modelFamily(model: string): ModelFamily {
-  const value = String(model || "").trim().toLowerCase();
-  if (!value) return "desconhecida";
-  if (/^(ft:)?(gpt|chatgpt|o[1-9])/.test(value)) return "openai";
-  if (/^(claude|anthropic)/.test(value)) return "anthropic";
-  if (/^(sonar|pplx)/.test(value)) return "perplexity";
-  if (/^(deepseek|qwen|kimi|moonshot|glm|zhipu)/.test(value)) return "economy";
-  return "desconhecida";
-}
 
 /**
  * O padrão da OpenAI para um tier, quando a variável do tier não serve.
