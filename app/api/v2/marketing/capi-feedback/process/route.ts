@@ -65,6 +65,8 @@ export async function POST() {
     eventosEnviados: 0,
     // Por que NÃO saiu — o número que evita o diagnóstico errado.
     bloqueados: [] as Array<{ organizationId: string; motivo: string }>,
+    /** Supressões parciais: o lote saiu, mas alguém ficou de fora. */
+    avisos: [] as Array<{ organizationId: string; motivo: string }>,
     semConsentimento: 0,
   };
 
@@ -78,12 +80,18 @@ export async function POST() {
       continue;
     }
 
-    const { batch, consent, blockers } = janela.value;
+    const { batch, consent, blockers, impedimentos } = janela.value;
     resultado.eventosMontados += batch.events.length;
     resultado.semConsentimento += (consent.suppressedLeads.denied ?? 0) + (consent.suppressedLeads.unverifiable ?? 0);
 
-    if (blockers.length) {
-      resultado.bloqueados.push({ organizationId, motivo: blockers[0] });
+    // Avisos de supressão parcial (uma venda sem valor, um lead sem
+    // consentimento) são REGISTRADOS e o lote segue com o resto. Só
+    // `impedimentos` para o envio: são os casos em que nada pode sair.
+    for (const aviso of blockers) {
+      if (!impedimentos.includes(aviso)) resultado.avisos.push({ organizationId, motivo: aviso });
+    }
+    if (impedimentos.length) {
+      resultado.bloqueados.push({ organizationId, motivo: impedimentos[0] });
       continue;
     }
     if (!batch.events.length) continue;
@@ -99,6 +107,57 @@ export async function POST() {
     const envio = await sendCapiBatch(batch.events, config);
     if (envio.sent) {
       resultado.eventosEnviados += batch.events.length;
+      // ── ENVIAR SEM REGISTRAR É ENVIAR ÀS CEGAS ───────────────────────────
+      //
+      // Este caminho mandava para a Meta e não gravava nada: `queueMetaConversion`
+      // (ingestão) registrava, o worker não. Sem a linha local não há como
+      // responder "esta venda já foi devolvida?" nem auditar o que saiu — e a
+      // janela é de 7 dias, então o mesmo evento reentra em toda execução do
+      // cron. A conversão não duplica (o `event_id` é determinístico e a Meta
+      // deduplica por ele), mas o CRM ficava sem memória do próprio envio.
+      //
+      // Todo event_id carrega o id da lead: crm-qualcom-<id>, crm-discard-<id>,
+      // crm-stage-<id>-ganho. É daí que sai o vínculo, sem carregar o id da
+      // lead por dentro do payload que vai para terceiro.
+      const linhas = batch.events
+        .map((evento) => {
+          const leadId = evento.event_id.match(
+            /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
+          )?.[0];
+          if (!leadId) return null;
+          return {
+            organization_id: organizationId,
+            lead_id: leadId,
+            event_name: evento.event_name,
+            event_id: evento.event_id,
+            action_source: "system_generated",
+            // "delivered" e não "sent": o vocabulário da tabela é
+            // pending|processing|delivered|failed|blocked|dead_letter. Inventar
+            // um status a mais estourava o check e o evento saía sem registro —
+            // exatamente o buraco que este bloco veio fechar.
+            status: "delivered",
+            occurred_at: new Date(evento.event_time * 1000).toISOString(),
+          };
+        })
+        .filter((linha): linha is NonNullable<typeof linha> => linha !== null);
+      if (linhas.length) {
+        // `ignoreDuplicates` porque reenvio dentro da janela é esperado: o
+        // registro é do FATO "este evento saiu", não de cada tentativa.
+        const registro = await admin
+          .from("meta_conversion_events")
+          .upsert(linhas, { onConflict: "organization_id,event_id", ignoreDuplicates: true });
+        if (registro.error) {
+          // Falhar o registro NÃO desfaz o envio (já aconteceu) nem derruba o
+          // worker: vira aviso, com o número que permite reconciliar depois.
+          logger.warn("capi-feedback: evento enviado sem registro local", {
+            organizationId, eventos: linhas.length, erro: registro.error.message,
+          });
+          resultado.avisos.push({
+            organizationId,
+            motivo: `envio_sem_registro_local: ${linhas.length} evento(s) saíram para a Meta mas não foram gravados em meta_conversion_events (${registro.error.message}).`,
+          });
+        }
+      }
     } else {
       // `flag_disabled` e `missing_token` são configuração ausente, não falha:
       // registram e seguem. O worker não pode virar alarme que toca todo dia.

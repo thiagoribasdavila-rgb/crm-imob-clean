@@ -43,7 +43,14 @@ export const META_SEND_WINDOW_DAYS = 7;
 // budget_min/budget_max saíram do select porque orçamento DECLARADO deixou de
 // ser valor de venda (lib/integrations/meta/capi-feedback.ts) — carregá-los só
 // convidaria a reintroduzir a estimativa.
-const LEAD_BASE_SELECT = "id,email,phone,status,score_ia,temperature,campaign_id,created_at";
+//
+// `sale_value_brl` é o oposto: é o valor APURADO, e é ele que o evento de
+// venda usa. Faltava aqui porque a coluna só passou a existir em 2026-07-28 —
+// terceiro elo da mesma cadeia partida (coluna ausente → sem porta de entrada
+// na tela → fora do select). Sem esta coluna, `buildCapiLeadEvents` lê
+// undefined e suprime TODA venda, com a mensagem honesta
+// "venda_sem_valor_apurado" — que descreve o sintoma, não a causa.
+const LEAD_BASE_SELECT = "id,email,phone,status,score_ia,temperature,campaign_id,created_at,sale_value_brl";
 // leads.metadata guarda o consentimento (metadata.meta.dataSharingConsent) e
 // NÃO existe em todo ambiente — no banco de produção a coluna não está lá.
 // Pedi-la direto no select derrubaria a rota inteira com 42703; por isso a
@@ -113,7 +120,29 @@ export type WindowBatch = {
   truncated: boolean;
   olderThanSendWindow: number;
   consent: ConsentReport;
+  /**
+   * TUDO o que o painel precisa mostrar: impedimentos E supressões parciais.
+   * Mantido como estava para quem já consome.
+   */
   blockers: string[];
+  /**
+   * ── AVISO NÃO É IMPEDIMENTO ───────────────────────────────────────────────
+   *
+   * Subconjunto de `blockers` que realmente impede o lote de sair. O worker
+   * lia `blockers` inteiro e pulava a organização ao primeiro item — então UMA
+   * venda antiga sem valor apurado paralisava o envio de todas as outras.
+   *
+   * Medido em 2026-07-28: com 2 vendas (uma com valor, uma sem), zero eventos
+   * saíam. Numa base de 199 leads sempre haverá alguma sem valor, então o
+   * ciclo fechado nunca rodaria — e a mensagem culpava a lead certa pelo
+   * sintoma errado.
+   *
+   * Impede: consentimento não verificável (sem a coluna, ninguém consentiu) e
+   * política presumida (sem config, presumir liberação vazaria PII).
+   * NÃO impede: lead suprimida por falta de valor ou de consentimento — ela
+   * fica de fora, e as demais seguem.
+   */
+  impedimentos: string[];
 };
 
 /**
@@ -290,16 +319,20 @@ export async function loadWindowBatch(
   const sendWindowFloor = Math.floor((Date.now() - META_SEND_WINDOW_DAYS * DAY) / 1000);
   const olderThanSendWindow = batch.events.filter((event) => event.event_time < sendWindowFloor).length;
 
+  // `batch.blockers` traz supressões PARCIAIS (ex.: venda sem valor apurado):
+  // avisam, não impedem. Os dois abaixo são de outra natureza — sem eles
+  // NENHUM evento pode sair — e por isso entram também em `impedimentos`.
   const blockers = [...batch.blockers];
+  const impedimentos: string[] = [];
   if (policy.required && !consentColumnAvailable) {
-    blockers.push(
-      "consentimento_nao_verificavel: leads.metadata não está disponível neste banco, então nenhum consentimento pôde ser verificado e NENHUM evento pode sair. Aplique a migration que cria a coluna antes de esperar lote.",
-    );
+    const motivo = "consentimento_nao_verificavel: leads.metadata não está disponível neste banco, então nenhum consentimento pôde ser verificado e NENHUM evento pode sair. Aplique a migration que cria a coluna antes de esperar lote.";
+    blockers.push(motivo);
+    impedimentos.push(motivo);
   }
   if (policy.required && policy.policySource === "default_conservative") {
-    blockers.push(
-      "politica_de_consentimento_presumida: meta_conversion_configs não está legível para esta organização — o export assume consentimento OBRIGATÓRIO até que a configuração exista.",
-    );
+    const motivo = "politica_de_consentimento_presumida: meta_conversion_configs não está legível para esta organização — o export assume consentimento OBRIGATÓRIO até que a configuração exista.";
+    blockers.push(motivo);
+    impedimentos.push(motivo);
   }
   if (suppressedLeads.denied > 0 || suppressedDiscardEvents > 0) {
     blockers.push(
@@ -322,6 +355,7 @@ export async function loadWindowBatch(
         suppressedDiscardEvents,
       },
       blockers,
+      impedimentos,
     },
   };
 }
