@@ -33,7 +33,11 @@ test("toda recusa tem caminho, e ele não repete o problema", () => {
 
 test("o caminho fala de AÇÃO, não de estado", () => {
   // Um caminho que não contém verbo de ação é descrição disfarçada.
-  const verbos = /pe[çc]a|escolha|escreva|atualize|recarregue|entre|avise|espere|confirme|mova|tente|ligue|marque|combine|acompanhe/i;
+  // "informe" e "digite" entraram com as recusas do valor da venda: são verbos
+  // de ação tanto quanto "escreva", e restringir o vocabulário do produto à
+  // lista do teste seria o teste mandando no produto. O invariante continua o
+  // mesmo — o caminho manda FAZER algo.
+  const verbos = /pe[çc]a|escolha|escreva|informe|digite|atualize|recarregue|entre|avise|espere|confirme|mova|tente|ligue|marque|combine|acompanhe/i;
   for (const [chave, o] of Object.entries(TODAS)) {
     assert.match(o.caminho, verbos, `${chave}: o caminho não diz o que fazer`);
   }

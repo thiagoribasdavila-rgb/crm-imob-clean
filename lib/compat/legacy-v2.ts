@@ -31,6 +31,11 @@ export const LIVE_LEAD_SELECT = [
   "campaign_id",
   "budget_min",
   "budget_max",
+  // Valor APURADO da venda (o do contrato) — distinto do orçamento declarado
+  // acima. Sem esta coluna no select, a tela lê `undefined`, a métrica de
+  // ganho zera e o painel de venda não consegue mostrar o que já foi apurado.
+  "sale_value_brl",
+  "sale_value_recorded_at",
   "preferred_bedrooms",
   "preferred_min_area",
   "preferred_neighborhoods",

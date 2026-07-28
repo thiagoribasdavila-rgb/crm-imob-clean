@@ -31,6 +31,8 @@ export type AcaoSugerida =
   | "atualizar"
   | "escolher-motivo"
   | "descrever-compra"
+  /** Fechar exige o valor apurado — é ele que a CAPI devolve para a Meta. */
+  | "informar-valor-da-venda"
   | "falar-com-gestor"
   | "tentar-de-novo";
 
@@ -102,6 +104,16 @@ export const RECUSAS_DA_ROTA: Record<string, Orientacao> = {
     problema: "Esse motivo de descarte não existe na lista.",
     caminho: "Escolha um dos motivos do painel — a lista é fechada de propósito, para o relatório poder somar.",
     acao: "escolher-motivo",
+  },
+  SALE_VALUE_REQUIRED: {
+    problema: "Falta o valor apurado da venda.",
+    caminho: "Informe quanto a unidade foi vendida, em reais. É o valor do contrato, não o orçamento que o cliente declarou na qualificação.",
+    acao: "informar-valor-da-venda",
+  },
+  SALE_VALUE_INVALID: {
+    problema: "O valor informado não é um número válido em reais.",
+    caminho: "Digite apenas números, sem letras e sem sinal negativo. Zero é aceito se a operação realmente não teve valor.",
+    acao: "informar-valor-da-venda",
   },
   FOLLOWUP_REQUIRED: {
     problema: "Falta descrever o que pesou na compra.",

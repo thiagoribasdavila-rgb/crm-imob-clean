@@ -73,6 +73,17 @@ type FollowUpDraft = {
   fromStage: StageKey;
   description: string;
 };
+/**
+ * Fechar exige o valor APURADO — o do contrato, não o orçamento declarado na
+ * qualificação. É esse número que a CAPI devolve para a Meta como conversão;
+ * sem ele o evento é suprimido e o ciclo fechado não fecha.
+ */
+type SaleDraft = {
+  leadId: string;
+  leadName: string;
+  fromStage: StageKey;
+  value: string;
+};
 type DiscardReportSummary = {
   period: { start: string; end: string; days: number };
   totals: { lostMoves: number | null; discarded: number; uniqueLeads: number; classified: number; coveragePct: number | null };
@@ -90,6 +101,8 @@ type Lead = {
   temperature: string | null;
   budget_min: number | null;
   budget_max: number | null;
+  /** Valor apurado da venda — o que a CAPI devolve à Meta. Nulo = não apurado. */
+  sale_value_brl: number | null;
   source: string | null;
   campaign_id: string | null;
   preferred_regions: string[] | null;
@@ -311,6 +324,7 @@ export default function PipelinePage() {
   const [preferencesHydrated, setPreferencesHydrated] = useState(false);
   const [discardDraft, setDiscardDraft] = useState<DiscardDraft | null>(null);
   const [followUpDraft, setFollowUpDraft] = useState<FollowUpDraft | null>(null);
+  const [saleDraft, setSaleDraft] = useState<SaleDraft | null>(null);
   const [discardReport, setDiscardReport] = useState<DiscardReportSummary | null>(null);
   const [discardReportStatus, setDiscardReportStatus] = useState<DiscardReportStatus>("loading");
   const discardPanelRef = useRef<HTMLDivElement | null>(null);
@@ -397,7 +411,7 @@ export default function PipelinePage() {
 
   useEffect(() => { void loadDiscardReport(); }, []);
 
-  async function moveLead(id: string, stage: StageKey, reversalOf?: string, discard?: { key: string; notes: string }, followUp?: string) {
+  async function moveLead(id: string, stage: StageKey, reversalOf?: string, discard?: { key: string; notes: string }, followUp?: string, saleValue?: number) {
     if (savingId) {
       setError("Aguarde a movimentação atual ser confirmada antes de mover outra lead.");
       return;
@@ -423,6 +437,17 @@ export default function PipelinePage() {
       setFollowUpDraft({ leadId: id, leadName: currentLead?.name || "Lead sem nome", fromStage: previousStage, description: "" });
       return;
     }
+    // Mesmo contrato dos outros dois desfechos: o painel pergunta primeiro, a
+    // lead só muda de coluna depois de confirmado. A rota exige o mesmo valor
+    // (SALE_VALUE_REQUIRED) — perguntar aqui evita a lead voltar de coluna
+    // depois de o corretor achar que fechou.
+    if (stage === "ganho" && !reversalOf && saleValue === undefined) {
+      setError("");
+      setDraggedId(null);
+      setDragOverStage(null);
+      setSaleDraft({ leadId: id, leadName: currentLead?.name || "Lead sem nome", fromStage: previousStage, value: "" });
+      return;
+    }
     const followUpDescription = followUp?.trim() || "";
     const previous = leads;
     setSavingId(id);
@@ -430,7 +455,7 @@ export default function PipelinePage() {
     setCaminho(null);
     setLeads((current) => current.map((lead) => (lead.id === id ? { ...lead, status: stage, updated_at: new Date().toISOString() } : lead)));
     try {
-      const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, expectedFromStage: previousStage, followUpDescription, reversalOf: reversalOf || null, discardReason: discard ? { key: discard.key, notes: discard.notes } : null }) });
+      const response = await authenticatedFetch("/api/v1/pipeline", { method: "PATCH", body: JSON.stringify({ leadId: id, stage, expectedFromStage: previousStage, followUpDescription, reversalOf: reversalOf || null, discardReason: discard ? { key: discard.key, notes: discard.notes } : null, saleValueBrl: saleValue ?? null }) });
       // `.json()` estoura se a resposta não for JSON (um 502 do proxy, por
       // exemplo). Nesse caso o corpo não existe e a frase padrão assume.
       const payload = await response.json().catch(() => ({} as Record<string, never>));
@@ -479,6 +504,23 @@ export default function PipelinePage() {
     const draft = followUpDraft;
     setFollowUpDraft(null);
     void moveLead(draft.leadId, "comprou_outro", undefined, undefined, draft.description.trim());
+  }
+
+  /** Aceita "450.000,00" e "450000.00": o corretor digita como fala. */
+  function valorEmNumero(bruto: string): number | null {
+    const limpo = bruto.trim().replace(/[R$\s.]/g, "").replace(",", ".");
+    if (!limpo) return null;
+    const n = Number(limpo);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
+
+  function confirmSale() {
+    if (!saleDraft || savingId) return;
+    const valor = valorEmNumero(saleDraft.value);
+    if (valor === null) return;
+    const draft = saleDraft;
+    setSaleDraft(null);
+    void moveLead(draft.leadId, "ganho", undefined, undefined, undefined, valor);
   }
 
   function onDrop(event: DragEvent<HTMLElement>, stage: StageKey) {
@@ -577,7 +619,12 @@ export default function PipelinePage() {
 
     const hot = open.filter((lead) => lead.temperature === "quente" || Number(lead.score ?? 0) >= 70).length;
     const highRisk = open.filter((lead) => leadRisk(lead) === "alto").length;
-    const won = leads.filter((lead) => lead.status === "ganho").reduce((sum, lead) => sum + Number(lead.budget_max ?? 0), 0);
+    // Somava `budget_max` — o orçamento DECLARADO pelo cliente — e chamava isso
+    // de valor ganho. Intenção apresentada como fato. Agora soma o valor
+    // apurado; venda sem valor informado não infla o número, fica de fora.
+    const won = leads
+      .filter((lead) => lead.status === "ganho")
+      .reduce((sum, lead) => sum + Number(lead.sale_value_brl ?? 0), 0);
     const buyerProfiles = leads.filter((lead) => lead.status === "comprou_outro").length;
     const firstContactOverdue = open.filter((lead) => firstContactSla(lead)?.overdue).length;
     const overdueActions = open.filter(isNextActionOverdue).length;
@@ -1208,6 +1255,39 @@ export default function PipelinePage() {
           <div className="mt-5 flex justify-end gap-2">
             <button type="button" onClick={() => setFollowUpDraft(null)} className="atlas-button-secondary">Cancelar</button>
             <button type="button" onClick={confirmFollowUp} disabled={followUpDraft.description.trim().length < 10 || Boolean(savingId)} className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-50">Registrar e mover</button>
+          </div>
+        </div>
+      </div> : null}
+
+      {saleDraft ? <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center" role="presentation" onClick={() => setSaleDraft(null)}>
+        <div role="dialog" aria-modal="true" aria-labelledby="sale-panel-title" aria-describedby="sale-panel-description" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
+          if (event.key === "Escape") { event.preventDefault(); setSaleDraft(null); }
+        }} className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-black/40 outline-none sm:p-6">
+          <p className="text-xs font-semibold uppercase tracking-[.14em] text-emerald-300">Venda fechada</p>
+          <h3 id="sale-panel-title" className="mt-1 text-lg font-semibold text-white">Por quanto {saleDraft.leadName} fechou?</h3>
+          <p id="sale-panel-description" className="mt-1 text-xs leading-5 text-slate-500">
+            O valor do contrato, em reais. É este número que volta para a Meta como conversão e ensina a campanha a procurar mais clientes como este — por isso não pode ser estimado a partir do orçamento declarado.
+          </p>
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 focus-within:border-emerald-400/30">
+            <span className="text-sm text-slate-500">R$</span>
+            <input
+              id="sale-value"
+              autoFocus
+              inputMode="decimal"
+              value={saleDraft.value}
+              onChange={(event) => setSaleDraft((current) => (current ? { ...current, value: event.target.value } : current))}
+              placeholder="450.000,00"
+              className="w-full bg-transparent py-2.5 text-sm leading-6 text-white outline-none placeholder:text-slate-600"
+            />
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500" role="status">
+            {valorEmNumero(saleDraft.value) === null
+              ? "Informe o valor em reais — só números."
+              : `Vai para a Meta como ${brl.format(valorEmNumero(saleDraft.value) as number)}.`}
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button type="button" onClick={() => setSaleDraft(null)} className="atlas-button-secondary">Cancelar</button>
+            <button type="button" onClick={confirmSale} disabled={valorEmNumero(saleDraft.value) === null || Boolean(savingId)} className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-50">Registrar venda</button>
           </div>
         </div>
       </div> : null}

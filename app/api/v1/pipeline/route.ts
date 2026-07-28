@@ -164,6 +164,26 @@ export async function PATCH(request: Request) {
     if (stage === "comprou_outro" && followUpDescription.length < 10) {
       return recusar("FOLLOWUP_REQUIRED", 400);
     }
+    // ── O VALOR DA VENDA É OBRIGATÓRIO PARA FECHAR ────────────────────────
+    //
+    // O evento de venda da CAPI lê `sale_value_brl`. A coluna não existia até
+    // 2026-07-28: o evento era suprimido em silêncio e o ciclo fechado nunca
+    // fechava. Criada a coluna, ela precisa de porta de entrada — senão nasce
+    // morta e o defeito continua, só que com schema novo.
+    //
+    // Exigir aqui, e não "depois", é o que garante que todo ganho tenha
+    // lastro. Orçamento declarado (budget_min/max) NÃO serve: é intenção do
+    // cliente, e mandar intenção como venda ensina o algoritmo com número
+    // inventado — sem desfazer.
+    const valorBruto = body.saleValueBrl;
+    const temValor = valorBruto !== undefined && valorBruto !== null && String(valorBruto).trim() !== "";
+    const saleValue = temValor ? Number(valorBruto) : null;
+    if (temValor && (!Number.isFinite(saleValue) || (saleValue as number) < 0)) {
+      return recusar("SALE_VALUE_INVALID", 400);
+    }
+    if (stage === "ganho" && !reversalOf && saleValue === null) {
+      return recusar("SALE_VALUE_REQUIRED", 400);
+    }
     if (!leadId || !stage || !expectedFromStage) {
       return recusar("LEAD_OR_STAGE_MISSING", 400);
     }
@@ -312,6 +332,18 @@ export async function PATCH(request: Request) {
       // inteira e é ela que vai na resposta. O que precisa existir é o id do
       // movimento — a prova de que a auditoria foi gravada.
       if (movedHistoryId) {
+        // O valor vai num update próprio porque a RPC não o conhece (mudar a
+        // assinatura dela obrigaria migration em banco que já roda). Se este
+        // update falhar, a lead fica em "ganho" sem valor — que é exatamente o
+        // estado "vendeu e ainda não informou" já previsto por
+        // `sale_value_recorded_at`, e a CAPI simplesmente não emite o evento.
+        // Falhar para o lado de não enviar é o lado certo de falhar.
+        if (saleValue !== null) {
+          const gravou = await admin.from("leads")
+            .update({ sale_value_brl: saleValue, sale_value_recorded_at: new Date().toISOString() })
+            .eq("id", leadId).eq("organization_id", identity.organizationId);
+          if (gravou.error) logger.warn("pipeline.valor_da_venda_nao_gravado", { leadId, erro: gravou.error.message });
+        }
         const refreshed = await admin.from("leads").select(LIVE_LEAD_SELECT).eq("id", leadId).eq("organization_id", identity.organizationId).maybeSingle();
         if (refreshed.data) {
           logger.info("pipeline.move_atomic", { leadId, fromStage: previousStage, toStage: stage, reversalOf });
@@ -353,7 +385,11 @@ export async function PATCH(request: Request) {
     // restaura imediatamente se a linha de auditoria não puder ser gravada.
     const { data: updated, error: updateError } = await admin
       .from("leads")
-      .update({ status: stage })
+      // Aqui o valor entra no MESMO update da etapa: sem janela entre "virou
+      // ganho" e "tem valor".
+      .update(saleValue !== null
+        ? { status: stage, sale_value_brl: saleValue, sale_value_recorded_at: new Date().toISOString() }
+        : { status: stage })
       .eq("id", leadId)
       .eq("organization_id", identity.organizationId)
       .eq("status", current.status)
