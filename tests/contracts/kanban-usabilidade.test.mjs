@@ -116,3 +116,30 @@ test("o desfazer aceita as duas chaves que a rota pode mandar", () => {
   // diferentes. Ler só uma fazia a lead mover sem a tela confirmar nada.
   assert.match(codigo, /payload\.move\?\.id \?\? payload\.move\?\.moveId \?\? payload\.moveId/);
 });
+
+test("nenhum ref inline devolve o foco ao contêiner a cada renderização", () => {
+  // ── O DEFEITO QUE ISTO FIXA ───────────────────────────────────────────────
+  //
+  // O painel de "comprou em outro lugar" tinha
+  // `ref={(node) => { node?.focus(); }}` na div do diálogo. Arrow inline é uma
+  // função NOVA a cada renderização, então o React a executa em TODAS elas — e
+  // cada execução roubava o foco do textarea de volta para a moldura.
+  //
+  // Efeito para quem usa: digitar uma letra muda o estado, o estado
+  // re-renderiza, o foco pula. O campo simplesmente não aceitava texto.
+  // Relatado com captura de tela, depois de eu ter declarado o painel pronto —
+  // nenhum teste desta suíte pegava, porque todos leem estrutura e este é um
+  // defeito de CICLO DE VIDA.
+  //
+  // `autoFocus` no campo resolve o que a acessibilidade pede (foco entra no
+  // diálogo ao abrir) sem repetir a cada render.
+  const suspeitos = [...codigo.matchAll(/ref=\{\s*\([a-zA-Z]+\)\s*=>[^}]*\.focus\(\)/g)].map((m) => m[0]);
+  assert.deepEqual(suspeitos, [],
+    `ref inline que foca roda a cada renderização e trava a digitação:\n${suspeitos.join("\n")}`);
+});
+
+test("o campo de texto recebe o foco na abertura", () => {
+  // Sem isto o painel abre e a pessoa precisa clicar para começar — e foi
+  // justamente ao resolver isso "na mão" que o ref quebrou a digitação.
+  assert.match(codigo, /<textarea[\s\S]{0,120}?autoFocus/);
+});

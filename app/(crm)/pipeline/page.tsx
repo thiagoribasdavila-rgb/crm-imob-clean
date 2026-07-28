@@ -1048,7 +1048,16 @@ export default function PipelinePage() {
       </div> : null}
 
       {followUpDraft ? <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center" role="presentation" onClick={() => setFollowUpDraft(null)}>
-        <div role="dialog" aria-modal="true" aria-labelledby="followup-panel-title" aria-describedby="followup-panel-description" tabIndex={-1} ref={(node) => { node?.focus(); }} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
+        {/* ── SEM `ref` QUE FOCA O CONTÊINER ──────────────────────────────────
+            Havia aqui `ref={(node) => node?.focus()}`. Arrow inline é uma função
+            NOVA a cada renderização, então o React a executava em TODAS elas —
+            e cada execução roubava o foco do textarea de volta para esta div.
+            Digitar uma letra muda o estado, o estado re-renderiza, o foco pula:
+            na prática o campo não aceitava texto. Relatado com captura de tela.
+            O `autoFocus` do textarea já leva o foco para dentro do diálogo na
+            abertura, que é o que a acessibilidade pede — e é o campo, não a
+            moldura, que a pessoa precisa usar. */}
+        <div role="dialog" aria-modal="true" aria-labelledby="followup-panel-title" aria-describedby="followup-panel-description" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
           if (event.key === "Escape") { event.preventDefault(); setFollowUpDraft(null); }
         }} className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-black/40 outline-none sm:p-6">
           <p className="text-xs font-semibold uppercase tracking-[.14em] text-amber-300">Comprou em outro lugar</p>
