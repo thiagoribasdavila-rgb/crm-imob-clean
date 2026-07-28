@@ -9575,3 +9575,78 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   min-width: 0;
 }
 .atlas-lead-bar-faixa:empty { display: none; }
+
+/* ===========================================================================
+   TEMA CLARO — os utilitários que a fundação .atlas-* não alcança
+   ===========================================================================
+
+   O tema claro sobrescreve 125 classes `.atlas-*`. Mas as telas usam também
+   ~1.972 utilitários do Tailwind com cor ESCURA FIXA. Neles a cor está na
+   CLASSE, não numa variável — nenhum seletor de tema chega lá. No claro
+   continuavam escuros: texto quase branco sobre fundo branco, borda invisível,
+   painel preto no meio de uma tela clara. Foi o "ainda tem partes sem a cor".
+
+   ── O que entra aqui, e o que NÃO entra ───────────────────────────────────
+
+   Só o que tem função INEQUÍVOCA:
+
+     · `bg-slate-9x0` / `bg-black`  → superfície. No claro, superfície é clara.
+     · `border-white/x`             → borda. No claro, borda é escura.
+     · `text-slate-2xx..5xx`        → texto secundário. Nunca é texto sobre cor.
+
+   `text-white` fica DE FORA de propósito, e é a decisão mais importante deste
+   bloco: são 300 ocorrências, e boa parte é texto sobre botão colorido, que
+   deve continuar branco nos dois temas. Clareá-lo apagaria o rótulo do botão.
+   Essas 300 exigem olhar a tela uma a uma — `npm run tema:cobertura` diz onde.
+
+   ── Escape ────────────────────────────────────────────────────────────────
+
+   `.atlas-tema-fixo` marca uma ilha que deve permanecer escura nos dois temas
+   (um bloco de código, uma pré-visualização de anúncio). Ela e seus
+   descendentes ficam imunes a tudo abaixo.
+
+   ── Especificidade ────────────────────────────────────────────────────────
+
+   Os tokens são os `--atlas-*`, que 81 regras deste tema já usam. Havia um
+   segundo vocabulário (`--muted`, `--border`, `--surface`) definido e quase
+   sem uso; escrever nele faria estas regras renderizarem uma cor levemente
+   diferente das vizinhas — a mesma divergência que já custou caro três vezes
+   neste produto, agora em cor.
+
+   `:root[data-theme="light"] .classe` = 0,2,0 contra 0,1,0 do utilitário. Vence
+   sem `!important`, e um utilitário mais específico escrito depois continua
+   podendo vencer — que é o comportamento desejado.
+   ========================================================================= */
+
+:root[data-theme="light"] .bg-slate-950:not(.atlas-tema-fixo):not(.atlas-tema-fixo *),
+:root[data-theme="light"] .bg-slate-900:not(.atlas-tema-fixo):not(.atlas-tema-fixo *),
+:root[data-theme="light"] .bg-black:not(.atlas-tema-fixo):not(.atlas-tema-fixo *) {
+  background-color: var(--atlas-surface);
+}
+
+/* Sobreposição sutil: no escuro é um véu claro; no claro, um véu escuro. */
+:root[data-theme="light"] [class*="bg-white/"]:not(.atlas-tema-fixo):not(.atlas-tema-fixo *) {
+  background-color: var(--atlas-surface-subtle);
+}
+
+:root[data-theme="light"] [class*="border-white/"]:not(.atlas-tema-fixo):not(.atlas-tema-fixo *) {
+  border-color: var(--atlas-border);
+}
+
+/* Texto secundário. `--muted` já é o cinza legível sobre fundo claro. */
+:root[data-theme="light"] .text-slate-500:not(.atlas-tema-fixo *),
+:root[data-theme="light"] .text-slate-400:not(.atlas-tema-fixo *) {
+  color: var(--atlas-text-tertiary);
+}
+
+/* Texto de apoio mais forte — no escuro é quase branco; aqui vira o texto. */
+:root[data-theme="light"] .text-slate-300:not(.atlas-tema-fixo *),
+:root[data-theme="light"] .text-slate-200:not(.atlas-tema-fixo *) {
+  color: var(--atlas-text-primary);
+}
+
+/* Ilha que permanece escura nos dois temas: mantém seu próprio contraste. */
+:root[data-theme="light"] .atlas-tema-fixo {
+  background-color: #0b1220;
+  color: #e8eefc;
+}
