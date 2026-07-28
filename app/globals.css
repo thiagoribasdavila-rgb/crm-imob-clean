@@ -9734,3 +9734,206 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   background-color: #0b1220;
   color: #e8eefc;
 }
+
+/* ── CORES DE ESTADO NO TEMA CLARO ───────────────────────────────────────────
+ *
+ * Medido no navegador em 2026-07-28, com contraste WCAG calculado sobre a
+ * pilha real de fundos (compondo camadas semitransparentes, não pulando):
+ *
+ *   .atlas-badge-danger  "SLA vencido há 91641 min"   1,72:1
+ *   .atlas-badge-warning "medio"                      1,18:1
+ *   .atlas-nav-current   "Atual"                      1,11:1
+ *   .cc6-num             "parado há 6d"               1,81:1
+ *
+ * Mínimo AA para texto pequeno: 4,5:1. O alerta de SLA vencido — o aviso mais
+ * importante da tela do corretor — era o segundo pior de todos.
+ *
+ * A causa é sistemática, não pontual: os tons foram escolhidos para brilhar
+ * sobre fundo escuro (rose-300, amber-200, sky-200). Sobre fundo claro, texto
+ * claro sobre fundo claro sempre some. A correção espelha cada cor para a
+ * versão 700/800 da mesma família — mesma identidade, contraste invertido.
+ *
+ * O FUNDO de cada badge fica: é rgba de baixa opacidade, e sobre branco ele
+ * vira o tom pastel que já identifica o estado. Só o TEXTO muda.
+ */
+:root[data-theme="light"] .atlas-badge-success {
+  border-color: rgba(4, 120, 87, 0.3);
+  color: #047857; /* emerald-700 · 4,9:1 sobre o pastel verde */
+}
+:root[data-theme="light"] .atlas-badge-warning {
+  border-color: rgba(180, 83, 9, 0.3);
+  color: #b45309; /* amber-700 · 5,1:1 */
+}
+:root[data-theme="light"] .atlas-badge-danger {
+  border-color: rgba(190, 18, 60, 0.3);
+  color: #be123c; /* rose-700 · 6,1:1 — o alerta de SLA */
+}
+:root[data-theme="light"] .atlas-badge-neutral {
+  border-color: rgba(71, 85, 105, 0.28);
+  color: #475569; /* slate-600 */
+}
+:root[data-theme="light"] .atlas-nav-current {
+  border-color: rgba(3, 105, 161, 0.28);
+  color: #0369a1; /* sky-700 */
+}
+:root[data-theme="light"] .atlas-kanban-next-best-action-eyebrow {
+  color: #0369a1;
+}
+:root[data-theme="light"] .atlas-broker-move-label {
+  color: #475569;
+}
+/* `.cc6-num` carrega a cor de estado por variável inline (laranja/rosa do
+   "parado há Nd"). Escurece a variável, não a classe — assim o mesmo elemento
+   continua mudando de cor conforme a gravidade. */
+:root[data-theme="light"] .cc6-num {
+  color: #b45309;
+}
+:root[data-theme="light"] .cc6-chip.cc6-crit {
+  color: #be123c;
+}
+
+/* O "Descartar" de cada card usa cor embutida na classe (#aab6ca), pensada
+   para o cartão escuro: 2,05:1 sobre branco. Cor arbitrária no utilitário não
+   tem como ser espelhada por token — daí a classe própria, só para ancorar o
+   override do tema claro. */
+:root[data-theme="light"] .atlas-card-acao-descartar {
+  color: #475569;
+}
+:root[data-theme="light"] .atlas-card-acao-descartar:hover,
+:root[data-theme="light"] .atlas-card-acao-descartar:focus-visible {
+  color: #be123c;
+}
+
+/* ── A PALETA ESCURA ESCRITA À MÃO, ESPELHADA PARA O CLARO ───────────────────
+ *
+ * Quatro cores hexadecimais aparecem 983 vezes em classes utilitárias
+ * arbitrárias (`text-[#e8eef8]` e companhia). Foram escolhidas para o fundo
+ * escuro; no claro viram texto claro sobre fundo claro.
+ *
+ * ── UMA ARMADILHA DE MEDIÇÃO QUE QUASE APAGOU ESTE BLOCO ────────────────────
+ *
+ * Estas regras chegaram a ser REMOVIDAS por eu ter "medido" que não
+ * funcionavam: a regra existia na folha, o elemento casava com o seletor
+ * (`el.matches` = true) e a cor computada não mudava — nem com `!important`,
+ * nem em `@layer utilities`, nem com estilo inline.
+ *
+ * A causa não era CSS: o navegador estava com a aba em SEGUNDO PLANO
+ * (`document.visibilityState === "hidden"`), e nesse estado ele CONGELA
+ * transições. Como estes elementos têm `transition: color .15s`, a cor
+ * computada ficava presa no valor do tema anterior — imune a qualquer regra
+ * nova. Desligando as transições, a mesma regra passa a valer na hora.
+ *
+ * Fica registrado porque o sintoma é convincente demais: parece
+ * especificidade, parece cascade layer, parece tudo menos o que é.
+ *
+ * ── E POR QUE TODA REGRA AQUI PARA NA PORTA DA ILHA ESCURA ──────────────────
+ *
+ * `.atlas-leads-table-panel` pinta o fundo com GRADIENTE, e o gradiente é o
+ * mesmo nos dois temas — é uma ilha escura de propósito. Dentro dela, texto
+ * claro está CERTO. Sem o `:not(.atlas-leads-table-panel *)`, este bloco
+ * escureceria justamente o texto que precisa continuar claro.
+ *
+ * O contrato tests/contracts/paginacao-por-pagina.test.mjs pegou exatamente
+ * isso quando escrevi um override para o seletor "por página" — e pegou
+ * porque o medidor de contraste tem um ponto cego: lê `background-color` e
+ * ignora `background-image`, então enxerga o body claro por baixo do gradiente
+ * e acusa contraste ruim onde não há.
+ */
+:root[data-theme="light"] .text-\[\#e8eef8\]:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *) {
+  color: #0b1220; /* principal · 16,9:1 sobre branco */
+}
+:root[data-theme="light"] .text-\[\#aab6ca\]:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *) {
+  color: #475569; /* secundário · 7,5:1 */
+}
+:root[data-theme="light"] .text-\[\#6b7890\]:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *) {
+  color: #64748b; /* terciário · 4,8:1 — passa AA e segue sendo o mais claro dos três */
+}
+:root[data-theme="light"] .text-\[\#b4c0d1\]:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *) {
+  color: #475569;
+}
+:root[data-theme="light"] .text-\[\#f5b544\]:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *) {
+  color: #b45309;
+}
+:root[data-theme="light"] .text-\[\#34d399\]:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *) {
+  color: #047857;
+}
+:root[data-theme="light"] .text-\[\#fb7185\]:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *) {
+  color: #be123c;
+}
+:root[data-theme="light"] .text-\[\#718096\]:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *) {
+  color: #475569;
+}
+:root[data-theme="light"] .text-\[\#bae6fd\]:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *),
+:root[data-theme="light"] .text-sky-200:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *) {
+  color: #0369a1;
+}
+:root[data-theme="light"] .text-white:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *):not(button):not(a) {
+  color: var(--atlas-text);
+}
+:root[data-theme="light"] .atlas-next-action {
+  color: #475569;
+}
+:root[data-theme="light"] .cc6-warn {
+  color: #b45309;
+}
+:root[data-theme="light"] .cc6-ok {
+  color: #047857;
+}
+:root[data-theme="light"] .cc6-ghost-btn {
+  color: #475569;
+}
+
+/* ── ÚLTIMA CAMADA DO TEMA CLARO: medida, não deduzida ───────────────────────
+ *
+ * Depois de espelhar a paleta escrita à mão, restaram 349 elementos abaixo de
+ * AA na tela de Leads. Medindo COR e FUNDO juntos (em vez de deduzir), o que
+ * sobrou tem três causas distintas:
+ *
+ *   · `text-white` puro sobre superfície clara — 49 elementos a 1,06:1
+ *     ("Carteira comercial"). Ficou de fora da primeira passagem porque muitos
+ *     `text-white` são texto sobre COR SÓLIDA e devem continuar brancos; a
+ *     diferença agora é feita pela escapatória `.atlas-tema-fixo`, não por
+ *     evitar a regra inteira.
+ *   · `#bae6fd` (sky-200) — 150 elementos a 1,19:1 ("Lead 360").
+ *   · cinzas médios de rótulo (#91a0b5, #9aa8bb, #718096) entre 2,2 e 3,8:1 —
+ *     inclusive `.atlas-pagination-tamanho`, que EU escolhi hoje mirando o
+ *     painel escuro e que no claro some.
+ */
+:root[data-theme="light"] .text-white:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *):not(button):not(a) {
+  color: var(--atlas-text);
+}
+:root[data-theme="light"] .text-\[\#bae6fd\]:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *),
+:root[data-theme="light"] .text-sky-200:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *) {
+  color: #0369a1;
+}
+:root[data-theme="light"] .atlas-next-action {
+  color: #475569;
+}
+:root[data-theme="light"] .text-\[\#718096\]:not(.atlas-tema-fixo *):not(.atlas-leads-table-panel *) {
+  color: #475569;
+}
+
+/* Os dois últimos grupos, achados guardando a REFERÊNCIA do elemento medido em
+   vez de tentar reencontrá-lo por texto (tentativa que só devolvia ícones):
+     · o cabeçalho do painel de leads ficou com <strong> branco quando a
+       superfície clareou — 1,06:1;
+     · os botões de ação da vista MOBILE (.atlas-leads-mobile), em sky-200 —
+       1,19:1. Estavam fora do radar porque no desktop parecem escondidos, e é
+       justamente a vista que o corretor usa no celular. */
+:root[data-theme="light"] .atlas-leads-table-head strong,
+:root[data-theme="light"] .atlas-leads-table-head b {
+  color: var(--atlas-text);
+}
+/* O nome do lead na vista MOBILE tem `color: white` fixo na própria regra
+   (.atlas-mobile-lead-head strong) — não é utilitário, é CSS da casa. Era o
+   pior contraste da tela, 1,06:1, e some por completo no claro. */
+:root[data-theme="light"] .atlas-mobile-lead-head strong {
+  color: var(--atlas-text);
+}
+:root[data-theme="light"] .atlas-mobile-lead-head small {
+  color: #64748b;
+}
+:root[data-theme="light"] .atlas-leads-action-buttons a,
+:root[data-theme="light"] .atlas-leads-action-buttons button {
+  color: #0369a1;
+}
