@@ -90,6 +90,11 @@ type DiscardReportSummary = {
   byReason: Array<{ key: string; label: string; metaCategory: string; count: number; share: number }>;
 };
 type DiscardReportStatus = "loading" | "ready" | "restricted" | "error";
+/** Quem a liderança pode escolher no filtro. Vem da rota — a tela não monta. */
+type Equipe = {
+  corretores: Array<{ id: string; nome: string | null }>;
+  gerentes: Array<{ id: string; nome: string | null; pessoas: number }>;
+};
 type Lead = {
   id: string;
   name: string | null;
@@ -264,6 +269,13 @@ export default function PipelinePage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [stages, setStages] = useState<PipelineStageDefinition[]>(defaultStages);
   const [canConfigureStages, setCanConfigureStages] = useState(false);
+  /**
+   * Filtro de quem: um corretor OU uma equipe inteira. Guardado como
+   * `{tipo, id}` em vez de dois estados, porque os dois são mutuamente
+   * exclusivos — dois estados permitiriam um limbo com os dois preenchidos.
+   */
+  const [filtroDeQuem, setFiltroDeQuem] = useState<{ tipo: "corretor" | "equipe"; id: string } | null>(null);
+  const [equipe, setEquipe] = useState<Equipe | null>(null);
   const [pipelineScope, setPipelineScope] = useState<PipelineScope>({ loaded: 0, totalOperational: 0, archivedMemoryExcluded: true, limit: 500 });
   const [mobileStage, setMobileStage] = useState<StageKey>(defaultStages[0]?.key || "novo");
   const [loading, setLoading] = useState(true);
@@ -373,12 +385,16 @@ export default function PipelinePage() {
     setLoading(true);
     setError("");
     try {
-      const response = await authenticatedFetch("/api/v1/pipeline");
+      const busca = filtroDeQuem ? `?${filtroDeQuem.tipo}=${encodeURIComponent(filtroDeQuem.id)}` : "";
+      const response = await authenticatedFetch(`/api/v1/pipeline${busca}`);
       const payload = await response.json();
       if (!response.ok) throw new Error("O pipeline não pôde ser carregado agora. Tente novamente em instantes.");
       setLeads((payload.leads ?? []) as Lead[]);
       if (Array.isArray(payload.stages)) setStages(payload.stages as PipelineStageDefinition[]);
       setCanConfigureStages(payload.canConfigureStages === true);
+      // `equipe` é null para corretor: ele não filtra ninguém, e o seletor
+      // some em vez de aparecer vazio.
+      setEquipe((payload.equipe as Equipe | null) ?? null);
       if (payload.pagination && typeof payload.pagination === "object") {
         setPipelineScope({
           loaded: Number(payload.pagination.loaded || 0),
@@ -394,7 +410,11 @@ export default function PipelinePage() {
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  // Recarrega ao trocar o filtro de quem: o recorte é feito no SERVIDOR (a
+  // consulta filtra por dono), não na tela. Filtrar no cliente devolveria só
+  // as leads que já vieram no lote de 500 — o funil de um corretor grande
+  // apareceria cortado sem nenhum aviso.
+  useEffect(() => { void load(); }, [filtroDeQuem]);
 
   async function loadDiscardReport() {
     try {
@@ -984,6 +1004,46 @@ export default function PipelinePage() {
               <option value="prioridade">Prioridade inteligente</option><option value="score">Maior score</option><option value="valor">Maior valor</option><option value="recente">Atualização recente</option>
             </select>
           </div>
+          {/* ── DE QUEM É ESTE FUNIL ─────────────────────────────────────────
+              Só aparece para quem enxerga mais de uma carteira: a rota manda
+              `equipe: null` para corretor, e um seletor que não filtra nada
+              seria só ruído na barra dele.
+
+              Corretor e equipe no MESMO seletor porque a pergunta é uma só —
+              "o funil de quem?" — e dois controles lado a lado permitiriam
+              escolher os dois, um estado que o servidor não sabe responder. */}
+          {equipe && (equipe.corretores.length > 0 || equipe.gerentes.length > 0) ? (
+            <label className="atlas-kanban-filtro-dono">
+              Funil de
+              <select
+                value={filtroDeQuem ? `${filtroDeQuem.tipo}:${filtroDeQuem.id}` : ""}
+                onChange={(event) => {
+                  const v = event.target.value;
+                  if (!v) { setFiltroDeQuem(null); return; }
+                  const [tipo, id] = v.split(":");
+                  setFiltroDeQuem({ tipo: tipo as "corretor" | "equipe", id });
+                }}
+              >
+                <option value="">Todo mundo</option>
+                {equipe.gerentes.length ? (
+                  <optgroup label="Equipes">
+                    {equipe.gerentes.map((g) => (
+                      <option key={g.id} value={`equipe:${g.id}`}>
+                        {g.nome || "Sem nome"} e time ({g.pessoas} pessoas)
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+                {equipe.corretores.length ? (
+                  <optgroup label="Corretores">
+                    {equipe.corretores.map((c) => (
+                      <option key={c.id} value={`corretor:${c.id}`}>{c.nome || "Sem nome"}</option>
+                    ))}
+                  </optgroup>
+                ) : null}
+              </select>
+            </label>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setCompact((value) => !value)} aria-pressed={compact} className={`atlas-kanban-toggle ${compact ? "is-active" : ""}`}>{compact ? "Visão compacta" : "Visão confortável"}</button>
             <button type="button" onClick={() => setHideEmpty((value) => !value)} aria-pressed={hideEmpty} disabled={Boolean(etapasVisiveis)} title={etapasVisiveis ? "Você escolheu as colunas à mão — limpe a escolha para voltar ao automático." : undefined} className={`atlas-kanban-toggle ${hideEmpty && !etapasVisiveis ? "is-active" : ""} disabled:cursor-not-allowed disabled:opacity-40`}>{hideEmpty ? "Mostrando etapas ativas" : "Mostrar todas as etapas"}</button>

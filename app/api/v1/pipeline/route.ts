@@ -12,7 +12,7 @@ import { readCompatiblePipeline } from "@/lib/atlas/core-v2/live-repositories";
 import { DISCARD_REASON_KEYS, DISCARD_TAXONOMY_VERSION, getDiscardReason } from "@/lib/atlas/discard-reasons";
 import { tentativasDaLead, TENTATIVAS_MINIMAS, HA_PISO } from "@/lib/crm/contact-attempts";
 import { orientar, orientarAcesso } from "@/lib/crm/pipeline-guidance";
-import { leLiderancaInteira } from "@/lib/crm/escopo-de-leitura";
+import { idsDaEquipe, leLiderancaInteira } from "@/lib/crm/escopo-de-leitura";
 
 export const dynamic = "force-dynamic";
 
@@ -57,10 +57,46 @@ export async function GET(request: Request) {
     // compartilhada com a listagem de leads: eram duas cópias, e por um tempo
     // responderam diferente — o Kanban filtrava por dono e a listagem não.
     const lideranca = leLiderancaInteira(identity);
+
+    // ── FILTRO POR CORRETOR E POR EQUIPE ──────────────────────────────────
+    //
+    // Só faz sentido para quem já enxerga o funil inteiro: um corretor não
+    // "filtra" para ver a carteira de outro — ele simplesmente não a vê. Por
+    // isso os parâmetros são IGNORADOS para quem não é liderança, em vez de
+    // recusados: recusar entregaria a informação de que a pessoa existe.
+    const params = new URL(request.url).searchParams;
+    const corretorPedido = lideranca ? (params.get("corretor") || "").trim() : "";
+    const equipePedida = lideranca ? (params.get("equipe") || "").trim() : "";
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    let idsDoFiltro: string[] | null = null;
+    let filtroAplicado: { tipo: "corretor" | "equipe"; id: string; pessoas: number } | null = null;
+    if (equipePedida && UUID.test(equipePedida)) {
+      // A equipe sai da HIERARQUIA (`reports_to`), não da coluna de texto
+      // `team` — que está vazia em toda a base e fazia o filtro devolver só o
+      // próprio gerente. Ver lib/crm/escopo-de-leitura.
+      const { data: perfis } = await identity.supabase
+        .from("profiles").select("id,reports_to")
+        .eq("organization_id", identity.organizationId).eq("active", true);
+      idsDoFiltro = idsDaEquipe(perfis ?? [], equipePedida);
+      filtroAplicado = { tipo: "equipe", id: equipePedida, pessoas: idsDoFiltro.length };
+    } else if (corretorPedido && UUID.test(corretorPedido)) {
+      // Confere que a pessoa é da MESMA organização antes de filtrar por ela:
+      // um uuid de fora devolveria um funil vazio e pareceria "sem leads".
+      const { data: alvo } = await identity.supabase
+        .from("profiles").select("id")
+        .eq("organization_id", identity.organizationId).eq("id", corretorPedido).maybeSingle();
+      if (alvo) {
+        idsDoFiltro = [corretorPedido];
+        filtroAplicado = { tipo: "corretor", id: corretorPedido, pessoas: 1 };
+      }
+    }
+
     const compatiblePipeline = await readCompatiblePipeline(identity.supabase, {
       organizationId: identity.organizationId,
       limit: 500,
       ownerId: lideranca ? null : identity.userId,
+      ownerIds: idsDoFiltro,
     });
     if (!compatiblePipeline.ok) throw new Error(compatiblePipeline.error.code);
 
@@ -116,6 +152,36 @@ export async function GET(request: Request) {
         limit: 500,
       },
       canConfigureStages: ["admin", "director", "superintendent"].includes(String(role || "")),
+      /**
+       * Quem a pessoa PODE filtrar. Vem da rota, e não de uma consulta própria
+       * da tela, porque quem decide o que é visível é o servidor — a tela
+       * montar a lista por conta própria abriria a porta de mostrar nomes que
+       * a pessoa não deveria ver.
+       *
+       * Vazio para corretor: ele vê a própria carteira e ponto, então um
+       * seletor ali seria um controle que não faz nada.
+       */
+      equipe: lideranca ? await (async () => {
+        const { data: perfis } = await identity.supabase
+          .from("profiles")
+          .select("id,full_name,commercial_role,reports_to")
+          .eq("organization_id", identity.organizationId)
+          .eq("active", true)
+          .order("full_name");
+        const pessoas = (perfis ?? []).filter((p) => p.commercial_role);
+        return {
+          corretores: pessoas
+            .filter((p) => p.commercial_role === "broker")
+            .map((p) => ({ id: p.id, nome: p.full_name })),
+          // Gerente sem ninguém abaixo não vira opção: filtrar por ele
+          // devolveria o funil de uma pessoa só e o rótulo "equipe" mentiria.
+          gerentes: pessoas
+            .filter((p) => ["manager", "superintendent", "director"].includes(String(p.commercial_role)))
+            .map((p) => ({ id: p.id, nome: p.full_name, pessoas: idsDaEquipe(pessoas, p.id).length }))
+            .filter((g) => g.pessoas > 1),
+        };
+      })() : null,
+      filtroAplicado,
     });
   } catch (error) {
     logger.warn("pipeline.read_failed", { error: error instanceof Error ? error.message : String(error) });

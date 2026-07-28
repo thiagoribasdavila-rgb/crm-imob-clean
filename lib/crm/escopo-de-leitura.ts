@@ -56,3 +56,41 @@ export function leSoAPropriaCarteira(input: {
 export function filtroDaMinhaCarteira(userId: string): string {
   return `assigned_user_id.eq.${userId},assigned_to.eq.${userId},and(assigned_user_id.is.null,assigned_to.is.null)`;
 }
+
+/**
+ * Ids da EQUIPE de alguém: a pessoa e todos que reportam a ela, direta ou
+ * indiretamente.
+ *
+ * ── POR QUE `reports_to` E NÃO `team` ────────────────────────────────────────
+ *
+ * Existiam duas noções de equipe no código: esta (hierarquia por `reports_to`,
+ * a mesma que a trigger private.validate_commercial_hierarchy valida no banco)
+ * e uma por `profiles.team`, um texto livre usado no filtro da listagem de
+ * leads.
+ *
+ * Medido em 2026-07-28: `team` está VAZIO em 27 de 27 perfis ativos, enquanto
+ * `reports_to` está preenchido em 16. O filtro por texto nunca teve o que
+ * comparar — devolvia só o próprio gerente e parecia "equipe de uma pessoa".
+ * A hierarquia é a que tem dado e a que o RBAC já exige.
+ */
+export function idsDaEquipe(
+  perfis: ReadonlyArray<{ id: string; reports_to?: string | null; reportsTo?: string | null }>,
+  raizId: string,
+): string[] {
+  const equipe = new Set([raizId]);
+  // Repete até estabilizar: a cadeia pode ter mais de um nível (diretor →
+  // gerente → corretor) e a ordem da lista não é garantida.
+  let mudou = true;
+  while (mudou) {
+    mudou = false;
+    for (const p of perfis) {
+      const chefe = String(p.reports_to ?? p.reportsTo ?? "");
+      const id = String(p.id ?? "");
+      if (id && chefe && equipe.has(chefe) && !equipe.has(id)) {
+        equipe.add(id);
+        mudou = true;
+      }
+    }
+  }
+  return [...equipe];
+}

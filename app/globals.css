@@ -9876,3 +9876,30 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 /* O nome do lead na vista MOBILE tem `color: white` fixo na própria regra
    (.atlas-mobile-lead-head strong) — não é utilitário, é CSS da casa. Era o
    pior contraste da tela, 1,06:1, e some por completo no claro. */
+
+/* Seletor "Funil de" do Kanban — mesma receita dos outros controles da barra
+   (44px, #0a1120, radius 12) para não parecer um enxerto. */
+.atlas-kanban-filtro-dono {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #9aa8bb;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.atlas-kanban-filtro-dono select {
+  min-height: 40px;
+  max-width: 260px;
+  padding: 0 30px 0 12px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 12px;
+  color: #e8eef8;
+  background: #0a1120;
+  font-size: 12px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.atlas-kanban-filtro-dono select:hover {
+  border-color: rgba(56, 189, 248, 0.28);
+}

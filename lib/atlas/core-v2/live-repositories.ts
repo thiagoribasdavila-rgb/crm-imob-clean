@@ -45,6 +45,11 @@ type CompatibleLeadReadInput = CompatibleReadInput & {
    * Ausente = sem restrição (liderança vê o funil inteiro).
    */
   ownerId?: string | null;
+  /**
+   * Vários donos de uma vez — o funil de uma EQUIPE. Tem precedência sobre
+   * `ownerId`: quem pede a equipe já resolveu quem está dentro dela.
+   */
+  ownerIds?: string[] | null;
 };
 
 type CompatibleReadFailure = {
@@ -126,7 +131,14 @@ export async function readCompatibleLeads(
     // Dono, ou lead da fila (sem dono em nenhuma das duas colunas — elas
     // divergem nesta base). Espelha a regra que `move_pipeline_lead` já aplica
     // na escrita: leitura e escrita têm de concordar.
-    if (input.ownerId) {
+    if (input.ownerIds?.length) {
+      // Uma lead conta como da equipe se QUALQUER uma das duas colunas de dono
+      // apontar para alguém dela. Sem lead-sem-dono aqui: a fila de não
+      // atribuídos não pertence a equipe nenhuma, e incluí-la faria o funil do
+      // gerente inchar com o que ainda não é dele.
+      const ids = input.ownerIds.join(",");
+      query = query.or(`assigned_user_id.in.(${ids}),assigned_to.in.(${ids})`);
+    } else if (input.ownerId) {
       query = query.or(
         `assigned_user_id.eq.${input.ownerId},assigned_to.eq.${input.ownerId},and(assigned_user_id.is.null,assigned_to.is.null)`,
       );
