@@ -124,3 +124,36 @@ test("o filtro de dono roda no BANCO, não em memória", () => {
   assert.match(repo, /and\(assigned_user_id\.is\.null,assigned_to\.is\.null\)/,
     "lead sem dono é da fila e continua visível — esconder criaria lead invisível para todos");
 });
+
+test("as etapas de FECHAMENTO existem como coluna escolhível", () => {
+  // ── O DEFEITO ─────────────────────────────────────────────────────────────
+  //
+  // `perdido` e `comprou_outro` nascem com `visible: false` e eram REMOVIDAS
+  // da lista de etapas. Medido no navegador com o login do corretor: o quadro
+  // oferecia 7 etapas de 9, e as 12 leads descartadas dele não tinham coluna
+  // nenhuma onde aparecer. Descartar fazia a lead sumir da tela.
+  //
+  // Elas continuam fora do quadro por PADRÃO — quadro de trabalho é sobre o
+  // que está em jogo. Mas passam a existir na lista, para quem quiser marcá-las.
+  assert.ok(!/DEFAULT_PIPELINE_STAGES\.filter\(\(stage\) => stage\.visible/.test(pagina),
+    "filtrar por `visible` na origem tira a etapa até de quem quer escolhê-la");
+  assert.match(pagina, /const FECHAMENTO = new Set<StageKey>\(\["perdido", "comprou_outro"\]\)/);
+  assert.match(pagina, /const emJogo = stageData\.filter\(\(stage\) => !FECHAMENTO\.has\(stage\.key\)\)/,
+    "fora por padrão, disponível por escolha");
+});
+
+test("coluna escolhida à mão não é esvaziada pelo filtro de foco", () => {
+  // O foco ("atrasadas", "quentes") prioriza trabalho em ABERTO e descarta lead
+  // fechada. Aplicá-lo às colunas de fechamento produzia "Perdido 0" com 12
+  // descartadas no banco — a coluna aparecia e mentia.
+  assert.match(pagina, /const fonte = FECHAMENTO\.has\(stage\.key\) \? leadsBuscadas : visibleLeads;/);
+  assert.match(pagina, /const leadsBuscadas = useMemo/,
+    "precisa existir uma lista que passa só pela busca, sem o foco");
+});
+
+test("a escolha de colunas é da pessoa e sobrevive ao recarregar", () => {
+  assert.match(pagina, /etapasVisiveis\?: StageKey\[\]/, "entra nas preferências gravadas");
+  assert.match(pagina, /Array\.isArray\(preferences\.etapasVisiveis\)/, "e é lida de volta");
+  assert.match(pagina, /return escolhidas\.length \? escolhidas : stageData;/,
+    "desmarcar tudo devolveria um quadro vazio sem explicação");
+});

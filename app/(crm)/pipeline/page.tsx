@@ -10,7 +10,22 @@ import { DEFAULT_PIPELINE_STAGES, type PipelineStageDefinition, type PipelineSta
 import { DISCARD_REASONS } from "@/lib/atlas/discard-reasons";
 import { conhecimentoDaEtapa, extrairRecusa } from "@/lib/crm/pipeline-guidance";
 
-const defaultStages = DEFAULT_PIPELINE_STAGES.filter((stage) => stage.visible && stage.outcome !== "lost" && stage.outcome !== "buyer_profile");
+/**
+ * ── AS ETAPAS DE FECHAMENTO VOLTAM A SER COLUNA ─────────────────────────────
+ *
+ * `perdido` e `comprou_outro` nascem com `visible: false` e eram removidas
+ * aqui. Consequência medida: o corretor tinha 12 leads descartadas e NENHUMA
+ * coluna onde elas aparecessem — o quadro mostrava 7 etapas de 9, e as leads
+ * simplesmente sumiam ao serem descartadas.
+ *
+ * Elas ficam FORA por padrão (quadro de trabalho é sobre o que está em jogo),
+ * mas passam a existir na lista para quem quiser marcá-las em "Escolher
+ * colunas". É lá que se confere o que saiu do funil e se desfaz um descarte
+ * errado — e sem a coluna, o desfazer não tinha de onde partir.
+ */
+const defaultStages = DEFAULT_PIPELINE_STAGES;
+/** Fora do quadro por padrão; entram por escolha explícita da pessoa. */
+const FECHAMENTO = new Set<StageKey>(["perdido", "comprou_outro"]);
 type StageKey = PipelineStageKey;
 type FocusKey = "prioridade" | "sla" | "atrasadas" | "sem_acao" | "quentes" | "todas";
 type SortKey = "prioridade" | "score" | "valor" | "recente";
@@ -20,6 +35,14 @@ type PipelinePreferences = {
   compact?: boolean;
   focusMode?: boolean;
   hideEmpty?: boolean;
+  /**
+   * Etapas que ESTA pessoa escolheu ver. Ausente = decide pelo `hideEmpty`.
+   *
+   * Escolha explícita vence "esconder vazias": quem marcou "Descartados" quer
+   * a coluna mesmo no dia em que ela está zerada — é lá que se confere o que
+   * foi descartado e se desfaz um descarte errado.
+   */
+  etapasVisiveis?: StageKey[];
   mobileStage?: StageKey;
 };
 type PipelineScope = {
@@ -256,6 +279,12 @@ export default function PipelinePage() {
    * medida que as etapas se preenchem, elas aparecem sozinhas.
    */
   const [hideEmpty, setHideEmpty] = useState(true);
+  /**
+   * `null` = ninguém escolheu ainda; vale a regra automática de esconder vazias.
+   * Um conjunto = escolha explícita da pessoa, e ela manda.
+   */
+  const [etapasVisiveis, setEtapasVisiveis] = useState<StageKey[] | null>(null);
+  const [escolhendoEtapas, setEscolhendoEtapas] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<StageKey | null>(null);
   const [lastMove, setLastMove] = useState<{ moveId: string; leadId: string; leadName: string; from: StageKey; to: StageKey } | null>(null);
@@ -281,6 +310,7 @@ export default function PipelinePage() {
         if (typeof preferences.compact === "boolean") setCompact(preferences.compact);
         if (typeof preferences.focusMode === "boolean") setFocusMode(preferences.focusMode);
         if (typeof preferences.hideEmpty === "boolean") setHideEmpty(preferences.hideEmpty);
+        if (Array.isArray(preferences.etapasVisiveis)) setEtapasVisiveis(preferences.etapasVisiveis);
         if (preferences.mobileStage) setMobileStage(preferences.mobileStage);
       }
     } catch {
@@ -294,9 +324,9 @@ export default function PipelinePage() {
     if (!preferencesHydrated) return;
     window.sessionStorage.setItem(
       PIPELINE_PREFERENCES_KEY,
-      JSON.stringify({ focus, sort, compact, focusMode, hideEmpty, mobileStage }),
+      JSON.stringify({ focus, sort, compact, focusMode, hideEmpty, etapasVisiveis, mobileStage }),
     );
-  }, [compact, focus, focusMode, hideEmpty, mobileStage, preferencesHydrated, sort]);
+  }, [compact, focus, focusMode, hideEmpty, etapasVisiveis, mobileStage, preferencesHydrated, sort]);
 
   async function authenticatedFetch(input: RequestInfo, init?: RequestInit) {
     const { data } = await supabase.auth.getSession();
@@ -313,7 +343,7 @@ export default function PipelinePage() {
       const payload = await response.json();
       if (!response.ok) throw new Error("O pipeline não pôde ser carregado agora. Tente novamente em instantes.");
       setLeads((payload.leads ?? []) as Lead[]);
-      if (Array.isArray(payload.stages)) setStages((payload.stages as PipelineStageDefinition[]).filter((stage) => stage.visible && stage.outcome !== "lost" && stage.outcome !== "buyer_profile"));
+      if (Array.isArray(payload.stages)) setStages(payload.stages as PipelineStageDefinition[]);
       setCanConfigureStages(payload.canConfigureStages === true);
       if (payload.pagination && typeof payload.pagination === "object") {
         setPipelineScope({
@@ -451,6 +481,22 @@ export default function PipelinePage() {
     setLastMove(null);
   }
 
+  /**
+   * Leads que passam só pela BUSCA, sem o filtro de foco.
+   *
+   * O foco ("atrasadas", "quentes", "sem ação") é sobre priorizar trabalho em
+   * ABERTO — e por isso descarta lead fechada. Aplicá-lo às colunas de
+   * fechamento esvaziava justamente a coluna que a pessoa marcou para ver:
+   * "Perdido 0" com 12 descartadas no banco. Coluna escolhida à mão não pode
+   * ser esvaziada por um filtro que fala de outra coisa.
+   */
+  const leadsBuscadas = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return normalized
+      ? leads.filter((lead) => [lead.name, lead.email, lead.phone, lead.temperature, lead.source, lead.purpose, metaCampaign(lead), ...(lead.preferred_regions ?? [])].some((value) => value?.toLowerCase().includes(normalized)))
+      : leads;
+  }, [leads, query]);
+
   const visibleLeads = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     const searched = normalized ? leads.filter((lead) => [lead.name, lead.email, lead.phone, lead.temperature, lead.source, lead.purpose, metaCampaign(lead), ...(lead.preferred_regions ?? [])].some((value) => value?.toLowerCase().includes(normalized))) : leads;
@@ -556,7 +602,10 @@ export default function PipelinePage() {
   const LIMITE_DE_CARDS_POR_COLUNA = 100;
 
   const stageData = useMemo(() => stages.map((stage) => {
-    const items = visibleLeads.filter((lead) => (lead.status ?? "novo") === stage.key);
+    // Fechamento vem da lista sem foco: a coluna existe para conferir o que
+    // saiu do funil e desfazer descarte errado, não para priorizar trabalho.
+    const fonte = FECHAMENTO.has(stage.key) ? leadsBuscadas : visibleLeads;
+    const items = fonte.filter((lead) => (lead.status ?? "novo") === stage.key);
     const comOrcamento = items.filter((lead) => Number(lead.budget_max ?? 0) > 0);
     return {
       ...stage,
@@ -571,8 +620,26 @@ export default function PipelinePage() {
         : null,
       semOrcamento: items.length - comOrcamento.length,
     };
-  }), [stages, visibleLeads]);
-  const boardStages = useMemo(() => hideEmpty ? stageData.filter((stage) => stage.items.length > 0) : stageData, [hideEmpty, stageData]);
+  }), [leadsBuscadas, stages, visibleLeads]);
+  /**
+   * Quais colunas o quadro desenha.
+   *
+   * Escolha explícita da pessoa vence tudo. Sem escolha, cai na regra
+   * automática de esconder vazias — que é boa na largada (197 de 199 leads em
+   * "novo", 7 colunas vazias) e ruim depois, quando alguém quer acompanhar uma
+   * etapa que ainda não encheu.
+   *
+   * A trava do fim impede o quadro vazio: desmarcar tudo devolveria uma tela
+   * sem nada e sem explicação.
+   */
+  const boardStages = useMemo(() => {
+    if (etapasVisiveis) {
+      const escolhidas = stageData.filter((stage) => etapasVisiveis.includes(stage.key));
+      return escolhidas.length ? escolhidas : stageData;
+    }
+    const emJogo = stageData.filter((stage) => !FECHAMENTO.has(stage.key));
+    return hideEmpty ? emJogo.filter((stage) => stage.items.length > 0) : emJogo;
+  }, [etapasVisiveis, hideEmpty, stageData]);
   const activeMobileStage = boardStages.some((stage) => stage.key === mobileStage) ? mobileStage : boardStages[0]?.key;
   const dailyFocus = useMemo(() => visibleLeads.filter(isOpenLead).slice(0, 3), [visibleLeads]);
 
@@ -851,12 +918,34 @@ export default function PipelinePage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setCompact((value) => !value)} aria-pressed={compact} className={`atlas-kanban-toggle ${compact ? "is-active" : ""}`}>{compact ? "Visão compacta" : "Visão confortável"}</button>
-            <button type="button" onClick={() => setHideEmpty((value) => !value)} aria-pressed={hideEmpty} className={`atlas-kanban-toggle ${hideEmpty ? "is-active" : ""}`}>{hideEmpty ? "Mostrando etapas ativas" : "Mostrar todas as etapas"}</button>
+            <button type="button" onClick={() => setHideEmpty((value) => !value)} aria-pressed={hideEmpty} disabled={Boolean(etapasVisiveis)} title={etapasVisiveis ? "Você escolheu as colunas à mão — limpe a escolha para voltar ao automático." : undefined} className={`atlas-kanban-toggle ${hideEmpty && !etapasVisiveis ? "is-active" : ""} disabled:cursor-not-allowed disabled:opacity-40`}>{hideEmpty ? "Mostrando etapas ativas" : "Mostrar todas as etapas"}</button>
+            {/* ── ESCOLHER AS COLUNAS ────────────────────────────────────────
+                "Esconder vazias" é tudo ou nada. Quem acompanha descarte quer a
+                coluna Descartados mesmo no dia em que ela está zerada — é lá que
+                se confere o que saiu do funil e se desfaz um descarte errado.
+                A escolha é de cada pessoa e fica gravada nas preferências. */}
+            <button type="button" onClick={() => setEscolhendoEtapas((v) => !v)} aria-expanded={escolhendoEtapas} className={`atlas-kanban-toggle ${etapasVisiveis ? "is-active" : ""}`}>
+              {etapasVisiveis ? `Colunas: ${etapasVisiveis.length} escolhidas` : "Escolher colunas"}
+            </button>
           </div>
         </div>
         {/* A origem-IA passa a ser dita por 1px no acento (.cc23-seam) em vez de uma
             caixa inteira: o mesmo significado sem competir com o quadro abaixo. */}
         {aiSuggestion ? <div className="cc23-seam mx-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 py-2 sm:mx-6" data-signal-source="deterministic-loaded-leads"><span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[.12em] text-[color:var(--atlas-accent)]">IA sugere</span><span className="min-w-0 font-mono text-[11px] leading-5 tabular-nums text-[color:var(--atlas-text-secondary)]" title="Sugestão determinística calculada apenas com os leads já carregados neste quadro.">{aiSuggestion}</span></div> : null}
+        {escolhendoEtapas ? <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.06] px-4 py-3 sm:px-6" role="group" aria-label="Escolher quais colunas aparecem">
+          <span className="text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500">Colunas do quadro</span>
+          {stageData.map((stage) => {
+            const marcada = etapasVisiveis ? etapasVisiveis.includes(stage.key) : boardStages.some((s2) => s2.key === stage.key);
+            return <button key={stage.key} type="button" role="switch" aria-checked={marcada} onClick={() => setEtapasVisiveis((atual) => {
+              const base = atual ?? boardStages.map((s2) => s2.key);
+              return base.includes(stage.key) ? base.filter((k) => k !== stage.key) : [...base, stage.key];
+            })} className={`rounded-full border px-3 py-1.5 text-xs transition ${marcada ? "border-sky-400/40 bg-sky-400/10 text-sky-100" : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20"}`}>
+              {stage.label} <span className="font-mono text-[10px] opacity-70">{stage.items.length}</span>
+            </button>;
+          })}
+          {etapasVisiveis ? <button type="button" onClick={() => setEtapasVisiveis(null)} className="text-[11px] text-slate-400 underline decoration-slate-600 underline-offset-4 hover:text-slate-200">voltar ao automático</button> : null}
+          <p className="w-full text-[11px] leading-4 text-slate-500">Desmarcar tudo devolveria um quadro vazio; por isso a última coluna não sai.</p>
+        </div> : null}
         <div className="atlas-kanban-mobile-nav" role="tablist" aria-label="Escolher etapa no celular">{boardStages.map((stage) => <button key={stage.key} type="button" role="tab" aria-selected={activeMobileStage === stage.key} onClick={() => setMobileStage(stage.key)} className={activeMobileStage === stage.key ? "is-active" : ""}><span>{stage.label}</span><b>{stage.items.length}</b></button>)}</div>
         <div className="atlas-kanban-scroll p-4 sm:p-6" tabIndex={0} aria-label="Quadro Kanban com rolagem horizontal" aria-busy={loading}>
           <div className={`atlas-kanban-board ${compact ? "is-compact" : ""}`} style={{ "--kanban-columns": boardStages.length } as CSSProperties} aria-busy={loading || Boolean(savingId)}>
