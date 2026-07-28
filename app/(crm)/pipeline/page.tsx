@@ -538,7 +538,22 @@ export default function PipelinePage() {
    * resto vira uma linha honesta com o caminho para a fila completa, que é a
    * tela feita para trabalhar volume.
    */
-  const LIMITE_DE_CARDS_POR_COLUNA = 25;
+  /**
+   * ── 25 ERA POUCO DEMAIS ─────────────────────────────────────────────────
+   *
+   * O raciocínio acima continua válido: 178 cards arrastáveis numa coluna não
+   * é completude, é uma pilha que ninguém rola. Mas 25 de 178 produziu o
+   * relato "as leads não estão aparecendo todas" — e produziu com razão: some
+   * 86% da base sem que a pessoa perceba que existe um corte.
+   *
+   * 100 é o meio termo medido contra esta base: cobre a coluna inteira em
+   * qualquer etapa que não seja a de entrada, e em "novo" mostra o suficiente
+   * para uma semana de trabalho antes de a linha de "restantes" aparecer.
+   *
+   * A linha de restantes continua e aponta para a fila completa — é lá que se
+   * trabalha volume, não aqui.
+   */
+  const LIMITE_DE_CARDS_POR_COLUNA = 100;
 
   const stageData = useMemo(() => stages.map((stage) => {
     const items = visibleLeads.filter((lead) => (lead.status ?? "novo") === stage.key);

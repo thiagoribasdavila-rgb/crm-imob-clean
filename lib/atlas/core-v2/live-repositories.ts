@@ -33,6 +33,18 @@ type CompatibleReadInput = {
 
 type CompatibleLeadReadInput = CompatibleReadInput & {
   includeArchived?: boolean;
+  /**
+   * Restringe a leitura ao que este dono pode ACIONAR — e à fila sem dono.
+   *
+   * Precisa acontecer no BANCO, não depois: `mapLegacyLead` devolve
+   * `assigned_to`/`assigned_user_id` nulos, então filtrar em memória deixava
+   * passar justamente as leads de outra pessoa. Relatado pelo dono do produto:
+   * o corretor via 199 leads e recebia 403 ao mover 3 delas, com a mensagem
+   * "ela não aparece na sua carteira" — aparecia.
+   *
+   * Ausente = sem restrição (liderança vê o funil inteiro).
+   */
+  ownerId?: string | null;
 };
 
 type CompatibleReadFailure = {
@@ -111,6 +123,14 @@ export async function readCompatibleLeads(
       .select(colunas, { count: "exact" })
       .eq("organization_id", organizationId);
     if (!input.includeArchived) query = query.not("status", "in", archivedLeadStatuses);
+    // Dono, ou lead da fila (sem dono em nenhuma das duas colunas — elas
+    // divergem nesta base). Espelha a regra que `move_pipeline_lead` já aplica
+    // na escrita: leitura e escrita têm de concordar.
+    if (input.ownerId) {
+      query = query.or(
+        `assigned_user_id.eq.${input.ownerId},assigned_to.eq.${input.ownerId},and(assigned_user_id.is.null,assigned_to.is.null)`,
+      );
+    }
     return query.order("created_at", { ascending: false, nullsFirst: false }).limit(limit);
   };
 

@@ -49,9 +49,16 @@ function authError(error: unknown) {
 export async function GET(request: Request) {
   try {
     const identity = await requireApiIdentity(request);
+    // A restrição de dono vai para a CONSULTA. Filtrar depois não funciona:
+    // `mapLegacyLead` devolve as colunas de dono nulas, e as leads de outra
+    // pessoa passavam batido.
+    const papelDeLeitura = identity.commercialRole || identity.role;
+    const VE_O_FUNIL_INTEIRO = new Set(["director", "manager", "superintendent", "admin"]);
+    const lideranca = VE_O_FUNIL_INTEIRO.has(String(papelDeLeitura || "")) || identity.role === "admin";
     const compatiblePipeline = await readCompatiblePipeline(identity.supabase, {
       organizationId: identity.organizationId,
       limit: 500,
+      ownerId: lideranca ? null : identity.userId,
     });
     if (!compatiblePipeline.ok) throw new Error(compatiblePipeline.error.code);
 
@@ -65,6 +72,7 @@ export async function GET(request: Request) {
       } else logger.warn("pipeline.stage_settings_unavailable", { organizationId: identity.organizationId, message: stageSettings.error.message });
     }
     const role = identity.commercialRole || identity.role;
+
     const leads = compatiblePipeline.rows.sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
 
     // Medição de SLA de primeiro contato. Sai daqui porque o Kanban já sabe

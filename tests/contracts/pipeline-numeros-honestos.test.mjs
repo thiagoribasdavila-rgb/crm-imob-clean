@@ -23,6 +23,7 @@ import path from "node:path";
 
 const raiz = path.resolve(import.meta.dirname, "..", "..");
 const pagina = fs.readFileSync(path.join(raiz, "app", "(crm)", "pipeline", "page.tsx"), "utf8");
+const ler = (...p) => fs.readFileSync(path.join(raiz, ...p), "utf8");
 
 test("valor de pipeline exige cobertura mínima de orçamento", () => {
   assert.match(pagina, /COBERTURA_MINIMA_DE_ORCAMENTO\s*=\s*0\.4/,
@@ -50,7 +51,15 @@ test("a coluna não anuncia R$ 0,00 quando ninguém preencheu orçamento", () =>
 });
 
 test("a coluna desenha um número limitado de cards", () => {
-  assert.match(pagina, /LIMITE_DE_CARDS_POR_COLUNA\s*=\s*25/);
+  // O que precisa ser verdade é que EXISTA um teto e que ele seja usado —
+  // não que ele valha um número específico. Fixar 25 aqui travou um ajuste
+  // legítimo: com 178 leads em "novo", 25 sumia com 86% da base e o dono
+  // relatou "as leads não estão aparecendo todas". A faixa protege dos dois
+  // extremos — teto tão baixo que esconde o trabalho, ou alto a ponto de
+  // devolver a pilha que ninguém rola.
+  const teto = Number(pagina.match(/LIMITE_DE_CARDS_POR_COLUNA\s*=\s*(\d+)/)?.[1]);
+  assert.ok(Number.isFinite(teto), "o teto de cards por coluna sumiu");
+  assert.ok(teto >= 50 && teto <= 150, `teto de ${teto} fora da faixa útil (50–150)`);
   assert.match(pagina, /visiveis: items\.slice\(0, LIMITE_DE_CARDS_POR_COLUNA\)/);
   assert.match(pagina, /\{stage\.visiveis\.map\(\(lead\)/,
     "renderizar stage.items inteiro traz os 205 cards de volta");
@@ -85,4 +94,33 @@ test("saiu a métrica que valia zero e não mudava decisão", () => {
     "comprou_outro vale 0 nesta base e a lista já aparece na seção própria — métrica que não muda decisão é ruído",
   );
   assert.match(pagina, /2xl:grid-cols-5/, "cinco métricas, não seis");
+});
+
+test("a leitura do pipeline concorda com a escrita sobre QUEM vê o quê", () => {
+  // ── O DEFEITO QUE ISTO FIXA ───────────────────────────────────────────────
+  //
+  // Relatado pelo dono e confirmado com o login real: o corretor via as 199
+  // leads da empresa, inclusive 3 de OUTROS corretores ativos. Ao tentar
+  // descartá-las vinha 403 — correto — com a mensagem "esta lead está com
+  // outra pessoa, ela não aparece na sua carteira". Aparecia. A recusa
+  // contradizia a tela, e a conclusão natural era "o sistema está quebrado".
+  //
+  // A regra de quem pode MOVER já existia na RPC. Isto faz a LEITURA obedecer
+  // à mesma regra — não cria política nova.
+  const rota = ler("app", "api", "v1", "pipeline", "route.ts");
+  assert.match(rota, /ownerId: lideranca \? null : identity\.userId/,
+    "a restrição de dono precisa ir para a consulta");
+  assert.match(rota, /VE_O_FUNIL_INTEIRO/,
+    "liderança continua vendo tudo: é dela o trabalho de distribuir represadas");
+});
+
+test("o filtro de dono roda no BANCO, não em memória", () => {
+  // Filtrar depois NÃO funciona: `mapLegacyLead` devolve as colunas de dono
+  // nulas, e as leads de outra pessoa passavam batido — foi exatamente a
+  // primeira tentativa de correção, que removeu 1 das 4.
+  const repo = ler("lib", "atlas", "core-v2", "live-repositories.ts");
+  assert.match(repo, /ownerId\?: string \| null/);
+  assert.match(repo, /assigned_user_id\.eq\.\$\{input\.ownerId\}/);
+  assert.match(repo, /and\(assigned_user_id\.is\.null,assigned_to\.is\.null\)/,
+    "lead sem dono é da fila e continua visível — esconder criaria lead invisível para todos");
 });
