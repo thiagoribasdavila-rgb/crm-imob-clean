@@ -112,7 +112,10 @@ function clampPage(value: string | null) {
 
 function clampLimit(value: string | null) {
   const parsed = Number(value || "25");
-  return Number.isFinite(parsed) ? Math.min(50, Math.max(10, Math.trunc(parsed))) : 25;
+  // Teto 100 = o mesmo do seletor "por página" (10/20/50/100) e da rota de
+  // leads. A paginação aqui é fatia de lista já em memória (o custo real tem
+  // teto próprio em MAX_ANALYSIS_ROWS), então 100 não muda o peso da rota.
+  return Number.isFinite(parsed) ? Math.min(100, Math.max(10, Math.trunc(parsed))) : 25;
 }
 
 export async function GET(request: NextRequest) {

@@ -135,6 +135,18 @@ export default function CustomersPage() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [segment, setSegment] = useState<Segment>("active");
   const [page, setPage] = useState(1);
+  /**
+   * Mesmo seletor "por página" da tela de Leads (10/20/50/100) — a revisão
+   * apontou a divergência: lá dava para escolher, aqui era 25 fixo. A chave
+   * própria guarda a escolha desta tela.
+   */
+  const [porPagina, setPorPagina] = useState(20);
+  useEffect(() => {
+    try {
+      const salvo = Number(window.sessionStorage.getItem("atlas:customers-per-page:v1"));
+      if ([10, 20, 50, 100].includes(salvo)) setPorPagina(salvo);
+    } catch { /* preferência corrompida: fica o padrão */ }
+  }, []);
   const [copied, setCopied] = useState<string | null>(null);
 
   const sessionToken = useCallback(async () => {
@@ -145,7 +157,7 @@ export default function CustomersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: "25", segment });
+      const params = new URLSearchParams({ page: String(page), limit: String(porPagina), segment });
       if (debouncedQuery) params.set("q", debouncedQuery);
       const response = await fetch(`/api/v1/customers?${params}`, {
         headers: { Authorization: `Bearer ${await sessionToken()}` },
@@ -160,7 +172,7 @@ export default function CustomersPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedQuery, page, segment, sessionToken]);
+  }, [debouncedQuery, page, porPagina, segment, sessionToken]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -564,20 +576,55 @@ export default function CustomersPage() {
           })}
         </div>
 
-        {data && data.page.pages > 1 ? (
+        {data && data.page.total > 0 ? (
           <nav
             className="cc6-hairline flex flex-wrap items-center justify-between gap-3 pt-3"
             aria-label="Paginação de clientes"
           >
+            <label className="atlas-pagination-tamanho">
+              Mostrar
+              <select
+                className={focusRing}
+                value={porPagina}
+                disabled={loading}
+                onChange={(event) => {
+                  const escolha = Number(event.target.value);
+                  setPorPagina(escolha);
+                  setPage(1);
+                  try {
+                    window.sessionStorage.setItem("atlas:customers-per-page:v1", String(escolha));
+                  } catch { /* sem storage, sem persistência — a tela segue */ }
+                }}
+              >
+                {[10, 20, 50, 100].map((opcao) => (
+                  <option key={opcao} value={opcao}>
+                    {opcao}
+                  </option>
+                ))}
+              </select>
+              por página
+            </label>
+            <span className="text-xs text-[#9aa8bb]">
+              <strong className="cc6-num font-semibold text-[#aab6ca]">
+                {(data.page.number - 1) * data.page.limit + 1}
+              </strong>
+              –
+              <strong className="cc6-num font-semibold text-[#aab6ca]">
+                {Math.min(data.page.number * data.page.limit, data.page.total)}
+              </strong>{" "}
+              de <strong className="cc6-num font-semibold text-[#aab6ca]">{data.page.total}</strong>{" "}
+              {data.page.total === 1 ? "cliente" : "clientes"}
+            </span>
+            <span className="inline-flex flex-wrap items-center gap-3">
             <button
               type="button"
               className="cc6-ghost-btn disabled:pointer-events-none disabled:opacity-40"
               disabled={loading || data.page.number <= 1}
               onClick={() => setPage((current) => Math.max(1, current - 1))}
             >
-              ← Anterior
+              <span aria-hidden="true">← </span>Anterior
             </button>
-            <span className="text-xs text-[#6b7890]">
+            <span className="text-xs text-[#9aa8bb]">
               Página <strong className="cc6-num font-semibold text-[#aab6ca]">{data.page.number}</strong>{" "}
               de <strong className="cc6-num font-semibold text-[#aab6ca]">{data.page.pages}</strong>
             </span>
@@ -587,8 +634,9 @@ export default function CustomersPage() {
               disabled={loading || data.page.number >= data.page.pages}
               onClick={() => setPage((current) => current + 1)}
             >
-              Próxima →
+              Próxima<span aria-hidden="true"> →</span>
             </button>
+            </span>
           </nav>
         ) : null}
 

@@ -6825,9 +6825,55 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   background: rgba(56, 189, 248, 0.07);
 }
 .atlas-pagination span {
-  color: #607087;
-  font-size: 9px;
+  /* #9aa8bb ≈ 6,3:1 sobre o gradiente do painel (era #607087 a 3,88:1,
+     abaixo do AA) e 11px no lugar de 9px — é o texto que diz onde você está. */
+  color: #9aa8bb;
+  font-size: 11px;
 }
+/* A barra ganhou três blocos (tamanho · contagem · navegação); em tela
+   estreita eles quebram linha em vez de espremer. */
+.atlas-pagination {
+  flex-wrap: wrap;
+}
+.atlas-pagination-tamanho {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #9aa8bb;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.atlas-pagination-tamanho select {
+  min-height: 44px;
+  padding: 0 34px 0 12px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 12px;
+  color: #e8eef8;
+  background: #0a1120;
+  font-size: 12px;
+}
+.atlas-pagination-tamanho select:hover {
+  border-color: rgba(56, 189, 248, 0.28);
+  color: white;
+}
+.atlas-pagination-navegacao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+@media (max-width: 720px) {
+  .atlas-pagination-tamanho select {
+    flex: 0 1 auto;
+  }
+}
+/* SEM override de tema claro de propósito: .atlas-leads-table-panel é uma
+   ilha escura nos DOIS temas (gradiente com rgba literais, nenhuma regra
+   light a toca). Texto escuro aqui somia no claro — achado alta da revisão.
+   O select herda as cores da ilha, como os botões Anterior/Próxima. */
 .atlas-pagination strong {
   color: #cbd5e1;
 }

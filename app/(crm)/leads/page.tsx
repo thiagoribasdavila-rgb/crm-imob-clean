@@ -83,6 +83,7 @@ type SavedLeadFilters = {
   sort?: string;
   direction?: SortDirection;
   filtersOpen?: boolean;
+  porPagina?: number;
 };
 
 type LeadsPayload = {
@@ -99,7 +100,13 @@ type LeadsPayload = {
   };
 };
 
-const PAGE_SIZE = 25;
+/**
+ * Quantos contatos por página, escolhido por quem usa (pedido do dono em
+ * 2026-07-28). A rota já prende o limit em [1,100], então o teto daqui é o
+ * teto de lá — opção fora desta lista nunca chega ao servidor.
+ */
+const OPCOES_POR_PAGINA = [10, 20, 50, 100] as const;
+const POR_PAGINA_PADRAO = 20;
 const FILTER_STORAGE_KEY = "atlas:leads-filters:v1";
 const statuses = [
   { value: "", label: "Todos os status" },
@@ -260,6 +267,12 @@ function visibleLeadPriority(
   referenceTime: number,
   includeOwnership: boolean,
 ): LeadPriority | null {
+  // Lead encerrada não entra na fila de ação — flagrado com captura de tela em
+  // 2026-07-28: lead PERDIDA aparecia com "1º contato vencido · Ligue agora".
+  // Mandar ligar para quem já foi descartado é o oposto de priorizar. O irmão
+  // deste filtro, stalledSignal, já usava isOpenLead; este tinha esquecido —
+  // dois caminhos para a mesma pergunta que haviam divergido.
+  if (!isOpenLead(lead)) return null;
   const nextActionTime = lead.next_action_at
     ? new Date(lead.next_action_at).getTime()
     : Number.NaN;
@@ -376,6 +389,7 @@ export default function LeadsPage() {
   const [direction, setDirection] = useState<SortDirection>("desc");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [porPagina, setPorPagina] = useState<number>(POR_PAGINA_PADRAO);
   const [pages, setPages] = useState(1);
   const [referenceTime, setReferenceTime] = useState(0);
   const [currentRole, setCurrentRole] = useState("");
@@ -407,6 +421,9 @@ export default function LeadsPage() {
         setSort(filters.sort || "created_at");
         setDirection(filters.direction === "asc" ? "asc" : "desc");
         setFiltersOpen(Boolean(filters.filtersOpen));
+        if (OPCOES_POR_PAGINA.includes(filters.porPagina as (typeof OPCOES_POR_PAGINA)[number])) {
+          setPorPagina(filters.porPagina as number);
+        }
       }
     } catch {
       window.sessionStorage.removeItem(FILTER_STORAGE_KEY);
@@ -429,6 +446,7 @@ export default function LeadsPage() {
       sort,
       direction,
       filtersOpen,
+      porPagina,
     };
     window.sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(snapshot));
   }, [
@@ -438,6 +456,7 @@ export default function LeadsPage() {
     filtersHydrated,
     filtersOpen,
     nextAction,
+    porPagina,
     project,
     score,
     search,
@@ -509,7 +528,7 @@ export default function LeadsPage() {
 
         const params = new URLSearchParams({
           page: String(page),
-          limit: String(PAGE_SIZE),
+          limit: String(porPagina),
           sort,
           direction,
         });
@@ -548,9 +567,27 @@ export default function LeadsPage() {
           throw new Error(message || "Não foi possível carregar os leads.");
         }
         setItems(payload.data.items);
-        setSelected(new Set());
+        // A seleção NÃO é zerada: sobrevive como interseção com o que continua
+        // visível. Achado da revisão — marcar 15 leads e ampliar "Mostrar 20"
+        // para 50 (fluxo que o seletor convida) zerava tudo em silêncio. A
+        // semântica se mantém: selecionado é sempre subconjunto do visível;
+        // quem saiu da página sai da seleção.
+        setSelected((atual) => {
+          if (!atual.size) return atual;
+          const visiveis = new Set(payload.data.items.map((lead) => lead.id));
+          return new Set([...atual].filter((id) => visiveis.has(id)));
+        });
         setTotal(payload.data.page.total ?? payload.data.items.length);
-        setPages(payload.data.page.pages ?? 1);
+        const totalDePaginas = payload.data.page.pages ?? 1;
+        setPages(totalDePaginas);
+        // C) Página encalhada: transferir os últimos leads da página 3 encolhia
+        // o total e a busca voltava vazia SEM barra para voltar — o estado
+        // vazio dizia "nenhum lead corresponde" com 20 leads no filtro. Se a
+        // página pedida passou a não existir, cai para a última válida (uma
+        // única rebusca; o clamp converge porque pages não muda sem filtro).
+        if (page > totalDePaginas && (payload.data.page.total ?? 0) > 0) {
+          setPage(Math.max(1, totalDePaginas));
+        }
         setReferenceTime(Date.now());
       } catch (loadError) {
         if (controller.signal.aborted) return;
@@ -574,6 +611,7 @@ export default function LeadsPage() {
     direction,
     nextAction,
     page,
+    porPagina,
     profiles,
     project,
     reloadKey,
@@ -1890,30 +1928,66 @@ export default function LeadsPage() {
               </div>
             </>
           )}
-          {!loading && items.length ? (
+          {total > 0 || items.length ? (
             <div className="atlas-pagination">
-              <button
-                type="button"
-                className={focusRing}
-                disabled={page <= 1}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-              >
-                ← Anterior
-              </button>
-              <span>
-                Página <strong className="cc6-num">{page}</strong> de{" "}
-                <strong className="cc6-num">{pages}</strong>
+              {/* Quem muda o tamanho volta à página 1 no MESMO clique: sem
+                  isso, estar na página 5 com 10 por página e pular para 100
+                  pediria uma página que não existe. React agrupa os dois
+                  setState — sai UMA busca, já com page=1 e o limit novo. */}
+              <label className="atlas-pagination-tamanho">
+                Mostrar
+                <select
+                  className={focusRing}
+                  value={porPagina}
+                  disabled={loading}
+                  onChange={(event) => {
+                    setPorPagina(Number(event.target.value));
+                    setPage(1);
+                  }}
+                >
+                  {OPCOES_POR_PAGINA.map((opcao) => (
+                    <option key={opcao} value={opcao}>
+                      {opcao}
+                    </option>
+                  ))}
+                </select>
+                por página
+              </label>
+              <span aria-live="polite">
+                <strong className="cc6-num">
+                  {(page - 1) * porPagina + 1}
+                </strong>
+                –
+                <strong className="cc6-num">
+                  {Math.min(page * porPagina, total || page * porPagina)}
+                </strong>{" "}
+                de <strong className="cc6-num">{total}</strong>{" "}
+                {total === 1 ? "lead" : "leads"}
               </span>
-              <button
-                type="button"
-                className={focusRing}
-                disabled={page >= pages}
-                onClick={() =>
-                  setPage((current) => Math.min(pages, current + 1))
-                }
-              >
-                Próxima →
-              </button>
+              <div className="atlas-pagination-navegacao">
+                <button
+                  type="button"
+                  className={focusRing}
+                  disabled={loading || page <= 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                >
+                  <span aria-hidden="true">← </span>Anterior
+                </button>
+                <span>
+                  Página <strong className="cc6-num">{page}</strong> de{" "}
+                  <strong className="cc6-num">{pages}</strong>
+                </span>
+                <button
+                  type="button"
+                  className={focusRing}
+                  disabled={loading || page >= pages}
+                  onClick={() =>
+                    setPage((current) => Math.min(pages, current + 1))
+                  }
+                >
+                  Próxima<span aria-hidden="true"> →</span>
+                </button>
+              </div>
             </div>
           ) : null}
         </section>
