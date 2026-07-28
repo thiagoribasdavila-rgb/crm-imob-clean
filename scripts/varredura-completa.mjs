@@ -103,18 +103,40 @@ function rotas(dir = "app/api", prefixo = "/api") {
   return achados;
 }
 
+/**
+ * ── QUEM VARRE ────────────────────────────────────────────────────────────
+ *
+ * Por padrão: usuário descartável de papel executivo, criado e apagado aqui.
+ *
+ * Com TESTE_EMAIL e TESTE_SENHA: usa um login REAL. É a única forma de medir o
+ * que um CORRETOR vê — a hierarquia RBAC exige supervisor para papel não
+ * executivo (`broker` precisa de `director` acima, que precisa de
+ * `director_decisor`), e montar essa cadeia inteira só para varrer criaria três
+ * usuários descartáveis e uma árvore que não existe na operação.
+ *
+ * Diretor vê tudo; corretor vê menos — e é o corretor que usa o sistema. Uma
+ * varredura só de diretor nunca exercita as recusas de escopo, que são
+ * justamente onde o produto decide o que ele pode.
+ */
 // ── Usuário descartável, para não mexer em conta real ──────────────────────
 const marca = `varredura-${process.pid}`;
 const email = `smoke-${marca}@atlas-teste.local`;
 const senha = `Vr!${process.pid}#Atlas2026`;
 const papel = process.argv[2] || "director";
 
+const emailReal = process.env.TESTE_EMAIL;
+const senhaReal = process.env.TESTE_SENHA;
+const usandoLoginReal = Boolean(emailReal && senhaReal);
+
 const { data: org } = await admin.from("organizations").select("id").limit(1).single();
-const { data: criado, error: erroCriar } = await admin.auth.admin.createUser({
+const { data: criado, error: erroCriar } = usandoLoginReal
+  ? { data: { user: null }, error: null }
+  : await admin.auth.admin.createUser({
   email, password: senha, email_confirm: true,
   app_metadata: { access_role: papel, organization_id: org.id },
 });
 if (erroCriar) { console.error("Não criou o usuário de teste:", erroCriar.message); process.exit(2); }
+if (usandoLoginReal) console.log(`\nUsando login REAL: ${emailReal} — nenhum usuário é criado nem apagado.`);
 /**
  * O gatilho `handle_new_auth_user` já cria o perfil — INATIVO, porque
  * `active = primeiro_perfil` e esta organização já tem gente. E a hierarquia
@@ -127,29 +149,31 @@ if (erroCriar) { console.error("Não criou o usuário de teste:", erroCriar.mess
  * supervisor. Por isso a varredura roda como diretor: qualquer outro exigiria
  * montar uma cadeia inteira só para testar telas.
  */
-const { error: erroPerfil } = await admin.from("profiles").update({
+const { error: erroPerfil } = usandoLoginReal ? { error: null } : await admin.from("profiles").update({
   full_name: "VARREDURA (apagar)",
   role: "admin", access_role: "admin", commercial_role: "director",
   reports_to: null, active: true,
-}).eq("id", criado.user.id);
+}).eq("id", criado.user?.id ?? "");
 if (erroPerfil) {
   console.error("Não ativou o perfil de teste:", erroPerfil.message);
-  await admin.auth.admin.deleteUser(criado.user.id);
+  if (criado.user) await admin.auth.admin.deleteUser(criado.user.id);
   process.exit(2);
 }
 
 async function limpar() {
+  // Login real não é nosso para apagar.
+  if (usandoLoginReal || !criado.user) return;
   await admin.from("profiles").delete().eq("id", criado.user.id);
   await admin.auth.admin.deleteUser(criado.user.id);
 }
 
-const { data: sessao, error: erroLogin } = await anon.auth.signInWithPassword({ email, password: senha });
+const { data: sessao, error: erroLogin } = await anon.auth.signInWithPassword({ email: emailReal ?? email, password: senhaReal ?? senha });
 if (erroLogin) { console.error("Login falhou:", erroLogin.message); await limpar(); process.exit(2); }
 const TOKEN = sessao.session.access_token;
 const ref = process.env.NEXT_PUBLIC_SUPABASE_URL.match(/https:\/\/([a-z0-9]+)\./)[1];
 const COOKIE = `sb-${ref}-auth-token=${encodeURIComponent("base64-" + Buffer.from(JSON.stringify(sessao.session)).toString("base64"))}`;
 
-console.log(`\nVarredura como ${papel} · ${BASE}\n`);
+console.log(`\nVarredura como ${usandoLoginReal ? emailReal : papel} · ${BASE}\n`);
 
 /**
  * Prazo por chamada.
@@ -297,9 +321,9 @@ if (pendentes.length) {
   console.log("");
 }
 if (!falhas.length) {
-  console.log(`TUDO VERDE como ${papel}: ${okPaginas} páginas, ${okRotas} chamadas de rota, 0 quedas.`);
+  console.log(`TUDO VERDE como ${usandoLoginReal ? emailReal : papel}: ${okPaginas} páginas, ${okRotas} chamadas de rota, 0 quedas.`);
 } else {
-  console.log(`${falhas.length} PROBLEMA(S) como ${papel}:\n`);
+  console.log(`${falhas.length} PROBLEMA(S) como ${usandoLoginReal ? emailReal : papel}:\n`);
   for (const f of falhas) console.log(`  [${f.tipo}] ${f.alvo}\n      ${f.motivo}`);
 }
 process.exit(falhas.length ? 1 : 0);
