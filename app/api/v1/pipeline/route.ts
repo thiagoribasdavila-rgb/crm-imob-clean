@@ -12,6 +12,7 @@ import { readCompatiblePipeline } from "@/lib/atlas/core-v2/live-repositories";
 import { DISCARD_REASON_KEYS, DISCARD_TAXONOMY_VERSION, getDiscardReason } from "@/lib/atlas/discard-reasons";
 import { tentativasDaLead, TENTATIVAS_MINIMAS, HA_PISO } from "@/lib/crm/contact-attempts";
 import { orientar, orientarAcesso } from "@/lib/crm/pipeline-guidance";
+import { leLiderancaInteira } from "@/lib/crm/escopo-de-leitura";
 
 export const dynamic = "force-dynamic";
 
@@ -52,9 +53,10 @@ export async function GET(request: Request) {
     // A restrição de dono vai para a CONSULTA. Filtrar depois não funciona:
     // `mapLegacyLead` devolve as colunas de dono nulas, e as leads de outra
     // pessoa passavam batido.
-    const papelDeLeitura = identity.commercialRole || identity.role;
-    const VE_O_FUNIL_INTEIRO = new Set(["director", "manager", "superintendent", "admin"]);
-    const lideranca = VE_O_FUNIL_INTEIRO.has(String(papelDeLeitura || "")) || identity.role === "admin";
+    // A regra de quem vê o funil inteiro vive em lib/crm/escopo-de-leitura,
+    // compartilhada com a listagem de leads: eram duas cópias, e por um tempo
+    // responderam diferente — o Kanban filtrava por dono e a listagem não.
+    const lideranca = leLiderancaInteira(identity);
     const compatiblePipeline = await readCompatiblePipeline(identity.supabase, {
       organizationId: identity.organizationId,
       limit: 500,

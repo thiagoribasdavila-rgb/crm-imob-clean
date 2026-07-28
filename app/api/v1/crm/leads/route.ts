@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { filtroDaMinhaCarteira, leSoAPropriaCarteira } from "@/lib/crm/escopo-de-leitura";
 import {
   canonicalCommercialRole,
   compatibleLeadStatuses,
@@ -145,6 +146,22 @@ export async function GET(request: NextRequest) {
   const usePagePagination = params.has("page");
   const offset = (page - 1) * limit;
   const storageSort = liveLeadSortColumn(sort);
+  // ── PISO DE CARTEIRA ──────────────────────────────────────────────────────
+  //
+  // Medido em 2026-07-28 com um corretor descartável de ZERO leads: esta rota
+  // devolvia as 200 leads da imobiliária. O filtro de dono só existia quando o
+  // CLIENTE pedia (`assigned_to`/`team_owner`) — quem não pedisse via tudo.
+  //
+  // O Kanban (GET /api/v1/pipeline) já tinha o piso: liderança vê o funil
+  // inteiro, corretor vê a própria carteira. Duas telas do MESMO dado com
+  // regras opostas é a divergência que atravessou esta sessão — e aqui ela
+  // vaza carteira entre colegas, não só confunde.
+  //
+  // Lead SEM dono continua visível para todos, de propósito: ela precisa ser
+  // vista por alguém para ser adotada; escondê-la de quem não é liderança a
+  // deixaria parada até alguém abrir um relatório.
+  const soAMinhaCarteira = leSoAPropriaCarteira(access.access.profile);
+
   // Resolver o escopo da equipe exige consulta e pode recusar o pedido; fica
   // fora do construtor da query, que precisa poder ser executado duas vezes.
   let escopoDeEquipe: string[] | null = null;
@@ -228,6 +245,12 @@ export async function GET(request: NextRequest) {
     if (escopoDeEquipe) query = query.in("assigned_user_id", escopoDeEquipe);
     else if (donoUnico) query = query.eq("assigned_user_id", donoUnico);
     else if (assignedTo === "unassigned") query = query.is("assigned_user_id", null);
+    else if (soAMinhaCarteira) {
+      // As DUAS colunas de posse, pelo mesmo motivo do filtro de empreendimento
+      // logo acima: a base tem histórico nos dois lados e escolher uma só
+      // esconderia parte da própria carteira do corretor.
+      query = query.or(filtroDaMinhaCarteira(access.access.user.id));
+    }
     if (minScore !== null) query = query.gte("score_ia", minScore);
     if (maxScore !== null) query = query.lte("score_ia", maxScore);
     // ── Próxima ação: `next_action_at` é a coluna canônica ──────────────────
@@ -344,6 +367,12 @@ export async function GET(request: NextRequest) {
         hasMore,
         nextCursor,
       },
+      /**
+       * Que recorte a rota aplicou por conta própria. "carteira" significa que
+       * o piso de dono entrou mesmo sem o cliente pedir — a tela precisa saber
+       * disso para não afirmar "todos os leads" mostrando parte deles.
+       */
+      escopo: soAMinhaCarteira ? "carteira" : "organizacao",
       filters: {
         status,
         source,

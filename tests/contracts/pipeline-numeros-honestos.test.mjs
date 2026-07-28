@@ -110,7 +110,13 @@ test("a leitura do pipeline concorda com a escrita sobre QUEM vê o quê", () =>
   const rota = ler("app", "api", "v1", "pipeline", "route.ts");
   assert.match(rota, /ownerId: lideranca \? null : identity\.userId/,
     "a restrição de dono precisa ir para a consulta");
-  assert.match(rota, /VE_O_FUNIL_INTEIRO/,
+  // O conjunto de papéis saiu daqui para lib/crm/escopo-de-leitura, compartilhado
+  // com a listagem de leads: eram duas cópias da mesma pergunta e por um tempo
+  // responderam diferente (o Kanban filtrava por dono, a listagem não).
+  assert.match(rota, /leLiderancaInteira\(identity\)/,
+    "a regra vem do módulo compartilhado, não de uma cópia local");
+  const modulo = ler("lib", "crm", "escopo-de-leitura.ts");
+  assert.match(modulo, /VE_O_FUNIL_INTEIRO/,
     "liderança continua vendo tudo: é dela o trabalho de distribuir represadas");
 });
 
