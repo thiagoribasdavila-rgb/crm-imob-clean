@@ -35,6 +35,19 @@ for (const l of readFileSync(".env.local", "utf8").split("\n")) {
 const V = process.env.META_GRAPH_API_VERSION || "v23.0";
 
 /**
+ * Conta alcançável mas parada — provavelmente não é onde o trabalho acontece.
+ *
+ * Contar campanhas NÃO basta: medido em 2026-07-27, a conta configurada tinha
+ * 14 campanhas e mesmo assim era a errada — todas de 2024, nenhuma dos
+ * empreendimentos que o CRM acompanha. O que distingue é a RECÊNCIA.
+ */
+const PROBLEMA_CONTA_SUSPEITA = (motivo) => ({
+  causa: `conta alcançável, mas ${motivo}`,
+  acao: "Confira no Business Manager em qual conta suas campanhas realmente rodam. Apontar o CRM para uma conta parada isola o aprendizado do que já foi gasto. Se a conta certa devolver 403, o System User precisa ser atribuído a ela: Usuários do sistema → Adicionar ativos → Contas de anúncios → Gerenciar campanhas.",
+  quem: "quem administra o Business Manager",
+});
+
+/**
  * Cada verificação é um par (token, alvo). Separá-las é o ponto: um token bom
  * num alvo errado produz a mesma cara de "não funciona" que um token ruim.
  */
@@ -46,6 +59,40 @@ const CHECAGENS = [
     campos: "name,account_status,currency",
     resumo: (d) => `${d.name} · status ${d.account_status} · ${d.currency}`,
     paraQue: "criar e pausar campanha, ler métricas",
+    /**
+     * ── ALCANÇÁVEL NÃO É O MESMO QUE CERTA ────────────────────────────────
+     *
+     * Medido em 2026-07-27: o token alcançava `act_361228…` ("Conta 01") e o
+     * diagnóstico dizia ✔. Só que essa conta não tem NENHUMA campanha de Arvo
+     * nem de Spin Mood — elas rodam em `act_893242…` ("D'Avila – Senna"), à
+     * qual o mesmo token responde 403.
+     *
+     * O CRM apontava, portanto, para a conta onde o token funciona e onde não
+     * há nada. Verde na coisa errada — o padrão que mais custou caro aqui.
+     *
+     * Conta parada é SUSPEITA, não erro: pode ser conta nova e legítima. Por
+     * isso avisa em vez de reprovar — e diz há quantos dias, para a suspeita ser
+     * avaliável em vez de aceita no escuro.
+     */
+    aprofundar: async (alvo, token) => {
+      const r = await fetch(`https://graph.facebook.com/${V}/${alvo}/campaigns?fields=name,created_time&limit=50&access_token=${encodeURIComponent(token)}`,
+        { signal: AbortSignal.timeout(20_000) });
+      const b = await r.json().catch(() => ({}));
+      const campanhas = Array.isArray(b?.data) ? b.data : [];
+      if (!campanhas.length) {
+        return { suspeita: true, detalhe: "alcançável, porém SEM campanha nenhuma", problema: PROBLEMA_CONTA_SUSPEITA("nenhuma campanha") };
+      }
+      const datas = campanhas.map((c) => Date.parse(c.created_time || 0)).filter(Boolean).sort((a, b2) => b2 - a);
+      const dias = datas.length ? Math.floor((Date.now() - datas[0]) / 86_400_000) : null;
+      if (dias != null && dias > 90) {
+        return {
+          suspeita: true,
+          detalhe: `${campanhas.length} campanhas, a mais nova tem ${dias} dias`,
+          problema: PROBLEMA_CONTA_SUSPEITA(`a campanha mais recente tem ${dias} dias`),
+        };
+      }
+      return { suspeita: false, detalhe: `${campanhas.length} campanhas, a mais nova tem ${dias ?? "?"} dias` };
+    },
   },
   {
     nome: "página do Facebook",
@@ -126,7 +173,10 @@ for (const c of CHECAGENS) {
       { signal: AbortSignal.timeout(20_000) });
     const b = await r.json().catch(() => ({}));
     if (r.ok && !b?.error) {
-      console.log(`${c.nome.padEnd(24)} ${"✔ alcança".padEnd(12)} ${String(c.resumo(b) ?? "").slice(0, 44)}`);
+      const extra = c.aprofundar ? await c.aprofundar(alvo, token) : null;
+      const marca = extra?.suspeita ? "⚠ suspeita" : "✔ alcança";
+      console.log(`${c.nome.padEnd(24)} ${marca.padEnd(12)} ${String(extra?.detalhe ?? c.resumo(b) ?? "").slice(0, 44)}`);
+      if (extra?.suspeita) problemas.push({ ...c, ...extra.problema });
       continue;
     }
     const d = diagnosticar(r.status, b?.error);
