@@ -23,11 +23,58 @@ function authorized(request: Request): boolean {
 
 type WhatsAppTemplate = { name: string; language: string };
 
+/**
+ * ── PREFLIGHT DO NÚMERO: cadastrado NÃO é ativo ─────────────────────────────
+ *
+ * Medido em 2026-07-28: o número configurado estava numa WABA aprovada, com
+ * qualidade GREEN — e mesmo assim `code_verification_status: NOT_VERIFIED`,
+ * `status: DISCONNECTED`, `platform_type: ON_PREMISE`. Um número assim não
+ * envia nada; a Graph devolveria um erro opaco por mensagem, queimando a fila
+ * inteira sem que ninguém soubesse a causa.
+ *
+ * Um GET barato antes do primeiro envio separa "o número não está pronto" (e
+ * QUAL passo falta) de "o envio falhou". Cache em memória de 5 minutos: o
+ * estado do número não muda por mensagem, e um GET por lote é o custo justo.
+ *
+ * Falha FECHADA: sem confirmação de VERIFIED + CLOUD_API, nenhum envio sai.
+ * O token nunca aparece na mensagem de erro nem em log.
+ */
+const numeroWhatsAppCache: { verificadoEm: number; motivo: string | null } = { verificadoEm: 0, motivo: "ainda não verificado" };
+
+async function preflightNumeroWhatsApp(phoneNumberId: string, accessToken: string, apiVersion: string): Promise<string | null> {
+  if (Date.now() - numeroWhatsAppCache.verificadoEm < 5 * 60_000) return numeroWhatsAppCache.motivo;
+  let motivo: string | null;
+  try {
+    const resposta = await fetch(
+      `https://graph.facebook.com/${apiVersion}/${encodeURIComponent(phoneNumberId)}?fields=code_verification_status,platform_type,status`,
+      { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store", signal: AbortSignal.timeout(15_000) },
+    );
+    const dados = await resposta.json().catch(() => ({})) as { code_verification_status?: string; platform_type?: string; status?: string; error?: { message?: string } };
+    if (!resposta.ok) {
+      motivo = `a Graph não confirmou o número (${describeMetaGraphFailure(resposta.status, dados)})`;
+    } else if (String(dados.code_verification_status).toUpperCase() !== "VERIFIED") {
+      motivo = `o número nunca completou a verificação por código (${dados.code_verification_status}). Quem resolve: quem tem o aparelho, no WhatsApp Manager.`;
+    } else if (String(dados.platform_type).toUpperCase() !== "CLOUD_API") {
+      motivo = `o número está na plataforma ${dados.platform_type}, e este envio usa a Cloud API. Migre no WhatsApp Manager.`;
+    } else {
+      motivo = null;
+    }
+  } catch (erro) {
+    // Rede fora não é número inválido — mas também não autoriza envio às cegas.
+    motivo = `a verificação do número não completou (${erro instanceof Error ? erro.message : String(erro)})`;
+  }
+  numeroWhatsAppCache.verificadoEm = Date.now();
+  numeroWhatsAppCache.motivo = motivo;
+  return motivo;
+}
+
 async function deliverWhatsApp(recipient: string, content: string, template?: WhatsAppTemplate) {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
   const apiVersion = metaGraphVersion();
   if (!phoneNumberId || !accessToken) throw new Error("Credenciais do WhatsApp não configuradas.");
+  const bloqueio = await preflightNumeroWhatsApp(phoneNumberId, accessToken, apiVersion);
+  if (bloqueio) throw new Error(`Envio bloqueado antes de sair: ${bloqueio}`);
 
   const response = await resilientFetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
     method: "POST",
@@ -459,6 +506,37 @@ export async function POST(request: Request) {
             // respondeu". São coisas diferentes e quem lê precisa distinguir.
             respostas,
             formularioPerguntouQualificacao: respostas.length > 0 };
+          // ── DUAS IDENTIDADES PARA O MESMO EMPREENDIMENTO ────────────────
+          //
+          // Drift medido em 2026-07-28: os mesmos 4 empreendimentos vivem em
+          // `crm_projects` E em `developments`, com ids diferentes. As FKs se
+          // dividem por convenção — `leads.project_id` → crm_projects,
+          // `leads.development_id` → developments — e a fonte guarda o id de
+          // crm_projects (apesar de a coluna dela se chamar development_id).
+          //
+          // A versão anterior copiava ESSE MESMO id para as duas colunas da
+          // lead. Na certa funcionava; na errada estourava a FK (23503) e a
+          // LEAD INTEIRA se perdia. Dormente enquanto nenhuma fonte tinha
+          // empreendimento; armado desde que os formulários com qualificação
+          // foram vinculados.
+          //
+          // A ponte é `crm_projects.development_id` (migration 20260728010000).
+          // Ponte ausente NÃO inventa vínculo: grava nulo e avisa no log —
+          // fallback silencioso aqui viraria funil por empreendimento errado.
+          const crmProjectId = sourceResult.data?.development_id ?? null;
+          let developmentIdDaPonte: string | null = null;
+          if (crmProjectId && !existingLead) {
+            const { data: ponte } = await admin.from("crm_projects").select("development_id").eq("id", crmProjectId).maybeSingle();
+            developmentIdDaPonte = (ponte?.development_id as string | null) ?? null;
+            if (!developmentIdDaPonte) {
+              logger.warn("meta.lead.ponte_de_empreendimento_ausente", {
+                sourceId: metaEvent.source_id,
+                crmProjectId,
+                acao: "preencha crm_projects.development_id para este projeto — a lead entra sem vínculo em developments até lá",
+              });
+            }
+          }
+
           const leadPayload = {
             organization_id: metaEvent.organization_id,
             name,
@@ -475,11 +553,9 @@ export async function POST(request: Request) {
             // uma lead com dono no banco e ÓRFÃ na tela, e o vigia nem cobra o
             // SLA dela (ele filtra lead sem user_id de propósito).
             assigned_user_id: ownership?.ownerId ?? null,
-            // O empreendimento vem do formulário. Sem ele, nenhuma medição por
-            // projeto fecha: hoje as 174 leads com projeto apontam todas para o
-            // mesmo, e Arvo e Tiê estão zeradas mesmo tendo formulário ativo.
-            development_id: sourceResult.data?.development_id ?? null,
-            project_id: sourceResult.data?.development_id ?? null,
+            // O empreendimento vem do formulário — cada id na SUA tabela.
+            development_id: developmentIdDaPonte,
+            project_id: crmProjectId,
             // campaign_id é o elo que liga o lead ao dinheiro gasto; metadata.meta
             // continua idêntico (nada removido) e ganha só a linhagem da resolução.
             campaign_id: campaignLink?.campaignId ?? null,

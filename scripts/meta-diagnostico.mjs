@@ -269,4 +269,42 @@ async function diagnosticarWhatsApp() {
 }
 await diagnosticarWhatsApp();
 
+// ── OS TOKENS, UM A UM ─────────────────────────────────────────────────────
+//
+// Três credenciais deste ambiente já se revelaram de APPS DIFERENTES — e a
+// mensagem da Meta ("does not belong to system user's business") não diz qual
+// app é o certo. `debug_token` diz: tipo, app, validade, expiração e escopos.
+// O token NUNCA é impresso; só o que ele é.
+async function inspecionarTokens() {
+  console.log(`\n${"═".repeat(78)}\nTOKENS (via debug_token — nada do valor é impresso)`);
+  const VARS = ["META_LEAD_ACCESS_TOKEN", "META_ADS_ACCESS_TOKEN", "META_CONVERSIONS_ACCESS_TOKEN", "WHATSAPP_ACCESS_TOKEN"];
+  const vistos = new Map();
+  for (const nome of VARS) {
+    const token = process.env[nome];
+    if (!token) { console.log(`  ${nome.padEnd(30)} — ausente`); continue; }
+    if (vistos.has(token)) { console.log(`  ${nome.padEnd(30)} = MESMO valor de ${vistos.get(token)}`); continue; }
+    vistos.set(token, nome);
+    try {
+      const r = await fetch(`https://graph.facebook.com/${V}/debug_token?input_token=${encodeURIComponent(token)}&access_token=${encodeURIComponent(token)}`,
+        { signal: AbortSignal.timeout(20_000) });
+      const b = await r.json().catch(() => ({}));
+      const d = b?.data;
+      if (!d || d.error || !r.ok) {
+        console.log(`  ${nome.padEnd(30)} ✘ inválido na raiz: ${String(d?.error?.message ?? b?.error?.message ?? "sem resposta").slice(0, 56)}`);
+        console.log(`  ${" ".repeat(30)}   Gere-o de novo a partir do System User que emite os tokens que funcionam.`);
+        continue;
+      }
+      const expira = !d.expires_at ? "não expira" : new Date(d.expires_at * 1000).toISOString().slice(0, 10);
+      const dias = d.expires_at ? Math.floor((d.expires_at * 1000 - Date.now()) / 86_400_000) : null;
+      console.log(`  ${nome.padEnd(30)} ${d.is_valid ? "✔" : "✘"} tipo ${String(d.type ?? "?").padEnd(11)} app ${d.app_id ?? "?"} · expira ${expira}${dias != null ? ` (${dias}d)` : ""} · ${Array.isArray(d.scopes) ? d.scopes.length : 0} escopos`);
+      if (dias != null && dias < 15) console.log(`  ${" ".repeat(30)} ⚠ expira em menos de 15 dias — agende a renovação antes que a integração pare sozinha.`);
+    } catch (e) {
+      console.log(`  ${nome.padEnd(30)} ✘ a inspeção não completou: ${e.message.slice(0, 50)}`);
+    }
+  }
+  console.log("\n  Regra prática: os quatro deveriam vir do MESMO System User (ATLAS INTEGRACOES).");
+  console.log("  App diferente entre eles é a causa raiz dos 190/465 medidos aqui.");
+}
+await inspecionarTokens();
+
 process.exit(problemas.length ? 1 : 0);
