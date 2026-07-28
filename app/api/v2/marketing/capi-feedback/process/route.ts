@@ -67,12 +67,32 @@ export async function POST() {
     bloqueados: [] as Array<{ organizationId: string; motivo: string }>,
     /** Supressões parciais: o lote saiu, mas alguém ficou de fora. */
     avisos: [] as Array<{ organizationId: string; motivo: string }>,
+    /** Sem meta_conversion_configs: fora do ciclo por escolha, não por falha. */
+    naoParticipam: 0,
     semConsentimento: 0,
   };
 
   for (const org of orgs ?? []) {
     const organizationId = String(org.id);
     resultado.organizacoes += 1;
+
+    // ── NÃO PARTICIPAR NÃO É ESTAR BLOQUEADO ──────────────────────────────
+    //
+    // A config era carregada só DEPOIS de montar a janela. Consequência: toda
+    // organização sem ciclo de conversão — no banco de homologação, a
+    // "Atlas AI" com 0 leads — montava a janela inteira à toa e aparecia como
+    // BLOQUEADA em todas as execuções do cron, com uma mensagem sobre
+    // consentimento presumido que não descreve problema nenhum.
+    //
+    // Ruído permanente é pior do que silêncio: quem lê "bloqueado" toda hora
+    // para de ler, e o dia em que houver bloqueio de verdade ele passa batido.
+    // Quem não tem configuração simplesmente não participa — sai contado em
+    // separado, sem alarme e sem trabalho desperdiçado.
+    const config = await loadOrgCapiConfig(admin, organizationId);
+    if (!config) {
+      resultado.naoParticipam += 1;
+      continue;
+    }
 
     const janela = await loadWindowBatch(admin, organizationId, JANELA_DIAS);
     if (!janela.ok) {
@@ -96,14 +116,10 @@ export async function POST() {
     }
     if (!batch.events.length) continue;
 
-    // Config DA organização. Sem linha, não envia — ausência não vira permissão,
-    // e num produto multi-organização um dataset global mandaria a conversão de
-    // uma imobiliária para o dataset de outra.
-    const config = await loadOrgCapiConfig(admin, organizationId);
-    if (!config) {
-      resultado.bloqueados.push({ organizationId, motivo: "sem meta_conversion_configs para esta organização" });
-      continue;
-    }
+    // A config já foi lida no topo do laço — sem linha, a organização nem chega
+    // aqui. Ausência nunca vira permissão: num produto multi-organização, um
+    // dataset global mandaria a conversão de uma imobiliária para o dataset de
+    // outra.
     const envio = await sendCapiBatch(batch.events, config);
     if (envio.sent) {
       resultado.eventosEnviados += batch.events.length;

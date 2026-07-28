@@ -112,7 +112,21 @@ test("valor desconhecido de mode cai para TESTE, não para produção", () => {
 test("sem linha de config, ninguém envia", () => {
   const nucleo = ler("lib", "integrations", "meta", "capi-window.ts");
   assert.match(nucleo, /if \(!data\?\.dataset_id\) return null;/);
-  assert.match(worker, /sem meta_conversion_configs para esta organização/);
+  // A frase antiga ("sem meta_conversion_configs para esta organização") saiu
+  // junto com uma correção de RUÍDO: organização sem ciclo de conversão não
+  // está bloqueada, ela não participa — e reportá-la como bloqueio em toda
+  // execução do cron treinava quem lê a parar de ler. O invariante que
+  // importa nunca foi a frase: é que a config seja lida ANTES e que a
+  // ausência interrompa o laço antes de qualquer envio.
+  // O fim do recorte é procurado A PARTIR do início do laço: `sendCapiBatch`
+  // também aparece no import, no topo do arquivo, e sem o offset o slice sai
+  // invertido e devolve string vazia — asserção que "falha" sem dizer por quê.
+  const inicioDoLaco = worker.indexOf("for (const org of orgs");
+  const laco = worker.slice(inicioDoLaco, worker.indexOf("sendCapiBatch", inicioDoLaco));
+  assert.match(laco, /const config = await loadOrgCapiConfig\(admin, organizationId\);[\s\S]{0,400}?if \(!config\) \{[\s\S]{0,300}?continue;/,
+    "sem linha de config o laço precisa seguir adiante ANTES de montar ou enviar qualquer coisa");
+  assert.match(worker, /naoParticipam/,
+    "quem não participa é contado em separado, não somado aos bloqueios");
   assert.match(manual, /CAPI_NOT_CONFIGURED/);
 });
 
