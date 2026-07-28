@@ -172,3 +172,20 @@ test("preferência gravada da era 'esconde por padrão' não ressuscita o defeit
   assert.match(codigo, /atlas:pipeline-preferences:v2/,
     "a chave precisa ser v2+ — v1 carrega hideEmpty=true gravado nas abas abertas");
 });
+
+test("a fila de ação da página de Leads ignora lead encerrada", () => {
+  // Flagrado em 2026-07-28: lead PERDIDA na "Fila de ação" com "Ligue agora".
+  // stalledSignal já barrava lead fechada; visibleLeadPriority não — a dupla
+  // de caminhos divergentes de sempre. Os DOIS têm que passar por isOpenLead.
+  const leadsPage = fs.readFileSync(path.join(raiz, "app", "(crm)", "leads", "page.tsx"), "utf8");
+  const semComentarios = leadsPage.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+  const corpo = (nome) => {
+    const inicio = semComentarios.indexOf(`function ${nome}(`);
+    assert.ok(inicio > 0, `função ${nome} precisa existir`);
+    return semComentarios.slice(inicio, semComentarios.indexOf("\nfunction ", inicio + 1));
+  };
+  assert.match(corpo("visibleLeadPriority"), /isOpenLead\(lead\)/,
+    "a fila de ação não pode recomendar ligar para lead descartada");
+  assert.match(corpo("stalledSignal"), /isOpenLead\(lead\)/,
+    "o sinal de parada também só vale para lead em jogo");
+});
