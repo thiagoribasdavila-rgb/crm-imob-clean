@@ -138,8 +138,13 @@ test("as etapas de FECHAMENTO existem como coluna escolhível", () => {
   assert.ok(!/DEFAULT_PIPELINE_STAGES\.filter\(\(stage\) => stage\.visible/.test(pagina),
     "filtrar por `visible` na origem tira a etapa até de quem quer escolhê-la");
   assert.match(pagina, /const FECHAMENTO = new Set<StageKey>\(\["perdido", "comprou_outro"\]\)/);
-  assert.match(pagina, /const emJogo = stageData\.filter\(\(stage\) => !FECHAMENTO\.has\(stage\.key\)\)/,
-    "fora por padrão, disponível por escolha");
+  // A versão anterior fixava FECHAMENTO cortada do padrão ("fora por padrão,
+  // disponível por escolha"). Relatado em 2026-07-28: somado ao esconder-vazias
+  // nascendo ligado, o corretor via 3 de 9 colunas. O padrão agora é o funil
+  // COMPLETO — o corte virou opção do seletor de colunas, nunca estado inicial.
+  // (O contrato do nascimento completo vive em kanban-usabilidade.test.mjs;
+  // aqui fica só o que é deste arquivo: FECHAMENTO existe para o filtro de
+  // foco não esvaziar essas colunas, não para escondê-las.)
 });
 
 test("coluna escolhida à mão não é esvaziada pelo filtro de foco", () => {

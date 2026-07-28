@@ -143,3 +143,32 @@ test("o campo de texto recebe o foco na abertura", () => {
   // justamente ao resolver isso "na mão" que o ref quebrou a digitação.
   assert.match(codigo, /<textarea[\s\S]{0,120}?autoFocus/);
 });
+
+test("o quadro NASCE com o funil completo", () => {
+  // ── O DEFEITO QUE ISTO FIXA ───────────────────────────────────────────────
+  //
+  // Duas decisões minhas de "limpar a tela" se somaram: `hideEmpty` nascendo
+  // `true` (some etapa sem card) e o corte de FECHAMENTO no caminho padrão
+  // (some perdido/comprou_outro). O corretor abria o quadro e via 3 de 9
+  // colunas — relatado em 2026-07-28 como "não visualiza todas as etapas".
+  //
+  // O princípio que este teste guarda: o funil é o MAPA do trabalho. A etapa
+  // vazia é o destino da próxima lead; escondê-la por padrão é esconder o
+  // próximo passo. Compactar é escolha de quem usa, nunca o estado inicial.
+  assert.match(codigo, /const \[hideEmpty, setHideEmpty\] = useState\(false\)/,
+    "hideEmpty tem que nascer false — o quadro inteiro é o padrão");
+  // E o caminho sem escolha manual parte de stageData COMPLETO, sem filtrar
+  // FECHAMENTO. (O corte por FECHAMENTO continua existindo só como opção no
+  // seletor de colunas, não como padrão imposto.)
+  const bloco = codigo.slice(codigo.indexOf("const boardStages"), codigo.indexOf("}, [", codigo.indexOf("const boardStages")));
+  assert.ok(!/FECHAMENTO\.has/.test(bloco),
+    "boardStages não pode voltar a cortar as etapas de fechamento por padrão");
+});
+
+test("preferência gravada da era 'esconde por padrão' não ressuscita o defeito", () => {
+  // A correção acima seria inútil para quem já tinha `hideEmpty: true` gravado
+  // pela versão antiga: o valor salvo vence o padrão novo. A chave versionada
+  // descarta a preferência da era errada uma única vez.
+  assert.match(codigo, /atlas:pipeline-preferences:v2/,
+    "a chave precisa ser v2+ — v1 carrega hideEmpty=true gravado nas abas abertas");
+});

@@ -109,7 +109,15 @@ type Lead = {
 };
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const PIPELINE_PREFERENCES_KEY = "atlas:pipeline-preferences:v1";
+/**
+ * v2 porque o SIGNIFICADO do padrão mudou, não só o valor: na v1 o quadro
+ * nascia escondendo etapas (vazias + fechamento) e a preferência gravada
+ * perpetuava isso em qualquer aba já aberta — o novo padrão nunca chegaria a
+ * quem mais sofreu o problema. Trocar a chave descarta a preferência antiga
+ * UMA vez e todo mundo volta a nascer com o funil completo; escolhas feitas
+ * daqui em diante são gravadas na v2 e respeitadas normalmente.
+ */
+const PIPELINE_PREFERENCES_KEY = "atlas:pipeline-preferences:v2";
 
 function leadRisk(lead: Lead) {
   const score = Number(lead.score ?? 0);
@@ -278,7 +286,19 @@ export default function PipelinePage() {
    * quiser ver o funil inteiro clica uma vez e não é perguntado de novo. À
    * medida que as etapas se preenchem, elas aparecem sozinhas.
    */
-  const [hideEmpty, setHideEmpty] = useState(true);
+  // ── O QUADRO NASCE INTEIRO ────────────────────────────────────────────────
+  //
+  // Nascia `true`, escondendo toda etapa sem card. Somado ao corte de
+  // FECHAMENTO abaixo, o corretor via 3 ou 4 de 9 colunas e relatou "não
+  // visualizo todas as etapas".
+  //
+  // O erro de projeto: tratei coluna vazia como ruído. Ela é o oposto — o funil
+  // é o MAPA do trabalho, e a etapa vazia é exatamente para onde a lead deveria
+  // ir em seguida. Esconder o destino é esconder o próximo passo.
+  //
+  // Continua sendo um botão: quem quiser compactar, compacta. Só não é mais a
+  // decisão tomada por quem nunca viu a carteira daquela pessoa.
+  const [hideEmpty, setHideEmpty] = useState(false);
   /**
    * `null` = ninguém escolheu ainda; vale a regra automática de esconder vazias.
    * Um conjunto = escolha explícita da pessoa, e ela manda.
@@ -637,8 +657,9 @@ export default function PipelinePage() {
       const escolhidas = stageData.filter((stage) => etapasVisiveis.includes(stage.key));
       return escolhidas.length ? escolhidas : stageData;
     }
-    const emJogo = stageData.filter((stage) => !FECHAMENTO.has(stage.key));
-    return hideEmpty ? emJogo.filter((stage) => stage.items.length > 0) : emJogo;
+    // Sem escolha manual, o padrão é o funil COMPLETO — inclusive as etapas de
+    // fechamento, que antes eu cortava daqui. Some coluna só se a pessoa pedir.
+    return hideEmpty ? stageData.filter((stage) => stage.items.length > 0) : stageData;
   }, [etapasVisiveis, hideEmpty, stageData]);
   const activeMobileStage = boardStages.some((stage) => stage.key === mobileStage) ? mobileStage : boardStages[0]?.key;
   const dailyFocus = useMemo(() => visibleLeads.filter(isOpenLead).slice(0, 3), [visibleLeads]);

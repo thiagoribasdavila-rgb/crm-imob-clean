@@ -4997,11 +4997,49 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   grid-template-columns: repeat(var(--kanban-columns), minmax(264px, 1fr));
   gap: 12px;
 }
+/* ── A BARRA DE ROLAGEM PRECISA SER VISÍVEL ────────────────────────────────
+   O quadro já rolava, mas no macOS a barra só aparece DURANTE o gesto (barras
+   sobrepostas). Quem olha a tela parada não vê indício de que há coluna à
+   direita — relatado como "não consigo ver o Kanban inteiro". Com 9 colunas
+   possíveis e 264px cada, sempre há o que rolar num monitor comum.
+   `scrollbar-width` cobre Firefox; o bloco `::-webkit-scrollbar` força a barra
+   permanente no Chrome e no Safari, onde o padrão do sistema a esconde. */
 .atlas-kanban-scroll {
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scroll-snap-type: x proximity;
-  scrollbar-color: rgba(56, 189, 248, 0.28) transparent;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.45) rgba(148, 163, 184, 0.10);
+  padding-bottom: 10px;
+}
+.atlas-kanban-scroll::-webkit-scrollbar {
+  height: 12px;
+  -webkit-appearance: none;
+}
+.atlas-kanban-scroll::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.10);
+  border-radius: 999px;
+}
+.atlas-kanban-scroll::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.45);
+  border-radius: 999px;
+  /* Borda transparente afina o polegar sem encostar na borda da trilha. */
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.atlas-kanban-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.72);
+  background-clip: content-box;
+}
+:root[data-theme="light"] .atlas-kanban-scroll {
+  scrollbar-color: rgba(11, 99, 197, 0.45) rgba(11, 18, 32, 0.08);
+}
+:root[data-theme="light"] .atlas-kanban-scroll::-webkit-scrollbar-track {
+  background: rgba(11, 18, 32, 0.08);
+}
+:root[data-theme="light"] .atlas-kanban-scroll::-webkit-scrollbar-thumb {
+  background: rgba(11, 99, 197, 0.45);
+  background-clip: content-box;
 }
 .atlas-pipeline-column {
   scroll-snap-align: start;
