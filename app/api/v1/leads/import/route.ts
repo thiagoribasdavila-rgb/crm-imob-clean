@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { consentimentoDaFonte } from "@/lib/crm/meta-consent";
+import { calculateLeadScore } from "@/lib/atlas/scoring";
 import {
   parseDelimited,
   processRows,
@@ -173,8 +174,31 @@ export async function POST(request: NextRequest) {
 
   let imported = 0;
   for (let i = 0; i < fresh.length; i += INSERT_CHUNK) {
-    const chunk = fresh.slice(i, i + INSERT_CHUNK).map((lead) => ({
+    const chunk = fresh.slice(i, i + INSERT_CHUNK).map((lead) => {
+    // ── A IMPORTAÇÃO TAMBÉM PONTUA ────────────────────────────────────────
+    //
+    // A criação por API (app/api/v1/leads/route.ts) sempre chamou
+    // `calculateLeadScore`; a importação nunca chamou. Medido em 2026-07-28:
+    // 193 das 200 leads com score 0 — todas importadas. A fila do corretor
+    // ordena por score, então a base inteira entrou empatada em zero.
+    //
+    // Nada é inventado: a régua é determinística e só soma o que a lead TEM
+    // (e-mail, telefone, orçamento, região, tipologia, objetivo, interação,
+    // próxima ação, etapa). Planilha sem esses campos pontua baixo — e baixo
+    // com lastro é informação, zero por omissão não é.
+    //
+    // Mesma função da criação, de propósito: duas réguas para o mesmo número
+    // é a divergência que já custou caro neste repositório.
+    const pontuacao = calculateLeadScore({
+      email: lead.email ?? undefined,
+      phone: lead.phone ?? undefined,
+      source: lead.source ?? undefined,
+      status: lead.status ?? "novo",
+    });
+    return {
       metadata: metadataDaImportacao,
+      score: pontuacao.score,
+      score_ia: pontuacao.score,
       organization_id: org,
       name: lead.name,
       phone: lead.phone,
@@ -189,7 +213,8 @@ export async function POST(request: NextRequest) {
       import_batch_id: batch.id,
       source_row: lead.sourceRow,
       ...(phoneNormalizedAvailable && lead.phone ? { phone_normalized: lead.phone } : {}),
-    }));
+    };
+    });
     const { error: insertError } = await admin.from("leads").insert(chunk);
     if (insertError) {
       await admin.from("import_batches").update({ imported_rows: imported }).eq("id", batch.id);

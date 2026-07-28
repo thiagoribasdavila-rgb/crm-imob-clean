@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { calculateLeadScore } from "@/lib/atlas/scoring";
 import { chaveDaCampanhaDoGoogle, lerAtribuicaoDoGoogle, nomeDaCampanhaDoGoogle } from "@/lib/marketing/google-attribution";
 import { logger } from "@/lib/observability/logger";
 import { hashMetaValue, queueMetaConversion } from "@/lib/meta/conversions";
@@ -545,7 +546,18 @@ export async function POST(request: Request) {
             source: "Meta Lead Ads",
             status: "novo",
             temperature: "frio",
-            score: 0,
+            // ── SCORE ZERO FIXO ERA CEGUEIRA NA ENTRADA ───────────────────
+            //
+            // A criação por API sempre pontuou; esta ingestão gravava 0 no
+            // literal. Medido em 2026-07-28: 190 das 195 leads de anúncio com
+            // score 0 — a fila do corretor ordena por score, então toda lead
+            // de campanha nascia empatada com todas as outras.
+            //
+            // Nada é inventado: a régua é determinística e só soma o que a
+            // lead TEM (e-mail, telefone, etapa...). Uma lead de formulário
+            // com e-mail e telefone vale 25, não zero — e 25 com lastro
+            // ordena melhor do que zero por omissão.
+            score: calculateLeadScore({ email, phone, source: "Meta Lead Ads", status: "novo" }).score,
             assigned_to: ownership?.ownerId ?? null,
             // MESMO dono nas duas colunas. `assigned_to` é a canônica da fase V3;
             // `assigned_user_id` é a que a aplicação de fato consulta — fila do
@@ -727,7 +739,14 @@ export async function POST(request: Request) {
             campaign_id: campanhaDoGoogle,
             status: "novo",
             temperature: "frio",
-            score: 0,
+            // Mesma régua da ingestão da Meta e da criação por API: três portas
+            // para a mesma lead não podem pontuar de formas diferentes.
+            score: calculateLeadScore({
+              email: contact.email || undefined,
+              phone: contact.phone || undefined,
+              source: atribuicaoGoogle ? "google_ads" : providerLabel,
+              status: "novo",
+            }).score,
             assigned_to: ownership?.ownerId ?? null,
             metadata: { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id, listingId: portalEvent.listing_id, sourceName: sourceRow?.name || null, message: contact.message || null }, ...(atribuicaoGoogle ? { google: atribuicaoGoogle } : {}), distribution: ownership ? { tier: ownership.tier, reason: ownership.reason } : undefined },
             created_at: now,
