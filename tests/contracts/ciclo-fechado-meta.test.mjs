@@ -119,3 +119,35 @@ test("o vínculo do evento com a lead sai do event_id", () => {
   assert.match(capi, /eventId: `crm-stage-\$\{lead\.id\}-ganho`/);
   assert.match(worker, /\[0-9a-f\]\{8\}-\[0-9a-f\]\{4\}/, "o worker extrai o uuid do event_id");
 });
+
+test("o painel de venda tem as mesmas garantias dos painéis irmãos", () => {
+  // Verificado no navegador em 2026-07-28 com a sessão real do corretor:
+  // abre com "Por quanto <lead> fechou?", campo focado, botão travado até o
+  // valor existir, digitação caractere a caractere sem perder o foco, Escape
+  // fecha e NENHUM card muda de coluna.
+  //
+  // O foco é o ponto sensível: o painel de "comprou em outro lugar" teve um
+  // `ref` inline que refocava a moldura a cada render e travava a digitação —
+  // defeito de CICLO DE VIDA que nenhum teste estrutural pegou, só a captura
+  // de tela do dono. Por isso aqui se fixa `autoFocus` no CAMPO e a AUSÊNCIA
+  // de ref que foca.
+  assert.match(telaPipeline, /<input[\s\S]{0,200}?id="sale-value"[\s\S]{0,120}?autoFocus/,
+    "o foco entra no campo, não na moldura");
+  const painel = telaPipeline.slice(
+    telaPipeline.indexOf('aria-labelledby="sale-panel-title"'),
+    telaPipeline.indexOf("Registrar venda"),
+  );
+  assert.ok(!/ref=\{\s*\([a-zA-Z]+\)\s*=>[^}]*\.focus\(\)/.test(painel),
+    "ref inline que foca roda a cada renderização e trava a digitação");
+  assert.match(painel, /event\.key === "Escape"/, "fecha com Escape");
+  assert.match(telaPipeline, /disabled=\{valorEmNumero\(saleDraft\.value\) === null/,
+    "o botão só libera com valor válido");
+  // Cancelar não move: a lead só muda de coluna dentro de confirmSale.
+  assert.match(telaPipeline, /function confirmSale\(\)[\s\S]{0,400}?moveLead\(draft\.leadId, "ganho"/);
+});
+
+test("o valor aceita o jeito brasileiro de escrever", () => {
+  // "450.000,00" e "450000.00" são a mesma venda. Exigir formato de máquina
+  // transforma um campo de dois segundos em erro de digitação.
+  assert.match(telaPipeline, /replace\(\/\[R\$\\s\.\]\/g, ""\)\.replace\(",", "\."\)/);
+});
