@@ -123,3 +123,25 @@ test("existe caminho de volta para a lead guardada", () => {
   assert.match(resgate, /erroEvento\.code !== "23505"/,
     "lead já processada por outro caminho é marcada resolvida, não reprocessada");
 });
+
+test("o resgate RODA SOZINHO — não depende de alguém lembrar", () => {
+  // O script manual (scripts/meta-reprocessa-sem-destino.mjs) continua útil,
+  // mas depender só dele significa depender de alguém rodá-lo no dia em que a
+  // fonte for cadastrada. O próprio config/workers-schedule.json documenta
+  // essa armadilha: "a fila só rodava se alguém lembrasse de criar uma linha
+  // de crontab". Lead guardada não avisa que está lá.
+  const worker = fs.readFileSync(
+    path.join(raiz, "app", "api", "v2", "marketing", "meta-sem-destino", "process", "route.ts"), "utf8");
+  assert.match(worker, /ATLAS_CRON_SECRET/, "worker é protegido por segredo, como os outros");
+  assert.match(worker, /erroEvento\.code !== "23505"/,
+    "lead que já entrou por outro caminho é marcada resolvida, não duplicada");
+  assert.match(worker, /paginasSemFonte/,
+    "a resposta precisa dizer QUAL página falta — sem isso alguém cava no banco");
+
+  const agenda = JSON.parse(fs.readFileSync(path.join(raiz, "config", "workers-schedule.json"), "utf8"));
+  const entrada = agenda.workers.find((w) => w.rota === "/api/v2/marketing/meta-sem-destino/process");
+  assert.ok(entrada, "a rota precisa estar no agendamento versionado");
+  assert.match(entrada.cadencia, /^\d+ \* \* \* \*$/,
+    "de hora em hora basta: o resgate só tem o que fazer depois de um cadastro manual");
+  assert.ok(entrada.porque?.length > 40, "toda cadência precisa do porquê escrito");
+});

@@ -83,6 +83,13 @@
       "cadencia": "17 */4 * * *",
       "porque": "Devolve para a Meta quem virou visita, proposta e venda. Sem esse sinal ela otimiza para quem PREENCHE FORMULARIO, nao para quem compra — e a verba vai para lead que nunca ia fechar. De 4 em 4 horas porque a Meta agrega o sinal por dia: rodar de hora em hora nao melhora a otimizacao e so multiplica chamada. O minuto 17 evita a rajada de todo mundo no minuto 0.",
       "timeoutMs": 55000
+    },
+    {
+      "nome": "meta-sem-destino",
+      "rota": "/api/v2/marketing/meta-sem-destino/process",
+      "cadencia": "17 * * * *",
+      "porque": "Lead da Meta que chegou de página sem cadastro fica guardada em meta_leads_sem_destino esperando alguém cadastrar a fonte. Sem worker, ela espera PARA SEMPRE — e o script manual depende de alguém lembrar no dia certo. De hora em hora basta: o resgate só tem o que fazer depois de um cadastro, que é evento raro e manual. O minuto 17 evita competir com os workers do minuto 0.",
+      "timeoutMs": 55000
     }
   ],
   "sobDemanda": [
