@@ -84,3 +84,42 @@ test("consentimento vem do formulário e não é presumido", () => {
   assert.match(consent, /nao_perguntado|consentBasis/);
   assert.match(webhook, /consent|source/i);
 });
+
+test("lead sem destino é GUARDADA, não vira só log", () => {
+  // ── O DEFEITO QUE ISTO FIXA ───────────────────────────────────────────────
+  //
+  // Quando a página não é conhecida, o webhook contava `unmapped`, escrevia um
+  // logger.warn e seguia. O próprio comentário admitia: "best-effort ... para
+  // replay manual". Log rotaciona; a lead sumia.
+  //
+  // Deixou de ser hipótese em 2026-07-28: as 4 campanhas ATIVAS usam a página
+  // 1115087091694606 e o System User administra só a 582258611872380. No dia
+  // em que a verba for liberada, TODA lead delas cai neste caminho.
+  assert.match(webhook, /const guardarSemDestino = async/);
+  assert.match(webhook, /from\("meta_leads_sem_destino"\)/);
+  assert.match(webhook, /await guardarSemDestino\("unknown_page", value, pageId\)/);
+  assert.match(webhook, /await guardarSemDestino\("missing_page_id", value, null\)/);
+  // Reentrega da Meta não pode virar duas guardadas.
+  assert.match(webhook, /onConflict: "leadgen_id", ignoreDuplicates: true/);
+  // E falhar ao guardar NÃO derruba o webhook: erro faria a Meta reentregar, e
+  // a reentrega cairia no mesmo lugar.
+  assert.match(webhook, /sem_destino_nao_guardada/);
+});
+
+test("existe caminho de volta para a lead guardada", () => {
+  // Guardar sem reprocessar seria só adiar a perda.
+  const migracao = fs.readdirSync(path.join(raiz, "supabase", "migrations"))
+    .find((f) => f.includes("leads_da_meta_sem_destino"));
+  assert.ok(migracao, "a migration precisa estar versionada");
+  const sql = fs.readFileSync(path.join(raiz, "supabase", "migrations", migracao), "utf8");
+  assert.match(sql, /leadgen_id text not null unique/, "dedupe no banco, não só no código");
+  assert.match(sql, /enable row level security/, "tabela nova nasce com RLS");
+  assert.match(sql, /using \(false\) with check \(false\)/,
+    "sem organization_id não há política por organização — fechado é o estado certo");
+  assert.match(sql, /drop table if exists public\.meta_leads_sem_destino/, "rollback no próprio arquivo");
+
+  const resgate = fs.readFileSync(path.join(raiz, "scripts", "meta-reprocessa-sem-destino.mjs"), "utf8");
+  assert.match(resgate, /--aplicar/, "o padrão é simular");
+  assert.match(resgate, /erroEvento\.code !== "23505"/,
+    "lead já processada por outro caminho é marcada resolvida, não reprocessada");
+});

@@ -60,6 +60,31 @@ export async function POST(request: Request) {
   let recovered = 0;
   let unrecoverable = 0;
 
+  /**
+   * Guarda a lead que chegou sem destino, para reprocessar depois.
+   *
+   * Antes isto era só `logger.warn` — e o próprio comentário admitia
+   * "best-effort ... para replay manual". Log rotaciona; a lead sumia. Deixou
+   * de ser hipótese em 2026-07-28: as campanhas ativas usam uma página que o
+   * System User não administra, então TODA lead delas cai aqui.
+   *
+   * Falhar ao guardar não derruba o webhook: responder erro à Meta faria ela
+   * reentregar, e a reentrega cairia no mesmo lugar. Melhor registrar o que
+   * deu errado e seguir — o `unmapped` já aparece na resposta.
+   */
+  const guardarSemDestino = async (motivo: string, value: LeadgenValue, pageId: string | null) => {
+    const { error } = await admin.from("meta_leads_sem_destino").upsert({
+      leadgen_id: String(value.leadgen_id),
+      page_id: pageId,
+      form_id: value.form_id ?? null,
+      ad_id: value.ad_id ?? null,
+      campaign_external_id: value.campaign_id ?? null,
+      motivo,
+      payload: value,
+    }, { onConflict: "leadgen_id", ignoreDuplicates: true });
+    if (error) logger.error("meta.webhook.sem_destino_nao_guardada", error, { motivo, leadgenId: value.leadgen_id });
+  };
+
   for (const entry of event.entry ?? []) {
     for (const change of entry.changes ?? []) {
       if (change.field !== "leadgen" || !change.value?.leadgen_id) continue;
@@ -67,8 +92,8 @@ export async function POST(request: Request) {
       const pageId = value.page_id || entry.id;
       if (!pageId) {
         unmapped += 1;
-        // Best-effort: persiste o payload no log estruturado para replay manual.
-        logger.warn("meta.webhook.unmapped_payload", { reason: "missing_page_id", leadgenId: value.leadgen_id, payload: value });
+        await guardarSemDestino("missing_page_id", value, null);
+        logger.warn("meta.webhook.unmapped_payload", { reason: "missing_page_id", leadgenId: value.leadgen_id });
         continue;
       }
       let sourceQuery = admin.from("meta_lead_sources").select("id,organization_id").eq("page_id", pageId).eq("active", true);
@@ -110,7 +135,8 @@ export async function POST(request: Request) {
           // Página que o Atlas não conhece de forma nenhuma: aí não há sequer a
           // qual organização atribuir, e inventar uma seria pior que perder.
           unmapped += 1;
-          logger.warn("meta.webhook.unmapped_payload", { reason: "unknown_page", pageId, formId: value.form_id, leadgenId: value.leadgen_id, payload: value });
+          await guardarSemDestino("unknown_page", value, pageId);
+          logger.warn("meta.webhook.unmapped_payload", { reason: "unknown_page", pageId, formId: value.form_id, leadgenId: value.leadgen_id });
           continue;
         }
 
