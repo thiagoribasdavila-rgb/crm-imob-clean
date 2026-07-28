@@ -51,12 +51,28 @@ export async function POST(request: NextRequest) {
   const rate = enforceRateLimit(request, { limit: 15, windowMs: 60_000, scope: "crm.leads.bulk-stage" });
   if (!rate.ok) return rate.response;
 
-  // Mesma alçada do bulk-transfer: mexer em várias leads de uma vez é ato de
-  // quem responde pela carteira.
+  // ── QUEM MOVE EM LOTE ─────────────────────────────────────────────────────
+  //
+  // Era só liderança, pela mesma alçada do bulk-transfer. Só que TRANSFERIR
+  // muda o dono da lead — ato de quem responde pela carteira — e MOVER DE ETAPA
+  // é o trabalho diário de quem atende.
+  //
+  // Medido em 2026-07-28: o corretor tem 174 leads em "novo" e movia uma a uma.
+  // Um dia inteiro de cliques para registrar o que ele já sabe. O lote é a
+  // ferramenta certa para isso, e negá-la a quem tem o volume é negar a
+  // ferramenta a quem precisa dela.
+  //
+  // O corretor entra, com DUAS travas que já existiam e continuam valendo:
+  //   · `ETAPAS_EM_LOTE` exclui "ganho" e "perdido" — fechar 50 leads por
+  //     engano ensina a Meta a caçar o público errado e não tem desfazer;
+  //   · o update prende `organization_id`, e abaixo prendemos também o DONO:
+  //     lote de corretor só alcança lead dele.
   const access = await requireAccessContext(request, {
-    roles: ["admin", "director", "superintendent", "manager"],
+    roles: ["admin", "director", "superintendent", "manager", "broker"],
   });
   if (!access.ok) return access.response;
+  const papel = access.access.profile.commercialRole || access.access.profile.role;
+  const soAsMinhas = !["admin", "director", "superintendent", "manager"].includes(String(papel || ""));
 
   let body: { leadIds?: unknown; stage?: unknown; reason?: unknown };
   try {
@@ -94,12 +110,31 @@ export async function POST(request: NextRequest) {
 
   // A organização entra no WHERE, não só na leitura: sem isso um id de outra
   // organização passaria batido no meio de 200.
-  const { data: movidas, error } = await admin
+  let atualizacao = admin
     .from("leads")
     .update({ status: stage, updated_at: agora })
     .in("id", leadIds)
-    .eq("organization_id", organizationId)
-    .select("id");
+    .eq("organization_id", organizationId);
+
+  // O DONO entra no WHERE pelo mesmo motivo que a organização: o lote do
+  // corretor alcança só a carteira dele. Liderança segue vendo o funil inteiro.
+  // Fica no WHERE (e não numa checagem prévia) porque conferir antes e gravar
+  // depois é a corrida clássica — a lead muda de dono entre as duas consultas.
+  // O que não pertence não é bloqueado com erro: sai da lista de movidas e é
+  // relatado abaixo, junto com o resto que não moveu.
+  //
+  // `user.id` e não `profile.id`: a coluna guarda o id do usuário. Medido em
+  // 2026-07-28 que os dois coincidem hoje (18/18 profiles com id = id do auth,
+  // 196/196 leads batendo), e é por isso que as duas rotas que comparam dono de
+  // formas diferentes — leads/[id] com `identity.userId`, leads/[id]/objections
+  // com `profile.id` — funcionam ambas. No dia em que `profiles` ganhar id
+  // próprio, uma delas para de bater sem erro nenhum. Aqui fica a forma certa.
+  if (soAsMinhas) {
+    const dono = access.access.user.id;
+    atualizacao = atualizacao.or(`assigned_user_id.eq.${dono},assigned_to.eq.${dono}`);
+  }
+
+  const { data: movidas, error } = await atualizacao.select("id");
 
   if (error) {
     return apiError("BULK_STAGE_FAILED", "Não foi possível mover as leads.", access.meta, { status: 503 });

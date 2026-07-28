@@ -709,6 +709,14 @@ export default function LeadsPage() {
     "superintendent",
     "manager",
   ].includes(currentRole);
+  /**
+   * Selecionar e mover DE ETAPA em lote é de todo mundo — inclusive corretor,
+   * que é quem tem 174 leads em "novo" para atualizar. A rota prende o lote do
+   * corretor à carteira dele (WHERE por dono, provado em
+   * scripts/prova-lote-corretor.mjs). TRANSFERIR continua atrás de
+   * `canTransfer`: mudar o dono é alçada de quem responde pela carteira.
+   */
+  const podeMoverEmLote = canTransfer || currentRole === "broker";
   const transferTargets = profiles.filter((profile) => {
     const role = profile.commercial_role || profile.role;
     if (currentRole === "manager")
@@ -1353,7 +1361,7 @@ export default function LeadsPage() {
         </div>
       ) : null}
 
-      {canTransfer && selected.size ? (
+      {podeMoverEmLote && selected.size ? (
         <section
           data-phase="54-team-transfer"
           className="sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border border-[rgba(75,141,248,0.35)] bg-[#080e1d]/95 p-4 backdrop-blur md:flex-row md:items-center"
@@ -1364,9 +1372,11 @@ export default function LeadsPage() {
               selecionado(s)
             </strong>
             <span className="mt-1 block text-[11px] leading-4 text-[#6b7890]">
-              {currentRole === "manager"
-                ? "Transferência direta para um corretor do meu time, com histórico registrado."
-                : "Ao escolher um gerente, as leads são equilibradas entre os corretores elegíveis. O gerente não se torna responsável."}
+              {currentRole === "broker"
+                ? "Mova as leads da sua carteira de etapa em um passo. Fechar (ganho/perdido) continua uma a uma, com a tela inteira na frente."
+                : currentRole === "manager"
+                  ? "Transferência direta para um corretor do meu time, com histórico registrado."
+                  : "Ao escolher um gerente, as leads são equilibradas entre os corretores elegíveis. O gerente não se torna responsável."}
             </span>
           </div>
 
@@ -1397,6 +1407,10 @@ export default function LeadsPage() {
             </button>
           </div>
 
+          {/* Transferir muda o DONO — continua sendo alçada de carteira. O
+              corretor vê só a metade de mover etapa; este bloco não renderiza
+              para ele. */}
+          {canTransfer ? (<>
           <select
             className={`min-h-11 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-white/5 px-3 text-sm text-[#e8eef8] ${focusRing}`}
             value={transferTarget}
@@ -1434,6 +1448,7 @@ export default function LeadsPage() {
           >
             {transferring ? "Transferindo..." : "Confirmar transferência"}
           </button>
+          </>) : null}
           <button
             type="button"
             className="cc6-ghost-btn min-h-11"
@@ -1507,7 +1522,7 @@ export default function LeadsPage() {
                 <table>
                   <thead>
                     <tr>
-                      {canTransfer ? (
+                      {podeMoverEmLote ? (
                         <th>
                           <input
                             type="checkbox"
@@ -1558,7 +1573,7 @@ export default function LeadsPage() {
                               : "group"
                           }
                         >
-                          {canTransfer ? (
+                          {podeMoverEmLote ? (
                             <td>
                               <input
                                 type="checkbox"
