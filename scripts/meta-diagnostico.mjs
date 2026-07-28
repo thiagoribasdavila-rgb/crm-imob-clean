@@ -223,4 +223,50 @@ if (problemas.length) {
   console.log("\nTodos os tokens alcançam seus alvos.\n");
 }
 
+// ── WHATSAPP ───────────────────────────────────────────────────────────────
+//
+// Fica fora da tabela de tokens×alvos porque o que emperra aqui não é
+// credencial: é o NÚMERO. Medido em 2026-07-28, o número do corretor estava
+// cadastrado na conta aprovada e mesmo assim inativo — `NOT_VERIFIED`, com
+// `throughput: NOT_APPLICABLE`. Cadastrado não é o mesmo que ativo, e nenhuma
+// tela do CRM dizia isso.
+async function diagnosticarWhatsApp() {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN || process.env.META_LEAD_ACCESS_TOKEN;
+  const numeroId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  console.log(`\n${"═".repeat(78)}\nWHATSAPP`);
+  if (!token || !numeroId) {
+    console.log(`  ✘ falta ${[!token && "WHATSAPP_ACCESS_TOKEN", !numeroId && "WHATSAPP_PHONE_NUMBER_ID"].filter(Boolean).join(" e ")}`);
+    console.log("     Quem resolve: quem configura o servidor.");
+    return false;
+  }
+  try {
+    const r = await fetch(`https://graph.facebook.com/${V}/${numeroId}?fields=display_phone_number,platform_type,code_verification_status,throughput&access_token=${encodeURIComponent(token)}`,
+      { signal: AbortSignal.timeout(20_000) });
+    const b = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const d = diagnosticar(r.status, b?.error);
+      console.log(`  ✘ ${d.causa}\n     ${d.acao}\n     Quem resolve: ${d.quem}`);
+      return false;
+    }
+    console.log(`  número: ${b.display_phone_number} · plataforma ${b.platform_type} · verificação ${b.code_verification_status}`);
+    const verificado = b.code_verification_status === "VERIFIED";
+    const cloud = b.platform_type === "CLOUD_API";
+    if (!verificado) {
+      console.log("  ✘ O NÚMERO NUNCA FOI VERIFICADO. Cadastrado não é ativo: sem verificação ele não envia nem recebe.");
+      console.log("     No WhatsApp Manager, abra o número e conclua a verificação por código (SMS ou ligação).");
+      console.log("     Quem resolve: quem tem o aparelho com esse número.");
+    }
+    if (!cloud) {
+      console.log(`  ⚠ plataforma ${b.platform_type} — a API legada. Os endpoints da Cloud API não atendem número on-premise.`);
+      console.log("     Migre para Cloud API no WhatsApp Manager antes de enviar pelo CRM.");
+    }
+    if (verificado && cloud) console.log("  ✔ verificado e em Cloud API — pronto para enviar.");
+    return verificado && cloud;
+  } catch (e) {
+    console.log(`  ✘ a verificação não completou: ${e.message}`);
+    return false;
+  }
+}
+await diagnosticarWhatsApp();
+
 process.exit(problemas.length ? 1 : 0);
