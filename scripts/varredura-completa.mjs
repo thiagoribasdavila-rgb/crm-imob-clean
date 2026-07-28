@@ -87,8 +87,18 @@ function rotas(dir = "app/api", prefixo = "/api") {
       }
       continue;
     }
-    if (nome.startsWith("[")) continue;
-    achados.push(...rotas(completo, `${prefixo}/${nome}`));
+    // ── ROTAS DINÂMICAS ────────────────────────────────────────────────────
+    //
+    // Ficaram de fora quando as PÁGINAS dinâmicas entraram — 32 rotas sem
+    // cobertura nenhuma, entre elas as da ficha da lead que a tela chama a cada
+    // abertura (qualify, timeline, visits, message-draft).
+    //
+    // Mesmo marcador das páginas: a lead descartável fornece o id. Catch-all
+    // fica fora — não há valor único que faça sentido, e chutar produz 404
+    // disfarçado de cobertura.
+    if (nome.startsWith("[...") || nome.startsWith("[[")) continue;
+    const segmento = nome.startsWith("[") ? ":id" : nome;
+    achados.push(...rotas(completo, `${prefixo}/${segmento}`));
   }
   return achados;
 }
@@ -232,7 +242,8 @@ console.log(`  ${falhas.filter((f) => f.tipo === "página").length} com problema
 const listaRotas = rotas();
 const testaveis = listaRotas.filter((r) => !PROIBIDO.test(r.caminho));
 const puladas = listaRotas.length - testaveis.length;
-console.log(`\nRotas: ${listaRotas.length} (${puladas} puladas por agirem fora do CRM)`);
+const rotasDinamicas = listaRotas.filter((r) => r.caminho.includes(":id")).length;
+console.log(`\nRotas: ${listaRotas.length} (${rotasDinamicas} dinâmicas · ${puladas} puladas por agirem fora do CRM)`);
 
 for (const rota of testaveis) {
   for (const metodo of rota.metodos) {
@@ -240,7 +251,10 @@ for (const rota of testaveis) {
     // mede é se a rota RECUSA sem cair. Rota que age com `{}` é o defeito.
     if (metodo === "DELETE") continue;
     try {
-      const r = await buscar(`${BASE}${rota.caminho}`, {
+      // Mesmo id da lead descartável usado nas páginas. A lead sobrevive até o
+      // fim: `limparLead()` roda depois deste laço.
+      const url = `${BASE}${rota.caminho.replace(/:id/g, leadTeste?.id ?? "00000000-0000-0000-0000-000000000000")}`;
+      const r = await buscar(url, {
         method: metodo,
         headers: { Cookie: COOKIE, Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
         body: metodo === "GET" ? undefined : "{}",
