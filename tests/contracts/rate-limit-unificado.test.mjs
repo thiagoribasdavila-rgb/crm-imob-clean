@@ -58,15 +58,29 @@ test("insistir durante o bloqueio NÃO reabre a janela antes da hora", () => {
 });
 
 test("janela vencida zera a contagem", () => {
+  // A versão anterior usava `windowMs: 1` e uma espera de relógio real — e
+  // falhava sozinha ~1 vez a cada 10 rodadas: bastava o agendador segurar o
+  // processo por mais de 1ms entre a 1ª e a 2ª chamada para a janela vencer
+  // ANTES do bloqueio esperado. Foi este teste que derrubou o pré-check do
+  // mutation testing com a suíte "já falhando (1)".
+  //
+  // Determinístico agora: janela larga (nenhuma corrida possível) e o
+  // vencimento é produzido RETROCEDENDO o prazo gravado no armazenamento — o
+  // mesmo mapa em globalThis que outro contrato deste arquivo já fixa. Assim o
+  // caminho de expiração do código roda de verdade, sem depender de quanto o
+  // sistema demora entre duas linhas.
   const chave = chaveUnica("janela");
-  assert.equal(checkRateLimit(chave, { limit: 1, windowMs: 1 }).allowed, true);
-  assert.equal(checkRateLimit(chave, { limit: 1, windowMs: 1 }).allowed, false);
+  const opcoes = { limit: 1, windowMs: 60_000 };
+  assert.equal(checkRateLimit(chave, opcoes).allowed, true);
+  assert.equal(checkRateLimit(chave, opcoes).allowed, false);
 
-  const inicio = Date.now();
-  while (Date.now() - inicio < 5) { /* espera a janela de 1ms vencer */ }
+  const buckets = globalThis.__atlasRateBuckets;
+  const bucket = [...buckets.entries()].find(([k]) => k.includes(chave))?.[1];
+  assert.ok(bucket, "o bucket da chave precisa existir no armazenamento compartilhado");
+  bucket.resetAt = Date.now() - 1; // a janela venceu "no passado"
 
   assert.equal(
-    checkRateLimit(chave, { limit: 1, windowMs: 1 }).allowed,
+    checkRateLimit(chave, opcoes).allowed,
     true,
     "passada a janela, o cliente volta a ser atendido",
   );
