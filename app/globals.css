@@ -10258,3 +10258,21 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   .atlas-rail-hint { transition: none; }
   .atlas-rail-badge[data-chegou="true"] { animation: none; }
 }
+
+/* Alvo de toque: 36px é confortável no mouse e pequeno demais no dedo. Em
+   ponteiro grosso (celular, tablet) a linha cresce para os 44px que a diretriz
+   de acessibilidade exige — e que o guard da fase 026 protege. Não vale a pena
+   pagar essa altura no desktop, onde a precisão é outra. */
+@media (pointer: coarse) {
+  .atlas-rail-link,
+  .atlas-rail-hint {
+    min-height: 44px;
+    height: 44px;
+  }
+}
+
+/* Grupo que contém o destino atual: o rótulo acende junto, para o olho achar a
+   seção sem precisar varrer item por item. */
+.atlas-nav-group[data-current="true"] > .atlas-rail-group-label {
+  color: color-mix(in srgb, var(--atlas-accent) 72%, transparent);
+}

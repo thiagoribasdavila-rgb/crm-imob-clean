@@ -35,9 +35,11 @@ import { useAlertaDeLeadNova } from "@/components/atlas/use-alerta-de-lead-nova"
  *   nunca muda, não leva a lugar nenhum. Ocupava o canto onde o olho procura
  *   informação viva e devolvia decoração.
  *
- * · A ARMADILHA DE FOCO E O BACKDROP no celular: o dock inferior
- *   (mobile-dock.tsx) é a navegação daquele tamanho de tela, e manter dois
- *   mecanismos custava um trap de foco manual que já divergia do padrão.
+ * O QUE EU TENTEI TIRAR E TIVE DE DEVOLVER: a armadilha de foco do menu no
+ * celular. Achei que o dock inferior tornava o menu dispensável — não torna, o
+ * menu continua existindo, e sem Escape, sem trap e sem trava de rolagem quem
+ * usa teclado fica preso tabulando uma tela que não vê. O guard da fase 033
+ * pegou. Está de volta, e agora com contrato.
  *
  * ── O QUE ENTROU ─────────────────────────────────────────────────────────────
  *
@@ -83,6 +85,57 @@ export function Sidebar({
     onCloseMobile();
   }, [pathname, onCloseMobile]);
 
+  /**
+   * O MENU DO CELULAR É UM DIÁLOGO — e diálogo tem obrigações.
+   *
+   * Escape fecha, Tab não escapa para o conteúdo inerte atrás, o corpo não
+   * rola sob o painel, e o foco VOLTA para o botão que abriu. Sem as quatro,
+   * quem navega por teclado ou leitor de tela fica preso: continua tabulando
+   * uma tela que não vê, e ao fechar é jogado para o topo do documento.
+   *
+   * Eu tinha removido este bloco na primeira versão da poda, achando que o
+   * dock inferior tornava o menu dispensável. Não torna — o menu continua
+   * existindo, e o guard da fase 033 pegou a remoção.
+   */
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const raiz = barra.current;
+    const focoAnterior = document.activeElement as HTMLElement | null;
+    raiz?.querySelector<HTMLElement>("a, button")?.focus();
+
+    const aoTeclar = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseMobile();
+        return;
+      }
+      if (event.key !== "Tab" || !raiz) return;
+      const focaveis = raiz.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focaveis.length) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      if (event.shiftKey && document.activeElement === primeiro) {
+        event.preventDefault();
+        ultimo.focus();
+      } else if (!event.shiftKey && document.activeElement === ultimo) {
+        event.preventDefault();
+        primeiro.focus();
+      }
+    };
+
+    document.addEventListener("keydown", aoTeclar);
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.body.style.overflow = overflowAnterior;
+      const previousFocus = focoAnterior;
+      previousFocus?.focus();
+    };
+  }, [mobileOpen, onCloseMobile]);
+
   const itens = useMemo(
     () => getAtlasNavigationForIdentity({ role, accessRole }),
     [role, accessRole],
@@ -121,6 +174,7 @@ export function Sidebar({
         // O título nomeia o destino quando a barra está recolhida; ícone sem
         // nome é enigma, não minimalismo.
         title={collapsed ? item.label : undefined}
+        aria-label={collapsed ? item.label : undefined}
         aria-current={ativo ? "page" : undefined}
         onClick={onCloseMobile}
       >
@@ -128,6 +182,9 @@ export function Sidebar({
           <NavIcon id={item.id as AtlasNavigationId} />
         </span>
         <span className="atlas-rail-label">{item.label}</span>
+        {/* Visualmente redundante (cor + traço + fundo já marcam), mas quem
+            ouve a tela não vê nenhum dos três. Fica só para o leitor. */}
+        {ativo ? <span className="sr-only">Atual</span> : null}
         {mostraAviso ? (
           <span
             className="atlas-rail-badge"
@@ -180,12 +237,21 @@ export function Sidebar({
       </button>
 
       <nav className="atlas-rail-nav" aria-label="Navegação principal">
-        {grupos.map((grupo) => (
-          <div key={grupo}>
-            <p className="atlas-rail-group-label">{grupo}</p>
-            {itens.filter((item) => item.group === grupo).map(renderItem)}
-          </div>
-        ))}
+        {/* <section> + <h2> ligados por aria-labelledby, e não <div> + <p>:
+            quem usa leitor de tela navega por região e por cabeçalho, e sem
+            isso os quatro grupos viram uma lista plana de 17 links sem
+            hierarquia. Foi exatamente o que a primeira versão desta reescrita
+            fez — o guard da fase 026 pegou. O silêncio visual vem do CSS, não
+            de rebaixar a marcação. */}
+        {grupos.map((grupo) => {
+          const groupHeadingId = `atlas-nav-group-${grupo.toLocaleLowerCase("pt-BR").replaceAll(" ", "-")}`;
+          return (
+            <section className="atlas-nav-group" aria-labelledby={groupHeadingId} key={grupo}>
+              <h2 id={groupHeadingId} className="atlas-rail-group-label">{grupo}</h2>
+              {itens.filter((item) => item.group === grupo).map(renderItem)}
+            </section>
+          );
+        })}
       </nav>
 
       <button

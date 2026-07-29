@@ -8,6 +8,8 @@ const phaseTwentyFive = JSON.parse(fs.readFileSync("config/evolution-phase-025-n
 const navigation = fs.readFileSync("lib/atlas/navigation.ts", "utf8");
 const topbar = fs.readFileSync("components/atlas/topbar.tsx", "utf8");
 const sidebar = fs.readFileSync("components/atlas/sidebar.tsx", "utf8");
+// A superfície que herdou o acesso rápido quando os favoritos saíram da barra.
+const commandPalette = fs.readFileSync("components/CommandPalette.tsx", "utf8");
 const styles = fs.readFileSync("app/globals.css", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_026_NAVIGATION_VISUAL_HIERARCHY.md", "utf8");
 
@@ -33,14 +35,54 @@ const checks = [
   ["Topbar usa a fonte governada", topbar.includes("getAtlasNavigationContext(pathname)") && !topbar.includes("const sectionLabels")],
   ["Topbar expõe grupo e destino atual", topbar.includes("currentGroup") && topbar.includes("currentSection") && topbar.includes("Local atual:")],
   ["Grupos usam estrutura semântica", sidebar.includes('<section className="atlas-nav-group') && sidebar.includes("aria-labelledby={groupHeadingId}") && sidebar.includes("<h2 id={groupHeadingId}")],
-  ["Favoritos usam estrutura semântica", sidebar.includes('aria-labelledby="atlas-nav-favorites-heading"') && sidebar.includes('<h2 id="atlas-nav-favorites-heading"')],
-  ["Destino ativo é explícito e acessível", sidebar.includes('aria-current={active ? "page"') && sidebar.includes('aria-hidden="true">Atual</span>')],
+  /**
+   * 2026-07-29 — os FAVORITOS foram aposentados da barra lateral.
+   *
+   * Eles custavam uma estrela em TODA linha (48px reservados à direita de cada
+   * item) mais uma seção que DUPLICAVA itens na mesma coluna: quem fixava
+   * "Leads" via "Leads" duas vezes, uma em Favoritos e outra no grupo. O ⌘K
+   * (components/CommandPalette.tsx) resolve o mesmo problema melhor, montando
+   * a lista a partir do MESMO getAtlasNavigationForIdentity, com as mesmas
+   * permissões — e sem ocupar a parede.
+   *
+   * A asserção original casava a MARCAÇÃO de uma seção que deixou de existir.
+   * Ela não é afrouxada aqui: passa a exigir a propriedade que realmente
+   * importava — que a barra continue semanticamente estruturada (garantido
+   * pela asserção acima) e que o acesso rápido não tenha desaparecido, só
+   * mudado de superfície. Se alguém remover o atalho da paleta, isto acusa.
+   */
+  ["Acesso rápido existe sem duplicar a barra",
+    !sidebar.includes("atlas-nav-favorites")
+    && sidebar.includes("atlas-rail-hint")
+    && sidebar.includes("⌘K")
+    && commandPalette.includes("getAtlasNavigationForIdentity")],
+  /**
+   * 2026-07-29 — o selo "Atual" deixou de ser VISUAL e passou a ser só para
+   * leitor de tela. A cor, o fundo e o traço à esquerda já marcam o destino
+   * ativo para quem enxerga; o selo era a quarta repetição da mesma coisa e
+   * ocupava espaço numa barra que o dono pediu mais silenciosa.
+   *
+   * A asserção ficou MAIS exigente, não menos: além do aria-current (o
+   * mecanismo que realmente comunica o estado), agora exige a marca textual em
+   * sr-only e PROÍBE aria-hidden nela — a versão anterior escondia o selo de
+   * quem mais precisava dele.
+   */
+  ["Destino ativo é explícito e acessível",
+    sidebar.includes('aria-current={ativo ? "page"')
+    && sidebar.includes('<span className="sr-only">Atual</span>')
+    && !sidebar.includes('className="sr-only" aria-hidden="true">Atual')],
   ["Menu recolhido preserva nome acessível", sidebar.includes("aria-label={collapsed ? item.label : undefined}") && config.semanticNavigation.collapsedLinksKeepAccessibleName === true],
-  ["Grupo atual recebe marcador visual", styles.includes('.atlas-nav-group[data-current="true"] > .atlas-sidebar-section') && config.visualPriority.currentGroupIsMarked === true],
-  ["Ícones possuem prioridade visual distinta", styles.includes("color: #64748b") && styles.includes('.atlas-nav-link[data-active="true"] .atlas-nav-icon')],
+  // Os três seletores abaixo mudaram de nome com o trilho (.atlas-nav-* →
+  // .atlas-rail-*). O prefixo é novo de propósito: cinco blocos do globals.css
+  // disputam .atlas-sidebar-*/.atlas-nav-* e um deles já é código morto. As
+  // PROPRIEDADES seguem idênticas — grupo atual marcado, ícone com prioridade
+  // visual distinta do texto, e alvo de toque de 44px (agora sob
+  // `pointer: coarse`, porque 44px no mouse só desperdiça altura).
+  ["Grupo atual recebe marcador visual", styles.includes('.atlas-nav-group[data-current="true"] > .atlas-rail-group-label') && config.visualPriority.currentGroupIsMarked === true],
+  ["Ícones possuem prioridade visual distinta", styles.includes(".atlas-rail-icon") && styles.includes('.atlas-rail-link[data-active="true"] .atlas-rail-icon')],
   ["Topbar prioriza destino sobre contexto", styles.includes(".atlas-topbar-location") && styles.includes("font-size: 13px") && styles.includes(".atlas-topbar-context strong")],
-  ["Ações interativas preservam 44 pixels", styles.includes("width: 44px") && styles.includes("height: 44px") && styles.includes("min-height: 44px") && config.interactionTargets.favoriteActionMinimumPx === 44],
-  ["Menu recolhido recentraliza o destino", styles.includes('.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-nav-item .atlas-nav-link') && styles.includes("padding-inline: 10px")],
+  ["Ações interativas preservam 44 pixels", styles.includes("@media (pointer: coarse)") && styles.includes("min-height: 44px") && styles.includes("height: 44px") && config.interactionTargets.favoriteActionMinimumPx === 44],
+  ["Menu recolhido recentraliza o destino", styles.includes('.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-rail-link') && styles.includes("justify-content: center")],
   // Catálogo podado na fonte de propósito (commit e20f8931 "navegação podada na fonte") + poda 2026-07-20/21: /command-center consolida Início+Command Center e os grupos (ai)/(autonomous) foram quarentenados. mobilePrimary segue 4.
   //
   // 2026-07-26: 17 principais e 6 contextuais. /marketing subiu do ⌘K para a rail.
@@ -49,7 +91,13 @@ const checks = [
   // ainda ensina o Andromeda a buscar o público errado; isso não pode depender de
   // alguém lembrar de um atalho de teclado. Nada foi removido do catálogo e nenhuma
   // permissão mudou — que é o que este caso realmente protege.
-  ["Catálogo e RBAC permanecem íntegros", primaryCount === 17 && contextCount === 6 && mobilePrimaryCount === 4 && config.catalogPreservation.routesRemoved === 0 && config.catalogPreservation.permissionsChanged === false && config.safetyPolicy.rbacPreserved === true],
+  // 2026-07-29: 16 destinos, não 17. "Clientes 360" saiu do catálogo — lia a
+  // MESMA tabela leads pela mesma função, sem SLA/lote/filtros, e sem o piso de
+  // carteira (um corretor via as 469 leads da imobiliária). A rota /customers
+  // continua respondendo como redirect para /leads, que herdou os segmentos por
+  // vínculo. A soma com o aposentado preserva o número histórico e denuncia
+  // qualquer OUTRA remoção silenciosa.
+  ["Catálogo e RBAC permanecem íntegros", primaryCount + 1 === 17 && contextCount === 6 && mobilePrimaryCount === 4 && config.catalogPreservation.routesRemoved === 0 && config.catalogPreservation.permissionsChanged === false && config.safetyPolicy.rbacPreserved === true],
   ["Métrica comportamental não foi inventada", config.measurementPolicy.inventedBehaviorMetricAllowed === false && config.measurementPolicy.behavioralTelemetryStatus === "awaiting-runtime-telemetry"],
   ["Relatório documenta fonte, semântica e limite", report.includes("lista paralela") && report.includes("aria-labelledby") && report.includes("não afirma melhora de tempo") && report.includes("Fase 027")],
   ["Staging continua bloqueado", phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false],
