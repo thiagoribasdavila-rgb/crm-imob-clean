@@ -59,6 +59,35 @@ Esse modelo evita transformar todos os links em botões dominantes e mantém a l
 - A política de acesso e os guardas do servidor permanecem obrigatórios.
 - Nenhum dado operacional ou segredo foi consultado.
 
+## Reapontamento da medição (2026-07-29)
+
+A propriedade desta fase é **toda tela tem uma ação primária óbvia e governada**. O número "13 `action={{` em `app/(crm)/dashboard/page.tsx` e `app/(crm)/sales/page.tsx`" era um *proxy* dessa propriedade, e o proxy deixou de existir por duas causas medidas:
+
+1. O redesenho CC-6 trocou aqueles `PageHeader` por heróis próprios. Medido: `dashboard/page.tsx` tem hoje 18 linhas e é apenas `redirect("/command-center")` — **0** ocorrências; `sales/page.tsx` tem **1**. A asserção irmã, que exigia 12 ações secundárias no mesmo par, media **1**.
+2. "Clientes 360" (`/customers`) foi aposentada — lia a mesma tabela de `/leads` sem piso de carteira. A criação de cliente que ela sustentava vive hoje em `/leads`.
+
+O que tornou a pergunta outra: a ação primária de cada tela passou a **existir em pixel**. `lib/atlas/navigation.ts` declara `primaryAction` por destino (rótulo, destino e resultado comercial), `atlasNavigationContexts` a carrega até a interface e `components/atlas/topbar.tsx` a renderiza como botão primário, com o resultado comercial no nome acessível. Antes, esse dado morria uma linha antes da tela e a topbar caía num "Novo lead" fixo.
+
+A asserção passou então a medir onde a propriedade vive:
+
+- **16 destinos** do catálogo, cada um com `label`, `href` e `outcome` não vazios — verificado **executando** o catálogo, não por expressão regular;
+- a ação resolvida por `getAtlasNavigationContext` é idêntica à declarada, inclusive em subrota (`/pipeline/discards` → `/pipeline?focus=priority`);
+- a topbar consulta a ação do destino **antes** da transição (`atlasTaskActions`), e essa ordem é conferida;
+- prioridade explícita e inspecionável (`AtlasActionLink`, `data-atlas-action-priority`) permanece exatamente como antes.
+
+Nada foi afrouxado. O registro histórico `pageHeadersMigrated: 13` continua no manifesto e continua conferido como história; o que parou foi re-medi-lo contra código vivo que já não hospeda aqueles cabeçalhos. A garantia "aprofundamento não disputa com a ação da tela" ficou **mais estrita**: antes valia para 2 arquivos, agora vale para os **18** cabeçalhos de `app/`, e prioridade implícita passou a ser proibida.
+
+### Consequência corrigida no código
+
+Com a topbar finalmente renderizando a ação primária real, quatro cabeçalhos que omitiam `priority` herdavam o padrão `"primary"` e produziam **dois botões primários na mesma tela**. A regra aplicada foi uniforme — o cabeçalho é secundário quando apenas transita para outra tela, e primário só quando carrega a ação da própria tela e nenhuma outra superfície a carrega:
+
+| Tela | Ação | Decisão |
+|---|---|---|
+| `/brokers` | "Distribuir leads" → `/distribution` | Secundária — o catálogo já declara essa transição em `atlasTaskActions`, e a topbar carrega "Ver desempenho" |
+| `/leads/import/historico` | "Reativação" → `/leads/import` | Secundária — é voltar para a tela pai |
+| `/leads/import` | "Adicionar uma base" → `#nova-base` | Primária declarada — age nesta própria tela |
+| `/properties` | "Abrir Matching IA" | Primária declarada — `/properties` não é destino do catálogo, então a topbar cai no "Novo lead" genérico |
+
 ## Limite de evidência
 
 Esta fase comprova consistência estrutural, limite de uma ação por cabeçalho e hierarquia visual explícita. Isso **não comprova aumento de conversão, redução real de cliques ou tempo de conclusão**; esses indicadores dependem de telemetria autorizada em homologação.

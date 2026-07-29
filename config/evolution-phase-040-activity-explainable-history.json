@@ -74,6 +74,8 @@
     "reducedMotionPolicyPreserved": true
   },
   "structuralBaseline": {
+    "note": "O QUE A FASE 040 DEIXOU, medido em 2026-07-18. Acréscimos posteriores estão em postPhaseAdditions.",
+    "measuredAt": "2026-07-18",
     "newStateAdded": true,
     "newEffectAdded": true,
     "newNetworkRequestAdded": true,
@@ -81,6 +83,14 @@
     "realtimeSubscriptions": 1,
     "visibleLatestLimit": 3,
     "runtimeHistorySearchTimeMeasured": false
+  },
+  "postPhaseAdditions": {
+    "note": "A propriedade da fase 040 é UMA leitura e UMA assinatura, e ela segue intacta (networkRequests 1, realtimeSubscriptions 1). Em 2026-07-29 entrou UM efeito de montagem que não fala com a rede: o catálogo prometia um recorte para esta tela e ela não lia parâmetro nenhum. O efeito lê a intenção pelo módulo compartilhado e só aplica o período quando o alvo existe na mesma lista PERIODS que desenha os chips — chave inventada não vira recorte.",
+    "measuredAt": "2026-07-29",
+    "useStateOccurrences": 9,
+    "useEffectOccurrences": 4,
+    "addedEffect": "leitura-da-intencao-da-url",
+    "addedEffectReadsNetwork": false
   },
   "safetyPolicy": {
     "databaseWriteAdded": false,

@@ -70,6 +70,8 @@
     "reducedMotionPolicyPreserved": true
   },
   "structuralBaseline": {
+    "note": "O QUE A FASE 039 FEZ, medido em 2026-07-18: nenhuma chamada, estado ou efeito acrescentado por ela. Acréscimos posteriores estão em postPhaseAdditions.",
+    "measuredAt": "2026-07-18",
     "newStateAdded": false,
     "newEffectAdded": false,
     "newNetworkRequestAdded": false,
@@ -77,6 +79,17 @@
     "existingRealtimeSubscriptions": 1,
     "visibleAttentionLimit": 3,
     "runtimeAgendaCompletionTimeMeasured": false
+  },
+  "postPhaseAdditions": {
+    "note": "A garantia da fase 039 é que a Agenda não passou a BUSCAR mais dados — ela é fase de apresentação (dataFetchingChanged: false). Essa garantia continua intacta: segue com UMA chamada de rede. O que subiu foi estado e efeito, por causa medida em 2026-07-29: o catálogo declara a ação primária deste destino como /calendar?create=1 ('Novo compromisso') e a tela ignorava o parâmetro. O acréscimo é um estado (encaminhandoCriacao) e um efeito que lê a intenção pelo módulo compartilhado e faz router.replace('/tasks?create=1') — navegação, não rede, porque /api/v1/calendar só tem GET e o único formulário de compromisso do produto é o de /tasks.",
+    "measuredAt": "2026-07-29",
+    "networkRequests": 1,
+    "networkRequestAdded": false,
+    "useStateOccurrences": 7,
+    "useEffectOccurrences": 3,
+    "addedState": "encaminhandoCriacao",
+    "addedEffect": "encaminhamento-da-intencao-da-url",
+    "addedEffectFetches": false
   },
   "safetyPolicy": {
     "databaseWriteAdded": false,

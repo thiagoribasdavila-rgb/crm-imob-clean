@@ -137,7 +137,11 @@ export default function HistoricalImportPage() {
         eyebrow="Base histórica · V4.2"
         title="Importar base de leads"
         description="Analise antes de carregar: qualidade por linha, duplicados no arquivo e cruzamento com a base viva. Nada é gravado no modo de análise."
-        action={{ label: "Reativação", href: "/leads/import" }}
+        /* SECUNDÁRIA desde 2026-07-29: voltar para a tela pai é aprofundamento
+           ao contrário, nunca a ação principal daqui. Sem a prioridade
+           declarada herdava "primary" e disputava com o botão primário da
+           topbar. */
+        action={{ label: "Reativação", href: "/leads/import", priority: "secondary" }}
       />
 
       {/* 1 · Arquivo */}

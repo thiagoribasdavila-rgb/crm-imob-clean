@@ -9,6 +9,16 @@ const liveRepositories = fs.readFileSync("lib/atlas/core-v2/live-repositories.ts
 const styles = fs.readFileSync("app/globals.css", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_039_AGENDA_TIME_WORKSPACE.md", "utf8");
 
+// O CORPO do efeito que encaminha a intenção da URL, recortado para ser
+// inspecionado sozinho: é ele que precisa provar que NÃO busca dados. Contar
+// `fetch(` na página inteira não distinguiria o efeito novo do `load()` que
+// sempre existiu.
+const inicioDoEfeito = calendar.indexOf("if (!pedeCriar(lerIntencaoDaJanela())");
+const fimDoEfeito = calendar.indexOf("}, [router]);", inicioDoEfeito);
+const efeitoDaIntencao = inicioDoEfeito >= 0 && fimDoEfeito > inicioDoEfeito
+  ? calendar.slice(inicioDoEfeito, fimDoEfeito)
+  : "EFEITO-DE-INTENCAO-NAO-ENCONTRADO fetch(";
+
 const checks = [
   ["Fase 039 concluída sem mutação estrutural", config.status === "completed" && config.productionDataModified === false && config.databaseSchemaChanged === false && config.dataFetchingChanged === false],
   ["Fase anterior encaminha a Agenda", phaseThirtyEight.nextPhase.phase === 39 && phaseThirtyEight.nextPhase.status === "planned"],
@@ -41,7 +51,32 @@ const checks = [
   ["Realtime e atualização manual foram preservados", calendar.includes('supabase.channel("commercial-calendar")') && calendar.includes("removeChannel") && calendar.includes("Atualizar") && config.calendarContract.existingRealtimePreserved === true],
   ["API mantém autenticação, organização e três tipos de agenda", calendarApi.includes("requireAccessContext") && calendarApi.includes("readCompatibleTasks") && calendarApi.includes("readCompatibleLeads") && liveRepositories.includes('.eq("organization_id", organizationId)') && calendarApi.includes('kind: "task"') && calendarApi.includes('kind: "visit"') && calendarApi.includes('kind: "follow_up"')],
   ["Deduplicação de visita e follow-up permanece ativa", calendarApi.includes("activeVisitKeys") && calendarApi.includes("next_action_at") && config.calendarContract.visitFollowUpDeduplicationPreserved === true],
-  ["Nenhuma nova chamada, estado ou efeito foi adicionado", (calendar.match(/fetch\(/g) || []).length === 1 && (calendar.match(/useState/g) || []).length === 6 && (calendar.match(/useEffect\(/g) || []).length === 2 && config.structuralBaseline.newNetworkRequestAdded === false && config.structuralBaseline.newStateAdded === false && config.structuralBaseline.newEffectAdded === false],
+  // ── POR QUE ESTE NÚMERO MUDOU (2026-07-29) ─────────────────────────────────
+  // A garantia desta fase é que a Agenda NÃO PASSOU A BUSCAR MAIS DADOS: ela é
+  // fase de apresentação (`dataFetchingChanged: false`). Quem carrega essa
+  // garantia é `fetch(` === 1, e esse número está INTOCADO.
+  //
+  // Estado e efeito subiram (5 → 6 e 2 → 3), com causa medida: o catálogo
+  // declara a ação primária deste destino como `/calendar?create=1` ("Novo
+  // compromisso") e a tela ignorava o parâmetro — quem clicava chegava na linha
+  // do tempo com nada aberto. O acréscimo é UM estado (`encaminhandoCriacao`) e
+  // UM efeito que lê a intenção pelo módulo compartilhado e faz
+  // `router.replace("/tasks?create=1")`: NAVEGAÇÃO, não rede.
+  //
+  // O número novo não foi fixado às cegas. A asserção NOMEIA o acréscimo e
+  // prova a propriedade que importa: o efeito novo é o encaminhamento da
+  // intenção e não contém nenhuma chamada de rede.
+  ["Nenhuma nova chamada de rede; o estado e o efeito novos são o encaminhamento da intenção",
+    (calendar.match(/fetch\(/g) || []).length === 1
+    && config.postPhaseAdditions.networkRequests === 1
+    && config.structuralBaseline.newNetworkRequestAdded === false
+    && (calendar.match(/useState/g) || []).length === config.postPhaseAdditions.useStateOccurrences
+    && (calendar.match(/useEffect\(/g) || []).length === config.postPhaseAdditions.useEffectOccurrences
+    && calendar.includes("const [encaminhandoCriacao, setEncaminhandoCriacao] = useState(false)")
+    && calendar.includes("pedeCriar(lerIntencaoDaJanela())")
+    && calendar.includes('router.replace("/tasks?create=1")')
+    && !efeitoDaIntencao.includes("fetch(")
+    && config.postPhaseAdditions.addedEffectFetches === false],
   // Reconciliação CC-6: o Prettier quebrou "nenhum cliente é" entre linhas; a asserção aponta para
   // "nenhuma ação é concluída" + "contatado automaticamente", que seguem no aviso de não-automação.
   ["A Agenda não executa trabalho automaticamente", calendar.includes("nenhuma ação é concluída") && calendar.includes("contatado automaticamente") && config.executionPolicy.automaticTaskCompletion === false && config.executionPolicy.automaticVisitConfirmation === false && config.executionPolicy.automaticCustomerContact === false],

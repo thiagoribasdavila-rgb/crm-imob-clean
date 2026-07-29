@@ -118,7 +118,13 @@ export default function BrokersPage() {
         eyebrow={visao === "desempenho" ? "Equipe · Visão de desempenho" : "Equipe · Apoio à conversão"}
         title="Ajude cada carteira a avançar"
         description="Diretoria e gestores enxergam apenas a própria estrutura. Atrasos e ausência de próxima ação orientam apoio — não há ranking punitivo de pessoas."
-        action={{ href: "/distribution", label: "Distribuir leads" }}
+        /* SECUNDÁRIA desde 2026-07-29: isto é TRANSIÇÃO, não a ação desta tela.
+           O catálogo já declara a mesma transição (atlasTaskActions, contextHref
+           "/brokers" → "Distribuir leads" → /distribution) e a topbar passou a
+           renderizar a ação PRÓPRIA de /brokers ("Ver desempenho"). Sem a
+           prioridade declarada, este botão herdava o padrão "primary" e a tela
+           ficava com DOIS botões primários competindo. */
+        action={{ href: "/distribution", label: "Distribuir leads", priority: "secondary" }}
       />
 
       {/* Números decisivos antes da lista: capacidade, campo, carteira e a

@@ -74,7 +74,12 @@ export default function PropertiesPage() {
         eyebrow="Inventário · Estoque"
         title="Imóveis"
         description="Estoque conectado ao matching inteligente do Atlas."
-        action={{ href: "/properties/mtching", label: "✦ Abrir Matching IA" }}
+        /* PRIMÁRIA, e agora DECLARADA (2026-07-29): /properties não é destino do
+           catálogo (é comando do ⌘K), então getAtlasNavigationContext não tem
+           primaryAction para ela e a topbar cai no "Novo lead" genérico. Este é
+           o único botão que carrega a ação real do estoque; rebaixá-lo deixaria
+           a tela sem ação própria. */
+        action={{ href: "/properties/mtching", label: "✦ Abrir Matching IA", priority: "primary" }}
       />
 
       {/* Estoque com decisão: disponíveis e reservados na régua mono antes da

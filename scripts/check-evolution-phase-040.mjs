@@ -10,6 +10,15 @@ const categorizer = fs.readFileSync("lib/atlas/activity-timeline.ts", "utf8");
 const styles = fs.readFileSync("app/globals.css", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_040_ACTIVITY_EXPLAINABLE_HISTORY.md", "utf8");
 
+// O CORPO do efeito que lê a intenção da URL, recortado para ser inspecionado
+// sozinho: é ele que precisa provar que não abre leitura nem assinatura novas.
+// Contar `fetch(` na página inteira não distinguiria o efeito novo do `load()`.
+const inicioDoEfeito = activity.indexOf("const alvo = alvoDaIntencao(lerIntencaoDaJanela(), \"visao\")");
+const fimDoEfeito = activity.indexOf("}, []);", inicioDoEfeito);
+const efeitoDaIntencao = inicioDoEfeito >= 0 && fimDoEfeito > inicioDoEfeito
+  ? activity.slice(inicioDoEfeito, fimDoEfeito)
+  : "EFEITO-DE-INTENCAO-NAO-ENCONTRADO fetch( .channel(";
+
 const checks = [
   ["Fase 040 concluída sem mutação de dados ou schema", config.status === "completed" && config.productionDataModified === false && config.databaseSchemaChanged === false],
   ["Fase anterior encaminha Atividades", phaseThirtyNine.nextPhase.phase === 40 && phaseThirtyNine.nextPhase.status === "planned"],
@@ -40,7 +49,31 @@ const checks = [
   ["Nenhuma execução comercial automática foi adicionada", activity.includes("ordem cronológica, sem prioridade") && config.executionPolicy.automaticTaskCreation === false && config.executionPolicy.automaticCustomerContact === false && config.executionPolicy.automaticDecision === false],
   // CC-6: +1 useState (nowMs) e +1 useEffect (relógio de 1min p/ "há 2h"/HOJE frescos).
   // Não adiciona rede nem realtime — segue 1 fetch e 1 assinatura.
-  ["Estrutura React usa uma leitura e uma assinatura", (activity.match(/useState/g) || []).length === 9 && (activity.match(/useEffect\(/g) || []).length === 3 && (activity.match(/fetch\(/g) || []).length === 1 && config.structuralBaseline.networkRequests === 1 && config.structuralBaseline.realtimeSubscriptions === 1],
+  // ── POR QUE O NÚMERO DE EFEITOS MUDOU (2026-07-29) ────────────────────────
+  // A propriedade é "UMA leitura e UMA assinatura" — e ela está intacta:
+  // `fetch(` continua 1 e `.channel(` continua 1. O que subiu (3 → 4 efeitos)
+  // foi um efeito de MONTAGEM que não fala com a rede.
+  //
+  // Causa medida: o catálogo prometia um recorte para esta tela e ela não lia
+  // parâmetro nenhum. O efeito novo lê a intenção pelo módulo compartilhado e,
+  // só quando o alvo existe na MESMA lista que desenha os chips (`PERIODS`),
+  // define o período inicial. Chave inventada não vira recorte: `escolhido`
+  // fica indefinido e a tela abre como sempre abriu.
+  //
+  // O número não foi fixado às cegas: a asserção NOMEIA o efeito e prova que
+  // ele não abre leitura nem assinatura.
+  ["Estrutura React usa uma leitura e uma assinatura",
+    (activity.match(/useState/g) || []).length === 9
+    && (activity.match(/fetch\(/g) || []).length === 1
+    && (activity.match(/\.channel\(/g) || []).length === 1
+    && config.structuralBaseline.networkRequests === 1
+    && config.structuralBaseline.realtimeSubscriptions === 1
+    && (activity.match(/useEffect\(/g) || []).length === config.postPhaseAdditions.useEffectOccurrences
+    && activity.includes('alvoDaIntencao(lerIntencaoDaJanela(), "visao")')
+    && activity.includes("PERIODS.find(([chave]) => chave === alvo)")
+    && !efeitoDaIntencao.includes("fetch(")
+    && !efeitoDaIntencao.includes(".channel(")
+    && config.postPhaseAdditions.addedEffectReadsNetwork === false],
   ["Layout possui responsividade, toque e movimento reduzido", styles.includes("/* Fase 040 — histórico explicável") && styles.includes(".atlas-activity-timeline") && styles.includes("min-height: 44px") && styles.includes("@media (prefers-reduced-motion: reduce)")],
   ["Relatório registra limites e próxima fase", report.includes("não publica alegação de produtividade") && report.includes("Fase 041") && config.nextPhase.phase === 41],
   ["RBAC, tenant, RLS e timeline existente foram preservados", config.safetyPolicy.rbacPreserved === true && config.safetyPolicy.tenantIsolationPreserved === true && config.safetyPolicy.rlsPreserved === true && config.safetyPolicy.existingLeadTimelinePreserved === true],

@@ -132,7 +132,11 @@ export default function ImportLeadsPage() {
         eyebrow="Reativação · Bases antigas"
         title="Transforme bases paradas em novas conversas"
         description="Importe contatos antigos, distribua para o time ou trabalhe sua própria base — sempre com deduplicação, opt-out respeitado e templates aprovados do WhatsApp."
-        action={{ href: "#nova-base", label: "Adicionar uma base" }}
+        /* PRIMÁRIA, e agora DECLARADA (2026-07-29): a ação acontece nesta tela
+           (âncora #nova-base), não em outra. A topbar aqui só oferece a
+           transição "Revisar duplicidades" — se este botão virasse secundário,
+           a tela perderia a única superfície que carrega a ação dela. */
+        action={{ href: "#nova-base", label: "Adicionar uma base", priority: "primary" }}
       />
 
       {/* SALTO V4.2 · ponte para o importador governado da base histórica
