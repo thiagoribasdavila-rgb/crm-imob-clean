@@ -269,6 +269,31 @@ const MUTACOES = [
     para: `          .gte("first_contact_due_at", new Date(Date.now() - 2880 * 60_000).toISOString())
           .order("first_contact_due_at", { ascending: true, nullsFirst: false })`,
   },
+  {
+    id: "M30", arquivo: "components/atlas/use-alerta-de-lead-nova.ts",
+    quebra: "falha de leitura passa a zerar o contador em vez de declarar",
+    dor: 'Um blip de rede vira "nenhuma lead nova". A tela confirma a falsa tranquilidade de uma fila parada — com lead paga esperando.',
+    de: `      setEstado("nao-medido");`,
+    para: `      setNovas(0); setEstado("nenhuma");`,
+  },
+  {
+    id: "M31", arquivo: "components/atlas/sidebar.tsx",
+    quebra: 'a pastilha volta a desenhar "0" quando não há nada',
+    dor: "Bolinha permanente ao lado de Leads: em dois dias a pessoa aprende a ignorar, e junto vai o aviso da lead paga.",
+    de: `      item.id === "leads" && (alerta.estado === "chegou" || alerta.estado === "nao-medido");`,
+    para: `      item.id === "leads" && alerta.estado !== "indisponivel";`,
+  },
+  {
+    id: "M32", arquivo: "supabase/migrations/20260729120000_alerta_de_lead_nova.sql",
+    quebra: "importação em lote volta a gerar um aviso por linha",
+    dor: "269 avisos em um minuto, como em 28/07. O contador vira acervo e nunca mais zera.",
+    de: `    if new.import_batch_id is not null then
+      return new;
+    end if;`,
+    para: `    if false then
+      return new;
+    end if;`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));
