@@ -392,6 +392,21 @@ export default function LeadsPage() {
   const [porPagina, setPorPagina] = useState<number>(POR_PAGINA_PADRAO);
   const [pages, setPages] = useState(1);
   const [referenceTime, setReferenceTime] = useState(0);
+  // ── O RELÓGIO PRECISA ANDAR SOZINHO ────────────────────────────────────────
+  //
+  // `referenceTime` só avançava dentro de `loadLeads`. Enquanto cada abertura
+  // de lead recarregava a lista, isso passava despercebido — a recarga
+  // atualizava o relógio de carona.
+  //
+  // Com a ficha em lâmina (a lista deixa de recarregar, que é o ganho), o
+  // relógio congelaria: "vence em 4 min" continuaria dizendo 4 min meia hora
+  // depois, e a Fila de ação inteira — que ordena por distância do prazo —
+  // apodreceria em silêncio. Um minuto é granularidade suficiente para um SLA
+  // cujo menor prazo é de 5.
+  useEffect(() => {
+    const id = window.setInterval(() => setReferenceTime(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   const [currentRole, setCurrentRole] = useState("");
   const [currentProfileId, setCurrentProfileId] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -1920,7 +1935,18 @@ export default function LeadsPage() {
                         leadId={lead.id}
                         proximaAcaoEm={lead.next_action_at}
                         descricaoAtual={lead.next_action}
-                        aoMarcar={() => setReloadKey((k) => k + 1)}
+                        // Antes: `setReloadKey(k => k + 1)`, que refazia a
+                        // consulta inteira só para atualizar UMA linha — e com
+                        // a ficha em lâmina fecharia o painel no meio do
+                        // trabalho. O patch otimista mexe só na lead marcada;
+                        // se o servidor discordar, a próxima carga corrige.
+                        aoMarcar={(quando) =>
+                          setItems((atuais) =>
+                            atuais.map((l) =>
+                              l.id === lead.id ? { ...l, next_action_at: quando ?? l.next_action_at } : l,
+                            ),
+                          )
+                        }
                       />
                     </div>
                   );

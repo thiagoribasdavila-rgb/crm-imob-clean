@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   CSSProperties,
   FormEvent,
@@ -337,6 +337,7 @@ const attentionChipClass: Record<AttentionSignalRow["severity"], string> = {
 
 export default function LeadDetailPage() {
   const { id: leadId } = useParams<{ id: string }>();
+  const router = useRouter();
   const [lead, setLead] = useState<LeadRow | null>(null);
   const [firstContactSla, setFirstContactSla] = useState<FirstContactSla | null>(null);
   const [activities, setActivities] = useState<ActivityRow[]>([]);
@@ -773,7 +774,12 @@ export default function LeadDetailPage() {
 
   function actOnGap(question: GapQuestion) {
     if (question.action === "navigate") {
-      window.location.assign(
+      // `window.location.assign` recarregava o documento inteiro. Como página
+      // isolada isso só era lento; com a ficha aberta em lâmina sobre a lista,
+      // derruba tudo o que a lâmina existe para preservar — filtros, seleção,
+      // posição de rolagem e o cache da lista. `router.push` navega dentro do
+      // app e mantém a lista viva atrás.
+      router.push(
         question.target === "schedule"
           ? `/leads/${leadId}/schedule`
           : question.target,

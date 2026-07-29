@@ -9903,3 +9903,128 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 .atlas-kanban-filtro-dono select:hover {
   border-color: rgba(56, 189, 248, 0.28);
 }
+
+/* ── A LÂMINA DO LEAD 360 ────────────────────────────────────────────────────
+ *
+ * A ficha entra por cima da lista, que continua viva atrás. O vocabulário
+ * visual é o de painel do macOS/iPadOS: material translúcido, uma sombra só
+ * (não três), movimento curto com desaceleração, e nenhuma borda que não
+ * separe duas coisas de verdade.
+ */
+.atlas-lamina-raiz {
+  position: fixed;
+  inset: 0;
+  z-index: 91; /* acima da barra de lote (30); abaixo do command dialog (100) */
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+.atlas-lamina-raiz > * { pointer-events: auto; }
+
+.atlas-lamina-fundo {
+  position: absolute;
+  inset: 0;
+  /* Escurece o suficiente para a lista sair do primeiro plano sem sumir: quem
+     está trabalhando precisa continuar vendo ONDE estava. */
+  background: rgba(4, 8, 18, 0.42);
+  backdrop-filter: blur(3px);
+  animation: atlas-lamina-fundo-entra 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.atlas-lamina-painel {
+  position: relative;
+  width: min(880px, 100vw);
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  outline: none;
+  /* `inline-size` é o que permite a MESMA ficha servir a 880px e à tela cheia:
+     as seções passam a reagir à largura da lâmina, não à da janela. */
+  container-type: inline-size;
+  background: var(--atlas-surface, #0b1220);
+  border-left: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: -24px 0 60px rgba(2, 6, 16, 0.5);
+  animation: atlas-lamina-entra 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+@container (max-width: 720px) {
+  /* Abaixo desta largura a ficha se comporta como em celular, mesmo num
+     monitor grande — quem manda é o espaço que ela realmente tem. */
+  .atlas-lamina-conteudo { --atlas-ficha-estreita: 1; }
+}
+
+.atlas-lamina-raiz.is-cobertura .atlas-lamina-painel {
+  width: 100vw;
+  border-left: none;
+  box-shadow: none;
+  animation: atlas-lamina-sobe 240ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.atlas-lamina-fechar {
+  position: sticky;
+  top: 12px;
+  float: right;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 12px 12px 0 0;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  color: #aab6ca;
+  background: rgba(10, 17, 32, 0.72);
+  backdrop-filter: blur(8px);
+  transition: color 150ms ease, border-color 150ms ease;
+}
+.atlas-lamina-fechar:hover { color: #e8eef8; border-color: rgba(56, 189, 248, 0.34); }
+
+.atlas-lamina-conteudo { min-height: 100%; }
+
+/* Saída: mais curta que a entrada. Fechar deve parecer imediato — a pessoa já
+   decidiu, e esperar a animação é atrito puro. */
+.atlas-lamina-raiz.is-saindo .atlas-lamina-painel {
+  animation: atlas-lamina-sai 200ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+.atlas-lamina-raiz.is-saindo .atlas-lamina-fundo {
+  animation: atlas-lamina-fundo-sai 200ms ease forwards;
+}
+
+@keyframes atlas-lamina-entra {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes atlas-lamina-sobe {
+  from { transform: translateY(18px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes atlas-lamina-sai {
+  to { transform: translateX(24px); opacity: 0; }
+}
+@keyframes atlas-lamina-fundo-entra { from { opacity: 0; } to { opacity: 1; } }
+@keyframes atlas-lamina-fundo-sai { to { opacity: 0; } }
+
+/* Movimento é informação (de onde veio, para onde vai), não espetáculo. Quem
+   pediu menos movimento recebe a mesma informação sem o deslocamento. */
+@media (prefers-reduced-motion: reduce) {
+  .atlas-lamina-painel,
+  .atlas-lamina-fundo,
+  .atlas-lamina-raiz.is-saindo .atlas-lamina-painel,
+  .atlas-lamina-raiz.is-saindo .atlas-lamina-fundo {
+    animation-duration: 1ms;
+  }
+}
+
+:root[data-theme="light"] .atlas-lamina-painel {
+  background: #ffffff;
+  border-left-color: rgba(11, 18, 32, 0.1);
+  box-shadow: -24px 0 60px rgba(15, 23, 42, 0.14);
+}
+:root[data-theme="light"] .atlas-lamina-fundo {
+  background: rgba(15, 23, 42, 0.24);
+}
+:root[data-theme="light"] .atlas-lamina-fechar {
+  color: #475569;
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(11, 18, 32, 0.12);
+}
