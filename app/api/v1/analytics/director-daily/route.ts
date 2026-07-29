@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { MINIMUM_CAPACITY_ACTORS, MINIMUM_CAPACITY_SAMPLE, MINIMUM_CAPACITY_WEEKS, hasBasis, simulateCapacity, type CapacityContext } from "@/lib/ai/decision-simulator";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
-import { mapLegacyLead, mapLegacyProject, type CompatRow } from "@/lib/compat/legacy-v2";
+import { isMissingColumn, mapLegacyLead, mapLegacyProject, type CompatRow } from "@/lib/compat/legacy-v2";
 import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
 import { logger } from "@/lib/observability/logger";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -29,7 +29,18 @@ const WEEK_MS = 7 * 86_400_000;
  * 4,7 MB com esta lista. Nome, telefone e e-mail ficam de fora tamb\u00e9m por
  * princ\u00edpio: painel executivo agrega, n\u00e3o l\u00ea PII.
  */
-const DIRECTOR_LEAD_SELECT = "id,status,temperature,classificacao_ia,score_ia,budget_max,assigned_user_id,campaign_id,project_id,created_at,next_contact";
+const DIRECTOR_LEAD_SELECT_BASE = "id,status,temperature,classificacao_ia,score_ia,budget_max,assigned_user_id,campaign_id,project_id,created_at,next_contact";
+
+/**
+ * `first_contacted_at` entra porque o risco "Comercial" precisa contar do
+ * MESMO jeito que a lista para onde ele agora aponta. Contado por etapa
+ * (status "novo" há mais de 15 min) dava 429; contado por coluna dá 443 — e o
+ * diretor pegaria a central mentindo no primeiro clique. Um timestamp a mais
+ * não move a agulha dos 4,7 MB que o comentário acima defende.
+ *
+ * Base legada sem a coluna cai para o select base e o número sai `null`.
+ */
+const DIRECTOR_LEAD_SELECT = `${DIRECTOR_LEAD_SELECT_BASE},first_contacted_at`;
 
 /**
  * Instant\u00e2neo de leads por organiza\u00e7\u00e3o, 60s (mesmo padr\u00e3o globalThis do
@@ -41,7 +52,7 @@ const DIRECTOR_LEAD_SELECT = "id,status,temperature,classificacao_ia,score_ia,bu
  */
 const LEAD_SNAPSHOT_TTL_MS = 60_000;
 const MAX_CACHED_ORGANIZATIONS = 3;
-type LeadSnapshot = { at: number; rows: CompatRow[]; truncated: boolean };
+type LeadSnapshot = { at: number; rows: CompatRow[]; truncated: boolean; primeiroContatoMensuravel: boolean };
 const snapshotGlobal = globalThis as typeof globalThis & { __atlasDirectorLeadSnapshot?: Map<string, LeadSnapshot> };
 const leadSnapshotCache = snapshotGlobal.__atlasDirectorLeadSnapshot ?? new Map<string, LeadSnapshot>();
 snapshotGlobal.__atlasDirectorLeadSnapshot = leadSnapshotCache;
@@ -56,10 +67,17 @@ async function readLeadSnapshot(
   // Paginado porque `.limit(20000)` \u00e9 letra morta: o PostgREST corta em 1000
   // sem erro, e TODO este painel (pipeline, forecast, ranking, risco de
   // distribui\u00e7\u00e3o) afirma n\u00fameros sobre este array.
-  const result = await fetchAllRows<CompatRow>((from, to) =>
-    admin.from("leads").select(DIRECTOR_LEAD_SELECT).eq("organization_id", organizationId).order("id", { ascending: true }).range(from, to).returns<CompatRow[]>());
+  const leia = (select: string) =>
+    fetchAllRows<CompatRow>((from, to) =>
+      admin.from("leads").select(select).eq("organization_id", organizationId).order("id", { ascending: true }).range(from, to).returns<CompatRow[]>());
+  let primeiroContatoMensuravel = true;
+  let result = await leia(DIRECTOR_LEAD_SELECT);
+  if (result.error && isMissingColumn(result.error)) {
+    primeiroContatoMensuravel = false;
+    result = await leia(DIRECTOR_LEAD_SELECT_BASE);
+  }
   if (result.error) return { snapshot: null, error: result.error };
-  const snapshot: LeadSnapshot = { at: now, rows: result.rows, truncated: result.truncated };
+  const snapshot: LeadSnapshot = { at: now, rows: result.rows, truncated: result.truncated, primeiroContatoMensuravel };
   leadSnapshotCache.set(organizationId, snapshot);
   if (leadSnapshotCache.size > MAX_CACHED_ORGANIZATIONS) {
     for (const [key, entry] of leadSnapshotCache) {
@@ -203,7 +221,14 @@ export async function GET(request: NextRequest) {
   const now = Date.now();
   const activeLeads = leads.filter((lead) => !TERMINAL.has(normalize(lead.status)));
   const wonLeads = leads.filter((lead) => normalize(lead.status) === "ganho");
-  const firstContactOverdue = activeLeads.filter((lead) => normalize(lead.status) === "novo" && (time(lead.created_at) ?? now) < now - 15 * 60_000).length;
+  // Predicado por COLUNA, igual ao do corretor e igual ao do filtro para onde
+  // o risco aponta. O antigo — status "novo" há mais de 15 min — dava 429
+  // contra os 443 da coluna: a central afirmava um número e o clique abria
+  // outro. `null` quando a coluna não existe: não medido nunca é zero.
+  const primeiroContatoMensuravel = leadSnapshot?.primeiroContatoMensuravel ?? false;
+  const firstContactOverdue = primeiroContatoMensuravel
+    ? activeLeads.filter((lead) => !lead.first_contacted_at).length
+    : null;
   const followUpOverdue = activeLeads.filter((lead) => (time(lead.next_action_at) ?? Number.MAX_SAFE_INTEGER) < now).length;
   const withoutNextAction = activeLeads.filter((lead) => !lead.next_action_at).length;
   // "Sem dono" contado sobre a base inteira devolvia ~17 mil (quase tudo é lead
@@ -335,7 +360,7 @@ export async function GET(request: NextRequest) {
       action: "Preencher ATLAS_AI_PRICE_TABLE — custo parcial não sustenta decisão de verba",
     });
   }
-  if (firstContactOverdue) risks.push({ severity: "critical", area: "Comercial", reason: `${firstContactOverdue} leads novas aguardam contato`, action: "Definir responsáveis e recuperar o SLA hoje" });
+  if (firstContactOverdue) risks.push({ severity: "critical", area: "Comercial", reason: `${firstContactOverdue} leads nunca contatadas`, action: "Definir responsáveis e recuperar o SLA hoje" });
   // Sobre amostra cortada o número deixa de ser fato e vira piso: "ao menos N".
   // Nesse caso o risco também perde a severidade crítica — crítico é um veredito
   // sobre a operação, e ainda não sabemos o tamanho dela.

@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 const allowedSorts = new Set(["created_at", "updated_at", "score", "name", "first_contact_sla"]);
 const allowedDirections = new Set(["asc", "desc"]);
-const allowedAttentionFilters = new Set(["overdue", "no_action", "hot", "unassigned"]);
+const allowedAttentionFilters = new Set(["overdue", "no_action", "hot", "unassigned", "never_contacted"]);
 const allowedNextActionFilters = new Set(["today", "next_7_days", "scheduled"]);
 
 function clampLimit(raw: string | null) {
@@ -281,6 +281,11 @@ export async function GET(request: NextRequest) {
       }
       if (attention === "hot") query = query.or("temperature.ilike.quente,score_ia.gte.70");
       if (attention === "unassigned") query = query.is("assigned_user_id", null);
+      // Mesmo predicado por coluna que a central usa para contar. Se a base
+      // não tem a coluna (comSla falso), NÃO aplicamos o filtro: devolver a
+      // lista inteira sob o rótulo "nunca contatados" seria pior que recusar —
+      // a resposta já declara `slaDisponivel` para a tela dizer que não mediu.
+      if (attention === "never_contacted" && comSla) query = query.is("first_contacted_at", null);
     }
     if (nextAction) {
       query = query

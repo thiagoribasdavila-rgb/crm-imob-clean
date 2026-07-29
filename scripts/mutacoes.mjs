@@ -219,6 +219,27 @@ const MUTACOES = [
     de: `    : null;`,
     para: `    : 0;`,
   },
+  {
+    id: "M23", arquivo: "app/(crm)/command-center/page.tsx",
+    quebra: "todo risco da diretoria volta a desembocar em /reports",
+    dor: 'O diretor lê "Distribuir a fila hoje", clica, e cai numa página sem nenhum link — recomeça a navegação pelo menu com dois corretores esperando.',
+    de: `          href: DESTINO_DO_RISCO[risk.area] ?? "/reports",`,
+    para: `          href: "/reports",`,
+  },
+  {
+    id: "M24", arquivo: "app/(crm)/leads/page.tsx",
+    quebra: "a lista de leads para de ler o filtro da URL",
+    dor: "O link da central vira decoração: abre a lista com o último filtro salvo, mostrando um número diferente do que o risco acabou de afirmar.",
+    de: `      const url = new URLSearchParams(window.location.search);`,
+    para: `      const url = new URLSearchParams("");`,
+  },
+  {
+    id: "M25", arquivo: "app/api/v1/analytics/director-daily/route.ts",
+    quebra: "a diretoria volta a contar primeiro contato por etapa",
+    dor: "A central afirma 429 e o clique abre 443. Tela pega mentindo uma vez deixa de ser consultada.",
+    de: `    ? activeLeads.filter((lead) => !lead.first_contacted_at).length`,
+    para: `    ? activeLeads.filter((lead) => normalize(lead.status) === "novo").length`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

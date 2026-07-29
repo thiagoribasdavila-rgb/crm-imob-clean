@@ -469,6 +469,29 @@ const COCKPIT_ACTIONABLE_SIGNALS = new Set<ProposalSignalKind>([
   "never_contacted",
 ]);
 
+/**
+ * Para onde cada risco da diretoria leva.
+ *
+ * Todos apontavam para "/reports" — uma página de 335 linhas sem um único link
+ * para /leads, /pipeline ou /distribution. O texto que a IA escreve já é
+ * imperativo ("Distribuir a fila hoje — lead sem dono não recebe ligação"), e o
+ * clique entregava um beco: o diretor lia a ordem e tinha que recomeçar a
+ * navegação pelo menu.
+ *
+ * Os destinos usam o vocabulário que a API de leads JÁ aceita
+ * (`allowedAttentionFilters`), então cada número escrito no risco abre a lista
+ * que contém exatamente aquele número. Quando os dois divergirem, o defeito é
+ * de definição — e é isso que o contrato guarda.
+ */
+const DESTINO_DO_RISCO: Record<string, string> = {
+  Comercial: "/leads?attention=never_contacted&sort=first_contact_sla&direction=asc",
+  Distribuição: "/leads?attention=unassigned",
+  Execução: "/leads?attention=overdue",
+  Campanhas: "/marketing/campaigns",
+  Governança: "/integrations/health",
+  "Custo de IA": "/reports",
+};
+
 // Ordem de decisão: crítico → atenção → oportunidade.
 const PRIORITY_SEVERITY_RANK: Record<ProactiveSeverity, number> = {
   critical: 0,
@@ -1697,7 +1720,7 @@ export default function CommandCenterPage() {
           severity: risk.severity,
           reason: risk.reason,
           action: risk.action,
-          href: "/reports",
+          href: DESTINO_DO_RISCO[risk.area] ?? "/reports",
         })),
       };
     }

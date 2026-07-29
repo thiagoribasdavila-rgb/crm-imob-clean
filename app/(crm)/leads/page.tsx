@@ -55,8 +55,18 @@ type Profile = {
 
 type ReferenceRow = Record<string, unknown>;
 type SortDirection = "asc" | "desc";
-type AttentionFilter = "" | "overdue" | "no_action" | "hot" | "unassigned";
+type AttentionFilter = "" | "overdue" | "no_action" | "hot" | "unassigned" | "never_contacted";
 type NextActionFilter = "" | "today" | "next_7_days" | "scheduled";
+
+/**
+ * O que a URL pode pedir. Os três espelham exatamente as listas de
+ * `app/api/v1/crm/leads/route.ts` — parâmetro que a API recusaria não vira
+ * filtro aqui, senão a lista volta vazia e a pessoa conclui que não há
+ * trabalho quando na verdade o link estava errado.
+ */
+const ATTENTION_VALIDOS = ["overdue", "no_action", "hot", "unassigned", "never_contacted"] as const;
+const NEXT_ACTION_VALIDOS = ["today", "next_7_days", "scheduled"] as const;
+const SORT_VALIDOS = ["created_at", "updated_at", "score", "name", "first_contact_sla"] as const;
 type LeadPriorityTone = "danger" | "warning" | "info";
 type LeadPriority = {
   lead: Lead;
@@ -419,6 +429,24 @@ export default function LeadsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filtersHydrated, setFiltersHydrated] = useState(false);
 
+  /**
+   * Hidratação dos filtros: primeiro o que estava salvo, DEPOIS a URL — que
+   * vence.
+   *
+   * A central de comando manda o diretor para cá com o filtro já escolhido
+   * ("443 leads nunca contatadas" → /leads?attention=never_contacted). Antes
+   * disso nenhuma tela do CRM lia parâmetro de URL, então todo risco da
+   * diretoria desembocava em /reports e a pessoa tinha que refazer a navegação
+   * na mão. Sem esta leitura, o link é decorativo: a lista abriria com o
+   * último filtro salvo e mostraria outro número.
+   *
+   * Lemos `window.location.search` em vez de `useSearchParams` de propósito:
+   * o hook exige fronteira <Suspense> em página cliente, e embrulhar as ~2000
+   * linhas desta tela por causa de quatro parâmetros trocaria um problema
+   * pequeno por um risco de build. O efeito já roda uma vez na montagem, que é
+   * exatamente a semântica desejada — a URL define o estado inicial e as
+   * interações da pessoa assumem a partir daí.
+   */
   useEffect(() => {
     try {
       const saved = window.sessionStorage.getItem(FILTER_STORAGE_KEY);
@@ -442,6 +470,41 @@ export default function LeadsPage() {
       }
     } catch {
       window.sessionStorage.removeItem(FILTER_STORAGE_KEY);
+    }
+
+    try {
+      const url = new URLSearchParams(window.location.search);
+      // Só valores que a API reconhece: parâmetro inventado na barra de
+      // endereço não pode virar filtro silencioso que devolve lista vazia e
+      // faz a pessoa concluir que não há trabalho.
+      const pegar = <T extends string>(chave: string, validos: readonly T[]): T | null => {
+        const valor = url.get(chave);
+        return valor && (validos as readonly string[]).includes(valor) ? (valor as T) : null;
+      };
+      const attentionDaUrl = pegar("attention", ATTENTION_VALIDOS);
+      const nextActionDaUrl = pegar("nextAction", NEXT_ACTION_VALIDOS);
+      const sortDaUrl = pegar("sort", SORT_VALIDOS);
+      const statusDaUrl = url.get("status");
+      let veioDaUrl = false;
+
+      if (attentionDaUrl !== null) { setAttention(attentionDaUrl); veioDaUrl = true; }
+      if (nextActionDaUrl !== null) { setNextAction(nextActionDaUrl); veioDaUrl = true; }
+      if (sortDaUrl !== null) { setSort(sortDaUrl); veioDaUrl = true; }
+      if (url.get("direction") === "asc" || url.get("direction") === "desc") {
+        setDirection(url.get("direction") as "asc" | "desc");
+        veioDaUrl = true;
+      }
+      if (statusDaUrl) { setStatus(statusDaUrl); veioDaUrl = true; }
+
+      if (veioDaUrl) {
+        // Chegou por link com filtro: abre o painel para a pessoa VER qual
+        // recorte está olhando. Filtro invisível é a diferença entre "a lista
+        // está filtrada" e "a base encolheu".
+        setFiltersOpen(true);
+        setPage(1);
+      }
+    } catch {
+      // URL malformada não pode impedir a lista de carregar.
     } finally {
       setFiltersHydrated(true);
     }
@@ -686,9 +749,11 @@ export default function LeadsPage() {
     let noAction = 0;
     let stalled = 0;
     let stalledCritical = 0;
+    let neverContacted = 0;
     for (const lead of items) {
       if (isHotLead(lead)) hot += 1;
       if (!lead.assigned_to) unassigned += 1;
+      if (!lead.first_contacted_at) neverContacted += 1;
       if (!lead.next_action_at) noAction += 1;
       else if (
         referenceTime &&
@@ -701,7 +766,7 @@ export default function LeadsPage() {
         if (signal.hot || signal.level === "rose") stalledCritical += 1;
       }
     }
-    return { hot, unassigned, overdue, noAction, stalled, stalledCritical };
+    return { hot, unassigned, overdue, noAction, stalled, stalledCritical, neverContacted };
   }, [items, referenceTime]);
 
   const teamBrokers = useMemo(
@@ -791,6 +856,16 @@ export default function LeadsPage() {
       label: "Atrasadas",
       description: "Resolver follow-ups vencidos",
       count: pageMetrics.overdue,
+      countClass: "cc6-crit",
+    },
+    {
+      // O recorte mais pesado da base em 2026-07-28: 443 de 448 leads em
+      // atendimento sem uma única ligação registrada. Existia como coluna e
+      // como número na central, e não tinha como ser filtrado em lugar nenhum.
+      key: "never_contacted",
+      label: "Nunca contatadas",
+      description: "Ninguém ligou ainda — o primeiro toque decide se a lead existe",
+      count: pageMetrics.neverContacted,
       countClass: "cc6-crit",
     },
     {
