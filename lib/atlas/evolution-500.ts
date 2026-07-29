@@ -359,7 +359,10 @@ const waveDefinitions: Array<Omit<EvolutionWave, "range">> = [
   { id: 9, name: "Leads Intelligence", outcome: "A carteira indica claramente quem atender e por quê.", href: "/leads", pillar: "operação" },
   { id: 10, name: "Pipeline de alta fluidez", outcome: "Movimentar, priorizar e recuperar oportunidades sem atrito.", href: "/pipeline", pillar: "operação" },
   { id: 11, name: "Rotina, tarefas e agenda", outcome: "A próxima ação fica sempre evidente e executável.", href: "/calendar", pillar: "operação" },
-  { id: 12, name: "Cliente 360", outcome: "Todo contexto do comprador aparece em uma fonte única.", href: "/customers", pillar: "operação" },
+  // /customers aposentada em 2026-07-29 (mesma tabela `leads`, sem piso de
+  // carteira). "Fonte única" agora é literal: é /leads, com os segmentos por
+  // vínculo herdados da tela morta.
+  { id: 12, name: "Cliente 360", outcome: "Todo contexto do comprador aparece em uma fonte única.", href: "/leads", pillar: "operação" },
   { id: 13, name: "Launch OS", outcome: "Projetos, estoque, VGV e velocidade de vendas operam juntos.", href: "/developments", pillar: "operação" },
   { id: 14, name: "Materiais e incorporadoras", outcome: "Book, tabela e espelho vigentes são encontrados em segundos.", href: "/developments/materials", pillar: "operação" },
   { id: 15, name: "Relatórios para decisão", outcome: "Dia, semana e mês viram recomendações simples e rastreáveis.", href: "/reports", pillar: "inteligência" },
@@ -411,7 +414,9 @@ const waveDefinitions: Array<Omit<EvolutionWave, "range">> = [
   { id: 61, name: "Negociação governada", outcome: "Alçadas e concessões ficam claras, auditáveis e protegidas.", href: "/sales", pillar: "plataforma" },
   { id: 62, name: "Fechamento e documentação", outcome: "Pendências de assinatura e documentos aparecem antes de ameaçar a venda.", href: "/sales", pillar: "operação" },
   { id: 63, name: "Comissão e recebimento", outcome: "SLA por incorporadora e divergências de comissão ficam rastreáveis.", href: "/sales", pillar: "operação" },
-  { id: 64, name: "Pós-venda e indicação", outcome: "Relacionamento após a compra preserva satisfação e oportunidades consentidas.", href: "/customers", pillar: "operação" },
+  // O pós-venda vive no vínculo "compra concluída" da carteira (/customers
+  // aposentada em 2026-07-29); o filtro leva direto a quem já comprou.
+  { id: 64, name: "Pós-venda e indicação", outcome: "Relacionamento após a compra preserva satisfação e oportunidades consentidas.", href: "/leads?vinculo=compra_concluida", pillar: "operação" },
   { id: 65, name: "Recuperação de oportunidades", outcome: "Negócios parados recebem diagnóstico e plano humano de retomada.", href: "/leads/reactivation-governance", pillar: "inteligência" },
   { id: 66, name: "Operação noturna supervisionada", outcome: "Leads fora do horário são preparadas sem contato indevido ou promessa comercial.", href: "/atlas-v3/agents", pillar: "inteligência" },
   { id: 67, name: "Handoff IA–humano", outcome: "Contexto, perguntas e limites chegam completos ao corretor responsável.", href: "/conversations", pillar: "inteligência" },

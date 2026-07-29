@@ -91,13 +91,14 @@ export const atlasNavigation = [
     primaryAction: { label: "Novo compromisso", href: "/calendar?create=1", outcome: "Reservar uma ação com cliente ou equipe." },
     dataDomains: ["tasks", "visits", "commercial-events"],
   },
-  {
-    id: "customers-360", surface: "canonical", group: "Clientes e portfólio", label: "Clientes 360", href: "/customers", icon: "◉",
-    roles: ["director", "superintendent", "manager", "broker"], keywords: "customer intelligence compradores perfil histórico relacionamento",
-    businessOutcome: "Reunir a história do comprador e indicar a melhor continuidade do relacionamento.",
-    primaryAction: { label: "Abrir cliente prioritário", href: "/customers?focus=priority", outcome: "Continuar o atendimento com contexto completo." },
-    dataDomains: ["customers", "leads", "commercial-events"],
-  },
+  // "Clientes 360" (/customers) saiu do catálogo em 2026-07-29: a tela morreu.
+  // Lia a MESMA tabela `leads` que /leads (readCompatibleCustomers era alias de
+  // readCompatibleLeads), sem SLA, sem lote e — o grave — sem o piso de
+  // carteira: um corretor via as 469 leads da imobiliária inteira. As duas
+  // capacidades próprias dela (segmentos por vínculo e copiar contato) vivem
+  // agora em /leads; a regra do vínculo em lib/crm/vinculo-do-cliente.ts.
+  // A rota continua respondendo por redirect (memória de workspace + probe HTTP),
+  // mas não é mais um DESTINO — por isso saiu daqui.
   {
     id: "developments", surface: "canonical", group: "Clientes e portfólio", label: "Projetos", href: "/developments", icon: "▥",
     roles: ["director", "superintendent", "manager", "broker"], keywords: "incorporadoras lançamentos empreendimentos estoque materiais",
@@ -210,7 +211,8 @@ export const atlasTaskActions = [
   { contextHref: "/leads/new", label: "Ver leads", href: "/leads", icon: "◎", keywords: "voltar carteira leads", roles: ["director", "superintendent", "manager", "broker"] },
   { contextHref: "/tasks", label: "Abrir agenda", href: "/calendar", icon: "□", keywords: "agenda compromissos visitas", roles: ["director", "superintendent", "manager", "broker"] },
   { contextHref: "/calendar", label: "Ver tarefas", href: "/tasks", icon: "✓", keywords: "tarefas follow up pendências", roles: ["director", "superintendent", "manager", "broker"] },
-  { contextHref: "/customers", label: "Abrir leads", href: "/leads", icon: "◎", keywords: "leads carteira atendimento", roles: ["director", "superintendent", "manager", "broker"] },
+  // A ação contextual de /customers saiu junto com a tela (2026-07-29): a rota
+  // redireciona para /leads, então ninguém permanece nela para ver a ação.
   { contextHref: "/developments", label: "Buscar materiais", href: "/developments/materials", icon: "⌕", keywords: "book tabela espelho materiais", roles: ["director", "superintendent", "manager", "broker"] },
   { contextHref: "/leads/import", label: "Revisar duplicidades", href: "/leads/deduplication", icon: "◇", keywords: "duplicados limpeza base", roles: ["director", "superintendent", "manager", "broker"] },
   { contextHref: "/brokers", label: "Distribuir leads", href: "/distribution", icon: "⇄", keywords: "fila atribuição corretores", roles: ["director", "superintendent", "manager"] },

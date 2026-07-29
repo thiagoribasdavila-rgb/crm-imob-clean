@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import {
+  ROTULO_DO_VINCULO,
+  VINCULOS,
+  ehVinculoValido,
+  type VinculoDoCliente,
+} from "@/lib/crm/vinculo-do-cliente";
 import { supabase } from "@/lib/supabase";
 import { LIVE_PROFILE_SELECT, mapLegacyProfile, mapLegacyProject } from "@/lib/compat/legacy-v2";
 import { EmptyState } from "@/components/atlas/empty-state";
@@ -65,6 +71,7 @@ type NextActionFilter = "" | "today" | "next_7_days" | "scheduled";
  * trabalho quando na verdade o link estava errado.
  */
 const ATTENTION_VALIDOS = ["overdue", "no_action", "hot", "unassigned", "never_contacted"] as const;
+const VINCULO_VALIDOS = VINCULOS;
 const NEXT_ACTION_VALIDOS = ["today", "next_7_days", "scheduled"] as const;
 const SORT_VALIDOS = ["created_at", "updated_at", "score", "name", "first_contact_sla"] as const;
 type LeadPriorityTone = "danger" | "warning" | "info";
@@ -89,6 +96,7 @@ type SavedLeadFilters = {
   broker?: string;
   score?: string;
   attention?: AttentionFilter;
+  vinculo?: VinculoDoCliente | "";
   nextAction?: NextActionFilter;
   sort?: string;
   direction?: SortDirection;
@@ -394,6 +402,54 @@ export default function LeadsPage() {
   const [broker, setBroker] = useState("");
   const [score, setScore] = useState("");
   const [attention, setAttention] = useState<AttentionFilter>("");
+  // Herdado da tela "Clientes 360", apagada por ser a mesma tabela sem SLA,
+  // sem lote e sem piso de carteira — ela vazava a carteira dos colegas.
+  // Os quatro segmentos eram a única ideia própria dela e vieram junto.
+  const [vinculo, setVinculo] = useState<VinculoDoCliente | "">("");
+  const [copiado, setCopiado] = useState<string | null>(null);
+
+  /**
+   * Abrir a lista É o ato de olhar as chegadas — por isso os avisos são
+   * marcados como vistos aqui, e não num botão "marcar como lido", que criaria
+   * uma pendência sobre a pendência. O evento avisa a barra lateral na hora:
+   * navegação interna não dispara `visibilitychange`, e a pastilha ficaria
+   * acesa por até um minuto sobre a tela que a pessoa acabou de abrir.
+   */
+  useEffect(() => {
+    void (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) return;
+        await fetch("/api/v1/crm/alertas-de-lead", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        window.dispatchEvent(new Event("atlas:leads-vistas"));
+      } catch {
+        /* Falhar aqui deixa o aviso aceso, que é o lado seguro do erro. */
+      }
+    })();
+  }, []);
+
+  /**
+   * Copia telefone ou e-mail. A confirmação vive no próprio chip por 1,6s —
+   * sem toast, porque um aviso global para uma ação tão pequena rouba a
+   * atenção de quem está varrendo a lista. Clipboard indisponível (http, foco
+   * perdido) não quebra nada: o valor continua legível na linha.
+   */
+  async function copiarContato(chave: string, valor: string) {
+    try {
+      await navigator.clipboard.writeText(valor);
+      setCopiado(chave);
+      window.setTimeout(
+        () => setCopiado((atual) => (atual === chave ? null : atual)),
+        1600,
+      );
+    } catch {
+      /* Sem área de transferência: o número segue visível para copiar à mão. */
+    }
+  }
   const [nextAction, setNextAction] = useState<NextActionFilter>("");
   const [sort, setSort] = useState("created_at");
   const [direction, setDirection] = useState<SortDirection>("desc");
@@ -460,6 +516,7 @@ export default function LeadsPage() {
         setBroker(filters.broker || "");
         setScore(filters.score || "");
         setAttention(filters.attention || "");
+        setVinculo(ehVinculoValido(filters.vinculo) ? filters.vinculo : "");
         setNextAction(filters.nextAction || "");
         setSort(filters.sort || "created_at");
         setDirection(filters.direction === "asc" ? "asc" : "desc");
@@ -482,12 +539,14 @@ export default function LeadsPage() {
         return valor && (validos as readonly string[]).includes(valor) ? (valor as T) : null;
       };
       const attentionDaUrl = pegar("attention", ATTENTION_VALIDOS);
+      const vinculoDaUrl = pegar("vinculo", VINCULO_VALIDOS);
       const nextActionDaUrl = pegar("nextAction", NEXT_ACTION_VALIDOS);
       const sortDaUrl = pegar("sort", SORT_VALIDOS);
       const statusDaUrl = url.get("status");
       let veioDaUrl = false;
 
       if (attentionDaUrl !== null) { setAttention(attentionDaUrl); veioDaUrl = true; }
+      if (vinculoDaUrl !== null) { setVinculo(vinculoDaUrl); veioDaUrl = true; }
       if (nextActionDaUrl !== null) { setNextAction(nextActionDaUrl); veioDaUrl = true; }
       if (sortDaUrl !== null) { setSort(sortDaUrl); veioDaUrl = true; }
       if (url.get("direction") === "asc" || url.get("direction") === "desc") {
@@ -520,6 +579,7 @@ export default function LeadsPage() {
       broker,
       score,
       attention,
+      vinculo,
       nextAction,
       sort,
       direction,
@@ -529,6 +589,7 @@ export default function LeadsPage() {
     window.sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(snapshot));
   }, [
     attention,
+    vinculo,
     broker,
     direction,
     filtersHydrated,
@@ -632,6 +693,7 @@ export default function LeadsPage() {
         }
         if (score === "cold") params.set("max_score", "39");
         if (attention) params.set("attention", attention);
+        if (vinculo) params.set("vinculo", vinculo);
         if (nextAction) params.set("next_action", nextAction);
 
         const response = await fetch(`/api/v1/crm/leads?${params}`, {
@@ -684,6 +746,7 @@ export default function LeadsPage() {
     return () => controller.abort();
   }, [
     attention,
+    vinculo,
     broker,
     debouncedSearch,
     direction,
@@ -991,6 +1054,7 @@ export default function LeadsPage() {
     setBroker("");
     setScore("");
     setAttention("");
+    setVinculo("");
     setNextAction("");
     setSort("created_at");
     setDirection("desc");
@@ -1132,6 +1196,42 @@ export default function LeadsPage() {
                   >
                     {loading ? "—" : shortcut.count}
                   </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* VÍNCULO — o que a tela "Clientes 360" tinha de próprio.
+              Ela lia a MESMA tabela pela mesma função, sem SLA, sem lote e sem
+              piso de carteira (um corretor via as 469 leads da imobiliária).
+              Foi apagada; estes quatro segmentos vieram junto, e aqui eles
+              filtram a carteira inteira no servidor, não só a página. */}
+          <div className="cc6-hairline mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
+            <p className="cc6-eyebrow" title="Em que ponto da relação comercial a pessoa está.">
+              Vínculo
+            </p>
+            <div
+              className="flex flex-1 gap-2 overflow-x-auto pb-0.5"
+              role="group"
+              aria-label="Filtrar por vínculo comercial"
+            >
+              {VINCULOS.map((chave) => (
+                <button
+                  key={chave}
+                  type="button"
+                  // Clicar no que já está ativo desliga: mesma gramática dos
+                  // atalhos acima, para não haver dois jeitos de limpar filtro.
+                  onClick={() => {
+                    setVinculo((atual) => (atual === chave ? "" : chave));
+                    setPage(1);
+                  }}
+                  aria-pressed={vinculo === chave}
+                  className={`min-h-11 shrink-0 rounded-xl border px-3 text-[11.5px] font-medium transition-colors ${
+                    vinculo === chave
+                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[#e8eef8]"
+                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[#aab6ca] hover:border-[rgba(148,163,184,0.3)] hover:text-[#e8eef8]"
+                  } ${focusRing}`}
+                >
+                  {ROTULO_DO_VINCULO[chave]}
                 </button>
               ))}
             </div>
@@ -1736,6 +1836,34 @@ export default function LeadsPage() {
                                 </small>
                               </span>
                             </Link>
+                            {/* Copiar contato em um clique — a outra função
+                                que só existia em "Clientes 360". Fica FORA do
+                                Link: aninhar botão dentro de âncora é inválido
+                                e o clique abriria a ficha em vez de copiar. */}
+                            {lead.phone || lead.email ? (
+                              <span className="mt-1 flex flex-wrap gap-1">
+                                {lead.phone ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => copiarContato(`${lead.id}:tel`, String(lead.phone))}
+                                    className={`cc6-chip cursor-pointer text-[10.5px] transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}
+                                    title="Copiar telefone"
+                                  >
+                                    {copiado === `${lead.id}:tel` ? "copiado ✓" : "copiar tel"}
+                                  </button>
+                                ) : null}
+                                {lead.email ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => copiarContato(`${lead.id}:mail`, String(lead.email))}
+                                    className={`cc6-chip cursor-pointer text-[10.5px] transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}
+                                    title="Copiar e-mail"
+                                  >
+                                    {copiado === `${lead.id}:mail` ? "copiado ✓" : "copiar e-mail"}
+                                  </button>
+                                ) : null}
+                              </span>
+                            ) : null}
                           </td>
                           <td>
                             <strong>{projectName(lead)}</strong>

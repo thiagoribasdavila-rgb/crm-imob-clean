@@ -7,15 +7,27 @@ const atlasUi = fs.readFileSync("components/ui/AtlasUI.tsx", "utf8");
 const pageBoundary = fs.readFileSync("app/(crm)/error.tsx", "utf8");
 const report = fs.readFileSync("docs/EVOLUTION_PHASE_031_NAVIGATION_FAILURE_RECOVERY.md", "utf8");
 
+/**
+ * 2026-07-29 — um dos sete consumidores da recuperação compartilhada,
+ * "Clientes 360" (`app/(crm)/customers/page.tsx`), foi APAGADO: mesma tabela
+ * `leads` de /leads, sem SLA nem lote e sem o piso de carteira (vazava a
+ * carteira dos colegas). Hoje a rota só redireciona — uma tela que não busca
+ * dados não pode ter estado de falha recuperável.
+ *
+ * O config NÃO foi renumerado: `sharedRecoveryConsumersAfter` continua 7, o
+ * número que esta fase realmente entregou. A checagem afirma 6 consumidores
+ * vivos + 1 destino aposentado que cai em /leads, cuja recuperação explícita
+ * já é verificada logo abaixo ("Leads preserva recuperação explícita").
+ */
 const sharedRecoveryFiles = [
   "app/(crm)/calendar/page.tsx",
   "app/(crm)/tasks/page.tsx",
   "app/(crm)/pipeline/page.tsx",
-  "app/(crm)/customers/page.tsx",
   "app/(crm)/developments/page.tsx",
   "app/(crm)/sales/page.tsx",
   "app/(crm)/distribution/page.tsx",
 ];
+const retiredSurface = fs.readFileSync("app/(crm)/customers/page.tsx", "utf8");
 const formerlyRawFiles = [
   "app/(crm)/tasks/page.tsx",
   "app/(crm)/pipeline/page.tsx",
@@ -34,7 +46,8 @@ const checks = [
   ["Contrato compartilhado declara escopo e estratégia", atlasUi.includes('scope?: "module" | "page" | "action"') && atlasUi.includes('data-recovery-scope={scope}') && atlasUi.includes('data-recovery-strategy="safe-read-retry"')],
   ["Descrição técnica conhecida é redigida", atlasUi.includes("technicalFailurePattern") && atlasUi.includes("safeFailureDescription(description)") && config.recoveryContract.technicalDetailsRedacted === true],
   ["Nova tentativa comunica atividade e evita repetição", atlasUi.includes("disabled={busy}") && atlasUi.includes("Atualizando…") && config.accessibility.busyStateVisibleAndDisabled === true],
-  ["Sete módulos críticos usam a recuperação compartilhada", sharedSources.every((source) => source.includes("AtlasRecoverableError") && source.includes("onRetry=")) && config.structuralBaseline.sharedRecoveryConsumersAfter === 7],
+  // 6 vivos + 1 aposentado que redireciona = os 7 entregues pela fase.
+  ["Sete módulos críticos usam a recuperação compartilhada", sharedSources.every((source) => source.includes("AtlasRecoverableError") && source.includes("onRetry=")) && retiredSurface.includes('redirect("/leads")') && sharedRecoveryFiles.length + 1 === config.structuralBaseline.sharedRecoveryConsumersAfter && config.structuralBaseline.sharedRecoveryConsumersAfter === 7],
   ["Cinco banners antigos foram eliminados", formerlyRawFiles.every((file) => !fs.readFileSync(file, "utf8").includes(rawBanner)) && config.structuralBaseline.legacyCriticalRawBannersAfter === 0],
   ["Leads preserva recuperação explícita", leads.includes("<ErrorState") && leads.includes("Limpar e tentar novamente") && config.exitCriteria.leadsKeepsExplicitRecovery === true],
   ["Retentativas críticas repetem somente leitura", sharedSources.every((source) => source.includes("busy={loading}")) && config.recoveryContract.retryNeverRepeatsMutation === true],

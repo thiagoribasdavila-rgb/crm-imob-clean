@@ -128,11 +128,16 @@ export const atlasCoreV2PageRegistry = [
     copilot: { contextId: "pipeline-coach", capabilities: ["explain-risk", "suggest-stage-action", "prepare-follow-up"], maximumAutonomy: 2 },
     rendering: { strategy: "server-first", interactiveIslands: ["kanban-board", "stage-movement", "opportunity-drawer"] },
   }),
+  // A tela /customers foi aposentada em 2026-07-29 (mesma tabela `leads`, sem
+  // piso de carteira — vazava a carteira dos colegas). O CONTRATO do módulo
+  // "customers-360" continua válido: a capacidade não sumiu, mudou de lugar.
+  // Rota e ação primária apontam para /leads, onde os segmentos por vínculo
+  // (lib/crm/vinculo-do-cliente.ts) e o contato copiável agora vivem.
   defineAtlasPageContract({
     id: "customers-360",
-    route: "/customers",
+    route: "/leads",
     businessOutcome: "Reunir a história do comprador e indicar a melhor continuidade do relacionamento.",
-    primaryAction: { id: "open-customer", label: "Abrir cliente prioritário", href: "/customers?focus=priority", outcome: "Continuar o relacionamento com contexto completo." },
+    primaryAction: { id: "open-customer", label: "Abrir cliente prioritário", href: "/leads?vinculo=em_atendimento", outcome: "Continuar o relacionamento com contexto completo." },
     decisionMetrics: [
       { id: "visible-customers", label: "Clientes", decisionQuestion: "Quantos relacionamentos estão no escopo?" },
       { id: "contactable", label: "Com contato", decisionQuestion: "Quantos podem ser atendidos?" },

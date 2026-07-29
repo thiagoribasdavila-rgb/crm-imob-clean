@@ -69,8 +69,19 @@ const pipelinePage = fs.readFileSync("app/(crm)/pipeline/page.tsx", "utf8");
 const tasksPage = fs.readFileSync("app/(crm)/tasks/page.tsx", "utf8");
 const activityPage = fs.readFileSync("app/(crm)/activity/page.tsx", "utf8");
 const activityApi = fs.readFileSync("app/api/v1/activity/route.ts", "utf8");
-const customersPage = fs.readFileSync("app/(crm)/customers/page.tsx", "utf8");
-const customersApi = fs.readFileSync("app/api/v1/customers/route.ts", "utf8");
+/**
+ * 2026-07-29 — "Clientes 360" foi aposentada. A tela
+ * (`app/(crm)/customers/page.tsx`) virou redirect permanente e a rota
+ * (`app/api/v1/customers/route.ts`) foi APAGADA. Motivo duplo: era a MESMA
+ * tabela `leads` lida pela mesma função (`readCompatibleCustomers` era alias de
+ * `readCompatibleLeads`), e a rota chamava o repositório sem `ownerId`,
+ * delegando a fronteira a um RLS PERMISSIVE por organização — um corretor via
+ * as 469 leads da imobiliária inteira, com telefone e e-mail.
+ * As duas asserções da Fase 041 abaixo passaram a olhar para /leads, onde a
+ * capacidade vive agora (e onde o piso de carteira é aplicado em código).
+ */
+const customersRedirect = fs.readFileSync("app/(crm)/customers/page.tsx", "utf8");
+const leadsListApi = fs.readFileSync("app/api/v1/crm/leads/route.ts", "utf8");
 const launchOsApi = fs.readFileSync("app/api/v1/launch-os/route.ts", "utf8");
 const reactivationGovernancePage = fs.readFileSync("app/(crm)/leads/reactivation-governance/page.tsx", "utf8");
 const aiDashboard = fs.readFileSync("app/(crm)/ai-dashboard/page.tsx", "utf8");
@@ -188,8 +199,14 @@ const checks = [
   // histórico cronológico explicável mantido conforme activityContract).
   ["Fase 040 transforma Atividades em histórico explicável", phaseForty.status === "completed" && phaseForty.activityContract.latestVisibleLimit === 3 && activityPage.includes('data-activity-layout="cc6-reading-timeline"')],
   ["Atividades preserva leitura, RLS e verdade", phaseForty.activityContract.readOnly === true && phaseForty.truthPolicy.orderingIsChronologicalNotPrediction === true && phaseForty.safetyPolicy.rbacPreserved === true && activityApi.includes("requireAccessContext")],
-  ["Fase 041 orienta Clientes 360 ao relacionamento", phaseFortyOne.status === "completed" && phaseFortyOne.customerContract.visibleReviewLimit === 3 && customersPage.includes('data-customers-layout="relationship-first"')],
-  ["Clientes preserva fonte única, RLS e base fria separada", phaseFortyOne.customerContract.sourceOfTruth === "public.leads" && phaseFortyOne.customerContract.coldReactivationBaseExcluded === true && phaseFortyOne.safetyPolicy.hierarchicalRlsPreserved === true && customersApi.includes("requireAccessContext")],
+  // O marcador data-customers-layout morreu com a tela; a orientação ao
+  // relacionamento é hoje a faixa de vínculo em /leads, e o destino antigo
+  // continua alcançável por redirect.
+  ["Fase 041 orienta Clientes 360 ao relacionamento", phaseFortyOne.status === "completed" && phaseFortyOne.customerContract.visibleReviewLimit === 3 && customersRedirect.includes('redirect("/leads")') && leadsPage.includes("VINCULOS.map")],
+  // Asserção mais forte que a original: além de contexto autenticado, a rota de
+  // leads exclui a base fria NO BANCO e aplica o piso de carteira em código —
+  // era exatamente o que faltava na rota de clientes que foi apagada.
+  ["Clientes preserva fonte única, RLS e base fria separada", phaseFortyOne.customerContract.sourceOfTruth === "public.leads" && phaseFortyOne.customerContract.coldReactivationBaseExcluded === true && phaseFortyOne.safetyPolicy.hierarchicalRlsPreserved === true && leadsListApi.includes("requireAccessContext") && leadsListApi.includes('.not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)")') && leadsListApi.includes("leSoAPropriaCarteira")],
   ["Fase 042 orienta Projetos à decisão comercial", phaseFortyTwo.status === "completed" && phaseFortyTwo.projectContract.visiblePriorityLimit === 3 && developmentsPage.includes('data-projects-layout="decision-first"')],
   ["Projetos preservam RLS, compatibilidade e materiais vigentes", phaseFortyTwo.safetyPolicy.authenticatedRlsClientUsed === true && phaseFortyTwo.projectContract.verifiedCurrentMaterialsOnly === true && launchOsApi.includes("requireAccessContext") && launchOsApi.includes("moduleHealth")],
   ["Fase 043 separa reativação fria da operação diária", phaseFortyThree.status === "completed" && phaseFortyThree.reactivationContract.visibleDecisionLimit === 3 && reactivationGovernancePage.includes('data-reactivation-layout="decision-first"')],

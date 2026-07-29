@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { filtroDaMinhaCarteira, leSoAPropriaCarteira } from "@/lib/crm/escopo-de-leitura";
+import { ehVinculoValido, STATUS_DO_VINCULO, statusForaDoAtendimento } from "@/lib/crm/vinculo-do-cliente";
 import {
   canonicalCommercialRole,
   compatibleLeadStatuses,
@@ -122,6 +123,11 @@ export async function GET(request: NextRequest) {
   const nextAction = allowedNextActionFilters.has(params.get("next_action") ?? "")
     ? params.get("next_action")
     : null;
+  // Herdado da tela "Clientes 360", que foi apagada por ser a mesma tabela sem
+  // SLA, sem lote e sem piso de carteira. Os quatro segmentos eram a única
+  // ideia própria dela; a regra vive em lib/crm/vinculo-do-cliente.ts.
+  const vinculoBruto = params.get("vinculo")?.trim() || null;
+  const vinculo = ehVinculoValido(vinculoBruto) ? vinculoBruto : null;
 
   if (teamOwner && assignedTo) {
     return apiError("AMBIGUOUS_OWNER_FILTER", "Escolha uma equipe ou um corretor, não os dois ao mesmo tempo.", access.meta, {
@@ -235,6 +241,14 @@ export async function GET(request: NextRequest) {
       : query.limit(limit + 1);
 
     if (status) query = query.in("status", compatibleLeadStatuses(status));
+    if (vinculo) {
+      // "Em atendimento" é o COMPLEMENTO dos três terminais, não uma lista de
+      // etapas: etapa nova do funil entra em atendimento sem ninguém precisar
+      // lembrar de cadastrá-la. Os outros três são listas fechadas.
+      query = vinculo === "em_atendimento"
+        ? query.not("status", "in", `(${statusForaDoAtendimento().join(",")})`)
+        : query.in("status", [...STATUS_DO_VINCULO[vinculo]]);
+    }
     if (source) query = query.eq("source", source);
     // O filtro por empreendimento consultava `project_id`, coluna vazia em
     // TODAS as 217 leads desta base. A coluna com dado é `development_id`

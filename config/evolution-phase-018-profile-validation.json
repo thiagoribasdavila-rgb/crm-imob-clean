@@ -22,6 +22,8 @@
     "nextAction": "apply approved migrations, then run audit:runtime-schema and audit:auth-hierarchy"
   },
   "catalogRepricedAtCommit": "e20f8931 (navegação podada na fonte): catálogo intencionalmente reduzido em 1 destino por persona; /command-center consolida Início+Command Center e o comando contextual /atlas-2030 saiu do catálogo (grupos (ai)/(autonomous) quarentenados). Contagens e amostras allowed/blocked re-baselinadas à fonte lib/atlas/navigation.ts.",
+  "retiredDestination": "2026-07-29 — 'Clientes 360' (/customers) saiu do catálogo: lia a MESMA tabela `leads` que /leads (readCompatibleCustomers era alias de readCompatibleLeads), sem SLA nem lote, e sem o piso de carteira — a rota GET /api/v1/customers chamava o repositório sem ownerId e a política leads_org_access, PERMISSIVE por organização, não recorta por dono; um corretor via as 469 leads da imobiliária inteira. A rota responde por redirect para /leads. Único expectedNavigationCount alterado: Corretor 7->6 (era o único perfil cujo total ainda batia). As demais personas JÁ ESTAVAM 1 acima do esperado desde 2b0a1e12 e voltaram a bater sozinhas com esta remoção.",
+  "pendingRepriceNotOwnedHere": "expectedContextCommandCount continua 7 para os cinco perfis não-corretores enquanto atlasContextCommands tem 6. Divergência ANTERIOR e alheia a esta mudança: o commit 2b0a1e12 ('Marketing sai do atalho de teclado e a rail perde peso') promoveu 'Marketing AI' do ⌘K para a rail — nav +1 e comandos -1 para quem tem acesso a Marketing, o que explica exatamente os dois deltas. Não re-baselinado aqui de propósito: é débito de outra entrega e renumerá-lo de passagem apagaria o rastro.",
   "personas": [
     {
       "id": "administrator",
@@ -78,7 +80,7 @@
       "label": "Corretor",
       "role": "broker",
       "accessRole": "broker",
-      "expectedNavigationCount": 7,
+      "expectedNavigationCount": 6,
       "expectedContextCommandCount": 5,
       "allowed": ["/leads", "/pipeline", "/properties", "/conversations"],
       "blocked": ["/brokers", "/distribution", "/reports", "/marketing", "/decision-center", "/users", "/settings"]

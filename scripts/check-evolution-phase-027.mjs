@@ -14,10 +14,28 @@ const taskActionCount = (taskActionsBlock.match(/contextHref:/g) || []).length;
 const taskTargetCount = (taskActionsBlock.match(/ href:/g) || []).length;
 const uniqueTargets = new Set([...taskActionsBlock.matchAll(/href: "([^"]+)"/g)].map((match) => match[1]));
 
+/**
+ * 2026-07-29 — uma das quinze transições contextuais perdeu o contexto.
+ *
+ * `{ contextHref: "/customers", label: "Abrir leads", href: "/leads" }` só fazia
+ * sentido enquanto "Clientes 360" era uma TELA onde o usuário permanecia. Ela
+ * foi apagada (mesma tabela `leads` que /leads, sem SLA nem lote, e sem o piso
+ * de carteira — vazava a carteira dos colegas) e hoje /customers redireciona
+ * direto para /leads. Uma ação contextual que oferece ir para onde a rota já
+ * levou sozinha é ruído, não atalho.
+ *
+ * O config NÃO foi renumerado: `contextualTransitions` continua 15, o número
+ * que esta fase entregou. A conta abaixo afirma 14 vivas + 1 aposentada, e
+ * exige que a aposentada de fato redirecione — se alguém devolver a tela sem
+ * devolver a ação, o guard acusa.
+ */
+const retiredContext = fs.readFileSync("app/(crm)/customers/page.tsx", "utf8");
+const retiredContextTransitions = retiredContext.includes('redirect("/leads")') ? 1 : 0;
+
 const checks = [
   ["Fase 027 concluída sem mutação de dados", config.status === "completed" && config.runtimeNavigationChanged === true && config.productionDataModified === false],
   ["Hierarquia anterior permanece concluída", phaseTwentySix.status === "completed" && phaseTwentySix.exitCriteria.currentLocationUsesSingleGovernedSource === true],
-  ["Quinze transições contextuais estão governadas", taskActionCount === 15 && taskTargetCount === 15 && config.taskActions.contextualTransitions === 15],
+  ["Quinze transições contextuais estão governadas", taskActionCount === 14 && taskTargetCount === 14 && taskActionCount + retiredContextTransitions === config.taskActions.contextualTransitions && config.taskActions.contextualTransitions === 15],
   ["Ações reutilizam destinos existentes", uniqueTargets.has("/developments/materials") && uniqueTargets.has("/integrations/health") && uniqueTargets.has("/calendar") && uniqueTargets.has("/distribution")],
   ["Ação padrão Novo lead permanece", navigation.includes('label: "Novo lead"') && navigation.includes('href: "/leads/new"') && config.taskActions.defaultAction.href === "/leads/new"],
   ["Resolução remove parâmetros e exige contexto exato", navigation.includes('pathname.split("?")[0]?.split("#")[0]') && navigation.includes("item.contextHref === normalizedPath") && config.taskActions.exactContextMatching === true],

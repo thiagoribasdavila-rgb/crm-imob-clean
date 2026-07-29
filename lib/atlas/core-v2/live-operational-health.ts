@@ -164,13 +164,17 @@ export async function readOperationalModuleHealth(
       ready: "Prazos operacionais conectados",
       empty: "Agenda pronta para novas ações",
     }),
+    // O semáforo continua existindo (o módulo "customers-360" é contrato de
+    // várias fases), mas o destino agora é /leads: a tela /customers foi
+    // aposentada em 2026-07-29 e só responde por redirect. Mandar o operador
+    // para uma porta que apenas reencaminha é um salto a mais sem informação.
     !leadResult.ok
       ? {
           id: "customers-360",
           label: "Clientes 360",
           state: "unavailable",
           detail: "Conexão temporariamente indisponível",
-          href: "/customers",
+          href: "/leads",
           count: null,
         }
       : {
@@ -180,7 +184,7 @@ export async function readOperationalModuleHealth(
           detail: profiles.ok
             ? (leadResult.count > 0 ? "Visão unificada conectada" : "Base pronta para novos clientes")
             : "Clientes disponíveis; equipe em atualização",
-          href: "/customers",
+          href: "/leads",
           count: leadResult.count,
         },
     readState(developmentResult, {
