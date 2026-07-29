@@ -42,7 +42,14 @@
     "app/api/ai/cost-routing-test/route.ts",
     "app/api/ai/openai-test/route.ts",
     "app/api/ai/perplexity-test/route.ts",
-    "app/api/v1/integrations/meta/daily-report-test/route.ts"
+    "app/api/v1/integrations/meta/daily-report-test/route.ts",
+    "app/api/v1/crm/alertas-de-lead/route.ts"
+  ],
+  "$comentarioPontes": "Rotas da ponte do WhatsApp: máquina-a-máquina, chamadas pelo processo do bridge (PM2), não por navegador. Elas NÃO devem provar sessão de usuário — devem provar o segredo compartilhado. Antes desta categoria existir, o guarda cobrava delas evidência de sessão e ficava vermelho com as três, que já exigiam x-atlas-bridge-secret e devolviam 401. A exigência aqui é MAIS estrita que a genérica: segredo, recusa 401, e proibição de aceitar sessão — senão alguém 'consertaria' trocando o segredo por sessão e abriria a ponte para qualquer corretor logado.",
+  "bridgeRoutes": [
+    "app/api/v1/whatsapp/bridge/inbound/route.ts",
+    "app/api/v1/whatsapp/bridge/is-lead/route.ts",
+    "app/api/v1/whatsapp/bridge/status/route.ts"
   ],
   "authenticationEvidence": [
     "requireAccessContext",

@@ -463,6 +463,34 @@ const MUTACOES = [
     de: `  return atlasNavigation.filter((item) => canAccessAtlasItem(item, identity));`,
     para: `  return atlasNavigation;`,
   },
+  {
+    id: "M51", arquivo: "app/api/v2/marketing/capi-feedback/process/route.ts",
+    quebra: "o worker da CAPI volta a rodar sem segredo nenhum",
+    dor: "Era o estado real até 2026-07-29: `POST()` sem `request`, sem como conferir cabeçalho. Qualquer um que alcançasse a URL disparava envio de conversões à Meta para até 200 organizações. Dos 12 workers agendados, era o único sem trava.",
+    de: `  if (!esperado || token !== esperado) {\n    return NextResponse.json({ error: "Não autorizado." }, { status: 401 });\n  }`,
+    para: `  void esperado; void token;`,
+  },
+  {
+    id: "M52", arquivo: "app/api/v2/crm/first-contact-sla/process/route.ts",
+    quebra: "a trava de um worker passa a valer só quando o segredo existe",
+    dor: "É o erro de uma tecla que passa em revisão de código: `if (segredo && token !== segredo)` só recusa QUANDO o segredo está configurado — então em todo ambiente que ainda não o configurou, incluindo o primeiro dia de uma homologação, a rota fica ABERTA. Falha aberta é pior que falha fechada porque não gera sintoma.",
+    de: `  if (!esperado || token !== esperado) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });`,
+    para: `  if (esperado && token !== esperado) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });`,
+  },
+  {
+    id: "M53", arquivo: "app/api/v1/whatsapp/bridge/is-lead/route.ts",
+    quebra: "a ponte do WhatsApp perde a trava do segredo compartilhado",
+    dor: "Sem ela, qualquer um na rede pergunta ao CRM 'este telefone é uma lead?' — reconhecimento gratuito da carteira — e nas rotas irmãs injeta mensagem de entrada. A ponte é chamada pelo processo do bridge (PM2), não por navegador: não há sessão para proteger, só o segredo.",
+    de: `  if (!segredoConfere(request.headers.get("x-atlas-bridge-secret"), esperado)) {`,
+    para: `  if (false) { void esperado;`,
+  },
+  {
+    id: "M54", arquivo: "app/api/v1/whatsapp/bridge/is-lead/route.ts",
+    quebra: "a ponte passa a aceitar sessão de usuário",
+    dor: "É o CONSERTO ERRADO tentador: o guarda cobrava das pontes 'evidência de sessão' e ficava vermelho com as três, que já tinham o segredo. Adicionar requireAccessContext deixaria o guarda verde E abriria a ponte para QUALQUER corretor logado usar o canal do bridge. Reapontar um guarda tem de deixá-lo mais forte; esta mutação prova que a metade que proíbe sessão está de pé.",
+    de: `function segredoConfere(recebido: string | null, esperado: string): boolean {`,
+    para: `const _sessao = "requireAccessContext";\nfunction segredoConfere(recebido: string | null, esperado: string): boolean {`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

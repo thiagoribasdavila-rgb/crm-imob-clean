@@ -43,8 +43,13 @@ const QUARENTENA = {
     "AMBIENTE — exige connection string de Postgres; não há no .env.local. Roda no deploy.",
   "rls-cerca:check":
     "AMBIENTE — exige DATABASE_URL para ler pg_policy (o PostgREST não alcança pg_catalog). Sai com código 2 e a mensagem 'NÃO EXECUTADO' quando falta, em vez de fingir aprovação.",
-  "api-security:check":
-    "EM CORREÇÃO — 2 defeitos reais (capi-feedback/process sem segredo; alertas-de-lead sem validação auditável) e 3 reapontamentos (as rotas de bridge têm x-atlas-bridge-secret; o guarda só não conhece o padrão máquina-a-máquina).",
+  // `api-security:check` SAIU da quarentena em 2026-07-29, no mesmo dia em que
+  // entrou: o worker da CAPI ganhou `ATLAS_CRON_SECRET`, `alertas-de-lead` foi
+  // declarada como mutação sem corpo (é o que ela é — marca os avisos do próprio
+  // usuário como vistos, sem ler payload) e as 3 rotas de ponte ganharam
+  // categoria própria, com exigência mais estrita que a genérica. Quarentena que
+  // sobrevive ao problema vira teto silencioso, que é o defeito que este arquivo
+  // existe para não cometer.
   "final-dashboards:check":
     "EM CORREÇÃO — cobra DASHBOARD_PERIOD_KEY em app/(crm)/dashboard/page.tsx; lacuna real, não contrato velho.",
   "password-recovery:check":

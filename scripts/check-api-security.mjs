@@ -19,6 +19,7 @@ const publicRoutes = new Set(contract.publicRoutes);
 const authFlows = new Set(contract.authFlowRoutes);
 const webhooks = new Set(contract.webhookRoutes);
 const workers = new Set(contract.workerRoutes);
+const bridges = new Set(contract.bridgeRoutes ?? []);
 const noBodyMutations = new Set(contract.noBodyMutationRoutes);
 const failures = [];
 let protectedCount = 0;
@@ -36,6 +37,27 @@ for (const route of routes) {
   }
   if (workers.has(route)) {
     if (!/ATLAS_CRON_SECRET/.test(source)) failures.push(`${route}: worker sem segredo operacional`);
+    continue;
+  }
+  if (bridges.has(route)) {
+    // ── PONTE DO WHATSAPP: MÁQUINA-A-MÁQUINA ─────────────────────────────────
+    //
+    // Estas rotas são chamadas pelo processo do bridge (PM2), não por navegador.
+    // Cobrar delas evidência de SESSÃO era a régua errada, e por isso as três
+    // apareciam como "identidade não comprovada" — quando na verdade já exigiam
+    // `x-atlas-bridge-secret` e devolviam 401. Medido em 2026-07-29.
+    //
+    // A exigência aqui é MAIS estrita que a genérica, não menos:
+    if (!/x-atlas-bridge-secret/.test(source) || !/segredoConfere|segredoDaPonte/.test(source)) {
+      failures.push(`${route}: ponte sem o segredo compartilhado`);
+    }
+    if (!/status:\s*401/.test(source)) failures.push(`${route}: ponte sem recusa 401`);
+    // A terceira é a que importa: sem ela, alguém "consertaria" a ponte trocando
+    // o segredo por sessão de usuário — e aí qualquer corretor logado poderia
+    // perguntar "este telefone é uma lead?" e injetar mensagem de entrada.
+    if (contract.authenticationEvidence.some((token) => source.includes(token))) {
+      failures.push(`${route}: ponte aceitando sessão de usuário — ela é máquina-a-máquina`);
+    }
     continue;
   }
   if (!contract.authenticationEvidence.some((token) => source.includes(token)) && !source.includes("@/app/api/v1/leads/route")) {
@@ -68,4 +90,15 @@ if (failures.length) {
   console.error(`API Fase ${contract.phase}: falhou\n- ${failures.join("\n- ")}`);
   process.exit(1);
 }
-console.log(`API Fase ${contract.phase}: aprovado — ${routes.length} rotas classificadas; ${protectedCount} rotas autenticadas; ${publicRoutes.size} públicas; ${authFlows.size} de autenticação; ${webhooks.size} webhooks; ${workers.size} workers.`);
+// As pontes entram na CONTA porque o resumo é o que alguém lê para acreditar que
+// as 194 rotas estão cobertas. Categoria que existe e não aparece no resumo é
+// cobertura invisível — e este projeto já pagou por número que não fechava.
+const classificadas = publicRoutes.size + authFlows.size + webhooks.size + workers.size + bridges.size + protectedCount;
+console.log(`API Fase ${contract.phase}: aprovado — ${routes.length} rotas classificadas; ${protectedCount} rotas autenticadas; ${publicRoutes.size} públicas; ${authFlows.size} de autenticação; ${webhooks.size} webhooks; ${workers.size} workers; ${bridges.size} pontes máquina-a-máquina.`);
+if (classificadas !== routes.length) {
+  console.error(
+    `\nATENÇÃO: as categorias somam ${classificadas} e existem ${routes.length} rotas. ` +
+      "A diferença são rotas que passaram sem cair em categoria nenhuma — o resumo estaria mentindo.",
+  );
+  process.exit(1);
+}

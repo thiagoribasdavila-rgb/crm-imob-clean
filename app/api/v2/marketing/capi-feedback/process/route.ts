@@ -45,7 +45,25 @@ export const maxDuration = 60;
 /** Janela de leitura. 7 dias cobre o ciclo de qualificação sem reprocessar meses. */
 const JANELA_DIAS = 7;
 
-export async function POST() {
+export async function POST(request: Request) {
+  // ── QUEM PODE DISPARAR ISTO ───────────────────────────────────────────────
+  //
+  // Este worker era `POST()` — sem `request`. Sem o objeto da requisição ele não
+  // tinha COMO conferir cabeçalho: qualquer um que alcançasse a URL disparava
+  // envio de conversões à Meta para até 200 organizações de uma vez. Medido em
+  // 2026-07-29: dos 12 workers agendados em config/workers-schedule.json, era o
+  // único sem trava — os outros 11 já exigiam o segredo.
+  //
+  // FALHA FECHADA, e a ordem importa: `!esperado` vem PRIMEIRO. Escrito como
+  // `esperado && token !== esperado`, a rota ficaria ABERTA justamente onde o
+  // segredo não foi configurado — que é todo ambiente novo, incluindo o primeiro
+  // dia de uma homologação.
+  const esperado = process.env.ATLAS_CRON_SECRET;
+  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (!esperado || token !== esperado) {
+    return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+  }
+
   const inicio = Date.now();
   const admin = getSupabaseAdmin();
 
