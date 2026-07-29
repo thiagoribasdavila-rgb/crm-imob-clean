@@ -191,6 +191,34 @@ const MUTACOES = [
     de: `    if (stage === "perdido" && !reversalOf && !discardReason) {`,
     para: `    if (false) {`,
   },
+  {
+    id: "M19", arquivo: "lib/atlas/regra-nunca-contatado.ts",
+    quebra: "lead já contatado volta a disparar o sinal de nunca contatado",
+    dor: "443 leads viram 448: a fila do corretor passa a cobrar ligação de quem já foi atendido, e a lista inteira perde a credibilidade.",
+    de: `  if (input.firstContactedAtMs !== null) return null;`,
+    para: `  if (false) return null;`,
+  },
+  {
+    id: "M20", arquivo: "lib/atlas/regra-nunca-contatado.ts",
+    quebra: "lead sem prazo de SLA gravado deixa de ser avaliado",
+    dor: "Não ter SLA vira o que salva o lead de aparecer: ele fica invisível para sempre, sem ninguém nunca ligar.",
+    de: `  const referencia = input.firstContactDueAtMs ?? input.createdAtMs;`,
+    para: `  const referencia = input.firstContactDueAtMs;`,
+  },
+  {
+    id: "M21", arquivo: "app/api/v1/analytics/broker-daily/route.ts",
+    quebra: "o total da fila volta a ser o tamanho da página exibida",
+    dor: 'O anel "Fila atendida" desenha 96% para uma carteira inteiramente travada — a fórmula fica incapaz de dar nota ruim.',
+    de: `        leadsNeedingAttention: attentionQueueCompleta.length,`,
+    para: `        leadsNeedingAttention: attentionQueue.length,`,
+  },
+  {
+    id: "M22", arquivo: "app/api/v1/analytics/broker-daily/route.ts",
+    quebra: "base sem as colunas de SLA passa a publicar zero em vez de não medido",
+    dor: 'A tela afirma "0 sem primeiro contato" sobre uma carteira que ela não conseguiu olhar. Ausência não declarada é indistinguível de zero.',
+    de: `    : null;`,
+    para: `    : 0;`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

@@ -24,7 +24,8 @@ export type ProposalSignalKind =
   | "follow_up_overdue"
   | "stale_stage"
   | "high_score_no_contact"
-  | "objection_open";
+  | "objection_open"
+  | "never_contacted";
 
 export type ProposalActionKind =
   | "reschedule_followup"
@@ -104,6 +105,33 @@ export function buildActionProposal(
       reason: "Follow-up vencido: manter o compromisso vivo evita perder o timing da negociação.",
       preview: `Novo agendamento: ${scheduledLabel} (próxima manhã útil).`,
       action: { followupId: context.overdueFollowupId, leadId: lead.id, scheduledAt },
+      guard: { requiresApproval: true, source: "deterministic" },
+    };
+  }
+
+  if (signal === "never_contacted") {
+    // Lead sem dono nunca vai ser contatado por ninguém: distribuir vem antes
+    // de agendar. Mesma bifurcação que stale_stage já faz.
+    if (!lead.assignedTo) {
+      return {
+        version: ACTION_PROPOSAL_VERSION,
+        kind: "reassign_lead",
+        signal,
+        title: `Distribuir ${nome} (nunca contatado)`,
+        reason: "Nunca contatado e sem responsável: enquanto não tiver dono, ninguém liga. A cascata encontra o corretor com menor carga.",
+        preview: "Atribuição pela cascata hierárquica (corretor disponível com menor carga; gerente segura a fila se não houver).",
+        action: { leadId: lead.id, strategy: "hierarchical_cascade" },
+        guard: { requiresApproval: true, source: "deterministic" },
+      };
+    }
+    return {
+      version: ACTION_PROPOSAL_VERSION,
+      kind: "create_task",
+      signal,
+      title: `Primeiro contato com ${nome}`,
+      reason: "Nunca contatado e com o prazo de SLA vencido: o primeiro toque é o que decide se este lead existe ou não.",
+      preview: `Tarefa ALTA "Primeiro contato" para ${scheduledLabel}.`,
+      action: { leadId: lead.id, title: `Primeiro contato: ${nome}`.slice(0, 120), priority: "ALTA", dueAt: scheduledAt },
       guard: { requiresApproval: true, source: "deterministic" },
     };
   }

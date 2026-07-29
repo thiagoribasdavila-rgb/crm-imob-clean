@@ -3,6 +3,8 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   LIVE_LEAD_SELECT,
+  LIVE_LEAD_SELECT_WITH_SLA,
+  isMissingColumn,
   mapLegacyLead,
   mapLegacyTask,
   type CompatRow,
@@ -13,6 +15,7 @@ import {
   severityRank,
   HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS,
   HOT_SCORE_THRESHOLD,
+  NEVER_CONTACTED_CRITICAL_HOURS,
   STAGE_STALE_THRESHOLD_DAYS,
 } from "@/lib/atlas/attention-signals";
 
@@ -67,10 +70,13 @@ export async function GET(request: NextRequest) {
   const organizationId = identity.access.organization.id;
   const brokerId = identity.access.profile.id;
   const now = Date.now();
-  const [leadResult, taskResult] = await Promise.all([
+  const [leadResultInicial, taskResult] = await Promise.all([
+    // Com SLA: sem first_contacted_at esta rota não tem como saber quem nunca
+    // foi contatado — e era exatamente por ler o select base que a carteira
+    // 99% intocada aparecia como "Operação em dia".
     identity.supabase
       .from("leads")
-      .select(LIVE_LEAD_SELECT)
+      .select(LIVE_LEAD_SELECT_WITH_SLA)
       .eq("organization_id", organizationId)
       .eq("assigned_user_id", brokerId)
       .limit(1000),
@@ -84,6 +90,20 @@ export async function GET(request: NextRequest) {
       .order("due_date", { ascending: true, nullsFirst: false })
       .limit(1000),
   ]);
+
+  // Base legada sem as colunas do SLA: cai para o select base e DECLARA que
+  // não mediu. O que não pode acontecer é o número virar zero silencioso.
+  let primeiroContatoMensuravel = true;
+  let leadResult = leadResultInicial;
+  if (leadResult.error && isMissingColumn(leadResult.error)) {
+    primeiroContatoMensuravel = false;
+    leadResult = await identity.supabase
+      .from("leads")
+      .select(LIVE_LEAD_SELECT)
+      .eq("organization_id", organizationId)
+      .eq("assigned_user_id", brokerId)
+      .limit(1000);
+  }
 
   if (leadResult.error || taskResult.error) {
     return apiError(
@@ -127,11 +147,13 @@ export async function GET(request: NextRequest) {
       score: Number(lead.score || 0),
       temperature: typeof lead.temperature === "string" ? lead.temperature : null,
       createdAt: typeof lead.created_at === "string" ? lead.created_at : null,
+      firstContactedAt: typeof lead.first_contacted_at === "string" ? lead.first_contacted_at : null,
+      firstContactDueAt: typeof lead.first_contact_due_at === "string" ? lead.first_contact_due_at : null,
     })),
-    { now },
+    { now, primeiroContatoMensuravel },
   );
   const attentionByLead = groupAttentionSignalsByLead(attentionSignals);
-  const attentionQueue = activeLeads
+  const attentionQueueCompleta = activeLeads
     .map((lead) => {
       const bucket = attentionByLead.get(String(lead.id));
       if (!bucket) return null;
@@ -153,10 +175,17 @@ export async function GET(request: NextRequest) {
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== null)
-    .sort((left, right) => severityRank(right.topSeverity) - severityRank(left.topSeverity) || right.signals.length - left.signals.length)
-    .slice(0, 20);
+    .sort((left, right) => severityRank(right.topSeverity) - severityRank(left.topSeverity) || right.signals.length - left.signals.length);
 
-  const priorities = activeLeads
+  // O TOTAL é contado antes do corte de exibição. Publicar
+  // `attentionQueue.length` (o valor cortado) fazia o anel "Fila atendida" da
+  // central usar um teto de paginação como nota de saúde: com o corte em 20,
+  // uma carteira de 500 leads inteiramente travada ainda desenhava 96%. A
+  // fórmula era matematicamente incapaz de dar nota ruim.
+  const LIMITE_DA_FILA = 20;
+  const attentionQueue = attentionQueueCompleta.slice(0, LIMITE_DA_FILA);
+
+  const prioritiesCompletas = activeLeads
     .map((lead) => {
       const score = Number(lead.score || 0);
       const hot = normalize(lead.temperature) === "quente" || score >= 70;
@@ -230,8 +259,8 @@ export async function GET(request: NextRequest) {
         })),
       };
     })
-    .sort((left, right) => right.priorityScore - left.priorityScore)
-    .slice(0, 7);
+    .sort((left, right) => right.priorityScore - left.priorityScore);
+  const priorities = prioritiesCompletas.slice(0, 7);
 
   const agenda = openTasks
     .filter((task) => {
@@ -247,14 +276,14 @@ export async function GET(request: NextRequest) {
       leadId: task.lead_id ? String(task.lead_id) : null,
       overdue: (timestamp(task.due_at) ?? now) < now,
     }));
-  const firstContactOverdue = activeLeads.filter((lead) => {
-    const createdAt = timestamp(lead.created_at);
-    return (
-      normalize(lead.status) === "novo" &&
-      createdAt !== null &&
-      createdAt < now - 15 * 60_000
-    );
-  }).length;
+  // Predicado por COLUNA (first_contacted_at nulo), não por etapa. O antigo
+  // — status "novo" há mais de 15 min — erra dos dois lados: nesta base perde
+  // 19 leads que avançaram para "contato"/"qualificação" sem ninguém ter
+  // registrado uma ligação, e conta 5 que já foram contatados e seguem em
+  // "novo". `null` quando as colunas não existem: não medido nunca é zero.
+  const firstContactOverdue = primeiroContatoMensuravel
+    ? activeLeads.filter((lead) => !lead.first_contacted_at).length
+    : null;
   const followUpOverdue = activeLeads.filter(
     (lead) =>
       (timestamp(lead.next_action_at) ?? Number.MAX_SAFE_INTEGER) < now,
@@ -275,11 +304,17 @@ export async function GET(request: NextRequest) {
             (timestamp(task.due_at) ?? Number.MAX_SAFE_INTEGER) < now,
         ).length,
         firstContactOverdue,
+        primeiroContatoMensuravel,
         followUpOverdue,
         agendaNext7Days: agenda.length,
-        leadsNeedingAttention: attentionQueue.length,
+        // O total real, não o tamanho da página. Ver LIMITE_DA_FILA acima.
+        leadsNeedingAttention: attentionQueueCompleta.length,
+        leadsNeedingAttentionExibidos: attentionQueue.length,
       },
       priorities,
+      // "7 de 448" em vez de "7": o crachá da central dizia só o tamanho da
+      // página, o que faz uma carteira inteira parada parecer sete pendências.
+      prioritiesTotal: prioritiesCompletas.length,
       agenda,
       // Fase 100 · Sinais de atenção proativos: fila própria (não limitada a 7
       // itens como `priorities`) só com leads que dispararam pelo menos um dos
@@ -292,8 +327,15 @@ export async function GET(request: NextRequest) {
           staleStage: `Sem mudança de etapa em pipeline_history além do limite por etapa (${Object.entries(STAGE_STALE_THRESHOLD_DAYS).map(([stage, days]) => `${stage}: ${days}d`).join(", ")}); usa leads.created_at quando o lead nunca mudou de etapa.`,
           followUpOverdue: "followups.scheduled_at no passado com completed=false.",
           highScoreNoContact: `score_ia >= ${HOT_SCORE_THRESHOLD} ou temperatura "quente" sem nenhuma linha em lead_events nos últimos ${HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS} dias úteis.`,
+          neverContacted: primeiroContatoMensuravel
+            ? `leads.first_contacted_at nulo com first_contact_due_at vencido (crítico a partir de ${NEVER_CONTACTED_CRITICAL_HOURS}h de atraso); sem prazo gravado, conta desde a criação.`
+            : "Não medido: as colunas de SLA de primeiro contato não existem nesta base.",
         },
         queue: attentionQueue,
+        // O corte é declarado para que ninguém leia o tamanho da lista como
+        // se fosse o tamanho do problema.
+        total: attentionQueueCompleta.length,
+        truncated: attentionQueueCompleta.length > attentionQueue.length,
       },
       ranking: {
         explainable: true,

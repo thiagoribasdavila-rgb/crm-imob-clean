@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_PIPELINE_STAGES } from "@/lib/atlas/pipeline-stages";
+import { avaliarNuncaContatado, NEVER_CONTACTED_CRITICAL_HOURS } from "@/lib/atlas/regra-nunca-contatado";
 
 /**
  * Fase 100 · Sinais de atenção proativos
@@ -16,13 +17,30 @@ import { DEFAULT_PIPELINE_STAGES } from "@/lib/atlas/pipeline-stages";
  * chamador — nenhuma leitura própria aqui), `pipeline_history`, `followups`,
  * `lead_events` e `lead_objections`. Nenhuma tabela nova, nenhuma migration.
  *
- * Quatro sinais, cada um com sua própria regra:
+ * Cinco sinais, cada um com sua própria regra:
  *  1. stale_stage            — lead parado além do tempo tolerado na etapa atual.
  *  2. follow_up_overdue      — followups.scheduled_at no passado com completed=false.
  *  3. high_score_no_contact  — score_ia alto (ou temperatura "quente") sem
  *                              nenhuma linha em lead_events nos últimos N dias úteis.
  *  4. objection_open         — objeção registrada (lead_objections.status="OPEN")
  *                              sem resposta há mais tempo do que o tolerável.
+ *  5. never_contacted        — leads.first_contacted_at nulo com o prazo de SLA
+ *                              (first_contact_due_at) já vencido.
+ *
+ * ── POR QUE O SINAL 5 EXISTE ─────────────────────────────────────────────────
+ *
+ * Nenhum dos quatro primeiros lê primeiro contato. Medido em 2026-07-28: dos
+ * 448 leads vivos da base, 443 NUNCA foram contatados — e mesmo assim a
+ * carteira do corretor renderizava o estado vazio "Operação em dia", em verde,
+ * porque `stale_stage` só dispara depois de 1 dia em "novo" e a importação era
+ * do mesmo dia. A tela dizia "nada a fazer" para uma carteira 99% intocada.
+ *
+ * O predicado é por COLUNA (first_contacted_at nulo), não por etapa. A
+ * alternativa que já existia em director-daily — status "novo" há mais de 15
+ * min — erra dos dois lados: perde os 19 leads que avançaram para "contato" e
+ * "qualificação" sem ninguém ter registrado uma ligação, e conta 5 que já
+ * foram contatados e continuam em "novo". Um predicado só, para o texto e para
+ * o filtro do clique: se divergirem, o primeiro clique desmente a tela.
  */
 
 const DAY_MS = 86_400_000;
@@ -35,7 +53,7 @@ const HOUR_MS = 3_600_000;
 const DISPLAY_TIME_ZONE = "America/Sao_Paulo";
 
 export type AttentionSeverity = "critical" | "warning" | "info";
-export type AttentionSignalKind = "stale_stage" | "follow_up_overdue" | "high_score_no_contact" | "objection_open";
+export type AttentionSignalKind = "stale_stage" | "follow_up_overdue" | "high_score_no_contact" | "objection_open" | "never_contacted";
 
 export type AttentionSignal = {
   leadId: string;
@@ -60,6 +78,16 @@ export type AttentionSignalLeadInput = {
   temperature: string | null;
   /** leads.created_at em ISO. */
   createdAt: string | null;
+  /**
+   * leads.first_contacted_at e leads.first_contact_due_at em ISO.
+   *
+   * Opcionais porque vêm de FIRST_CONTACT_SLA_COLUMNS, que não está no select
+   * base: quem não pede as colunas não tem como saber se o lead foi contatado.
+   * Por isso o sinal 5 só é avaliado quando o chamador declara
+   * `primeiroContatoMensuravel: true` — ver a nota em computeAttentionSignals.
+   */
+  firstContactedAt?: string | null;
+  firstContactDueAt?: string | null;
 };
 
 export type AttentionSignalSummary = {
@@ -95,6 +123,11 @@ export const HOT_SCORE_THRESHOLD = 70;
 
 // Dias úteis sem nenhum lead_event antes de um lead quente virar sinal.
 export const HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS = 3;
+
+// A regra em si mora em regra-nunca-contatado.ts, sem `server-only`, para
+// poder ser exercitada por teste sem subir o Next. Reexportada aqui porque as
+// rotas já importam os limiares deste módulo.
+export { NEVER_CONTACTED_CRITICAL_HOURS };
 
 // Horas sem resposta antes de uma objeção em aberto virar sinal de atenção
 // (warning) ou crítico. Objeção é urgente por natureza — cliente disse algo
@@ -361,9 +394,15 @@ export async function computeAttentionSignals(
   supabase: SupabaseClient,
   organizationId: string,
   leads: AttentionSignalLeadInput[],
-  options: { now?: number } = {},
+  options: { now?: number; primeiroContatoMensuravel?: boolean } = {},
 ): Promise<AttentionSignal[]> {
   const now = options.now ?? Date.now();
+  // Falso por padrão de propósito: o chamador que não leu
+  // FIRST_CONTACT_SLA_COLUMNS enxerga first_contacted_at como undefined, e
+  // tratar isso como "nunca contatado" marcaria a carteira inteira. Ausência
+  // de leitura não pode virar afirmação — é a classe de defeito que este
+  // arquivo já documenta em fetchAllRows.
+  const primeiroContatoMensuravel = options.primeiroContatoMensuravel === true;
   if (!organizationId) return [];
   const openLeads = leads.filter((lead) => lead.id && !TERMINAL_STAGES.has(lead.status));
   if (!openLeads.length) return [];
@@ -422,6 +461,36 @@ export async function computeAttentionSignals(
         since: new Date(overdue.scheduledAt).toISOString(),
         metric: overdueMinutes,
       });
+    }
+
+    // Sinal 5 — nunca contatado: first_contacted_at nulo com prazo vencido.
+    // Não faz leitura própria: os dois campos vêm no lead que o chamador já
+    // carregou, então este sinal custa zero consulta.
+    if (primeiroContatoMensuravel) {
+      const veredito = avaliarNuncaContatado({
+        firstContactedAtMs: toMs(lead.firstContactedAt),
+        firstContactDueAtMs: toMs(lead.firstContactDueAt),
+        createdAtMs: toMs(lead.createdAt),
+        agoraMs: now,
+      });
+      if (veredito) {
+        const { horasVencido, desde, temPrazoGravado } = veredito;
+        const rotuloAtraso = horasVencido < 1
+          ? "menos de 1h"
+          : horasVencido < 24
+            ? `${horasVencido}h`
+            : `${Math.floor(horasVencido / 24)} ${plural(Math.floor(horasVencido / 24), "dia", "dias")}`;
+        const quando = new Date(desde).toLocaleString("pt-BR", { timeZone: DISPLAY_TIME_ZONE });
+        signals.push({
+          leadId: lead.id,
+          kind: "never_contacted",
+          severity: veredito.critico ? "critical" : "warning",
+          reason: `Nunca contatado — prazo vencido há ${rotuloAtraso}`,
+          detail: `leads.first_contacted_at está nulo: ninguém registrou o primeiro contato com este lead. ${temPrazoGravado ? `O prazo de SLA (first_contact_due_at) venceu em ${quando}` : `Não há prazo de SLA gravado, então a contagem começa na criação do lead (${quando})`}, há ${rotuloAtraso}.`,
+          since: new Date(desde).toISOString(),
+          metric: horasVencido,
+        });
+      }
     }
 
     // Sinal 4 — objeção registrada (lead_objections) e ainda sem resposta.

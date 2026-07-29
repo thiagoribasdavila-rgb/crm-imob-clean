@@ -113,7 +113,7 @@ type ExperienceRow = {
 // lead quente sem contato recente ou objeção sem resposta.
 // Ver lib/atlas/attention-signals.ts.
 type AttentionSignalRow = {
-  kind: "stale_stage" | "follow_up_overdue" | "high_score_no_contact" | "objection_open";
+  kind: "stale_stage" | "follow_up_overdue" | "high_score_no_contact" | "objection_open" | "never_contacted";
   severity: "critical" | "warning" | "info";
   reason: string;
   detail: string;

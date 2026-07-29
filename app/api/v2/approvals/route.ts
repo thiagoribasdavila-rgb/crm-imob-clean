@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const role = identity.access.profile.commercialRole || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
 
   const body = (await request.json().catch(() => null)) as { leadId?: string; signal?: ProposalSignalKind; context?: ProposalContext } | null;
-  const SIGNALS: ProposalSignalKind[] = ["follow_up_overdue", "stale_stage", "high_score_no_contact", "objection_open"];
+  const SIGNALS: ProposalSignalKind[] = ["follow_up_overdue", "stale_stage", "high_score_no_contact", "objection_open", "never_contacted"];
   if (!body?.leadId || !body.signal || !SIGNALS.includes(body.signal)) {
     return apiError("INVALID_PROPOSAL", "Informe leadId e um sinal válido.", identity.meta, { status: 400 });
   }

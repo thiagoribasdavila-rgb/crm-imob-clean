@@ -116,10 +116,14 @@ type BrokerDaily = {
     hotLeads: number;
     openTasks: number;
     overdueTasks: number;
-    firstContactOverdue: number;
+    /** Leads sem `first_contacted_at`. `null` = colunas de SLA ausentes na base. */
+    firstContactOverdue: number | null;
+    primeiroContatoMensuravel?: boolean;
     followUpOverdue: number;
     agendaNext7Days: number;
+    /** Total real, não o tamanho da página exibida (ver broker-daily). */
     leadsNeedingAttention: number;
+    leadsNeedingAttentionExibidos?: number;
   };
   priorities: Array<{
     leadId: string;
@@ -133,7 +137,8 @@ type BrokerDaily = {
     dueAt: string | null;
     hot: boolean;
   }>;
-  attention: { queue: AttentionQueueItem[] };
+  prioritiesTotal?: number;
+  attention: { queue: AttentionQueueItem[]; total?: number; truncated?: boolean };
   generatedAt: string;
 };
 
@@ -458,6 +463,10 @@ const COCKPIT_ACTIONABLE_SIGNALS = new Set<ProposalSignalKind>([
   "stale_stage",
   "high_score_no_contact",
   "objection_open",
+  // Só precisa do leadId: a proposta é distribuir (sem dono) ou criar a tarefa
+  // de primeiro contato. É o sinal mais frequente da base e seria o pior de
+  // todos para deixar sem botão.
+  "never_contacted",
 ]);
 
 // Ordem de decisão: crítico → atenção → oportunidade.
@@ -1413,11 +1422,17 @@ export default function CommandCenterPage() {
       };
     }
     if (isManager && teamSla && teamSla.totals.followUpComplianceRate !== null) {
+      // Razão 0–1 (ver o comentário do tipo acima e o uso em :1891/:3165).
+      // Dividir por 100 aqui desenhava um SLA de 85% como 0,85% de anel e
+      // escrevia "1%" no centro — o gerente lia catástrofe onde havia meta
+      // batida. Só não gritou antes porque o corte de amostra esconde o anel
+      // enquanto houver menos de 5 ciclos medidos, e a base tem 4.
       const rate = teamSla.totals.followUpComplianceRate;
+      const pct = Math.round(rate * 100);
       return {
-        fraction: Math.min(1, Math.max(0, rate / 100)),
-        centerLabel: `${Math.round(rate)}%`,
-        detail: `Follow-up dentro do SLA em ${rate}% dos casos`,
+        fraction: Math.min(1, Math.max(0, rate)),
+        centerLabel: `${pct}%`,
+        detail: `Follow-up dentro do SLA em ${pct}% dos casos`,
         label: "SLA de follow-up",
         caption: "SLA follow-up",
       };
@@ -2360,12 +2375,34 @@ export default function CommandCenterPage() {
             /* Faixa de CONTEXTO: a densidade vem de matar as 5 bordas e agrupar por
                fundo, não de empilhar — empilhar triplicaria a altura e faria números
                de apoio gritarem logo abaixo do herói "Prioridades agora". */
-            <dl className="cc23-quiet mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+            <dl className="cc23-quiet mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
               <div className="min-w-0" title="Leads da sua carteira em atendimento">
                 <dt className="text-[11px] text-slate-500">Leads ativos</dt>
                 <dd className="cc6-metric-value mt-0.5 text-xl">
                   {brokerDaily.summary.activeLeads}
                 </dd>
+              </div>
+              {/* O número que descreve o dia do corretor. Chegava na resposta
+                  HTTP desde sempre (broker-daily o devolvia, o tipo o
+                  declarava) e nunca era desenhado — a faixa mostrava quatro
+                  zeros calmos para uma carteira 99% intocada. */}
+              <div
+                className="min-w-0"
+                title="Leads sem nenhum primeiro contato registrado (leads.first_contacted_at nulo)"
+              >
+                <dt className="text-[11px] text-slate-500">Sem 1º contato</dt>
+                <dd
+                  className={`cc6-metric-value mt-0.5 text-xl ${
+                    (brokerDaily.summary.firstContactOverdue ?? 0) > 0
+                      ? "text-[var(--atlas-danger)]!"
+                      : ""
+                  }`}
+                >
+                  {brokerDaily.summary.firstContactOverdue ?? "—"}
+                </dd>
+                {brokerDaily.summary.firstContactOverdue === null ? (
+                  <p className="mt-0.5 text-[10px] text-slate-500">não medido</p>
+                ) : null}
               </div>
               <div className="min-w-0" title="Alta intenção ou score elevado">
                 <dt className="text-[11px] text-slate-500">Quentes</dt>
@@ -2882,11 +2919,20 @@ export default function CommandCenterPage() {
                     title="Sinais triados"
                     description={`Todos os ${brokerAttentionQueue.length} sinais foram marcados como vistos. Use "Mostrar vistos" para revê-los.`}
                   />
+                ) : brokerDaily?.summary.primeiroContatoMensuravel === false ? (
+                  /* Sem as colunas de SLA a dimensão mais pesada — quem nunca
+                     foi contatado — não foi olhada. Desenhar "Operação em dia"
+                     em verde aqui seria publicar saúde por falta de leitura. */
+                  <AtlasEmpty
+                    reason="not-configured"
+                    title="Primeiro contato não medido"
+                    description="As colunas de SLA de primeiro contato não existem nesta base, então não dá para saber quem ainda não foi contatado. Os demais sinais estão limpos."
+                  />
                 ) : (
                   <AtlasEmpty
                     reason="completed"
                     title="Nenhum sinal ativo"
-                    description="Nenhum lead da sua carteira está parado, com follow-up vencido ou quente sem contato."
+                    description="Nenhum lead da sua carteira está sem primeiro contato, parado, com follow-up vencido ou quente sem contato."
                   />
                 )
               ) : briefingUnavailable ? (
