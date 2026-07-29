@@ -81,7 +81,20 @@ const checks = [
   // quis dizer continua verdadeiro e agora está EXPLÍCITO na fonte: "clientes"
   // nunca foi uma leitura própria — `readCompatibleCustomers` só reetiqueta a
   // origem de `readCompatibleLeads`. E o destino segue alcançável.
-  ["Clientes 360 é a mesma leitura canônica de leads", !fs.existsSync("app/api/v1/customers/route.ts") && repositories.includes("const leads = await readCompatibleLeads(client, input);\n  return leads.ok ? { ...leads, source: \"public.leads+public.profiles+public.crm_projects\" } : leads;") && customersRedirect.includes('redirect("/leads")')],
+  // 2026-07-29 — a asserção provava a EQUIVALÊNCIA pelo corpo do alias
+  // (`readCompatibleCustomers` só reetiquetava `readCompatibleLeads`). Com a
+  // rota apagada, o alias ficou sem chamador e foi removido: manter alias órfão
+  // convida a próxima pessoa a acreditar que existe uma leitura de clientes.
+  //
+  // A afirmação ficou MAIS forte: em vez de "a leitura de clientes é igual à de
+  // leads", passa a exigir que NÃO EXISTA leitura de clientes em lugar nenhum —
+  // nem rota, nem função — e que o destino siga alcançável pelo redirect.
+  //
+  // Casa a DECLARAÇÃO da função, não o nome solto: a primeira versão procurava
+  // a string e reprovava por causa do comentário que explica a remoção. Guarda
+  // que proíbe falar do assunto obriga a apagar o motivo junto com o código —
+  // e o motivo é a parte que a próxima pessoa precisa ler.
+  ["Não existe leitura de clientes: é a de leads", !fs.existsSync("app/api/v1/customers/route.ts") && !/export\s+(async\s+)?function\s+readCompatibleCustomers/.test(repositories) && repositories.includes("export async function readCompatibleLeads") && customersRedirect.includes('redirect("/leads")')],
   ["Launch OS usa developments e pipeline compatíveis", routeSources["app/api/v1/launch-os/route.ts"].includes("readCompatibleDevelopments") && routeSources["app/api/v1/launch-os/route.ts"].includes("readCompatiblePipeline")],
   ["Core V2 exporta a nova fronteira", index.includes('export * from "./live-capability-resolver"') && index.includes('export * from "./live-repositories"')],
   ["Relatório cobre problema, impacto, riscos e validação", report.includes("Problema resolvido") && report.includes("Impacto operacional") && report.includes("Riscos identificados") && report.includes("Checklist de validação")],

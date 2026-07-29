@@ -201,13 +201,15 @@ export async function readCompatibleTasks(
   );
 }
 
-export async function readCompatibleCustomers(
-  client: SupabaseClient,
-  input: CompatibleLeadReadInput,
-): Promise<CompatibleReadResult<CompatRow>> {
-  const leads = await readCompatibleLeads(client, input);
-  return leads.ok ? { ...leads, source: "public.leads+public.profiles+public.crm_projects" } : leads;
-}
+/*
+ * `readCompatibleCustomers` foi REMOVIDA em 2026-07-29, junto com a tela que a
+ * chamava. Ela nunca leu nada de próprio: chamava `readCompatibleLeads` e só
+ * trocava o rótulo da origem — era essa a prova de que "Clientes 360" e
+ * "Leads" eram a mesma lista. Com a rota apagada, ficou sem chamador nenhum.
+ *
+ * Manter alias sem chamador é convidar a próxima pessoa a acreditar que existe
+ * uma leitura de clientes. Não existe: existe `readCompatibleLeads`.
+ */
 
 export async function readCompatibleDevelopments(
   client: SupabaseClient,

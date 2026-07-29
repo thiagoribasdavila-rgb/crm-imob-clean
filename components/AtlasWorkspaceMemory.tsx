@@ -22,7 +22,9 @@ const labels: Record<string, string> = {
   "/leads": "Leads",
   "/leads/new": "Novo lead",
   "/pipeline": "Pipeline",
-  "/customers": "Customer Intelligence",
+  // "/customers" saiu: a rota virou redirect para /leads em 2026-07-29 e
+  // ninguém permanece nela para ver rótulo. Entrada de memória para tela que
+  // não existe é lixo que sobrevive a refatoração.
   "/properties": "Imóveis",
   "/developments": "Empreendimentos",
   "/sales": "Vendas",
