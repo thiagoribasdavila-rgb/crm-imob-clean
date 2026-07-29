@@ -270,15 +270,32 @@ const atlasNavigationContexts = [
     group: item.group,
     label: item.label,
     href: item.href,
+    // A AÇÃO PRIMÁRIA VIAJA JUNTO — antes ela era derrubada aqui.
+    //
+    // Cada destino declara `primaryAction` com o resultado comercial que ela
+    // deve produzir, e nove delas carregam parâmetro na URL. Só que este mapa,
+    // que é o ÚNICO caminho do catálogo até a interface, copiava apenas
+    // group/label/href. Resultado medido em 2026-07-29: nenhum componente
+    // renderizava `primaryAction` — as nove promessas não eram nem clicáveis.
+    // O dado existia, era tipado, e morria uma linha antes da tela.
+    primaryAction: item.primaryAction,
     source: "primary" as const,
   })),
   ...atlasContextCommands.map((item) => ({
+    // Comandos do palco não têm ação própria: eles SÃO a ação. Declarado como
+    // `undefined` para os dois lados da união terem a mesma forma — sem isto,
+    // quem consome o contexto precisa saber de qual metade veio, que é como
+    // uma união vira armadilha.
+    primaryAction: undefined,
     group: item.group,
     label: item.label,
     href: item.href,
     source: "contextual" as const,
   })),
   ...atlasInternalNavigation.map((item) => ({
+    // Páginas internas (auditoria, homologação) não têm ação comercial. Mesma
+    // razão do bloco acima: as três metades da união precisam ter a mesma forma.
+    primaryAction: undefined,
     group: item.group,
     label: item.label,
     href: item.href,
