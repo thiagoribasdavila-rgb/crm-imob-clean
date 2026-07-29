@@ -94,3 +94,26 @@ export function idsDaEquipe(
   }
   return [...equipe];
 }
+
+/**
+ * A CARTEIRA DE UMA PESSOA — sem as leads de ninguém.
+ *
+ * Difere de `filtroDaMinhaCarteira` num ponto, e o ponto importa: NÃO inclui a
+ * cláusula de lead órfã. Naquela, lead sem dono aparece de propósito, porque
+ * uma LISTA precisa que alguém a veja para adotá-la. Aqui é o "Meu dia" do
+ * corretor — e lead de ninguém no dia de todo mundo é trabalho que parece
+ * atribuído sem ter dono.
+ *
+ * O que ele conserta: a rota do dia filtrava por `assigned_user_id` sozinho.
+ * Medido em 2026-07-29 na organização viva, 3 leads abertos têm `assigned_to`
+ * preenchido e `assigned_user_id` NULO — 2 do Vinicius, 1 do Francisco, e uma
+ * delas NUNCA foi contatada. Elas aparecem na lista de leads daquelas pessoas
+ * e sumiam do dia delas: o painel dizia menos trabalho do que existe, que é a
+ * direção errada do erro numa operação com 442 leads sem primeiro contato.
+ *
+ * As duas colunas, pelo mesmo motivo do resto do arquivo: a base tem histórico
+ * nos dois lados e escolher uma só esconde parte da carteira.
+ */
+export function filtroDaCarteiraDaPessoa(userId: string): string {
+  return `assigned_user_id.eq.${userId},assigned_to.eq.${userId}`;
+}

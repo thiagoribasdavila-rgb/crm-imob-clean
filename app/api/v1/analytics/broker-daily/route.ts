@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
+import { filtroDaCarteiraDaPessoa } from "@/lib/crm/escopo-de-leitura";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   LIVE_LEAD_SELECT,
@@ -78,7 +79,11 @@ export async function GET(request: NextRequest) {
       .from("leads")
       .select(LIVE_LEAD_SELECT_WITH_SLA)
       .eq("organization_id", organizationId)
-      .eq("assigned_user_id", brokerId)
+      // As DUAS colunas de posse, pelo módulo compartilhado. Filtrar só por
+      // `assigned_user_id` escondia do dia da pessoa os leads que estão na
+      // carteira dela pela coluna legada — medido: 3 abertos, 1 nunca
+      // contatado. O painel dizia menos trabalho do que existe.
+      .or(filtroDaCarteiraDaPessoa(brokerId))
       .limit(1000),
     identity.supabase
       .from("tasks")
@@ -101,7 +106,10 @@ export async function GET(request: NextRequest) {
       .from("leads")
       .select(LIVE_LEAD_SELECT)
       .eq("organization_id", organizationId)
-      .eq("assigned_user_id", brokerId)
+      // O MESMO filtro do caminho principal. Divergir aqui faria a base legada
+      // esconder leads que a base atual mostra — dois caminhos para a mesma
+      // verdade é a classe de defeito mais cara deste repositório.
+      .or(filtroDaCarteiraDaPessoa(brokerId))
       .limit(1000);
   }
 
