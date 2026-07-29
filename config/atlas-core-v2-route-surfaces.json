@@ -35,6 +35,12 @@
     "app/(crm)/integrations/page.tsx",
     "app/(crm)/settings/page.tsx"
   ],
+  "_publicSurfaceNote": "Acrescentada em 2026-07-29. Quatro page.tsx na raiz de app/ nasceram DEPOIS da classificação de 2026-07-18 e ficavam sem superfície, o que derrubava a asserção 'zero rota sem superfície' da fase 093. Elas não são produto: /privacy, /terms e /data-deletion são páginas públicas exigidas por LGPD e pela revisão da Meta (acessíveis sem login, deliberadamente fora do menu diário); app/marca é a comparação temporária de logotipo, interna e marcada no próprio arquivo como 'apagar depois de escolhida'. Listadas por NOME EXATO, e não por prefixo, para que uma página nova na raiz volte a cair em 'unclassified' e a guarda torne a morder.",
+  "publicExactFiles": [
+    "app/data-deletion/page.tsx",
+    "app/privacy/page.tsx",
+    "app/terms/page.tsx"
+  ],
   "contextualPrefixes": [
     "app/(crm)/",
     "app/analytics/"
@@ -42,6 +48,9 @@
   "internalPrefixes": [
     "app/(crm)/atlas-v3/",
     "app/(crm)/atlas-2030/"
+  ],
+  "internalExactFiles": [
+    "app/marca/page.tsx"
   ],
   "experimentalPrefixes": [
     "app/(ai)/",

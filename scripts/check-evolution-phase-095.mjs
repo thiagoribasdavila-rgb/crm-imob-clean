@@ -31,9 +31,37 @@ const routeSources = Object.fromEntries(
 const customersRedirect = read("app/(crm)/customers/page.tsx");
 
 const requiredModules = ["leads", "pipeline", "tasks-and-agenda", "customers-360", "developments"];
+
+/**
+ * ── REAPONTADA EM 2026-07-29 — `developments` deixou de ser domínio futuro ───
+ *
+ * A lista original proibia três leituras: `opportunities`, `customers` e
+ * `developments`. A propriedade que ela guarda continua valendo e é boa: a
+ * camada de compatibilidade não pode ler uma casca vazia, porque tela vazia é
+ * pior que tela ausente — quem abre conclui que não há dado, quando há.
+ *
+ * MEDIDO NO BANCO VIVO (pozbrcsfthnhmnebfoxv, 29/07/2026):
+ *   · public.opportunities — existe, 0 linhas
+ *   · public.customers     — existe, 0 linhas
+ *   · public.leads         — 470 linhas
+ *   · public.developments  — 4 linhas, e 192 leads apontam para ela
+ *   · public.crm_projects  — 4 linhas, e 0 leads apontam para ela
+ *
+ * Ou seja: para `opportunities` e `customers` a proibição segue exata — ler
+ * qualquer uma delas mostraria zero onde existem 470 leads. Para
+ * `developments` o fato virou: a migration 20260727010000 a tornou a canônica
+ * (37 colunas `development_id` no schema apontam para lá) e
+ * lib/atlas/core-v2/live-repositories.ts foi deliberadamente repontado. Antes
+ * disso a tela de Projetos mostrava quatro empreendimentos com ZERO leads,
+ * sendo que o Inside Perdizes sozinho tem 174.
+ *
+ * Manter `developments` na lista seria proibir justamente a leitura certa. Em
+ * vez de só remover a linha, a asserção passa a provar OS DOIS LADOS: as duas
+ * cascas continuam fora, e a leitura de empreendimento tem de estar na tabela
+ * povoada — não na abandonada.
+ */
 const forbiddenRepositoryReads = [
   '.from("opportunities")',
-  '.from("developments")',
   '.from("customers")',
 ];
 
@@ -46,7 +74,7 @@ const checks = [
   ["Aliases críticos estão centralizados", resolver.includes('score: "score_ia"') && resolver.includes('due_at: "due_date"') && resolver.includes('development_id: "crm_projects.id"')],
   ["Todas as leituras físicas aplicam tenant explícito", (repositories.match(/\.from\(/g) || []).length === (repositories.match(/\.eq\("organization_id", organizationId\)/g) || []).length],
   ["RLS autenticada é preservada sem service role", repositories.includes("SupabaseClient") && !repositories.includes("getSupabaseAdmin") && !repositories.includes("SERVICE_ROLE")],
-  ["Relações futuras não são consultadas", forbiddenRepositoryReads.every((value) => !repositories.includes(value))],
+  ["Cascas vazias não são consultadas e o portfólio lido é o povoado", forbiddenRepositoryReads.every((value) => !repositories.includes(value)) && repositories.includes('.from("developments")') && !repositories.includes('.from("crm_projects")')],
   ["Pipeline usa o repositório canônico", routeSources["app/api/v1/pipeline/route.ts"].includes("readCompatiblePipeline")],
   ["Tarefas e calendário usam os repositórios canônicos", routeSources["app/api/v1/tasks/route.ts"].includes("readCompatibleTasks") && routeSources["app/api/v1/calendar/route.ts"].includes("readCompatibleTasks") && routeSources["app/api/v1/calendar/route.ts"].includes("readCompatibleLeads")],
   // A rota de clientes foi apagada (ver cabeçalho). O que esta asserção sempre

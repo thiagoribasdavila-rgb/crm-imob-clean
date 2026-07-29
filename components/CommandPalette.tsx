@@ -30,7 +30,34 @@ import type { ShellIdentity } from "@/components/atlas/shell-types";
   { label: "Configurações", href: "/settings", group: "Administração", keywords: "empresa preferencias integracoes" },
 */
 
-type Command = { label: string; href: string; group: string; keywords: string };
+/**
+ * `outcome` — o RESULTADO COMERCIAL do destino, acrescentado em 2026-07-29.
+ *
+ * A barra lateral tinha busca própria e casava por
+ * `label + group + keywords + businessOutcome`. Ela foi retirada porque duas
+ * buscas na mesma tela obrigam a pessoa a escolher qual usar, e o comentário em
+ * components/atlas/sidebar.tsx diz que o ⌘K "já monta a lista a partir do MESMO
+ * getAtlasNavigationForIdentity, com as mesmas permissões". Só que a herança
+ * veio incompleta: o ⌘K casava por `label + group + keywords` e deixou o quarto
+ * campo para trás.
+ *
+ * A diferença é mensurável, não teórica. Rodando o catálogo real contra os dois
+ * filtros (29/07/2026), palavras que vivem SÓ no businessOutcome não achavam
+ * tela nenhuma e agora acham:
+ *
+ *   "gargalo"     [] -> [Corretores]
+ *   "governar"    [] -> [Usuários e acessos]
+ *   "comparáveis" [] -> [Vendas]
+ *
+ * Era exatamente o caso que a fase 093 documentou: "buscar 'atender',
+ * 'estoque', 'conversão' ou 'segurança' encontra a tela correta mesmo sem o
+ * usuário conhecer o nome do módulo".
+ *
+ * Comandos que não são módulo (ação da tela, atalhos de contexto, leads da
+ * carteira) não têm resultado comercial declarado e entram com string vazia —
+ * o campo continua obrigatório no tipo para que um destino novo não o esqueça.
+ */
+type Command = { label: string; href: string; group: string; keywords: string; outcome: string };
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -57,18 +84,21 @@ export default function CommandPalette({
       href: taskAction.href,
       group: "Ação desta tela",
       keywords: taskAction.keywords,
+      outcome: "",
     }] : []),
     ...getAtlasNavigationForIdentity(identity).filter((item) => item.href !== taskAction?.href).map((item) => ({
       label: item.label,
       href: item.href,
       group: item.group,
       keywords: item.keywords,
+      outcome: item.businessOutcome,
     })),
     ...getAtlasContextCommandsForIdentity(identity).filter((item) => item.href !== taskAction?.href).map((item) => ({
       label: item.label,
       href: item.href,
       group: item.group,
       keywords: item.keywords,
+      outcome: "",
     })),
   ], [identity.accessRole, identity.role, taskAction]);
 
@@ -106,7 +136,7 @@ export default function CommandPalette({
 
   const filtered = useMemo(() => {
     const normalizedQuery = normalize(query);
-    const modules = !normalizedQuery ? commands : commands.filter((command) => normalize(`${command.label} ${command.group} ${command.keywords}`).includes(normalizedQuery));
+    const modules = !normalizedQuery ? commands : commands.filter((command) => normalize(`${command.label} ${command.group} ${command.keywords} ${command.outcome}`).includes(normalizedQuery));
     return [...leadCommands, ...modules];
   }, [commands, leadCommands, query]);
 
@@ -119,7 +149,7 @@ export default function CommandPalette({
       const response = await fetch(`/api/v1/search?q=${encodeURIComponent(safeQuery)}`, { headers: { Authorization: `Bearer ${session.session?.access_token || ""}` }, cache: "no-store" });
       const body = await response.json();
       const results = response.ok ? body.data.results.slice(0, 6) as Array<{ title: string; href: string; reason: string; nextAction: string }> : [];
-      setLeadCommands(results.map((lead) => ({ label: lead.title, href: lead.href, group: "Leads da minha carteira", keywords: `${lead.reason} ${lead.nextAction}` })));
+      setLeadCommands(results.map((lead) => ({ label: lead.title, href: lead.href, group: "Leads da minha carteira", keywords: `${lead.reason} ${lead.nextAction}`, outcome: "" })));
       setSearching(false);
       setSelected(0);
     }, 220);
