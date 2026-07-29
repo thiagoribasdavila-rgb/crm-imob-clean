@@ -23,7 +23,7 @@
   },
   "catalogRepricedAtCommit": "e20f8931 (navegação podada na fonte): catálogo intencionalmente reduzido em 1 destino por persona; /command-center consolida Início+Command Center e o comando contextual /atlas-2030 saiu do catálogo (grupos (ai)/(autonomous) quarentenados). Contagens e amostras allowed/blocked re-baselinadas à fonte lib/atlas/navigation.ts.",
   "retiredDestination": "2026-07-29 — 'Clientes 360' (/customers) saiu do catálogo: lia a MESMA tabela `leads` que /leads (readCompatibleCustomers era alias de readCompatibleLeads), sem SLA nem lote, e sem o piso de carteira — a rota GET /api/v1/customers chamava o repositório sem ownerId e a política leads_org_access, PERMISSIVE por organização, não recorta por dono; um corretor via as 469 leads da imobiliária inteira. A rota responde por redirect para /leads. Único expectedNavigationCount alterado: Corretor 7->6 (era o único perfil cujo total ainda batia). As demais personas JÁ ESTAVAM 1 acima do esperado desde 2b0a1e12 e voltaram a bater sozinhas com esta remoção.",
-  "pendingRepriceNotOwnedHere": "expectedContextCommandCount continua 7 para os cinco perfis não-corretores enquanto atlasContextCommands tem 6. Divergência ANTERIOR e alheia a esta mudança: o commit 2b0a1e12 ('Marketing sai do atalho de teclado e a rail perde peso') promoveu 'Marketing AI' do ⌘K para a rail — nav +1 e comandos -1 para quem tem acesso a Marketing, o que explica exatamente os dois deltas. Não re-baselinado aqui de propósito: é débito de outra entrega e renumerá-lo de passagem apagaria o rastro.",
+  "pendingRepriceNotOwnedHere": "Re-baselinado em 2026-07-29, de 7 para 6 nos cinco perfis nao-corretores. CAUSA (medida, nao inferida): o commit 2b0a1e12 ('Marketing sai do atalho de teclado e a rail perde peso') promoveu 'Marketing AI' do palco do Cmd+K para a barra lateral — nav +1 e comandos -1 para quem tem acesso a Marketing. O corretor nao tem, e por isso continua em 5, que sempre bateu. POR QUE FOI RE-BASELINADO AGORA e nao deixado como rastro vermelho: enquanto esta fase reprovava, a cadeia npm run evolution-2000:check MORRIA aqui e as fases 019 a 047 NUNCA EXECUTAVAM. Foi assim que a fase 025 ficou vermelha por tempo suficiente para ninguem notar. Um portao que nao abre nao protege nada — ele so esconde o que vem depois. O rastro da mudanca vive aqui, em texto; o portao volta a medir.",
   "personas": [
     {
       "id": "administrator",
@@ -31,7 +31,7 @@
       "role": "director",
       "accessRole": "admin",
       "expectedNavigationCount": 16,
-      "expectedContextCommandCount": 7,
+      "expectedContextCommandCount": 6,
       "allowed": ["/users", "/settings", "/integrations", "/command-center"],
       "blocked": []
     },
@@ -41,7 +41,7 @@
       "role": "director",
       "accessRole": "director_decisor",
       "expectedNavigationCount": 14,
-      "expectedContextCommandCount": 7,
+      "expectedContextCommandCount": 6,
       "allowed": ["/reports", "/external-sales", "/integrations", "/command-center"],
       "blocked": ["/users", "/settings"]
     },
@@ -51,7 +51,7 @@
       "role": "director",
       "accessRole": "director",
       "expectedNavigationCount": 12,
-      "expectedContextCommandCount": 7,
+      "expectedContextCommandCount": 6,
       "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
       "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings"]
     },
@@ -61,7 +61,7 @@
       "role": "superintendent",
       "accessRole": "director",
       "expectedNavigationCount": 12,
-      "expectedContextCommandCount": 7,
+      "expectedContextCommandCount": 6,
       "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
       "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings"]
     },
@@ -71,7 +71,7 @@
       "role": "manager",
       "accessRole": "director",
       "expectedNavigationCount": 12,
-      "expectedContextCommandCount": 7,
+      "expectedContextCommandCount": 6,
       "allowed": ["/brokers", "/distribution", "/reports", "/decision-center"],
       "blocked": ["/users", "/external-sales", "/integrations", "/atlas-v3", "/settings"]
     },
