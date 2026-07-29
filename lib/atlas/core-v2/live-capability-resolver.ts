@@ -22,7 +22,13 @@ const CAPABILITIES: readonly AtlasLiveModuleCapability[] = [
   {
     module: "leads",
     canonicalEntity: "lead",
-    physicalSources: ["public.leads"],
+    // 2026-07-29: a fonte física do empreendimento é `developments`, não
+  // `crm_projects`. As duas guardam os mesmos 4 empreendimentos com IDs
+  // diferentes, e a FK decide: leads.development_id casa com developments em
+  // 192 de 192, e com crm_projects em 0 de 192. A leitura já usava developments
+  // e a validação de escrita foi corrigida antes; faltava a DECLARAÇÃO, que é
+  // o que este resolvedor publica para o resto do sistema.
+  physicalSources: ["public.leads"],
     tenantColumn: "organization_id",
     readState: "adapter-ready",
     mapper: "mapLegacyLead",
@@ -73,14 +79,14 @@ const CAPABILITIES: readonly AtlasLiveModuleCapability[] = [
   {
     module: "customers-360",
     canonicalEntity: "customer-relationship",
-    physicalSources: ["public.leads", "public.profiles", "public.crm_projects"],
+    physicalSources: ["public.leads", "public.profiles", "public.developments"],
     tenantColumn: "organization_id",
     readState: "adapter-ready",
     mapper: "mapLegacyLead",
     canonicalAliases: {
       customer_id: "leads.id",
       owner: "profiles.id",
-      development: "crm_projects.id",
+      development: "developments.id",
     },
     limitations: ["customer-relationship-is-lead-backed-until-a-canonical-customer-table-is-approved"],
   },
@@ -88,7 +94,7 @@ const CAPABILITIES: readonly AtlasLiveModuleCapability[] = [
     module: "developments",
     canonicalEntity: "development",
     physicalSources: [
-      "public.crm_projects",
+      "public.developments",
       "public.inventory_units",
       "public.knowledge_documents",
       "public.marketing_campaigns",
@@ -97,9 +103,9 @@ const CAPABILITIES: readonly AtlasLiveModuleCapability[] = [
     readState: "adapter-ready",
     mapper: "mapLegacyProject",
     canonicalAliases: {
-      development_id: "crm_projects.id",
-      development_name: "crm_projects.name",
-      developer_name: "crm_projects.developer_name",
+      development_id: "developments.id",
+      development_name: "developments.name",
+      developer_name: "developments.developer_name",
     },
     limitations: ["inventory-is-empty-in-the-current-live-tenant"],
   },

@@ -71,7 +71,18 @@ const checks = [
   ["Programa contínuo avançou para 95", program.currentPhase >= 95],
   ["Cinco domínios prioritários foram registrados", requiredModules.length === phase.delivered.priorityModules.length && requiredModules.every((module) => phase.delivered.priorityModules.includes(module) && resolver.includes(`module: "${module}"`))],
   ["Versão única de compatibilidade é exposta", resolver.includes("live-read-compat-v1") && repositories.includes("ATLAS_LIVE_READ_COMPATIBILITY_VERSION")],
-  ["Aliases críticos estão centralizados", resolver.includes('score: "score_ia"') && resolver.includes('due_at: "due_date"') && resolver.includes('development_id: "crm_projects.id"')],
+  // 2026-07-29 — a asserção fixava o alias em `crm_projects.id` enquanto a
+  // asserção logo abaixo exigia que a leitura usasse `developments` e NÃO
+  // `crm_projects`. A mesma guarda certificava os DOIS lados do split, e é
+  // assim que um split fica invisível para sempre. Agora o alias segue a FK
+  // (192/192 contra 0/192) e o resolvedor não pode mais citar a tabela
+  // abandonada.
+  //
+  // Casa a tabela dentro de LITERAL DE STRING, não a palavra solta — foi a
+  // segunda vez no mesmo dia que uma asserção minha reprovou por causa do
+  // comentário que explica a correção. Guarda que proíbe nomear o problema
+  // apaga a explicação junto com o defeito.
+  ["Aliases críticos estão centralizados", resolver.includes('score: "score_ia"') && resolver.includes('due_at: "due_date"') && resolver.includes('development_id: "developments.id"') && !/["'][^"'\n]*crm_projects/.test(resolver)],
   ["Todas as leituras físicas aplicam tenant explícito", (repositories.match(/\.from\(/g) || []).length === (repositories.match(/\.eq\("organization_id", organizationId\)/g) || []).length],
   ["RLS autenticada é preservada sem service role", repositories.includes("SupabaseClient") && !repositories.includes("getSupabaseAdmin") && !repositories.includes("SERVICE_ROLE")],
   ["Cascas vazias não são consultadas e o portfólio lido é o povoado", forbiddenRepositoryReads.every((value) => !repositories.includes(value)) && repositories.includes('.from("developments")') && !repositories.includes('.from("crm_projects")')],
