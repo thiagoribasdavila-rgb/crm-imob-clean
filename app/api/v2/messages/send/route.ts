@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
@@ -136,6 +136,21 @@ export async function POST(request: Request) {
       { status: 202, headers: { "X-RateLimit-Remaining": String(rate.remaining) } },
     );
   } catch (error) {
+    // Mandar mensagem para a lead de outra pessoa JÁ era recusado — esta rota
+    // chama `requireLeadAccess`, que desde o commit 722ed660 aplica o piso de
+    // carteira. Mas a recusa chegava errada: a frase "Esta lead está com outra
+    // pessoa" não casa com NENHUMA das palavras da régua abaixo, então caía no
+    // `: 500` e ainda entrava no log como `message.queue_failed` nível ERROR.
+    //
+    // Recusa de autorização virando "o servidor quebrou" tem custo dos dois
+    // lados: o corretor acha que é falha e tenta de novo, e o log de erro se
+    // enche de eventos que não são erro — escondendo os que são.
+    if (ehLeadForaDaCarteira(error)) {
+      return NextResponse.json(
+        { error: error.message, code: "MESSAGE_LEAD_OUT_OF_SCOPE" },
+        { status: 403 },
+      );
+    }
     logger.error("message.queue_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao preparar mensagem.";
     const unauthorized = /token|sessão|autoriz|organiza|escopo/i.test(message);

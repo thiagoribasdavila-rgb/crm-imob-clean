@@ -449,6 +449,13 @@ const MUTACOES = [
     de: `        or lead_assigned_user_id = v.id\n        -- SEM a cláusula órfã. É a única diferença, e é o ponto do arquivo.`,
     para: `        or lead_assigned_user_id = v.id\n        or (lead_assigned_to is null and lead_assigned_user_id is null)`,
   },
+  {
+    id: "M49", arquivo: "app/api/v2/messages/send/route.ts",
+    quebra: "uma rota confere o piso mas devolve a recusa com o status errado",
+    dor: "Foi o estado REAL desta rota até 2026-07-29: ela já bloqueava a lead alheia (herdou o piso), mas respondia 500 e gravava `message.queue_failed` em nível ERROR. O corretor lê 'o servidor quebrou' e tenta de novo; o log de erro enche de eventos que não são erro e esconde os que são. A asserção é por VARREDURA — vale para qualquer rota nova que chame requireLeadAccess e esqueça o mapeamento.",
+    de: `    if (ehLeadForaDaCarteira(error)) {`,
+    para: `    if (false) {`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

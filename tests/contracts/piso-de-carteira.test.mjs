@@ -250,3 +250,67 @@ test("o Kanban declara o recorte que aplicou", () => {
   assert.match(rotaPipeline, /escopo: lideranca \? "organizacao" : "carteira"/,
     "o recorte aplicado precisa viajar na resposta, como já viaja na listagem");
 });
+
+test("toda rota que confere o piso também sabe RECUSAR com 403", () => {
+  /**
+   * `requireLeadAccess` levanta `LeadForaDaCarteiraError`. Quem chama e não
+   * reconhece essa classe cai no `catch` genérico da rota — e todos eles
+   * escolhem o status testando PALAVRAS da mensagem. A frase "Esta lead está
+   * com outra pessoa" não casa com nenhuma régua do repositório, então a
+   * recusa vira 400 ("corrija os dados"), 401 ("faça login de novo") ou 500
+   * ("o servidor quebrou"), conforme a rota.
+   *
+   * MEDIDO em /api/v2/messages/send: a rota JÁ recusava — herdou o piso quando
+   * `requireLeadAccess` passou a aplicá-lo — mas devolvia 500 e ainda gravava
+   * `message.queue_failed` em nível ERROR. Bloqueio certo, resposta errada, e
+   * o log de erro enchendo de eventos que não são erro.
+   *
+   * Esta asserção é por VARREDURA, não por lista: uma rota nova que chame
+   * `requireLeadAccess` amanhã e esqueça o mapeamento reprova sozinha. Lista
+   * fixa envelheceria em silêncio, que é como esta rota ficou de fora da
+   * primeira rodada.
+   */
+  const raizApp = path.join(raiz, "app");
+  const arquivos = [];
+  const varrer = (dir) => {
+    for (const entrada of fs.readdirSync(dir, { withFileTypes: true })) {
+      const alvo = path.join(dir, entrada.name);
+      if (entrada.isDirectory()) varrer(alvo);
+      else if (entrada.name.endsWith(".ts")) arquivos.push(alvo);
+    }
+  };
+  varrer(raizApp);
+
+  /**
+   * As linhas de `import` saem antes da conferência, e isso NÃO é detalhe: a
+   * primeira versão desta asserção procurava `ehLeadForaDaCarteira` no arquivo
+   * inteiro, e a mutação M49 (trocar `if (ehLeadForaDaCarteira(error))` por
+   * `if (false)`) SOBREVIVEU — o identificador continuava no import, então a
+   * asserção seguia verde com o defeito de volta.
+   *
+   * É a fraqueza que este repositório já pagou várias vezes: provar que a
+   * PALAVRA existe não é provar que a rota DECIDE com ela. O que importa é a
+   * chamada no corpo.
+   */
+  const semImports = (src) =>
+    src.split("\n").filter((l) => !/^\s*import\b/.test(l)).join("\n");
+
+  const semMapeamento = arquivos.filter((f) => {
+    const src = fs.readFileSync(f, "utf8");
+    if (!src.includes("requireLeadAccess(")) return false;
+    const corpo = semImports(src);
+    return !corpo.includes("ehLeadForaDaCarteira(") || !corpo.includes("403");
+  });
+
+  assert.deepEqual(
+    semMapeamento.map((f) => path.relative(raiz, f)),
+    [],
+    "estas rotas conferem o piso e devolvem a recusa com o status errado — importe `ehLeadForaDaCarteira` e mapeie para 403",
+  );
+
+  // O outro lado: a varredura só vale se estiver de fato encontrando as rotas.
+  // Sem este piso, apagar a busca deixaria a lista vazia e o teste verde.
+  const comPiso = arquivos.filter((f) => fs.readFileSync(f, "utf8").includes("requireLeadAccess("));
+  assert.ok(comPiso.length >= 10,
+    `a varredura achou só ${comPiso.length} rotas com o piso; eram 10 em 2026-07-29 — se caiu, ou o piso sumiu de algum lugar ou a busca quebrou`);
+});
