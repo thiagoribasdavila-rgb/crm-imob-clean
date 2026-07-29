@@ -142,7 +142,7 @@
     "conversational-qualification:check": "node scripts/check-structured-conversational-qualification.mjs",
     "commercial-simulation:check": "node scripts/check-explainable-commercial-simulation.mjs",
     "visit-proposal:check": "node scripts/check-visit-proposal-assistant.mjs",
-    "reactivation-governance:check": "node scripts/check-consented-reactivation-governance.mjs",
+    "reactivation-governance:check": "node --experimental-strip-types --no-warnings scripts/check-consented-reactivation-governance.mjs",
     "nightly-copilot:check": "node scripts/check-governed-nightly-copilot.mjs",
     "campaign-intelligence:check": "node scripts/check-multichannel-campaign-intelligence.mjs",
     "andromeda-loop:check": "node scripts/check-meta-andromeda-learning-loop.mjs",

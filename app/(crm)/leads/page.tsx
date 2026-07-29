@@ -898,18 +898,24 @@ export default function LeadsPage() {
       });
   }, [currentRole, items, referenceTime]);
 
-  const hasFilters = Boolean(
-    search ||
-    status ||
-    source ||
-    project ||
-    broker ||
-    score ||
-    attention ||
-    faixa ||
-    nextAction,
-  );
-  const activeFilterCount = [
+  /**
+   * UMA lista de filtros ativos, não duas.
+   *
+   * `hasFilters` e `activeFilterCount` enumeravam os filtros SEPARADAMENTE, e o
+   * filtro `vinculo` — que entrou no dia em que a tela de Clientes 360 foi
+   * aposentada — ficou fora das duas. Ele existe como estado, vem da URL e viaja
+   * para a rota; só não contava como filtro.
+   *
+   * O que o corretor via, medido: filtrar por vínculo e receber zero resultados
+   * mostrava o estado vazio de "nenhum lead cadastrado" em vez de "resultado dos
+   * filtros atuais" — dizendo "você não tem leads" a quem tem 272. Estado vazio
+   * que mente é pior que erro: o erro manda tentar de novo, a mentira manda
+   * desistir.
+   *
+   * `search` fica fora da CONTAGEM de propósito (busca não é pastilha de filtro),
+   * mas entra em `hasFilters`, porque para o estado vazio ela também recorta.
+   */
+  const filtrosAtivos = [
     status,
     source,
     project,
@@ -918,7 +924,10 @@ export default function LeadsPage() {
     attention,
     faixa,
     nextAction,
-  ].filter(Boolean).length;
+    vinculo,
+  ].filter(Boolean);
+  const hasFilters = Boolean(search || filtrosAtivos.length);
+  const activeFilterCount = filtrosAtivos.length;
   const canTransfer = [
     "admin",
     "director",

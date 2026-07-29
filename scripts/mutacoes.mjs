@@ -491,6 +491,13 @@ const MUTACOES = [
     de: `function segredoConfere(recebido: string | null, esperado: string): boolean {`,
     para: `const _sessao = "requireAccessContext";\nfunction segredoConfere(recebido: string | null, esperado: string): boolean {`,
   },
+  {
+    id: "M55", arquivo: "app/(crm)/leads/page.tsx",
+    quebra: "um filtro que recorta a lista deixa de contar como filtro",
+    dor: "Era o estado real do filtro `vinculo` até 2026-07-29: ele existia, vinha da URL e ia para a rota, mas ficava fora de hasFilters e de activeFilterCount — porque a lista era enumerada DUAS vezes. Com ele ativo e zero resultados, a tela dizia \"Nenhum lead cadastrado\" a um corretor com 272 leads. Estado vazio que mente é pior que erro: o erro manda tentar de novo, a mentira manda desistir.",
+    de: `    nextAction,\n    vinculo,\n  ].filter(Boolean);`,
+    para: `    nextAction,\n  ].filter(Boolean);`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

@@ -39,10 +39,16 @@ import { readFileSync } from "node:fs";
  *   EM CORREÇÃO — vermelho real, com dono e destino. Não é lugar para morar.
  */
 const QUARENTENA = {
+  // Os dois motivos abaixo foram REESCRITOS em 2026-07-29 depois de executar os
+  // portões e ler a saída inteira. O texto anterior de `database:connection:check`
+  // dizia "exige connection string; não há no .env.local" — verdade sobre a
+  // máquina, mas ERRADA sobre este portão: ele nunca chegava a olhar a URL,
+  // porque para antes, no crivo de rótulo de ambiente. Quarentena com motivo
+  // errado convence, e foi por isso que o defeito de rótulo ficou invisível.
   "database:connection:check":
-    "AMBIENTE — exige connection string de Postgres; não há no .env.local. Roda no deploy.",
+    "AMBIENTE — recusado no crivo de rótulo antes de tentar conectar: .env.local traz ATLAS_ENV=production e ATLAS_DATABASE_ENVIRONMENT com uma connection string onde o código espera o rótulo 'homologation'. Atrás disso há um segundo bloqueio real: não existe connection string usável nesta máquina (a única do repositório está em .env.hostinger, com senha [YOUR-PASSWORD] e apontando para o projeto de PRODUÇÃO). Medido em 2026-07-29: sai 2 (NÃO EXECUTADO) nos dois casos e 1 quando conecta e falha. Roda no deploy.",
   "rls-cerca:check":
-    "AMBIENTE — exige DATABASE_URL para ler pg_policy (o PostgREST não alcança pg_catalog). Sai com código 2 e a mensagem 'NÃO EXECUTADO' quando falta, em vez de fingir aprovação.",
+    "AMBIENTE — precisa ler pg_policy, e nada nesta máquina alcança pg_catalog. Medido em 2026-07-29: PostgREST responde 406 'Only the following schemas are exposed: public, graphql_public'; não existe RPC que exponha policies; não há DATABASE_URL usável; e a via alternativa de provar a cerca pelo EFEITO está fechada porque ATLAS_TEST_EMAIL/PASSWORD devolvem 400 invalid_credentials. Sai com 2 e 'NÃO EXECUTADO' em vez de fingir aprovação. A propriedade foi medida à mão hoje, pelo Management API: public.leads dá 0/0/1/0 em 5 policies — cerca íntegra, e a ÚNICA das 168 tabelas com esse desenho.",
   // `api-security:check` SAIU da quarentena em 2026-07-29, no mesmo dia em que
   // entrou: o worker da CAPI ganhou `ATLAS_CRON_SECRET`, `alertas-de-lead` foi
   // declarada como mutação sem corpo (é o que ela é — marca os avisos do próprio
@@ -56,8 +62,18 @@ const QUARENTENA = {
     "EM CORREÇÃO — falha a apurar: pode ser SMTP ausente (ambiente) ou regressão do conserto do /auth/v1/verify. Enquanto não medir, não afirmo qual.",
   "conversational-qualification:check":
     "EM CORREÇÃO — cobra 'UMA PERGUNTA POR VEZ' na tela de qualificação. Está na lista dos portões que agentes já tentaram satisfazer EDITANDO O PRODUTO; exige revisão humana, não conserto rápido.",
-  "reactivation-governance:check":
-    "AMBIENTE — declara official_whatsapp_api_missing. O WhatsApp está NOT_VERIFIED e em plataforma antiga; é bloqueio de fora do código.",
+  // `reactivation-governance:check` SAIU da quarentena em 2026-07-29. O motivo
+  // antigo ("AMBIENTE — declara official_whatsapp_api_missing; o WhatsApp está
+  // NOT_VERIFIED") estava simplesmente ERRADO: executado, o portão não toca
+  // WhatsApp, credencial nem rede. `official_whatsapp_api_missing` é um LITERAL
+  // que ele procurava dentro de lib/commercial/consented-reactivation-policy.ts,
+  // e esse literal PASSAVA. Os 9 vermelhos eram grafia: 6 por exigir
+  // `officialApiOnly:true` onde o código diz `officialApiOnly: true` (um espaço),
+  // e 3 por exigir copy de tela que a reescrita trocou. Reapontado para as
+  // propriedades — a política agora é EXECUTADA, os defaults do SQL são
+  // confrontados com os números que ela devolve, e a simulação é obrigada a não
+  // escrever. 29 propriedades verdes, 5 mutações reprovadas para provar o outro
+  // lado. O grão fino virou contrato: tests/contracts/reativacao-consentida.test.mjs.
   "cc23:check":
     "EM CORREÇÃO — 26 controles passam, 4 falham no check-cc23-foundation.",
   "release:check":
