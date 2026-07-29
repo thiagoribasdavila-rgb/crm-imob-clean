@@ -146,3 +146,23 @@ test("o sinal é acionável, não só visível", () => {
   assert.match(aprovacoes, /"never_contacted"/,
     "a rota precisa aceitar o sinal, senão o botão existe e o POST recusa");
 });
+
+test("o bônus de prioridade decide por coluna, não por etapa", () => {
+  /**
+   * Era o ÚLTIMO lugar onde o predicado divergente sobrevivia. O +120 de
+   * "aguardando primeiro contato" olhava `status === "novo"` há mais de 15 min.
+   *
+   * Medido na carteira do Diego em 2026-07-29 (137 abertos): 22 leads NUNCA
+   * contatados já saíram de "novo" — 16 em contato, 6 em qualificação — porque
+   * alguém mexeu na etapa e não ligou. Eles não ganhavam o empurrão e
+   * afundavam na fila, sendo justamente os parados há mais tempo. E 3 leads em
+   * "novo" que JÁ foram contatados ganhavam um bônus que não mereciam.
+   *
+   * Os dois lados importam: o filtro tem de corrigir para cima e para baixo.
+   */
+  const rota = ler("app", "api", "v1", "analytics", "broker-daily", "route.ts");
+  assert.match(rota, /const firstContactOverdue = primeiroContatoMensuravel\s*\n\s*\? !lead\.first_contacted_at/,
+    "o bônus precisa sair da coluna, igual ao sinal, ao painel, ao risco e ao filtro da lista");
+  assert.match(rota, /:\s*normalize\(lead\.status\) === "novo" &&/,
+    "base sem a coluna cai para o predicado antigo — e o recuo é declarado, não silencioso");
+});

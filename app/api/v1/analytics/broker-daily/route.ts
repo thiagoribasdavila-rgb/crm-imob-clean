@@ -199,10 +199,25 @@ export async function GET(request: NextRequest) {
       const hot = normalize(lead.temperature) === "quente" || score >= 70;
       const createdAt = timestamp(lead.created_at);
       const nextActionAt = timestamp(lead.next_action_at);
-      const firstContactOverdue =
-        normalize(lead.status) === "novo" &&
-        createdAt !== null &&
-        createdAt < now - 15 * 60_000;
+      // ── O ÚLTIMO LUGAR ONDE O PREDICADO ERA POR ETAPA ────────────────────
+      //
+      // O bônus de +120 ("lead aguardando primeiro contato") decidia por
+      // `status === "novo"` há mais de 15 min. Medido em 2026-07-29 na
+      // carteira do Diego: dos 132 nunca contatados, 22 JÁ SAÍRAM de "novo"
+      // (16 em contato, 6 em qualificação) sem ninguém ter registrado uma
+      // ligação. Eles não ganhavam o empurrão e afundavam na fila — justamente
+      // os que estão parados há mais tempo, porque alguém mexeu na etapa e
+      // não ligou.
+      //
+      // Agora é por COLUNA, o mesmo predicado que o sinal de atenção, o
+      // número do painel, o risco da diretoria e o filtro da lista já usam.
+      // Base sem a coluna cai para o predicado antigo — e o recuo é
+      // DECLARADO, nunca silencioso.
+      const firstContactOverdue = primeiroContatoMensuravel
+        ? !lead.first_contacted_at
+        : normalize(lead.status) === "novo" &&
+          createdAt !== null &&
+          createdAt < now - 15 * 60_000;
       const followUpOverdue = nextActionAt !== null && nextActionAt < now;
       const taskOverdue = overdueByLead.has(String(lead.id));
       const noNextAction = nextActionAt === null;

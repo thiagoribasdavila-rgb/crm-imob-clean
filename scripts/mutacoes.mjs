@@ -295,6 +295,17 @@ const MUTACOES = [
     end if;`,
   },
   {
+    id: "M34", arquivo: "app/api/v1/analytics/broker-daily/route.ts",
+    quebra: "o bônus de prioridade volta a decidir por etapa",
+    dor: "22 leads nunca contatados que já saíram de 'novo' afundam na fila — justamente os parados há mais tempo, porque alguém mexeu na etapa e não ligou.",
+    de: `      const firstContactOverdue = primeiroContatoMensuravel
+        ? !lead.first_contacted_at
+        : normalize(lead.status) === "novo" &&`,
+    para: `      const firstContactOverdue = primeiroContatoMensuravel
+        ? normalize(lead.status) === "novo"
+        : normalize(lead.status) === "novo" &&`,
+  },
+  {
     id: "M33", arquivo: "lib/atlas/core-v2/live-development-write-adapter.ts",
     quebra: "a validação de escrita volta a consultar a tabela abandonada",
     dor: "Inside Perdizes, com 174 leads, deixa de ser encontrado: toda atualização de empreendimento é recusada em silêncio, e a duplicidade cega no primeiro cadastro novo.",
