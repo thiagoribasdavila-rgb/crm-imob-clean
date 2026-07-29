@@ -435,6 +435,20 @@ const MUTACOES = [
     de: `  if (ehLeadForaDaCarteira(error)) return recusar("pipeline_move_out_of_scope", 403);`,
     para: `  if (false) return recusar("pipeline_move_out_of_scope", 403);`,
   },
+  {
+    id: "M47", arquivo: "supabase/migrations/20260729140000_leads_cerca_da_organizacao_e_piso_de_carteira.sql",
+    quebra: "a cerca do banco esquece o gerente, como já esqueceu uma vez",
+    dor: "É o defeito EXATO que foi aplicado e medido em 2026-07-29: o dono da conta (commercial_role='manager') caiu de 469 leads visíveis para ZERO. O banco devolve 0 linhas, a aplicação não reclama, e a tela abre vazia sem erro nenhum — o pior tipo de falha, a silenciosa. A lista aqui é cópia de VE_O_FUNIL_INTEIRO; cópia que não é conferida diverge.",
+    de: `        v.commercial_role in ('director', 'superintendent', 'manager', 'admin')\n        or v.papel_bruto = 'admin'`,
+    para: `        v.commercial_role in ('director', 'superintendent')`,
+  },
+  {
+    id: "M48", arquivo: "supabase/migrations/20260729140000_leads_cerca_da_organizacao_e_piso_de_carteira.sql",
+    quebra: "apagar lead sem dono volta a valer a mesma regra que adotá-la",
+    dor: "Medido executando: um corretor de fora da subárvore apagou uma lead órfã pelo PostgREST e a linha SUMIU. A fila de entrada NASCE órfã (a Meta grava lead sem dono), então isso é apagar a fila inteira com um fetch, pelo caminho que ignora a aplicação.",
+    de: `        or lead_assigned_user_id = v.id\n        -- SEM a cláusula órfã. É a única diferença, e é o ponto do arquivo.`,
+    para: `        or lead_assigned_user_id = v.id\n        or (lead_assigned_to is null and lead_assigned_user_id is null)`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

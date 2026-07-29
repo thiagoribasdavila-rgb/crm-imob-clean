@@ -68,6 +68,7 @@
     "commercial-hierarchy:check": "node scripts/check-commercial-hierarchy.mjs",
     "hierarchy-enforcement:check": "node scripts/check-hierarchy-enforcement.mjs",
     "rls:check": "node scripts/check-rls.mjs",
+    "rls-cerca:check": "node scripts/check-rls-leads-cerca.mjs",
     "api-security:check": "node scripts/check-api-security.mjs",
     "abuse-protection:check": "node scripts/check-abuse-protection.mjs",
     "security:audit": "node scripts/check-security-audit.mjs",
