@@ -200,23 +200,31 @@ export async function GET(request: NextRequest) {
       .select(colunas, { count: usePagePagination ? "exact" : undefined })
       .eq("organization_id", access.access.organization.id)
       .not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)");
-    // Fora da janela de recuperação, a lead deixou de ser problema de SLA e virou
-    // problema de reativação. Medido no smoke de ciclo em 2026-07-26: com 201
-    // leads vencidas há mais de 48h, uma lead NOVA de 5 minutos caía além da
-    // posição 100 — ou seja, a fila "por urgência" abria pelas leads menos
-    // recuperáveis e escondia a única que ainda virava conversa.
+    // ── A URGÊNCIA ORDENA; ELA NÃO PODE EXCLUIR ──────────────────────────────
     //
-    // Ordenar cru por prazo crescente era literal e inútil. O recorte é o mesmo
-    // limite que o vigia já usa, e o mesmo motivo.
-    const janelaDeRecuperacaoMin = Number(process.env.ATLAS_SLA_JANELA_RECUPERACAO_MIN || 2880);
-    const inicioDaJanela = new Date(Date.now() - janelaDeRecuperacaoMin * 60_000).toISOString();
-
+    // O problema original (smoke de 2026-07-26): com 201 leads vencidas há mais
+    // de 48h, uma lead NOVA de 5 minutos caía além da posição 100 — a fila "por
+    // urgência" abria pelas menos recuperáveis e escondia a única que ainda
+    // virava conversa. A correção da época foi recortar a janela de
+    // recuperação, deixando de fora quem estava vencido há muito tempo.
+    //
+    // O recorte tem um modo de falha que a medição de então não alcançou:
+    // quando TODA a carteira está fora da janela, a lista vem vazia. Medido em
+    // 2026-07-28 na carteira do Diego — 195 leads, todos vencidos há dias, e a
+    // opção "Prazo de 1º contato" devolvia ZERO. O corretor escolhe a ordenação
+    // feita para a urgência e lê "nenhum lead corresponde" com a carteira
+    // inteira atrasada. Filtro que devolve vazio é pior que filtro ausente — é
+    // o que este mesmo arquivo já dizia sobre `project_id`.
+    //
+    // Ordenar DECRESCENTE resolve o problema original melhor do que o recorte:
+    // prazo mais RECENTE primeiro é exatamente "mais recuperável primeiro", a
+    // lead de 5 minutos vai para o topo — que era o objetivo — e as vencidas há
+    // meses vão para o fim em vez de sumirem.
     query = comSla && ordenarPorSla
-      // Prazo mais próximo primeiro, e quem não tem prazo vai para o fim: sem
-      // nullsFirst:false o banco jogaria as leads sem medição para o topo da fila.
+      // nullsFirst:false mantém quem não tem prazo no fim: sem medição não é
+      // o mesmo que sem urgência, mas também não pode furar a fila de quem tem.
       ? query
-          .gte("first_contact_due_at", inicioDaJanela)
-          .order("first_contact_due_at", { ascending: true, nullsFirst: false })
+          .order("first_contact_due_at", { ascending: false, nullsFirst: false })
           .order("id", { ascending: true })
       : query
           .order(storageSort, { ascending: direction === "asc" })

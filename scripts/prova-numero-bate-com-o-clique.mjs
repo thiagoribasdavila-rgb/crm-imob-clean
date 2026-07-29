@@ -131,7 +131,22 @@ try {
     `lista tem ${semDonoLista.corpo?.data?.page?.total}, risco diz ${semDono.length}`,
   );
 
-  // ── 5. O FILTRO INVENTADO NÃO PODE PASSAR ─────────────────────────────────
+  // ── 5. A ORDENAÇÃO DO LINK NÃO PODE ESVAZIAR A LISTA ──────────────────────
+  //
+  // O destino do risco "Comercial" carrega sort=first_contact_sla. Essa
+  // ordenação já aplicou um CORTE de 48h que devolvia ZERO numa carteira toda
+  // vencida — o link existia para provar que a central não mente e levava a
+  // uma tela vazia. Ordenar não pode mudar QUANTOS resultados existem.
+  console.log("\na ordenação do link ordena, mas não filtra:");
+  const semOrdenacao = await buscar("/api/v1/crm/leads?attention=never_contacted&porPagina=1&page=1");
+  const comOrdenacao = await buscar("/api/v1/crm/leads?attention=never_contacted&sort=first_contact_sla&direction=asc&porPagina=1&page=1");
+  conferir(
+    "ordenar por prazo de SLA não muda o total",
+    (comOrdenacao.corpo?.data?.page?.total ?? -1) === (semOrdenacao.corpo?.data?.page?.total ?? -2),
+    `com ordenação ${comOrdenacao.corpo?.data?.page?.total} · sem ordenação ${semOrdenacao.corpo?.data?.page?.total}`,
+  );
+
+  // ── 6. O FILTRO INVENTADO NÃO PODE PASSAR ─────────────────────────────────
   console.log("\nfiltro inventado não vira lista vazia enganosa:");
   const invalido = await buscar("/api/v1/crm/leads?attention=xpto&porPagina=1&page=1");
   conferir(

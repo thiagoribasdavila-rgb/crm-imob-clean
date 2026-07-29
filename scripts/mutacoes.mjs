@@ -261,6 +261,14 @@ const MUTACOES = [
     de: `        items: [...bloqueios, ...riscos].slice(0, 6),`,
     para: `        items: riscos.slice(0, 6),`,
   },
+  {
+    id: "M29", arquivo: "app/api/v1/crm/leads/route.ts",
+    quebra: "a janela de recuperação volta a EXCLUIR em vez de ordenar",
+    dor: 'Com a carteira inteira vencida há mais de 48h, "Prazo de 1º contato" devolve lista vazia — e o link da central leva o diretor a "nenhum lead corresponde" com 443 leads parados.',
+    de: `          .order("first_contact_due_at", { ascending: false, nullsFirst: false })`,
+    para: `          .gte("first_contact_due_at", new Date(Date.now() - 2880 * 60_000).toISOString())
+          .order("first_contact_due_at", { ascending: true, nullsFirst: false })`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

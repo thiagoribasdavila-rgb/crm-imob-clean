@@ -88,6 +88,25 @@ test("a diretoria conta primeiro contato pela mesma coluna que o filtro", () => 
     "a coluna precisa estar no select, senão o número sai nulo para sempre");
 });
 
+test("a ordenação por prazo de SLA ordena, mas não exclui", () => {
+  /**
+   * Achado ao clicar no próprio link recém-criado: o destino do risco
+   * "Comercial" usava `sort=first_contact_sla`, e essa ordenação aplicava
+   * `.gte("first_contact_due_at", agora - 48h)` — um CORTE. Medido na carteira
+   * do Diego em 2026-07-28: 195 leads, todos vencidos há mais de 48h, lista
+   * devolvida ZERO. O link que existe para provar que a central não mente
+   * levava a uma tela vazia.
+   *
+   * Ordenar decrescente resolve o problema original (a fila abria pelas leads
+   * menos recuperáveis) melhor do que o corte resolvia: prazo mais recente
+   * primeiro é "mais recuperável primeiro", e nada desaparece.
+   */
+  assert.doesNotMatch(rotaLeads, /\.gte\("first_contact_due_at"/,
+    "a janela de recuperação não pode voltar a ser um corte: ela zerava a lista inteira");
+  assert.match(rotaLeads, /\.order\("first_contact_due_at", \{ ascending: false, nullsFirst: false \}\)/,
+    "prazo mais recente primeiro, e quem não tem prazo no fim");
+});
+
 test("o filtro por coluna não é aplicado em base que não tem a coluna", () => {
   assert.match(rotaLeads, /attention === "never_contacted" && comSla/,
     'devolver a base inteira sob o rótulo "nunca contatados" seria pior que recusar');
