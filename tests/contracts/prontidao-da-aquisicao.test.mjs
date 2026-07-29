@@ -87,7 +87,11 @@ test("viaja numa resposta que a diretoria já busca, sem chamada nova", () => {
 test("o bloqueio entra na fila de exceção que o diretor já lê", () => {
   assert.match(central, /const bloqueios = readiness\?\.medido/,
     "cartão novo ao lado dos outros treina o olho a passar batido");
-  assert.match(central, /items: \[\.\.\.bloqueios, \.\.\.riscos\]/,
+  // O que importa é a POSIÇÃO, não a lista literal: a fila ganhou uma terceira
+  // origem (a distribuição invertida do corte da fila) e continuaria correta.
+  // Casar o texto exato faria o contrato quebrar por um item novo no fim — e
+  // quem consertasse na pressa poderia consertar mudando a ordem.
+  assert.match(central, /items: \[\.\.\.bloqueios,(?: \.\.\.[a-zA-Z]+,)* \.\.\.riscos\]/,
     "os bloqueios vêm antes: eles decidem se os outros riscos se resolvem com o que já existe");
   assert.match(central, /const DESTINO_DO_BLOQUEIO: Record<string, string>/,
     "cada bloqueio precisa de destino próprio, senão vira mais um número sem porta");

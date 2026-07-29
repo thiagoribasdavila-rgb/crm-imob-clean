@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { derivarPraca, ehChaveDeFaixa, fragmentoDaFaixa } from "@/lib/atlas/triagem-da-fila";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { filtroDaMinhaCarteira, leSoAPropriaCarteira } from "@/lib/crm/escopo-de-leitura";
 import { ehVinculoValido, STATUS_DO_VINCULO, statusForaDoAtendimento } from "@/lib/crm/vinculo-do-cliente";
 import {
@@ -128,6 +130,19 @@ export async function GET(request: NextRequest) {
   // ideia própria dela; a regra vive em lib/crm/vinculo-do-cliente.ts.
   const vinculoBruto = params.get("vinculo")?.trim() || null;
   const vinculo = ehVinculoValido(vinculoBruto) ? vinculoBruto : null;
+  // ── A FAIXA DO CORTE DA FILA ──────────────────────────────────────────────
+  //
+  // Vocabulário FECHADO, como `allowedAttentionFilters` logo acima: parâmetro
+  // inventado na barra de endereço não pode virar filtro silencioso.
+  //
+  // O SERVIDOR NÃO CONFIA NA TELA: a central manda só o nome da faixa, e é aqui
+  // que o predicado é RE-DERIVADO — inclusive a praça, lida do banco. Nenhuma
+  // lista de ids do cliente entra nesta decisão.
+  const faixaBruta = params.get("faixa")?.trim() || null;
+  const faixa = ehChaveDeFaixa(faixaBruta) ? faixaBruta : null;
+  if (faixaBruta && !faixa) {
+    return apiError("FAIXA_NAO_SUPORTADA", "Faixa da fila desconhecida.", access.meta, { status: 400, headers: rate.headers });
+  }
 
   if (teamOwner && assignedTo) {
     return apiError("AMBIGUOUS_OWNER_FILTER", "Escolha uma equipe ou um corretor, não os dois ao mesmo tempo.", access.meta, {
@@ -199,6 +214,35 @@ export async function GET(request: NextRequest) {
   // Como a coluna do prazo só existe em banco com a fase 34 aplicada, a consulta
   // é montável duas vezes — com e sem SLA — e a segunda cobre o banco legado.
   const ordenarPorSla = sort === "first_contact_sla";
+
+  // A praça é lida do BANCO, com cliente de serviço e filtro explícito de
+  // organização — o mesmo caminho que a central usa para CONTAR. Se cada lado
+  // derivasse a praça do seu jeito, o clique em "146" abriria 139 e ninguém
+  // saberia por quê: é a classe de bug [[caminhos-divergentes]], e ela custa
+  // caro justamente porque os dois lados parecem certos isoladamente.
+  let fragmento: ReturnType<typeof fragmentoDaFaixa> = null;
+  if (faixa) {
+    const empreendimentos = await getSupabaseAdmin()
+      .from("developments")
+      .select("state,status")
+      .eq("organization_id", access.access.organization.id)
+      .limit(1000);
+    const praca = derivarPraca(((empreendimentos.data ?? []) as Array<{ state?: unknown; status?: unknown }>));
+    fragmento = fragmentoDaFaixa(faixa, praca);
+    if (!fragmento) {
+      // Recusa explícita, e não lista aproximada. Filtro que devolve o número
+      // errado é pior que filtro ausente — é o que este mesmo arquivo já diz
+      // sobre `project_id` e sobre `next_contact`.
+      return apiError(
+        "FAIXA_NAO_SUPORTADA",
+        praca.medida
+          ? "Esta faixa não pode ser expressa como filtro de lista sem risco de devolver outro número."
+          : `A praça não foi medida (${praca.motivo}) — sem ela esta faixa não existe.`,
+        access.meta,
+        { status: 409, headers: rate.headers },
+      );
+    }
+  }
 
   const montarConsulta = (colunas: string, comSla: boolean) => {
     let query = access.supabase
@@ -309,6 +353,23 @@ export async function GET(request: NextRequest) {
       // a resposta já declara `slaDisponivel` para a tela dizer que não mediu.
       if (attention === "never_contacted" && comSla) query = query.is("first_contacted_at", null);
     }
+    if (fragmento) {
+      // A faixa é definida SOBRE a fila dos nunca contatados. O predicado da
+      // fila vem junto, sempre, e não depende do cliente ter lembrado de mandar
+      // `attention=never_contacted`: sem ele o mesmo nome de faixa devolveria
+      // um número maior, e o rótulo passaria a mentir.
+      query = query
+        .not("status", "in", `(${terminalStorageStatuses.join(",")})`)
+        .is("first_contacted_at", null);
+      query = fragmento.importBatch === "nulo"
+        ? query.is("import_batch_id", null)
+        : query.not("import_batch_id", "is", null);
+      // Um padrão por (DDD × comprimento): `like '5511_________'` casa "55, 11
+      // e mais nove caracteres". O comprimento entra no filtro do BANCO, e não
+      // só no JS — sem isso '971567739185' viraria DDD 97 de um lado e
+      // "ilegível" do outro, e as duas contagens divergiriam em silêncio.
+      if (fragmento.telefoneOr) query = query.or(fragmento.telefoneOr);
+    }
     if (nextAction) {
       query = query
         .not("status", "in", `(${terminalStorageStatuses.join(",")})`)
@@ -348,6 +409,18 @@ export async function GET(request: NextRequest) {
   let comSla = true;
   let resultado = await montarConsulta(LIVE_LEAD_SELECT_WITH_SLA, true);
   if (resultado.error && isMissingColumn(resultado.error)) {
+    if (faixa) {
+      // O degrau de baixo não tem `first_contacted_at`, `phone_normalized` nem
+      // `import_batch_id` — cair nele com uma faixa pedida devolveria a lista
+      // inteira sob um rótulo que promete um recorte. Recusar é a resposta
+      // honesta; a fila continua acessível por `attention=never_contacted`.
+      return apiError(
+        "FAIXA_NAO_SUPORTADA",
+        "Este banco não tem as colunas que definem a faixa (first_contacted_at, phone_normalized, import_batch_id).",
+        access.meta,
+        { status: 409, headers: rate.headers },
+      );
+    }
     // Banco sem a fase 34: a lista continua funcionando, apenas sem prazo — e a
     // resposta diz isso, para a tela não confundir "sem medição" com "no prazo".
     comSla = false;
@@ -414,6 +487,7 @@ export async function GET(request: NextRequest) {
         direction,
         attention,
         nextAction,
+        faixa,
       },
       compatibility: {
         canonicalContract: "lead-v1",

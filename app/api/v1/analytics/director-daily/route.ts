@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { MINIMUM_CAPACITY_ACTORS, MINIMUM_CAPACITY_SAMPLE, MINIMUM_CAPACITY_WEEKS, hasBasis, simulateCapacity, type CapacityContext } from "@/lib/ai/decision-simulator";
 import { apiError, apiSuccess } from "@/lib/api/core";
+import { derivarPraca, triarFila } from "@/lib/atlas/triagem-da-fila";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { isMissingColumn, mapLegacyLead, mapLegacyProject, type CompatRow } from "@/lib/compat/legacy-v2";
 import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
@@ -40,7 +41,34 @@ const DIRECTOR_LEAD_SELECT_BASE = "id,status,temperature,classificacao_ia,score_
  *
  * Base legada sem a coluna cai para o select base e o número sai `null`.
  */
-const DIRECTOR_LEAD_SELECT = `${DIRECTOR_LEAD_SELECT_BASE},first_contacted_at`;
+const DIRECTOR_LEAD_SELECT_COM_SLA = `${DIRECTOR_LEAD_SELECT_BASE},first_contacted_at`;
+
+/**
+ * ── DECISÃO ESCRITA: `phone_normalized` NA ROTA EXECUTIVA ───────────────────
+ *
+ * O comentário de DIRECTOR_LEAD_SELECT_BASE diz, e continua valendo, que este
+ * painel AGREGA e não lê PII. `phone_normalized` é PII e entra assim mesmo,
+ * por uma razão nomeada e com uma fronteira nomeada:
+ *
+ *   POR QUE ENTRA — o corte da fila precisa saber se o telefone é da praça
+ *   onde a empresa vende. Sem o DDD, os 442 nunca contatados continuam sendo
+ *   um número indivisível, e a medição mostra que 161 deles são telemarketing
+ *   frio para estados sem produto. É a diferença entre "temos 442 leads" e
+ *   "temos 146 pedidos reais empilhados numa pessoa só".
+ *
+ *   ATÉ ONDE VAI — só o DDD é derivado, em memória, e SÓ CONTAGENS saem no
+ *   payload. Nenhum telefone, nenhum trecho de telefone e nenhum id de lead
+ *   atravessam a resposta desta rota. Se um dia esta rota precisar devolver
+ *   telefone, o eixo geográfico sai antes: a fronteira vale mais que a faixa.
+ *
+ *   QUANTO CUSTA — medido: ~0,3 MB a mais em 17 mil linhas, contra os 4,7 MB
+ *   que o comentário acima defende. Não é o que muda a conta do payload.
+ *
+ * `import_batch_id` vem junto e não é PII: é ele que responde "alguém pediu
+ * contato, ou esta linha entrou por carga?" — 270 com carga contra 172 sem,
+ * medido em 2026-07-29.
+ */
+const DIRECTOR_LEAD_SELECT = `${DIRECTOR_LEAD_SELECT_COM_SLA},phone_normalized,import_batch_id`;
 
 /**
  * Instant\u00e2neo de leads por organiza\u00e7\u00e3o, 60s (mesmo padr\u00e3o globalThis do
@@ -52,7 +80,7 @@ const DIRECTOR_LEAD_SELECT = `${DIRECTOR_LEAD_SELECT_BASE},first_contacted_at`;
  */
 const LEAD_SNAPSHOT_TTL_MS = 60_000;
 const MAX_CACHED_ORGANIZATIONS = 3;
-type LeadSnapshot = { at: number; rows: CompatRow[]; truncated: boolean; primeiroContatoMensuravel: boolean };
+type LeadSnapshot = { at: number; rows: CompatRow[]; truncated: boolean; primeiroContatoMensuravel: boolean; triagemMensuravel: boolean };
 const snapshotGlobal = globalThis as typeof globalThis & { __atlasDirectorLeadSnapshot?: Map<string, LeadSnapshot> };
 const leadSnapshotCache = snapshotGlobal.__atlasDirectorLeadSnapshot ?? new Map<string, LeadSnapshot>();
 snapshotGlobal.__atlasDirectorLeadSnapshot = leadSnapshotCache;
@@ -70,14 +98,24 @@ async function readLeadSnapshot(
   const leia = (select: string) =>
     fetchAllRows<CompatRow>((from, to) =>
       admin.from("leads").select(select).eq("organization_id", organizationId).order("id", { ascending: true }).range(from, to).returns<CompatRow[]>());
+  // Escada de TRÊS degraus, e não dois, porque o fallback de coluna ausente é
+  // TUDO OU NADA (o 42703 derruba o select inteiro). Juntar `phone_normalized`
+  // ao mesmo degrau de `first_contacted_at` faria um banco sem telefone
+  // normalizado perder também o número dos nunca contatados — o painel diria
+  // "não medido" para a linha que ele consegue medir.
   let primeiroContatoMensuravel = true;
+  let triagemMensuravel = true;
   let result = await leia(DIRECTOR_LEAD_SELECT);
+  if (result.error && isMissingColumn(result.error)) {
+    triagemMensuravel = false;
+    result = await leia(DIRECTOR_LEAD_SELECT_COM_SLA);
+  }
   if (result.error && isMissingColumn(result.error)) {
     primeiroContatoMensuravel = false;
     result = await leia(DIRECTOR_LEAD_SELECT_BASE);
   }
   if (result.error) return { snapshot: null, error: result.error };
-  const snapshot: LeadSnapshot = { at: now, rows: result.rows, truncated: result.truncated, primeiroContatoMensuravel };
+  const snapshot: LeadSnapshot = { at: now, rows: result.rows, truncated: result.truncated, primeiroContatoMensuravel, triagemMensuravel };
   leadSnapshotCache.set(organizationId, snapshot);
   if (leadSnapshotCache.size > MAX_CACHED_ORGANIZATIONS) {
     for (const [key, entry] of leadSnapshotCache) {
@@ -187,7 +225,7 @@ export async function GET(request: NextRequest) {
   const admin = getSupabaseAdmin();
   const organizationId = identity.access.organization.id;
   const capacitySince = new Date(Date.now() - CAPACITY_WINDOW_DAYS * 86_400_000).toISOString();
-  const [profileResult, leadResult, campaignResult, projectResult, historyResult] = await Promise.all([
+  const [profileResult, leadResult, campaignResult, projectResult, historyResult, developmentResult] = await Promise.all([
     admin.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).eq("active", true).limit(2000),
     // O `{ count: "exact" }` saiu junto com o `.limit()`: com leitura exaustiva
     // o total É o tamanho lido, e o COUNT sobre 17 mil linhas a cada
@@ -201,6 +239,12 @@ export async function GET(request: NextRequest) {
     // Paginado pelo mesmo motivo das campanhas: a projeção de capacidade sai de
     // uma contagem de movimentações, e contagem sobre página cortada mente.
     fetchAllRows<HistoryRow>((from, to) => admin.from("pipeline_history").select("lead_id,changed_by,old_status,new_status,created_at").eq("organization_id", organizationId).gte("created_at", capacitySince).order("created_at", { ascending: true }).range(from, to)),
+    // A PRAÇA vem de `developments`, não de `crm_projects`: são DUAS tabelas de
+    // empreendimento com os mesmos 4 registros e IDs diferentes, e só esta tem
+    // a coluna `state`. Ler a errada devolveria praça vazia — e praça vazia
+    // jogaria 100% dos leads em "fora da praça", que é plausível e
+    // completamente invertido. Ver [[duas-tabelas-de-empreendimento]].
+    admin.from("developments").select("id,name,city,state,status").eq("organization_id", organizationId).limit(1000),
   ]);
   if (profileResult.error || leadResult.error || campaignResult.error || projectResult.error) {
     return apiError("DIRECTOR_DASHBOARD_FAILED", "Não foi possível consolidar a operação executiva agora.", identity.meta, { status: 503 });
@@ -228,6 +272,36 @@ export async function GET(request: NextRequest) {
   const primeiroContatoMensuravel = leadSnapshot?.primeiroContatoMensuravel ?? false;
   const firstContactOverdue = primeiroContatoMensuravel
     ? activeLeads.filter((lead) => !lead.first_contacted_at).length
+    : null;
+  // ── O CORTE DA FILA ──────────────────────────────────────────────────────
+  //
+  // Decomposição de `firstContactOverdue`, não uma segunda contagem: as faixas
+  // somam EXATAMENTE o mesmo número que a linha "Sem 1º contato" publica, sobre
+  // o MESMO array que já está em memória. Zero consulta nova de leads.
+  //
+  // Medido em 2026-07-29: 146 pediram contato e são da praça, 25 pediram de
+  // outro DDD, 108 são lista importada da praça, 161 são lista importada de
+  // outro estado, 2 têm telefone ilegível. Soma 442.
+  const praca = derivarPraca(
+    ((developmentResult.data ?? []) as unknown as CompatRow[]).map((linha) => ({ state: linha.state, status: linha.status })),
+  );
+  const triagemMensuravel = primeiroContatoMensuravel && (leadSnapshot?.triagemMensuravel ?? false);
+  const triagem = triagemMensuravel
+    ? triarFila(
+        activeLeads.map((lead) => ({
+          id: text(lead.id),
+          importBatchId: text(lead.import_batch_id) || null,
+          phoneNormalized: text(lead.phone_normalized) || null,
+          createdAtMs: time(lead.created_at),
+          donoId: text(lead.assigned_to) || null,
+          // O MESMO predicado por coluna da linha "Sem 1º contato". Se as duas
+          // definições de fila divergirem, o painel afirma um número e calcula
+          // outro na mesma frase — e é isso que o contrato guarda.
+          naFila: !lead.first_contacted_at,
+        })),
+        praca,
+        { agoraMs: now },
+      )
     : null;
   const followUpOverdue = activeLeads.filter((lead) => (time(lead.next_action_at) ?? Number.MAX_SAFE_INTEGER) < now).length;
   const withoutNextAction = activeLeads.filter((lead) => !lead.next_action_at).length;
@@ -277,6 +351,17 @@ export async function GET(request: NextRequest) {
   const brokerProfiles = profiles.filter((profile) => text(profile.commercial_role) === "broker");
   const activeBrokers = brokerProfiles.length;
   const brokerIds = new Set(brokerProfiles.map((profile) => text(profile.id)).filter(Boolean));
+  // ── O DIVISOR CERTO ──────────────────────────────────────────────────────
+  //
+  // `activeBrokers` conta perfil de corretor ATIVO NO CADASTRO. Medido em
+  // 2026-07-29: 12 cadastrados contra 2 que de fato carregam lead aberto
+  // (Diego 195, Vinicius 272). Dividir a fila por 12 daria um prazo seis vezes
+  // menor sem que ninguém atendesse nada — é o mesmo "sujeito da média" que já
+  // derrubou a projeção de capacidade antes. Quem divide é este número, e a
+  // tela mostra os dois quando divergirem.
+  const brokersWithPortfolio = new Set(
+    activeLeads.map((lead) => text(lead.assigned_to)).filter((id) => id && brokerIds.has(id)),
+  ).size;
   if (historyResult.error) {
     logger.warn("analytics.director_daily.capacity_unavailable", { organizationId, code: historyResult.error.code, message: historyResult.error.message });
   }
@@ -375,6 +460,57 @@ export async function GET(request: NextRequest) {
     // "ao menos" enquanto sampleComplete for falso.
     readCoverage: { leadsRead: leads.length, sampleComplete: leadSampleComplete, unavailableReason: leadSampleNote, source: "public.leads (paginado)", readAt: leadSnapshot ? new Date(leadSnapshot.at).toISOString() : null, cacheTtlSeconds: LEAD_SNAPSHOT_TTL_MS / 1000 },
     commercial: { leads: leads.length, sampleComplete: leadSampleComplete, activeLeads: activeLeads.length, hotLeads: activeLeads.filter((lead) => normalize(lead.temperature) === "quente" || money(lead.score) >= 70).length, unassigned: unassignedActive, unassignedScope: leadSampleComplete ? "leads_abertos" : "leads_abertos_amostra_incompleta", won: wonLeads.length, conversionRate: leads.length ? Math.round(wonLeads.length / leads.length * 1000) / 10 : 0, firstContactOverdue, followUpOverdue, withoutNextAction },
+    /**
+     * O CORTE DA FILA. Somente contagens — nenhum telefone, nenhum id de lead,
+     * nenhum trecho de PII sai daqui. `lidoEm` viaja junto porque a faixa é
+     * FOTO, não rótulo: ninguém toca num lead e ele migra de faixa sozinho,
+     * mas a composição muda em silêncio conforme leads novos entram.
+     */
+    triagem: {
+      medida: triagem !== null,
+      motivoNaoMedida: triagem
+        ? null
+        : !primeiroContatoMensuravel
+          ? "este banco não tem a coluna first_contacted_at — sem ela não existe fila de nunca contatados para cortar"
+          : "este banco não tem phone_normalized ou import_batch_id — sem elas as duas perguntas do corte não têm resposta gravada",
+      lidoEm: leadSnapshot ? new Date(leadSnapshot.at).toISOString() : null,
+      amostraCompleta: leadSampleComplete,
+      /** Deve ser idêntico a `commercial.firstContactOverdue`. */
+      total: triagem?.total ?? null,
+      somaDasFaixas: triagem?.somaDasFaixas ?? null,
+      eixoGeografico: {
+        medido: praca.medida,
+        motivo: praca.motivo,
+        ufs: praca.ufs,
+        empreendimentosAtivos: praca.ativos,
+        empreendimentosSemUf: praca.ativosSemUf,
+        fonte: "public.developments (city/state)",
+        // Repetido no payload porque a frase precisa chegar na tela: DDD é onde
+        // a LINHA foi habilitada, não onde a pessoa mora.
+        ressalva: "o DDD indica onde a linha foi habilitada, não onde a pessoa mora — portabilidade existe",
+      },
+      faixas: (triagem?.faixas ?? []).map((faixa) => ({
+        ...faixa,
+        donos: faixa.donos.map((dono) => ({
+          id: dono.id,
+          nome: text(profiles.find((profile) => text(profile.id) === dono.id)?.full_name) || (dono.id ? "Responsável" : "Sem dono"),
+          total: dono.total,
+        })),
+      })),
+      /**
+       * A distribuição está invertida? Medido: 269 de lista fria contra 146 de
+       * pedido real — e não misturados, cada bloco numa pessoa. É este booleano
+       * que põe a linha na fila de decisões da diretoria.
+       */
+      distribuicaoInvertida: triagem
+        ? triagem.faixas.filter((faixa) => !faixa.atendimento).reduce((soma, faixa) => soma + faixa.total, 0) >
+          triagem.faixas.filter((faixa) => faixa.atendimento).reduce((soma, faixa) => soma + faixa.total, 0)
+        : false,
+      // Nenhuma escrita nasce daqui. Não há descarte, não há redistribuição em
+      // lote, não há cadência agendada: o corte decide para quem se liga
+      // primeiro, e ligar continua sendo trabalho de gente.
+      readOnly: true,
+    },
     financial: { pipelineGross, forecastWeighted, forecastMethod: "lead_budget_by_canonical_stage", wonValue, commissionReceivable: 0, commissionOverdue: 0, sampleComplete: leadSampleComplete },
     marketing: { campaigns: campaigns.length, campaignsWithSample: campaignRanking.filter((item) => item.sampleSufficient).length, spend: 0, attributedRevenue: 0, roas: null, minimumLeadsForDecision: 30, ranking: campaignRanking, sampleComplete: leadSampleComplete },
     developers,
@@ -385,6 +521,7 @@ export async function GET(request: NextRequest) {
       openLeads: activeLeads.length,
       unassignedOpenLeads: unassignedActive,
       activeBrokers,
+      brokersWithPortfolio,
       minimumSample: MINIMUM_CAPACITY_SAMPLE,
       unavailableReason: capacityUnavailableReason,
       minimumActors: MINIMUM_CAPACITY_ACTORS,

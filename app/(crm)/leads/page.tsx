@@ -8,6 +8,7 @@ import {
   ehVinculoValido,
   type VinculoDoCliente,
 } from "@/lib/crm/vinculo-do-cliente";
+import { CHAVES_DE_FAIXA, FAIXAS_DA_FILA, FAIXAS_SEM_PRACA } from "@/lib/atlas/triagem-da-fila";
 import { supabase } from "@/lib/supabase";
 import { LIVE_PROFILE_SELECT, mapLegacyProfile, mapLegacyProject } from "@/lib/compat/legacy-v2";
 import { EmptyState } from "@/components/atlas/empty-state";
@@ -71,6 +72,15 @@ type NextActionFilter = "" | "today" | "next_7_days" | "scheduled";
  * trabalho quando na verdade o link estava errado.
  */
 const ATTENTION_VALIDOS = ["overdue", "no_action", "hot", "unassigned", "never_contacted"] as const;
+/**
+ * As faixas do corte da fila. O vocabulário é o MESMO de
+ * lib/atlas/triagem-da-fila.ts — importado, não redigitado: um rótulo copiado
+ * à mão aqui é como o link da central passa a abrir uma lista com outro nome.
+ */
+const FAIXA_VALIDOS = CHAVES_DE_FAIXA as readonly string[];
+const ROTULO_DA_FAIXA = new Map<string, string>(
+  [...FAIXAS_DA_FILA, ...FAIXAS_SEM_PRACA].map((faixa) => [faixa.chave, faixa.rotulo]),
+);
 const VINCULO_VALIDOS = VINCULOS;
 const NEXT_ACTION_VALIDOS = ["today", "next_7_days", "scheduled"] as const;
 const SORT_VALIDOS = ["created_at", "updated_at", "score", "name", "first_contact_sla"] as const;
@@ -402,6 +412,13 @@ export default function LeadsPage() {
   const [broker, setBroker] = useState("");
   const [score, setScore] = useState("");
   const [attention, setAttention] = useState<AttentionFilter>("");
+  /**
+   * A faixa vem SEMPRE por link da central de comando e não tem seletor
+   * próprio: ela é a decomposição de um número que só a diretoria lê. O que
+   * ela precisa ter é visibilidade — filtro invisível é a diferença entre "a
+   * lista está filtrada" e "a base encolheu".
+   */
+  const [faixa, setFaixa] = useState("");
   // Herdado da tela "Clientes 360", apagada por ser a mesma tabela sem SLA,
   // sem lote e sem piso de carteira — ela vazava a carteira dos colegas.
   // Os quatro segmentos eram a única ideia própria dela e vieram junto.
@@ -539,6 +556,7 @@ export default function LeadsPage() {
         return valor && (validos as readonly string[]).includes(valor) ? (valor as T) : null;
       };
       const attentionDaUrl = pegar("attention", ATTENTION_VALIDOS);
+      const faixaDaUrl = pegar("faixa", FAIXA_VALIDOS);
       const vinculoDaUrl = pegar("vinculo", VINCULO_VALIDOS);
       const nextActionDaUrl = pegar("nextAction", NEXT_ACTION_VALIDOS);
       const sortDaUrl = pegar("sort", SORT_VALIDOS);
@@ -554,6 +572,7 @@ export default function LeadsPage() {
       let veioDaUrl = false;
 
       if (attentionDaUrl !== null) { setAttention(attentionDaUrl); veioDaUrl = true; }
+      if (faixaDaUrl !== null) { setFaixa(faixaDaUrl); veioDaUrl = true; }
       if (vinculoDaUrl !== null) { setVinculo(vinculoDaUrl); veioDaUrl = true; }
       if (nextActionDaUrl !== null) { setNextAction(nextActionDaUrl); veioDaUrl = true; }
       if (sortDaUrl !== null) { setSort(sortDaUrl); veioDaUrl = true; }
@@ -705,6 +724,7 @@ export default function LeadsPage() {
         }
         if (score === "cold") params.set("max_score", "39");
         if (attention) params.set("attention", attention);
+        if (faixa) params.set("faixa", faixa);
         if (vinculo) params.set("vinculo", vinculo);
         if (nextAction) params.set("next_action", nextAction);
 
@@ -758,6 +778,7 @@ export default function LeadsPage() {
     return () => controller.abort();
   }, [
     attention,
+    faixa,
     vinculo,
     broker,
     debouncedSearch,
@@ -885,6 +906,7 @@ export default function LeadsPage() {
     broker ||
     score ||
     attention ||
+    faixa ||
     nextAction,
   );
   const activeFilterCount = [
@@ -894,6 +916,7 @@ export default function LeadsPage() {
     broker,
     score,
     attention,
+    faixa,
     nextAction,
   ].filter(Boolean).length;
   const canTransfer = [
@@ -1212,6 +1235,30 @@ export default function LeadsPage() {
               ))}
             </div>
           </div>
+          {/* A FAIXA DO CORTE DA FILA — chega por link da central e não tem
+              seletor. Fica visível porque um recorte que corta 442 em 146 sem
+              dizer o nome faz a pessoa concluir que a base encolheu. */}
+          {faixa ? (
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[rgba(75,141,248,0.35)] bg-[rgba(75,141,248,0.07)] px-3 py-2">
+              <span className="text-[11.5px] text-[#aab6ca]">
+                Faixa da fila ·{" "}
+                <strong className="font-semibold text-[#e8eef8]">
+                  {ROTULO_DA_FAIXA.get(faixa) ?? faixa}
+                </strong>{" "}
+                · só leads nunca contatados
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setFaixa("");
+                  setPage(1);
+                }}
+                className={`min-h-11 text-[11.5px] font-semibold text-[var(--atlas-accent)] hover:text-white ${focusRing}`}
+              >
+                Limpar faixa
+              </button>
+            </div>
+          ) : null}
           {/* VÍNCULO — o que a tela "Clientes 360" tinha de próprio.
               Ela lia a MESMA tabela pela mesma função, sem SLA, sem lote e sem
               piso de carteira (um corretor via as 469 leads da imobiliária).

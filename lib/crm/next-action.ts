@@ -53,8 +53,16 @@ function horaEmSaoPaulo(data: Date): number {
   );
 }
 
-/** O dia da semana em São Paulo. 0 = domingo. */
-function diaDaSemanaEmSaoPaulo(data: Date): number {
+/**
+ * O dia da semana em São Paulo. 0 = domingo.
+ *
+ * EXPORTADA porque o corte da fila (lib/atlas/triagem-da-fila.ts) precisa
+ * contar DIAS ÚTEIS para dizer quando cada faixa termina. Redefinir "fim de
+ * semana" lá seria criar duas verdades sobre a mesma coisa dentro do mesmo
+ * produto — a classe de bug [[caminhos-divergentes]], que aqui nem precisaria
+ * de banco para acontecer.
+ */
+export function diaDaSemanaEmSaoPaulo(data: Date): number {
   const nome = new Intl.DateTimeFormat("en-US", { timeZone: FUSO, weekday: "short" }).format(data);
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(nome);
 }

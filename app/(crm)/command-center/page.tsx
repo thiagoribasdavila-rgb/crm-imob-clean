@@ -10,6 +10,12 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import {
+  DIAS_ATE_RECONFIRMAR_RITMO,
+  premissaPrecisaReconfirmar,
+  prazoDaFaixa,
+  ritmoNecessarioPara,
+} from "@/lib/atlas/triagem-da-fila";
 import { CommandCenterModuleHealth } from "@/components/atlas/command-center-module-health";
 import type { ProposalSignalKind } from "@/lib/ai/action-proposals";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
@@ -230,8 +236,66 @@ type DirectorDaily = {
     activeLeads: number;
     hotLeads: number;
     conversionRate: number;
-    firstContactOverdue: number;
+    /**
+     * `null` = NÃO MEDIDO, e este tipo estava mentindo.
+     *
+     * A rota devolve `null` quando a coluna `first_contacted_at` não existe no
+     * banco (director-daily/route.ts, `primeiroContatoMensuravel`), mas aqui
+     * estava declarado `number`. Num banco legado o `null` chegava e a tela
+     * desenhava "null" — e, pior, agora que este número é DIVIDIDO em faixas e
+     * em prazo, ele viraria NaN ou zero: "a fila já acabou", com 442 leads
+     * parados. Ausência de dado nunca vira zero.
+     */
+    firstContactOverdue: number | null;
     followUpOverdue: number;
+    /** Contexto da carga: o ritmo declarado é o que sobra ALÉM desta fila. */
+    withoutNextAction?: number;
+  };
+  /**
+   * O CORTE DA FILA — a decomposição de `firstContactOverdue` nas quatro (ou
+   * cinco) filas de naturezas incompatíveis que ele esconde. Opcional porque
+   * um banco sem as colunas do corte não publica o bloco.
+   */
+  triagem?: {
+    medida: boolean;
+    motivoNaoMedida: string | null;
+    lidoEm: string | null;
+    amostraCompleta: boolean;
+    total: number | null;
+    somaDasFaixas: number | null;
+    eixoGeografico: {
+      medido: boolean;
+      motivo: string | null;
+      ufs: string[];
+      empreendimentosAtivos: number;
+      empreendimentosSemUf: number;
+      ressalva: string;
+    };
+    faixas: Array<{
+      chave: string;
+      rotulo: string;
+      criterio: string;
+      atendimento: boolean;
+      total: number;
+      donos: Array<{ id: string; nome: string; total: number }>;
+      idadeMaisAntigaDias: number | null;
+      telefoneRepetido: number;
+    }>;
+    distribuicaoInvertida: boolean;
+    readOnly: boolean;
+  };
+  capacity?: {
+    activeBrokers: number;
+    /** Corretores que de fato carregam lead aberto. É este que divide. */
+    brokersWithPortfolio: number;
+    unavailableReason: string | null;
+    minimumActors: number;
+    observed: {
+      actors: number;
+      attributedMoves: number;
+      weeks: number;
+      leadsPerBrokerPerWeek: number | null;
+    };
   };
   risks: Array<{
     severity: "critical" | "attention";
@@ -508,6 +572,28 @@ const DESTINO_DO_RISCO: Record<string, string> = {
   Governança: "/integrations/health",
   "Custo de IA": "/reports",
 };
+
+/**
+ * Para onde leva cada faixa do corte da fila.
+ *
+ * Mesmo princípio do mapa acima: o número escrito na tela abre a lista que o
+ * CONTÉM, e o vocabulário (`faixa=`) é o mesmo que a rota de leads re-deriva no
+ * servidor. `praca_nao_medida` NÃO está aqui de propósito — a rota recusa essa
+ * faixa (FAIXA_NAO_SUPORTADA) porque ela é a negação de um grupo lógico e não
+ * dá para provar que a lista devolveria o mesmo número. Faixa sem link é
+ * honesta; link que abre outro número, não.
+ */
+const DESTINO_DA_FAIXA: Record<string, string> = {
+  pediu_na_praca: "/leads?attention=never_contacted&faixa=pediu_na_praca&sort=first_contact_sla&direction=asc",
+  pediu_fora_da_praca: "/leads?attention=never_contacted&faixa=pediu_fora_da_praca&sort=first_contact_sla&direction=asc",
+  lista_na_praca: "/leads?attention=never_contacted&faixa=lista_na_praca&sort=first_contact_sla&direction=asc",
+  lista_fora_da_praca: "/leads?attention=never_contacted&faixa=lista_fora_da_praca&sort=first_contact_sla&direction=asc",
+  pediu: "/leads?attention=never_contacted&faixa=pediu&sort=first_contact_sla&direction=asc",
+  lista: "/leads?attention=never_contacted&faixa=lista&sort=first_contact_sla&direction=asc",
+};
+
+/** Onde a premissa do diretor mora. Chave versionada, como atlas:desktop-density. */
+const RITMO_DECLARADO_KEY = "atlas:ritmo-declarado:v1";
 
 /**
  * Para onde leva cada bloqueio de aquisição. Chaveado pelo CÓDIGO e não pelo
@@ -837,6 +923,314 @@ function LayerToggle({
         ⌄
       </span>
     </button>
+  );
+}
+
+/**
+ * ── O CORTE DA FILA ─────────────────────────────────────────────────────────
+ *
+ * A decomposição da linha "Sem 1º contato". Nasce DENTRO do mesmo painel, logo
+ * abaixo do número, e o número não sai do lugar nem muda de tamanho: a escada é
+ * o que aquele número é feito, não um cartão ao lado.
+ *
+ * Por que ela existe: "dois corretores dão conta de 442?" está mal posta. A
+ * medição de 2026-07-29 mostra quatro filas de naturezas incompatíveis, e uma
+ * delas (161 números de lista importada com DDD de outro estado) nem é
+ * atendimento. Pior: as faixas não estão misturadas entre os corretores — um
+ * carrega 145 dos 146 pedidos reais, o outro carrega 269 de lista fria e nenhum
+ * pedido. O gargalo medido é distribuição, não headcount.
+ *
+ * NENHUMA ESCRITA NASCE AQUI. Não há botão de lote, não há descarte, não há
+ * cadência agendada. Os verbos são "abrir a lista" (leitura) e "declarar
+ * premissa" (um número que fica marcado como do diretor, na máquina dele).
+ */
+function CorteDaFila({
+  triagem,
+  capacity,
+  semProximaAcao,
+  filaFechada,
+}: {
+  triagem: NonNullable<DirectorDaily["triagem"]>;
+  capacity: DirectorDaily["capacity"];
+  semProximaAcao: number | null;
+  /** A conta só vale porque a Meta não entrega hoje. Se destravar, vira piso. */
+  filaFechada: { fechada: boolean; motivo: string | null };
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [ritmo, setRitmo] = useState<{ valor: number; declaradoEmMs: number } | null>(null);
+  const [rascunho, setRascunho] = useState("");
+  const [hidratado, setHidratado] = useState(false);
+  const [agoraMs, setAgoraMs] = useState<number | null>(null);
+
+  // Hidratação em try/catch e gravação só depois dela — o mesmo padrão de
+  // atlas:desktop-density. localStorage e não sessionStorage de propósito: a
+  // premissa PRECISA sobreviver à aba para poder envelhecer à vista. E nunca o
+  // banco: no dia em que virar dado compartilhado, vira métrica.
+  useEffect(() => {
+    setAgoraMs(Date.now());
+    try {
+      const salvo = window.localStorage.getItem(RITMO_DECLARADO_KEY);
+      if (salvo) {
+        const lido = JSON.parse(salvo) as { valor?: unknown; declaradoEmMs?: unknown };
+        const valor = Number(lido.valor);
+        const declaradoEmMs = Number(lido.declaradoEmMs);
+        if (Number.isFinite(valor) && valor > 0 && Number.isFinite(declaradoEmMs)) {
+          setRitmo({ valor, declaradoEmMs });
+          setRascunho(String(valor));
+        }
+      }
+    } catch {
+      window.localStorage.removeItem(RITMO_DECLARADO_KEY);
+    } finally {
+      setHidratado(true);
+    }
+  }, []);
+
+  const declarar = useCallback(() => {
+    const valor = Number(rascunho.replace(",", "."));
+    if (!Number.isFinite(valor) || valor <= 0) return;
+    const premissa = { valor, declaradoEmMs: Date.now() };
+    setRitmo(premissa);
+    try {
+      window.localStorage.setItem(RITMO_DECLARADO_KEY, JSON.stringify(premissa));
+    } catch {
+      // Sem armazenamento a premissa vale só nesta sessão. Não é motivo para
+      // recusar a conta, e também não é motivo para fingir que ela foi salva.
+    }
+  }, [rascunho]);
+
+  const limpar = useCallback(() => {
+    setRitmo(null);
+    setRascunho("");
+    try {
+      window.localStorage.removeItem(RITMO_DECLARADO_KEY);
+    } catch {
+      /* melhor esforço */
+    }
+  }, []);
+
+  const corretores = capacity?.brokersWithPortfolio ?? 0;
+  const cadastrados = capacity?.activeBrokers ?? 0;
+  const precisaReconfirmar = hidratado && ritmo !== null && agoraMs !== null
+    ? premissaPrecisaReconfirmar(ritmo.declaradoEmMs, agoraMs)
+    : false;
+  // Premissa vencida NÃO produz prazo. Ela volta a valer quando o diretor
+  // reconfirma — número digitado há duas semanas é lido como medição.
+  const ritmoValido = ritmo && !precisaReconfirmar ? ritmo.valor : null;
+
+  const dataCurta = (ms: number) =>
+    new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(ms));
+
+  // A ordem da escada é a ordem do trabalho: atendimento primeiro. É ela que
+  // define quanto cada faixa espera antes de começar.
+  const ordenadas = [...triagem.faixas].sort(
+    (esquerda, direita) => Number(direita.atendimento) - Number(esquerda.atendimento),
+  );
+  // `reduce` e não um acumulador mutável: a regra do repositório proíbe
+  // reatribuir variável depois do render, e aqui o acumulado é justamente o
+  // que diz quanto cada faixa espera antes de começar.
+  const linhas = ordenadas.reduce<Array<{ faixa: (typeof ordenadas)[number]; antes: number }>>(
+    (parcial, faixa) => [
+      ...parcial,
+      { faixa, antes: parcial.reduce((soma, linha) => soma + linha.faixa.total, 0) },
+    ],
+    [],
+  );
+
+  return (
+    <li className="border-t border-white/[.06] pt-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-[11px] text-slate-500">
+          Do que esse número é feito
+          {triagem.lidoEm ? ` · leitura de ${new Date(triagem.lidoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+        </p>
+        <button
+          type="button"
+          onClick={() => setAberto((atual) => !atual)}
+          aria-expanded={aberto}
+          aria-controls="corte-da-fila-premissa"
+          className="min-h-11 text-[11px] font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+        >
+          {ritmoValido ? "Em quanto tempo isso acaba?" : "Sem prazo — declarar ritmo"}
+        </button>
+      </div>
+
+      {!triagem.medida ? (
+        <p className="mt-2 text-[11.5px] leading-5 text-[#6b7890]">
+          Corte não medido: {triagem.motivoNaoMedida}
+        </p>
+      ) : (
+        <>
+          <ul className="mt-2 space-y-2">
+            {linhas.map(({ faixa, antes }) => {
+              const destino = DESTINO_DA_FAIXA[faixa.chave];
+              const prazo = agoraMs === null ? null : prazoDaFaixa({
+                tamanhoDaFaixa: faixa.total,
+                acumuladoAntes: antes,
+                corretores,
+                ritmoPorCorretorPorDiaUtil: ritmoValido,
+                agoraMs,
+              });
+              const necessario = ritmoValido === null ? null : ritmoNecessarioPara({
+                tamanhoDaFaixa: faixa.total,
+                acumuladoAntes: antes,
+                corretores,
+                diasUteis: 10,
+              });
+              return (
+                <li key={faixa.chave} className="text-[11.5px] leading-5">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 text-[#aab6ca]" title={faixa.criterio}>
+                      {faixa.rotulo}
+                    </span>
+                    <span className={`cc6-num shrink-0 text-[13px] ${faixa.atendimento ? "text-[#e8eef8]" : "text-[#6b7890]"}`}>
+                      {faixa.total}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[11px] text-[#6b7890]">
+                    {faixa.donos.length ? (
+                      <span>
+                        {faixa.donos.map((dono) => `${dono.total} com ${dono.nome}`).join(" · ")}
+                      </span>
+                    ) : null}
+                    {faixa.idadeMaisAntigaDias !== null ? (
+                      <span>mais antiga há {faixa.idadeMaisAntigaDias} dia(s)</span>
+                    ) : null}
+                    {/* Prova no registro, em LEITURA: telefone que repete um lead
+                        mais antigo. Medido hoje: 0 em 442 — a fila é gente de
+                        verdade, e este zero é a resposta a "o denominador está
+                        inflado?". Nenhum botão de descarte nasce daqui. */}
+                    {faixa.telefoneRepetido > 0 ? (
+                      <span>{faixa.telefoneRepetido} repetem o telefone de um lead mais antigo</span>
+                    ) : null}
+                    {destino ? (
+                      <Link
+                        href={destino}
+                        className="font-semibold text-[var(--atlas-accent)] hover:text-white"
+                      >
+                        Abrir a lista ({faixa.total}) →
+                      </Link>
+                    ) : (
+                      <span title="A rota recusa esta faixa (FAIXA_NAO_SUPORTADA): não dá para expressá-la como filtro sem risco de devolver outro número.">
+                        sem lista — o filtro não é expressável
+                      </span>
+                    )}
+                  </div>
+                  {prazo ? (
+                    <p className="text-[11px] text-[#93a2b8]">
+                      {faixa.total} PRIMEIRAS ligações ÷ ({corretores} corretor(es) × {ritmoValido}/dia útil)
+                      {antes > 0 ? ` — só começa depois das ${antes} acima, em ${prazo.diasUteisAteComecar} dia(s) útil(eis)` : ""}
+                      {" "}= termina em {prazo.diasUteis} dia(s) útil(eis) · {dataCurta(prazo.terminaEmMs)} · premissa sua
+                      {necessario !== null ? ` · para zerar em 10 dias úteis seriam ${necessario}/corretor/dia útil` : ""}
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="mt-2 text-[11px] leading-5 text-[#6b7890]">
+            Soma das faixas: {triagem.somaDasFaixas} · linha acima: {triagem.total}
+            {triagem.somaDasFaixas !== triagem.total ? " — DIVERGÊNCIA: as faixas deixaram de decompor o mesmo número" : ""}
+            {triagem.amostraCompleta ? "" : " · leitura truncada: todo número aqui é “ao menos”"}
+          </p>
+
+          {triagem.eixoGeografico.medido ? (
+            <p className="mt-1 text-[11px] leading-5 text-[#6b7890]">
+              Praça = {triagem.eixoGeografico.ufs.join(", ")}, derivada de {triagem.eixoGeografico.empreendimentosAtivos} empreendimento(s) ativo(s)
+              {triagem.eixoGeografico.empreendimentosSemUf > 0
+                ? ` (${triagem.eixoGeografico.empreendimentosSemUf} sem UF cadastrada — lacuna declarada, não preenchida)`
+                : ""}
+              . O DDD diz onde a linha foi habilitada, não onde a pessoa mora — portabilidade existe.
+              &ldquo;Fora da praça&rdquo; NÃO é o motivo de descarte
+              &ldquo;fora da área de atendimento&rdquo;: ninguém falou com essas pessoas, e a faixa nunca sai da escada.
+            </p>
+          ) : (
+            <p className="mt-1 text-[11px] leading-5 text-[#f2b544]">
+              Eixo geográfico ausente: {triagem.eixoGeografico.motivo}. A escada mostra só &ldquo;pediu / não pediu&rdquo; —
+              seria falso dizer que todo mundo está fora da praça.
+            </p>
+          )}
+        </>
+      )}
+
+      {aberto ? (
+        <div id="corte-da-fila-premissa" className="mt-3 rounded-xl border border-white/[.07] px-3 py-3">
+          <label className="block text-[11.5px] text-[#aab6ca]" htmlFor="ritmo-declarado">
+            Primeiras ligações por corretor, por dia útil
+          </label>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <input
+              id="ritmo-declarado"
+              type="number"
+              min={1}
+              inputMode="numeric"
+              value={rascunho}
+              placeholder="—"
+              onChange={(evento) => setRascunho(evento.target.value)}
+              className="h-11 w-24 rounded-lg border border-white/[.12] bg-transparent px-3 text-sm text-white"
+            />
+            <button
+              type="button"
+              onClick={declarar}
+              className="min-h-11 rounded-lg border border-[var(--atlas-accent)] px-3 text-[11.5px] font-semibold text-[var(--atlas-accent)] hover:text-white"
+            >
+              {precisaReconfirmar && ritmo ? "Reconfirmar" : "Declarar"}
+            </button>
+            {ritmo ? (
+              <button
+                type="button"
+                onClick={limpar}
+                className="min-h-11 text-[11.5px] font-semibold text-[#93a2b8] hover:text-white"
+              >
+                Limpar premissa
+              </button>
+            ) : null}
+          </div>
+          {/* Sem valor padrão, sem slider posicionado e SEM atalhos 5/10/20:
+              atalho é valor padrão fantasiado, e um número pré-preenchido seria
+              precisamente o chute com aparência de conta que este projeto
+              proíbe. Sem declaração, a resposta é "sem prazo". */}
+          <p className="mt-2 text-[11px] leading-5 text-[#6b7890]">
+            O Atlas NÃO sabe este número, e não vai chutar: {capacity?.unavailableReason
+              ? capacity.unavailableReason
+              : `a amostra atribuída tem ${capacity?.observed.attributedMoves ?? 0} movimentação(ões) de ${capacity?.observed.actors ?? 0} pessoa(s), contra o mínimo de ${capacity?.minimumActors ?? 3} para medir ritmo`}
+            . Este é o seu palpite, e ele fica marcado como seu.
+          </p>
+          {ritmo ? (
+            <p className="mt-1 text-[11px] leading-5 text-[#93a2b8]">
+              Premissa sua, declarada em {dataCurta(ritmo.declaradoEmMs)}
+              {precisaReconfirmar
+                ? ` — vencida (mais de ${DIAS_ATE_RECONFIRMAR_RITMO} dias). Reconfirme o ritmo para o prazo voltar a valer.`
+                : ""}
+            </p>
+          ) : null}
+          <ul className="mt-2 space-y-1 text-[11px] leading-5 text-[#6b7890]">
+            <li>
+              A unidade é a PRIMEIRA ligação — não atendimento, não visita, não venda. O prazo não fala de receita
+              nem de conversão.
+            </li>
+            <li>
+              Divide por {corretores} corretor(es) COM carteira aberta
+              {cadastrados !== corretores ? ` (há ${cadastrados} cadastrado(s) como corretor; dividir pelo cadastro daria um prazo que ninguém atende)` : ""}.
+            </li>
+            <li>Fim de semana fora. Feriado, férias e afastamento não existem gravados — o prazo é otimista.</li>
+            <li>
+              {filaFechada.fechada
+                ? `Fila fechada hoje: ${filaFechada.motivo}. Destravada a aquisição, este prazo vira piso ("a partir de").`
+                : "A aquisição não está bloqueada (ou não pôde ser lida): entra lead nova e este prazo é PISO, não data."}
+            </li>
+            {semProximaAcao !== null ? (
+              <li>
+                Os mesmos corretores carregam {semProximaAcao} leads sem próxima ação além desta fila. O ritmo declarado é
+                o que cada um faria ALÉM do resto da carteira.
+              </li>
+            ) : null}
+            <li>Arredondamento sempre para cima.</li>
+          </ul>
+        </div>
+      ) : null}
+    </li>
   );
 }
 
@@ -1709,6 +2103,27 @@ export default function CommandCenterPage() {
     [snapshot.leads],
   );
 
+  /**
+   * A fila está FECHADA hoje?
+   *
+   * A conta do corte só vale enquanto a Meta não entrega. A condição é RELIDA
+   * dos bloqueios a cada carregamento — e quando a leitura falha em silêncio
+   * (`medido: false`), o resultado se degrada sozinho para piso em vez de
+   * manter a data firme. Prazo confiante sobre premissa que ninguém conferiu é
+   * exatamente o número que escapa do painel e vira meta cobrada.
+   */
+  const filaFechada = useMemo(() => {
+    const readiness = marketingQuality?.readiness;
+    if (!readiness || !readiness.medido) {
+      return { fechada: false, motivo: null as string | null };
+    }
+    if (!readiness.bloqueios.length) return { fechada: false, motivo: null as string | null };
+    return {
+      fechada: true,
+      motivo: readiness.bloqueios.map((bloqueio) => bloqueio.resumo).join(" · ") as string | null,
+    };
+  }, [marketingQuality]);
+
   const managementQueue = useMemo(() => {
     if (isManager) {
       return {
@@ -1775,6 +2190,26 @@ export default function CommandCenterPage() {
             }]
           : [];
 
+      /**
+       * A DISTRIBUIÇÃO ESTÁ INVERTIDA?
+       *
+       * Só entra quando a lista fria é MAIOR que o pedido real — que é o caso
+       * medido hoje (269 contra 146), e não misturados: cada bloco está numa
+       * pessoa. É o item que produz um ato executável antes do almoço (mover
+       * parte dos pedidos para o segundo corretor) e que desarma o reflexo de
+       * contratar com um fato, não com opinião.
+       */
+      const distribuicao = directorDaily?.triagem?.medida && directorDaily.triagem.distribuicaoInvertida
+        ? [{
+            key: "corte-distribuicao-invertida",
+            label: "Distribuição",
+            severity: "attention" as const,
+            reason: `Mais gente em lista importada (${directorDaily.triagem.faixas.filter((faixa) => !faixa.atendimento).reduce((soma, faixa) => soma + faixa.total, 0)}) do que em pedido real (${directorDaily.triagem.faixas.filter((faixa) => faixa.atendimento).reduce((soma, faixa) => soma + faixa.total, 0)}) — e não misturados entre os corretores`,
+            action: "Rever a quem cada faixa está atribuída antes de discutir contratação.",
+            href: "/distribution",
+          }]
+        : [];
+
       const riscos = (directorDaily?.risks ?? []).map((risk, index) => ({
         key: `${risk.area}-${index}`,
         label: risk.area,
@@ -1788,7 +2223,7 @@ export default function CommandCenterPage() {
         title: "Decisões que exigem a diretoria",
         description: "Riscos por exceção, com evidência e aprovação humana obrigatória.",
         ready: Boolean(directorDaily),
-        items: [...bloqueios, ...riscos].slice(0, 6),
+        items: [...bloqueios, ...distribuicao, ...riscos].slice(0, 6),
       };
     }
     return null;
@@ -2182,18 +2617,35 @@ export default function CommandCenterPage() {
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
                       <p className="text-[11px] text-slate-500">Sem 1º contato</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">SLA inicial vencido</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        {/* "Não medido" é estado de primeira classe: a rota devolve
+                            `null` quando a coluna first_contacted_at não existe, e
+                            traço é a leitura certa — zero seria "a fila acabou". */}
+                        {directorDaily.commercial.firstContactOverdue === null
+                          ? "não medido neste banco"
+                          : "SLA inicial vencido"}
+                      </p>
                     </div>
                     <span
                       className={`cc6-metric-value text-xl ${
-                        directorDaily.commercial.firstContactOverdue > 0
+                        (directorDaily.commercial.firstContactOverdue ?? 0) > 0
                           ? "text-[var(--atlas-danger)]!"
                           : ""
                       }`}
                     >
-                      {directorDaily.commercial.firstContactOverdue}
+                      {directorDaily.commercial.firstContactOverdue ?? "—"}
                     </span>
                   </li>
+                  {/* A ESCADA — decomposição do número logo acima, dentro do
+                      mesmo painel. Nenhum painel novo, nenhum cartão ao lado. */}
+                  {directorDaily.triagem ? (
+                    <CorteDaFila
+                      triagem={directorDaily.triagem}
+                      capacity={directorDaily.capacity}
+                      semProximaAcao={directorDaily.commercial.withoutNextAction ?? null}
+                      filaFechada={filaFechada}
+                    />
+                  ) : null}
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
                       <p className="text-[11px] text-slate-500">Follow-ups vencidos</p>

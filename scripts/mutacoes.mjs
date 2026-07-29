@@ -258,7 +258,7 @@ const MUTACOES = [
     id: "M28", arquivo: "app/(crm)/command-center/page.tsx",
     quebra: "os bloqueios de aquisição somem da fila da diretoria",
     dor: "O fato que decide entre 'trabalhe o que tem' e 'espere reposição' volta a existir só no terminal.",
-    de: `        items: [...bloqueios, ...riscos].slice(0, 6),`,
+    de: `        items: [...bloqueios, ...distribuicao, ...riscos].slice(0, 6),`,
     para: `        items: riscos.slice(0, 6),`,
   },
   {
@@ -304,6 +304,59 @@ const MUTACOES = [
     para: `      .from("crm_projects")
       .select("id")
       .eq("organization_id", plan.organizationId)`,
+  },
+  {
+    id: "M34", arquivo: "lib/atlas/triagem-da-fila.ts",
+    quebra: "o DDD deixa de exigir o prefixo 55",
+    dor: "'971567739185' vira DDD 15 e entra em 'telefone da praça'. O diretor lê um número de atendimento inflado por lixo, e liga para quem não existe.",
+    de: `  if (!bruto.startsWith("55")) return null;`,
+    para: `  if (false) return null;`,
+  },
+  {
+    id: "M35", arquivo: "lib/atlas/triagem-da-fila.ts",
+    quebra: "o comprimento canônico do telefone deixa de ser exigido",
+    dor: "Um '5511999' truncado vira DDD 11 na contagem da central e NÃO casa o filtro do banco: a escada diz 147 e o clique abre 146.",
+    de: `  if (!(COMPRIMENTOS_CANONICOS as readonly number[]).includes(bruto.length)) return null;`,
+    para: `  if (false) return null;`,
+  },
+  {
+    id: "M36", arquivo: "lib/atlas/triagem-da-fila.ts",
+    quebra: "praça sem UF nenhuma passa a ser declarada MEDIDA",
+    dor: "Com o cadastro incompleto, 100% dos leads viram 'fora da praça'. A escada fica plausível e completamente invertida — e alguém decide parar de trabalhar a fila inteira.",
+    de: `  if (!ufs.length) {`,
+    para: `  if (false) {`,
+  },
+  {
+    id: "M37", arquivo: "lib/atlas/triagem-da-fila.ts",
+    quebra: "o fragmento de consulta gera um comprimento só",
+    dor: "Os 18 telefones fixos (12 dígitos) somem da lista mas continuam na contagem. O número escrito na central deixa de ser o número que o clique abre.",
+    de: `  return COMPRIMENTOS_CANONICOS.map((tamanho) => \`phone_normalized.like.55\${ddd}\${"_".repeat(tamanho - 4)}\`);`,
+    para: `  return [13].map((tamanho) => \`phone_normalized.like.55\${ddd}\${"_".repeat(tamanho - 4)}\`);`,
+  },
+  {
+    id: "M38", arquivo: "lib/atlas/triagem-da-fila.ts",
+    quebra: "a faixa inexpressável deixa de recusar e devolve um fragmento qualquer",
+    dor: "Clicar em 'praça não medida (2)' abriria uma lista com outro conteúdo. Filtro que devolve o número errado é pior que filtro ausente.",
+    de: `  if (chave === "lista_fora_da_praca") return { importBatch: "preenchido", telefoneOr: juntar(dddsDeFora) };
+  return null;`,
+    para: `  if (chave === "lista_fora_da_praca") return { importBatch: "preenchido", telefoneOr: juntar(dddsDeFora) };
+  return { importBatch: "nulo", telefoneOr: null };`,
+  },
+  {
+    id: "M39", arquivo: "lib/atlas/triagem-da-fila.ts",
+    quebra: "o prazo da faixa passa a arredondar para baixo",
+    dor: "146 ligações a 24/dia viram '6 dias úteis' em vez de 7. A premissa do diretor produz uma data otimista por construção, e data escapa do painel e vira meta cobrada.",
+    de: `  const diasUteis = Math.ceil((acumuladoAntes + tamanhoDaFaixa) / porDiaUtil);`,
+    para: `  const diasUteis = Math.floor((acumuladoAntes + tamanhoDaFaixa) / porDiaUtil);`,
+  },
+  {
+    id: "M40", arquivo: "app/api/v1/crm/leads/route.ts",
+    quebra: "a faixa deixa de aplicar o predicado da fila (nunca contatados)",
+    dor: "Clicar em 'pediu contato · da praça (146)' abre a carteira inteira daquele recorte, incluindo quem já foi contatado. O rótulo promete um número e a lista entrega outro.",
+    de: `      query = query
+        .not("status", "in", \`(\${terminalStorageStatuses.join(",")})\`)
+        .is("first_contacted_at", null);`,
+    para: `      query = query.not("status", "in", \`(\${terminalStorageStatuses.join(",")})\`);`,
   },
 ];
 

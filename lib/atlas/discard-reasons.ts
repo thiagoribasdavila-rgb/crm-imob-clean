@@ -31,6 +31,29 @@ export type DiscardReason = {
   metaLeadStatus: "disqualified";
   metaCategory: string;
   decisionSignal: string | null;
+  /**
+   * O motivo pode ser PROVADO pelo registro, sem que ninguém tenha falado com
+   * a pessoa?
+   *
+   * `true` em exatamente dois: `duplicado` e `contato_invalido`. Os dois
+   * afirmam um fato sobre a LINHA — "é a mesma pessoa daquela linha mais
+   * antiga", "não há canal por onde ligar" —, e nenhuma ligação mudaria a
+   * resposta.
+   *
+   * `inalcancavel` é o tentador e fica de fora de propósito: "sem resposta
+   * após tentativas" exige que alguém tenha tentado, e nesta operação ninguém
+   * tentou (5 contatos registrados na vida inteira). O mesmo argumento já está
+   * escrito em lib/crm/contact-attempts.ts — lead que ninguém alcançou não é
+   * lead ruim. `fora_area` idem: DDD de outro estado NÃO é `out_of_service_area`
+   * (o DDD diz onde a linha foi habilitada, não onde a pessoa mora), e é por
+   * isso que a faixa "fora da praça" do corte da fila precisa dizer na tela que
+   * ela não é este motivo.
+   *
+   * USO ATUAL: somente LEITURA. Nenhuma rota de descarte em lote deriva
+   * autorização deste campo — ele nomeia o vocabulário da linha "telefone
+   * repetido" da escada da fila, e nada mais.
+   */
+  provaNoRegistro: boolean;
 };
 
 export const DISCARD_REASONS: DiscardReason[] = [
@@ -41,6 +64,7 @@ export const DISCARD_REASONS: DiscardReason[] = [
     metaLeadStatus: "disqualified",
     metaCategory: "duplicate",
     decisionSignal: null,
+    provaNoRegistro: true,
   },
   {
     key: "contato_invalido",
@@ -49,6 +73,7 @@ export const DISCARD_REASONS: DiscardReason[] = [
     metaLeadStatus: "disqualified",
     metaCategory: "invalid_contact_info",
     decisionSignal: null,
+    provaNoRegistro: true,
   },
   {
     key: "inalcancavel",
@@ -57,6 +82,7 @@ export const DISCARD_REASONS: DiscardReason[] = [
     metaLeadStatus: "disqualified",
     metaCategory: "unreachable",
     decisionSignal: null,
+    provaNoRegistro: false,
   },
   {
     key: "sem_interesse",
@@ -65,6 +91,7 @@ export const DISCARD_REASONS: DiscardReason[] = [
     metaLeadStatus: "disqualified",
     metaCategory: "not_interested",
     decisionSignal: "indeciso",
+    provaNoRegistro: false,
   },
   {
     key: "fora_area",
@@ -73,6 +100,7 @@ export const DISCARD_REASONS: DiscardReason[] = [
     metaLeadStatus: "disqualified",
     metaCategory: "out_of_service_area",
     decisionSignal: "localizacao",
+    provaNoRegistro: false,
   },
   {
     key: "orcamento_incompativel",
@@ -81,6 +109,7 @@ export const DISCARD_REASONS: DiscardReason[] = [
     metaLeadStatus: "disqualified",
     metaCategory: "budget_mismatch",
     decisionSignal: "preco",
+    provaNoRegistro: false,
   },
   {
     key: "financiamento_negado",
@@ -89,6 +118,7 @@ export const DISCARD_REASONS: DiscardReason[] = [
     metaLeadStatus: "disqualified",
     metaCategory: "not_qualified",
     decisionSignal: "financiamento",
+    provaNoRegistro: false,
   },
   {
     key: "produto_errado",
@@ -97,6 +127,7 @@ export const DISCARD_REASONS: DiscardReason[] = [
     metaLeadStatus: "disqualified",
     metaCategory: "wrong_product",
     decisionSignal: "produto",
+    provaNoRegistro: false,
   },
   {
     key: "comprou_concorrente",
@@ -105,6 +136,7 @@ export const DISCARD_REASONS: DiscardReason[] = [
     metaLeadStatus: "disqualified",
     metaCategory: "purchased_from_competitor",
     decisionSignal: "concorrencia",
+    provaNoRegistro: false,
   },
   {
     key: "spam",
@@ -113,6 +145,7 @@ export const DISCARD_REASONS: DiscardReason[] = [
     metaLeadStatus: "disqualified",
     metaCategory: "spam",
     decisionSignal: null,
+    provaNoRegistro: false,
   },
   {
     key: "motivo_nao_classificado",
@@ -121,10 +154,14 @@ export const DISCARD_REASONS: DiscardReason[] = [
     metaLeadStatus: "disqualified",
     metaCategory: "other",
     decisionSignal: "motivo_nao_classificado",
+    provaNoRegistro: false,
   },
 ];
 
 export const DISCARD_REASON_KEYS = DISCARD_REASONS.map((reason) => reason.key);
+
+/** Os motivos que o próprio registro prova. Leitura — nunca autorização. */
+export const DISCARD_REASONS_PROVADOS = DISCARD_REASONS.filter((reason) => reason.provaNoRegistro).map((reason) => reason.key);
 
 export function getDiscardReason(value: unknown): DiscardReason | null {
   const normalized = String(value ?? "").trim().toLowerCase();
