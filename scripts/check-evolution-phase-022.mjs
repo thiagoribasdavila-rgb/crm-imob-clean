@@ -56,7 +56,7 @@ const ambiguityRoutes = config.ambiguityDecisions.flatMap((item) => [item.primar
 
 const checks = [
   ["Fase 022 concluída sem alteração de runtime", config.status === "completed" && config.productionDataModified === false && config.runtimeNavigationChanged === false],
-  ["Inventário anterior está concluído", phaseTwentyOne.status === "completed" && phaseTwentyOne.topology.canonicalDestinationsPresent === 22],
+  ["Inventário anterior está concluído", phaseTwentyOne.status === "completed" && phaseTwentyOne.topology.canonicalDestinationsPresent === 21],
   // Catálogo podado na fonte de propósito (commit e20f8931 "navegação podada na fonte"): 25->22 destinos canônicos. /command-center consolida Início+Command Center (substitui /dashboard); /ai-dashboard, /revenue-engine e /atlas-2030 saíram do catálogo (grupos (ai)/(autonomous)/estratégico quarentenados); /decision-center foi promovido a destino principal. Guard re-baselinado à fonte lib/atlas/navigation.ts.
   ["Todos os destinos canônicos possuem resultado", canonicalRoutes.every((route) => outcomeRoutes.includes(route)) && JSON.stringify(retiredRoutes) === JSON.stringify(["/customers"]) && retiredRedirectsToDeclaredOutcome && canonicalRoutes.length + retiredRoutes.length === 22 && uniqueOutcomeRoutes],
   ["Dezoito destinos principais estão definidos", primaryOutcomes.length === 18],

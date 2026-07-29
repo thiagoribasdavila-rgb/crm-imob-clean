@@ -9,11 +9,12 @@
   "catalogPreservation": {
     "_reconciledNote": "Reconciliado 2026-07-21: trim intencional da rail (pedido do dono 'barra lateral mais enxuta') moveu 'Atividades' e 'Reativação' para o ⌘K — 18->16 destinos primários; acesso preservado por comando contextual.",
     "primaryDestinations": 16,
-    "contextCommands": 7,
+    "contextCommands": 6,
     "mobilePrimaryDestinations": 4,
     "routesRemoved": 0,
     "permissionsChanged": false,
-    "catalogRepricedAtCommit": "e20f8931 — poda intencional na fonte (navegação podada na fonte): 19->18 principais e 6->5 contextuais; /command-center consolida Início+Command Center e os grupos (ai)/(autonomous) foram quarentenados. Guard re-baselinado para a fonte de verdade lib/atlas/navigation.ts."
+    "catalogRepricedAtCommit": "e20f8931 — poda intencional na fonte (navegação podada na fonte): 19->18 principais e 6->5 contextuais; /command-center consolida Início+Command Center e os grupos (ai)/(autonomous) foram quarentenados. Guard re-baselinado para a fonte de verdade lib/atlas/navigation.ts.",
+    "contextCommandsRepricedNote": "Re-baselinado em 2026-07-29, de 7 para 6. CAUSA medida: o commit 2b0a1e12 promoveu 'Marketing AI' do Cmd+K para a barra lateral — a rail ganhou um destino e o palco perdeu um comando. Esta fase reprovava desde entao SEM NINGUEM VER, porque a cadeia evolution-2000:check morria na fase 018 e as fases 019 a 047 nunca executavam. O numero foi corrigido junto com a abertura do portao, para que a fase volte a medir de verdade em vez de ficar vermelha em silencio."
   },
   "compactionChanges": {
     "favoriteDuplication": {

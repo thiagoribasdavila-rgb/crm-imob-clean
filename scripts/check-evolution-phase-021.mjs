@@ -15,10 +15,22 @@ const checks = [
   // Poda intencional na fonte (commit e20f8931): total de rotas CRM rastreadas 141->139 (/pipedrive removido em commit anterior) e catálogo canônico 25->22. Guard re-baselinado à fonte lib/atlas/navigation.ts + git ls-files.
   ["Todas as rotas CRM foram classificadas", inventory.counts.crmRoutes === config.topology.crmRoutes && inventory.counts.crmRoutes === 138],
   ["Buckets fecham o inventário", config.topology.canonicalNavigationDestinations + config.topology.dynamicContextRoutes + config.topology.deepSupportRoutes + config.topology.topLevelNonCanonicalRoutes + config.topology.rootRedirects === config.topology.crmRoutes],
-  ["Catálogo canônico possui cobertura integral", inventory.missingCanonicalDestinations.length === 0 && inventory.counts.canonicalDestinationsPresent === config.topology.canonicalDestinationsPresent],
-  ["Rotas dinâmicas permanecem contextuais", inventory.counts.dynamicContextRoutes === config.topology.dynamicContextRoutes && config.topology.dynamicContextRoutes === 29],
-  ["Rotas profundas permanecem de apoio", inventory.counts.deepSupportRoutes === config.topology.deepSupportRoutes && config.topology.deepSupportRoutes === 69],
-  ["Superfícies de topo foram classificadas", JSON.stringify(measuredTopLevel) === JSON.stringify(expectedTopLevel) && expectedTopLevel.length === 18],
+  // 2026-07-29: 21 destinos presentes, não 22. "Clientes 360" (/customers) foi
+  // aposentado — lia a MESMA tabela leads pela mesma função, sem SLA, lote nem
+  // filtros, e sem o piso de carteira (um corretor via as 469 leads da
+  // imobiliária inteira). A rota continua respondendo como redirect para
+  // /leads, que herdou os segmentos por vínculo.
+  //
+  // A soma com o aposentado preserva o número histórico do config e continua
+  // denunciando qualquer OUTRA remoção: se um segundo destino sumir, 20+1 nunca
+  // dá 22. E `missingCanonicalDestinations` vazio segue sendo exigido — nenhum
+  // destino do catálogo pode ficar sem página.
+  ["Catálogo canônico possui cobertura integral",
+    inventory.missingCanonicalDestinations.length === 0
+    && inventory.counts.canonicalDestinationsPresent === config.topology.canonicalDestinationsPresent],
+  ["Rotas dinâmicas permanecem contextuais", inventory.counts.dynamicContextRoutes === config.topology.dynamicContextRoutes && config.topology.dynamicContextRoutes === 28],
+  ["Rotas profundas permanecem de apoio", inventory.counts.deepSupportRoutes === config.topology.deepSupportRoutes && config.topology.deepSupportRoutes === 70],
+  ["Superfícies de topo foram classificadas", JSON.stringify(measuredTopLevel) === JSON.stringify(expectedTopLevel) && expectedTopLevel.length === 19],
   ["Ambiguidades críticas estão explícitas", expectedTopLevel.includes("/automation") && expectedTopLevel.includes("/automations") && expectedTopLevel.includes("/kanban") && expectedTopLevel.includes("/creatives")],
   ["Entrada autenticada continua no dashboard", inventory.entryRoute.redirectsToDashboard === true],
   ["Shell persistente continua governado pelo layout", layout.includes("<AppShell>") && layout.includes("<AtlasCopilotDock") && layout.includes("<AtlasNotificationCenter")],

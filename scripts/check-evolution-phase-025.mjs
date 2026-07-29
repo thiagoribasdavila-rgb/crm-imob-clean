@@ -30,11 +30,28 @@ const checks = [
   ["Fase 025 concluída sem mutação de dados", config.status === "completed" && config.runtimeNavigationChanged === true && config.productionDataModified === false],
   // Catálogo podado na fonte de propósito (commit e20f8931): 19->18 principais, 6->5 contextuais. Guard re-baselinado à fonte de verdade lib/atlas/navigation.ts; o config carrega catalogRepricedAtCommit como rastro.
   ["Catálogo principal reflete o trim intencional da rail (16 destinos)", primaryCount === 16 && config.catalogPreservation.primaryDestinations === primaryCount],
-  ["Comandos contextuais recebem os destinos movidos da rail (7)", contextCount === 7 && config.catalogPreservation.contextCommands === contextCount],
+  ["Comandos contextuais recebem os destinos movidos da rail (6)", contextCount === 6 && config.catalogPreservation.contextCommands === contextCount],
   ["Navegação móvel permanece completa", mobilePrimaryCount === 4 && config.catalogPreservation.mobilePrimaryDestinations === mobilePrimaryCount],
-  ["Favoritos deixam o grupo somente fora da busca", sidebar.includes("normalizedQuery\n    ? visibleItems\n    : visibleItems.filter((item) => !favorites.includes(item.href))")],
-  ["Busca continua incluindo favoritos", config.compactionChanges.favoriteDuplication.searchStillReturnsPinnedItems === true && sidebar.includes("const groupedItems = normalizedQuery")],
-  ["Grupos e favoritos evitam contagem redundante", config.compactionChanges.sidebarSections.countsAdded === false && !sidebar.includes("${favoriteItems.length} favoritos") && !sidebar.includes("${groupItems.length} telas")],
+  /**
+   * 2026-07-29 — os FAVORITOS foram aposentados da barra lateral.
+   *
+   * O problema que esta fase resolveu era REAL: um item fixado aparecia duas
+   * vezes na mesma coluna (na seção Favoritos e no grupo dele). A correção da
+   * época foi esconder a cópia fora da busca. A correção de agora foi remover a
+   * causa: sem favoritos na barra, não há duplicata possível — e some junto a
+   * estrela que reservava 48px em toda linha.
+   *
+   * As três asserções viram uma, mais forte: a duplicação não pode existir em
+   * forma NENHUMA, e o acesso rápido tem de continuar vivo no ⌘K, montado do
+   * mesmo catálogo com as mesmas permissões. Nada de contagem redundante ao
+   * lado dos grupos, como a fase já exigia.
+   */
+  ["Nenhum destino aparece duas vezes na mesma coluna",
+    !sidebar.includes("favorites")
+    && !sidebar.includes("${groupItems.length} telas")
+    && sidebar.includes("atlas-rail-hint")
+    && palette.includes("getAtlasNavigationForIdentity")
+    && config.compactionChanges.sidebarSections.countsAdded === false],
   ["Busca global agrupa metadados", palette.includes("const showGroup = index === 0") && palette.includes("atlas-command-group-label")],
   ["Opções preservam categoria acessível", palette.includes("aria-label={`${command.label}, ${command.group}`}") && config.compactionChanges.commandPaletteMetadata.optionKeepsAccessibleGroupName === true],
   // O redesign global CC-6 (commit 9730415f) substituiu os px de compactação da Fase 025 pela grade do design system: grupo separado por margin-top:20px e seção com padding:0 10px 0 8px. O espaçamento governado continua explícito; guard re-apontado à realidade CC-6.

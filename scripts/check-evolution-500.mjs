@@ -147,7 +147,13 @@ const checks = [
   // levou 25->22 destinos canônicos e 141->138 rotas CRM rastreadas (/command-center
   // consolidou Início+Command Center; /ai-dashboard, /atlas-2030, /dashboard e
   // /revenue-engine viraram topo não-canônico; /pipedrive legado removido). Zero destino canônico ausente.
-  ["Topologia CRM fecha em 139 rotas", phaseTwentyOne.topology.crmRoutes === 138 && phaseTwentyOne.topology.canonicalDestinationsPresent === 22 && phaseTwentyOne.topology.missingCanonicalDestinations === 0],
+  // 2026-07-29: 21 destinos canônicos, não 22 — "Clientes 360" saiu do catálogo
+  // (mesma tabela, sem SLA/lote/filtros e sem piso de carteira; /customers
+  // continua respondendo como redirect para /leads). O rótulo desta asserção
+  // dizia "139 rotas" enquanto o valor conferido já era 138: número no texto
+  // que não acompanha o número no código é como um guard começa a mentir.
+  // Agora o rótulo diz o que a asserção mede.
+  ["Topologia CRM fecha em 138 rotas e 21 destinos canônicos", phaseTwentyOne.topology.crmRoutes === 138 && phaseTwentyOne.topology.canonicalDestinationsPresent === 21 && phaseTwentyOne.topology.missingCanonicalDestinations === 0],
   // Re-baseline documentado na fonte (repricedNote, commits ab71b83d/e20f8931):
   // a fusão Início+Command Center trocou /dashboard por /command-center e removeu
   // resultados de rotas quarentenadas (ex.: /ai-dashboard), levando 25->22 outcomes canônicos.
@@ -161,7 +167,7 @@ const checks = [
   // 19->18 destinos principais e 6->5 comandos contextuais, pois /command-center
   // consolidou Início+Command Center e os grupos (ai)/(autonomous) foram quarentenados.
   // Guard re-baselinado para a fonte de verdade lib/atlas/navigation.ts.
-  ["Fase 025 compacta informação sem esconder funções", phaseTwentyFive.status === "completed" && phaseTwentyFive.catalogPreservation.primaryDestinations === 16 && phaseTwentyFive.catalogPreservation.contextCommands === 7],
+  ["Fase 025 compacta informação sem esconder funções", phaseTwentyFive.status === "completed" && phaseTwentyFive.catalogPreservation.primaryDestinations === 16 && phaseTwentyFive.catalogPreservation.contextCommands === 6],
   ["Compactação preserva busca, toque e RBAC", phaseTwentyFive.compactionChanges.favoriteDuplication.searchStillReturnsPinnedItems === true && phaseTwentyFive.compactionChanges.touchTargets.minimumNavigationTargetPx === 44 && phaseTwentyFive.safetyPolicy.rbacPreserved === true],
   ["Fase 026 clarifica contexto e estado atual", phaseTwentySix.status === "completed" && phaseTwentySix.contextResolution.staticParallelLabelMapRemoved === true && phaseTwentySix.hierarchyModel.activeSignals.length >= 6],
   ["Hierarquia preserva semântica, toque e RBAC", phaseTwentySix.semanticNavigation.groupsUseHeadingElement === true && phaseTwentySix.interactionTargets.favoriteActionMinimumPx === 44 && phaseTwentySix.safetyPolicy.rbacPreserved === true],
