@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { aplicarPisoDeCarteira } from "@/lib/crm/escopo-de-leitura";
 import { logger } from "@/lib/observability/logger";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -106,12 +107,73 @@ export async function requireApiIdentity(request: Request): Promise<ApiIdentity>
   };
 }
 
+/**
+ * A recusa de "esta lead não é sua", com identidade própria.
+ *
+ * Ela precisa ser RECONHECÍVEL pelo `catch` de cada rota: as rotas escolhem o
+ * status HTTP testando palavras da mensagem, e nessa régua a primeira condição
+ * já captura `escopo` para 401 — nenhuma frase consegue produzir 403 por ali.
+ * Recusa de autorização chegando como 401 manda a tela deslogar o corretor, e
+ * como 400 manda ele "corrigir os dados". As duas saídas são falsas.
+ */
+export class LeadForaDaCarteiraError extends Error {
+  constructor() {
+    super("Esta lead está com outra pessoa — ela não aparece na sua carteira.");
+    this.name = "LeadForaDaCarteiraError";
+  }
+}
+
+export function ehLeadForaDaCarteira(error: unknown): error is LeadForaDaCarteiraError {
+  return error instanceof LeadForaDaCarteiraError;
+}
+
+/**
+ * O PISO DE CARTEIRA NA ESCRITA — e não só na leitura.
+ *
+ * ── O DEFEITO QUE ISTO FECHA ────────────────────────────────────────────────
+ *
+ * Esta função conferia ORGANIZAÇÃO, nunca dono: `id` + `organization_id`. O
+ * SELECT era feito com o cliente do usuário, e parecia que o RLS terminaria o
+ * serviço — mas em `leads` as políticas permissivas se somam por OR, e a
+ * política de organização inteira engole as comerciais. Resultado: o "ok" desta
+ * função queria dizer apenas "é da mesma empresa".
+ *
+ * Depois desse ok, as rotas escrevem com a chave de serviço filtrando por
+ * `id` + `organization_id`. O dono nunca entrava no WHERE.
+ *
+ * MEDIDO EM 2026-07-29 com sessão real de um corretor descartável de carteira
+ * vazia, contra a lead de um colega (as linhas foram relidas do banco depois de
+ * cada verbo, não só o HTTP):
+ *   PATCH /api/v1/leads/{id} .................. 200 · nome, telefone, notas e
+ *                                               orçamento sobrescritos
+ *   PATCH /api/v1/leads/{id} {status} ......... 200 · novo → contato → perdido
+ *                                               (descarte pela porta lateral)
+ *   POST  /api/v1/leads/{id}/qualify .......... 200 · score_ia e temperatura
+ *   POST  /api/v1/leads/{id}/first-contact .... 201 · SLA do colega fechado
+ *   POST  /api/v1/leads/{id}/visits ........... 201 · visita criada com
+ *                                               broker_id = O COLEGA
+ * O Kanban recusava a MESMA movimentação com 403 porque a RPC reconfere o ator
+ * no banco. Porta da frente trancada, porta lateral aberta: é a classe
+ * "caminhos divergentes" que já mordeu este repositório três vezes.
+ *
+ * ── A REGRA ─────────────────────────────────────────────────────────────────
+ *
+ * O recorte vem de lib/crm/escopo-de-leitura — o mesmo que a listagem e o
+ * Kanban aplicam. Liderança segue enxergando o funil inteiro; quem lê só a
+ * própria carteira só alcança a própria carteira, mais a lead sem dono, que
+ * precisa continuar alcançável para ser adotada.
+ */
 export async function requireLeadAccess(identity: ApiIdentity, leadId: string) {
-  const { data, error } = await identity.supabase
+  const consulta = identity.supabase
     .from("leads")
     .select("id")
     .eq("id", leadId)
-    .eq("organization_id", identity.organizationId)
-    .maybeSingle();
-  if (error || !data) throw new Error("Lead fora do seu escopo comercial.");
+    .eq("organization_id", identity.organizationId);
+  const comPiso = aplicarPisoDeCarteira(
+    consulta,
+    { commercialRole: identity.commercialRole, role: identity.role },
+    identity.userId,
+  );
+  const { data, error } = await comPiso.maybeSingle();
+  if (error || !data) throw new LeadForaDaCarteiraError();
 }

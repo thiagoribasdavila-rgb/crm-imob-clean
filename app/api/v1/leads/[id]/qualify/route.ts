@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { qualifyRealEstateLead } from "@/lib/ai/lead-qualification";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
@@ -96,6 +96,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (campaignEventError) logger.warn("lead.qualify.campaign_event_failed", { organizationId: identity.organizationId, leadId: id, error: campaignEventError.message }); }
     return NextResponse.json({ qualification: { ...qualification, progress: { answered: Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length, total: 3, percent: Math.round(Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length / 3 * 100) }, scoreChange: { previous: Number(lead.score || 0), current: qualification.score, delta: qualification.score - Number(lead.score || 0) } } });
   } catch (error) {
+    // Requalificar lead alheia reescreve `score_ia`, `temperature` e o metadata
+    // inteiro — medido em 2026-07-29 com sessão de corretor: 200 e score do
+    // colega alterado. É a pontuação que decide o que a Meta aprende.
+    if (ehLeadForaDaCarteira(error)) {
+      return NextResponse.json({ error: error.message, code: "QUALIFY_OUT_OF_SCOPE" }, { status: 403 });
+    }
     const message = error instanceof Error ? error.message : "Falha na qualificação.";
     const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
     return NextResponse.json({ error: message }, { status });

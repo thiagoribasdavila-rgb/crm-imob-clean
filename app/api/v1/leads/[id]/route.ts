@@ -12,7 +12,7 @@ import { LIVE_LEAD_SELECT, LIVE_LEAD_SELECT_WITH_SLA, canonicalLeadStatus, isMis
 import { liveLeadUpdatePayload, mapLiveLeadEvent, recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { computeAttentionSignalsForLead } from "@/lib/atlas/attention-signals";
 import { logger } from "@/lib/observability/logger";
-import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/api/security";
 import { tarefaEncerrada } from "@/lib/crm/task-status";
@@ -23,6 +23,13 @@ type RouteContext = { params: Promise<{ id: string }> };
 type JsonRow = Record<string, unknown>;
 
 function requestError(error: unknown) {
+  // Lead de outra carteira é RECUSA, não falha de sessão nem dado inválido: a
+  // Lead 360 escreve o MESMO campo que o Kanban (`leads.status`) e por aqui não
+  // havia trava nenhuma — medido em 2026-07-29, um corretor de carteira vazia
+  // renomeou, reescreveu e DESCARTOU a lead de um colega com 200.
+  if (ehLeadForaDaCarteira(error)) {
+    return NextResponse.json({ error: error.message, code: "LEAD_OUT_OF_SCOPE" }, { status: 403 });
+  }
   const message = error instanceof Error ? error.message : "Não foi possível concluir a operação.";
   const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   return NextResponse.json({ error: message }, { status });

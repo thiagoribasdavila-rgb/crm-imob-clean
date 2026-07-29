@@ -20,12 +20,22 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  aplicarPisoDeCarteira,
+  estaNaMinhaCarteira,
+  filtroDaMinhaCarteira,
+} from "../../lib/crm/escopo-de-leitura.ts";
 
 const raiz = path.resolve(import.meta.dirname, "..", "..");
 const ler = (...p) => fs.readFileSync(path.join(raiz, ...p), "utf8");
 
 const rotaLeads = ler("app", "api", "v1", "crm", "leads", "route.ts");
 const rotaPipeline = ler("app", "api", "v1", "pipeline", "route.ts");
+const apiAuth = ler("lib", "security", "api-auth.ts");
+const rotaLead360 = ler("app", "api", "v1", "leads", "[id]", "route.ts");
+const rotaVisitas = ler("app", "api", "v1", "leads", "[id]", "visits", "route.ts");
+const rotaQualificacao = ler("app", "api", "v1", "leads", "[id]", "qualify", "route.ts");
+const rotaPrimeiroContato = ler("app", "api", "v1", "leads", "[id]", "first-contact", "route.ts");
 
 test("a listagem aplica piso de carteira sem o cliente pedir", () => {
   assert.match(rotaLeads, /const soAMinhaCarteira =/,
@@ -118,6 +128,111 @@ test("o escopo de equipe também não é pulável por parâmetro", () => {
    */
   assert.match(rotaLeads, /if \(teamOwner\) \{[\s\S]{0,900}?if \(soAMinhaCarteira\) \{[\s\S]{0,200}?"TEAM_OUT_OF_SCOPE"/,
     "quem só enxerga a própria carteira não tem equipe para consultar");
+});
+
+test("o piso vale na ESCRITA, não só na leitura", () => {
+  /**
+   * MEDIDO EM 2026-07-29, executando com a sessão de um corretor descartável de
+   * carteira VAZIA contra a lead de um colega — cada linha relida do banco
+   * depois do verbo, não só o HTTP:
+   *
+   *   PATCH /api/v1/leads/{id} ............... 200 · nome, telefone, notas e
+   *                                            orçamento sobrescritos
+   *   PATCH /api/v1/leads/{id} {status} ...... 200 · novo → contato → perdido
+   *   POST  /api/v1/leads/{id}/qualify ....... 200 · score_ia e temperatura
+   *   POST  /api/v1/leads/{id}/first-contact . 201 · SLA do colega FECHADO
+   *   POST  /api/v1/leads/{id}/visits ........ 201 · visita com broker_id do
+   *                                            colega, na agenda dele
+   *
+   * O Kanban recusava a MESMA movimentação com 403, porque lá a RPC reconfere
+   * o ator dentro do banco. Porta da frente trancada, porta lateral aberta: a
+   * classe "caminhos divergentes" outra vez.
+   *
+   * A raiz era `requireLeadAccess` conferir ORGANIZAÇÃO e não dono — o SELECT
+   * saía com o cliente do usuário, mas em `leads` as políticas permissivas se
+   * somam por OR e a de organização inteira engole as comerciais.
+   */
+  assert.match(apiAuth, /from "@\/lib\/crm\/escopo-de-leitura"/,
+    "o recorte da escrita é o MESMO da leitura, importado — nunca reescrito aqui");
+  assert.match(apiAuth, /aplicarPisoDeCarteira\(\s*consulta,/,
+    "requireLeadAccess precisa aplicar o piso na consulta, não só filtrar por organização");
+  assert.match(apiAuth, /class LeadForaDaCarteiraError extends Error/,
+    "a recusa precisa de tipo próprio: pela mensagem, nenhuma rota consegue devolver 403");
+  assert.match(apiAuth, /if \(error \|\| !data\) throw new LeadForaDaCarteiraError\(\);/,
+    "e é ELA que tem de ser levantada — um Error genérico volta a virar 401/500 nas rotas");
+});
+
+test("cada rota que escreve na lead recusa com 403 e código próprio", () => {
+  // 401 manda a tela deslogar o corretor; 400 manda ele "corrigir os dados";
+  // 500 diz que o servidor quebrou. Nenhum dos três é verdade — é permissão.
+  const esperado = [
+    ["Lead 360", rotaLead360, "LEAD_OUT_OF_SCOPE"],
+    ["visitas", rotaVisitas, "VISIT_OUT_OF_SCOPE"],
+    ["qualificação", rotaQualificacao, "QUALIFY_OUT_OF_SCOPE"],
+  ];
+  for (const [nome, codigo, code] of esperado) {
+    assert.match(codigo, /ehLeadForaDaCarteira\(error\)/, `${nome} precisa reconhecer a recusa de carteira`);
+    assert.match(codigo, new RegExp(`code: "${code}"[\\s\\S]{0,80}status: 403`), `${nome} precisa recusar com 403 e código próprio`);
+  }
+  // O registro de contato não passa por requireLeadAccess: ele lê a lead com o
+  // cliente do usuário e decidia por conta própria. Parar o relógio de SLA de
+  // outra pessoa é falsificar a métrica de quem nem sabe que foi medido.
+  assert.match(rotaPrimeiroContato, /from "@\/lib\/crm\/escopo-de-leitura"/);
+  assert.match(rotaPrimeiroContato, /estaNaMinhaCarteira\(access\.access\.profile\.id, lead\.data\)/);
+  // A GUARDA, não só a conta: desligar o `if` deixaria as chamadas acima vivas
+  // e o grep verde — foi exatamente assim que um mutation test achou o buraco
+  // do `caminho` que a tela nunca lia.
+  assert.match(rotaPrimeiroContato, /if \(leSoAPropriaCarteira\(access\.access\.profile\) && !daMinhaCarteira\) \{/,
+    "o recorte precisa DECIDIR a recusa, não apenas ser calculado");
+  assert.match(rotaPrimeiroContato, /"FIRST_CONTACT_OUT_OF_SCOPE"[\s\S]{0,140}status: 403/);
+});
+
+test("o Kanban continua recusando com a MESMA saída de antes", () => {
+  // A recusa passou a acontecer antes da RPC. Se ela chegar à tela com outro
+  // código, o corretor perde o "peça a transferência ao gestor" que já existia
+  // — e recusa sem saída é armadilha.
+  assert.match(rotaPipeline, /ehLeadForaDaCarteira\(error\)\) return recusar\("pipeline_move_out_of_scope", 403\)/,
+    "a recusa antecipada precisa devolver o mesmo código que a RPC devolvia");
+});
+
+test("o piso é aplicado à consulta — e só para quem lê a própria carteira", () => {
+  /**
+   * Executável de propósito: um grep pelo nome da função ficaria verde com o
+   * `or` desligado. Aqui a consulta é de mentira e conta as chamadas.
+   */
+  const consultaFalsa = () => {
+    const chamadas = [];
+    const alvo = { chamadas, or(filtro) { chamadas.push(filtro); return alvo; } };
+    return alvo;
+  };
+
+  const corretor = consultaFalsa();
+  aplicarPisoDeCarteira(corretor, { commercialRole: "broker", role: "broker" }, "u-1");
+  assert.deepEqual(corretor.chamadas, [filtroDaMinhaCarteira("u-1")],
+    "corretor: a consulta TEM de sair com o filtro de posse");
+
+  for (const papel of ["manager", "director", "superintendent"]) {
+    const lideranca = consultaFalsa();
+    aplicarPisoDeCarteira(lideranca, { commercialRole: papel, role: "manager" }, "u-1");
+    assert.deepEqual(lideranca.chamadas, [], `${papel}: liderança não pode perder a visão do todo`);
+  }
+});
+
+test("o gêmeo em JavaScript concorda com o filtro em SQL, caso a caso", () => {
+  // Duas formas da mesma regra é como nasceram os caminhos divergentes deste
+  // repositório. Enquanto existirem as duas, elas respondem junto ou o
+  // contrato quebra.
+  const eu = "u-1";
+  const outro = "u-2";
+  assert.equal(estaNaMinhaCarteira(eu, { assigned_to: eu, assigned_user_id: null }), true);
+  assert.equal(estaNaMinhaCarteira(eu, { assigned_to: null, assigned_user_id: eu }), true);
+  assert.equal(estaNaMinhaCarteira(eu, { assigned_to: outro, assigned_user_id: outro }), false);
+  assert.equal(estaNaMinhaCarteira(eu, { assigned_to: outro, assigned_user_id: null }), false);
+  assert.equal(estaNaMinhaCarteira(eu, { assigned_to: null, assigned_user_id: outro }), false);
+  // Lead sem dono continua alcançável: é assim que ela é adotada. Esconder o
+  // órfão a deixaria parada para sempre — a mesma cláusula do filtro SQL.
+  assert.equal(estaNaMinhaCarteira(eu, { assigned_to: null, assigned_user_id: null }), true);
+  assert.match(filtroDaMinhaCarteira(eu), /and\(assigned_user_id\.is\.null,assigned_to\.is\.null\)/);
 });
 
 test("o Kanban declara o recorte que aplicou", () => {

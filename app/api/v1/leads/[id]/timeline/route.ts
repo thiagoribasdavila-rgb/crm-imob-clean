@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { activityCategoryForType, type ActivityCategory } from "@/lib/atlas/activity-timeline";
@@ -10,6 +10,12 @@ type TimelineCategory = ActivityCategory;
 type TimelineEvent = { id: string; category: TimelineCategory; title: string; description: string | null; occurredAt: string; actorName: string; source: string; status?: string | null };
 
 function safeError(error: unknown) {
+  // A timeline devolve a HISTÓRIA da lead. Lead de outra carteira é recusa
+  // explícita — 400 mandaria a tela pedir para o corretor "corrigir os dados"
+  // de uma lead que ele nem deveria abrir.
+  if (ehLeadForaDaCarteira(error)) {
+    return NextResponse.json({ error: error.message, code: "TIMELINE_OUT_OF_SCOPE" }, { status: 403 });
+  }
   const message = error instanceof Error ? error.message : "Não foi possível carregar a timeline.";
   const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   return NextResponse.json({ error: message }, { status });

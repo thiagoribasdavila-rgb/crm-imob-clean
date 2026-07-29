@@ -392,6 +392,49 @@ const MUTACOES = [
         .is("first_contacted_at", null);`,
     para: `      query = query.not("status", "in", \`(\${terminalStorageStatuses.join(",")})\`);`,
   },
+  {
+    id: "M41", arquivo: "lib/crm/escopo-de-leitura.ts",
+    quebra: "o piso de carteira deixa de entrar na consulta",
+    dor: "Volta o buraco medido em 2026-07-29: um corretor de carteira vazia renomeia, descarta e agenda visita na lead do colega — com 200 e sem deixar de ser lead dele.",
+    de: `  if (!leSoAPropriaCarteira(perfil)) return consulta;
+  return consulta.or(filtroDaMinhaCarteira(userId));`,
+    para: `  return consulta;`,
+  },
+  {
+    id: "M42", arquivo: "lib/crm/escopo-de-leitura.ts",
+    quebra: "o piso passa a valer também para a liderança",
+    dor: "O gerente abre a ficha das leads da equipe e recebe 403. Um piso bom demais quebra a gestão em silêncio — e silêncio aqui é gestor achando que a operação encolheu.",
+    de: `  if (!leSoAPropriaCarteira(perfil)) return consulta;`,
+    para: `  if (false) return consulta;`,
+  },
+  {
+    id: "M43", arquivo: "lib/crm/escopo-de-leitura.ts",
+    quebra: "o gêmeo em JavaScript esconde a lead sem dono",
+    dor: "Lead órfã deixa de ser registrável por quem a encontra: ela fica parada até alguém abrir um relatório. É a divergência exata entre o filtro SQL (que a inclui) e a decisão em memória.",
+    de: `  if (!porUsuario && !porResponsavel) return true;`,
+    para: `  if (!porUsuario && !porResponsavel) return false;`,
+  },
+  {
+    id: "M44", arquivo: "lib/security/api-auth.ts",
+    quebra: "a recusa de carteira volta a ser um Error genérico",
+    dor: "As rotas escolhem o status testando palavras da mensagem, e nessa régua nada vira 403: a recusa chega como 401 (tela desloga o corretor) ou 500 (\"o servidor quebrou\").",
+    de: `  if (error || !data) throw new LeadForaDaCarteiraError();`,
+    para: `  if (error || !data) throw new Error("Lead fora do seu escopo comercial.");`,
+  },
+  {
+    id: "M45", arquivo: "app/api/v1/leads/[id]/first-contact/route.ts",
+    quebra: "o registro de primeiro contato volta a confiar só na leitura",
+    dor: "Um corretor PARA O RELÓGIO de SLA da lead do colega: o fechamento é único (`first_contacted_at is null`) e a métrica do outro fica falsificada sem ele saber que a lead foi tocada.",
+    de: `  if (leSoAPropriaCarteira(access.access.profile) && !daMinhaCarteira) {`,
+    para: `  if (false) {`,
+  },
+  {
+    id: "M46", arquivo: "app/api/v1/pipeline/route.ts",
+    quebra: "a recusa antecipada do Kanban perde o código da RPC",
+    dor: "A lead alheia passa a recusar sem `pipeline_move_out_of_scope`: a tela perde o caminho 'peça a transferência ao gestor' e o corretor volta ao beco de atualizar a página para sempre.",
+    de: `  if (ehLeadForaDaCarteira(error)) return recusar("pipeline_move_out_of_scope", 403);`,
+    para: `  if (false) return recusar("pipeline_move_out_of_scope", 403);`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

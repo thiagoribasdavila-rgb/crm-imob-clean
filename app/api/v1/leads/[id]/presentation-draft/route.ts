@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { generateAIText } from "@/lib/ai/provider-router";
 import { auditPropertyPresentation, fallbackPropertyPresentation } from "@/lib/ai/property-presentation";
-import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { isPropertyAvailable } from "@/lib/atlas/property-availability";
@@ -73,6 +73,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (!audit.safe) { content = fallback; mode = "local-fallback"; }
     return NextResponse.json({ draft: { content, mode, warnings: audit.warnings, requiresHumanApproval: true }, propertyCount: orderedProperties.length });
   } catch (error) {
+    // Mesma régua do rascunho de mensagem: recusa é 403, não 500.
+    if (ehLeadForaDaCarteira(error)) {
+      return NextResponse.json({ error: error.message, code: "PRESENTATION_OUT_OF_SCOPE" }, { status: 403 });
+    }
     const message = error instanceof Error ? error.message : "Falha ao preparar apresentação.";
     const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
     return NextResponse.json({ error: message }, { status });

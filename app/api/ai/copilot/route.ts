@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { enforceRateLimit } from "@/lib/api/security";
-import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { buildGovernedRealEstateAIContext } from "@/lib/ai/governed-real-estate-context";
@@ -199,6 +199,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (request.signal.aborted) {
       return NextResponse.json({ error: "Consulta cancelada." }, { status: 499 });
+    }
+    // O Copilot LÊ a lead para responder: recusa de carteira aqui é fronteira,
+    // não falha. 500 esconderia a tentativa atrás de "erro do servidor".
+    if (ehLeadForaDaCarteira(error)) {
+      return NextResponse.json({ error: error.message, code: "COPILOT_LEAD_OUT_OF_SCOPE" }, { status: 403 });
     }
     logger.warn("ai.copilot_failed", { error: error instanceof Error ? error.message : String(error) });
     const message = error instanceof Error ? error.message : "Falha ao consultar o Atlas Copilot.";

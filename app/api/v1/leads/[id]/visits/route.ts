@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/api/security";
 
@@ -11,6 +11,12 @@ const TRANSITIONS: Record<string, Set<string>> = {
 };
 
 function unauthorized(error: unknown) {
+  // O agendamento insere com `broker_id = lead.assigned_to`: sem esta recusa, um
+  // corretor plantava visita e `next_action_at` na AGENDA DO COLEGA. Medido em
+  // 2026-07-29: HTTP 201, visita criada em nome da vítima.
+  if (ehLeadForaDaCarteira(error)) {
+    return NextResponse.json({ error: error.message, code: "VISIT_OUT_OF_SCOPE" }, { status: 403 });
+  }
   const message = error instanceof Error ? error.message : "Não autorizado.";
   const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   return NextResponse.json({ error: message }, { status });

@@ -58,6 +58,52 @@ export function filtroDaMinhaCarteira(userId: string): string {
 }
 
 /**
+ * O MESMO recorte de `filtroDaMinhaCarteira`, mas em JavaScript — para quem já
+ * tem a linha na mão e precisa DECIDIR, não consultar.
+ *
+ * ── POR QUE O GÊMEO EXISTE ───────────────────────────────────────────────────
+ *
+ * Duas rotas precisam da regra depois de já terem lido a lead (o registro de
+ * primeiro contato é uma delas). Sem esta função elas escreveriam a comparação
+ * à mão — e comparação escrita à mão é exatamente como nasceram os caminhos
+ * divergentes deste repositório: `move.moveId` vs `move.id`,
+ * `pipeline_history` vs `pipeline_stage_moves`.
+ *
+ * As duas formas TÊM de concordar caso a caso, e um contrato executável cobra
+ * isso: dono por qualquer das duas colunas entra, lead de outra pessoa fica de
+ * fora, lead sem dono nenhum entra (a mesma cláusula órfã do filtro, pelo mesmo
+ * motivo: escondê-la a deixaria parada para sempre e ninguém a adotaria).
+ */
+export function estaNaMinhaCarteira(
+  userId: string,
+  lead: { assigned_to?: string | null; assigned_user_id?: string | null },
+): boolean {
+  const porUsuario = lead.assigned_user_id ?? null;
+  const porResponsavel = lead.assigned_to ?? null;
+  if (!porUsuario && !porResponsavel) return true;
+  return porUsuario === userId || porResponsavel === userId;
+}
+
+/**
+ * O piso de carteira APLICADO a uma consulta — a única forma de ligá-lo.
+ *
+ * Existia uma terceira cópia do recorte esperando para nascer: cada rota que
+ * precisasse do piso montaria o seu `if (papel) query.or(filtro)`. Duas cópias
+ * já divergiram neste repositório mais de uma vez; esta função não deixa a
+ * terceira existir, e é EXECUTÁVEL — um contrato consegue chamá-la com uma
+ * consulta de mentira e conferir se o `or` entrou (e se, para a liderança, não
+ * entrou).
+ */
+export function aplicarPisoDeCarteira<Q extends { or(filtro: string): Q }>(
+  consulta: Q,
+  perfil: { commercialRole?: string | null; role?: string | null },
+  userId: string,
+): Q {
+  if (!leSoAPropriaCarteira(perfil)) return consulta;
+  return consulta.or(filtroDaMinhaCarteira(userId));
+}
+
+/**
  * Ids da EQUIPE de alguém: a pessoa e todos que reportam a ela, direta ou
  * indiretamente.
  *

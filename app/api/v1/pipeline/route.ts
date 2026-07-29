@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
@@ -35,6 +35,11 @@ function recusar(codigo: string, status: number, extras: Record<string, unknown>
 }
 
 function authError(error: unknown) {
+  // O piso de carteira passou a valer também na checagem de acesso, e ela roda
+  // ANTES da RPC. A recusa tem de continuar chegando à tela EXATAMENTE como
+  // chegava quando vinha do banco — mesmo código, mesmo caminho de volta — ou o
+  // Kanban perde a orientação "peça a transferência ao gestor" que já existia.
+  if (ehLeadForaDaCarteira(error)) return recusar("pipeline_move_out_of_scope", 403);
   const message = error instanceof Error ? error.message : "Não autorizado.";
   const status = /sessão|token|autenticação|organização|autoriz|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 400;
   // A recusa de acesso é a MAIS comum de todas — "esta lead não é sua" — e era

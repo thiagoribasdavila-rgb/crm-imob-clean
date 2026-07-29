@@ -3,6 +3,7 @@ import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { recordLiveLeadEvent } from "@/lib/compat/live-writes";
+import { estaNaMinhaCarteira, leSoAPropriaCarteira } from "@/lib/crm/escopo-de-leitura";
 
 export const dynamic = "force-dynamic";
 
@@ -55,9 +56,31 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
 
   // Escopo: o corretor só registra contato de lead que enxerga.
   const lead = await access.supabase
-    .from("leads").select("id,name,assigned_user_id,first_contacted_at,first_contact_due_at,created_at")
+    .from("leads").select("id,name,assigned_to,assigned_user_id,first_contacted_at,first_contact_due_at,created_at")
     .eq("id", leadId).eq("organization_id", organizationId).maybeSingle();
   if (lead.error || !lead.data) return apiError("LEAD_NOT_VISIBLE", "Lead não encontrada no seu escopo.", access.meta, { status: 404, headers: rate.headers });
+
+  // ── E O QUE "ENXERGA" QUER DIZER ──────────────────────────────────────────
+  //
+  // Ler a lead com o cliente do usuário NÃO era o recorte: em `leads` as
+  // políticas permissivas se somam por OR e a de organização inteira engole as
+  // comerciais. MEDIDO em 2026-07-29 com sessão real de um corretor de carteira
+  // vazia: HTTP 201 sobre a lead de um colega, com
+  // `first_contact_sla_met = true` e `first_response_minutes = 1` gravados.
+  //
+  // Isso é pior do que um dado errado: PARA O RELÓGIO do colega. O SLA de
+  // primeiro contato só fecha uma vez (`where first_contacted_at is null`), e
+  // quem foi medido nem fica sabendo que a lead dele foi tocada.
+  //
+  // O recorte vem do módulo compartilhado — lead sem dono continua registrável
+  // por qualquer um, que é como ela é adotada.
+  // As DUAS formas de identidade, porque este repositório já divergiu nisso: a
+  // listagem de leads aceita `user.id` e `profile.id`, e aqui vale o mesmo.
+  const daMinhaCarteira = estaNaMinhaCarteira(access.access.profile.id, lead.data)
+    || estaNaMinhaCarteira(access.access.user.id, lead.data);
+  if (leSoAPropriaCarteira(access.access.profile) && !daMinhaCarteira) {
+    return apiError("FIRST_CONTACT_OUT_OF_SCOPE", "Você só registra contato de leads da sua carteira.", access.meta, { status: 403, headers: rate.headers });
+  }
 
   const jaContatada = Boolean(lead.data.first_contacted_at);
   const agora = new Date().toISOString();

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { generateAIText } from "@/lib/ai/provider-router";
-import { requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
+import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { auditMessageDraft, fallbackMessageDraft } from "@/lib/ai/real-estate-message";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
@@ -61,6 +61,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (!audit.safe) { content = fallback; mode = "local-fallback"; }
     return NextResponse.json({ draft: { content, channel, objective, tone, mode, warnings: audit.warnings, requiresHumanApproval: true }, lead: { id: lead.id, name: lead.name }, project: projectResult.data });
   } catch (error) {
+    // Recusa de carteira chegando como 500 diria "o servidor quebrou" para uma
+    // regra que funcionou exatamente como devia.
+    if (ehLeadForaDaCarteira(error)) {
+      return NextResponse.json({ error: error.message, code: "MESSAGE_DRAFT_OUT_OF_SCOPE" }, { status: 403 });
+    }
     const message = error instanceof Error ? error.message : "Falha ao criar rascunho.";
     const status = /sessão|token|autenticação|autoriz|organiza|escopo/i.test(message) ? 401 : /escopo/i.test(message) ? 403 : 500;
     return NextResponse.json({ error: message }, { status });
