@@ -260,8 +260,16 @@ async function findDuplicate(
   value: string,
   projectId: string | null,
 ) {
+  // ── DUPLICIDADE TEM DE OLHAR A TABELA ONDE A ESCRITA CAI ──────────────────
+  //
+  // Isto conferia `crm_projects` enquanto a leitura e a escrita de
+  // empreendimento vivem em `developments`. Hoje as duas guardam os MESMOS 4
+  // empreendimentos (com ids diferentes), então a checagem parecia funcionar —
+  // ela cega no primeiro cadastro novo, que entra só em `developments` e não
+  // aparece aqui. Medido em 2026-07-29: leads.development_id casa com
+  // developments em 192 de 192, e com crm_projects em 0 de 192.
   let query = client
-    .from("crm_projects")
+    .from("developments")
     .select("id")
     .eq("organization_id", organizationId)
     .eq(field, value)
@@ -285,8 +293,12 @@ export async function preflightLiveDevelopmentWrite(
   const duplicateFields: Array<"name" | "code"> = [];
 
   if (plan.issues.length === 0 && plan.operation === "update" && plan.projectId) {
+    // O id vem de `developments` (é o que a tela lista e o que
+    // leads.development_id referencia). Procurá-lo em `crm_projects` nunca
+    // acha — os mesmos empreendimentos moram nas duas com IDs DIFERENTES — e
+    // `tenantTargetReady` ficava falso, recusando toda atualização.
     const target = await client
-      .from("crm_projects")
+      .from("developments")
       .select("id")
       .eq("organization_id", plan.organizationId)
       .eq("id", plan.projectId)

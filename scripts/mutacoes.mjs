@@ -294,6 +294,17 @@ const MUTACOES = [
       return new;
     end if;`,
   },
+  {
+    id: "M33", arquivo: "lib/atlas/core-v2/live-development-write-adapter.ts",
+    quebra: "a validação de escrita volta a consultar a tabela abandonada",
+    dor: "Inside Perdizes, com 174 leads, deixa de ser encontrado: toda atualização de empreendimento é recusada em silêncio, e a duplicidade cega no primeiro cadastro novo.",
+    de: `      .from("developments")
+      .select("id")
+      .eq("organization_id", plan.organizationId)`,
+    para: `      .from("crm_projects")
+      .select("id")
+      .eq("organization_id", plan.organizationId)`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

@@ -19,7 +19,32 @@ const checks = [
   ["Fase 97 foi preservada", previous.phase === 97 && previous.status === "completed"],
   ["Fase contínua 98 foi concluída sem mutar banco, Auth ou dados reais", phase.phase === 98 && phase.program === "continuous" && phase.status === "completed" && phase.productionDataModified === false && phase.databaseSchemaChanged === false && phase.authenticationChanged === false],
   ["Programa contínuo avançou para 98", program.currentPhase >= 98],
-  ["Adaptador usa somente o contrato vivo crm_projects", adapter.includes('from("crm_projects")') && adapter.includes("LIVE_DEVELOPMENT_WRITABLE_FIELDS") && !adapter.includes('from("developments")')],
+  /**
+   * 2026-07-29 — A TABELA CANÔNICA VIROU `developments`, E ESTA ASSERÇÃO
+   * CERTIFICAVA O DEFEITO.
+   *
+   * Ela exigia que o adaptador validasse escrita em `crm_projects` E que NÃO
+   * tocasse `developments`. Só que a leitura de empreendimento já vive em
+   * `developments` (migration 20260727010000), e as duas tabelas guardam os
+   * MESMOS empreendimentos com IDs DIFERENTES. O id que a tela envia vem de
+   * `developments` e nunca era encontrado em `crm_projects`.
+   *
+   * Medido no banco vivo:
+   *   Inside Perdizes .......... 174 leads · existe em crm_projects? NÃO
+   *   Arvo Teixeira da Silva ....11 leads · existe em crm_projects? NÃO
+   *   Spin Mood ..................7 leads · existe em crm_projects? NÃO
+   *   leads.development_id casa com developments em 192/192, crm_projects 0/192.
+   *
+   * Consequência: `tenantTargetReady` ficava falso e TODA atualização de
+   * empreendimento real era recusada — sem erro, só recusando. E a checagem de
+   * duplicidade cegaria no primeiro cadastro novo, que entra só em
+   * `developments`.
+   *
+   * A asserção passa a exigir o INVERSO, e continua exigindo os dois lados:
+   * a tabela abandonada fica FORA, e o contrato de campos graváveis segue
+   * obrigatório. Satisfazer a versão anterior exigiria quebrar o produto.
+   */
+  ["Adaptador valida escrita na tabela canônica developments", adapter.includes('from("developments")') && adapter.includes("LIVE_DEVELOPMENT_WRITABLE_FIELDS") && !adapter.includes('from("crm_projects")')],
   ["Status reflete a constraint viva", statuses.every((status) => adapter.includes(`\"${status}\"`))],
   ["Tenant e alvo são validados explicitamente", adapter.includes('.eq("organization_id", plan.organizationId)') && adapter.includes('.eq("id", plan.projectId)')],
   ["Nome e código são verificados contra duplicidade", adapter.includes('findDuplicate(client, plan.organizationId, "name"') && adapter.includes('findDuplicate(client, plan.organizationId, "code"')],
