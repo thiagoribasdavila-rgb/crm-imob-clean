@@ -295,6 +295,13 @@ const MUTACOES = [
     end if;`,
   },
   {
+    id: "M35", arquivo: "app/api/v1/crm/leads/route.ts",
+    quebra: "o piso de carteira volta a ser pulável por parâmetro",
+    dor: "Um corretor pede ?assigned_to=<colega> e recebe os 270 leads dele, com nome. Provado no navegador — é a mesma fuga que matou a tela /customers.",
+    de: `      if (soAMinhaCarteira && assignedTo !== access.access.user.id && assignedTo !== access.access.profile.id) {`,
+    para: `      if (false) {`,
+  },
+  {
     id: "M34", arquivo: "app/api/v1/analytics/broker-daily/route.ts",
     quebra: "o bônus de prioridade volta a decidir por etapa",
     dor: "22 leads nunca contatados que já saíram de 'novo' afundam na fila — justamente os parados há mais tempo, porque alguém mexeu na etapa e não ligou.",

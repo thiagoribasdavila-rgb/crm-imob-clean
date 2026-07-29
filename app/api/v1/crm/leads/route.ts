@@ -206,7 +206,27 @@ export async function GET(request: NextRequest) {
       const manager = profiles.find((profile) => profile.id === teamOwner);
       if (!manager || canonicalCommercialRole(manager.commercial_role) !== "manager") return apiError("TEAM_OUT_OF_SCOPE", "Equipe fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });
       escopoDeEquipe = profileTeamScope(profiles, manager.id);
-    } else if (assignedTo) donoUnico = assignedTo;
+    } else if (assignedTo) {
+      // ── O PISO DE CARTEIRA NÃO PODE SER PULADO POR PARÂMETRO ──────────────
+      //
+      // `donoUnico` entrava na cadeia de filtros ANTES de `soAMinhaCarteira` e
+      // curto-circuitava o piso. A única validação era que o uuid fosse um
+      // perfil ativo da mesma organização — nenhuma checagem de hierarquia.
+      //
+      // Provado no navegador em 2026-07-29, com a sessão de um corretor real:
+      // GET /api/v1/crm/leads?assigned_to=<colega> devolvia 270 leads do
+      // colega, COM NOME. É a mesma classe do vazamento que matou a tela
+      // /customers — e esta é a rota para onde a central manda todo mundo
+      // clicar.
+      //
+      // Quem só enxerga a própria carteira só pode pedir a própria carteira.
+      // Pedir a de outro é recusa explícita, não silêncio: devolver a carteira
+      // dele sem avisar esconderia a tentativa.
+      if (soAMinhaCarteira && assignedTo !== access.access.user.id && assignedTo !== access.access.profile.id) {
+        return apiError("OWNER_OUT_OF_SCOPE", "Você só pode consultar a sua própria carteira.", access.meta, { status: 403, headers: rate.headers });
+      }
+      donoUnico = assignedTo;
+    }
   }
 
   // A fila do corretor precisa poder ser ordenada por URGÊNCIA, não por data de

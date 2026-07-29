@@ -79,3 +79,26 @@ test("a resposta declara o recorte que aplicou", () => {
   // não declarada é indistinguível de zero, o defeito que mais se repetiu aqui.
   assert.match(rotaLeads, /escopo: soAMinhaCarteira \? "carteira" : "organizacao"/);
 });
+
+test("o piso não pode ser pulado por parâmetro", () => {
+  /**
+   * `donoUnico` entrava na cadeia de filtros ANTES de `soAMinhaCarteira` e
+   * curto-circuitava o piso. A única validação era o uuid ser um perfil ativo
+   * da mesma organização — nenhuma checagem de hierarquia.
+   *
+   * PROVADO NO NAVEGADOR em 2026-07-29, com a sessão de um corretor real:
+   * GET /api/v1/crm/leads?assigned_to=<colega> devolvia 270 leads do colega,
+   * COM NOME. Mesma classe do vazamento que matou a tela /customers — e esta é
+   * a rota para onde a central manda todo mundo clicar.
+   *
+   * Depois: 403 OWNER_OUT_OF_SCOPE. A própria carteira segue respondendo 195
+   * com e sem o parâmetro.
+   */
+  assert.match(rotaLeads, /if \(soAMinhaCarteira && assignedTo !== access\.access\.user\.id/,
+    "quem só enxerga a própria carteira só pode PEDIR a própria carteira");
+  assert.match(rotaLeads, /"OWNER_OUT_OF_SCOPE"[\s\S]{0,120}status: 403/,
+    "recusa explícita: devolver a carteira dele em silêncio esconderia a tentativa");
+  // As duas formas de identidade, porque o repositório já divergiu nisso antes.
+  assert.match(rotaLeads, /assignedTo !== access\.access\.profile\.id/,
+    "user.id e profile.id: pedir a própria carteira por qualquer uma das duas tem de passar");
+});
