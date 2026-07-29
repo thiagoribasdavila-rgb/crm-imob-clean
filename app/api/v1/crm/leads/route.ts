@@ -202,6 +202,20 @@ export async function GET(request: NextRequest) {
       if (!owner) return apiError("OWNER_OUT_OF_SCOPE", "Responsável fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });
     }
     if (teamOwner) {
+      // MESMA trava do `assigned_to`, aplicada ao escopo de EQUIPE.
+      //
+      // Quem só enxerga a própria carteira não tem equipe para consultar. O
+      // código aceitava o parâmetro de qualquer papel e só conferia se o ALVO
+      // era gerente — nunca se o SOLICITANTE estava acima dele.
+      //
+      // Medido em 2026-07-29: hoje devolve 0, e só por sorte do dado —
+      // `profiles.team` é nulo em todos, então `profileTeamScope` degenera
+      // para "só o próprio gerente". No dia em que as equipes forem
+      // preenchidas, um corretor lê a equipe inteira de um gerente qualquer.
+      // Não deixo trava dependendo de coluna vazia.
+      if (soAMinhaCarteira) {
+        return apiError("TEAM_OUT_OF_SCOPE", "Você não tem equipe sob sua gestão.", access.meta, { status: 403, headers: rate.headers });
+      }
       if (!uuidPattern.test(teamOwner)) return apiError("INVALID_TEAM", "Gerente inválido.", access.meta, { status: 400, headers: rate.headers });
       const manager = profiles.find((profile) => profile.id === teamOwner);
       if (!manager || canonicalCommercialRole(manager.commercial_role) !== "manager") return apiError("TEAM_OUT_OF_SCOPE", "Equipe fora do seu escopo comercial.", access.meta, { status: 403, headers: rate.headers });

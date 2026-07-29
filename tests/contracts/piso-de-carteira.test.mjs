@@ -102,3 +102,20 @@ test("o piso não pode ser pulado por parâmetro", () => {
   assert.match(rotaLeads, /assignedTo !== access\.access\.profile\.id/,
     "user.id e profile.id: pedir a própria carteira por qualquer uma das duas tem de passar");
 });
+
+test("o escopo de equipe também não é pulável por parâmetro", () => {
+  /**
+   * Mesma classe do `assigned_to`, achada aplicando a lição dele: o código
+   * aceitava `team_owner` de qualquer papel e só conferia se o ALVO era
+   * gerente — nunca se o SOLICITANTE estava acima dele.
+   *
+   * Medido em 2026-07-29: hoje devolvia 0, e só por SORTE DO DADO —
+   * `profiles.team` é nulo em todos, então `profileTeamScope` degenera para
+   * "só o próprio gerente". No dia em que as equipes forem preenchidas, um
+   * corretor lê a equipe inteira de um gerente qualquer.
+   *
+   * Trava que depende de coluna vazia não é trava.
+   */
+  assert.match(rotaLeads, /if \(teamOwner\) \{[\s\S]{0,900}?if \(soAMinhaCarteira\) \{[\s\S]{0,200}?"TEAM_OUT_OF_SCOPE"/,
+    "quem só enxerga a própria carteira não tem equipe para consultar");
+});

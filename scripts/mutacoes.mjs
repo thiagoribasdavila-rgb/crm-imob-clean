@@ -295,6 +295,15 @@ const MUTACOES = [
     end if;`,
   },
   {
+    id: "M36", arquivo: "app/api/v1/crm/leads/route.ts",
+    quebra: "o escopo de equipe volta a ser pedível por corretor",
+    dor: "Hoje devolve 0 por sorte do dado (profiles.team nulo). Com equipes configuradas, um corretor lê a equipe inteira de um gerente qualquer.",
+    de: `      if (soAMinhaCarteira) {
+        return apiError("TEAM_OUT_OF_SCOPE", "Você não tem equipe sob sua gestão.", access.meta, { status: 403, headers: rate.headers });
+      }`,
+    para: ``,
+  },
+  {
     id: "M35", arquivo: "app/api/v1/crm/leads/route.ts",
     quebra: "o piso de carteira volta a ser pulável por parâmetro",
     dor: "Um corretor pede ?assigned_to=<colega> e recebe os 270 leads dele, com nome. Provado no navegador — é a mesma fuga que matou a tela /customers.",
