@@ -456,6 +456,13 @@ const MUTACOES = [
     de: `    if (ehLeadForaDaCarteira(error)) {`,
     para: `    if (false) {`,
   },
+  {
+    id: "M50", arquivo: "lib/atlas/navigation.ts",
+    quebra: "a barra lateral passa a oferecer o catálogo inteiro a qualquer papel",
+    dor: "O corretor vê os destinos da diretoria na navegação. A guarda que vigiava isso cobrava o LITERAL `visibleItems` — um nome de variável, que `const visibleItems = items` satisfaria sem filtrar nada — e ficou vermelha por 8 dias sem ninguém ver, porque era um dos 143 checks que nenhum agregado chama.",
+    de: `  return atlasNavigation.filter((item) => canAccessAtlasItem(item, identity));`,
+    para: `  return atlasNavigation;`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));
