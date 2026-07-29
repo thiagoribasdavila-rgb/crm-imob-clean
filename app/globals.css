@@ -10028,3 +10028,233 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   background: rgba(255, 255, 255, 0.86);
   border-color: rgba(11, 18, 32, 0.12);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TRILHO — a barra lateral depois da poda (2026-07-29)
+   ═══════════════════════════════════════════════════════════════════════════
+
+   O pedido do dono foi "moderna, futurista, minimalista, menos ruído visual".
+   O que saiu não foram destinos: foi o CROMO que não navega.
+
+     · a busca própria da barra — o ⌘K já lista o catálogo inteiro, e duas
+       buscas na mesma tela é a pessoa ter de escolher qual usar;
+     · a estrela de favorito em TODA linha, que reservava 48px à direita de
+       cada item para uma função que quase ninguém usa;
+     · o selo "Atual" ao lado do item ativo — a cor, a barra e o aria-current
+       já dizem isso três vezes;
+     · o rodapé "Ambiente protegido / Contexto multi-tenant ativo", texto fixo
+       que nunca muda e nunca leva a lugar nenhum;
+     · a caixa de 30×30 em volta de cada ícone.
+
+   Prefixo próprio (.atlas-rail-*) DE PROPÓSITO: cinco blocos deste arquivo
+   disputam os seletores .atlas-sidebar-* e um deles já é código morto provado
+   (o fundo do item ativo na linha ~920 é anulado por `transparent` mais
+   abaixo). Escrever aqui embaixo com o mesmo nome seria a sexta camada e o
+   resultado provável é "o CSS não pega".
+
+   Tudo em currentColor e tokens: o mesmo bloco serve tema claro e escuro sem
+   um segundo conjunto de regras.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.atlas-rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Rótulo do grupo: presente para quem varre a coluna, silencioso para quem já
+   sabe onde está. Sem borda, sem fundo, sem linha divisória. */
+.atlas-rail-group-label {
+  margin: 14px 0 4px;
+  padding: 0 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, currentColor 42%, transparent);
+}
+.atlas-rail-nav > .atlas-rail-group-label:first-child {
+  margin-top: 2px;
+}
+
+.atlas-rail-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 1.2;
+  color: color-mix(in srgb, currentColor 68%, transparent);
+  text-decoration: none;
+  /* Só cor e fundo animam. Transicionar `all` fazia o layout tremer no
+     primeiro quadro de cada navegação. */
+  transition: color 140ms ease, background-color 140ms ease;
+}
+
+.atlas-rail-link:hover {
+  color: currentColor;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}
+
+/* Foco visível de verdade: contorno externo, nunca `outline: none`. Quem
+   navega por teclado precisa ver onde está sem depender do fundo. */
+.atlas-rail-link:focus-visible {
+  outline: 2px solid var(--atlas-accent);
+  outline-offset: 2px;
+}
+
+/* Estado ativo: o traço vertical à esquerda é o que identifica de relance,
+   e ele nasce do próprio item — sem elemento extra no DOM. */
+.atlas-rail-link[data-active="true"] {
+  color: var(--atlas-accent);
+  background: color-mix(in srgb, var(--atlas-accent) 10%, transparent);
+  font-weight: 550;
+}
+.atlas-rail-link[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 2px;
+  height: 16px;
+  border-radius: 0 2px 2px 0;
+  background: var(--atlas-accent);
+  transform: translateY(-50%);
+}
+
+.atlas-rail-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  /* O ícone é sempre um pouco mais quieto que o texto — exceto no ativo, onde
+     os dois têm o mesmo peso. Isso é o que impede a coluna de ícones de virar
+     uma segunda leitura competindo com as palavras. */
+  opacity: 0.75;
+}
+.atlas-rail-link[data-active="true"] .atlas-rail-icon {
+  opacity: 1;
+}
+
+.atlas-rail-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── O AVISO DE LEAD NOVA ──────────────────────────────────────────────────
+   Pastilha à direita do item Leads. Azul, não vermelha: vermelho neste produto
+   já significa prazo estourado, e lead nova é oportunidade, não falha.
+   Anima UMA vez na chegada e para — pulso permanente é o que ensina a ignorar.
+   ────────────────────────────────────────────────────────────────────────── */
+.atlas-rail-badge {
+  flex: 0 0 auto;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--atlas-accent);
+  color: #06101f;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  text-align: center;
+}
+.atlas-rail-badge[data-chegou="true"] {
+  animation: atlas-rail-chegou 620ms cubic-bezier(0.2, 0.9, 0.3, 1) 1;
+}
+@keyframes atlas-rail-chegou {
+  0% { transform: scale(0.6); opacity: 0; }
+  55% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* "Não medido" NÃO é zero e não pode parecer zero: vira um anel vazio, que se
+   lê como "não sei", e carrega o motivo no title. É a regra do projeto
+   (ausência declarada) virando pixel. */
+.atlas-rail-badge[data-estado="nao-medido"] {
+  background: transparent;
+  color: color-mix(in srgb, currentColor 55%, transparent);
+  border: 1px dashed color-mix(in srgb, currentColor 32%, transparent);
+  font-weight: 600;
+}
+
+/* Dica do ⌘K no lugar da busca que saiu: uma linha, não um campo. */
+.atlas-rail-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 16px);
+  margin: 6px 8px 2px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, currentColor 52%, transparent);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+.atlas-rail-hint:hover {
+  color: currentColor;
+  border-color: color-mix(in srgb, currentColor 26%, transparent);
+}
+.atlas-rail-hint:focus-visible {
+  outline: 2px solid var(--atlas-accent);
+  outline-offset: 2px;
+}
+.atlas-rail-hint kbd {
+  margin-left: auto;
+  padding: 1px 5px;
+  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  font-family: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+/* Barra recolhida: some o texto, ficam os ícones centrados. O título nativo
+   (title=) continua nomeando cada destino — ícone sozinho sem nome é enigma. */
+.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-rail-label,
+.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-rail-group-label,
+.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-rail-hint span {
+  display: none;
+}
+.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-rail-link,
+.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-rail-hint {
+  justify-content: center;
+  padding: 0;
+}
+.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-rail-hint kbd {
+  margin-left: 0;
+}
+/* Recolhida, a pastilha vira um ponto sobre o ícone: o número não caberia e
+   truncá-lo mentiria. */
+.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-rail-badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  min-width: 8px;
+  height: 8px;
+  padding: 0;
+  font-size: 0;
+  line-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-rail-link,
+  .atlas-rail-hint { transition: none; }
+  .atlas-rail-badge[data-chegou="true"] { animation: none; }
+}
