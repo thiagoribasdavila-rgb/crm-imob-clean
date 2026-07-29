@@ -223,7 +223,7 @@ const MUTACOES = [
     id: "M23", arquivo: "app/(crm)/command-center/page.tsx",
     quebra: "todo risco da diretoria volta a desembocar em /reports",
     dor: 'O diretor lê "Distribuir a fila hoje", clica, e cai numa página sem nenhum link — recomeça a navegação pelo menu com dois corretores esperando.',
-    de: `          href: DESTINO_DO_RISCO[risk.area] ?? "/reports",`,
+    de: `        href: DESTINO_DO_RISCO[risk.area] ?? "/reports",`,
     para: `          href: "/reports",`,
   },
   {
@@ -239,6 +239,27 @@ const MUTACOES = [
     dor: "A central afirma 429 e o clique abre 443. Tela pega mentindo uma vez deixa de ser consultada.",
     de: `    ? activeLeads.filter((lead) => !lead.first_contacted_at).length`,
     para: `    ? activeLeads.filter((lead) => normalize(lead.status) === "novo").length`,
+  },
+  {
+    id: "M26", arquivo: "lib/meta/marketing/campaign-readiness.ts",
+    quebra: "falha de leitura da Meta passa a ser cacheada",
+    dor: "Um blip de rede congela 'não medido' por 10 minutos depois da Meta já ter voltado — e o diretor decide verba no escuro.",
+    de: `    { ttlMs: READINESS_TTL_MS, isCacheable: (valor) => !valor.falhou },`,
+    para: `    { ttlMs: READINESS_TTL_MS, isCacheable: () => true },`,
+  },
+  {
+    id: "M27", arquivo: "lib/meta/marketing/prontidao-derivada.ts",
+    quebra: "página que o CRM não conhece deixa de ser bloqueio",
+    dor: "A verba é recarregada, a lead paga chega e cai em meta_leads_sem_destino — e a tela continua verde. É o erro mais caro possível aqui.",
+    de: `    if (!paginasConhecidas.has(pagina)) {`,
+    para: `    if (false) {`,
+  },
+  {
+    id: "M28", arquivo: "app/(crm)/command-center/page.tsx",
+    quebra: "os bloqueios de aquisição somem da fila da diretoria",
+    dor: "O fato que decide entre 'trabalhe o que tem' e 'espere reposição' volta a existir só no terminal.",
+    de: `        items: [...bloqueios, ...riscos].slice(0, 6),`,
+    para: `        items: riscos.slice(0, 6),`,
   },
 ];
 

@@ -280,6 +280,23 @@ type MarketingQuality = {
     spendMeasured: boolean;
     windowComplete?: boolean;
   };
+  /**
+   * Prontidão da aquisição: se a verba de hoje traz lead amanhã.
+   *
+   * Viaja nesta resposta, que a diretoria já busca — nenhuma chamada nova. E
+   * `medido: false` é um estado de primeira classe: leitura que falhou precisa
+   * aparecer como "não medido", nunca sumir e nunca ficar verde.
+   */
+  readiness?:
+    | { medido: false; motivo: string; lidoEm: string }
+    | {
+        medido: true;
+        lidoEm: string;
+        verba: { tetoBrl: number | null; gastoBrl: number | null; restanteBrl: number | null; esgotado: boolean };
+        campanhas: { total: number; ativas: number };
+        anunciosAtivos: number;
+        bloqueios: Array<{ codigo: string; gravidade: "critical" | "attention"; resumo: string; acao: string }>;
+      };
 };
 
 const emptySnapshot: SnapshotData = {
@@ -490,6 +507,20 @@ const DESTINO_DO_RISCO: Record<string, string> = {
   Campanhas: "/marketing/campaigns",
   Governança: "/integrations/health",
   "Custo de IA": "/reports",
+};
+
+/**
+ * Para onde leva cada bloqueio de aquisição. Chaveado pelo CÓDIGO e não pelo
+ * texto: o resumo carrega números que mudam a cada leitura.
+ */
+const DESTINO_DO_BLOQUEIO: Record<string, string> = {
+  conta_inativa: "/integrations/meta",
+  teto_esgotado: "/marketing/campaigns",
+  sem_campanha_ativa: "/marketing/campaigns",
+  pagina_desconhecida: "/integrations/meta",
+  formulario_nao_cadastrado: "/integrations/meta",
+  fonte_desativada: "/integrations/meta",
+  fonte_sem_empreendimento: "/integrations/meta",
 };
 
 // Ordem de decisão: crítico → atenção → oportunidade.
@@ -1710,22 +1741,58 @@ export default function CommandCenterPage() {
       };
     }
     if (isDirector) {
+      /**
+       * Os bloqueios de aquisição vêm PRIMEIRO, e não num painel próprio.
+       *
+       * O movimento mais caro possível é recarregar o teto de gasto enquanto os
+       * anúncios publicam numa Página que o CRM não conhece: a verba compra
+       * leads que caem em `meta_leads_sem_destino` e a tela continua verde.
+       * Esse fato decide se os outros riscos ("distribua a fila") se resolvem
+       * com o que já existe ou com reposição — então ele precisa ser lido
+       * antes deles, na mesma lista, e não num cartão ao lado que treina o
+       * olho a passar batido.
+       *
+       * Leitura que falhou vira um item "não medido", nunca ausência.
+       */
+      const readiness = marketingQuality?.readiness;
+      const bloqueios = readiness?.medido
+        ? readiness.bloqueios.map((bloqueio, index) => ({
+            key: `aquisicao-${bloqueio.codigo}-${index}`,
+            label: "Aquisição",
+            severity: bloqueio.gravidade,
+            reason: bloqueio.resumo,
+            action: bloqueio.acao,
+            href: DESTINO_DO_BLOQUEIO[bloqueio.codigo] ?? "/integrations/meta",
+          }))
+        : readiness
+          ? [{
+              key: "aquisicao-nao-medida",
+              label: "Aquisição",
+              severity: "attention" as const,
+              reason: `Prontidão das campanhas não medida: ${readiness.motivo}`,
+              action: "Sem esta leitura não dá para saber se a verba de hoje traz lead amanhã.",
+              href: "/integrations/health",
+            }]
+          : [];
+
+      const riscos = (directorDaily?.risks ?? []).map((risk, index) => ({
+        key: `${risk.area}-${index}`,
+        label: risk.area,
+        severity: risk.severity,
+        reason: risk.reason,
+        action: risk.action,
+        href: DESTINO_DO_RISCO[risk.area] ?? "/reports",
+      }));
+
       return {
         title: "Decisões que exigem a diretoria",
         description: "Riscos por exceção, com evidência e aprovação humana obrigatória.",
         ready: Boolean(directorDaily),
-        items: (directorDaily?.risks ?? []).slice(0, 5).map((risk, index) => ({
-          key: `${risk.area}-${index}`,
-          label: risk.area,
-          severity: risk.severity,
-          reason: risk.reason,
-          action: risk.action,
-          href: DESTINO_DO_RISCO[risk.area] ?? "/reports",
-        })),
+        items: [...bloqueios, ...riscos].slice(0, 6),
       };
     }
     return null;
-  }, [directorDaily, isDirector, isManager, isSuperintendent, managerDaily, superintendentSummary]);
+  }, [directorDaily, isDirector, isManager, isSuperintendent, managerDaily, marketingQuality, superintendentSummary]);
 
   const roleLabel = isDirector
     ? "Diretoria"

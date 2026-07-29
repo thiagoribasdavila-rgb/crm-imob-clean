@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
+import { lerProntidaoDeAquisicao } from "@/lib/meta/marketing/campaign-readiness";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   CAMPAIGN_QUALITY_DEFINITIONS,
@@ -147,8 +148,26 @@ export async function GET(request: NextRequest) {
   // lead é fato observado, e escondê-lo era esconder o pior gasto possível.
   const rankedCampaigns = ranking.filter((row) => row.leads > 0 || row.spend > 0);
 
+  /**
+   * A prontidão da aquisição viaja NESTA resposta, e não numa rota própria,
+   * porque o diretor já busca esta — o painel de Marketing da central sai com
+   * zero chamada nova. E ela entra aqui, e não como cartão separado, porque o
+   * fato "a verba não vai trazer lead" é a moldura de todo número de campanha
+   * desta resposta: sem ele, um CPL "—" se lê como "ainda não gastamos".
+   */
+  const { data: fontes } = await identity.supabase
+    .from("meta_lead_sources")
+    .select("form_id,page_id,active,development_id,name")
+    .eq("organization_id", organizationId);
+  const readiness = await lerProntidaoDeAquisicao({
+    contaId: process.env.META_AD_ACCOUNT_ID,
+    token: process.env.META_ADS_ACCESS_TOKEN || process.env.META_LEAD_ACCESS_TOKEN,
+    fontes: fontes ?? [],
+  });
+
   return apiSuccess(
     {
+      readiness,
       scope: {
         organizationId,
         actorId: identity.access.profile.id,
