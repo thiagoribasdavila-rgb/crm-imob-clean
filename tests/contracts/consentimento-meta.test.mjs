@@ -53,28 +53,55 @@ test("quem registrou e quando ficam gravados", () => {
   assert.equal(d.meta.origem, "declarado_pelo_corretor");
 });
 
-test("SÓ o diretor registra — nem o dono da lead escapa", () => {
-  // Decisão do dono do produto: ele responde pela base legal de TODAS as leads
-  // e formulários. Consentimento não é observação sobre a lead — é declaração
-  // de base legal para tratar dado pessoal de terceiro, e responsabilidade não
-  // se delega para quem não tem como assumi-la.
-  assert.match(rota, /const QUEM_REGISTRA = new Set\(\["director"\]\);/);
-  assert.match(rota, /Registrar o consentimento é do diretor/);
+/**
+ * ── AS TRÊS ASSERÇÕES ABAIXO FORAM REAPONTADAS EM 2026-07-29 ────────────────
+ *
+ * Elas vigiavam a IMPLEMENTAÇÃO antiga: um `Set(["director"])` local na rota e um
+ * estado `ehDiretor` derivado do JWT na tela. E cumpriram seu papel — foram elas
+ * que pegaram a mudança e obrigaram esta explicação.
+ *
+ * Mas a segunda delas guardava o PRÓPRIO DEFEITO. O nome era "a tela decide pelo
+ * papel da sessão, SEM CHAMADA EXTRA", e essa economia era a doença: o servidor
+ * decidia pelo perfil (`commercialRole || role`, lido de `profiles`), a tela pelo
+ * claim (`app_metadata.access_role`, lido do token). Fontes diferentes, regras
+ * diferentes.
+ *
+ * MEDIDO rodando as duas derivações sobre as contas reais: das 3 com papel de
+ * diretoria, DUAS divergiam — inclusive a do dono do produto. Elas viam os três
+ * botões habilitados e levavam 403 ao clicar. A asserção antiga era satisfeita por
+ * isso: ela provava que a tela decidia de ALGUM jeito, nunca que decidia do MESMO.
+ *
+ * O reapontamento deixa as três MAIS fortes: a regra virou módulo compartilhado e
+ * a tela parou de decidir — ela PERGUNTA ao `GET`. O grão fino está em
+ * tests/contracts/registro-de-consentimento.test.mjs, que EXECUTA a regra contra
+ * as três formas reais de perfil.
+ */
+test("SÓ a diretoria registra — nem o dono da lead escapa", () => {
+  // Consentimento não é observação sobre a lead: é declaração de base legal para
+  // tratar dado pessoal de terceiro, e responsabilidade não se delega para quem
+  // não tem como assumi-la.
+  assert.match(rota, /podeRegistrarConsentimento\(identity\.access\.profile\)/,
+    "a rota precisa CHAMAR a regra compartilhada, não reimplementá-la");
+  assert.match(rota, /MOTIVO_SEM_REGISTRO/, "a frase da recusa vem do módulo, não duplicada aqui");
   assert.match(rota, /status: 403/);
   assert.ok(!/ehDono/.test(rota), "ser dono da lead deixou de bastar");
 });
 
-test("a tela decide pelo papel da sessão, sem chamada extra", () => {
-  // O corretor não pode descobrir a regra levando 403 depois de clicar.
-  assert.match(painel, /const \[ehDiretor, setEhDiretor\]/);
-  assert.match(painel, /app_metadata/, "o papel vem do próprio token");
-  assert.match(painel, /const editavel = podeEditar \?\? ehDiretor \?\? false;/);
+test("a tela não oferece o que a escrita vai negar", () => {
+  // Era "a tela decide pelo papel da sessão". Decidir sozinha ERA o defeito:
+  // o corretor descobria a regra levando 403 depois de clicar — que é justamente
+  // o que a asserção antiga dizia estar evitando.
+  assert.match(painel, /podeRegistrar/, "a tela precisa consumir a decisão do servidor");
+  assert.match(painel, /const editavel = podeEditar \?\? podeRegistrar \?\? false;/,
+    "o `?? false` é o que impede o botão de convidar sem poder");
+  assert.match(painel, /meta-consent[\s\S]{0,400}Authorization/,
+    "a tela precisa PERGUNTAR à rota, com a sessão, em vez de derivar do token");
 });
 
-test("token ilegível assume que NÃO pode", () => {
-  // Errar para o lado de não oferecer é melhor que oferecer e o servidor
-  // recusar.
-  assert.match(painel, /catch \{[\s\S]{0,200}setEhDiretor\(false\)/);
+test("falha de rede assume que NÃO pode", () => {
+  // Falha fechada: errar para o lado de não oferecer é melhor que oferecer e o
+  // servidor recusar. A regra não mudou — mudou de onde vem a resposta.
+  assert.match(painel, /catch \{[\s\S]{0,300}setPodeRegistrar\(false\)/);
 });
 
 test("'formulario_meta' não pode ser marcado à mão", () => {

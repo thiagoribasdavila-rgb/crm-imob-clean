@@ -498,6 +498,114 @@ const MUTACOES = [
     de: `    nextAction,\n    vinculo,\n  ].filter(Boolean);`,
     para: `    nextAction,\n  ].filter(Boolean);`,
   },
+  {
+    id: "M56", arquivo: "lib/crm/registro-de-consentimento.ts",
+    quebra: "a regra do consentimento passa a aceitar gerente",
+    dor: "Consentimento é declaração de BASE LEGAL para tratar dado pessoal de terceiro, e quem responde numa fiscalização é a empresa. Alargar para gerente transfere responsabilidade jurídica a quem não tem como assumi-la — e o dado já está lá: 270 das 469 leads dependem desse registro para entrar na CAPI.",
+    de: `const REGISTRA_BASE_LEGAL = new Set(["director", "admin"]);`,
+    para: `const REGISTRA_BASE_LEGAL = new Set(["director", "admin", "manager"]);`,
+  },
+  {
+    id: "M57", arquivo: "components/crm/meta-consent-control.tsx",
+    quebra: "a tela volta a oferecer o botão quando não sabe se pode",
+    dor: "Era o defeito medido em 2026-07-29: 2 das 3 contas reais de diretoria — inclusive a do dono — viam os três botões habilitados e levavam 403 ao clicar. O `?? false` é o que faz a dúvida virar 'não oferecer' em vez de 'oferecer e recusar'.",
+    de: `  const editavel = podeEditar ?? podeRegistrar ?? false;`,
+    para: `  const editavel = podeEditar ?? podeRegistrar ?? true;`,
+  },
+  /**
+   * M58–M61 vigiam a CERCA DAS MIGRATIONS, e são as primeiras mutações deste
+   * arquivo que quebram SQL em vez de TypeScript. O contrato que elas testam é
+   * tests/contracts/rls-em-tabela-nova.test.mjs.
+   *
+   * M59 é a que importa mais: ela não desfaz o conserto de `commission_rules`,
+   * ela inventa uma tabela NOVA sem cerca. É a CLASSE. Se M58 for pega e M59
+   * sobreviver, o contrato virou específico do caso e a próxima migration passa.
+   */
+  {
+    id: "M58", arquivo: "supabase/migrations/20260727040000_regras_de_comissao.sql",
+    quebra: "a migration volta a criar commission_rules sem `enable row level security`",
+    dor: "Produção provisionada pelo repo publica o rateio de comissão de toda imobiliária para a chave anon, que vai no bundle do navegador. Foi o estado real do arquivo até 2026-07-29.",
+    de: `alter table public.commission_rules enable row level security;`,
+    // Comentado, não removido: prova de uma vez que a cerca sai de pé E que
+    // comentário não satisfaz o contrato (`semComentarios` roda antes da varredura).
+    para: `-- alter table public.commission_rules enable row level security;`,
+  },
+  {
+    id: "M59", arquivo: "supabase/migrations/20260727040000_regras_de_comissao.sql",
+    quebra: "uma tabela NOVA entra no repo sem cerca nenhuma (a CLASSE, não o caso)",
+    dor: "É o defeito se repetindo na próxima migration que alguém escrever. Nenhum dos 214 portões pegava isto: check-rls.mjs percorre lista CURADA e tabela nova nunca está nela.",
+    de: `create table if not exists public.commission_rules (`,
+    para: `create table if not exists public.folha_de_pagamento (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null,
+  salario numeric(14,2) not null default 0
+);
+
+create table if not exists public.commission_rules (`,
+  },
+  {
+    id: "M60", arquivo: "supabase/migrations/20260727040000_regras_de_comissao.sql",
+    quebra: "somem os `drop policy if exists` que tornam a migration idempotente",
+    dor: "O deploy aborta com 42710 em todo banco que já tem a policy — homologação é um deles. A migration que conserta a cerca passa a derrubar o deploy.",
+    de: `drop policy if exists commission_rules_leitura on public.commission_rules;`,
+    para: ``,
+  },
+  {
+    id: "M61", arquivo: "supabase/migrations/20260727040000_regras_de_comissao.sql",
+    quebra: "a policy de LEITURA passa a exigir diretoria, como a de escrita",
+    dor: "O outro lado do filtro: cerca que barra todo mundo passa em teste de vazamento e destrói o produto. O corretor abre a tela de comissão vazia e não confere o próprio rateio.",
+    de: `        and p.organization_id = commission_rules.organization_id
+    )
+  );`,
+    para: `        and p.organization_id = commission_rules.organization_id
+        and p.commercial_role = 'director'
+    )
+  );`,
+  },
+  {
+    id: "M62", arquivo: "supabase/migrations/20260727050000_corrige_move_pipeline_lead.sql",
+    quebra: "`activities.title` volta para o insert da função do funil",
+    dor: "É o defeito EXATO, provado executando a versão do repositório contra homologação: 42703 / column \"title\" of relation \"activities\" does not exist. Toda movimentação de funil estoura, e a rota traduz como 409 \"recusada pela regra do funil\" — manda o corretor conferir a etapa quando o problema é esquema. A etapa está certa e continua recusando: beco.",
+    de: `  insert into public.activities(organization_id,lead_id,user_id,type,description,metadata,occurred_at)`,
+    para: `  insert into public.activities(organization_id,lead_id,user_id,type,title,description,metadata,occurred_at)`,
+  },
+  {
+    id: "M63", arquivo: "supabase/migrations/20260727050000_corrige_move_pipeline_lead.sql",
+    quebra: "a migration perde o `or replace` e deixa de ser idempotente",
+    dor: "Aborta com 42723 em todo banco que já tem a função — homologação é um deles. A migration que conserta o Kanban passa a derrubar o deploy, e o conserto não chega.",
+    de: `CREATE OR REPLACE FUNCTION public.move_pipeline_lead(p_actor_id uuid`,
+    para: `CREATE FUNCTION public.move_pipeline_lead(p_actor_id uuid`,
+  },
+  {
+    id: "M64", arquivo: "scripts/lib/migracoes-sem-sql.mjs",
+    quebra: "o detector para de reconhecer arquivo só-comentário como vazio",
+    dor: "Volta a valer a condição medida em 2026-07-29: uma migration com ZERO linhas de SQL passando por conserto versionado. Reconstruir o banco do repositório restaura a função quebrada e o Kanban não move lead nenhuma. Esta mutação existe para provar que o contrato EXECUTA o detector — asserção que procura a palavra sobreviveria, porque o identificador continua na linha do import.",
+    de: `  return linhasDeSqlExecutavel(texto).length === 0;`,
+    para: `  return false;`,
+  },
+  {
+    id: "M65", arquivo: "scripts/lib/migracoes-sem-sql.mjs",
+    quebra: "o `--` deixa de ser ancorado no início da linha",
+    dor: "O outro lado do filtro, que é onde este tipo de guarda morre: `create index ...; -- nota` passa a ser lido como comentário puro, e o detector acusa de VAZIA uma migration cheia. Guarda que reprova todo mundo passa em teste de vazamento e destrói o deploy — nesta base a mesma armadilha já mordeu três vezes no mesmo dia.",
+    de: `    .map((linha) => (/^\\s*--/.test(linha) ? "" : linha))`,
+    para: `    .map((linha) => (/--/.test(linha) ? "" : linha))`,
+  },
+  {
+    id: "M66", arquivo: "scripts/lib/migracoes-sem-sql.mjs",
+    quebra: "declarar uma migration vazia passa a valer sem motivo escrito",
+    dor: "`motivo: \"\"` vira declaração válida e a lista de exceções passa a absolver por existir. Foi assim que a quarentena de portões guardou dois motivos ERRADOS por dias: motivo que ninguém precisa escrever é motivo que ninguém confere.",
+    de: `export const PISO_DO_MOTIVO = 40;`,
+    para: `export const PISO_DO_MOTIVO = 0;`,
+  },
+  {
+    id: "M67", arquivo: "scripts/lib/migracoes-sem-sql.mjs",
+    quebra: "declaração obsoleta deixa de reprovar",
+    dor: "A lista de exceções vira cobertor permanente: quem consertar a migration deixa a declaração para trás, e ela autoriza — calada — esvaziar aquele mesmo arquivo de novo amanhã. Exceção que sobrevive ao problema vira teto silencioso.",
+    de: `      if (!fs.existsSync(caminho)) return true;
+      return !ehSomenteComentario(fs.readFileSync(caminho, "utf8"));`,
+    para: `      void caminho;
+      return false;`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

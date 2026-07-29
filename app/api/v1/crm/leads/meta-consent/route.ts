@@ -22,6 +22,7 @@
 
 import { type NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
+import { MOTIVO_SEM_REGISTRO, podeRegistrarConsentimento } from "@/lib/crm/registro-de-consentimento";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
@@ -43,8 +44,45 @@ export const dynamic = "force-dynamic";
  * essa responsabilidade para quem não tem como assumi-la.
  *
  * Corretor e gerente continuam VENDO o estado; registrar é outra coisa.
+ *
+ * A REGRA SAIU DAQUI em 2026-07-29. Ela vivia como um `Set(["director"])` local
+ * mais uma derivação de papel escrita à mão, e a TELA tinha a SUA — lendo
+ * `access_role` do JWT. Medido: das 3 contas reais de diretoria, 2 divergiam
+ * (inclusive a do dono), vendo o botão habilitado e levando 403 ao clicar.
+ * Agora a regra é uma só, em lib/crm/registro-de-consentimento.ts, e a tela
+ * PERGUNTA pelo GET abaixo em vez de adivinhar.
  */
-const QUEM_REGISTRA = new Set(["director"]);
+
+/**
+ * QUEM PERGUNTA NÃO ADIVINHA.
+ *
+ * Existe para a tela parar de decidir por conta própria. Ela lia
+ * `app_metadata.access_role` do JWT e habilitava os botões; o servidor decidia
+ * pelo PERFIL, com outra precedência. Medido em 2026-07-29: 2 das 3 contas reais
+ * de diretoria — inclusive a do dono — viam o botão habilitado e levavam 403.
+ *
+ * Alinhar as duas derivações não bastaria: alinhadas hoje, elas divergem amanhã,
+ * porque as FONTES são diferentes. O claim do JWT só coincide com o perfil
+ * enquanto ninguém troca um papel sem reemitir token — e dar precedência a claim
+ * sobre perfil é a armadilha que já vazou dado entre empresas neste projeto.
+ *
+ * Devolve também o MOTIVO, para a tela poder dizer por que não pode em vez de
+ * apenas desabilitar sem explicação. Botão cinza sem razão ensina o usuário a
+ * achar que o produto está quebrado.
+ */
+export async function GET(request: NextRequest) {
+  const limited = enforceRateLimit(request, { limit: 240, scope: "meta-consent-read" });
+  if (!limited.ok) return limited.response;
+  const identity = await requireAccessContext(request);
+  if (!identity.ok) return identity.response;
+
+  const podeRegistrar = podeRegistrarConsentimento(identity.access.profile);
+  return apiSuccess(
+    { podeRegistrar, motivo: podeRegistrar ? null : MOTIVO_SEM_REGISTRO },
+    identity.meta,
+    { headers: limited.headers },
+  );
+}
 
 export async function POST(request: NextRequest) {
   const limited = enforceRateLimit(request, { limit: 120, scope: "meta-consent-write" });
@@ -68,8 +106,6 @@ export async function POST(request: NextRequest) {
   const admin = getSupabaseAdmin();
   const organizationId = identity.access.organization.id;
   const perfilId = identity.access.profile.id;
-  const papel = identity.access.profile.commercialRole
-    || (identity.access.profile.role === "admin" ? "director" : identity.access.profile.role);
 
   const { data: lead, error } = await admin
     .from("leads")
@@ -82,12 +118,11 @@ export async function POST(request: NextRequest) {
     return apiError("LEAD_NOT_FOUND", "Lead não encontrada nesta organização.", identity.meta, { status: 404 });
   }
 
-  // Nem o dono da lead escapa: registrar base legal é ato do diretor.
-  const ehAdmin = identity.access.profile.role === "admin";
-  if (!ehAdmin && !QUEM_REGISTRA.has(String(papel))) {
-    return apiError("FORBIDDEN",
-      "Registrar o consentimento é do diretor — é ele quem responde pela base legal de todas as leads e formulários.",
-      identity.meta, { status: 403 });
+  // Nem o dono da lead escapa: registrar base legal é ato do diretor. A regra e a
+  // frase da recusa vêm do módulo compartilhado — a MESMA que o GET publica, para
+  // a tela nunca oferecer o que a escrita vai negar.
+  if (!podeRegistrarConsentimento(identity.access.profile)) {
+    return apiError("FORBIDDEN", MOTIVO_SEM_REGISTRO, identity.meta, { status: 403 });
   }
 
   // `formulario_meta` não é aceito aqui de propósito: essa base vem do webhook,

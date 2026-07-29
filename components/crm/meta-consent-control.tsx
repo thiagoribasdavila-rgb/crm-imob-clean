@@ -49,35 +49,55 @@ export function MetaConsentControl({
   /**
    * Só o DIRETOR registra — ele responde pela base legal de todas as leads.
    *
-   * O papel vem do PRÓPRIO token da sessão, que o navegador já tem: nenhuma
-   * chamada extra por lead. E o servidor recusa de qualquer jeito (403) — isto
-   * aqui existe para o corretor não descobrir a regra levando erro depois de
-   * clicar.
+   * ── ESTA TELA PAROU DE ADIVINHAR EM 2026-07-29 ────────────────────────────
+   *
+   * Antes ela lia `app_metadata.access_role` do PRÓPRIO token e decidia sozinha,
+   * "sem chamada extra por lead". Parecia econômico e estava errado: o servidor
+   * decide pelo PERFIL, com outra precedência (`commercialRole || role`).
+   *
+   * MEDIDO sobre as contas reais: das 3 com papel de diretoria, DUAS divergiam —
+   * inclusive a do dono (`role=director`, `commercial_role=manager`,
+   * `access_role=director`). Elas viam os três botões habilitados e levavam 403
+   * ao clicar. O comentário antigo dizia que este bloco existia "para o corretor
+   * não descobrir a regra levando erro depois de clicar" — e era exatamente isso
+   * que acontecia.
+   *
+   * Alinhar as duas derivações não resolveria: as FONTES são diferentes, e o
+   * claim do JWT só coincide com o perfil enquanto ninguém troca um papel sem
+   * reemitir token. Dar precedência a claim sobre perfil é a armadilha que já
+   * vazou dado entre empresas neste projeto.
+   *
+   * Agora ela PERGUNTA. Uma decisão, calculada por quem manda, transmitida —
+   * e vem com o MOTIVO, para o botão cinza poder se explicar.
    */
-  const [ehDiretor, setEhDiretor] = useState<boolean | null>(null);
+  const [podeRegistrar, setPodeRegistrar] = useState<boolean | null>(null);
+  const [motivoSemRegistro, setMotivoSemRegistro] = useState<string | null>(null);
 
   useEffect(() => {
     let vivo = true;
     void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!vivo) return;
-      const t = data.session?.access_token;
-      if (!t) { setEhDiretor(false); return; }
       try {
-        const carga = JSON.parse(atob(t.split(".")[1] ?? "")) as Record<string, unknown>;
-        const meta = (carga.app_metadata ?? {}) as Record<string, unknown>;
-        const papel = String(meta.access_role ?? meta.role ?? "");
-        setEhDiretor(papel === "director" || papel === "admin");
+        const { data: sessao } = await supabase.auth.getSession();
+        const r = await fetch("/api/v1/crm/leads/meta-consent", {
+          headers: { Authorization: `Bearer ${sessao.session?.access_token || ""}` },
+          cache: "no-store",
+        });
+        if (!vivo) return;
+        const corpo = await r.json().catch(() => null);
+        if (!r.ok) { setPodeRegistrar(false); return; }
+        setPodeRegistrar(corpo?.data?.podeRegistrar === true);
+        setMotivoSemRegistro(corpo?.data?.motivo ?? null);
       } catch {
-        // Token ilegível: assume que NÃO pode. Errar para o lado de não
-        // oferecer é melhor que oferecer e o servidor recusar.
-        setEhDiretor(false);
+        // Rede fora: assume que NÃO pode. Errar para o lado de não oferecer é
+        // melhor que oferecer e o servidor recusar — foi o defeito que isto
+        // fecha, e o padrão errado seria repeti-lo com outro nome.
+        if (vivo) setPodeRegistrar(false);
       }
     })();
     return () => { vivo = false; };
   }, []);
 
-  const editavel = podeEditar ?? ehDiretor ?? false;
+  const editavel = podeEditar ?? podeRegistrar ?? false;
 
   /**
    * Resolvido = já respondido. 204 das 217 leads do banco vivo já têm
@@ -168,8 +188,13 @@ export function MetaConsentControl({
       </div>
       {erro ? <p className="atlas-consent-erro">{erro}</p> : null}
       {!editavel ? (
+        // A frase vem do SERVIDOR quando ele respondeu, e é a MESMA que o 403
+        // devolve — uma recusa, uma redação. A frase local fica como reserva para
+        // quando a rede falhou e não há resposta: nesse caso o motivo é
+        // desconhecido, mas a regra continua valendo e o botão continua fechado.
         <p className="atlas-consent-nota">
-          Quem registra é o diretor — ele responde pela base legal de todas as leads e formulários.
+          {motivoSemRegistro
+            ?? "Quem registra é o diretor — ele responde pela base legal de todas as leads e formulários."}
         </p>
       ) : null}
     </div>
