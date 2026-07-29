@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
+import { AtlasActionLink } from "@/components/atlas/action-link";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
+import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 
 type Organization = { id: string; name: string; slug: string | null; plan: string; active: boolean };
 
@@ -39,6 +41,42 @@ export default function SettingsPage() {
   const [slug, setSlug] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [chegouParaRevisarAmbiente, setChegouParaRevisarAmbiente] = useState(false);
+
+  /**
+   * A chegada com intenção precisa ser VISÍVEL — e honesta.
+   *
+   * O catálogo (`lib/atlas/navigation.ts`) promete, na ação primária "Revisar
+   * ambiente", `/settings?view=environment` com o resultado "Confirmar que
+   * parâmetros críticos estão coerentes". Até 2026-07-29 esta tela não lia
+   * parâmetro nenhum: quem apertava o botão caía neste hub — identidade da
+   * empresa, política de aprovação e índice de áreas — sem uma linha sobre
+   * ambiente e sem nada explicando por que estava ali. Promessa decorativa, e
+   * invisível em teste, porque a tela ABRIA.
+   *
+   * E este hub continua NÃO sendo a tela do ambiente: variável obrigatória,
+   * segredo e dependência do servidor são conferidos no inventário sanitizado
+   * de /atlas-v3/governance — é para lá que o próprio roteiro de homologação
+   * manda a diretoria no item "Segredos do ambiente"
+   * (`lib/atlas/homologation-checklist.ts`) — e a coerência das dependências em
+   * /atlas-v3/developer/health. Repetir aqui um resumo daquele payload criaria
+   * uma segunda superfície para o mesmo dado, que é a classe de defeito que
+   * este repositório mais pagou; e faria pior, porque /settings abre para
+   * superintendente e gerente enquanto a auditoria de segredos é exclusiva da
+   * diretoria — o "resumo" nasceria como um 403 vermelho no meio das
+   * configurações. Então a tela não finge revisar ambiente: ela assume que não
+   * revisa e entrega o caminho verdadeiro.
+   *
+   * `window.location.search` no efeito de montagem em vez de `useSearchParams`
+   * porque o hook exigiria fronteira <Suspense> nesta página cliente, e a
+   * semântica desejada é exatamente a do efeito: a URL define o estado da
+   * chegada e a pessoa assume a partir dali. Intenção ausente, `view` com outro
+   * alvo ou parâmetro inventado não passam pelo leitor compartilhado e não
+   * mudam nada — a tela abre igual à de sempre.
+   */
+  useEffect(() => {
+    if (alvoDaIntencao(lerIntencaoDaJanela(), "visao") === "environment") setChegouParaRevisarAmbiente(true);
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -73,6 +111,37 @@ export default function SettingsPage() {
         title="Configurações da operação"
         description="Identidade da empresa, áreas de gestão e política de aprovação humana."
       />
+
+      {/* Sem esta faixa, quem apertou "Revisar ambiente" varre o hub atrás de
+          uma seção que não existe e conclui que o ambiente está sem problema —
+          exatamente a leitura oposta da que o botão deveria provocar. */}
+      {chegouParaRevisarAmbiente ? (
+        <div
+          className="cc6-sev-band cc6-panel-quiet flex flex-wrap items-center justify-between gap-3 py-3 pl-4 pr-3"
+          role="status"
+          style={{ "--cc6-sev": "#f59e0b" } as CSSProperties}
+        >
+          <p className="max-w-[62ch] text-sm leading-6 text-[#aab6ca]">
+            <span className="font-semibold text-[#e8eef8]">O ambiente não se confere aqui — aqui se governa a organização.</span>{" "}
+            Esta tela trata da identidade da empresa, da política de aprovação humana e das áreas de
+            gestão. Variáveis obrigatórias, segredos e dependências do servidor têm um inventário
+            próprio, que mostra o que está configurado sem nunca revelar valor.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <AtlasActionLink
+              href="/atlas-v3/governance"
+              label="Revisar variáveis do ambiente"
+              priority="primary"
+              showArrow
+            />
+            <AtlasActionLink
+              href="/atlas-v3/developer/health"
+              label="Saúde das dependências"
+              priority="secondary"
+            />
+          </div>
+        </div>
+      ) : null}
 
       <section className="grid gap-4 xl:grid-cols-[1.1fr_.9fr] xl:items-start">
         {/* Identidade da organização (única superfície com 3D): nome + slug

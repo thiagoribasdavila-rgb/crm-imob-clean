@@ -5126,6 +5126,16 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
     rgba(2, 8, 23, .58);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
 }
+/* Chegou por /pipeline?focus=priority: o cartão precisa se distinguir do resto
+   da fila, senão "abrir com a oportunidade em foco" vira só uma rolagem sem
+   alvo declarado. `outline` de propósito — a regra base já usa `border` e
+   `box-shadow`, e disputar essas duas propriedades dependeria da ordem do
+   arquivo. O contorno respeita o `border-left` de risco, que continua sendo
+   quem diz a gravidade. */
+.atlas-kanban-next-best-action[data-destaque-de-link="true"] {
+  outline: 2px solid rgba(56, 189, 248, .62);
+  outline-offset: 3px;
+}
 .atlas-kanban-next-best-action[data-risk="alto"] { border-left-color: rgba(251, 113, 133, .78); }
 .atlas-kanban-next-best-action[data-risk="medio"] { border-left-color: rgba(251, 191, 36, .72); }
 .atlas-kanban-next-best-action[data-risk="baixo"] { border-left-color: rgba(52, 211, 153, .62); }

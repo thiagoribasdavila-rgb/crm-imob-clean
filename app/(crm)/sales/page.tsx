@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
+import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -17,7 +18,10 @@ type Opportunity = {
   commission_split_percentage: number | null; commission_received_amount: number;
   leads: { id: string; name: string | null } | null; properties: { title: string | null } | null;
 };
-type View = "all" | "attention" | "closing" | "won";
+/* "forecast" é o recorte que faltava: os negócios que ainda podem virar receita
+   — exatamente a base do número "forecast ponderado" exibido no topo. Sem ele o
+   painel afirmava uma previsão que a fila não deixava conferir. */
+type View = "all" | "forecast" | "attention" | "closing" | "won";
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
 /* CC-6: tinta semântica por significado — vencido/urgente em rose, revisão em
@@ -33,7 +37,7 @@ const COMMISSION_LABEL: Record<string, string> = {
   not_applicable: "—",
 };
 const TH_CLASS = "px-4 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#6b7890]";
-const VIEW_OPTIONS: Array<[View, string]> = [["all", "Todas"], ["attention", "Atenção"], ["closing", "Fecha em 30d"], ["won", "Ganhas"]];
+const VIEW_OPTIONS: Array<[View, string]> = [["all", "Todas"], ["forecast", "Forecast"], ["attention", "Atenção"], ["closing", "Fecha em 30d"], ["won", "Ganhas"]];
 
 export default function SalesPage() {
   const [items, setItems] = useState<Opportunity[]>([]);
@@ -44,6 +48,7 @@ export default function SalesPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("all");
+  const [abertoPorLink, setAbertoPorLink] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -88,6 +93,31 @@ export default function SalesPage() {
       setCanManage(profile?.commercialRole === "director" || profile?.role === "admin");
     })();
   }, [load]);
+
+  /**
+   * A URL manda o recorte inicial — antes disso ela era enfeite.
+   *
+   * O catálogo de navegação (`lib/atlas/navigation.ts`) promete "Abrir forecast"
+   * → `/sales?view=forecast`, com o resultado "revisar negócios com impacto
+   * provável na receita". A promessa era DECORATIVA: a tela ignorava o parâmetro
+   * e abria na fila inteira, misturando ganhos e perdidos com o que ainda pode
+   * virar receita — a pessoa tinha que refazer o recorte na mão, ou pior, revia
+   * o histórico achando que revisava a previsão.
+   *
+   * Lemos `window.location.search` na montagem em vez de `useSearchParams`
+   * porque o hook exigiria fronteira <Suspense> nesta página cliente, e o efeito
+   * de montagem já tem a semântica desejada: a URL define o estado inicial e a
+   * pessoa assume a partir daí (mesmo caminho já adotado em /leads).
+   *
+   * Só `forecast` vira comportamento. Qualquer outro alvo é IGNORADO de
+   * propósito: um valor inventado na barra de endereço não pode virar recorte
+   * silencioso, porque uma lista vazia se lê como "não há trabalho".
+   */
+  useEffect(() => {
+    if (alvoDaIntencao(lerIntencaoDaJanela(), "visao") !== "forecast") return;
+    setView("forecast");
+    setAbertoPorLink(true);
+  }, []);
 
   async function updateCommission(id: string, payload: Record<string, unknown>) {
     const { data } = await supabase.auth.getSession();
@@ -137,11 +167,32 @@ export default function SalesPage() {
   const visible = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("pt-BR");
     const weight: Record<string, number> = { overdue: 5, at_risk: 4, incomplete: 3, closing: 2, healthy: 1, won: 0, lost: 0 };
+    /* Impacto provável = valor × probabilidade, o mesmo cálculo do "forecast
+       ponderado" do topo. Devolve null — e NÃO zero — quando não há valor: uma
+       oportunidade sem valor não pesa nada na receita porque ninguém mediu, o
+       que é diferente de valer R$ 0. Ela continua na fila (com o selo "Dados
+       incompletos"), só depois das medidas, porque é justamente ela que trava a
+       previsão. */
+    const impactoProvavel = (item: Opportunity) => (item.value == null ? null : Number(item.value) * item.probability / 100);
     return items.filter((item) => {
       const risk = opportunityRisk(item);
-      const matchesView = view === "all" || (view === "attention" && ["incomplete", "overdue", "at_risk"].includes(risk.key)) || (view === "closing" && risk.key === "closing") || (view === "won" && Boolean(item.won_at));
+      const matchesView = view === "all"
+        // Em aberto = nem ganho nem perdido: o que ainda pode virar receita.
+        || (view === "forecast" && !item.won_at && !item.lost_at)
+        || (view === "attention" && ["incomplete", "overdue", "at_risk"].includes(risk.key)) || (view === "closing" && risk.key === "closing") || (view === "won" && Boolean(item.won_at));
       return matchesView && (!normalized || [item.leads?.name, item.properties?.title, item.stage].some((value) => value?.toLocaleLowerCase("pt-BR").includes(normalized)));
-    }).sort((a, b) => (weight[opportunityRisk(b).key] - weight[opportunityRisk(a).key]) || Number(b.value || 0) - Number(a.value || 0));
+    }).sort((a, b) => {
+      /* A pergunta muda com o recorte: nas demais visões a ordem é por risco,
+         no forecast é por quanto o negócio pesa na receita provável — que é
+         literalmente o que o botão do catálogo promete revisar. */
+      if (view === "forecast") {
+        const impactoA = impactoProvavel(a);
+        const impactoB = impactoProvavel(b);
+        if (impactoA !== null && impactoB !== null) return impactoB - impactoA;
+        if (impactoA !== impactoB) return impactoA === null ? 1 : -1;
+      }
+      return (weight[opportunityRisk(b).key] - weight[opportunityRisk(a).key]) || Number(b.value || 0) - Number(a.value || 0);
+    });
   }, [items, query, referenceTime, view]);
   const revenueDecisionQueue = items.map((item) => {
     const risk = opportunityRisk(item);
@@ -262,6 +313,24 @@ export default function SalesPage() {
           </div>
           {!loading ? <span className="cc6-chip">{visible.length} visíveis</span> : null}
         </header>
+        {/* Quem chega pelo link não escolheu recorte nenhum — se a fila abrir
+            cortada sem dizer, o que falta some sem deixar rastro. */}
+        {view === "forecast" ? (
+          <div className="cc6-hairline mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-2.5">
+            <p className="min-w-56 flex-1 text-[11px] leading-4 text-[#6b7890]">
+              <strong className="font-medium text-[#e8eef8]">
+                {/* "Abrir forecast" também é o rótulo do botão do topo, que leva
+                    a OUTRA tela — nomear o link aqui confundiria as duas. */}
+                Recorte de forecast{abertoPorLink ? " · pedido pelo link que abriu esta tela" : ""}
+              </strong>{" "}
+              — apenas negócios em aberto, do maior para o menor impacto provável (valor × probabilidade).
+              Oportunidade sem valor não conta como zero: fica no fim, marcada como dados incompletos.
+            </p>
+            <button type="button" onClick={() => setView("all")} className="cc6-ghost-btn shrink-0">
+              Ver a fila inteira
+            </button>
+          </div>
+        ) : null}
         <div className="mt-4 flex flex-wrap items-center gap-2 px-5 pb-4">
           <input
             value={query}

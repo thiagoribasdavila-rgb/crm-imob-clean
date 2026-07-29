@@ -542,15 +542,27 @@ export default function LeadsPage() {
       const vinculoDaUrl = pegar("vinculo", VINCULO_VALIDOS);
       const nextActionDaUrl = pegar("nextAction", NEXT_ACTION_VALIDOS);
       const sortDaUrl = pegar("sort", SORT_VALIDOS);
-      const statusDaUrl = url.get("status");
+      // Validado contra a MESMA lista que o seletor oferece. Sem isto,
+      // /leads?status=xpto ia cru para a API e devolvia lista vazia — e lista
+      // vazia se lê como "não há trabalho", que é a pior mensagem possível
+      // numa operação com 443 leads paradas. Era a única chave desta tela sem
+      // porteiro, e a regra que eu mesmo escrevi no módulo de intenção.
+      const statusDaUrl = pegar(
+        "status",
+        statuses.map((opcao) => opcao.value).filter(Boolean),
+      );
       let veioDaUrl = false;
 
       if (attentionDaUrl !== null) { setAttention(attentionDaUrl); veioDaUrl = true; }
       if (vinculoDaUrl !== null) { setVinculo(vinculoDaUrl); veioDaUrl = true; }
       if (nextActionDaUrl !== null) { setNextAction(nextActionDaUrl); veioDaUrl = true; }
       if (sortDaUrl !== null) { setSort(sortDaUrl); veioDaUrl = true; }
-      if (url.get("direction") === "asc" || url.get("direction") === "desc") {
-        setDirection(url.get("direction") as "asc" | "desc");
+      // Pelo mesmo porteiro das outras chaves. Validar em linha aqui e por
+      // lista fechada nas demais é ter dois jeitos de fazer a mesma coisa — e
+      // é por uma dessas brechas que `status` passou cru para a API.
+      const direcaoDaUrl = pegar("direction", ["asc", "desc"] as const);
+      if (direcaoDaUrl !== null) {
+        setDirection(direcaoDaUrl);
         veioDaUrl = true;
       }
       if (statusDaUrl) { setStatus(statusDaUrl); veioDaUrl = true; }

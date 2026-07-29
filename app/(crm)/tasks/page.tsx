@@ -9,6 +9,7 @@ import {
   type CSSProperties,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import { lerIntencaoDaJanela, pedeCriar } from "@/lib/atlas/intencao-da-url";
 import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
@@ -173,6 +174,7 @@ export default function TasksPage() {
   const [view, setView] = useState<View>("priority");
   const [form, setForm] = useState(EMPTY_FORM);
   const [nowMs, setNowMs] = useState(0);
+  const [focarCriacao, setFocarCriacao] = useState(false);
 
   // Relógio de 1min: mantém "há 2d"/"em 3h" frescos sem tocar nos fetches.
   useEffect(() => {
@@ -180,6 +182,53 @@ export default function TasksPage() {
     const timer = window.setInterval(() => setNowMs(Date.now()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  /**
+   * A intenção que vem na URL — sem ela o botão "Nova tarefa" mentia.
+   *
+   * `lib/atlas/navigation.ts` declara a ação primária deste destino como
+   * `/tasks?create=1`, prometendo "agendar uma ação comercial rastreável". Só
+   * que a tela nunca leu o parâmetro: quem clicava em "Nova tarefa" chegava
+   * aqui com a fila aberta e o formulário fechado, e ainda tinha que procurar
+   * o botão para fazer o que já havia pedido. A promessa era decorativa, e não
+   * aparecia em teste nenhum porque a tela ABRE — só não faz o que o botão diz.
+   *
+   * Não reabrimos caminho novo: `showCreate` é o mesmo estado que o botão da
+   * fila alterna, então link e clique desembocam no mesmo painel.
+   *
+   * A leitura vem do módulo compartilhado, e não de um `URLSearchParams` local,
+   * porque nove telas repetindo a mesma regra é exatamente a classe de defeito
+   * que este repositório mais pagou. Parâmetro ausente, `create` com outro
+   * valor ou URL malformada devolvem `null` lá dentro e esta tela abre como
+   * sempre abriu — intenção não reconhecida nunca vira recorte silencioso.
+   *
+   * `window.location.search` em vez de `useSearchParams` pelo mesmo motivo de
+   * `/leads`: o hook exigiria fronteira <Suspense> nesta página cliente inteira
+   * por causa de um parâmetro, e o efeito de montagem já tem a semântica certa
+   * — a URL define o estado inicial, a pessoa assume a partir daí.
+   */
+  useEffect(() => {
+    if (!pedeCriar(lerIntencaoDaJanela())) return;
+    setShowCreate(true);
+    setFocarCriacao(true);
+  }, []);
+
+  /**
+   * Formulário aberto fora da vista é o mesmo que formulário fechado: o painel
+   * de criação fica abaixo do assistente diário e, em tela curta, quem chegou
+   * pelo link veria a fila de sempre e concluiria que o botão não funcionou.
+   * Trazer o primeiro campo à vista e dar foco nele mostra o estado e já deixa
+   * a pessoa digitando. Roda só na abertura por link — o clique no botão da
+   * fila continua sem roubar o foco de quem estava lendo a lista.
+   */
+  useEffect(() => {
+    if (!focarCriacao) return;
+    setFocarCriacao(false);
+    const campo = document.getElementById("task-title");
+    if (!(campo instanceof HTMLInputElement)) return;
+    campo.scrollIntoView({ block: "center", behavior: "smooth" });
+    campo.focus({ preventScroll: true });
+  }, [focarCriacao]);
 
   const sessionToken = useCallback(async () => {
     const { data: session } = await supabase.auth.getSession();

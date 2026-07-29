@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
+import { AtlasActionLink } from "@/components/atlas/action-link";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { lerIntencaoDaJanela, pedeCriar } from "@/lib/atlas/intencao-da-url";
 
 type Profile = {
   id: string;
@@ -38,6 +40,34 @@ export default function UsersPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chegouParaCriar, setChegouParaCriar] = useState(false);
+
+  /**
+   * Quem clica em "Novo usuário" chega em `/users?create=1` — o catálogo
+   * (`lib/atlas/navigation.ts`) promete que "o formulário de criação abre
+   * sozinho". Esta tela não tem formulário nenhum: ela lista acessos que JÁ
+   * existem e liga/desliga cada um. `/api/v1/admin/users` expõe só GET e PATCH,
+   * não há POST. A promessa era decorativa no pior formato possível: a pessoa
+   * apertava o botão, caía numa tabela somente-leitura e nada na tela dizia por
+   * que ela estava ali nem para onde ir.
+   *
+   * Criar acesso no Atlas é convidar por e-mail, e isso mora em
+   * `/settings/team`, junto da validação de hierarquia (quais funções o ator
+   * pode criar, quem é o responsável direto) que só existe lá. Reproduzir
+   * aquele formulário aqui seria um segundo caminho para a mesma coisa — a
+   * classe de defeito que este repositório mais pagou. Então a tela não finge
+   * criar: ela assume que não cria e entrega o caminho verdadeiro.
+   *
+   * Lemos `window.location.search` no efeito de montagem em vez de
+   * `useSearchParams` porque o hook exigiria fronteira <Suspense> nesta página
+   * cliente, e a semântica desejada é exatamente a do efeito: a URL define o
+   * estado da chegada e a pessoa assume a partir dali. Intenção ausente,
+   * parâmetro desconhecido ou `create` com outro valor devolvem `null` do leitor
+   * compartilhado e não mudam nada — a tela abre igual à de sempre.
+   */
+  useEffect(() => {
+    if (pedeCriar(lerIntencaoDaJanela())) setChegouParaCriar(true);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -81,6 +111,29 @@ export default function UsersPage() {
         description="Controle administrativo dos acessos oficiais. A hierarquia comercial é administrada na área de Equipe."
         action={{ href: "/brokers", label: "Abrir equipe", priority: "secondary" }}
       />
+
+      {/* Chegada com intenção precisa ser VISÍVEL. Sem esta faixa a pessoa que
+          apertou "Novo usuário" olha uma tabela de leitura e conclui que o botão
+          não funcionou — ou pior, que o acesso já foi criado. */}
+      {chegouParaCriar ? (
+        <div
+          className="cc6-sev-band cc6-panel-quiet flex flex-wrap items-center justify-between gap-3 py-3 pl-4 pr-3"
+          role="status"
+        >
+          <p className="max-w-[62ch] text-sm leading-6 text-[#aab6ca]">
+            <span className="font-semibold text-[#e8eef8]">Aqui não se cria acesso — aqui se governa o que já existe.</span>{" "}
+            Um acesso novo começa por convite: o e-mail, a função comercial e o responsável direto são
+            definidos e validados em Configurações · Equipe, e a pessoa só passa a aparecer nesta lista
+            depois de confirmar o convite.
+          </p>
+          <AtlasActionLink
+            href="/settings/team"
+            label="Convidar profissional"
+            priority="primary"
+            showArrow
+          />
+        </div>
+      ) : null}
 
       {/* Papel e estado por pessoa começam pelos números — única superfície 3D. */}
       <section aria-label="Resumo dos acessos">

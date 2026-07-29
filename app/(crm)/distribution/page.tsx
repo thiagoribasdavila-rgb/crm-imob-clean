@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
@@ -39,6 +40,44 @@ function waitLabel(minutes: number) {
   return `${Math.floor(minutes / 1440)} d`;
 }
 
+/**
+ * A ÚNICA fila que o catálogo de navegação promete para esta tela
+ * (`lib/atlas/navigation.ts`: "Abrir fila sem responsável" →
+ * `/distribution?queue=unassigned`). Fechado de propósito: `?queue=qualquer`
+ * não pode recortar a tela em silêncio.
+ */
+const FILA_SEM_RESPONSAVEL = "unassigned";
+
+/**
+ * O projeto onde está a lead sem responsável esperando há mais tempo.
+ *
+ * A API já devolve `unassignedQueue` ordenada da mais antiga para a mais nova,
+ * e `unassigned` só tem projetos que o seletor desta tela oferece — a primeira
+ * lead que casa com os dois é a espera mais longa que esta tela CONSEGUE abrir.
+ * Devolve "" quando não há nenhuma; nunca um projeto arbitrário.
+ */
+function projetoComEsperaMaisLonga(payload: Payload): string {
+  const maisAntiga = payload.unassignedQueue.find(
+    (item) => item.developmentId !== null && (payload.unassigned[item.developmentId] ?? 0) > 0,
+  );
+  return maisAntiga?.developmentId ?? "";
+}
+
+/**
+ * Em que projeto a tela abre.
+ *
+ * Sem intenção na URL, o primeiro da lista — comportamento de sempre. Com
+ * `?queue=unassigned`, o projeto que de fato tem gente esperando: abrir no
+ * primeiro projeto da lista fazia o botão "Abrir fila sem responsável" mostrar
+ * "Fila sem pendências" enquanto outro empreendimento acumulava leads, que é a
+ * pior mensagem possível — "não há trabalho" quando há.
+ */
+function projetoDeAbertura(payload: Payload, fila: string | null): string {
+  const primeiro = payload.projects[0]?.id ?? "";
+  if (fila !== FILA_SEM_RESPONSAVEL) return primeiro;
+  return projetoComEsperaMaisLonga(payload) || primeiro;
+}
+
 const AUDIT_EVENT_LABELS: Record<string, string> = {
   distribution: "Distribuição",
   transfer: "Transferência",
@@ -70,6 +109,44 @@ export default function DistributionPage() {
   const [sourcePriority,setSourcePriority]=useState(5);
   const [sourceSlaMinutes,setSourceSlaMinutes]=useState(60);
   const [priorityReason,setPriorityReason]=useState("");
+  const [filaPedida, setFilaPedida] = useState<string | null>(null);
+  /* `load` precisa da intenção sem tê-la nas dependências: entrar lá recriaria
+     o callback e, com ele, o intervalo de heartbeat/refresh a cada leitura. */
+  const filaPedidaRef = useRef<string | null>(null);
+
+  /**
+   * A intenção que vinha na URL e era jogada fora.
+   *
+   * `lib/atlas/navigation.ts` promete "Abrir fila sem responsável" →
+   * `/distribution?queue=unassigned`, com o resultado "distribuir oportunidades
+   * sem atendimento". Medido em 2026-07-29: esta tela nunca leu o parâmetro.
+   * Ela abria no PRIMEIRO projeto da lista — que pode ser justamente o que não
+   * tem ninguém esperando — então quem clicava no botão via "Fila sem
+   * pendências" com leads paradas em outro empreendimento. A promessa era
+   * decorativa, e nenhum teste pegava, porque a tela ABRE: só não faz o que o
+   * botão diz.
+   *
+   * Nada de caminho novo: a intenção só decide o valor inicial de `projectId`,
+   * o mesmo estado que o seletor do herói controla — link e clique desembocam
+   * no mesmo recorte.
+   *
+   * A leitura vem do módulo compartilhado (`fila` só existe se a navegação
+   * prometer) e ainda exigimos o valor exato: `?queue=inventado` devolve alvo
+   * desconhecido e a tela abre como sempre abriu. Parâmetro inválido não pode
+   * virar filtro que devolve lista vazia.
+   *
+   * `window.location.search` em vez de `useSearchParams` pelo motivo de
+   * `/leads`: o hook exigiria fronteira <Suspense> nesta página cliente inteira
+   * por um parâmetro, e o efeito de montagem já tem a semântica desejada — a
+   * URL define o estado inicial e a pessoa assume a partir daí. Declarado antes
+   * do efeito de carga para o ref já estar preenchido quando os dados chegarem.
+   */
+  useEffect(() => {
+    const alvo = alvoDaIntencao(lerIntencaoDaJanela(), "fila");
+    const pedido = alvo === FILA_SEM_RESPONSAVEL ? alvo : null;
+    filaPedidaRef.current = pedido;
+    setFilaPedida(pedido);
+  }, []);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -80,7 +157,9 @@ export default function DistributionPage() {
       if (!response.ok) setError(result.error?.message || "Falha ao carregar a fila.");
       else {
         setData(result.data);
-        setProjectId((current) => current || result.data.projects[0]?.id || "");
+        // Só na primeira carga (`current` vazio): o refresh de 15 s nunca pode
+        // arrastar o projeto debaixo de quem já escolheu outro.
+        setProjectId((current) => current || projetoDeAbertura(result.data as Payload, filaPedidaRef.current));
         setError("");
       }
     } catch {
@@ -181,6 +260,19 @@ export default function DistributionPage() {
   const weightedLoads = brokers.map((broker) => (loadMap.get(broker.id)?.by_project[projectId] ?? 0) / (stateMap.get(broker.id)?.weight || 1));
   const balanceGap = weightedLoads.length > 1 ? Math.round((Math.max(...weightedLoads) - Math.min(...weightedLoads)) * 10) / 10 : 0;
   const selectedQueue = (data?.unassignedQueue ?? []).filter((item) => !projectId || item.developmentId === projectId);
+  /* Números do recorte, derivados a cada render em vez de congelados na
+     abertura: se a pessoa trocar o projeto no seletor, o aviso continua
+     descrevendo o que ela está vendo, e não o que ela viu ao chegar. */
+  const filaSemResponsavelPedida = filaPedida === FILA_SEM_RESPONSAVEL;
+  const aguardandoNosProjetos = data ? Object.values(data.unassigned).reduce((soma, valor) => soma + valor, 0) : 0;
+  const aguardandoEmOutrosProjetos = Math.max(0, aguardandoNosProjetos - unassigned);
+  /* Lead sem responsável E sem empreendimento no seletor: some de QUALQUER
+     recorte desta tela, porque distribuir aqui é sempre dentro de um projeto.
+     Contar como zero seria dizer "não há trabalho" sobre trabalho existente. */
+  const semProjetoVinculado = data
+    ? data.unassignedQueue.filter((item) => item.developmentId === null || data.unassigned[item.developmentId] === undefined).length
+    : 0;
+  const abertaNaEsperaMaisLonga = Boolean(data && projectId && projetoComEsperaMaisLonga(data) === projectId);
   const oldestWaitingMinutes = selectedQueue.reduce((maximum, item) => Math.max(maximum, item.waitingMinutes), 0);
   const brokersNearCapacity = teamBrokers.filter((broker) => {
     const capacity = capacityMap.get(broker.id);
@@ -218,6 +310,53 @@ export default function DistributionPage() {
         title="Quem recebe a próxima lead"
         description="Disponibilidade, projeto, carteira e última atribuição definem a ordem — cada gestor enxerga somente a própria estrutura."
       />
+
+      {/* Quem chegou pelo link não pode olhar um recorte sem saber que é um
+          recorte: o seletor logo abaixo veio preenchido por decisão da tela, e
+          não da pessoa. Fica no topo, acima do seletor que ele explica, em vez
+          de rolar até a fila — a declaração não pode ficar fora da vista. */}
+      {filaSemResponsavelPedida ? (
+        <section aria-label="Recorte pedido pelo link de origem">
+          <div className="cc6-panel-quiet px-4 py-3" role="status" aria-live="polite">
+            <p className="cc6-eyebrow">Aberto por “Abrir fila sem responsável”</p>
+            {!data ? (
+              /* Enquanto a fila não chegou, "0" seria invenção: ausência de
+                 dado não vira número — e fila que não carregou não pode ser
+                 anunciada como fila vazia. */
+              <p className="mt-1.5 text-sm leading-6 text-[#aab6ca]">
+                {error ? "Não deu para conferir a fila sem responsável agora — o erro abaixo explica o que falhou." : "Conferindo quantas leads estão sem responsável na sua estrutura…"}
+              </p>
+            ) : aguardandoNosProjetos > 0 ? (
+              <p className="mt-1.5 text-sm leading-6 text-[#e8eef8]">
+                A tela está recortada no projeto <strong className="font-semibold">{selectedProject?.name || "selecionado"}</strong>:{" "}
+                <span className="cc6-num">{unassigned}</span> lead{unassigned === 1 ? "" : "s"} sem responsável aqui
+                {abertaNaEsperaMaisLonga ? ", onde está a espera mais longa da sua estrutura" : ""}.
+                {aguardandoEmOutrosProjetos > 0 ? (
+                  <>
+                    {" "}Outros projetos somam <span className="cc6-num">{aguardandoEmOutrosProjetos}</span> — troque o projeto acima para abri-los.
+                  </>
+                ) : null}
+              </p>
+            ) : (
+              /* Fila vazia DECLARADA. Sem esta frase, a mesma tela apareceria
+                 como se o link não tivesse funcionado. */
+              <p className="mt-1.5 text-sm leading-6 text-[#e8eef8]">
+                Nenhuma lead sem responsável nos projetos da sua estrutura agora — a fila que você pediu está vazia, e isso é uma afirmação, não uma lista escondida por filtro. O restante da tela segue completo abaixo.
+              </p>
+            )}
+            {semProjetoVinculado > 0 ? (
+              <p className="cc6-warn mt-1.5 text-xs leading-5">
+                {semProjetoVinculado} lead{semProjetoVinculado === 1 ? "" : "s"} sem responsável ficam fora de qualquer recorte desta tela por não terem empreendimento vinculado — a distribuição daqui acontece sempre dentro de um projeto.
+              </p>
+            ) : null}
+            {aguardandoNosProjetos > 0 ? (
+              <a href="#fila-sem-responsavel" className="cc6-chip mt-2.5 inline-block hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!">
+                Ir para a fila ↓
+              </a>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       {/* Herói de comando: projeto, números decisivos e a minha presença na
           fila em um único painel — as listas abaixo só detalham. */}
@@ -305,7 +444,8 @@ export default function DistributionPage() {
         </div>
       </section>
 
-      <section data-phase="52-unassigned-lead-queue">
+      {/* Alvo do "Ir para a fila" do aviso de recorte — âncora estável. */}
+      <section id="fila-sem-responsavel" className="scroll-mt-6" data-phase="52-unassigned-lead-queue">
         <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "100ms" }}>
           <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
             <div>

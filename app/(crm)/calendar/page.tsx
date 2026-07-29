@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -9,6 +10,7 @@ import {
   type CSSProperties,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import { lerIntencaoDaJanela, pedeCriar } from "@/lib/atlas/intencao-da-url";
 import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
 import { PageHeader } from "@/components/atlas/page-header";
@@ -162,6 +164,47 @@ export default function CalendarPage() {
   const [error, setError] = useState("");
   const [window, setWindow] = useState<Window>("week");
   const [live, setLive] = useState("connecting");
+  const [encaminhandoCriacao, setEncaminhandoCriacao] = useState(false);
+  const router = useRouter();
+
+  /**
+   * A intenção que vem na URL — e por que a agenda a ENCAMINHA em vez de fingir
+   * que cria.
+   *
+   * `lib/atlas/navigation.ts` declara a ação primária deste destino como
+   * `/calendar?create=1` ("Novo compromisso"), prometendo que o formulário de
+   * novo compromisso abre sozinho. A tela nunca leu o parâmetro: quem clicava
+   * chegava na linha do tempo com nada aberto e ainda tinha que descobrir onde
+   * se cria um compromisso. Promessa decorativa — e invisível em teste, porque
+   * a agenda ABRE, só não faz o que o botão diz.
+   *
+   * Só que esta tela é de LEITURA: `/api/v1/calendar` tem apenas GET, e a
+   * agenda é a junção de tarefas, visitas e follow-ups que nascem em outro
+   * lugar. O único formulário de compromisso do produto é o de `/tasks` — o
+   * mesmo destino que o cabeçalho e o estado vazio desta tela já apontam.
+   * Desenhar um formulário aqui criaria duas verdades sobre "criar tarefa"
+   * (recorrência, responsável, vínculo com a lead), que é a classe de defeito
+   * que este repositório mais pagou.
+   *
+   * Então cumprimos o RESULTADO prometido em vez da letra: a pessoa chega ao
+   * formulário já aberto, sem clicar de novo. `replace` e não `push` de
+   * propósito — com `push`, voltar cairia outra vez em `/calendar?create=1` e
+   * a pessoa ficaria presa no encaminhamento.
+   *
+   * A leitura vem do módulo compartilhado, nunca de um `URLSearchParams` local:
+   * a lista de chaves é fechada, então `?create=9`, parâmetro ausente ou URL
+   * malformada devolvem `null` e a agenda abre exatamente como sempre abriu —
+   * intenção não reconhecida jamais vira recorte silencioso. E o efeito de
+   * montagem substitui `useSearchParams` pelo mesmo motivo de `/leads`: o hook
+   * exigiria fronteira <Suspense> na página cliente inteira por causa de um
+   * parâmetro, e a semântica desejada já é esta — a URL define a abertura, a
+   * pessoa assume a partir daí.
+   */
+  useEffect(() => {
+    if (!pedeCriar(lerIntencaoDaJanela())) return;
+    setEncaminhandoCriacao(true);
+    router.replace("/tasks?create=1");
+  }, [router]);
 
   const token = useCallback(
     async () =>
@@ -331,11 +374,38 @@ export default function CalendarPage() {
         title="Seu tempo comercial, em ordem"
         description="Atrasos em rosa, hoje em âmbar — tarefas, visitas e follow-ups em uma única linha do tempo."
         action={{
-          href: "/tasks",
+          // O botão dizia "Criar tarefa" e entregava a fila de tarefas, com o
+          // formulário fechado — a mesma promessa decorativa da URL. `?create=1`
+          // abre o painel que já existe lá; nenhum caminho novo.
+          href: "/tasks?create=1",
           label: "Criar tarefa",
           priority: "secondary",
         }}
       />
+
+      {/*
+       * Trocar de tela sozinha se lê como bug: a pessoa clicou em "Novo
+       * compromisso" na Agenda e a página mudou sem explicação. O aviso nomeia
+       * o que está acontecendo (o compromisso nasce em Tarefas) e o link é a
+       * saída manual caso a navegação do cliente não complete.
+       */}
+      {encaminhandoCriacao ? (
+        <div
+          role="status"
+          className="cc6-panel flex flex-wrap items-center justify-between gap-3 px-5 py-3"
+        >
+          <p className="min-w-0 text-sm text-[#e8eef8]">
+            <strong className="font-semibold">Novo compromisso</strong>{" "}
+            <span className="text-[#aab6ca]">
+              — o formulário fica em Tarefas, onde o compromisso é criado.
+              Abrindo lá para você.
+            </span>
+          </p>
+          <Link href="/tasks?create=1" className="atlas-button-secondary">
+            Abrir agora
+          </Link>
+        </div>
+      ) : null}
 
       {error ? (
         <AtlasRecoverableError
@@ -558,7 +628,12 @@ export default function CalendarPage() {
                   }
                   action={
                     window === "all" ? (
-                      <Link href="/tasks" className="atlas-button-primary">
+                      // Mesmo motivo do cabeçalho: quem chega aqui pela agenda
+                      // vazia pediu para criar, não para ver outra lista.
+                      <Link
+                        href="/tasks?create=1"
+                        className="atlas-button-primary"
+                      >
                         Criar tarefa
                       </Link>
                     ) : (

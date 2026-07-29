@@ -8,6 +8,7 @@ import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasRecoverableError, AtlasSkel
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import { DEFAULT_PIPELINE_STAGES, type PipelineStageDefinition, type PipelineStageKey } from "@/lib/atlas/pipeline-stages";
 import { DISCARD_REASONS } from "@/lib/atlas/discard-reasons";
+import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 import { conhecimentoDaEtapa, extrairRecusa } from "@/lib/crm/pipeline-guidance";
 
 /**
@@ -334,6 +335,29 @@ export default function PipelinePage() {
   const [dragOverStage, setDragOverStage] = useState<StageKey | null>(null);
   const [lastMove, setLastMove] = useState<{ moveId: string; leadId: string; leadName: string; from: StageKey; to: StageKey } | null>(null);
   const [preferencesHydrated, setPreferencesHydrated] = useState(false);
+  /**
+   * ── A PROMESSA DO CATÁLOGO ERA DECORATIVA ─────────────────────────────────
+   *
+   * `lib/atlas/navigation.ts` manda a sala de comando para cá por
+   * `/pipeline?focus=priority` e promete "avançar a oportunidade mais
+   * relevante". Medido em 2026-07-29: esta tela não lia parâmetro nenhum.
+   * Consequência concreta: o link abria o quadro no ÚLTIMO recorte gravado na
+   * sessão — que pode ser "Leads quentes" ordenado por valor — e a
+   * oportunidade prioritária ficava uma rolagem abaixo do herói, sem nada
+   * apontando para ela. O botão prometia resultado e entregava navegação.
+   *
+   * `true` só para quem chegou por esse link. É o que autoriza rolar a página
+   * e destacar o cartão; quem abre pelo menu não é arrastado para lugar nenhum.
+   */
+  const [chegouPelaPrioridade, setChegouPelaPrioridade] = useState(false);
+  /** O cartão "Próxima melhor ação" — destino da rolagem e do foco. */
+  const cartaoDaPrioridadeRef = useRef<HTMLElement | null>(null);
+  /**
+   * Rolar UMA vez. `nextBestAction` é recalculado a cada troca de filtro, de
+   * ordenação ou de carteira: sem esta trava, a página seria arrancada de onde
+   * a pessoa estava toda vez que ela mexesse em qualquer controle.
+   */
+  const jaRolouAtePrioridade = useRef(false);
   const [discardDraft, setDiscardDraft] = useState<DiscardDraft | null>(null);
   const [followUpDraft, setFollowUpDraft] = useState<FollowUpDraft | null>(null);
   const [saleDraft, setSaleDraft] = useState<SaleDraft | null>(null);
@@ -363,6 +387,26 @@ export default function PipelinePage() {
       window.sessionStorage.removeItem(PIPELINE_PREFERENCES_KEY);
     } finally {
       setPreferencesHydrated(true);
+    }
+
+    /**
+     * A URL VENCE A PREFERÊNCIA GRAVADA — e por isso é lida DEPOIS dela.
+     *
+     * Na ordem inversa, "Abrir prioridade" abriria no recorte antigo da sessão
+     * e o link seguiria decorativo. A ordenação entra junto porque a promessa é
+     * sobre QUAL negócio aparece primeiro: com `sort` gravado em "valor", o
+     * cartão do topo seria o mais caro, não o mais urgente.
+     *
+     * A leitura é a do catálogo (`lib/atlas/intencao-da-url`), com lista de
+     * chaves fechada, e o único alvo tratado é o que a navegação promete.
+     * Qualquer outro valor é ignorado e a tela abre exatamente como abriria
+     * pelo menu: parâmetro inventado na barra de endereço não pode recortar o
+     * quadro em silêncio.
+     */
+    if (alvoDaIntencao(lerIntencaoDaJanela(), "focar") === "priority") {
+      setFocus("prioridade");
+      setSort("prioridade");
+      setChegouPelaPrioridade(true);
     }
   }, []);
 
@@ -757,6 +801,31 @@ export default function PipelinePage() {
     };
   }, [proactiveSignals, stages, visibleLeads]);
 
+  /**
+   * ROLAR ATÉ A OPORTUNIDADE — a parte da promessa que nenhum filtro entrega.
+   *
+   * O catálogo promete abrir "com o negócio prioritário em foco", e o cartão
+   * dele nasce depois do herói, das métricas e da barra de filtros: quem chega
+   * pelo link cai no topo da página e ainda tem que procurar qual é o negócio.
+   *
+   * Só roda com a carteira já carregada, porque durante o `loading` o cartão
+   * nem existe no DOM — e a rolagem iria para o lugar errado.
+   */
+  useEffect(() => {
+    if (!chegouPelaPrioridade || loading || !nextBestAction) return;
+    if (jaRolouAtePrioridade.current) return;
+    const cartao = cartaoDaPrioridadeRef.current;
+    if (!cartao) return;
+    jaRolouAtePrioridade.current = true;
+    // Quem pediu menos animação no sistema chega ao mesmo destino, sem o deslize.
+    const semMovimento = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    cartao.scrollIntoView({ behavior: semMovimento ? "auto" : "smooth", block: "center" });
+    // Rolagem move a viewport, não o foco: sem isto, quem navega por teclado ou
+    // leitor de tela continuaria no início da página, que é justamente o "topo
+    // da lista" que a promessa manda evitar.
+    cartao.focus({ preventScroll: true });
+  }, [chegouPelaPrioridade, loading, nextBestAction]);
+
   const columnSignals = useMemo(() => {
     const map = new Map<StageKey, { stalled: number; rose: number; hot: number }>();
     for (const stage of stageData) {
@@ -920,7 +989,36 @@ export default function PipelinePage() {
             {focusOptions.map((option) => <button key={option.key} type="button" onClick={() => setFocus(option.key)} aria-pressed={focus === option.key} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${focus === option.key ? "border-sky-400/30 bg-sky-400/10 text-sky-200" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><span>{option.label}</span><span className={`rounded-full px-1.5 py-0.5 text-[9px] ${focus === option.key ? "bg-sky-300/15 text-sky-100" : "bg-white/[0.05] text-slate-500"}`}>{option.count}</span></button>)}
           </div>
         </div>
-        {nextBestAction ? <article className="atlas-kanban-next-best-action" data-kanban-next-best-action data-risk={nextBestAction.risk}>
+        {/* ── O RECORTE SE ANUNCIA ────────────────────────────────────────────
+            Chegar por link e cair num quadro filtrado sem aviso é o mesmo mal
+            do filtro invisível: a pessoa lê "recorte" como "a base encolheu",
+            ou pior, como "não há trabalho". O aviso diz de onde veio, o que foi
+            aplicado e qual negócio está destacado — e some sozinho assim que a
+            pessoa troca o filtro, porque aí a frase deixaria de ser verdade. */}
+        {chegouPelaPrioridade && focus === "prioridade" ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.06] px-4 py-3 text-xs leading-5 text-sky-100" role="status">
+            <span className="shrink-0 font-semibold uppercase tracking-[.12em] text-sky-300">Aberto na prioridade</span>
+            <span className="min-w-0 flex-1">
+              {loading
+                ? "Carregando a carteira para destacar a oportunidade mais relevante."
+                : nextBestAction
+                  ? <>Você veio de “Abrir prioridade”: o quadro está no recorte <strong>Minha prioridade</strong>, ordenado por prioridade inteligente, e <strong>{nextBestAction.lead.name || "a lead sem nome"}</strong> está destacada abaixo.</>
+                  : "Você veio de “Abrir prioridade”, mas nenhuma oportunidade aberta exige ação neste recorte. O quadro está filtrado — não vazio."}
+            </span>
+            <button type="button" onClick={() => setFocus("todas")} className="atlas-button-secondary shrink-0">Ver todas</button>
+            <button type="button" onClick={() => setChegouPelaPrioridade(false)} className="atlas-button-secondary shrink-0">Entendi</button>
+          </div>
+        ) : null}
+        {nextBestAction ? <article
+          ref={cartaoDaPrioridadeRef}
+          /* Fora da ordem de Tab (-1), mas alcançável por foco programático:
+             é assim que o cartão pode receber o foco vindo do link sem passar
+             a existir como parada extra para quem navega a tela inteira. */
+          tabIndex={-1}
+          className="atlas-kanban-next-best-action"
+          data-kanban-next-best-action
+          data-destaque-de-link={chegouPelaPrioridade && focus === "prioridade" ? "true" : undefined}
+          data-risk={nextBestAction.risk}>
           <div className="atlas-kanban-next-best-action-copy">
             <span className="atlas-kanban-next-best-action-eyebrow">Próxima melhor ação</span>
             <div className="mt-2 flex flex-wrap items-center gap-2">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
+import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -24,6 +25,29 @@ function memberState(member: Member): { tone: "neutral" | "danger" | "warning" |
   return { tone: "success", label: "Fluxo em dia" };
 }
 
+/** Como a estrutura é lida: na ordem da hierarquia ou por quem precisa de apoio. */
+type VisaoDaEquipe = "estrutura" | "desempenho";
+type EstadoDaCarteira = ReturnType<typeof memberState>;
+
+/* A régua de gravidade da visão de desempenho é a MESMA que já pinta a linha —
+   memberState. Um segundo peso, calculado só para ordenar, divergiria da cor
+   que a pessoa vê ao lado do nome, e carteira ordenada em desacordo com o
+   próprio selo é a classe de defeito que este repositório mais pagou. */
+const ordemDeGravidade: Record<EstadoDaCarteira["tone"], number> = { danger: 3, warning: 2, success: 1, neutral: 0 };
+
+/* Comparação em sequência, não soma ponderada: um peso inventado esconderia por
+   que alguém está no topo. Aqui a ordem é exatamente o que a linha mostra —
+   estado dominante, depois atraso, quente sem ação e sem próxima ação. */
+function comparaPorNecessidadeDeApoio(a: Member, b: Member): number {
+  const sinais = (member: Member): number[] => [ordemDeGravidade[memberState(member).tone], member.overdue, member.hotWithoutNextAction, member.withoutNextAction];
+  const ladoA = sinais(a);
+  const ladoB = sinais(b);
+  for (let indice = 0; indice < ladoA.length; indice += 1) {
+    if (ladoA[indice] !== ladoB[indice]) return ladoB[indice] - ladoA[indice];
+  }
+  return 0;
+}
+
 export default function BrokersPage() {
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,7 +62,44 @@ export default function BrokersPage() {
     setLoading(false);
   }, []);
   useEffect(() => { void load(); }, [load]);
+
+  const [visao, setVisao] = useState<VisaoDaEquipe>("estrutura");
+
+  /**
+   * A URL abre a visão de desempenho.
+   *
+   * O catálogo (lib/atlas/navigation.ts) promete, na ação primária "Ver
+   * desempenho", `/brokers?view=performance` com o resultado "Direcionar apoio
+   * ao time que mais precisa". Até 2026-07-29 esta tela não lia parâmetro
+   * nenhum: quem clicava caía na mesma lista em ordem de cadastro e tinha que
+   * achar o gargalo no olho. A promessa era decorativa — e não aparecia em
+   * teste, porque a tela ABRIA, só não fazia o que o botão dizia.
+   *
+   * `window.location.search` no efeito de montagem em vez de useSearchParams:
+   * é a semântica desejada (a URL define o estado inicial, as interações da
+   * pessoa assumem a partir daí) e não exige fronteira <Suspense> aqui.
+   */
+  useEffect(() => {
+    // Qualquer outro valor de `view` é ignorado de propósito: parâmetro que a
+    // navegação não promete não pode virar recorte silencioso.
+    if (alvoDaIntencao(lerIntencaoDaJanela(), "visao") === "performance") setVisao("desempenho");
+  }, []);
+
   const memberMap = useMemo(() => new Map((data?.members ?? []).map((member) => [member.id, member])), [data?.members]);
+
+  /* Desempenho ORDENA, não filtra. Esconder quem está em dia encurtaria a
+     lista, e lista curta se lê como "o time sumiu" em vez de "está recortado" —
+     a pior mensagem possível numa tela cujo objetivo é direcionar apoio. */
+  const membrosNaOrdemDaVisao = useMemo(() => {
+    const pessoas = data?.members ?? [];
+    return visao === "desempenho" ? [...pessoas].sort(comparaPorNecessidadeDeApoio) : pessoas;
+  }, [data?.members, visao]);
+
+  /* Só entre pessoas ativas: carteira inativa não tem apoio a receber. */
+  const carteirasComBloqueio = useMemo(
+    () => (data?.members ?? []).filter((member) => member.active && memberState(member).tone !== "success").length,
+    [data?.members],
+  );
   function openCopilot(member: Member) { window.dispatchEvent(new CustomEvent("atlas:open-copilot", { detail: { prompt: `Prepare um plano de apoio para uma carteira comercial com ${member.portfolio} leads ativos, ${member.hotLeads} quentes, ${member.overdue} atrasados e ${member.withoutNextAction} sem próxima ação. Não compare pessoas, não envie mensagens e não altere registros.`, context: { module: "team-conversion", role: member.role } } })); }
 
   const summary = data?.summary;
@@ -52,7 +113,9 @@ export default function BrokersPage() {
   return (
     <div className="space-y-4 pb-10" data-evolution-phase="45" data-team-layout="conversion-support">
       <PageHeader
-        eyebrow="Equipe · Apoio à conversão"
+        /* Quem chega pelo link cai no topo da página: o recorte precisa ser
+           legível aqui, não só na seção lá embaixo. */
+        eyebrow={visao === "desempenho" ? "Equipe · Visão de desempenho" : "Equipe · Apoio à conversão"}
         title="Ajude cada carteira a avançar"
         description="Diretoria e gestores enxergam apenas a própria estrutura. Atrasos e ausência de próxima ação orientam apoio — não há ranking punitivo de pessoas."
         action={{ href: "/distribution", label: "Distribuir leads" }}
@@ -112,10 +175,40 @@ export default function BrokersPage() {
               <p className="cc6-eyebrow">Acesso por nível</p>
               <h2 id="team-structure-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Estrutura do time</h2>
             </div>
-            {!loading && data?.members.length ? (
-              <span className="cc6-chip" title="Responsável direto, função e sinais da carteira">{data.members.length} pessoas</span>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* O mesmo controle que o link aciona: chegando por /brokers?view=performance,
+                  a pessoa vê qual visão está ligada e volta para a hierarquia num clique. */}
+              <div className="flex gap-1.5" role="group" aria-label="Ordem da estrutura do time">
+                {([["estrutura", "Hierarquia"], ["desempenho", "Desempenho"]] as const).map(([chave, label]) => (
+                  <button
+                    key={chave}
+                    type="button"
+                    onClick={() => setVisao(chave)}
+                    aria-pressed={visao === chave}
+                    className={`cc6-chip shrink-0 cursor-pointer transition-colors ${focusRing} ${visao === chave ? "border-[color:var(--atlas-accent)]! text-[#e8eef8]!" : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {!loading && data?.members.length ? (
+                <span className="cc6-chip" title="Responsável direto, função e sinais da carteira">{data.members.length} pessoas</span>
+              ) : null}
+            </div>
           </header>
+          {visao === "desempenho" ? (
+            <p className="mt-2 text-xs leading-5 text-[#6b7890]">
+              {loading || !data?.members.length ? (
+                // Enquanto não mediu, não afirma quantas carteiras têm bloqueio:
+                // zero por falta de dado seria lido como "está todo mundo em dia".
+                "Ordenada por quem mais precisa de apoio."
+              ) : carteirasComBloqueio > 0 ? (
+                <>Ordenada por quem mais precisa de apoio — <strong className="cc6-num cc6-warn font-semibold">{carteirasComBloqueio}</strong> de {data.members.length} com bloqueio observável no topo. Ninguém foi escondido.</>
+              ) : (
+                "Ordenada por quem mais precisa de apoio — nenhuma carteira com bloqueio observável agora."
+              )}
+            </p>
+          ) : null}
           <div className="cc6-hairline mt-3" aria-busy={loading}>
             {loading ? (
               <div className="grid gap-2 py-4">{[1, 2, 3, 4, 5].map((row) => <AtlasSkeleton key={row} className="h-14" />)}</div>
@@ -129,7 +222,7 @@ export default function BrokersPage() {
                 />
               </div>
             ) : (
-              data.members.map((member) => {
+              membrosNaOrdemDaVisao.map((member) => {
                 const leader = member.reportsTo ? memberMap.get(member.reportsTo) : null;
                 const state = memberState(member);
                 return (

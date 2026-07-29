@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { lerIntencaoDaJanela, pedeCriar } from "@/lib/atlas/intencao-da-url";
 import { supabase } from "@/lib/supabase";
 
 type RecordRow = { id: string; lead_id: string; broker_id: string | null; external_company: string | null; external_project: string | null; estimated_value: number | null; purchase_date: string | null; reason_summary: string | null; evidence_status: string; director_notes: string | null; created_at: string };
@@ -26,6 +27,54 @@ const evidenceInfo = (status: string) => EVIDENCE[status] ?? { label: status, to
 export default function ExternalSalesPage() {
   const [data, setData] = useState<Payload | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [saving, setSaving] = useState("");
   const [registration,setRegistration]=useState({leadId:"",reason:"",externalCompany:"",externalProject:""});
+  const [abertoParaRegistrar, setAbertoParaRegistrar] = useState(false);
+
+  /**
+   * A intenção que vinha na URL e era jogada fora.
+   *
+   * `lib/atlas/navigation.ts` promete "Registrar compra externa" →
+   * `/external-sales?create=1`, com o resultado "classificar a perda comercial
+   * com contexto". Medido em 2026-07-29: esta tela nunca leu o parâmetro. O
+   * formulário de registro já nasce montado, então a promessa não estava
+   * quebrada por completo — mas ele fica ABAIXO do cabeçalho e da régua de
+   * números, e quem clicava no botão chegava no topo, sem nada em foco, tendo
+   * que caçar o campo que já havia pedido. Promessa decorativa não aparece em
+   * teste, porque a tela ABRE: só não faz o que o botão diz.
+   *
+   * Não abrimos caminho novo — a tela não tem estado de "criando" para ligar,
+   * e inventar um duplicaria o formulário que já está sempre disponível. O que
+   * a intenção faz é o que faltava: trazer o registro à vista e assumir o foco.
+   *
+   * A leitura vem do módulo compartilhado em vez de um `URLSearchParams` local
+   * porque nove telas repetindo a mesma regra é a classe de defeito que este
+   * repositório mais pagou. `create` com outro valor, parâmetro ausente ou URL
+   * malformada devolvem `null` lá dentro e a tela abre exatamente como sempre
+   * abriu — intenção não reconhecida nunca vira recorte silencioso.
+   *
+   * `window.location.search` em vez de `useSearchParams` pelo mesmo motivo de
+   * `/leads`: o hook exigiria fronteira <Suspense> nesta página cliente por um
+   * parâmetro, e o efeito de montagem já tem a semântica desejada — a URL
+   * define o estado inicial e a pessoa assume a partir daí.
+   */
+  useEffect(() => {
+    if (pedeCriar(lerIntencaoDaJanela())) setAbertoParaRegistrar(true);
+  }, []);
+
+  /**
+   * Formulário fora da vista é o mesmo que formulário fechado. O foco roda num
+   * efeito separado para acontecer DEPOIS que o aviso de "aberto pelo link"
+   * entrou no DOM — senão o cálculo do centro da tela usaria uma altura que
+   * muda logo em seguida. Só na chegada por link: quem abriu pelo menu continua
+   * lendo a régua de números sem ter o cursor puxado.
+   */
+  useEffect(() => {
+    if (!abertoParaRegistrar) return;
+    const campo = document.getElementById("external-lead");
+    if (!(campo instanceof HTMLSelectElement)) return;
+    campo.scrollIntoView({ block: "center", behavior: "smooth" });
+    campo.focus({ preventScroll: true });
+  }, [abertoParaRegistrar]);
+
   const load = useCallback(async () => { const token = (await supabase.auth.getSession()).data.session?.access_token || ""; const response = await fetch("/api/v1/crm/external-sales", { headers: { Authorization: `Bearer ${token}` } }); const result = await response.json(); if (!response.ok) setError(result.error?.message || "Falha ao carregar."); else setData(result.data); setLoading(false); }, []);
   useEffect(() => { void load(); }, [load]);
   const leadMap = useMemo(() => new Map((data?.leads ?? []).map((item) => [item.id, item])), [data]); const profileMap = useMemo(() => new Map((data?.profiles ?? []).map((item) => [item.id, item.full_name || "Corretor"])), [data]);
@@ -72,13 +121,32 @@ export default function ExternalSalesPage() {
           <p className="cc6-eyebrow">Registro gerencial</p>
           <h2 id="external-register-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Marcar compra em outro lugar</h2>
           <p className="mt-1 text-xs leading-5 text-[#6b7890]">Selecione uma lead do seu time e preserve o motivo comercial para aprendizado.</p>
+          {/* Quem chega pelo link não escolheu nada: dizer de onde veio o salto
+              evita que a rolagem automática pareça a tela se mexendo sozinha, e
+              deixa explícito que o registro abaixo é a tela inteira — nada da
+              auditoria foi filtrado por causa do parâmetro. */}
+          {abertoParaRegistrar ? (
+            <p className="cc6-hairline mt-3 pt-3 text-[11px] leading-4 text-[#6b7890]">
+              <strong className="font-medium text-[#e8eef8]">Registro aberto pelo link que trouxe você até aqui</strong>{" "}
+              — o campo abaixo já está em foco. A auditoria comercial segue completa, sem recorte.
+            </p>
+          ) : null}
         </header>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <select className={FIELD_CLASS} aria-label="Lead do time" value={registration.leadId} onChange={(e)=>setRegistration({...registration,leadId:e.target.value})}><option value="">Selecione a lead</option>{data?.candidates.map((lead)=><option key={lead.id} value={lead.id}>{lead.name||"Lead"}</option>)}</select>
+          <select id="external-lead" className={FIELD_CLASS} aria-label="Lead do time" value={registration.leadId} onChange={(e)=>setRegistration({...registration,leadId:e.target.value})}><option value="">Selecione a lead</option>{data?.candidates.map((lead)=><option key={lead.id} value={lead.id}>{lead.name||"Lead"}</option>)}</select>
           <input className={FIELD_CLASS} placeholder="Empresa externa (opcional)" value={registration.externalCompany} onChange={(e)=>setRegistration({...registration,externalCompany:e.target.value})}/>
           <input className={FIELD_CLASS} placeholder="Projeto comprado (opcional)" value={registration.externalProject} onChange={(e)=>setRegistration({...registration,externalProject:e.target.value})}/>
           <textarea className={`${FIELD_CLASS} min-h-20`} placeholder="Por que o cliente comprou fora?" value={registration.reason} onChange={(e)=>setRegistration({...registration,reason:e.target.value})}/>
-          <div className="flex justify-end md:col-span-2">
+          <div className="flex flex-wrap items-center justify-end gap-3 md:col-span-2">
+            {/* O link promete um formulário utilizável. Se a lista de leads
+                elegíveis vier vazia, o botão fica desabilitado sem motivo
+                aparente e a pessoa conclui que o caminho está quebrado — lista
+                vazia sem explicação se lê como "não há nada aqui". */}
+            {!loading && data && data.candidates.length === 0 ? (
+              <p className="min-w-56 flex-1 text-[11px] leading-4 text-[#6b7890]">
+                Nenhuma lead elegível no momento: a seleção traz só leads do seu time que ainda não estão como ganho nem já marcadas como compra externa.
+              </p>
+            ) : null}
             <button disabled={saving==="register"||!registration.leadId||registration.reason.trim().length<10} onClick={()=>void register()} className="atlas-button-primary disabled:opacity-40">Registrar perfil comprador</button>
           </div>
         </div>
