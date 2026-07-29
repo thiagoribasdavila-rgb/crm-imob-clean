@@ -3,6 +3,7 @@ import type {
   OperationalModuleId,
 } from "./live-operational-health";
 import { getLiveDevelopmentWriteHomologation } from "./live-development-write-homologation";
+import { acaoPrimariaDoModulo } from "./page-registry";
 
 export const ATLAS_LIVE_WRITE_READINESS_PREVIOUS_VERSION =
   "live-write-readiness-v2" as const;
@@ -31,6 +32,22 @@ type WriteCapability = Omit<OperationalWriteReadiness, "state"> & {
 
 const developmentHomologation = getLiveDevelopmentWriteHomologation();
 
+/**
+ * PARA ONDE ESTE CARTÃO LEVA — vem do catálogo, não da mão.
+ *
+ * `/pipeline?focus=priority` e `/tasks?create=1` estavam escritos aqui como
+ * texto. São exatamente as promessas que `page-registry` declara para esses
+ * dois módulos, e uma quarta cópia de um href é uma quarta chance de o
+ * parâmetro se perder — foi assim que "/pipeline" ficou sem `?focus=priority`
+ * em um dos três catálogos e ninguém viu.
+ *
+ * O RÓTULO continua local de propósito: aqui ele descreve a ESCRITA que está
+ * pronta ("Abrir prioridades", "Nova tarefa"), não a ação primária da tela.
+ * São perguntas diferentes; só o destino era resposta repetida.
+ */
+const destinoDoModulo = (id: Parameters<typeof acaoPrimariaDoModulo>[0]) =>
+  acaoPrimariaDoModulo(id).href;
+
 const WRITE_CAPABILITIES: Readonly<Record<OperationalModuleId, WriteCapability>> = {
   leads: {
     state: "ready",
@@ -47,7 +64,7 @@ const WRITE_CAPABILITIES: Readonly<Record<OperationalModuleId, WriteCapability>>
     state: "ready",
     label: "Movimentação pronta",
     detail: "Mover com conflito, histórico e reversão segura",
-    href: "/pipeline?focus=priority",
+    href: destinoDoModulo("pipeline"),
     actionLabel: "Abrir prioridades",
     mode: "protected-server-boundary",
     operations: ["move", "reverse"],
@@ -58,7 +75,7 @@ const WRITE_CAPABILITIES: Readonly<Record<OperationalModuleId, WriteCapability>>
     state: "ready",
     label: "Ação pronta",
     detail: "Criar, concluir e reagendar com escopo",
-    href: "/tasks?create=1",
+    href: destinoDoModulo("tasks-and-agenda"),
     actionLabel: "Nova tarefa",
     mode: "rls-direct",
     operations: ["create", "complete", "reschedule"],

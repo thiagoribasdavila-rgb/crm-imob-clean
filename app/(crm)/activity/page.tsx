@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 import {
   activityCategoryLabels,
   type ActivityCategory,
@@ -148,6 +149,32 @@ export default function ActivityPage() {
   const [query, setQuery] = useState("");
   const [live, setLive] = useState("connecting");
   const [nowMs, setNowMs] = useState(0);
+
+  /**
+   * A INTENÇÃO QUE VEIO NO LINK.
+   *
+   * O contrato desta página (lib/atlas/core-v2/page-registry.ts) promete
+   * "Ver atividade recente" → /activity?view=today. Até 2026-07-29 a promessa
+   * era decorativa em dois níveis: a chave era `period`, fora do vocabulário
+   * fechado, e a tela não lia parâmetro nenhum — abria sempre em "7 dias" e
+   * mostrava um conjunto de eventos diferente do prometido.
+   *
+   * O valor é conferido contra PERIODS, a MESMA lista que desenha os chips:
+   * valor inventado na barra de endereço não pode virar recorte silencioso,
+   * porque uma linha do tempo vazia se lê como "não aconteceu nada" — e aqui
+   * isso é pior que em qualquer lista, já que a página existe justamente para
+   * provar que algo aconteceu.
+   *
+   * Roda uma vez na montagem: a URL define o estado inicial, e os chips assumem
+   * a partir daí. `filtersDirty` já compara com "week", então o recorte vindo
+   * do link aparece marcado — filtro invisível é a diferença entre "a lista
+   * está filtrada" e "o histórico sumiu".
+   */
+  useEffect(() => {
+    const alvo = alvoDaIntencao(lerIntencaoDaJanela(), "visao");
+    const escolhido = PERIODS.find(([chave]) => chave === alvo);
+    if (escolhido) setPeriod(escolhido[0]);
+  }, []);
 
   // Relógio de 1min: mantém "há 2h"/HOJE frescos sem tocar nos fetches.
   useEffect(() => {
