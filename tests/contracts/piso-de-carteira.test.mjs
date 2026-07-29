@@ -119,3 +119,19 @@ test("o escopo de equipe também não é pulável por parâmetro", () => {
   assert.match(rotaLeads, /if \(teamOwner\) \{[\s\S]{0,900}?if \(soAMinhaCarteira\) \{[\s\S]{0,200}?"TEAM_OUT_OF_SCOPE"/,
     "quem só enxerga a própria carteira não tem equipe para consultar");
 });
+
+test("o Kanban declara o recorte que aplicou", () => {
+  /**
+   * A rota já aplicava o piso certo — provado no navegador: um corretor recebe
+   * 195 (a carteira dele) e os parâmetros de dono são ignorados. Mas não DIZIA
+   * qual recorte aplicou, então para auditá-la de fora era preciso reler o
+   * código.
+   *
+   * A listagem publica `escopo` desde sempre, e é por isso que ela é
+   * auditável. É a diferença entre "está certo" e "dá para provar que está
+   * certo" — e foi a falta dessa prova que atrasou a descoberta dos dois
+   * vazamentos irmãos de 2026-07-29.
+   */
+  assert.match(rotaPipeline, /escopo: lideranca \? "organizacao" : "carteira"/,
+    "o recorte aplicado precisa viajar na resposta, como já viaja na listagem");
+});

@@ -295,6 +295,13 @@ const MUTACOES = [
     end if;`,
   },
   {
+    id: "M37", arquivo: "app/api/v1/pipeline/route.ts",
+    quebra: "o Kanban para de declarar o recorte aplicado",
+    dor: "Volta a ser impossível auditar de fora qual fronteira a rota aplicou — foi a falta dessa declaração que atrasou a descoberta de dois vazamentos.",
+    de: `      escopo: lideranca ? "organizacao" : "carteira",`,
+    para: ``,
+  },
+  {
     id: "M36", arquivo: "app/api/v1/crm/leads/route.ts",
     quebra: "o escopo de equipe volta a ser pedível por corretor",
     dor: "Hoje devolve 0 por sorte do dado (profiles.team nulo). Com equipes configuradas, um corretor lê a equipe inteira de um gerente qualquer.",

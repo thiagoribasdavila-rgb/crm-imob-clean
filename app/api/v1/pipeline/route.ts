@@ -139,6 +139,21 @@ export async function GET(request: Request) {
     };
 
     return NextResponse.json({
+      // ── O RECORTE SE DECLARA ────────────────────────────────────────────
+      //
+      // A rota já aplicava o piso corretamente — provado no navegador em
+      // 2026-07-29: um corretor recebe 195 leads (a carteira dele) e os
+      // parâmetros de dono são ignorados. O que faltava era DIZER isso.
+      //
+      // A listagem de leads publica `escopo` desde sempre, e é por isso que dá
+      // para auditá-la de fora. Aqui não dava: para saber qual recorte foi
+      // aplicado era preciso reler o código. Isso é a diferença entre "está
+      // certo" e "dá para provar que está certo" — e foi a falta dessa prova
+      // que me fez levar horas para achar os dois vazamentos irmãos deste dia.
+      //
+      // Declarar para quem já é o dono do recorte não vaza nada: a pessoa
+      // recebe a informação de qual fronteira se aplica a ela mesma.
+      escopo: lideranca ? "organizacao" : "carteira",
       leads,
       firstContactSla,
       stages: mergePipelineStageSettings(settings),
