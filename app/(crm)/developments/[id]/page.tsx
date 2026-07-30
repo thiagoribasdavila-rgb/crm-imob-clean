@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
+import { ComissaoDoProjetoPanel } from "@/components/atlas/ComissaoDoProjetoPanel";
 
 type Metrics = {
   inventoryTotal: number; available: number; sold: number; reserved: number;
@@ -87,6 +88,20 @@ export default function DevelopmentCommandPage() {
         <AtlasMetric label="VGV vendido" value={brl.format(m.soldVgv)} detail={`${m.sold} unidades concluídas`} trend="SELL-OUT" tone="green" />
         <AtlasMetric label="Forecast" value={brl.format(m.forecast)} detail={`${m.opportunities} oportunidades`} trend="ATLAS AI" tone="blue" />
         <AtlasMetric label="ROI marketing" value={m.campaignSpend ? `${m.roi.toFixed(0)}%` : "—"} detail={`${m.campaignLeads} leads atribuídos`} trend="GROWTH" tone="amber" />
+      </section>
+
+      {/*
+        COMISSAO E PREMIO DESTE PROJETO.
+
+        A rota `/api/v1/developments/[id]/commission` foi construida hoje e ficou
+        ORFA — nenhuma tela a consumia, e `commission_rules` seguia com zero linhas.
+        Foi o portao `rotas-orfas:check`, escrito minutos depois, que pegou.
+
+        O painel se esconde sozinho para quem nao e direcao: a rota responde 403, e
+        comissao e dinheiro de terceiro — quem vende nao define quanto ganha.
+      */}
+      <section aria-label="Comissao e premio deste projeto">
+        <ComissaoDoProjetoPanel developmentId={id} />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
