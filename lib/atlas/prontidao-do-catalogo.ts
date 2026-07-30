@@ -12,15 +12,27 @@
  *   developer_payment_flow_rules .................. 0 linhas
  *
  * Consequência medida: o motor de compatibilidade recomenda algo para **12 de
- * 482 leads**. Não por falta de resposta do cliente — por falta de preço na
- * oferta.
+ * 482 leads**.
  *
- * E a inversão é o que dói:
+ * ⚠ CORREÇÃO DE 2026-07-30 — a versão anterior deste comentário dizia que isso
+ * NÃO era falta de resposta do cliente, e sim falta de preço na oferta. Estava
+ * errado, e o erro custou horas de prioridade mal dirigida:
  *
- *   Perdizes .... 174 de demanda revelada ·  1 empreendimento · 0 tipologias
- *   Aclimação ...   0 de demanda           ·  1 empreendimento · 6 tipologias
+ *   leads na organização ............................ 482
+ *   com bairro DECLARADO (preferred_neighborhoods) ....  6
+ *   vinculadas a um empreendimento .................. 192  (174 Inside Perdizes)
  *
- * O único empreendimento com catálogo completo é o único que ninguém procura.
+ * `Bairro` é o critério de MAIOR peso do motor (18, decisivo) e está sem resposta
+ * para 476 clientes porque o cliente nunca declarou. Preço de catálogo não
+ * conserta isso. Prova viva: o Spin Mood recebeu preço, 30 unidades e bairro em
+ * 2026-07-30, e a recomendação foi de 12 para **13** — não para 482.
+ *
+ * A inversão que este módulo nomeia é real, mas é de VÍNCULO, não de procura:
+ *
+ *   Perdizes .... 174 leads VINCULADAS ·  1 empreendimento · 0 tipologias
+ *   Aclimação ...   0 vinculadas       ·  1 empreendimento · 6 tipologias
+ *
+ * O único empreendimento com catálogo completo é o único sem lead vinculada.
  *
  * ── POR QUE ISTO É BLOQUEIO, E NÃO MÉTRICA ──────────────────────────────────
  *
@@ -29,10 +41,15 @@
  * preço impede mais que verba esgotada: sem verba o corretor trabalha o que já
  * entrou; sem preço ele não tem o que dizer a ninguém.
  *
- * A assimetria decide a ordem da ação: preencher preço de UM empreendimento
- * destrava 482 leads de uma vez; perguntar orçamento destrava um cliente por
- * ligação. Por isso o bloqueio nomeia o empreendimento com mais demanda e sem
- * preço — não "cadastre preços", que é conselho, mas "este aqui, e destrava tanto".
+ * A ordem da ação vem do VÍNCULO, não de uma promessa de totalidade: o bloqueio
+ * nomeia o empreendimento com mais leads já vinculadas e sem preço, porque são
+ * essas as leads cuja recomendação o preço destrava. Não é "cadastre preços",
+ * que é conselho; é "este aqui, e são tantas leads".
+ *
+ * ⚠ Esta parágrafo dizia "preencher preço de UM empreendimento destrava 482 leads
+ * de uma vez". Era falso e foi medido como falso: preço é um critério entre
+ * catorze, e o de maior peso (`Bairro`, 18, decisivo) depende de o cliente
+ * responder. Prometer totalidade aqui é o que mandou o dono para a tarefa errada.
  *
  * ── A FORMA É A QUE A CENTRAL JÁ DESENHA ────────────────────────────────────
  *
@@ -45,7 +62,7 @@
 export type BloqueioDoCatalogo = {
   codigo:
     | "catalogo_sem_preco"
-    | "demanda_sem_oferta_cadastrada"
+    | "vinculo_sem_oferta_cadastrada"
     | "estoque_sem_unidade"
     | "catalogo_nao_medido";
   gravidade: "critical" | "attention";
@@ -67,8 +84,17 @@ export type CatalogoMedido = {
   empreendimentos: EmpreendimentoMedido[] | null;
   /** Unidades contáveis somadas (units + inventory_units + properties). `null` = não medido. */
   unidades: number | null;
-  /** Demanda revelada por bairro, do que os leads pedem. `null` = não medido. */
-  demandaPorBairro?: Record<string, number> | null;
+  /**
+   * Leads VINCULADAS a um empreendimento, agrupadas pelo bairro dele.
+   * `null` = não medido.
+   *
+   * NÃO é bairro pedido pelo cliente. Vínculo vem da campanha de origem; pedido
+   * vem de `preferred_neighborhoods`, que em 2026-07-30 existia em **6 de 482**
+   * leads. Trocar um pelo outro faz o bloqueio prometer destravar 482 quando
+   * destrava 13 — foi exatamente o que aconteceu, e o nome antigo do campo
+   * (`demandaPorBairro`) era metade da causa.
+   */
+  leadsVinculadasPorBairro?: Record<string, number> | null;
 };
 
 /**
@@ -112,18 +138,18 @@ export function bloqueiosDoCatalogo(medido: CatalogoMedido): BloqueioDoCatalogo[
 
   if (comPreco.length === 0) {
     /**
-     * O empreendimento a nomear é o de MAIOR demanda, não o primeiro da lista.
-     * Sem a demanda medida, cai no que tem mais tipologias — cadastrar preço onde
+     * O empreendimento a nomear é o de MAIS LEADS VINCULADAS, não o primeiro da
+     * lista. Sem essa contagem, cai no que tem mais tipologias — cadastrar preço onde
      * já existe tipologia é menos trabalho que começar do zero.
      */
-    const demanda = medido.demandaPorBairro ?? null;
+    const vinculadas = medido.leadsVinculadasPorBairro ?? null;
     const prioritario = [...empreendimentos].sort((a, b) => {
-      const da = demanda?.[String(a.bairro ?? "")] ?? -1;
-      const db = demanda?.[String(b.bairro ?? "")] ?? -1;
+      const da = vinculadas?.[String(a.bairro ?? "")] ?? -1;
+      const db = vinculadas?.[String(b.bairro ?? "")] ?? -1;
       return db - da || b.tipologias - a.tipologias;
     })[0];
 
-    const quantos = demanda?.[String(prioritario.bairro ?? "")] ?? null;
+    const quantos = vinculadas?.[String(prioritario.bairro ?? "")] ?? null;
     const alvo = prioritario.nome || prioritario.bairro || prioritario.id;
 
     bloqueios.push({
@@ -132,46 +158,60 @@ export function bloqueiosDoCatalogo(medido: CatalogoMedido): BloqueioDoCatalogo[
       resumo:
         `Nenhum dos ${contar(empreendimentos.length, "empreendimento", "empreendimentos")} tem preço cadastrado. ` +
         "Sem preço, a compatibilidade não recomenda imóvel para lead nenhuma.",
+      /**
+       * O texto NÃO promete destravar o catálogo inteiro, e não chama vínculo de
+       * procura. As duas promessas estavam aqui e as duas eram falsas: preço é um
+       * critério entre catorze, e `Bairro` — o de maior peso — depende de o
+       * cliente responder, não de o catálogo ser preenchido.
+       */
       acao:
         quantos !== null && quantos > 0
-          ? `Comece por ${alvo}: ${contar(quantos, "lead procura", "leads procuram")} esse bairro. ` +
-            "Preencher o preço de um empreendimento destrava todos os clientes de uma vez; " +
-            "perguntar orçamento destrava um por ligação."
-          : `Comece por ${alvo}. Preencher o preço de um empreendimento destrava todos os clientes ` +
-            "de uma vez; perguntar orçamento destrava um por ligação.",
+          ? `Comece por ${alvo}: ${contar(quantos, "lead já está vinculada", "leads já estão vinculadas")} a ele. ` +
+            "Vínculo é origem de campanha, não é bairro pedido pelo cliente — o preço destrava a " +
+            "recomendação dessas leads, não a do catálogo inteiro."
+          : `Comece por ${alvo}. Sem preço ele não entra em recomendação nenhuma, ` +
+            "e com preço entra apenas para quem já tiver respondido os critérios decisivos.",
     });
   }
 
   /**
-   * A INVERSÃO: bairro com demanda e sem oferta cadastrada, existindo ao mesmo
-   * tempo um empreendimento cadastrado onde ninguém procura. Isolado, nenhum dos
-   * dois é notícia; juntos, dizem onde o cadastro deveria ter começado.
+   * A INVERSÃO: bairro com leads VINCULADAS e sem oferta cadastrada, existindo ao
+   * mesmo tempo um empreendimento cadastrado onde não há lead nenhuma. Isolado,
+   * nenhum dos dois é notícia; juntos, dizem onde o cadastro deveria ter começado.
+   *
+   * O nome antigo deste bloqueio era `demanda_sem_oferta_cadastrada`, e o texto
+   * dizia "N leads procuram X". Nenhuma das duas coisas era verdade: o número
+   * conta vínculo de campanha, não pedido do cliente — que existia em 6 de 482
+   * leads. O nome era metade da causa, então o nome mudou junto.
    */
-  const demanda = medido.demandaPorBairro;
-  if (demanda) {
+  const vinculadas = medido.leadsVinculadasPorBairro;
+  if (vinculadas) {
     const bairrosComOferta = new Set(
       empreendimentos
         .filter((e) => e.tipologias > 0)
         .map((e) => String(e.bairro ?? "").toLowerCase().trim())
         .filter(Boolean),
     );
-    const procuradoSemOferta = Object.entries(demanda)
+    const vinculadoSemOferta = Object.entries(vinculadas)
       .filter(([bairro, n]) => n > 0 && !bairrosComOferta.has(bairro.toLowerCase().trim()))
       .sort((a, b) => b[1] - a[1])[0];
 
-    const ofertaSemProcura = empreendimentos.find(
-      (e) => e.tipologias > 0 && (demanda[String(e.bairro ?? "")] ?? 0) === 0,
+    const ofertaSemVinculo = empreendimentos.find(
+      (e) => e.tipologias > 0 && (vinculadas[String(e.bairro ?? "")] ?? 0) === 0,
     );
 
-    if (procuradoSemOferta && ofertaSemProcura) {
+    if (vinculadoSemOferta && ofertaSemVinculo) {
       bloqueios.push({
-        codigo: "demanda_sem_oferta_cadastrada",
+        codigo: "vinculo_sem_oferta_cadastrada",
         gravidade: "critical",
         resumo:
-          `${contar(procuradoSemOferta[1], "lead procura", "leads procuram")} ${procuradoSemOferta[0]} ` +
-          `e não há tipologia cadastrada lá — enquanto ${ofertaSemProcura.nome || ofertaSemProcura.bairro} ` +
-          "tem o catálogo completo e nenhuma procura.",
-        acao: `Cadastre as tipologias de ${procuradoSemOferta[0]}: o esforço de cadastro está no lugar sem demanda.`,
+          `${contar(vinculadoSemOferta[1], "lead está vinculada", "leads estão vinculadas")} a ` +
+          `${vinculadoSemOferta[0]} e não há tipologia cadastrada lá — enquanto ` +
+          `${ofertaSemVinculo.nome || ofertaSemVinculo.bairro} tem o catálogo completo e nenhuma ` +
+          "lead vinculada.",
+        acao:
+          `Cadastre as tipologias de ${vinculadoSemOferta[0]}: o esforço de cadastro está no lugar ` +
+          "onde não há lead alguma.",
       });
     }
   }

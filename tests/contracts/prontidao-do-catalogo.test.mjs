@@ -8,9 +8,14 @@
  * todas de UM único empreendimento; `units`, `inventory_units` e `properties`
  * têm zero linhas. O motor de compatibilidade recomenda para **12 de 482 leads**.
  *
- * E a inversão: Perdizes tem 174 de demanda revelada e ZERO tipologias;
- * Aclimação tem ZERO demanda e as 6 tipologias. O único empreendimento com
- * catálogo completo é o único que ninguém procura.
+ * E a inversão: Perdizes tem 174 leads VINCULADAS e ZERO tipologias; Aclimação
+ * tem ZERO vinculadas e as 6 tipologias. O único empreendimento com catálogo
+ * completo é o único sem lead alguma.
+ *
+ * ⚠ Vínculo NÃO é procura. Este cabeçalho dizia "174 de demanda revelada" e o
+ * texto do produto dizia "174 leads procuram esse bairro" — medido em
+ * 2026-07-30, bairro DECLARADO existe em 6 das 482 leads. Os 174 vieram das
+ * campanhas do Inside Perdizes.
  *
  * Nada disso aparecia em tela. A central tinha fila de bloqueios alimentada só
  * pela prontidão da Meta — e catálogo sem preço impede mais que verba esgotada:
@@ -32,7 +37,7 @@ const REAL = {
     { id: "d", nome: "Sem bairro", bairro: null, temPreco: false, tipologias: 0, tipologiasComPreco: 0 },
   ],
   unidades: 0,
-  demandaPorBairro: { Perdizes: 174, Paraíso: 11, Aclimação: 0 },
+  leadsVinculadasPorBairro: { Perdizes: 174, Paraíso: 11, Aclimação: 0 },
 };
 
 const codigos = (bs) => bs.map((b) => b.codigo);
@@ -44,23 +49,75 @@ test("o catálogo real de hoje produz o bloqueio de preço, e ele é crítico", 
   assert.equal(preco.gravidade, "critical");
 });
 
-test("a ação NOMEIA o empreendimento de maior demanda, não o primeiro da lista", () => {
+test("a ação NOMEIA o empreendimento com mais leads vinculadas, não o primeiro da lista", () => {
   /**
-   * "Cadastre preços" é conselho. "Comece por Inside Perdizes, 174 leads procuram
-   * esse bairro" é trabalho. A ordenação por demanda é a propriedade — sem ela o
-   * diretor cadastra o primeiro que vê, que é o que ninguém procura.
+   * "Cadastre preços" é conselho. "Comece por Inside Perdizes, 174 leads já estão
+   * vinculadas a ele" é trabalho. A ordenação é a propriedade — sem ela o diretor
+   * cadastra o primeiro que vê, que é o que não tem lead nenhuma.
    */
   const acao = bloqueiosDoCatalogo(REAL).find((b) => b.codigo === "catalogo_sem_preco").acao;
   assert.match(acao, /Inside Perdizes/);
   assert.match(acao, /174/);
-  assert.doesNotMatch(acao, /Aclimação/, "Aclimação tem zero demanda: começar por ela é o erro que o bloqueio evita");
+  assert.doesNotMatch(acao, /Aclimação/, "Aclimação não tem lead vinculada: começar por ela é o erro que o bloqueio evita");
 });
 
-test("a inversão demanda × oferta é dita, porque isolada nenhuma metade é notícia", () => {
-  const inv = bloqueiosDoCatalogo(REAL).find((b) => b.codigo === "demanda_sem_oferta_cadastrada");
-  assert.ok(inv, "174 procurando onde não há tipologia, e 6 tipologias onde ninguém procura");
+test("a ação NÃO chama vínculo de procura, e NÃO promete destravar o catálogo inteiro", () => {
+  /**
+   * ── O ERRO QUE ESTE CONTRATO EXISTE PARA IMPEDIR ─────────────────────────
+   *
+   * A primeira versão dizia "174 leads procuram esse bairro" e "preencher o preço
+   * de um empreendimento destrava todos os clientes de uma vez". As duas frases
+   * eram falsas, e por horas dirigiram a prioridade do dono para a coisa errada.
+   *
+   * Medido em 2026-07-30, na organização real:
+   *
+   *   leads ......................................... 482
+   *   com bairro DECLARADO (preferred_neighborhoods) .. 6
+   *   VINCULADAS a um empreendimento ................ 192   (174 ao Inside Perdizes)
+   *
+   * Vínculo vem da campanha de origem. Procura vem do cliente responder. E a
+   * prova viva: o Spin Mood ganhou preço, 30 unidades e bairro no mesmo dia, e a
+   * recomendação foi de 12 para 13 — porque `Bairro`, o critério de maior peso
+   * (18, decisivo), está sem resposta para 476 clientes, e catálogo não responde
+   * pergunta que ninguém fez ao cliente.
+   *
+   * A asserção é pelo SIGNIFICADO: proíbe a CONVERSÃO de vínculo em preferência e
+   * a promessa de totalidade — não a palavra "procura" isolada, que o texto pode
+   * legitimamente usar para NEGAR a confusão ("não é bairro pedido pelo cliente").
+   */
+  const acao = bloqueiosDoCatalogo(REAL).find((b) => b.codigo === "catalogo_sem_preco").acao;
+
+  assert.doesNotMatch(
+    acao,
+    /\d+\s+leads?\s+procuram?/i,
+    "número de leads seguido de 'procuram' converte vínculo de campanha em preferência declarada",
+  );
+  assert.doesNotMatch(
+    acao,
+    /destrava\s+(todos|todas|o catálogo inteiro)/i,
+    "preço é um critério entre catorze: prometer totalidade foi o que mandou o dono para a tarefa errada",
+  );
+  assert.match(
+    acao,
+    /vinculad/i,
+    "o texto precisa NOMEAR o vínculo, que é o que o número realmente mede",
+  );
+  assert.match(
+    acao,
+    /não é bairro pedido pelo cliente/i,
+    "e precisa dizer explicitamente o que o número NÃO é — a distinção some se ficar só implícita",
+  );
+});
+
+test("a inversão vínculo × oferta é dita, porque isolada nenhuma metade é notícia", () => {
+  const inv = bloqueiosDoCatalogo(REAL).find((b) => b.codigo === "vinculo_sem_oferta_cadastrada");
+  assert.ok(inv, "174 vinculadas onde não há tipologia, e 6 tipologias onde não há vinculada");
   assert.match(inv.resumo, /Perdizes/);
   assert.match(inv.resumo, /Aclimação/);
+  // O mesmo guarda do outro bloqueio, porque consertar um e deixar o gêmeo foi
+  // exatamente o que aconteceu: este resumo dizia "N leads procuram X".
+  assert.doesNotMatch(inv.resumo, /\d+\s+leads?\s+procuram?/i);
+  assert.match(inv.resumo, /vinculad/i);
 });
 
 test("catálogo COM preço não gera bloqueio de preço — o outro lado", () => {
@@ -79,7 +136,7 @@ test("preço só na TIPOLOGIA já conta como preço", () => {
   const so = {
     ...REAL,
     empreendimentos: [{ ...REAL.empreendimentos[2], tipologiasComPreco: 6 }],
-    demandaPorBairro: { Aclimação: 0 },
+    leadsVinculadasPorBairro: { Aclimação: 0 },
   };
   assert.ok(!codigos(bloqueiosDoCatalogo(so)).includes("catalogo_sem_preco"));
 });
@@ -129,7 +186,7 @@ test("tipologia sem unidade contável avisa, sem afirmar esgotado", () => {
 
 test("sem demanda medida, ainda prioriza — pelo que tem tipologia", () => {
   // Cadastrar preço onde já existe tipologia é menos trabalho que começar do zero.
-  const semDemanda = { ...REAL, demandaPorBairro: null };
+  const semDemanda = { ...REAL, leadsVinculadasPorBairro: null };
   const acao = bloqueiosDoCatalogo(semDemanda).find((b) => b.codigo === "catalogo_sem_preco").acao;
   assert.match(acao, /Aclimação/, "sem demanda, o critério vira quem tem mais tipologia");
   assert.doesNotMatch(acao, /\d+ leads? procuram?/, "não pode inventar número de demanda que não foi medido");
