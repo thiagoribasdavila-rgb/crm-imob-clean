@@ -272,7 +272,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const admin = getSupabaseAdmin();
     const { data: currentLead } = await admin
       .from("leads")
-      .select("status,source,temperature,score_ia,budget_min,budget_max,preferred_bedrooms,preferred_neighborhoods,notes")
+      /**
+       * `name`, `email` e `phone` entram na leitura porque `liveLeadUpdatePayload`
+       * preserva o valor ATUAL quando o campo não vem no corpo — e ele só pode
+       * preservar o que estiver aqui. Sem os três, um PATCH parcial montava um
+       * payload sem nome nem contato, e a validação logo abaixo o recusava com
+       * 400: "Informe um nome válido".
+       *
+       * Achado executando, não lendo: o contrato da regra pura estava verde e a
+       * rota devolvia 400 em todas as chamadas de um campo só.
+       */
+      .select("name,email,phone,status,source,temperature,score_ia,budget_min,budget_max,preferred_bedrooms,preferred_neighborhoods,notes")
       .eq("id", id)
       .eq("organization_id", identity.organizationId)
       .maybeSingle();

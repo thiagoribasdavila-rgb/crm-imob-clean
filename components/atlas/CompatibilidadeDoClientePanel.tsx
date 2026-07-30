@@ -37,6 +37,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
+import { CapturaDeRespostaDecisiva } from "@/components/atlas/CapturaDeRespostaDecisiva";
 
 type Criterio = {
   chave: string;
@@ -328,6 +329,17 @@ export function CompatibilidadeDoClientePanel({ leadId }: { leadId?: string }) {
             {dados.perguntasQueDestravam.map((p) => (
               <li key={p.chave} className="text-amber-200">
                 “{p.pergunta}”{p.decisivo ? " (destrava o matching)" : ""}
+                {/*
+                  A captura fica NA pergunta, não numa tela separada. O corretor
+                  ouve a resposta no telefone e grava ali — medido: 473 leads com
+                  SLA de primeiro contato vencido, 4 notas humanas em 469, e
+                  nenhuma tela do CRM permitia gravar bairro ou dormitórios numa
+                  lead existente. `aoSalvar` recarrega porque a resposta muda o
+                  que o motor recomenda na mesma hora.
+                */}
+                {leadId && p.decisivo ? (
+                  <CapturaDeRespostaDecisiva leadId={leadId} chave={p.chave} aoSalvar={() => void carregar()} />
+                ) : null}
               </li>
             ))}
           </ul>
