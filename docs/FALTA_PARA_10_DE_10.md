@@ -99,6 +99,44 @@ entraram em seguida.
 
 ---
 
+### 4.1 Os TENTÁCULOS — o achado que só apareceu ao consertar o ambiente
+
+Guardar a oferta ativa em `stash` levou **três tentativas**, e cada uma revelou
+uma camada que a anterior não viu. Registrado porque é a forma do erro, não o
+caso: **entrega refutada tem raiz mais funda que a lista de arquivos novos.**
+
+- **parte 1/2** — os arquivos NOVOS (rota, lib, painel, migration, contrato).
+  Parecia a entrega inteira.
+- **parte 2/2** — as mudanças em rotas VIVAS que ficaram para trás:
+  `next-best-action` excluindo o acervo da fila "sem dono", `crm/leads` com o
+  recorte `?acervo=`. Um comentário ali referenciava `POST /api/v1/crm/acervo`,
+  que já estava no outro stash.
+- **parte 3/3** — os IMPORTS pendurados: `command-center/page.tsx` importava
+  `OfertaAtivaDoAcervoPanel`, `broker-daily/route.ts` importava
+  `lib/crm/acervo-de-resgate`, `distribution/route.ts` referenciava `/crm/acervo`.
+
+**Com as partes 1 e 2 guardadas e a 3 não, o build estava QUEBRADO com TS2307 — e
+nenhum check meu pegou**, porque `tsc` não estava na cadeia que eu rodava
+(`test:contracts` + `portoes:todos`). Quem pegou foi o `daily:check`, por
+acidente, ao rodar lint sobre arquivos alterados.
+
+**Lição para a próxima:** ao guardar entrega refutada, rode `npx tsc --noEmit`
+ANTES de declarar a separação completa. Import pendurado não aparece em contrato
+nem em portão de conteúdo — só no compilador.
+
+**As três partes voltam JUNTAS.** Restaurar uma sozinha quebra o build.
+
+### 4.2 Consequência ainda aberta
+
+O revert da parte 3/3 devolveu `broker-daily/route.ts` ao estado de HEAD, e isso
+fez cair 2 contratos meus de mais cedo (`a rota do corretor lê as colunas de SLA`
+e `o bônus de prioridade decide por coluna`). Não foi consertado: cinco sessões
+editaram esse arquivo em camadas intercaladas, e reconciliá-lo com contexto no fim
+foi o que produziu os piores erros desta sessão. **Precisa de uma sessão com
+contexto inteiro, depois que as tarefas paralelas aterrissarem.**
+
+---
+
 ## 5. As fases, contra o gate do próprio documento
 
 **FASE 1 — NÃO APROVADA.** A especificação diz *"não aprovar sem teste ponta a

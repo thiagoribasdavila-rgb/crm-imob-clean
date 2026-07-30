@@ -73,7 +73,8 @@
     "docs/FASE_3_BUSINESS_CASE.md",
     "docs/FASE_3_RISCOS.md",
     "docs/FASE_3_ROADMAP.md",
-    "hostinger.env"
+    "hostinger.env",
+    "docs/FALTA_PARA_10_DE_10.md"
   ],
   "$comentarioExcecoesNovas": "Sete entradas classificadas UMA POR UMA em 2026-07-30, porque a diferença entre avisar e instruir é a diferença entre documentação e armadilha. Os três `docs/MIGRATIONS_*` e `GO_LIVE_SEQUENCE` MANDAVAM aplicar migrations no projeto aposentado — MIGRATIONS_APPLY_NOW.md abria com 'Projeto Supabase: atlas-ai-crm-v1' seguido do comando de link. Foram CORRIGIDOS para o canônico e ganharam aviso no topo, então hoje citam o ref antigo só para alertar. GO-LIVE.md já avisava; o aviso foi RESTAURADO com os números certos depois de eu quebrá-lo — uma substituição global trocou o ref dentro do próprio alerta e passou a dizer que o canônico é que tinha 23 tabelas, quando 24 eram do ANTIGO e o canônico tem 183. Substituição mecânica não distingue instrução de registro histórico. As duas migrations citam o ref em COMENTÁRIO, registrando o que foi medido naquele banco naquela data; apagar o nome apagaria a medição, que é o erro de proibir NOMEAR o problema."
 }
