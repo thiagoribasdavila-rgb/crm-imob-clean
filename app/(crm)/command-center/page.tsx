@@ -21,6 +21,7 @@ import type { ProposalSignalKind } from "@/lib/ai/action-proposals";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
 import { NextBestActionPanel } from "@/components/atlas/NextBestActionPanel";
 import { CampaignApprovalsPanel } from "@/components/atlas/CampaignApprovalsPanel";
+import { OfertaAtivaDoAcervoPanel } from "@/components/atlas/OfertaAtivaDoAcervoPanel";
 import { ProactiveNudgesPanel } from "@/components/atlas/ProactiveNudgesPanel";
 import {
   AtlasBadge,
@@ -2992,6 +2993,24 @@ export default function CommandCenterPage() {
           style={{ animationDelay: "120ms" }}
         >
           <NextBestActionPanel max={5} />
+        </section>
+      ) : null}
+
+      {/* OFERTA ATIVA · corretor — o balcão do acervo de resgate.
+          Espelha, para o CORRETOR, a seção que a liderança tem logo abaixo
+          ("Leads abertos sem responsável"): mesma forma, público oposto.
+          Fica AQUI e não em /leads porque esta é a tela que o corretor abre para
+          saber o que fazer agora; a lista é para trabalhar o que já é dele.
+          Medido antes de existir: `bulk-transfer` exige liderança e
+          `action=distribute` responde 403 ao corretor — ele não tinha nenhum
+          caminho de auto-atendimento em LOTE. */}
+      {isBroker ? (
+        <section
+          aria-label="Oferta ativa · acervo de resgate"
+          className="cc5-reveal [transform-style:preserve-3d]"
+          style={{ animationDelay: "122ms" }}
+        >
+          <OfertaAtivaDoAcervoPanel />
         </section>
       ) : null}
 

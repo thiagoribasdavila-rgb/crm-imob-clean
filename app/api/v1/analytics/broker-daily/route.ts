@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { filtroDaCarteiraDaPessoa } from "@/lib/crm/escopo-de-leitura";
+import { primeiroContatoAtrasado } from "@/lib/crm/acervo-de-resgate";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   LIVE_LEAD_SELECT,
@@ -213,8 +214,21 @@ export async function GET(request: NextRequest) {
       // número do painel, o risco da diretoria e o filtro da lista já usam.
       // Base sem a coluna cai para o predicado antigo — e o recuo é
       // DECLARADO, nunca silencioso.
+      //
+      // ── E O ÚLTIMO LUGAR QUE NÃO SABIA A DIFERENÇA ENTRE PEDIR CONTATO E
+      //    SER ACERVO DE RESGATE ──────────────────────────────────────────
+      //
+      // `!lead.first_contacted_at` sozinho ignora o prazo. Os outros três
+      // predicados de atraso do código (ai/proactive, marketing/stop-loss,
+      // weekly-report, pipeline) exigem `first_contact_due_at < now`, e por isso
+      // o acervo sem prazo sai da conta deles de graça. AQUI não saía.
+      //
+      // Hoje o acervo escapa por acidente: CLOSED tira perdido/arquivado de
+      // `activeLeads` — 8 das 13 do pool e 16.733 das 17.151 do v1. Mas as 5 em
+      // `novo`/`contato` JÁ contam como atrasadas, e no dia em que alguém mover
+      // status de acervo para dentro do funil voltam ~17 mil violações de uma vez.
       const firstContactOverdue = primeiroContatoMensuravel
-        ? !lead.first_contacted_at
+        ? primeiroContatoAtrasado(lead, now)
         : normalize(lead.status) === "novo" &&
           createdAt !== null &&
           createdAt < now - 15 * 60_000;
@@ -304,8 +318,11 @@ export async function GET(request: NextRequest) {
   // 19 leads que avançaram para "contato"/"qualificação" sem ninguém ter
   // registrado uma ligação, e conta 5 que já foram contatados e seguem em
   // "novo". `null` quando as colunas não existem: não medido nunca é zero.
+  // MESMA função do laço acima — não uma segunda escrita do predicado. O número
+  // da faixa e o motivo de cada card TÊM de concordar: quando divergiram, o
+  // painel dizia "22 atrasadas" e listava outras.
   const firstContactOverdue = primeiroContatoMensuravel
-    ? activeLeads.filter((lead) => !lead.first_contacted_at).length
+    ? activeLeads.filter((lead) => primeiroContatoAtrasado(lead, now)).length
     : null;
   const followUpOverdue = activeLeads.filter(
     (lead) =>
