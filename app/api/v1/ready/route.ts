@@ -4,6 +4,7 @@ import { apiSuccess, createRequestContext, structuredApiLog } from "@/lib/api/co
 import { montarProntidaoDasIntegracoes, ASSUNTOS } from "@/lib/integrations/prontidao-das-integracoes";
 import { lerEvidenciaDeProvedores } from "@/lib/ai/prontidao-generativa";
 import { defeitosDeFormaDoAmbiente } from "@/lib/ai/model-profiles";
+import { avaliarAgendador } from "@/lib/integrations/agendador-parado";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,37 @@ export async function GET(request: NextRequest) {
     },
   });
 
+  /**
+   * Leitura que FALHA não vira "fila vazia": `medido: false` diz que não sabe.
+   * Fila silenciosa por worker morto e fila silenciosa por consulta quebrada
+   * produziriam a mesma tela, e é justamente essa confusão que este bloco veio
+   * desfazer.
+   */
+  const agendamento = await (async () => {
+    const segredoConfigurado = Boolean(process.env.ATLAS_CRON_SECRET);
+    try {
+      const { data: fila, error } = await getSupabaseAdmin()
+        .from("integration_outbox")
+        .select("attempts,created_at")
+        .eq("status", "pending")
+        .order("created_at", { ascending: true })
+        .limit(200);
+      if (error) {
+        return { medido: false, motivo: error.message.slice(0, 120), segredoConfigurado };
+      }
+      // A decisão mora em `lib/integrations/agendador-parado.ts`, exercitada nos
+      // DOIS lados por contrato. Repeti-la aqui criaria duas verdades sobre o
+      // mesmo fato — que é o defeito que este repositório mais paga.
+      return { medido: true, segredoConfigurado, ...avaliarAgendador(fila ?? []) };
+    } catch (erro) {
+      return {
+        medido: false,
+        motivo: erro instanceof Error ? erro.message.slice(0, 120) : "falha ao ler a fila",
+        segredoConfigurado,
+      };
+    }
+  })();
+
   const data = {
     service: "atlas-api-platform",
     status: ready ? "ready" : "not_ready",
@@ -88,6 +120,21 @@ export async function GET(request: NextRequest) {
       motivo: evidenciaDeIA.motivo,
       provedoresComRespostaReal: evidenciaDeIA.evidencias.map((item) => item.provedor).sort(),
     },
+    /**
+     * ── O AGENDAMENTO ESTÁ VIVO? ────────────────────────────────────────────
+     *
+     * Medido em 2026-07-30: dois itens `meta.lead.fetch` na fila com
+     * `attempts = 0`, parados há 89h e 44h. `attempts = 0` é o sinal decisivo, e
+     * ele não aparecia em lugar nenhum — só quem consultasse o banco à mão
+     * descobriria. De fora, um worker MORTO e um worker SEM TRABALHO são
+     * idênticos: os dois deixam a fila quieta.
+     *
+     * `segredoConfigurado` existe porque o 401 do worker é ambíguo — ele responde
+     * igual para segredo AUSENTE e para segredo DIFERENTE, e a primeira hipótese é
+     * de ambiente enquanto a segunda é de configuração. Só o booleano sai daqui:
+     * nunca o valor, o prefixo ou o comprimento.
+     */
+    agendamento,
     /**
      * Nenhum valor, prefixo ou comprimento de segredo sai desta resposta: só o
      * estado e o motivo.
