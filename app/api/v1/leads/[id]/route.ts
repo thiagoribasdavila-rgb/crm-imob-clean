@@ -77,7 +77,7 @@ export async function GET(request: Request, context: RouteContext) {
     if (leadError || !storedLead) return NextResponse.json({ error: "Lead fora do seu escopo comercial." }, { status: 403 });
 
     const lead = mapLegacyLead(storedLead as unknown as JsonRow);
-    const [eventResult, taskResult, ownerResult, projectResult, projectOptionsResult] = await Promise.all([
+    const [eventResult, taskResult, ownerResult, projectResult, projectOptionsResult, oportunidadesResult] = await Promise.all([
       admin
         .from("lead_events")
         .select("id,lead_id,event_type,type,description,metadata,created_by,created_at")
@@ -104,7 +104,24 @@ export async function GET(request: Request, context: RouteContext) {
         .eq("organization_id", identity.organizationId)
         .order("name", { ascending: true })
         .limit(500),
+      // Esta rota devolvia `opportunities: []` FIXO. Não era um bloco morto: a
+      // tela usa o tamanho desta lista para pontuar prontidão (+10) e para
+      // classificar risco. Com `[]` cravado, NENHUMA lead podia ser "risco
+      // baixo" — o ramo era inalcançável — e a prontidão tinha teto de 90 para
+      // todo mundo. Número errado que o corretor lê e usa é pior que bloco
+      // vazio: bloco vazio se percebe, número plausível não.
+      admin
+        .from("opportunities")
+        .select("id,stage,value,probability,expected_close_at,property_id,created_at")
+        .eq("lead_id", id)
+        .eq("organization_id", identity.organizationId)
+        .order("created_at", { ascending: false })
+        .limit(50),
     ]);
+
+    if (oportunidadesResult.error) {
+      logger.warn("lead.opportunities.read_failed", { leadId: id, code: oportunidadesResult.error.code });
+    }
 
     // As propostas da fase 37 vivem em commercial_simulations (a fase acrescentou
     // status, marcos e os três tempos àquela tabela). Esta rota devolvia
@@ -212,9 +229,12 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({
       lead,
       activities,
-      properties: [],
-      opportunities: [],
-      experienceSignals: [],
+      opportunities: oportunidadesResult.data ?? [],
+      // `?? []` sozinho recriaria o defeito: leitura que FALHOU viraria zero, e
+      // zero silencioso é o que a tela lê como "sem oportunidade". A tela precisa
+      // distinguir "nenhuma" de "não deu para medir" — mesma disciplina das
+      // propostas, logo acima.
+      opportunitiesMensuraveis: !oportunidadesResult.error,
       attentionSignals: attentionSignals.map((signal) => ({
         kind: signal.kind,
         severity: signal.severity,

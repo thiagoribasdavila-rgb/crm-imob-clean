@@ -18,7 +18,29 @@ const checks = [
   ["Cadastro preserva isolamento de tenant e duplicidade", createRoute.includes("emailDuplicate") && createRoute.includes("phoneDuplicate") && createRoute.includes("identity.organizationId")],
   ["Histórico usa lead_events real", writes.includes('.from("lead_events")') && detailRoute.includes("recordLiveLeadEvent") && !detailRoute.includes('.from("activities")')],
   ["Rotas ativas não chamam atlas_events", !createRoute.includes('.from("atlas_events")') && !detailRoute.includes('.from("atlas_events")')],
-  ["Lead 360 lê apenas relações homologadas nesta fase", detailRoute.includes('.from("tasks")') && detailRoute.includes('.from("profiles")') && detailRoute.includes('.from("crm_projects")') && !detailRoute.includes('.from("opportunities")')],
+  // ── REAPONTADA em 2026-07-30, com causa MEDIDA ────────────────────────────
+  //
+  // Esta linha exigia `!detailRoute.includes('.from("opportunities")')` — a rota
+  // da lead 360 estava PROIBIDA de ler oportunidades. Só que a tela sempre
+  // consumiu `opportunities`: soma +10 na prontidão e classifica o risco pelo
+  // tamanho da lista. Como a rota devolvia `opportunities: []` cravado para
+  // obedecer a este portão, o resultado medido era:
+  //
+  //   · NENHUMA lead podia ser "risco baixo" — o ramo era inalcançável;
+  //   · a prontidão tinha teto de 90 para todo mundo, inclusive o cliente
+  //     perfeito, que aparecia ao corretor como "risco médio".
+  //
+  // O portão não protegia a propriedade "não ler relação estranha": congelava um
+  // defeito. `opportunities` é relação homologada — tem tabela real com RLS e
+  // rotas vivas (sales/[id]/commission, analytics/forecast, leads/[id]/qualify,
+  // a página de vendas).
+  //
+  // A asserção foi INVERTIDA, não afrouxada: agora exige que a rota LEIA
+  // oportunidades. Ela ficou mais forte — a rota não consegue mais voltar ao
+  // array cravado sem este portão acusar. Prova de comportamento em
+  // `scripts/prova-oportunidades-da-lead.mjs` (10/10, dois lados do filtro com
+  // dado criado, porque a tabela vazia tornaria a prova vazia).
+  ["Lead 360 lê as relações homologadas, oportunidades inclusas", detailRoute.includes('.from("tasks")') && detailRoute.includes('.from("profiles")') && detailRoute.includes('.from("crm_projects")') && detailRoute.includes('.from("opportunities")')],
   ["Formulário carrega cadastro de projeto real", createPage.includes('.from("crm_projects")') && !createPage.includes('.from("developments")')],
   ["Relatório registra impacto e risco transacional", report.includes("Impacto operacional") && report.includes("Risco identificado") && phase.release.buildExecuted === false],
 ];

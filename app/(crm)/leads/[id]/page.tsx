@@ -9,9 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { matchLeadToProperty } from "@/lib/atlas/matching";
 import { supabase } from "@/lib/supabase";
-import type { AtlasLead, AtlasProperty } from "@/types/atlas";
 import {
   AtlasEmpty,
   AtlasProgress,
@@ -79,18 +77,6 @@ type ActivityRow = {
   } & Record<string, unknown>) | null;
   occurred_at: string;
 };
-type PropertyRow = {
-  id: string;
-  title: string | null;
-  price: number | null;
-  city: string | null;
-  state: string | null;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  parking_spaces: number | null;
-  area: number | null;
-  status: string | null;
-};
 type OpportunityRow = {
   id: string;
   stage: string;
@@ -98,16 +84,6 @@ type OpportunityRow = {
   probability: number;
   expected_close_at: string | null;
   property_id: string | null;
-  created_at: string;
-};
-type ExperienceRow = {
-  id: string;
-  severity: string;
-  confidence: number;
-  evidence: string;
-  recommendation: string;
-  suggested_reply: string | null;
-  status: string;
   created_at: string;
 };
 // Fase 100 · Sinais de atenção proativos — etapa parada, follow-up vencido,
@@ -252,9 +228,8 @@ type AssignmentReservation = {
 type Payload = {
   lead: LeadRow;
   activities: ActivityRow[];
-  properties: PropertyRow[];
   opportunities: OpportunityRow[];
-  experienceSignals: ExperienceRow[];
+  opportunitiesMensuraveis?: boolean;
   attentionSignals: AttentionSignalRow[];
   proposals: ProposalRow[];
   dataQuality: DataQuality;
@@ -342,11 +317,8 @@ export default function LeadDetailPage() {
   const [lead, setLead] = useState<LeadRow | null>(null);
   const [firstContactSla, setFirstContactSla] = useState<FirstContactSla | null>(null);
   const [activities, setActivities] = useState<ActivityRow[]>([]);
-  const [properties, setProperties] = useState<PropertyRow[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
-  const [experienceSignals, setExperienceSignals] = useState<ExperienceRow[]>(
-    [],
-  );
+  const [opportunitiesMensuraveis, setOpportunitiesMensuraveis] = useState(true);
   const [attentionSignals, setAttentionSignals] = useState<
     AttentionSignalRow[]
   >([]);
@@ -375,26 +347,6 @@ export default function LeadDetailPage() {
   const [qualifying, setQualifying] = useState(false);
   const [moreActionsOpen, setMoreActionsOpen] = useState(false);
   const [copiedContact, setCopiedContact] = useState<string | null>(null);
-  const [simulation, setSimulation] = useState<{
-    id: string;
-    property_price: number;
-    down_payment: number | null;
-    financed_balance: number | null;
-    installment_amount: number | null;
-    installments_count: number | null;
-    valid_until: string;
-    rule_snapshot: {
-      ruleName: string;
-      version: number;
-      paymentFlow: string;
-      developerName: string;
-      calculation: string;
-      disclaimer: string;
-      balloonPaymentNotes?: string | null;
-      financingNotes?: string | null;
-      ruleValidity: { from: string | null; until: string | null };
-    };
-  } | null>(null);
 
   async function api(path: string, init?: RequestInit) {
     const { data } = await supabase.auth.getSession();
@@ -445,9 +397,8 @@ export default function LeadDetailPage() {
       const data = (await api(`/api/v1/leads/${leadId}`)) as Payload;
       setLead(data.lead);
       setActivities(data.activities);
-      setProperties(data.properties);
-      setOpportunities(data.opportunities);
-      setExperienceSignals(data.experienceSignals ?? []);
+      setOpportunities(data.opportunities ?? []);
+      setOpportunitiesMensuraveis(data.opportunitiesMensuraveis !== false);
       setAttentionSignals(data.attentionSignals ?? []);
       setProposals(data.proposals ?? []);
       setDataQuality(data.dataQuality);
@@ -470,58 +421,6 @@ export default function LeadDetailPage() {
     void load();
   }, [leadId]);
 
-  const feedbackByProperty = useMemo(() => {
-    const feedback = new Map<string, "interested" | "rejected">();
-    for (const activity of activities) {
-      const propertyId = activity.metadata?.propertyId;
-      const signal = activity.metadata?.signal;
-      if (
-        activity.type === "property_feedback" &&
-        propertyId &&
-        signal &&
-        !feedback.has(propertyId)
-      )
-        feedback.set(propertyId, signal);
-    }
-    return feedback;
-  }, [activities]);
-
-  const matches = useMemo(() => {
-    if (!lead) return [];
-    const atlasLead: Partial<AtlasLead> = {
-      id: lead.id,
-      budgetMax: lead.budget_max,
-      bedrooms: lead.bedrooms,
-      preferredRegions: lead.preferred_regions ?? [],
-    };
-    return properties
-      .map((property) => {
-        const atlasProperty: AtlasProperty = {
-          id: property.id,
-          title: property.title,
-          price: property.price,
-          city: property.city,
-          state: property.state,
-          bedrooms: property.bedrooms,
-          bathrooms: property.bathrooms,
-          parkingSpaces: property.parking_spaces,
-          area: property.area,
-          status: property.status,
-        };
-        return {
-          property,
-          match: matchLeadToProperty(
-            atlasLead,
-            atlasProperty,
-            feedbackByProperty.get(property.id),
-          ),
-        };
-      })
-      .filter((item) => item.match.score > 0)
-      .sort((a, b) => b.match.score - a.match.score)
-      .slice(0, 6);
-  }, [feedbackByProperty, lead, properties]);
-
   const intelligence = useMemo(() => {
     if (!lead)
       return {
@@ -537,20 +436,27 @@ export default function LeadDetailPage() {
     if (activities.length > 0) readiness += 10;
     if (opportunities.length > 0) readiness += 10;
     readiness = Math.min(100, readiness);
+    // "Não deu para ler" não é "não existe". Enquanto a rota devolvia `[]` fixo,
+    // este ramo classificava TODA lead como risco médio e o "baixo" era
+    // inalcançável — a tela dizia risco médio do melhor cliente da casa.
     const risk =
       activities.length === 0
         ? "alto"
-        : opportunities.length === 0
-          ? "médio"
-          : "baixo";
+        : !opportunitiesMensuraveis
+          ? "unknown"
+          : opportunities.length === 0
+            ? "médio"
+            : "baixo";
     const nextAction =
       activities.length === 0
         ? "Realizar o primeiro contato e registrar a resposta."
-        : opportunities.length === 0
-          ? "Apresentar o imóvel com maior aderência e abrir oportunidade."
-          : "Validar objeções e avançar a oportunidade para a próxima etapa.";
+        : !opportunitiesMensuraveis
+          ? "Não foi possível ler as oportunidades desta lead agora — recarregue antes de decidir."
+          : opportunities.length === 0
+            ? "Apresentar o imóvel com maior aderência e abrir oportunidade."
+            : "Validar objeções e avançar a oportunidade para a próxima etapa.";
     return { readiness, nextAction, risk };
-  }, [activities.length, lead, opportunities.length]);
+  }, [activities.length, lead, opportunities.length, opportunitiesMensuraveis]);
 
   async function saveLead(event: FormEvent) {
     event.preventDefault();
@@ -658,40 +564,6 @@ export default function LeadDetailPage() {
         error instanceof Error
           ? error.message
           : "Não foi possível aceitar a lead.",
-      );
-    }
-  }
-
-  async function simulate(propertyId: string) {
-    setMessage(null);
-    try {
-      const data = (await api(`/api/v1/leads/${leadId}/commercial-simulation`, {
-        method: "POST",
-        body: JSON.stringify({ action: "simulate", propertyId }),
-      })) as { simulation: typeof simulation; disclaimer: string };
-      setSimulation(data.simulation);
-      setMessage(data.disclaimer);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Falha ao simular.");
-    }
-  }
-
-  async function requestProposal() {
-    if (!simulation) return;
-    try {
-      await api(`/api/v1/leads/${leadId}/commercial-simulation`, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "proposal",
-          simulationId: simulation.id,
-        }),
-      });
-      setMessage(
-        "Proposta enviada para revisão humana de preço, estoque e condição de pagamento.",
-      );
-    } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Falha ao preparar proposta.",
       );
     }
   }
@@ -1158,59 +1030,6 @@ export default function LeadDetailPage() {
         </section>
       ) : null}
 
-      {experienceSignals[0]?.status === "pending" ? (
-        <section
-          className="cc6-panel cc6-sev-band p-5 pl-6"
-          style={
-            {
-              "--cc6-sev":
-                experienceSignals[0].severity === "critical"
-                  ? "#fb7185"
-                  : "#f5b544",
-            } as CSSProperties
-          }
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p
-              className={`cc6-eyebrow ${
-                experienceSignals[0].severity === "critical"
-                  ? "cc6-crit"
-                  : "cc6-warn"
-              }`}
-            >
-              IA de experiência · atenção ao atendimento
-            </p>
-            <StatusBadge
-              tone={
-                experienceSignals[0].severity === "critical"
-                  ? "danger"
-                  : "warning"
-              }
-            >
-              {experienceSignals[0].confidence}% confiança
-            </StatusBadge>
-          </div>
-          <p className="mt-3 text-sm font-medium leading-6 text-[#e8eef8]">
-            {experienceSignals[0].evidence}
-          </p>
-          <p className="mt-1 text-[13px] leading-6 text-[#aab6ca]">
-            Recomendação:{" "}
-            {experienceSignals[0].recommendation === "offer_broker_change"
-              ? "oferecer ao cliente a opção de manter ou trocar o corretor"
-              : "recuperar o atendimento com acompanhamento"}
-            . A troca nunca acontece automaticamente.
-          </p>
-          {experienceSignals[0].suggested_reply ? (
-            <div className="cc6-panel-quiet mt-3 p-3">
-              <p className="cc6-eyebrow text-[10px]">Resposta sugerida</p>
-              <p className="mt-1.5 text-[13px] leading-6 text-[#aab6ca]">
-                {experienceSignals[0].suggested_reply}
-              </p>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
       {dataQuality?.questions.length ? (
         <section
           data-phase="30-data-gaps"
@@ -1348,7 +1167,9 @@ export default function LeadDetailPage() {
               },
               {
                 label: "Pipeline",
-                value: `${opportunities.length} oportunidades`,
+                value: opportunitiesMensuraveis
+                  ? `${opportunities.length} oportunidades`
+                  : "oportunidades não medidas",
                 detail: `${contactBriefing?.activeOpportunities ?? 0} negócios ativos`,
                 href: "/pipeline",
               },
@@ -1441,7 +1262,15 @@ export default function LeadDetailPage() {
 
         O painel já existia pronto e não estava montado em tela nenhuma.
       */}
-      <CompatibilidadeDoClientePanel leadId={lead.id} />
+      {/* A âncora `#matching` vive AQUI agora. A barra operacional tem
+          `<a href="#matching">Imóveis</a>`, e a seção "Matching Atlas" que a
+          respondia foi removida: ela dizia "nenhum match encontrado — complete
+          orçamento, dormitórios e regiões" sobre um `properties: []` cravado na
+          rota, culpando o corretor por um defeito do servidor. Este painel é o
+          matching de verdade — mesma pergunta, resposta medida. */}
+      <div id="matching" className="scroll-mt-28">
+        <CompatibilidadeDoClientePanel leadId={lead.id} />
+      </div>
 
       {qualification ? (
         <section
@@ -1705,107 +1534,6 @@ export default function LeadDetailPage() {
             Preço, estoque e regra continuam governados; o contato com o
             cliente também fica mensurado.
           </p>
-        </section>
-      ) : null}
-
-      {simulation ? (
-        <section className="cc6-reveal cc6-panel p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="cc6-eyebrow">Simulação, não promessa</p>
-              <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
-                {simulation.rule_snapshot.ruleName} · versão{" "}
-                <span className="cc6-num">
-                  {simulation.rule_snapshot.version}
-                </span>
-              </h2>
-              <p className="mt-1 text-xs leading-5 text-[#6b7890]">
-                Regra vigente de {simulation.rule_snapshot.developerName}{" "}
-                fotografada no cálculo; mudanças futuras não alteram este
-                histórico.
-              </p>
-            </div>
-            <StatusBadge tone="warning">
-              válida até{" "}
-              {new Date(simulation.valid_until).toLocaleString("pt-BR")}
-            </StatusBadge>
-          </div>
-          <p
-            className="cc6-panel-quiet cc6-sev-band mt-4 p-3 pl-4 text-xs font-medium leading-5 text-[#f5b544]"
-            style={{ "--cc6-sev": "#f5b544" } as CSSProperties}
-          >
-            {simulation.rule_snapshot.disclaimer}
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              ["Preço de referência", brl.format(simulation.property_price)],
-              [
-                "Entrada estimada",
-                simulation.down_payment === null
-                  ? "Conforme fluxo"
-                  : brl.format(simulation.down_payment),
-              ],
-              [
-                "Saldo após entrada",
-                simulation.financed_balance === null
-                  ? "A definir"
-                  : brl.format(simulation.financed_balance),
-              ],
-              [
-                "Parcelas lineares estimadas",
-                simulation.installment_amount === null
-                  ? "Conforme regra"
-                  : `${simulation.installments_count} × ${brl.format(simulation.installment_amount)}`,
-              ],
-            ].map(([label, value]) => (
-              <div key={label} className="cc6-panel-quiet p-4">
-                <span className="cc6-metric-label">{label}</span>
-                <strong className="cc6-metric-value mt-2 block text-lg">
-                  {value}
-                </strong>
-              </div>
-            ))}
-          </div>
-          <details className="cc6-panel-quiet group mt-3">
-            <summary className={summaryClass}>
-              <span className="cc6-eyebrow">
-                Fluxo de pagamento e base de cálculo
-              </span>
-              <span
-                aria-hidden="true"
-                className="text-[#6b7890] transition-transform group-open:rotate-180"
-              >
-                ▾
-              </span>
-            </summary>
-            <div className="cc6-hairline p-4">
-              <p className="whitespace-pre-line text-xs leading-6 text-[#aab6ca]">
-                {simulation.rule_snapshot.paymentFlow}
-              </p>
-              {simulation.rule_snapshot.balloonPaymentNotes ? (
-                <p className="mt-3 text-xs leading-5 text-[#6b7890]">
-                  <strong className="text-[#aab6ca]">Reforços:</strong>{" "}
-                  {simulation.rule_snapshot.balloonPaymentNotes}
-                </p>
-              ) : null}
-              {simulation.rule_snapshot.financingNotes ? (
-                <p className="mt-2 text-xs leading-5 text-[#6b7890]">
-                  <strong className="text-[#aab6ca]">Crédito:</strong>{" "}
-                  {simulation.rule_snapshot.financingNotes}
-                </p>
-              ) : null}
-              <p className="cc6-num mt-3 text-[10px] leading-5 text-[#6b7890]">
-                Base do cálculo: {simulation.rule_snapshot.calculation}
-              </p>
-            </div>
-          </details>
-          <button
-            type="button"
-            onClick={() => void requestProposal()}
-            className="atlas-button-primary mt-4"
-          >
-            Enviar para revisão humana
-          </button>
         </section>
       ) : null}
 
@@ -2088,91 +1816,6 @@ export default function LeadDetailPage() {
               )}
             </div>
           </section>
-        </div>
-      </section>
-
-      <section
-        id="matching"
-        className="cc6-reveal cc6-panel scroll-mt-28 p-5 sm:p-6"
-        style={{ animationDelay: "260ms" }}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="cc6-eyebrow">Matching Atlas</p>
-            <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
-              Imóveis recomendados
-            </h2>
-          </div>
-          <Link
-            href="/properties"
-            className={`rounded-sm text-xs font-semibold text-[color:var(--atlas-accent)] transition-colors hover:underline ${focusRing}`}
-          >
-            Ver estoque →
-          </Link>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {matches.length === 0 ? (
-            <div className="md:col-span-2 xl:col-span-3">
-              <AtlasEmpty
-                title="Nenhum match encontrado"
-                description="Complete orçamento, dormitórios e regiões para melhorar o matching."
-              />
-            </div>
-          ) : (
-            matches.map(({ property, match }) => (
-              <article
-                key={property.id}
-                className="cc6-panel-quiet p-4 transition-colors hover:border-[color:var(--atlas-accent)]"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-sm font-semibold leading-6 text-[#e8eef8]">
-                    {property.title || "Imóvel sem título"}
-                  </h3>
-                  <StatusBadge
-                    tone={
-                      match.score >= 75
-                        ? "success"
-                        : match.score >= 50
-                          ? "warning"
-                          : "info"
-                    }
-                  >
-                    {match.score}%
-                  </StatusBadge>
-                </div>
-                <p className="mt-1 text-xs text-[#6b7890]">
-                  {property.city || "Localização não informada"}
-                  {property.state ? ` · ${property.state}` : ""}
-                </p>
-                <p className="cc6-metric-value mt-3 text-lg">
-                  {property.price
-                    ? brl.format(property.price)
-                    : "Preço sob consulta"}
-                </p>
-                <ul className="mt-3 space-y-1 text-xs leading-5 text-[#6b7890]">
-                  {match.reasons.slice(0, 3).map((reason) => (
-                    <li key={reason}>• {reason}</li>
-                  ))}
-                </ul>
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void createOpportunity(property.id)}
-                    className="cc6-ghost-btn justify-center"
-                  >
-                    Oportunidade
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void simulate(property.id)}
-                    className="atlas-button-primary"
-                  >
-                    Simular fluxo
-                  </button>
-                </div>
-              </article>
-            ))
-          )}
         </div>
       </section>
 
