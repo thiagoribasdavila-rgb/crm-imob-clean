@@ -25,7 +25,25 @@ type DiscardBaseFields = {
 
 type DiscardReport = {
   period: { start: string; end: string; days: number };
-  totals: { lostMoves: number | null; discarded: number; uniqueLeads: number; classified: number; coveragePct: number | null };
+  totals: {
+    lostMoves: number | null;
+    discarded: number;
+    uniqueLeads: number;
+    classified: number;
+    coveragePct: number | null;
+    /** Saídas revertidas na janela. Vem sempre, inclusive 0. */
+    revertidas?: number;
+    /** Leads em estado de saída anteriores ao início do ledger. */
+    semMovimentoRegistrado?: number | null;
+  };
+  /** Desde quando a medição existe — a janela pedida pode ser maior que ela. */
+  procedencia?: {
+    fonte: string;
+    estagiosContados: string[];
+    registroDeMovimentoDesde: string | null;
+    janelaMaiorQueORegistro: boolean;
+    motivoGravadoDesde: string;
+  };
   byReason: Array<{ key: string; label: string; metaCategory: string; count: number; share: number }>;
   byMetaCategory: Array<{ category: string; count: number; share: number }>;
   bySource: Array<{ source: string; count: number; share: number } & DiscardBaseFields>;
@@ -209,13 +227,54 @@ export default function PipelineDiscardsPage() {
                 </div>
               ) : null}
 
+              {/* ── A FRASE ANTERIOR ERA FALSA ─────────────────────────────
+                  Ela dizia: "Nenhum descarte classificado — ao mover uma lead
+                  para a etapa de perda no Kanban, o motivo alimenta este
+                  relatório." Medido em 2026-07-30: o motivo era EXIGIDO pela
+                  rota e descartado antes de gravar, 102 vezes. A tela culpava o
+                  time por não classificar enquanto o sistema apagava a escolha.
+
+                  Agora distinguimos três coisas que a frase única confundia:
+                  não houve saída · houve saída e nenhuma foi classificada ·
+                  houve saída antes do registro existir. */}
               {status === "ready" && report && !hasData ? (
-                <p className="cc6-hairline px-5 py-6 text-sm leading-6 text-[#6b7890]">
-                  Nenhum descarte classificado nos últimos {days} dias — ao mover uma lead para a etapa de perda no Kanban, o motivo alimenta este relatório.{" "}
+                <div className="cc6-hairline px-5 py-6 text-sm leading-6 text-[#6b7890]">
+                  {report.totals.discarded > 0 ? (
+                    <>
+                      <strong className="text-[#c9d4e4]">
+                        {report.totals.discarded} saída{report.totals.discarded === 1 ? "" : "s"} do funil
+                      </strong>{" "}
+                      na janela, e nenhuma com motivo classificado. O motivo escolhido no Kanban não estava
+                      sendo gravado até 30/07/2026 — as saídas anteriores ficam como{" "}
+                      <strong className="text-[#c9d4e4]">não medido</strong>, e não há como recuperá-las. A
+                      classificação passa a valer das próximas em diante.
+                    </>
+                  ) : (
+                    <>
+                      Nenhuma saída do funil registrada nos últimos {days} dias.
+                      {report.procedencia?.registroDeMovimentoDesde ? (
+                        <>
+                          {" "}O registro de movimentação existe desde{" "}
+                          {new Date(report.procedencia.registroDeMovimentoDesde).toLocaleDateString("pt-BR")} — isto
+                          é ausência de saída, não falta de medição.
+                        </>
+                      ) : null}
+                    </>
+                  )}
+                  {report.totals.semMovimentoRegistrado ? (
+                    <>
+                      {" "}
+                      <span className="text-amber-300">
+                        {report.totals.semMovimentoRegistrado} lead
+                        {report.totals.semMovimentoRegistrado === 1 ? "" : "s"} em estado de saída sem movimento
+                        registrado — anteriores ao início do registro, e sem motivo a recuperar.
+                      </span>
+                    </>
+                  ) : null}{" "}
                   <Link href="/pipeline" className="font-medium text-[color:var(--atlas-accent)] hover:underline">
                     Abrir o pipeline
                   </Link>
-                </p>
+                </div>
               ) : null}
 
               {hasData && report ? (

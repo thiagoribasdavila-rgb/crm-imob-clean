@@ -104,21 +104,53 @@ export async function GET(request: NextRequest) {
   const start = new Date(end.getTime() - days * DAY);
   const since = start.toISOString();
 
-  const [eventResult, lostMovesResult] = await Promise.all([
+  /**
+   * ── A FONTE MUDOU, E É POR ISSO QUE ESTA TELA MOSTRAVA ZERO ───────────────
+   *
+   * Esta rota lia `lead_events` com `event_type='lead_discarded'` e
+   * `pipeline_history`. Medido em 2026-07-30, na organização real:
+   *
+   *   lead_events com 'lead_discarded' ....... 0   (a tabela tem 66 linhas, 6 tipos)
+   *   pipeline_history ....................... 0   no banco INTEIRO
+   *   pipeline_stage_moves, saídas do funil .. 104
+   *
+   * Nenhuma das duas fontes antigas recebe uma linha por movimentação. A RPC
+   * `move_pipeline_lead` grava em `pipeline_stage_moves`, `activities` e
+   * `atlas_events` — e o código que gravava `lead_discarded` vive depois de um
+   * `return` que sempre acontece. A tela renderizava tudo zerado sobre uma
+   * operação que perdeu 110 de 482 leads, e concluía-se que o time não
+   * classificava.
+   *
+   * A fonte canônica é `pipeline_stage_moves`, pelo critério de ser a única
+   * escrita na MESMA TRANSAÇÃO que `leads.status`. As outras duas eram escritas
+   * de aplicação, best-effort, fora da transação — por construção não podem ser
+   * a verdade.
+   *
+   * `comprou_outro` entra junto de `perdido`: as duas são saída do funil, e
+   * separá-las aqui faria a soma desta tela divergir da sala de comando.
+   */
+  const ESTAGIOS_DE_SAIDA = ["perdido", "comprou_outro"];
+  const [eventResult, primeiroMovimento] = await Promise.all([
     identity.supabase
-      .from("lead_events")
-      .select("id,lead_id,metadata,created_at")
+      .from("pipeline_stage_moves")
+      .select("id,lead_id,from_stage,to_stage,reason,discard_reason_key,discard_notes,reversal_of,occurred_at")
       .eq("organization_id", organizationId)
-      .eq("event_type", "lead_discarded")
-      .gte("created_at", since)
-      .order("created_at", { ascending: false, nullsFirst: false })
+      .in("to_stage", ESTAGIOS_DE_SAIDA)
+      // `occurred_at`, NÃO `created_at`: esta tabela não tem `created_at`, e um
+      // filtro por coluna inexistente faz o PostgREST errar, a rota degradar e o
+      // defeito virar invisível em vez de corrigido.
+      .gte("occurred_at", since)
+      .order("occurred_at", { ascending: false, nullsFirst: false })
       .limit(2000),
+    // Desde quando existe registro. Sem isto, "0 saídas" numa janela de 90 dias
+    // leria como "ninguém desistiu" quando o ledger só existe desde 27/07.
     identity.supabase
-      .from("pipeline_history")
-      .select("id", { count: "exact", head: true })
+      .from("pipeline_stage_moves")
+      .select("occurred_at")
       .eq("organization_id", organizationId)
-      .eq("new_status", "perdido")
-      .gte("created_at", since),
+      .order("occurred_at", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (eventResult.error) {
@@ -134,17 +166,37 @@ export async function GET(request: NextRequest) {
       { status: 503 },
     );
   }
-  if (lostMovesResult.error) {
-    // Degradação graciosa: sem o denominador de cobertura o relatório continua
-    // útil — apenas coveragePct fica null. Logado para o drift não ser silencioso.
-    logger.warn("analytics.discard_report.lost_moves_unavailable", {
-      organizationId,
-      code: lostMovesResult.error.code,
-      message: lostMovesResult.error.message,
-    });
-  }
+  const movimentos = (eventResult.data ?? []) as Array<{
+    id: string;
+    lead_id: string | null;
+    from_stage: string | null;
+    to_stage: string | null;
+    reason: string | null;
+    discard_reason_key: string | null;
+    discard_notes: string | null;
+    reversal_of: string | null;
+    occurred_at: string | null;
+  }>;
 
-  const rows = (eventResult.data ?? []) as DiscardEventRow[];
+  // Saída revertida NÃO é saída. Guardamos as duas linhas no ledger — nada é
+  // apagado — mas a contagem publicada é líquida: um movimento conta se o id
+  // dele não aparece como `reversal_of` de nenhum outro. Medido hoje: 0
+  // reversões, e o zero é IMPRESSO em vez de omitido.
+  const revertidos = new Set(movimentos.map((m) => m.reversal_of).filter((v): v is string => Boolean(v)));
+  const rows = movimentos
+    .filter((m) => !revertidos.has(m.id))
+    .map((m) => ({
+      id: m.id,
+      lead_id: m.lead_id,
+      created_at: m.occurred_at,
+      // A chave vem de coluna TIPADA agora, não de metadata solto. `reason`
+      // continua sendo a descrição de follow-up, e não é motivo de descarte.
+      metadata: { reasonKey: m.discard_reason_key ?? "", notes: m.discard_notes ?? null },
+      from_stage: m.from_stage,
+      to_stage: m.to_stage,
+    })) as DiscardEventRow[];
+  const revertidasNaJanela = movimentos.length - rows.length;
+  const registroDeMovimentoDesde = primeiroMovimento.data?.occurred_at ?? null;
   const leadIds = [...new Set(rows.map((row) => row.lead_id).filter((value): value is string => Boolean(value)))];
   const leadResult = leadIds.length
     ? await identity.supabase
@@ -178,8 +230,18 @@ export async function GET(request: NextRequest) {
     const reason = getDiscardReason(reasonKey);
     if (reason) classified += 1;
     const key = reasonKey || "motivo_ausente";
+    /**
+     * `motivo_ausente` e `motivo_nao_classificado` são baldes DIFERENTES e
+     * precisam de rótulos diferentes. O primeiro é o sistema que não gravou; o
+     * segundo é o corretor que escolheu "Outro motivo". Fundi-los apagaria
+     * exatamente a distinção que este relatório existe para mostrar — e hoje o
+     * primeiro balde tem 104 linhas justamente porque a rota do pipeline
+     * descartava a escolha do corretor antes de gravar.
+     */
     const label = reason?.label
-      ?? (typeof metadata.reasonLabel === "string" && metadata.reasonLabel ? metadata.reasonLabel : key);
+      ?? (key === "motivo_ausente"
+        ? "Não medido — o motivo não foi gravado"
+        : typeof metadata.reasonLabel === "string" && metadata.reasonLabel ? metadata.reasonLabel : key);
     const metaCategory = reason?.metaCategory
       ?? (typeof metadata.metaCategory === "string" && metadata.metaCategory ? metadata.metaCategory : "other");
     const reasonBucket = byReason.get(key) ?? { key, label, metaCategory, count: 0 };
@@ -255,10 +317,26 @@ export async function GET(request: NextRequest) {
   };
 
   const discarded = rows.length;
-  const lostMoves = lostMovesResult.error ? null : lostMovesResult.count ?? 0;
-  const coveragePct = lostMoves !== null && lostMoves > 0
-    ? Math.round((classified / lostMoves) * 1000) / 10
-    : null;
+  // `lostMoves` era um COUNT numa segunda tabela (`pipeline_history`, 0 linhas no
+  // banco inteiro) enquanto `classified` vinha de outra. Numerador e denominador
+  // de fontes diferentes é como se fabrica um percentual que não significa nada:
+  // com 0 no denominador a cobertura ficava `null` e a tela sumia com a métrica.
+  // Agora os dois saem do MESMO conjunto de linhas.
+  const lostMoves = discarded;
+  const coveragePct = discarded > 0 ? Math.round((classified / discarded) * 1000) / 10 : null;
+
+  // Leads que estão em estado de saída SEM movimento registrado. São anteriores
+  // ao ledger (que começa em 27/07) — a tela precisa declará-las em vez de
+  // somá-las ao balde "sem motivo", que seria acusar o time por uma cegueira do
+  // sistema.
+  const leadsEmSaida = await identity.supabase
+    .from("leads")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .in("status", ESTAGIOS_DE_SAIDA);
+  const semMovimentoRegistrado = leadsEmSaida.error
+    ? null
+    : Math.max(0, (leadsEmSaida.count ?? 0) - new Set(rows.map((r) => r.lead_id).filter(Boolean)).size);
 
   return apiSuccess(
     {
@@ -279,6 +357,33 @@ export async function GET(request: NextRequest) {
         uniqueLeads: leadIds.length,
         classified,
         coveragePct,
+        /** Saídas revertidas na janela. Impresso mesmo quando é 0. */
+        revertidas: revertidasNaJanela,
+        /** Leads em estado de saída sem movimento no ledger — anteriores a ele. */
+        semMovimentoRegistrado,
+      },
+      /**
+       * ── PROCEDÊNCIA ────────────────────────────────────────────────────
+       *
+       * A janela pedida pode ser MAIOR que o registro. Hoje 7, 30 e 90 dias
+       * devolvem o mesmo número, porque todo o ledger cabe entre 27/07 e 30/07.
+       * Sem declarar isso, no dia 61 a tela mente por omissão.
+       */
+      procedencia: {
+        fonte: "pipeline_stage_moves",
+        estagiosContados: ESTAGIOS_DE_SAIDA,
+        registroDeMovimentoDesde,
+        janelaMaiorQueORegistro: Boolean(
+          registroDeMovimentoDesde && new Date(registroDeMovimentoDesde).getTime() > start.getTime(),
+        ),
+        /**
+         * Os motivos anteriores à correção são IRRECUPERÁVEIS: medido, eles não
+         * existem em `leads.metadata`, nem no payload de `atlas_events`, nem na
+         * descrição de `activities`. Ficam "não medido" — que é diferente de
+         * "motivo_nao_classificado", a escolha explícita do corretor por
+         * "Outro motivo".
+         */
+        motivoGravadoDesde: "2026-07-30",
       },
       byReason: [...byReason.values()]
         .map((bucket) => ({ ...bucket, share: sharePct(bucket.count, discarded) }))
