@@ -74,7 +74,22 @@ type Resposta = {
   motivoDaRecusa?: string | null;
   top?: Pontuacao[];
   ofertasNaoAvaliaveis?: Array<{ ofertaId: string; nome: string; porque: string }>;
-  perguntasQueDestravam?: Array<{ chave: string; rotulo: string; decisivo: boolean; pergunta: string }>;
+  /**
+   * `destravaOfertas` vinha da API desde sempre e este tipo o OMITIA — então o
+   * campo chegava e era descartado no JSX. O corretor via a ordem certa (o motor
+   * passou a ordenar por destrave em 2026-07-30) sem ver o motivo dela.
+   *
+   * É o número que transforma a lista em decisão: "bairro destrava 4 ofertas,
+   * preço destrava 1" responde qual pergunta vale o único toque da ligação —
+   * medido, com 462 leads de SLA vencido e 23 contatos no histórico inteiro.
+   */
+  perguntasQueDestravam?: Array<{
+    chave: string;
+    rotulo: string;
+    decisivo: boolean;
+    pergunta: string;
+    destravaOfertas?: number;
+  }>;
   lacunasDoCatalogo?: Array<{ chave: string; rotulo: string; decisivo: boolean; preencher: string; ofertasAfetadas?: number }>;
   alternativaMaisBarata?: Alternativa;
   alternativaProxima?: Alternativa;
@@ -328,7 +343,21 @@ export function CompatibilidadeDoClientePanel({ leadId }: { leadId?: string }) {
           <ul className="mt-1 space-y-1 text-xs">
             {dados.perguntasQueDestravam.map((p) => (
               <li key={p.chave} className="text-amber-200">
-                “{p.pergunta}”{p.decisivo ? " (destrava o matching)" : ""}
+                “{p.pergunta}”
+                {/*
+                  O NÚMERO, e não o rótulo "(destrava o matching)".
+                  "destrava o matching" era verdade para toda pergunta decisiva e
+                  por isso não separava nenhuma delas. `destravaOfertas` separa:
+                  com 4 empreendimentos e preço em 2, bairro destrava 4 e preço
+                  destrava 1 — e o corretor tem UM toque por cliente.
+                */}
+                {typeof p.destravaOfertas === "number" && p.destravaOfertas > 0 ? (
+                  <span className="ml-1 whitespace-nowrap text-emerald-300">
+                    destrava {p.destravaOfertas} {p.destravaOfertas === 1 ? "imóvel" : "imóveis"}
+                  </span>
+                ) : p.decisivo ? (
+                  " (destrava o matching)"
+                ) : null}
                 {/*
                   A captura fica NA pergunta, não numa tela separada. O corretor
                   ouve a resposta no telefone e grava ali — medido: 473 leads com
