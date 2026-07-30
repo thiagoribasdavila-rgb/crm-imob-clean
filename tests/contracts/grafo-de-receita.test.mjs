@@ -39,6 +39,7 @@ import {
   avisoDaBase,
 } from "../../lib/crm/grafo-de-receita.ts";
 import { estaNaMinhaCarteira, leLiderancaInteira } from "../../lib/crm/escopo-de-leitura.ts";
+import { tentarTravar } from "./_trava-da-org-de-prova.mjs";
 
 const RAIZ = process.cwd();
 
@@ -237,6 +238,47 @@ const ORG_REAL = "7c8c71c1-e963-464c-be5c-ff8c7936f51a";
 const PREFIXO = "contrato-grafo-";
 const MARCA = `${PREFIXO}${process.pid}-`;
 const ROTULO = `CONTRATO-GRAFO-${process.pid}`;
+
+/**
+ * A CAMPANHA CARREGA O PID, e isso não é enfeite.
+ *
+ * `grafo_desempenho_de_campanha` agrupa por campanha na ORGANIZAÇÃO INTEIRA —
+ * não existe filtro por rótulo dentro da RPC. Com o literal fixo `camp-um`, duas
+ * execuções simultâneas deste mesmo contrato somavam as duas fixtures e
+ * `desfechos_na_base` devolvia 14 onde a asserção espera 13. Medido em
+ * 2026-07-30, com uma sessão paralela rodando a suíte: o mesmo arquivo passa
+ * 11/11 em isolamento e reprova em concorrência.
+ *
+ * Isto APERTA a asserção em vez de afrouxá-la: 13 passa a ser exatamente o que
+ * ESTA execução inseriu, e não "13 se ninguém mais estiver medindo". O número
+ * continua fixo — o que deixa de ser compartilhado é o balde que ele conta.
+ *
+ * A fonte não precisa do mesmo tratamento: nenhuma asserção conta fonte por
+ * valor absoluto (`fonte-um`/`fonte-dois` só aparecem na fixture).
+ *
+ * O BAIRRO tinha a MESMA doença, e só apareceu porque a prova de concorrência
+ * foi executada em vez de raciocinada: com a campanha já isolada, duas rodadas
+ * simultâneas continuaram reprovando em `grafo_demanda_x_oferta`, que conta
+ * empreendimentos por bairro — 2 esperados, 4 medidos. Isolar um balde não
+ * isola os outros; cada contagem absoluta sobre estado compartilhado é sua
+ * própria colisão.
+ */
+const CAMP_UM = `camp-um-${process.pid}`;
+const CAMP_DOIS = `camp-dois-${process.pid}`;
+const BAIRRO = `Bairro Prova ${process.pid}`;
+const OUTRO_BAIRRO = `Outro Bairro ${process.pid}`;
+
+/**
+ * E o TERCEIRO balde não tem rótulo para carimbar: `grafo_censo_de_prontidao`
+ * mede `ganhos_rotulados` da ORGANIZAÇÃO inteira, que é o que um censo é. Duas
+ * fixtures simultâneas dão 7 ou 8 onde a asserção espera 4, e afrouxar para
+ * `>= 4` deixaria passar censo errado — o defeito que este contrato existe para
+ * pegar. Então a exclusividade é declarada, não presumida.
+ */
+const TRAVA = TEM_BANCO
+  ? tentarTravar(ORG_PROVA)
+  : { travou: false, motivo: "sem credenciais do Supabase em .env.local" };
+const MOTIVO_PARA_PULAR = TRAVA.travou ? false : TRAVA.motivo;
 const UMA_HORA = 3_600_000;
 const cab = () => ({ apikey: CHAVE, Authorization: `Bearer ${CHAVE}`, "Content-Type": "application/json" });
 
@@ -356,7 +398,7 @@ const contarReal = async () =>
 
 test(
   "a régua de carteira em SQL concorda com a de TypeScript, caso a caso",
-  { skip: TEM_BANCO ? false : "sem credenciais do Supabase em .env.local" },
+  { skip: MOTIVO_PARA_PULAR },
   async (t) => {
     // Por que este teste existe: passaram a haver TRÊS implementações da mesma
     // régua — `estaNaMinhaCarteira` (TS), `private.can_access_lead_row` (RLS) e
@@ -435,7 +477,7 @@ test(
 
 test(
   "PROVA VIVA: o grafo acha o que deve, não acha o que não deve, e não toca a organização real",
-  { skip: TEM_BANCO ? false : "sem credenciais do Supabase em .env.local" },
+  { skip: MOTIVO_PARA_PULAR },
   async (t) => {
     const antesReal = await contarReal();
     t.after(async () => {
@@ -454,9 +496,9 @@ test(
 
     // ── A OFERTA: dois no MESMO bairro (par comparável) e um em outro ────────
     const [alfa, beta, gama] = await inserir("developments", [
-      { organization_id: ORG_PROVA, name: `${ROTULO} ALFA`, neighborhood: "Bairro Prova", city: "Cidade Prova" },
-      { organization_id: ORG_PROVA, name: `${ROTULO} BETA`, neighborhood: "Bairro Prova", city: "Cidade Prova" },
-      { organization_id: ORG_PROVA, name: `${ROTULO} GAMA`, neighborhood: "Outro Bairro", city: "Cidade Prova" },
+      { organization_id: ORG_PROVA, name: `${ROTULO} ALFA`, neighborhood: BAIRRO, city: "Cidade Prova" },
+      { organization_id: ORG_PROVA, name: `${ROTULO} BETA`, neighborhood: BAIRRO, city: "Cidade Prova" },
+      { organization_id: ORG_PROVA, name: `${ROTULO} GAMA`, neighborhood: OUTRO_BAIRRO, city: "Cidade Prova" },
     ]);
 
     // ── A DEMANDA ───────────────────────────────────────────────────────────
@@ -466,7 +508,7 @@ test(
     // com `PGRST102: All object keys must match` — a linha que só tinha
     // `preferred_neighborhoods` derrubava o insert inteiro.
     const lead = (extra) => ({
-      organization_id: ORG_PROVA, status: "novo", source: "fonte-um", campaign: "camp-um",
+      organization_id: ORG_PROVA, status: "novo", source: "fonte-um", campaign: CAMP_UM,
       // `[]`, não `null`: a coluna é NOT NULL com default `{}`. E é por isso que
       // o censo mede bairro por `array_length(...) > 0` e não por `is not null` —
       // com esta coluna, `is not null` contaria 482 de 482.
@@ -478,8 +520,8 @@ test(
     // elas entram na conta, não na asserção.
     const [emBeta, emGama] = await inserir("leads", [
       lead({ name: `${ROTULO} EM-BETA`, development_id: beta.id }),
-      lead({ name: `${ROTULO} EM-GAMA`, development_id: gama.id, source: "fonte-dois", campaign: "camp-dois" }),
-      lead({ name: `${ROTULO} DECLAROU`, preferred_neighborhoods: ["bairro prova"] }),
+      lead({ name: `${ROTULO} EM-GAMA`, development_id: gama.id, source: "fonte-dois", campaign: CAMP_DOIS }),
+      lead({ name: `${ROTULO} DECLAROU`, preferred_neighborhoods: [BAIRRO.toLowerCase()] }),
       lead({ name: `${ROTULO} DO-B`, development_id: beta.id, assigned_to: b, assigned_user_id: b }),
       lead({ name: `${ROTULO} JA-GANHA`, development_id: beta.id, status: "ganho" }),
     ]);
@@ -584,15 +626,15 @@ test(
 
     // ── 5) "campanha com melhor desempenho" — mesma disciplina ──────────────
     const camp = (await rpc("grafo_desempenho_de_campanha", { p_organization_id: ORG_PROVA })).corpo ?? [];
-    const campUm = camp.find((r) => r.campanha === "camp-um");
-    const campDois = camp.find((r) => r.campanha === "camp-dois");
+    const campUm = camp.find((r) => r.campanha === CAMP_UM);
+    const campDois = camp.find((r) => r.campanha === CAMP_DOIS);
     assert.ok(campUm, "camp-um tem de aparecer");
     assert.equal(Number(campUm.desfechos_na_base), 13);
     assert.equal(Number(campUm.ganhos), 4);
     assert.ok(campDois, "camp-dois tem de aparecer mesmo sem desfecho — ausência é informação");
     assert.equal(campDois.taxa_de_ganho, null, "campanha sem desfecho não tem taxa 0%, tem taxa desconhecida");
     assert.ok(
-      camp.findIndex((r) => r.campanha === "camp-um") < camp.findIndex((r) => r.campanha === "camp-dois"),
+      camp.findIndex((r) => r.campanha === CAMP_UM) < camp.findIndex((r) => r.campanha === CAMP_DOIS),
       "base antes de taxa, aqui também",
     );
 
@@ -622,7 +664,7 @@ test(
 
     // ── 7) "relações entre demanda e oferta" ───────────────────────────────
     const dxo = (await rpc("grafo_demanda_x_oferta", { p_organization_id: ORG_PROVA })).corpo ?? [];
-    const prova = dxo.find((r) => r.bairro === "bairro prova");
+    const prova = dxo.find((r) => r.bairro === BAIRRO.toLowerCase());
     assert.ok(prova, "o bairro com oferta E demanda tem de aparecer");
     assert.equal(Number(prova.empreendimentos), 2, "ALFA e BETA estão no mesmo bairro");
     assert.equal(Number(prova.demanda_declarada), 1, "uma lead declarou este bairro");
