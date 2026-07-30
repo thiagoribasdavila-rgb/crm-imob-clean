@@ -18,14 +18,29 @@ const entries = execFileSync("unzip", ["-Z1", zip], { encoding: "utf8" })
   .filter(Boolean);
 if (entries.some((e) => e.startsWith("/") || e.includes("../")))
   throw new Error("Caminho inseguro no ZIP.");
+/**
+ * A LISTA AQUI TEM DE SER PELO MENOS TÃO LARGA QUANTO A DO EMPACOTADOR.
+ *
+ * `scripts/package-hostinger.mjs` exclui `.env` sem sufixo, `.whatsapp-sessions`
+ * e `logs`; esta verificação não conferia nenhum dos três. Régua mais fraca que a
+ * regra não protege: se o empacotador deixasse passar um `.env` de produção, o
+ * verificador diria que está tudo certo — e o ZIP sai com credencial dentro.
+ *
+ * Divergência entre duas listas que precisam concordar é a classe de defeito mais
+ * cara deste repositório. Aqui ela custaria segredo publicado.
+ */
 const forbidden = entries.filter(
   (e) =>
-    /(^|\/)(?:\.env\.local|hostinger\.env|node_modules|\.next|tmp|outputs|dist|\.git)(?:\/|$)/.test(
+    /(^|\/)(?:\.env|\.env\.[^/]+|hostinger\.env|node_modules|\.next|tmp|outputs|dist|\.git|whatsapp-sessions|\.whatsapp-sessions|logs)(?:\/|$)/.test(
       e,
-    ) || /\.(?:xlsx?|csv|pdf|pem)$/i.test(e),
+    ) || /\.(?:xlsx?|csv|pdf|pem|key|p12|pfx)$/i.test(e),
 );
-if (forbidden.length)
-  throw new Error(`Conteúdo proibido: ${forbidden.slice(0, 5).join(", ")}`);
+// `.env.example` é o único que PODE entrar: só tem nomes de variável, sem valor,
+// e o empacotador o inclui de propósito para quem for provisionar o ambiente.
+const permitidos = new Set([".env.example"]);
+const proibidosDeVerdade = forbidden.filter((e) => !permitidos.has(e.replace(/^atlas-v3\//, "")));
+if (proibidosDeVerdade.length)
+  throw new Error(`Conteúdo proibido: ${proibidosDeVerdade.slice(0, 5).join(", ")}`);
 for (const required of [
   "HOSTINGER_PACKAGE.json",
   "RELEASE_FILES.sha256",
