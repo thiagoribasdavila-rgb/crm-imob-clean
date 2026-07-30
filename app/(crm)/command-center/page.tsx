@@ -23,6 +23,7 @@ import { NextBestActionPanel } from "@/components/atlas/NextBestActionPanel";
 import { CampaignApprovalsPanel } from "@/components/atlas/CampaignApprovalsPanel";
 import { OfertaAtivaDoAcervoPanel } from "@/components/atlas/OfertaAtivaDoAcervoPanel";
 import { ProactiveNudgesPanel } from "@/components/atlas/ProactiveNudgesPanel";
+import { VendasSemValorPanel } from "@/components/atlas/VendasSemValorPanel";
 import {
   AtlasBadge,
   AtlasEmpty,
@@ -3053,6 +3054,21 @@ export default function CommandCenterPage() {
         style={{ animationDelay: "140ms" }}
       >
         <ProactiveNudgesPanel max={4} />
+      </section>
+
+      {/*
+        O VALOR DA VENDA FECHADA.
+
+        A rota `/api/v1/crm/vendas-sem-valor` existia, com contrato e prova, e
+        NENHUMA tela a consumia. O custo tem data: a primeira venda fecha amanhã e
+        a única lead `ganho` da base está com valor nulo.
+
+        O painel se esconde sozinho quando não há pendência — ocupar a tela do
+        diretor com card vazio treina a pessoa a ignorar o lugar onde a cobrança
+        aparece.
+      */}
+      <section aria-label="Vendas fechadas sem valor informado" className="cc5-reveal" style={{ animationDelay: "160ms" }}>
+        <VendasSemValorPanel />
       </section>
 
       {/* O tilt 3D mutava style.transform a cada pointermove sem carregar informação
