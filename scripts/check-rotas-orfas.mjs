@@ -71,7 +71,11 @@ function andar(dir, filtro, saida = []) {
   for (const e of entradas) {
     const p = join(dir, e.name);
     if (e.isDirectory()) {
-      if (!/node_modules|\.next|dist|\.git/.test(p)) andar(p, filtro, saida);
+      // Ancorado em separador de caminho: sem isso, `dist` casava dentro de
+      // `distribution` e o portao ficava CEGO na area de distribuicao de leads —
+      // duas rotas reais sumiam da varredura. Achado por um critico adversarial,
+      // horas depois de eu escrever este arquivo.
+      if (!/(^|\/)(node_modules|\.next|dist|\.git)(\/|$)/.test(p)) andar(p, filtro, saida);
     } else if (filtro(p, e.name)) saida.push(p);
   }
   return saida;
