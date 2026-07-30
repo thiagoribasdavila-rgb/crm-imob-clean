@@ -38,12 +38,14 @@ ssh root@85.209.93.32 'cp /tmp/.env.hostinger /var/www/atlas/.env && bash /tmp/a
 
 ### 3️⃣ Aplicar migrations (Supabase — 10 min)
 
-> ⚠️ **NÃO EXECUTAR.** Este `db push` apontava para o banco vivo (ietwopslgqxlenfyghqk) e dispararia ~128 migrations num banco com 23 tabelas e drift de schema. Siga docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md.
+> ⚠️ **NÃO EXECUTAR ESTE `db push`.** Ele apontava para `ietwopslgqxlenfyghqk` (`atlas-ai-crm-v1`) — o projeto **APOSENTADO**, que tem 24 tabelas, schema legado e **17.151 leads reais** dentro. Disparar ~128 migrations lá conectaria a operação no banco errado e aplicaria migrations desenhadas para outro schema.
+>
+> O ref canônico é `pozbrcsfthnhmnebfoxv` (`atlas-v3-homologacao`, 183 tabelas) e vive em `config/supabase-projetos.json`. Medido em 2026-07-30: repo tem 166 versões de migration, o banco tem 207, **interseção zero** — `db push` aborta de qualquer forma. Siga docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md.
 
 ```bash
 # NÃO EXECUTAR — mantido apenas como histórico
 cd ~/atlas-v3
-supabase link --project-ref ietwopslgqxlenfyghqk
+supabase link --project-ref pozbrcsfthnhmnebfoxv
 supabase db push
 ```
 **Esperado (à época; não reflete o estado real):**

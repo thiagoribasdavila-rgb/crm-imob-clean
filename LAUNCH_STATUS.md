@@ -147,7 +147,7 @@ ssh root@85.209.93.32 'cp /tmp/.env.hostinger /var/www/atlas/.env && bash /tmp/a
 # ⚠️ NÃO EXECUTAR os 3 comandos abaixo — db push no banco vivo dispararia ~128 migrations.
 # Caminho vigente: docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md
 # cd ~/atlas-v3
-# supabase link --project-ref ietwopslgqxlenfyghqk
+# supabase link --project-ref pozbrcsfthnhmnebfoxv
 # supabase db push
 # (Supabase dashboard: SMTP + proteção de senha)
 

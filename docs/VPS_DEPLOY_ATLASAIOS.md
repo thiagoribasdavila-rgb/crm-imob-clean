@@ -1,3 +1,5 @@
+> ⚠️ **Destino corrigido em 2026-07-30.** Este roteiro apontava para `ietwopslgqxlenfyghqk` (`atlas-ai-crm-v1`), projeto **APOSENTADO** com 17.151 leads reais. O ref canônico vive em `config/supabase-projetos.json` e é conferido por `npm run coerencia-ambiente:check`.
+
 # Runbook — Deploy do ATLAS AI OS na Hostinger VPS (`atlasaios.com.br`)
 
 > Objetivo: subir o Atlas v3 num VPS Node, servir em **https://atlasaios.com.br** com Nginx + SSL, e deixar workers/cron rodando. Execute os blocos na ordem. Comandos assumem **Ubuntu 22.04/24.04** (imagem padrão da Hostinger VPS).
@@ -177,9 +179,9 @@ As 4 migrations pendentes ficam em `supabase/migrations/` e **não são aplicada
 | `20260720020000_whatsapp_conversation_intelligence.sql` | insights de conversa WhatsApp |
 | `20260720030000_security_revoke_anon_knowledge_search.sql` | **fix de segurança** (revoga busca anônima) |
 
-> ⚠️ **Drift de projeto:** o Supabase vivo é `atlas-ai-crm-v1` (`ietwopslgqxlenfyghqk`), mas as migrations declaram alvo `crm-imob-clean`. Ao aplicar, **confirme que o destino é `ietwopslgqxlenfyghqk`** — senão não terão efeito.
+> ⚠️ **Drift de projeto:** o Supabase vivo é `atlas-v3-homologacao` (`pozbrcsfthnhmnebfoxv`), mas as migrations declaram alvo `crm-imob-clean`. Ao aplicar, **confirme que o destino é `pozbrcsfthnhmnebfoxv`** — senão não terão efeito.
 >
-> Via CLI: `supabase link --project-ref ietwopslgqxlenfyghqk && supabase db push`. Faça um **snapshot/backup antes** (aditivas e reversíveis, mas backup é regra).
+> Via CLI: `supabase link --project-ref pozbrcsfthnhmnebfoxv && supabase db push`. Faça um **snapshot/backup antes** (aditivas e reversíveis, mas backup é regra).
 
 Ainda no Supabase, **Authentication → SMTP**: configure com a conta de e-mail da **Hostinger** (MX/SPF/DKIM já existem no domínio) — destrava login, recuperação de senha e convites. **Site URL** = `https://atlasaios.com.br`; **Redirect URL** = `https://atlasaios.com.br/auth/callback`.
 
@@ -354,7 +356,7 @@ cd /var/www/atlas && set -a && . ./.env && set +a && node scripts/run-workers.mj
 | 5 | `www` → apex (301) | `curl -I https://www.atlasaios.com.br` = 301 | ⬜ |
 | 6 | `http` → `https` (301) | `curl -I http://atlasaios.com.br` = 301 | ⬜ |
 | 7 | Health/Ready | `curl https://atlasaios.com.br/api/health` = JSON do Atlas | ⬜ |
-| 8 | Migrations aplicadas | 4 migrations no projeto `ietwopslgqxlenfyghqk` | ⬜ |
+| 8 | Migrations aplicadas | 4 migrations no projeto `pozbrcsfthnhmnebfoxv` | ⬜ |
 | 9 | SMTP Supabase | e-mail de teste/recuperação chega | ⬜ |
 | 10 | PM2 no boot | `pm2 save` feito + `pm2 startup` ativo | ⬜ |
 | 11 | Cron dos workers | `tail logs/workers.log` mostra jobs 200 | ⬜ |

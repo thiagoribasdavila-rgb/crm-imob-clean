@@ -606,6 +606,581 @@ create table if not exists public.commission_rules (`,
     para: `      void caminho;
       return false;`,
   },
+  /**
+   * M68–M74 vigiam a PRONTIDÃO QUE NÃO MENTE — contrato
+   * tests/contracts/prontidao-nao-mente.test.mjs.
+   *
+   * A doença que elas guardam é uma: "credencial presente" sendo publicada como
+   * "funciona", e o caso extremo dela era o `smtp`, que saía de
+   * `checks.database.ok ? "via-supabase-auth" : "error"` — estado sobre E-MAIL
+   * derivado de uma consulta a `organizations`.
+   *
+   * M69 e M70 são as que importam mais: elas não desfazem o conserto do smtp,
+   * elas REAPONTAM uma linha qualquer para a evidência do banco. É a CLASSE. Se
+   * M69 for pega e M70 sobreviver, o contrato virou específico do smtp e a
+   * próxima linha derivada do assunto errado passa.
+   */
+  {
+    id: "M68", arquivo: "lib/integrations/estado-de-credencial.ts",
+    quebra: "a recusa de evidência de OUTRO assunto desaparece",
+    dor: "É o defeito original de volta em forma geral: prova de que o banco respondeu passa a valer como prova de que o e-mail funciona. Recuperação de senha falha em produção com a prontidão VERDE, e ninguém abre chamado contra uma tela que diz ok.",
+    de: `  if (evidencia && evidencia.assunto !== entrada.assunto) {`,
+    para: `  if (false) {`,
+  },
+  {
+    id: "M69", arquivo: "lib/integrations/prontidao-das-integracoes.ts",
+    quebra: "o smtp volta a declarar o assunto do banco",
+    dor: "Era o estado real até 2026-07-29. A linha de e-mail passa a colher a evidência da consulta a organizations e fica verde sempre que o banco responde — status que nunca fica vermelho pelo próprio assunto não é status, é enfeite.",
+    de: `    smtp: declarar(ASSUNTOS.email, {`,
+    para: `    smtp: declarar(ASSUNTOS.banco, {`,
+  },
+  {
+    id: "M70", arquivo: "lib/integrations/prontidao-das-integracoes.ts",
+    quebra: "OUTRA linha (openai) passa a nascer da checagem do banco — a CLASSE",
+    dor: "O mesmo defeito na próxima integração que alguém acrescentar. A tela diria que a IA responde porque o SELECT em organizations voltou, com a conta da OpenAI em HTTP 429 insufficient_quota.",
+    de: `    openai: declarar(ASSUNTOS.openai, {`,
+    para: `    openai: declarar(ASSUNTOS.banco, {`,
+  },
+  {
+    id: "M71", arquivo: "lib/ai/prontidao-generativa.ts",
+    quebra: "o fallback determinístico volta a contar como provedor vivo",
+    dor: "Das 43 linhas de ai_usage_events no banco de homologação, 22 eram local/deterministic-safe-fallback — a pegada de que TODOS os provedores falharam. Contá-las como uso conclui 'IA pronta' exatamente nas chamadas em que nenhuma IA respondeu.",
+    de: `    if (!provedor || provedor === PROVEDOR_DE_FALLBACK) continue;`,
+    para: `    if (!provedor) continue;`,
+  },
+  {
+    id: "M72", arquivo: "lib/ai/prontidao-generativa.ts",
+    quebra: "a segunda guarda do fallback (pelo nome do MODELO) desaparece",
+    dor: "A dupla guarda existe porque um dia o fallback pode ser gravado com outro rótulo de provedor. Sem ela, basta renomear o provedor do fallback para a IA morta voltar a aparecer viva.",
+    de: `    if (String(linha.model ?? "").trim() === MODELO_DE_FALLBACK) continue;`,
+    para: `    void MODELO_DE_FALLBACK;`,
+  },
+  {
+    id: "M73", arquivo: "lib/ai/model-profiles.ts",
+    quebra: "nome de modelo truncado deixa de ser reprovado",
+    dor: "`gpt-5.6-` existia no ambiente real e devolve HTTP 400 model_not_found. Sem a recusa, cada chamada gasta rede (e retry) para descobrir o que o nome já dizia — e o tier cai no fallback determinístico sem ninguém entender por quê.",
+    de: `  if (/[-._/]$/.test(valor)) return `,
+    para: `  if (false) return `,
+  },
+  {
+    id: "M74", arquivo: "app/api/ai/briefing/route.ts",
+    quebra: "generativeReady volta a sair da existência da chave da OpenAI",
+    dor: "Era o estado real: `aiProviderReadiness().openai` é `Boolean(process.env.OPENAI_API_KEY)`. A diretoria lia 'IA pronta' apontando para o ÚNICO provedor generativo que não responde (429 insufficient_quota), enquanto a Perplexity — primeira na ordem configurada e viva — era ignorada.",
+    de: `      generativeReady: generativa.pronta,`,
+    para: `      generativeReady: aiProviderReadiness().openai,`,
+  },
+  {
+    id: "M75", arquivo: "lib/integrations/leitura-da-prontidao.ts",
+    quebra: "o leitor volta a procurar os campos no nível de cima da resposta",
+    dor: "Era o estado real do AtlasSystemPulse: `apiSuccess` responde `{ok,data,meta}` e o painel lia `body.status`. `status` saía undefined, então o botão dizia 'Atenção necessária' e a lista dizia 'Nenhuma verificação disponível' com a rota em 200 e o banco em 219 ms. Vermelho permanente ensina a ignorar o painel tão bem quanto verde falso.",
+    de: `  const dados = objeto(raiz.data);`,
+    para: `  const dados = objeto(raiz);`,
+  },
+  {
+    id: "M76", arquivo: "lib/integrations/leitura-da-prontidao.ts",
+    quebra: "o leitor passa a aprovar qualquer status que não seja not_ready",
+    dor: "Leitor tolerante que na dúvida aprova é a doença desta entrega com outra roupa: um deploy antigo, um erro de digitação no enum ou uma resposta truncada passariam a pintar a plataforma de verde.",
+    de: `    bruto === "ready" ? "ready" : bruto === "not_ready" ? "not_ready" : "desconhecido";`,
+    para: `    bruto === "not_ready" ? "not_ready" : "ready";`,
+  },
+  {
+    id: "M77", arquivo: "lib/integrations/estado-de-credencial.ts",
+    quebra: "evidência SEM DATA volta a contar como fresca",
+    dor: "Uma linha de ai_usage_events com created_at nulo passa a declarar o provedor VIVO para sempre: sem data não há janela que expire. É a doença desta entrega em miniatura — 'não sei quando' publicado como 'agora'.",
+    de: `  if (Number.isNaN(em)) {`,
+    para: `  if (false) {`,
+  },
+  {
+    id: "M78", arquivo: "lib/ai/conversational-qualification.ts",
+    quebra: "a tela de qualificação emudece: lacuna existe e nenhuma pergunta é feita",
+    dor: "O corretor abre 'Qualificar agora' numa lead crua e vê 'qualificação concluída' com zero de oito sinais. A fase 86 inteira vira um botão que não pergunta nada.",
+    de: `nextField=missing[0]||null`,
+    para: `nextField=null`,
+  },
+  {
+    id: "M79", arquivo: "lib/ai/conversational-qualification.ts",
+    quebra: "texto livre passa a contar como sinal confirmado",
+    dor: "Qualquer lixo gravado no campo vira 'sinal confirmado' e sobe para o Copiloto como verdade. É exatamente a inferência automática que o documento da fase proíbe.",
+    de: `options[field].includes(String(profile[field]||""))`,
+    para: `true`,
+  },
+  {
+    id: "M80", arquivo: "lib/ai/conversational-qualification.ts",
+    quebra: "lead vira PRONTA PARA APRESENTAR sem objetivo, prazo ou forma de pagamento",
+    dor: "Seis sinais periféricos bastam para o selo verde. O corretor entra na reunião sem saber o que a pessoa quer nem como pagaria.",
+    de: `readyForPresentation:answered.length>=6&&Boolean(profile.purpose&&profile.timeline&&profile.financing)`,
+    para: `readyForPresentation:answered.length>=6`,
+  },
+  {
+    id: "M81", arquivo: "app/api/v1/leads/[id]/conversational-qualification/route.ts",
+    quebra: "a rota aceita resposta fora do catálogo comercial",
+    dor: "A promessa de 'resposta controlada' cai no chão: o POST grava qualquer string no perfil de qualificação, e a conversa bruta entra pela porta que a fase jurou não ter.",
+    de: `!options[field as keyof typeof options].includes(value)`,
+    para: `false`,
+  },
+  {
+    id: "M82", arquivo: "app/(crm)/leads/[id]/qualification/page.tsx",
+    quebra: "corrigir uma resposta mostra as opções do campo errado",
+    dor: "O corretor toca em 'Objetivo da compra' para corrigir e recebe a lista de prazos. Um toque grava a resposta errada no campo errado.",
+    de: `data.options[activeField]`,
+    para: `data.options[nextField]`,
+  },
+  {
+    id: "M87", arquivo: "app/(crm)/leads/[id]/qualification/page.tsx",
+    quebra: "o botão de CORRIGIR resposta perde a trava do corretor responsável",
+    dor: "Quem não é dono da lead reabre um campo já respondido e regrava por cima. A tela tem DOIS gatilhos de escrita e a guarda antiga achava o `disabled` do outro — desarmar um passava batido.",
+    de: `disabled={busy||!data.canAnswer} onClick={()=>{interacted`,
+    para: `disabled={busy} onClick={()=>{interacted`,
+  },
+  {
+    id: "M88", arquivo: "app/api/v1/leads/[id]/conversational-qualification/route.ts",
+    quebra: "a recusa do catálogo fica inalcançável, com o código de erro renomeado",
+    dor: "Um `if (false)` desliga a validação e a rota grava qualquer string no perfil de qualificação. A guarda antiga media só a ORDEM de duas ocorrências e casava o PREFIXO do identificador renomeado — sobrevivia à quebra.",
+    de: `if(!(field in options)||!options[field as keyof typeof options].includes(value))return apiError("QUALIFICATION_INVALID"`,
+    para: `if(false)return apiError("QUALIFICATION_INVALID_X"`,
+  },
+  {
+    id: "M83", arquivo: "lib/dashboards/periodo-do-resumo.ts",
+    quebra: "a gravação do recorte perde a guarda de hidratação",
+    dor: "O efeito grava o padrão na montagem e apaga a escolha do usuário antes de a leitura recuperá-la. Quem escolhe 'Hoje', abre uma lead e volta, reencontra '30 dias' — com todo o código de persistência presente e aparentemente correto.",
+    de: `  if (!hidratado) return null;`,
+    para: `  if (false) return null;`,
+  },
+  {
+    id: "M84", arquivo: "lib/dashboards/periodo-do-resumo.ts",
+    quebra: "o recorte lido da sessão deixa de ser validado contra o vocabulário",
+    dor: "Valor de uma versão anterior, tradução ('semana') ou mão no DevTools passam adiante e viram janela indefinida. A tela recorta de um jeito que ninguém pediu e não mostra erro nenhum — lista vazia se lê como 'não aconteceu nada'.",
+    de: `  if (!ehPeriodoDoResumo(texto)) return PERIODO_PADRAO;`,
+    para: `  if (false) return PERIODO_PADRAO;`,
+  },
+  {
+    id: "M85", arquivo: "lib/dashboards/periodo-do-resumo.ts",
+    quebra: "semana e mês passam a ter a mesma janela de 30 dias",
+    dor: "A pastilha troca de cor e nenhum número muda. Seletor que não mexe na leitura é pior que seletor nenhum: convence o diretor de que ele está vendo a semana.",
+    de: `  if (periodo === "week") return 7;`,
+    para: `  if (periodo === "week") return 30;`,
+  },
+  {
+    id: "M86", arquivo: "lib/dashboards/periodo-do-resumo.ts",
+    quebra: "linha sem data passa a contar como dentro de qualquer janela",
+    dor: "Lead com created_at nulo entra no recorte de hoje. A conversão do dia sobe sem nenhuma venda por trás — número fabricado exibido como medido.",
+    de: `  if (!Number.isFinite(marca)) return false;`,
+    para: `  if (!Number.isFinite(marca)) return true;`,
+  },
+  {
+    id: "M89", arquivo: "app/(auth)/reset-password/page.tsx",
+    quebra: "a resposta da rota de troca de senha volta a ser engolida",
+    dor: "A senha muda, a rota responde 401 e ninguém olha: a troca não é registrada em lugar nenhum e a sessão de recuperação continua viva — medido, GET /auth/v1/user com ela responde 200 depois da troca, por ~1 h. Quem tem o link troca a senha de novo, e a tela mostra sucesso verde nos dois casos.",
+    de: `}).then((resposta) => resposta.ok).catch(() => false);`,
+    para: `}).catch(() => {});`,
+  },
+  {
+    id: "M90", arquivo: "app/(auth)/reset-password/page.tsx",
+    quebra: "a troca pelo navegador deixa de encerrar a sessão de recuperação",
+    dor: "O provedor revoga as OUTRAS sessões sozinho, então nada parece errado — mas a sessão que acabou de trocar a senha sobrevive. Em computador compartilhado, o token fica no fragmento da URL e a próxima pessoa troca a senha outra vez.",
+    de: `await supabase.auth.signOut({ scope: "global" }).catch(() => null);`,
+    para: `await Promise.resolve();`,
+  },
+  {
+    id: "M91", arquivo: "app/(auth)/reset-password/page.tsx",
+    quebra: "a política 12/128/3 para de barrar antes de chamar o provedor",
+    dor: "Medido: o provedor aceita 'abc123' e '12345678' (HTTP 200); o mínimo dele é 6 caracteres. Sem esta guarda a recuperação passa a ser o caminho legítimo para rebaixar a própria senha, e o Atlas continua prometendo 12/128/3 na tela.",
+    de: `    if (!strength.valid) {`,
+    para: `    if (false) {`,
+  },
+  {
+    id: "M92", arquivo: "app/api/auth/password-reset/route.ts",
+    quebra: "a rota de troca deixa de exigir o cookie de intenção",
+    dor: "Sem o cookie, qualquer sessão apenas logada troca a senha sem provar recuperação e sem saber a senha atual. Notebook destravado, sessão emprestada ou cookie roubado viram tomada de conta — e o portão continuaria verde, porque a rota segue 'validando o usuário'.",
+    de: `  if (!request.cookies.get(RECOVERY_COOKIE)?.value) return null;`,
+    para: `  if (false) return null;`,
+  },
+
+  // ── OFERTA ATIVA DO ACERVO DE RESGATE ─────────────────────────────────────
+  //
+  // A regra desta feature mora numa RPC. Uma mutação em arquivo NÃO reescreve o
+  // banco, então o que estas quebras cobram é o par: os NÚMEROS vivem no módulo
+  // TypeScript e o contrato compara o módulo com o comportamento do BANCO VIVO.
+  // Mexer no número aqui deixa os dois em desacordo — e é isso que fica vermelho.
+  {
+    id: "M93", arquivo: "lib/crm/acervo-de-resgate.ts",
+    quebra: "o limite de recarga sobe de 5 para 7 leads sem toque",
+    dor: "O corretor acumula 14 leads de resgate intocadas em vez de 10, e o acervo esvazia sem ninguém ligar — o problema de hoje (270 leads paradas numa pessoa) com outro nome. O banco continua travando em 5, então a tela promete um lote que a RPC recusa.",
+    de: `export const LIMITE_SEM_TOQUE = 5;`,
+    para: `export const LIMITE_SEM_TOQUE = 7;`,
+  },
+  {
+    id: "M94", arquivo: "lib/crm/acervo-de-resgate.ts",
+    quebra: "o prazo do resgate volta a ser o padrão de 15 minutos",
+    dor: "Lead histórica de 2023 nasce com 15 minutos para o primeiro contato. Todo lote pego aparece atrasado na central em quinze minutos, e a fila de urgência do corretor vira ruído — exatamente o defeito que as 13 leads já migradas tinham.",
+    de: `export const PRAZO_RESGATE_MINUTOS = 1440;`,
+    para: `export const PRAZO_RESGATE_MINUTOS = 15;`,
+  },
+  {
+    id: "M95", arquivo: "lib/crm/acervo-de-resgate.ts",
+    quebra: "a oferta deixa de conferir o papel do ator",
+    dor: "A tela oferece o balcão do acervo para a liderança e para quem não é corretor. Quem distribui para os outros passa a se servir, e o acervo esvazia por cima em vez de por baixo.",
+    de: `  if (estado.papel !== "broker") return recusa("acervo_ator_nao_e_corretor");`,
+    para: `  if (false) return recusa("acervo_ator_nao_e_corretor");`,
+  },
+  {
+    id: "M96", arquivo: "lib/crm/acervo-de-resgate.ts",
+    quebra: "o teto de carteira da liderança deixa de recusar quando não há espaço",
+    dor: "O corretor no teto configurado pelo gestor pega mais 10 e a RPC recusa com `broker_total_capacity_reached` — a tela oferece um botão que sempre falha, e o gestor perde a única alavanca que tem sobre carteira.",
+    de: `    if (espaco <= 0) return recusa("broker_total_capacity_reached");`,
+    para: `    if (false) return recusa("broker_total_capacity_reached");`,
+  },
+  {
+    id: "M97", arquivo: "lib/crm/acervo-de-resgate.ts",
+    quebra: "o atraso de primeiro contato volta a ignorar o prazo do acervo",
+    dor: "As 16.733 leads arquivadas do acervo v1 passam a contar como violação de primeiro contato no dia da importação. A métrica que revelou que o gargalo é DISTRIBUIÇÃO morre afogada em ~17 mil linhas falsas.",
+    de: `  const ehAcervo = Boolean(lead.import_batch_id);
+  if (!ehAcervo) return true;`,
+    para: `  return true;`,
+  },
+  {
+    id: "M98", arquivo: "lib/crm/acervo-de-resgate.ts",
+    quebra: "a tela deixa de negar que 'não perguntado' seja 'sem restrição'",
+    dor: "O corretor lê que as leads estão sem restrição de contato, pega 10 e dispara mensagem para gente que nunca deu base legal. É a imobiliária que responde por isso, não o corretor.",
+    de: `    ? "Nenhuma destas leads tem consentimento registrado — o estado é “não perguntado”, que não é o mesmo que “sem restrição”."`,
+    para: `    ? "Nenhuma destas leads tem restrição de contato registrada."`,
+  },
+  {
+    id: "M99", arquivo: "app/api/v1/crm/leads/route.ts",
+    quebra: "o recorte do acervo volta a esconder lead arquivada",
+    dor: "O corretor pega 10 leads do acervo e não vê NENHUMA na lista: 16.733 das 17.151 do v1 estão em `arquivado`, e a lista exclui arquivado em toda consulta. A feature entrega leads invisíveis.",
+    de: `    query = acervo
+      ? query
+          .not("import_batch_id", "is", null)
+          .or(filtroDaCarteiraDaPessoa(access.access.user.id))
+      : query.not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)");`,
+    para: `    query = query.not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)");`,
+  },
+  {
+    id: "M100", arquivo: "app/api/v1/analytics/broker-daily/route.ts",
+    quebra: "a central do corretor volta ao predicado sem prazo",
+    dor: "O terceiro predicado de atraso (o único que não olhava prazo) volta a divergir dos outros três. Lead de resgate pega há 5 minutos já aparece atrasada na central de quem acabou de pegá-la.",
+    de: `    ? activeLeads.filter((lead) => primeiroContatoAtrasado(lead, now)).length`,
+    para: `    ? activeLeads.filter((lead) => !lead.first_contacted_at).length`,
+  },
+  {
+    id: "M101", arquivo: "app/api/v1/ai/next-best-action/route.ts",
+    quebra: "a fila 'sem dono' da liderança volta a engolir o acervo",
+    dor: "Os dois balcões disputam as mesmas linhas: a liderança distribui a lead de acervo como demanda nova enquanto o corretor a pega no auto-serviço. É como nasce a lead com dois donos — e o painel volta a ser 76% acervo e 18% falso positivo.",
+    de: `    ? base.is("assigned_user_id", null).is("assigned_to", null).is("import_batch_id", null)`,
+    para: `    ? base.is("assigned_user_id", null)`,
+  },
+  {
+    id: "M102", arquivo: "supabase/migrations/20260730010000_oferta_ativa_do_acervo_de_resgate.sql",
+    quebra: "o claim perde o `skip locked` na migration",
+    dor: "MEDIDO com duas sondas paralelas na base viva: com `skip locked`, duas transações sobrepostas por 2.911ms pegaram 10 leads cada, ZERO em comum. Sem ele, a segunda ESPEROU (6.188ms contra 3.079ms) e voltou com AS MESMAS 10 ids. Num banco reconstruído por esta migration, dois corretores clicando junto recebem o mesmo lote — um deles fica com o lote curto ou vazio, e o outro nunca sabe.",
+    de: `    for update skip locked`,
+    para: `    for update`,
+  },
+
+  // ── FRENTE 4.6 GEOLOCALIZAÇÃO ──────────────────────────────────────────────
+  //
+  // Todas quebram o ARQUIVO da migration, e é por isso que quem as mata é a
+  // PARTE B de tests/contracts/geolocalizacao-em-metros.test.mjs. A PARTE A
+  // chama o banco e prova que o comportamento existe DE VERDADE, mas editar um
+  // `.sql` não muda o banco já aplicado: uma asserção que só consulta o banco
+  // nunca morreria por estas mutações. As duas partes são necessárias.
+  {
+    id: "M103", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    quebra: "ST_MakePoint recebe latitude antes de longitude no raio",
+    dor: "MEDIDO: o Paraíso é lat -23,5713 / lng -46,6420. Trocado, o ponto vira lat -46,64 / lng -23,57 — no Atlântico, a ~2.600 km do empreendimento. Os dois CHECK de faixa PASSAM (-46 é latitude válida, -23 é longitude válida), o índice funciona, a consulta responde 200 e a lista de 'imóveis próximos' fica vazia ou traz o prédio errado, sem um único erro.",
+    de: `           extensions.ST_SetSRID(extensions.ST_MakePoint(
+             p_longitude::double precision, p_latitude::double precision
+           ), 4326)::extensions.geography
+         )::numeric as distancia_m
+    from public.developments d`,
+    para: `           extensions.ST_SetSRID(extensions.ST_MakePoint(
+             p_latitude::double precision, p_longitude::double precision
+           ), 4326)::extensions.geography
+         )::numeric as distancia_m
+    from public.developments d`,
+  },
+  {
+    id: "M104", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    quebra: "a coluna do ponto vira geometry em vez de geography",
+    dor: "MEDIDO no banco: a MESMA distância deu 110.574,4 em geography e 1,0000 em geometry — metro contra GRAU. Um raio de 1000 'metros' passa a varrer ~111.000 km, ou seja o planeta inteiro: 'empreendimentos num raio de 1 km' devolve todos, e a distância exibida ao corretor fica em unidade nenhuma. Nada estoura.",
+    de: `  add column if not exists geo extensions.geography(Point, 4326)`,
+    para: `  add column if not exists geo extensions.geometry(Point, 4326)`,
+  },
+  {
+    id: "M105", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    quebra: "empreendimentos_no_raio perde a cerca da organização",
+    dor: "A função é `security definer`: ela atravessa a RLS por desenho, e a cerca de inquilino só existe naquela linha. Sem ela, um raio de 50 km em São Paulo devolve os empreendimentos de TODAS as imobiliárias do banco — vazamento entre empresas pela porta da geolocalização, com HTTP 200.",
+    de: `    from public.developments d
+   where d.organization_id = p_organization_id
+     and d.geo is not null`,
+    para: `    from public.developments d
+   where d.geo is not null`,
+  },
+  {
+    id: "M106", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    quebra: "a concentração de demanda volta a descartar empreendimento sem bairro",
+    dor: "MEDIDO: 192 leads têm empreendimento de interesse e 185 apareciam; as 7 do Spin Mood (neighborhood NULL) DESAPARECIAM sem aviso. Quem somasse a coluna do mapa de demanda leria 185 e confiaria — é a classe 'recorte que esvazia a lista', já paga neste repositório.",
+    de: `      coalesce(private.normalizar_endereco(d.neighborhood), '(sem bairro)') as chave,
+      coalesce(min(d.neighborhood), '(bairro não informado)')                as regiao,`,
+    para: `      private.normalizar_endereco(d.neighborhood) as chave,
+      min(d.neighborhood)                         as regiao,`,
+  },
+  {
+    id: "M107", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    quebra: "o cache de geocodificação nasce sem RLS",
+    dor: "`geocode_cache` é GLOBAL (um endereço aponta para o mesmo lugar para toda imobiliária), de propósito, para nunca geocodificar duas vezes. Sem RLS, a chave anon — que vai no bundle do navegador por desenho — lê o cache inteiro: todo endereço que qualquer inquilino já confirmou, para quem souber o nome da tabela.",
+    de: `alter table public.geocode_cache enable row level security;`,
+    para: `-- alter table public.geocode_cache enable row level security;`,
+  },
+  {
+    id: "M108", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    quebra: "o OUT param do cache volta a se chamar como a coluna",
+    dor: "MEDIDO: com o OUT param chamado `endereco_normalizado`, o `on conflict (endereco_normalizado)` fica ambíguo e a função aborta com 42702 na primeira CHAMADA — ela é CRIADA sem erro nenhum. Num banco reconstruído por esta migration, toda escrita no cache falha, e a falha só aparece em runtime.",
+    de: `returns table (
+  endereco_chave text,
+  gravou         boolean,
+  motivo         text
+)`,
+    para: `returns table (
+  endereco_normalizado text,
+  gravou               boolean,
+  motivo               text
+)`,
+  },
+  {
+    id: "M109", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    quebra: "a precedência do cache aceita sobrescrever fonte de peso IGUAL",
+    dor: "Com `<` em vez de `<=`, reprocessar a mesma importação sobrescreve a linha toda vez — e o objetivo declarado da Fase 1 ('não geocodificar novamente o mesmo endereço') deixa de valer justamente no caso que mais acontece: o reprocessamento.",
+    de: `  if v_peso_atual is not null and v_peso_novo <= v_peso_atual and p_fonte <> 'manual' then`,
+    para: `  if v_peso_atual is not null and v_peso_novo < v_peso_atual and p_fonte <> 'manual' then`,
+  },
+  {
+    id: "M110", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    quebra: "o índice GIST perde a opclass qualificada",
+    dor: "Com postgis instalada em `extensions`, `using gist (geo)` só resolve a opclass se `extensions` estiver no search_path de quem aplica. Para quem aplicar com outro search_path, a migration ABORTA — e como este é o índice do raio, o `db push` morre no meio, depois de já ter criado a coluna e a tabela.",
+    de: `  on public.developments using gist (geo extensions.gist_geography_ops);`,
+    para: `  on public.developments using gist (geo);`,
+  },
+
+  {
+    id: "M97", arquivo: "lib/crm/venda-sem-valor.ts",
+    quebra: "venda com valor zero ou ilegivel passa a contar como informada",
+    dor: "Venda de zero real nao existe, e tratar NaN como informado esconde dado corrompido atras de um verde. A venda sairia da cobranca sem nunca ter valor: VGV zerado, ROI incalculavel e o evento Purchase nunca emitido — os quatro efeitos de uma linha so.",
+    de: `  return !Number.isFinite(numero) || numero <= 0;`,
+    para: `  return false;`,
+  },
+  {
+    id: "M98", arquivo: "lib/crm/venda-sem-valor.ts",
+    quebra: "venda sem ancora de tempo passa a ser declarada critica",
+    dor: "Afirmar atraso sem saber desde quando e inventar o dado que falta. A fila de excecao do diretor encheria de prioridade forjada, e prioridade forjada ensina a ignorar a fila — foi assim que o aviso de SLA virou ruido nesta base.",
+    de: `    critico: dias !== null && dias >= DIAS_PARA_COBRANCA_CRITICA,`,
+    para: `    critico: true,`,
+  },
+  {
+    id: "M99", arquivo: "app/api/v1/crm/vendas-sem-valor/route.ts",
+    quebra: "o corretor passa a informar o valor da venda de um colega",
+    dor: "Valor de venda e a base da comissao. Sem o piso de carteira no POST, um corretor mexe no dinheiro do outro — e o piso da LEITURA continuaria intacto, entao a suite ficaria verde pela metade certa.",
+    de: `  if (!leLiderancaInteira(acesso.access.profile) && !daMinhaCarteira) {`,
+    para: `  if (false) {`,
+  },
+
+  // ── MATCHING IMOBILIÁRIO POR REGRAS (4.5) ─────────────────────────────────
+  //
+  // O motor de compatibilidade existe para ser HONESTO COM A AUSÊNCIA. Todas as
+  // mutações abaixo atacam essa honestidade por um ângulo diferente, porque é
+  // ela — não o score — que decide se o corretor pode confiar no resultado.
+  {
+    id: "M103", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    quebra: "critério AUSENTE passa a contar como atendido",
+    dor: "É a mentira central que este motor existe para não contar. Medido: das 482 leads da organização com catálogo, 470 não têm critério decisivo algum — com esta quebra, TODAS ganhariam 'compatibilidade alta' construída sobre dado que ninguém coletou. O corretor ligaria oferecendo imóvel escolhido por ignorância, e o painel não teria como ser desmentido.",
+    de: `  const atendidos = criterios.filter((c) => c.estado === "atendido");`,
+    para: `  const atendidos = criterios.filter((c) => c.estado !== "nao_atendido");`,
+  },
+  {
+    id: "M104", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    quebra: "a trava cai: imóvel sem NENHUM critério decisivo volta ao ranking",
+    dor: "Foi o defeito pego na execução real: o 'Inside Perdizes' entrava no top 3 com aderência 100% e cobertura 5,6% — os únicos critérios avaliáveis nele eram finalidade e data do cadastro. Um imóvel de que quase nada se sabe apresentado como terceira melhor opção, com 100% ao lado. E o 'Spin Mood', que é só um nome numa linha, viria junto.",
+    de: `  const avaliaveis = ordenadas.filter((p) => p.decisivosAvaliados >= MINIMO_DE_DECISIVOS_PARA_RECOMENDAR);`,
+    para: `  const avaliaveis = ordenadas;`,
+  },
+  {
+    id: "M105", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    quebra: "o ranking passa a ordenar por RAZÃO em vez de evidência absoluta",
+    dor: "Premia o imóvel de que MENOS se sabe: um cadastro com uma coluna preenchida e batendo dá 100% e passa na frente do que atende preço, bairro e dormitórios. O corretor recebe como 'mais compatível' justamente o imóvel sobre o qual ninguém checou nada.",
+    de: `      b.pontos - a.pontos || b.cobertura - a.cobertura || a.nome.localeCompare(b.nome, "pt-BR"),`,
+    para: `      (b.aderencia ?? 0) - (a.aderencia ?? 0) || a.nome.localeCompare(b.nome, "pt-BR"),`,
+  },
+  {
+    id: "M106", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    quebra: "coordenada volta a passar pelo validador que recusa negativo",
+    dor: "Latitude de São Paulo é -23,53: o Brasil inteiro volta a cair como 'imóvel sem latitude/longitude'. Não é score errado, é a resposta mandando a operação preencher coluna JÁ preenchida — a mesma classe de erro que fez o painel Clientes 360 cobrar dado de 174 clientes que o tinham, e ensinou a operação a ignorar o painel.",
+    de: `  const oLat = coordenada(o.latitude, 90);`,
+    para: `  const oLat = numero(o.latitude);`,
+  },
+  {
+    id: "M107", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    quebra: "`0 dormitório` (studio) volta a ser lido como dado ausente",
+    dor: "Studio é o produto PRINCIPAL do catálogo (Tiê Aclimação tem bedrooms_min 0, e 2 clientes reais pedem 0). Com `||` no lugar de `??`, o pedido de studio vira 'cliente não informou' — e o único encaixe que a base consegue provar hoje desaparece justamente para quem pediu.",
+    de: `  const querido = c.preferred_bedrooms ?? c.bedrooms ?? null;`,
+    para: `  const querido = c.preferred_bedrooms || c.bedrooms || null;`,
+  },
+  {
+    id: "M108", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    quebra: "estoque desconhecido passa a ser somado como ZERO",
+    dor: "`0 disponível` é afirmação forte e falsa: diz ESGOTADO onde o certo é 'ninguém contou'. Medido: 6 de 6 tipologias têm units_available nulo — logo os 4 empreendimentos do catálogo seriam declarados esgotados, e o motor recusaria o catálogo inteiro por um dado que nunca existiu.",
+    de: `      units_available: estoque.length ? estoque.reduce((s, v) => s + v, 0) : null,`,
+    para: `      units_available: estoque.reduce((s, v) => s + v, 0),`,
+  },
+  {
+    id: "M109", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    quebra: "entrada passa a ser avaliada SEM regra de pagamento declarada",
+    dor: "Viola a lei do dono — 'não inventar condições'. developer_payment_flow_rules tem ZERO linhas: avaliar entrada sem ela significa arbitrar percentual e juros, e o cliente ouve do corretor uma condição que a incorporadora nunca declarou. É a promessa comercial que o produto não pode honrar.",
+    de: `  if (!o.tem_regra_de_pagamento || preco === null) {
+    return monta(
+      "valorDeEntrada",
+      "falta_oferta",`,
+    para: `  if (false) {
+    return monta(
+      "valorDeEntrada",
+      "falta_oferta",`,
+  },
+  {
+    id: "M110", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    quebra: "bairro composto deixa de ser separado na barra",
+    dor: "O valor real 'perdizes/pompeia' existe na base. Sem a quebra, esse cliente pede Perdizes e NÃO vê o Inside Perdizes — o imóvel certo fica invisível para quem pediu exatamente ele, sem erro nenhum aparecendo na tela.",
+    de: `    .split(/[/,;|]+/)`,
+    para: `    .split(/[,;|]+/)`,
+  },
+
+  // ── ORÇAMENTO, AUTONOMIA E MODO SOMBRA DA IA (4.7 / 4.8 / §7) ─────────────
+  //
+  // Cada quebra aqui é uma forma real de o teto ou a proibição virar enfeite:
+  // continuar existindo, continuar respondendo, e não proteger nada.
+  {
+    id: "M111", arquivo: "lib/ai/orcamento-de-ia.ts",
+    quebra: "o teto configurado deixa de ser aparado no teto absoluto",
+    dor: "Basta alguém escrever 99999999 no JSON (ou um valor errado por engano) e a cobrança fica ilimitada por configuração — exatamente o que o dono proibiu. O estouro só aparece na fatura.",
+    de: `  if (numero > absoluto) {
+    return {
+      valor: absoluto,`,
+    para: `  if (false) {
+    return {
+      valor: absoluto,`,
+  },
+  {
+    id: "M112", arquivo: "lib/ai/orcamento-de-ia.ts",
+    quebra: "valor inválido de teto deixa de cair no padrão e passa como está",
+    dor: "`null`, `Infinity` ou 'ilimitado' no JSON viram teto infinito. O freio existe, responde, e nunca segura nada — o pior tipo de proteção, porque diz 'conferido'.",
+    de: `  if (!Number.isFinite(numero) || numero < 0) {
+    return {
+      valor: Math.min(padrao, absoluto),`,
+    para: `  if (false) {
+    return {
+      valor: Math.min(padrao, absoluto),`,
+  },
+  {
+    id: "M113", arquivo: "lib/ai/orcamento-de-ia.ts",
+    quebra: "decidirSobreOTeto passa a permitir tudo",
+    dor: "O limitador continua sendo chamado, continua registrando, e nunca recusa. Um laço infinito de IA gasta a chave do dono até o teto do provedor.",
+    de: `  if (pior >= 1 && !essencial) {`,
+    para: `  if (false) {`,
+  },
+  {
+    id: "M114", arquivo: "lib/ai/orcamento-de-ia.ts",
+    quebra: "custo em dólar não medido volta a valer zero",
+    dor: "28,6% das chamadas cobráveis medidas não têm tarifa cadastrada. Tratadas como zero, o teto de dinheiro passa por cima delas afirmando 'gastou zero' — e o dono lê um número que não existe.",
+    de: `  if (consumo.usdDoDia !== null) {
+    fracoes.push(raia("diario", "usd", consumo.usdDoDia, orcamento.tetos.tetoUsdDiario));`,
+    para: `  if (true) {
+    fracoes.push(raia("diario", "usd", consumo.usdDoDia ?? 0, orcamento.tetos.tetoUsdDiario));`,
+  },
+  {
+    id: "M115", arquivo: "lib/ai/orcamento-de-ia.ts",
+    quebra: "chamada sem usuário deixa de cair no balde e vira teto por usuário",
+    dor: "35% do tráfego medido não tem user_id (worker, rota sem sessão). Sem o balde, essas chamadas são contadas contra um usuário que não existe e passam SEM TETO — a via de fuga fica maior que a estrada.",
+    de: `    semUsuario
+      // 35% do tráfego medido não tem usuário. Sem esta raia, ele não teria teto.
+      ? raia("sem_atribuicao", "chamadas", consumo.chamadasDoUsuario, orcamento.semAtribuicao.chamadasPorDia)
+      : raia("usuario", "chamadas", consumo.chamadasDoUsuario, orcamento.tetos.chamadasPorUsuarioPorDia),`,
+    para: `    raia("usuario", "chamadas", semUsuario ? 0 : consumo.chamadasDoUsuario, orcamento.tetos.chamadasPorUsuarioPorDia),`,
+  },
+  {
+    id: "M116", arquivo: "lib/ai/orcamento-de-ia.ts",
+    quebra: "array/booleano no JSON deixa de ser recusado e vira teto por coerção",
+    dor: "`Number([])` é 0: um `[]` no arquivo pausaria a IA inteira em silêncio, e `[\"150\"]` viraria 150 por acidente. O sintoma ('a IA não responde') não aponta para a configuração.",
+    de: `      : typeof configurado === "string" && configurado.trim() !== ""
+        ? Number(configurado)
+        : NaN;`,
+    para: `      : Number(configurado);`,
+  },
+  {
+    id: "M117", arquivo: "lib/ai/niveis-de-autonomia.ts",
+    quebra: "a classe do nível 5 passa a ser conferida DEPOIS do nível e da aprovação",
+    dor: "Um agente nível 4 com aprovação registrada consegue apagar dado, mudar permissão ou retirar RLS. A proibição do dono passa a ser contornável pelo caminho normal, sem ninguém violar regra nenhuma.",
+    de: `  if (nivelExigido === NIVEL_PROIBIDO) {`,
+    para: `  if (false) {`,
+  },
+  {
+    id: "M118", arquivo: "lib/ai/niveis-de-autonomia.ts",
+    quebra: "agente não declarado passa a nascer no nível 4",
+    dor: "Todo agente novo pode agir para fora antes de qualquer revisão, e declarar nível vira opcional na prática. Mensagem sai para o cliente sem ninguém ter aprovado o agente.",
+    de: `  return encontrado ? encontrado.nivel : 0;`,
+    para: `  return encontrado ? encontrado.nivel : 4;`,
+  },
+  {
+    id: "M119", arquivo: "lib/ai/niveis-de-autonomia.ts",
+    quebra: "nível 5 volta a ser declarável no catálogo",
+    dor: "Um agente se declara nível 5 no JSON e as travas de nível deixam de recusá-lo. O 'proibido autonomamente' passa a ser só uma linha de documentação.",
+    de: `    if (nivel === NIVEL_PROIBIDO) {`,
+    para: `    if (false) {`,
+  },
+  {
+    id: "M120", arquivo: "lib/ai/niveis-de-autonomia.ts",
+    quebra: "ação externa deixa de exigir aprovação registrada",
+    dor: "Campanha sobe e mensagem sai para o cliente sem quem/quando/porquê registrado. Quando der problema, não há como saber quem autorizou.",
+    de: `  if (nivelExigido >= 4 && !aprovacaoRecebida) {`,
+    para: `  if (false) {`,
+  },
+  {
+    id: "M121", arquivo: "lib/ai/niveis-de-autonomia.ts",
+    quebra: "ação desconhecida passa a exigir nível 0 em vez de 4",
+    dor: "Qualquer verbo que ninguém classificou passa a ser executável pelo agente mais restrito. O erro só aparece depois de a ação externa ter acontecido.",
+    de: `  return NIVEL_EXIGIDO[nome] ?? 4;`,
+    para: `  return NIVEL_EXIGIDO[nome] ?? 0;`,
+  },
+  {
+    id: "M122", arquivo: "lib/ai/modo-sombra.ts",
+    quebra: "o modo sombra passa a nascer DESLIGADO quando o arquivo não é legível",
+    dor: "Ação externa dispara exatamente no dia em que a configuração quebrou, e ninguém liga uma coisa à outra. É implantar agente autônomo sem Shadow Mode, que é o que o dono proibiu.",
+    de: `  return valor !== false;`,
+    para: `  return valor === true;`,
+  },
+  {
+    id: "M123", arquivo: "lib/ai/modo-sombra.ts",
+    quebra: "a sombra deixa de reter quando a autonomia é suficiente",
+    dor: "Aprovação válida fura a sombra: 'shadow mode' vira outro nome para o fluxo normal de aprovação, e a comparação recomendação x decisão x resultado nunca acumula caso nenhum.",
+    de: `  if (sombra) {
+    return {
+      retido: true,`,
+    para: `  if (sombra && !autonomia.permitido) {
+    return {
+      retido: true,`,
+  },
+  {
+    id: "M124", arquivo: "lib/ai/modo-sombra.ts",
+    quebra: "a taxa de concordância volta a ser zero quando não há caso comparável",
+    dor: "'0% de acerto' e 'não houve o que medir' viram a mesma coisa. Alguém desliga um agente bom — ou liga um ruim — com base num número que não existe.",
+    de: `    taxaDeConcordancia: comparaveis.length ? concordou / comparaveis.length : null,`,
+    para: `    taxaDeConcordancia: comparaveis.length ? concordou / comparaveis.length : 0,`,
+  },
+  {
+    id: "M125", arquivo: "lib/ai/provider-router.ts",
+    quebra: "o roteador para de perguntar ao teto antes de gastar",
+    dor: "Todo o orçamento — tabela, tetos, degraus, contratos — continua existindo e nada mais o consulta. É o modo de falha mais fácil de introduzir: o limitador fica perfeito e desconectado.",
+    de: `  if (!teto.permitido) {`,
+    para: `  if (false) {`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));

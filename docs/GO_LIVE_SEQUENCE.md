@@ -1,3 +1,5 @@
+> ⚠️ **O projeto mudou.** Este roteiro apontava para `atlas-ai-crm-v1` (`ietwopslgqxlenfyghqk`) — projeto **APOSENTADO**, com 17.151 leads reais dentro. Aplicar migrations lá conecta a operação no banco errado. O ref canônico vive em `config/supabase-projetos.json` e é conferido por `npm run coerencia-ambiente:check`.
+
 # ATLAS AI OS V3 — GO-LIVE SEQUENCE (Sequência completa)
 
 **Objetivo final:** deixar https://atlasaios.com.br funcional, com CRM operacional, IA rodando, equipe criada.
@@ -57,7 +59,7 @@ ssh root@85.209.93.32 'bash /root/atlas-go-live.sh'
 ```bash
 # 1. Aplicar 4 migrations (CLI automático)
 cd ~/atlas-v3
-supabase link --project-ref ietwopslgqxlenfyghqk
+supabase link --project-ref pozbrcsfthnhmnebfoxv
 supabase db push
 # Aguarde: "Applied migration: 202607200*"
 

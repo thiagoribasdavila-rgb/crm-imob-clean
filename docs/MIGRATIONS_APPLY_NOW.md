@@ -1,6 +1,8 @@
+> ⚠️ **O projeto mudou.** Este roteiro apontava para `atlas-ai-crm-v1` (`ietwopslgqxlenfyghqk`) — projeto **APOSENTADO**, com 17.151 leads reais dentro. Aplicar migrations lá conecta a operação no banco errado. O ref canônico vive em `config/supabase-projetos.json` e é conferido por `npm run coerencia-ambiente:check`.
+
 # Aplicar as 4 Migrations — Guia Rápido
 
-Projeto Supabase: **`atlas-ai-crm-v1` (`ietwopslgqxlenfyghqk`)**
+Projeto Supabase: **`atlas-v3-homologacao` (`pozbrcsfthnhmnebfoxv`)**
 
 ---
 
@@ -15,7 +17,7 @@ No seu Mac, na raiz do projeto:
 
 ```bash
 cd ~/atlas-v3
-supabase link --project-ref ietwopslgqxlenfyghqk
+supabase link --project-ref pozbrcsfthnhmnebfoxv
 # (confirma o projeto — digite y)
 supabase db push
 # (aplica TODAS as migrations pendentes em supabase/migrations/)
@@ -105,7 +107,7 @@ Supabase Dashboard → **Migrations** → deve listar as 4 acima (status: applie
 
 - **Erro de sintaxe:** Confira se copiou o SQL completo (sem quebras no meio)
 - **"Relation already exists":** Migração já foi aplicada (OK, não roda de novo)
-- **Drift de projeto:** Confirme que você está no projeto `ietwopslgqxlenfyghqk`, não em outro
+- **Drift de projeto:** Confirme que você está no projeto `pozbrcsfthnhmnebfoxv`, não em outro
 
 **Restore do backup** (se precisar desfazer):
 - Supabase → Backups → clique no snapshot pré-deploy → **Restore**

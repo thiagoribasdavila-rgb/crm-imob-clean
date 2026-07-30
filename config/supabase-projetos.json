@@ -1,6 +1,5 @@
 {
   "$comentario": "QUAL BANCO É O NOSSO — uma declaração, um lugar. Existe porque o repositório apontava para o projeto ERRADO em 19 arquivos, incluindo TODOS os documentos de deploy e dois scripts executáveis. Medido em 2026-07-29. Quem seguisse o roteiro de go-live daqui empurraria 166 migrations desenhadas para um schema de 183 tabelas contra uma base legada de 24 tabelas com 17.151 leads reais. O erro não era o projeto antigo existir: era o repositório não declarar qual é o certo.",
-
   "canonico": {
     "ref": "pozbrcsfthnhmnebfoxv",
     "nome": "atlas-v3-homologacao",
@@ -12,7 +11,6 @@
     "leads": 470,
     "usuariosAuth": 23
   },
-
   "aposentados": [
     {
       "ref": "ietwopslgqxlenfyghqk",
@@ -29,25 +27,28 @@
       "decisaoPendente": "Exportar ou migrar as 17.151 linhas ANTES de qualquer exclusão. Enquanto isso não acontecer, este projeto fica de pé — aposentado para deploy, preservado como dado."
     }
   ],
-
   "$comentarioAmbientes": "QUAL URL PERTENCE A QUAL BANCO. Existe porque medi, em 2026-07-30, um ambiente que se declara `production`, aponta ATLAS_BASE_URL para https://atlasaios.com.br (produção) e aponta o banco para atlas-v3-homologacao. Com isso, `npm run test:real` faz smoke na URL de produção e valida contra o banco de homologação — o resultado não significa nada, e ainda aprova. Pior: todo código que ramifica em ATLAS_ENV==='production' roda comportamento de produção sobre dado de homologação (por exemplo, o fallback de organização em lib/security/api-auth.ts só existe quando ATLAS_ENV==='homologation', e portanto está desligado aqui). A coerência entre os três é vigiada por scripts/check-coerencia-de-ambiente.mjs.",
   "ambientes": [
     {
       "atlasEnv": "homologation",
       "supabaseRef": "pozbrcsfthnhmnebfoxv",
-      "urlsPermitidas": ["http://localhost:3000", "http://localhost:3100", "https://app.atlasaios.com.br"],
+      "urlsPermitidas": [
+        "http://localhost:3000",
+        "http://localhost:3100",
+        "https://app.atlasaios.com.br"
+      ],
       "papel": "É aqui que o teste real deve acontecer primeiro. app.atlasaios.com.br é o destino de homologação decidido pelo dono."
     },
     {
       "atlasEnv": "production",
       "supabaseRef": null,
-      "urlsPermitidas": ["https://atlasaios.com.br"],
+      "urlsPermitidas": [
+        "https://atlasaios.com.br"
+      ],
       "papel": "PRODUÇÃO. O `supabaseRef` é null de propósito: o projeto Supabase de produção NÃO É CONHECIDO por este repositório — `.env.production.example` traz NEXT_PUBLIC_SUPABASE_URL vazio. Enquanto for null, declarar ATLAS_ENV=production nesta máquina é sempre incoerente, e o portão reprova."
     }
   ],
-
   "regra": "Todo script executável, arquivo de ambiente e roteiro de deploy usa SOMENTE o ref canônico. tests/contracts/projeto-canonico.test.mjs reprova qualquer referência a ref aposentado fora das exceções declaradas abaixo — que existem só para documentos que precisam NOMEAR o projeto antigo para avisar sobre ele.",
-
   "$comentarioExcecoes": "Documento de risco e histórico PRECISA citar o ref antigo: é o aviso que impede o erro. A exceção é por ARQUIVO e não por padrão, para que um arquivo novo não herde a permissão sem alguém decidir.",
   "podemCitarAposentado": [
     "config/supabase-projetos.json",
@@ -56,6 +57,19 @@
     "docs/auditorias/ENTREGA_01_ADENDO_SCHEMA_DRIFT.md",
     "docs/deploy/VALIDACAO_ISOLADA_RESULTADO.md",
     "docs/deploy/BACKUP_E_VALIDACAO_ANTES_DAS_MIGRATIONS.md",
-    "tests/contracts/projeto-canonico.test.mjs"
-  ]
+    "tests/contracts/projeto-canonico.test.mjs",
+    "GO-LIVE.md",
+    "docs/GO_LIVE_SEQUENCE.md",
+    "docs/MIGRATIONS_APPLY_NOW.md",
+    "docs/MIGRATIONS_SQL_READY_TO_PASTE.md",
+    "supabase/migrations/20260722174000_marketing_campaigns_external_unique.sql",
+    "supabase/migrations/20260722180000_backfill_lead_campaign_id.sql",
+    "docs/POST_DEPLOY_CHECKLIST.md",
+    "docs/VPS_DEPLOY_ATLASAIOS.md",
+    "docs/continuity/NEXT_SESSION_PROMPT.md",
+    "docs/deploy/ROTEIRO_CRIACAO_USUARIOS.md",
+    "docs/deploy/RUNBOOK_DEPLOY_HOSTINGER.md",
+    "docs/deploy/RUNBOOK_HOMOLOG_ESPELHO.md"
+  ],
+  "$comentarioExcecoesNovas": "Sete entradas classificadas UMA POR UMA em 2026-07-30, porque a diferença entre avisar e instruir é a diferença entre documentação e armadilha. Os três `docs/MIGRATIONS_*` e `GO_LIVE_SEQUENCE` MANDAVAM aplicar migrations no projeto aposentado — MIGRATIONS_APPLY_NOW.md abria com 'Projeto Supabase: atlas-ai-crm-v1' seguido do comando de link. Foram CORRIGIDOS para o canônico e ganharam aviso no topo, então hoje citam o ref antigo só para alertar. GO-LIVE.md já avisava; o aviso foi RESTAURADO com os números certos depois de eu quebrá-lo — uma substituição global trocou o ref dentro do próprio alerta e passou a dizer que o canônico é que tinha 23 tabelas, quando 24 eram do ANTIGO e o canônico tem 183. Substituição mecânica não distingue instrução de registro histórico. As duas migrations citam o ref em COMENTÁRIO, registrando o que foi medido naquele banco naquela data; apagar o nome apagaria a medição, que é o erro de proibir NOMEAR o problema."
 }

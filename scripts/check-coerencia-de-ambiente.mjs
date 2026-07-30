@@ -128,6 +128,34 @@ if (aposentado) {
   );
 }
 
+// 5. OS ARQUIVOS DE DEPLOY. Eles não são versionados (estão no .gitignore, e é o
+//    certo: nenhum segredo no repositório). Por isso NENHUM contrato os alcança —
+//    e é justamente neles que mora o perigo de deploy.
+//
+//    MEDIDO em 2026-07-30: `.env.hostinger` aponta NEXT_PUBLIC_SUPABASE_URL para o
+//    projeto APOSENTADO, e DATABASE_URL para lá também, com `[YOUR-PASSWORD]`
+//    literal. Fazer deploy na Hostinger com esse arquivo conecta a aplicação no
+//    banco de 17.151 leads reais — que é exatamente o erro que o dono pediu para
+//    nunca mais acontecer. Um portão que confere só o `.env.local` da máquina de
+//    quem roda deixaria o arquivo do DEPLOY passar batido.
+for (const arquivo of [".env.hostinger", ".env.hostinger-template", ".env.production"]) {
+  if (!existsSync(arquivo)) continue;
+  const conteudo = readFileSync(arquivo, "utf8");
+  for (const velho of declaracao.aposentados) {
+    if (!conteudo.includes(velho.ref)) continue;
+    const linhas = conteudo
+      .split("\n")
+      .map((l, i) => ({ n: i + 1, chave: (l.split("=")[0] || "").trim(), tem: l.includes(velho.ref) }))
+      .filter((l) => l.tem && l.chave)
+      .map((l) => `${l.chave} (linha ${l.n})`);
+    falhas.push(
+      `${arquivo} aponta para o projeto APOSENTADO ${velho.ref} (${velho.nome}, ` +
+        `${velho.leads} leads reais) em: ${linhas.join(", ")}. ` +
+        `Deploy com este arquivo conecta a aplicação no banco errado.`,
+    );
+  }
+}
+
 console.log("COERÊNCIA DE AMBIENTE");
 console.log(`  ATLAS_ENV .......... ${atlasEnv}`);
 console.log(`  ATLAS_BASE_URL ..... ${baseUrl || "(vazia)"}`);

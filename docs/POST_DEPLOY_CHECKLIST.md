@@ -1,3 +1,5 @@
+> ⚠️ **Destino corrigido em 2026-07-30.** Este roteiro apontava para `ietwopslgqxlenfyghqk` (`atlas-ai-crm-v1`), projeto **APOSENTADO** com 17.151 leads reais. O ref canônico vive em `config/supabase-projetos.json` e é conferido por `npm run coerencia-ambiente:check`.
+
 # ATLAS AI OS V3 — POST-DEPLOY CHECKLIST
 
 Após o `atlas-go-live.sh` terminar com ✅ no VPS, execute AQUI (seu navegador + Supabase).
@@ -6,7 +8,7 @@ Após o `atlas-go-live.sh` terminar com ✅ no VPS, execute AQUI (seu navegador 
 
 ## 1. APLICAR 4 MIGRATIONS (Supabase SQL Editor)
 
-Projeto: `atlas-ai-crm-v1` (`ietwopslgqxlenfyghqk`)
+Projeto: `atlas-v3-homologacao` (`pozbrcsfthnhmnebfoxv`)
 
 **Backup primeiro:**
 - Supabase → Backups → Create Manual Backup
@@ -187,7 +189,7 @@ curl http://localhost:3000    # app roda local?
 
 **Migrações falharam (SQL error)**
 - Supabase → Backup History — restore o snapshot pré-deploy
-- Verifique o `ietwopslgqxlenfyghqk` (projeto vivo, não staging)
+- Verifique o `pozbrcsfthnhmnebfoxv` (projeto vivo, não staging)
 
 **SMTP não funciona (e-mail não chega)**
 - Supabase → SMTP Settings → Test
@@ -321,7 +323,7 @@ da Meta (`app/api/v2/outbox/process/route.ts`). Aplique nesta ordem:
 1. `20260722174000_marketing_campaigns_external_unique.sql`
    Cria o índice único `(organization_id, platform, external_campaign_id)` que o
    código já pressupõe. **Medido em 2026-07-22:** existe na produção
-   (`ietwopslgqxlenfyghqk`), **não existe** na homologação
+   (`pozbrcsfthnhmnebfoxv`), **não existe** na homologação
    (`pozbrcsfthnhmnebfoxv`). Sem ele, dois workers do outbox duplicam a campanha.
    Se houver duplicata, a migration **para** com `raise exception` — reconcilie
    antes (reaponte `leads.campaign_id` e `marketing_spend.campaign_id` para a
