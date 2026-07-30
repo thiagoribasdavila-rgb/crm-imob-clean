@@ -71,13 +71,60 @@ for (const arquivo of rastreados) {
   }
 }
 
+/**
+ * ── O MESMO DEFEITO POR OUTRO MECANISMO: `fs`, NAO `import` ────────────────
+ *
+ * `lib/ai/orcamento-de-ia.ts` esta rastreado e le
+ * `config/orcamento-e-autonomia-da-ia.json` com `readFileSync`, dentro de um
+ * try/catch que devolve `null` em silencio. Num clone limpo o arquivo nao existe,
+ * o teto de gasto da IA passa a vir de padroes do codigo em vez da declaracao do
+ * dono, e NADA avisa — nem o `tsc`, nem a varredura de imports acima.
+ *
+ * Degradar em silencio e pior que quebrar: quebrar avisa.
+ *
+ * A deteccao e por NOME de arquivo `.json` citado em codigo rastreado, resolvido
+ * contra `config/`. E estreita de proposito — cobre o padrao que este projeto usa,
+ * e nao tenta adivinhar caminho montado dinamicamente.
+ */
+const configsRastreadas = new Set(linhas("git ls-files").filter((p) => p.startsWith("config/")));
+const configsFora = new Set(
+  linhas("git ls-files --others --exclude-standard").filter((p) => p.startsWith("config/") && p.endsWith(".json")),
+);
+
+const configPendurada = [];
+for (const arquivo of rastreados) {
+  let fonte;
+  try {
+    fonte = readFileSync(arquivo, "utf8");
+  } catch {
+    continue;
+  }
+  for (const casamento of fonte.matchAll(/"([a-z0-9][a-z0-9._-]*\.json)"/gi)) {
+    const alvo = `config/${casamento[1]}`;
+    if (configsFora.has(alvo) && !configsRastreadas.has(alvo)) {
+      configPendurada.push({ arquivo, alvo });
+    }
+  }
+}
+
 console.log(`arquivos de codigo rastreados: ${rastreados.length}`);
 console.log(`modulos de codigo fora do git: ${naoRastreados.length}`);
 
-if (pendurados.length === 0) {
-  console.log(`\n✔ nenhum import pendurado — o codigo rastreado se sustenta sozinho`);
+if (configPendurada.length > 0) {
+  console.log(`\n✘ ${configPendurada.length} configuracao(oes) lida(s) por codigo rastreado e fora do git:\n`);
+  for (const { arquivo, alvo } of configPendurada) console.log(`  ${alvo}\n      <- ${arquivo}`);
+  console.log(
+    `\nO codigo le com try/catch e cai para padrao em SILENCIO quando o arquivo falta.\n` +
+      `Num clone limpo, a declaracao do dono e substituida por default de codigo sem aviso.\n` +
+      `Versione a configuracao — depois de conferir que ela nao tem credencial.`,
+  );
+}
+
+if (pendurados.length === 0 && configPendurada.length === 0) {
+  console.log(`\n✔ nenhum import nem configuracao pendurada — o codigo rastreado se sustenta sozinho`);
   process.exit(0);
 }
+if (pendurados.length === 0) process.exit(1);
 
 // Agrupado pelo MÓDULO que falta, porque o conserto é por módulo: incluir um
 // resolve todos os importadores dele de uma vez.
