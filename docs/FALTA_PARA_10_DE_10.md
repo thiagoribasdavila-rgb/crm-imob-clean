@@ -195,9 +195,52 @@ repo". Recomendação: homologação sai de **dump-restore** e as migrations sã
 documentação. A alternativa são ~373 `supabase migration repair`, que é risco sem
 retorno.
 
-**Resíduo de agente na base:** 8 organizações `ZZ CONTRATO GEO` (zero leads, zero
-perfis) e 17 contas `@atlas-teste.local` de varreduras antigas. Inertes, mas lixo
-antes de um teste real. Não apagadas: organização cascateia, e a decisão é do dono.
+**Resíduo de agente na base — pior do que eu havia reportado.** Além das 8
+organizações `ZZ CONTRATO GEO` (zero leads, zero perfis), medido em 2026-07-30:
+
+```
+perfis de teste ATIVOS   access_role='admin'  → 9, TODOS com escopo raiz
+                         access_role='broker' → 9
+```
+
+Os nove `admin` raiz vêm de nomes como `VARREDURA (apagar)`, `Fronteira` e
+`CONTRATO-GRAFO-*`. **Perfil admin de teste, ativo, com escopo raiz, numa base
+que vai receber teste real** é o item mais sério da lista de limpeza — mais que
+as organizações vazias. Não apagados: perfil cascateia (a FK
+`audit_logs.actor_id → profiles` trava o delete e o supabase-js devolve o erro
+como `{}` vazio, então quem não confere fica com usuário órfão), e a decisão é
+do dono.
+
+### 7.1 A HIERARQUIA TEM TRÊS NÍVEIS, e isso não está escrito em lugar nenhum
+
+Descoberto levando o erro duas vezes ao criar um usuário descartável de
+liderança. `private.validate_commercial_hierarchy` exige:
+
+```
+access_role='broker'          → reports_to alguém com access_role='director'
+access_role='director'        → reports_to alguém com access_role='director_decisor'
+                                (senão: operational_director_requires_decision_director)
+access_role='director_decisor'→ reports_to NULL (escopo raiz)
+                                (senão: executive_role_requires_root_scope)
+```
+
+O `director_decisor` raiz real é `6f150832-4c97-42a7-954e-eea962a003fa`
+(Thiago Ribas D'Avila). E o gatilho reage ao `access_role`, **não** ao
+`commercial_role` — trocar `commercial_role` para `manager` não contorna nada.
+
+Receita completa e reexecutável em
+`scratchpad/prova-venda-sem-valor.mjs`, que também cobre a espera de ~1,8 s pelo
+gatilho assíncrono `handle_new_auth_user` e o `full_name` NOT NULL.
+
+### 7.2 A rota da venda está PROVADA ponta a ponta
+
+Executado contra a base viva em 2026-07-30, com sessão real de gerência, 17 de 17:
+a venda real (Monique Teles) aparece na cobrança · valor zero, negativo e texto
+recusados com 422 · valor válido grava as DUAS colunas · a venda informada sai da
+fila e a real continua · denominador presente · limpeza confirmada.
+
+**Nunca foi escrito valor na venda real** — a prova cria a própria venda, exercita
+os dois lados nela, e apaga.
 
 ---
 
