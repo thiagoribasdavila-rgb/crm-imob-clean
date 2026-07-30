@@ -28,29 +28,57 @@ import type { NextRequest } from "next/server";
 
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { canonicalPipelineStage, mergePipelineStageSettings } from "@/lib/atlas/pipeline-stages";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all-rows";
+
+type LeadRow = {
+  id: string;
+  status: string | null;
+  assigned_to: string | null;
+  assigned_user_id: string | null;
+  created_at: string | null;
+  sale_value_brl: number | null;
+  development_id: string | null;
+  first_contacted_at: string | null;
+};
+type MovimentoRow = { lead_id: string | null; to_stage: string | null; occurred_at: string | null };
 
 export const dynamic = "force-dynamic";
 
-/** A ordem do funil comercial. `perdido` e `comprou_outro` ficam fora: são saída, não etapa. */
-const ETAPAS = [
-  { chave: "novo", rotulo: "Novos" },
-  { chave: "contato", rotulo: "Contato" },
-  { chave: "qualificacao", rotulo: "Qualificação" },
-  { chave: "visita", rotulo: "Visita" },
-  { chave: "proposta", rotulo: "Proposta" },
-  { chave: "negociacao", rotulo: "Negociação" },
-] as const;
+/**
+ * ── AS ETAPAS VÊM DA ORGANIZAÇÃO, NÃO DAQUI ────────────────────────────────
+ *
+ * A primeira versão desta rota cravou seis etapas no código, entre elas
+ * `negociacao`. Medido em 2026-07-30 contra `pipeline_stage_settings` da
+ * organização real: `negociacao` NÃO EXISTE — as etapas configuradas são novo,
+ * contato, qualificação, visita, proposta e CONTRATO. A régua canônica
+ * (`lib/atlas/pipeline-stages.ts`) trata `negociacao` como ALIAS de `proposta`,
+ * não como etapa.
+ *
+ * Consequência do array cravado: a tela desenhava uma barra impossível (nenhum
+ * lead pode ter um status que a organização não configurou) e escondia a etapa
+ * `contrato`, por onde 3 leads passaram de fato. Foi uma terceira verdade sobre
+ * o mesmo funil, criada por mim, ao lado da régua canônica e da configuração.
+ *
+ * Agora: `mergePipelineStageSettings` cruza a configuração da organização com a
+ * régua canônica, e só as etapas ABERTAS e visíveis entram no funil — ganho,
+ * perdido e comprou_outro são saída, não etapa.
+ */
 
 /** Abaixo disto, uma taxa de conversão é ruído estatístico com cara de medida. */
 const VENDAS_PARA_AFIRMAR_TAXA = 5;
 
-const normalizar = (v: unknown) =>
-  String(v ?? "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
+/**
+ * Status da lead → chave canônica. Absorve `negociacao`→`proposta`, `won`→`ganho`
+ * e os demais apelidos.
+ *
+ * Esta rota tinha um `normalizar()` próprio (minúsculas + sem acento) usado em
+ * paralelo com a régua. Ele não resolvia apelido: uma lead `won` contava como
+ * ganha no funil e NÃO contava no VGV. Ficou UMA função só de propósito — duas
+ * normalizações no mesmo arquivo é como a divergência nasce.
+ */
+const etapaDaLead = (status: unknown) => canonicalPipelineStage(status) ?? "novo";
 
 export async function GET(request: NextRequest) {
   const rate = enforceRateLimit(request, { limit: 60, windowMs: 60_000, scope: "analytics.sala-de-comando" });
@@ -62,11 +90,37 @@ export async function GET(request: NextRequest) {
   const organizationId = identity.access.organization.id;
   const admin = getSupabaseAdmin();
 
-  const { data, error } = await admin
-    .from("leads")
-    .select("id,status,assigned_to,assigned_user_id,created_at,sale_value_brl,development_id,first_contacted_at")
-    .eq("organization_id", organizationId)
-    .limit(5000);
+  // `.limit(5000)` era LETRA MORTA: o PostgREST corta em 1000 sem erro, e o
+  // agregado sairia errado em silêncio assim que a base passasse disso. Hoje são
+  // 482 leads e o número coincidia — é o pior tipo de bug, o que só aparece
+  // quando a operação cresce. `fetchAllRows` é o helper canônico e carrega a
+  // flag de truncamento, que viaja até a tela.
+  const [leadsPaginados, configuracao, movimentosPaginados] = await Promise.all([
+    fetchAllRows<LeadRow>((from, to) =>
+      admin
+        .from("leads")
+        .select("id,status,assigned_to,assigned_user_id,created_at,sale_value_brl,development_id,first_contacted_at")
+        .eq("organization_id", organizationId)
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    admin
+      .from("pipeline_stage_settings")
+      .select("stage_key,label,probability,position,visible")
+      .eq("organization_id", organizationId),
+    // "Já passaram por aqui" só existe porque esta tabela existe. Ela é NOVA: a
+    // janela real viaja na resposta, senão "0 já passaram" mentiria sobre tudo
+    // que aconteceu antes de o registro começar.
+    fetchAllRows<MovimentoRow>((from, to) =>
+      admin
+        .from("pipeline_stage_moves")
+        .select("lead_id,to_stage,occurred_at")
+        .eq("organization_id", organizationId)
+        .order("occurred_at", { ascending: true })
+        .range(from, to),
+    ),
+  ]);
+  const { rows: data, error } = leadsPaginados;
 
   // Leitura que falhou não pode virar "operação vazia": a tela diria que não há
   // lead nenhuma sobre uma consulta que ninguém conseguiu fazer.
@@ -80,38 +134,89 @@ export async function GET(request: NextRequest) {
   const leads = data ?? [];
   const porEtapa = new Map<string, number>();
   for (const lead of leads) {
-    const st = normalizar(lead.status) || "novo";
+    // `etapaDaLead` normaliza pela régua canônica — é ela que sabe que
+    // `negociacao` é apelido de `proposta`. `normalizar` sozinho deixaria um
+    // status apelidado cair num balde que a tela nunca desenha.
+    const st = etapaDaLead(lead.status);
     porEtapa.set(st, (porEtapa.get(st) ?? 0) + 1);
   }
 
+  /**
+   * ── QUEM JÁ PASSOU POR AQUI ────────────────────────────────────────────────
+   *
+   * Sem isto, a etapa vazia recebia a frase "o funil não está travado aqui, ele
+   * não chegou até aqui" — que a medição REFUTOU: 2 leads alcançaram visita, 3
+   * alcançaram proposta e 3 alcançaram contrato. Elas chegaram e saíram.
+   *
+   * "Não chegou" e "chegou e vazou" mandam a direção fazer coisas OPOSTAS: a
+   * primeira manda empurrar topo de funil, a segunda manda descobrir quem largou
+   * a lead depois da visita. Uma frase honesta na forma e falsa no conteúdo é
+   * pior que barra muda, porque convence.
+   */
+  const jaPassaram = new Map<string, Set<string>>();
+  for (const mov of movimentosPaginados.rows) {
+    const destino = canonicalPipelineStage(mov.to_stage);
+    if (!destino || !mov.lead_id) continue;
+    if (!jaPassaram.has(destino)) jaPassaram.set(destino, new Set());
+    jaPassaram.get(destino)!.add(mov.lead_id);
+  }
+  const inicioDoRegistro = movimentosPaginados.rows[0]?.occurred_at ?? null;
+  const registroDeMovimentoMensuravel = !movimentosPaginados.error;
+
+  // As etapas ABERTAS e visíveis que a organização configurou, na ordem dela.
+  // ganho/perdido/comprou_outro ficam fora: são saída do funil, não etapa dele.
+  const etapasDaOrganizacao = mergePipelineStageSettings(configuracao.data ?? []).filter(
+    (etapa) => etapa.outcome === "open" && etapa.visible,
+  );
+
   const ganhos = porEtapa.get("ganho") ?? 0;
   const perdidos = porEtapa.get("perdido") ?? 0;
-  const emAberto = ETAPAS.reduce((soma, e) => soma + (porEtapa.get(e.chave) ?? 0), 0);
+  const emAberto = etapasDaOrganizacao.reduce((soma, e) => soma + (porEtapa.get(e.key) ?? 0), 0);
   const topo = porEtapa.get("novo") ?? 0;
 
-  const funil = ETAPAS.map((etapa) => {
-    const quantidade = porEtapa.get(etapa.chave) ?? 0;
+  const dataDoRegistro = inicioDoRegistro
+    ? new Date(inicioDoRegistro).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+    : null;
+
+  const funil = etapasDaOrganizacao.map((etapa) => {
+    const quantidade = porEtapa.get(etapa.key) ?? 0;
+    const passaram = jaPassaram.get(etapa.key)?.size ?? 0;
     return {
-      chave: etapa.chave,
-      rotulo: etapa.rotulo,
+      chave: etapa.key,
+      rotulo: etapa.label,
       quantidade,
+      /** Quantas leads DISTINTAS já alcançaram esta etapa, desde que há registro. */
+      jaPassaram: passaram,
       /** Proporção contra o TOPO do funil, que é como funil se lê. */
       percentualDoTopo: topo > 0 ? Math.round((quantidade / topo) * 1000) / 10 : null,
-      // Zero com motivo é diagnóstico; zero mudo parece tela quebrada.
+      // Três frases, três diagnósticos diferentes. A do meio é a que faltava.
       porqueVazia:
         quantidade > 0
           ? null
-          : `Nenhuma lead nesta etapa. ${topo} das ${leads.length} ainda estão em "novo" — o funil não está travado aqui, ele não chegou até aqui.`,
+          : !registroDeMovimentoMensuravel
+            ? "Nenhuma lead nesta etapa agora. Não foi possível ler o histórico de movimentação, então não dá para dizer se alguma já passou por aqui."
+            : passaram > 0
+              ? `Nenhuma lead aqui agora, mas ${passaram} já passaram por esta etapa${dataDoRegistro ? ` desde ${dataDoRegistro}` : ""}. A etapa esvaziou — o funil vazou aqui, não deixou de chegar.`
+              : `Nenhuma lead aqui, e nenhuma passou por esta etapa${dataDoRegistro ? ` desde ${dataDoRegistro}, quando o registro de movimentação começou` : ""}. ${topo} das ${leads.length} ainda estão em "novo".`,
     };
   });
 
-  // "Em negociação" no sentido do dinheiro: proposta + negociação em aberto.
-  const emNegociacao = (porEtapa.get("proposta") ?? 0) + (porEtapa.get("negociacao") ?? 0);
-  const vgvFechado = leads
-    .filter((l) => normalizar(l.status) === "ganho" && Number(l.sale_value_brl) > 0)
+  // Dinheiro na mesa: as etapas em que já existe oferta viva. Nesta régua são
+  // `proposta` e `contrato` — `negociacao` NÃO entra, porque é apelido de
+  // `proposta` e somá-la contaria a mesma lead duas vezes.
+  const emNegociacao = (porEtapa.get("proposta") ?? 0) + (porEtapa.get("contrato") ?? 0);
+
+  // ATENÇÃO: aqui era `normalizar(l.status) === "ganho"`, enquanto `porEtapa`
+  // acima já usava a régua canônica. Uma lead com status `won` (apelido de
+  // `ganho`) contava como ganha no funil e NÃO contava no VGV — dois caminhos
+  // divergentes sobre o mesmo fato, dentro da mesma rota, que é a doença que
+  // este projeto mais paga. Os três passam a ler pela mesma régua.
+  const ganhasDeVerdade = leads.filter((l) => etapaDaLead(l.status) === "ganho");
+  const vgvFechado = ganhasDeVerdade
+    .filter((l) => Number(l.sale_value_brl) > 0)
     .reduce((soma, l) => soma + Number(l.sale_value_brl), 0);
 
-  const semValor = leads.filter((l) => normalizar(l.status) === "ganho" && !(Number(l.sale_value_brl) > 0)).length;
+  const semValor = ganhasDeVerdade.filter((l) => !(Number(l.sale_value_brl) > 0)).length;
 
   const donos = new Set(leads.map((l) => l.assigned_to ?? l.assigned_user_id).filter(Boolean));
   const comPrimeiroContato = leads.filter((l) => l.first_contacted_at).length;
@@ -127,7 +232,7 @@ export async function GET(request: NextRequest) {
         // O VGV que a tela do mockup chama "em negociação" é R$ 0 aqui, e o
         // motivo importa mais que o número: não há lead em proposta.
         vgvEmNegociacaoIndisponivel:
-          emNegociacao === 0 ? "Nenhuma lead em proposta ou negociação — não há VGV em disputa para somar." : null,
+          emNegociacao === 0 ? "Nenhuma lead em proposta ou contrato — não há VGV em disputa para somar." : null,
         vendasSemValorInformado: semValor,
         corretoresComCarteira: donos.size,
         comPrimeiroContato,
@@ -148,6 +253,21 @@ export async function GET(request: NextRequest) {
             : `${ganhos} venda${ganhos === 1 ? "" : "s"} fechada${ganhos === 1 ? "" : "s"}: a próxima mudaria a taxa em mais de 100%. Abaixo de ${VENDAS_PARA_AFIRMAR_TAXA} vendas isto é contagem, não taxa.`,
       },
       funil,
+      /**
+       * ── O QUE ESTES NÚMEROS *NÃO* COBREM ────────────────────────────────
+       *
+       * Medida sem procedência é medida que engana quando a base cresce ou
+       * quando alguém pergunta "desde quando?". Estes três campos existem para
+       * a tela poder responder isso sem que ninguém precise abrir o código.
+       */
+      procedencia: {
+        /** true = o PostgREST cortou a leitura e os agregados estão sobre amostra. */
+        amostraTruncada: leadsPaginados.truncated,
+        /** Desde quando existe registro de movimentação. Antes disto: cego. */
+        registroDeMovimentoDesde: inicioDoRegistro,
+        registroDeMovimentoMensuravel,
+        movimentosLidos: movimentosPaginados.rows.length,
+      },
       geradoEm: new Date().toISOString(),
     },
     identity.meta,
