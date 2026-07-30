@@ -67,9 +67,57 @@ const PODEM_CITAR = new Set(declaracao.podemCitarAposentado);
  * então deploy com aquele arquivo conecta a app no banco de 17.151 leads.
  */
 function arquivosDoRepo() {
-  return execFileSync("git", ["ls-files"], { cwd: raiz, encoding: "utf8" })
-    .split("\n")
-    .filter(Boolean);
+  /**
+   * A VARREDURA É A ÚNICA BEHAVIOR, e isso foi aprendido errando duas vezes.
+   *
+   * 1ª tentativa: só `git ls-files`. Explodia na cópia do `teste:mutacoes` (que
+   *    faz `rsync --exclude .git`), derrubando a rede de mutação INTEIRA.
+   * 2ª tentativa: `git ls-files` com varredura de reserva. Passou a responder
+   *    DIFERENTE nos dois contextos — com git via só o RASTREADO; sem git via
+   *    também os não rastreados. O contrato ficava verde no repo e vermelho na
+   *    cópia, pelo mesmo código. Um contrato que muda de opinião conforme quem o
+   *    chama não protege nada: ele ensina que o vermelho é do ambiente.
+   *
+   * Agora é sempre a varredura, e ela pula à mão o que o `.gitignore` pularia.
+   * Arquivo NOVO ainda não commitado ENTRA na conferência — e tem de entrar: é
+   * exatamente no arquivo recém-criado que a referência errada nasce.
+   */
+  const _semGitDePropósito = true;
+  if (_semGitDePropósito) {
+    /**
+     * SEM GIT — e este caminho não é teórico: ele é o do `teste:mutacoes`.
+     *
+     * `scripts/mutacoes.mjs` COPIA o repositório para uma pasta temporária, sem o
+     * `.git`, e roda a suíte lá. A primeira versão desta função chamava
+     * `git ls-files` sem alternativa, então ela EXPLODIA na cópia — e o harness,
+     * que se recusa a medir com a suíte vermelha, saía com "a suíte já falha sem
+     * nenhuma mutação". Resultado: um contrato meu derrubou a REDE DE MUTAÇÃO
+     * INTEIRA, para todas as frentes, e as quebras declaradas por outras entregas
+     * nunca rodaram. Foi um cético que mediu isso, não eu.
+     *
+     * A lição é sobre a forma: contrato que depende de ferramenta EXTERNA precisa
+     * de caminho para quando ela não estiver lá. Aqui a varredura substitui o
+     * `git ls-files` e pula à mão o que o `.gitignore` pularia — os `.env*` são o
+     * que importa, porque é justamente por eles que a versão anterior reprovava.
+     */
+    const alvoRelativo = (dir, nome) => path.relative(raiz, path.join(dir, nome)).split(path.sep).join("/");
+    const IGNORAR = new Set(["node_modules", ".next", ".git", "dist", "build", ".turbo", "coverage"]);
+    const achados = [];
+    (function andar(dir) {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (IGNORAR.has(e.name) || e.name.startsWith(".env")) continue;
+        // Cache do CLI do Supabase: nao e fonte nossa e nao e versionado. O ref
+        // que mora ali e vigiado pelo portao de ambiente, que e quem pode agir
+        // sobre ele — o CLI aponta para o projeto APOSENTADO, e e por isso que
+        // `supabase db push` mira no banco errado.
+        if (alvoRelativo(dir, e.name).startsWith("supabase/.temp")) continue;
+        const alvo = path.join(dir, e.name);
+        if (e.isDirectory()) andar(alvo);
+        else achados.push(path.relative(raiz, alvo).split(path.sep).join("/"));
+      }
+    })(raiz);
+    return achados;
+  }
 }
 
 const comAposentado = arquivosDoRepo().filter((rel) => {
