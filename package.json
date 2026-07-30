@@ -321,7 +321,8 @@
     "prova:prontidao-na-central": "node --env-file=.env.local scripts/prova-prontidao-na-central.mjs",
     "prova:venda-sem-valor": "node --env-file=.env.local scripts/prova-venda-sem-valor.mjs",
     "provas:lista": "node -e \"const s=require(\\\"./package.json\\\").scripts;Object.keys(s).filter(k=>k.startsWith(\\\"prova:\\\")).sort().forEach(k=>console.log(\\\"  npm run \\\"+k))\"",
-    "rotas-orfas:check": "node scripts/check-rotas-orfas.mjs"
+    "rotas-orfas:check": "node scripts/check-rotas-orfas.mjs",
+    "prova:paginas-da-meta": "node --env-file=.env.local scripts/prova-paginas-da-meta.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1089.0",
