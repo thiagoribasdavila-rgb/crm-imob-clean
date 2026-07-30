@@ -6,6 +6,23 @@ const first = (row: CompatRow, ...keys: string[]) => {
   return null;
 };
 
+/**
+ * O `first` das LISTAS: devolve a primeira coluna com CONTEÚDO, não a primeira
+ * que existe.
+ *
+ * Existe separado de propósito, em vez de ensinar `first` a pular `[]`: `first`
+ * também resolve temperatura, papel comercial e datas, e uma lista vazia é o
+ * único caso em que "presente" e "respondido" divergem. Mudar a regra geral para
+ * consertar um caso de array mexeria em dez decisões que já estão certas.
+ */
+const primeiraListaComConteudo = (row: CompatRow, ...keys: string[]): string[] => {
+  for (const key of keys) {
+    const lista = stringList(row[key]);
+    if (lista.length > 0) return lista;
+  }
+  return [];
+};
+
 export const LIVE_LEAD_SELECT = [
   "id",
   "name",
@@ -261,7 +278,31 @@ export function mapLegacyLead(row: CompatRow): CompatRow {
     next_action_label: first(row, "next_action_label", "next_action"),
     last_interaction_at: first(row, "last_interaction_at", "updated_at", "created_at"),
     updated_at: first(row, "updated_at", "created_at"),
-    preferred_regions: stringList(first(row, "preferred_regions", "preferred_neighborhoods", "region", "neighborhood")),
+    /**
+     * ── LISTA VAZIA NÃO É RESPOSTA, E `first` NÃO SABIA DISSO ─────────────────
+     *
+     * `first` pula `null`, `undefined` e `""` — mas `[]` passa no teste de
+     * "presente" e vence a disputa. Medido em 2026-07-30 na organização real:
+     *
+     *   preferred_regions ......... 0 NULL · 482 array VAZIO
+     *   preferred_neighborhoods ... 7 com bairro de verdade
+     *
+     * Ou seja: a coluna vazia ganhava sempre, e as 7 pessoas que declararam
+     * bairro apareciam como se não tivessem declarado nada. A ficha mandava o
+     * corretor perguntar de novo o que o cliente já tinha dito, enquanto o painel
+     * de compatibilidade — que lê a coluna certa — dizia o contrário na mesma tela.
+     *
+     * `bedrooms` NÃO tem o defeito: a coluna é NULL nas 482, então o `first` cai
+     * corretamente para `preferred_bedrooms`. Consertar os dois "por simetria"
+     * teria mexido no que já estava certo.
+     */
+    preferred_regions: primeiraListaComConteudo(
+      row,
+      "preferred_regions",
+      "preferred_neighborhoods",
+      "region",
+      "neighborhood",
+    ),
     bedrooms: first(row, "bedrooms", "preferred_bedrooms"),
     purpose: first(row, "purpose") || purposeFromNotes(row.notes),
     metadata: row.metadata && typeof row.metadata === "object" ? row.metadata : {},
