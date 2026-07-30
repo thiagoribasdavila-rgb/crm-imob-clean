@@ -5,6 +5,7 @@ import { logger } from "@/lib/observability/logger";
 import { assessAIComplexity } from "@/lib/ai/complexity";
 import { planCommercialAI, type AIExecutionPlan, type RoutedProvider } from "@/lib/ai/commercial-orchestrator";
 import { AI_GUARD_SYSTEM_POLICY, assessAIInput, inspectAndSanitizeAIOutput } from "@/lib/ai/instruction-output-guard";
+import { pedirPermissaoDeIA, agenteDaFeature } from "@/lib/ai/limitador-de-ia";
 
 export type AITask = "fast" | "commercial" | "reasoning" | "research";
 export type GenerateInput = {
@@ -27,7 +28,21 @@ export type AIProviderResult = {
   providerRequestId?: string;
   // cachedInputTokens/cacheWriteTokens: sem capturá-los, todo token de entrada é
   // precificado à tarifa cheia e nenhuma economia de cache de prompt é verificável.
-  usage: { inputTokens: number; outputTokens: number; totalTokens: number; cachedInputTokens?: number; cacheWriteTokens?: number };
+  /**
+   * `providerReportedCostUsd`: o custo que o PRÓPRIO provedor informou na
+   * resposta. Não é preço inventado — é número medido, e ganha de qualquer
+   * tarifa cadastrada.
+   *
+   * Medido em 2026-07-30 contra a API real: a Perplexity devolve
+   * `usage.cost.request_cost = 0.005` — uma taxa POR REQUISIÇÃO, além dos
+   * tokens. `usageCost()` só sabia tarifa por milhão de tokens, então gravava
+   * US$ 0,011459 para as 21 chamadas cobráveis quando o mínimo informado pela
+   * própria API era US$ 0,1198: subestimativa de 10,5x.
+   *
+   * É exatamente por isso que o teto principal do orçamento é em CHAMADAS e
+   * TOKENS, e não em dinheiro. Ver lib/ai/orcamento-de-ia.ts.
+   */
+  usage: { inputTokens: number; outputTokens: number; totalTokens: number; cachedInputTokens?: number; cacheWriteTokens?: number; providerReportedCostUsd?: number | null };
   cost?: {
     inputUsd: number | null;
     outputUsd: number | null;
@@ -122,7 +137,7 @@ function tierPrefix(task: AITask): TierPrefix {
 // `ModelFamily`/`modelFamily` vivem em `model-profiles.ts`: são conhecimento
 // sobre MODELO, não sobre transporte, e o portão de tarifas precisa deles.
 export { modelFamily, type ModelFamily } from "./model-profiles";
-import { modelFamily } from "./model-profiles";
+import { modelFamily, problemaNoNomeDoModelo } from "./model-profiles";
 
 
 /**
@@ -149,6 +164,18 @@ export type ResolvedModel = { model: string; source: string; problem: string | n
  */
 export function resolveProviderModel(task: AITask, provider: "openai" | "anthropic"): ResolvedModel {
   const prefix = tierPrefix(task);
+  /**
+   * Nome truncado é recusado ANTES da chamada. `OPENAI_MODEL=gpt-5.6-` existia no
+   * ambiente real e devolvia HTTP 400 model_not_found: uma chamada gasta para
+   * descobrir o que o nome já dizia. Devolver `model: ""` faz o provedor lançar e
+   * o roteador seguir para o próximo da ordem — que aqui é a Perplexity, viva.
+   */
+  const recusarForma = (model: string, source: string): ResolvedModel | null => {
+    const problema = problemaNoNomeDoModelo(model);
+    return problema
+      ? { model: "", source, problem: `Tier ${task}: ${source}=${problema}. Nenhuma chamada foi gasta para descobrir isso.` }
+      : null;
+  };
   if (provider === "anthropic") {
     const candidates: Array<[string, string | undefined]> = [
       [`ATLAS_AI_${prefix}_MODEL_ANTHROPIC`, process.env[`ATLAS_AI_${prefix}_MODEL_ANTHROPIC`]],
@@ -160,12 +187,16 @@ export function resolveProviderModel(task: AITask, provider: "openai" | "anthrop
     // mais caro por omissão de variável.
     if (!chosen) return { model: "", source: "ausente", problem: `Tier ${task}: nenhum modelo Anthropic configurado — defina ATLAS_ANTHROPIC_MODEL.` };
     const model = String(chosen[1]).trim();
+    const forma = recusarForma(model, chosen[0]);
+    if (forma) return forma;
     const family = modelFamily(model);
     if (family !== "anthropic" && family !== "desconhecida") return { model: "", source: chosen[0], problem: `Tier ${task}: ${chosen[0]}="${model}" é da família ${family} e não pode ser enviado à API da Anthropic.` };
     return { model, source: chosen[0], problem: null };
   }
   const explicit = process.env[`ATLAS_AI_${prefix}_MODEL_OPENAI`]?.trim();
   if (explicit) {
+    const forma = recusarForma(explicit, `ATLAS_AI_${prefix}_MODEL_OPENAI`);
+    if (forma) return forma;
     const explicitFamily = modelFamily(explicit);
     if (explicitFamily === "openai" || explicitFamily === "desconhecida") return { model: explicit, source: `ATLAS_AI_${prefix}_MODEL_OPENAI`, problem: null };
     return { model: openAIDefaultModel(task), source: "padrao_openai", problem: `Tier ${task}: ATLAS_AI_${prefix}_MODEL_OPENAI="${explicit}" é da família ${explicitFamily}; servindo ${openAIDefaultModel(task)} para não derrubar o tier.` };
@@ -176,6 +207,8 @@ export function resolveProviderModel(task: AITask, provider: "openai" | "anthrop
   const basePrefix = tierPrefix(baseTask);
   const tierModel = String(aiModelProfiles()[baseTask] || "").trim();
   if (!tierModel) return { model: openAIDefaultModel(baseTask), source: "padrao_openai", problem: null };
+  const forma = recusarForma(tierModel, `ATLAS_AI_${basePrefix}_MODEL`);
+  if (forma) return forma;
   const family = modelFamily(tierModel);
   if (family === "openai" || family === "desconhecida") return { model: tierModel, source: `ATLAS_AI_${basePrefix}_MODEL`, problem: null };
   return { model: openAIDefaultModel(baseTask), source: "padrao_openai", problem: `Tier ${task}: ATLAS_AI_${basePrefix}_MODEL="${tierModel}" é da família ${family} e estava sendo enviado à API da OpenAI. Defina ATLAS_AI_${basePrefix}_MODEL_OPENAI ou corrija a variável — declaração duplicada no .env vence pela última ocorrência.` };
@@ -238,6 +271,15 @@ function legacyTierPricingDeclared(task: AITask) {
 
 export function usageCost(provider: AIProviderResult["provider"], model: string, usage: AIProviderResult["usage"]) {
   if (provider === "local") return { inputUsd: 0, outputUsd: 0, estimatedUsd: 0, pricingConfigured: true, pricingSource: "fallback_local_sem_custo" };
+  // O custo informado pelo provedor ganha da tarifa cadastrada: é medição, não
+  // estimativa. Sem isto, a taxa por requisição da Perplexity (US$ 0,005, que
+  // domina o custo de chamadas curtas) ficava fora da conta inteira.
+  const informado = usage.providerReportedCostUsd;
+  if (typeof informado === "number" && Number.isFinite(informado) && informado >= 0) {
+    // inputUsd/outputUsd ficam nulos de propósito: o provedor informou o TOTAL,
+    // e repartir esse total entre entrada e saída seria inventar a divisão.
+    return { inputUsd: null, outputUsd: null, estimatedUsd: informado, pricingConfigured: true, pricingSource: `provedor_informou:${provider}` };
+  }
   const { tariff, source } = tariffFor(provider, model);
   // Sem tarifa cadastrada o custo é DESCONHECIDO, não zero. Gravar 0 transforma
   // ausência de dado em "de graça" e o Command Center exibe isso como medido.
@@ -364,9 +406,13 @@ async function recordUsage(input: GenerateInput, result: AIProviderResult) {
       await getSupabaseAdmin().from("ai_usage_events").insert(base);
       return { ...result, cost };
     }
+    // `agent` viaja no payload estendido junto das colunas de cache porque
+    // compartilha o mesmo destino de falha: ambiente sem a migration aplicada.
+    // Sem a coluna, o teto POR AGENTE não tem o que contar — e é por isso que a
+    // migration 20260730050000 também preencheu o histórico já medido.
     const { error } = await getSupabaseAdmin()
       .from("ai_usage_events")
-      .insert({ ...base, cached_input_tokens: result.usage.cachedInputTokens ?? 0, cache_write_tokens: result.usage.cacheWriteTokens ?? 0, pricing_source: cost.pricingSource });
+      .insert({ ...base, agent: agenteDaFeature(input.feature), cached_input_tokens: result.usage.cachedInputTokens ?? 0, cache_write_tokens: result.usage.cacheWriteTokens ?? 0, pricing_source: cost.pricingSource });
     if (error) {
       // Só desliga a captura estendida quando o erro é de schema; falha
       // transitória não pode aposentar a telemetria de cache até o próximo deploy.
@@ -421,6 +467,10 @@ async function generateOpenAI(input: GenerateInput): Promise<AIProviderResult> {
           };
   const resolved = resolveProviderModel(input.task, "openai");
   if (resolved.problem) logger.error("ai.model_family_mismatch", { provider: "openai", task: input.task, feature: input.feature, problem: resolved.problem, effectiveModel: resolved.model });
+  // Sem modelo válido a chamada NÃO é feita: o failover segue para o próximo
+  // provedor da ordem. A Anthropic já fazia isso; a OpenAI seguia com `model: ""`
+  // e queimava uma chamada (mais o retry) para receber model_not_found.
+  if (!resolved.model) throw new Error(resolved.problem || "Modelo OpenAI não configurado.");
   const model = resolved.model;
   const startedAt = Date.now();
   const chamar = (effort: string) => resilientFetch("https://api.openai.com/v1/responses", {
@@ -549,6 +599,11 @@ async function generatePerplexity(
       prompt_tokens?: number;
       completion_tokens?: number;
       total_tokens?: number;
+      // A Perplexity informa o custo da requisição na própria resposta, e
+      // `request_cost` (US$ 0,005 medido em 2026-07-30) domina o custo de
+      // chamadas curtas: 21 chamadas medidas custaram ~10,5x o que a tarifa por
+      // token calculava. Sem ler isto, o custo gravado é ficção otimista.
+      cost?: { total_cost?: number; request_cost?: number; input_tokens_cost?: number; output_tokens_cost?: number };
     };
   };
   if (!response.ok)
@@ -557,10 +612,13 @@ async function generatePerplexity(
     );
   const text = body.choices?.[0]?.message?.content?.trim();
   if (!text) throw new Error("Perplexity retornou resposta vazia.");
+  const custoInformado = body.usage?.cost?.total_cost;
   const usage = {
     inputTokens: body.usage?.prompt_tokens ?? 0,
     outputTokens: body.usage?.completion_tokens ?? 0,
     totalTokens: body.usage?.total_tokens ?? 0,
+    providerReportedCostUsd:
+      typeof custoInformado === "number" && Number.isFinite(custoInformado) ? custoInformado : null,
   };
   return {
     text,
@@ -708,10 +766,57 @@ export async function generateAIText(
   const recordGuard=async(stage:"input"|"output",guard:typeof inputGuard,provider?:string,model?:string)=>{if(!guard.findings.length)return;try{await getSupabaseAdmin().from("ai_guardrail_events").insert({organization_id:input.organizationId,user_id:input.userId||null,feature:input.feature,stage,risk_level:guard.risk,blocked:guard.blocked,human_review_required:guard.humanReviewRequired,finding_codes:guard.findings.map(f=>f.code),provider:provider||null,model:model||null})}catch{/* Guardrail funciona mesmo antes da migration. */}};
   await recordGuard("input",inputGuard);
   if(inputGuard.blocked){result=localFallback(input);result.text="Solicitação bloqueada pela proteção da IA. Remova instruções para revelar configurações, segredos, executar comandos ou ignorar regras. Se a necessidade for legítima, encaminhe para revisão humana.";result.guardrail={risk:inputGuard.risk,blocked:true,humanReviewRequired:true,findingCodes:inputGuard.findings.map(f=>f.code)};return recordUsage(input,result)}
+  // ── O TETO, ANTES DE GASTAR (4.7 / §8) ────────────────────────────────────
+  //
+  // Aqui, e não dentro do laço de provedores: perguntar depois de escolher o
+  // provedor já teria montado a chamada, e a recusa mais barata é a que acontece
+  // antes de qualquer rede.
+  const teto = await pedirPermissaoDeIA({
+    organizationId: input.organizationId,
+    usuarioId: input.userId,
+    feature: input.feature,
+    agente: agenteDaFeature(input.feature),
+  });
+  if (!teto.permitido) {
+    // FALLBACK SEM IA: a recusa por teto devolve o caminho determinístico, não
+    // um erro. O corretor continua com os indicadores do CRM.
+    result = localFallback(input);
+    result.text = `Orçamento de IA do dia atingido para esta rotina. ${teto.motivos.join(" ")} Os indicadores determinísticos do CRM seguem válidos; nenhuma ação externa foi executada.`;
+    //
+    // A recusa NÃO é gravada em ai_usage_events, de propósito.
+    //
+    // Gravá-la faria o medidor contar as próprias recusas: cada "não" viraria
+    // uma chamada no total do dia, o teto apertaria mais, e a operação entraria
+    // num laço em que a IA se tranca sozinha e cada tentativa piora a trava.
+    // Consumo é o que gastou. Recusa gastou zero — e vive no log
+    // `ia.recusada_por_teto`, que é onde se investiga por que a IA parou.
+    return result;
+  }
   // parseProviderOrder devolve também os tokens descartados, que antes sumiam em
   // silêncio: um typo na ordem ("anthropi") apagava o provedor sem nenhum sinal.
   const { order: configuredOrder } = parseProviderOrder(input.task);
   const readiness=aiProviderReadiness(),plan=planCommercialAI({task:input.task,containsPersonalData:input.containsPersonalData,feature:input.feature,configuredOrder,available:readiness});
+  // ── "Trocar para modelo mais econômico" deixa de ser texto ────────────────
+  //
+  // O degrau do §8 só vale se mudar a ordem de quem atende. Com o teto encostado
+  // (≥85%), os provedores de camada gratuita passam para a frente — o dado
+  // pessoal continua fora dessa troca, porque `planCommercialAI` já força
+  // ["openai","local"] nesse caminho e a ordem dele não é reordenável aqui.
+  if (teto.degraus.includes("trocar_para_modelo_economico") && !input.containsPersonalData) {
+    // Compara por STRING, não pelo tipo: `RoutedProvider` (em
+    // commercial-orchestrator.ts) não inclui os 6 provedores de camada gratuita
+    // — gemini, groq, cerebras, mistral, openrouter, ollama. Eles existem no
+    // catálogo do roteador e passam por `isRoutedProvider` em tempo de execução,
+    // mas o tipo do orquestrador nunca foi alargado. Reordenar só o que JÁ está
+    // na ordem evita depender dessa divergência, em vez de fingir que ela não
+    // existe alargando o tipo aqui.
+    const gratuitos = new Set<string>(provedoresGratuitos);
+    const naFrente = plan.providerOrder.filter((p) => gratuitos.has(p));
+    if (naFrente.length) {
+      plan.providerOrder = [...naFrente, ...plan.providerOrder.filter((p) => !gratuitos.has(p))];
+      logger.warn("ia.trocou_para_economico", { feature: input.feature, ordem: plan.providerOrder, degraus: teto.degraus });
+    }
+  }
   result = localFallback(input);
   for (const provider of plan.providerOrder) {
     if(provider==="local"){result=localFallback(input);break}

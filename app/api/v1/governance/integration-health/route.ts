@@ -30,6 +30,12 @@ const envReady: Record<string, () => boolean> = {
   youtube: () => Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN),
   tiktok_ads: () => Boolean(process.env.TIKTOK_ADS_ACCESS_TOKEN),
   openai: () => Boolean(process.env.OPENAI_API_KEY),
+  // A Anthropic ESTAVA FORA deste mapa enquanto `/api/ready` a publicava como
+  // `configured`: dois painéis de governança, duas listas de provedores, e o
+  // provedor que a ordem de raciocínio usa em segundo lugar não existia em um
+  // deles. Medido em 2026-07-29: HTTP 400 "credit balance is too low" — o
+  // provedor está quebrado, e um painel nem sabia que ele existe.
+  anthropic: () => Boolean(process.env.ANTHROPIC_API_KEY),
   perplexity: () => Boolean(process.env.PERPLEXITY_API_KEY),
   storage: () =>
     Boolean(
@@ -125,7 +131,7 @@ async function live(org: string) {
       environmentReady: envReady[provider](),
       registered:
         Boolean(connection) ||
-        ["openai", "perplexity", "storage", "hostinger"].includes(provider),
+        ["openai", "anthropic", "perplexity", "storage", "hostinger"].includes(provider),
       verifiedStatus:
         connection?.status || null,
       lastSyncAt:

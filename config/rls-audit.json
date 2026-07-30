@@ -8,7 +8,8 @@
     "activities": "activities_commercial_select",
     "tasks": "tasks_commercial_select",
     "campaigns": "campaigns_leadership_update",
-    "ai_insights": "ai_insights_org_select"
+    "ai_insights": "ai_insights_org_select",
+    "commission_rules": "commission_rules_leitura"
   },
   "serviceOnlyTables": [
     "idempotency_keys",

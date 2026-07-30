@@ -70,6 +70,110 @@ export function aiModelProfiles() {
 }
 
 
+/**
+ * FORMA DO NOME DO MODELO — recusa antes de gastar a chamada.
+ *
+ * ── O que motivou ──────────────────────────────────────────────────────────
+ *
+ * O ambiente real tinha, em 2026-07-29, `OPENAI_MODEL=gpt-5.6-` — truncado no
+ * hífen. Enviado à API, ele volta HTTP 400 `model_not_found`: uma chamada gasta
+ * para descobrir o que o NOME já dizia. E `ANTHROPIC_BASE_URL=htts://` (sem o
+ * "p") na mesma máquina prova que erro de digitação em variável de ambiente não
+ * é hipótese aqui, é rotina.
+ *
+ * Esta função não julga se o modelo EXISTE — só se o nome tem forma de nome.
+ * Nome bem-formado que não existe continua sendo problema de uma chamada real;
+ * nome truncado não precisa de rede para ser reprovado.
+ *
+ * ── O outro lado, que importa mais ─────────────────────────────────────────
+ *
+ * Um validador severo é pior que nenhum: recusar `ft:gpt-4o:acme::abc123` ou
+ * `gpt-5.6-luna` derrubaria a IA inteira em nome de higiene. Por isso a regra é
+ * estritamente sintática — separador na borda, separador dobrado, espaço em
+ * branco, caractere fora do alfabeto de nomes de modelo — e o contrato prova as
+ * DUAS metades: que reprova o truncado E que aprova todos os nomes reais em uso.
+ */
+export function problemaNoNomeDoModelo(model: string | undefined | null): string | null {
+  const valor = String(model ?? "");
+  if (!valor.trim()) return "nome de modelo vazio";
+  if (valor !== valor.trim()) return `"${valor}" tem espaço em branco na borda`;
+  if (/\s/.test(valor)) return `"${valor}" tem espaço em branco no meio`;
+  if (/^[-._/]/.test(valor)) return `"${valor}" começa em separador`;
+  // O caso medido: `gpt-5.6-`. Truncar no hífen é o modo de falha de quem copia
+  // o valor pela metade, e a API responde model_not_found.
+  if (/[-._/]$/.test(valor)) return `"${valor}" termina em separador — nome truncado`;
+  if (/--|\.\.|\/\//.test(valor)) return `"${valor}" tem separador dobrado`;
+  // `:` é legítimo e pode vir dobrado: modelos afinados usam ft:base:org::id.
+  if (!/^[A-Za-z0-9:._/-]+$/.test(valor)) return `"${valor}" tem caractere que não aparece em nome de modelo`;
+  return null;
+}
+
+/**
+ * FORMA DE UMA URL BASE. Mesma doutrina: `htts://api.anthropic.com` é reprovável
+ * sem rede. Existe para quem for LER uma base de URL do ambiente conferir antes
+ * de usar — hoje as três APIs têm a URL fixa no código, e por isso a variável
+ * `ANTHROPIC_BASE_URL` do ambiente é LETRA MORTA: o typo dela nunca chegou a
+ * quebrar nada. Corrigir o ambiente segue sendo do dono; recusar forma inválida
+ * é do código.
+ */
+export function problemaNaUrlBase(valor: string | undefined | null, nome: string): string | null {
+  const url = String(valor ?? "").trim();
+  if (!url) return null;
+  if (!/^https?:\/\//.test(url)) return `${nome}="${url}" não começa em http:// nem https:// — verifique o esquema`;
+  try {
+    new URL(url);
+  } catch {
+    return `${nome}="${url}" não é uma URL válida`;
+  }
+  return null;
+}
+
+/**
+ * DEFEITO DE FORMA POR PROVEDOR, lido do ambiente — sem rede, sem custo.
+ *
+ * Serve à prontidão: um provedor cujo NOME de modelo é inválido está quebrado
+ * agora, e afirmar isso não gasta chamada. É a origem do estado `quebrada` em
+ * `/api/ready` sem exercitar nada.
+ *
+ * ── Por que `OPENAI_MODEL` NÃO é conferida aqui ─────────────────────────────
+ *
+ * Porque nenhum caminho do produto a lê. `aiModelProfiles()` usa as
+ * `ATLAS_AI_*`; `OPENAI_MODEL` só aparece em `scripts/integrations-health.mjs`.
+ * Fazer o estado da OpenAI depender dela seria repetir a doença que esta entrega
+ * combate: publicar como estado de um assunto a checagem de outro. O valor
+ * truncado (`gpt-5.6-`) é problema de AMBIENTE e vai no relatório para o dono,
+ * não numa guarda que finge medir o produto.
+ *
+ * A precedência espelha `resolveProviderModel` do roteador para o tier
+ * comercial — o tier que escreve para o cliente. Divergir dele faria a prontidão
+ * conferir um nome que a chamada real não usa.
+ */
+export function defeitosDeFormaDoAmbiente(
+  env: Record<string, string | undefined>,
+): Record<"openai" | "anthropic" | "perplexity", string | null> {
+  const primeiroDefinido = (...nomes: string[]) => {
+    for (const nome of nomes) {
+      const valor = env[nome]?.trim();
+      if (valor) return { nome, valor };
+    }
+    return null;
+  };
+  const conferir = (escolhido: { nome: string; valor: string } | null) => {
+    if (!escolhido) return null;
+    const problema = problemaNoNomeDoModelo(escolhido.valor);
+    return problema ? `${escolhido.nome}=${problema}` : null;
+  };
+  return {
+    openai: conferir(
+      primeiroDefinido("ATLAS_AI_COMMERCIAL_MODEL_OPENAI", "ATLAS_AI_COMMERCIAL_MODEL", "ATLAS_AI_MODEL"),
+    ),
+    anthropic: conferir(
+      primeiroDefinido("ATLAS_AI_COMMERCIAL_MODEL_ANTHROPIC", "ATLAS_ANTHROPIC_MODEL", "ATLAS_CLAUDE_MODEL"),
+    ),
+    perplexity: conferir(primeiroDefinido("ATLAS_RESEARCH_MODEL")),
+  };
+}
+
 export type ModelFamily = "openai" | "anthropic" | "perplexity" | "economy" | "desconhecida";
 
 /**

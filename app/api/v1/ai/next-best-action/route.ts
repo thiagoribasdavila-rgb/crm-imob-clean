@@ -246,8 +246,22 @@ export async function GET(request: NextRequest) {
     .select(LIVE_LEAD_SELECT)
     .eq("organization_id", org)
     .not("status", "in", `(${CLOSED_STATUS_VALUES.join(",")})`);
+  // ── A FILA "SEM DONO" DA LIDERANÇA NÃO É O ACERVO DE RESGATE ──────────────
+  //
+  // Medido em 2026-07-29/30: este painel mostra 17 linhas, e são 13 leads de
+  // ACERVO (lista histórica importada, 8 delas em `perdido`) + 3 que JÁ TÊM DONO
+  // por `assigned_to` + 1 lead de teste. Uma "fila de leads sem responsável" em
+  // que quase nada é lead sem responsável.
+  //
+  // Duas correções, e as duas mudam o número que a liderança lê:
+  // · `assigned_to` TAMBÉM precisa ser nulo — 3 leads têm dono só nessa coluna e
+  //   apareciam como órfãs (é o mesmo par legado/canônico que já mordeu a
+  //   ingestão e a listagem);
+  // · lead de importação sai: o acervo tem balcão próprio, onde o CORRETOR se
+  //   serve (POST /api/v1/crm/acervo). Se ficasse aqui, os dois lados
+  //   ofereceriam a mesma linha por caminhos diferentes.
   const scoped = unassignedQueue
-    ? base.is("assigned_user_id", null)
+    ? base.is("assigned_user_id", null).is("assigned_to", null).is("import_batch_id", null)
     : base.eq("assigned_user_id", targetBrokerId);
   const readLimit = unassignedQueue ? MAX_UNASSIGNED : MAX_PORTFOLIO;
   const { data, error } = await scoped

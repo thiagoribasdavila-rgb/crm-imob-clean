@@ -6,8 +6,20 @@ import { LIVE_LEAD_SELECT, leadAsOpportunity, mapLegacyLead } from "@/lib/compat
 import { AtlasEmpty } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { TiltShell } from "@/components/atlas/tilt-shell";
+import {
+  DASHBOARD_PERIOD_KEY,
+  PERIODOS_DO_RESUMO,
+  PERIODO_PADRAO,
+  dentroDoPeriodo,
+  lerPeriodoSalvo,
+  periodoParaGravar,
+  type PeriodoDoResumo,
+} from "@/lib/dashboards/periodo-do-resumo";
 
-type Period = "day" | "week" | "month" | "all";
+/* O vocabulário do recorte mora em lib/dashboards/periodo-do-resumo.ts: a MESMA
+   lista desenha as pastilhas, valida o valor lido da sessão e define o padrão.
+   Enumerá-lo aqui de novo era o caminho para as duas listas divergirem. */
+type Period = PeriodoDoResumo;
 type Lead = { id: string; status: string | null; source: string | null; score: number | null; created_at: string };
 type Opportunity = { id: string; stage: string; value: number | null; probability: number; created_at: string; won_at: string | null };
 type Briefing = { status: string; signals: Array<{ id: string; severity: string; title: string; evidence: string; action: string; href: string }> };
@@ -24,7 +36,8 @@ export default function ReportsPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [period, setPeriod] = useState<Period>("month");
+  const [period, setPeriod] = useState<Period>(PERIODO_PADRAO);
+  const [periodHydrated, setPeriodHydrated] = useState(false);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [referenceTime, setReferenceTime] = useState(0);
   const [weekly, setWeekly] = useState<WeeklyReport | null>(null);
@@ -56,10 +69,44 @@ export default function ReportsPage() {
     void load();
   }, []);
 
+  /**
+   * O RECORTE ESCOLHIDO VOLTA COM O USUÁRIO.
+   *
+   * Dois efeitos, nesta ordem, e a ordem é o ponto: a leitura roda uma vez na
+   * montagem e levanta a bandeira `periodHydrated`; a gravação só grava depois
+   * da bandeira, porque `periodoParaGravar` devolve `null` enquanto ela está
+   * baixa. Sem essa guarda, o efeito de gravação dispararia na primeira
+   * montagem com o padrão ainda no estado e apagaria a escolha salva — o
+   * sintoma é "não persiste", com todo o código de persistência presente.
+   *
+   * `try/catch` nos dois: em navegação privada e com cota cheia o
+   * sessionStorage lança, e um relatório não pode deixar de abrir por causa
+   * disso. Perde-se a memória do recorte, não a tela.
+   */
+  useEffect(() => {
+    try {
+      setPeriod(lerPeriodoSalvo(window.sessionStorage.getItem(DASHBOARD_PERIOD_KEY)));
+    } catch {
+      setPeriod(PERIODO_PADRAO);
+    }
+    setPeriodHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    const aGravar = periodoParaGravar(period, periodHydrated);
+    if (!aGravar) return;
+    try {
+      window.sessionStorage.setItem(DASHBOARD_PERIOD_KEY, aGravar);
+    } catch {
+      /* Sem memória do recorte é degradação aceitável; tela em branco não é. */
+    }
+  }, [period, periodHydrated]);
+
   const periodData = useMemo(() => {
-    const days = period === "day" ? 1 : period === "week" ? 7 : period === "month" ? 30 : null;
-    const since = days ? referenceTime - days * 86_400_000 : 0;
-    const recent = (date: string | null) => !days || Boolean(date && new Date(date).getTime() >= since);
+    /* A janela vem do mesmo módulo que valida o recorte salvo. A tabela de dias
+       morava aqui num ternário; duplicada, ela é o lugar onde "week" passa a
+       significar 7 dias num arquivo e 30 no outro. */
+    const recent = (date: string | null) => dentroDoPeriodo(period, date, referenceTime);
     return { leads: leads.filter((item) => recent(item.created_at)), opportunities: opportunities.filter((item) => recent(item.created_at)) };
   }, [leads, opportunities, period, referenceTime]);
 
@@ -111,7 +158,7 @@ export default function ReportsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="cc6-eyebrow">Números decisivos</p>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Período do relatório">
-              {(["day", "week", "month", "all"] as Period[]).map((key) => (
+              {PERIODOS_DO_RESUMO.map((key) => (
                 <button
                   key={key}
                   type="button"

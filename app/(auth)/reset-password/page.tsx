@@ -105,13 +105,16 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
-    // A troca vai pela SESSÃO DO NAVEGADOR, que é a que carrega o token do
-    // fragmento. A rota do servidor exige o cookie `atlas-recovery-intent`, que
-    // só existe no navegador que PEDIU o reset — quem abre o e-mail no celular
-    // não o tem, e levaria erro depois de digitar a senha inteira.
+    // Por que existem DOIS caminhos, com o que foi MEDIDO em 29/07/2026:
     //
-    // Liberar a tela e barrar o envio seria pior que barrar antes: o corretor
-    // faz o trabalho e perde.
+    // O cookie `atlas-recovery-intent` vale 15 min; a sessão de recuperação vale
+    // ~1 h (medido: expires_in=3600). Quem demora para digitar a senha perde o
+    // cookie e a rota do servidor responde 401 — mas a sessão do navegador ainda
+    // troca. Barrar o envio depois de o corretor digitar tudo é pior que tentar.
+    //
+    // A política 12/128/3 é aplicada ACIMA, antes de qualquer chamada, porque o
+    // provedor NÃO a aplica: medido no projeto de homologação, PUT /auth/v1/user
+    // aceitou "abc123" e "12345678" (HTTP 200); o mínimo dele é 6 caracteres.
     const { data: sessao } = await supabase.auth.getSession();
     if (sessao.session) {
       const { error: erroTroca } = await supabase.auth.updateUser({ password });
@@ -120,12 +123,24 @@ export default function ResetPasswordPage() {
         setLoading(false);
         return;
       }
-      // A rota do servidor ainda é chamada para limpar o cookie de intenção e
-      // registrar a troca — falha aqui não desfaz a senha já alterada.
-      await fetch("/api/auth/password-reset", {
+      // A rota do servidor limpa o cookie de intenção, REGISTRA a troca e encerra
+      // as sessões. Falhar aqui não desfaz a senha já alterada — mas não pode
+      // passar em silêncio, e antes passava: a resposta era descartada.
+      //
+      // MEDIDO em 29/07/2026 (usuário descartável, duas sessões vivas): o
+      // provedor revoga as OUTRAS sessões sozinho na troca (refresh das duas foi
+      // a 400 sem nenhum signOut), mas MANTÉM VIVA a sessão de recuperação —
+      // GET /auth/v1/user com ela respondeu 200 DEPOIS da troca. Sem o passo
+      // abaixo, o link de recuperação continua trocando a senha por ~1 h.
+      const registrada = await fetch("/api/auth/password-reset", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
-      }).catch(() => {});
+      }).then((resposta) => resposta.ok).catch(() => false);
+      if (!registrada) {
+        // Fecha o que a rota fecharia: derruba toda sessão deste usuário,
+        // inclusive a de recuperação que acabou de trocar a senha.
+        await supabase.auth.signOut({ scope: "global" }).catch(() => null);
+      }
     } else {
       const response = await fetch("/api/auth/password-reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
       const body = await response.json();

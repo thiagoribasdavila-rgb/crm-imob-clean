@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { buildRealEstateContext } from "@/lib/ai/real-estate-context";
-import { aiProviderReadiness } from "@/lib/ai/provider-router";
+import { aiProviderReadiness, aiRoutingDiagnostics } from "@/lib/ai/provider-router";
+import { avaliarProntidaoGenerativa, lerEvidenciaDeProvedores } from "@/lib/ai/prontidao-generativa";
 import { canonicalLeadStatus } from "@/lib/compat/legacy-v2";
 import { computeAttentionSignals } from "@/lib/atlas/attention-signals";
 
@@ -184,6 +185,33 @@ export async function GET(request: NextRequest) {
 
   const order = { critical: 4, attention: 3, opportunity: 2, healthy: 1 };
   signals.sort((a, b) => order[b.severity] - order[a.severity] || b.impact - a.impact);
+
+  /**
+   * `generativeReady` era `aiProviderReadiness().openai` — isto é,
+   * `Boolean(process.env.OPENAI_API_KEY)`. A tela dizia "IA pronta" porque uma
+   * variável de ambiente existia.
+   *
+   * Medido em 2026-07-29 com as credenciais reais: OpenAI HTTP 429
+   * `insufficient_quota`, Anthropic HTTP 400 "credit balance is too low",
+   * Perplexity HTTP 200 com 14 tokens. A única viva é a Perplexity — que as três
+   * `ATLAS_AI_*_PROVIDER_ORDER` já colocam em primeiro lugar. O campo errava nas
+   * duas pontas: afirmava por quem não responde e ignorava quem responde.
+   *
+   * Agora a resposta vem de EVIDÊNCIA: a última chamada real registrada em
+   * `ai_usage_events`, na ordem que o roteador vai tentar de verdade. As linhas
+   * `local/deterministic-safe-fallback` — 22 das 43 no banco de homologação — são
+   * recusadas explicitamente: elas são a pegada de que TODOS falharam.
+   *
+   * E se nenhum responder, o campo diz isso. Fingir IA pronta é o que fazia a
+   * diretoria decidir com um briefing que não tinha IA nenhuma por trás.
+   */
+  const ordemComercial = aiRoutingDiagnostics().find((item) => item.tier === "commercial")?.providerOrder ?? [];
+  const evidenciaDeIA = await lerEvidenciaDeProvedores(access.supabase);
+  const generativa = avaliarProntidaoGenerativa({
+    ordem: [...ordemComercial],
+    configurados: aiProviderReadiness() as unknown as Record<string, boolean>,
+    evidencias: evidenciaDeIA.evidencias,
+  });
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
     status: signals.some((signal) => signal.severity === "critical") ? "critical" : signals.some((signal) => signal.severity === "attention") ? "attention" : "healthy",
@@ -206,7 +234,14 @@ export async function GET(request: NextRequest) {
     },
     signals,
     model: {
-      generativeReady: aiProviderReadiness().openai,
+      generativeReady: generativa.pronta,
+      /** O estado nomeado, para a tela não ter de inferir do booleano. */
+      generativeState: generativa.estado,
+      generativeProvider: generativa.provedor,
+      generativeVerifiedAt: generativa.verificadoEm,
+      generativeReason: generativa.motivo,
+      /** Ausência de medição declarada — nunca confundida com "ninguém responde". */
+      generativeEvidence: { fonte: "ai_usage_events", medido: evidenciaDeIA.medido, motivo: evidenciaDeIA.motivo },
       localIntelligenceReady: true,
       calibrationVerifiedAt: "2026-07-17",
     },

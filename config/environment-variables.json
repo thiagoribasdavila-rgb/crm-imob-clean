@@ -89,6 +89,20 @@
       "purpose": "Tabela JSON de tarifa por provedor e modelo, usada para estimar custo de IA."
     },
     {
+      "name": "ATLAS_SUPABASE_PLAN",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Plano do projeto Supabase DECLARADO pelo operador (ex.: free), lido por /api/v1/finops/cost-center. O produto nao tem token de gestao para perguntar o plano ao Supabase; sem esta variavel a linha de banco do Centro de Custo aparece como NAO MEDIDA, nunca como zero."
+    },
+    {
+      "name": "ATLAS_USD_BRL",
+      "scope": "server",
+      "requirement": "optional",
+      "secret": false,
+      "purpose": "Taxa de cambio USD para BRL DECLARADA pelo operador. O consumo de IA e cobrado em dolar e o teto da Fase 1 e em reais; sem esta taxa o total em reais e o percentual do teto ficam NAO MEDIDOS. Taxa de cambio e preco: o codigo nao estima."
+    },
+    {
       "name": "ATLAS_AI_REASONING_INPUT_USD_PER_MILLION",
       "scope": "server",
       "requirement": "optional",

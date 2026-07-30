@@ -114,8 +114,15 @@ test("a rota do corretor lê as colunas de SLA e declara quando não pôde", () 
     "sem as colunas de SLA a rota não tem como saber quem nunca foi contatado");
   assert.match(rota, /primeiroContatoMensuravel = false/,
     "base legada sem as colunas precisa cair para o select base");
-  assert.match(rota, /primeiroContatoMensuravel\s*\n?\s*\?\s*activeLeads\.filter\(\(lead\) => !lead\.first_contacted_at\)\.length\s*\n?\s*:\s*null/,
+  // O predicado saiu de `!lead.first_contacted_at` inline para
+  // `primeiroContatoAtrasado` (lib/crm/acervo-de-resgate.ts) em 2026-07-30,
+  // porque faltava uma distinção: lead de ACERVO DE RESGATE não pediu contato, e
+  // só está atrasada quando o prazo que o corretor assumiu ao PEGÁ-LA vence.
+  // O que este teste guarda continua igual — não medido é null, nunca zero.
+  assert.match(rota, /primeiroContatoMensuravel\s*\n?\s*\?\s*activeLeads\.filter\(\(lead\) => primeiroContatoAtrasado\(lead, now\)\)\.length\s*\n?\s*:\s*null/,
     "não medido tem que virar null, nunca zero");
+  assert.match(rota, /import \{ primeiroContatoAtrasado \} from "@\/lib\/crm\/acervo-de-resgate"/,
+    "o predicado tem de vir do módulo compartilhado: escrito à mão aqui, ele divergiria dos outros três lugares que o usam");
 });
 
 test("o total da fila é contado antes do corte de exibição", () => {
@@ -161,7 +168,10 @@ test("o bônus de prioridade decide por coluna, não por etapa", () => {
    * Os dois lados importam: o filtro tem de corrigir para cima e para baixo.
    */
   const rota = ler("app", "api", "v1", "analytics", "broker-daily", "route.ts");
-  assert.match(rota, /const firstContactOverdue = primeiroContatoMensuravel\s*\n\s*\? !lead\.first_contacted_at/,
+  // MESMA função do total da faixa, e não uma segunda escrita: o motivo de cada
+  // card e o número que a central publica TÊM de concordar. Quando divergiram, o
+  // painel dizia "22 atrasadas" e listava outras.
+  assert.match(rota, /const firstContactOverdue = primeiroContatoMensuravel\s*\n\s*\? primeiroContatoAtrasado\(lead, now\)/,
     "o bônus precisa sair da coluna, igual ao sinal, ao painel, ao risco e ao filtro da lista");
   assert.match(rota, /:\s*normalize\(lead\.status\) === "novo" &&/,
     "base sem a coluna cai para o predicado antigo — e o recuo é declarado, não silencioso");

@@ -11,7 +11,7 @@
  */
 
 import { type NextRequest } from "next/server";
-import { apiError, apiSuccess } from "@/lib/api/core";
+import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
@@ -25,6 +25,7 @@ import {
   type ProposalProjectionBasis,
 } from "@/lib/marketing/campaign-proposals";
 import { simulateMove } from "@/lib/ai/decision-simulator";
+import { lastroDaProposta, linhaDeProjecao, semanaIso } from "@/lib/ai/ledger-de-projecao";
 import { aggregate } from "@/lib/marketing/cost-report";
 import { fetchCampaignInsights, insightsToCostRows } from "@/lib/meta/marketing/campaign-read";
 import { cachedMetaRead } from "@/lib/meta/marketing/insights-cache";
@@ -228,6 +229,48 @@ export async function POST(request: NextRequest) {
       identity.meta,
       { status: 503 },
     );
+  }
+
+  // LEDGER DE PROJEÇÃO — grava a projeção no momento da decisão.
+  //
+  // `ai_projection_ledger` existia com ZERO linhas e ZERO chamadores (medido em
+  // 2026-07-30). Sem esta gravação, o "+X leads/semana" desta proposta nunca é
+  // comparado com o que aconteceu, e a IA segue projetando com a mesma confiança
+  // por mais errada que esteja. Uma semana depois, o fechamento com o realizado
+  // produz o viés que encolhe a projeção futura.
+  //
+  // Best-effort de propósito: a proposta JÁ está registrada e é o que a liderança
+  // pediu. Falha de aprendizado não pode derrubar a decisão — mas também não pode
+  // passar calada, então vai para o log estruturado.
+  //
+  // `ProposalProjection` é união de MoveProjection e PlanProjection, e só a
+  // primeira tem movimento e alvo. Esta rota sempre produz a de movimento
+  // (`simulateMove`), mas o estreitamento fica explícito: se um dia alguém
+  // trocar por `simulatePlan`, o ledger deixa de gravar em vez de gravar um
+  // movimento inventado a partir de um plano inteiro.
+  const movimento = projection && "moveKind" in projection ? projection : null;
+  if (movimento) {
+    const linhaDoLedger = linhaDeProjecao(
+      identity.access.organization.id,
+      {
+        moveKind: movimento.moveKind,
+        target: movimento.target,
+        weeklyLeadsDelta: movimento.weeklyLeadsDelta,
+        confidence: movimento.confidence,
+        basis: lastroDaProposta(basis),
+      },
+      semanaIso(new Date()),
+    );
+    if (linhaDoLedger) {
+      const { error: erroLedger } = await admin.from("ai_projection_ledger").insert(linhaDoLedger);
+      if (erroLedger) {
+        structuredApiLog("warn", "marketing.projection_ledger_write_failed", request, identity.meta, {
+          proposalId: created.id,
+          moveKind: movimento.moveKind,
+          reason: erroLedger.message,
+        });
+      }
+    }
   }
 
   return apiSuccess(

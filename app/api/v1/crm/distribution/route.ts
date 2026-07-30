@@ -18,6 +18,30 @@ const managerRoles = new Set(["director", "superintendent", "manager"]);
 const archived = new Set(["arquivado", "archived"]);
 const text = (value: unknown) => typeof value === "string" ? value : "";
 
+/**
+ * ACERVO DE RESGATE NÃO É FILA DE DISTRIBUIÇÃO.
+ *
+ * ── O que estava errado, medido em 2026-07-29/30 ────────────────────────────
+ *
+ * `distribute` (o fallback em Node) e o painel "sem dono" da liderança pegavam
+ * QUALQUER lead sem responsável — inclusive as 13 de acervo, 8 delas em
+ * `perdido`. Ou seja: a liderança podia empurrar lead histórica perdida para a
+ * carteira de um corretor como se fosse demanda nova, e o painel dela ainda
+ * chamava isso de "lead aberto".
+ *
+ * Aquele painel mostra 17 linhas hoje: 13 de acervo + 3 que JÁ TÊM DONO por
+ * `assigned_to` + 1 lead de teste. Ou seja, 76% dele é acervo e 18% é falso
+ * positivo — uma "fila de leads sem responsável" que quase não tem lead sem
+ * responsável.
+ *
+ * Com a oferta ativa existindo, os dois lados disputariam as MESMAS linhas por
+ * caminhos diferentes: a liderança distribuindo e o corretor se servindo. Duas
+ * portas para a mesma lead é como nasce a lead com dois donos.
+ *
+ * O acervo tem balcão próprio: POST /api/v1/crm/acervo.
+ */
+const ehAcervoDeResgate = (lead: CompatRow) => lead.import_batch_id !== null && lead.import_batch_id !== undefined;
+
 export async function GET(request: NextRequest) {
   const limited = enforceRateLimit(request, { limit: 90, scope: "crm-distribution-read" });
   if (!limited.ok) return limited.response;
@@ -81,7 +105,7 @@ export async function GET(request: NextRequest) {
     };
   });
   const queue = profiles.filter((profile) => profile.commercial_role === "broker").flatMap((profile) => projects.map((project) => ({ profile_id: profile.id, development_id: project.id, enabled: true, weight: 1, assignments_count: 0, last_assigned_at: null })));
-  const unassignedQueue = leads.filter((lead) => !lead.assigned_to).sort((a, b) => Date.parse(text(a.created_at)) - Date.parse(text(b.created_at))).slice(0, 100).map((lead) => ({
+  const unassignedQueue = leads.filter((lead) => !lead.assigned_to && !ehAcervoDeResgate(lead)).sort((a, b) => Date.parse(text(a.created_at)) - Date.parse(text(b.created_at))).slice(0, 100).map((lead) => ({
     id: lead.id,
     developmentId: lead.development_id,
     source: lead.source || "não informada",
@@ -103,9 +127,9 @@ export async function GET(request: NextRequest) {
     leadSources: [...new Set(leads.map((lead) => text(lead.source || "não informada").trim().toLowerCase()))].sort().slice(0, 100),
     portfolioAudit: auditLedger,
     unassignedQueue,
-    unassignedPolicy: { metadataOnly: true, piiExposed: false, automaticAssignment: false, explicitLeadershipAction: true, maximumVisible: 100 },
+    unassignedPolicy: { metadataOnly: true, piiExposed: false, automaticAssignment: false, explicitLeadershipAction: true, maximumVisible: 100, rescueStockExcluded: true },
     loads: profiles.map((profile) => ({ profile_id: profile.id, total: leads.filter((lead) => text(lead.assigned_to) === text(profile.id)).length, by_project: Object.fromEntries(projects.map((project) => [project.id, leads.filter((lead) => text(lead.assigned_to) === text(profile.id) && text(lead.development_id) === project.id).length])) })),
-    unassigned: Object.fromEntries(projects.map((project) => [project.id, leads.filter((lead) => !lead.assigned_to && text(lead.development_id) === project.id).length])),
+    unassigned: Object.fromEntries(projects.map((project) => [project.id, leads.filter((lead) => !lead.assigned_to && !ehAcervoDeResgate(lead) && text(lead.development_id) === project.id).length])),
     generatedAt: new Date().toISOString(),
     scopedProfileCount: profileIds.size,
   }, identity.meta, { headers: limited.headers });
@@ -314,7 +338,9 @@ export async function POST(request: NextRequest) {
 
   // Unassigned queue, oldest first, optionally scoped to one project.
   const queue = leads
-    .filter((lead) => !lead.assigned_to)
+    // Acervo de resgate fica FORA: ele tem balcão próprio (o corretor se serve
+    // em /api/v1/crm/acervo) e não pode ser empurrado como demanda nova.
+    .filter((lead) => !lead.assigned_to && !ehAcervoDeResgate(lead))
     .filter((lead) => !developmentFilter || text(lead.development_id) === developmentFilter)
     .sort((a, b) => Date.parse(text(a.created_at)) - Date.parse(text(b.created_at)))
     .slice(0, batchLimit);

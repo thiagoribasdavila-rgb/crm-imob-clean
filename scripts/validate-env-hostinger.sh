@@ -29,10 +29,31 @@ done
 log "✅ Todas as variáveis obrigatórias preenchidas"
 
 # Validações extras
-if grep "^DATABASE_URL=" "$ENV_FILE" | grep -q "ietwopslgqxlenfyghqk.*pooler"; then
-  log "DATABASE_URL parece correto (pooler, ietwopslgqxlenfyghqk)"
+# ── ESTE BLOCO CERTIFICAVA O ERRO COMO ACERTO ────────────────────────────────
+#
+# Ele registrava "DATABASE_URL parece correto" quando ela apontava para o projeto
+# LEGADO (24 tabelas, 17.151 leads reais). Um validador que aprova o banco errado
+# é pior que validador nenhum: ele produz confiança.
+#
+# O ref canônico vem de config/supabase-projetos.json, e o aposentado é REPROVADO
+# por nome — porque apontar para ele não é "talvez errado", é errado.
+CANONICO="$(node -p "require('./config/supabase-projetos.json').canonico.ref" 2>/dev/null)"
+APOSENTADOS="$(node -p "require('./config/supabase-projetos.json').aposentados.map(p=>p.ref).join(' ')" 2>/dev/null)"
+
+if [ -z "$CANONICO" ]; then
+  warn "não consegui ler o projeto canônico de config/supabase-projetos.json — NÃO validei o banco"
 else
-  warn "DATABASE_URL pode não estar correto (procure por 'pooler' + 'ietwopslgqxlenfyghqk')"
+  DB_LINE="$(grep "^DATABASE_URL=" "$ENV_FILE" || true)"
+  for velho in $APOSENTADOS; do
+    if printf '%s' "$DB_LINE" | grep -q "$velho"; then
+      warn "DATABASE_URL aponta para o projeto APOSENTADO $velho — ele tem dado real e NÃO recebe deploy. Use $CANONICO."
+    fi
+  done
+  if printf '%s' "$DB_LINE" | grep -q "$CANONICO.*pooler"; then
+    log "DATABASE_URL aponta para o projeto canônico ($CANONICO, pooler)"
+  else
+    warn "DATABASE_URL não aponta para o canônico $CANONICO com 'pooler'"
+  fi
 fi
 
 if grep "^ATLAS_BASE_URL=https://atlasaios.com.br" "$ENV_FILE" >/dev/null; then

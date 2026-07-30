@@ -12,7 +12,11 @@
  * relógio ficam na rota; aqui só a matemática do aprendizado.
  */
 
-import { DEFAULT_PIPELINE_STAGES, canonicalPipelineStage } from "@/lib/atlas/pipeline-stages";
+// Relativo com extensão, como `lib/atlas/triagem-da-fila.ts` já faz. O alias
+// "@/" não resolve fora do bundler, e era ele que impedia qualquer contrato de
+// EXECUTAR a matemática deste arquivo — `evaluateOutcome` e `trustByMoveKind`
+// nunca tinham sido chamadas por um teste, só grepadas.
+import { DEFAULT_PIPELINE_STAGES, canonicalPipelineStage } from "../atlas/pipeline-stages.ts";
 
 export type ProjectionRecord = {
   moveKind: string;

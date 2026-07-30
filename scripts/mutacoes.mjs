@@ -340,28 +340,28 @@ const MUTACOES = [
       .eq("organization_id", plan.organizationId)`,
   },
   {
-    id: "M34", arquivo: "lib/atlas/triagem-da-fila.ts",
+    id: "M164", arquivo: "lib/atlas/triagem-da-fila.ts",
     quebra: "o DDD deixa de exigir o prefixo 55",
     dor: "'971567739185' vira DDD 15 e entra em 'telefone da praça'. O diretor lê um número de atendimento inflado por lixo, e liga para quem não existe.",
     de: `  if (!bruto.startsWith("55")) return null;`,
     para: `  if (false) return null;`,
   },
   {
-    id: "M35", arquivo: "lib/atlas/triagem-da-fila.ts",
+    id: "M165", arquivo: "lib/atlas/triagem-da-fila.ts",
     quebra: "o comprimento canônico do telefone deixa de ser exigido",
     dor: "Um '5511999' truncado vira DDD 11 na contagem da central e NÃO casa o filtro do banco: a escada diz 147 e o clique abre 146.",
     de: `  if (!(COMPRIMENTOS_CANONICOS as readonly number[]).includes(bruto.length)) return null;`,
     para: `  if (false) return null;`,
   },
   {
-    id: "M36", arquivo: "lib/atlas/triagem-da-fila.ts",
+    id: "M166", arquivo: "lib/atlas/triagem-da-fila.ts",
     quebra: "praça sem UF nenhuma passa a ser declarada MEDIDA",
     dor: "Com o cadastro incompleto, 100% dos leads viram 'fora da praça'. A escada fica plausível e completamente invertida — e alguém decide parar de trabalhar a fila inteira.",
     de: `  if (!ufs.length) {`,
     para: `  if (false) {`,
   },
   {
-    id: "M37", arquivo: "lib/atlas/triagem-da-fila.ts",
+    id: "M167", arquivo: "lib/atlas/triagem-da-fila.ts",
     quebra: "o fragmento de consulta gera um comprimento só",
     dor: "Os 18 telefones fixos (12 dígitos) somem da lista mas continuam na contagem. O número escrito na central deixa de ser o número que o clique abre.",
     de: `  return COMPRIMENTOS_CANONICOS.map((tamanho) => \`phone_normalized.like.55\${ddd}\${"_".repeat(tamanho - 4)}\`);`,
@@ -845,17 +845,7 @@ create table if not exists public.commission_rules (`,
     de: `    ? "Nenhuma destas leads tem consentimento registrado — o estado é “não perguntado”, que não é o mesmo que “sem restrição”."`,
     para: `    ? "Nenhuma destas leads tem restrição de contato registrada."`,
   },
-  {
-    id: "M99", arquivo: "app/api/v1/crm/leads/route.ts",
-    quebra: "o recorte do acervo volta a esconder lead arquivada",
-    dor: "O corretor pega 10 leads do acervo e não vê NENHUMA na lista: 16.733 das 17.151 do v1 estão em `arquivado`, e a lista exclui arquivado em toda consulta. A feature entrega leads invisíveis.",
-    de: `    query = acervo
-      ? query
-          .not("import_batch_id", "is", null)
-          .or(filtroDaCarteiraDaPessoa(access.access.user.id))
-      : query.not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)");`,
-    para: `    query = query.not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)");`,
-  },
+
   {
     id: "M100", arquivo: "app/api/v1/analytics/broker-daily/route.ts",
     quebra: "a central do corretor volta ao predicado sem prazo",
@@ -863,13 +853,7 @@ create table if not exists public.commission_rules (`,
     de: `    ? activeLeads.filter((lead) => primeiroContatoAtrasado(lead, now)).length`,
     para: `    ? activeLeads.filter((lead) => !lead.first_contacted_at).length`,
   },
-  {
-    id: "M101", arquivo: "app/api/v1/ai/next-best-action/route.ts",
-    quebra: "a fila 'sem dono' da liderança volta a engolir o acervo",
-    dor: "Os dois balcões disputam as mesmas linhas: a liderança distribui a lead de acervo como demanda nova enquanto o corretor a pega no auto-serviço. É como nasce a lead com dois donos — e o painel volta a ser 76% acervo e 18% falso positivo.",
-    de: `    ? base.is("assigned_user_id", null).is("assigned_to", null).is("import_batch_id", null)`,
-    para: `    ? base.is("assigned_user_id", null)`,
-  },
+
   {
     id: "M102", arquivo: "supabase/migrations/20260730010000_oferta_ativa_do_acervo_de_resgate.sql",
     quebra: "o claim perde o `skip locked` na migration",
@@ -878,7 +862,7 @@ create table if not exists public.commission_rules (`,
     para: `    for update`,
   },
 
-  // ── FRENTE 4.6 GEOLOCALIZAÇÃO ──────────────────────────────────────────────
+  // ── FRENTE 4.6 GEOLOCALIZAÇÃO (M132..M139) ────────────────────────────────
   //
   // Todas quebram o ARQUIVO da migration, e é por isso que quem as mata é a
   // PARTE B de tests/contracts/geolocalizacao-em-metros.test.mjs. A PARTE A
@@ -886,7 +870,7 @@ create table if not exists public.commission_rules (`,
   // `.sql` não muda o banco já aplicado: uma asserção que só consulta o banco
   // nunca morreria por estas mutações. As duas partes são necessárias.
   {
-    id: "M103", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    id: "M132", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
     quebra: "ST_MakePoint recebe latitude antes de longitude no raio",
     dor: "MEDIDO: o Paraíso é lat -23,5713 / lng -46,6420. Trocado, o ponto vira lat -46,64 / lng -23,57 — no Atlântico, a ~2.600 km do empreendimento. Os dois CHECK de faixa PASSAM (-46 é latitude válida, -23 é longitude válida), o índice funciona, a consulta responde 200 e a lista de 'imóveis próximos' fica vazia ou traz o prédio errado, sem um único erro.",
     de: `           extensions.ST_SetSRID(extensions.ST_MakePoint(
@@ -901,14 +885,14 @@ create table if not exists public.commission_rules (`,
     from public.developments d`,
   },
   {
-    id: "M104", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    id: "M133", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
     quebra: "a coluna do ponto vira geometry em vez de geography",
     dor: "MEDIDO no banco: a MESMA distância deu 110.574,4 em geography e 1,0000 em geometry — metro contra GRAU. Um raio de 1000 'metros' passa a varrer ~111.000 km, ou seja o planeta inteiro: 'empreendimentos num raio de 1 km' devolve todos, e a distância exibida ao corretor fica em unidade nenhuma. Nada estoura.",
     de: `  add column if not exists geo extensions.geography(Point, 4326)`,
     para: `  add column if not exists geo extensions.geometry(Point, 4326)`,
   },
   {
-    id: "M105", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    id: "M134", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
     quebra: "empreendimentos_no_raio perde a cerca da organização",
     dor: "A função é `security definer`: ela atravessa a RLS por desenho, e a cerca de inquilino só existe naquela linha. Sem ela, um raio de 50 km em São Paulo devolve os empreendimentos de TODAS as imobiliárias do banco — vazamento entre empresas pela porta da geolocalização, com HTTP 200.",
     de: `    from public.developments d
@@ -918,7 +902,7 @@ create table if not exists public.commission_rules (`,
    where d.geo is not null`,
   },
   {
-    id: "M106", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    id: "M135", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
     quebra: "a concentração de demanda volta a descartar empreendimento sem bairro",
     dor: "MEDIDO: 192 leads têm empreendimento de interesse e 185 apareciam; as 7 do Spin Mood (neighborhood NULL) DESAPARECIAM sem aviso. Quem somasse a coluna do mapa de demanda leria 185 e confiaria — é a classe 'recorte que esvazia a lista', já paga neste repositório.",
     de: `      coalesce(private.normalizar_endereco(d.neighborhood), '(sem bairro)') as chave,
@@ -927,14 +911,14 @@ create table if not exists public.commission_rules (`,
       min(d.neighborhood)                         as regiao,`,
   },
   {
-    id: "M107", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    id: "M136", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
     quebra: "o cache de geocodificação nasce sem RLS",
     dor: "`geocode_cache` é GLOBAL (um endereço aponta para o mesmo lugar para toda imobiliária), de propósito, para nunca geocodificar duas vezes. Sem RLS, a chave anon — que vai no bundle do navegador por desenho — lê o cache inteiro: todo endereço que qualquer inquilino já confirmou, para quem souber o nome da tabela.",
     de: `alter table public.geocode_cache enable row level security;`,
     para: `-- alter table public.geocode_cache enable row level security;`,
   },
   {
-    id: "M108", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    id: "M137", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
     quebra: "o OUT param do cache volta a se chamar como a coluna",
     dor: "MEDIDO: com o OUT param chamado `endereco_normalizado`, o `on conflict (endereco_normalizado)` fica ambíguo e a função aborta com 42702 na primeira CHAMADA — ela é CRIADA sem erro nenhum. Num banco reconstruído por esta migration, toda escrita no cache falha, e a falha só aparece em runtime.",
     de: `returns table (
@@ -949,14 +933,14 @@ create table if not exists public.commission_rules (`,
 )`,
   },
   {
-    id: "M109", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    id: "M138", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
     quebra: "a precedência do cache aceita sobrescrever fonte de peso IGUAL",
     dor: "Com `<` em vez de `<=`, reprocessar a mesma importação sobrescreve a linha toda vez — e o objetivo declarado da Fase 1 ('não geocodificar novamente o mesmo endereço') deixa de valer justamente no caso que mais acontece: o reprocessamento.",
     de: `  if v_peso_atual is not null and v_peso_novo <= v_peso_atual and p_fonte <> 'manual' then`,
     para: `  if v_peso_atual is not null and v_peso_novo < v_peso_atual and p_fonte <> 'manual' then`,
   },
   {
-    id: "M110", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
+    id: "M139", arquivo: "supabase/migrations/20260730030000_geolocalizacao_inicial_postgis.sql",
     quebra: "o índice GIST perde a opclass qualificada",
     dor: "Com postgis instalada em `extensions`, `using gist (geo)` só resolve a opclass se `extensions` estiver no search_path de quem aplica. Para quem aplicar com outro search_path, a migration ABORTA — e como este é o índice do raio, o `db push` morre no meio, depois de já ter criado a coluna e a tabela.",
     de: `  on public.developments using gist (geo extensions.gist_geography_ops);`,
@@ -964,14 +948,14 @@ create table if not exists public.commission_rules (`,
   },
 
   {
-    id: "M97", arquivo: "lib/crm/venda-sem-valor.ts",
+    id: "M168", arquivo: "lib/crm/venda-sem-valor.ts",
     quebra: "venda com valor zero ou ilegivel passa a contar como informada",
     dor: "Venda de zero real nao existe, e tratar NaN como informado esconde dado corrompido atras de um verde. A venda sairia da cobranca sem nunca ter valor: VGV zerado, ROI incalculavel e o evento Purchase nunca emitido — os quatro efeitos de uma linha so.",
     de: `  return !Number.isFinite(numero) || numero <= 0;`,
     para: `  return false;`,
   },
   {
-    id: "M98", arquivo: "lib/crm/venda-sem-valor.ts",
+    id: "M169", arquivo: "lib/crm/venda-sem-valor.ts",
     quebra: "venda sem ancora de tempo passa a ser declarada critica",
     dor: "Afirmar atraso sem saber desde quando e inventar o dado que falta. A fila de excecao do diretor encheria de prioridade forjada, e prioridade forjada ensina a ignorar a fila — foi assim que o aviso de SLA virou ruido nesta base.",
     de: `    critico: dias !== null && dias >= DIAS_PARA_COBRANCA_CRITICA,`,
@@ -990,63 +974,81 @@ create table if not exists public.commission_rules (`,
   // O motor de compatibilidade existe para ser HONESTO COM A AUSÊNCIA. Todas as
   // mutações abaixo atacam essa honestidade por um ângulo diferente, porque é
   // ela — não o score — que decide se o corretor pode confiar no resultado.
+  //
+  // ⚠ NUMERAÇÃO M45xx, e não a sequência: este arquivo é editado por vários
+  // agentes ao mesmo tempo. Estas mutações nasceram M103–M110 e COLIDIRAM em
+  // minutos com as M103–M110 de outra frente (geolocalização/PostGIS) — dois
+  // blocos diferentes com o mesmo id, no mesmo arquivo. O prefixo 45 amarra o id
+  // à frente 4.5 e não disputa a sequência global.
+  //
+  // Sobram duplicados que NÃO são desta frente e ficaram como estavam:
+  // M34–M37 e M97–M99 aparecem duas vezes cada. Mexer neles daqui seria editar
+  // trabalho de outro agente às cegas.
   {
-    id: "M103", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    id: "M4501", arquivo: "lib/crm/compatibilidade-imovel.ts",
     quebra: "critério AUSENTE passa a contar como atendido",
     dor: "É a mentira central que este motor existe para não contar. Medido: das 482 leads da organização com catálogo, 470 não têm critério decisivo algum — com esta quebra, TODAS ganhariam 'compatibilidade alta' construída sobre dado que ninguém coletou. O corretor ligaria oferecendo imóvel escolhido por ignorância, e o painel não teria como ser desmentido.",
     de: `  const atendidos = criterios.filter((c) => c.estado === "atendido");`,
     para: `  const atendidos = criterios.filter((c) => c.estado !== "nao_atendido");`,
   },
   {
-    id: "M104", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    id: "M4502", arquivo: "lib/crm/compatibilidade-imovel.ts",
     quebra: "a trava cai: imóvel sem NENHUM critério decisivo volta ao ranking",
     dor: "Foi o defeito pego na execução real: o 'Inside Perdizes' entrava no top 3 com aderência 100% e cobertura 5,6% — os únicos critérios avaliáveis nele eram finalidade e data do cadastro. Um imóvel de que quase nada se sabe apresentado como terceira melhor opção, com 100% ao lado. E o 'Spin Mood', que é só um nome numa linha, viria junto.",
     de: `  const avaliaveis = ordenadas.filter((p) => p.decisivosAvaliados >= MINIMO_DE_DECISIVOS_PARA_RECOMENDAR);`,
     para: `  const avaliaveis = ordenadas;`,
   },
   {
-    id: "M105", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    id: "M4503", arquivo: "lib/crm/compatibilidade-imovel.ts",
     quebra: "o ranking passa a ordenar por RAZÃO em vez de evidência absoluta",
     dor: "Premia o imóvel de que MENOS se sabe: um cadastro com uma coluna preenchida e batendo dá 100% e passa na frente do que atende preço, bairro e dormitórios. O corretor recebe como 'mais compatível' justamente o imóvel sobre o qual ninguém checou nada.",
     de: `      b.pontos - a.pontos || b.cobertura - a.cobertura || a.nome.localeCompare(b.nome, "pt-BR"),`,
     para: `      (b.aderencia ?? 0) - (a.aderencia ?? 0) || a.nome.localeCompare(b.nome, "pt-BR"),`,
   },
   {
-    id: "M106", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    id: "M4504", arquivo: "lib/crm/compatibilidade-imovel.ts",
     quebra: "coordenada volta a passar pelo validador que recusa negativo",
     dor: "Latitude de São Paulo é -23,53: o Brasil inteiro volta a cair como 'imóvel sem latitude/longitude'. Não é score errado, é a resposta mandando a operação preencher coluna JÁ preenchida — a mesma classe de erro que fez o painel Clientes 360 cobrar dado de 174 clientes que o tinham, e ensinou a operação a ignorar o painel.",
     de: `  const oLat = coordenada(o.latitude, 90);`,
     para: `  const oLat = numero(o.latitude);`,
   },
   {
-    id: "M107", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    id: "M4505", arquivo: "lib/crm/compatibilidade-imovel.ts",
     quebra: "`0 dormitório` (studio) volta a ser lido como dado ausente",
     dor: "Studio é o produto PRINCIPAL do catálogo (Tiê Aclimação tem bedrooms_min 0, e 2 clientes reais pedem 0). Com `||` no lugar de `??`, o pedido de studio vira 'cliente não informou' — e o único encaixe que a base consegue provar hoje desaparece justamente para quem pediu.",
     de: `  const querido = c.preferred_bedrooms ?? c.bedrooms ?? null;`,
     para: `  const querido = c.preferred_bedrooms || c.bedrooms || null;`,
   },
   {
-    id: "M108", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    id: "M4506", arquivo: "lib/crm/compatibilidade-imovel.ts",
     quebra: "estoque desconhecido passa a ser somado como ZERO",
     dor: "`0 disponível` é afirmação forte e falsa: diz ESGOTADO onde o certo é 'ninguém contou'. Medido: 6 de 6 tipologias têm units_available nulo — logo os 4 empreendimentos do catálogo seriam declarados esgotados, e o motor recusaria o catálogo inteiro por um dado que nunca existiu.",
     de: `      units_available: estoque.length ? estoque.reduce((s, v) => s + v, 0) : null,`,
     para: `      units_available: estoque.reduce((s, v) => s + v, 0),`,
   },
   {
-    id: "M109", arquivo: "lib/crm/compatibilidade-imovel.ts",
-    quebra: "entrada passa a ser avaliada SEM regra de pagamento declarada",
-    dor: "Viola a lei do dono — 'não inventar condições'. developer_payment_flow_rules tem ZERO linhas: avaliar entrada sem ela significa arbitrar percentual e juros, e o cliente ouve do corretor uma condição que a incorporadora nunca declarou. É a promessa comercial que o produto não pode honrar.",
-    de: `  if (!o.tem_regra_de_pagamento || preco === null) {
-    return monta(
-      "valorDeEntrada",
-      "falta_oferta",`,
-    para: `  if (false) {
-    return monta(
-      "valorDeEntrada",
-      "falta_oferta",`,
+    id: "M4507", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    quebra: "entrada passa a ser avaliada SEM os números da regra de pagamento",
+    dor: "Viola a lei do dono — 'não inventar condições'. developer_payment_flow_rules tem ZERO linhas: avaliar entrada sem percentual significa arbitrar a condição, e o cliente ouve do corretor um valor que a incorporadora nunca declarou. É a promessa comercial que o produto não pode honrar.",
+    de: `  if (preco === null || percentual === null) {`,
+    para: `  if (false) {`,
   },
   {
-    id: "M110", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    id: "M4509", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    quebra: "a entrada volta a passar com QUALQUER valor acima de zero",
+    dor: "Era a mentira latente encontrada na revisão adversarial desta própria entrega: o critério dizia 'contra regra declarada do imóvel' sem NUNCA comparar com a entrada exigida. Ficava invisível porque não há regra cadastrada — e no dia da primeira regra o motor aprovaria quem tem R$ 1 de entrada para um imóvel de 400 mil, afirmando que conferiu. Suíte verde não protege ramo inalcançável: só a comparação real protege.",
+    de: `    disponivel >= exigida ? "atendido" : "nao_atendido",`,
+    para: `    disponivel > 0 ? "atendido" : "nao_atendido",`,
+  },
+  {
+    id: "M4510", arquivo: "lib/crm/compatibilidade-imovel.ts",
+    quebra: "a parcela que o CLIENTE declarou aceitar passa a ser ignorada",
+    dor: "A palavra do cliente é dado; 30% da renda é convenção de banco. Invertida a precedência, o motor diz 'cabe no seu bolso' contrariando o número que a pessoa acabou de dar — e a suposição declarada passa a valer mais que o fato coletado.",
+    de: `      parcela <= desejada ? "atendido" : "nao_atendido",`,
+    para: `      parcela <= renda ? "atendido" : "nao_atendido",`,
+  },
+  {
+    id: "M4508", arquivo: "lib/crm/compatibilidade-imovel.ts",
     quebra: "bairro composto deixa de ser separado na barra",
     dor: "O valor real 'perdizes/pompeia' existe na base. Sem a quebra, esse cliente pede Perdizes e NÃO vê o Inside Perdizes — o imóvel certo fica invisível para quem pediu exatamente ele, sem erro nenhum aparecendo na tela.",
     de: `    .split(/[/,;|]+/)`,
@@ -1181,6 +1183,361 @@ create table if not exists public.commission_rules (`,
     de: `  if (!teto.permitido) {`,
     para: `  if (false) {`,
   },
+
+  /* ── §8 CENTRO DE CUSTO DE TECNOLOGIA ──────────────────────────────────────
+   * A frente inteira existe para que "não medido" nunca vire 0. Estas quebras
+   * são as cinco formas de fazer o painel mentir sem que nada pareça errado.
+   * ─────────────────────────────────────────────────────────────────────────── */
+  {
+    id: "M126", arquivo: "lib/finops/centro-de-custo.ts",
+    quebra: "'não medido' passa a ser gravado como custo medido de zero",
+    dor: "A fatura da Hostinger, o preço da mensagem e o domínio somam R$ 0,00 e o painel fecha com cobertura 100%. O dono decide verba sobre um total que afirma que o que ele paga é de graça.",
+    de: `  return { estado: "nao_medido", motivo: motivo.trim() || "motivo não declarado" };`,
+    para: `  return { estado: "medido", valorUsd: 0, fonte: "banco", comoFoiMedido: motivo };`,
+  },
+  {
+    id: "M127", arquivo: "lib/finops/centro-de-custo.ts",
+    quebra: "o portão de publicação para de conferir campo numérico em linha não medida",
+    dor: "Volta a ser possível publicar {estado:'nao_medido', valorUsd:0}. O painel mostra 'não medido' na tela e entrega zero para quem soma o JSON — as duas verdades ao mesmo tempo.",
+    de: `  const CAMPOS_NUMERICOS_PROIBIDOS = ["valorUsd", "valorBrl", "valor", "total", "custo", "estimadoUsd"];`,
+    para: `  const CAMPOS_NUMERICOS_PROIBIDOS = [];`,
+  },
+  {
+    id: "M128", arquivo: "lib/finops/centro-de-custo.ts",
+    quebra: "custo unitário com denominador zero devolve zero em vez de 'não medido'",
+    dor: "Com 0 venda no mês, 'custo por venda: R$ 0,00'. O painel afirma que vender não custou nada, e a métrica que o gate da Fase 2 exige nasce falsa.",
+    de: `    return custoNaoMedido(
+      \`0 \${nomeDoDenominador} no período — divisão por zero não é zero, e o custo unitário fica indefinido\`,
+    );`,
+    para: `    return custoMedido(0, "banco", "sem denominador");`,
+  },
+  {
+    id: "M129", arquivo: "lib/finops/centro-de-custo.ts",
+    quebra: "sem taxa de câmbio declarada, o total em reais passa a ser zero",
+    dor: "O gasto medido é em dólar e o teto da Fase 1 é em reais. Com R$ 0,00 inventado, o alerta diz '0% do teto' e nunca dispara — o painel fica verde para sempre.",
+    de: `    return custoNaoMedido(
+      "conversão para reais indisponível: ATLAS_USD_BRL não está declarada. Taxa de câmbio é preço — sem declaração, não se estima.",
+    );`,
+    para: `    return custoMedido(0, "banco", "sem taxa");`,
+  },
+  {
+    id: "M130", arquivo: "lib/finops/centro-de-custo.ts",
+    quebra: "o percentual do teto volta a ser ARREDONDADO antes de decidir o degrau",
+    dor: "R$ 249,99 de R$ 250,00 arredonda para 100,00% e o painel grita 'TETO ESTOURADO' com um centavo de folga. Depois do segundo alerta falso ninguém olha mais o vermelho — e o estouro de verdade passa.",
+    // Trocar SÓ o `razao >= nivel` do laço não bastava: com o piso na exibição a
+    // quebra ficava inofensiva e a mutação sobrevivia sem haver defeito. A
+    // quebra real é o arredondamento, e é ele que a mutação restaura.
+    de: `  const razao = (gastoMedidoBrl / tetoBrl) * 100;
+  const percentualDoTeto = Math.floor(razao * 100) / 100;`,
+    para: `  const razao = Math.round((gastoMedidoBrl / tetoBrl) * 10000) / 100;
+  const percentualDoTeto = razao;`,
+  },
+  {
+    id: "M131", arquivo: "lib/finops/centro-de-custo.ts",
+    quebra: "a linha de mensagens passa a alegar custo zero mesmo com mensagem enviada",
+    dor: "Na primeira mensagem ao cliente o painel afirma que WhatsApp é de graça. O preço por janela de conversa não está em nenhuma tabela deste banco — e o painel deixa de avisar disso justamente quando passa a existir gasto.",
+    de: `  return { ...base, custo: custoNaoMedido(\`\${input.volume} mensagem(ns) no período. \${input.motivoDoPrecoDesconhecido}\`), consumo };`,
+    para: `  return { ...base, custo: custoMedido(0, "banco", "sem preço por mensagem"), consumo };`,
+  },
+
+  /* ── 6.9 · PREVISÃO COM GOVERNANÇA DE MODELO ──────────────────────────────
+   *
+   * Medido em 2026-07-30 no banco canônico: UM desfecho de ganho, ZERO de perda,
+   * ZERO venda com valor apurado. Nessas condições o único comportamento correto
+   * é RECUSAR todo modelo estatístico. As quebras abaixo desfazem exatamente as
+   * recusas — se alguma sobreviver, o registro é decorativo.
+   */
+  {
+    id: "M140", arquivo: "lib/ai/registro-de-modelos.ts",
+    quebra: "o registro deixa de exigir baseline em modelo estatístico",
+    dor: "\"Probabilidade de conversão: 78%\" com UM desfecho apurado no banco. O corretor acredita, prioriza a lead errada e abandona a certa — e não tem como saber que o número é chute.",
+    de: `    if (!b) {
+      motivos.push("sem baseline — não elegível a produção");
+    } else {`,
+    para: `    if (!b) {
+      /* baseline deixou de ser exigido */
+    } else {`,
+  },
+  {
+    id: "M141", arquivo: "lib/ai/registro-de-modelos.ts",
+    quebra: "o piso de exemplos cai de 100 para 1",
+    dor: "Um único lead fechado passa a autorizar previsão de vendas para a diretoria inteira. É a mesma mentira do M132, entrando por um número em vez de por um if.",
+    de: `export const MINIMO_DE_EXEMPLOS = 100;`,
+    para: `export const MINIMO_DE_EXEMPLOS = 1;`,
+  },
+  {
+    id: "M142", arquivo: "lib/ai/registro-de-modelos.ts",
+    quebra: "o DESLIGAR para de recusar o modelo",
+    dor: "O diretor desliga um modelo que está errando e ele continua respondendo. O botão de desligar existe na tela e não faz nada — pior que não existir.",
+    de: `  if (!modelo.ativo) motivos.push("desligado no registro");`,
+    para: `  if (false) motivos.push("desligado no registro");`,
+  },
+  {
+    id: "M143", arquivo: "lib/ai/registro-de-modelos.ts",
+    quebra: "amostra ZERO de drift passa a ser lida como monitorada",
+    dor: "Os 8 relatórios do banco têm current_sample = 0. A tela passa a dizer 'drift estável' onde não houve observação nenhuma — a IA parece saudável justamente porque ninguém mediu.",
+    de: `  if (amostraDoUltimoRelatorio <= 0) {`,
+    para: `  if (false) {`,
+  },
+  {
+    id: "M144", arquivo: "lib/ai/ledger-de-projecao.ts",
+    quebra: "a linha JÁ fechada do ledger volta a aceitar novo realizado",
+    dor: "O fechamento de segunda-feira sobrescreve o de domingo e o desfecho auditado desaparece sem rastro. O viés que a IA aprende passa a depender de qual worker rodou por último.",
+    de: `  if (linha.realized_at_week !== null || linha.realized_leads_delta !== null) return null;`,
+    para: `  if (false) return null;`,
+  },
+  {
+    id: "M145", arquivo: "lib/ai/ledger-de-projecao.ts",
+    quebra: "toda projeção passa a ser gravada como se tivesse amostra medida",
+    dor: "Projeção sem lastro que por sorte acertou passa a calibrar a confiança. A IA fica CONFIANTE com base em acerto aleatório, que é pior que ficar insegura com base em nada.",
+    de: `            measured: projecao.basis.measured,`,
+    para: `            measured: true,`,
+  },
+  {
+    id: "M146", arquivo: "lib/ai/previsao-aritmetica.ts",
+    quebra: "a carga média passa a dividir só por quem TEM carteira",
+    dor: "468 leads em 3 de 12 corretores viram média de 156 em vez de 39, e a distribuição parece saudável. Os nove de carteira vazia desaparecem do relatório que existe para encontrá-los.",
+    de: `  const cargaMedia = r2(totalDeLeads / ranking.length);`,
+    para: `  const cargaMedia = r2(totalDeLeads / Math.max(1, ranking.length - semCarteira.length));`,
+  },
+  {
+    id: "M147", arquivo: "lib/ai/previsao-aritmetica.ts",
+    quebra: "vazão zero volta a produzir um número em vez de 'não previsível'",
+    dor: "Divisão por zero vira Infinity, que serializa como null em JSON: a tela mostra o campo de prazo vazio, sem erro e sem explicação, e o gestor conclui que a fila esvazia sozinha.",
+    de: `  if (vazaoSemanal <= 0) {`,
+    para: `  if (false) {`,
+  },
+
+  // ── A CONSOLIDAÇÃO DA CONCENTRAÇÃO (M154..M157, 2026-07-30) ───────────────
+  //
+  // Havia DUAS contas de carga e concentração de carteira, criadas por frentes
+  // paralelas na mesma noite: `cargaDaEquipe` aqui e a desigualdade própria de
+  // `gargalosDaOperacao` no gêmeo digital. Viraram uma — a do gêmeo morreu.
+  //
+  // Estas quatro quebras guardam o que a fusão descobriu, e nenhuma das duas
+  // descobertas estava no plano:
+  //
+  //   · As contas NÃO concordavam inteiramente. "maior carga ÷ média > 1" e
+  //     "fatia > 1 ÷ corretores" são a mesma desigualdade em álgebra e não em
+  //     ponto flutuante: em [334, 333, 333] o gêmeo acusava e esta aqui não,
+  //     porque dividia por uma média já arredondada em duas casas. M154 é essa
+  //     borda.
+  //
+  //   · Unificar a conta sem unificar a RÉGUA de "lead aberto" trocaria uma
+  //     divergência por outra — 112 pela régua da RPC contra 110 pela da
+  //     listagem, medido na carteira de ddcorretorsp em 2026-07-30. M155 e M156
+  //     são as duas metades disso: exigir a régua, e o gêmeo declarar a certa.
+  {
+    id: "M154", arquivo: "lib/ai/previsao-aritmetica.ts",
+    quebra: "o veredito de concentração volta a sair do número ARREDONDADO de exibição",
+    dor: "É a divergência original, ressuscitada dentro da função que a resolveu. Com [334, 333, 333] a razão de exibição arredonda para 1,00 e o painel declara 'perfeitamente distribuído' com uma carteira acima da média — enquanto a régua antiga do gêmeo, que acusava, foi apagada. O gestor perde o gargalo justamente na faixa em que ele é discreto o bastante para ninguém notar a olho.",
+    de: `  const concentrada = cargaMaxima * ranking.length > totalDeLeads;`,
+    para: `  const concentrada = (concentracao ?? 0) > 1;`,
+  },
+  {
+    id: "M155", arquivo: "lib/ai/previsao-aritmetica.ts",
+    quebra: "a régua de 'lead aberto' deixa de ser exigida e qualquer rótulo passa",
+    dor: "A mesma carteira vale 112 pela régua da RPC e 110 pela da listagem — medido. Uma conta que aceita qualquer régua (ou nenhuma) publica um número de carteira que não é comparável com nenhum outro da base, e a comparação acontece de qualquer jeito: é o mesmo defeito de `pipeline_history` vs `pipeline_stage_moves`, só que agora com um nome de função a menos para culpar.",
+    de: `  const reguaDeclarada = Object.prototype.hasOwnProperty.call(REGUAS_DE_ABERTO, String(regua));`,
+    para: `  const reguaDeclarada = true;`,
+  },
+
+  // ── FRENTE 6.4 GÊMEO DIGITAL DA OPERAÇÃO (M103..M110, M148..M153, M156/M157)
+  //
+  // Quem as mata é tests/contracts/gemeo-digital.test.mjs, que CHAMA o módulo —
+  // nenhuma asserção dele procura palavra em arquivo fonte, e M105 existe para
+  // provar isso.
+  //
+  // A doença que este bloco guarda é uma só: número comercial inventado saindo
+  // com cara de medição. Medido em 2026-07-30 na base canônica: 1 lead em etapa
+  // `ganho`, ZERO com `sale_value_brl`. Não existe taxa de conversão nesta
+  // operação, então toda projeção de venda ou receita é chute — e chute com
+  // aparência de conta é o dano que o dono proibiu por escrito.
+  //
+  // M103, M104 e M105 são as que importam mais: as três desligam a recusa por
+  // caminhos diferentes. Se uma for pega e as outras sobreviverem, o contrato
+  // virou específico de um caminho e o próximo passa.
+  {
+    id: "M103", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "a recusa de projetar sem baseline fica inalcançável",
+    dor: "A rota passa a publicar receita e conversão projetadas sobre ZERO venda apurada. O diretor lê 'receita esperada R$ 0' — ou pior, um número qualquer — como se fosse medição, e decide verba sobre ele. É exatamente a regra que o dono cravou: não inventar métrica comercial.",
+    de: `  if (amostra < minimo) {`,
+    para: `  if (false) {`,
+  },
+  {
+    id: "M104", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "o piso de vendas para projetar cai para zero",
+    dor: "UMA venda passa a autorizar taxa de conversão, e com uma venda a taxa balança 100% a cada negócio novo. É o mesmo defeito do M103 pela porta da constante — afrouxar o piso 'só um pouco' é o conserto tentador que ninguém revisa.",
+    de: `export const MINIMO_DE_VENDAS_PARA_TAXA = 20;`,
+    para: `export const MINIMO_DE_VENDAS_PARA_TAXA = 0;`,
+  },
+  {
+    id: "M105", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "etapa `ganho` volta a valer como venda apurada",
+    dor: "É o atalho mais tentador que existe nesta base: 1 lead ESTÁ em `ganho`. Contar etapa como venda produz ticket médio dividindo por zero dinheiro e taxa de conversão sobre declaração de corretor. Etapa é declaração, valor é fato — e a coluna sale_value_brl está vazia em 482 de 482.",
+    de: `  const amostra = estado.lastro.vendasComValorApurado;`,
+    para: `  const amostra = estado.lastro.ganhosRegistrados;`,
+  },
+  {
+    id: "M106", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "as portas da execução real deixam de zerar o movimento",
+    dor: "O painel promete mover 200 leads hoje. MEDIDO executando a consulta de candidatos da RPC contra a base viva em 2026-07-30: 11 substitutos passam por equipe/papel/atividade e ZERO passam pela presença de 90s, então `redistribute_absent_broker_leads` levanta absence_no_eligible_replacement no primeiro lead e a transação aborta inteira. O diretor clica, nada acontece, e o painel continua prometendo.",
+    de: `  if (portas.some((p) => p.bloqueiaTudo && !p.atendida)) return 0;`,
+    para: `  void portas;`,
+  },
+  {
+    id: "M107", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "presença VELHA volta a contar como presença (a janela deixa de ser conferida)",
+    dor: "commercial_presence tem 2 linhas 'available' com last_seen_at de 2026-07-24 — cinco dias antes da medição. Sem a janela, 'disponível em algum momento da semana passada' vira 'disponível agora', e a simulação promete um destino que o INNER JOIN da RPC recusa. É 'não sei quando' publicado como 'agora'.",
+    de: `  return carteira.presencaVistaEmMs >= agoraMs - JANELA_DE_PRESENCA_SEGUNDOS * 1000;`,
+    para: `  return true;`,
+  },
+  {
+    id: "M108", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "a fronteira de equipe desaparece da simulação",
+    dor: "A RPC só move lead DENTRO da equipe (p.reports_to = manager do corretor ausente). Sem essa porta, o gêmeo conta corretor de outro gerente como destino válido e promete uma redistribuição que o banco não faz — e numa organização com mais de um gerente o número fica silenciosamente inflado.",
+    de: `    (c) => c.id !== origem.id && c.gerenteId !== null && c.gerenteId === origem.gerenteId,`,
+    para: `    (c) => c.id !== origem.id,`,
+  },
+  {
+    id: "M109", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "o rótulo de estimativa passa a dizer MEDIDO",
+    dor: "O documento da fase exige, com estas palavras, que toda simulação seja marcada como estimativa. Um cenário rotulado MEDIDO é uma projeção sem baseline vestida de fato — e esta mutação também prova que o contrato compara o LITERAL, não a constante importada (que mudaria junto e deixaria o teste verde).",
+    de: `export const ROTULO_DE_ESTIMATIVA = "ESTIMATIVA" as const;`,
+    para: `export const ROTULO_DE_ESTIMATIVA = "MEDIDO" as const;`,
+  },
+  {
+    id: "M110", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "ticket médio não medido passa a valer zero",
+    dor: "Ausência publicada como zero — a doença desta base em miniatura. 'Ticket médio R$ 0' se lê como 'as vendas não valeram nada', não como 'ninguém somou'. E zero entra em multiplicação: toda receita projetada sai 0 sem ninguém entender por quê.",
+    de: `  const ticketMedioBrl = receita !== null && amostra > 0 ? r2(receita / amostra) : null;`,
+    para: `  const ticketMedioBrl = receita !== null && amostra > 0 ? r2(receita / amostra) : 0;`,
+  },
+  {
+    id: "M148", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "o detector de concentração passa a acusar sempre",
+    dor: "O outro lado do filtro, que é onde este tipo de guarda morre nesta base: um detector que acusa toda operação — inclusive a perfeitamente distribuída — ensina o gestor a ignorar a lista de gargalos em dois dias. Junto com o ruído vai o gargalo real dos 272 leads numa pessoa.",
+    // REESCRITA em 2026-07-30, com a consolidação da concentração: a
+    // desigualdade `fatia > 1 / ativos` que esta mutação quebrava não existe
+    // mais — o veredito vem de `cargaDaEquipe`. A propriedade guardada é a
+    // mesma; só mudou a linha onde ela mora.
+    de: `  if (carga.concentrada && maisCheia) {`,
+    para: `  if (maisCheia) {`,
+  },
+  {
+    id: "M156", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "o gêmeo passa a declarar a régua da LISTAGEM enquanto conta pela da RPC",
+    dor: "A metade silenciosa da consolidação. `contaComoAbertoNaRedistribuicao` continua contando 112 e o rótulo que viaja no resultado passa a dizer 110 — um número medido por uma régua, publicado com o nome da outra. É pior que a divergência original, porque agora a régua errada vem CARIMBADA de certa e quem comparar com a listagem vai achar que confere.",
+    de: `export const REGUA_DA_CARTEIRA: ReguaDeAberto = "rpc_redistribuicao";`,
+    para: `export const REGUA_DA_CARTEIRA: ReguaDeAberto = "listagem_de_leads";`,
+  },
+  {
+    id: "M157", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "a simulação volta a ter a própria definição de 'carteira mais cheia'",
+    dor: "A duplicação renascendo pela porta pequena. Com duas carteiras empatadas, o gargalo nomeia uma pessoa e a simulação logo abaixo nomeia outra, na MESMA tela, com os mesmos dados — porque um desempata pelo id e o outro pela ordem em que o banco devolveu as linhas. Ninguém lê isso como bug: lê como se os dois painéis falassem de coisas diferentes.",
+    de: `    const maisCheia = carteiraMaisCheia(estado.carteiras);`,
+    para: `    const maisCheia = [...estado.carteiras].sort((a, b) => b.abertos - a.abertos)[0] ?? null;`,
+  },
+  {
+    id: "M149", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "a simulação passa a ratear entre gente que não existe",
+    dor: "Pedir 40 corretores numa equipe de 12 devolve 'carga de 9,6 por pessoa' e o gestor planeja em cima disso. Simulação que inventa capacidade é pior que simulação nenhuma: ela responde exatamente o que se quer ouvir.",
+    de: `  const participantes = Math.max(0, Math.min(pedidos, ativos));`,
+    para: `  const participantes = Math.max(0, pedidos);`,
+  },
+  {
+    id: "M150", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "a régua de carteira aberta diverge da régua da RPC",
+    dor: "MEDIDO em 2026-07-30: a carteira de ddcorretorsp tem 112 leads abertos pela régua da RPC e 110 pela régua da listagem (comprou_outro). O gêmeo publica 'quantos leads moveriam'; contar 110 e a execução mexer em 112 é a classe 'duas verdades' que já mordeu este repositório em quatro pares de nomes diferentes.",
+    de: `  return !(ETAPAS_FECHADAS_NA_REDISTRIBUICAO as readonly string[]).includes(normalizado);`,
+    para: `  return !([...ETAPAS_FECHADAS_NA_REDISTRIBUICAO, "comprou_outro"] as readonly string[]).includes(normalizado);`,
+  },
+  {
+    id: "M152", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "presença sem DATA volta a contar como presente",
+    dor: "Linha de commercial_presence com last_seen_at nulo declara o corretor presente para sempre: sem data não há janela que expire. É a mesma doença que M77 guarda em estado-de-credencial — 'não sei quando' publicado como 'agora' — e aqui ela promete um destino de redistribuição que o banco recusa.",
+    de: `  if (carteira.presencaVistaEmMs === null) return false;`,
+    para: `  if (carteira.presencaVistaEmMs === null) return true;`,
+  },
+  {
+    id: "M153", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "a presença deixa de exigir disponibilidade e olha só a recência",
+    dor: "O outro lado da mesma função: quem marcou 'ocupado'/'offline' há trinta segundos passa a receber lead. A RPC exige availability='available' E recência; cobrar só uma das duas metades quebra a que sobrou em silêncio.",
+    de: `  if (!carteira.presencaDisponivel) return false;`,
+    para: `  void carteira.presencaDisponivel;`,
+  },
+  {
+    id: "M151", arquivo: "lib/atlas/gemeo-digital.ts",
+    quebra: "a janela de presença do módulo deixa de ser a do banco",
+    dor: "A constante é CÓPIA do `interval '90 seconds'` da RPC. Cópia que ninguém confere diverge: com 300s o gêmeo passa a contar como presente quem o INNER JOIN do banco já descartou, e promete um movimento que falha. Esta mutação prova que o contrato ancora a constante no SQL.",
+    de: `export const JANELA_DE_PRESENCA_SEGUNDOS = 90;`,
+    para: `export const JANELA_DE_PRESENCA_SEGUNDOS = 300;`,
+  },
+
+  // ── 6.3 GRAFO DE OPORTUNIDADE DE RECEITA ──────────────────────────────────
+  //
+  // ⚠ LIMITE HONESTO DESTE GRUPO: o grafo mora em views e funções do Postgres, e
+  // `tests/contracts/grafo-de-receita.test.mjs` as EXECUTA no banco. Mutar o
+  // arquivo `.sql` na cópia temporária NÃO muda o banco — a suíte ficaria verde
+  // sobre uma quebra que não aconteceu, e isso seria um passe falso do próprio
+  // mutation testing. Por isso as mutações abaixo atacam o que é executável a
+  // partir do arquivo: o JUIZ (lib/crm/grafo-de-receita.ts) e a asserção que lê a
+  // migration. O comportamento do SQL está coberto pelo contrato ao vivo, não por
+  // mutação de arquivo.
+  {
+    id: "M158", arquivo: "lib/crm/grafo-de-receita.ts",
+    quebra: "medida ausente passa a valer zero em vez de `não medido`",
+    dor: "0 e null reprovam igual, mas contam histórias diferentes: 0 diz 'medi e não tem', null diz 'não medi'. É o estado inventado que fez o único evento CAPI desta base ficar 'delivered' com attempts=0 — informação que ninguém produziu, apresentada como fato.",
+    de: `      const medido = typeof bruto === "number" && Number.isFinite(bruto) ? bruto : null;`,
+    para: `      const medido = typeof bruto === "number" && Number.isFinite(bruto) ? bruto : 0;`,
+  },
+  {
+    id: "M159", arquivo: "lib/crm/grafo-de-receita.ts",
+    quebra: "a aptidão do corretor volta a exigir o MAIOR desfecho, não o segundo",
+    dor: "Foi o defeito real desta frente: com `desfechos_por_corretor_maximo` a pergunta PASSA com 87 desfechos — que são todos de um corretor só, enquanto o segundo tem 1. O veredicto vira '3 de 7' e o produto passa a ranquear aptidão comercial sobre uma pessoa.",
+    de: `      { tipo: "desfechos", medida: "desfechos_por_corretor_2o_maior", minimo: MINIMO_DESFECHOS_PARA_RANQUEAR },`,
+    para: `      { tipo: "desfechos", medida: "desfechos_por_corretor_maximo", minimo: MINIMO_DESFECHOS_PARA_RANQUEAR },`,
+  },
+  {
+    id: "M160", arquivo: "lib/crm/grafo-de-receita.ts",
+    quebra: "o piso de vitórias para ranquear cai de 10 para 2",
+    dor: "2 vitórias é exatamente o que a base tem. Piso calibrado no que já existe aprova tudo por construção — e o painel passa a eleger 'melhor campanha' e 'melhor corretor' a partir de duas vendas.",
+    de: `export const MINIMO_DESFECHOS_PARA_RANQUEAR = 10;`,
+    para: `export const MINIMO_DESFECHOS_PARA_RANQUEAR = 2;`,
+  },
+  {
+    id: "M161", arquivo: "lib/crm/grafo-de-receita.ts",
+    quebra: "`nivelDeEvidencia` chama de rankeável qualquer base acima de zero",
+    dor: "Apaga o nível do meio. Uma linha com 1 desfecho passa a viajar sem aviso, e `avisoDaBase` cala — o corretor lê 100% de conversão como se fosse desempenho medido.",
+    de: `  if (n >= MINIMO_DESFECHOS_PARA_RANQUEAR) return "rankeavel";`,
+    para: `  if (n > 0) return "rankeavel";`,
+  },
+  {
+    id: "M162", arquivo: "lib/crm/grafo-de-receita.ts",
+    quebra: "a recomendação de coleta deixa de vir ordenada por quem falha por menos",
+    dor: "A lista continua completa e continua verdadeira — só perde a única coisa que a torna acionável. Sem a ordem, a pergunta que está a UM dado de destravar fica no meio de quatro que precisam de dois, e o dono não sabe onde investir primeiro.",
+    de: `    .sort((x, y) => x.reprovadas - y.reprovadas);`,
+    para: `    .sort(() => 0);`,
+  },
+  {
+    id: "M163", arquivo: "supabase/migrations/20260730100000_grafo_de_oportunidade_de_receita.sql",
+    quebra: "uma das views do grafo perde `security_invoker = true`",
+    dor: "Este é o primeiro objeto view do banco, e o default do Postgres é `security_invoker = false`: sem a cláusula a view roda com os privilégios do DONO e ATRAVESSA a RLS de quem consulta. `leads_org_fence` deixa de valer para aquela leitura — um grafo que ignora a cerca é vazamento com nome bonito.",
+    de: `create or replace view public.vw_grafo_demanda
+with (security_invoker = true) as`,
+    para: `create or replace view public.vw_grafo_demanda as`,
+  },
+  // ── M99/M101 FORAM COM A OFERTA ATIVA (2026-07-30) ────────────────────────
+  //
+  // As duas vigiavam propriedades da entrega "oferta ativa do acervo", que foi
+  // REFUTADA 3 de 3 e guardada em `git stash`. Elas sobreviveram na corrida de
+  // 165/168 justamente porque os contratos que as pegavam foram para o stash
+  // junto com o codigo — mutacao sem contrato correspondente sempre sobrevive.
+  //
+  // Deixa-las aqui seria manter dois pontos cegos permanentes no placar. Elas
+  // voltam quando a oferta ativa voltar, com as quatro correcoes nomeadas no
+  // stash. As propriedades eram: o recorte do acervo em crm/leads nao esconder
+  // lead arquivada, e a fila "sem dono" da lideranca nao engolir o acervo.
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));
@@ -1193,9 +1550,24 @@ execSync(
 );
 symlinkSync(path.join(ORIGEM, "node_modules"), path.join(copia, "node_modules"));
 
+/**
+ * O COMANDO DA SUÍTE, com escape para recorte.
+ *
+ * `ATLAS_MUTACOES_SUITE` permite medir contra um subconjunto de contratos. Existe
+ * por um motivo medido em 2026-07-30: vários agentes trabalham neste repositório
+ * ao mesmo tempo, e uma entrega em andamento em OUTRO arquivo derruba a suíte
+ * inteira — o que aborta a medição no portão "a suíte já falha", mesmo quando os
+ * contratos que interessam estão verdes.
+ *
+ * ⚠ Recorte NÃO substitui a corrida completa. Um mutante pode sobreviver ao
+ * recorte e ser pego por um contrato de fora dele, e o número que sai daqui vale
+ * só para os contratos que rodaram. Sempre diga qual recorte foi usado.
+ */
+const COMANDO_DA_SUITE = process.env.ATLAS_MUTACOES_SUITE || "npm run test:contracts";
+
 function falhasDaSuite() {
   try {
-    const saida = execSync("npm run test:contracts 2>&1", { cwd: copia, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+    const saida = execSync(`${COMANDO_DA_SUITE} 2>&1`, { cwd: copia, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
     return Number(saida.match(/ℹ fail (\d+)/)?.[1] ?? -1);
   } catch (e) {
     const saida = String(e.stdout || "") + String(e.stderr || "");
@@ -1214,7 +1586,29 @@ const sobreviventes = [];
 const naoAplicadas = [];
 let pegas = 0;
 
-for (const m of MUTACOES) {
+/**
+ * FILTRO OPCIONAL POR ID — `node scripts/mutacoes.mjs M111-M125` ou `M113,M120`.
+ *
+ * A suíte inteira roda uma vez por mutação. Com 125 mutações isso passa de uma
+ * hora, e o efeito prático era ninguém rodar antes de entregar — a ferramenta
+ * existia e não era usada. Sem argumento, roda TODAS, como antes: o portão de
+ * regressão não muda.
+ */
+const filtro = process.argv.slice(2).join(",").trim();
+const selecionadas = !filtro ? MUTACOES : MUTACOES.filter((m) => {
+  const numero = Number(m.id.replace(/\D/g, ""));
+  return filtro.split(",").map((parte) => parte.trim()).filter(Boolean).some((parte) => {
+    const faixa = parte.match(/^M?(\d+)\s*-\s*M?(\d+)$/i);
+    if (faixa) return numero >= Number(faixa[1]) && numero <= Number(faixa[2]);
+    return m.id.toUpperCase() === parte.toUpperCase().replace(/^M?/, "M");
+  });
+});
+if (filtro) {
+  console.log(`Filtro "${filtro}": ${selecionadas.length} de ${MUTACOES.length} mutações.`);
+  if (!selecionadas.length) { console.error("Nenhuma mutação casou com o filtro."); process.exit(2); }
+}
+
+for (const m of selecionadas) {
   const alvo = path.join(copia, m.arquivo);
   if (!existsSync(alvo)) { naoAplicadas.push({ ...m, porque: "arquivo não existe" }); continue; }
   const original = readFileSync(alvo, "utf8");

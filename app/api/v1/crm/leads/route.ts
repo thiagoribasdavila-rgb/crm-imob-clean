@@ -3,7 +3,7 @@ import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { derivarPraca, ehChaveDeFaixa, fragmentoDaFaixa } from "@/lib/atlas/triagem-da-fila";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { filtroDaMinhaCarteira, leSoAPropriaCarteira } from "@/lib/crm/escopo-de-leitura";
+import { filtroDaCarteiraDaPessoa, filtroDaMinhaCarteira, leSoAPropriaCarteira } from "@/lib/crm/escopo-de-leitura";
 import { ehVinculoValido, STATUS_DO_VINCULO, statusForaDoAtendimento } from "@/lib/crm/vinculo-do-cliente";
 import {
   canonicalCommercialRole,
@@ -140,6 +140,23 @@ export async function GET(request: NextRequest) {
   // lista de ids do cliente entra nesta decisão.
   const faixaBruta = params.get("faixa")?.trim() || null;
   const faixa = ehChaveDeFaixa(faixaBruta) ? faixaBruta : null;
+  // ── O RECORTE DO ACERVO DE RESGATE ────────────────────────────────────────
+  //
+  // ⚠ SEM ELE, A OFERTA ATIVA ENTREGA LEADS INVISÍVEIS. Medido em 2026-07-29:
+  // `montarConsulta` aplica `.not("status","in","(arquivado,...)")` em TODA
+  // consulta desta rota. Como 16.733 das 17.151 leads do acervo v1 estão em
+  // `arquivado` e 8 das 13 já migradas estão em `perdido`, o corretor pegaria
+  // 10 leads que não aparecem na lista dele.
+  //
+  // A escolha foi (a) suspender a exclusão de arquivado para as leads DE
+  // IMPORTAÇÃO DA PRÓPRIA CARTEIRA, mantendo o status intacto — e não (b)
+  // reescrever o status para dentro do funil, que custaria a história de 16,7
+  // mil leads (não existe status canônico de "reativação" no vocabulário de
+  // lib/compat/legacy-v2.ts) e devolveria ~17 mil violações de SLA à central.
+  // O status muda quando o corretor REGISTRA o primeiro contato: aí a lead
+  // volta ao funil porque alguém falou com a pessoa, que é o momento honesto.
+  const acervo = params.get("acervo") === "1";
+
   if (faixaBruta && !faixa) {
     return apiError("FAIXA_NAO_SUPORTADA", "Faixa da fila desconhecida.", access.meta, { status: 400, headers: rate.headers });
   }
@@ -282,8 +299,17 @@ export async function GET(request: NextRequest) {
     let query = access.supabase
       .from("leads")
       .select(colunas, { count: usePagePagination ? "exact" : undefined })
-      .eq("organization_id", access.access.organization.id)
-      .not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)");
+      .eq("organization_id", access.access.organization.id);
+    // A exclusão de arquivado vale para a lista NORMAL. No recorte do acervo ela
+    // sai — senão a oferta ativa entrega leads que não aparecem em lugar nenhum
+    // — e em troca entram DUAS cercas: só lead de importação, e só da própria
+    // carteira (as duas colunas de posse, sem a cláusula de lead órfã: órfã é do
+    // balcão, não da lista de alguém).
+    query = acervo
+      ? query
+          .not("import_batch_id", "is", null)
+          .or(filtroDaCarteiraDaPessoa(access.access.user.id))
+      : query.not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)");
     // ── A URGÊNCIA ORDENA; ELA NÃO PODE EXCLUIR ──────────────────────────────
     //
     // O problema original (smoke de 2026-07-26): com 201 leads vencidas há mais
@@ -522,6 +548,7 @@ export async function GET(request: NextRequest) {
         attention,
         nextAction,
         faixa,
+        acervo,
       },
       compatibility: {
         canonicalContract: "lead-v1",
@@ -535,6 +562,12 @@ export async function GET(request: NextRequest) {
         // Dizer isso evita que "20 leads na fila" seja lido como "20 leads na
         // carteira" — o acervo antigo continua existindo, em outro lugar.
         filaRecortadaPorRecuperacao: comSla && ordenarPorSla,
+        /**
+         * No recorte do acervo a lista MOSTRA lead arquivada. A tela precisa
+         * dizer isso: "estas são leads históricas, o status é o original" —
+         * senão o corretor lê `arquivado` na sua carteira e acha que é bug.
+         */
+        acervoIncluiArquivados: acervo,
       },
     },
     access.meta,

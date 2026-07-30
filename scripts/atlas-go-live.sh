@@ -301,7 +301,11 @@ Log completo salvo em: $LOGFILE
 
 PRÓXIMO (fora do VPS):
  1. Aplicar migrations Supabase:
-      cd ~/atlas-v3 && supabase link --project-ref ietwopslgqxlenfyghqk && supabase db push
+      # ⚠ NÃO copie um ref à mão aqui. Este script já imprimiu o ref ERRADO
+      # (o projeto legado com 17.151 leads reais e schema de 24 tabelas) e
+      # mandava empurrar 166 migrations desenhadas para 183 tabelas contra ele.
+      # O ref canônico vive em config/supabase-projetos.json, num lugar só.
+      cd ~/atlas-v3 && supabase link --project-ref "$(node -p "require('./config/supabase-projetos.json').canonico.ref")" && supabase db push
  2. Configurar SMTP no Supabase Auth (Authentication -> SMTP Settings)
  3. Ligar "Leaked Password Protection" (Authentication -> Password Security)
  4. Testar: https://atlasaios.com.br/login

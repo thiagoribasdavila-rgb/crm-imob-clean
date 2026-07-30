@@ -27,6 +27,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  MARCA_CC23,
+  recortarCC23,
+  seletoresCC23Fora,
+  seletoresEstranhosDentro,
+  movimentoDaRegiao,
+  temPortaoDuplo,
+  temBlurDoProprioElemento,
+} from "./lib/cc23-regiao.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -201,11 +210,75 @@ check(
 // --------------------------------------------------------------------------
 // Bloco 3 — a camada CC23: aditiva, sem glow, com portão de movimento
 // --------------------------------------------------------------------------
-const marca = "CC23 — a geração que fecha o redesenho global";
-const inicioCC23 = css.indexOf(marca);
+const inicioCC23 = css.indexOf(MARCA_CC23);
 check("caso 12: a camada CC23 existe no globals.css", inicioCC23 !== -1);
 
-const camada = inicioCC23 === -1 ? "" : css.slice(inicioCC23);
+// --------------------------------------------------------------------------
+// REAPONTADO em 2026-07-29 — a REGIÃO era "até o fim do arquivo".
+//
+// CAUSA MEDIDA. `camada` era `css.slice(inicioCC23)`. Quando este check nasceu,
+// o CC23 era a última coisa do globals.css, então "do marcador ao EOF" e "o
+// bloco CC23" eram a MESMA string e a diferença não aparecia. Depois entraram
+// 1.988 linhas de features que nada têm a ver com CC23 — TEMA CLARO (L8302),
+// A LÂMINA DO LEAD 360 (L9917) e o RAIL DA SIDEBAR (L10042) — e todas passaram
+// a ser julgadas pelas regras do CC23 por acidente de POSIÇÃO no arquivo.
+//
+// As 4 falhas de hoje estavam 100% FORA do bloco CC23, todas em classes
+// `.atlas-*` posteriores (medido, uma a uma):
+//   caso 15 → L9940, L9987   `backdrop-filter: blur` (nem é `filter: blur`)
+//   caso 17 → L9988, L10108, L10139, L10218   `.atlas-lamina-*` / `.atlas-rail-*`
+//   caso 18 → L10266   `@media (prefers-reduced-motion: reduce)`
+//   caso 19 → L9896…L10176   `.atlas-kanban-filtro-dono`, `.atlas-lamina-*`, `.atlas-rail-badge`
+// Dentro do bloco CC23 (L8123-8301) as QUATRO propriedades valem: 0 glow,
+// 0 blur, 0 movimento solto, 0 hex, e o único @media com movimento tem o
+// portão duplo completo.
+//
+// Estender as regras do CC23 ao arquivo inteiro NÃO é opção: antes do CC23 há
+// 428 hex literais, 103 movimentos soltos e 9 `filter: blur` (medido). O CC23 é
+// declaradamente ADITIVO ("não reescreve nenhuma regra acima"); cobrar a camada
+// nova das 8.121 linhas antigas é outra dívida, não esta.
+//
+// A guarda fica MAIS FORTE, não mais fraca: estreitar a região só é honesto se
+// nada do CC23 morar fora dela, e isso passou a ser COBRADO (caso 12c). O fim
+// da região é DERIVADO da estrutura de banners, e a ausência de terminador
+// virou FALHA (caso 12b) em vez de virar "engole o resto do arquivo" — que é
+// exatamente como esta guarda apodreceu.
+// --------------------------------------------------------------------------
+// A lógica mora em scripts/lib/cc23-regiao.mjs, e não aqui, porque
+// `scripts/mutacoes.mjs` roda APENAS `test:contracts`: propriedade vigiada só por um
+// `*:check` não é coberta por mutação. Com a região no módulo,
+// tests/contracts/regiao-do-cc23.test.mjs a exercita e a mutação mata quem a quebrar.
+const { fim: fimCC23, delimitada, camada } = recortarCC23(css);
+
+check(
+  "caso 12b: o fim da camada CC23 é DELIMITADO por banner, não pelo EOF",
+  delimitada,
+  "sem terminador a região engole todo CSS posterior e o portão cobra do CC23 o que outra feature escreveu",
+);
+
+// Contraprova do estreitamento: se algum seletor .cc23-* vivesse fora da região,
+// recortá-la seria afrouxar. Hoje os 18 seletores .cc23-* estão todos dentro.
+const seletoresFora = seletoresCC23Fora(css, { inicio: inicioCC23, fim: fimCC23 });
+check(
+  "caso 12c: nenhum seletor .cc23-* mora FORA da região (senão recortá-la afrouxaria)",
+  seletoresFora.length === 0,
+  seletoresFora.length ? seletoresFora.join(" | ") : "todos os seletores .cc23-* estão dentro da região",
+);
+
+// O outro lado, e é ele que pega a APODRECIDA de hoje na raiz. O caso 12c prova
+// que a região não é pequena demais; este prova que não é GRANDE demais. Sem ele,
+// apagar o banner terminador só faz a região ESTICAR até o banner seguinte e
+// engolir a feature vizinha em silêncio — foi assim que 1.988 linhas de tema claro,
+// lâmina e rail passaram a responder pelas regras do CC23. Os dois juntos pregam a
+// região no lugar: nenhum seletor CC23 fora, nenhum seletor estranho dentro.
+const estranhos = seletoresEstranhosDentro(camada);
+check(
+  "caso 12d: nenhum seletor ESTRANHO dentro da região (a região não esticou por cima da feature vizinha)",
+  estranhos.length === 0,
+  estranhos.length
+    ? `a região do CC23 engoliu: ${[...new Set(estranhos)].slice(0, 6).join(" | ")}`
+    : "a região contém só CC23",
+);
 // A última DEFINIÇÃO de CC6 (seletor no início da linha). Não vale procurar
 // ".cc6-" solto: a própria camada CC23 cita .cc6-panel na regra de densidade
 // opt-in, e isso faria o teste medir a si mesmo.
@@ -220,25 +293,54 @@ if (camada) {
   // Princípio 3: profundidade por geometria. Glow é sombra sem deslocamento.
   const glow = [...camada.matchAll(/box-shadow:\s*0\s+0\s+/g)].length;
   check("caso 14: zero glow (box-shadow sem deslocamento) na camada CC23", glow === 0, `${glow} ocorrência(s)`);
-  check("caso 15: zero filter: blur na camada CC23", /filter:\s*blur/.test(camada) === false);
+  // `filter: blur` ANCORADO. O padrão antigo era /filter:\s*blur/, que casa
+  // dentro de `backdrop-filter: blur` — propriedade DIFERENTE: `filter` desfoca o
+  // próprio elemento (o glow que o princípio 3 proíbe), `backdrop-filter` desfoca
+  // o que está ATRÁS, que é a linguagem de vidro usada em 20 pontos do produto.
+  // Era a armadilha da palavra solta: o portão reprovava o vidro achando que era glow.
+  check(
+    "caso 15: zero filter: blur (do próprio elemento) na camada CC23",
+    temBlurDoProprioElemento(camada) === false,
+  );
+  // Contraprova do ANCORE, os dois lados: o padrão precisa pegar o defeito real e
+  // precisa deixar passar o backdrop-filter. Âncora frouxa demais e volta o falso
+  // positivo; âncora apertada demais e o portão não pega mais nada.
+  check(
+    "caso 15b: a âncora do blur pega `filter: blur` e ignora `backdrop-filter: blur`",
+    temBlurDoProprioElemento("  filter: blur(4px);") === true &&
+      temBlurDoProprioElemento("  backdrop-filter: blur(4px);") === false,
+    "se esta contraprova cair, o caso 15 virou decorativo",
+  );
   check("caso 16: zero drop-shadow na camada CC23", /drop-shadow/.test(camada) === false);
 
   // Portão duplo: todo movimento precisa estar sob pointer:fine + reduced-motion.
-  const blocosComMovimento = [...camada.matchAll(/@media[^{]*\{[\s\S]*?\n\}/g)]
-    .filter((m) => /transition:|transform:/.test(m[0]));
-  const foraDoPortao = /(?:^|\n)\s{2}(?:transition|transform):/.test(
-    camada.replace(/@media[^{]*\{[\s\S]*?\n\}/g, ""),
-  );
+  //
+  // Um bloco `@media (prefers-reduced-motion: reduce)` é o REMÉDIO, não a doença:
+  // ele existe para DESLIGAR movimento (`transition: none`). Exigir pointer:fine
+  // dele reprovava exatamente a acessibilidade que este caso quer cobrar — foi a
+  // 4ª falha de hoje (L10266). Ele fica isento de portão, mas em troca passa a ser
+  // COBRADO de só saber desligar: se alguém esconder movimento de verdade lá
+  // dentro, cai no caso 18b.
+  // Indentação QUALQUER, não exatamente 2 espaços: o padrão antigo (\s{2}) deixava
+  // passar movimento solto aninhado ou reindentado — asserção presa a formatação.
+  const { exigemPortao: blocosComMovimento, reduceQueAnima, soltos: foraDoPortao } =
+    movimentoDaRegiao(camada);
   check(
     "caso 17: todo movimento do CC23 está sob @media, nunca solto",
-    foraDoPortao === false,
-    "transition/transform fora de media query ignora quem pediu menos movimento",
+    foraDoPortao === 0,
+    foraDoPortao
+      ? `${foraDoPortao} declaração(ões) fora de media query ignoram quem pediu menos movimento`
+      : "nenhuma transition/transform solta",
   );
   check(
     "caso 18: o portão de movimento exige pointer:fine E prefers-reduced-motion",
-    blocosComMovimento.length > 0 &&
-      blocosComMovimento.every((m) => /pointer:\s*fine/.test(m[0]) && /prefers-reduced-motion/.test(m[0])),
-    `${blocosComMovimento.length} bloco(s) com movimento`,
+    blocosComMovimento.length > 0 && blocosComMovimento.every(temPortaoDuplo),
+    `${blocosComMovimento.length} bloco(s) com movimento (fora os de reduce, que desligam)`,
+  );
+  check(
+    "caso 18b: bloco de prefers-reduced-motion:reduce só DESLIGA movimento",
+    reduceQueAnima.length === 0,
+    reduceQueAnima.length ? `${reduceQueAnima.length} bloco(s) reduce com movimento real dentro` : "",
   );
 
   // Princípio 5: zero hex literal nas CLASSES.
