@@ -35,10 +35,21 @@ const forbidden = entries.filter(
       e,
     ) || /\.(?:xlsx?|csv|pdf|pem|key|p12|pfx)$/i.test(e),
 );
-// `.env.example` é o único que PODE entrar: só tem nomes de variável, sem valor,
-// e o empacotador o inclui de propósito para quem for provisionar o ambiente.
-const permitidos = new Set([".env.example"]);
-const proibidosDeVerdade = forbidden.filter((e) => !permitidos.has(e.replace(/^atlas-v3\//, "")));
+/**
+ * MODELO PODE ENTRAR; ARQUIVO DE AMBIENTE NÃO.
+ *
+ * A primeira versão desta lista era literal (`.env.example`) e reprovou o pacote
+ * por causa de `.env.production.example` — que é modelo igual, só de outro
+ * ambiente. Lista literal envelhece mal: o próximo arquivo de exemplo quebraria
+ * a entrega de novo, e o conserto tentador é afrouxar a regra inteira.
+ *
+ * A permissão é pelo SUFIXO `.example`, que é a convenção do projeto para
+ * template sem valor. O conteúdo continua guardado por outro portão:
+ * `security:secrets` varre os arquivos rastreados e reprova credencial em
+ * qualquer um deles — inclusive nestes.
+ */
+const ehModelo = (caminho) => /\.example$/.test(caminho);
+const proibidosDeVerdade = forbidden.filter((e) => !ehModelo(e));
 if (proibidosDeVerdade.length)
   throw new Error(`Conteúdo proibido: ${proibidosDeVerdade.slice(0, 5).join(", ")}`);
 for (const required of [
