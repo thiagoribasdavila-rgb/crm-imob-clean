@@ -33,12 +33,46 @@
  * único passo. `existsSync` seguido de `mkdirSync` teria a corrida que a trava
  * veio remover.
  */
-import { mkdirSync, rmSync, statSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/** Uma rodada travada mais que isto morreu sem soltar: a trava é retomável. */
+/** Rede secundária: só vale quando o dono não pôde ser identificado. */
 const VALIDADE_MS = 15 * 60_000;
+
+/**
+ * ── POR QUE A TRAVA GUARDA O PID DO DONO ────────────────────────────────────
+ *
+ * Pular porque OUTRA rodada está medindo é legítimo: a propriedade continua
+ * coberta. Pular porque uma trava ficou presa NÃO é — aí o portão fica verde sem
+ * medir nada, que é a doença que este repositório mais pagou (a cadeia morreu na
+ * fase 018 e escondeu as fases 019 a 047).
+ *
+ * Só a idade não separa os dois casos. O PID separa: `process.kill(pid, 0)` não
+ * envia sinal nenhum, só pergunta se o processo existe. Dono morto = retomada
+ * IMEDIATA, sem os 15 minutos de janela cega. E isto importa em concreto porque
+ * a trava mora no temp do SO, compartilhado entre as cópias que
+ * `scripts/mutacoes.mjs` faz do repositório com rsync — uma rodada morta ali
+ * calaria o contrato por 15 minutos de mutações seguidas, e cada mutação não
+ * pega vira buraco relatado na rede.
+ */
+function donoVivo(caminho) {
+  let pid;
+  try {
+    pid = Number(readFileSync(join(caminho, "dono"), "utf8").trim());
+  } catch {
+    return null; // sem dono legível: quem decide é a idade
+  }
+  if (!Number.isInteger(pid) || pid <= 0) return null;
+  if (pid === process.pid) return true;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (erro) {
+    // EPERM = existe e não é meu (vivo). ESRCH = não existe (morto).
+    return erro.code === "EPERM";
+  }
+}
 
 export function tentarTravar(chave) {
   const caminho = join(tmpdir(), `atlas-org-de-prova-${chave}.lock`);
@@ -46,6 +80,7 @@ export function tentarTravar(chave) {
   const tentar = () => {
     try {
       mkdirSync(caminho);
+      writeFileSync(join(caminho, "dono"), String(process.pid));
       return true;
     } catch (erro) {
       if (erro.code !== "EEXIST") throw erro;
@@ -54,15 +89,17 @@ export function tentarTravar(chave) {
   };
 
   if (!tentar()) {
+    const vivo = donoVivo(caminho);
     // Trava órfã de processo morto não pode bloquear para sempre — mas remover
-    // trava VIVA devolveria a colisão. A idade é o único sinal disponível aqui.
+    // trava VIVA devolveria a colisão. Idade é a rede secundária, para quando o
+    // dono não pôde ser identificado.
     let idade = 0;
     try {
       idade = Date.now() - statSync(caminho).mtimeMs;
     } catch {
       idade = VALIDADE_MS + 1; // sumiu entre as duas chamadas: tenta de novo
     }
-    if (idade <= VALIDADE_MS) {
+    if (vivo === true || (vivo === null && idade <= VALIDADE_MS)) {
       return {
         travou: false,
         motivo:
