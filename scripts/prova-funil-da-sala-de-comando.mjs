@@ -52,8 +52,14 @@ const org = [...porOrg.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
 
 const { data: config } = await admin
   .from("pipeline_stage_settings").select("stage_key,position,visible").eq("organization_id", org);
+// ATENÇÃO ao `select`: a primeira versão pedia só `lead_id,to_stage,occurred_at`,
+// e as asserções sobre `reason` e `from_stage` liam `undefined` — davam 104 "sem
+// motivo" (todas) e 0 "direto de novo" (nenhuma), acusando a rota de um erro que
+// era da própria prova. Instrumento que não coleta o campo mede o vazio dele.
 const { data: movs } = await admin
-  .from("pipeline_stage_moves").select("lead_id,to_stage,occurred_at").eq("organization_id", org);
+  .from("pipeline_stage_moves")
+  .select("lead_id,from_stage,to_stage,reason,occurred_at")
+  .eq("organization_id", org);
 
 const TERMINAIS = new Set(["ganho", "perdido", "comprou_outro"]);
 const etapasEsperadas = (config ?? [])
@@ -155,6 +161,36 @@ try {
     `${d.indicadores.leadsTotais} leads lidos`);
   conferir("os movimentos lidos batem com o banco", p?.movimentosLidos === (movs ?? []).length,
     `tela ${p?.movimentosLidos} · banco ${(movs ?? []).length}`);
+
+  // ── 5. SAÍDAS DO FUNIL: cada número contra o banco ───────────────────────
+  //
+  // Este bloco responde a pergunta da verba pelo único lado com dado. Se algum
+  // número aqui divergir do banco, a tela estaria acusando o atendimento (ou
+  // inocentando) com base em conta errada — e é decisão de orçamento.
+  const SAIDA = new Set(["perdido", "comprou_outro"]);
+  const saidasBanco = (movs ?? []).filter((m) => SAIDA.has(String(m.to_stage || "")));
+  const { data: leadsDaOrg } = await admin
+    .from("leads").select("id,created_at,first_contacted_at").eq("organization_id", org).limit(2000);
+  const porId = new Map((leadsDaOrg ?? []).map((l) => [l.id, l]));
+  const semContatoBanco = saidasBanco.filter((m) => porId.get(m.lead_id) && !porId.get(m.lead_id).first_contacted_at).length;
+  const semMotivoBanco = saidasBanco.filter((m) => !m.reason || !String(m.reason).trim()).length;
+  const deNovoBanco = saidasBanco.filter((m) => String(m.from_stage || "") === "novo").length;
+
+  const s = d.saidasDoFunil;
+  console.log(`\n  saídas: tela ${s?.total} · banco ${saidasBanco.length}`);
+  conferir("o total de saídas bate com o banco", s?.total === saidasBanco.length,
+    `tela ${s?.total} · banco ${saidasBanco.length}`);
+  conferir("as saídas SEM primeiro contato batem", s?.semPrimeiroContato === semContatoBanco,
+    `tela ${s?.semPrimeiroContato} · banco ${semContatoBanco}`);
+  conferir("as saídas SEM motivo escrito batem", s?.semMotivoEscrito === semMotivoBanco,
+    `tela ${s?.semMotivoEscrito} · banco ${semMotivoBanco}`);
+  conferir("as que saíram direto de \"novo\" batem", s?.direitoDeNovo === deNovoBanco,
+    `tela ${s?.direitoDeNovo} · banco ${deNovoBanco}`);
+  conferir("o bloco não é vazio (senão a prova não prova nada)", (s?.total ?? 0) > 0,
+    `${s?.total} saídas`);
+  conferir("a média de dias até sair é plausível e medida", (s?.diasAteSair?.medidas ?? 0) > 0 && s.diasAteSair.media >= s.diasAteSair.minimo && s.diasAteSair.media <= s.diasAteSair.maximo,
+    s?.diasAteSair ? `média ${s.diasAteSair.media}d · min ${s.diasAteSair.minimo} · max ${s.diasAteSair.maximo} · ${s.diasAteSair.medidas} medidas` : "AUSENTE");
+  conferir("o bloco declara se foi mensurável", s?.mensuravel === true, `mensuravel=${s?.mensuravel}`);
 } catch (erro) {
   console.error(`\nFALHA: ${erro.message}`);
   falhou += 1;

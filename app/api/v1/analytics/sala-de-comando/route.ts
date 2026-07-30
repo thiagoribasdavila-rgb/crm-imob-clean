@@ -42,7 +42,13 @@ type LeadRow = {
   development_id: string | null;
   first_contacted_at: string | null;
 };
-type MovimentoRow = { lead_id: string | null; to_stage: string | null; occurred_at: string | null };
+type MovimentoRow = {
+  lead_id: string | null;
+  from_stage: string | null;
+  to_stage: string | null;
+  reason: string | null;
+  occurred_at: string | null;
+};
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +120,7 @@ export async function GET(request: NextRequest) {
     fetchAllRows<MovimentoRow>((from, to) =>
       admin
         .from("pipeline_stage_moves")
-        .select("lead_id,to_stage,occurred_at")
+        .select("lead_id,from_stage,to_stage,reason,occurred_at")
         .eq("organization_id", organizationId)
         .order("occurred_at", { ascending: true })
         .range(from, to),
@@ -221,6 +227,62 @@ export async function GET(request: NextRequest) {
   const donos = new Set(leads.map((l) => l.assigned_to ?? l.assigned_user_id).filter(Boolean));
   const comPrimeiroContato = leads.filter((l) => l.first_contacted_at).length;
 
+  /**
+   * ── POR ONDE A VERBA VAZA, MEDIDO PELO ÚNICO LADO QUE TEM DADO ─────────────
+   *
+   * A pergunta da direção é "onde estou desperdiçando dinheiro de anúncio". O
+   * lado da COMPRA não tem como responder: `marketing_spend`, `campaigns`,
+   * `meta_daily_reports` e `product_budgets` têm ZERO linhas. Sem custo não há
+   * CPL, não há ROAS, e qualquer comparação de campanha seria inventada.
+   *
+   * O lado do ATENDIMENTO tem dado, e responde uma pergunta melhor: as leads que
+   * saíram do funil chegaram a ser trabalhadas? Medido em 2026-07-30: das 104
+   * saídas registradas, 100 nunca receberam um primeiro contato, e o tempo médio
+   * entre chegar e ser descartada foi de 23 dias. Nenhum descarte foi impulsivo.
+   *
+   * Isso muda a decisão: não é "a campanha é ruim, troque de agência" — é "a
+   * lead foi comprada, guardada três semanas e descartada sem uma ligação".
+   * Comprar mais mídia antes de atender é jogar dinheiro no mesmo buraco.
+   */
+  const SAIDAS = new Set(["perdido", "comprou_outro"]);
+  const leadPorId = new Map(leads.map((l) => [l.id, l]));
+  const saidas = movimentosPaginados.rows.filter((m) => {
+    const destino = canonicalPipelineStage(m.to_stage);
+    return destino !== null && SAIDAS.has(destino);
+  });
+
+  const diasAteSair: number[] = [];
+  let semPrimeiroContato = 0;
+  let semMotivo = 0;
+  let direitoDeNovo = 0;
+  for (const m of saidas) {
+    const lead = m.lead_id ? leadPorId.get(m.lead_id) : undefined;
+    if (lead && !lead.first_contacted_at) semPrimeiroContato += 1;
+    if (!m.reason || !String(m.reason).trim()) semMotivo += 1;
+    if (canonicalPipelineStage(m.from_stage) === "novo") direitoDeNovo += 1;
+    if (lead?.created_at && m.occurred_at) {
+      const dias = (new Date(m.occurred_at).getTime() - new Date(lead.created_at).getTime()) / 86_400_000;
+      if (Number.isFinite(dias) && dias >= 0) diasAteSair.push(dias);
+    }
+  }
+  const arredonda = (n: number) => Math.round(n * 10) / 10;
+  const saidasDoFunil = {
+    total: saidas.length,
+    semPrimeiroContato,
+    semMotivoEscrito: semMotivo,
+    direitoDeNovo,
+    diasAteSair: diasAteSair.length
+      ? {
+          media: arredonda(diasAteSair.reduce((s, d) => s + d, 0) / diasAteSair.length),
+          minimo: arredonda(Math.min(...diasAteSair)),
+          maximo: arredonda(Math.max(...diasAteSair)),
+          medidas: diasAteSair.length,
+        }
+      : null,
+    /** Sem isto, "0 saídas" leria como "ninguém desistiu" em vez de "não medimos". */
+    mensuravel: registroDeMovimentoMensuravel,
+  };
+
   return apiSuccess(
     {
       indicadores: {
@@ -253,6 +315,7 @@ export async function GET(request: NextRequest) {
             : `${ganhos} venda${ganhos === 1 ? "" : "s"} fechada${ganhos === 1 ? "" : "s"}: a próxima mudaria a taxa em mais de 100%. Abaixo de ${VENDAS_PARA_AFIRMAR_TAXA} vendas isto é contagem, não taxa.`,
       },
       funil,
+      saidasDoFunil,
       /**
        * ── O QUE ESTES NÚMEROS *NÃO* COBREM ────────────────────────────────
        *

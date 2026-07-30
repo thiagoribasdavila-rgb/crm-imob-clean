@@ -2604,18 +2604,36 @@ export default function CommandCenterPage() {
                  contra o display e não contra a linha). */
               <div className="cc23-quiet mt-4">
                 <ul className="cc23-rows">
+                  {/* ── O TILE "CONVERSÃO GERAL" FOI REMOVIDO (2026-07-30) ────────
+                      Ele imprimia `0.2%` em escala de herói. Setecentas linhas
+                      abaixo, o SalaDeComandoPanel se RECUSA a imprimir essa mesma
+                      taxa e escreve "1 venda — abaixo de 5 vendas isto é contagem,
+                      não taxa". O diretor via as duas, e via o percentual PRIMEIRO.
+
+                      Medido: base 482 · ganho 1 · ganho com valor informado 0. A
+                      taxa se apoiava num evento cujo valor o produto não conhece, e
+                      0,2% lido como medida manda cortar verba de aquisição — quando
+                      a leitura correta é "ainda não dá para afirmar; feche a
+                      segunda venda".
+
+                      Foi REMOVIDO em vez de alinhado de propósito: alinhar criaria
+                      um terceiro limiar dentro de director-daily, que já convive com
+                      dois (campanha ≥30 leads, superintendente ≥50). Tirar uma voz
+                      custa menos que inventar mais uma regra. `conversionRate`
+                      continua na rota — /reports consome — só não é mais publicado
+                      aqui sem a ressalva de amostra.
+
+                      Os dois contadores que davam contexto viram linha própria. */}
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Conversão geral</p>
+                      <p className="text-[11px] text-slate-500">Carteira ativa</p>
                       <p className="mt-0.5 text-[11px] text-slate-500">
-                        {directorDaily.commercial.activeLeads} ativos ·{" "}
-                        {directorDaily.commercial.hotLeads} quentes
+                        {/* Plural correto: a legenda dizia "1 quentes". */}
+                        {directorDaily.commercial.hotLeads}{" "}
+                        {directorDaily.commercial.hotLeads === 1 ? "quente" : "quentes"}
                       </p>
                     </div>
-                    <span className="cc23-display">
-                      {directorDaily.commercial.conversionRate}
-                      <span className="cc23-unit-label">%</span>
-                    </span>
+                    <span className="cc23-display">{directorDaily.commercial.activeLeads}</span>
                   </li>
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
@@ -3069,11 +3087,21 @@ export default function CommandCenterPage() {
         aparece.
       */}
       {/*
-        SALA DE COMANDO — os seis indicadores e o funil, medidos.
+        SALA DE COMANDO — os seis indicadores, o funil e as saidas, medidos.
 
-        Vem ANTES do resto de proposito: e o que o diretor le nos primeiros cinco
-        segundos. E ele nao imprime taxa de conversao com uma venda de amostra —
-        mostra a contagem e diz por que ainda nao e taxa.
+        CORRECAO DE UMA AFIRMACAO FALSA (2026-07-30): este comentario dizia "vem
+        ANTES do resto de proposito: e o que o diretor le nos primeiros cinco
+        segundos". Era falso na ordem do DOM — o bloco esta por volta da setima
+        posicao. Comentario que descreve uma intencao nao cumprida engana quem le
+        o codigo depois, entao ou a ordem muda ou o comentario conta a verdade.
+
+        O que este bloco garante, e isso e verificado por contrato: ele nao
+        imprime taxa de conversao com amostra de uma venda, ele desenha as etapas
+        que a ORGANIZACAO configurou (nao um array cravado aqui), e distingue
+        "a etapa esvaziou" de "ninguem chegou" — que mandam a direcao fazer
+        coisas opostas.
+
+        A reordenacao da tela inteira e trabalho proprio, ainda nao feito.
       */}
       <section aria-label="Sala de comando">
         <SalaDeComandoPanel />

@@ -73,6 +73,14 @@ type Dados = {
     porqueNaoAfirmavel: string | null;
   };
   funil: Etapa[];
+  saidasDoFunil: {
+    total: number;
+    semPrimeiroContato: number;
+    semMotivoEscrito: number;
+    direitoDeNovo: number;
+    diasAteSair: { media: number; minimo: number; maximo: number; medidas: number } | null;
+    mensuravel: boolean;
+  };
   procedencia: {
     amostraTruncada: boolean;
     registroDeMovimentoDesde: string | null;
@@ -82,6 +90,12 @@ type Dados = {
 };
 
 const inteiro = (n: number) => n.toLocaleString("pt-BR");
+/**
+ * Decimal em pt-BR. O tile removido hoje imprimia `{valor}` cru e saía "0.2%"
+ * com PONTO numa tela em português — e o mesmo descuido apareceu aqui em
+ * "23.4 dias" antes de ser pego na verificação em tela.
+ */
+const decimal = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const brl = (n: number) =>
   n >= 1_000_000
     ? `R$ ${(n / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`
@@ -115,6 +129,88 @@ function Indicador({
       {detalhe ? (
         <p className={`mt-1 text-[11px] leading-4 ${alerta ? "text-amber-300" : "text-slate-500"}`}>{detalhe}</p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * SAÍDAS DO FUNIL — a pergunta da verba, respondida pelo lado que tem dado.
+ *
+ * O lado da compra está cego: `marketing_spend`, `campaigns`,
+ * `meta_daily_reports` e `product_budgets` têm ZERO linhas, então CPL e ROAS
+ * seriam invenção. O lado do atendimento tem registro, e responde melhor: a lead
+ * que saiu do funil chegou a ser trabalhada?
+ *
+ * Cada número traz o DENOMINADOR ao lado. "100 sem contato" é uma informação
+ * diferente de "100 de 104 sem contato" — a segunda decide, a primeira só assusta.
+ */
+function SaidasDoFunil({ dados }: { dados: Dados["saidasDoFunil"] }) {
+  if (!dados.mensuravel) {
+    return (
+      <p className="text-xs leading-5 text-slate-400">
+        Não foi possível ler o histórico de movimentação. As saídas do funil estão indisponíveis — não são zero.
+      </p>
+    );
+  }
+  if (dados.total === 0) {
+    return (
+      <p className="text-xs leading-5 text-slate-400">
+        Nenhuma saída do funil registrada na janela medida.
+      </p>
+    );
+  }
+
+  const proporcao = (n: number) => Math.round((n / dados.total) * 100);
+  const semContato = proporcao(dados.semPrimeiroContato);
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <p className="text-2xl font-semibold tabular-nums text-white">{inteiro(dados.total)}</p>
+          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">saíram do funil (perdido ou comprou em outro lugar)</p>
+        </div>
+        <div>
+          <p className={`text-2xl font-semibold tabular-nums ${semContato >= 50 ? "text-amber-300" : "text-white"}`}>
+            {inteiro(dados.semPrimeiroContato)}
+            <span className="ml-1 text-sm font-normal text-slate-500">de {inteiro(dados.total)}</span>
+          </p>
+          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">saíram sem nenhum primeiro contato registrado</p>
+        </div>
+        <div>
+          <p className="text-2xl font-semibold tabular-nums text-white">
+            {inteiro(dados.semMotivoEscrito)}
+            <span className="ml-1 text-sm font-normal text-slate-500">de {inteiro(dados.total)}</span>
+          </p>
+          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">saíram sem motivo escrito</p>
+        </div>
+      </div>
+      {/* A frase de baixo é o que transforma três números numa decisão. */}
+      <p className="text-[11px] leading-5 text-slate-400">
+        {dados.direitoDeNovo > 0 ? (
+          <>
+            {inteiro(dados.direitoDeNovo)} de {inteiro(dados.total)} foram direto de &quot;novo&quot; para a saída
+            {dados.diasAteSair ? (
+              <>
+                , depois de{" "}
+                <strong className="font-semibold text-slate-300">{decimal(dados.diasAteSair.media)} dias</strong> em
+                média na base (do mais rápido, {decimal(dados.diasAteSair.minimo)}, ao mais lento,{" "}
+                {decimal(dados.diasAteSair.maximo)}). Nenhum descarte foi impulsivo — foram leads guardadas e depois
+                largadas.
+              </>
+            ) : null}
+          </>
+        ) : (
+          <>Todas as saídas passaram por alguma etapa antes de sair.</>
+        )}
+        {semContato >= 50 ? (
+          <>
+            {" "}
+            Com {semContato}% saindo sem uma única ligação, o gargalo não está na origem da lead: está no atendimento.
+            Comprar mais mídia antes de atender aumenta o mesmo desperdício.
+          </>
+        ) : null}
+      </p>
     </div>
   );
 }
@@ -176,10 +272,33 @@ export function SalaDeComandoPanel() {
   const [dados, setDados] = useState<Dados | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [semAcesso, setSemAcesso] = useState(false);
+  const [semSessaoNoCliente, setSemSessaoNoCliente] = useState(false);
+  const [carregando, setCarregando] = useState(true);
 
   const carregar = useCallback(async () => {
+    setCarregando(true);
+    /**
+     * ── O TERCEIRO CAMINHO SILENCIOSO ─────────────────────────────────────
+     *
+     * Este `if (!token) return` era o mais traiçoeiro dos três. A aplicação
+     * autentica por COOKIE (@supabase/ssr): a página inteira renderiza,
+     * navegação funciona, o usuário está logado para todos os efeitos. Mas o
+     * cliente do navegador pode não ter sessão em memória — medido acontecendo
+     * em 2026-07-30, com a página servida e o painel sumindo por completo.
+     *
+     * O resultado é pior que erro: a tela funciona, MENOS este bloco, e não há
+     * nada escrito. Quem vê conclui que o painel foi removido do produto.
+     *
+     * Agora o estado é declarado — e separado de "ainda carregando", porque
+     * confundir os dois faria a mensagem de sessão piscar em toda montagem.
+     */
     const token = (await supabase.auth.getSession()).data.session?.access_token;
-    if (!token) return;
+    if (!token) {
+      setSemSessaoNoCliente(true);
+      setCarregando(false);
+      return;
+    }
+    setSemSessaoNoCliente(false);
     try {
       const res = await fetch("/api/v1/analytics/sala-de-comando", {
         headers: { Authorization: `Bearer ${token}` },
@@ -200,6 +319,8 @@ export function SalaDeComandoPanel() {
       else setDados(corpo?.data ?? null);
     } catch {
       setErro("Falha de rede ao medir a operação.");
+    } finally {
+      setCarregando(false);
     }
   }, []);
 
@@ -207,6 +328,17 @@ export function SalaDeComandoPanel() {
     void carregar();
   }, [carregar]);
 
+  if (semSessaoNoCliente) {
+    return (
+      <AtlasCard>
+        <AtlasCardHeader
+          eyebrow="Sala de comando"
+          title="Sessão não disponível neste navegador"
+          description="A página carregou, mas a sessão do navegador expirou e os números não podem ser medidos com segurança. Recarregue a página ou entre novamente — este bloco não está vazio, está sem permissão de leitura."
+        />
+      </AtlasCard>
+    );
+  }
   if (semAcesso) {
     return (
       <AtlasCard>
@@ -225,7 +357,20 @@ export function SalaDeComandoPanel() {
       </AtlasCard>
     );
   }
-  if (!dados) return null;
+  // `null` aqui é legítimo APENAS enquanto carrega. Depois disso, sumir é o
+  // defeito que os três ramos acima existem para impedir.
+  if (carregando) return null;
+  if (!dados) {
+    return (
+      <AtlasCard>
+        <AtlasCardHeader
+          eyebrow="Sala de comando"
+          title="Sem resposta para medir"
+          description="A consulta retornou sem dados. Isto não significa operação vazia — significa que não houve leitura. Recarregue antes de decidir."
+        />
+      </AtlasCard>
+    );
+  }
 
   const { indicadores: i, conversao: c } = dados;
 
@@ -294,6 +439,20 @@ export function SalaDeComandoPanel() {
               </span>
             ) : null}
           </p>
+        </div>
+      </AtlasCard>
+
+      {/* Fica logo abaixo do funil de propósito: é a mesma história vista pelo
+          outro lado. O funil mostra onde as leads estão; este mostra como as que
+          já não estão foram embora. */}
+      <AtlasCard>
+        <AtlasCardHeader
+          eyebrow="Saídas do funil"
+          title="Como as leads que saíram foram embora"
+          description="Sem custo de mídia na base, esta é a leitura honesta sobre desperdício: não quanto custou a lead, e sim se ela chegou a ser trabalhada."
+        />
+        <div className="p-5 sm:p-6">
+          <SaidasDoFunil dados={dados.saidasDoFunil} />
         </div>
       </AtlasCard>
     </div>
