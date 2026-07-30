@@ -36,6 +36,7 @@ import { parseCommercialContextCorrectionTimeline } from "@/lib/atlas/commercial
 import { MetaConsentControl } from "@/components/crm/meta-consent-control";
 import { ContactAttemptsBadge } from "@/components/crm/contact-attempts-badge";
 import { lerEstado } from "@/lib/crm/meta-consent";
+import { CompatibilidadeDoClientePanel } from "@/components/atlas/CompatibilidadeDoClientePanel";
 
 type LeadRow = {
   id: string;
@@ -1427,6 +1428,20 @@ export default function LeadDetailPage() {
           </p>
         </section>
       ) : null}
+
+      {/*
+        COMPATIBILIDADE E AS PERGUNTAS QUE DESTRAVAM.
+
+        Fica FORA do `qualification ?` de propósito: o painel importa mais quando
+        a lead NÃO está qualificada, que é o caso de 469 das 482. Medido em
+        2026-07-30 — só 13 leads responderam algum dos três critérios decisivos
+        (preço 9 · dormitórios 12 · bairro 6), e a recomendação do motor é
+        exatamente 13. Preencher catálogo não move esse número; foi tentado três
+        vezes no mesmo dia. Perguntar move.
+
+        O painel já existia pronto e não estava montado em tela nenhuma.
+      */}
+      <CompatibilidadeDoClientePanel leadId={lead.id} />
 
       {qualification ? (
         <section
