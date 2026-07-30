@@ -420,6 +420,48 @@ export async function PATCH(request: Request) {
       // inteira e é ela que vai na resposta. O que precisa existir é o id do
       // movimento — a prova de que a auditoria foi gravada.
       if (movedHistoryId) {
+        /**
+         * ── O MOTIVO DO DESCARTE, QUE ESTAVA SENDO JOGADO FORA ──────────────
+         *
+         * Esta rota EXIGE o motivo: mover para `perdido` sem `discardReason`
+         * devolve 400 `DISCARD_REASON_REQUIRED` (linha 321), e chave fora da
+         * taxonomia devolve 400 `INVALID_DISCARD_REASON`. A guarda entrou em
+         * 20/07/2026.
+         *
+         * E o motivo morria aqui. A chamada da RPC logo acima passa apenas
+         * `p_reason: followUpDescription`; `discardReason.key` e
+         * `discardNotes` não chegavam a lugar nenhum. O único código que os
+         * gravava (`recordLiveLeadEvent` com `lead_discarded`, mais abaixo)
+         * vive DEPOIS do `return` desta função — no ramo compensatório, que só
+         * roda se a RPC não existir. Ela existe.
+         *
+         * Medido em 2026-07-30: 104 saídas registradas entre 27/07 e 30/07,
+         * TODAS posteriores à guarda, e `reason` nulo em 102. O corretor
+         * escolheu o motivo 102 vezes; o sistema descartou 102 vezes. A tela
+         * /pipeline/discards mostrava zero e dizia que o time não classificava.
+         *
+         * Grava num update próprio, e não na RPC, pelo mesmo motivo já
+         * registrado abaixo para o valor da venda: mudar a assinatura de
+         * `move_pipeline_lead` exigiria DROP+CREATE (CREATE OR REPLACE com
+         * assinatura nova gera SOBRECARGA e o PostgREST passa a errar por
+         * ambiguidade). Se este update falhar, a saída fica sem motivo — que é
+         * exatamente o estado de hoje, já rotulado "não medido" na leitura.
+         * Falhar para o lado de não classificar é o lado seguro.
+         */
+        if (discardReason) {
+          const gravouMotivo = await admin
+            .from("pipeline_stage_moves")
+            .update({ discard_reason_key: discardReason.key, discard_notes: discardNotes || null })
+            .eq("id", movedHistoryId)
+            .eq("organization_id", identity.organizationId);
+          if (gravouMotivo.error) {
+            logger.warn("pipeline.motivo_do_descarte_nao_gravado", {
+              leadId,
+              moveId: movedHistoryId,
+              erro: gravouMotivo.error.message,
+            });
+          }
+        }
         // O valor vai num update próprio porque a RPC não o conhece (mudar a
         // assinatura dela obrigaria migration em banco que já roda). Se este
         // update falhar, a lead fica em "ganho" sem valor — que é exatamente o
