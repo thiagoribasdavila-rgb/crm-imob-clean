@@ -1,0 +1,61 @@
+{
+  "$comentario": "QUAL BANCO É O NOSSO — uma declaração, um lugar. Existe porque o repositório apontava para o projeto ERRADO em 19 arquivos, incluindo TODOS os documentos de deploy e dois scripts executáveis. Medido em 2026-07-29. Quem seguisse o roteiro de go-live daqui empurraria 166 migrations desenhadas para um schema de 183 tabelas contra uma base legada de 24 tabelas com 17.151 leads reais. O erro não era o projeto antigo existir: era o repositório não declarar qual é o certo.",
+
+  "canonico": {
+    "ref": "pozbrcsfthnhmnebfoxv",
+    "nome": "atlas-v3-homologacao",
+    "regiao": "sa-east-1",
+    "criadoEm": "2026-07-21",
+    "papel": "homologação — é contra este que tudo foi construído e medido",
+    "medidoEm": "2026-07-29",
+    "tabelasPublic": 183,
+    "leads": 470,
+    "usuariosAuth": 23
+  },
+
+  "aposentados": [
+    {
+      "ref": "ietwopslgqxlenfyghqk",
+      "nome": "atlas-ai-crm-v1",
+      "regiao": "us-west-2",
+      "criadoEm": "2026-07-13",
+      "papel": "APOSENTADO PARA DEPLOY — e NÃO É VAZIO. Nenhum script, roteiro ou configuração deste repositório pode apontar para ele.",
+      "medidoEm": "2026-07-29",
+      "tabelasPublic": 24,
+      "leads": 17151,
+      "usuariosAuth": 12,
+      "ultimoLogin": "2026-07-23",
+      "porQueNaoApagar": "Tem 17.151 leads REAIS: 17.126 com nome (99,8%), 7.509 telefones distintos, 15.743 e-mails, e apenas 15 que parecem teste. As origens NÃO existem no canônico — 'Memória histórica protegida' (16.733), Goal (164), Primeira Agência (91), 'Inside Perdizes | Planilha de leads.xlsx' (90), 360 Inside (47), Arvo D'Avila (16), Infinity (7). O canônico tem 470 leads de outras origens (Relatório Arvo 270, meta_ads 195). São populações DIFERENTES: apagar este projeto destrói dado comercial que não existe em nenhum outro lugar.",
+      "decisaoPendente": "Exportar ou migrar as 17.151 linhas ANTES de qualquer exclusão. Enquanto isso não acontecer, este projeto fica de pé — aposentado para deploy, preservado como dado."
+    }
+  ],
+
+  "$comentarioAmbientes": "QUAL URL PERTENCE A QUAL BANCO. Existe porque medi, em 2026-07-30, um ambiente que se declara `production`, aponta ATLAS_BASE_URL para https://atlasaios.com.br (produção) e aponta o banco para atlas-v3-homologacao. Com isso, `npm run test:real` faz smoke na URL de produção e valida contra o banco de homologação — o resultado não significa nada, e ainda aprova. Pior: todo código que ramifica em ATLAS_ENV==='production' roda comportamento de produção sobre dado de homologação (por exemplo, o fallback de organização em lib/security/api-auth.ts só existe quando ATLAS_ENV==='homologation', e portanto está desligado aqui). A coerência entre os três é vigiada por scripts/check-coerencia-de-ambiente.mjs.",
+  "ambientes": [
+    {
+      "atlasEnv": "homologation",
+      "supabaseRef": "pozbrcsfthnhmnebfoxv",
+      "urlsPermitidas": ["http://localhost:3000", "http://localhost:3100", "https://app.atlasaios.com.br"],
+      "papel": "É aqui que o teste real deve acontecer primeiro. app.atlasaios.com.br é o destino de homologação decidido pelo dono."
+    },
+    {
+      "atlasEnv": "production",
+      "supabaseRef": null,
+      "urlsPermitidas": ["https://atlasaios.com.br"],
+      "papel": "PRODUÇÃO. O `supabaseRef` é null de propósito: o projeto Supabase de produção NÃO É CONHECIDO por este repositório — `.env.production.example` traz NEXT_PUBLIC_SUPABASE_URL vazio. Enquanto for null, declarar ATLAS_ENV=production nesta máquina é sempre incoerente, e o portão reprova."
+    }
+  ],
+
+  "regra": "Todo script executável, arquivo de ambiente e roteiro de deploy usa SOMENTE o ref canônico. tests/contracts/projeto-canonico.test.mjs reprova qualquer referência a ref aposentado fora das exceções declaradas abaixo — que existem só para documentos que precisam NOMEAR o projeto antigo para avisar sobre ele.",
+
+  "$comentarioExcecoes": "Documento de risco e histórico PRECISA citar o ref antigo: é o aviso que impede o erro. A exceção é por ARQUIVO e não por padrão, para que um arquivo novo não herde a permissão sem alguém decidir.",
+  "podemCitarAposentado": [
+    "config/supabase-projetos.json",
+    "docs/continuity/KNOWN_RISKS.md",
+    "docs/auditorias/AUDITORIA_DRIFT_SCHEMA_PRE_DEPLOY.md",
+    "docs/auditorias/ENTREGA_01_ADENDO_SCHEMA_DRIFT.md",
+    "docs/deploy/VALIDACAO_ISOLADA_RESULTADO.md",
+    "docs/deploy/BACKUP_E_VALIDACAO_ANTES_DAS_MIGRATIONS.md",
+    "tests/contracts/projeto-canonico.test.mjs"
+  ]
+}

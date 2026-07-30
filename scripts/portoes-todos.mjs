@@ -56,12 +56,67 @@ const QUARENTENA = {
   // categoria própria, com exigência mais estrita que a genérica. Quarentena que
   // sobrevive ao problema vira teto silencioso, que é o defeito que este arquivo
   // existe para não cometer.
-  "final-dashboards:check":
-    "EM CORREÇÃO — cobra DASHBOARD_PERIOD_KEY em app/(crm)/dashboard/page.tsx; lacuna real, não contrato velho.",
-  "password-recovery:check":
-    "EM CORREÇÃO — falha a apurar: pode ser SMTP ausente (ambiente) ou regressão do conserto do /auth/v1/verify. Enquanto não medir, não afirmo qual.",
-  "conversational-qualification:check":
-    "EM CORREÇÃO — cobra 'UMA PERGUNTA POR VEZ' na tela de qualificação. Está na lista dos portões que agentes já tentaram satisfazer EDITANDO O PRODUTO; exige revisão humana, não conserto rápido.",
+  // `final-dashboards:check` SAIU da quarentena em 2026-07-29. O motivo antigo
+  // ("cobra DASHBOARD_PERIOD_KEY em app/(crm)/dashboard/page.tsx; lacuna real,
+  // não contrato velho") estava METADE certo, e a metade errada era a que
+  // escondia mais: dos 10 vermelhos, 8 eram contrato velho — `const isBroker`,
+  // `if (!isBroker)`, `isBroker ?`, "Perfil comercial não identificado",
+  // `brokerDaily`, `managerDaily`, `superintendentSummary` e `directorDaily`
+  // JÁ ESTAVAM inteiros em app/(crm)/command-center/page.tsx, que virou a casa
+  // de decisão na fusão Início + Command Center; `app/(crm)/dashboard/page.tsx`
+  // é um redirect de 18 linhas desde então. Os outros 2 eram lacuna real:
+  // `DASHBOARD_PERIOD_KEY` não existia em lugar nenhum, e a promessa escrita da
+  // Fase Final 7 — "o período escolhido permanece durante a sessão" — nunca foi
+  // implementada, embora as pastilhas de /reports já recortassem de verdade.
+  // Reapontado para as propriedades e implementada a memória do recorte: 49
+  // controles (eram 20), 12 deles EXECUTANDO as funções em vez de procurar o
+  // nome delas, com contrato (tests/contracts/periodo-do-resumo-persiste.test.mjs)
+  // e 4 mutações (M83–M86) provando os dois lados.
+  // `password-recovery:check` SAIU da quarentena em 2026-07-29, com a medição que
+  // o motivo antigo dizia faltar. Não era SMTP nem regressão do /auth/v1/verify:
+  // o portão cobrava um MECANISMO — a página de reset não podia conter
+  // `supabase.auth.updateUser` —, e a página contém, de propósito, desde o
+  // conserto do "abre mas não pede a senha nova".
+  //
+  // Medido no projeto de homologação pozbrcsfthnhmnebfoxv com usuário descartável
+  // `pwd-` e DUAS sessões vivas: a troca pelo caminho do navegador leva as duas
+  // sessões antigas de GET /auth/v1/user = 200 para 403 e o refresh_token de 200
+  // para 400 SEM nenhum signOut — o provedor revoga sozinho, e a suspeita de
+  // "senha muda e o invasor continua dentro" está REFUTADA. O que sobrava vivo
+  // era a sessão de RECUPERAÇÃO (GET = 200 depois da troca, ~1 h de validade), e
+  // a resposta da rota era descartada com um catch vazio: troca sem registro e
+  // sem revogação, em silêncio. Também medido: a política do provedor é só
+  // "at least 6 characters" — "aaaaaa", "abc123", "12345678" e "senhasimples"
+  // foram ACEITAS (HTTP 200) —, então 12/128/3 só existe no código do Atlas.
+  //
+  // O portão foi REAPONTADO para as propriedades (resposta não engolida,
+  // revogação explícita, política antes do provedor, cookie de intenção mantido
+  // na rota, troca registrada) e reprovava a situação de HOJE antes do conserto.
+  // Contrato: tests/contracts/troca-de-senha-nao-e-silenciosa.test.mjs, com 3
+  // mutantes provando os dois lados.
+  // `conversational-qualification:check` SAIU da quarentena em 2026-07-29. O
+  // motivo antigo ("cobra 'UMA PERGUNTA POR VEZ' na tela; agentes já tentaram
+  // satisfazer EDITANDO O PRODUTO") descrevia certo o RISCO e errado a CAUSA — e
+  // a recusa do dono estava certíssima: editar a tela nunca era o conserto.
+  // As 3 frases em caixa alta ("UMA PERGUNTA POR VEZ", "CORRETOR CONFIRMA",
+  // "CONVERSA BRUTA: ZERO") eram três `<AtlasBadge>` de um hero de marketing.
+  // `git log -S` mede: entraram em 62cabe58 (entrega da Fase 86) e saíram em
+  // 2c059a79, apagadas DE PROPÓSITO a pedido literal do dono ("essa parte
+  // intuitiva de facil preenchimento") porque o hero empurrava a pergunta para
+  // baixo da dobra no mobile. A tela está byte a byte idêntica ao HEAD. O
+  // COMPORTAMENTO nunca saiu; saiu o cartaz que o anunciava — e o requisito
+  // continua ESCRITO em docs/STRUCTURED_CONVERSATIONAL_QUALIFICATION_PHASE_86.md,
+  // então não era requisito inventado por agente: era requisito de
+  // COMPORTAMENTO medido por COPY.
+  // Reapontado para as propriedades: 30 controles (eram 24), com a pergunta
+  // única, a resposta controlada e a ausência de texto livre cobradas na REGIÃO
+  // do código. Contrato executável em tests/contracts/uma-pergunta-por-vez.test.mjs
+  // (15 testes, 256 estados de perfil, os dois lados de cada regra) e 7 mutações
+  // (M78–M82, M87–M88) provando que a guarda não é decorativa. Duas cegueiras do
+  // reapontamento foram achadas ANTES de fechar, quebrando o produto de
+  // propósito numa cópia: `disabled` procurado no arquivo inteiro passava com um
+  // dos DOIS gatilhos de escrita desarmado, e a ordem de duas ocorrências casava
+  // o prefixo de um `QUALIFICATION_INVALID_X` inalcançável.
   // `reactivation-governance:check` SAIU da quarentena em 2026-07-29. O motivo
   // antigo ("AMBIENTE — declara official_whatsapp_api_missing; o WhatsApp está
   // NOT_VERIFIED") estava simplesmente ERRADO: executado, o portão não toca
@@ -74,8 +129,38 @@ const QUARENTENA = {
   // confrontados com os números que ela devolve, e a simulação é obrigada a não
   // escrever. 29 propriedades verdes, 5 mutações reprovadas para provar o outro
   // lado. O grão fino virou contrato: tests/contracts/reativacao-consentida.test.mjs.
-  "cc23:check":
-    "EM CORREÇÃO — 26 controles passam, 4 falham no check-cc23-foundation.",
+  // `cc23:check` SAIU da quarentena em 2026-07-29. O motivo antigo ("26 controles
+  // passam, 4 falham") era verdadeiro no número e ENGANOSO na causa: nenhuma das 4
+  // falhas era do CC23. O check definia a camada como `css.slice(inicioCC23)` — do
+  // marcador até o FIM DO ARQUIVO. Quando nasceu, o CC23 era a última coisa do
+  // globals.css, então "do marcador ao EOF" e "o bloco CC23" eram a MESMA string.
+  // Depois entraram 1.988 linhas de features vizinhas (TEMA CLARO, LÂMINA DO LEAD
+  // 360, RAIL DA SIDEBAR) e passaram a responder pelas regras do CC23 por acidente
+  // de POSIÇÃO NO ARQUIVO. Medido, uma a uma: caso 15 acusava `backdrop-filter:
+  // blur` (L9940/L9987 — outra propriedade: desfoca o FUNDO, não o elemento, e é a
+  // linguagem de vidro em 20 pontos do produto); casos 17/19 acusavam `.atlas-lamina-*`,
+  // `.atlas-rail-*` e `.atlas-kanban-filtro-dono`; e o caso 18 reprovava um
+  // `@media (prefers-reduced-motion: reduce)` (L10266) por não ter `pointer: fine` —
+  // punindo o REMÉDIO de acessibilidade que ele próprio existe para cobrar.
+  // Dentro do bloco CC23 (L8123-8301) as quatro propriedades sempre valeram.
+  // Estender as regras ao arquivo inteiro não era opção (antes do CC23 há 428 hex
+  // literais, 103 movimentos soltos e 9 `filter: blur`) e o CC23 é declaradamente
+  // ADITIVO. Reapontado para a PROPRIEDADE: região derivada dos banners e pregada
+  // pelos DOIS lados — nenhum seletor .cc23-* fora dela (caso 12c), nenhum seletor
+  // estranho dentro (caso 12d, que é o que pega a deriva na raiz). 35 controles
+  // verdes (eram 30), 12 mutações mortas provando os dois lados, e a região virou
+  // módulo (scripts/lib/cc23-regiao.mjs) com contrato
+  // (tests/contracts/regiao-do-cc23.test.mjs) porque `scripts/mutacoes.mjs` só roda
+  // `test:contracts` — sem isso, a lógica que já apodreceu uma vez seguia sem rede.
+  // Este é vermelho POR ESTAR CERTO, e o vermelho é do AMBIENTE, não do código.
+  // Medido em 2026-07-30: ATLAS_ENV=production, ATLAS_BASE_URL=atlasaios.com.br
+  // (produção) e banco = atlas-v3-homologacao. Três verdades sobre o mesmo fato,
+  // duas erradas — e é essa mistura que faz o `test:real` medir um ambiente e
+  // validar contra outro, APROVANDO. Já está encadeado como PRIMEIRO passo do
+  // `test:real`, justamente para a suíte ponta a ponta se recusar a aprovar sem
+  // sentido. Fecha quando o dono ajustar o `.env.local`, que é ambiente dele.
+  "coerencia-ambiente:check":
+    "EM CORREÇÃO — reprova a incoerência REAL do ambiente: ATLAS_ENV=production com banco de homologação e URL de produção. O conserto é no .env do dono; afrouxar o portão devolveria o `test:real` que aprova sem provar.",
   "release:check":
     "AGREGADO — soma outros portões; o vermelho vem de dentro e já é contado aqui. Contá-lo de novo mascararia o número.",
   "v1-v2:check": "AGREGADO — mesmo caso de release:check.",
