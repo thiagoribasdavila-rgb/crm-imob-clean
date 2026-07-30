@@ -1538,6 +1538,49 @@ with (security_invoker = true) as`,
   // voltam quando a oferta ativa voltar, com as quatro correcoes nomeadas no
   // stash. As propriedades eram: o recorte do acervo em crm/leads nao esconder
   // lead arquivada, e a fila "sem dono" da lideranca nao engolir o acervo.
+
+  // ── AS QUATRO ENTREGAS DE 2026-07-30 ENTRAM NA REDE ───────────────────────
+  //
+  // Cada uma foi provada por mutacao DIRIGIDA, feita a mao na hora do conserto.
+  // Isso prova o contrato naquele instante e nao protege nada depois: mutacao
+  // que nao esta aqui nao roda de novo, e o contrato pode ser afrouxado por
+  // qualquer refatoracao sem que o placar mude.
+  {
+    id: "M164", arquivo: "lib/compat/payload-de-lead.ts",
+    quebra: "PATCH parcial volta a apagar o e-mail da lead",
+    dor: "Era o estado real ate 2026-07-30, medido executando contra lead de verdade: `email: \"…\" → null`. Salvar SO o bairro apagava tambem nome, telefone e origem — os quatro campos pelos quais o corretor alcanca a pessoa. E a captura de resposta decisiva, que grava um campo por vez, depende disso: sem a guarda ela destroi a lead que acabou de qualificar.",
+    de: `  const email = sent("email")
+    ? (typeof body.email === "string" && body.email.trim() ? body.email.trim().toLowerCase() : null)
+    : textoAtual(currentLead.email)?.toLowerCase() ?? null;`,
+    para: `  const email = typeof body.email === "string" && body.email.trim() ? body.email.trim().toLowerCase() : null;`,
+  },
+  {
+    id: "M165", arquivo: "lib/compat/legacy-v2.ts",
+    quebra: "lista VAZIA volta a vencer a coluna que tem o bairro declarado",
+    dor: "`first` pula null mas nao pula `[]`. Medido: `preferred_regions` e array VAZIO nas 482 leads e nunca null, entao ela ganhava sempre e as 7 pessoas que declararam bairro apareciam como se nao tivessem declarado nada. A ficha mandava o corretor perguntar de novo o que o cliente ja tinha dito — na mesma tela em que o painel de compatibilidade, que le a coluna certa, dizia o contrario.",
+    de: `    preferred_regions: primeiraListaComConteudo(
+      row,
+      "preferred_regions",
+      "preferred_neighborhoods",
+      "region",
+      "neighborhood",
+    ),`,
+    para: `    preferred_regions: stringList(first(row, "preferred_regions", "preferred_neighborhoods", "region", "neighborhood")),`,
+  },
+  {
+    id: "M166", arquivo: "lib/integrations/agendador-parado.ts",
+    quebra: "o detector passa a acusar agendador parado sem exigir item NUNCA tentado",
+    dor: "Item velho JA tentado e worker que acorda e falha — outro problema, outro conserto. Acusar 'agendador parado' nesse caso manda a pessoa reinstalar cron para um defeito que nao e de cron, e foi exatamente a distincao que custou horas para achar: 6 itens `delivered` com attempts=1 conviviam com 2 `pending` com attempts=0, e so os segundos provavam a pane.",
+    de: `    agendadorParadoProvavel: nuncaTentadas > 0 && (maisAntigaHoras ?? 0) >= HORAS_PARA_SUSPEITAR,`,
+    para: `    agendadorParadoProvavel: (maisAntigaHoras ?? 0) >= HORAS_PARA_SUSPEITAR,`,
+  },
+  {
+    id: "M167", arquivo: "lib/crm/escrita-de-regra-de-comissao.ts",
+    quebra: "o premio passa a disputar os 100% da comissao",
+    dor: "Premio vem da incorporadora, por unidade, em outra data e outro extrato — nao sai da comissao. Somando junto, a regra COMUM (rateio fechado em 100% mais premio) passa a ser recusada, e o diretor tem de mentir num dos dois campos para conseguir gravar. E o rateio exibido fica maior do que e, quebrando a conferencia com o parceiro no fim do mes.",
+    de: `  if (arredondarPct(soma) > 100) {`,
+    para: `  if (arredondarPct(soma + (finito(entrada.premioValor) ? entrada.premioValor : 0)) > 100) {`,
+  },
 ];
 
 const copia = mkdtempSync(path.join(tmpdir(), "atlas-mut-"));
