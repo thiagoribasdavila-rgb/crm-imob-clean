@@ -129,6 +129,34 @@ export async function GET(request: Request, context: RouteContext) {
       logger.warn("lead.proposals.read_failed", { leadId: id, code: propostas.error.code });
     }
 
+    /**
+     * ── OS EVENTOS DE CAMPANHA ERAM DESCARTADOS ────────────────────────────
+     *
+     * `campaignEvents: []` estava cravado no perfil unificado — três linhas abaixo
+     * do comentário que diz "zero em cima de ausência é o erro que esta rota já
+     * cometia". A lição estava escrita e o defeito logo ali.
+     *
+     * Medido em 2026-07-30: `campaign_events` tem 24 linhas, TODAS com `lead_id`
+     * — 21 sinais de qualificação e 3 de criação. Não era ausência de dado: era
+     * dado real jogado fora antes de chegar na tela.
+     *
+     * Relação ausente degrada para lista vazia com aviso, como as outras leituras
+     * desta rota — o que não pode acontecer é o zero silencioso voltar.
+     */
+    const eventosDeCampanha = await admin
+      .from("campaign_events")
+      .select("id,campaign_id,event_type,source,value,currency,occurred_at,created_at")
+      .eq("lead_id", id)
+      .eq("organization_id", identity.organizationId)
+      .order("occurred_at", { ascending: false, nullsFirst: false })
+      .limit(50);
+    const campanhaMensuravel =
+      !eventosDeCampanha.error
+      || !(isMissingColumn(eventosDeCampanha.error) || isMissingRelation(eventosDeCampanha.error));
+    if (eventosDeCampanha.error && campanhaMensuravel) {
+      logger.warn("lead.campaign_events.read_failed", { leadId: id, code: eventosDeCampanha.error.code });
+    }
+
     // Reserva pendente de aceite (fase 58). Relação ausente não derruba a ficha.
     const reserva = await admin
       .from("lead_assignment_reservations")
@@ -202,7 +230,9 @@ export async function GET(request: Request, context: RouteContext) {
       unifiedProfile: {
         conversations: [],
         tasks,
-        campaignEvents: [],
+        campaignEvents: eventosDeCampanha.data ?? [],
+        /** `false` = a leitura FALHOU. Lista vazia com isto `true` é ausência de verdade. */
+        campaignEventsMensuraveis: campanhaMensuravel,
         historicalMemories: [],
         sources: ["CRM", ...(lead.import_batch_id ? ["Base histórica"] : []), ...(activities.length ? ["Histórico comercial"] : [])],
       },
@@ -211,7 +241,9 @@ export async function GET(request: Request, context: RouteContext) {
         development: project,
         campaign: null,
         communications: { conversations: 0, messages: 0, inbound: 0, outbound: 0, unread: 0, channels: [], lastMessageAt: null },
-        origin: { source: lead.source || "Não informada", createdAt: lead.created_at || null, campaignEvents: 0, historicalMemories: lead.import_batch_id ? 1 : 0 },
+        // A contagem também era zero cravado — e é ela que a tela mostra no
+        // resumo de origem, ao lado da lista.
+        origin: { source: lead.source || "Não informada", createdAt: lead.created_at || null, campaignEvents: (eventosDeCampanha.data ?? []).length, historicalMemories: lead.import_batch_id ? 1 : 0 },
       },
       dataQuality: {
         completeness: completeness.completeness,
