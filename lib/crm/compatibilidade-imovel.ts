@@ -1091,7 +1091,33 @@ export function recomendarPara(
       });
     }
   }
-  perguntas.sort((a, b) => Number(b.decisivo) - Number(a.decisivo) || b.peso - a.peso);
+  /**
+   * ── A PERGUNTA VEM POR DESTRAVE, NÃO POR PESO ─────────────────────────────
+   *
+   * `destravaOfertas` já era calculado acima e era JOGADO FORA na ordenação, que
+   * usava só `decisivo` e `peso`. Medido no catálogo vivo em 2026-07-30:
+   *
+   *   "Qual faixa de valor você considera?" .... peso 25 · destrava 1 oferta
+   *   "Em quais bairros você quer morar?" ...... peso 18 · destrava 4 ofertas
+   *
+   * Preço tem preço cadastrado em 1 de 4 empreendimentos; bairro, em 4 de 4. Com
+   * a ordem por peso, o corretor gastava o único toque da ligação na pergunta de
+   * MENOR rendimento — e das 4 ofertas, 3 nem teriam preço com que comparar a
+   * resposta que ele acabou de arrancar do cliente.
+   *
+   * Peso continua no critério de desempate: entre duas perguntas que destravam a
+   * mesma quantidade, a mais pesada decide mais da nota.
+   *
+   * `lacunas` NÃO muda. Ela é a fila de cadastro do diretor, e ali `peso` é o
+   * critério certo: preencher o campo de maior peso melhora a nota de todas as
+   * ofertas, enquanto `ofertasAfetadas` só diz em quantas ele está faltando.
+   */
+  perguntas.sort(
+    (a, b) =>
+      Number(b.decisivo) - Number(a.decisivo) ||
+      b.destravaOfertas - a.destravaOfertas ||
+      b.peso - a.peso,
+  );
   lacunas.sort((a, b) => Number(b.decisivo) - Number(a.decisivo) || b.peso - a.peso);
 
   const top = avaliaveis.slice(0, quantos);
