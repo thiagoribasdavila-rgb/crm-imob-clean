@@ -132,11 +132,44 @@ const rota = fs.readFileSync(
 test("a rota usa a regra compartilhada e aplica o piso de carteira nos DOIS verbos", () => {
   assert.match(rota, /avaliarCobrancaDeValor/, "a leitura precisa CHAMAR a regra, não reimplementá-la");
   assert.match(rota, /valorDaVendaAceitavel/, "a escrita precisa validar pela regra compartilhada");
-  // O piso importa mais aqui que em qualquer outra rota: valor de venda é a base
-  // da comissão. Informar o valor da venda de um colega mexe no dinheiro dele.
-  const ocorrencias = [...rota.matchAll(/estaNaMinhaCarteira/g)].length;
-  assert.ok(ocorrencias >= 4, `o piso aparece ${ocorrencias} vezes; GET e POST precisam dos dois ids cada`);
-  assert.match(rota, /VENDA_FORA_DA_CARTEIRA/, "a recusa precisa ter código próprio, não cair no genérico");
+  /**
+   * O piso importa mais aqui que em qualquer outra rota: valor de venda é a base
+   * da comissão. Informar o valor da venda de um colega mexe no dinheiro dele.
+   *
+   * ── A PRIMEIRA VERSÃO DESTA ASSERÇÃO NÃO PEGAVA NADA ──────────────────────
+   *
+   * Ela contava ocorrências de `estaNaMinhaCarteira` (`>= 4`). A mutação M99
+   * trocou `if (!leLiderancaInteira(...) && !daMinhaCarteira) {` por `if (false) {`
+   * e SOBREVIVEU: o identificador continuava nas linhas que CALCULAM
+   * `daMinhaCarteira`, então a contagem seguia em 4 com a trava desligada.
+   *
+   * É a terceira vez que esta classe morde nesta sessão — a mesma de M49, onde o
+   * identificador sobrevivia na linha do `import`. Contar ocorrência prova que a
+   * palavra existe; nunca que a DECISÃO acontece.
+   *
+   * Agora a asserção casa a CONDIÇÃO que recusa, dentro da região do POST, e
+   * proíbe a forma neutralizada. Ancorada na região e não na linha, porque
+   * asserção presa a formatação quebra no primeiro reflow.
+   */
+  const inicioDoPost = rota.indexOf("export async function POST");
+  assert.ok(inicioDoPost > 0, "sem o POST não há escrita para proteger");
+  const regiaoDoPost = rota.slice(inicioDoPost);
+
+  assert.match(
+    regiaoDoPost,
+    /if\s*\(\s*!\s*leLiderancaInteira\([^)]*\)\s*&&\s*!\s*daMinhaCarteira\s*\)/,
+    "o POST precisa RECUSAR quem não é liderança nem dono — a condição, não a menção",
+  );
+  assert.doesNotMatch(
+    regiaoDoPost,
+    /if\s*\(\s*(false|0)\s*\)/,
+    "a trava do POST foi neutralizada: `if (false)` deixa qualquer corretor informar o valor da venda de um colega",
+  );
+  assert.match(regiaoDoPost, /VENDA_FORA_DA_CARTEIRA/, "a recusa precisa ter código próprio, não cair no genérico");
+  // E o GET também recorta — os dois verbos, cada um com as duas formas de id.
+  const regiaoDoGet = rota.slice(rota.indexOf("export async function GET"), inicioDoPost);
+  assert.match(regiaoDoGet, /estaNaMinhaCarteira\([^)]*profile\.id/, "o GET filtra pelo id do perfil");
+  assert.match(regiaoDoGet, /estaNaMinhaCarteira\([^)]*user\.id/, "e também pelo id do auth — as duas formas");
 });
 
 test("falha de leitura não vira 'nenhuma venda pendente'", () => {
