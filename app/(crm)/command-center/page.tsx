@@ -24,6 +24,7 @@ import { CampaignApprovalsPanel } from "@/components/atlas/CampaignApprovalsPane
 import { OfertaAtivaDoAcervoPanel } from "@/components/atlas/OfertaAtivaDoAcervoPanel";
 import { ProactiveNudgesPanel } from "@/components/atlas/ProactiveNudgesPanel";
 import { VendasSemValorPanel } from "@/components/atlas/VendasSemValorPanel";
+import { SalaDeComandoPanel } from "@/components/atlas/SalaDeComandoPanel";
 import {
   AtlasBadge,
   AtlasEmpty,
@@ -3067,6 +3068,17 @@ export default function CommandCenterPage() {
         diretor com card vazio treina a pessoa a ignorar o lugar onde a cobrança
         aparece.
       */}
+      {/*
+        SALA DE COMANDO — os seis indicadores e o funil, medidos.
+
+        Vem ANTES do resto de proposito: e o que o diretor le nos primeiros cinco
+        segundos. E ele nao imprime taxa de conversao com uma venda de amostra —
+        mostra a contagem e diz por que ainda nao e taxa.
+      */}
+      <section aria-label="Sala de comando">
+        <SalaDeComandoPanel />
+      </section>
+
       <section aria-label="Vendas fechadas sem valor informado" className="cc5-reveal" style={{ animationDelay: "160ms" }}>
         <VendasSemValorPanel />
       </section>
