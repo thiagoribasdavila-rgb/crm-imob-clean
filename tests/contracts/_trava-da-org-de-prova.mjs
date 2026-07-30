@@ -41,6 +41,36 @@ import { join } from "node:path";
 const VALIDADE_MS = 15 * 60_000;
 
 /**
+ * ── POR QUE ESPERAR, E NÃO PULAR DE CARA ────────────────────────────────────
+ *
+ * A primeira versão desistia na hora. Entre duas SESSÕES isso é correto: a outra
+ * rodada mede o mesmo arquivo, então a propriedade continua coberta.
+ *
+ * Entre dois ARQUIVOS diferentes da mesma suíte, não é. `test:contracts` roda
+ * `node --test tests/contracts/*.test.mjs`, que executa os arquivos em processos
+ * PARALELOS: se dois deles pegassem esta trava, um nunca seria medido em rodada
+ * nenhuma — e a suíte ficaria verde justamente por não ter olhado. Trocar colisão
+ * por cegueira não é conserto.
+ *
+ * Hoje só `grafo-de-receita` a usa. `oferta-ativa-do-acervo` divide a mesma
+ * organização de prova e NÃO a pega — medido em 2026-07-30, ele não colide: cria
+ * leads `perdido`/`novo`/`contato` e `ganhos_rotulados` conta `outcome = 'won'`,
+ * enquanto as outras contagens do grafo já vão carimbadas com o PID. Quando
+ * aquela entrega assentar e adotar a trava, é a espera que torna a adoção segura.
+ *
+ * Esperar serve aos dois casos: quem chega depois roda em seguida, medido. A
+ * desistência sobra para o que ela sempre foi, o caso extremo em que a espera
+ * estourou.
+ *
+ * `Atomics.wait` porque a aquisição acontece no topo do módulo, antes de existir
+ * contexto assíncrono — é a única pausa síncrona que não queima CPU.
+ */
+const ESPERA_MAXIMA_MS = 120_000;
+const INTERVALO_MS = 250;
+const dormir = (ms) =>
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/**
  * ── POR QUE A TRAVA GUARDA O PID DO DONO ────────────────────────────────────
  *
  * Pular porque OUTRA rodada está medindo é legítimo: a propriedade continua
@@ -88,7 +118,22 @@ export function tentarTravar(chave) {
     }
   };
 
-  if (!tentar()) {
+  const limite = Date.now() + ESPERA_MAXIMA_MS;
+  let retomadas = 0;
+
+  while (!tentar()) {
+    if (Date.now() >= limite) {
+      return {
+        travou: false,
+        motivo:
+          `NÃO EXECUTADO — a organização de prova (${chave}) seguiu ocupada depois de ` +
+          `${Math.round(ESPERA_MAXIMA_MS / 1000)}s de espera. Contagens agregadas sobre ` +
+          `organização compartilhada não sobrevivem a duas fixtures simultâneas, e falso ` +
+          `vermelho custa o portão.`,
+        soltar: () => {},
+      };
+    }
+
     const vivo = donoVivo(caminho);
     // Trava órfã de processo morto não pode bloquear para sempre — mas remover
     // trava VIVA devolveria a colisão. Idade é a rede secundária, para quando o
@@ -99,29 +144,21 @@ export function tentarTravar(chave) {
     } catch {
       idade = VALIDADE_MS + 1; // sumiu entre as duas chamadas: tenta de novo
     }
-    if (vivo === true || (vivo === null && idade <= VALIDADE_MS)) {
-      return {
-        travou: false,
-        motivo:
-          `NÃO EXECUTADO — outra rodada detém a organização de prova (${chave}) há ` +
-          `${Math.round(idade / 1000)}s. Contagens agregadas sobre organização ` +
-          `compartilhada não sobrevivem a duas fixtures simultâneas, e falso ` +
-          `vermelho custa o portão. A propriedade está sendo medida pela outra rodada.`,
-        soltar: () => {},
-      };
+
+    // Dono morto: retomar AGORA, sem gastar a espera. O teto de 3 existe para
+    // que uma remoção que nunca funciona (permissão, disco) caia na espera em vez
+    // de girar a CPU até o prazo.
+    if ((vivo === false || (vivo === null && idade > VALIDADE_MS)) && retomadas < 3) {
+      retomadas += 1;
+      try {
+        rmSync(caminho, { recursive: true, force: true });
+      } catch {
+        /* outra rodada ganhou a corrida da limpeza: o tentar() acima decide */
+      }
+      continue;
     }
-    try {
-      rmSync(caminho, { recursive: true, force: true });
-    } catch {
-      /* outra rodada ganhou a corrida da limpeza: o tentar() abaixo decide */
-    }
-    if (!tentar()) {
-      return {
-        travou: false,
-        motivo: `NÃO EXECUTADO — a trava de ${chave} foi retomada por outra rodada.`,
-        soltar: () => {},
-      };
-    }
+
+    dormir(INTERVALO_MS);
   }
 
   let solto = false;
