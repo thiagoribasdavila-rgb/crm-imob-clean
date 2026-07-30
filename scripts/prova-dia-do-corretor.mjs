@@ -152,12 +152,39 @@ try {
   ok(vendida?.status === "ganho" && Number(vendida?.sale_value_brl) === 612000, "e o valor apurado ficou gravado", String(vendida?.sale_value_brl));
 
   // ── 9. O ciclo devolve para a Meta ────────────────────────────────────────
-  const worker = await fetch(`${APP}/api/v2/marketing/capi-feedback/process`, { method: "POST" });
-  const jw = await worker.json().catch(() => ({}));
-  ok((jw.eventosEnviados ?? 0) > 0, "a venda volta para a Meta como conversão", `enviados=${jw.eventosEnviados}`);
-  const { data: eventos } = await admin.from("meta_conversion_events").select("event_name").eq("lead_id", principal);
-  ok((eventos ?? []).some((e) => e.event_name === "Purchase"), "e fica registrada como Purchase no CRM",
-    (eventos ?? []).map((e) => e.event_name).join(", ") || "nenhum");
+  /**
+   * O WORKER EXIGE O SEGREDO DE CRON, e esta prova não mandava.
+   *
+   * `/api/v2/marketing/capi-feedback/process` era aberto — qualquer um disparava o
+   * processamento da fila da CAPI. Foi fechado em 2026-07-30 com `ATLAS_CRON_SECRET`,
+   * e esta chamada ficou para trás: passou a levar 401 e a prova reprovava com
+   * `enviados=undefined`, como se o ciclo com a Meta estivesse quebrado. Não estava
+   * — era a prova que a correção de segurança tornou obsoleta, e ninguém percebeu
+   * porque ela não foi executada depois do conserto.
+   *
+   * Sem o segredo no ambiente o passo declara NÃO EXECUTADO em vez de reprovar:
+   * falso vermelho ensina a ignorar a prova, e prova ignorada não protege nada.
+   */
+  const segredoDeCron = process.env.ATLAS_CRON_SECRET;
+  if (!segredoDeCron) {
+    console.log("  ﹣ NÃO EXECUTADO — o ciclo com a Meta exige ATLAS_CRON_SECRET no ambiente");
+  } else {
+    const worker = await fetch(`${APP}/api/v2/marketing/capi-feedback/process`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${segredoDeCron}` },
+    });
+    const jw = await worker.json().catch(() => ({}));
+    ok(
+      (jw.eventosEnviados ?? 0) > 0,
+      "a venda volta para a Meta como conversão",
+      worker.status === 401
+        ? "401 — o segredo do ambiente não confere com o que a app carregou"
+        : `enviados=${jw.eventosEnviados}`,
+    );
+    const { data: eventos } = await admin.from("meta_conversion_events").select("event_name").eq("lead_id", principal);
+    ok((eventos ?? []).some((e) => e.event_name === "Purchase"), "e fica registrada como Purchase no CRM",
+      (eventos ?? []).map((e) => e.event_name).join(", ") || "nenhum");
+  }
 } finally {
   for (const id of criado.leads) {
     await admin.from("meta_conversion_events").delete().eq("lead_id", id);
