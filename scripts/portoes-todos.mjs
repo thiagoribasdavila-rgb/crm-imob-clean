@@ -175,6 +175,40 @@ for (const [nome, motivo] of Object.entries(QUARENTENA)) {
 }
 
 const scripts = JSON.parse(readFileSync("package.json", "utf8")).scripts;
+
+/**
+ * O COMPILADOR VEM ANTES DE TUDO — e esta linha existe por um defeito medido.
+ *
+ * Em 2026-07-30 o build estava QUEBRADO com TS2307 (três imports apontando para
+ * módulos que tinham ido para o `git stash`) e este agregado devolveu
+ * **218/218 portões verdes**. Eu rodava `test:contracts` + `portoes:todos`, via
+ * tudo verde, e chamava de verificado.
+ *
+ * O erro não foi o import pendurado: foi a régua. Portão de CONTEÚDO casa texto
+ * no fonte — ele mede um programa que não compila com a mesma satisfação com que
+ * mede um que compila. Import pendurado não aparece em contrato nem em `*:check`;
+ * aparece só aqui. Quem pegou, por acidente, foi o `daily:check`, ao lintar um
+ * arquivo alterado.
+ *
+ * Falha RÁPIDO de propósito: rodar 218 portões sobre código que não compila gasta
+ * um minuto para produzir um número que mente. `release:prebuild-check` já
+ * chamava `typecheck`; o problema era este agregado ser usado sozinho como prova.
+ */
+try {
+  execFileSync("npm", ["run", "--silent", "typecheck"], { stdio: "pipe", timeout: 300_000, maxBuffer: 8e6 });
+} catch (erro) {
+  const saida = `${erro.stdout || ""}\n${erro.stderr || ""}`;
+  const primeiras = saida.split("\n").filter((l) => /error TS\d+/.test(l)).slice(0, 5);
+  console.error("PORTÕES: NÃO EXECUTADOS — o código não compila.\n");
+  for (const l of primeiras) console.error(`  ✗ ${l.trim()}`);
+  console.error(
+    "\nPortão de conteúdo casa texto no fonte: ele aprovaria isto. Import pendurado" +
+      "\nnão aparece em contrato nem em `*:check` — só no compilador. Conserte o tipo" +
+      "\nantes de medir o resto, ou o número que sair daqui é uma mentira verde.",
+  );
+  process.exit(1);
+}
+
 const todos = Object.keys(scripts).filter((k) => k.endsWith(":check"));
 
 /**
