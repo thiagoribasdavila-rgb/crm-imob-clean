@@ -71,6 +71,12 @@ const nextConfig: NextConfig = {
     ATLAS_BUILD_COMMIT: process.env.ATLAS_BUILD_COMMIT ?? "",
     ATLAS_BUILD_BRANCH: process.env.ATLAS_BUILD_BRANCH ?? "",
     ATLAS_BUILD_TIME: process.env.ATLAS_BUILD_TIME ?? "",
+    // Esta faltava. O `build.mjs` calculava o topo das migrations e o punha em
+    // process.env, mas sem a linha abaixo o valor morria no build: a rota
+    // recebia null e dizia "não dá para comparar" para sempre. Só apareceu ao
+    // rodar um build de verdade e conferir a resposta do servidor construído —
+    // ler o código dos dois arquivos não teria mostrado a lacuna entre eles.
+    ATLAS_BUILD_MIGRATIONS: process.env.ATLAS_BUILD_MIGRATIONS ?? "",
   },
   async headers() {
     return [

@@ -47,6 +47,8 @@ const QUARENTENA = {
   // errado convence, e foi por isso que o defeito de rótulo ficou invisível.
   "database:connection:check":
     "AMBIENTE — recusado no crivo de rótulo antes de tentar conectar: .env.local traz ATLAS_ENV=production e ATLAS_DATABASE_ENVIRONMENT com uma connection string onde o código espera o rótulo 'homologation'. Atrás disso há um segundo bloqueio real: não existe connection string usável nesta máquina (a única do repositório está em .env.hostinger, com senha [YOUR-PASSWORD] e apontando para o projeto de PRODUÇÃO). Medido em 2026-07-29: sai 2 (NÃO EXECUTADO) nos dois casos e 1 quando conecta e falha. Roda no deploy.",
+  "commit-publicado:check":
+    "AMBIENTE — precisa alcançar a produção para comparar o commit aprovado com o que está no ar. Existe porque em 2026-07-30 a auditoria precisou DEDUZIR a versão publicada pela ausência de uma chave na resposta, e a conclusão medida foi que quatro correções daquele dia não estavam no servidor. Correção publicada no git e ausente em produção é correção que todo mundo ACHA que existe. Sem alcançar a produção sai NÃO EXECUTADO, nunca verde. Roda depois do deploy.",
   "rpc-escalacao:check":
     "AMBIENTE — precisa de DATABASE_URL para consultar pg_proc e os GRANTs de função. Existe porque em 2026-07-30 uma escalação de privilégio foi REPRODUZIDA em produção: `distribute_project_leads` é SECURITY DEFINER, tinha EXECUTE para `authenticated` e nunca comparava `p_actor_id` com `auth.uid()` — um corretor executava a rotina de distribuição passando o UUID do diretor. Foi regressão VERSIONADA (uma migration revogou, outra seis dias depois reconcedeu) e nenhum dos 220 portões pegou, porque nenhum olhava GRANT de função. Roda no deploy.",
   "rls-cerca:check":

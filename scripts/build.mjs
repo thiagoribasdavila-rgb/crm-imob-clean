@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { legacyRoutePaths } from "./legacy-route-paths.mjs";
 import { createRouteQuarantine } from "./route-quarantine.mjs";
@@ -31,10 +31,39 @@ function descobrirProcedencia() {
     const valor = r.status === 0 ? String(r.stdout || "").trim() : "";
     return valor || null;
   };
+  /**
+   * O TOPO DAS MIGRATIONS DO REPOSITÓRIO.
+   *
+   * Sozinho não diz nada; o valor está na COMPARAÇÃO com o que o banco reporta
+   * (`public.estado_das_migrations()`). Medido em 2026-07-31: 218 aplicadas no
+   * banco contra 173 arquivos no repositório — o banco tem coisa que o repo não
+   * reproduz, e é essa divergência que a prontidão passa a publicar em vez de
+   * deixar para alguém descobrir num deploy.
+   */
+  let topoDeMigration = null;
+  try {
+    const dir = resolve(root, "supabase/migrations");
+    if (existsSync(dir)) {
+      // Compara por NOME, nunca por versão. O banco grava `version` como o
+      // carimbo de QUANDO aplicou, não o prefixo do arquivo: medido em
+      // 2026-07-31, o arquivo 20260731020000_estado_das_migrations_para_prontidao
+      // virou a linha 20260731013305 no banco. Comparar números daria falso
+      // vermelho PERMANENTE — e portão que grita sempre ensina a ser ignorado.
+      topoDeMigration = readdirSync(dir)
+        .filter((f) => f.endsWith(".sql"))
+        .map((f) => f.replace(/^\d+_/, "").replace(/\.sql$/, ""))
+        .sort()
+        .join(",");
+    }
+  } catch {
+    topoDeMigration = null; // ausência declarada; a rota diz "não medido"
+  }
+
   const procedencia = {
     ATLAS_BUILD_COMMIT: process.env.ATLAS_BUILD_COMMIT || gitOu(["rev-parse", "HEAD"]),
     ATLAS_BUILD_BRANCH: process.env.ATLAS_BUILD_BRANCH || gitOu(["rev-parse", "--abbrev-ref", "HEAD"]),
     ATLAS_BUILD_TIME: process.env.ATLAS_BUILD_TIME || new Date().toISOString(),
+    ATLAS_BUILD_MIGRATIONS: process.env.ATLAS_BUILD_MIGRATIONS || topoDeMigration,
   };
   // Árvore suja significa que o que está no ar não corresponde a NENHUM commit —
   // e é exatamente essa a situação que faz a pergunta "qual versão está no ar?"

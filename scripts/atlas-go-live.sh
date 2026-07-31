@@ -140,9 +140,47 @@ done
 if [ "${#MISSING[@]}" -gt 0 ]; then
   die "variáveis obrigatórias ausentes/vazias no .env: ${MISSING[*]}"
 fi
+
+# ── PLACEHOLDER PASSA POR "PREENCHIDA" ──────────────────────────────────────
+#
+# O laço acima usa `^${var}=.+`, que aceita QUALQUER conteúdo não vazio. Medido em
+# 2026-07-30 no `.env.hostinger` do repositório: META_APP_SECRET com 9 caracteres
+# casando ^[A-Z_]+$ — um placeholder — e WHATSAPP_ACCESS_TOKEN vazio.
+#
+# Provado assinando o mesmo payload contra /api/webhooks/meta em produção:
+# placeholder → HTTP 401 invalid_signature; segredo real de 32 chars → HTTP 200.
+#
+# Publicar com placeholder derruba a ingestão da Meta EM SILÊNCIO: o webhook
+# continua respondendo, só passa a rejeitar tudo. Por isso este bloco MATA o
+# deploy em vez de avisar — a Fase 1 exige "bloquear deploy quando houver
+# placeholder, variável vazia ou formato inválido", e aviso não bloqueia nada.
+CREDENCIAIS_CRITICAS="META_APP_SECRET WHATSAPP_ACCESS_TOKEN SUPABASE_SERVICE_ROLE_KEY ATLAS_CRON_SECRET OPENAI_API_KEY"
+SUSPEITAS=()
+for var in $CREDENCIAIS_CRITICAS; do
+  linha=$(grep "^${var}=" "$APPDIR/.env" 2>/dev/null || true)
+  [ -z "$linha" ] && continue          # ausente já é tratado no laço acima
+  val=$(printf '%s' "$linha" | cut -d= -f2-)
+  n=${#val}
+  if [ "$n" -eq 0 ]; then
+    SUSPEITAS+=("$var (vazia)")
+  elif printf '%s' "$val" | grep -qE '^[A-Z_]+$'; then
+    SUSPEITAS+=("$var (placeholder: $n chars, só maiúsculas e underscore)")
+  elif printf '%s' "$val" | grep -qiE 'your[-_]|change[-_]?me|placeholder|xxxx|<[^>]+>'; then
+    SUSPEITAS+=("$var (marcador de preenchimento)")
+  elif [ "$n" -lt 16 ]; then
+    SUSPEITAS+=("$var (só $n caracteres — curto demais para credencial)")
+  fi
+done
+if [ "${#SUSPEITAS[@]}" -gt 0 ]; then
+  die "credencial inválida em $APPDIR/.env — DEPLOY BLOQUEADO:
+    $(printf '%s\n    ' "${SUSPEITAS[@]}")
+  Corrija NO SERVIDOR, variável por variável. Publicar assim substitui uma
+  credencial que funciona por uma que não funciona."
+fi
+
 chown atlas:atlas "$APPDIR/.env"
 chmod 600 "$APPDIR/.env"
-ok ".env validado (${#MISSING[@]} pendências)"
+ok ".env validado: nenhuma variável ausente, vazia, placeholder ou truncada"
 
 # ============================================================
 # PASSO 5 — Build (o ponto que mais falha — agora com log completo)

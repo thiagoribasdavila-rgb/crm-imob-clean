@@ -101,6 +101,107 @@ export async function GET(request: NextRequest) {
     }
   })();
 
+  /**
+   * ── A FILA, POR ESTADO ─────────────────────────────────────────────────────
+   *
+   * `agendamento` acima responde "o worker está vivo?" olhando só o que está
+   * `pending`. Isso deixa de fora a pergunta que decide se dá para publicar:
+   * QUANTO já falhou e quanto foi para a lata. Medido em 2026-07-30:
+   * 6 entregues, 2 falhados, 0 pendentes — e a tela mostrava o ZERO em escala de
+   * herói com as 2 falhas em texto pequeno.
+   *
+   * Falha em fila de integração é lead que não chegou ao corretor. `dead_letter`
+   * é lead que não vai chegar sem alguém intervir.
+   */
+  const filas = await (async () => {
+    try {
+      const { data: linhas, error } = await getSupabaseAdmin()
+        .from("integration_outbox")
+        .select("status")
+        .limit(5000);
+      if (error) {
+        // Leitura que falhou NÃO vira "fila limpa" — este é o zero silencioso
+        // que este projeto mais paga.
+        return { medido: false, motivo: error.message.slice(0, 120) };
+      }
+      const porEstado: Record<string, number> = {};
+      for (const linha of linhas ?? []) {
+        const estado = String((linha as { status?: unknown }).status ?? "desconhecido");
+        porEstado[estado] = (porEstado[estado] ?? 0) + 1;
+      }
+      const falhados = (porEstado.failed ?? 0) + (porEstado.dead_letter ?? 0);
+      return {
+        medido: true,
+        porEstado,
+        total: (linhas ?? []).length,
+        precisaDeAtencao: falhados > 0,
+        motivo:
+          falhados > 0
+            ? `${falhados} item(ns) em failed/dead_letter — cada um é uma entrega que não aconteceu.`
+            : null,
+      };
+    } catch (erro) {
+      return { medido: false, motivo: erro instanceof Error ? erro.message.slice(0, 120) : "falha ao ler a fila" };
+    }
+  })();
+
+  /**
+   * ── FALTA MIGRATION? ───────────────────────────────────────────────────────
+   *
+   * Compara o topo do repositório (assado no build) com o topo aplicado no banco
+   * (`public.estado_das_migrations()`, sem parâmetro e com EXECUTE só para
+   * service_role — ver a migration 20260730180000, que fechou uma escalação
+   * causada exatamente por função que recebia identidade por parâmetro).
+   *
+   * Medido em 2026-07-31: 218 aplicadas no banco contra 173 arquivos no repo. O
+   * banco tem coisa que o repositório não reproduz — e essa divergência precisa
+   * aparecer ANTES de um deploy, não durante.
+   */
+  const migrations = await (async () => {
+    /**
+     * COMPARA POR NOME, NUNCA POR VERSÃO.
+     *
+     * O banco grava `version` como o carimbo de QUANDO a migration foi aplicada,
+     * não o prefixo do arquivo. Medido em 2026-07-31: o arquivo
+     * `20260731020000_estado_das_migrations_para_prontidao.sql` virou a linha
+     * `20260731013305 | estado_das_migrations_para_prontidao`. Os números NUNCA
+     * coincidem — comparar versão daria `emDia: false` para sempre, e portão que
+     * grita sempre ensina a ser ignorado. Falso vermelho custa tanto quanto
+     * falso verde.
+     */
+    const doRepo = (process.env.ATLAS_BUILD_MIGRATIONS || "").split(",").map((n) => n.trim()).filter(Boolean);
+    try {
+      const { data: estado, error } = await getSupabaseAdmin().rpc("estado_das_migrations");
+      if (error) return { medido: false, motivo: error.message.slice(0, 120), noRepo: doRepo.length };
+      const banco = (estado ?? {}) as { aplicadas?: number; versaoMaisAlta?: string; nomes?: string[] };
+      const aplicadas = new Set(banco.nomes ?? []);
+      const faltando = doRepo.filter((nome) => !aplicadas.has(nome));
+      const semLista = doRepo.length === 0;
+      return {
+        medido: true,
+        aplicadasNoBanco: banco.aplicadas ?? null,
+        noRepo: doRepo.length,
+        versaoMaisAltaNoBanco: banco.versaoMaisAlta ?? null,
+        // Sem a lista do build não há comparação — e "não deu para comparar" é
+        // diferente de "está em dia".
+        emDia: semLista ? null : faltando.length === 0,
+        faltando: faltando.slice(0, 10),
+        faltandoTotal: faltando.length,
+        motivo: semLista
+          ? "ATLAS_BUILD_MIGRATIONS não foi injetada no build — não dá para comparar."
+          : faltando.length > 0
+            ? `${faltando.length} migration(s) do repositório não constam como aplicadas.`
+            : null,
+      };
+    } catch (erro) {
+      return {
+        medido: false,
+        motivo: erro instanceof Error ? erro.message.slice(0, 120) : "falha ao ler migrations",
+        noRepo: doRepo.length,
+      };
+    }
+  })();
+
   const data = {
     service: "atlas-api-platform",
     status: ready ? "ready" : "not_ready",
@@ -135,6 +236,8 @@ export async function GET(request: NextRequest) {
      * nunca o valor, o prefixo ou o comprimento.
      */
     agendamento,
+    filas,
+    migrations,
     /**
      * ── QUAL COMMIT ESTÁ NO AR ──────────────────────────────────────────────
      *
