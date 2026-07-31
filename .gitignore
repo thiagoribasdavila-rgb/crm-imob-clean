@@ -70,3 +70,9 @@ migrations.json
 # entrada existe para o caso de alguém apontar o diretório para cá por engano.
 whatsapp-sessions/
 .whatsapp-sessions/
+
+# Arquivo de importação de variáveis para o hPanel da Hostinger.
+# Gerado a partir do .env.local, contém VALORES REAIS, e vive fora do repositório
+# (em ~/atlas-v3-releases/final-hostinger/). Esta linha existe para que ele nunca
+# entre no git nem por acidente de `git add`.
+atlas-one-hostinger-production.env

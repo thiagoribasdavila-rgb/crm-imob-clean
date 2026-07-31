@@ -14,39 +14,41 @@ if (!ecosystem.includes('ATLAS_ENV: "homologation"')) errors.push("PM2 deve inic
 if (!ecosystem.includes('ATLAS_DATABASE_ENVIRONMENT: "homologation"')) errors.push("PM2 deve identificar o banco de homologação");
 if (!ecosystem.includes('ATLAS_HOSTING_PROVIDER: "hostinger"')) errors.push("PM2 deve declarar Hostinger");
 /**
- * ── O RUNTIME OFICIAL, CORRIGIDO DUAS VEZES — e a segunda correção é a certa ──
+ * ── O RUNTIME OFICIAL — corrigido TRÊS vezes, e esta é a análise completa ────
  *
- * **31/07, manhã.** A linha exigia `">=20.9 <21"`. Eu troquei para `">=22.6 <27"`
- * porque 36 scripts do `package.json` usam `--experimental-strip-types`, que só
- * existe a partir do Node 22.6.
+ * | quando | valor | por quê estava errado |
+ * |---|---|---|
+ * | original | `">=20.9 <21"` | teto artificial: excluía 22 e 24 |
+ * | 31/07 manhã | `">=22.6 <27"` | certo por acaso — eu olhei só os meus scripts |
+ * | 31/07 tarde | `">=20.9"` | **errado**: olhei só o `next`, não as dependências |
+ * | agora | `">=22.6"` | auditoria das 24 dependências de PRODUÇÃO |
  *
- * **31/07, tarde.** O dono confirmou no hPanel: a hospedagem é uma **aplicação
- * Node.js gerenciada da Hostinger, com Node 20.x**. Medido em seguida:
+ * O que a auditoria completa encontrou:
  *
- *   next exige ....................... >=20.9.0
- *   `npm run build` (scripts/build.mjs) flag de Node 22+: ZERO
- *   `npm start` (next start) ......... nenhuma flag
- *   código de aplicação .............. nenhuma API exclusiva de 22+
- *   os 4 scripts com strip-types ..... test:contracts, cron:validar,
- *                                      cron:instalar, reactivation-governance
- *                                      — NENHUM na cadeia npm ci → build → start
+ *   @supabase/supabase-js ... >=22.0.0   ← o cliente do BANCO
+ *   ai ...................... >=22
+ *   prisma .................. ^20.19 || ^22.12 || >=24.0
+ *   next .................... >=20.9.0
+ *   4 scripts strip-types ... >=22.6     ← a exigência mais apertada
  *
- * **Meu `>=22.6` estava errado, e o erro era grave:** ele faria `npm ci` recusar
- * na Hostinger com EBADENGINE. Eu teria bloqueado o deploy inteiro para exigir
- * uma versão que só as MINHAS ferramentas de verificação precisam.
+ * **O cliente do Supabase declara Node >=22.** Ele é usado em praticamente toda
+ * rota do produto. Declarar `>=20.9` colocaria a dependência mais central do
+ * sistema fora da faixa que o próprio autor dela suporta.
  *
- * `engines` descreve o que a APLICAÇÃO precisa para instalar, construir e servir
- * — não o que a bancada de testes do autor gostaria de ter. A exigência de 22.6+
- * para a cadeia de contratos é real, e vive documentada em
- * `docs/flagship/HOSTINGER_DEPLOY.md`, onde ela pertence: no procedimento de
- * quem verifica, não no portão de quem instala.
+ * `npm` avisa `EBADENGINE` e instala assim mesmo — então rodar em Node 20 não
+ * quebra na hora. Quebra depois, num caminho não testado, e a causa não aparece
+ * no log. É a pior forma de incompatibilidade.
  *
- * A asserção continua por IGUALDADE: afrouxar para "contém" transformaria o
- * portão em enfeite.
+ * **22.6 é o piso que satisfaz TODAS as exigências ao mesmo tempo.** Sem teto:
+ * fixar `<27` foi cautela sem medição, e cautela sem medição vira portão que
+ * reprova ambiente bom.
+ *
+ * A lição: `engines` se decide lendo as dependências de produção, uma a uma —
+ * não o framework principal, nem a bancada de testes do autor.
  */
-const RUNTIME_OFICIAL = ">=20.9";
+const RUNTIME_OFICIAL = ">=22.6";
 if (packageConfig.engines?.node !== RUNTIME_OFICIAL) {
-  errors.push(`runtime oficial deve ser Node.js ${RUNTIME_OFICIAL} — é o que Next e o start exigem. A cadeia de contratos precisa de 22.6+, mas isso é bancada de verificação, não requisito de instalação.`);
+  errors.push(`runtime oficial deve ser Node.js ${RUNTIME_OFICIAL} — @supabase/supabase-js exige >=22.0.0 e o pacote "ai" exige >=22. 22.6 é o piso que satisfaz todas as dependências de produção ao mesmo tempo.`);
 }
 if (contract.environments?.production?.allowsBootstrap !== false || contract.environments?.production?.allowsTestCredentials !== false) errors.push("produção não pode aceitar bootstrap ou conta de teste");
 
