@@ -69,6 +69,7 @@
     "hierarchy-enforcement:check": "node scripts/check-hierarchy-enforcement.mjs",
     "rls:check": "node scripts/check-rls.mjs",
     "rls-cerca:check": "node scripts/check-rls-leads-cerca.mjs",
+    "rpc-escalacao:check": "node scripts/check-rpc-sem-escalacao.mjs",
     "portoes:todos": "node scripts/portoes-todos.mjs",
     "coerencia-ambiente:check": "node scripts/check-coerencia-de-ambiente.mjs",
     "api-security:check": "node scripts/check-api-security.mjs",

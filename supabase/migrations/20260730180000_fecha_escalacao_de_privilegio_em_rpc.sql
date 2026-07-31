@@ -1,0 +1,87 @@
+-- FECHA A ESCALAÇÃO DE PRIVILÉGIO: quem chama não pode mais dizer quem é.
+--
+-- ── O BURACO, REPRODUZIDO EM PRODUÇÃO EM 2026-07-30 ─────────────────────────
+--
+-- `public.distribute_project_leads(p_actor_id, p_organization_id, ...)` é
+-- SECURITY DEFINER (atravessa a RLS), tinha EXECUTE concedido a `authenticated`,
+-- e NUNCA comparava `p_actor_id` com `auth.uid()`. Ela confere se o UUID recebido
+-- é de um diretor ativo — mas o UUID vem de quem chama.
+--
+-- Reproduzido na mesma transação, como `authenticated`, com auth.uid() de um
+-- corretor real da organização:
+--
+--   CONTROLE (próprio uuid) ... RECUSADO: "Perfil sem permissão para distribuir leads."
+--   ATAQUE  (uuid do diretor) ... PASSOU: {"distributed": 0, "rule": {...}}
+--
+-- Distribuiu 0 apenas porque hoje não existe lead sem dono com empreendimento
+-- definido. A AUTORIZAÇÃO foi contornada de qualquer forma. E como a rotina grava
+-- `actor_id = p_actor_id` em `lead_distribution_events`, a trilha de auditoria
+-- registraria o DIRETOR como autor: a investigação posterior apontaria a pessoa
+-- errada. Em CRM imobiliário, redistribuir lead mexe em comissão.
+--
+-- O UUID do diretor não é segredo: `profiles` é legível por qualquer autenticado
+-- da mesma organização.
+--
+-- ── É REGRESSÃO VERSIONADA, NÃO DESCUIDO ORIGINAL ──────────────────────────
+--
+--   20260716234729_balanced_project_lead_distribution.sql:209
+--       revoke ... from public, anon, authenticated;      ← correto
+--
+--   20260722080000_distribution_rules_configuraveis.sql:310-311   (6 dias depois)
+--       revoke ... from public, anon;                     ← authenticated saiu da lista
+--       grant  ... to authenticated, service_role;        ← e voltou por grant
+--
+-- Nenhuma migration posterior desfez. A v1 é a única exposta: v2, v3 e v4 têm
+-- EXECUTE revogado corretamente.
+--
+-- ── O PADRÃO, QUE É MAIOR QUE ESTA FUNÇÃO ──────────────────────────────────
+--
+-- Toda função SECURITY DEFINER que recebe IDENTIDADE ou ORGANIZAÇÃO como
+-- PARÂMETRO e não confere `auth.uid()` deixa o chamador declarar quem é.
+-- Levantamento das 8 funções SECURITY DEFINER executáveis por `authenticated`:
+--
+--   create_lead_atomic ......... confere auth.uid()   OK
+--   current_user_role .......... confere auth.uid()   OK
+--   mutate_crm_project_v1 ...... confere auth.uid()   OK
+--   current_organization_id .... SEM parâmetro, deriva da sessão   OK (é o desenho certo)
+--   distribute_project_leads ... recebe p_actor_id, NÃO confere    ← BURACO
+--   effective_distribution_rule  recebe p_organization_id, NÃO confere ← BURACO
+--   search_knowledge_chunks .... recebe p_organization_id, NÃO confere ← BURACO
+--   registra_alerta_de_lead .... gatilho, e `anon` podia executar  ← errado por definição
+--
+-- `search_knowledge_chunks` leria a base de conhecimento de OUTRA empresa. Hoje
+-- `knowledge_chunks` tem 0 linhas nas duas organizações — o vazamento é latente,
+-- não ativo. Fecha-se agora justamente porque ainda não há dado atrás dele.
+--
+-- ── POR QUE REVOGAR NÃO QUEBRA NADA (medido, não suposto) ──────────────────
+--
+--   distribute_project_leads (v1) .... 0 chamadas no produto (a app chama a _v4)
+--   effective_distribution_rule ...... 0 chamadas
+--   search_knowledge_chunks .......... 0 chamadas rpc() (só scripts de auditoria)
+--   registra_alerta_de_lead .......... retorna `trigger`, usada por 2 gatilhos —
+--                                      gatilho NÃO passa pelo EXECUTE do usuário
+--
+-- E as rotas que chamam a _v4 usam `service_role`, que ignora GRANT por definição.
+-- Verificado: app/api/v1/crm/distribution/route.ts:296 e
+-- app/api/v1/marketing/held-leads/route.ts:207, ambas com getSupabaseAdmin().
+--
+-- ── ROLLBACK ───────────────────────────────────────────────────────────────
+--
+-- Reverter REABRE o buraco. Só faça se uma dependência real aparecer, e nesse
+-- caso conserte a função em vez de reconceder:
+--
+--   GRANT EXECUTE ON FUNCTION public.distribute_project_leads(uuid,uuid,uuid,integer) TO authenticated;
+--   GRANT EXECUTE ON FUNCTION public.effective_distribution_rule(uuid,uuid) TO authenticated;
+--   GRANT EXECUTE ON FUNCTION public.search_knowledge_chunks(text,uuid,integer) TO authenticated;
+--   GRANT EXECUTE ON FUNCTION public.registra_alerta_de_lead() TO authenticated, anon;
+--
+-- O conserto DEFINITIVO, quando alguma dessas voltar a ser necessária pelo
+-- cliente, é a função recusar o ator que não é o chamador:
+--   if p_actor_id <> (select auth.uid()) then
+--     raise exception 'ator_diferente_do_chamador';
+--   end if;
+
+REVOKE EXECUTE ON FUNCTION public.distribute_project_leads(uuid, uuid, uuid, integer) FROM authenticated, anon, public;
+REVOKE EXECUTE ON FUNCTION public.effective_distribution_rule(uuid, uuid) FROM authenticated, anon, public;
+REVOKE EXECUTE ON FUNCTION public.search_knowledge_chunks(text, uuid, integer) FROM authenticated, anon, public;
+REVOKE EXECUTE ON FUNCTION public.registra_alerta_de_lead() FROM authenticated, anon, public;
