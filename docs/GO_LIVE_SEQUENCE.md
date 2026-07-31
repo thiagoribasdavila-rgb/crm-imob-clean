@@ -23,18 +23,48 @@ nano .env.hostinger
 # - OPENAI_API_KEY
 # - ANTHROPIC_API_KEY (opcional)
 
-# 2. Validar que não ficou vazio (checagem rápida)
-grep "^[A-Z_]*=$" .env.hostinger || echo "✓ nenhuma variável vazia"
+# 2. VALIDAR — e esta é a única checagem que vale
+bash scripts/validate-env-hostinger.sh
 ```
+
+> ⚠️ **A checagem antiga (`grep "^[A-Z_]*=$"`) só via variável VAZIA.**
+> Medido em 2026-07-30 neste arquivo: `META_APP_SECRET` tem **9 caracteres**
+> (`^[A-Z_]+$`, ou seja, um placeholder) e passava por ela sem uma palavra.
+> `scripts/validate-env-hostinger.sh` reprova vazio, placeholder e valor curto
+> demais para ser credencial — e sai com código 1, bloqueando o deploy.
 
 ---
 
 ## FASE 2: Deploy no VPS (via SSH — 10–15 min automático)
 
+> ### 🛑 A INSTRUÇÃO DE COPIAR O `.env` FOI REMOVIDA — ELA DESTRUÍA A CREDENCIAL QUE FUNCIONA
+>
+> Este documento mandava `scp .env.hostinger root@…:/var/www/atlas/.env`, e o
+> runbook autoritativo (`RUNBOOK_DEPLOY_HOSTINGER.md:146`) dizia o **oposto**:
+> *"Este runbook não transfere .env nenhum"*. Duas verdades para o mesmo
+> procedimento — e a errada era a executável.
+>
+> **Medido em 2026-07-30**, assinando o mesmo payload contra `/api/webhooks/meta`
+> em produção:
+>
+> | Segredo | Resposta da produção |
+> |---|---|
+> | placeholder de 9 chars (o que este arquivo mandava copiar) | **HTTP 401** `invalid_signature` |
+> | segredo real de 32 chars (o que está no servidor hoje) | **HTTP 200** |
+>
+> O segredo vivo **é válido**. Copiar o arquivo local por cima dele trocaria uma
+> credencial que funciona por uma que não funciona, e derrubaria a ingestão de
+> leads da Meta — silenciosamente, porque o webhook continuaria respondendo.
+>
+> **O procedimento correto:** editar `/var/www/atlas/.env` **no servidor**,
+> variável por variável, e nunca sobrescrever o arquivo inteiro. Uma variável nova
+> se acrescenta; uma existente e válida não se toca. Publique o build **depois**
+> de conferir que `/api/v1/ready` responde e que `build.commit` bate com o commit
+> que você aprovou.
+
 ```bash
-# 1. Enviar script + .env
+# 1. Enviar SOMENTE o script. O .env NÃO é transferido — ver o aviso acima.
 scp scripts/atlas-go-live.sh root@85.209.93.32:/root/
-scp .env.hostinger root@85.209.93.32:/var/www/atlas/.env
 
 # 2. Executar o script
 ssh root@85.209.93.32 'bash /root/atlas-go-live.sh'

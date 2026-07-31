@@ -113,7 +113,24 @@ ok "pacote extraído em $APPDIR"
 # PASSO 4 — Validar .env
 # ============================================================
 log "4. Validar .env"
-[ -f "$APPDIR/.env" ] || die "$APPDIR/.env não existe. Envie com scp ANTES de rodar este script:  scp .env.hostinger root@<ip>:$APPDIR/.env"
+# ── NÃO MANDE MAIS COPIAR O .env ────────────────────────────────────────────
+#
+# Esta mensagem dizia "Envie com scp ANTES de rodar: scp .env.hostinger ...".
+# Medido em 2026-07-30: o `.env.hostinger` do repositório tem META_APP_SECRET com
+# 9 caracteres (placeholder `^[A-Z_]+$`) e WHATSAPP_ACCESS_TOKEN vazio. Provado
+# assinando o mesmo payload contra /api/webhooks/meta em produção: placeholder →
+# HTTP 401 invalid_signature; segredo real de 32 chars → HTTP 200.
+#
+# Copiar o arquivo por cima do que está no servidor troca uma credencial que
+# FUNCIONA por uma que não funciona — e derruba a ingestão de leads da Meta em
+# silêncio, porque o webhook continua respondendo.
+[ -f "$APPDIR/.env" ] || die "$APPDIR/.env não existe.
+
+  NÃO copie o .env local por cima. Crie o arquivo NO SERVIDOR, variável por variável:
+      nano $APPDIR/.env
+
+  Variável nova se acrescenta; variável existente e válida NÃO se toca. Antes de
+  publicar, rode no seu Mac:  bash scripts/validate-env-hostinger.sh"
 MISSING=()
 for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY SUPABASE_SERVICE_ROLE_KEY DATABASE_URL ATLAS_CRON_SECRET OPENAI_API_KEY ATLAS_BASE_URL; do
   if ! grep -qE "^${var}=.+" "$APPDIR/.env"; then

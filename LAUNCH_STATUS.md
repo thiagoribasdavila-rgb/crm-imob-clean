@@ -133,15 +133,30 @@ TOTAL: ~45 min → https://atlasaios.com.br OPERACIONAL
 
 ## 📋 CHECKLIST DE LANÇAMENTO (45 min seu tempo)
 
-```bash
-# 15 min: Você
-nano ~/atlas-v3/.env.hostinger
-# preencha 7 campos + salve
+> ### 🛑 O `cp` DO `.env` FOI REMOVIDO — ELE DESTRUÍA A CREDENCIAL QUE FUNCIONA
+>
+> Este bloco mandava `cp /tmp/.env.hostinger /var/www/atlas/.env`. Medido em
+> 2026-07-30: o `.env.hostinger` do repositório tem `META_APP_SECRET` com **9
+> caracteres** (placeholder) e `WHATSAPP_ACCESS_TOKEN` **vazio**. Provado contra
+> produção: placeholder → **HTTP 401** `invalid_signature`; segredo real de 32
+> chars → **HTTP 200**. O segredo que está no servidor é válido; copiar por cima
+> derrubaria a ingestão da Meta **em silêncio**.
 
-# 15 min: Automático (você dispara)
-scp ~/atlas-v3/scripts/atlas-go-live.sh ~/atlas-v3/.env.hostinger root@85.209.93.32:/tmp/
-ssh root@85.209.93.32 'cp /tmp/.env.hostinger /var/www/atlas/.env && bash /tmp/atlas-go-live.sh'
+```bash
+# 15 min: Você — NO SERVIDOR, variável por variável. Nunca o arquivo inteiro.
+ssh root@85.209.93.32 'nano /var/www/atlas/.env'
+# Acrescente o que falta. NÃO toque no que já existe e funciona.
+
+# Antes disso, no seu Mac — reprova placeholder, vazio e valor curto demais:
+bash scripts/validate-env-hostinger.sh
+
+# 15 min: Automático (você dispara) — SOMENTE o script viaja
+scp ~/atlas-v3/scripts/atlas-go-live.sh root@85.209.93.32:/tmp/
+ssh root@85.209.93.32 'bash /tmp/atlas-go-live.sh'
 # (aguarde ✅ GO-LIVE CONCLUÍDO)
+
+# Confirme QUAL versão subiu — sem isso não dá para afirmar que a correção está no ar:
+curl -s https://atlasaios.com.br/api/v1/ready | grep -o '"commit":"[^"]*"'
 
 # 10 min: Você (navegador + CLI)
 # ⚠️ NÃO EXECUTAR os 3 comandos abaixo — db push no banco vivo dispararia ~128 migrations.

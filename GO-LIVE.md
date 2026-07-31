@@ -28,11 +28,45 @@ Preencha estes campos vazios:
 ---
 
 ### 2️⃣ Deploy automático (SSH — 15 min)
+
+> ### 🛑 O `cp` DO `.env` FOI REMOVIDO DESTE COMANDO
+>
+> Ele fazia `cp /tmp/.env.hostinger /var/www/atlas/.env`, e isso **destrói a
+> credencial que funciona**. Medido em 2026-07-30: o `.env.hostinger` deste
+> repositório tem `META_APP_SECRET` com **9 caracteres** (placeholder
+> `^[A-Z_]+$`) e `WHATSAPP_ACCESS_TOKEN` **vazio**.
+>
+> Provado assinando o mesmo payload contra `/api/webhooks/meta` em produção:
+>
+> | Segredo | Resposta |
+> |---|---|
+> | placeholder de 9 chars | **HTTP 401** `invalid_signature` |
+> | segredo real de 32 chars (o que está no servidor) | **HTTP 200** |
+>
+> A ingestão de leads da Meta cairia **em silêncio** — o webhook continua
+> respondendo, só passa a rejeitar tudo. E o runbook autoritativo
+> (`RUNBOOK_DEPLOY_HOSTINGER.md:146`) sempre disse: *"Este runbook não transfere
+> .env nenhum"*. Eram duas verdades para o mesmo procedimento, e a errada era a
+> que dava para copiar e colar.
+
 ```bash
-scp ~/atlas-v3/scripts/atlas-go-live.sh ~/atlas-v3/.env.hostinger root@85.209.93.32:/tmp/ && \
-ssh root@85.209.93.32 'cp /tmp/.env.hostinger /var/www/atlas/.env && bash /tmp/atlas-go-live.sh'
+# 1) No seu Mac — reprova placeholder, vazio e valor curto demais. Sai 1 e bloqueia.
+bash ~/atlas-v3/scripts/validate-env-hostinger.sh
+
+# 2) No SERVIDOR — variável por variável. O que já existe e funciona não se toca.
+ssh root@85.209.93.32 'nano /var/www/atlas/.env'
+
+# 3) Só o SCRIPT viaja. O .env nunca.
+scp ~/atlas-v3/scripts/atlas-go-live.sh root@85.209.93.32:/tmp/ && \
+ssh root@85.209.93.32 'bash /tmp/atlas-go-live.sh'
 ```
 **Aguarde a mensagem `✅ GO-LIVE CONCLUÍDO`** (aparece no terminal)
+
+```bash
+# 4) Confirme QUAL commit subiu — sem isto não dá para afirmar que a correção
+#    está no ar. Em 30/07 foi preciso deduzir a versão pela ausência de uma chave.
+curl -s https://atlasaios.com.br/api/v1/ready | grep -o '"commit":"[^"]*"'
+```
 
 ---
 
