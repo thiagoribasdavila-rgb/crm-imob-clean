@@ -8121,7 +8121,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   font-weight: 500;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #6b7890;
+  color: var(--atlas-text-tertiary);
 }
 .cc6-metric-value {
   /* A cadeia antiga listava "Geist Mono" depois de ui-monospace, então o sistema
@@ -8134,7 +8134,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   letter-spacing: -0.02em;
   color: var(--atlas-text-primary);
 }
-.cc6-metric-label { font-size: 11.5px; color: #6b7890; letter-spacing: 0.02em; }
+.cc6-metric-label { font-size: 11.5px; color: var(--atlas-text-tertiary); letter-spacing: 0.02em; }
 .cc6-num {
   /* A cadeia antiga listava "Geist Mono" depois de ui-monospace, então o sistema
      sempre vencia e a fonte pretendida nunca era usada — além de não estar
