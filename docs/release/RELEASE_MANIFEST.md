@@ -64,8 +64,8 @@ npm start`. Verificado:
 - o único script que cita `reset` (`auth:official:reset`) **não está** em
   nenhum dos três comandos.
 
-Nenhuma migration está pendente (): as 4 desta
-linha de trabalho já foram aplicadas, e o drift de schema é **0**.
+Nenhuma migration está pendente — ver `docs/flagship/RELATORIO_MIGRATIONS_PRODUCAO.md`.
+As 4 desta linha de trabalho já foram aplicadas, e o drift de schema é **0**.
 
 ## ROLLBACK PRESERVADO
 

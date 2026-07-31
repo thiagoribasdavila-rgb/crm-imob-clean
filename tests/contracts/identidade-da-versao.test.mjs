@@ -39,7 +39,12 @@ test("NÃO devolve 'unknown' — ausência é null, com o motivo escrito", () =>
   // "unknown" é uma string plausível ocupando o lugar de uma ausência, e é
   // assim que um deploy não rastreável passa despercebido.
   assert.doesNotMatch(codigo, /["']unknown["']/i);
-  assert.match(rota, /commit: commit \|\| null/, "ausência precisa virar null, não string");
+  // A asserção original exigia `commit: commit || null`. O código ficou MAIS
+  // FORTE: hoje é `identidadeConfiavel ? artifactCommit : null` — não basta o
+  // valor existir, as duas fontes precisam CONCORDAR. Reapontada para a
+  // propriedade real: ausência OU divergência viram null.
+  assert.match(codigo, /commit:\s*identidadeConfiavel\s*\?[^:]+:\s*null/,
+    "ausência ou divergência precisam virar null, nunca uma string plausível");
   assert.match(rota, /porqueNaoConfiavel/);
 });
 
@@ -68,4 +73,51 @@ test("o build injeta a identidade — sem isso a rota nasce inútil", () => {
   // RUNTIME, e sem o bloco `env` o valor morre entre o build e a rota. Foi o
   // defeito de ATLAS_BUILD_MIGRATIONS em 30/07.
   assert.match(readFileSync("next.config.ts", "utf8"), /ATLAS_BUILD_COMMIT: process\.env\.ATLAS_BUILD_COMMIT/);
+});
+
+
+// ── AS DUAS TESTEMUNHAS — corrigido em 31/07/2026 ───────────────────────────
+//
+// A produção respondia `{"commit":"935fe0e9","identidadeConfiavel":true}` com o
+// pacote a3379359 implantado. A rota conferia `ATLAS_BUILD_COMMIT` CONTRA ELA
+// MESMA — formato de hash, árvore não suja — e uma afirmação que só confere a si
+// mesma sempre concorda consigo.
+//
+// Faltava uma SEGUNDA TESTEMUNHA, e ela não pode ser digitada por gente.
+
+test("existem DUAS fontes de commit, e uma delas é carimbada pelo git", () => {
+  assert.match(codigo, /artifactCommit/);
+  assert.match(codigo, /environmentCommit/);
+  assert.match(codigo, /from ["']@\/release\.json["']/);
+});
+
+test("`identidadeConfiavel` EXIGE que as duas concordem", () => {
+  // O ponto inteiro da correção: não basta a variável existir e ter cara de hash.
+  assert.match(codigo, /const identidadeConfiavel = commitsMatch/);
+  assert.match(codigo, /commitsMatch/);
+});
+
+test("o marcador não substituído é detectado — cópia de trabalho não é pacote", () => {
+  // Num checkout normal `release.json` mantém `$Format:%H$` literal. Tratar isso
+  // como commit válido seria inventar uma identidade para uma instalação que não
+  // veio de pacote nenhum.
+  assert.match(codigo, /MARCADOR_NAO_SUBSTITUIDO/);
+  assert.match(codigo, /\$Format/);
+});
+
+test("`commit` só é preenchido quando as duas fontes concordam", () => {
+  // Escolher uma das duas quando elas divergem seria repetir o defeito com outra
+  // roupa: o consumidor voltaria a receber um número com cara de verdade.
+  assert.match(codigo, /commit: identidadeConfiavel \? artifactCommit : null/);
+});
+
+test("a divergência é EXPLICADA, com os dois valores", () => {
+  assert.match(codigo, /DIVERG[ÊE]NCIA/i);
+  assert.match(codigo, /porqueNaoConfiavel/);
+});
+
+test("release.json está declarado para substituição do git", () => {
+  const attrs = readFileSync(".gitattributes", "utf8");
+  assert.match(attrs, /release\.json\s+export-subst/,
+    "sem `export-subst` o marcador nunca é substituído e o artefato fica sem identidade");
 });
