@@ -4,9 +4,10 @@
     "app/api/health/route.ts",
     "app/api/ready/route.ts",
     "app/api/v1/health/route.ts",
-    "app/api/v1/ready/route.ts",
     "app/api/v1/openapi/route.ts",
-    "app/api/v1/route.ts"
+    "app/api/v1/ready/route.ts",
+    "app/api/v1/route.ts",
+    "app/api/version/route.ts"
   ],
   "authFlowRoutes": [
     "app/api/auth/password-recovery/route.ts",
