@@ -70,7 +70,47 @@ export async function GET(request: NextRequest) {
   }
 
   const linhas = data ?? [];
+
+  // ── O CONTEXTO QUE A TELA PRECISA, NA MESMA IDA ──────────────────────────
+  //
+  // Sem isto a página faria quatro requisições para desenhar uma lista de
+  // caixas de seleção — e cada uma poderia falhar sozinha, deixando a tela
+  // meio montada sem que ninguém soubesse qual metade faltou.
+  //
+  // `contexto=1` é explícito: quem só quer o elenco (a cascata, um script) não
+  // paga por dados que não vai usar.
+  let contexto: {
+    corretores: Array<{ id: string; nome: string; ativo: boolean }>;
+    escopos: Array<{ escopo: Escopo; id: string; nome: string }>;
+  } | null = null;
+
+  if (url.searchParams.get("contexto") === "1") {
+    const [perfis, projetos, campanhas] = await Promise.all([
+      admin.from("profiles").select("id,full_name,name,commercial_role,role,active")
+        .eq("organization_id", organizationId).eq("active", true),
+      admin.from("developments").select("id,name").eq("organization_id", organizationId).limit(200),
+      admin.from("marketing_campaigns").select("id,name,status").eq("organization_id", organizationId).limit(200),
+    ]);
+    const ehCorretor = (p: Record<string, unknown>) => {
+      const c = String(p.commercial_role || "").toLowerCase();
+      if (c) return c === "broker";
+      return String(p.role || "").toUpperCase() === "CORRETOR";
+    };
+    contexto = {
+      corretores: (perfis.data ?? []).filter(ehCorretor).map((p) => ({
+        id: String(p.id),
+        nome: String(p.full_name || p.name || p.id).slice(0, 60),
+        ativo: p.active !== false,
+      })),
+      escopos: [
+        ...(projetos.data ?? []).map((d) => ({ escopo: "projeto" as Escopo, id: String(d.id), nome: String(d.name || d.id) })),
+        ...(campanhas.data ?? []).map((c) => ({ escopo: "campanha" as Escopo, id: String(c.id), nome: String(c.name || c.id) })),
+      ],
+    };
+  }
+
   return apiSuccess({
+    contexto,
     membros: linhas.map((r) => ({
       id: r.id,
       escopo: r.escopo,
