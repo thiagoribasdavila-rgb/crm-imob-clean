@@ -81,6 +81,18 @@ type Dados = {
     diasAteSair: { media: number; minimo: number; maximo: number; medidas: number } | null;
     mensuravel: boolean;
   };
+  investimento: {
+    importado: boolean;
+    investimentoTotal: number;
+    leadsAtribuidas: number;
+    campanhas: Array<{ externalId: string; nome: string; reais: number; leads: number; cpl: number | null }>;
+    gastoSemLead: { campanhas: number; reais: number };
+    leadSemGasto: { campanhas: number; leads: number };
+    cplGlobal: number | null;
+    porqueSemCpl: string | null;
+    periodo: { de: string | null; ate: string | null };
+    amostraTruncada: boolean;
+  };
   procedencia: {
     amostraTruncada: boolean;
     registroDeMovimentoDesde: string | null;
@@ -96,6 +108,11 @@ const inteiro = (n: number) => n.toLocaleString("pt-BR");
  * "23.4 dias" antes de ser pego na verificação em tela.
  */
 const decimal = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+/** Data ISO em dd/mm — a tela é em português e o gráfico é curto. */
+const dataCurta = (iso: string) => {
+  const [ano, mes, dia] = iso.slice(0, 10).split("-");
+  return dia && mes ? `${dia}/${mes}` : (ano ?? iso);
+};
 const brl = (n: number) =>
   n >= 1_000_000
     ? `R$ ${(n / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`
@@ -136,10 +153,10 @@ function Indicador({
 /**
  * SAÍDAS DO FUNIL — a pergunta da verba, respondida pelo lado que tem dado.
  *
- * O lado da compra está cego: `marketing_spend`, `campaigns`,
- * `meta_daily_reports` e `product_budgets` têm ZERO linhas, então CPL e ROAS
- * seriam invenção. O lado do atendimento tem registro, e responde melhor: a lead
- * que saiu do funil chegou a ser trabalhada?
+ * Este bloco nasceu quando o lado da compra estava cego (`marketing_spend` com
+ * ZERO linhas). Desde 31/07/2026 o gasto é importado e mora no card acima — mas
+ * este continua sendo a metade mais acionável da conta, porque responde algo que
+ * o custo não responde: a lead que saiu do funil chegou a ser trabalhada?
  *
  * Cada número traz o DENOMINADOR ao lado. "100 sem contato" é uma informação
  * diferente de "100 de 104 sem contato" — a segunda decide, a primeira só assusta.
@@ -211,6 +228,103 @@ function SaidasDoFunil({ dados }: { dados: Dados["saidasDoFunil"] }) {
           </>
         ) : null}
       </p>
+    </div>
+  );
+}
+
+/**
+ * O DINHEIRO, E SE ELE ENCONTRA AS LEADS.
+ *
+ * Este bloco nasceu no dia em que `marketing_spend` deixou de ser uma tabela
+ * vazia — e a primeira coisa que ele mostrou foi que o gasto e as leads vêm de
+ * contas de anúncio diferentes.
+ *
+ * A tentação, aqui, é imprimir "CPL: R$ 150,50" (R$ 3.612,01 ÷ 24). O número é
+ * redondo, cabe num tile e é FALSO: divide o custo de uma conta pelo resultado
+ * de outra. A régua deste componente é a mesma da rota — CPL só aparece onde as
+ * duas pontas são da MESMA campanha.
+ */
+function Investimento({ dados }: { dados: Dados["investimento"] }) {
+  if (!dados.importado) {
+    return (
+      <p className="text-xs leading-5 text-slate-400">
+        Nenhum investimento importado ainda. O worker <code className="text-slate-300">investimento-de-midia</code> grava
+        o gasto da Meta uma vez por dia — enquanto ele não roda, custo por lead e retorno não são zero: são desconhecidos.
+      </p>
+    );
+  }
+
+  const comAsDuasPontas = dados.campanhas.filter((c) => c.cpl !== null);
+  const maiorGasto = Math.max(1, ...dados.campanhas.map((c) => c.reais));
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <p className="text-2xl font-semibold tabular-nums text-white">{brl(dados.investimentoTotal)}</p>
+          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
+            investidos{dados.periodo.de && dados.periodo.ate ? ` entre ${dataCurta(dados.periodo.de)} e ${dataCurta(dados.periodo.ate)}` : ""}
+          </p>
+        </div>
+        <div>
+          <p className="text-2xl font-semibold tabular-nums text-white">{inteiro(dados.leadsAtribuidas)}</p>
+          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">leads com campanha de origem identificada</p>
+        </div>
+        <div>
+          {dados.cplGlobal !== null ? (
+            <>
+              <p className="text-2xl font-semibold tabular-nums text-white">{brl(dados.cplGlobal)}</p>
+              <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
+                custo por lead, sobre {inteiro(comAsDuasPontas.length)} campanha{comAsDuasPontas.length === 1 ? "" : "s"} com as duas pontas
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-semibold tabular-nums text-slate-600">—</p>
+              <p className="mt-0.5 text-[11px] leading-4 text-slate-500">custo por lead não pode ser afirmado</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* A frase que impede o número falso de nascer. */}
+      {dados.porqueSemCpl ? (
+        <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-[11px] leading-5 text-amber-200/90">
+          {dados.porqueSemCpl}
+        </p>
+      ) : null}
+
+      <ul className="space-y-1.5">
+        {dados.campanhas.slice(0, 8).map((campanha) => (
+          <li key={campanha.externalId} className="space-y-1">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="truncate text-[11px] leading-4 text-slate-400" title={campanha.nome}>{campanha.nome}</span>
+              <span className="shrink-0 text-[11px] leading-4 tabular-nums text-slate-300">
+                {campanha.reais > 0 ? brl(campanha.reais) : "sem gasto"}
+                <span className="text-slate-600"> · </span>
+                {campanha.leads > 0 ? `${inteiro(campanha.leads)} lead${campanha.leads === 1 ? "" : "s"}` : "0 leads"}
+                {campanha.cpl !== null ? <span className="text-emerald-300"> · {brl(campanha.cpl)}/lead</span> : null}
+              </span>
+            </div>
+            <div className="h-1 overflow-hidden rounded-full bg-white/5">
+              <div
+                className={`h-full rounded-full ${campanha.leads > 0 ? "bg-emerald-400/60" : "bg-amber-400/50"}`}
+                style={{ width: `${Math.max(2, Math.round((campanha.reais / maiorGasto) * 100))}%` }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+      {dados.campanhas.length > 8 ? (
+        <p className="text-[11px] leading-4 text-slate-500">
+          Mostrando as 8 de maior gasto, de {inteiro(dados.campanhas.length)} campanhas.
+        </p>
+      ) : null}
+      {dados.amostraTruncada ? (
+        <p className="text-[11px] leading-4 text-amber-300/80">
+          A leitura foi truncada: estes totais estão sobre amostra, não sobre a base inteira.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -442,6 +556,21 @@ export function SalaDeComandoPanel() {
         </div>
       </AtlasCard>
 
+      {/* O lado da COMPRA. Ficou fora desta tela enquanto `marketing_spend`
+          estava vazia — e o comentário da rota dizia exatamente isso. Entrou no
+          dia em que o importador passou a gravar, com a régua de que CPL só
+          aparece onde gasto e lead são da mesma campanha. */}
+      <AtlasCard>
+        <AtlasCardHeader
+          eyebrow="Investimento"
+          title="O dinheiro encontra as leads?"
+          description="Gasto real importado da conta de anúncios, campanha a campanha, confrontado com as leads que declararam vir de cada uma."
+        />
+        <div className="p-5 sm:p-6">
+          <Investimento dados={dados.investimento} />
+        </div>
+      </AtlasCard>
+
       {/* Fica logo abaixo do funil de propósito: é a mesma história vista pelo
           outro lado. O funil mostra onde as leads estão; este mostra como as que
           já não estão foram embora. */}
@@ -449,7 +578,7 @@ export function SalaDeComandoPanel() {
         <AtlasCardHeader
           eyebrow="Saídas do funil"
           title="Como as leads que saíram foram embora"
-          description="Sem custo de mídia na base, esta é a leitura honesta sobre desperdício: não quanto custou a lead, e sim se ela chegou a ser trabalhada."
+          description="A outra metade da conta: não quanto custou a lead, e sim se ela chegou a ser trabalhada antes de ser largada."
         />
         <div className="p-5 sm:p-6">
           <SaidasDoFunil dados={dados.saidasDoFunil} />

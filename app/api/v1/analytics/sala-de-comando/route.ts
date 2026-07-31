@@ -31,6 +31,7 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { canonicalPipelineStage, mergePipelineStageSettings } from "@/lib/atlas/pipeline-stages";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { fetchAllRows } from "@/lib/supabase/fetch-all-rows";
+import { reconciliaInvestimento, type GastoDeCampanha, type LeadsDeCampanha } from "@/lib/marketing/reconciliacao-de-investimento";
 
 type LeadRow = {
   id: string;
@@ -42,6 +43,22 @@ type LeadRow = {
   development_id: string | null;
   first_contacted_at: string | null;
 };
+type GastoRow = {
+  amount: number | string | null;
+  spend_date: string | null;
+  campaign_id: string | null;
+  /**
+   * O PostgREST TIPA todo relacionamento embutido como array, mas ENTREGA um
+   * objeto quando a relação é muitos-para-um. Declarar só uma das formas obriga
+   * a um cast que mente sobre o dado; declarar as duas e normalizar na leitura
+   * é o que sobrevive aos dois comportamentos.
+   */
+  marketing_campaigns:
+    | { external_campaign_id: string | null; name: string | null }
+    | { external_campaign_id: string | null; name: string | null }[]
+    | null;
+};
+type AtribuicaoRow = { lead_id: string | null; campaign_external_id: string | null };
 type MovimentoRow = {
   lead_id: string | null;
   from_stage: string | null;
@@ -101,7 +118,7 @@ export async function GET(request: NextRequest) {
   // 482 leads e o número coincidia — é o pior tipo de bug, o que só aparece
   // quando a operação cresce. `fetchAllRows` é o helper canônico e carrega a
   // flag de truncamento, que viaja até a tela.
-  const [leadsPaginados, configuracao, movimentosPaginados] = await Promise.all([
+  const [leadsPaginados, configuracao, movimentosPaginados, gastoPaginado, atribuicaoPaginada] = await Promise.all([
     fetchAllRows<LeadRow>((from, to) =>
       admin
         .from("leads")
@@ -123,6 +140,33 @@ export async function GET(request: NextRequest) {
         .select("lead_id,from_stage,to_stage,reason,occurred_at")
         .eq("organization_id", organizationId)
         .order("occurred_at", { ascending: true })
+        .range(from, to),
+    ),
+    // ── O LADO DA COMPRA, que até 31/07/2026 não tinha como ser respondido ──
+    //
+    // O comentário que ficava aqui dizia que `marketing_spend` tinha ZERO linhas
+    // e que por isso CPL e ROAS seriam inventados. Isso deixou de ser verdade
+    // quando o importador passou a gravar: 94 linhas, R$ 3.612,01, 7 campanhas.
+    //
+    // O que NÃO deixou de ser verdade é a cautela. Ter gasto não basta para
+    // afirmar custo por lead — é preciso que o gasto e a lead sejam da MESMA
+    // campanha. Quem decide isso é `reconciliaInvestimento`, e ele recusa
+    // quando as pontas não se encontram.
+    fetchAllRows<GastoRow>((from, to) =>
+      admin
+        .from("marketing_spend")
+        .select("amount,spend_date,campaign_id,marketing_campaigns(external_campaign_id,name)")
+        .eq("organization_id", organizationId)
+        .order("spend_date", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllRows<AtribuicaoRow>((from, to) =>
+      admin
+        .from("lead_attribution_touches")
+        .select("lead_id,campaign_external_id")
+        .eq("organization_id", organizationId)
+        .not("campaign_external_id", "is", null)
+        .order("lead_id", { ascending: true })
         .range(from, to),
     ),
   ]);
@@ -265,6 +309,46 @@ export async function GET(request: NextRequest) {
       if (Number.isFinite(dias) && dias >= 0) diasAteSair.push(dias);
     }
   }
+  /**
+   * ── RECONCILIAÇÃO ENTRE O DINHEIRO E AS LEADS ─────────────────────────────
+   *
+   * Uma lead pode ter mais de um toque de atribuição; contar linha contaria a
+   * mesma lead duas vezes e faria o CPL cair pela metade. A contagem é de leads
+   * DISTINTAS por campanha.
+   *
+   * Uma lead tocada por duas campanhas conta em cada uma — é a leitura por
+   * campanha, não uma repartição de crédito. Repartir exigiria um modelo de
+   * atribuição que este produto não tem, e inventar um aqui seria a quinta
+   * verdade sobre a mesma lead.
+   */
+  const leadsPorCampanhaExterna = new Map<string, Set<string>>();
+  for (const toque of atribuicaoPaginada.rows) {
+    const externo = toque.campaign_external_id;
+    if (!externo || !toque.lead_id) continue;
+    if (!leadsPorCampanhaExterna.has(externo)) leadsPorCampanhaExterna.set(externo, new Set());
+    leadsPorCampanhaExterna.get(externo)!.add(toque.lead_id);
+  }
+  const gastosPorCampanha: GastoDeCampanha[] = gastoPaginado.rows.flatMap((linha) => {
+    const bruto = linha.marketing_campaigns;
+    const campanha = Array.isArray(bruto) ? bruto[0] ?? null : bruto;
+    const externo = campanha?.external_campaign_id;
+    if (!externo) return [];
+    return [{
+      externalId: externo,
+      nome: campanha?.name || `Campanha ${externo}`,
+      reais: Number(linha.amount) || 0,
+      de: linha.spend_date,
+      ate: linha.spend_date,
+    }];
+  });
+  const leadsPorCampanha: LeadsDeCampanha[] = [...leadsPorCampanhaExterna.entries()].map(([externalId, leads]) => ({ externalId, leads: leads.size }));
+  const investimento = {
+    ...reconciliaInvestimento(gastosPorCampanha, leadsPorCampanha),
+    /** Sem linha nenhuma, a tela precisa saber que é ausência de importação. */
+    importado: gastoPaginado.rows.length > 0,
+    amostraTruncada: gastoPaginado.truncated || atribuicaoPaginada.truncated,
+  };
+
   const arredonda = (n: number) => Math.round(n * 10) / 10;
   const saidasDoFunil = {
     total: saidas.length,
@@ -316,6 +400,7 @@ export async function GET(request: NextRequest) {
       },
       funil,
       saidasDoFunil,
+      investimento,
       /**
        * ── O QUE ESTES NÚMEROS *NÃO* COBREM ────────────────────────────────
        *

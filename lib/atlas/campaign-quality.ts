@@ -164,6 +164,29 @@ export type CampaignQualityTotals = {
   classifiedDiscards: number; // reasonKey pertence à taxonomia vigente
   unattributedDiscards: number; // sem campanha resolvida (só nos totais)
   spend: number;
+  /**
+   * ── CPL DA ORGANIZAÇÃO, E POR QUE ELE NÃO É `spend / leads` ───────────────
+   *
+   * Até 31/07/2026 a tela dividia o gasto TOTAL pelas leads TOTAIS. Enquanto
+   * `marketing_spend` estava vazia isso imprimia "—" e ninguém percebeu o
+   * defeito. No dia em que o importador gravou R$ 3.612,01, a mesma conta
+   * passou a estampar **CPL R$ 9** — sobre 406 leads das quais ZERO vieram das
+   * campanhas que gastaram esse dinheiro (elas são de outra conta de anúncios).
+   *
+   * Um número que aparece do nada, é redondo e não tem base é pior que um traço:
+   * o traço faz perguntar, o número faz decidir.
+   *
+   * Estes campos carregam o CPL calculado SÓ sobre campanhas que têm as duas
+   * pontas — gasto e lead — e o dinheiro que ficou de fora, que é a informação
+   * que realmente muda a decisão.
+   */
+  costPerLead: number | null;
+  costPerQualifiedLead: number | null;
+  /** Gasto de campanhas que não trouxeram nenhuma lead a este CRM. */
+  spendWithoutLeads: number;
+  campaignsSpendWithoutLeads: number;
+  /** Quando `costPerLead` é nulo e havia gasto, a frase que a tela mostra. */
+  whyNoCostPerLead: string | null;
 };
 
 const normalize = (value: unknown) =>
@@ -428,6 +451,17 @@ export function buildCampaignQuality(input: {
     || right.leads - left.leads,
   );
 
+  // ── O CPL da organização, pela mesma régua do CPL por campanha ────────────
+  //
+  // Só entram campanhas com gasto E lead. O gasto das outras não some da tela:
+  // ele vai para `spendWithoutLeads`, onde é a manchete e não um resíduo.
+  const comAsDuasPontas = [...buckets.values()].filter((b) => b.spend > 0 && b.leads > 0);
+  const gastoComLead = comAsDuasPontas.reduce((soma, b) => soma + b.spend, 0);
+  const leadsComGasto = comAsDuasPontas.reduce((soma, b) => soma + b.leads, 0);
+  const qualificadosComGasto = comAsDuasPontas.reduce((soma, b) => soma + b.qualified, 0);
+  const gastoSemLead = totalSpend - gastoComLead;
+  const campanhasGastoSemLead = [...buckets.values()].filter((b) => b.spend > 0 && b.leads === 0).length;
+
   return {
     ranking,
     totals: {
@@ -440,6 +474,15 @@ export function buildCampaignQuality(input: {
       classifiedDiscards,
       unattributedDiscards,
       spend: money(totalSpend),
+      costPerLead: leadsComGasto > 0 ? money(gastoComLead / leadsComGasto) : null,
+      costPerQualifiedLead: qualificadosComGasto > 0 ? money(gastoComLead / qualificadosComGasto) : null,
+      spendWithoutLeads: money(gastoSemLead),
+      campaignsSpendWithoutLeads: campanhasGastoSemLead,
+      whyNoCostPerLead:
+        leadsComGasto > 0 || totalSpend <= 0
+          ? null
+          : `${money(gastoSemLead)
+              .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} gastos em ${campanhasGastoSemLead} campanha(s) que não trouxeram nenhuma lead a este CRM. Dividir esse gasto pelas leads que chegaram por outros caminhos daria um custo por lead plausível e sem base.`,
     },
   };
 }

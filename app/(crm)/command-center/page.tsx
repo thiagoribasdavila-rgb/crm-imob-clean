@@ -341,6 +341,14 @@ type MarketingQuality = {
     sales: number;
     discarded: number;
     spend: number;
+    // Vêm calculados da fonte (`buildCampaignQuality`) e NÃO são recalculados
+    // aqui. Recalcular seria a doença desta base: duas contas para o mesmo CPL,
+    // em dois arquivos, divergindo no dia em que uma das duas for corrigida.
+    costPerLead: number | null;
+    costPerQualifiedLead: number | null;
+    spendWithoutLeads: number;
+    campaignsSpendWithoutLeads: number;
+    whyNoCostPerLead: string | null;
   };
   policy: {
     minimumLeadsForDecision: number;
@@ -1952,14 +1960,25 @@ export default function CommandCenterPage() {
       qualificationRate: rate(totals.qualified),
       discardRate: rate(totals.discarded),
       discardHigh: totals.leads > 0 && totals.discarded / totals.leads > 0.25,
-      costPerLead:
-        policy.spendMeasured && totals.spend > 0 && totals.leads > 0
-          ? brl.format(totals.spend / totals.leads)
-          : null,
+      /**
+       * ── ERA `totals.spend / totals.leads`, E ISSO ERA UM DEFEITO DORMINDO ──
+       *
+       * A conta dividia o gasto de TODAS as campanhas pelas leads de TODAS as
+       * origens. Com `marketing_spend` vazia ela imprimia "—" e ninguém viu o
+       * problema. Em 31/07/2026, no dia em que o importador gravou R$ 3.612,01,
+       * a mesma linha passou a estampar **CPL R$ 9** sobre 406 leads — das
+       * quais ZERO vieram das campanhas que gastaram esse dinheiro.
+       *
+       * O CPL agora vem calculado pela régua da fonte (`buildCampaignQuality`),
+       * que só o afirma sobre campanhas com gasto E lead. Quando não dá, a tela
+       * mostra o motivo — e o dinheiro que não encontrou lead vira manchete.
+       */
+      costPerLead: policy.spendMeasured && totals.costPerLead !== null ? brl.format(totals.costPerLead) : null,
       costPerQualified:
-        policy.spendMeasured && totals.spend > 0 && totals.qualified > 0
-          ? brl.format(totals.spend / totals.qualified)
-          : null,
+        policy.spendMeasured && totals.costPerQualifiedLead !== null ? brl.format(totals.costPerQualifiedLead) : null,
+      whyNoCostPerLead: policy.spendMeasured ? totals.whyNoCostPerLead : null,
+      spendWithoutLeads: totals.spendWithoutLeads,
+      campaignsSpendWithoutLeads: totals.campaignsSpendWithoutLeads,
     };
   }, [marketingQuality]);
 
@@ -2757,12 +2776,17 @@ export default function CommandCenterPage() {
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
                       <p className="text-[11px] text-slate-500">CPL</p>
+                      {/* A linha de baixo diz POR QUE o traço está lá. Traço mudo
+                          faz o leitor supor que o dado não carregou; traço com
+                          motivo faz ele ir atrás da conta de anúncios certa. */}
                       <p className="mt-0.5 text-[11px] text-slate-500">
                         {marketingRates.costPerQualified
                           ? `${marketingRates.costPerQualified} por qualificado`
-                          : marketingQuality.policy.spendMeasured
-                            ? `${brl.format(marketingQuality.totals.spend)} investidos`
-                            : "Custo não medido"}
+                          : marketingRates.whyNoCostPerLead
+                            ? `${brl.format(marketingRates.spendWithoutLeads)} em ${marketingRates.campaignsSpendWithoutLeads} campanha(s) sem lead atribuída`
+                            : marketingQuality.policy.spendMeasured
+                              ? `${brl.format(marketingQuality.totals.spend)} investidos`
+                              : "Custo não medido"}
                       </p>
                     </div>
                     <span className="cc6-metric-value text-xl">
@@ -2771,9 +2795,15 @@ export default function CommandCenterPage() {
                   </li>
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Campanhas com leads</p>
+                      {/* O rótulo era "Campanhas com leads" e a fonte conta
+                          `leads > 0 OU spend > 0`. Enquanto `marketing_spend`
+                          estava vazia os dois coincidiam, e o rótulo era
+                          acidentalmente verdadeiro. Com gasto importado, ele
+                          passou a chamar de "com leads" 7 campanhas que têm
+                          zero. */}
+                      <p className="text-[11px] text-slate-500">Campanhas em atividade</p>
                       <p className="mt-0.5 text-[11px] text-slate-500">
-                        {marketingQuality.totals.campaigns} na organização
+                        com lead ou gasto na janela · {marketingQuality.totals.campaigns} na organização
                       </p>
                     </div>
                     <span className="cc6-metric-value text-xl">
