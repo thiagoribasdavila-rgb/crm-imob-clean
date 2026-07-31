@@ -136,6 +136,36 @@ export async function GET(request: NextRequest) {
      */
     agendamento,
     /**
+     * ── QUAL COMMIT ESTÁ NO AR ──────────────────────────────────────────────
+     *
+     * Em 2026-07-30 foi preciso DEDUZIR a versão em produção pela ausência de
+     * uma chave na resposta: `agendamento` não aparecia, logo o build era
+     * anterior ao commit que a introduziu. Isso é arqueologia, e só funciona
+     * enquanto alguém lembra qual commit acrescentou o quê.
+     *
+     * A pergunta "a produção está rodando o código que eu auditei?" precisa ter
+     * resposta direta, porque dela dependem TODAS as outras: uma correção
+     * publicada no git e ausente no servidor é uma correção que não existe.
+     *
+     * `ATLAS_BUILD_COMMIT` é injetada no build. Quando ela falta, o campo NÃO
+     * inventa: devolve `null` com o motivo. "Não declarado" é uma informação
+     * diferente de "commit X", e confundir as duas foi o que custou a
+     * arqueologia acima.
+     *
+     * Nenhum segredo entra aqui — SHA de commit e nome de ambiente são públicos
+     * por natureza.
+     */
+    build: {
+      commit: process.env.ATLAS_BUILD_COMMIT || null,
+      branch: process.env.ATLAS_BUILD_BRANCH || null,
+      construidoEm: process.env.ATLAS_BUILD_TIME || null,
+      ambiente: process.env.ATLAS_ENV || process.env.NODE_ENV || null,
+      motivo:
+        process.env.ATLAS_BUILD_COMMIT
+          ? null
+          : "ATLAS_BUILD_COMMIT não foi injetada no build. Sem ela é impossível afirmar qual versão está no ar — e ausência de declaração não é o mesmo que versão desconhecida por acaso.",
+    },
+    /**
      * Nenhum valor, prefixo ou comprimento de segredo sai desta resposta: só o
      * estado e o motivo.
      */

@@ -49,6 +49,29 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@supabase/supabase-js"],
   reactStrictMode: true,
   poweredByHeader: false,
+  /**
+   * ── A PROCEDÊNCIA DO BUILD, ASSADA NO BUNDLE ──────────────────────────────
+   *
+   * `scripts/build.mjs` descobre commit, branch e horário e os coloca em
+   * `process.env` ANTES de chamar o `next build`. Este bloco é o que faz esses
+   * valores sobreviverem: numa rota de servidor, `process.env.X` é lido em tempo
+   * de EXECUÇÃO, do ambiente do servidor — que não conhece o build. Sem `env`
+   * aqui, o campo nasceria sempre nulo em produção e a rota diria "não
+   * declarado" para sempre.
+   *
+   * Por que isto importa: em 2026-07-30 foi preciso deduzir a versão em produção
+   * pela AUSÊNCIA de uma chave na resposta. A pergunta "a produção roda o código
+   * que eu auditei?" precisa de resposta direta — correção publicada no git e
+   * ausente no servidor é correção que não existe.
+   *
+   * Só entram SHA, branch e horário. Nenhum segredo: são públicos por natureza,
+   * e `security:secrets` continua valendo sobre este arquivo.
+   */
+  env: {
+    ATLAS_BUILD_COMMIT: process.env.ATLAS_BUILD_COMMIT ?? "",
+    ATLAS_BUILD_BRANCH: process.env.ATLAS_BUILD_BRANCH ?? "",
+    ATLAS_BUILD_TIME: process.env.ATLAS_BUILD_TIME ?? "",
+  },
   async headers() {
     return [
       {
