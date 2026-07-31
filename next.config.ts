@@ -98,14 +98,90 @@ const nextConfig: NextConfig = {
       { source: "/properties/mtching", destination: "/properties/matching", permanent: true },
     ];
   },
+  /**
+   * ── CACHE: A CAUSA DO INCIDENTE DE 31/07/2026 ────────────────────────────
+   *
+   * Medido em produção, no HTML de `/login`:
+   *
+   *     cache-control: s-maxage=31536000        ← UM ANO no CDN
+   *     x-hcdn-cache-status: HIT
+   *     age: 11231                              ← 3 horas parado no edge
+   *
+   * E dos 13 chunks que esse HTML pedia, **2 respondiam HTTP 404**.
+   *
+   * A cadeia é essa:
+   *
+   *   1. o CDN guardou o HTML de um build antigo, por um ANO;
+   *   2. um build novo subiu na origem, com chunks de nomes novos;
+   *   3. o HTML cacheado continua pedindo os chunks velhos;
+   *   4. dois deles não existem mais → 404;
+   *   5. sem eles o React **não hidrata**;
+   *   6. o usuário vê o payload serializado como texto, sem formulário.
+   *
+   * E navegadores diferentes viam estados diferentes porque cada um bate numa
+   * borda diferente do CDN (`asc-edge7`, `asc-edge10`…), cada uma com HTML de
+   * idade diferente. Não era o navegador: era qual cópia velha ele alcançou.
+   *
+   * ── A REGRA ──────────────────────────────────────────────────────────────
+   *
+   * **HTML nunca pode viver mais que o build que o gerou.** Ele carrega os
+   * nomes dos chunks daquele build, e esses nomes morrem no deploy seguinte.
+   *
+   * `/_next/static/*` é o oposto: nome com hash de conteúdo, imutável por
+   * construção. Cachear por um ano ali é correto e é o que torna o site rápido.
+   *
+   * ── A ORDEM, QUE EU ERREI E A MEDIÇÃO CORRIGIU ──────────────────────────
+   *
+   * A primeira versão pôs a exceção dos estáticos ANTES da regra geral,
+   * assumindo "a primeira que casa vence". **Está errado.** O Next aplica
+   * TODAS as regras que casam, e para a mesma chave **a última vence**.
+   *
+   * Medido servindo o build: o chunk de `/_next/static` saiu com `no-store` —
+   * exatamente a correção preguiçosa que este comentário existe para impedir,
+   * e que teria matado todo o cache do site.
+   *
+   * Por isso a regra geral vem PRIMEIRO e as específicas DEPOIS.
+   */
   async headers() {
     return [
       {
+        // Regra geral PRIMEIRO: documentos HTML. `no-store` no CDN e no
+        // navegador — nenhuma cópia sobrevive ao build que a produziu.
         source: "/(.*)",
-        headers: securityHeaders,
+        headers: [
+          ...securityHeaders,
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
+        ],
+      },
+      {
+        // Endpoints de estado: a resposta descreve AGORA. Prontidão cacheada
+        // afirma saúde passada.
+        source: "/api/:path*",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
+      {
+        // Imutável de verdade: o nome contém o hash do conteúdo. Se o conteúdo
+        // muda, o nome muda — não existe cópia velha para servir. Esta regra
+        // vem por ÚLTIMO para sobrescrever o `no-store` da geral.
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
     ];
   },
+
+  /**
+   * ── O BUILD_ID PASSA A SER O COMMIT ──────────────────────────────────────
+   *
+   * Sem isto o Next gera um id aleatório por build. Dois builds do mesmo commit
+   * produzem ids diferentes, e os caminhos de `/_next/static/<BUILD_ID>/` mudam
+   * sem que nada no código tenha mudado — o que torna impossível dizer, olhando
+   * uma URL de chunk, de qual versão ela veio.
+   *
+   * Com o commit no id, a pergunta "este chunk é do build que está no ar?"
+   * responde-se lendo a URL. Sem `ATLAS_BUILD_COMMIT` o Next volta ao padrão
+   * (devolvendo `null`), em vez de inventar um id que não corresponde a nada.
+   */
+  generateBuildId: async () => process.env.ATLAS_BUILD_COMMIT?.trim() || null,
 };
 
 export default nextConfig;
