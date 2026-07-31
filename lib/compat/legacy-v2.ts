@@ -216,6 +216,43 @@ export function compatibleLeadStatuses(value: unknown) {
   return statusStorageAliases[canonical] || [text(value).trim()].filter(Boolean);
 }
 
+/**
+ * O status pedido pertence ao vocabulário do produto?
+ *
+ * ── O defeito que isto fecha ────────────────────────────────────────────────
+ *
+ * `compatibleLeadStatuses` tem um caminho de escape: status desconhecido volta
+ * como `[o-que-veio]`, e a consulta faz `.in("status", ["xpto"])` — que devolve
+ * ZERO linhas, com HTTP 200, sem erro nenhum.
+ *
+ * Medido em 2026-07-31 contra a rota real: `/api/v1/crm/leads?status=xpto`
+ * respondeu 200 com total 0, sobre uma base de 482 leads.
+ *
+ * Lista vazia se lê como "não há trabalho". Numa operação com 472 leads sem
+ * primeiro contato, essa é a pior mensagem que o sistema pode emitir — e ela
+ * sai de um link com erro de digitação.
+ *
+ * A guarda JÁ EXISTIA, do lado do cliente: `app/(crm)/leads/page.tsx` valida o
+ * status da URL contra a lista do seletor, e o comentário de lá diz exatamente
+ * isto. Mas o cliente é a única porta que ele controla. Quem chama a API direto,
+ * ou por um link antigo, passava reto. Guarda em um lado só é guarda que o
+ * outro lado não tem.
+ *
+ * Devolve `true` para vazio: ausência de filtro não é filtro inválido.
+ */
+export function ehStatusConhecido(value: unknown): boolean {
+  const bruto = text(value).trim();
+  if (!bruto) return true;
+  const normalizado = bruto.toLocaleLowerCase("pt-BR");
+  if (statusAliases[normalizado]) return true;
+  return Object.prototype.hasOwnProperty.call(statusStorageAliases, normalizado);
+}
+
+/** O vocabulário canônico, para a mensagem de erro poder listar o que vale. */
+export function statusConhecidos(): string[] {
+  return Object.keys(statusStorageAliases);
+}
+
 export function liveLeadSortColumn(value: unknown) {
   if (value === "score") return "score_ia";
   if (value === "updated_at") return "created_at";

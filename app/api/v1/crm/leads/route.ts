@@ -8,6 +8,8 @@ import { ehVinculoValido, STATUS_DO_VINCULO, statusForaDoAtendimento } from "@/l
 import {
   canonicalCommercialRole,
   compatibleLeadStatuses,
+  ehStatusConhecido,
+  statusConhecidos,
   LIVE_LEAD_SELECT,
   LIVE_LEAD_SELECT_WITH_SLA,
   LIVE_PROFILE_SELECT,
@@ -159,6 +161,19 @@ export async function GET(request: NextRequest) {
 
   if (faixaBruta && !faixa) {
     return apiError("FAIXA_NAO_SUPORTADA", "Faixa da fila desconhecida.", access.meta, { status: 400, headers: rate.headers });
+  }
+
+  // Status fora do vocabulário é RECUSADO, não filtrado. Sem isto,
+  // `?status=xpto` devolvia 200 com lista vazia sobre 482 leads — e lista vazia
+  // se lê como "não há trabalho". É a mesma postura que esta rota já tem para
+  // faixa, corretor e projeto: recusa explícita em vez de resposta plausível.
+  if (status && !ehStatusConhecido(status)) {
+    return apiError(
+      "INVALID_STATUS",
+      `Status "${status}" não existe no funil. Válidos: ${statusConhecidos().join(", ")}.`,
+      access.meta,
+      { status: 400, headers: rate.headers },
+    );
   }
 
   if (teamOwner && assignedTo) {
