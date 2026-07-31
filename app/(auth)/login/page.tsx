@@ -13,6 +13,7 @@ import {
 } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { configuracaoEhPlaceholder } from "@/utils/supabase/env";
 import { safeAuthDestination } from "@/lib/auth/safe-redirect";
 import {
   parseAtlasAuthContext,
@@ -359,7 +360,58 @@ function LoginExperience() {
   );
 }
 
+/**
+ * A TELA QUE APARECE QUANDO A INSTALAÇÃO NÃO FOI CONFIGURADA.
+ *
+ * ── Por que ela existe ──────────────────────────────────────────────────────
+ *
+ * Em 31/07/2026 um build de produção subiu sem `NEXT_PUBLIC_SUPABASE_URL`. O
+ * valor é assado no bundle do navegador, então o cliente saiu com um endereço
+ * placeholder gravado dentro. O que o usuário viu: `/login` respondendo HTTP
+ * 200, **sem campo de senha**, sem explicação.
+ *
+ * "A tela abriu e não tem onde digitar" é indistinguível de "o sistema caiu" —
+ * e manda a pessoa errada procurar a coisa errada. O corretor liga para o
+ * suporte dizendo que o Atlas quebrou; o suporte procura no banco; e a causa
+ * está no comando de build de três dias atrás.
+ *
+ * Esta tela troca isso por uma frase que aponta para a causa real. Ela não
+ * conserta nada — mas faz o chamado nascer com a informação certa.
+ *
+ * `configuracaoEhPlaceholder()` lê os mesmos valores inlinados, sem tocar em
+ * rede: se o bundle foi assado sem configuração, ela responde `true` no
+ * primeiro render, antes de qualquer tentativa de conexão.
+ */
+function InstalacaoSemConfiguracao() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#050812] p-6">
+      <div className="w-full max-w-md text-center">
+        <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Atlas One</p>
+        <h1 className="mt-3 text-2xl font-semibold text-white">Esta instalação ainda não foi configurada</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-400">
+          O sistema subiu, mas foi publicado sem as credenciais do banco de dados. Não é uma falha da
+          sua conta e <strong className="font-semibold text-slate-300">nenhum dado foi perdido</strong> —
+          é uma etapa de configuração que ficou pendente no servidor.
+        </p>
+        <p className="mt-4 text-xs leading-5 text-slate-500">
+          Quem administra o sistema precisa definir as variáveis do Supabase e{" "}
+          <strong className="font-semibold text-slate-400">construir a aplicação de novo</strong> —
+          reiniciar não resolve, porque o endereço é gravado durante a construção.
+        </p>
+        <p className="mt-4 text-[11px] leading-5 text-slate-600">
+          Diagnóstico completo em <code className="text-slate-500">/api/v1/ready</code>.
+        </p>
+      </div>
+    </main>
+  );
+}
+
 export default function LoginPage() {
+  // A verificação vem ANTES do Suspense e antes de montar o cliente do Supabase:
+  // tentar autenticar contra um endereço placeholder produz exatamente a tela
+  // quebrada que esta correção existe para eliminar.
+  if (configuracaoEhPlaceholder()) return <InstalacaoSemConfiguracao />;
+
   return (
     <Suspense fallback={<main className="min-h-screen bg-[#050812]" />}>
       <LoginExperience />
