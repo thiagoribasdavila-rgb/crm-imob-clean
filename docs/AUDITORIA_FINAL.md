@@ -80,7 +80,7 @@ e um evento CAPI fora do modo `test` com `sale_value_brl` preenchido.
 | Observabilidade | **4,5** | `catch {}` e `?? 0` transformando falha em zero |
 | Performance | **4,5** | `.limit()` como letra morta; quebra antes de 10.000 leads |
 | Design System | **4,5** | não há sistema único; superfície cravada quebra no tema claro |
-| Banco e migrations | **3,5** | um clone limpo **não** reconstrói o schema |
+| Banco e migrations | **3,5** → ver ressalva | um clone limpo **não** reconstrói o schema — mas por **15** migrations sem arquivo, não pelas "109" que este relatório chegou a citar |
 | Ingestão de leads | **3,5** | o caminho ao vivo nunca entregou uma lead real |
 | Qualidade dos dados | **3,5** | identidade impecável; atribuição e valor comercial ausentes |
 | Análise preditiva | **3,0** | existe pontuação, **não existe modelo** |
@@ -163,6 +163,30 @@ Provado assinando o mesmo payload contra `/api/webhooks/meta` em produção:
 E o runbook autoritativo (`RUNBOOK_DEPLOY_HOSTINGER.md:146`) diz o **oposto**: *"Este
 runbook não transfere .env nenhum"*. Duas verdades para o mesmo procedimento — e
 seguir a errada derruba a integração da Meta.
+
+---
+
+## 6-bis. ⚠️ CORREÇÃO PUBLICADA EM 2026-07-31 — o drift de migrations era falso
+
+Este relatório e o `ATLAS_ONE_SOURCE_OF_TRUTH.md` reportaram um drift grande de
+migrations. **O número estava errado, e o erro era do comparador que eu escrevi.**
+
+A coluna `name` de `supabase_migrations.schema_migrations` tem dois formatos
+convivendo (`20260711040000_atlas_v3_foundation` e `atlas_v3_foundation_base_tables`).
+O comparador removia o prefixo numérico **só do lado do repositório**.
+
+| comparação | resultado |
+|---|---|
+| versão com defeito | **109 faltando** |
+| os dois lados normalizados | **4 faltando** |
+| e dessas 4, com objeto existente no schema | **4 de 4** |
+
+**O drift de schema real é ZERO.** Toda migration do repositório tem seus objetos no
+banco — verificado função por função e view por view.
+
+O que permanece verdadeiro, e é menor e mais preciso: **15 migrations existem só no
+banco**, sem arquivo. Um clone limpo ficaria sem elas. Detalhamento em
+`MATRIZ_MIGRATIONS_REPO_BANCO.md` e `DIAGNOSTICO_DRIFT_MIGRATIONS.md`.
 
 ---
 

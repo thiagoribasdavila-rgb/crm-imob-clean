@@ -26,6 +26,17 @@ que é diferente de zero.
 | **Deploy** | PM2 via `ecosystem.config.cjs` | arquivo presente no repo |
 | **Variáveis de ambiente** | 86 chaves em `.env.local` | `grep -c '=' .env.local` |
 
+### ⚠️ CORREÇÃO 2026-07-31 — o drift de migrations reportado era falso
+
+Uma versão anterior deste documento tratou o descompasso entre repositório e banco
+como drift grande. **Era defeito do comparador**, que normalizava só um dos lados
+dos nomes. Medido corretamente: **4** migrations do repositório sem registro, e as
+**4 têm seus objetos no schema** — drift de schema **zero**.
+
+O que resta de verdade: **15 migrations existem só no banco**, sem arquivo no
+repositório. É por elas que um clone limpo ainda não reconstrói a base — não por
+"109". Ver `DIAGNOSTICO_DRIFT_MIGRATIONS.md`.
+
 ### ⚠️ O nome do projeto Supabase mente
 
 O projeto se chama **`atlas-v3-homologacao`** e **é produção**. Não existe ambiente de

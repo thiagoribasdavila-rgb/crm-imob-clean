@@ -178,12 +178,31 @@ export async function GET(request: NextRequest) {
      * grita sempre ensina a ser ignorado. Falso vermelho custa tanto quanto
      * falso verde.
      */
-    const doRepo = (process.env.ATLAS_BUILD_MIGRATIONS || "").split(",").map((n) => n.trim()).filter(Boolean);
+    /**
+     * ── OS DOIS LADOS PRECISAM SER NORMALIZADOS, NÃO SÓ UM ────────────────
+     *
+     * A versão anterior tirava o prefixo numérico do lado do REPOSITÓRIO e
+     * comparava com o `name` do banco cru. Só que a coluna `name` tem DOIS
+     * formatos convivendo:
+     *
+     *   20260711040000_atlas_v3_foundation   ← registro em massa de 21/07
+     *   atlas_v3_foundation_base_tables      ← aplicadas via API, sem prefixo
+     *
+     * Resultado medido em 2026-07-31: 109 migrations apareciam como "não
+     * aplicadas". Normalizando OS DOIS lados, sobram 4 — e os objetos dessas 4
+     * existem no schema (conferido função por função, view por view). O drift
+     * real é ZERO; as 109 eram falso vermelho deste comparador.
+     *
+     * Foi o segundo falso vermelho da mesma funcionalidade: o primeiro comparava
+     * VERSÃO em vez de nome. Portão que grita sem motivo ensina a ser ignorado.
+     */
+    const semPrefixo = (n: string) => n.trim().replace(/^\d+_/, "");
+    const doRepo = (process.env.ATLAS_BUILD_MIGRATIONS || "").split(",").map(semPrefixo).filter(Boolean);
     try {
       const { data: estado, error } = await getSupabaseAdmin().rpc("estado_das_migrations");
       if (error) return { medido: false, motivo: error.message.slice(0, 120), noRepo: doRepo.length };
       const banco = (estado ?? {}) as { aplicadas?: number; versaoMaisAlta?: string; nomes?: string[] };
-      const aplicadas = new Set(banco.nomes ?? []);
+      const aplicadas = new Set((banco.nomes ?? []).map(semPrefixo));
       const faltando = doRepo.filter((nome) => !aplicadas.has(nome));
       const semLista = doRepo.length === 0;
       return {
