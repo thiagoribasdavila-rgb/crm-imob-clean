@@ -3312,14 +3312,37 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
   text-transform: uppercase;
 }
 
+/* ── A BARRA QUE TRAVAVA A TELA — corrigida em 2026-07-31 ──────────────────
+   Foto do usuário, num notebook: "Faça agora / Realiz…" cortado, "RISCO ALTO ·
+   0 TAREFA(S) · 0 MENSAGEM(NS)" espremido numa coluna vertical de três linhas,
+   as abas transbordando para fora da tela e o botão "Mensagem" cortado em
+   "nsag".
+
+   A causa: `grid-template-columns: minmax(0,1fr) auto auto`. As duas colunas
+   `auto` — navegação e ações — **não encolhem**. Elas reservam a largura que
+   pedirem, e o que sobra vai para o `1fr`. Num notebook não sobra quase nada:
+   o texto colapsa e o resto vaza para fora.
+
+   Havia um `@media (max-width: 900px)` que empilhava tudo e resolvia. Só que a
+   barra quebra MUITO antes de 900px — ela precisa de ~1.100px para os três
+   blocos caberem lado a lado. Entre 900 e 1.100 ninguém socorria.
+
+   Duas correções, e as duas importam:
+   1. as colunas passam a poder encolher (`minmax(0, auto)`);
+   2. o empilhamento sobe para 1.200px, que é onde ela realmente aperta.
+
+   E um teto de altura: barra grudada que ocupa meia tela deixa de ser atalho e
+   vira obstáculo — foi o que a foto mostrou. */
 .atlas-lead-operational-bar {
   position: sticky;
   z-index: 20;
   top: calc(var(--atlas-topbar-height) + 10px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, auto);
   align-items: center;
   gap: 16px;
+  max-height: 40vh;
+  overflow-y: auto;
   padding: 12px 14px;
   border: 1px solid rgba(56, 189, 248, 0.16);
   border-radius: 20px;
@@ -3353,6 +3376,21 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
   display: flex;
   align-items: center;
   gap: 6px;
+  /* `min-width: 0` é o que permite ao item de grid encolher abaixo do próprio
+     conteúdo. Sem ele, `minmax(0, auto)` na coluna não adianta: o filho flex
+     continua exigindo a largura inteira e o transbordo volta. */
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.atlas-lead-jump-nav::-webkit-scrollbar,
+.atlas-lead-operational-actions::-webkit-scrollbar { display: none; }
+.atlas-lead-jump-nav a,
+.atlas-lead-operational-actions > * {
+  /* Rolar em vez de espremer: o rótulo inteiro continua legível. "Mensagem"
+     virando "nsag" é pior que precisar arrastar. */
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .atlas-lead-jump-nav a {
   padding: 8px 9px;
@@ -3442,14 +3480,15 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
   line-height: 1.5;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
   .atlas-lead-operational-bar {
+    /* Empilha e SOLTA a barra. Grudada e empilhada ela ocuparia metade da tela
+       — exatamente o que a foto do usuário mostrava. */
     position: relative;
     top: auto;
-    grid-template-columns: 1fr;
-  }
-  .atlas-lead-jump-nav {
-    overflow-x: auto;
+    max-height: none;
+    overflow-y: visible;
+    grid-template-columns: minmax(0, 1fr);
   }
   .atlas-lead-operational-actions {
     display: grid;
