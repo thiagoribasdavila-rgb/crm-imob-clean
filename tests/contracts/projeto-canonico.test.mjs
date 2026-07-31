@@ -39,6 +39,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 
 const raiz = path.resolve(import.meta.dirname, "..", "..");
@@ -180,11 +181,48 @@ test("roteiro de deploy que cita o aposentado precisa estar declarado como aviso
   );
 });
 
+/**
+ * O arquivo é local POR DESENHO? Só o `.gitignore` responde isso — e ele é a
+ * declaração versionada da intenção, que é justamente o que falta quando um
+ * arquivo simplesmente some.
+ */
+function ignoradoPeloGit(arquivo) {
+  try {
+    execFileSync("git", ["check-ignore", "-q", arquivo], { cwd: raiz, stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 test("toda exceção declarada existe e realmente cita o aposentado", () => {
   // Exceção que sobrevive ao problema é teto silencioso: ela vira licença para o
   // próximo arquivo entrar sem ninguém notar.
+  //
+  // ── POR QUE A AUSÊNCIA TEM DOIS SIGNIFICADOS ──────────────────────────────
+  //
+  // Descoberto em 2026-07-31 pela prova do pacote: este contrato passava aqui e
+  // FALHAVA num clone limpo extraído do ZIP. A exceção `hostinger.env` aponta
+  // para um arquivo de ambiente que está no `.gitignore` — ele existe nesta
+  // máquina e NÃO existe no pacote, por desenho.
+  //
+  // "Arquivo sumiu do repositório" e "arquivo nunca entra no repositório" são
+  // coisas opostas: a primeira é exceção podre e precisa falhar; a segunda é
+  // exceção legítima para um arquivo local. Tratar as duas como ausência fazia
+  // o contrato ser verde aqui e vermelho no pacote — e um contrato que só passa
+  // na máquina de quem escreveu não prova nada sobre o produto entregue.
+  //
+  // A regra fica MAIS forte, não mais frouxa: exceção sem arquivo só é aceita
+  // quando o `.gitignore` a explica. Sem essa prova, continua reprovando.
   for (const f of PODEM_CITAR) {
-    assert.ok(fs.existsSync(path.join(raiz, f)), `exceção declarada para arquivo inexistente: ${f}`);
+    const caminho = path.join(raiz, f);
+    if (!fs.existsSync(caminho)) {
+      assert.ok(
+        ignoradoPeloGit(f),
+        `exceção declarada para arquivo inexistente: ${f}. Se ele é local por desenho, precisa estar no .gitignore; se sumiu, tire-o da lista.`,
+      );
+      continue;
+    }
     const src = fs.readFileSync(path.join(raiz, f), "utf8");
     assert.ok(
       APOSENTADOS.some((ref) => src.includes(ref)),
