@@ -29,23 +29,10 @@ shasum -a 256 -c ~/atlas-v3-releases/atlas-one-v3.0.0-rc.2-final-20260731-0254-d
 | 3 | smoke test | `/api/v1/ready` respondeu **HTTP 500 cru** sem `.env` — a rota que diz o que falta quebrava por faltar |
 | 4 | — | **aprovado** |
 
-Os pacotes 1 e 2 falharam em teste. **O pacote 3 passou em tudo que é estático** —
-
-added 1353 packages, and audited 1354 packages in 15s
-
-367 packages are looking for funding
-  run `npm fund` for details
-
-12 vulnerabilities (3 moderate, 9 high)
-
-To address issues that do not require attention, run:
-  npm audit fix
-
-To address all issues (including breaking changes), run:
-  npm audit fix --force
-
-Run `npm audit` for details., , , contratos, build — e só caiu quando a aplicação foi
-**levantada de verdade**. Nenhuma verificação de código pegaria aquilo.
+Os pacotes 1 e 2 falharam em teste. **O pacote 3 passou em tudo que é
+estático** — instalação limpa, typecheck, lint, contratos e build — e só caiu
+quando a aplicação foi **levantada de verdade**. Nenhuma verificação de código
+pegaria aquilo.
 
 ## O PROCEDIMENTO EXECUTADO
 
