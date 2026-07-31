@@ -1,106 +1,103 @@
-# DIAGNÓSTICO PRÉ-DEPLOY
+# DIAGNÓSTICO DA INFRAESTRUTURA REAL
 
-**2026-07-31T14:07:55Z** · executado da máquina local, **sem alterar nada**.
+**2026-07-31T15:08:16Z** · somente leitura, do lado de fora. Nada foi alterado.
 
-# O ACHADO QUE MUDA O PLANO
+# CONCLUSÃO EM UMA LINHA
 
-> **A aplicação está VIVA e saudável em produção — e NÃO está no VPS
-> `85.209.93.32` que foi diagnosticado.**
+> **Hostinger, com CDN na frente. A origem está escondida atrás do edge e
+> continua não identificada** — e o repositório documenta **dois modelos
+> mutuamente exclusivos** para ela.
 
-Publicar naquele VPS não atualizaria `atlasaios.com.br`. Criaria uma **segunda**
-implantação, e o domínio continuaria servindo a que já existe.
+## 1. O PROVEDOR: HOSTINGER, POR QUATRO SINAIS INDEPENDENTES
 
-## AS EVIDÊNCIAS
-
-### 1. Existe origem viva, e ela fala com o banco
-
-```
-GET https://atlasaios.com.br/api/v1/ready → HTTP 200 · 0,20 s
-cache-control: no-store
-server-timing: atlas;dur=143
-{"ok":true,"data":{"service":"atlas-api-platform","status":"ready",
- "latencyMs":143,"checks":{"database":{"ok":true,"latencyMs":65}}...
-```
-
-`cache-control: no-store` **e** um `latencyMs` de banco medido em 65 ms provam
-que a resposta **não** vem de cache: há um processo Node executando consulta real
-ao Supabase neste instante.
-
-### 2. O DNS não aponta para o VPS diagnosticado
-
-| | |
+| sinal | evidência |
 |---|---|
-| `atlasaios.com.br` → A | **89.116.213.33** · **91.108.127.185** |
-| VPS diagnosticado | **85.209.93.32** |
-| veredito | **hosts diferentes** |
+| nameservers | `orbit.dns-parking.com` · `horizon.dns-parking.com` |
+| e-mail | MX `mx1/mx2.hostinger.com` · SPF `_spf.mail.hostinger.com` |
+| CDN | `www` → **`www.atlasaios.com.br.cdn.hstgr.net`** |
+| cabeçalhos | `server: hcdn` · `x-hcdn-cache-status: HIT` · `x-hcdn-request-id: …-asc-edge7` |
 
-Nenhum dos dois IPs do domínio aceita SSH na 22 (são bordas de CDN).
+## 2. OS IPs DO DOMÍNIO SÃO DO EDGE, E MUDAM
 
-### 3. A borda é a CDN da Hostinger
+| medição | A records |
+|---|---|
+| primeira | 89.116.213.33 · 91.108.127.185 |
+| segunda | **91.108.127.17 · 77.37.42.116** |
 
-```
-server: hcdn
-x-nextjs-cache: HIT
-x-nextjs-prerender: 1
-strict-transport-security: max-age=63072000; includeSubDomains; preload
-x-frame-options: DENY
-```
+Os IPs **rotacionam entre medições**: são bordas de CDN com balanceamento, não o
+servidor de origem. Nenhum aceita SSH.
 
-Páginas estáticas vêm do cache da CDN; rotas de API atravessam até a origem.
+O próprio `docs/deploy/RUNBOOK_DEPLOY_HOSTINGER.md` já registrava isto em 21/07:
+*"edge da Hostinger — **não é o IP do servidor de origem**"*.
 
-### 4. O VPS `85.209.93.32` está vazio
-
-Confirmado pelo diagnóstico do operador: PM2 sem aplicações, nenhum processo
-Node, nenhum listener em 80/443/3000/3001/8080. **Coerente com não ser a origem.**
-
-## CONCLUSÃO: ONDE A APLICAÇÃO ESTÁ, NINGUÉM SABE
-
-A origem real pode ser hospedagem gerenciada da Hostinger, outro VPS, ou um
-serviço de aplicação — **e isso precisa ser descoberto antes de qualquer deploy**,
-no painel da Hostinger, olhando qual serviço está vinculado ao domínio.
-
-**Fazer deploy no VPS diagnosticado agora seria publicar no lugar errado.**
-
-# QUAL VERSÃO ESTÁ NO AR: NÃO É POSSÍVEL AFIRMAR
+## 3. O VPS `85.209.93.32` NÃO SERVE O DOMÍNIO
 
 ```
-npm run commit-publicado:check
-✘ a resposta NÃO declara `build`
+curl -H "Host: atlasaios.com.br" http://85.209.93.32/   → 000 (nada escuta)
 ```
 
-A resposta de `/api/v1/ready` traz 8 chaves — e **nenhuma** delas é `build`,
-`estado`, `filas`, `migrations`, `procedencia` ou `agendamento`.
+Contra os edges, o mesmo comando devolve 301. **O VPS diagnosticado não é a
+origem** — publicar nele não mudaria o que o domínio serve.
 
-Todas essas chaves existem no código desde 30/07. **A produção é anterior a elas.**
-O código no ar é de antes de 30 de julho — antes de toda esta linha de trabalho.
+## 4. O REPOSITÓRIO NÃO DECIDE — e já sabia disso
 
-| campo | produção | esperado no commit `c8dfef72` |
+`RUNBOOK_DEPLOY_HOSTINGER.md`, seção "⛔ Bloqueio zero":
+
+> *"Não sabemos onde o processo de produção roda. O domínio está atrás do CDN da
+> Hostinger, que esconde a origem. O repositório documenta dois modelos
+> mutuamente exclusivos, ambos com documentação viva:*
+> *(A) VPS Ubuntu com Nginx + PM2, app em `/var/www/atlas`;*
+> *(B) Hostinger Node.js Web App gerenciada pelo hPanel."*
+>
+> *"Os headers medidos são compatíveis com **os dois**. **Não dá para decidir
+> daqui.**"*
+
+**Sem CI/CD.** Os dois workflows (`atlas-release-gate`, `atlas-security`) são
+portões de qualidade, não deploy. Sem `vercel.json`, sem `Dockerfile`, sem
+`Procfile`. **Nada no repositório publica sozinho** — o deploy é manual.
+
+## 5. O QUE O BUNDLE NO AR PROVA SOBRE O INCIDENTE
+
+Baixei os **8 chunks** que `/login` carrega e procurei o endereço do Supabase:
+
+```
+✘ NENHUM chunk carrega URL do Supabase
+```
+
+**O build de produção rodou inteiramente sem ambiente.** Não é só a variável do
+servidor que falta — o JavaScript entregue ao navegador **não tem para onde
+autenticar**. É a explicação completa de `/login` responder 200 sem campo de
+senha.
+
+Também não há `127.0.0.1:54321` nos chunks: o build no ar é anterior ao
+placeholder ou usou outro caminho. De todo modo, **está sem configuração**.
+
+## 6. O `BUILD_ID` NÃO É EXTRAÍVEL DE FORA
+
+A prova de origem do runbook (Passo 0.3) usa
+`/_next/static/<BUILD_ID>/_ssgManifest.js`. O HTML servido **não expõe o
+BUILD_ID** — provavelmente porque a página vem do cache do CDN em forma
+pré-renderizada. **A prova de origem só funciona de dentro do servidor.**
+
+# O QUE FALTA — e só o dono tem
+
+Três perguntas. **A primeira sozinha desbloqueia tudo:**
+
+| # | pergunta | onde se responde |
 |---|---|---|
-| `build` | **ausente** | `{ commit, time, migrations }` |
-| `estado` | **ausente** | 1 dos 6 estados |
-| `filas` · `migrations` · `procedencia` | **ausentes** | presentes |
+| 1 | **A aplicação roda num VPS ou num "Node.js App" gerenciado?** | hPanel → o serviço vinculado a `atlasaios.com.br` |
+| 2 | Se VPS: **qual IP/hostname e qual usuário SSH?** | hPanel → VPS |
+| 3 | Se app gerenciada: **qual o diretório e onde ficam as variáveis?** | hPanel → Node.js App |
 
-# ACESSO SSH: BLOQUEADO NESTA SESSÃO
+**Não peça senha por chat.** Para SSH, o caminho seguro é adicionar uma chave
+pública ao servidor; para o hPanel, o próprio painel.
 
-```
-ssh -o BatchMode=yes root@85.209.93.32   → Permission denied (publickey,password)
-ssh -o BatchMode=yes atlas@85.209.93.32  → Permission denied (publickey,password)
-ssh -o BatchMode=yes ubuntu@85.209.93.32 → Permission denied (publickey,password)
-```
+# O QUE JÁ ESTÁ PRONTO PARA CADA CENÁRIO
 
-Não há chave SSH nesta máquina (`~/.ssh/` sem `id_*`, sem entrada em `config`).
-O servidor aceita senha — e **digitar senha não é operação que eu faça**.
+| cenário | caminho |
+|---|---|
+| **(A) VPS** | `scripts/production/prepare-release.sh` → `deploy-release.sh` → `post-deploy-check.sh` |
+| **(B) Node.js App do hPanel** | subir o ZIP pelo painel, cadastrar as variáveis, build `npm run build` — **e o build agora RECUSA se faltar variável** |
 
-**Consequência:** as fases 1, 2, 5, 6, 7, 9, 10 e 13 do briefing (backup no
-servidor, Node 22, build remoto, migrations, PM2, Nginx, deploy, observabilidade)
-**não podem ser executadas por mim nesta sessão.**
-
-O que **foi** entregue: os scripts que executam cada uma delas, prontos para o
-operador rodar com uma linha — ver `scripts/production/`.
-
-# AS DUAS PERGUNTAS QUE PRECISAM DE RESPOSTA HUMANA
-
-1. **Onde a aplicação roda hoje?** Painel da Hostinger → qual serviço está
-   vinculado a `atlasaios.com.br`. Sem isso, qualquer deploy é aposta.
-2. **O VPS `85.209.93.32` deve virar a nova casa,** ou o deploy deve ir para
-   onde a aplicação já está? São caminhos diferentes e a escolha é de negócio.
+Nos dois, o mesmo pacote:
+`atlas-one-v3.0.0-rc.2-production-20260731-1150-e4dd7152.zip`
