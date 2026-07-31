@@ -311,6 +311,19 @@ const attentionChipClass: Record<AttentionSignalRow["severity"], string> = {
   info: "",
 };
 
+/**
+ * O rótulo de cada tipo de interação, na mesma ordem e com as mesmas palavras
+ * do seletor da tela. Fica AQUI, e não embutido no `addActivity`, para que
+ * mudar "Ligação" em um lugar não deixe o outro para trás — foi assim que este
+ * produto já criou duas verdades para o mesmo fato mais de uma vez.
+ */
+const TITULO_PADRAO_POR_TIPO: Record<string, string> = {
+  note: "Nota",
+  call: "Ligação",
+  whatsapp: "WhatsApp",
+  visit: "Visita",
+};
+
 export default function LeadDetailPage() {
   const { id: leadId } = useParams<{ id: string }>();
   const router = useRouter();
@@ -509,15 +522,37 @@ export default function LeadDetailPage() {
 
   async function addActivity(event: FormEvent) {
     event.preventDefault();
-    const title = activityTitle.trim();
-    if (!title) return;
+    const descricao = activityDescription.trim();
+    const digitado = activityTitle.trim();
+
+    /**
+     * ── RECUSAR EM SILÊNCIO ERA O DEFEITO ──────────────────────────────────
+     *
+     * Antes: `if (!title) return;` — sem mensagem, sem erro, sem nada. O
+     * corretor escrevia no campo grande "O que o cliente falou?", clicava em
+     * salvar e a tela não reagia. Da cadeira dele, "não está salvando" era a
+     * leitura CORRETA do que via.
+     *
+     * E o título era exigência sem razão: o tipo da interação (Nota, Ligação,
+     * WhatsApp, Visita) já está escolhido no seletor ao lado. Pedir que a
+     * pessoa escreva "Ligação" num campo tendo marcado "Ligação" no outro é
+     * cobrar informação que o produto já tem.
+     *
+     * Agora: o título vem do tipo quando não foi digitado, e a única recusa
+     * possível — nada preenchido em lugar nenhum — é dita em voz alta.
+     */
+    if (!digitado && !descricao) {
+      setMessage("Escreva o que aconteceu no contato antes de registrar.");
+      return;
+    }
+    const title = digitado || TITULO_PADRAO_POR_TIPO[activityType] || "Interação registrada";
     try {
       await api(`/api/v1/leads/${leadId}`, {
         method: "POST",
         body: JSON.stringify({
           action: "activity",
           title,
-          description: activityDescription,
+          description: descricao,
           type: activityType,
         }),
       });
@@ -1694,8 +1729,8 @@ export default function LeadDetailPage() {
                   className={inputClass}
                   value={activityTitle}
                   onChange={(e) => setActivityTitle(e.target.value)}
-                  placeholder="Registrar ligação, mensagem ou visita"
-                  aria-label="Título da interação"
+                  placeholder="Título (opcional — usamos o tipo se ficar vazio)"
+                  aria-label="Título da interação (opcional)"
                 />
                 <select
                   className={inputClass}
