@@ -1,34 +1,44 @@
 {
-  "artefato": "atlas-one-v3.0.0-rc.2-production-20260731-1150-e4dd7152.zip",
-  "sha256": "3b8b18c61b21c3a1c27e394c80b9cf780c2bbfc835cb4d8a3f45ff749786dddb",
-  "tamanhoBytes": 6715002,
-  "commit": "e4dd7152a4e9b8afa7a22c2c87928481a8a3d7fd",
-  "commitCurto": "e4dd7152",
+  "artefato": "atlas-one-v3.0.0-rc.2-hostinger-20260731-1250-41ebf2fc.zip",
+  "sha256": "c6e43bc8ab9e573674419a7e0c50082799d031f59fb11bc57e5c80d059c352d8",
+  "tamanhoBytes": 6716892,
+  "entradas": 3369,
+  "commit": "41ebf2fc77b99727f86e40884b407a5c133a9b00",
+  "commitCurto": "41ebf2fc",
   "versao": "3.0.0-rc.2",
   "branch": "claude/atlas-v3-entregas",
-  "geradoEmUtc": "2026-07-31T14:52:18Z",
-  "runtimeExigido": ">=22.6 <27",
-  "comandos": {
-    "instalar": "npm ci",
-    "construir": "npm run build",
-    "iniciar": "npm start"
+  "geradoEmUtc": "2026-07-31T15:53:27Z",
+  "alvo": "Hostinger Node.js App gerenciada (confirmado no hPanel pelo dono)",
+  "runtimeExigido": ">=20.9",
+  "porqueEsseRuntime": "next exige >=20.9; build e start nao usam flag de Node 22+. O >=22.6 anterior era da bancada de verificacao e teria feito npm ci recusar com EBADENGINE no Node 20 da Hostinger.",
+  "hpanel": {
+    "buildCommand": "npm run build",
+    "startCommand": "npm start",
+    "diretorioRaiz": "./",
+    "saida": ".next",
+    "node": "20.x"
   },
-  "correcoesDoIncidente": [
-    "build RECUSA artefato sem NEXT_PUBLIC_SUPABASE_URL (exit 1)",
-    "placeholder deixou de apontar para Supabase local; usa TLD .invalid (RFC 2606)",
-    "configuracaoEhPlaceholder() permite ao produto declarar 'nao configurado'",
-    "tela de login explica em vez de quebrar",
-    "/api/version responde sem depender do banco"
+  "variaveisQueBloqueiamOBuild": [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+  ],
+  "variaveisQueBloqueiamOServidor": [
+    "SUPABASE_SERVICE_ROLE_KEY"
+  ],
+  "variavelQueBloqueiaOsWorkers": [
+    "ATLAS_CRON_SECRET"
   ],
   "validacaoDoPacoteExtraido": {
     "npmCi": 0,
     "typecheck": 0,
     "lint": 0,
-    "contratos": 0,
     "scannerDeSegredos": 0,
-    "contratosDetalhe": "1210 executados, 1197 aprovados, 0 falhas, 13 pulados",
-    "buildSemAmbiente": "exit 1 — RECUSOU, como projetado"
+    "buildSemAmbiente": "exit 1 — RECUSOU, como projetado",
+    "buildComAmbiente": "exit 0",
+    "urlPublicaNoBundle": 1,
+    "serviceRoleNoBundle": 0,
+    "placeholderAntigoNoBundle": 0
   },
   "publicadoEmProducao": false,
-  "porqueNaoPublicado": "SSH indisponivel nesta sessao (Permission denied: publickey,password). A origem canonica de atlasaios.com.br tambem nao foi identificada: o dominio resolve para 89.116.213.33/91.108.127.185, e o VPS diagnosticado e 85.209.93.32."
+  "porqueNaoPublicado": "Aguardando autorizacao explicita do dono. A publicacao e feita por upload no hPanel, e o rollback (atlas-v3-completo-2026-07-30.zip) esta sendo validado."
 }
