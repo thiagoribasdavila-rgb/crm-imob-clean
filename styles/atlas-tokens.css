@@ -38,6 +38,16 @@
        branco       →  2,72 sobre #3fa2f7 (reprova)  ·  5,82 sobre #0b63c5
      Este token existe justamente porque a resposta se inverte. */
   --atlas-texto-sobre-acento: #06101f;
+  /* ── DOIS TOKENS QUE EXISTEM PARA VIRAR ──────────────────────────────
+     Medido em /leads na produção, tema claro: #91a0b5 aparecia em 60
+     elementos reprovando contraste, e #bae6fd/#b9dff1 em 60 mais. Não havia
+     token de texto perto o bastante (distância 14 a 17) — aproximar mudaria
+     a cor no tema escuro.
+
+     Estes preservam o escuro EXATAMENTE (mesmos valores de antes) e trocam
+     só no claro. É a forma correta quando a cor é intencional. */
+  --atlas-texto-acento: #bae6fd;
+  --atlas-texto-suave: #91a0b5;
   --atlas-accent-hover: #5eb5ff;
   --atlas-accent-pressed: #2a89dd;
   --atlas-accent-soft: rgba(63, 162, 247, 0.12);

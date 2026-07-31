@@ -707,7 +707,7 @@ textarea:focus {
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
   background: var(--atlas-accent-soft);
   font-weight: 700;
 }
@@ -841,10 +841,10 @@ textarea:focus {
 }
 .atlas-nav-group[data-current="true"] > .atlas-sidebar-section {
   border-left-color: rgba(125, 211, 252, 0.72);
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
 }
 .atlas-nav-group[data-current="true"] > .atlas-sidebar-section small {
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
   background: rgba(56, 189, 248, 0.1);
 }
 .atlas-nav-link {
@@ -857,7 +857,7 @@ textarea:focus {
   padding: 7px 10px;
   border: 1px solid transparent;
   border-radius: 12px;
-  color: #91a0b5;
+  color: var(--atlas-texto-suave);
   font-size: 13px;
   transition:
     color var(--atlas-transition),
@@ -946,7 +946,7 @@ textarea:focus {
   padding: 3px 6px;
   border: 1px solid rgba(125, 211, 252, 0.14);
   border-radius: 8px;
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
   background: rgba(56, 189, 248, 0.08);
   font-size: 8px;
   font-weight: 600;
@@ -1061,7 +1061,7 @@ textarea:focus {
   place-items: center;
   border: 1px solid var(--atlas-border);
   border-radius: 12px;
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
   background: rgba(56, 189, 248, 0.06);
 }
 .atlas-quick-create {
@@ -1632,7 +1632,7 @@ textarea:focus {
   white-space: nowrap;
 }
 .atlas-mobile-dock-action[data-active="true"] {
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
   background: linear-gradient(145deg, rgba(56, 189, 248, 0.14), rgba(37, 99, 235, 0.06));
 }
 @media (min-width: 1024px) {
@@ -1889,7 +1889,7 @@ textarea:focus {
   background: rgba(2, 6, 23, 0.26);
 }
 .atlas-customer-identity { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 11px; align-items: center; min-width: 0; }
-.atlas-customer-identity > span { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(125, 211, 252, 0.18); border-radius: 14px; color: #bae6fd; background: rgba(14, 165, 233, 0.08); font-size: 13px; font-weight: 750; }
+.atlas-customer-identity > span { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(125, 211, 252, 0.18); border-radius: 14px; color: var(--atlas-texto-acento); background: rgba(14, 165, 233, 0.08); font-size: 13px; font-weight: 750; }
 .atlas-customer-identity div,
 .atlas-customer-identity :is(strong, small) { display: block; min-width: 0; }
 .atlas-customer-identity strong { overflow: hidden; color: var(--atlas-text-primary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
@@ -2210,7 +2210,7 @@ textarea:focus {
 
 .atlas-task-focus-action {
   justify-self: end;
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
   font-size: 11px;
   font-weight: 700;
   text-align: right;
@@ -2619,7 +2619,7 @@ textarea:focus {
 
 .atlas-calendar-attention-action {
   min-width: max-content;
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
   font-size: 10px;
   font-weight: 700;
 }
@@ -3734,7 +3734,7 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
   line-height: 1.55;
 }
 .atlas-command-primary-signal > a {
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.4;
@@ -5171,7 +5171,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 .atlas-kanban-toggle.is-active {
   border-color: rgba(56, 189, 248, 0.25);
   background: rgba(56, 189, 248, 0.09);
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
 }
 .atlas-broker-focus {
   overflow: hidden;
@@ -5601,7 +5601,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 .atlas-temperature { text-transform: capitalize; }
 .atlas-temperature.is-quente { border-color: rgba(251,113,133,.2); background: rgba(251,113,133,.07); color: #fecdd3; }
 .atlas-temperature.is-morno { border-color: rgba(251,191,36,.2); background: rgba(251,191,36,.07); color: #fde68a; }
-.atlas-temperature.is-frio { border-color: rgba(56,189,248,.16); background: rgba(56,189,248,.05); color: #bae6fd; }
+.atlas-temperature.is-frio { border-color: rgba(56,189,248,.16); background: rgba(56,189,248,.05); color: var(--atlas-texto-acento); }
 .atlas-kanban-primary-actions {
   display: flex;
   gap: 6px;
@@ -5615,7 +5615,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   border: 1px solid rgba(56,189,248,.12);
   border-radius: 10px;
   background: rgba(56,189,248,.045);
-  color: #b9dff1;
+  color: var(--atlas-texto-acento);
   font-size: 15px;
   line-height: 1;
   transition: .18s ease;
@@ -6554,7 +6554,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 }
 .atlas-leads-action-buttons a {
   border-color: rgba(56, 189, 248, 0.22);
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
   background: rgba(56, 189, 248, 0.07);
 }
 .atlas-leads-action-buttons a:hover,
@@ -6754,7 +6754,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   place-items: center;
   border: 1px solid rgba(56, 189, 248, 0.12);
   border-radius: 12px;
-  color: #bae6fd;
+  color: var(--atlas-texto-acento);
   background: linear-gradient(
     145deg,
     rgba(56, 189, 248, 0.15),
@@ -6812,7 +6812,7 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 .atlas-broker-name,
 .atlas-date-cell,
 .atlas-next-action {
-  color: #91a0b5;
+  color: var(--atlas-texto-suave);
   font-size: 9px;
 }
 .atlas-next-action[data-overdue="true"] {
@@ -8476,6 +8476,10 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   /* Inverte junto com o acento: aqui o azul é escuro, então o texto é branco.
      5,82 — passa AA para texto pequeno. Ver a nota em styles/atlas-tokens.css. */
   --atlas-texto-sobre-acento: #ffffff;
+  /* 8,90 sobre o fundo claro · 8,42 sobre surface-subtle · 9,46 sobre branco */
+  --atlas-texto-acento: #0c4a6e;
+  /* 5,54 · 5,25 · 5,89 — passa AA em todas as superfícies do tema claro */
+  --atlas-texto-suave: #5a6577;
   --atlas-accent-hover: #0a58ae;
   --atlas-accent-pressed: #084a95;
   --atlas-accent-soft: rgba(11, 99, 197, 0.10);
