@@ -1,0 +1,14 @@
+[
+  {
+    "arquivo": "20260711223000_auto_provision_auth_profiles.sql",
+    "tipo": "documentacao",
+    "motivo": "LÁPIDE, nunca houve SQL a escrever aqui. O conteúdo foi substituído por 20260711224500_harden_auth_profile_provisioning.sql no mesmo dia; o arquivo fica porque o ledger de migrations já registrou este timestamp e apagá-lo faria o supabase db push divergir do histórico. Esvaziar era o desfecho correto: o SQL certo mora no sucessor, e duas versões da mesma função em migrations seguidas é como se cria caminho divergente.",
+    "medido_em": "2026-07-29"
+  },
+  {
+    "arquivo": "20260711040000_atlas_v3_foundation.sql",
+    "tipo": "divida",
+    "motivo": "DÍVIDA REAL, não exceção legítima: o arquivo diz documentar o esquema aplicado ao projeto Supabase pvvdfqbkqhfifylzgbkq (crm-imob-clean) — OUTRO projeto — e não traz uma linha do esquema que nomeia (organizations, profiles, leads, pipeline, properties, customers, developments, units, opportunities, activities, tasks, campaigns, ai_insights, audit_logs). É a raiz do drift já medido: o repositório NÃO reconstrói o banco. Pagar exige dumpar o esquema base do banco vivo, o que é entrega própria, não conserto de passagem. Fica declarado e com TETO para não crescer.",
+    "medido_em": "2026-07-29"
+  }
+]

@@ -40,7 +40,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
 
 const raiz = path.resolve(import.meta.dirname, "..", "..");
 const declaracao = JSON.parse(fs.readFileSync(path.join(raiz, "config", "supabase-projetos.json"), "utf8"));

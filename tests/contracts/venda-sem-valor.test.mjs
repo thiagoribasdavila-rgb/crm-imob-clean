@@ -25,7 +25,6 @@ import path from "node:path";
 
 import {
   aguardandoValorDaVenda,
-  diasAguardando,
   avaliarCobrancaDeValor,
   valorDaVendaAceitavel,
   DIAS_PARA_COBRANCA_CRITICA,
