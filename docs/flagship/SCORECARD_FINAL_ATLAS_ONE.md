@@ -156,3 +156,64 @@ devolve 9 vulnerabilidades altas.
 É a terceira nota desta auditoria que **piora ao ser medida** (acessibilidade,
 performance, segurança). Nenhuma piorou porque o produto regrediu. As três
 pioraram porque pararam de ser palpite.
+
+
+---
+
+# TERCEIRO RECÁLCULO — 2026-07-31, depois das correções medidas
+
+| # | categoria | 2º | **agora** | evidência |
+|---|---|---:|---:|---|
+| 1 | Identidade visual | 82 | **82** | 1.359 cores cravadas continuam |
+| 2 | Consistência | 76 | **78** | 5 `loading.tsx` padronizados; o resto igual |
+| 3 | Clareza | 95 | **95** | — |
+| 4 | Usabilidade | 85 | **85** | — |
+| 5 | Velocidade operacional | 62 | **62** | fluxos ainda não cronometrados |
+| 6 | Responsividade | 78 | **84** | 0 overflow **e** 0 alvo pequeno, remedido em 2 viewports |
+| 7 | Acessibilidade | 72 | **91** | **104 → 0** alvos < 24 px, WCAG 2.5.8 fechado |
+| 8 | Performance | 55 | **68** | 1 → **6** `loading.tsx`; LCP **não remedido** |
+| 9 | Tratamento de erros | 96 | **96** | — |
+| 10 | Qualidade dos dados | 96 | **96** | — |
+| 11 | Maturidade dos fluxos | 72 | **72** | sem E2E |
+| 12 | Estabilidade | 88 | **90** | 1.203 contratos, 0 falhas, 220/220 |
+| 13 | Segurança | 86 | **95** | **`npm audit --omit=dev`: 0 vulnerabilidades** no que vai ao servidor |
+| 14 | Documentação | 93 | **95** | 18 documentos, com índice |
+| 15 | Instalação limpa | 95 | **95** | — |
+| 16 | Empacotamento | 95 | **95** | — |
+| 17 | Prontidão de implantação | 48 | **48** | **nada publicado** |
+
+## MÉDIA: **86,9** (71,3 → 78,0 → 78,6 → **86,9**)
+
+| | |
+|---|---|
+| menor nota | **48** — prontidão de implantação |
+| categorias abaixo de 90 | **9 de 17** (eram 11) |
+| abaixo de 60 | **1** — só prontidão |
+
+# VEREDITO: 🔴 REPROVADO — e a razão agora é **uma só**
+
+A média subiu **15,6 pontos** desde a primeira auditoria. O portão da média (95)
+ficou a 8,1 pontos. Mas o portão "nada abaixo de 90" falha em **prontidão de
+implantação: 48**.
+
+## O TETO, CALCULADO
+
+Com **todas as outras 16 categorias em 100** e prontidão em 48:
+
+| | |
+|---|---:|
+| média possível | **96,9** ✅ acima de 95 |
+| menor nota | **48** ❌ abaixo de 90 |
+
+> **10/10 é inalcançável por código.** Prontidão de implantação mede uma coisa
+> só: se o sistema está no ar. Nenhuma linha que eu escreva move esse número —
+> ele muda quando alguém publica, e sobe para ~95 assim que
+> `npm run commit-publicado:check` ficar verde.
+
+Isso não é desculpa: é o mapa. **Publicar é a única ação que fecha o portão.**
+
+## A ACESSIBILIDADE SUBIU 19 PONTOS
+
+De 72 para 91, com o número medido antes e depois no mesmo navegador, no mesmo
+build, nos mesmos dois viewports: **104 → 0**. É a maior subida desta auditoria,
+e veio de uma regra de CSS de 20 linhas que não mudou um pixel do visual.
