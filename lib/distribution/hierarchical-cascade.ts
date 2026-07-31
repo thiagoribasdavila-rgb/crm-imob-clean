@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  resolverElenco, aplicarElenco,
+  type EscopoDeDistribuicao, type MembroDoElenco,
+} from "./elenco-por-escopo";
 
 /**
  * Cascata hierárquica de distribuição para leads de entrada automática
@@ -113,10 +117,16 @@ function pickLeastLoaded(candidates: Candidate[]): Candidate | null {
   )[0];
 }
 
+/**
+ * `escopo` é OPCIONAL de propósito: os chamadores que ainda não sabem o projeto
+ * nem a campanha da lead continuam funcionando exatamente como antes. Elenco
+ * ausente ou escopo ausente ⇒ fila aberta a toda a equipe.
+ */
 export async function resolveLeadOwner(
   admin: SupabaseClient,
   organizationId: string,
   defaultOwnerId: string | null,
+  escopo?: EscopoDeDistribuicao,
 ): Promise<OwnershipResolution> {
   const { data: profiles, error } = await admin
     .from("profiles")
@@ -185,12 +195,29 @@ export async function resolveLeadOwner(
     if (load >= capacity) continue;
     brokerCandidates.push({ profile, load, lastAssigned: await lastAssignmentAt(admin, organizationId, profile.id) });
   }
-  const broker = pickLeastLoaded(brokerCandidates);
+
+  // ── O ELENCO DO ESCOPO ──────────────────────────────────────────────────
+  //
+  // Entra AQUI, depois dos filtros de disponibilidade, e a ordem é o ponto:
+  // assim "o elenco esvaziou" significa exatamente "o time deste projeto/
+  // campanha existe mas ninguém dele pode atender agora" — que é o que o
+  // gerente precisa ler. Filtrar antes confundiria "não está no time" com
+  // "está indisponível".
+  //
+  // Sem elenco cadastrado nada muda: `permitidos: null` deixa a lista intacta.
+  const elenco = resolverElenco(escopo ?? {}, await carregarElenco(admin, organizationId, escopo));
+  const filtrado = aplicarElenco(
+    brokerCandidates.map((c) => ({ id: c.profile.id, candidato: c })),
+    elenco,
+  );
+  const notaElenco = elenco.decididoPor === "sem-elenco" ? "" : `${filtrado.porque} `;
+
+  const broker = filtrado.elencoEsvaziou ? null : pickLeastLoaded(filtrado.elegiveis.map((x) => x.candidato));
   if (broker) {
     return {
       ownerId: broker.profile.id,
       tier: "broker",
-      reason: `${defaultNote}cascata hierárquica: corretor com menor carga (${displayName(broker.profile)}, ${broker.load} leads abertos).`.trim(),
+      reason: `${defaultNote}${notaElenco}cascata hierárquica: corretor com menor carga (${displayName(broker.profile)}, ${broker.load} leads abertos).`.trim(),
     };
   }
 
@@ -198,6 +225,7 @@ export async function resolveLeadOwner(
   // Se corretores foram barrados por falta de WhatsApp, isso precisa estar
   // ESCRITO no histórico. Lead empilhando no gerente sem explicação é o tipo de
   // sintoma que se investiga por semanas.
+  const notaElencoVazio = filtrado.elencoEsvaziou ? `${filtrado.porque} ` : "";
   const notaWhatsapp = semWhatsapp > 0
     ? `${semWhatsapp} corretor(es) disponível(is) fora do rodízio por estar(em) sem WhatsApp conectado; `
     : "";
@@ -223,7 +251,7 @@ export async function resolveLeadOwner(
     return {
       ownerId: manager.profile.id,
       tier: "manager",
-      reason: `${defaultNote}${notaWhatsapp}sem corretor elegível (disponível, com WhatsApp conectado e com capacidade); gerente conectado com menor carga segura a fila (${displayName(manager.profile)}).`.trim(),
+      reason: `${defaultNote}${notaElencoVazio}${notaWhatsapp}sem corretor elegível (disponível, com WhatsApp conectado e com capacidade); gerente conectado com menor carga segura a fila (${displayName(manager.profile)}).`.trim(),
     };
   }
 
@@ -244,7 +272,7 @@ export async function resolveLeadOwner(
   return {
     ownerId: null,
     tier: "unassigned",
-    reason: `${defaultNote}${notaWhatsapp}${notaGerente}REPRESADA: ninguém com WhatsApp conectado para receber. O diretor distribui pelo Command Center, ou alguém conecta e a próxima entra sozinha.`.trim(),
+    reason: `${defaultNote}${notaElencoVazio}${notaWhatsapp}${notaGerente}REPRESADA: ninguém com WhatsApp conectado para receber. O diretor distribui pelo Command Center, ou alguém conecta e a próxima entra sozinha.`.trim(),
   };
 }
 
@@ -263,4 +291,36 @@ export async function recordDistribution(
   } catch {
     // Auditoria é desejável, não vital: o lead já existe e está atribuído.
   }
+}
+
+
+/**
+ * Busca o elenco do escopo. Uma consulta só, filtrada pelos ids que interessam —
+ * carregar o elenco inteiro da organização a cada lead seria pagar por dados que
+ * não serão usados no caminho mais quente do produto.
+ *
+ * Falha de leitura devolve lista VAZIA em vez de derrubar: sem elenco a fila
+ * volta a ser aberta, que é o comportamento anterior. Distribuir para a equipe
+ * inteira é ruim; não distribuir é pior.
+ */
+async function carregarElenco(
+  admin: SupabaseClient,
+  organizationId: string,
+  escopo: EscopoDeDistribuicao | undefined,
+): Promise<MembroDoElenco[]> {
+  const ids = [escopo?.projetoId, escopo?.campanhaId].filter(Boolean) as string[];
+  if (ids.length === 0) return [];
+  const { data, error } = await admin
+    .from("distribution_roster")
+    .select("escopo,escopo_id,profile_id,ativo")
+    .eq("organization_id", organizationId)
+    .eq("ativo", true)
+    .in("escopo_id", ids);
+  if (error) return [];
+  return (data ?? []).map((r) => ({
+    escopo: r.escopo as "projeto" | "campanha",
+    escopoId: String(r.escopo_id),
+    profileId: String(r.profile_id),
+    ativo: Boolean(r.ativo),
+  }));
 }
