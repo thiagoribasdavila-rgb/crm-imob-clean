@@ -1,30 +1,34 @@
 {
-  "artefato": "atlas-one-v3.0.0-rc.2-production-20260731-1134-44151ab8.zip",
-  "sha256": "fb9c080cab3f59e07978b34236253f9ab4656c9efd2b71533c5e55d63e9710fa",
-  "tamanhoBytes": 6705531,
-  "commit": "44151ab8d9ad2b8b70610f2027daade899212ff0",
-  "commitCurto": "44151ab8",
+  "artefato": "atlas-one-v3.0.0-rc.2-production-20260731-1150-e4dd7152.zip",
+  "sha256": "3b8b18c61b21c3a1c27e394c80b9cf780c2bbfc835cb4d8a3f45ff749786dddb",
+  "tamanhoBytes": 6715002,
+  "commit": "e4dd7152a4e9b8afa7a22c2c87928481a8a3d7fd",
+  "commitCurto": "e4dd7152",
   "versao": "3.0.0-rc.2",
   "branch": "claude/atlas-v3-entregas",
-  "geradoEmUtc": "2026-07-31T14:35:02Z",
-  "origem": "git archive HEAD — somente arquivos rastreados",
+  "geradoEmUtc": "2026-07-31T14:52:18Z",
   "runtimeExigido": ">=22.6 <27",
   "comandos": {
     "instalar": "npm ci",
     "construir": "npm run build",
     "iniciar": "npm start"
   },
-  "publicadoEmProducao": false,
-  "porqueNaoPublicado": "SSH indisponivel nesta sessao (Permission denied: publickey,password) e producao em incidente: aplicacao no ar sem NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.",
-  "homologacao": {
-    "status": "REPROVADO",
-    "nota": 48,
-    "motivo": "sistema fora do ar para os usuarios"
-  },
-  "verificacaoLocal": {
+  "correcoesDoIncidente": [
+    "build RECUSA artefato sem NEXT_PUBLIC_SUPABASE_URL (exit 1)",
+    "placeholder deixou de apontar para Supabase local; usa TLD .invalid (RFC 2606)",
+    "configuracaoEhPlaceholder() permite ao produto declarar 'nao configurado'",
+    "tela de login explica em vez de quebrar",
+    "/api/version responde sem depender do banco"
+  ],
+  "validacaoDoPacoteExtraido": {
+    "npmCi": 0,
     "typecheck": 0,
     "lint": 0,
-    "contratos": "1209 executados, 1200 aprovados, 0 falhas, 9 pulados",
-    "portoes": "220/220"
-  }
+    "contratos": 0,
+    "scannerDeSegredos": 0,
+    "contratosDetalhe": "1210 executados, 1197 aprovados, 0 falhas, 13 pulados",
+    "buildSemAmbiente": "exit 1 — RECUSOU, como projetado"
+  },
+  "publicadoEmProducao": false,
+  "porqueNaoPublicado": "SSH indisponivel nesta sessao (Permission denied: publickey,password). A origem canonica de atlasaios.com.br tambem nao foi identificada: o dominio resolve para 89.116.213.33/91.108.127.185, e o VPS diagnosticado e 85.209.93.32."
 }
