@@ -1,0 +1,24 @@
+{
+  "_comentario": [
+    "IDENTIDADE DO ARTEFATO — gravada pelo git, não por quem empacota.",
+    "",
+    "O campo `commit` abaixo contém o marcador `$Format:%H$`. Numa cópia de",
+    "trabalho ele fica literal — e é assim que o código sabe que NÃO está",
+    "rodando a partir de um pacote.",
+    "",
+    "Quando `git archive` gera o ZIP, o próprio git substitui o marcador pelo",
+    "SHA do commit arquivado (mecanismo `export-subst`, declarado em",
+    ".gitattributes). Ninguém digita esse valor, e por isso ele não pode estar",
+    "errado: ele é gravado pela mesma ferramenta que monta o pacote.",
+    "",
+    "É a diferença entre EVIDÊNCIA e AFIRMAÇÃO. `ATLAS_BUILD_COMMIT` é uma",
+    "variável que alguém preenche — e em 31/07/2026 ela ficou apontando para",
+    "935fe0e9 enquanto o pacote implantado era a3379359. A rota /api/version",
+    "declarava `identidadeConfiavel: true` porque conferia a variável contra ela",
+    "mesma: formato válido, árvore limpa. Uma afirmação que só confere a si",
+    "mesma sempre concorda consigo."
+  ],
+  "commit": "$Format:%H$",
+  "commitCurto": "$Format:%h$",
+  "arquivadoEm": "$Format:%cI$"
+}
