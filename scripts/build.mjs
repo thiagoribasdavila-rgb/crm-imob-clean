@@ -97,7 +97,87 @@ function descobrirProcedencia() {
   return procedencia;
 }
 
+/**
+ * ── O BUILD SE RECUSA A PRODUZIR UM ARTEFATO QUE NÃO PODE FUNCIONAR ─────────
+ *
+ * ESTA FUNÇÃO EXISTE POR CAUSA DE UM INCIDENTE REAL, em 2026-07-31.
+ *
+ * Um deploy subiu sem `NEXT_PUBLIC_SUPABASE_URL`. O build passou, o pacote foi
+ * gerado, o processo iniciou, o domínio respondeu HTTP 200 — e o CRM ficou fora
+ * do ar para todos os usuários:
+ *
+ *   /api/v1/auth/me ................... HTTP 500
+ *   /api/v1/crm/leads ................. HTTP 500
+ *   /login ............................ 200, SEM CAMPO DE SENHA
+ *
+ * ── POR QUE A FALHA FOI SILENCIOSA ─────────────────────────────────────────
+ *
+ * Variáveis `NEXT_PUBLIC_*` são **assadas no bundle do navegador durante o
+ * build**. Faltando no build, o cliente recebe `undefined` no lugar do endereço
+ * do Supabase — e a tela de login não tem para onde autenticar. Não há erro no
+ * build, não há erro no start: há uma aplicação que sobe e não serve.
+ *
+ * Pior: reiniciar não conserta. Corrigir o `.env` e dar `restart` deixa o bundle
+ * quebrado no lugar, porque o valor já foi assado. **É preciso construir de
+ * novo** — e quem não sabe disso passa horas reiniciando.
+ *
+ * ── A CORREÇÃO: FALHAR NO BUILD, NÃO EM PRODUÇÃO ───────────────────────────
+ *
+ * Um artefato sem estas variáveis é, por construção, um artefato inútil. Gerá-lo
+ * é produzir um objeto cuja única função é enganar quem o instala.
+ *
+ * O build passa a RECUSAR. Custa segundos ao operador e evita horas de sistema
+ * fora do ar.
+ *
+ * ── A SAÍDA, QUE É DECLARADA E NÃO ESCONDIDA ───────────────────────────────
+ *
+ * `ATLAS_BUILD_SEM_AMBIENTE=1` permite construir sem as variáveis — para
+ * verificar compilação em CI, por exemplo. Ela IMPRIME um aviso gritante, e o
+ * artefato resultante não deve ir para produção. A saída existe porque uma
+ * guarda sem escotilha é desligada de vez na primeira vez que atrapalha.
+ */
+const VARIAVEIS_QUE_O_BUNDLE_ASSA = [
+  ["NEXT_PUBLIC_SUPABASE_URL", "sem ela o navegador não sabe onde fica o Supabase, e a tela de login não autentica"],
+  ["NEXT_PUBLIC_SUPABASE_ANON_KEY|NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "sem ela o cliente não tem credencial pública para falar com o banco"],
+];
+
+function exigirAmbienteDeBuild() {
+  const faltando = [];
+  for (const [nomes, porque] of VARIAVEIS_QUE_O_BUNDLE_ASSA) {
+    const alternativas = nomes.split("|");
+    const achou = alternativas.some((n) => String(process.env[n] || "").trim().length > 0);
+    if (!achou) faltando.push([nomes.replace(/\|/g, " ou "), porque]);
+  }
+  if (faltando.length === 0) return;
+
+  if (process.env.ATLAS_BUILD_SEM_AMBIENTE === "1") {
+    console.warn(
+      "\n⚠️  ATLAS build SEM AMBIENTE — artefato NÃO SERVE PARA PRODUÇÃO.\n" +
+        faltando.map(([n]) => `      falta ${n}`).join("\n") +
+        "\n   O bundle do navegador sairá sem o endereço do Supabase e o login não vai funcionar.\n",
+    );
+    return;
+  }
+
+  console.error(
+    "\n✘ BUILD RECUSADO — faltam variáveis que são ASSADAS NO BUNDLE.\n\n" +
+      faltando.map(([nome, porque]) => `    ${nome}\n      → ${porque}`).join("\n\n") +
+      "\n\n  Estas variáveis não podem ser corrigidas depois: `NEXT_PUBLIC_*` é\n" +
+      "  gravada no JavaScript do navegador NESTE MOMENTO. Construir sem elas\n" +
+      "  produz uma aplicação que sobe, responde HTTP 200 e NÃO DEIXA NINGUÉM\n" +
+      "  ENTRAR — foi exatamente o que derrubou a produção em 31/07/2026.\n\n" +
+      "  Como resolver:\n" +
+      "    set -a; . ./.env; set +a\n" +
+      "    node scripts/validate-production-env.mjs\n" +
+      "    npm run build\n\n" +
+      "  Só para verificar compilação, sem gerar artefato de produção:\n" +
+      "    ATLAS_BUILD_SEM_AMBIENTE=1 npm run build\n",
+  );
+  process.exit(1);
+}
+
 descobrirProcedencia();
+exigirAmbienteDeBuild();
 const quarantine = createRouteQuarantine({ root, paths: legacyRoutePaths, mode: "build" });
 const nextBin = resolve(root, "node_modules/next/dist/bin/next");
 // O padrão é o turbopack porque é o que este projeto já usava (`next build` sem
