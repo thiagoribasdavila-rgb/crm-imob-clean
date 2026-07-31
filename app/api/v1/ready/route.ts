@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { apiSuccess, createRequestContext, structuredApiLog } from "@/lib/api/core";
 import { montarProntidaoDasIntegracoes, ASSUNTOS } from "@/lib/integrations/prontidao-das-integracoes";
@@ -58,6 +59,44 @@ export async function GET(request: NextRequest) {
    * mesma lista das outras, e só a linha do Supabase declara esse assunto. É o
    * que torna estruturalmente impossível outra linha nascer da checagem do banco.
    */
+  /**
+   * ── A ROTA QUE DIZ O QUE FALTA NÃO PODE QUEBRAR POR FALTAR ────────────────
+   *
+   * Descoberto em 2026-07-31 no smoke test do pacote extraído, servido em
+   * produção SEM `.env`: `/api/v1/ready` respondeu **HTTP 500 cru**, com
+   * `Error: Supabase Admin não configurado` escapando para o log.
+   *
+   * É o pior lugar possível para essa falha. No primeiro deploy, antes de
+   * preencher o `.env`, a rota de prontidão é exatamente onde o operador olha
+   * para descobrir o que falta — e ela respondia com um 500 opaco, que não
+   * distingue "não configurei ainda" de "o servidor está com defeito".
+   *
+   * Ausência não declarada é indistinguível de pane. A rota inteira existe para
+   * acabar com isso, e caía nele na primeira execução de qualquer implantação.
+   *
+   * 503 e não 500: o serviço não está pronto, e isso é um estado conhecido, não
+   * um erro inesperado. A lista de variáveis ausentes vai junto — recusa sem
+   * alternativa é beco.
+   */
+  const CREDENCIAIS_MINIMAS = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"] as const;
+  const ausentes = CREDENCIAIS_MINIMAS.filter((nome) => !process.env[nome]?.trim());
+  if (ausentes.length > 0) {
+    return NextResponse.json(
+      {
+        status: "not_configured",
+        estado: "banco_fora",
+        estadoExigeAcao: true,
+        estadoMotivo: `Faltam ${ausentes.length} variável(is) de ambiente obrigatória(s).`,
+        estadoExplicacao:
+          "A aplicação subiu, mas não tem como falar com o banco. Preencha as variáveis abaixo no `.env` do servidor (o pacote traz `.env.production.example` com a lista completa) e recarregue o processo.",
+        variaveisAusentes: ausentes,
+        // Nunca ecoa VALOR de variável — só o nome do que falta.
+        geradoEm: new Date().toISOString(),
+      },
+      { status: 503, headers: { "cache-control": "no-store" } },
+    );
+  }
+
   const evidenciaDeIA = await lerEvidenciaDeProvedores(getSupabaseAdmin());
   const defeitosDeModelo = defeitosDeFormaDoAmbiente(process.env);
   const { integrations, resumo } = montarProntidaoDasIntegracoes({
