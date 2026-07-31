@@ -70,9 +70,10 @@ qualquer deploy — é a regra 3 do briefing, e ela ainda não tem resposta.
 
 ## O CAMINHO PARA APROVAR
 
-1. **Restabelecer o serviço** — 
-2. **Identificar a origem canônica** — painel da Hostinger
-3. **Publicar pelo script** — 
-4. **Provar** — 
+1. **Restabelecer o serviço** — passo a passo em `INCIDENTE_PRODUCAO_2026-07-31.md`
+2. **Identificar a origem canônica** — painel da Hostinger: qual serviço está
+   vinculado a `atlasaios.com.br`
+3. **Publicar pelo script** — `scripts/production/deploy-release.sh`
+4. **Provar** — `scripts/production/post-deploy-check.sh`
 
-Com os quatro fechados, prontidão sai de 48 para ~95 e a média passa de 95.
+Com os quatro fechados, a prontidão sai de 48 para ~95 e a média passa de 95.
