@@ -329,12 +329,34 @@ const payloadKeys = topLevelKeys(payloadText);
 // ---------------------------------------------------------------------------
 const usageAt = page.indexOf("<CampaignApprovalsPanel");
 {
-  const imported = /import\s*\{\s*CampaignApprovalsPanel\s*\}\s*from\s*"@\/components\/atlas\/CampaignApprovalsPanel"/.test(page);
+  // ── POR QUE ISTO NÃO CONFERE MAIS A LINHA DE IMPORT ─────────────────────
+  //
+  // A asserção exigia, literalmente, `import { CampaignApprovalsPanel } from
+  // "@/components/atlas/CampaignApprovalsPanel"`. Quando o painel virou
+  // carregamento sob demanda — mesmo módulo, mesmo nome, mesma montagem, só o
+  // JavaScript chegando em pedaço separado — o portão ficou vermelho sem que
+  // nada tivesse quebrado.
+  //
+  // Portão que descreve a FORMA vira trava contra otimização. O que este caso
+  // sempre quis dizer é: o painel vem DAQUELE módulo e aparece na home UMA vez.
+  //
+  // E ficou mais estrito num ponto: `ssr: false` é recusado. Ali a diferença é
+  // de comportamento — o painel sumiria da renderização de servidor.
+  const MODULO = "@\\/components\\/atlas\\/CampaignApprovalsPanel";
+  const estatico = new RegExp(`import\\s*\\{\\s*CampaignApprovalsPanel\\s*\\}\\s*from\\s*"${MODULO}"`).test(page);
+  const sobDemanda = new RegExp(`const\\s+CampaignApprovalsPanel\\s*=\\s*dynamic\\(\\s*\\(\\)\\s*=>\\s*import\\(\\s*"${MODULO}"`).test(page);
+  const declaracao = /const\s+CampaignApprovalsPanel\s*=\s*dynamic\([\s\S]{0,400}?\n/.exec(page);
+  const semSsrFalse = !(declaracao && /ssr\s*:\s*false/.test(declaracao[0]));
+  const imported = (estatico || sobDemanda) && semSsrFalse;
   const usages = (page.match(/<CampaignApprovalsPanel\b/g) ?? []).length;
   check(
-    "caso 13: command-center importa e monta o painel exatamente uma vez",
+    "caso 13: command-center traz o painel do módulo certo e o monta exatamente uma vez",
     imported && usages === 1,
-    !imported ? "import de CampaignApprovalsPanel ausente em app/(crm)/command-center/page.tsx" : `usos encontrados: ${usages}`,
+    !estatico && !sobDemanda
+      ? "CampaignApprovalsPanel não é trazido de @/components/atlas/CampaignApprovalsPanel em app/(crm)/command-center/page.tsx — nem por import estático nem por dynamic()"
+      : !semSsrFalse
+        ? "o painel é carregado com `ssr: false`: sairia da renderização de servidor"
+        : `usos encontrados: ${usages}`,
   );
 }
 
