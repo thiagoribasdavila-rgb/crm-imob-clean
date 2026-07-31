@@ -10286,3 +10286,63 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 .atlas-nav-group[data-current="true"] > .atlas-rail-group-label {
   color: color-mix(in srgb, var(--atlas-accent) 72%, transparent);
 }
+
+/* ============================================================================
+   ÁREA MÍNIMA DE TOQUE — WCAG 2.2 AA, critério 2.5.8 (Target Size Minimum)
+   ============================================================================
+
+   MEDIDO em 2026-07-31, no navegador, contra build de produção, em /pipeline:
+   **104 alvos interativos abaixo de 24 × 24 px**, de 3.142 no total. O número
+   era IDÊNTICO em 360 px e em 768 px — não é problema de breakpoint, são os
+   mesmos controles pequenos em qualquer tamanho de tela.
+
+   No celular, cada um deles é um erro de toque esperando acontecer — e quem
+   paga é o corretor em campo, com uma mão, entre visitas.
+
+   ── POR QUE `::after` E NÃO `min-width` ────────────────────────────────────
+
+   Aumentar `min-width`/`min-height` mudaria o LAYOUT: ícones de 16 px viram
+   blocos de 24 px, grades quebram, densidade se perde. Em 104 lugares isso é
+   irrecuperável sem revisão tela a tela.
+
+   O pseudo-elemento expande apenas a ÁREA CLICÁVEL, centrada no controle, sem
+   ocupar espaço no fluxo. O visual não muda um pixel; o alvo passa a ter 24 px.
+
+   `pointer-events: auto` no ::after garante que ele receba o toque mesmo quando
+   o pai tem `pointer-events` restrito.
+
+   ── O QUE FICA DE FORA, DE PROPÓSITO ───────────────────────────────────────
+
+   `[data-alvo-livre]` é a saída declarada para casos onde a expansão sobreporia
+   outro controle (células de tabela densa lado a lado). Quem usar precisa
+   justificar — e a exceção fica visível no HTML, não escondida numa folha de
+   estilo.
+   ========================================================================== */
+
+button:not([data-alvo-livre]),
+a[href]:not([data-alvo-livre]),
+[role="button"]:not([data-alvo-livre]),
+[role="tab"]:not([data-alvo-livre]),
+[role="checkbox"]:not([data-alvo-livre]),
+input[type="checkbox"]:not([data-alvo-livre]),
+input[type="radio"]:not([data-alvo-livre]) {
+  position: relative;
+}
+
+button:not([data-alvo-livre])::after,
+a[href]:not([data-alvo-livre])::after,
+[role="button"]:not([data-alvo-livre])::after,
+[role="tab"]:not([data-alvo-livre])::after,
+[role="checkbox"]:not([data-alvo-livre])::after,
+input[type="checkbox"]:not([data-alvo-livre])::after,
+input[type="radio"]:not([data-alvo-livre])::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 24px);
+  height: max(100%, 24px);
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  /* Sem fundo, sem borda: a área existe para o dedo, não para o olho. */
+}
