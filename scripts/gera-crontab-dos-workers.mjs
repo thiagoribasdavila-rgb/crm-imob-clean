@@ -18,9 +18,23 @@
  * segredo colado no arquivo do cron (que fica legível em texto puro). Este script
  * deriva tudo do JSON e NUNCA imprime o segredo — usa a variável de ambiente.
  *
- * Uso:
- *   node scripts/gera-crontab-dos-workers.mjs                     # imprime
- *   node scripts/gera-crontab-dos-workers.mjs > /tmp/atlas.cron   # e depois: crontab /tmp/atlas.cron
+ * ── ESTE SCRIPT NÃO INSTALA NADA, E ISSO É DELIBERADO ───────────────────────
+ *
+ * A versão anterior deste cabeçalho sugeria:
+ *
+ *     node scripts/gera-crontab-dos-workers.mjs > /tmp/atlas.cron && crontab /tmp/atlas.cron
+ *
+ * Esse `&&` apaga o passo em que alguém OLHA o que vai ser aplicado. Ele foi
+ * executado no Mac de desenvolvimento em 2026-07-30 e agendou 11 workers
+ * comerciais na máquina local apontando para PRODUÇÃO — incluindo o `outbox`,
+ * que envia mensagem, a cada 2 minutos. Só não houve dano porque
+ * `/var/www/atlas/.env` não existe no Mac e o `source` abortava o comando.
+ *
+ * Agora são três comandos, e o do meio é obrigatório:
+ *
+ *     npm run cron:gerar      # imprime; não toca em nada
+ *     npm run cron:validar    # diz SE esta máquina poderia instalar, e por quê
+ *     npm run cron:instalar   # recusa fora do servidor autorizado
  *
  * Variáveis: ATLAS_BASE_URL (padrão https://atlasaios.com.br)
  */
