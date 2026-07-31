@@ -25,6 +25,20 @@ function authorized(request: Request): boolean {
 type WhatsAppTemplate = { name: string; language: string };
 
 /**
+ * O que `reivindica_eventos_da_fila` devolve. A RPC retorna a linha INTEIRA de
+ * `integration_outbox` (é `SETOF integration_outbox`), mas o worker só usa estes
+ * campos — declarar só o que se usa evita depender de coluna que pode mudar.
+ */
+type OutboxEvent = {
+  id: string;
+  organization_id: string;
+  topic: string;
+  aggregate_id: string | null;
+  payload: Record<string, unknown> | null;
+  attempts: number;
+};
+
+/**
  * ── PREFLIGHT DO NÚMERO: cadastrado NÃO é ativo ─────────────────────────────
  *
  * Medido em 2026-07-28: o número configurado estava numa WABA aprovada, com
@@ -334,13 +348,31 @@ export async function POST(request: Request) {
   const workerId = `hostinger-${crypto.randomUUID()}`;
   const admin = getSupabaseAdmin();
   const leases = await recoverExpiredLeases(admin);
-  const { data: events, error } = await admin
-    .from("integration_outbox")
-    .select("id,organization_id,topic,aggregate_id,payload,attempts")
-    .in("status", ["pending", "failed"])
-    .lte("available_at", new Date().toISOString())
-    .order("created_at", { ascending: true })
-    .limit(20);
+
+  /**
+   * ── UM RELÓGIO SÓ, E UMA VIAGEM SÓ ────────────────────────────────────────
+   *
+   * Aqui havia:
+   *
+   *   .lte("available_at", new Date().toISOString())   ← relógio do PROCESSO
+   *   ...depois, por linha:
+   *   .update({ locked_at: new Date().toISOString() }) ← relógio do PROCESSO
+   *
+   * `available_at` e `locked_at` são escritos pelo PostgreSQL. Compará-los com o
+   * relógio do Node é comparar relógios diferentes — e medido em 2026-07-31, um
+   * evento recém-inserido apareceu 6 ms À FRENTE deste processo, inelegível por
+   * milissegundos num campo que o próprio banco acabara de escrever.
+   *
+   * `reivindica_eventos_da_fila` seleciona, valida e adquire numa instrução só,
+   * com `now()` do banco e `FOR UPDATE SKIP LOCKED`. Não há tolerância de
+   * relógio porque não há dois relógios. E `attempts` incrementa na
+   * REIVINDICAÇÃO: tentativa que morre no meio ainda conta, senão um evento
+   * problemático gira para sempre sem nunca chegar ao dead_letter.
+   */
+  const { data: events, error } = await admin.rpc("reivindica_eventos_da_fila", {
+    p_worker: workerId,
+    p_limite: 20,
+  });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -350,11 +382,20 @@ export async function POST(request: Request) {
   let consecutiveCredentialFailures = 0;
   let stoppedEarly: string | null = null;
 
-  for (const event of events ?? []) {
-    const originalAttempts = Number(event.attempts || 0);
-    const attempts = originalAttempts + 1;
-    const { data: claimed } = await admin.from("integration_outbox").update({ status: "processing", attempts, locked_at: new Date().toISOString(), locked_by: workerId }).eq("id", event.id).in("status", ["pending", "failed"]).select("id").maybeSingle();
-    if (!claimed) continue;
+  for (const event of (events ?? []) as OutboxEvent[]) {
+    /**
+     * A RPC já reivindicou: as linhas chegam com `status='processing'`, lock
+     * posto e `attempts` INCREMENTADO. O compare-and-swap por linha que existia
+     * aqui virou redundante — e mantê-lo incrementaria a tentativa duas vezes.
+     *
+     * `originalAttempts` é o valor ANTES desta reivindicação, e ele importa: os
+     * caminhos `token_unhealthy` e `rate_limited` gravam `attempts:
+     * originalAttempts` justamente para NÃO queimar tentativa por um problema
+     * temporário. Sem este ajuste, uma mensagem válida marcharia para o
+     * dead_letter por causa de um token expirado.
+     */
+    const attempts = Number(event.attempts || 0);
+    const originalAttempts = Math.max(0, attempts - 1);
     processed += 1;
 
     try {

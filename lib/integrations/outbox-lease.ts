@@ -64,14 +64,23 @@ export type LeaseRecoveryReport =
   | { measured: false; reason: string };
 
 export async function recoverExpiredLeases(admin: SupabaseClient): Promise<LeaseRecoveryReport> {
-  const cutoff = new Date(Date.now() - LEASE_TIMEOUT_MINUTES * 60_000).toISOString();
-  const { data: stuck, error } = await admin
-    .from("integration_outbox")
-    .select("id,organization_id,topic,aggregate_id,payload,attempts,locked_at")
-    .eq("status", "processing")
-    .lt("locked_at", cutoff)
-    .order("locked_at", { ascending: true })
-    .limit(LEASE_RECOVERY_LIMIT);
+  /**
+   * ── QUEM DECIDE A HORA É O BANCO ──────────────────────────────────────────
+   *
+   * Aqui havia `new Date(Date.now() - LEASE_TIMEOUT_MINUTES * 60_000)` comparado
+   * contra `locked_at`, que é escrito pelo PostgreSQL. Dois relógios decidindo o
+   * mesmo fato: com o processo adiantado, um lease ainda válido é recuperado e
+   * dois workers passam a trabalhar no mesmo evento; com o processo atrasado, um
+   * lease morto fica preso além do necessário.
+   *
+   * `leases_expirados(p_minutos)` faz a mesma pergunta com `now()` do banco. A
+   * POLÍTICA — o que fazer com cada tópico — continua aqui embaixo: ela é regra
+   * de negócio, muda com o produto, e não depende de relógio.
+   */
+  const { data: stuck, error } = await admin.rpc("leases_expirados", {
+    p_minutos: LEASE_TIMEOUT_MINUTES,
+    p_limite: LEASE_RECOVERY_LIMIT,
+  });
   // Lacuna explicada, nunca zero inventado: sem a leitura não há como afirmar
   // que não existe evento preso.
   if (error) return { measured: false, reason: error.message };
