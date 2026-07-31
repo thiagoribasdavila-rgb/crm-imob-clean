@@ -417,7 +417,11 @@ textarea:focus {
   padding: 11px 16px;
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  /* Era `#fff` sobre o acento. Medido: 2,72 no tema escuro — abaixo do piso
+     4,5 do WCAG AA. O rótulo do botão MAIS importante do produto era o menos
+     legível da tela. Branco sobre o acento pressionado daria 3,67: ainda
+     reprova. Só o token que vira passa nos dois (7,01 e 5,82). */
+  color: var(--atlas-texto-sobre-acento);
   background: var(--atlas-accent);
   box-shadow: none;
   transition: background 0.2s ease;
@@ -728,7 +732,9 @@ textarea:focus {
 .atlas-notification-button,
 .atlas-signout {
   border: 1px solid var(--atlas-border);
-  color: #cbd5e1;
+  /* `#cbd5e1` cravado sobre fundo que vira: 1,32 no tema claro — o × de fechar
+     praticamente sumia. */
+  color: var(--atlas-text-primary);
   background: var(--atlas-surface-soft);
 }
 .atlas-sidebar-close {
@@ -1207,7 +1213,13 @@ textarea:focus {
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  color: #dbeafe;
+  /* ── AS INICIAIS SUMIAM NO TEMA CLARO ──────────────────────────────────
+     O fundo era token (`--atlas-surface-interactive`: #172130 escuro,
+     #e3e9f2 claro) e o texto era CRAVADO em #dbeafe. O fundo virava, o
+     texto não. Contraste medido: 13,27 no escuro e **1,00 no claro** —
+     e 1,00 quer dizer invisível: as iniciais da pessoa desapareciam.
+     Com o token, 13,89 e 15,34. */
+  color: var(--atlas-text-primary);
   background: var(--atlas-surface-interactive);
   font-size: 11px;
   font-weight: 600;
@@ -3532,7 +3544,9 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
   flex: 0 0 auto;
   border: 1px solid var(--atlas-border);
   border-radius: 11px;
-  color: #cbd5e1;
+  /* `#cbd5e1` cravado sobre fundo que vira: 1,32 no tema claro — o × de fechar
+     praticamente sumia. */
+  color: var(--atlas-text-primary);
   background: var(--atlas-surface-soft);
   font-size: 20px;
 }
@@ -4749,7 +4763,8 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
 .atlas-leads-search kbd { flex: 0 0 auto; border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 4px 6px; color: #56667d; background: rgba(255,255,255,.025); font: 9px var(--font-mono); }
 .atlas-filter-toggle { display: inline-flex; min-height: 48px; align-items: center; gap: 8px; padding: 0 14px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; color: #b5c1d1; background: rgba(255,255,255,.026); font-size: 11px; font-weight: 600; transition: all .18s ease; }
 .atlas-filter-toggle:hover, .atlas-filter-toggle[aria-expanded="true"] { border-color: rgba(255,255,255,.14); color: #e0f2fe; background: rgba(255,255,255,.06); }
-.atlas-filter-toggle strong { display: grid; min-width: 20px; height: 20px; place-items: center; border-radius: 999px; color: #fff; background: var(--atlas-accent); font-size: 9px; }
+/* 9px sobre o acento: 2,72 no escuro. O número de filtros ativos era ilegível. */
+.atlas-filter-toggle strong { display: grid; min-width: 20px; height: 20px; place-items: center; border-radius: 999px; color: var(--atlas-texto-sobre-acento); background: var(--atlas-accent); font-size: 9px; }
 .atlas-leads-filter-top .atlas-clear-filters { min-height: 48px; }
 .atlas-leads-advanced-filters { display: grid; gap: 8px; margin-top: 9px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.055); animation: atlas-filter-reveal .2s ease both; }
 .atlas-leads-advanced-filters select, .atlas-filter-input-wrap input { width: 100%; min-width: 0; min-height: 44px; padding: 0 34px 0 12px; border: 1px solid var(--atlas-border); border-radius: 12px; color: #cdd7e5; background: #0a1120; font-size: 11px; }
@@ -8458,6 +8473,9 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   --atlas-text: #0b1220;
   --atlas-text-muted: #5f6d81;
   --atlas-accent: #0b63c5;
+  /* Inverte junto com o acento: aqui o azul é escuro, então o texto é branco.
+     5,82 — passa AA para texto pequeno. Ver a nota em styles/atlas-tokens.css. */
+  --atlas-texto-sobre-acento: #ffffff;
   --atlas-accent-hover: #0a58ae;
   --atlas-accent-pressed: #084a95;
   --atlas-accent-soft: rgba(11, 99, 197, 0.10);
@@ -10235,7 +10253,12 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   padding: 0 6px;
   border-radius: 999px;
   background: var(--atlas-accent);
-  color: #06101f;
+  /* Era `#06101f` cravado. O fundo é o acento, que vira entre os temas — e o
+     texto ficava parado. Medido: 7,01 no escuro, 3,27 no claro. A 10,5px isto
+     é texto pequeno, e o piso do WCAG AA é 4,5: o número do crachá (quantas
+     leads esperam) reprovava justamente no tema em que a operação trabalha de
+     dia. Com o token que vira: 7,01 e 5,82. */
+  color: var(--atlas-texto-sobre-acento);
   font-size: 10.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;

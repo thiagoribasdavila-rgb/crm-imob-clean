@@ -31,6 +31,13 @@
    * reprovaria. O novo mede 5.96:1 no mesmo par. Ganhou margem e, de quebra,
    * é o azul que a operação pediu: menos "web", mais instrumento. */
   --atlas-accent: #3fa2f7;
+  /* O texto que fica EM CIMA do acento, e que precisa virar junto com ele.
+     O acento é claro no tema escuro (#3fa2f7) e escuro no tema claro
+     (#0b63c5) — então nenhuma cor única de texto serve nos dois:
+       quase-preto  →  7,01 sobre #3fa2f7  ·  3,27 sobre #0b63c5 (reprova)
+       branco       →  2,72 sobre #3fa2f7 (reprova)  ·  5,82 sobre #0b63c5
+     Este token existe justamente porque a resposta se inverte. */
+  --atlas-texto-sobre-acento: #06101f;
   --atlas-accent-hover: #5eb5ff;
   --atlas-accent-pressed: #2a89dd;
   --atlas-accent-soft: rgba(63, 162, 247, 0.12);
