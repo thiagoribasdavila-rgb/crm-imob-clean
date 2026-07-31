@@ -1,0 +1,32 @@
+{
+  "porque": "Uma migration do repositorio pode estar APLICADA sem constar no ledger com o mesmo nome. Isso acontece por dois motivos, e os dois precisam ser DECLARADOS aqui em vez de adivinhados por heuristica: (1) foi aplicada via API com outro nome; (2) foi aplicada por SQL direto, sem registro nenhum. Em 2026-07-31 um comparador que adivinhava produziu 109 falsos positivos, e a correcao seguinte quase adotou casamento por sufixo — que esconderia uma migration genuinamente ausente cujo nome fosse prefixo de outra. Declarar e mais chato e nao erra em silencio.",
+  "regra": "Toda entrada precisa de EVIDENCIA verificada no schema, nao so de um nome parecido. Ao usar apply_migration, passe o nome do arquivo: assim esta lista nao cresce.",
+
+  "registradaComOutroNome": {
+    "regras_de_comissao": {
+      "registradaComo": "tabela_de_comissao_por_projeto_e_incorporadora",
+      "versaoNoBanco": "20260727074102",
+      "evidencia": "os `statements` da migration registrada contem `commission_rules`; a tabela public.commission_rules existe",
+      "verificadoEm": "2026-07-31"
+    },
+    "corrige_move_pipeline_lead": {
+      "registradaComo": "corrige_move_pipeline_lead_coluna_title",
+      "evidencia": "a funcao public.move_pipeline_lead existe e e a que a rota de pipeline chama",
+      "verificadoEm": "2026-07-31"
+    },
+    "auxiliares_e_fronteira_do_relogio": {
+      "registradaComo": "reivindicacao_com_recorte_de_topico",
+      "tambemRegistradaComo": ["auxiliares_de_prova_do_relogio", "prova_de_fronteira_do_relogio", "reivindicacao_atomica_da_fila"],
+      "evidencia": "as 4 funcoes existem: posiciona_evento_de_prova, envelhece_lock_de_prova, reivindica_eventos_da_fila, prova_de_fronteira_do_relogio. Foram 3 chamadas de apply_migration com 3 nomes, consolidadas depois num arquivo so",
+      "verificadoEm": "2026-07-31"
+    }
+  },
+
+  "aplicadaSemRegistroNenhum": {
+    "grafo_de_oportunidade_de_receita": {
+      "evidencia": "3 views (vw_grafo_demanda, vw_grafo_oferta, vw_grafo_censo_de_arestas) e 8 funcoes `grafo_*` existem no schema, mais private.ator_alcanca_lead. E NENHUMA migration registrada menciona `grafo_` nos statements (conferido: 0 ocorrencias). Foi aplicada por SQL direto, fora do ledger.",
+      "consequencia": "quem reconstruir a base a partir do LEDGER nao tera estes objetos; quem aplicar os arquivos do REPOSITORIO tera. Para este caso o repositorio e a fonte de verdade.",
+      "verificadoEm": "2026-07-31"
+    }
+  }
+}

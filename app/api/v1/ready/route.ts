@@ -7,6 +7,7 @@ import { defeitosDeFormaDoAmbiente } from "@/lib/ai/model-profiles";
 import { avaliarAgendador } from "@/lib/integrations/agendador-parado";
 import { outboxPausado } from "@/app/api/v2/outbox/process/route";
 import { avaliarProntidao, EXPLICACAO_DO_ESTADO } from "@/lib/integrations/estado-da-prontidao";
+import EQUIVALENCIAS from "@/config/migrations-equivalencias.json";
 
 export const dynamic = "force-dynamic";
 
@@ -198,12 +199,31 @@ export async function GET(request: NextRequest) {
      */
     const semPrefixo = (n: string) => n.trim().replace(/^\d+_/, "");
     const doRepo = (process.env.ATLAS_BUILD_MIGRATIONS || "").split(",").map(semPrefixo).filter(Boolean);
+    /**
+     * Equivalências DECLARADAS, nunca adivinhadas. A tentação seguinte ao erro
+     * das 109 era casar por sufixo (`x` casa com `x_algo`) — e isso esconderia
+     * uma migration genuinamente ausente cujo nome fosse prefixo de outra.
+     * Declarar dá trabalho; adivinhar erra em silêncio.
+     */
+    const equivalencias: Record<string, string> = {};
+    for (const [doArquivo, info] of Object.entries(EQUIVALENCIAS.registradaComOutroNome ?? {})) {
+      equivalencias[doArquivo] = (info as { registradaComo: string }).registradaComo;
+    }
+    const semRegistro = new Set(Object.keys(EQUIVALENCIAS.aplicadaSemRegistroNenhum ?? {}));
     try {
       const { data: estado, error } = await getSupabaseAdmin().rpc("estado_das_migrations");
       if (error) return { medido: false, motivo: error.message.slice(0, 120), noRepo: doRepo.length };
       const banco = (estado ?? {}) as { aplicadas?: number; versaoMaisAlta?: string; nomes?: string[] };
       const aplicadas = new Set((banco.nomes ?? []).map(semPrefixo));
-      const faltando = doRepo.filter((nome) => !aplicadas.has(nome));
+      const faltando = doRepo.filter((nome) => {
+        if (aplicadas.has(nome)) return false;
+        const alias = equivalencias[nome];
+        if (alias && aplicadas.has(semPrefixo(alias))) return false;
+        // Aplicada por SQL direto, sem registro. O objeto foi conferido no schema
+        // e a evidência está no arquivo de equivalências.
+        if (semRegistro.has(nome)) return false;
+        return true;
+      });
       const semLista = doRepo.length === 0;
       return {
         medido: true,
