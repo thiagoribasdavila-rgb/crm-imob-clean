@@ -16,14 +16,47 @@ import {
   prazoDaFaixa,
   ritmoNecessarioPara,
 } from "@/lib/atlas/triagem-da-fila";
-import { CommandCenterModuleHealth } from "@/components/atlas/command-center-module-health";
+import dynamic from "next/dynamic";
+
+/**
+ * ── CARREGAMENTO SOB DEMANDA DOS PAINÉIS ABAIXO DA DOBRA ───────────────────
+ *
+ * MEDIDO em 2026-07-31, contra build de produção:
+ *
+ *     /command-center .... 1.372 KB de JS
+ *     /leads .............     56 KB
+ *     /pipeline ..........     58 KB
+ *
+ * Vinte e quatro vezes o peso das irmãs — e `dynamic(() => import())` aparecia
+ * **zero** vezes em todo o produto. Tudo que a página pode mostrar era baixado
+ * antes de ela pintar a primeira linha, inclusive seis painéis que estão abaixo
+ * da dobra e que boa parte das sessões nunca rola até ver.
+ *
+ * ── O QUE FICA ESTÁTICO, E POR QUÊ ─────────────────────────────────────────
+ *
+ * `SalaDeComandoPanel` **não** entra aqui. Ele é o conteúdo principal, o
+ * primeiro que a pessoa lê, e é candidato a LCP: adiá-lo trocaria peso por
+ * espera — pioraria justamente a métrica que este trabalho quer melhorar.
+ *
+ * Os seis abaixo são painéis de apoio, todos abaixo da dobra.
+ *
+ * `ssr: false` está FORA de propósito: estes painéis renderizam no servidor
+ * normalmente. O que muda é que o JavaScript deles chega em pedaço separado,
+ * quando são realmente necessários — não que deixem de existir no HTML.
+ */
+const carregando = () => <div className="atlas-panel h-40 animate-pulse rounded-2xl" aria-hidden="true" />;
+
+const CommandCenterModuleHealth = dynamic(
+  () => import("@/components/atlas/command-center-module-health").then((m) => m.CommandCenterModuleHealth),
+  { loading: carregando },
+);
 import type { ProposalSignalKind } from "@/lib/ai/action-proposals";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
-import { NextBestActionPanel } from "@/components/atlas/NextBestActionPanel";
-import { CampaignApprovalsPanel } from "@/components/atlas/CampaignApprovalsPanel";
-import { OfertaAtivaDoAcervoPanel } from "@/components/atlas/OfertaAtivaDoAcervoPanel";
-import { ProactiveNudgesPanel } from "@/components/atlas/ProactiveNudgesPanel";
-import { VendasSemValorPanel } from "@/components/atlas/VendasSemValorPanel";
+const NextBestActionPanel = dynamic(() => import("@/components/atlas/NextBestActionPanel").then((m) => m.NextBestActionPanel), { loading: carregando });
+const CampaignApprovalsPanel = dynamic(() => import("@/components/atlas/CampaignApprovalsPanel").then((m) => m.CampaignApprovalsPanel), { loading: carregando });
+const OfertaAtivaDoAcervoPanel = dynamic(() => import("@/components/atlas/OfertaAtivaDoAcervoPanel").then((m) => m.OfertaAtivaDoAcervoPanel), { loading: carregando });
+const ProactiveNudgesPanel = dynamic(() => import("@/components/atlas/ProactiveNudgesPanel").then((m) => m.ProactiveNudgesPanel), { loading: carregando });
+const VendasSemValorPanel = dynamic(() => import("@/components/atlas/VendasSemValorPanel").then((m) => m.VendasSemValorPanel), { loading: carregando });
 import { SalaDeComandoPanel } from "@/components/atlas/SalaDeComandoPanel";
 import {
   AtlasBadge,
