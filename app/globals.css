@@ -3346,6 +3346,11 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
    E um teto de altura: barra grudada que ocupa meia tela deixa de ser atalho e
    vira obstáculo — foi o que a foto mostrou. */
 .atlas-lead-operational-bar {
+  /* A barra fica acima de tudo na ficha. `order` porque o container virou
+     flex-col para que o formulário do cliente pudesse subir — e sem isto ELE
+     passaria na frente da barra, que é o único bloco que deve mesmo abrir a
+     tela. O componente não repassa `className`, então a ordem vem daqui. */
+  order: -2;
   position: sticky;
   z-index: 20;
   top: calc(var(--atlas-topbar-height) + 10px);

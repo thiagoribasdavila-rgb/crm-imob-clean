@@ -762,7 +762,7 @@ export default function LeadDetailPage() {
     null;
 
   return (
-    <div className="space-y-5 pb-10" data-phase="26-lead-360">
+    <div className="flex flex-col gap-5 pb-10" data-phase="26-lead-360">
       {/* ── Cartão de identidade: único lugar da página com nome, status,
           temperatura, score, contatos e dono. Nenhuma seção abaixo repete. ── */}
       <section id="lead-overview" className="scroll-mt-28 [perspective:1400px]">
@@ -1573,7 +1573,19 @@ export default function LeadDetailPage() {
       ) : null}
 
       <section
-        className="cc6-reveal grid gap-4 2xl:grid-cols-[1.15fr_.85fr]"
+        /* ── QUEM É ESTA PESSOA VEM PRIMEIRO ──────────────────────────────
+           MEDIDO na produção, viewport de 900px: o campo Nome começava em
+           2.931px — mais de TRÊS telas de rolagem até o nome de quem se está
+           atendendo, porque oito blocos de análise vinham antes.
+
+           Nenhum deles é inútil. O erro era de ORDEM: análise SOBRE a pessoa
+           apresentada antes da pessoa. O corretor abre a ficha para falar com
+           alguém, não para ler um relatório sobre alguém.
+
+           `order` em vez de mover o JSX: a mudança é de APRESENTAÇÃO, e mover
+           140 linhas de marcação para trocar posição arrisca quebrar aninhamento
+           por ganho nenhum. Reverter é apagar uma classe. */
+        className="order-[-1] cc6-reveal grid gap-4 2xl:grid-cols-[1.15fr_.85fr]"
         style={{ animationDelay: "210ms" }}
       >
         <section className="cc6-panel p-5 sm:p-6">
