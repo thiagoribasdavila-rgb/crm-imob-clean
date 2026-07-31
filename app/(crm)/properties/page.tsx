@@ -79,7 +79,7 @@ export default function PropertiesPage() {
            primaryAction para ela e a topbar cai no "Novo lead" genérico. Este é
            o único botão que carrega a ação real do estoque; rebaixá-lo deixaria
            a tela sem ação própria. */
-        action={{ href: "/properties/mtching", label: "✦ Abrir Matching IA", priority: "primary" }}
+        action={{ href: "/properties/matching", label: "✦ Abrir Matching IA", priority: "primary" }}
       />
 
       {/* Estoque com decisão: disponíveis e reservados na régua mono antes da

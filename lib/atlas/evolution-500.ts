@@ -405,7 +405,7 @@ const waveDefinitions: Array<Omit<EvolutionWave, "range">> = [
   { id: 52, name: "Proteção do primeiro contato", outcome: "Toda lead com consentimento recebe atenção humana dentro do SLA observado.", href: "/leads", pillar: "operação" },
   { id: 53, name: "Intenção e motivação de compra", outcome: "Sinais declarados organizam a abordagem sem inferir atributos sensíveis.", href: "/leads/ai-qualify", pillar: "inteligência" },
   { id: 54, name: "Prontidão financeira", outcome: "Orçamento e financiamento são triados com limites e validação especializada.", href: "/simulations", pillar: "operação" },
-  { id: 55, name: "Matching comprador–imóvel", outcome: "Perfil, região, tipologia e momento aproximam ofertas relevantes.", href: "/properties/mtching", pillar: "inteligência" },
+  { id: 55, name: "Matching comprador–imóvel", outcome: "Perfil, região, tipologia e momento aproximam ofertas relevantes.", href: "/properties/matching", pillar: "inteligência" },
   { id: 56, name: "Velocidade por etapa", outcome: "A gestão identifica onde oportunidades param e remove o gargalo certo.", href: "/reports", pillar: "inteligência" },
   { id: 57, name: "Qualidade do próximo passo", outcome: "Toda oportunidade ativa possui ação, responsável e data verificáveis.", href: "/tasks", pillar: "operação" },
   { id: 58, name: "Objeções imobiliárias", outcome: "Objeções reais alimentam playbooks aprovados e respostas contextuais.", href: "/settings/ai-context", pillar: "inteligência" },

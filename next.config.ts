@@ -79,6 +79,25 @@ const nextConfig: NextConfig = {
     ATLAS_BUILD_MIGRATIONS: process.env.ATLAS_BUILD_MIGRATIONS ?? "",
     ATLAS_BUILD_DEPLOY_ID: process.env.ATLAS_BUILD_DEPLOY_ID ?? "",
   },
+  /**
+   * ── A ROTA COM ERRO DE DIGITAÇÃO ────────────────────────────────────────
+   *
+   * `app/(crm)/properties/mtching` esteve no ar com o nome errado, e cinco
+   * lugares do produto apontavam para ele: a tela de imóveis, o painel de IA,
+   * duas linhas do roteiro de homologação e o catálogo de evolução.
+   *
+   * O diretório foi renomeado para `matching` e as cinco referências
+   * corrigidas. O redirect abaixo existe porque a URL errada PODE estar salva
+   * no favorito de alguém, num link colado no WhatsApp ou num relatório antigo
+   * — e uma tela que some é indistinguível de uma tela que quebrou.
+   *
+   * Permanente (308): a URL certa é a nova, e o navegador deve aprender isso.
+   */
+  async redirects() {
+    return [
+      { source: "/properties/mtching", destination: "/properties/matching", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {
