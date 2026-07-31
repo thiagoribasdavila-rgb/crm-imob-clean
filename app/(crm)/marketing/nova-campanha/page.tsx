@@ -137,7 +137,7 @@ export default function NovaCampanhaPage() {
               type="button"
               onClick={() => i <= etapa && setEtapa(i)}
               disabled={i > etapa}
-              className={`cc6-chip ${i === etapa ? "border-[color:var(--atlas-accent)]! text-[#e8eef8]!" : ""} disabled:opacity-40`}
+              className={`cc6-chip ${i === etapa ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!" : ""} disabled:opacity-40`}
             >
               {i + 1}. {nome}
             </button>
@@ -151,7 +151,7 @@ export default function NovaCampanhaPage() {
       {etapa === 0 ? (
         <section className="cc6-panel mt-6 p-5">
           <p className="cc6-eyebrow">Etapa 1</p>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Qual empreendimento?</h2>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Qual empreendimento?</h2>
           {carregando ? <AtlasSkeleton className="mt-4 h-32 w-full" /> : empreendimentos.length === 0 ? (
             <div className="mt-4"><AtlasEmpty reason="first-use" title="Nenhum empreendimento cadastrado" description="Cadastre o produto antes de criar a campanha." /></div>
           ) : (
@@ -161,8 +161,8 @@ export default function NovaCampanhaPage() {
                   key={e.id} type="button" onClick={() => setEscolhido(e.id)}
                   className={`rounded-xl border p-4 text-left transition-colors ${escolhido === e.id ? "border-[color:var(--atlas-accent)] bg-white/[.04]" : "border-[rgba(148,163,184,0.16)] hover:border-[rgba(148,163,184,0.35)]"}`}
                 >
-                  <p className="text-sm font-semibold text-[#e8eef8]">{e.name}</p>
-                  <p className="mt-1 text-xs text-[#6b7890]">
+                  <p className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{e.name}</p>
+                  <p className="mt-1 text-xs text-[var(--atlas-texto-fraco)]">
                     {[e.developer_name, e.neighborhood, e.total_units ? `${e.total_units} unidades` : null].filter(Boolean).join(" · ")}
                   </p>
                 </button>
@@ -176,15 +176,15 @@ export default function NovaCampanhaPage() {
       {etapa === 1 ? (
         <section className="cc6-panel mt-6 p-5">
           <p className="cc6-eyebrow">Etapa 2</p>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">O que a campanha precisa entregar?</h2>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">O que a campanha precisa entregar?</h2>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {OBJETIVOS.map((o) => (
               <button
                 key={o.valor} type="button" onClick={() => setObjetivo(o.valor)}
                 className={`rounded-xl border p-3 text-left transition-colors ${objetivo === o.valor ? "border-[color:var(--atlas-accent)] bg-white/[.04]" : "border-[rgba(148,163,184,0.16)] hover:border-[rgba(148,163,184,0.35)]"}`}
               >
-                <p className="text-sm text-[#e8eef8]">{o.rotulo}</p>
-                <p className="mt-0.5 text-[11px] leading-4 text-[#6b7890]">{o.ajuda}</p>
+                <p className="text-sm text-[var(--atlas-texto-forte)]">{o.rotulo}</p>
+                <p className="mt-0.5 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">{o.ajuda}</p>
               </button>
             ))}
           </div>
@@ -195,8 +195,8 @@ export default function NovaCampanhaPage() {
       {etapa === 2 ? (
         <section className="cc6-panel mt-6 p-5">
           <p className="cc6-eyebrow">Etapa 3</p>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Gerar estratégia e peças</h2>
-          <p className="mt-2 text-xs leading-5 text-[#6b7890]">
+          <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Gerar estratégia e peças</h2>
+          <p className="mt-2 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
             A IA lê o que está cadastrado e escreve briefing, conceitos, títulos, textos e roteiros.
             Consome tokens — o custo aparece no fim.{" "}
             {prontidao?.avisos.length ? (
@@ -233,17 +233,17 @@ export default function NovaCampanhaPage() {
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
               {geracao.copies.conceitos.map((c) => (
                 <div key={c.nome} className="rounded-xl border border-[rgba(148,163,184,0.16)] p-3">
-                  <p className="text-sm font-semibold text-[#e8eef8]">{c.nome}</p>
-                  <p className="mt-1 text-[11px] leading-4 text-[#6b7890]">{c.publicoAlvo}</p>
+                  <p className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{c.nome}</p>
+                  <p className="mt-1 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">{c.publicoAlvo}</p>
                 </div>
               ))}
             </div>
-            <p className="mt-4 text-xs text-[#6b7890]">Títulos: {geracao.copies.titulos.map((t) => `“${t}”`).join(" · ")}</p>
-            <p className="mt-2 text-xs text-[#6b7890]">CTAs: {geracao.copies.ctas.join(" · ")}</p>
-            <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-4 text-[#6b7890]">
+            <p className="mt-4 text-xs text-[var(--atlas-texto-fraco)]">Títulos: {geracao.copies.titulos.map((t) => `“${t}”`).join(" · ")}</p>
+            <p className="mt-2 text-xs text-[var(--atlas-texto-fraco)]">CTAs: {geracao.copies.ctas.join(" · ")}</p>
+            <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
               {geracao.copies.roteirosVideo.length} roteiro(s) de vídeo escritos — <strong className="text-[#c8d3e4]">roteiro não é vídeo</strong>: nenhuma peça audiovisual foi produzida.
             </p>
-            <p className="mt-2 text-[11px] leading-4 text-[#6b7890]">
+            <p className="mt-2 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
               Consumo: {geracao.consumo.tokensTotais} tokens em {geracao.consumo.chamadas} chamadas · {geracao.consumo.provedor}/{geracao.consumo.modelo} ·{" "}
               {geracao.consumo.custoEstimadoUsd == null
                 ? <span className="text-[#e8b04a]">custo não calculado — falta tarifa em ATLAS_AI_PRICE_TABLE</span>
@@ -254,22 +254,22 @@ export default function NovaCampanhaPage() {
           <section className="cc6-panel mt-4 p-5">
             <p className="cc6-eyebrow">Etapa 4 · Orçamento</p>
             <div className="mt-3 grid gap-4 sm:grid-cols-3">
-              <label className="block text-xs text-[#6b7890]">
+              <label className="block text-xs text-[var(--atlas-texto-fraco)]">
                 Diário (R$)
                 <input type="number" min={20} value={diario} onChange={(e) => setDiario(Number(e.target.value))}
-                  className="mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[#e8eef8] outline-none" />
+                  className="mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none" />
               </label>
-              <label className="block text-xs text-[#6b7890]">
+              <label className="block text-xs text-[var(--atlas-texto-fraco)]">
                 Duração (dias)
                 <input type="number" min={1} max={90} value={dias} onChange={(e) => setDias(Number(e.target.value))}
-                  className="mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[#e8eef8] outline-none" />
+                  className="mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none" />
               </label>
               <div>
                 <p className="cc6-metric-label">Total do período</p>
                 <p className="cc6-metric-value mt-1">R$ {(diario * dias).toLocaleString("pt-BR")}</p>
               </div>
             </div>
-            <p className="mt-3 text-[11px] leading-4 text-[#6b7890]">
+            <p className="mt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
               Nenhuma projeção de leads é exibida aqui. Sem histórico de CPL deste produto, qualquer número seria chute com aparência de previsão.
             </p>
           </section>
@@ -280,7 +280,7 @@ export default function NovaCampanhaPage() {
       {etapa === 4 && prontidao ? (
         <section className="cc6-panel mt-6 p-5">
           <p className="cc6-eyebrow">Etapa 5 · Prontidão</p>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">{prontidao.situacaoRotulo}</h2>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{prontidao.situacaoRotulo}</h2>
           {prontidao.ressalva ? (
             <p className="mt-2 rounded-xl border border-[rgba(232,176,74,0.3)] bg-[rgba(232,176,74,0.06)] p-3 text-xs leading-5 text-[#e8b04a]">
               {prontidao.ressalva}
@@ -295,14 +295,14 @@ export default function NovaCampanhaPage() {
                     <li key={i.chave} className="text-[11px] leading-4">
                       <span className={i.ok ? "text-[#4ade80]" : "text-[#e8b04a]"}>{i.ok ? "✓" : "○"}</span>{" "}
                       <span className="text-[#c8d3e4]">{i.rotulo}</span>
-                      <span className="text-[#6b7890]"> — {i.detalhe}</span>
+                      <span className="text-[var(--atlas-texto-fraco)]"> — {i.detalhe}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             ))}
           </div>
-          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-4 text-[#6b7890]">
+          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
             A campanha fica salva como rascunho com as peças anexadas. Publicar exige aprovação e credencial válida — nada aqui move verba.
           </p>
         </section>
@@ -318,7 +318,7 @@ export default function NovaCampanhaPage() {
             Avançar
           </button>
         ) : (
-          <span className="text-xs text-[#6b7890]">
+          <span className="text-xs text-[var(--atlas-texto-fraco)]">
             {selecionado ? `${selecionado.name} · rascunho salvo` : ""}
           </span>
         )}

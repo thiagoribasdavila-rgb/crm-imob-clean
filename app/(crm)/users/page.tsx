@@ -27,7 +27,7 @@ const roleLabel: Record<string, string> = {
   broker: "Corretor",
 };
 
-const TH_CLASS = "px-4 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#6b7890]";
+const TH_CLASS = "px-4 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]";
 const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 
 async function readApiResponse(response: Response) {
@@ -120,8 +120,8 @@ export default function UsersPage() {
           className="cc6-sev-band cc6-panel-quiet flex flex-wrap items-center justify-between gap-3 py-3 pl-4 pr-3"
           role="status"
         >
-          <p className="max-w-[62ch] text-sm leading-6 text-[#aab6ca]">
-            <span className="font-semibold text-[#e8eef8]">Aqui não se cria acesso — aqui se governa o que já existe.</span>{" "}
+          <p className="max-w-[62ch] text-sm leading-6 text-[var(--atlas-texto-medio)]">
+            <span className="font-semibold text-[var(--atlas-texto-forte)]">Aqui não se cria acesso — aqui se governa o que já existe.</span>{" "}
             Um acesso novo começa por convite: o e-mail, a função comercial e o responsável direto são
             definidos e validados em Configurações · Equipe, e a pessoa só passa a aparecer nesta lista
             depois de confirmar o convite.
@@ -150,12 +150,12 @@ export default function UsersPage() {
       </section>
 
       {error ? (
-        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[#fb7185]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div>
+        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[var(--atlas-estado-perigo)]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div>
       ) : null}
 
       <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "60ms" }} aria-labelledby="users-table-title">
         <header className="flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-5">
-          <h2 id="users-table-title" className="text-sm font-semibold tracking-tight text-[#e8eef8]">Acessos oficiais</h2>
+          <h2 id="users-table-title" className="text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Acessos oficiais</h2>
           {!loading ? <span className="cc6-chip">{profiles.length} perfis</span> : null}
         </header>
         {loading ? (
@@ -172,13 +172,13 @@ export default function UsersPage() {
               </thead>
               <tbody>
                 {profiles.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-6 text-xs leading-5 text-[#6b7890]">Nenhum perfil encontrado — os acessos oficiais da organização aparecem aqui.</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-6 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Nenhum perfil encontrado — os acessos oficiais da organização aparecem aqui.</td></tr>
                 ) : null}
                 {profiles.map(profile => (
                   <tr key={profile.id} className="border-t border-[rgba(148,163,184,0.12)] transition-colors first:border-t-0 hover:bg-white/[0.015]">
-                    <td className="px-4 py-3.5 font-semibold text-[#e8eef8]">{profile.full_name || "Usuário sem nome"}</td>
-                    <td className="cc6-num px-4 py-3.5 text-[#aab6ca]">{profile.phone || "—"}</td>
-                    <td className="px-4 py-3.5 text-[#aab6ca]">{roleLabel[profile.access_role] || profile.access_role}</td>
+                    <td className="px-4 py-3.5 font-semibold text-[var(--atlas-texto-forte)]">{profile.full_name || "Usuário sem nome"}</td>
+                    <td className="cc6-num px-4 py-3.5 text-[var(--atlas-texto-medio)]">{profile.phone || "—"}</td>
+                    <td className="px-4 py-3.5 text-[var(--atlas-texto-medio)]">{roleLabel[profile.access_role] || profile.access_role}</td>
                     <td className="px-4 py-3.5"><StatusBadge tone={profile.active ? "success" : "neutral"}>{profile.active ? "Ativo" : "Inativo"}</StatusBadge></td>
                     <td className="px-4 py-3.5">
                       <button

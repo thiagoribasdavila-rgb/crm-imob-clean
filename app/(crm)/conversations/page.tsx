@@ -112,7 +112,7 @@ export default function ConversationsPage() {
               ))}
             </div>
             <span className="cc6-chip" title="Novos eventos entram automaticamente pelo canal em tempo real do banco.">
-              <i aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#34d399] motion-safe:animate-pulse" />
+              <i aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--atlas-estado-sucesso)] motion-safe:animate-pulse" />
               ao vivo
             </span>
           </div>
@@ -120,38 +120,38 @@ export default function ConversationsPage() {
       </section>
 
       {error ? (
-        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[#fb7185]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div>
+        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[var(--atlas-estado-perigo)]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div>
       ) : null}
 
       <section className="cc6-panel cc6-reveal p-4 sm:p-5" style={{ animationDelay: "60ms" }} aria-labelledby="conversations-list-title">
         <header className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="conversations-list-title" className="text-sm font-semibold tracking-tight text-[#e8eef8]">Interações registradas</h2>
+          <h2 id="conversations-list-title" className="text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Interações registradas</h2>
           {!loading ? <span className="cc6-chip" title="Últimos 200 eventos do seu escopo, todos registrados no CRM">{items.length} no recorte</span> : null}
         </header>
         <div className="cc6-hairline mt-3" aria-busy={loading}>
           {loading ? (
             <div className="grid gap-2 py-4">{[1, 2, 3, 4, 5].map((row) => <AtlasSkeleton key={row} className="h-14" />)}</div>
           ) : items.length === 0 ? (
-            <p className="py-4 text-xs leading-5 text-[#6b7890]">Nenhuma conversa sincronizada — as interações registradas nas leads do seu escopo aparecem aqui.</p>
+            <p className="py-4 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Nenhuma conversa sincronizada — as interações registradas nas leads do seu escopo aparecem aqui.</p>
           ) : (
             items.map((item) => (
               <article key={item.id} className="flex flex-col gap-3 border-t border-[rgba(148,163,184,0.12)] py-4 transition-colors first:border-t-0 hover:border-[rgba(148,163,184,0.28)] hover:bg-white/[0.015] md:flex-row md:items-center md:justify-between md:gap-6">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="cc6-chip uppercase">{item.channel}</span>
-                    <p className="text-sm font-semibold text-[#e8eef8]">{item.leadName || "Contato externo"}</p>
+                    <p className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{item.leadName || "Contato externo"}</p>
                     {item.journey?.status === "waiting_broker" ? <StatusBadge tone="warning">Responder agora</StatusBadge> : null}
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+                  <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                     {item.brokerName ? `Corretor: ${item.brokerName}` : item.customer_id ? `Cliente ${item.customer_id.slice(0, 8)}` : "Sem responsável vinculado"}
                     {item.journey ? ` · Jornada ${item.journey.stage.replaceAll("_", " ")}` : ""}
                   </p>
-                  {item.journey?.status === "waiting_broker" ? <p className="mt-1 text-xs leading-5 text-[#f5b544]">Próxima ação: abrir a lead e continuar a descoberta.</p> : null}
+                  {item.journey?.status === "waiting_broker" ? <p className="mt-1 text-xs leading-5 text-[var(--atlas-estado-atencao)]">Próxima ação: abrir a lead e continuar a descoberta.</p> : null}
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-3 md:flex-col md:items-end md:gap-1.5">
-                  <p className="cc6-num text-xs text-[#aab6ca]">{timeLabel(item.last_message_at)}</p>
+                  <p className="cc6-num text-xs text-[var(--atlas-texto-medio)]">{timeLabel(item.last_message_at)}</p>
                   {item.lead_id ? (
-                    <Link href={`/leads/${item.lead_id}`} className={`rounded-md text-xs font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[#e8eef8] ${focusRing}`}>
+                    <Link href={`/leads/${item.lead_id}`} className={`rounded-md text-xs font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[var(--atlas-texto-forte)] ${focusRing}`}>
                       Abrir lead →
                     </Link>
                   ) : null}

@@ -98,7 +98,7 @@ export default function PropertiesPage() {
       </section>
 
       {error ? (
-        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[#fb7185]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div>
+        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[var(--atlas-estado-perigo)]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div>
       ) : null}
 
       {loading ? (
@@ -106,7 +106,7 @@ export default function PropertiesPage() {
           {[1, 2, 3, 4, 5, 6].map((row) => <AtlasSkeleton key={row} className="h-36" />)}
         </div>
       ) : items.length === 0 ? (
-        <p className="cc6-reveal text-xs leading-5 text-[#6b7890]" style={{ animationDelay: "60ms" }}>Nenhum imóvel cadastrado — o estoque publicado aparece aqui e alimenta o matching.</p>
+        <p className="cc6-reveal text-xs leading-5 text-[var(--atlas-texto-fraco)]" style={{ animationDelay: "60ms" }}>Nenhum imóvel cadastrado — o estoque publicado aparece aqui e alimenta o matching.</p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {items.map((item, index) => {
@@ -119,17 +119,17 @@ export default function PropertiesPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-sm font-semibold tracking-tight text-[#e8eef8]">{item.title || "Imóvel sem título"}</h2>
-                    <p className="mt-0.5 text-xs leading-5 text-[#6b7890]">{item.location || item.city || "Localização não informada"}</p>
+                    <h2 className="text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{item.title || "Imóvel sem título"}</h2>
+                    <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">{item.location || item.city || "Localização não informada"}</p>
                   </div>
                   <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
                 </div>
                 {item.price ? (
-                  <p className="cc6-num mt-4 text-xl font-semibold text-[#e8eef8]">{money.format(item.price)}</p>
+                  <p className="cc6-num mt-4 text-xl font-semibold text-[var(--atlas-texto-forte)]">{money.format(item.price)}</p>
                 ) : (
-                  <p className="mt-4 text-sm font-medium text-[#aab6ca]">Sob consulta</p>
+                  <p className="mt-4 text-sm font-medium text-[var(--atlas-texto-medio)]">Sob consulta</p>
                 )}
-                <p className="cc6-num cc6-hairline mt-3 flex gap-4 pt-3 text-xs text-[#aab6ca]">
+                <p className="cc6-num cc6-hairline mt-3 flex gap-4 pt-3 text-xs text-[var(--atlas-texto-medio)]">
                   <span>{item.bedrooms ?? "—"} dorm.</span>
                   <span>{item.area ?? "—"} m²</span>
                 </p>

@@ -130,7 +130,7 @@ function EventRow({
             ? "cc6-crit"
             : sev === "warn"
               ? "cc6-warn"
-              : "text-[#aab6ca]"
+              : "text-[var(--atlas-texto-medio)]"
         }`}
       >
         {withDate ? `${shortDate(item.at)} · ` : ""}
@@ -138,7 +138,7 @@ function EventRow({
       </time>
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <strong className="max-w-full truncate text-sm font-medium text-[#e8eef8]">
+          <strong className="max-w-full truncate text-sm font-medium text-[var(--atlas-texto-forte)]">
             {item.title}
           </strong>
           {overdueTag ? (
@@ -147,11 +147,11 @@ function EventRow({
             </span>
           ) : null}
         </span>
-        <span className="mt-0.5 block truncate text-xs text-[#6b7890]">
+        <span className="mt-0.5 block truncate text-xs text-[var(--atlas-texto-fraco)]">
           {item.detail}
         </span>
       </span>
-      <span className="shrink-0 text-xs font-medium text-[#aab6ca] transition-colors group-hover:text-[color:var(--atlas-accent)]">
+      <span className="shrink-0 text-xs font-medium text-[var(--atlas-texto-medio)] transition-colors group-hover:text-[color:var(--atlas-accent)]">
         {KIND_ACTION[item.kind]} <span aria-hidden="true">→</span>
       </span>
     </Link>
@@ -394,9 +394,9 @@ export default function CalendarPage() {
           role="status"
           className="cc6-panel flex flex-wrap items-center justify-between gap-3 px-5 py-3"
         >
-          <p className="min-w-0 text-sm text-[#e8eef8]">
+          <p className="min-w-0 text-sm text-[var(--atlas-texto-forte)]">
             <strong className="font-semibold">Novo compromisso</strong>{" "}
-            <span className="text-[#aab6ca]">
+            <span className="text-[var(--atlas-texto-medio)]">
               — o formulário fica em Tarefas, onde o compromisso é criado.
               Abrindo lá para você.
             </span>
@@ -426,7 +426,7 @@ export default function CalendarPage() {
               <p className="cc6-eyebrow">Linha do tempo</p>
               <h2
                 id="atlas-calendar-timeline-title"
-                className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+                className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
               >
                 {WINDOW_TITLES[window]}
               </h2>
@@ -491,7 +491,7 @@ export default function CalendarPage() {
                   aria-pressed={active}
                   className={`cc6-ghost-btn ${
                     active
-                      ? "border-[color:var(--atlas-accent)]! bg-[rgba(75,141,248,0.08)]! text-[#e8eef8]!"
+                      ? "border-[color:var(--atlas-accent)]! bg-[rgba(75,141,248,0.08)]! text-[var(--atlas-texto-forte)]!"
                       : ""
                   }`}
                 >
@@ -535,7 +535,7 @@ export default function CalendarPage() {
                         className="flex items-baseline gap-2 text-sm font-semibold tracking-tight"
                       >
                         <span className="cc6-crit">Em atraso</span>
-                        <span className="cc6-num text-[11px] font-normal text-[#6b7890]">
+                        <span className="cc6-num text-[11px] font-normal text-[var(--atlas-texto-fraco)]">
                           resolver primeiro
                         </span>
                       </h3>
@@ -571,17 +571,17 @@ export default function CalendarPage() {
                         <h3 className="flex items-baseline gap-2 text-sm font-semibold tracking-tight">
                           <span
                             className={
-                              group.today ? "cc6-warn" : "text-[#e8eef8]"
+                              group.today ? "cc6-warn" : "text-[var(--atlas-texto-forte)]"
                             }
                           >
                             {group.name}
                           </span>
-                          <span className="cc6-num text-[11px] font-normal text-[#6b7890]">
+                          <span className="cc6-num text-[11px] font-normal text-[var(--atlas-texto-fraco)]">
                             {group.date}
                           </span>
                         </h3>
                         <span
-                          className="cc6-num text-[11px] text-[#6b7890]"
+                          className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]"
                           aria-label={`${group.items.length} compromissos`}
                         >
                           {group.items.length}
@@ -658,13 +658,13 @@ export default function CalendarPage() {
             {composition.map(([label, value]) => (
               <span key={label} className="cc6-chip">
                 {label}
-                <strong className="font-semibold text-[#e8eef8]">
+                <strong className="font-semibold text-[var(--atlas-texto-forte)]">
                   {loading || value === undefined ? "—" : value}
                 </strong>
               </span>
             ))}
           </div>
-          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
             Organização, hierarquia e RLS aplicadas pela API · atualizações
             apenas reorganizam a agenda · nenhuma ação é concluída e nenhum
             cliente é contatado automaticamente.

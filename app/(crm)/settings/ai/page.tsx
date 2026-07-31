@@ -299,7 +299,7 @@ export default function AISettings() {
       {error ? (
         <div
           role="alert"
-          className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[#fb7185]"
+          className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-perigo)]"
           style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
         >
           {error}
@@ -362,7 +362,7 @@ export default function AISettings() {
                 </div>
               </div>
               {data ? (
-                <p className="cc6-num mt-4 text-[11px] text-[#6b7890]">
+                <p className="cc6-num mt-4 text-[11px] text-[var(--atlas-texto-fraco)]">
                   {data.usage.openaiCalls} OpenAI · {data.usage.perplexityCalls}{" "}
                   pesquisa · {data.usage.economyCalls} econômicas ·{" "}
                   {data.usage.localCalls} motor local
@@ -386,17 +386,17 @@ export default function AISettings() {
                       key={label}
                       className="flex items-baseline justify-between gap-3"
                     >
-                      <span className="text-[#6b7890]">{label}</span>
-                      <span className="cc6-num text-right text-[#e8eef8]">
+                      <span className="text-[var(--atlas-texto-fraco)]">{label}</span>
+                      <span className="cc6-num text-right text-[var(--atlas-texto-forte)]">
                         {model}
                       </span>
                     </div>
                   ))
                 ) : (
-                  <p className="text-[#6b7890]">Carregando rotas…</p>
+                  <p className="text-[var(--atlas-texto-fraco)]">Carregando rotas…</p>
                 )}
               </div>
-              <p className="mt-3 text-[10px] leading-4 text-[#6b7890]">
+              <p className="mt-3 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
                 Latência, tokens e custo registrados por chamada.
               </p>
             </div>
@@ -426,7 +426,7 @@ export default function AISettings() {
             <p className="cc6-eyebrow">Governança</p>
             <h2
               id="ai-safe-defaults-title"
-              className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+              className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
             >
               Seguro por padrão
             </h2>
@@ -434,7 +434,7 @@ export default function AISettings() {
           <StatusBadge tone="success">Supervisionado</StatusBadge>
         </div>
         {data ? (
-          <ul className="mt-4 grid gap-x-8 gap-y-2 text-sm text-[#aab6ca] sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="mt-4 grid gap-x-8 gap-y-2 text-sm text-[var(--atlas-texto-medio)] sm:grid-cols-2 xl:grid-cols-3">
             <li className="flex gap-2">
               <span aria-hidden="true" className="cc6-ok">✓</span>
               Ação externa só com aprovação humana — nada é enviado sozinho.
@@ -489,7 +489,7 @@ export default function AISettings() {
               <p className="cc6-eyebrow">Guardrails</p>
               <h2
                 id="ai-guardrails-title"
-                className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+                className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
               >
                 Controles em toda consulta
               </h2>
@@ -521,11 +521,11 @@ export default function AISettings() {
                     }
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-[#e8eef8]">
+                      <p className="text-sm font-medium text-[var(--atlas-texto-forte)]">
                         {meta?.name ?? key}
                       </p>
                       {meta ? (
-                        <p className="mt-0.5 text-xs leading-5 text-[#6b7890]">
+                        <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                           {meta.effect}
                         </p>
                       ) : null}
@@ -549,7 +549,7 @@ export default function AISettings() {
             <p className="cc6-eyebrow">Núcleo operacional</p>
             <h2
               id="ai-core-title"
-              className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+              className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
             >
               Motor, memória e aprendizado
             </h2>
@@ -565,8 +565,8 @@ export default function AISettings() {
               <>
                 <div className={rowHoverClass}>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#e8eef8]">Sistema</p>
-                    <p className="mt-0.5 text-xs leading-5 text-[#6b7890]">
+                    <p className="text-sm font-medium text-[var(--atlas-texto-forte)]">Sistema</p>
+                    <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                       Coleta contexto e prepara a próxima chamada mesmo sem
                       créditos.
                     </p>
@@ -587,10 +587,10 @@ export default function AISettings() {
                 </div>
                 <div className={rowHoverClass}>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#e8eef8]">
+                    <p className="text-sm font-medium text-[var(--atlas-texto-forte)]">
                       Motor generativo
                     </p>
-                    <p className="mt-0.5 text-xs leading-5 text-[#6b7890]">
+                    <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                       {data.gatewayConfigured
                         ? "OpenAI direta no servidor."
                         : "Credencial pendente em homologação."}
@@ -616,10 +616,10 @@ export default function AISettings() {
                 </div>
                 <div className={rowHoverClass}>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#e8eef8]">
+                    <p className="text-sm font-medium text-[var(--atlas-texto-forte)]">
                       Contingência local
                     </p>
-                    <p className="mt-0.5 text-xs leading-5 text-[#6b7890]">
+                    <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                       Assume a resposta quando o provedor externo falha.
                     </p>
                   </div>
@@ -671,11 +671,11 @@ export default function AISettings() {
           <p className="cc6-eyebrow">Provedores</p>
           <h2
             id="ai-providers-title"
-            className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+            className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
           >
             Conexão comprovada, não presumida
           </h2>
-          <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+          <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
             Chave configurada só vira rota operacional depois de uma resposta
             real registrada. Nenhum segredo chega ao navegador.
           </p>
@@ -700,7 +700,7 @@ export default function AISettings() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <h3
-                        className={`text-sm font-semibold text-[#e8eef8] ${meta ? "" : "capitalize"}`}
+                        className={`text-sm font-semibold text-[var(--atlas-texto-forte)] ${meta ? "" : "capitalize"}`}
                       >
                         {meta?.name ?? provider.name}
                       </h3>
@@ -721,27 +721,27 @@ export default function AISettings() {
                       </StatusBadge>
                     </div>
                     {meta ? (
-                      <p className="mt-1.5 text-xs leading-5 text-[#6b7890]">
+                      <p className="mt-1.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                         {meta.role}
                       </p>
                     ) : null}
                     {liveResult ? (
-                      <p className="cc6-num mt-2 text-xs text-[#aab6ca]">
+                      <p className="cc6-num mt-2 text-xs text-[var(--atlas-texto-medio)]">
                         {liveResult.model} · {liveResult.latencyMs} ms · teste
                         desta sessão
                       </p>
                     ) : provider.status === "operational" ? (
-                      <p className="cc6-num mt-2 text-xs text-[#aab6ca]">
+                      <p className="cc6-num mt-2 text-xs text-[var(--atlas-texto-medio)]">
                         {provider.model ?? "modelo validado"} ·{" "}
                         {provider.latencyMs ?? 0} ms
                       </p>
                     ) : provider.configured ? (
-                      <p className="mt-2 text-xs text-[#aab6ca]">
+                      <p className="mt-2 text-xs text-[var(--atlas-texto-medio)]">
                         Falta uma resposta real registrada.
                       </p>
                     ) : null}
                     {provider.lastSuccessfulAt ? (
-                      <p className="cc6-num mt-1.5 text-[10px] text-[#6b7890]">
+                      <p className="cc6-num mt-1.5 text-[10px] text-[var(--atlas-texto-fraco)]">
                         Último sucesso ·{" "}
                         {new Date(provider.lastSuccessfulAt).toLocaleString("pt-BR")}
                       </p>
@@ -775,7 +775,7 @@ export default function AISettings() {
             <p className="cc6-eyebrow">Agentes comerciais</p>
             <h2
               id="ai-agents-title"
-              className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+              className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
             >
               Analisam, sugerem e registram
             </h2>
@@ -798,7 +798,7 @@ export default function AISettings() {
                   className="cc6-panel-quiet p-4 transition-colors hover:border-[rgba(148,163,184,0.28)]"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-[#e8eef8]">
+                    <h3 className="text-sm font-semibold text-[var(--atlas-texto-forte)]">
                       {agent.name}
                     </h3>
                     <StatusBadge
@@ -817,7 +817,7 @@ export default function AISettings() {
                           : "Preparado"}
                     </StatusBadge>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-[#6b7890]">
+                  <p className="mt-2 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                     {agent.functions.join(" · ")}
                   </p>
                 </article>
@@ -834,11 +834,11 @@ export default function AISettings() {
           <p className="cc6-eyebrow">Provas ao vivo</p>
           <h2
             id="ai-proofs-title"
-            className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+            className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
           >
             Aprovação exige resposta medida
           </h2>
-          <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+          <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
             Chamadas mínimas, sem dados pessoais, com modelo, rastreio, tokens e
             latência registrados.
           </p>
@@ -847,10 +847,10 @@ export default function AISettings() {
         <div className="cc6-hairline px-5 py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <h3 className="text-sm font-medium text-[#e8eef8]">
+              <h3 className="text-sm font-medium text-[var(--atlas-texto-forte)]">
                 Chamada OpenAI real
               </h3>
-              <p className="mt-0.5 text-xs leading-5 text-[#6b7890]">
+              <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                 Responses API sem fallback; só aprova resposta íntegra com
                 consumo medido.
               </p>
@@ -858,12 +858,12 @@ export default function AISettings() {
                 <>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <StatusBadge tone="success">Aprovado</StatusBadge>
-                    <span className="cc6-num text-xs text-[#aab6ca]">
+                    <span className="cc6-num text-xs text-[var(--atlas-texto-medio)]">
                       {testResult.model} · {testResult.latencyMs} ms ·{" "}
                       {testResult.usage.totalTokens} tokens
                     </span>
                   </div>
-                  <p className="cc6-num mt-1.5 break-all text-[11px] text-[#6b7890]">
+                  <p className="cc6-num mt-1.5 break-all text-[11px] text-[var(--atlas-texto-fraco)]">
                     Rastreio {testResult.providerRequestId || "não retornado"} ·{" "}
                     {new Date(testResult.testedAt).toLocaleString("pt-BR")}
                   </p>
@@ -887,10 +887,10 @@ export default function AISettings() {
         <div className="cc6-hairline px-5 py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <h3 className="text-sm font-medium text-[#e8eef8]">
+              <h3 className="text-sm font-medium text-[var(--atlas-texto-forte)]">
                 Pesquisa Perplexity com fontes
               </h3>
-              <p className="mt-0.5 text-xs leading-5 text-[#6b7890]">
+              <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                 Consulta imobiliária sem PII; exige ao menos uma fonte HTTPS na
                 resposta.
               </p>
@@ -898,12 +898,12 @@ export default function AISettings() {
                 <>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <StatusBadge tone="success">Aprovado</StatusBadge>
-                    <span className="cc6-num text-xs text-[#aab6ca]">
+                    <span className="cc6-num text-xs text-[var(--atlas-texto-medio)]">
                       {researchResult.model} · {researchResult.latencyMs} ms ·{" "}
                       {researchResult.citationCount} fontes
                     </span>
                   </div>
-                  <p className="cc6-num mt-1.5 break-all text-[11px] text-[#6b7890]">
+                  <p className="cc6-num mt-1.5 break-all text-[11px] text-[var(--atlas-texto-fraco)]">
                     Rastreio{" "}
                     {researchResult.providerRequestId || "não retornado"} ·{" "}
                     {new Date(researchResult.testedAt).toLocaleString("pt-BR")}
@@ -915,7 +915,7 @@ export default function AISettings() {
                         href={url}
                         target="_blank"
                         rel="noreferrer"
-                        className={`cc6-chip transition-colors hover:border-[color:var(--atlas-accent)] hover:text-[#e8eef8] ${focusRing}`}
+                        className={`cc6-chip transition-colors hover:border-[color:var(--atlas-accent)] hover:text-[var(--atlas-texto-forte)] ${focusRing}`}
                       >
                         fonte {index + 1}
                       </a>
@@ -941,10 +941,10 @@ export default function AISettings() {
         <div className="cc6-hairline px-5 py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <h3 className="text-sm font-medium text-[#e8eef8]">
+              <h3 className="text-sm font-medium text-[var(--atlas-texto-forte)]">
                 Roteamento e custo em três rotas
               </h3>
-              <p className="mt-0.5 text-xs leading-5 text-[#6b7890]">
+              <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                 Rápida, comercial e complexa com custo estimado pela tarifa
                 configurada — configure as tarifas por milhão de tokens antes do
                 ensaio.
@@ -972,7 +972,7 @@ export default function AISettings() {
                   style={{ "--cc6-sev": "#34d399" } as CSSProperties}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <strong className="text-sm text-[#e8eef8]">
+                    <strong className="text-sm text-[var(--atlas-texto-forte)]">
                       {route.task === "fast"
                         ? "Rápida"
                         : route.task === "commercial"
@@ -981,16 +981,16 @@ export default function AISettings() {
                     </strong>
                     <StatusBadge tone="success">Comprovada</StatusBadge>
                   </div>
-                  <p className="cc6-num mt-2 text-xs text-[#aab6ca]">
+                  <p className="cc6-num mt-2 text-xs text-[var(--atlas-texto-medio)]">
                     {route.model}
                   </p>
-                  <p className="cc6-num mt-1 text-[11px] text-[#6b7890]">
+                  <p className="cc6-num mt-1 text-[11px] text-[var(--atlas-texto-fraco)]">
                     {route.tokens.totalTokens} tokens · {route.latencyMs} ms ·
                     US$ {route.estimatedCostUsd.toFixed(6)}
                   </p>
                 </div>
               ))}
-              <p className="cc6-num text-[11px] text-[#6b7890] lg:col-span-3">
+              <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)] lg:col-span-3">
                 Ensaio total US$ {routingResult.totalEstimatedCostUsd.toFixed(6)}{" "}
                 · sem dados pessoais ·{" "}
                 {new Date(routingResult.testedAt).toLocaleString("pt-BR")}
@@ -1010,7 +1010,7 @@ export default function AISettings() {
             <p className="cc6-eyebrow">Market grounding</p>
             <h2
               id="ai-sources-title"
-              className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+              className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
             >
               Fontes de calibração
             </h2>
@@ -1041,14 +1041,14 @@ export default function AISettings() {
                 className={`cc6-hairline group flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-[rgba(75,141,248,0.04)] ${focusRing}`}
               >
                 <span className="min-w-0">
-                  <strong className="block text-sm font-medium text-[#e8eef8]">
+                  <strong className="block text-sm font-medium text-[var(--atlas-texto-forte)]">
                     {source.publisher}
                   </strong>
-                  <span className="mt-0.5 block text-xs leading-5 text-[#6b7890]">
+                  <span className="mt-0.5 block text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                     {source.title}
                   </span>
                 </span>
-                <span className="cc6-num shrink-0 text-[11px] text-[#6b7890]">
+                <span className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-fraco)]">
                   {new Date(
                     `${source.verifiedAt}T12:00:00`,
                   ).toLocaleDateString("pt-BR")}

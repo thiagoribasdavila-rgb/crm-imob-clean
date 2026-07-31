@@ -980,7 +980,7 @@ export default function LeadsPage() {
       label: "Sem próxima ação",
       description: "Evitar leads esquecidas",
       count: pageMetrics.noAction,
-      countClass: "text-[#aab6ca]",
+      countClass: "text-[var(--atlas-texto-medio)]",
     },
     {
       key: "hot",
@@ -1139,7 +1139,7 @@ export default function LeadsPage() {
                   </StatusBadge>
                 ) : null}
               </div>
-              <h1 className="mt-2 max-w-xl text-2xl font-semibold tracking-[-0.02em] text-[#e8eef8] sm:text-[27px] sm:leading-9">
+              <h1 className="mt-2 max-w-xl text-2xl font-semibold tracking-[-0.02em] text-[var(--atlas-texto-forte)] sm:text-[27px] sm:leading-9">
                 {currentRole === "broker"
                   ? "Sua fila de leads, pronta para agir."
                   : "Leads que exigem decisão agora."}
@@ -1194,7 +1194,7 @@ export default function LeadsPage() {
               <p className="cc6-metric-value mt-1 text-4xl leading-none">
                 {loading ? "—" : total}
               </p>
-              <p className="mt-2 text-[11px] leading-4 text-[#6b7890]">
+              <p className="mt-2 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
                 {hasFilters
                   ? "resultado dos filtros atuais"
                   : currentRole === "broker"
@@ -1224,8 +1224,8 @@ export default function LeadsPage() {
                   title={`${shortcut.description}. O número é a incidência nesta página; o filtro consulta toda a carteira do seu escopo.`}
                   className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border px-3 transition-colors ${
                     attention === shortcut.key
-                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[#e8eef8]"
-                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[#aab6ca] hover:border-[rgba(148,163,184,0.3)] hover:text-[#e8eef8]"
+                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
+                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
                   } ${focusRing}`}
                 >
                   <span className="text-[11.5px] font-medium">
@@ -1235,7 +1235,7 @@ export default function LeadsPage() {
                     className={`cc6-num text-[13px] ${
                       shortcut.count > 0
                         ? shortcut.countClass
-                        : "text-[#6b7890]"
+                        : "text-[var(--atlas-texto-fraco)]"
                     }`}
                   >
                     {loading ? "—" : shortcut.count}
@@ -1249,9 +1249,9 @@ export default function LeadsPage() {
               dizer o nome faz a pessoa concluir que a base encolheu. */}
           {faixa ? (
             <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[rgba(75,141,248,0.35)] bg-[rgba(75,141,248,0.07)] px-3 py-2">
-              <span className="text-[11.5px] text-[#aab6ca]">
+              <span className="text-[11.5px] text-[var(--atlas-texto-medio)]">
                 Faixa da fila ·{" "}
-                <strong className="font-semibold text-[#e8eef8]">
+                <strong className="font-semibold text-[var(--atlas-texto-forte)]">
                   {ROTULO_DA_FAIXA.get(faixa) ?? faixa}
                 </strong>{" "}
                 · só leads nunca contatados
@@ -1295,8 +1295,8 @@ export default function LeadsPage() {
                   aria-pressed={vinculo === chave}
                   className={`min-h-11 shrink-0 rounded-xl border px-3 text-[11.5px] font-medium transition-colors ${
                     vinculo === chave
-                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[#e8eef8]"
-                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[#aab6ca] hover:border-[rgba(148,163,184,0.3)] hover:text-[#e8eef8]"
+                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
+                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
                   } ${focusRing}`}
                 >
                   {ROTULO_DO_VINCULO[chave]}
@@ -1317,7 +1317,7 @@ export default function LeadsPage() {
         <header className="flex flex-wrap items-center justify-between gap-2">
           <h2
             id="atlas-leads-action-title"
-            className="text-sm font-semibold tracking-tight text-[#e8eef8]"
+            className="text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
           >
             Fila de ação · página atual
           </h2>
@@ -1355,7 +1355,7 @@ export default function LeadsPage() {
                 >
                   <div className="flex min-w-0 items-start gap-3">
                     <span
-                      className="cc6-num pt-0.5 text-xs text-[#6b7890]"
+                      className="cc6-num pt-0.5 text-xs text-[var(--atlas-texto-fraco)]"
                       aria-hidden="true"
                     >
                       {String(index + 1).padStart(2, "0")}
@@ -1364,7 +1364,7 @@ export default function LeadsPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Link
                           href={`/leads/${priority.lead.id}`}
-                          className={`rounded-md text-[13px] font-semibold text-[#e8eef8] transition-colors hover:text-[color:var(--atlas-accent-hover)] ${focusRing}`}
+                          className={`rounded-md text-[13px] font-semibold text-[var(--atlas-texto-forte)] transition-colors hover:text-[color:var(--atlas-accent-hover)] ${focusRing}`}
                         >
                           {priority.lead.name || "Lead sem nome"}
                         </Link>
@@ -1372,10 +1372,10 @@ export default function LeadsPage() {
                           {priority.label}
                         </StatusBadge>
                       </div>
-                      <p className="mt-1 text-xs leading-5 text-[#aab6ca]">
+                      <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">
                         {priority.detail}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-[#6b7890]">
+                      <p className="mt-0.5 text-[11px] text-[var(--atlas-texto-fraco)]">
                         {projectName(priority.lead)} ·{" "}
                         {priority.lead.status || "novo"}
                       </p>
@@ -1437,7 +1437,7 @@ export default function LeadsPage() {
             })}
           </div>
         ) : (
-          <p className="mt-3 text-xs leading-5 text-[#6b7890]">
+          <p className="mt-3 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
             Nenhuma pendência prioritária nesta página — os atalhos de atenção
             varrem o restante da carteira.
           </p>
@@ -1663,11 +1663,11 @@ export default function LeadsPage() {
           className="sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border border-[rgba(75,141,248,0.35)] bg-[#080e1d]/95 p-4 backdrop-blur md:flex-row md:items-center"
         >
           <div className="min-w-52">
-            <strong className="block text-sm text-[#e8eef8]">
+            <strong className="block text-sm text-[var(--atlas-texto-forte)]">
               <span className="cc6-num">{selected.size}</span> lead(s)
               selecionado(s)
             </strong>
-            <span className="mt-1 block text-[11px] leading-4 text-[#6b7890]">
+            <span className="mt-1 block text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
               {currentRole === "broker"
                 ? "Mova as leads da sua carteira de etapa em um passo. Fechar (ganho/perdido) continua uma a uma, com a tela inteira na frente."
                 : currentRole === "manager"
@@ -1683,7 +1683,7 @@ export default function LeadsPage() {
             <select
               value={bulkStage}
               onChange={(e) => setBulkStage(e.target.value)}
-              className="rounded-lg border border-[rgba(75,141,248,0.35)] bg-[#0b1424] px-3 py-2 text-xs text-[#e8eef8]"
+              className="rounded-lg border border-[rgba(75,141,248,0.35)] bg-[#0b1424] px-3 py-2 text-xs text-[var(--atlas-texto-forte)]"
               aria-label="Mover as leads selecionadas para a etapa"
             >
               <option value="">Mover para etapa…</option>
@@ -1697,7 +1697,7 @@ export default function LeadsPage() {
               type="button"
               onClick={() => void moverEtapaEmLote()}
               disabled={!bulkStage}
-              className="rounded-lg border border-[rgba(75,141,248,0.35)] px-3 py-2 text-xs text-[#e8eef8] disabled:opacity-50"
+              className="rounded-lg border border-[rgba(75,141,248,0.35)] px-3 py-2 text-xs text-[var(--atlas-texto-forte)] disabled:opacity-50"
             >
               Mover {selected.size}
             </button>
@@ -1708,7 +1708,7 @@ export default function LeadsPage() {
               para ele. */}
           {canTransfer ? (<>
           <select
-            className={`min-h-11 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-white/5 px-3 text-sm text-[#e8eef8] ${focusRing}`}
+            className={`min-h-11 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-white/5 px-3 text-sm text-[var(--atlas-texto-forte)] ${focusRing}`}
             value={transferTarget}
             onChange={(event) => setTransferTarget(event.target.value)}
           >
@@ -1725,7 +1725,7 @@ export default function LeadsPage() {
             ))}
           </select>
           <input
-            className={`min-h-11 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-white/5 px-3 text-sm text-[#e8eef8] ${focusRing}`}
+            className={`min-h-11 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-white/5 px-3 text-sm text-[var(--atlas-texto-forte)] ${focusRing}`}
             value={transferReason}
             onChange={(event) => setTransferReason(event.target.value)}
             placeholder="Motivo obrigatório da transferência"

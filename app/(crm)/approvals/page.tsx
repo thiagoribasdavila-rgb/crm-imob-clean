@@ -66,7 +66,7 @@ export default function ApprovalsPage() {
       {error ? (
         <p
           role="status"
-          className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[#fb7185]"
+          className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-perigo)]"
           style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
         >
           {error}
@@ -76,19 +76,19 @@ export default function ApprovalsPage() {
       <section aria-label="Fila de aprovações" className="cc6-panel cc6-reveal overflow-hidden">
         <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5 pb-4">
           <p className="cc6-eyebrow">Fila governada</p>
-          <p className="cc6-num text-[11px] text-[#6b7890]" aria-live="polite">
+          <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]" aria-live="polite">
             {loading ? "carregando…" : `${pendingCount} ${pendingCount === 1 ? "pendente" : "pendentes"} · ${items.length} no total`}
           </p>
         </div>
 
         {loading ? (
-          <p className="cc6-hairline px-5 py-8 text-center text-sm text-[#6b7890]" aria-busy="true">
+          <p className="cc6-hairline px-5 py-8 text-center text-sm text-[var(--atlas-texto-fraco)]" aria-busy="true">
             Carregando fila de aprovações…
           </p>
         ) : null}
 
         {!loading && items.length === 0 ? (
-          <p className="cc6-hairline px-5 py-8 text-center text-sm text-[#6b7890]">
+          <p className="cc6-hairline px-5 py-8 text-center text-sm text-[var(--atlas-texto-fraco)]">
             Nenhuma aprovação pendente ou histórica.
           </p>
         ) : null}
@@ -107,12 +107,12 @@ export default function ApprovalsPage() {
                   <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
                   <span className="cc6-chip">{item.channel} · {item.request_type}</span>
                 </div>
-                <h2 className="mt-2 text-base font-semibold tracking-tight text-[#e8eef8]">{item.leadName}</h2>
-                <p className="cc6-num mt-1 text-[11px] text-[#6b7890]">
+                <h2 className="mt-2 text-base font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{item.leadName}</h2>
+                <p className="cc6-num mt-1 text-[11px] text-[var(--atlas-texto-fraco)]">
                   Corretor: {item.brokerName} · {WHEN_FORMAT.format(new Date(item.created_at))}
                   {pending && item.expires_at ? ` · expira ${WHEN_FORMAT.format(new Date(item.expires_at))}` : ""}
                 </p>
-                <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#aab6ca]">{item.preview}</p>
+                <p className="mt-3 line-clamp-3 text-sm leading-6 text-[var(--atlas-texto-medio)]">{item.preview}</p>
               </div>
 
               <div className="space-y-3">
@@ -123,7 +123,7 @@ export default function ApprovalsPage() {
                       onChange={(event) => setReasons((current) => ({ ...current, [item.id]: event.target.value }))}
                       placeholder="Motivo obrigatório para rejeitar"
                       aria-label={`Motivo da decisão para ${item.leadName}`}
-                      className="min-h-20 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] p-3 text-sm text-[#e8eef8] outline-none transition-colors focus:border-[color:var(--atlas-accent)]"
+                      className="min-h-20 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] p-3 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors focus:border-[color:var(--atlas-accent)]"
                       maxLength={500}
                     />
                     <div className="flex flex-wrap justify-end gap-2">
@@ -157,7 +157,7 @@ export default function ApprovalsPage() {
                 ) : item.decision_reason ? (
                   <div className="cc6-panel-quiet p-3">
                     <p className="cc6-eyebrow text-[10px]!">Motivo registrado</p>
-                    <p className="mt-1 text-sm leading-6 text-[#aab6ca]">{item.decision_reason}</p>
+                    <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">{item.decision_reason}</p>
                   </div>
                 ) : null}
               </div>
@@ -165,7 +165,7 @@ export default function ApprovalsPage() {
           );
         })}
 
-        <p className="cc6-hairline px-5 py-3 text-[11px] leading-5 text-[#6b7890]">
+        <p className="cc6-hairline px-5 py-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
           Nada é enviado ou executado sem aprovação humana registrada nesta fila.
         </p>
       </section>

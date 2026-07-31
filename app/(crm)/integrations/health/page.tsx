@@ -196,7 +196,7 @@ export default function Page() {
       {notice ? (
         <p
           role="status"
-          className="cc6-panel-quiet cc6-reveal px-4 py-3 text-sm text-[#aab6ca]"
+          className="cc6-panel-quiet cc6-reveal px-4 py-3 text-sm text-[var(--atlas-texto-medio)]"
         >
           {notice}
         </p>
@@ -236,7 +236,7 @@ export default function Page() {
               </div>
             ))}
           </div>
-          <p className="cc6-hairline cc6-num mt-4 pt-3 text-[11px] leading-5 text-[#6b7890]">
+          <p className="cc6-hairline cc6-num mt-4 pt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
             {c ? (
               <>
                 {c.runtime.hostingProvider} · HTTPS{" "}
@@ -267,12 +267,12 @@ export default function Page() {
             <p className="cc6-eyebrow">Estado por provedor</p>
             <h2
               id="health-providers-title"
-              className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+              className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
             >
               Credencial, cadastro e teste real
             </h2>
           </div>
-          <p className="cc6-num text-[11px] text-[#6b7890]">
+          <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">
             {c ? `${c.summary.total} monitorados` : "—"}
           </p>
         </header>
@@ -285,7 +285,7 @@ export default function Page() {
               ))}
             </div>
           ) : !c.providers.length ? (
-            <p className="px-5 py-6 text-sm text-[#6b7890]">
+            <p className="px-5 py-6 text-sm text-[var(--atlas-texto-fraco)]">
               Nenhum provedor monitorado até agora.
             </p>
           ) : (
@@ -311,11 +311,11 @@ export default function Page() {
                   }
                 >
                   <div className="min-w-0 flex-1 basis-48">
-                    <p className="text-sm font-medium leading-6 text-[#e8eef8]">
+                    <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                       {PROVIDER_NAMES[provider.provider] ??
                         provider.provider.replaceAll("_", " ")}
                     </p>
-                    <p className="cc6-num mt-0.5 text-[10px] tracking-wide text-[#6b7890]">
+                    <p className="cc6-num mt-0.5 text-[10px] tracking-wide text-[var(--atlas-texto-fraco)]">
                       <StepToken
                         label="ambiente"
                         done={provider.environmentReady}
@@ -347,12 +347,12 @@ export default function Page() {
                       />
                     </p>
                   </div>
-                  <p className="cc6-num shrink-0 text-[11px] text-[#aab6ca]">
+                  <p className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-medio)]">
                     <span
                       title="Idade da última evidência de sincronização"
                       className={
                         provider.freshnessHours == null
-                          ? "text-[#6b7890]"
+                          ? "text-[var(--atlas-texto-fraco)]"
                           : provider.freshnessHours > 24
                             ? "cc6-warn"
                             : ""

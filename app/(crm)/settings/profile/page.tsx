@@ -14,7 +14,7 @@ type Profile = { id: string; name: string | null; role: string; availability_sta
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 const inputClass =
-  `min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] px-4 text-sm text-[#e8eef8] transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] ${focusRing}`;
+  `min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] px-4 text-sm text-[var(--atlas-texto-forte)] transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] ${focusRing}`;
 
 /* Atalhos do corretor: uma linha por destino, sem prosa. */
 const shortcuts: Array<[string, string]> = [
@@ -61,9 +61,9 @@ export default function ProfileSettings() {
     setNotice(error ? { tone: "error", text: error.message } : { tone: "success", text: "Senha alterada com segurança." }); setSaving(false);
   }
 
-  if (loading) return <div className="cc6-panel-quiet animate-pulse p-6 text-sm text-[#6b7890]">Carregando seu perfil…</div>;
+  if (loading) return <div className="cc6-panel-quiet animate-pulse p-6 text-sm text-[var(--atlas-texto-fraco)]">Carregando seu perfil…</div>;
   if (!profile) return (
-    <div role="alert" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[#fb7185]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>
+    <div role="alert" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-perigo)]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>
       Não foi possível localizar seu perfil.
     </div>
   );
@@ -77,7 +77,7 @@ export default function ProfileSettings() {
         {notice ? (
           <div
             role="status"
-            className={`cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm ${notice.tone === "success" ? "text-[#34d399]" : "text-[#fb7185]"}`}
+            className={`cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm ${notice.tone === "success" ? "text-[var(--atlas-estado-sucesso)]" : "text-[var(--atlas-estado-perigo)]"}`}
             style={{ "--cc6-sev": notice.tone === "success" ? "#34d399" : "#fb7185" } as CSSProperties}
           >
             {notice.text}
@@ -91,12 +91,12 @@ export default function ProfileSettings() {
         <TiltShell className="cc6-panel cc6-reveal p-5" delayMs={40}>
           <form onSubmit={saveProfile} className="flex flex-col gap-5 lg:flex-row lg:items-start">
             <div className="flex min-w-0 items-center gap-4 lg:w-72 lg:shrink-0">
-              <span aria-hidden="true" className="cc6-panel-quiet grid h-16 w-16 shrink-0 place-items-center text-xl font-semibold text-[#e8eef8]">
+              <span aria-hidden="true" className="cc6-panel-quiet grid h-16 w-16 shrink-0 place-items-center text-xl font-semibold text-[var(--atlas-texto-forte)]">
                 {initials}
               </span>
               <div className="min-w-0">
-                <h2 className="truncate text-lg font-semibold tracking-tight text-[#e8eef8]">{profile.name || "Usuário Atlas"}</h2>
-                <p className="cc6-num mt-0.5 truncate text-[12px] text-[#6b7890]" title={email}>{email}</p>
+                <h2 className="truncate text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{profile.name || "Usuário Atlas"}</h2>
+                <p className="cc6-num mt-0.5 truncate text-[12px] text-[var(--atlas-texto-fraco)]" title={email}>{email}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <StatusBadge tone="info">{profile.role}</StatusBadge>
                   <span className="cc6-chip">{profile.availability_status || "OFFLINE"}</span>
@@ -104,11 +104,11 @@ export default function ProfileSettings() {
               </div>
             </div>
             <div className="min-w-0 flex-1 lg:border-l lg:border-[rgba(148,163,184,0.12)] lg:pl-5">
-              <label className="block text-xs font-medium text-[#aab6ca]">Nome completo
+              <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Nome completo
                 <input className={`${inputClass} mt-1.5`} value={profile.name || ""} onChange={(event) => setProfile({ ...profile, name: event.target.value })} />
               </label>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-[11px] leading-4 text-[#6b7890]">Foto, telefone e CRECI entram quando homologados no banco.</p>
+                <p className="text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">Foto, telefone e CRECI entram quando homologados no banco.</p>
                 <button type="submit" disabled={saving} className="atlas-button-primary disabled:opacity-50">
                   {saving ? "Salvando…" : "Salvar perfil"}
                 </button>
@@ -123,7 +123,7 @@ export default function ProfileSettings() {
           Integrações é onde a liderança configura o que é da empresa. */}
       <section className="cc6-panel cc6-reveal p-5" aria-labelledby="profile-whatsapp-title" style={{ animationDelay: "110ms" }}>
         <p className="atlas-eyebrow">Atendimento</p>
-        <h2 id="profile-whatsapp-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Meu WhatsApp</h2>
+        <h2 id="profile-whatsapp-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Meu WhatsApp</h2>
         <p className="mt-1 mb-4 text-xs text-slate-500">
           Conectando, cada conversa sua entra sozinha no histórico da lead — nada de copiar e colar no fim do dia.
         </p>
@@ -133,8 +133,8 @@ export default function ProfileSettings() {
       <section className="grid gap-4 xl:grid-cols-[1.1fr_.9fr] xl:items-start">
         <form onSubmit={changePassword} className="cc6-panel cc6-reveal p-5" style={{ animationDelay: "100ms" }} aria-labelledby="profile-password-title">
           <p className="cc6-eyebrow">Segurança</p>
-          <h2 id="profile-password-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Trocar senha</h2>
-          <p className="cc6-num mt-1 text-[11px] text-[#6b7890]">mínimo 12 caracteres · senha atual exigida</p>
+          <h2 id="profile-password-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Trocar senha</h2>
+          <p className="cc6-num mt-1 text-[11px] text-[var(--atlas-texto-fraco)]">mínimo 12 caracteres · senha atual exigida</p>
           <div className="cc6-hairline mt-4 grid gap-3 pt-4">
             <label className="sr-only" htmlFor="profile-current-password">Senha atual</label>
             <input id="profile-current-password" className={inputClass} required type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Senha atual" />
@@ -148,16 +148,16 @@ export default function ProfileSettings() {
 
         <section className="cc6-panel cc6-reveal p-5" style={{ animationDelay: "130ms" }} aria-labelledby="profile-shortcuts-title">
           <p className="cc6-eyebrow">Atalhos</p>
-          <h2 id="profile-shortcuts-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Continuar o trabalho</h2>
+          <h2 id="profile-shortcuts-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Continuar o trabalho</h2>
           <div className="mt-2">
             {shortcuts.map(([href, label]) => (
               <Link
                 key={href}
                 href={href}
-                className={`cc6-hairline group flex min-h-11 items-center justify-between gap-3 text-sm font-medium text-[#aab6ca] transition-colors hover:text-[#e8eef8] ${focusRing}`}
+                className={`cc6-hairline group flex min-h-11 items-center justify-between gap-3 text-sm font-medium text-[var(--atlas-texto-medio)] transition-colors hover:text-[var(--atlas-texto-forte)] ${focusRing}`}
               >
                 {label}
-                <span aria-hidden="true" className="text-[#6b7890] transition-colors group-hover:text-[color:var(--atlas-accent-hover)]">→</span>
+                <span aria-hidden="true" className="text-[var(--atlas-texto-fraco)] transition-colors group-hover:text-[color:var(--atlas-accent-hover)]">→</span>
               </Link>
             ))}
           </div>

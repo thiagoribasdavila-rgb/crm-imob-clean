@@ -62,11 +62,11 @@ function formatSize(bytes: number) {
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 const fieldBase =
-  `min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] text-sm text-[#e8eef8] transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] ${focusRing}`;
+  `min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] text-sm text-[var(--atlas-texto-forte)] transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] ${focusRing}`;
 const fieldClass = `${fieldBase} px-4`;
 const searchFieldClass = `${fieldBase} pl-4 pr-12`;
 const selectClass =
-  `min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-[#0b1224] px-4 text-sm text-[#e8eef8] transition-colors focus:border-[color:var(--atlas-accent)] ${focusRing}`;
+  `min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-[#0b1224] px-4 text-sm text-[var(--atlas-texto-forte)] transition-colors focus:border-[color:var(--atlas-accent)] ${focusRing}`;
 
 /* Estado semântico único por material: vencido > rejeitado > pendente > vigente.
    Substitui os dois badges simultâneos (revisão + versão) do layout anterior. */
@@ -280,15 +280,15 @@ export default function ProjectMaterialsPage() {
       </section>
 
       <div aria-live="polite" className="space-y-2 empty:hidden">
-        {error ? <div role="alert" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[#fb7185]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div> : null}
-        {notice ? <div role="status" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[#34d399]" style={{ "--cc6-sev": "#34d399" } as CSSProperties}>{notice}</div> : null}
+        {error ? <div role="alert" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-perigo)]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div> : null}
+        {notice ? <div role="status" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-sucesso)]" style={{ "--cc6-sev": "#34d399" } as CSSProperties}>{notice}</div> : null}
       </div>
 
       <section className="cc6-panel cc6-reveal p-5" style={{ animationDelay: "90ms" }} aria-labelledby="materials-coverage-title">
         <header className="flex flex-wrap items-baseline justify-between gap-2">
           <div>
             <p className="cc6-eyebrow">Visão corporativa</p>
-            <h2 id="materials-coverage-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Cobertura por incorporadora</h2>
+            <h2 id="materials-coverage-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Cobertura por incorporadora</h2>
           </div>
           <span className="cc6-chip">{coverage.length} incorporadoras</span>
         </header>
@@ -302,16 +302,16 @@ export default function ProjectMaterialsPage() {
               style={{ animationDelay: `${110 + Math.min(index, 8) * 40}ms` }}
             >
               <span className="flex items-start justify-between gap-3">
-                <strong className="truncate text-[13px] font-semibold text-[#e8eef8]">{item.developerName}</strong>
+                <strong className="truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{item.developerName}</strong>
                 <StatusBadge tone={item.averageCoverage === 100 ? "success" : "warning"}>{item.averageCoverage}%</StatusBadge>
               </span>
-              <span className="cc6-num mt-2 block text-[11px] leading-4 text-[#6b7890]">
+              <span className="cc6-num mt-2 block text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
                 {item.complete}/{item.projects} completos · {item.expiring} a vencer · {item.expired} vencidos · {item.pendingReview} em revisão
               </span>
             </button>
           ))}
           {!coverage.length && !loading ? (
-            <p className="text-sm text-[#6b7890] sm:col-span-2 xl:col-span-3">Sem cobertura calculada — cadastre projetos e materiais para iniciar.</p>
+            <p className="text-sm text-[var(--atlas-texto-fraco)] sm:col-span-2 xl:col-span-3">Sem cobertura calculada — cadastre projetos e materiais para iniciar.</p>
           ) : null}
         </div>
       </section>
@@ -320,7 +320,7 @@ export default function ProjectMaterialsPage() {
         <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "140ms" }} aria-labelledby="materials-picker-title">
           <header className="px-5 pb-4 pt-5">
             <p className="cc6-eyebrow">Busca rápida</p>
-            <h2 id="materials-picker-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Incorporadora e projeto</h2>
+            <h2 id="materials-picker-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Incorporadora e projeto</h2>
           </header>
           <div className="cc6-hairline space-y-3 p-5">
             <div className="relative">
@@ -333,7 +333,7 @@ export default function ProjectMaterialsPage() {
                 placeholder="Projeto, incorporadora ou cidade…"
                 className={searchFieldClass}
               />
-              {query ? <button type="button" onClick={() => setQuery("")} aria-label="Limpar busca de projetos" className={`absolute inset-y-0 right-0 w-11 rounded-r-xl text-[#6b7890] transition-colors hover:text-[#e8eef8] ${focusRing}`}>×</button> : null}
+              {query ? <button type="button" onClick={() => setQuery("")} aria-label="Limpar busca de projetos" className={`absolute inset-y-0 right-0 w-11 rounded-r-xl text-[var(--atlas-texto-fraco)] transition-colors hover:text-[var(--atlas-texto-forte)] ${focusRing}`}>×</button> : null}
             </div>
             <label className="sr-only" htmlFor="materials-developer-filter">Filtrar por incorporadora</label>
             <select id="materials-developer-filter" value={developer} onChange={(event) => setDeveloper(event.target.value)} className={selectClass}>
@@ -349,9 +349,9 @@ export default function ProjectMaterialsPage() {
                   onClick={() => setSelectedId(item.id)}
                   className={`w-full rounded-xl border p-3 text-left transition-colors ${selectedId === item.id ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)]" : "border-[rgba(148,163,184,0.12)] bg-white/[0.02] hover:border-[rgba(148,163,184,0.26)]"} ${focusRing}`}
                 >
-                  <span className="block truncate font-mono text-[10px] uppercase tracking-[0.14em] text-[#6b7890]">{item.developer_name || "Sem incorporadora"}</span>
-                  <strong className="mt-1 block truncate text-[13px] font-semibold text-[#e8eef8]">{item.name}</strong>
-                  <span className="cc6-num mt-0.5 block truncate text-[11px] text-[#6b7890]">{item.city || "Cidade não informada"} · {item.status}</span>
+                  <span className="block truncate font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">{item.developer_name || "Sem incorporadora"}</span>
+                  <strong className="mt-1 block truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{item.name}</strong>
+                  <span className="cc6-num mt-0.5 block truncate text-[11px] text-[var(--atlas-texto-fraco)]">{item.city || "Cidade não informada"} · {item.status}</span>
                 </button>
               ))}
               {!loading && filtered.length === 0 ? (
@@ -370,13 +370,13 @@ export default function ProjectMaterialsPage() {
           <header className="flex flex-wrap items-center justify-between gap-3 px-5 pb-4 pt-5">
             <div className="min-w-0">
               <p className="cc6-eyebrow">Kit comercial</p>
-              <h2 id="materials-kit-title" className="mt-1 truncate text-lg font-semibold tracking-tight text-[#e8eef8]">{selected?.name || "Materiais do projeto"}</h2>
-              {selected ? <p className="mt-0.5 truncate font-mono text-[11px] text-[#6b7890]">{selected.developer_name || "Incorporadora não informada"}</p> : null}
+              <h2 id="materials-kit-title" className="mt-1 truncate text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{selected?.name || "Materiais do projeto"}</h2>
+              {selected ? <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--atlas-texto-fraco)]">{selected.developer_name || "Incorporadora não informada"}</p> : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="cc6-chip" title="Book, tabela e espelho vigentes no projeto selecionado.">{materialsLoading ? "kit …" : `kit ${essentialReady}/3`}</span>
               {selected ? (
-                <Link href={`/developments/${selected.id}`} className={`rounded-md text-[12px] font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[#e8eef8] ${focusRing}`}>
+                <Link href={`/developments/${selected.id}`} className={`rounded-md text-[12px] font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[var(--atlas-texto-forte)] ${focusRing}`}>
                   Abrir projeto →
                 </Link>
               ) : null}
@@ -396,12 +396,12 @@ export default function ProjectMaterialsPage() {
                     className={`cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 transition-colors hover:border-[rgba(148,163,184,0.22)]! ${focusRing}`}
                     style={{ "--cc6-sev": "#34d399" } as CSSProperties}
                   >
-                    <strong className="block truncate text-[13px] font-semibold text-[#e8eef8]">{materialLabels[type].label}</strong>
-                    <span className="cc6-num mt-0.5 block text-[11px] text-[#34d399]">vigente · v{material.version} · abrir →</span>
+                    <strong className="block truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{materialLabels[type].label}</strong>
+                    <span className="cc6-num mt-0.5 block text-[11px] text-[var(--atlas-estado-sucesso)]">vigente · v{material.version} · abrir →</span>
                   </a>
                 ) : (
                   <div key={type} className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3" style={{ "--cc6-sev": "#f5b544" } as CSSProperties}>
-                    <strong className="block truncate text-[13px] font-semibold text-[#e8eef8]">{materialLabels[type].label}</strong>
+                    <strong className="block truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{materialLabels[type].label}</strong>
                     <span className="cc6-num cc6-warn mt-0.5 block text-[11px]">pendente de publicação</span>
                   </div>
                 ))}
@@ -436,7 +436,7 @@ export default function ProjectMaterialsPage() {
                       placeholder="Tabela, planta, vídeo, memorial…"
                       className={searchFieldClass}
                     />
-                    {materialQuery ? <button type="button" onClick={() => setMaterialQuery("")} aria-label="Limpar busca de materiais" className={`absolute inset-y-0 right-0 w-11 rounded-r-xl text-[#6b7890] transition-colors hover:text-[#e8eef8] ${focusRing}`}>×</button> : null}
+                    {materialQuery ? <button type="button" onClick={() => setMaterialQuery("")} aria-label="Limpar busca de materiais" className={`absolute inset-y-0 right-0 w-11 rounded-r-xl text-[var(--atlas-texto-fraco)] transition-colors hover:text-[var(--atlas-texto-forte)] ${focusRing}`}>×</button> : null}
                   </div>
                   <label className="sr-only" htmlFor="materials-type-filter">Filtrar por tipo de material</label>
                   <select id="materials-type-filter" value={materialType} onChange={(event) => setMaterialType(event.target.value)} className={`${selectClass} lg:w-56`}>
@@ -451,12 +451,12 @@ export default function ProjectMaterialsPage() {
                       type="button"
                       aria-pressed={materialType === type}
                       onClick={() => setMaterialType(materialType === type ? "" : type)}
-                      className={`rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors ${materialType === type ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[#e8eef8]" : "border-[rgba(148,163,184,0.16)] text-[#aab6ca] hover:border-[rgba(148,163,184,0.3)] hover:text-[#e8eef8]"} ${focusRing}`}
+                      className={`rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors ${materialType === type ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]" : "border-[rgba(148,163,184,0.16)] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"} ${focusRing}`}
                     >
                       {materialLabels[type].label}
                     </button>
                   ))}
-                  <span className="cc6-num ml-auto text-[11px] text-[#6b7890]">{visibleMaterials.length} resultado(s)</span>
+                  <span className="cc6-num ml-auto text-[11px] text-[var(--atlas-texto-fraco)]">{visibleMaterials.length} resultado(s)</span>
                 </div>
               </div>
             ) : null}
@@ -498,10 +498,10 @@ export default function ProjectMaterialsPage() {
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="truncate text-[13px] font-semibold text-[#e8eef8]" title={material.title}>{material.title}</h3>
+                            <h3 className="truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]" title={material.title}>{material.title}</h3>
                             <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
                           </div>
-                          <p className="cc6-num mt-1 truncate text-[11px] text-[#6b7890]" title={material.description || config.description}>
+                          <p className="cc6-num mt-1 truncate text-[11px] text-[var(--atlas-texto-fraco)]" title={material.description || config.description}>
                             {config.label} · {formatSize(material.file_size)} · {material.valid_until ? `até ${new Date(`${material.valid_until}T12:00:00`).toLocaleDateString("pt-BR")}` : "sem vencimento"}
                           </p>
                         </div>
@@ -532,34 +532,34 @@ export default function ProjectMaterialsPage() {
         <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "200ms" }} aria-labelledby="materials-upload-title">
           <header className="px-5 pb-4 pt-5">
             <p className="cc6-eyebrow">Governança de versões</p>
-            <h2 id="materials-upload-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Publicar nova versão</h2>
-            <p className="mt-1 text-xs leading-5 text-[#6b7890]">A anterior é arquivada automaticamente; o time passa a ver somente o arquivo novo.</p>
+            <h2 id="materials-upload-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Publicar nova versão</h2>
+            <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">A anterior é arquivada automaticamente; o time passa a ver somente o arquivo novo.</p>
           </header>
           <form onSubmit={uploadMaterial} className="cc6-hairline grid gap-3 p-5 lg:grid-cols-2 xl:grid-cols-4">
-            <label className="block text-xs font-medium text-[#aab6ca]">Tipo do material
+            <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Tipo do material
               <select value={form.materialType} onChange={(event) => setForm({ ...form, materialType: event.target.value })} className={`${selectClass} mt-1.5`}>
                 {Object.entries(materialLabels).map(([value, item]) => <option key={value} value={value}>{item.label}</option>)}
               </select>
             </label>
-            <label className="block text-xs font-medium text-[#aab6ca]">Título
+            <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Título
               <input required minLength={2} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Ex.: Tabela junho 2026" className={`${fieldClass} mt-1.5`} />
             </label>
-            <label className="block text-xs font-medium text-[#aab6ca]">Vigência inicial
+            <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Vigência inicial
               <input type="date" value={form.validFrom} onChange={(event) => setForm({ ...form, validFrom: event.target.value })} className={`${fieldClass} mt-1.5`} />
             </label>
-            <label className="block text-xs font-medium text-[#aab6ca]">Válido até
+            <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Válido até
               <input type="date" value={form.validUntil} onChange={(event) => setForm({ ...form, validUntil: event.target.value })} className={`${fieldClass} mt-1.5`} />
             </label>
-            <label className="block text-xs font-medium text-[#aab6ca] lg:col-span-2">Descrição
+            <label className="block text-xs font-medium text-[var(--atlas-texto-medio)] lg:col-span-2">Descrição
               <input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Observação rápida para o time" className={`${fieldClass} mt-1.5`} />
             </label>
-            <label className="block text-xs font-medium text-[#aab6ca]">Arquivo
+            <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Arquivo
               <input
                 required
                 type="file"
                 accept=".pdf,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.mp4,.mov"
                 onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-                className={`mt-1.5 block w-full rounded-xl border border-dashed border-[rgba(75,141,248,0.35)] bg-[rgba(75,141,248,0.05)] px-4 py-2.5 text-sm text-[#aab6ca] file:mr-3 file:rounded-lg file:border-0 file:bg-[rgba(75,141,248,0.14)] file:px-3 file:py-1.5 file:text-[color:var(--atlas-accent-hover)] ${focusRing}`}
+                className={`mt-1.5 block w-full rounded-xl border border-dashed border-[rgba(75,141,248,0.35)] bg-[rgba(75,141,248,0.05)] px-4 py-2.5 text-sm text-[var(--atlas-texto-medio)] file:mr-3 file:rounded-lg file:border-0 file:bg-[rgba(75,141,248,0.14)] file:px-3 file:py-1.5 file:text-[color:var(--atlas-accent-hover)] ${focusRing}`}
               />
             </label>
             <div className="flex items-end">

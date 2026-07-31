@@ -162,16 +162,16 @@ export function NextBestActionPanel({
             Tente atualizar em instantes.
           </p>
         ) : state.actions.length === 0 ? (
-          <p className="text-sm leading-6 text-[#aab6ca]">{state.summary || "Nenhuma próxima ação na carteira agora."}</p>
+          <p className="text-sm leading-6 text-[var(--atlas-texto-medio)]">{state.summary || "Nenhuma próxima ação na carteira agora."}</p>
         ) : (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <p className="text-sm leading-6 text-[#aab6ca]">{state.summary}</p>
+              <p className="text-sm leading-6 text-[var(--atlas-texto-medio)]">{state.summary}</p>
               {/* O resumo fala da playlist (topo da fila), não do estoque. Sem
                   esta linha, "20 leads" seria lido como o total — e o total é
                   exatamente o que faz a liderança distribuir hoje. */}
               {state.portfolioSize > state.actions.length ? (
-                <p className="text-xs leading-5 text-[#6b7890]">
+                <p className="text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                   {state.portfolioSize}
                   {state.truncated ? "+" : ""}{" "}
                   {unassigned ? "leads abertos sem responsável" : "leads na carteira"} no total; a lista abaixo mostra os
@@ -201,7 +201,7 @@ export function NextBestActionPanel({
                     <span aria-hidden="true" className="text-lg leading-none">{a.emoji}</span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate text-sm font-medium text-[#e8eef8]">{a.name}</span>
+                        <span className="truncate text-sm font-medium text-[var(--atlas-texto-forte)]">{a.name}</span>
                         <span className="shrink-0 rounded-full border border-[rgba(75,141,248,0.3)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#78a6f9]">
                           {ACTION_LABEL[a.action] ?? a.action}
                         </span>
@@ -218,7 +218,7 @@ export function NextBestActionPanel({
                             fator dominante. Repetir a mesma palavra em dois
                             lugares só ocupa a linha. */}
                       </div>
-                      <p className="mt-0.5 truncate text-xs leading-5 text-[#6b7890]">{a.why}</p>
+                      <p className="mt-0.5 truncate text-xs leading-5 text-[var(--atlas-texto-fraco)]">{a.why}</p>
                       {/* Probabilidade nunca aparece sozinha: a linha abaixo diz sobre
                           quantos sinais ela se apoia e quais faltaram. */}
                       {a.dataCaveat ? (
@@ -228,13 +228,13 @@ export function NextBestActionPanel({
                       ) : null}
                     </div>
                     <span className="flex shrink-0 flex-col items-end">
-                      <span className="font-mono text-sm text-[#aab6ca] [font-variant-numeric:tabular-nums]">
+                      <span className="font-mono text-sm text-[var(--atlas-texto-medio)] [font-variant-numeric:tabular-nums]">
                         {a.expectedValue != null ? brl(a.expectedValue) : "—"}
                       </span>
                       {a.expectedValue == null && a.declaredBudget != null ? (
                         // Orçamento declarado NÃO é potencial calculado — rótulo explícito
                         // para o corretor não ler teto do cliente como preço de imóvel.
-                        <span className="font-mono text-[10px] leading-4 text-[#6b7890] [font-variant-numeric:tabular-nums]">
+                        <span className="font-mono text-[10px] leading-4 text-[var(--atlas-texto-fraco)] [font-variant-numeric:tabular-nums]">
                           orç. declarado {brl(a.declaredBudget)}
                         </span>
                       ) : null}

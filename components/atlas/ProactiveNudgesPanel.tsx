@@ -101,7 +101,7 @@ export function ProactiveNudgesPanel({ max = 4 }: { max?: number }) {
           <p className="text-sm leading-6 text-[#8b97ab]">Sugestões indisponíveis agora — os motores avisam quando algo mudar.</p>
         ) : (
           <div className="flex flex-col gap-4">
-            <p className="text-sm leading-6 text-[#aab6ca]">{state.digest}</p>
+            <p className="text-sm leading-6 text-[var(--atlas-texto-medio)]">{state.digest}</p>
             <ul className="flex flex-col gap-2">
               {state.nudges.slice(0, max).map((n, i) => {
                 const c = tone(n.urgency, n.emoji);
@@ -114,7 +114,7 @@ export function ProactiveNudgesPanel({ max = 4 }: { max?: number }) {
                     <span aria-hidden="true" className="text-lg leading-none">{n.emoji}</span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-[#e8eef8]">{n.title}</span>
+                        <span className="text-sm font-medium text-[var(--atlas-texto-forte)]">{n.title}</span>
                         <span
                           className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em]"
                           style={{ color: c, border: `1px solid ${c}55` }}
@@ -123,7 +123,7 @@ export function ProactiveNudgesPanel({ max = 4 }: { max?: number }) {
                         </span>
                       </div>
                       <p className="mt-0.5 text-xs leading-5 text-[#8b97ab]">{n.detail}</p>
-                      <p className="mt-1 text-xs leading-5 text-[#aab6ca]">→ {n.action}</p>
+                      <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">→ {n.action}</p>
                     </div>
                   </li>
                 );

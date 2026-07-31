@@ -28,9 +28,9 @@ const recommendationMeta: Record<"priorizar" | "avaliar" | "não recomendar", { 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 const selectClass =
-  `min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-[#0b1224] px-4 text-sm text-[#e8eef8] transition-colors focus:border-[color:var(--atlas-accent)] ${focusRing}`;
+  `min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-[#0b1224] px-4 text-sm text-[var(--atlas-texto-forte)] transition-colors focus:border-[color:var(--atlas-accent)] ${focusRing}`;
 const toggleClass = (active: boolean, activeInk: string) =>
-  `min-h-9 rounded-xl border px-3 text-xs font-semibold transition-colors disabled:opacity-40 ${active ? activeInk : "border-[rgba(148,163,184,0.2)] text-[#aab6ca] hover:border-[rgba(148,163,184,0.35)] hover:text-[#e8eef8]"} ${focusRing}`;
+  `min-h-9 rounded-xl border px-3 text-xs font-semibold transition-colors disabled:opacity-40 ${active ? activeInk : "border-[rgba(148,163,184,0.2)] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.35)] hover:text-[var(--atlas-texto-forte)]"} ${focusRing}`;
 
 export default function PropertyMatching() {
   const [leads, setLeads] = useState<LeadRow[]>([]);
@@ -200,7 +200,7 @@ export default function PropertyMatching() {
       </section>
 
       {error ? (
-        <div role="alert" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[#fb7185]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>
+        <div role="alert" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-perigo)]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>
           {error}
         </div>
       ) : null}
@@ -229,12 +229,12 @@ export default function PropertyMatching() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 id="matching-draft-title" className="text-sm font-semibold tracking-tight text-[#e8eef8]">
+                  <h2 id="matching-draft-title" className="text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                     Apresentação para {payload.lead.name || "o lead"}
                   </h2>
                   <StatusBadge tone="success">Rascunho · aprovação humana</StatusBadge>
                 </div>
-                <p className="cc6-num mt-1 text-[11px] text-[#6b7890]">{draft.mode === "generative" ? "IA generativa" : "motor local seguro"} · revise antes de enviar</p>
+                <p className="cc6-num mt-1 text-[11px] text-[var(--atlas-texto-fraco)]">{draft.mode === "generative" ? "IA generativa" : "motor local seguro"} · revise antes de enviar</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => void copyDraft()} className="cc6-ghost-btn">{copied ? "Copiado ✓" : "Copiar mensagem"}</button>
@@ -244,7 +244,7 @@ export default function PropertyMatching() {
                 </button>
               </div>
             </div>
-            <div className="cc6-panel-quiet mt-4 p-4 text-sm text-[#e8eef8]"><MessageResponse>{draft.content}</MessageResponse></div>
+            <div className="cc6-panel-quiet mt-4 p-4 text-sm text-[var(--atlas-texto-forte)]"><MessageResponse>{draft.content}</MessageResponse></div>
             {!whatsappUrl ? <p className="cc6-warn mt-2 text-[12px] leading-5">Telefone ausente ou inválido — copie a mensagem e atualize o cadastro do lead.</p> : null}
             {registered ? <p className="cc6-ok mt-2 text-[12px] leading-5">Apresentação registrada na timeline; entra nas próximas recomendações.</p> : null}
           </section>
@@ -264,13 +264,13 @@ export default function PropertyMatching() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="cc6-num text-[11px] text-[#6b7890]">#{String(index + 1).padStart(2, "0")}</span>
+                      <span className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">#{String(index + 1).padStart(2, "0")}</span>
                       <StatusBadge tone={rec.tone}>{rec.label}</StatusBadge>
                     </div>
-                    <h3 className="mt-1.5 truncate text-[15px] font-semibold tracking-tight text-[#e8eef8]" title={property.title || undefined}>
+                    <h3 className="mt-1.5 truncate text-[15px] font-semibold tracking-tight text-[var(--atlas-texto-forte)]" title={property.title || undefined}>
                       {property.title || "Imóvel sem título"}
                     </h3>
-                    <p className="cc6-num mt-0.5 truncate text-[11px] text-[#6b7890]">{[property.city, property.state].filter(Boolean).join(" · ") || "Localização pendente"}</p>
+                    <p className="cc6-num mt-0.5 truncate text-[11px] text-[var(--atlas-texto-fraco)]">{[property.city, property.state].filter(Boolean).join(" · ") || "Localização pendente"}</p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="cc6-metric-value text-3xl leading-none">{match.score}</p>
@@ -278,7 +278,7 @@ export default function PropertyMatching() {
                   </div>
                 </div>
 
-                <p className="cc6-num text-[12px] text-[#aab6ca]">
+                <p className="cc6-num text-[12px] text-[var(--atlas-texto-medio)]">
                   {property.price ? money.format(property.price) : "Preço pendente"} · {property.bedrooms ?? "—"} dorm. · {property.area ?? "—"} m²
                 </p>
 
@@ -316,7 +316,7 @@ export default function PropertyMatching() {
                         type="button"
                         disabled={feedbackSaving === property.id}
                         onClick={() => void saveFeedback(property.id, "interested")}
-                        className={toggleClass(feedback === "interested", "border-[rgba(52,211,153,0.4)] bg-[rgba(52,211,153,0.1)] text-[#34d399]")}
+                        className={toggleClass(feedback === "interested", "border-[rgba(52,211,153,0.4)] bg-[rgba(52,211,153,0.1)] text-[var(--atlas-estado-sucesso)]")}
                       >
                         Gostou
                       </button>
@@ -324,7 +324,7 @@ export default function PropertyMatching() {
                         type="button"
                         disabled={feedbackSaving === property.id || !feedbackReasons[property.id]}
                         onClick={() => void saveFeedback(property.id, "rejected")}
-                        className={toggleClass(feedback === "rejected", "border-[rgba(251,113,133,0.4)] bg-[rgba(251,113,133,0.1)] text-[#fb7185]")}
+                        className={toggleClass(feedback === "rejected", "border-[rgba(251,113,133,0.4)] bg-[rgba(251,113,133,0.1)] text-[var(--atlas-estado-perigo)]")}
                       >
                         Não aderiu
                       </button>
@@ -338,7 +338,7 @@ export default function PropertyMatching() {
                     aria-pressed={isSelected}
                     disabled={match.recommendation === "não recomendar"}
                     onClick={() => toggleProperty(property.id)}
-                    className={`rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors disabled:opacity-30 ${isSelected ? "border-[rgba(52,211,153,0.4)] bg-[rgba(52,211,153,0.1)] text-[#34d399]" : "border-[rgba(148,163,184,0.2)] text-[#aab6ca] hover:border-[rgba(148,163,184,0.35)] hover:text-[#e8eef8]"} ${focusRing}`}
+                    className={`rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors disabled:opacity-30 ${isSelected ? "border-[rgba(52,211,153,0.4)] bg-[rgba(52,211,153,0.1)] text-[var(--atlas-estado-sucesso)]" : "border-[rgba(148,163,184,0.2)] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.35)] hover:text-[var(--atlas-texto-forte)]"} ${focusRing}`}
                   >
                     {isSelected ? "✓ Selecionado" : "Selecionar"}
                   </button>
@@ -346,7 +346,7 @@ export default function PropertyMatching() {
                     type="button"
                     disabled={match.recommendation === "não recomendar"}
                     onClick={() => { window.location.href = `/leads/${payload.lead.id}`; }}
-                    className={`rounded-md text-[12px] font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[#e8eef8] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
+                    className={`rounded-md text-[12px] font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[var(--atlas-texto-forte)] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`}
                   >
                     Apresentar pelo Lead 360 →
                   </button>

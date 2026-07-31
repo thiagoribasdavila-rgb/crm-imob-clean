@@ -12,7 +12,7 @@ type RecordRow = { id: string; lead_id: string; broker_id: string | null; extern
 type Payload = { viewer:{role:string;canReviewFinancial:boolean}; records: RecordRow[]; leads: Array<{ id: string; name: string | null; source: string | null }>; profiles: Array<{ id: string; full_name: string | null }>; candidates:Array<{id:string;name:string|null;assigned_to:string;status:string}> };
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const FIELD_CLASS = "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[#e8eef8] outline-none transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)]";
+const FIELD_CLASS = "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)]";
 
 /* CC-6: fonte única de rótulo e tom por status de evidência — badge da linha e
    opções do select derivam daqui (antes o badge exibia o valor cru em inglês). */
@@ -112,22 +112,22 @@ export default function ExternalSalesPage() {
       </section>
 
       {error ? (
-        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[#fb7185]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div>
+        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[var(--atlas-estado-perigo)]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div>
       ) : null}
 
       {/* Formulário plano, sem rotação: registro limpo com o mínimo de campos. */}
       <section className="cc6-panel cc6-reveal p-4 sm:p-5" style={{ animationDelay: "60ms" }} aria-labelledby="external-register-title">
         <header>
           <p className="cc6-eyebrow">Registro gerencial</p>
-          <h2 id="external-register-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Marcar compra em outro lugar</h2>
-          <p className="mt-1 text-xs leading-5 text-[#6b7890]">Selecione uma lead do seu time e preserve o motivo comercial para aprendizado.</p>
+          <h2 id="external-register-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Marcar compra em outro lugar</h2>
+          <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Selecione uma lead do seu time e preserve o motivo comercial para aprendizado.</p>
           {/* Quem chega pelo link não escolheu nada: dizer de onde veio o salto
               evita que a rolagem automática pareça a tela se mexendo sozinha, e
               deixa explícito que o registro abaixo é a tela inteira — nada da
               auditoria foi filtrado por causa do parâmetro. */}
           {abertoParaRegistrar ? (
-            <p className="cc6-hairline mt-3 pt-3 text-[11px] leading-4 text-[#6b7890]">
-              <strong className="font-medium text-[#e8eef8]">Registro aberto pelo link que trouxe você até aqui</strong>{" "}
+            <p className="cc6-hairline mt-3 pt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+              <strong className="font-medium text-[var(--atlas-texto-forte)]">Registro aberto pelo link que trouxe você até aqui</strong>{" "}
               — o campo abaixo já está em foco. A auditoria comercial segue completa, sem recorte.
             </p>
           ) : null}
@@ -143,7 +143,7 @@ export default function ExternalSalesPage() {
                 aparente e a pessoa conclui que o caminho está quebrado — lista
                 vazia sem explicação se lê como "não há nada aqui". */}
             {!loading && data && data.candidates.length === 0 ? (
-              <p className="min-w-56 flex-1 text-[11px] leading-4 text-[#6b7890]">
+              <p className="min-w-56 flex-1 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
                 Nenhuma lead elegível no momento: a seleção traz só leads do seu time que ainda não estão como ganho nem já marcadas como compra externa.
               </p>
             ) : null}
@@ -156,8 +156,8 @@ export default function ExternalSalesPage() {
         <header className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="cc6-eyebrow">Auditoria comercial</p>
-            <h2 id="external-records-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Registro de compras externas</h2>
-            <p className="mt-1 text-xs leading-5 text-[#6b7890]">{data?.viewer.canReviewFinancial ? "Complete empresa, projeto, valor e evidência." : "Acompanhe os perfis do seu time; campos financeiros pertencem à diretoria."}</p>
+            <h2 id="external-records-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Registro de compras externas</h2>
+            <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">{data?.viewer.canReviewFinancial ? "Complete empresa, projeto, valor e evidência." : "Acompanhe os perfis do seu time; campos financeiros pertencem à diretoria."}</p>
           </div>
           {!loading && data?.records.length ? <span className="cc6-chip">{data.records.length} registros</span> : null}
         </header>
@@ -181,12 +181,12 @@ export default function ExternalSalesPage() {
                 <article key={item.id} className="border-t border-[rgba(148,163,184,0.12)] py-4 first:border-t-0">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[#e8eef8]">{lead?.name||"Comprador externo"}</p>
-                      <p className="mt-0.5 text-xs text-[#6b7890]">{profileMap.get(item.broker_id||"")||"Sem corretor"}</p>
+                      <p className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{lead?.name||"Comprador externo"}</p>
+                      <p className="mt-0.5 text-xs text-[var(--atlas-texto-fraco)]">{profileMap.get(item.broker_id||"")||"Sem corretor"}</p>
                     </div>
                     <StatusBadge tone={evidence.tone}>{evidence.label}</StatusBadge>
                   </div>
-                  <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[#aab6ca]">{item.reason_summary||"Motivo não detalhado"}</p>
+                  <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[var(--atlas-texto-medio)]">{item.reason_summary||"Motivo não detalhado"}</p>
                   {data?.viewer.canReviewFinancial ? (
                     <div>
                       <div className="mt-3 grid gap-3 md:grid-cols-5">
@@ -202,7 +202,7 @@ export default function ExternalSalesPage() {
                       </div>
                     </div>
                   ) : (
-                    <p className="mt-2 text-xs text-[#6b7890]">Dados financeiros restritos à diretoria.</p>
+                    <p className="mt-2 text-xs text-[var(--atlas-texto-fraco)]">Dados financeiros restritos à diretoria.</p>
                   )}
                 </article>
               );

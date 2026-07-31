@@ -1067,7 +1067,7 @@ function CorteDaFila({
       </div>
 
       {!triagem.medida ? (
-        <p className="mt-2 text-[11.5px] leading-5 text-[#6b7890]">
+        <p className="mt-2 text-[11.5px] leading-5 text-[var(--atlas-texto-fraco)]">
           Corte não medido: {triagem.motivoNaoMedida}
         </p>
       ) : (
@@ -1091,14 +1091,14 @@ function CorteDaFila({
               return (
                 <li key={faixa.chave} className="text-[11.5px] leading-5">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="min-w-0 text-[#aab6ca]" title={faixa.criterio}>
+                    <span className="min-w-0 text-[var(--atlas-texto-medio)]" title={faixa.criterio}>
                       {faixa.rotulo}
                     </span>
-                    <span className={`cc6-num shrink-0 text-[13px] ${faixa.atendimento ? "text-[#e8eef8]" : "text-[#6b7890]"}`}>
+                    <span className={`cc6-num shrink-0 text-[13px] ${faixa.atendimento ? "text-[var(--atlas-texto-forte)]" : "text-[var(--atlas-texto-fraco)]"}`}>
                       {faixa.total}
                     </span>
                   </div>
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[11px] text-[#6b7890]">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[11px] text-[var(--atlas-texto-fraco)]">
                     {faixa.donos.length ? (
                       <span>
                         {faixa.donos.map((dono) => `${dono.total} com ${dono.nome}`).join(" · ")}
@@ -1140,14 +1140,14 @@ function CorteDaFila({
             })}
           </ul>
 
-          <p className="mt-2 text-[11px] leading-5 text-[#6b7890]">
+          <p className="mt-2 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
             Soma das faixas: {triagem.somaDasFaixas} · linha acima: {triagem.total}
             {triagem.somaDasFaixas !== triagem.total ? " — DIVERGÊNCIA: as faixas deixaram de decompor o mesmo número" : ""}
             {triagem.amostraCompleta ? "" : " · leitura truncada: todo número aqui é “ao menos”"}
           </p>
 
           {triagem.eixoGeografico.medido ? (
-            <p className="mt-1 text-[11px] leading-5 text-[#6b7890]">
+            <p className="mt-1 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
               Praça = {triagem.eixoGeografico.ufs.join(", ")}, derivada de {triagem.eixoGeografico.empreendimentosAtivos} empreendimento(s) ativo(s)
               {triagem.eixoGeografico.empreendimentosSemUf > 0
                 ? ` (${triagem.eixoGeografico.empreendimentosSemUf} sem UF cadastrada — lacuna declarada, não preenchida)`
@@ -1167,7 +1167,7 @@ function CorteDaFila({
 
       {aberto ? (
         <div id="corte-da-fila-premissa" className="mt-3 rounded-xl border border-white/[.07] px-3 py-3">
-          <label className="block text-[11.5px] text-[#aab6ca]" htmlFor="ritmo-declarado">
+          <label className="block text-[11.5px] text-[var(--atlas-texto-medio)]" htmlFor="ritmo-declarado">
             Primeiras ligações por corretor, por dia útil
           </label>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -1202,7 +1202,7 @@ function CorteDaFila({
               atalho é valor padrão fantasiado, e um número pré-preenchido seria
               precisamente o chute com aparência de conta que este projeto
               proíbe. Sem declaração, a resposta é "sem prazo". */}
-          <p className="mt-2 text-[11px] leading-5 text-[#6b7890]">
+          <p className="mt-2 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
             O Atlas NÃO sabe este número, e não vai chutar: {capacity?.unavailableReason
               ? capacity.unavailableReason
               : `a amostra atribuída tem ${capacity?.observed.attributedMoves ?? 0} movimentação(ões) de ${capacity?.observed.actors ?? 0} pessoa(s), contra o mínimo de ${capacity?.minimumActors ?? 3} para medir ritmo`}
@@ -1216,7 +1216,7 @@ function CorteDaFila({
                 : ""}
             </p>
           ) : null}
-          <ul className="mt-2 space-y-1 text-[11px] leading-5 text-[#6b7890]">
+          <ul className="mt-2 space-y-1 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
             <li>
               A unidade é a PRIMEIRA ligação — não atendimento, não visita, não venda. O prazo não fala de receita
               nem de conversão.
@@ -2541,7 +2541,7 @@ export default function CommandCenterPage() {
               )}
             </div>
           )}
-          <p className="cc6-hairline mt-4 pt-2.5 text-[10px] leading-4 text-[#6b7890]">
+          <p className="cc6-hairline mt-4 pt-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
             Leitura apenas · o painel mede e ordena, nunca redistribui sozinho. Decisão humana
             em transferir, cobrar SLA e mudar prioridade.
           </p>
@@ -2584,7 +2584,7 @@ export default function CommandCenterPage() {
               <div data-phase="24-director-command-center" className="mt-4 rounded-xl border border-white/[.07] px-4 py-3">
                 <p className="cc6-eyebrow">Custo de IA · {directorDaily.aiUsage.windowDays} dias</p>
                 <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-[#93a2b8]">
-                  <span className="cc6-num text-sm text-[#e8eef8]">
+                  <span className="cc6-num text-sm text-[var(--atlas-texto-forte)]">
                     {/* Sem tarifa não há custo. Traço, nunca US$ 0,00. */}
                     {directorDaily.aiUsage.measuredCostUsd === null
                       ? "—"
@@ -2605,11 +2605,11 @@ export default function CommandCenterPage() {
                   </p>
                 ) : null}
                 {!directorDaily.aiUsage.available ? (
-                  <p className="mt-2 text-[11.5px] leading-5 text-[#6b7890]">
+                  <p className="mt-2 text-[11.5px] leading-5 text-[var(--atlas-texto-fraco)]">
                     Sem snapshot anterior de custo neste banco — a migration de rastreio de IA ainda não foi aplicada.
                   </p>
                 ) : null}
-                <p className="mt-2 text-[11px] leading-5 text-[#6b7890]">
+                <p className="mt-2 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
                   Este painel é somente leitura. Qualquer mudança de verba ou de time exige APROVAÇÃO HUMANA em /approvals.
                 </p>
               </div>

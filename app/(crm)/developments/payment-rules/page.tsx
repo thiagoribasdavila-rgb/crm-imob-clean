@@ -38,7 +38,7 @@ type Payload = {
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 const field =
-  `w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] px-4 py-2.5 text-sm text-[#e8eef8] transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] ${focusRing}`;
+  `w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] px-4 py-2.5 text-sm text-[var(--atlas-texto-forte)] transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] ${focusRing}`;
 
 export default function PaymentRulesPage() {
   const [data, setData] = useState<Payload | null>(null);
@@ -113,7 +113,7 @@ export default function PaymentRulesPage() {
       />
 
       {error ? (
-        <div role="alert" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[#fb7185]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>
+        <div role="alert" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-perigo)]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>
           {error}
         </div>
       ) : null}
@@ -126,7 +126,7 @@ export default function PaymentRulesPage() {
             <header className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <p className="cc6-eyebrow">Evidência automática</p>
-                <h2 id="payment-rules-evidence-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">
+                <h2 id="payment-rules-evidence-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                   Histórico preservado por incorporadora
                 </h2>
               </div>
@@ -140,18 +140,18 @@ export default function PaymentRulesPage() {
                   style={{ animationDelay: `${80 + Math.min(index, 8) * 40}ms`, "--cc6-sev": item.historyPreserved ? "#34d399" : "#f5b544" } as CSSProperties}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <strong className="truncate text-[13px] font-semibold text-[#e8eef8]">{item.developerName}</strong>
+                    <strong className="truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{item.developerName}</strong>
                     <StatusBadge tone={item.historyPreserved ? "success" : "warning"}>
                       {item.historyPreserved ? "Comprovado" : "Criar 2ª versão"}
                     </StatusBadge>
                   </div>
-                  <p className="cc6-num mt-1.5 text-[11px] text-[#6b7890]">
+                  <p className="cc6-num mt-1.5 text-[11px] text-[var(--atlas-texto-fraco)]">
                     {item.versions} {item.versions === 1 ? "versão" : "versões"} · v{item.latestVersion} atual · {item.activeVersions} ativa{item.activeVersions === 1 ? "" : "s"}
                   </p>
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-[11px] leading-4 text-[#6b7890]">
+            <p className="mt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
               Comprovação verde exige ao menos duas versões, exatamente uma ativa e a anterior mantida no histórico.
             </p>
           </TiltShell>
@@ -162,11 +162,11 @@ export default function PaymentRulesPage() {
         <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "120ms" }} aria-labelledby="payment-rules-form-title">
           <header className="px-5 pb-4 pt-5">
             <p className="cc6-eyebrow">Nova versão</p>
-            <h2 id="payment-rules-form-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Regra da incorporadora</h2>
-            <p className="mt-1 text-xs leading-5 text-[#6b7890]">Somente condições confirmadas em documento vigente.</p>
+            <h2 id="payment-rules-form-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Regra da incorporadora</h2>
+            <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Somente condições confirmadas em documento vigente.</p>
           </header>
           <form onSubmit={save} className="cc6-hairline grid gap-3 p-5">
-            <label className="block text-xs font-medium text-[#aab6ca]">Incorporadora
+            <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Incorporadora
               <input
                 required
                 className={`${field} mt-1.5`}
@@ -175,7 +175,7 @@ export default function PaymentRulesPage() {
                 onChange={(e) => setForm({ ...form, developerName: e.target.value })}
               />
             </label>
-            <label className="block text-xs font-medium text-[#aab6ca]">Nome da regra
+            <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Nome da regra
               <input
                 required
                 className={`${field} mt-1.5`}
@@ -184,7 +184,7 @@ export default function PaymentRulesPage() {
                 onChange={(e) => setForm({ ...form, ruleName: e.target.value })}
               />
             </label>
-            <label className="block text-xs font-medium text-[#aab6ca]">Fluxo de pagamento
+            <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Fluxo de pagamento
               <textarea
                 required
                 minLength={10}
@@ -195,7 +195,7 @@ export default function PaymentRulesPage() {
               />
             </label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="block text-xs font-medium text-[#aab6ca]">Entrada %
+              <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Entrada %
                 <input
                   className={`${field} mt-1.5`}
                   type="number"
@@ -207,7 +207,7 @@ export default function PaymentRulesPage() {
                   onChange={(e) => setForm({ ...form, downPaymentPercent: e.target.value })}
                 />
               </label>
-              <label className="block text-xs font-medium text-[#aab6ca]">Parcelas
+              <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Parcelas
                 <input
                   className={`${field} mt-1.5`}
                   type="number"
@@ -219,7 +219,7 @@ export default function PaymentRulesPage() {
                 />
               </label>
             </div>
-            <label className="block text-xs font-medium text-[#aab6ca]">Balões e intermediárias
+            <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Balões e intermediárias
               <textarea
                 className={`${field} mt-1.5`}
                 placeholder="Balões e intermediárias"
@@ -227,7 +227,7 @@ export default function PaymentRulesPage() {
                 onChange={(e) => setForm({ ...form, balloonPaymentNotes: e.target.value })}
               />
             </label>
-            <label className="block text-xs font-medium text-[#aab6ca]">Financiamento e observações
+            <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Financiamento e observações
               <textarea
                 className={`${field} mt-1.5`}
                 placeholder="Financiamento e observações"
@@ -236,7 +236,7 @@ export default function PaymentRulesPage() {
               />
             </label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="block text-xs font-medium text-[#aab6ca]">Vigência inicial
+              <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Vigência inicial
                 <input
                   className={`${field} mt-1.5`}
                   type="date"
@@ -244,7 +244,7 @@ export default function PaymentRulesPage() {
                   onChange={(e) => setForm({ ...form, validFrom: e.target.value })}
                 />
               </label>
-              <label className="block text-xs font-medium text-[#aab6ca]">Válido até
+              <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Válido até
                 <input
                   className={`${field} mt-1.5`}
                   type="date"
@@ -260,7 +260,7 @@ export default function PaymentRulesPage() {
               {saving ? "Salvando…" : "Criar nova versão"}
             </button>
             {data && !data.canManage ? (
-              <p className="text-[11px] leading-4 text-[#6b7890]">Somente papéis de gestão criam versões; a leitura permanece aberta.</p>
+              <p className="text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">Somente papéis de gestão criam versões; a leitura permanece aberta.</p>
             ) : null}
           </form>
         </section>
@@ -269,7 +269,7 @@ export default function PaymentRulesPage() {
           <header className="flex flex-wrap items-baseline justify-between gap-2 px-5 pb-4 pt-5">
             <div>
               <p className="cc6-eyebrow">Histórico</p>
-              <h2 id="payment-rules-history-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Regras cadastradas</h2>
+              <h2 id="payment-rules-history-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Regras cadastradas</h2>
             </div>
             {data ? <span className="cc6-chip">{data.rules.length} versões</span> : null}
           </header>
@@ -292,21 +292,21 @@ export default function PaymentRulesPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-[#6b7890]">
+                      <p className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
                         {rule.developer_name} · v{rule.version}
                       </p>
-                      <h3 className="mt-1 truncate text-[13px] font-semibold text-[#e8eef8]">{rule.rule_name}</h3>
+                      <h3 className="mt-1 truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{rule.rule_name}</h3>
                     </div>
                     <StatusBadge tone={rule.active ? "success" : "neutral"}>
                       {rule.active ? "Ativa" : "Histórico"}
                     </StatusBadge>
                   </div>
-                  <p className="cc6-num mt-2 text-[11px] text-[#6b7890]">
+                  <p className="cc6-num mt-2 text-[11px] text-[var(--atlas-texto-fraco)]">
                     entrada {rule.down_payment_percent ?? "—"}% · {rule.installments_count ?? "—"} parcelas · vigência {rule.valid_from || "aberta"} → {rule.valid_until || "aberta"}
                   </p>
-                  <p className="mt-2 whitespace-pre-line text-xs leading-5 text-[#aab6ca]">{rule.payment_flow}</p>
+                  <p className="mt-2 whitespace-pre-line text-xs leading-5 text-[var(--atlas-texto-medio)]">{rule.payment_flow}</p>
                   {rule.balloon_payment_notes || rule.financing_notes ? (
-                    <p className="cc6-hairline mt-2 pt-2 text-[11px] leading-4 text-[#6b7890]">
+                    <p className="cc6-hairline mt-2 pt-2 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
                       {[rule.balloon_payment_notes, rule.financing_notes].filter(Boolean).join(" · ")}
                     </p>
                   ) : null}

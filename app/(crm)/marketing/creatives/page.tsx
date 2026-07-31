@@ -19,7 +19,7 @@ const brl = (v: unknown) => new Intl.NumberFormat("pt-BR", { style: "currency", 
  */
 
 const FIELD_CLASS =
-  "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[#e8eef8] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50";
+  "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50";
 
 const REVIEW_META: Record<string, { tone: "warning" | "success" | "danger" | "neutral"; label: string; sev: string | null }> = {
   draft: { tone: "warning", label: "Rascunho", sev: "#f5b544" },
@@ -113,7 +113,7 @@ export default function CreativesPage() {
         className="cc6-panel-quiet cc6-reveal flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3"
       >
         <StatusBadge tone="success">Seguro por padrão</StatusBadge>
-        <p className="text-sm leading-6 text-[#aab6ca]">
+        <p className="text-sm leading-6 text-[var(--atlas-texto-medio)]">
           Nenhuma peça é publicada ou substituída automaticamente.
         </p>
         <div className="flex flex-wrap gap-2 sm:ml-auto">
@@ -123,7 +123,7 @@ export default function CreativesPage() {
       </section>
 
       {notice ? (
-        <p role="status" className="cc6-panel-quiet cc6-reveal px-4 py-3 text-sm text-[#aab6ca]">
+        <p role="status" className="cc6-panel-quiet cc6-reveal px-4 py-3 text-sm text-[var(--atlas-texto-medio)]">
           {notice}
         </p>
       ) : null}
@@ -132,7 +132,7 @@ export default function CreativesPage() {
         <form onSubmit={submit} className="cc6-panel cc6-reveal h-fit space-y-3 p-5" style={{ animationDelay: "80ms" }}>
           <div>
             <p className="cc6-eyebrow">Novo brief</p>
-            <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Brief imobiliário</h2>
+            <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Brief imobiliário</h2>
           </div>
           <select required aria-label="Projeto" value={form.developmentId} onChange={e => setForm({ ...form, developmentId: e.target.value })} className={FIELD_CLASS}>
             <option value="">Selecione o projeto</option>
@@ -203,11 +203,11 @@ export default function CreativesPage() {
                       <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
                       <span className="cc6-chip">{c.format}</span>
                     </div>
-                    <h3 className="mt-2 text-base font-semibold tracking-tight text-[#e8eef8]">
+                    <h3 className="mt-2 text-base font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                       {c.creative_asset?.name || "Criativo"}
                     </h3>
-                    <p className="mt-1 text-sm leading-6 text-[#aab6ca]">{c.hook}</p>
-                    <p className="cc6-num mt-1 text-[11px] text-[#6b7890]">
+                    <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">{c.hook}</p>
+                    <p className="cc6-num mt-1 text-[11px] text-[var(--atlas-texto-fraco)]">
                       {c.funnel_stage} · {c.persona_moment} · {c.message_angle}
                     </p>
                   </div>
@@ -241,7 +241,7 @@ export default function CreativesPage() {
                         <div key={label}>
                           <p className={`cc6-metric-value text-xl leading-none ${sold ? "cc6-ok" : ""}`}>
                             {count}
-                            {rate ? <span className="ml-1.5 text-[11px] font-normal text-[#6b7890]">{rate}</span> : null}
+                            {rate ? <span className="ml-1.5 text-[11px] font-normal text-[var(--atlas-texto-fraco)]">{rate}</span> : null}
                           </p>
                           <p className="cc6-metric-label mt-1">{label}</p>
                         </div>
@@ -255,23 +255,23 @@ export default function CreativesPage() {
                         </div>
                       ))}
                     </div>
-                    <p className="cc6-num mt-3 text-[11px] leading-5 text-[#6b7890]">
+                    <p className="cc6-num mt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
                       Leitura: {readingOf(c.performance)} · fadiga: {String(c.performance.fatigueRisk)}
                     </p>
                     {measuredAllZero(c.performance) ? (
-                      <p className="mt-1 text-[11px] leading-5 text-[#f5b544]">
+                      <p className="mt-1 text-[11px] leading-5 text-[var(--atlas-estado-atencao)]">
                         {num(c.performance.daysMeasured)} dia(s) de fato lançado, todos zerados — resultado medido,
                         não ausência de medição.
                       </p>
                     ) : null}
-                    <p className="mt-1 text-[11px] leading-5 text-[#6b7890]">
+                    <p className="mt-1 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
                       Desempenho informado manualmente pela diretoria (não reconciliado com o CRM). Contagem é fato
                       lançado; taxas e custos só aparecem com 30+ leads na versão, e “—” significa métrica sem
                       lastro, nunca 0%.
                     </p>
                   </>
                 ) : (
-                  <p className="cc6-hairline mt-4 pt-4 text-[12px] leading-5 text-[#6b7890]">
+                  <p className="cc6-hairline mt-4 pt-4 text-[12px] leading-5 text-[var(--atlas-texto-fraco)]">
                     Sem desempenho lançado para esta versão — nenhum número foi apurado. Isso é ausência de medição,
                     não resultado zero: enquanto a diretoria não lançar os fatos diários, esta peça não entra em
                     comparação nenhuma.
@@ -281,7 +281,7 @@ export default function CreativesPage() {
             );
           })}
           {!data?.creatives.length ? (
-            <div className="cc6-panel-quiet cc6-reveal p-8 text-center text-sm text-[#6b7890]" style={{ animationDelay: "120ms" }}>
+            <div className="cc6-panel-quiet cc6-reveal p-8 text-center text-sm text-[var(--atlas-texto-fraco)]" style={{ animationDelay: "120ms" }}>
               Crie o primeiro brief associado a um projeto.
             </div>
           ) : null}

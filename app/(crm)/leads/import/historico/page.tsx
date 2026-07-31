@@ -41,7 +41,7 @@ const FIELD_ORDER: LeadImportField[] = [
 ];
 
 const FIELD_CLASS =
-  "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2 text-sm text-[#e8eef8] outline-none transition-colors focus:border-[color:var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)]";
+  "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors focus:border-[color:var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)]";
 
 type RowIssue = { row: number; level: "error" | "warning"; field: string; message: string };
 type QualityReport = {
@@ -162,7 +162,7 @@ export default function HistoricalImportPage() {
               {fileName} · {sheet?.rows.length ?? 0} linhas · delimitador &quot;{sheet?.delimiter === "\t" ? "TAB" : sheet?.delimiter}&quot;
             </span>
           ) : (
-            <span className="text-sm text-[#6b7890]">Exporte planilhas Excel como CSV antes de enviar.</span>
+            <span className="text-sm text-[var(--atlas-texto-fraco)]">Exporte planilhas Excel como CSV antes de enviar.</span>
           )}
         </div>
         <label className="mt-4 block">
@@ -180,13 +180,13 @@ export default function HistoricalImportPage() {
       {sheet && sheet.headers.length ? (
         <TiltShell className="cc6-panel p-5" maxDeg={3}>
           <p className="cc6-eyebrow">2 · Mapeamento das colunas</p>
-          <p className="mt-1 text-sm text-[#aab6ca]">
-            Sugerimos pelo cabeçalho. Ajuste o que for preciso — <strong className="text-[#e8eef8]">Nome é obrigatório</strong>.
+          <p className="mt-1 text-sm text-[var(--atlas-texto-medio)]">
+            Sugerimos pelo cabeçalho. Ajuste o que for preciso — <strong className="text-[var(--atlas-texto-forte)]">Nome é obrigatório</strong>.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {sheet.headers.map((header, index) => (
               <label key={`${header}-${index}`} className="flex flex-col gap-1">
-                <span className="truncate font-mono text-[11px] uppercase tracking-[0.14em] text-[#6b7890]">
+                <span className="truncate font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
                   {header || `Coluna ${index + 1}`}
                 </span>
                 <select
@@ -261,7 +261,7 @@ export default function HistoricalImportPage() {
               {analysis?.importable ?? 0} novas, prontas para importar
             </span>
           </div>
-          {analysis?.dedupe.note ? <p className="mt-2 text-xs text-[#6b7890]">{analysis.dedupe.note}</p> : null}
+          {analysis?.dedupe.note ? <p className="mt-2 text-xs text-[var(--atlas-texto-fraco)]">{analysis.dedupe.note}</p> : null}
 
           {/* preenchimento por campo */}
           {Object.keys(report.fieldFill).length ? (
@@ -272,14 +272,14 @@ export default function HistoricalImportPage() {
                   const count = report.fieldFill[field] ?? 0;
                   return (
                     <div key={field} className="flex items-center gap-3">
-                      <span className="w-32 shrink-0 text-xs text-[#aab6ca]">{FIELD_LABEL[field]}</span>
+                      <span className="w-32 shrink-0 text-xs text-[var(--atlas-texto-medio)]">{FIELD_LABEL[field]}</span>
                       <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(148,163,184,0.12)]">
                         <span
                           className="block h-full rounded-full bg-[color:var(--atlas-accent)]"
                           style={{ width: `${Math.round((count / fillMax) * 100)}%` }}
                         />
                       </span>
-                      <span className="w-10 shrink-0 text-right text-xs tabular-nums text-[#6b7890]">{count}</span>
+                      <span className="w-10 shrink-0 text-right text-xs tabular-nums text-[var(--atlas-texto-fraco)]">{count}</span>
                     </div>
                   );
                 })}
@@ -290,13 +290,13 @@ export default function HistoricalImportPage() {
           {/* avisos */}
           {report.issues.length ? (
             <details className="mt-4">
-              <summary className="cursor-pointer text-sm text-[#aab6ca]">
+              <summary className="cursor-pointer text-sm text-[var(--atlas-texto-medio)]">
                 {report.issues.length} observações{report.issuesTruncated ? " (primeiras 200)" : ""}
               </summary>
               <ul className="mt-2 max-h-56 overflow-y-auto text-xs">
                 {report.issues.map((issue, index) => (
-                  <li key={index} className={`py-0.5 ${issue.level === "error" ? "cc6-crit" : "text-[#aab6ca]"}`}>
-                    <span className="tabular-nums text-[#6b7890]">L{issue.row}</span> · {issue.message}
+                  <li key={index} className={`py-0.5 ${issue.level === "error" ? "cc6-crit" : "text-[var(--atlas-texto-medio)]"}`}>
+                    <span className="tabular-nums text-[var(--atlas-texto-fraco)]">L{issue.row}</span> · {issue.message}
                   </li>
                 ))}
               </ul>
@@ -315,7 +315,7 @@ export default function HistoricalImportPage() {
               >
                 {busy === "importing" ? "Importando…" : `Importar ${analysis?.importable} leads`}
               </button>
-              <span className="text-xs text-[#6b7890]">Entram como legado, sem distribuição automática.</span>
+              <span className="text-xs text-[var(--atlas-texto-fraco)]">Entram como legado, sem distribuição automática.</span>
             </div>
           ) : null}
 
@@ -324,7 +324,7 @@ export default function HistoricalImportPage() {
               <p className="text-sm">
                 <strong>{analysis.imported}</strong> leads importados.
                 {analysis.batchId ? (
-                  <span className="ml-1 font-mono text-xs text-[#6b7890]">lote {analysis.batchId.slice(0, 8)}</span>
+                  <span className="ml-1 font-mono text-xs text-[var(--atlas-texto-fraco)]">lote {analysis.batchId.slice(0, 8)}</span>
                 ) : null}
               </p>
               <Link

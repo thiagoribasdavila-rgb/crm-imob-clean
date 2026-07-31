@@ -35,12 +35,12 @@ export default function CalendarIntegration() {
       />
 
       {error ? (
-        <p role="status" className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[#fb7185]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>
+        <p role="status" className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-perigo)]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>
           {error}
         </p>
       ) : null}
       {message ? (
-        <p role="status" className="cc6-panel-quiet cc6-reveal px-4 py-3 text-sm text-[#aab6ca]">
+        <p role="status" className="cc6-panel-quiet cc6-reveal px-4 py-3 text-sm text-[var(--atlas-texto-medio)]">
           {message}
         </p>
       ) : null}
@@ -63,8 +63,8 @@ export default function CalendarIntegration() {
                     <p className={`cc6-eyebrow ${provider.environmentReady ? "" : "cc6-warn"}`}>
                       {provider.environmentReady ? "Ambiente pronto" : "Credenciais pendentes"}
                     </p>
-                    <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">{provider.label}</h2>
-                    <p className="mt-1 text-sm leading-6 text-[#aab6ca]">
+                    <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{provider.label}</h2>
+                    <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">
                       {connection?.enabled ? "Sincronização pessoal ativa." : "Conecte somente após revisar a política de privacidade."}
                     </p>
                   </div>
@@ -79,7 +79,7 @@ export default function CalendarIntegration() {
                   <span className="cc6-chip">Tarefas · visitas · follow-ups opcionais</span>
                 </div>
 
-                <ul className="cc6-hairline mt-4 space-y-1.5 pt-4 text-sm leading-6 text-[#aab6ca]">
+                <ul className="cc6-hairline mt-4 space-y-1.5 pt-4 text-sm leading-6 text-[var(--atlas-texto-medio)]">
                   <li>Credenciais OAuth somente no servidor.</li>
                   <li>Desconexão remove a referência de acesso.</li>
                   <li>Sem alteração externa dentro do CRM.</li>
@@ -102,7 +102,7 @@ export default function CalendarIntegration() {
         </div>
       )}
 
-      <p className="cc6-panel-quiet px-4 py-3 text-xs leading-5 text-[#6b7890]">
+      <p className="cc6-panel-quiet px-4 py-3 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
         A ativação final exige OAuth e credenciais configuradas na Hostinger. O Atlas não solicita nem grava tokens nesta tela e não afirma conexão antes da autorização real.
       </p>
     </div>

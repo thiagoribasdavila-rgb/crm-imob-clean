@@ -36,7 +36,7 @@ const COMMISSION_LABEL: Record<string, string> = {
   pending: "Pendente",
   not_applicable: "—",
 };
-const TH_CLASS = "px-4 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#6b7890]";
+const TH_CLASS = "px-4 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]";
 const VIEW_OPTIONS: Array<[View, string]> = [["all", "Todas"], ["forecast", "Forecast"], ["attention", "Atenção"], ["closing", "Fecha em 30d"], ["won", "Ganhas"]];
 
 export default function SalesPage() {
@@ -254,7 +254,7 @@ export default function SalesPage() {
         <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "60ms" }}>
           <header className="px-5 pt-5 pb-3">
             <p className="cc6-eyebrow">Fase 47 · Decisões de receita</p>
-            <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">O que precisa de confirmação para avançar</h2>
+            <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">O que precisa de confirmação para avançar</h2>
           </header>
           <div aria-busy={loading}>
             {loading ? (
@@ -272,10 +272,10 @@ export default function SalesPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-sm font-medium text-[#e8eef8]">{decision.title}</h3>
+                        <h3 className="text-sm font-medium text-[var(--atlas-texto-forte)]">{decision.title}</h3>
                         <StatusBadge tone={crit ? "danger" : "warning"}>{crit ? "Urgente" : "Revisar"}</StatusBadge>
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-[#6b7890]">
+                      <p className="mt-0.5 truncate text-xs text-[var(--atlas-texto-fraco)]">
                         {decision.item.leads?.name || "Oportunidade"} · {decision.item.stage} · {decision.detail}
                       </p>
                     </div>
@@ -299,7 +299,7 @@ export default function SalesPage() {
               </div>
             )}
           </div>
-          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
             Até três sinais verificáveis · a IA prepara a revisão, decisão e registro permanecem humanos.
           </p>
         </div>
@@ -309,7 +309,7 @@ export default function SalesPage() {
         <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
           <div>
             <p className="cc6-eyebrow">Pipeline de receita</p>
-            <h2 id="sales-queue-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Fila de oportunidades</h2>
+            <h2 id="sales-queue-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Fila de oportunidades</h2>
           </div>
           {!loading ? <span className="cc6-chip">{visible.length} visíveis</span> : null}
         </header>
@@ -317,8 +317,8 @@ export default function SalesPage() {
             cortada sem dizer, o que falta some sem deixar rastro. */}
         {view === "forecast" ? (
           <div className="cc6-hairline mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-2.5">
-            <p className="min-w-56 flex-1 text-[11px] leading-4 text-[#6b7890]">
-              <strong className="font-medium text-[#e8eef8]">
+            <p className="min-w-56 flex-1 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+              <strong className="font-medium text-[var(--atlas-texto-forte)]">
                 {/* "Abrir forecast" também é o rótulo do botão do topo, que leva
                     a OUTRA tela — nomear o link aqui confundiria as duas. */}
                 Recorte de forecast{abertoPorLink ? " · pedido pelo link que abriu esta tela" : ""}
@@ -335,7 +335,7 @@ export default function SalesPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            className="min-w-56 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[#e8eef8] outline-none transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)]"
+            className="min-w-56 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)]"
             placeholder="Buscar lead, imóvel ou etapa"
             aria-label="Buscar oportunidades"
           />
@@ -348,8 +348,8 @@ export default function SalesPage() {
                 aria-pressed={view === key}
                 className={`cc6-chip shrink-0 cursor-pointer transition-colors ${
                   view === key
-                    ? "border-[color:var(--atlas-accent)]! text-[#e8eef8]!"
-                    : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!"
+                    ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!"
+                    : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[var(--atlas-texto-forte)]!"
                 }`}
               >
                 {label}
@@ -386,21 +386,21 @@ export default function SalesPage() {
                     <tr key={item.id} className="border-t border-t-[rgba(148,163,184,0.08)] align-top transition-colors hover:bg-[rgba(75,141,248,0.04)]">
                       <td className="px-4 py-3">
                         {item.leads?.id ? (
-                          <Link className="font-medium text-[#e8eef8] transition-colors hover:text-[color:var(--atlas-accent-hover)]" href={`/leads/${item.leads.id}`}>
+                          <Link className="font-medium text-[var(--atlas-texto-forte)] transition-colors hover:text-[color:var(--atlas-accent-hover)]" href={`/leads/${item.leads.id}`}>
                             {item.leads.name || "Lead sem nome"}
                           </Link>
                         ) : (
-                          <span className="text-[#6b7890]">Sem lead</span>
+                          <span className="text-[var(--atlas-texto-fraco)]">Sem lead</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-[#aab6ca]">{item.properties?.title || "—"}</td>
-                      <td className="px-4 py-3 text-[#aab6ca]">{item.stage}</td>
-                      <td className="cc6-num px-4 py-3 font-medium text-[#e8eef8]">{item.value == null ? "—" : brl.format(Number(item.value))}</td>
+                      <td className="px-4 py-3 text-[var(--atlas-texto-medio)]">{item.properties?.title || "—"}</td>
+                      <td className="px-4 py-3 text-[var(--atlas-texto-medio)]">{item.stage}</td>
+                      <td className="cc6-num px-4 py-3 font-medium text-[var(--atlas-texto-forte)]">{item.value == null ? "—" : brl.format(Number(item.value))}</td>
                       <td className="px-4 py-3">
-                        <span className="cc6-num block text-[#e8eef8]">{item.value == null ? "—" : brl.format(Number(item.value) * item.probability / 100)}</span>
-                        <span className="cc6-num mt-0.5 block text-[10px] text-[#6b7890]">{item.probability}%</span>
+                        <span className="cc6-num block text-[var(--atlas-texto-forte)]">{item.value == null ? "—" : brl.format(Number(item.value) * item.probability / 100)}</span>
+                        <span className="cc6-num mt-0.5 block text-[10px] text-[var(--atlas-texto-fraco)]">{item.probability}%</span>
                       </td>
-                      <td className="cc6-num px-4 py-3 text-[#aab6ca]">
+                      <td className="cc6-num px-4 py-3 text-[var(--atlas-texto-medio)]">
                         {item.expected_close_at ? new Date(item.expected_close_at).toLocaleDateString("pt-BR") : <span className="cc6-warn">Definir data</span>}
                       </td>
                       <td className="px-4 py-3"><StatusBadge tone={risk.tone}>{risk.label}</StatusBadge></td>
@@ -410,12 +410,12 @@ export default function SalesPage() {
                             {item.won_at ? (
                               <div>
                                 <StatusBadge tone={commissionTone}>{COMMISSION_LABEL[status] ?? status}</StatusBadge>
-                                <p className="cc6-num mt-1.5 text-[10px] text-[#6b7890]">
+                                <p className="cc6-num mt-1.5 text-[10px] text-[var(--atlas-texto-fraco)]">
                                   {item.commission_sla_days ?? 30} dias{item.commission_net ? ` · ${brl.format(item.commission_received_amount || 0)} de ${brl.format(item.commission_net)}` : ""}
                                 </p>
                               </div>
                             ) : (
-                              <span className="text-xs text-[#6b7890]">Após a venda</span>
+                              <span className="text-xs text-[var(--atlas-texto-fraco)]">Após a venda</span>
                             )}
                           </td>
                           <td className="px-4 py-3">

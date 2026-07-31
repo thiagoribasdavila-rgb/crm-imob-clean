@@ -26,7 +26,7 @@ export function PageHeader({ eyebrow, title, description, action }: PageHeaderPr
     <header className="atlas-page-header border-b! border-b-[rgba(148,163,184,0.12)]! pb-5!">
       <div className="atlas-page-heading" data-information-depth="glance">
         {eyebrow ? (
-          <p className="atlas-page-eyebrow font-mono text-[11px]! font-medium uppercase! tracking-[0.16em]! text-[#6b7890]! [font-variant-numeric:tabular-nums]">
+          <p className="atlas-page-eyebrow font-mono text-[11px]! font-medium uppercase! tracking-[0.16em]! text-[var(--atlas-texto-fraco)]! [font-variant-numeric:tabular-nums]">
             {eyebrow}
           </p>
         ) : null}

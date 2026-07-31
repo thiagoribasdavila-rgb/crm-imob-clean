@@ -136,8 +136,8 @@ const normalize = (value: unknown) =>
 const chipClass = (active: boolean) =>
   `cc6-chip cursor-pointer transition-colors ${
     active
-      ? "border-[color:var(--atlas-accent)]! text-[#e8eef8]!"
-      : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!"
+      ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!"
+      : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[var(--atlas-texto-forte)]!"
   }`;
 
 export default function ActivityPage() {
@@ -376,7 +376,7 @@ export default function ActivityPage() {
             <p className="cc6-eyebrow">Histórico comercial</p>
             <h2
               id="activity-timeline-title"
-              className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+              className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
             >
               Linha do tempo
             </h2>
@@ -404,7 +404,7 @@ export default function ActivityPage() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Cliente, atividade ou responsável"
               aria-label="Buscar no histórico"
-              className="w-full min-w-0 rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[#e8eef8] outline-none transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] sm:max-w-xs"
+              className="w-full min-w-0 rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] sm:max-w-xs"
             />
             <nav
               className="flex flex-wrap gap-1.5"
@@ -459,14 +459,14 @@ export default function ActivityPage() {
                 }}
               >
                 <header className="flex items-center gap-3 px-5 pb-1.5 pt-4">
-                  <h3 className="cc6-eyebrow text-[#aab6ca]!">
+                  <h3 className="cc6-eyebrow text-[var(--atlas-texto-medio)]!">
                     {dayHeading(group.items[0].occurredAt, nowMs)}
                   </h3>
                   <span
                     className="cc6-hairline min-w-4 flex-1 self-center"
                     aria-hidden="true"
                   />
-                  <span className="cc6-num text-[10px] text-[#6b7890]">
+                  <span className="cc6-num text-[10px] text-[var(--atlas-texto-fraco)]">
                     {group.items.length}{" "}
                     {group.items.length === 1 ? "registro" : "registros"}
                   </span>
@@ -486,7 +486,7 @@ export default function ActivityPage() {
                         <time
                           dateTime={event.occurredAt}
                           title={fullLabel(event.occurredAt)}
-                          className="cc6-num w-16 shrink-0 pt-px text-right text-[11px] leading-6 text-[#6b7890]"
+                          className="cc6-num w-16 shrink-0 pt-px text-right text-[11px] leading-6 text-[var(--atlas-texto-fraco)]"
                         >
                           {isToday
                             ? relativeTime(event.occurredAt, nowMs)
@@ -494,31 +494,31 @@ export default function ActivityPage() {
                         </time>
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                            <strong className="text-sm font-medium leading-6 text-[#e8eef8]">
+                            <strong className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                               {event.title}
                             </strong>
                             <span className="cc6-chip text-[10px]!">
                               {activityCategoryLabels[event.category]}
                             </span>
                             {event.leadStatus ? (
-                              <span className="cc6-num text-[10px] uppercase tracking-[0.12em] text-[#6b7890]">
+                              <span className="cc6-num text-[10px] uppercase tracking-[0.12em] text-[var(--atlas-texto-fraco)]">
                                 {event.leadStatus.replaceAll("_", " ")}
                               </span>
                             ) : null}
                           </span>
                           {event.description ? (
-                            <span className="mt-0.5 block max-w-[70ch] text-[13px] leading-relaxed text-[#aab6ca]">
+                            <span className="mt-0.5 block max-w-[70ch] text-[13px] leading-relaxed text-[var(--atlas-texto-medio)]">
                               {event.description}
                             </span>
                           ) : null}
-                          <span className="mt-1 block text-[11px] leading-5 text-[#6b7890]">
+                          <span className="mt-1 block text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
                             {[event.leadName, event.actorName]
                               .filter(Boolean)
                               .join(" · ") || "Operação Atlas"}
                           </span>
                         </span>
                         {event.leadId ? (
-                          <span className="shrink-0 self-center text-xs font-medium text-[#aab6ca] transition-colors group-hover:text-[color:var(--atlas-accent)]">
+                          <span className="shrink-0 self-center text-xs font-medium text-[var(--atlas-texto-medio)] transition-colors group-hover:text-[color:var(--atlas-accent)]">
                             Lead 360 <span aria-hidden="true">→</span>
                           </span>
                         ) : null}
@@ -543,7 +543,7 @@ export default function ActivityPage() {
               </section>
             ))
           ) : (
-            <p className="cc6-hairline mt-2 px-5 py-6 text-sm text-[#6b7890]">
+            <p className="cc6-hairline mt-2 px-5 py-6 text-sm text-[var(--atlas-texto-fraco)]">
               {data?.events.length ? (
                 <>
                   Nenhum registro neste recorte —{" "}
@@ -567,7 +567,7 @@ export default function ActivityPage() {
           )}
         </div>
 
-        <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+        <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
           Somente leitura · até 500 registros no escopo, respeitando
           organização, hierarquia e RLS · ordem cronológica, sem prioridade ou
           ação automática.

@@ -152,7 +152,7 @@ export default function BrokersPage() {
           <header className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="cc6-eyebrow">Apoio à conversão</p>
-              <h2 id="team-support-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Onde a liderança pode ajudar agora</h2>
+              <h2 id="team-support-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Onde a liderança pode ajudar agora</h2>
             </div>
             <span className="cc6-chip" title="Até três carteiras com bloqueios observáveis — apoio, não ranking de pessoas.">{data.supportQueue.length} para apoiar</span>
           </header>
@@ -160,8 +160,8 @@ export default function BrokersPage() {
             {data.supportQueue.map((member) => (
               <article key={member.id} className="cc6-sev-band cc6-panel-quiet flex flex-col gap-3 py-3 pl-4 pr-3 sm:flex-row sm:items-center sm:justify-between" style={{ "--cc6-sev": "#f5b544" } as CSSProperties}>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-[#e8eef8]">{member.fullName}</p>
-                  <p className="mt-0.5 text-xs text-[#6b7890]">{roleLabel[member.role] || member.role}</p>
+                  <p className="text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{member.fullName}</p>
+                  <p className="mt-0.5 text-xs text-[var(--atlas-texto-fraco)]">{roleLabel[member.role] || member.role}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="cc6-chip"><strong className={`cc6-num font-semibold ${member.overdue ? "cc6-crit" : ""}`}>{member.overdue}</strong> atrasados</span>
@@ -179,7 +179,7 @@ export default function BrokersPage() {
           <header className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="cc6-eyebrow">Acesso por nível</p>
-              <h2 id="team-structure-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Estrutura do time</h2>
+              <h2 id="team-structure-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Estrutura do time</h2>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {/* O mesmo controle que o link aciona: chegando por /brokers?view=performance,
@@ -191,7 +191,7 @@ export default function BrokersPage() {
                     type="button"
                     onClick={() => setVisao(chave)}
                     aria-pressed={visao === chave}
-                    className={`cc6-chip shrink-0 cursor-pointer transition-colors ${focusRing} ${visao === chave ? "border-[color:var(--atlas-accent)]! text-[#e8eef8]!" : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!"}`}
+                    className={`cc6-chip shrink-0 cursor-pointer transition-colors ${focusRing} ${visao === chave ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!" : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[var(--atlas-texto-forte)]!"}`}
                   >
                     {label}
                   </button>
@@ -203,7 +203,7 @@ export default function BrokersPage() {
             </div>
           </header>
           {visao === "desempenho" ? (
-            <p className="mt-2 text-xs leading-5 text-[#6b7890]">
+            <p className="mt-2 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
               {loading || !data?.members.length ? (
                 // Enquanto não mediu, não afirma quantas carteiras têm bloqueio:
                 // zero por falta de dado seria lido como "está todo mundo em dia".
@@ -235,17 +235,17 @@ export default function BrokersPage() {
                   <article key={member.id} className="flex flex-col gap-3 border-t border-[rgba(148,163,184,0.12)] py-4 transition-colors first:border-t-0 hover:border-[rgba(148,163,184,0.28)] hover:bg-white/[0.015] md:flex-row md:items-center md:justify-between md:gap-6">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-[#e8eef8]">{member.fullName}</p>
+                        <p className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{member.fullName}</p>
                         <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
                       </div>
-                      <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+                      <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                         {roleLabel[member.role] || member.role} · responde a {leader?.fullName || "topo da estrutura"}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-wrap gap-x-8 gap-y-2 md:text-right">
                       {([["carteira", member.portfolio], ["quentes", member.hotLeads], ["sem ação", member.withoutNextAction]] as const).map(([label, value]) => (
                         <div key={label}>
-                          <p className="cc6-num text-sm font-semibold text-[#e8eef8]">{value}</p>
+                          <p className="cc6-num text-sm font-semibold text-[var(--atlas-texto-forte)]">{value}</p>
                           <p className="cc6-metric-label">{label}</p>
                         </div>
                       ))}

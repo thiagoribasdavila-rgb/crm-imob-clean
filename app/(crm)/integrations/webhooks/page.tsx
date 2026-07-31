@@ -23,7 +23,7 @@ export default function WebhooksPage() {
         className="cc6-panel cc6-reveal flex flex-wrap items-center gap-x-4 gap-y-3 p-5"
       >
         <StatusBadge tone="neutral">Em preparação</StatusBadge>
-        <p className="text-sm leading-6 text-[#aab6ca]">
+        <p className="text-sm leading-6 text-[var(--atlas-texto-medio)]">
           Nenhum webhook configurável publicado ainda — os conectores e eventos ativos vivem na central de integrações.
         </p>
         <Link href="/integrations" className="cc6-ghost-btn ml-auto">

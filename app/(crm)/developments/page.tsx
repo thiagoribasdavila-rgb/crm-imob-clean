@@ -122,7 +122,7 @@ const priorityBand: Record<Priority["tone"], string> = {
 const priorityInk: Record<Priority["tone"], string> = {
   danger: "cc6-crit",
   warning: "cc6-warn",
-  info: "text-[#aab6ca]",
+  info: "text-[var(--atlas-texto-medio)]",
 };
 
 function statusTone(status: string): "neutral" | "success" | "warning" | "danger" | "info" | "violet" {
@@ -149,7 +149,7 @@ function CoverageBar({ label, value, fill }: { label: string; value: number; fil
     <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-2">
         <span className="cc6-metric-label truncate">{label}</span>
-        <span className="cc6-num text-[12px] text-[#aab6ca]">{safe}%</span>
+        <span className="cc6-num text-[12px] text-[var(--atlas-texto-medio)]">{safe}%</span>
       </div>
       <div
         className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.06]"
@@ -259,10 +259,10 @@ export default function DevelopmentsPage() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <p className="cc6-eyebrow">FASE 42 · PROJETOS</p>
-              <h1 className="mt-2 max-w-2xl text-2xl font-semibold tracking-[-0.02em] text-[#e8eef8] sm:text-[27px] sm:leading-9">
+              <h1 className="mt-2 max-w-2xl text-2xl font-semibold tracking-[-0.02em] text-[var(--atlas-texto-forte)] sm:text-[27px] sm:leading-9">
                 Veja onde o portfólio precisa de decisão comercial.
               </h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-[#aab6ca]">
+              <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--atlas-texto-medio)]">
                 Projeto, estoque, kit comercial vigente e receita potencial em uma única leitura.
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -299,7 +299,7 @@ export default function DevelopmentsPage() {
                   style={{ width: `${portfolioAbsorption}%` }}
                 />
               </div>
-              <p className="mt-2 text-[11px] leading-4 text-[#6b7890]">
+              <p className="mt-2 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
                 <span className="cc6-num">{data?.portfolio.sold ?? 0}</span> de{" "}
                 <span className="cc6-num">{data?.portfolio.units ?? 0}</span> unidades vendidas
               </p>
@@ -307,15 +307,15 @@ export default function DevelopmentsPage() {
           </div>
           <div className="cc6-hairline mt-5 grid grid-cols-1 gap-x-6 gap-y-3 pt-4 sm:grid-cols-3">
             <div title="Reservas ativas registradas no portfólio.">
-              <p className="cc6-num text-[15px] text-[#e8eef8]">{loading ? "—" : data?.portfolio.reservations ?? 0}</p>
+              <p className="cc6-num text-[15px] text-[var(--atlas-texto-forte)]">{loading ? "—" : data?.portfolio.reservations ?? 0}</p>
               <p className="cc6-metric-label mt-0.5">Reservas ativas</p>
             </div>
             <div title="VGV das unidades efetivamente conectadas ao portfólio.">
-              <p className="cc6-num text-[15px] text-[#e8eef8]">{loading ? "—" : brl.format(data?.portfolio.totalVgv ?? 0)}</p>
+              <p className="cc6-num text-[15px] text-[var(--atlas-texto-forte)]">{loading ? "—" : brl.format(data?.portfolio.totalVgv ?? 0)}</p>
               <p className="cc6-metric-label mt-0.5">VGV observado</p>
             </div>
             <div title="Soma das oportunidades visíveis; previsão não garante fechamento.">
-              <p className="cc6-num text-[15px] text-[#e8eef8]">{loading ? "—" : brl.format(data?.portfolio.pipeline ?? 0)}</p>
+              <p className="cc6-num text-[15px] text-[var(--atlas-texto-forte)]">{loading ? "—" : brl.format(data?.portfolio.pipeline ?? 0)}</p>
               <p className="cc6-metric-label mt-0.5">Em negociação</p>
             </div>
           </div>
@@ -348,14 +348,14 @@ export default function DevelopmentsPage() {
               <p className="cc6-eyebrow">Revisão humana</p>
               <h2
                 id="atlas-projects-priorities-title"
-                className="mt-1 text-sm font-semibold tracking-tight text-[#e8eef8]"
+                className="mt-1 text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
               >
                 Até três decisões objetivas
               </h2>
             </div>
             <span className="cc6-chip">{data?.priorities.length ?? 0} de até 3</span>
           </header>
-          <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+          <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
             Ordenação explicável por vigência de material, cobertura do kit, validação e estoque. Nenhuma alteração é executada automaticamente.
           </p>
           <div className="mt-3 grid gap-2">
@@ -369,19 +369,19 @@ export default function DevelopmentsPage() {
                   "--cc6-sev": priorityBand[priority.tone],
                 } as CSSProperties}
               >
-                <span className="cc6-num pt-0.5 text-xs text-[#6b7890]" aria-hidden="true">
+                <span className="cc6-num pt-0.5 text-xs text-[var(--atlas-texto-fraco)]" aria-hidden="true">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2">
-                    <strong className="text-[13px] font-semibold text-[#e8eef8]">{priority.developmentName}</strong>
+                    <strong className="text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{priority.developmentName}</strong>
                     <StatusBadge tone={priority.tone}>{priority.label}</StatusBadge>
                   </span>
-                  <span className="mt-1 block text-xs leading-5 text-[#aab6ca]">{priority.detail}</span>
+                  <span className="mt-1 block text-xs leading-5 text-[var(--atlas-texto-medio)]">{priority.detail}</span>
                 </span>
                 <span
                   aria-hidden="true"
-                  className="text-[#6b7890] transition-colors group-hover:text-[color:var(--atlas-accent-hover)]"
+                  className="text-[var(--atlas-texto-fraco)] transition-colors group-hover:text-[color:var(--atlas-accent-hover)]"
                 >
                   →
                 </span>
@@ -395,9 +395,9 @@ export default function DevelopmentsPage() {
         className="atlas-project-health cc6-panel-quiet cc6-reveal px-4 py-2.5"
         style={{ animationDelay: "130ms" }}
       >
-        <summary className={`flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 rounded-lg text-sm font-medium text-[#e8eef8] ${focusRing}`}>
+        <summary className={`flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 rounded-lg text-sm font-medium text-[var(--atlas-texto-forte)] ${focusRing}`}>
           <span>Saúde das conexões do portfólio</span>
-          <span className="cc6-num text-xs text-[#6b7890]">
+          <span className="cc6-num text-xs text-[var(--atlas-texto-fraco)]">
             {unavailableModules ? `${unavailableModules} para preparar` : "Tudo conectado"}
           </span>
         </summary>
@@ -407,7 +407,7 @@ export default function DevelopmentsPage() {
             return <StatusBadge key={module} tone={copy.tone}>{moduleLabels[module] || module}: {copy.label}</StatusBadge>;
           })}
         </div>
-        <p className="mt-3 pb-1 text-xs leading-5 text-[#6b7890]">
+        <p className="mt-3 pb-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
           Um módulo opcional indisponível não derruba os demais. O Atlas mantém visível somente o que foi carregado com segurança.
         </p>
       </details>
@@ -422,7 +422,7 @@ export default function DevelopmentsPage() {
             <p className="cc6-eyebrow">Decisão por projeto</p>
             <h2
               id="atlas-projects-directory-title"
-              className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+              className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
             >
               Onde agir no portfólio
             </h2>
@@ -440,7 +440,7 @@ export default function DevelopmentsPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Buscar projeto, incorporadora ou região"
-              className={`min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] px-4 text-base text-[#e8eef8] transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] sm:text-sm ${focusRing}`}
+              className={`min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] px-4 text-base text-[var(--atlas-texto-forte)] transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] sm:text-sm ${focusRing}`}
             />
           </label>
           <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtros do portfólio">
@@ -452,12 +452,12 @@ export default function DevelopmentsPage() {
                 onClick={() => setSegment(item.id)}
                 className={`flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-3 text-[12px] font-medium transition-colors ${
                   segment === item.id
-                    ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[#e8eef8]"
-                    : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[#aab6ca] hover:border-[rgba(148,163,184,0.3)] hover:text-[#e8eef8]"
+                    ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
+                    : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
                 } ${focusRing}`}
               >
                 <span>{item.label}</span>
-                <span className={`cc6-num text-[12px] ${segment === item.id ? "text-[#e8eef8]" : "text-[#6b7890]"}`}>
+                <span className={`cc6-num text-[12px] ${segment === item.id ? "text-[var(--atlas-texto-forte)]" : "text-[var(--atlas-texto-fraco)]"}`}>
                   {loading ? "—" : segmentCounts[item.id]}
                 </span>
               </button>
@@ -505,10 +505,10 @@ export default function DevelopmentsPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <h3 className="truncate text-[15px] font-semibold tracking-tight text-[#e8eef8]" title={item.name}>
+                        <h3 className="truncate text-[15px] font-semibold tracking-tight text-[var(--atlas-texto-forte)]" title={item.name}>
                           {item.name}
                         </h3>
-                        <p className="mt-1 truncate font-mono text-[11px] text-[#6b7890]" title={place}>
+                        <p className="mt-1 truncate font-mono text-[11px] text-[var(--atlas-texto-fraco)]" title={place}>
                           {place}
                         </p>
                       </div>
@@ -518,13 +518,13 @@ export default function DevelopmentsPage() {
                     {priority ? (
                       <p className="-mt-1 truncate text-[12px] leading-5" title={`${priority.label} — ${priority.detail}`}>
                         <span className={`font-medium ${priorityInk[priority.tone]}`}>{priority.label}</span>
-                        <span className="text-[#6b7890]"> · {priority.detail}</span>
+                        <span className="text-[var(--atlas-texto-fraco)]"> · {priority.detail}</span>
                       </p>
                     ) : null}
 
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <p className="cc6-num text-lg leading-6 text-[#e8eef8]">{metrics.inventoryTotal}</p>
+                        <p className="cc6-num text-lg leading-6 text-[var(--atlas-texto-forte)]">{metrics.inventoryTotal}</p>
                         <p className="cc6-metric-label">Unidades</p>
                       </div>
                       <div>
@@ -549,20 +549,20 @@ export default function DevelopmentsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="cc6-metric-label">VGV observado</p>
-                        <p className="cc6-num mt-0.5 text-[13px] text-[#e8eef8]">{brl.format(metrics.totalVgv)}</p>
+                        <p className="cc6-num mt-0.5 text-[13px] text-[var(--atlas-texto-forte)]">{brl.format(metrics.totalVgv)}</p>
                       </div>
                       <div title="Previsão não garante fechamento.">
                         <p className="cc6-metric-label">Receita provável</p>
-                        <p className="cc6-num mt-0.5 text-[13px] text-[#e8eef8]">{brl.format(metrics.forecast)}</p>
+                        <p className="cc6-num mt-0.5 text-[13px] text-[var(--atlas-texto-forte)]">{brl.format(metrics.forecast)}</p>
                       </div>
                     </div>
 
                     <div className="cc6-hairline mt-auto flex items-center justify-between gap-3 pt-3">
-                      <span className="cc6-num truncate text-[11px] text-[#6b7890]">Entrega · {delivery}</span>
+                      <span className="cc6-num truncate text-[11px] text-[var(--atlas-texto-fraco)]">Entrega · {delivery}</span>
                       <Link
                         href={`/developments/${item.id}`}
                         aria-label={`Abrir projeto ${item.name}`}
-                        className={`shrink-0 rounded-md text-[12px] font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[#e8eef8] ${focusRing}`}
+                        className={`shrink-0 rounded-md text-[12px] font-semibold text-[color:var(--atlas-accent-hover)] transition-colors hover:text-[var(--atlas-texto-forte)] ${focusRing}`}
                       >
                         Abrir projeto →
                       </Link>
@@ -575,7 +575,7 @@ export default function DevelopmentsPage() {
         </div>
       </section>
 
-      <p className="text-[11px] leading-5 text-[#6b7890]">
+      <p className="text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
         A tela é somente leitura. Materiais pendentes, rejeitados ou vencidos não entram como kit comercial válido; qualquer correção exige ação humana nas áreas próprias.
       </p>
     </div>

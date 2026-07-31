@@ -271,10 +271,10 @@ type Qualification = {
    Os placeholders são contrato: actOnGap e as perguntas de qualificação fazem
    querySelector por eles — não renomear. */
 const inputClass =
-  "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[rgba(15,24,48,0.55)] px-4 py-3 text-sm text-[#e8eef8] outline-none transition placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] focus:bg-[rgba(75,141,248,0.05)]";
+  "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[rgba(15,24,48,0.55)] px-4 py-3 text-sm text-[var(--atlas-texto-forte)] outline-none transition placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] focus:bg-[rgba(75,141,248,0.05)]";
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)]";
-const chipButtonClass = `cc6-chip cursor-pointer transition-colors hover:border-[color:var(--atlas-accent)] hover:text-[#e8eef8] disabled:cursor-default disabled:opacity-50 ${focusRing}`;
+const chipButtonClass = `cc6-chip cursor-pointer transition-colors hover:border-[color:var(--atlas-accent)] hover:text-[var(--atlas-texto-forte)] disabled:cursor-default disabled:opacity-50 ${focusRing}`;
 const summaryClass = `flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 rounded-xl p-4 [&::-webkit-details-marker]:hidden ${focusRing}`;
 const brl = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -737,14 +737,14 @@ export default function LeadDetailPage() {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <Link
                   href="/leads"
-                  className={`rounded-sm text-xs text-[#6b7890] transition-colors hover:text-[#aab6ca] ${focusRing}`}
+                  className={`rounded-sm text-xs text-[var(--atlas-texto-fraco)] transition-colors hover:text-[var(--atlas-texto-medio)] ${focusRing}`}
                 >
                   ← Leads
                 </Link>
                 <p className="cc6-eyebrow">Lead 360</p>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[#e8eef8] sm:text-[32px] sm:leading-10">
+                <h1 className="text-2xl font-semibold tracking-[-0.03em] text-[var(--atlas-texto-forte)] sm:text-[32px] sm:leading-10">
                   {lead.name || "Lead sem nome"}
                 </h1>
                 <StatusBadge tone="violet">{lead.status || "novo"}</StatusBadge>
@@ -770,7 +770,7 @@ export default function LeadDetailPage() {
                       <span
                         aria-hidden="true"
                         className={
-                          copiedContact === field ? "cc6-ok" : "text-[#6b7890]"
+                          copiedContact === field ? "cc6-ok" : "text-[var(--atlas-texto-fraco)]"
                         }
                       >
                         {copiedContact === field ? "✓" : "⧉"}
@@ -784,9 +784,9 @@ export default function LeadDetailPage() {
                   </span>
                 ) : null}
               </div>
-              <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#6b7890]">
+              <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--atlas-texto-fraco)]">
                 <span className="cc6-eyebrow text-[10px]">dono</span>
-                <span className="text-[#aab6ca]">
+                <span className="text-[var(--atlas-texto-medio)]">
                   {ownerName || "Sem responsável"}
                 </span>
                 <span>· {ownerRole || "distribuição necessária"}</span>
@@ -804,11 +804,11 @@ export default function LeadDetailPage() {
                 <span className="cc6-metric-value text-[40px] leading-none">
                   {lead.score ?? 0}
                 </span>
-                <span className="cc6-num ml-1 text-sm text-[#6b7890]">/100</span>
+                <span className="cc6-num ml-1 text-sm text-[var(--atlas-texto-fraco)]">/100</span>
               </p>
               <p className="cc6-metric-label mt-2">
                 prontidão{" "}
-                <span className="cc6-num text-[#aab6ca]">
+                <span className="cc6-num text-[var(--atlas-texto-medio)]">
                   {intelligence.readiness}%
                 </span>
               </p>
@@ -991,7 +991,7 @@ export default function LeadDetailPage() {
       {message ? (
         <div
           role="status"
-          className="cc6-panel-quiet border-[rgba(75,141,248,0.35)] p-4 text-sm leading-6 text-[#aab6ca]"
+          className="cc6-panel-quiet border-[rgba(75,141,248,0.35)] p-4 text-sm leading-6 text-[var(--atlas-texto-medio)]"
         >
           {message}
         </div>
@@ -1005,12 +1005,12 @@ export default function LeadDetailPage() {
         >
           <div>
             <p className="cc6-eyebrow cc6-warn">Reserva aguardando aceite</p>
-            <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+            <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
               Confirme que você assumirá este atendimento
             </h2>
-            <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+            <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
               Aceite até{" "}
-              <span className="cc6-num text-[#aab6ca]">
+              <span className="cc6-num text-[var(--atlas-texto-medio)]">
                 {new Date(assignmentReservation.expires_at).toLocaleTimeString(
                   "pt-BR",
                   { hour: "2-digit", minute: "2-digit" },
@@ -1039,11 +1039,11 @@ export default function LeadDetailPage() {
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <div>
               <p className="cc6-eyebrow">Dados que faltam</p>
-              <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+              <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
                 O que perguntar agora
               </h2>
             </div>
-            <p className="cc6-num text-xs text-[#6b7890]">
+            <p className="cc6-num text-xs text-[var(--atlas-texto-fraco)]">
               {dataQuality.completeness}% completo ·{" "}
               {dataQuality.completedFields}/{dataQuality.totalFields} campos
             </p>
@@ -1074,10 +1074,10 @@ export default function LeadDetailPage() {
                     </span>
                   ) : null}
                 </div>
-                <strong className="mt-3 block text-sm leading-6 text-[#e8eef8]">
+                <strong className="mt-3 block text-sm leading-6 text-[var(--atlas-texto-forte)]">
                   {question.question}
                 </strong>
-                <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+                <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                   {question.why}
                 </p>
                 {question.options ? (
@@ -1110,7 +1110,7 @@ export default function LeadDetailPage() {
               </article>
             ))}
           </div>
-          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[#6b7890]">
+          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
             Prioridade por impacto em contato, intenção, matching e
             continuidade — análise local, sem custo de IA. CPF, CNPJ, endereço
             exato e documentos não aumentam score nem são enviados às IAs.
@@ -1119,7 +1119,7 @@ export default function LeadDetailPage() {
       ) : dataQuality?.status === "complete" ? (
         <div
           data-phase="30-data-gaps"
-          className="cc6-panel-quiet p-4 text-sm leading-6 text-[#aab6ca]"
+          className="cc6-panel-quiet p-4 text-sm leading-6 text-[var(--atlas-texto-medio)]"
         >
           <span className="cc6-ok font-medium">Perfil comercial completo.</span>{" "}
           Confirme apenas mudanças naturais na próxima conversa.
@@ -1181,12 +1181,12 @@ export default function LeadDetailPage() {
               >
                 <span className="cc6-eyebrow text-[10px]">{item.label}</span>
                 <strong
-                  className="mt-2 block truncate text-sm leading-5 text-[#e8eef8]"
+                  className="mt-2 block truncate text-sm leading-5 text-[var(--atlas-texto-forte)]"
                   title={item.value}
                 >
                   {item.value}
                 </strong>
-                <p className="mt-1.5 truncate text-[11px] leading-5 text-[#6b7890]">
+                <p className="mt-1.5 truncate text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
                   {item.detail}
                 </p>
               </Link>
@@ -1217,24 +1217,24 @@ export default function LeadDetailPage() {
           <p className="cc6-eyebrow">Briefing antes do contato</p>
           <div className="mt-4 grid gap-5 lg:grid-cols-2">
             <div>
-              <h3 className="text-sm font-medium text-[#e8eef8]">
+              <h3 className="text-sm font-medium text-[var(--atlas-texto-forte)]">
                 Último contexto conhecido
               </h3>
-              <p className="mt-2 max-w-prose text-[13.5px] leading-7 text-[#aab6ca]">
+              <p className="mt-2 max-w-prose text-[13.5px] leading-7 text-[var(--atlas-texto-medio)]">
                 {contactBriefing.context}
               </p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-[#e8eef8]">
+              <h3 className="text-sm font-medium text-[var(--atlas-texto-forte)]">
                 Roteiro recomendado
               </h3>
               <ol className="mt-2 space-y-2">
                 {contactBriefing.actions.map((action, index) => (
                   <li
                     key={action}
-                    className="flex gap-3 text-[13.5px] leading-7 text-[#aab6ca]"
+                    className="flex gap-3 text-[13.5px] leading-7 text-[var(--atlas-texto-medio)]"
                   >
-                    <span className="cc6-num shrink-0 text-xs leading-7 text-[#6b7890]">
+                    <span className="cc6-num shrink-0 text-xs leading-7 text-[var(--atlas-texto-fraco)]">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                     {action}
@@ -1243,7 +1243,7 @@ export default function LeadDetailPage() {
               </ol>
             </div>
           </div>
-          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[#6b7890]">
+          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
             Preparado por {contactBriefing.generatedBy}. O corretor revisa e
             decide antes de qualquer envio ou alteração.
           </p>
@@ -1280,10 +1280,10 @@ export default function LeadDetailPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="cc6-eyebrow">Qualificação rápida</p>
-              <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+              <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
                 Como o Atlas chegou a esta qualificação
               </h2>
-              <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+              <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                 Confiança de{" "}
                 <span className="cc6-num">{qualification.confidence}%</span> ·{" "}
                 <span className="cc6-num">
@@ -1317,10 +1317,10 @@ export default function LeadDetailPage() {
               {qualification.dimensions.map((dimension) => (
                 <div key={dimension.key} className="cc6-panel-quiet p-4">
                   <div className="flex items-center justify-between">
-                    <strong className="text-sm text-[#e8eef8]">
+                    <strong className="text-sm text-[var(--atlas-texto-forte)]">
                       {dimension.label}
                     </strong>
-                    <span className="cc6-num text-xs text-[#aab6ca]">
+                    <span className="cc6-num text-xs text-[var(--atlas-texto-medio)]">
                       {dimension.score}/{dimension.maximum}
                     </span>
                   </div>
@@ -1331,7 +1331,7 @@ export default function LeadDetailPage() {
                       )}
                     />
                   </div>
-                  <p className="mt-3 text-xs leading-5 text-[#6b7890]">
+                  <p className="mt-3 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                     {dimension.reasons.slice(0, 2).join(" · ") ||
                       "Ainda sem sinais suficientes"}
                   </p>
@@ -1341,7 +1341,7 @@ export default function LeadDetailPage() {
             <div className="space-y-3">
               <div className="cc6-panel-quiet cc6-sev-band p-4 pl-5">
                 <p className="cc6-eyebrow text-[10px]">Próxima melhor ação</p>
-                <p className="mt-2 text-sm leading-6 text-[#e8eef8]">
+                <p className="mt-2 text-sm leading-6 text-[var(--atlas-texto-forte)]">
                   {qualification.nextBestAction}
                 </p>
               </div>
@@ -1351,7 +1351,7 @@ export default function LeadDetailPage() {
                   style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
                 >
                   <p className="cc6-eyebrow cc6-crit text-[10px]">Riscos</p>
-                  <ul className="mt-2 space-y-1 text-xs leading-5 text-[#aab6ca]">
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">
                     {qualification.risks.map((risk) => (
                       <li key={risk}>• {risk}</li>
                     ))}
@@ -1366,7 +1366,7 @@ export default function LeadDetailPage() {
                   <p className="cc6-eyebrow cc6-warn text-[10px]">
                     Dados que aumentam a confiança
                   </p>
-                  <p className="mt-2 text-xs leading-5 text-[#aab6ca]">
+                  <p className="mt-2 text-xs leading-5 text-[var(--atlas-texto-medio)]">
                     {qualification.missingData.join(" · ")}
                   </p>
                 </div>
@@ -1377,7 +1377,7 @@ export default function LeadDetailPage() {
             <div className="cc6-hairline mt-5 pt-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="cc6-eyebrow">Próxima pergunta mais relevante</p>
-                <span className="cc6-num text-xs text-[#6b7890]">
+                <span className="cc6-num text-xs text-[var(--atlas-texto-fraco)]">
                   {qualification.progress.percent}% essencial concluído
                 </span>
               </div>
@@ -1389,10 +1389,10 @@ export default function LeadDetailPage() {
                       index === 0 ? "border-[rgba(75,141,248,0.45)]" : ""
                     }`}
                   >
-                    <strong className="text-sm leading-6 text-[#e8eef8]">
+                    <strong className="text-sm leading-6 text-[var(--atlas-texto-forte)]">
                       {question.question}
                     </strong>
-                    <p className="mt-1 text-xs leading-5 text-[#6b7890]">
+                    <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                       {question.why}
                     </p>
                     {question.options ? (
@@ -1433,7 +1433,7 @@ export default function LeadDetailPage() {
                   </div>
                 ))}
               </div>
-              <p className="mt-4 text-[11px] leading-5 text-[#6b7890]">
+              <p className="mt-4 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
                 Finalidade, prazo e pagamento recalibram score e próxima ação
                 imediatamente. Para a Meta saem apenas categorias agregadas;
                 conversa livre e dados pessoais permanecem no CRM.
@@ -1446,7 +1446,7 @@ export default function LeadDetailPage() {
       {proposals.length ? (
         <section data-phase="37-proposal-sla" className="cc6-reveal cc6-panel p-5 sm:p-6">
           <p className="cc6-eyebrow">Fase 37 · SLA de proposta</p>
-          <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+          <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
             Preparação, envio e retorno
           </h2>
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
@@ -1454,11 +1454,11 @@ export default function LeadDetailPage() {
               <article key={proposal.id} className="cc6-panel-quiet p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <strong className="block truncate text-sm text-[#e8eef8]">
+                    <strong className="block truncate text-sm text-[var(--atlas-texto-forte)]">
                       {proposal.rule_snapshot?.propertyTitle ||
                         "Proposta comercial"}
                     </strong>
-                    <p className="cc6-num mt-1 text-xs text-[#6b7890]">
+                    <p className="cc6-num mt-1 text-xs text-[var(--atlas-texto-fraco)]">
                       {brl.format(proposal.property_price)} · válida até{" "}
                       {new Date(proposal.valid_until).toLocaleString("pt-BR")}
                     </p>
@@ -1486,7 +1486,7 @@ export default function LeadDetailPage() {
                   ] as const).map(([label, minutes]) => (
                     <div key={label} className="cc6-panel-quiet p-2">
                       <dt className="cc6-metric-label">{label}</dt>
-                      <dd className="cc6-num mt-1 text-sm text-[#e8eef8]">
+                      <dd className="cc6-num mt-1 text-sm text-[var(--atlas-texto-forte)]">
                         {minutes ?? "—"} min
                       </dd>
                     </div>
@@ -1530,7 +1530,7 @@ export default function LeadDetailPage() {
               </article>
             ))}
           </div>
-          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[#6b7890]">
+          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
             Preço, estoque e regra continuam governados; o contato com o
             cliente também fica mensurado.
           </p>
@@ -1543,7 +1543,7 @@ export default function LeadDetailPage() {
       >
         <section className="cc6-panel p-5 sm:p-6">
           <p className="cc6-eyebrow">Perfil do comprador</p>
-          <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+          <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
             Dados e qualificação
           </h2>
           <form onSubmit={saveLead} className="mt-4">
@@ -1667,7 +1667,7 @@ export default function LeadDetailPage() {
               aria-label="Observações estratégicas"
               onChange={(e) => setLead({ ...lead, notes: e.target.value })}
             />
-            <p className="mt-3 text-[11px] leading-5 text-[#6b7890]">
+            <p className="mt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
               A origem comercial não é editada aqui — use &quot;Corrigir
               contexto&quot; acima para alterá-la com justificativa auditável.
             </p>
@@ -1685,7 +1685,7 @@ export default function LeadDetailPage() {
         <div className="space-y-4">
           <section id="historico" className="cc6-panel scroll-mt-28 p-5 sm:p-6">
             <p className="cc6-eyebrow">Registrar</p>
-            <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+            <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
               Acompanhamento do contato
             </h2>
             <form onSubmit={addActivity} className="mt-4 space-y-3">
@@ -1741,7 +1741,7 @@ export default function LeadDetailPage() {
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] leading-5 text-[#6b7890]">
+              <p className="text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
                 A descrição fica protegida no CRM. A inteligência usa somente
                 categorias anônimas para indicar melhorias de público e
                 criativo.
@@ -1756,7 +1756,7 @@ export default function LeadDetailPage() {
             <div className="flex flex-wrap items-center justify-between gap-3 p-5 pb-0 sm:px-6">
               <div>
                 <p className="cc6-eyebrow">Timeline</p>
-                <h2 className="mt-2 text-base font-semibold text-[#e8eef8]">
+                <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
                   Histórico do relacionamento
                 </h2>
               </div>
@@ -1786,7 +1786,7 @@ export default function LeadDetailPage() {
                         className="cc6-panel-quiet p-4 transition-colors hover:border-[rgba(148,163,184,0.3)]"
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <p className="text-sm font-medium leading-6 text-[#e8eef8]">
+                          <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                             {activity.title}
                           </p>
                           <span className="cc6-chip shrink-0">
@@ -1794,7 +1794,7 @@ export default function LeadDetailPage() {
                           </span>
                         </div>
                         {!contextCorrection && activity.description ? (
-                          <p className="mt-1.5 text-[13px] leading-6 text-[#aab6ca]">
+                          <p className="mt-1.5 text-[13px] leading-6 text-[var(--atlas-texto-medio)]">
                             {activity.description}
                           </p>
                         ) : null}
@@ -1803,7 +1803,7 @@ export default function LeadDetailPage() {
                             correction={contextCorrection}
                           />
                         ) : null}
-                        <p className="cc6-num mt-3 text-[10px] uppercase tracking-wider text-[#6b7890]">
+                        <p className="cc6-num mt-3 text-[10px] uppercase tracking-wider text-[var(--atlas-texto-fraco)]">
                           {activity.authorName || "Equipe Atlas"} ·{" "}
                           {new Date(activity.occurred_at).toLocaleString(
                             "pt-BR",
@@ -1825,12 +1825,12 @@ export default function LeadDetailPage() {
         <details className="cc6-panel-quiet group">
           <summary className={summaryClass}>
             <span className="cc6-eyebrow">Qualidade e fontes dos dados</span>
-            <span className="cc6-num text-xs text-[#aab6ca]">
+            <span className="cc6-num text-xs text-[var(--atlas-texto-medio)]">
               {dataQuality.completeness}% · {dataQuality.completedFields}/
               {dataQuality.totalFields} campos
               <span
                 aria-hidden="true"
-                className="ml-2 inline-block text-[#6b7890] transition-transform group-open:rotate-180"
+                className="ml-2 inline-block text-[var(--atlas-texto-fraco)] transition-transform group-open:rotate-180"
               >
                 ▾
               </span>
@@ -1868,14 +1868,14 @@ export default function LeadDetailPage() {
                 <p className="cc6-eyebrow cc6-crit text-[10px]">
                   Revisão humana necessária
                 </p>
-                <ul className="mt-2 space-y-1 text-xs leading-5 text-[#aab6ca]">
+                <ul className="mt-2 space-y-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">
                   {dataQuality.inconsistencies.map((item) => (
                     <li key={item}>• {item}</li>
                   ))}
                 </ul>
               </div>
             ) : null}
-            <p className="text-[11px] leading-5 text-[#6b7890]">
+            <p className="text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
               Cadastros ambíguos nunca são fundidos sem revisão humana.
             </p>
           </div>
@@ -1890,7 +1890,7 @@ export default function LeadDetailPage() {
             </span>
             <span
               aria-hidden="true"
-              className="text-[#6b7890] transition-transform group-open:rotate-180"
+              className="text-[var(--atlas-texto-fraco)] transition-transform group-open:rotate-180"
             >
               ▾
             </span>
@@ -1917,13 +1917,13 @@ export default function LeadDetailPage() {
               ].map(([label, value]) => (
                 <div key={label}>
                   <dt className="cc6-eyebrow text-[10px]">{label}</dt>
-                  <dd className="cc6-num mt-1.5 break-all text-sm text-[#e8eef8]">
+                  <dd className="cc6-num mt-1.5 break-all text-sm text-[var(--atlas-texto-forte)]">
                     {value}
                   </dd>
                 </div>
               ))}
             </dl>
-            <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[#6b7890]">
+            <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
               O corretor só mantém estágio e acompanhamento atualizados; o CRM
               transforma essas ações em sinais estruturados. Textos livres e
               dados pessoais não aparecem nos relatórios de campanha.

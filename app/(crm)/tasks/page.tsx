@@ -122,8 +122,8 @@ const SEV_INK = { crit: "#fb7185", warn: "#f5b544" } as const;
 const STEP_SEV = { now: "crit", today: "warn", planned: null } as const;
 
 const FIELD_CLASS =
-  "mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[#e8eef8] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50";
-const LABEL_CLASS = "text-xs text-[#6b7890]";
+  "mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50";
+const LABEL_CLASS = "text-xs text-[var(--atlas-texto-fraco)]";
 
 function dateLabel(value: string | null) {
   if (!value) return "Sem prazo";
@@ -431,7 +431,7 @@ export default function TasksPage() {
               <p className="cc6-eyebrow">Assistente diário</p>
               <h2
                 id="atlas-daily-focus"
-                className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+                className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
               >
                 Comece por aqui
               </h2>
@@ -473,7 +473,7 @@ export default function TasksPage() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <strong className="max-w-full truncate text-sm font-medium text-[#e8eef8]">
+                        <strong className="max-w-full truncate text-sm font-medium text-[var(--atlas-texto-forte)]">
                           {step.title}
                         </strong>
                         <span className="cc6-eyebrow text-[10px]!">
@@ -481,18 +481,18 @@ export default function TasksPage() {
                         </span>
                         {step.dueAt ? (
                           <span
-                            className={`cc6-num text-[11px] ${sevTextClass(sev) || "text-[#6b7890]"}`}
+                            className={`cc6-num text-[11px] ${sevTextClass(sev) || "text-[var(--atlas-texto-fraco)]"}`}
                             title={dateLabel(step.dueAt)}
                           >
                             {relativeDue(step.dueAt, nowMs)}
                           </span>
                         ) : null}
                       </span>
-                      <span className="mt-0.5 block truncate text-xs text-[#6b7890]">
+                      <span className="mt-0.5 block truncate text-xs text-[var(--atlas-texto-fraco)]">
                         {step.reason}
                       </span>
                     </span>
-                    <span className="shrink-0 text-xs font-medium text-[#aab6ca] transition-colors group-hover:text-[color:var(--atlas-accent)]">
+                    <span className="shrink-0 text-xs font-medium text-[var(--atlas-texto-medio)] transition-colors group-hover:text-[color:var(--atlas-accent)]">
                       {step.action} <span aria-hidden="true">→</span>
                     </span>
                   </Link>
@@ -516,7 +516,7 @@ export default function TasksPage() {
           </div>
           {remainingSteps.length ? (
             <details className="cc6-hairline px-5 py-3">
-              <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[#aab6ca]">
+              <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[var(--atlas-texto-medio)]">
                 +{remainingSteps.length} planejadas
               </summary>
               <div className="mt-2 flex flex-col gap-1.5">
@@ -524,13 +524,13 @@ export default function TasksPage() {
                   <Link
                     key={`${step.kind}-${step.id}`}
                     href={step.href}
-                    className="flex items-baseline gap-2 text-xs text-[#aab6ca] transition-colors hover:text-[#e8eef8]"
+                    className="flex items-baseline gap-2 text-xs text-[var(--atlas-texto-medio)] transition-colors hover:text-[var(--atlas-texto-forte)]"
                   >
-                    <span className="cc6-num text-[#6b7890]">
+                    <span className="cc6-num text-[var(--atlas-texto-fraco)]">
                       {step.position}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{step.title}</span>
-                    <span className="shrink-0 text-[#6b7890]">
+                    <span className="shrink-0 text-[var(--atlas-texto-fraco)]">
                       {step.action}
                     </span>
                   </Link>
@@ -538,7 +538,7 @@ export default function TasksPage() {
               </div>
             </details>
           ) : null}
-          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
             Ordem explicável por contato, follow-up, prazo, visita, prioridade,
             temperatura e score · sem ranking de pessoas · sem execução
             automática.
@@ -556,7 +556,7 @@ export default function TasksPage() {
               <p className="cc6-eyebrow">Nova tarefa · Recorrência opcional</p>
               <h2
                 id="atlas-task-create-title"
-                className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+                className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
               >
                 Criar em poucos segundos
               </h2>
@@ -626,7 +626,7 @@ export default function TasksPage() {
               </div>
 
               <details className="mt-4">
-                <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[#aab6ca]">
+                <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[var(--atlas-texto-medio)]">
                   Adicionar vínculo, descrição ou repetição
                 </summary>
                 <div className="grid gap-4 pt-4 sm:grid-cols-2">
@@ -694,7 +694,7 @@ export default function TasksPage() {
                         </option>
                       ))}
                     </select>
-                    <span className="mt-1 block text-[10px] text-[#6b7890]">
+                    <span className="mt-1 block text-[10px] text-[var(--atlas-texto-fraco)]">
                       {form.leadId
                         ? "Definido pelo corretor único da lead."
                         : "Somente profissionais visíveis no seu escopo."}
@@ -756,7 +756,7 @@ export default function TasksPage() {
                           className={FIELD_CLASS}
                         />
                       </label>
-                      <p className="cc6-panel-quiet self-end p-3 text-[10px] leading-4 text-[#6b7890]">
+                      <p className="cc6-panel-quiet self-end p-3 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
                         A recorrência encerra na primeira condição atingida:
                         data final ou limite.
                       </p>
@@ -798,10 +798,10 @@ export default function TasksPage() {
           className="cc6-panel-quiet cc6-reveal px-4 py-3"
           style={{ animationDelay: "140ms" }}
         >
-          <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[#aab6ca]">
+          <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[var(--atlas-texto-medio)]">
             FASE 43 · TAREFAS RECORRENTES · {recurrenceSeeds.length} ativa(s)
           </summary>
-          <p className="mt-2 text-[10px] leading-4 text-[#6b7890]">
+          <p className="mt-2 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
             Encerrar repetição para a geração de novas ocorrências e preserva as tarefas já criadas.
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -833,7 +833,7 @@ export default function TasksPage() {
               <p className="cc6-eyebrow">Fila comercial</p>
               <h2
                 id="atlas-task-queue-title"
-                className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+                className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
               >
                 Priorizada por atraso e prazo
               </h2>
@@ -877,8 +877,8 @@ export default function TasksPage() {
                   onClick={() => setView(key)}
                   className={`cc6-chip cursor-pointer transition-colors ${
                     active
-                      ? "border-[color:var(--atlas-accent)]! text-[#e8eef8]!"
-                      : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!"
+                      ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!"
+                      : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[var(--atlas-texto-forte)]!"
                   }`}
                 >
                   {label}
@@ -939,14 +939,14 @@ export default function TasksPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="min-w-0 max-w-full truncate text-sm font-medium text-[#e8eef8]">
+                        <h3 className="min-w-0 max-w-full truncate text-sm font-medium text-[var(--atlas-texto-forte)]">
                           {task.title}
                         </h3>
                         {HIGH_PRIORITY.has(task.priority) ? (
                           <StatusBadge tone="warning">Alta</StatusBadge>
                         ) : null}
                       </div>
-                      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[#6b7890]">
+                      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[var(--atlas-texto-fraco)]">
                         <span
                           className={`cc6-num ${sevTextClass(sev)}`}
                           title={dateLabel(task.due_at)}
@@ -968,7 +968,7 @@ export default function TasksPage() {
                         ) : null}
                       </p>
                       {task.description ? (
-                        <p className="mt-1 truncate text-xs text-[#6b7890]">
+                        <p className="mt-1 truncate text-xs text-[var(--atlas-texto-fraco)]">
                           {task.description}
                         </p>
                       ) : null}
@@ -1071,7 +1071,7 @@ export default function TasksPage() {
             <p className="cc6-eyebrow">Equipe visível</p>
             <h2
               id="atlas-team-load-title"
-              className="mt-1 text-sm font-semibold tracking-tight text-[#e8eef8]"
+              className="mt-1 text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
             >
               Carga por responsável
             </h2>
@@ -1081,10 +1081,10 @@ export default function TasksPage() {
                   key={owner.id}
                   className={`flex items-baseline justify-between gap-3 py-2 ${index ? "cc6-hairline" : ""}`}
                 >
-                  <span className="min-w-0 truncate text-xs font-medium text-[#e8eef8]">
+                  <span className="min-w-0 truncate text-xs font-medium text-[var(--atlas-texto-forte)]">
                     {owner.name}
                   </span>
-                  <span className="cc6-num shrink-0 text-[11px] text-[#6b7890]">
+                  <span className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-fraco)]">
                     {owner.overdue ? (
                       <>
                         <span className="cc6-crit font-semibold">
@@ -1110,7 +1110,7 @@ export default function TasksPage() {
                 </div>
               ) : null}
             </div>
-            <p className="cc6-hairline mt-1 pt-2.5 text-[10px] leading-4 text-[#6b7890]">
+            <p className="cc6-hairline mt-1 pt-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
               Consolidado para coordenar apoio · sem ranking e sem atribuição
               automática.
             </p>

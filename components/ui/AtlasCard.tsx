@@ -51,15 +51,15 @@ export function AtlasCardHeader({
     <div className="atlas-card-header flex flex-col gap-4 border-b-[rgba(148,163,184,0.12)]! p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="atlas-eyebrow font-mono text-[11px]! font-medium uppercase! tracking-[0.14em]! text-[#6b7890]! [font-variant-numeric:tabular-nums]">
+          <p className="atlas-eyebrow font-mono text-[11px]! font-medium uppercase! tracking-[0.14em]! text-[var(--atlas-texto-fraco)]! [font-variant-numeric:tabular-nums]">
             {eyebrow}
           </p>
         ) : null}
-        <h2 className="atlas-card-title mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">
+        <h2 className="atlas-card-title mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
           {title}
         </h2>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-[#aab6ca]">
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--atlas-texto-medio)]">
             {description}
           </p>
         ) : null}
@@ -110,7 +110,7 @@ export function AtlasMetric({
               {icon}
             </span>
           ) : null}
-          <p className="font-mono text-[11px] font-medium uppercase leading-4 tracking-[0.14em] text-[#6b7890]">
+          <p className="font-mono text-[11px] font-medium uppercase leading-4 tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
             {label}
           </p>
         </div>
@@ -120,11 +120,11 @@ export function AtlasMetric({
           </span>
         ) : null}
       </div>
-      <p className="atlas-metric-number mt-4 font-mono text-3xl font-semibold tracking-tight text-[#e8eef8]">
+      <p className="atlas-metric-number mt-4 font-mono text-3xl font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
         {value}
       </p>
       {detail ? (
-        <p className="mt-2 text-xs leading-5 text-[#6b7890]">{detail}</p>
+        <p className="mt-2 text-xs leading-5 text-[var(--atlas-texto-fraco)]">{detail}</p>
       ) : null}
     </article>
   );

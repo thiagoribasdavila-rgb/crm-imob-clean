@@ -24,8 +24,8 @@ const initialForm = {
 /* CC-6: campo único do formulário — hairline, foco pelo acento (borda +
    focus-visible), inválido em rose via aria-invalid já emitido pelos campos. */
 const FIELD_CLASS =
-  "mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[#e8eef8] outline-none transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)] aria-[invalid=true]:border-[rgba(251,113,133,0.55)]";
-const LABEL_CLASS = "block text-xs text-[#6b7890]";
+  "mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)] aria-[invalid=true]:border-[rgba(251,113,133,0.55)]";
+const LABEL_CLASS = "block text-xs text-[var(--atlas-texto-fraco)]";
 
 const TEMPERATURE_TONE: Record<string, "danger" | "warning" | "info"> = {
   quente: "danger",
@@ -142,7 +142,7 @@ export default function NewLeadPage() {
         <section className="cc6-panel cc6-reveal p-5 sm:p-6" aria-labelledby="lead-form-title">
           <header>
             <p className="cc6-eyebrow">Cadastro deduplicado</p>
-            <h2 id="lead-form-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">
+            <h2 id="lead-form-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
               Dados do contato
             </h2>
           </header>
@@ -221,14 +221,14 @@ export default function NewLeadPage() {
                   </option>
                 ))}
               </select>
-              <span className="mt-1 block text-[11px] leading-4 text-[#6b7890]">
+              <span className="mt-1 block text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
                 Com projeto, a lead entra na fila equilibrada da equipe.
               </span>
             </label>
           </div>
 
           <details className="cc6-hairline mt-5 pt-4">
-            <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[#aab6ca]">
+            <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[var(--atlas-texto-medio)]">
               Qualificação opcional · objetivo, orçamento e regiões
             </summary>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -293,7 +293,7 @@ export default function NewLeadPage() {
                   value={form.preferred_regions}
                   onChange={(e) => setForm({ ...form, preferred_regions: e.target.value })}
                 />
-                <span className="mt-1 block text-[11px] leading-4 text-[#6b7890]">Separe por vírgulas.</span>
+                <span className="mt-1 block text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">Separe por vírgulas.</span>
               </label>
               <label className={`${LABEL_CLASS} md:col-span-2`} htmlFor="lead-notes">
                 Observações
@@ -305,7 +305,7 @@ export default function NewLeadPage() {
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 />
-                <span className="cc6-num mt-1 block text-right text-[11px] text-[#6b7890]">{form.notes.length}/5000</span>
+                <span className="cc6-num mt-1 block text-right text-[11px] text-[var(--atlas-texto-fraco)]">{form.notes.length}/5000</span>
               </label>
             </div>
           </details>
@@ -319,7 +319,7 @@ export default function NewLeadPage() {
               <span className="cc6-metric-value text-4xl leading-none">{scorePreview.score}</span>
               <StatusBadge tone={TEMPERATURE_TONE[scorePreview.temperature] ?? "info"}>{scorePreview.temperature}</StatusBadge>
             </div>
-            <p className="cc6-hairline mt-3 pt-3 text-xs leading-5 text-[#6b7890]">
+            <p className="cc6-hairline mt-3 pt-3 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
               {scorePreview.reasons.length
                 ? scorePreview.reasons.join(" · ")
                 : "Contato, orçamento, objetivo e região aumentam a qualidade do lead."}
@@ -329,7 +329,7 @@ export default function NewLeadPage() {
           {error && (
             <div
               role="alert"
-              className="cc6-panel-quiet cc6-sev-band py-3 pl-4 pr-3 text-sm leading-5 text-[#fb7185]"
+              className="cc6-panel-quiet cc6-sev-band py-3 pl-4 pr-3 text-sm leading-5 text-[var(--atlas-estado-perigo)]"
               style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
             >
               <p>{error}</p>
@@ -337,7 +337,7 @@ export default function NewLeadPage() {
                 <button
                   type="button"
                   onClick={() => router.push(`/leads/${duplicateLeadId}`)}
-                  className="mt-2 font-medium text-[#e8eef8] underline underline-offset-4"
+                  className="mt-2 font-medium text-[var(--atlas-texto-forte)] underline underline-offset-4"
                 >
                   Abrir lead existente
                 </button>

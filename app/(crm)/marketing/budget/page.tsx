@@ -63,9 +63,9 @@ const planStatus: Record<string, { label: string; tone: "warning" | "success" | 
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
-const field = `w-full rounded-xl border border-[rgba(148,163,184,.16)] bg-white/[.03] p-3 text-sm text-[#e8eef8] transition-colors placeholder:text-[#6b7890] hover:border-[rgba(148,163,184,.26)] ${focusRing}`;
-const btnAccent = `rounded-xl border border-[rgba(75,141,248,.45)] bg-[rgba(75,141,248,.12)] px-4 py-2.5 text-sm font-semibold text-[#e8eef8] transition-colors hover:bg-[rgba(75,141,248,.2)] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`;
-const btnOk = `rounded-xl border border-[rgba(52,211,153,.35)] bg-[rgba(52,211,153,.1)] px-4 py-2 text-xs font-semibold text-[#34d399] transition-colors hover:bg-[rgba(52,211,153,.18)] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`;
+const field = `w-full rounded-xl border border-[rgba(148,163,184,.16)] bg-white/[.03] p-3 text-sm text-[var(--atlas-texto-forte)] transition-colors placeholder:text-[var(--atlas-texto-fraco)] hover:border-[rgba(148,163,184,.26)] ${focusRing}`;
+const btnAccent = `rounded-xl border border-[rgba(75,141,248,.45)] bg-[rgba(75,141,248,.12)] px-4 py-2.5 text-sm font-semibold text-[var(--atlas-texto-forte)] transition-colors hover:bg-[rgba(75,141,248,.2)] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`;
+const btnOk = `rounded-xl border border-[rgba(52,211,153,.35)] bg-[rgba(52,211,153,.1)] px-4 py-2 text-xs font-semibold text-[var(--atlas-estado-sucesso)] transition-colors hover:bg-[rgba(52,211,153,.18)] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`;
 const btnGhost = "cc6-ghost-btn disabled:cursor-not-allowed disabled:opacity-40";
 
 export default function BudgetPage() {
@@ -125,7 +125,7 @@ export default function BudgetPage() {
       {notice ? (
         <div
           role="status"
-          className="cc6-panel cc6-sev-band cc6-reveal p-4 pl-5 text-sm leading-6 text-[#aab6ca]"
+          className="cc6-panel cc6-sev-band cc6-reveal p-4 pl-5 text-sm leading-6 text-[var(--atlas-texto-medio)]"
           style={{ "--cc6-sev": "var(--atlas-accent)" } as CSSProperties}
         >
           {notice}
@@ -209,7 +209,7 @@ export default function BudgetPage() {
             <h2 className="cc6-eyebrow">Base elegível</h2>
             <div className="mt-3 space-y-2">
               {data && !data.candidates.length ? (
-                <p className="text-sm leading-6 text-[#6b7890]">
+                <p className="text-sm leading-6 text-[var(--atlas-texto-fraco)]">
                   Nenhuma combinação projeto × canal elegível na janela.
                 </p>
               ) : null}
@@ -219,10 +219,10 @@ export default function BudgetPage() {
                   className="cc6-panel-quiet p-3 transition-colors hover:border-[rgba(148,163,184,.26)]!"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong className="text-sm font-medium text-[#e8eef8]">{c.developmentName}</strong>
+                    <strong className="text-sm font-medium text-[var(--atlas-texto-forte)]">{c.developmentName}</strong>
                     <span className="cc6-chip">{c.platform}</span>
                   </div>
-                  <p className="cc6-num mt-1.5 text-[11px] leading-5 text-[#6b7890]">
+                  <p className="cc6-num mt-1.5 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
                     score {c.performanceScore} · {c.inventoryAvailable} unidades · capacidade{" "}
                     {c.capacityHeadroomPercent}% ·{" "}
                     <span className={c.sampleSufficient ? "cc6-ok" : "cc6-warn"}>
@@ -248,10 +248,10 @@ export default function BudgetPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold tracking-tight text-[#e8eef8]">{p.name}</h3>
+                      <h3 className="text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{p.name}</h3>
                       <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
                     </div>
-                    <p className="cc6-num mt-1 text-[12px] text-[#6b7890]">
+                    <p className="cc6-num mt-1 text-[12px] text-[var(--atlas-texto-fraco)]">
                       {brl(p.total_budget)} · {p.period_start} a {p.period_end}
                     </p>
                   </div>
@@ -295,24 +295,24 @@ export default function BudgetPage() {
                       className="cc6-panel-quiet grid grid-cols-[1fr_auto] items-center gap-3 p-3.5"
                     >
                       <div className="min-w-0">
-                        <strong className="text-sm font-medium text-[#e8eef8]">{a.developmentName}</strong>
-                        <p className="cc6-num mt-0.5 text-[11px] text-[#6b7890]">
+                        <strong className="text-sm font-medium text-[var(--atlas-texto-forte)]">{a.developmentName}</strong>
+                        <p className="cc6-num mt-0.5 text-[11px] text-[var(--atlas-texto-fraco)]">
                           {a.platform} · score {a.score} ·{" "}
                           <span className={a.sampleSufficient ? "cc6-ok" : "cc6-warn"}>
                             {a.sampleSufficient ? "amostra válida" : "exploração limitada"}
                           </span>
                         </p>
                       </div>
-                      <strong className="cc6-num text-sm text-[#e8eef8]">{brl(a.recommendedBudget)}</strong>
+                      <strong className="cc6-num text-sm text-[var(--atlas-texto-forte)]">{brl(a.recommendedBudget)}</strong>
                     </div>
                   ))}
                 </div>
                 <div className="cc6-hairline mt-4 flex flex-wrap gap-x-8 gap-y-2 pt-3">
-                  <p className="cc6-num text-[12px] text-[#aab6ca]">
-                    Alocado <span className="text-[#e8eef8]">{brl(p.allocations.allocated)}</span>
+                  <p className="cc6-num text-[12px] text-[var(--atlas-texto-medio)]">
+                    Alocado <span className="text-[var(--atlas-texto-forte)]">{brl(p.allocations.allocated)}</span>
                   </p>
-                  <p className="cc6-num text-[12px] text-[#aab6ca]">
-                    Reserva não alocada <span className="text-[#e8eef8]">{brl(p.allocations.unallocated)}</span>
+                  <p className="cc6-num text-[12px] text-[var(--atlas-texto-medio)]">
+                    Reserva não alocada <span className="text-[var(--atlas-texto-forte)]">{brl(p.allocations.unallocated)}</span>
                   </p>
                 </div>
               </article>
@@ -320,7 +320,7 @@ export default function BudgetPage() {
           })}
           {data && !data.plans.length ? (
             <p
-              className="cc6-panel-quiet cc6-reveal p-6 text-center text-sm leading-6 text-[#6b7890]"
+              className="cc6-panel-quiet cc6-reveal p-6 text-center text-sm leading-6 text-[var(--atlas-texto-fraco)]"
               style={{ animationDelay: "160ms" }}
             >
               Importe fatos multicanal por projeto para gerar o primeiro cenário.

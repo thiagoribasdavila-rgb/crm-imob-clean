@@ -70,10 +70,10 @@ const experimentStatus: Record<
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
-const field = `w-full rounded-xl border border-[rgba(148,163,184,.16)] bg-white/[.03] p-3 text-sm text-[#e8eef8] transition-colors placeholder:text-[#6b7890] hover:border-[rgba(148,163,184,.26)] ${focusRing}`;
-const btnAccent = `rounded-xl border border-[rgba(75,141,248,.45)] bg-[rgba(75,141,248,.12)] px-4 py-2 text-xs font-semibold text-[#e8eef8] transition-colors hover:bg-[rgba(75,141,248,.2)] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`;
-const btnOk = `rounded-xl border border-[rgba(52,211,153,.35)] bg-[rgba(52,211,153,.1)] px-4 py-2 text-xs font-semibold text-[#34d399] transition-colors hover:bg-[rgba(52,211,153,.18)] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`;
-const btnWarn = `rounded-xl border border-[rgba(245,181,68,.4)] bg-[rgba(245,181,68,.1)] px-4 py-2 text-xs font-semibold text-[#f5b544] transition-colors hover:bg-[rgba(245,181,68,.18)] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`;
+const field = `w-full rounded-xl border border-[rgba(148,163,184,.16)] bg-white/[.03] p-3 text-sm text-[var(--atlas-texto-forte)] transition-colors placeholder:text-[var(--atlas-texto-fraco)] hover:border-[rgba(148,163,184,.26)] ${focusRing}`;
+const btnAccent = `rounded-xl border border-[rgba(75,141,248,.45)] bg-[rgba(75,141,248,.12)] px-4 py-2 text-xs font-semibold text-[var(--atlas-texto-forte)] transition-colors hover:bg-[rgba(75,141,248,.2)] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`;
+const btnOk = `rounded-xl border border-[rgba(52,211,153,.35)] bg-[rgba(52,211,153,.1)] px-4 py-2 text-xs font-semibold text-[var(--atlas-estado-sucesso)] transition-colors hover:bg-[rgba(52,211,153,.18)] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`;
+const btnWarn = `rounded-xl border border-[rgba(245,181,68,.4)] bg-[rgba(245,181,68,.1)] px-4 py-2 text-xs font-semibold text-[var(--atlas-estado-atencao)] transition-colors hover:bg-[rgba(245,181,68,.18)] disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`;
 const btnGhost = "cc6-ghost-btn disabled:cursor-not-allowed disabled:opacity-40";
 
 export default function MediaExperimentsPage() {
@@ -154,7 +154,7 @@ export default function MediaExperimentsPage() {
       {notice ? (
         <div
           role="status"
-          className="cc6-panel cc6-sev-band cc6-reveal p-4 pl-5 text-sm leading-6 text-[#aab6ca]"
+          className="cc6-panel cc6-sev-band cc6-reveal p-4 pl-5 text-sm leading-6 text-[var(--atlas-texto-medio)]"
           style={{ "--cc6-sev": "var(--atlas-accent)" } as CSSProperties}
         >
           {notice}
@@ -321,9 +321,9 @@ export default function MediaExperimentsPage() {
                       <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
                       <span className="cc6-chip">{platformLabels[x.platform] ?? x.platform}</span>
                     </div>
-                    <h3 className="mt-2 text-lg font-semibold tracking-tight text-[#e8eef8]">{x.name}</h3>
-                    <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#aab6ca]">{x.hypothesis}</p>
-                    <p className="cc6-num mt-2.5 text-[11px] leading-5 text-[#6b7890]">
+                    <h3 className="mt-2 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{x.name}</h3>
+                    <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[var(--atlas-texto-medio)]">{x.hypothesis}</p>
+                    <p className="cc6-num mt-2.5 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
                       variável {variableLabels[x.single_variable] ?? x.single_variable} · primária{" "}
                       {metricLabels[x.primary_metric] ?? x.primary_metric} · proteção{" "}
                       {metricLabels[x.guardrail_metric] ?? x.guardrail_metric} · teto {money(x.budget_cap)}
@@ -416,7 +416,7 @@ export default function MediaExperimentsPage() {
                 {x.latestCheckpoint && (
                   <div className="cc6-panel-quiet mt-4 p-3.5">
                     <p className="cc6-eyebrow text-[10px]">Última leitura</p>
-                    <p className="mt-1 text-sm leading-6 text-[#aab6ca]">
+                    <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">
                       {String(x.latestCheckpoint.assessment.recommendation || "em análise")}
                       {interpretation ? ` · ${interpretation}` : ""}
                     </p>
@@ -427,7 +427,7 @@ export default function MediaExperimentsPage() {
           })}
           {data && !data.experiments.length ? (
             <p
-              className="cc6-panel-quiet cc6-reveal p-6 text-center text-sm leading-6 text-[#6b7890]"
+              className="cc6-panel-quiet cc6-reveal p-6 text-center text-sm leading-6 text-[var(--atlas-texto-fraco)]"
               style={{ animationDelay: "160ms" }}
             >
               Aprove um ciclo Andromeda antes de planejar o primeiro teste.

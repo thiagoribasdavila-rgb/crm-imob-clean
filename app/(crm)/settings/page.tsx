@@ -33,7 +33,7 @@ const approvalScopes = [
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 const fieldClass =
-  `min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] px-4 text-sm text-[#e8eef8] transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] ${focusRing}`;
+  `min-h-11 w-full rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] px-4 text-sm text-[var(--atlas-texto-forte)] transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] ${focusRing}`;
 
 export default function SettingsPage() {
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -121,8 +121,8 @@ export default function SettingsPage() {
           role="status"
           style={{ "--cc6-sev": "#f59e0b" } as CSSProperties}
         >
-          <p className="max-w-[62ch] text-sm leading-6 text-[#aab6ca]">
-            <span className="font-semibold text-[#e8eef8]">O ambiente não se confere aqui — aqui se governa a organização.</span>{" "}
+          <p className="max-w-[62ch] text-sm leading-6 text-[var(--atlas-texto-medio)]">
+            <span className="font-semibold text-[var(--atlas-texto-forte)]">O ambiente não se confere aqui — aqui se governa a organização.</span>{" "}
             Esta tela trata da identidade da empresa, da política de aprovação humana e das áreas de
             gestão. Variáveis obrigatórias, segredos e dependências do servidor têm um inventário
             próprio, que mostra o que está configurado sem nunca revelar valor.
@@ -151,7 +151,7 @@ export default function SettingsPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="cc6-eyebrow">Organização</p>
-                <h2 id="settings-org-title" className="mt-1 truncate text-lg font-semibold tracking-tight text-[#e8eef8]">
+                <h2 id="settings-org-title" className="mt-1 truncate text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                   {organization?.name || "Identidade da empresa"}
                 </h2>
               </div>
@@ -163,10 +163,10 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="cc6-hairline mt-4 grid gap-3 pt-4 sm:grid-cols-2">
-              <label className="block text-xs font-medium text-[#aab6ca]">Nome da empresa
+              <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Nome da empresa
                 <input value={name} onChange={(e) => setName(e.target.value)} className={`${fieldClass} mt-1.5`} />
               </label>
-              <label className="block text-xs font-medium text-[#aab6ca]">Slug
+              <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Slug
                 <input value={slug} onChange={(e) => setSlug(e.target.value)} className={`${fieldClass} mt-1.5`} />
               </label>
             </div>
@@ -174,7 +174,7 @@ export default function SettingsPage() {
               <button type="button" onClick={save} disabled={saving || !organization} className="atlas-button-primary disabled:opacity-50">
                 {saving ? "Salvando…" : "Salvar alterações"}
               </button>
-              {message ? <p role="status" className="text-sm text-[#aab6ca]">{message}</p> : null}
+              {message ? <p role="status" className="text-sm text-[var(--atlas-texto-medio)]">{message}</p> : null}
             </div>
           </TiltShell>
         </section>
@@ -189,13 +189,13 @@ export default function SettingsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="cc6-eyebrow">Aprovação humana</p>
-              <h2 id="settings-approval-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">
+              <h2 id="settings-approval-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                 Obrigatória por política
               </h2>
             </div>
             <StatusBadge tone="success">Sempre ativa</StatusBadge>
           </div>
-          <ul className="mt-3 space-y-1.5 text-sm text-[#aab6ca]">
+          <ul className="mt-3 space-y-1.5 text-sm text-[var(--atlas-texto-medio)]">
             {approvalScopes.map((item) => (
               <li key={item} className="flex gap-2">
                 <span aria-hidden="true" className="cc6-ok">✓</span>
@@ -203,14 +203,14 @@ export default function SettingsPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-[11px] leading-4 text-[#6b7890]">Nenhuma dessas ações executa sem uma pessoa aprovar.</p>
+          <p className="mt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">Nenhuma dessas ações executa sem uma pessoa aprovar.</p>
         </section>
       </section>
 
       <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "140ms" }} aria-labelledby="settings-areas-title">
         <header className="px-5 pb-3 pt-5">
           <p className="cc6-eyebrow">Índice</p>
-          <h2 id="settings-areas-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Áreas de gestão</h2>
+          <h2 id="settings-areas-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Áreas de gestão</h2>
         </header>
         <div>
           {areas.map(([href, label, detail], index) => (
@@ -220,11 +220,11 @@ export default function SettingsPage() {
               className={`cc6-hairline cc6-reveal group flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-[rgba(75,141,248,0.04)] ${focusRing}`}
               style={{ animationDelay: `${160 + index * 30}ms` }}
             >
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-[#e8eef8]">
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--atlas-texto-forte)]">
                 {label}
-                <span className="ml-2 hidden text-[12px] font-normal text-[#6b7890] sm:inline">{detail}</span>
+                <span className="ml-2 hidden text-[12px] font-normal text-[var(--atlas-texto-fraco)] sm:inline">{detail}</span>
               </span>
-              <span aria-hidden="true" className="text-[#6b7890] transition-colors group-hover:text-[color:var(--atlas-accent-hover)]">→</span>
+              <span aria-hidden="true" className="text-[var(--atlas-texto-fraco)] transition-colors group-hover:text-[color:var(--atlas-accent-hover)]">→</span>
             </Link>
           ))}
         </div>

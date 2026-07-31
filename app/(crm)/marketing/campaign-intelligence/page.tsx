@@ -35,7 +35,7 @@ export default function CampaignIntelligencePage() {
       {error ? (
         <p
           role="status"
-          className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[#f5b544]"
+          className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-atencao)]"
           style={{ "--cc6-sev": "#f5b544" } as CSSProperties}
         >
           {error}
@@ -52,7 +52,7 @@ export default function CampaignIntelligencePage() {
                 aria-label="Período"
                 value={days}
                 onChange={(event) => setDays(Number(event.target.value))}
-                className="rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-1.5 text-xs text-[#e8eef8] outline-none transition-colors focus:border-[color:var(--atlas-accent)]"
+                className="rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-1.5 text-xs text-[var(--atlas-texto-forte)] outline-none transition-colors focus:border-[color:var(--atlas-accent)]"
               >
                 <option value={7}>7 dias</option>
                 <option value={30}>30 dias</option>
@@ -86,12 +86,12 @@ export default function CampaignIntelligencePage() {
       >
         <header className="px-5 pt-5 pb-4">
           <p className="cc6-eyebrow">Comparativo por canal</p>
-          <h2 id="ci-platforms-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">
+          <h2 id="ci-platforms-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
             Custo e resultado confirmado
           </h2>
         </header>
         {(data?.platforms || []).length === 0 ? (
-          <p className="cc6-hairline px-5 py-6 text-sm text-[#6b7890]" aria-busy={loading}>
+          <p className="cc6-hairline px-5 py-6 text-sm text-[var(--atlas-texto-fraco)]" aria-busy={loading}>
             {loading ? "Carregando canais…" : "Nenhum snapshot de canal no período."}
           </p>
         ) : (
@@ -101,10 +101,10 @@ export default function CampaignIntelligencePage() {
               className="cc6-hairline flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 px-5 py-3.5"
             >
               <div className="min-w-[120px]">
-                <p className="text-sm font-semibold uppercase tracking-wide text-[#e8eef8]">
+                <p className="text-sm font-semibold uppercase tracking-wide text-[var(--atlas-texto-forte)]">
                   {String(item.platform).replace("_ads", "")}
                 </p>
-                <p className="cc6-num mt-0.5 text-[11px] text-[#6b7890]">
+                <p className="cc6-num mt-0.5 text-[11px] text-[var(--atlas-texto-fraco)]">
                   {Number(item.crmLeads || 0)} leads · {Number(item.wins || 0)} vendas
                 </p>
               </div>
@@ -126,11 +126,11 @@ export default function CampaignIntelligencePage() {
         <header className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5 pb-4">
           <div>
             <p className="cc6-eyebrow">Ranking de performance</p>
-            <h2 id="ci-ranking-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">
+            <h2 id="ci-ranking-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
               Campanhas por resultado no CRM
             </h2>
           </div>
-          <p className="cc6-num text-[11px] text-[#6b7890]">Amostra mínima: 30 leads confirmadas</p>
+          <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">Amostra mínima: 30 leads confirmadas</p>
         </header>
         <div className="cc6-hairline overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
@@ -150,14 +150,14 @@ export default function CampaignIntelligencePage() {
             <tbody>
               {(data?.ranking || []).map((item) => (
                 <tr key={`${item.platform}-${item.campaignKey}`} className="cc6-hairline">
-                  <td className="px-5 py-3.5 font-medium text-[#e8eef8]">{String(item.campaignName)}</td>
-                  <td className="py-3.5 text-[#aab6ca]">{String(item.platform)}</td>
-                  <td className="cc6-num py-3.5 text-[#aab6ca]">{Number(item.crmLeads || 0)}</td>
-                  <td className="cc6-num py-3.5 text-[#aab6ca]">{Number(item.qualifiedLeads || 0)}</td>
-                  <td className="cc6-num py-3.5 text-[#aab6ca]">{Number(item.visits || 0)}</td>
-                  <td className="cc6-num py-3.5 text-[#aab6ca]">{Number(item.wins || 0)}</td>
-                  <td className="cc6-num py-3.5 text-[#aab6ca]">{item.cpl == null ? "—" : brl(item.cpl)}</td>
-                  <td className="cc6-num py-3.5 text-[#aab6ca]">{item.roas == null ? "—" : `${item.roas}x`}</td>
+                  <td className="px-5 py-3.5 font-medium text-[var(--atlas-texto-forte)]">{String(item.campaignName)}</td>
+                  <td className="py-3.5 text-[var(--atlas-texto-medio)]">{String(item.platform)}</td>
+                  <td className="cc6-num py-3.5 text-[var(--atlas-texto-medio)]">{Number(item.crmLeads || 0)}</td>
+                  <td className="cc6-num py-3.5 text-[var(--atlas-texto-medio)]">{Number(item.qualifiedLeads || 0)}</td>
+                  <td className="cc6-num py-3.5 text-[var(--atlas-texto-medio)]">{Number(item.visits || 0)}</td>
+                  <td className="cc6-num py-3.5 text-[var(--atlas-texto-medio)]">{Number(item.wins || 0)}</td>
+                  <td className="cc6-num py-3.5 text-[var(--atlas-texto-medio)]">{item.cpl == null ? "—" : brl(item.cpl)}</td>
+                  <td className="cc6-num py-3.5 text-[var(--atlas-texto-medio)]">{item.roas == null ? "—" : `${item.roas}x`}</td>
                   <td className="py-3.5 pr-5">
                     <StatusBadge tone={item.sampleSufficient ? "success" : "neutral"}>
                       {item.sampleSufficient ? String(item.confidence) : "aguardar amostra"}
@@ -168,12 +168,12 @@ export default function CampaignIntelligencePage() {
             </tbody>
           </table>
           {data?.ranking?.length === 0 ? (
-            <p className="py-8 text-center text-sm text-[#6b7890]">
+            <p className="py-8 text-center text-sm text-[var(--atlas-texto-fraco)]">
               Conectores prontos para receber os primeiros snapshots homologados.
             </p>
           ) : null}
           {loading ? (
-            <p className="py-8 text-center text-sm text-[#6b7890]" aria-busy="true">
+            <p className="py-8 text-center text-sm text-[var(--atlas-texto-fraco)]" aria-busy="true">
               Carregando ranking…
             </p>
           ) : null}

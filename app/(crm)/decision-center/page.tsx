@@ -164,7 +164,7 @@ export default function DecisionCenterPage() {
       {loadError ? (
         <p
           role="status"
-          className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[#f5b544]"
+          className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-atencao)]"
           style={{ "--cc6-sev": "#f5b544" } as CSSProperties}
         >
           O Atlas não conseguiu atualizar todos os sinais agora. Seus dados permanecem protegidos — recarregue a página para tentar de novo.
@@ -175,7 +175,7 @@ export default function DecisionCenterPage() {
         <TiltShell className="cc6-panel cc6-reveal overflow-hidden" delayMs={40}>
           <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5">
             <p className="cc6-eyebrow">Fila priorizada</p>
-            <p className="cc6-num text-[11px] text-[#6b7890]" aria-live="polite">
+            <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]" aria-live="polite">
               {loading ? "analisando…" : `${decisions.length} ${decisions.length === 1 ? "decisão" : "decisões"}`}
             </p>
           </div>
@@ -200,7 +200,7 @@ export default function DecisionCenterPage() {
           </div>
 
           {!loading && decisions.length === 0 ? (
-            <p className="cc6-hairline px-5 py-8 text-center text-sm text-[#6b7890]">
+            <p className="cc6-hairline px-5 py-8 text-center text-sm text-[var(--atlas-texto-fraco)]">
               {loadError
                 ? "A fila não pôde ser calculada agora."
                 : `Nenhuma decisão pendente — ${leads.length} leads analisados e nenhum exige ação imediata.`}
@@ -220,20 +220,20 @@ export default function DecisionCenterPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="cc6-chip">{decision.type}</span>
                       <span
-                        className={`cc6-num text-[11px] ${decision.priority >= 85 ? "cc6-crit" : decision.priority >= 70 ? "cc6-warn" : "text-[#6b7890]"}`}
+                        className={`cc6-num text-[11px] ${decision.priority >= 85 ? "cc6-crit" : decision.priority >= 70 ? "cc6-warn" : "text-[var(--atlas-texto-fraco)]"}`}
                         title={`Prioridade ${severity.label}`}
                       >
                         Prioridade {decision.priority}
                       </span>
                     </div>
-                    <h2 className="mt-2 text-base font-semibold tracking-tight text-[#e8eef8]">
+                    <h2 className="mt-2 text-base font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                       {decision.title}
                     </h2>
-                    <p className="mt-1 text-sm leading-6 text-[#aab6ca]">{decision.reason}</p>
+                    <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">{decision.reason}</p>
                   </div>
                   <div className="shrink-0 sm:w-[240px] sm:text-right">
                     <p className="cc6-eyebrow text-[10px]!">Próxima ação</p>
-                    <p className="mt-1.5 text-sm font-medium leading-6 text-[#e8eef8]">
+                    <p className="mt-1.5 text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                       {decision.action}
                     </p>
                   </div>
@@ -242,7 +242,7 @@ export default function DecisionCenterPage() {
             );
           })}
 
-          <p className="cc6-hairline px-5 py-3 text-[11px] leading-5 text-[#6b7890]">
+          <p className="cc6-hairline px-5 py-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
             Recomendações apenas — nada é executado automaticamente; a decisão final é sempre humana.
           </p>
         </TiltShell>
@@ -255,17 +255,17 @@ export default function DecisionCenterPage() {
           <TiltShell className="cc6-panel cc6-reveal overflow-hidden" delayMs={80}>
             <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5">
               <p className="cc6-eyebrow">Sala de simulação · capacidade comercial</p>
-              <p className="cc6-num text-[11px] text-[#6b7890]">
+              <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">
                 {capacity ? `janela de ${capacity.windowDays} dias` : "—"}
               </p>
             </div>
-            <p className="px-5 pt-2 text-sm leading-6 text-[#aab6ca]">
-              Projeção de <strong className="font-semibold text-[#e8eef8]">leads trabalhados por semana</strong> — não de receita.
+            <p className="px-5 pt-2 text-sm leading-6 text-[var(--atlas-texto-medio)]">
+              Projeção de <strong className="font-semibold text-[var(--atlas-texto-forte)]">leads trabalhados por semana</strong> — não de receita.
               Nada aqui contrata, atribui ou remaneja alguém.
             </p>
 
             {capacityStatus === "error" ? (
-              <p className="cc6-hairline mt-4 px-5 py-6 text-sm leading-6 text-[#f5b544]">
+              <p className="cc6-hairline mt-4 px-5 py-6 text-sm leading-6 text-[var(--atlas-estado-atencao)]">
                 A capacidade não pôde ser medida agora — a leitura do painel executivo falhou. Nenhum número é exibido:
                 projeção sobre leitura incompleta seria pior do que a ausência dela.
               </p>
@@ -292,7 +292,7 @@ export default function DecisionCenterPage() {
                     <div key={metric.label} className="min-w-[140px]">
                       <p className="cc6-metric-value text-3xl leading-none">{metric.value}</p>
                       <p className="cc6-metric-label mt-1.5">{metric.label}</p>
-                      {metric.detail ? <p className="mt-1 max-w-[220px] text-[11px] leading-4 text-[#6b7890]">{metric.detail}</p> : null}
+                      {metric.detail ? <p className="mt-1 max-w-[220px] text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">{metric.detail}</p> : null}
                     </div>
                   ))}
                 </div>
@@ -301,7 +301,7 @@ export default function DecisionCenterPage() {
                   <article key={scenario.id} className="cc6-hairline px-5 py-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="cc6-chip">{scenario.label}</span>
-                      <span className={`cc6-num text-[11px] ${scenario.hasBasis ? "text-[#6b7890]" : "cc6-warn"}`}>
+                      <span className={`cc6-num text-[11px] ${scenario.hasBasis ? "text-[var(--atlas-texto-fraco)]" : "cc6-warn"}`}>
                         {scenario.hasBasis ? `confiança ${scenario.projection.confidence} · amostra ${scenario.projection.basis?.sample ?? 0}` : "sem lastro"}
                       </span>
                     </div>
@@ -320,7 +320,7 @@ export default function DecisionCenterPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="mt-3 text-sm leading-6 text-[#f5b544]">
+                      <p className="mt-3 text-sm leading-6 text-[var(--atlas-estado-atencao)]">
                         Ainda não sei projetar este cenário
                         {scenario.projection.basis?.reason ? `: ${scenario.projection.basis.reason}` : "."}
                         {" "}Nenhum número é exibido de propósito — um número inventado aqui vira uma contratação errada.
@@ -329,8 +329,8 @@ export default function DecisionCenterPage() {
 
                     <ul className="mt-3 space-y-1.5">
                       {scenario.projection.assumptions.map((assumption) => (
-                        <li key={assumption} className="text-[12px] leading-5 text-[#aab6ca]">
-                          <span className="text-[#6b7890]">· </span>
+                        <li key={assumption} className="text-[12px] leading-5 text-[var(--atlas-texto-medio)]">
+                          <span className="text-[var(--atlas-texto-fraco)]">· </span>
                           {assumption}
                         </li>
                       ))}
@@ -340,7 +340,7 @@ export default function DecisionCenterPage() {
               </>
             ) : null}
 
-            <p className="cc6-hairline px-5 py-3 text-[11px] leading-5 text-[#6b7890]">
+            <p className="cc6-hairline px-5 py-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
               Simulação determinística sobre o histórico de pipeline — sem modelo generativo e sem custo de token.
               A decisão de contratar, remanejar ou distribuir continua inteiramente humana.
             </p>

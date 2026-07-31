@@ -10346,3 +10346,66 @@ input[type="radio"]:not([data-alvo-livre])::after {
   pointer-events: auto;
   /* Sem fundo, sem borda: a área existe para o dedo, não para o olho. */
 }
+
+/* ============================================================================
+   TOKENS SEMÂNTICOS DE TEXTO E ESTADO
+   ============================================================================
+
+   ── O QUE ESTES SEIS TOKENS RESOLVEM ────────────────────────────────────────
+
+   Medido em 2026-07-31: **1.360 cores cravadas** em 80 dos 289 arquivos `.tsx`.
+   E elas não estavam espalhadas — **seis valores respondiam por 82,6% do total**:
+
+       #6b7890 .... 408x   (401 delas como `text-[…]`)
+       #e8eef8 .... 352x   (350 como texto)
+       #aab6ca .... 197x   (194 como texto)
+       #fb7185 ....  74x   (perda / erro)
+       #f5b544 ....  52x   (alerta)
+       #34d399 ....  40x   (ganho / sucesso)
+
+   O defeito que isso causa é específico e já foi pago antes nesta base: o tema
+   claro sobrescreve as classes de texto do Tailwind, mas **não tem como
+   sobrescrever um hex cravado no arquivo**. Um `text-[#e8eef8]` — quase branco —
+   continua quase branco sobre fundo claro, e o texto desaparece.
+
+   ── POR QUE OS VALORES DO ESCURO SÃO IDÊNTICOS AOS HEX ANTIGOS ─────────────
+
+   De propósito. A substituição precisa ser **visualmente nula** no tema escuro:
+   se ela mudasse um pixel, seria uma mudança de design disfarçada de refatoração,
+   e ninguém saberia dizer qual das 1.123 substituições causou a diferença.
+
+   O que muda é só o tema claro, que passa a **poder** sobrescrever — que era
+   exatamente o que faltava.
+
+   ── POR QUE NÃO REUSEI `--atlas-text-primary` E IRMÃOS ─────────────────────
+
+   Porque os valores não batem: `--atlas-text-muted` é `#cbd5e1` no escuro, e o
+   hex mais usado é `#6b7890`. Apontar um para o outro mudaria a aparência de
+   401 lugares de uma vez. Estes tokens são novos e carregam os valores que já
+   estavam em uso.
+   ========================================================================== */
+
+:root {
+  /* Texto — do mais forte ao mais fraco, no tema escuro */
+  --atlas-texto-forte: #e8eef8;
+  --atlas-texto-medio: #aab6ca;
+  --atlas-texto-fraco: #6b7890;
+  /* Estado — cor como INFORMAÇÃO, não como enfeite */
+  --atlas-estado-perigo: #fb7185;
+  --atlas-estado-atencao: #f5b544;
+  --atlas-estado-sucesso: #34d399;
+}
+
+:root[data-theme="light"] {
+  /* Escala invertida: no claro, "forte" é escuro. Os valores acompanham os
+     tokens de texto que o tema claro já usava, para não criar uma sétima
+     verdade sobre qual cinza é o cinza do produto. */
+  --atlas-texto-forte: #0b1220;
+  --atlas-texto-medio: #334155;
+  --atlas-texto-fraco: #64748b;
+  /* Estados escurecidos para manter contraste sobre fundo claro — o mesmo
+     significado, legível nos dois temas. */
+  --atlas-estado-perigo: #be123c;
+  --atlas-estado-atencao: #a16207;
+  --atlas-estado-sucesso: #047857;
+}

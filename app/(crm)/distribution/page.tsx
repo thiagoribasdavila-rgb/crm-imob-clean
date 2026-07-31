@@ -29,10 +29,10 @@ async function accessToken() {
 /* CC-6: campo, rótulo e chip-botão padronizados; tempo de espera em unidade
    única honesta (min/h/d) reusado no herói e na fila sem responsável. */
 const FIELD_CLASS =
-  "mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[#e8eef8] outline-none transition-colors placeholder:text-[#6b7890] focus:border-[color:var(--atlas-accent)] disabled:opacity-50";
-const LABEL_CLASS = "block text-xs text-[#6b7890]";
-const CHIP_ACTIVE = "border-[color:var(--atlas-accent)]! text-[#e8eef8]!";
-const CHIP_IDLE = "hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!";
+  "mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] disabled:opacity-50";
+const LABEL_CLASS = "block text-xs text-[var(--atlas-texto-fraco)]";
+const CHIP_ACTIVE = "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!";
+const CHIP_IDLE = "hover:border-[rgba(148,163,184,0.35)]! hover:text-[var(--atlas-texto-forte)]!";
 
 function waitLabel(minutes: number) {
   if (minutes < 60) return `${minutes} min`;
@@ -323,11 +323,11 @@ export default function DistributionPage() {
               /* Enquanto a fila não chegou, "0" seria invenção: ausência de
                  dado não vira número — e fila que não carregou não pode ser
                  anunciada como fila vazia. */
-              <p className="mt-1.5 text-sm leading-6 text-[#aab6ca]">
+              <p className="mt-1.5 text-sm leading-6 text-[var(--atlas-texto-medio)]">
                 {error ? "Não deu para conferir a fila sem responsável agora — o erro abaixo explica o que falhou." : "Conferindo quantas leads estão sem responsável na sua estrutura…"}
               </p>
             ) : aguardandoNosProjetos > 0 ? (
-              <p className="mt-1.5 text-sm leading-6 text-[#e8eef8]">
+              <p className="mt-1.5 text-sm leading-6 text-[var(--atlas-texto-forte)]">
                 A tela está recortada no projeto <strong className="font-semibold">{selectedProject?.name || "selecionado"}</strong>:{" "}
                 <span className="cc6-num">{unassigned}</span> lead{unassigned === 1 ? "" : "s"} sem responsável aqui
                 {abertaNaEsperaMaisLonga ? ", onde está a espera mais longa da sua estrutura" : ""}.
@@ -340,7 +340,7 @@ export default function DistributionPage() {
             ) : (
               /* Fila vazia DECLARADA. Sem esta frase, a mesma tela apareceria
                  como se o link não tivesse funcionado. */
-              <p className="mt-1.5 text-sm leading-6 text-[#e8eef8]">
+              <p className="mt-1.5 text-sm leading-6 text-[var(--atlas-texto-forte)]">
                 Nenhuma lead sem responsável nos projetos da sua estrutura agora — a fila que você pediu está vazia, e isso é uma afirmação, não uma lista escondida por filtro. O restante da tela segue completo abaixo.
               </p>
             )}
@@ -350,7 +350,7 @@ export default function DistributionPage() {
               </p>
             ) : null}
             {aguardandoNosProjetos > 0 ? (
-              <a href="#fila-sem-responsavel" className="cc6-chip mt-2.5 inline-block hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!">
+              <a href="#fila-sem-responsavel" className="cc6-chip mt-2.5 inline-block hover:border-[rgba(148,163,184,0.35)]! hover:text-[var(--atlas-texto-forte)]!">
                 Ir para a fila ↓
               </a>
             ) : null}
@@ -369,7 +369,7 @@ export default function DistributionPage() {
                 <option value="">Selecione um projeto</option>
                 {data?.projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
               </select>
-              <p className="mt-2 text-xs text-[#6b7890]">{selectedProject?.developer_name || "Incorporadora não informada"}</p>
+              <p className="mt-2 text-xs text-[var(--atlas-texto-fraco)]">{selectedProject?.developer_name || "Incorporadora não informada"}</p>
             </div>
             <div className="flex flex-wrap gap-x-8 gap-y-4" aria-busy={loading}>
               {heroMetrics.map((metric) => (
@@ -395,7 +395,7 @@ export default function DistributionPage() {
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-[#6b7890]">Atualiza a fila em até 15 s · somente “Disponível” recebe leads.</p>
+            <p className="text-[11px] text-[var(--atlas-texto-fraco)]">Atualiza a fila em até 15 s · somente “Disponível” recebe leads.</p>
           </div>
         </TiltShell>
       </section>
@@ -408,7 +408,7 @@ export default function DistributionPage() {
           <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
             <div>
               <p className="cc6-eyebrow">Fase 46 · Proteção da conversão</p>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Antes de distribuir</h2>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Antes de distribuir</h2>
             </div>
             <button type="button" onClick={openCapacityCopilot} disabled={!projectId || loading} className="cc6-ghost-btn disabled:opacity-50">
               ✦ Preparar decisão com IA
@@ -423,8 +423,8 @@ export default function DistributionPage() {
               >
                 <span className="cc6-metric-value w-14 shrink-0 text-right text-lg cc6-warn">{signal.value}</span>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-medium text-[#e8eef8]">{signal.title}</h3>
-                  <p className="mt-0.5 text-xs leading-5 text-[#6b7890]">{signal.detail}</p>
+                  <h3 className="text-sm font-medium text-[var(--atlas-texto-forte)]">{signal.title}</h3>
+                  <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">{signal.detail}</p>
                 </div>
               </article>
             ))
@@ -438,7 +438,7 @@ export default function DistributionPage() {
               />
             </div>
           )}
-          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
             IA analisa sem PII · a fila entra sem atribuição automática · distribuir, alterar limites e aprovar continuam decisões humanas.
           </p>
         </div>
@@ -450,7 +450,7 @@ export default function DistributionPage() {
           <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
             <div>
               <p className="cc6-eyebrow">Fase 52 · Fila sem responsável</p>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Leads aguardando distribuição</h2>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Leads aguardando distribuição</h2>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
               <button
@@ -480,9 +480,9 @@ export default function DistributionPage() {
                   className={`cc6-reveal cc6-hairline flex items-center gap-4 px-5 py-3 ${pressured ? "cc6-sev-band" : ""}`}
                   style={{ animationDelay: `${120 + Math.min(index, 8) * 45}ms`, ...(pressured ? { "--cc6-sev": "#f5b544" } : {}) } as CSSProperties}
                 >
-                  <strong className="cc6-num shrink-0 text-sm font-medium text-[#e8eef8]">Lead {item.id.slice(0, 8)}</strong>
-                  <span className="min-w-0 flex-1 truncate text-xs text-[#6b7890]">{item.source} · {item.status}</span>
-                  <span className={`cc6-num shrink-0 text-xs ${pressured ? "cc6-warn" : "text-[#aab6ca]"}`}>{waitLabel(item.waitingMinutes)}</span>
+                  <strong className="cc6-num shrink-0 text-sm font-medium text-[var(--atlas-texto-forte)]">Lead {item.id.slice(0, 8)}</strong>
+                  <span className="min-w-0 flex-1 truncate text-xs text-[var(--atlas-texto-fraco)]">{item.source} · {item.status}</span>
+                  <span className={`cc6-num shrink-0 text-xs ${pressured ? "cc6-warn" : "text-[var(--atlas-texto-medio)]"}`}>{waitLabel(item.waitingMinutes)}</span>
                 </article>
               );
             })
@@ -501,7 +501,7 @@ export default function DistributionPage() {
               />
             </div>
           )}
-          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
             Somente metadados, até 100 visíveis — sem nome, telefone ou e-mail · a distribuição atribui atomicamente a lead mais antiga do projeto, sempre por decisão explícita da liderança.
           </p>
         </div>
@@ -513,7 +513,7 @@ export default function DistributionPage() {
           <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
             <div>
               <p className="cc6-eyebrow">Fila de corretores</p>
-              <h2 id="distribution-order-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Ordem de recebimento</h2>
+              <h2 id="distribution-order-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Ordem de recebimento</h2>
             </div>
             {!loading && weightedLoads.length > 1 ? (
               <span className={`cc6-chip ${balanceGap > 1 ? "cc6-warn border-[rgba(245,181,68,0.28)]!" : ""}`} title="Diferença entre a maior e a menor carga ponderada dos corretores elegíveis neste projeto.">
@@ -552,15 +552,15 @@ export default function DistributionPage() {
                     className="cc6-reveal cc6-hairline flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-[rgba(75,141,248,0.04)]"
                     style={{ animationDelay: `${160 + Math.min(index, 8) * 45}ms` }}
                   >
-                    <span className={`cc6-metric-value w-8 shrink-0 text-center text-lg ${index === 0 ? "text-[color:var(--atlas-accent)]!" : "text-[#6b7890]!"}`} aria-hidden="true">
+                    <span className={`cc6-metric-value w-8 shrink-0 text-center text-lg ${index === 0 ? "text-[color:var(--atlas-accent)]!" : "text-[var(--atlas-texto-fraco)]!"}`} aria-hidden="true">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-sm font-semibold text-[#e8eef8]">{broker.full_name || "Corretor"}</h3>
+                        <h3 className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{broker.full_name || "Corretor"}</h3>
                         {index === 0 ? <StatusBadge tone="info">Próximo</StatusBadge> : null}
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-[#6b7890]">
+                      <p className="mt-0.5 truncate text-xs text-[var(--atlas-texto-fraco)]">
                         Time {manager?.full_name || "comercial"} · peso {state?.weight || 1} · última atribuição {state?.last_assigned_at ? new Date(state.last_assigned_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "ainda não recebeu"}
                       </p>
                     </div>
@@ -587,14 +587,14 @@ export default function DistributionPage() {
               })
             )}
           </div>
-          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
             Somente corretores online, disponíveis e elegíveis no projeto · ordem por carga ponderada e última atribuição, a mesma do motor.
           </p>
         </div>
 
         <div className="cc6-panel-quiet cc6-reveal self-start p-4" style={{ animationDelay: "180ms" }} aria-labelledby="distribution-managers-title">
           <p className="cc6-eyebrow">Fase 35 · Liderança ao vivo</p>
-          <h2 id="distribution-managers-title" className="mt-1 text-sm font-semibold tracking-tight text-[#e8eef8]">Gerentes online</h2>
+          <h2 id="distribution-managers-title" className="mt-1 text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Gerentes online</h2>
           <div className="mt-2 flex flex-col" aria-busy={loading}>
             {loading ? (
               <AtlasSkeleton className="h-24" />
@@ -612,8 +612,8 @@ export default function DistributionPage() {
                 const teamOnline = brokers.filter((broker) => broker.reports_to === manager.id).length;
                 return (
                   <div key={manager.id} className={`flex items-baseline justify-between gap-3 py-2.5 ${index ? "cc6-hairline" : ""}`}>
-                    <span className="min-w-0 truncate text-xs font-medium text-[#e8eef8]">{manager.full_name || "Gestor comercial"}</span>
-                    <span className="cc6-num shrink-0 text-[11px] text-[#6b7890]">
+                    <span className="min-w-0 truncate text-xs font-medium text-[var(--atlas-texto-forte)]">{manager.full_name || "Gestor comercial"}</span>
+                    <span className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-fraco)]">
                       <span className={teamOnline ? "cc6-ok" : ""}>{teamOnline}</span> disponíve{teamOnline === 1 ? "l" : "is"} no time
                     </span>
                   </div>
@@ -621,7 +621,7 @@ export default function DistributionPage() {
               })
             )}
           </div>
-          <p className="cc6-hairline mt-1 pt-2.5 text-[10px] leading-4 text-[#6b7890]">
+          <p className="cc6-hairline mt-1 pt-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
             Na superintendência aparecem somente os gerentes diretamente subordinados.
           </p>
         </div>
@@ -631,7 +631,7 @@ export default function DistributionPage() {
         <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
           <div>
             <p className="cc6-eyebrow">Fase 51 · Evidência de distribuição</p>
-            <h2 id="distribution-evidence-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Por que cada lead foi atribuída</h2>
+            <h2 id="distribution-evidence-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Por que cada lead foi atribuída</h2>
           </div>
           <span className="cc6-chip" title="Cada evento preserva projeto, responsável único, carga anterior, peso e algoritmo usado.">responsável único</span>
         </header>
@@ -640,9 +640,9 @@ export default function DistributionPage() {
             const broker = profilesMap.get(item.assigned_to);
             return (
               <article key={item.id} className="cc6-reveal cc6-hairline flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-3" style={{ animationDelay: `${240 + Math.min(index, 8) * 45}ms` }}>
-                <strong className="text-sm font-semibold text-[#e8eef8]">{broker?.full_name || "Corretor"}</strong>
-                <span className="cc6-num min-w-0 truncate text-xs text-[#6b7890]">Lead {item.lead_id.slice(0, 8)} · {new Date(item.created_at).toLocaleString("pt-BR")}</span>
-                <span className="cc6-num ml-auto shrink-0 text-xs text-[#aab6ca]" title="Carga anterior no projeto ÷ peso = carga ponderada no momento da escolha.">
+                <strong className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{broker?.full_name || "Corretor"}</strong>
+                <span className="cc6-num min-w-0 truncate text-xs text-[var(--atlas-texto-fraco)]">Lead {item.lead_id.slice(0, 8)} · {new Date(item.created_at).toLocaleString("pt-BR")}</span>
+                <span className="cc6-num ml-auto shrink-0 text-xs text-[var(--atlas-texto-medio)]" title="Carga anterior no projeto ÷ peso = carga ponderada no momento da escolha.">
                   {item.score_snapshot?.projectLoadBefore ?? "—"} ÷ {item.score_snapshot?.weight ?? 1} = {item.score_snapshot?.weightedLoadBefore ?? "—"}
                 </span>
               </article>
@@ -666,7 +666,7 @@ export default function DistributionPage() {
             <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
               <div>
                 <p className="cc6-eyebrow">Fase 59 · Livro da carteira</p>
-                <h2 id="distribution-audit-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Histórico gerencial unificado</h2>
+                <h2 id="distribution-audit-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Histórico gerencial unificado</h2>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {/* A promessa de privacidade deste livro precisa estar NA TELA, e
@@ -680,19 +680,19 @@ export default function DistributionPage() {
             <div className="mt-3 flex flex-wrap gap-1.5 px-5 pb-4" aria-label="Resumo por tipo de movimento">
               {([["Distribuições", data.portfolioAudit.summary.distributions], ["Transferências", data.portfolioAudit.summary.transfers], ["Reservas", data.portfolioAudit.summary.reservations], ["Devoluções", data.portfolioAudit.summary.returns], ["Ausências", data.portfolioAudit.summary.absences], ["Capacidade", data.portfolioAudit.summary.capacityChanges]] as const).map(([label, value]) => (
                 <span key={label} className="cc6-chip">
-                  {label} <strong className="font-semibold text-[#e8eef8]">{value}</strong>
+                  {label} <strong className="font-semibold text-[var(--atlas-texto-forte)]">{value}</strong>
                 </span>
               ))}
             </div>
             {data.portfolioAudit.events.length ? (
               data.portfolioAudit.events.slice(0, 20).map((event, index) => (
                 <article key={`${event.eventType}-${event.occurredAt}-${index}`} className="cc6-hairline flex items-baseline gap-3 px-5 py-2.5">
-                  <strong className="shrink-0 text-xs font-medium text-[#e8eef8]">{AUDIT_EVENT_LABELS[event.eventType] || event.eventType}</strong>
-                  <span className="min-w-0 flex-1 truncate text-xs text-[#6b7890]">
+                  <strong className="shrink-0 text-xs font-medium text-[var(--atlas-texto-forte)]">{AUDIT_EVENT_LABELS[event.eventType] || event.eventType}</strong>
+                  <span className="min-w-0 flex-1 truncate text-xs text-[var(--atlas-texto-fraco)]">
                     {event.brokerId ? profilesMap.get(event.brokerId)?.full_name || "Corretor no escopo" : "Operação gerencial"}
                     {event.leadId ? ` · Lead ${event.leadId.slice(0, 8)}` : ""}
                   </span>
-                  <time className="cc6-num shrink-0 text-[11px] text-[#6b7890]">{new Date(event.occurredAt).toLocaleString("pt-BR")}</time>
+                  <time className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-fraco)]">{new Date(event.occurredAt).toLocaleString("pt-BR")}</time>
                 </article>
               ))
             ) : (
@@ -705,7 +705,7 @@ export default function DistributionPage() {
                 />
               </div>
             )}
-            <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[#6b7890]">
+            <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
               Escopo hierárquico · fontes operacionais preservadas · nome, telefone, e-mail e textos livres da lead não expostos.
             </p>
           </div>
@@ -717,8 +717,8 @@ export default function DistributionPage() {
           <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "300ms" }} aria-labelledby="distribution-eligibility-title">
             <header className="px-5 pt-5 pb-3">
               <p className="cc6-eyebrow">Fase 39 · Equilíbrio por projeto</p>
-              <h2 id="distribution-eligibility-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Elegibilidade do time neste empreendimento</h2>
-              <p className="mt-1 text-xs leading-5 text-[#6b7890]">Ativar, pausar ou ponderar aqui vale somente para {selectedProject?.name || "o projeto selecionado"}.</p>
+              <h2 id="distribution-eligibility-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Elegibilidade do time neste empreendimento</h2>
+              <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Ativar, pausar ou ponderar aqui vale somente para {selectedProject?.name || "o projeto selecionado"}.</p>
             </header>
             {teamBrokers.length ? (
               teamBrokers.map((broker) => {
@@ -729,18 +729,18 @@ export default function DistributionPage() {
                   <article key={broker.id} className="cc6-hairline flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-sm font-semibold text-[#e8eef8]">{broker.full_name || "Corretor"}</h3>
+                        <h3 className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{broker.full_name || "Corretor"}</h3>
                         {!enabled ? <StatusBadge tone="neutral">Pausado</StatusBadge> : null}
                       </div>
-                      <p className={`mt-0.5 text-xs ${online ? "cc6-ok" : "text-[#6b7890]"}`}>{online ? "Online e disponível" : "Fora da fila agora"}</p>
+                      <p className={`mt-0.5 text-xs ${online ? "cc6-ok" : "text-[var(--atlas-texto-fraco)]"}`}>{online ? "Online e disponível" : "Fora da fila agora"}</p>
                     </div>
-                    <label className="flex shrink-0 items-center gap-2 text-[11px] text-[#6b7890]">
+                    <label className="flex shrink-0 items-center gap-2 text-[11px] text-[var(--atlas-texto-fraco)]">
                       Peso
                       <select
                         value={state?.weight || 1}
                         disabled={working}
                         onChange={(event) => void configureMember(broker.id, enabled, Number(event.target.value))}
-                        className="rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-2.5 py-1.5 text-sm text-[#e8eef8] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50"
+                        className="rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-2.5 py-1.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50"
                       >
                         {[1,2,3,4,5,6,7,8,9,10].map((weight) => <option key={weight} value={weight}>{weight}</option>)}
                       </select>
@@ -775,8 +775,8 @@ export default function DistributionPage() {
           <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "340ms" }} aria-labelledby="distribution-priority-title">
             <header className="px-5 pt-5 pb-3">
               <p className="cc6-eyebrow">Fase 57 · Ordem inteligente da fila</p>
-              <h2 id="distribution-priority-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Prioridade por SLA e origem</h2>
-              <p className="mt-1 text-xs leading-5 text-[#6b7890]">Ordem: maior pressão de SLA → prioridade da origem → lead mais antiga. Nome, renda, gênero, idade e qualquer outro dado pessoal nunca entram na decisão.</p>
+              <h2 id="distribution-priority-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Prioridade por SLA e origem</h2>
+              <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Ordem: maior pressão de SLA → prioridade da origem → lead mais antiga. Nome, renda, gênero, idade e qualquer outro dado pessoal nunca entram na decisão.</p>
             </header>
             <div className="cc6-hairline grid gap-4 p-5 lg:grid-cols-5">
               <label className={LABEL_CLASS}>
@@ -827,8 +827,8 @@ export default function DistributionPage() {
           <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "380ms" }} aria-labelledby="distribution-capacity-title">
             <header className="px-5 pt-5 pb-3">
               <p className="cc6-eyebrow">Fase 56 · Proteção contra sobrecarga</p>
-              <h2 id="distribution-capacity-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Limites de carteira por corretor</h2>
-              <p className="mt-1 text-xs leading-5 text-[#6b7890]">Capacidade operacional, não meta nem ranking. Sem comparação pública entre corretores: o limite protege o atendimento, não classifica gente. No teto, o banco bloqueia novas distribuições e transferências.</p>
+              <h2 id="distribution-capacity-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Limites de carteira por corretor</h2>
+              <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Capacidade operacional, não meta nem ranking. Sem comparação pública entre corretores: o limite protege o atendimento, não classifica gente. No teto, o banco bloqueia novas distribuições e transferências.</p>
             </header>
             <div className="cc6-hairline grid gap-4 p-5 lg:grid-cols-5">
               <label className={LABEL_CLASS}>
@@ -859,8 +859,8 @@ export default function DistributionPage() {
                 <input value={capacityReason} onChange={(event)=>setCapacityReason(event.target.value)} minLength={10} maxLength={500} placeholder="Ex.: capacidade definida para o período" className={FIELD_CLASS} />
               </label>
               <div className="flex flex-wrap items-center justify-between gap-3 lg:col-span-5">
-                <p className="min-w-0 text-xs leading-5 text-[#6b7890]">
-                  Carga atual <strong className="cc6-num text-[#e8eef8]">{capacityBrokerId ? loadMap.get(capacityBrokerId)?.total ?? 0 : "—"}</strong> · alerta em {warningPercent}% e bloqueio real no teto · reduzir o limite não retira leads existentes.
+                <p className="min-w-0 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
+                  Carga atual <strong className="cc6-num text-[var(--atlas-texto-forte)]">{capacityBrokerId ? loadMap.get(capacityBrokerId)?.total ?? 0 : "—"}</strong> · alerta em {warningPercent}% e bloqueio real no teto · reduzir o limite não retira leads existentes.
                 </p>
                 <button
                   type="button"
@@ -881,8 +881,8 @@ export default function DistributionPage() {
           <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "420ms" }} aria-labelledby="distribution-absence-title">
             <header className="px-5 pt-5 pb-3">
               <p className="cc6-eyebrow">Fase 55 · Continuidade de atendimento</p>
-              <h2 id="distribution-absence-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">Cobertura por ausência</h2>
-              <p className="mt-1 text-xs leading-5 text-[#6b7890]">Não é acionado por simples queda de conexão — exige confirmação humana, com período de ausência e motivo registrados.</p>
+              <h2 id="distribution-absence-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Cobertura por ausência</h2>
+              <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Não é acionado por simples queda de conexão — exige confirmação humana, com período de ausência e motivo registrados.</p>
             </header>
             <div className="cc6-hairline grid gap-4 p-5 lg:grid-cols-4">
               <label className={LABEL_CLASS}>
@@ -901,7 +901,7 @@ export default function DistributionPage() {
                 <input value={absenceReason} onChange={(event)=>setAbsenceReason(event.target.value)} minLength={10} maxLength={500} placeholder="Ex.: férias programadas até o retorno informado" className={FIELD_CLASS} />
               </label>
               <div className="flex flex-wrap items-center justify-between gap-3 lg:col-span-4">
-                <p className="min-w-0 max-w-3xl text-xs leading-5 text-[#6b7890]">
+                <p className="min-w-0 max-w-3xl text-xs leading-5 text-[var(--atlas-texto-fraco)]">
                   Move somente a carteira ativa para corretores online da mesma equipe — responsável único, timeline, tarefas abertas e evidência do lote preservados; vendas e descartes intactos.
                 </p>
                 <button

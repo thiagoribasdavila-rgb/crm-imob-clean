@@ -99,7 +99,7 @@ export default function IntelligencePage() {
           className="cc6-sev-band cc6-panel-quiet cc6-reveal flex flex-wrap items-center justify-between gap-3 py-3 pl-5 pr-4"
           style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
         >
-          <span className="text-sm text-[#fb7185]">{error}</span>
+          <span className="text-sm text-[var(--atlas-estado-perigo)]">{error}</span>
           <button type="button" onClick={() => void load()} className="cc6-ghost-btn">
             Tentar novamente
           </button>
@@ -110,7 +110,7 @@ export default function IntelligencePage() {
         <TiltShell className="cc6-panel cc6-reveal overflow-hidden" delayMs={40}>
           <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5 pb-4">
             <p className="cc6-eyebrow">Sinais da operação</p>
-            <p className="cc6-num text-[11px] text-[#6b7890]" aria-live="polite">
+            <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]" aria-live="polite">
               {loading ? "analisando…" : `${items.length} ${items.length === 1 ? "sinal" : "sinais"}`}
             </p>
           </div>
@@ -140,18 +140,18 @@ export default function IntelligencePage() {
                   style={meta.sev ? ({ "--cc6-sev": meta.sev } as CSSProperties) : undefined}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-                    <h2 className="min-w-0 text-base font-semibold tracking-tight text-[#e8eef8]">
+                    <h2 className="min-w-0 text-base font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                       {item.title}
                     </h2>
                     <StatusBadge tone={meta.tone}>{item.status}</StatusBadge>
                   </div>
-                  <p className="mt-1 text-sm leading-6 text-[#aab6ca]">
+                  <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">
                     {item.summary || "Insight sem resumo."}
                   </p>
                   {item.recommendation ? (
                     <div className="mt-3">
                       <p className="cc6-eyebrow text-[10px]!">Recomendação</p>
-                      <p className="mt-1 text-sm font-medium leading-6 text-[#e8eef8]">
+                      <p className="mt-1 text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                         {item.recommendation}
                       </p>
                     </div>
@@ -181,7 +181,7 @@ export default function IntelligencePage() {
         style={{ animationDelay: "120ms" }}
       >
         <StatusBadge tone="success">Seguro por padrão</StatusBadge>
-        <p className="text-sm leading-6 text-[#aab6ca]">
+        <p className="text-sm leading-6 text-[var(--atlas-texto-medio)]">
           Nenhuma decisão automática sobre pessoas — os sinais explicam; a execução é sempre humana.
         </p>
       </section>

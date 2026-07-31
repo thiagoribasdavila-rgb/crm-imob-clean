@@ -22,14 +22,14 @@ type StatusBadgeProps = {
  */
 const toneClasses: Record<StatusBadgeTone, string> = {
   neutral:
-    "border-[rgba(148,163,184,0.18)]! bg-[rgba(148,163,184,0.07)]! text-[#aab6ca]!",
+    "border-[rgba(148,163,184,0.18)]! bg-[rgba(148,163,184,0.07)]! text-[var(--atlas-texto-medio)]!",
   info: "border-[rgba(75,141,248,0.32)]! bg-[rgba(75,141,248,0.10)]! text-[color:var(--atlas-accent-hover)]!",
   success:
-    "border-[rgba(52,211,153,0.28)]! bg-[rgba(52,211,153,0.09)]! text-[#34d399]!",
+    "border-[rgba(52,211,153,0.28)]! bg-[rgba(52,211,153,0.09)]! text-[var(--atlas-estado-sucesso)]!",
   warning:
-    "border-[rgba(245,181,68,0.30)]! bg-[rgba(245,181,68,0.09)]! text-[#f5b544]!",
+    "border-[rgba(245,181,68,0.30)]! bg-[rgba(245,181,68,0.09)]! text-[var(--atlas-estado-atencao)]!",
   danger:
-    "border-[rgba(251,113,133,0.30)]! bg-[rgba(251,113,133,0.10)]! text-[#fb7185]!",
+    "border-[rgba(251,113,133,0.30)]! bg-[rgba(251,113,133,0.10)]! text-[var(--atlas-estado-perigo)]!",
   violet:
     "border-[rgba(148,163,184,0.18)]! bg-[rgba(148,163,184,0.05)]! text-[color:var(--atlas-accent-hover)]!",
 };

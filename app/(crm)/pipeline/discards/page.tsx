@@ -61,7 +61,7 @@ const WINDOW_OPTIONS: WindowDays[] = [7, 30, 90];
 function ShareMeter({ share }: { share: number }) {
   return (
     <div className="mt-2 h-1 overflow-hidden rounded-full bg-[rgba(148,163,184,0.12)]" aria-hidden="true">
-      <div className="h-full rounded-full bg-[#fb7185]" style={{ width: `${Math.min(100, Math.max(0, share))}%` }} />
+      <div className="h-full rounded-full bg-[var(--atlas-estado-perigo)]" style={{ width: `${Math.min(100, Math.max(0, share))}%` }} />
     </div>
   );
 }
@@ -94,15 +94,15 @@ function DiscardRateLine({ item, count }: { item: DiscardBaseFields; count: numb
   if (!base.measured) {
     if (!base.reason) return null;
     return (
-      <p className="mt-1 text-[11px] leading-4 text-[#6b7890]">
+      <p className="mt-1 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
         taxa de descarte <span className="cc6-num">—</span> · {base.reason}
       </p>
     );
   }
   return (
-    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-4 text-[#6b7890]">
+    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
       <span className="cc6-num">
-        <strong className={`font-semibold ${base.insufficient ? "text-[#aab6ca]" : "text-[#fb7185]"}`}>{base.ratePct}%</strong> descartados · {count} de {base.base} leads
+        <strong className={`font-semibold ${base.insufficient ? "text-[var(--atlas-texto-medio)]" : "text-[var(--atlas-estado-perigo)]"}`}>{base.ratePct}%</strong> descartados · {count} de {base.base} leads
       </span>
       {base.insufficient ? <span className="cc6-chip text-[10px]!">amostra insuficiente para decidir</span> : null}
     </div>
@@ -172,7 +172,7 @@ export default function PipelineDiscardsPage() {
       />
 
       {status === "restricted" ? (
-        <p className="cc6-panel-quiet cc6-reveal px-4 py-3.5 text-sm leading-6 text-[#aab6ca]" role="status">
+        <p className="cc6-panel-quiet cc6-reveal px-4 py-3.5 text-sm leading-6 text-[var(--atlas-texto-medio)]" role="status">
           Relatório liberado para gestor, superintendente e diretor — fale com a gestão da sua operação para receber o consolidado.
         </p>
       ) : null}
@@ -187,7 +187,7 @@ export default function PipelineDiscardsPage() {
               <header className="flex flex-wrap items-end justify-between gap-3 px-5 pt-5">
                 <div>
                   <p className="cc6-eyebrow">Taxonomia Meta · contagem por motivo</p>
-                  <h2 id="discard-taxonomy-title" className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]">
+                  <h2 id="discard-taxonomy-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                     Descartes por motivo
                   </h2>
                 </div>
@@ -200,8 +200,8 @@ export default function PipelineDiscardsPage() {
                       aria-pressed={days === option}
                       className={`cc6-chip cursor-pointer transition-colors ${
                         days === option
-                          ? "border-[color:var(--atlas-accent)]! text-[#e8eef8]!"
-                          : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[#e8eef8]!"
+                          ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!"
+                          : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[var(--atlas-texto-forte)]!"
                       }`}
                     >
                       {option} dias
@@ -238,7 +238,7 @@ export default function PipelineDiscardsPage() {
                   não houve saída · houve saída e nenhuma foi classificada ·
                   houve saída antes do registro existir. */}
               {status === "ready" && report && !hasData ? (
-                <div className="cc6-hairline px-5 py-6 text-sm leading-6 text-[#6b7890]">
+                <div className="cc6-hairline px-5 py-6 text-sm leading-6 text-[var(--atlas-texto-fraco)]">
                   {report.totals.discarded > 0 ? (
                     <>
                       <strong className="text-[#c9d4e4]">
@@ -289,12 +289,12 @@ export default function PipelineDiscardsPage() {
                         <span className="cc6-metric-value w-10 shrink-0 text-right text-lg">{item.count}</span>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-medium text-[#e8eef8]">{item.label}</p>
+                            <p className="text-sm font-medium text-[var(--atlas-texto-forte)]">{item.label}</p>
                             <StatusBadge tone="violet">{item.metaCategory}</StatusBadge>
                           </div>
                           <ShareMeter share={item.share} />
                         </div>
-                        <span className="cc6-num shrink-0 text-xs text-[#6b7890]">{item.share}%</span>
+                        <span className="cc6-num shrink-0 text-xs text-[var(--atlas-texto-fraco)]">{item.share}%</span>
                       </article>
                     ))}
                   </div>
@@ -302,7 +302,7 @@ export default function PipelineDiscardsPage() {
                     <span className="cc6-eyebrow text-[10px]!">Categorias Meta</span>
                     {report.byMetaCategory.map((item) => (
                       <span key={item.category} className="cc6-chip">
-                        {item.category} <strong className="font-semibold text-[#e8eef8]">{item.count}</strong> · {item.share}%
+                        {item.category} <strong className="font-semibold text-[var(--atlas-texto-forte)]">{item.count}</strong> · {item.share}%
                       </span>
                     ))}
                   </div>
@@ -317,16 +317,16 @@ export default function PipelineDiscardsPage() {
                 <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "120ms" }} aria-labelledby="discard-source-title">
                   <header className="px-5 pt-5 pb-3">
                     <p className="cc6-eyebrow">Origem do lead</p>
-                    <h2 id="discard-source-title" className="mt-1 text-sm font-semibold tracking-tight text-[#e8eef8]">
+                    <h2 id="discard-source-title" className="mt-1 text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                       Onde nascem as leads descartadas
                     </h2>
                   </header>
                   {report.bySource.map((item) => (
                     <div key={item.source} className="cc6-hairline px-5 py-2.5">
                       <div className="flex items-baseline justify-between gap-3">
-                        <span className="min-w-0 truncate text-sm text-[#aab6ca]">{item.source}</span>
-                        <span className="cc6-num shrink-0 text-xs text-[#6b7890]">
-                          <strong className="text-sm font-semibold text-[#e8eef8]">{item.count}</strong> · {item.share}%
+                        <span className="min-w-0 truncate text-sm text-[var(--atlas-texto-medio)]">{item.source}</span>
+                        <span className="cc6-num shrink-0 text-xs text-[var(--atlas-texto-fraco)]">
+                          <strong className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{item.count}</strong> · {item.share}%
                         </span>
                       </div>
                       <DiscardRateLine item={item} count={item.uniqueLeads ?? item.count} />
@@ -336,16 +336,16 @@ export default function PipelineDiscardsPage() {
                 <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "160ms" }} aria-labelledby="discard-campaign-title">
                   <header className="px-5 pt-5 pb-3">
                     <p className="cc6-eyebrow">Mídia paga</p>
-                    <h2 id="discard-campaign-title" className="mt-1 text-sm font-semibold tracking-tight text-[#e8eef8]">
+                    <h2 id="discard-campaign-title" className="mt-1 text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                       Campanhas com leads descartadas
                     </h2>
                   </header>
                   {report.byCampaign.map((item) => (
                     <div key={item.campaignId ?? "sem_campanha"} className="cc6-hairline px-5 py-2.5">
                       <div className="flex items-baseline justify-between gap-3">
-                        <span className="min-w-0 truncate text-sm text-[#aab6ca]">{item.campaign || item.campaignId || "Sem campanha"}</span>
-                        <span className="cc6-num shrink-0 text-xs text-[#6b7890]">
-                          <strong className="text-sm font-semibold text-[#e8eef8]">{item.count}</strong> · {item.share}%
+                        <span className="min-w-0 truncate text-sm text-[var(--atlas-texto-medio)]">{item.campaign || item.campaignId || "Sem campanha"}</span>
+                        <span className="cc6-num shrink-0 text-xs text-[var(--atlas-texto-fraco)]">
+                          <strong className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{item.count}</strong> · {item.share}%
                         </span>
                       </div>
                       <DiscardRateLine item={item} count={item.uniqueLeads ?? item.count} />
@@ -356,28 +356,28 @@ export default function PipelineDiscardsPage() {
 
               <section className="cc6-panel-quiet cc6-reveal p-4" style={{ animationDelay: "200ms" }} aria-labelledby="discard-governance-title">
                 <p className="cc6-eyebrow">Governança</p>
-                <h2 id="discard-governance-title" className="mt-1 text-sm font-semibold tracking-tight text-[#e8eef8]">
+                <h2 id="discard-governance-title" className="mt-1 text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                   Status do loop Andromeda
                 </h2>
                 <div className="mt-2 flex flex-col">
                   <div className="flex items-center justify-between gap-3 py-2.5">
-                    <span className="text-xs text-[#aab6ca]">Política de sinais negativos</span>
+                    <span className="text-xs text-[var(--atlas-texto-medio)]">Política de sinais negativos</span>
                     <StatusBadge tone="info">Interno até decisão</StatusBadge>
                   </div>
                   <div className="cc6-hairline flex items-center justify-between gap-3 py-2.5">
-                    <span className="text-xs text-[#aab6ca]">Decisão do diretor</span>
+                    <span className="text-xs text-[var(--atlas-texto-medio)]">Decisão do diretor</span>
                     <StatusBadge tone={report.andromeda.directorDecisionRequired ? "warning" : "success"}>
                       {report.andromeda.directorDecisionRequired ? "Obrigatória" : "Dispensada"}
                     </StatusBadge>
                   </div>
                   <div className="cc6-hairline flex items-center justify-between gap-3 py-2.5">
-                    <span className="text-xs text-[#aab6ca]">Pronto para sincronizar CRM lead status</span>
+                    <span className="text-xs text-[var(--atlas-texto-medio)]">Pronto para sincronizar CRM lead status</span>
                     <StatusBadge tone={report.andromeda.readyForCrmLeadStatusSync ? "success" : "neutral"}>
                       {report.andromeda.readyForCrmLeadStatusSync ? "Sim · cobertura ≥ 80%" : "Ainda não · cobertura < 80%"}
                     </StatusBadge>
                   </div>
                 </div>
-                <p className="cc6-hairline mt-1 pt-2.5 text-[10px] leading-4 text-[#6b7890]">
+                <p className="cc6-hairline mt-1 pt-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
                   Gerado em{" "}
                   {new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(report.generatedAt))}{" "}
                   · taxonomia v{report.andromeda.taxonomyVersion}.

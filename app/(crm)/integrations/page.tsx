@@ -139,7 +139,7 @@ export default function IntegrationsPage() {
       {error ? (
         <p
           role="alert"
-          className="cc6-panel-quiet cc6-reveal border-[rgba(251,113,133,0.30)]! px-4 py-3 text-sm text-[#fb7185]"
+          className="cc6-panel-quiet cc6-reveal border-[rgba(251,113,133,0.30)]! px-4 py-3 text-sm text-[var(--atlas-estado-perigo)]"
         >
           {error}
         </p>
@@ -190,12 +190,12 @@ export default function IntegrationsPage() {
             <p className="cc6-eyebrow">Catálogo governado</p>
             <h2
               id="integrations-catalog-title"
-              className="mt-1 text-lg font-semibold tracking-tight text-[#e8eef8]"
+              className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
             >
               APIs, anúncios e portais
             </h2>
           </div>
-          <p className="cc6-num text-[11px] text-[#6b7890]">
+          <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">
             {data ? `${data.catalog.length} provedores` : "—"}
           </p>
         </header>
@@ -217,11 +217,11 @@ export default function IntegrationsPage() {
             groups.map((group) => (
               <section key={group.key} aria-label={GROUP_LABELS[group.key] ?? group.key}>
                 <header className="flex items-center gap-3 px-5 pb-1.5 pt-3">
-                  <h3 className="cc6-eyebrow text-[#aab6ca]!">
+                  <h3 className="cc6-eyebrow text-[var(--atlas-texto-medio)]!">
                     {GROUP_LABELS[group.key] ?? group.key}
                   </h3>
                   <span className="cc6-hairline min-w-4 flex-1 self-center" aria-hidden="true" />
-                  <span className="cc6-num text-[10px] text-[#6b7890]">
+                  <span className="cc6-num text-[10px] text-[var(--atlas-texto-fraco)]">
                     {group.items.length}
                   </span>
                 </header>
@@ -241,10 +241,10 @@ export default function IntegrationsPage() {
                         }}
                       >
                         <div className="min-w-0 flex-1 basis-56">
-                          <p className="text-sm font-medium leading-6 text-[#e8eef8]">
+                          <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                             {item.name}
                           </p>
-                          <p className="cc6-num mt-0.5 truncate text-[10px] tracking-wide text-[#6b7890]">
+                          <p className="cc6-num mt-0.5 truncate text-[10px] tracking-wide text-[var(--atlas-texto-fraco)]">
                             {item.capabilities.join(" · ").replaceAll("_", " ")}
                           </p>
                           {connection?.last_error ? (
@@ -260,7 +260,7 @@ export default function IntegrationsPage() {
                           <time
                             dateTime={connection.last_sync_at}
                             title={`Último teste real: ${new Date(connection.last_sync_at).toLocaleString("pt-BR")}`}
-                            className="cc6-num shrink-0 text-[11px] text-[#6b7890]"
+                            className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-fraco)]"
                           >
                             {SYNC_FORMAT.format(new Date(connection.last_sync_at))}
                           </time>
@@ -290,7 +290,7 @@ export default function IntegrationsPage() {
           {policyItems.map(([enforced, label]) => (
             <span
               key={label}
-              className="cc6-num inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] text-[#6b7890]"
+              className="cc6-num inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] text-[var(--atlas-texto-fraco)]"
             >
               <span aria-hidden="true" className={enforced ? "cc6-ok" : "cc6-warn"}>
                 {enforced ? "✓" : "!"}
