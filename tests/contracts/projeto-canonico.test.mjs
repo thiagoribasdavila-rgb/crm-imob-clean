@@ -39,7 +39,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { execFileSync } from "node:child_process";
 import path from "node:path";
 
 const raiz = path.resolve(import.meta.dirname, "..", "..");
@@ -185,14 +184,44 @@ test("roteiro de deploy que cita o aposentado precisa estar declarado como aviso
  * O arquivo é local POR DESENHO? Só o `.gitignore` responde isso — e ele é a
  * declaração versionada da intenção, que é justamente o que falta quando um
  * arquivo simplesmente some.
+ *
+ * ── A PRIMEIRA VERSÃO DESTA FUNÇÃO REPETIU O DEFEITO QUE ELA CONSERTAVA ─────
+ *
+ * Ela chamava `git check-ignore`. Passou aqui e FALHOU no pacote extraído —
+ * porque um ZIP extraído **não é um repositório git**, o comando erra, e o
+ * `catch` devolvia `false`.
+ *
+ * Ou seja: consertei um contrato que só passava na máquina de quem escreveu
+ * usando um instrumento que só existe na máquina de quem escreveu. A prova do
+ * pacote pegou de novo, no mesmo teste, na rodada seguinte.
+ *
+ * A correção lê o `.gitignore` COMO ARQUIVO. Ele é rastreado, então viaja no
+ * pacote, e a leitura funciona nos dois lugares.
+ *
+ * ── O casamento é deliberadamente simples, e isso é declarado ──────────────
+ *
+ * Não implementa a semântica completa do gitignore (negação, `**`, diretório
+ * com barra). Cobre nome exato, caminho exato e sufixo `*.ext` — que é o que as
+ * exceções deste projeto usam. Um padrão mais exótico simplesmente não casa, e
+ * o contrato REPROVA, que é o lado seguro do erro: obriga a olhar em vez de
+ * deixar passar.
  */
-function ignoradoPeloGit(arquivo) {
-  try {
-    execFileSync("git", ["check-ignore", "-q", arquivo], { cwd: raiz, stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
+function ignoradoPeloGitignore(arquivo) {
+  const gitignore = path.join(raiz, ".gitignore");
+  if (!fs.existsSync(gitignore)) return false;
+  const alvo = arquivo.replace(/^\.\//, "");
+  const base = alvo.split("/").pop();
+  return fs
+    .readFileSync(gitignore, "utf8")
+    .split("\n")
+    .map((linha) => linha.trim())
+    .filter((linha) => linha && !linha.startsWith("#") && !linha.startsWith("!"))
+    .some((padrao) => {
+      const limpo = padrao.replace(/\/$/, "");
+      if (limpo === alvo || limpo === base) return true;
+      if (limpo.startsWith("*.")) return base.endsWith(limpo.slice(1));
+      return false;
+    });
 }
 
 test("toda exceção declarada existe e realmente cita o aposentado", () => {
@@ -218,7 +247,7 @@ test("toda exceção declarada existe e realmente cita o aposentado", () => {
     const caminho = path.join(raiz, f);
     if (!fs.existsSync(caminho)) {
       assert.ok(
-        ignoradoPeloGit(f),
+        ignoradoPeloGitignore(f),
         `exceção declarada para arquivo inexistente: ${f}. Se ele é local por desenho, precisa estar no .gitignore; se sumiu, tire-o da lista.`,
       );
       continue;
