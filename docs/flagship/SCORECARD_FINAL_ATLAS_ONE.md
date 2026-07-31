@@ -66,3 +66,55 @@ medido ensina a não medir.
 
 **Estimativa honesta:** os itens 1–4 são dias. O item 5 é semanas. O item 7 não
 depende de código.
+
+---
+
+# RECÁLCULO — 2026-07-31, DEPOIS DAS MEDIÇÕES REAIS
+
+O scorecard acima foi produzido **antes** de medir performance, responsividade e
+acessibilidade. Três categorias tinham nota baixa por ausência de medição. Agora
+elas têm nota baixa **por medição** — e uma delas piorou.
+
+| # | categoria | antes | agora | o que mudou |
+|---|---|---:|---:|---|
+| 1 | Identidade visual | 82 | **82** | sem mudança: as 1.359 cores cravadas continuam |
+| 2 | Consistência | 74 | **76** | rota `mtching` corrigida com redirect; 5 referências alinhadas |
+| 3 | Clareza | 93 | **95** | `not-found.tsx` e `global-error.tsx` em português, com o que fazer |
+| 4 | Usabilidade | 85 | **85** | sem mudança |
+| 5 | Velocidade operacional | 60 | **62** | ainda não cronometrada; sobe só pelo FCP medido (280–688 ms) |
+| 6 | Responsividade | 70 | **78** | **medida**: 0 overflow em 3 viewports — mas só 3 de 8, e 1 engine de 3 |
+| 7 | Acessibilidade | 80 | **72** | **piorou com a medição**: 104 alvos < 24 px reprovam WCAG 2.5.8 |
+| 8 | Performance | 58 | **55** | **piorou com a medição**: LCP 2.712 / 3.472 / **4.080 ms** — as 3 rotas reprovam |
+| 9 | Tratamento de erros | 90 | **94** | anteparo de raiz criado; tela branca deixa de ser possível |
+| 10 | Qualidade dos dados | 96 | **96** | sem mudança |
+| 11 | Maturidade dos fluxos | 72 | **72** | os 6 fluxos ponta a ponta **não foram testados** nesta rodada |
+| 12 | Estabilidade | 88 | **88** | 1.191 contratos, 0 falhas, 220/220 portões |
+| 13 | Segurança | 94 | **94** | sem alteração de superfície |
+| 14 | Documentação | 92 | **93** | relatórios de performance, responsividade e a11y com números medidos |
+| 15 | Instalação limpa | 86 | **90** | pacote provado limpo do zero na 3ª tentativa |
+| 16 | Empacotamento | — | **92** | `git archive`: 0 segredos, 0 node_modules, checksum publicado |
+| 17 | Prontidão de implantação | — | **40** | **nada publicado**; 4 bloqueadores externos abertos |
+
+## MÉDIA: **78,0** (antes: 71,3)
+
+| | |
+|---|---|
+| menor nota | **40** — prontidão de implantação |
+| categorias abaixo de 90 | **11 de 17** |
+| categorias abaixo de 60 | **2** — performance (55), prontidão (40) |
+
+# VEREDITO: 🔴 REPROVADO
+
+A régua exige média acima de 95 e nada abaixo de 90. A média subiu 6,7 pontos e
+**continua a 17 pontos do mínimo**.
+
+## O QUE APRENDI MEDINDO
+
+**Duas notas PIORARAM ao serem medidas** — acessibilidade (80 → 72) e performance
+(58 → 55). Isso é o comportamento correto de um scorecard honesto: a nota
+anterior era um palpite otimista sobre território não explorado.
+
+E a medição entregou o diagnóstico de graça: em `/pipeline`, **FCP 280 ms contra
+LCP 4.080 ms**. A casca é rápida, o dado é lento. Não é peso de JavaScript — são
+58 KB. É o dado chegando tarde. Sem medir, a aposta óbvia teria sido "reduzir o
+bundle", e teria sido a correção errada.
