@@ -153,7 +153,11 @@ const checks = [
   // dizia "139 rotas" enquanto o valor conferido já era 138: número no texto
   // que não acompanha o número no código é como um guard começa a mentir.
   // Agora o rótulo diz o que a asserção mede.
-  ["Topologia CRM fecha em 138 rotas e 21 destinos canônicos", phaseTwentyOne.topology.crmRoutes === 138 && phaseTwentyOne.topology.canonicalDestinationsPresent === 21 && phaseTwentyOne.topology.missingCanonicalDestinations === 0],
+  // 2026-07-31: 138 -> 139. Rota nova app/(crm)/settings/distribuicao (tela do
+  // elenco de distribuição), de apoio. O rebaseline está registrado em
+  // config/evolution-phase-021-…json sob `_rebaselines`, com o motivo — este
+  // portão só repete o número, então precisa acompanhar.
+  ["Topologia CRM fecha em 139 rotas e 21 destinos canônicos", phaseTwentyOne.topology.crmRoutes === 139 && phaseTwentyOne.topology.canonicalDestinationsPresent === 21 && phaseTwentyOne.topology.missingCanonicalDestinations === 0],
   // Re-baseline documentado na fonte (repricedNote, commits ab71b83d/e20f8931):
   // a fusão Início+Command Center trocou /dashboard por /command-center e removeu
   // resultados de rotas quarentenadas (ex.: /ai-dashboard), levando 25->22 outcomes canônicos.

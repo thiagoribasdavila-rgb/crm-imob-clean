@@ -14,13 +14,13 @@
     "entryRedirect": "/ -> /login -> /command-center (landing pública própria; ver repricedNote)"
   },
   "topology": {
-    "crmRoutes": 138,
+    "crmRoutes": 139,
     "rootRedirects": 0,
     "canonicalNavigationDestinations": 21,
     "canonicalDestinationsPresent": 21,
     "missingCanonicalDestinations": 0,
     "dynamicContextRoutes": 28,
-    "deepSupportRoutes": 70,
+    "deepSupportRoutes": 71,
     "topLevelNonCanonicalRoutes": 19,
     "repricedNote": "Re-inventariado à fonte lib/atlas/navigation.ts após a poda intencional (commit e20f8931): 25->22 destinos canônicos; /command-center consolida Início+Command Center; /ai-dashboard, /atlas-2030, /dashboard e /revenue-engine deixaram o catálogo e passaram a superfícies de topo não-canônicas; /pipedrive (adaptador legado) foi removido em commit anterior; total de rotas CRM rastreadas 141->139. Reconciliado 2026-07-21: app/(crm)/page.tsx (redirect(\"/dashboard\")) colidia de rota com a landing pública app/page.tsx (mesmo path resolvido — erro de build do Next.js) e foi removido; a raiz \"/\" agora é a landing real, entrada autenticada passa por /login->safeAuthDestination(\"/command-center\"). rootRedirects 1->0; crmRoutes 139->138. | Reconciliado 2026-07-29, com a SOMA preservada em 138 e cada delta rastreado: (a) canonicos 22->21 — 'Clientes 360' saiu do catalogo: lia a MESMA tabela leads pela mesma funcao (readCompatibleCustomers era alias de readCompatibleLeads), sem SLA, lote nem filtros, e sem o piso de carteira, entao um corretor via as 469 leads da imobiliaria inteira. A rota /customers continua respondendo como redirect para /leads, que herdou os segmentos por vinculo — por isso ela migra de 'canonico' para 'apoio profundo', e nao desaparece do inventario. (b) apoio profundo 69->70 — exatamente essa migracao de /customers. (c) contextuais dinamicas 29->28 — as rotas legadas app/(crm)/leads/edit/[id] e app/(crm)/tasks/[id], que scripts/legacy-route-paths.mjs declara removidas desde 26/07, estavam ausentes do disco e AINDA rastreadas no git; a remocao foi commitada (-2), e a lamina da ficha do lead app/(crm)/@ficha/(.)leads/[id] entrou como rota interceptada (+1). Nenhuma rota ficou sem classificacao: missingCanonicalDestinations continua vazio e a checagem de fechamento dos buckets continua exigindo que a soma bata com crmRoutes."
   },
@@ -218,5 +218,19 @@
     "routeDeleted": false,
     "redirectAdded": false,
     "phaseTwentyGateBypassed": false
-  }
+  },
+  "_rebaselines": [
+    {
+      "quando": "2026-07-31",
+      "de": {
+        "crmRoutes": 138,
+        "deepSupportRoutes": 70
+      },
+      "para": {
+        "crmRoutes": 139,
+        "deepSupportRoutes": 71
+      },
+      "porque": "Rota nova app/(crm)/settings/distribuicao — tela do elenco de distribuicao (quem participa da fila de cada projeto/campanha). E rota de APOIO, aninhada sob /settings: nao entra no catalogo canonico nem na navegacao primaria. Os dois numeros sobem juntos porque a soma dos buckets tem de continuar fechando com crmRoutes — e essa assercao e a que impede alguem de acrescentar rota e esquecer de dizer a que familia ela pertence."
+    }
+  ]
 }

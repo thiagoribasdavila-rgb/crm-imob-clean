@@ -12,8 +12,13 @@ const expectedTopLevel = config.topLevelNonCanonical.map((entry) => entry.route)
 const measuredTopLevel = inventory.topLevelNonCanonicalRoutes.slice().sort();
 const checks = [
   ["Fase 021 concluída sem mutação de runtime", config.status === "completed" && config.productionDataModified === false && config.runtimeNavigationChanged === false],
+  // 2026-07-31: 138 -> 139 e apoio 70 -> 71. Rota nova
+  // app/(crm)/settings/distribuicao (tela do elenco de distribuicao), de APOIO —
+  // aninhada sob /settings, fora do catalogo canonico. Os dois sobem juntos para
+  // a soma dos buckets continuar fechando; e essa assercao que impede alguem de
+  // acrescentar rota sem dizer a que familia ela pertence. Ver _rebaselines no config.
   // Poda intencional na fonte (commit e20f8931): total de rotas CRM rastreadas 141->139 (/pipedrive removido em commit anterior) e catálogo canônico 25->22. Guard re-baselinado à fonte lib/atlas/navigation.ts + git ls-files.
-  ["Todas as rotas CRM foram classificadas", inventory.counts.crmRoutes === config.topology.crmRoutes && inventory.counts.crmRoutes === 138],
+  ["Todas as rotas CRM foram classificadas", inventory.counts.crmRoutes === config.topology.crmRoutes && inventory.counts.crmRoutes === 139],
   ["Buckets fecham o inventário", config.topology.canonicalNavigationDestinations + config.topology.dynamicContextRoutes + config.topology.deepSupportRoutes + config.topology.topLevelNonCanonicalRoutes + config.topology.rootRedirects === config.topology.crmRoutes],
   // 2026-07-29: 21 destinos presentes, não 22. "Clientes 360" (/customers) foi
   // aposentado — lia a MESMA tabela leads pela mesma função, sem SLA, lote nem
@@ -29,7 +34,7 @@ const checks = [
     inventory.missingCanonicalDestinations.length === 0
     && inventory.counts.canonicalDestinationsPresent === config.topology.canonicalDestinationsPresent],
   ["Rotas dinâmicas permanecem contextuais", inventory.counts.dynamicContextRoutes === config.topology.dynamicContextRoutes && config.topology.dynamicContextRoutes === 28],
-  ["Rotas profundas permanecem de apoio", inventory.counts.deepSupportRoutes === config.topology.deepSupportRoutes && config.topology.deepSupportRoutes === 70],
+  ["Rotas profundas permanecem de apoio", inventory.counts.deepSupportRoutes === config.topology.deepSupportRoutes && config.topology.deepSupportRoutes === 71],
   ["Superfícies de topo foram classificadas", JSON.stringify(measuredTopLevel) === JSON.stringify(expectedTopLevel) && expectedTopLevel.length === 19],
   ["Ambiguidades críticas estão explícitas", expectedTopLevel.includes("/automation") && expectedTopLevel.includes("/automations") && expectedTopLevel.includes("/kanban") && expectedTopLevel.includes("/creatives")],
   ["Entrada autenticada continua no dashboard", inventory.entryRoute.redirectsToDashboard === true],
