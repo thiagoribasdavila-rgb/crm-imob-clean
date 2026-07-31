@@ -790,7 +790,17 @@ export default function LeadDetailPage() {
     <div className="flex flex-col gap-5 pb-10" data-phase="26-lead-360">
       {/* ── Cartão de identidade: único lugar da página com nome, status,
           temperatura, score, contatos e dono. Nenhuma seção abaixo repete. ── */}
-      <section id="lead-overview" className="scroll-mt-28 [perspective:1400px]">
+      {/* ── `order` VAI NO FILHO DIRETO DO FLEX, NÃO NO COMPONENTE DE DENTRO ──
+            MEDIDO na produção af16f978: o cabeçalho ficou em 2.621px, no fim da
+            ficha. Eu tinha posto `order-[-4]` no <TiltShell>, que é elemento
+            INTERNO — este <section> é que o container flex enxerga, e ele não
+            tinha ordem nenhuma: caiu para 0.
+
+            E acusei o TiltShell de não repassar `className`. Ele repassa. O erro
+            era meu, uma camada acima — a classe chegou ao DOM, no elemento
+            errado. Conferir que a classe existe no componente não prova que ela
+            está no elemento que manda. */}
+        <section id="lead-overview" className="order-[-4] scroll-mt-28 [perspective:1400px]">
         {/* ── A ORDEM DA FICHA SEGUE O QUE O CORRETOR FAZ, NÃO O ORGANOGRAMA
             DO PRODUTO ────────────────────────────────────────────────────────
 
@@ -824,7 +834,7 @@ export default function LeadDetailPage() {
         
             Aqui só o respiro encolhe: padding e espaçamento entre linhas. Nenhuma
             informação sai da tela, nenhuma estrutura muda. */}
-        <TiltShell maxDeg={2} className="order-[-4] cc6-reveal cc6-panel p-4 sm:p-5">
+        <TiltShell maxDeg={2} className="cc6-reveal cc6-panel p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
