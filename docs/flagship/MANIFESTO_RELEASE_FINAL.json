@@ -1,0 +1,30 @@
+{
+  "artefato": "atlas-one-v3.0.0-rc.2-production-20260731-1134-44151ab8.zip",
+  "sha256": "fb9c080cab3f59e07978b34236253f9ab4656c9efd2b71533c5e55d63e9710fa",
+  "tamanhoBytes": 6705531,
+  "commit": "44151ab8d9ad2b8b70610f2027daade899212ff0",
+  "commitCurto": "44151ab8",
+  "versao": "3.0.0-rc.2",
+  "branch": "claude/atlas-v3-entregas",
+  "geradoEmUtc": "2026-07-31T14:35:02Z",
+  "origem": "git archive HEAD — somente arquivos rastreados",
+  "runtimeExigido": ">=22.6 <27",
+  "comandos": {
+    "instalar": "npm ci",
+    "construir": "npm run build",
+    "iniciar": "npm start"
+  },
+  "publicadoEmProducao": false,
+  "porqueNaoPublicado": "SSH indisponivel nesta sessao (Permission denied: publickey,password) e producao em incidente: aplicacao no ar sem NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.",
+  "homologacao": {
+    "status": "REPROVADO",
+    "nota": 48,
+    "motivo": "sistema fora do ar para os usuarios"
+  },
+  "verificacaoLocal": {
+    "typecheck": 0,
+    "lint": 0,
+    "contratos": "1209 executados, 1200 aprovados, 0 falhas, 9 pulados",
+    "portoes": "220/220"
+  }
+}
