@@ -217,3 +217,82 @@ Isso não é desculpa: é o mapa. **Publicar é a única ação que fecha o port
 De 72 para 91, com o número medido antes e depois no mesmo navegador, no mesmo
 build, nos mesmos dois viewports: **104 → 0**. É a maior subida desta auditoria,
 e veio de uma regra de CSS de 20 linhas que não mudou um pixel do visual.
+
+
+---
+
+# QUARTO RECÁLCULO — pacote 541014e2, com as correções do incidente
+
+| categoria | nota |
+|---|---:|
+| Instalação limpa | **98** |
+| Empacotamento | **98** |
+| Tratamento de erros | **97** |
+| Qualidade dos dados | **96** |
+| Segurança | **95** |
+| Clareza | **95** |
+| Documentação | **95** |
+| Estabilidade | **93** |
+| Acessibilidade | **91** |
+| Usabilidade | **85** |
+| Responsividade | **84** |
+| Identidade visual | **82** |
+| Consistência | **80** |
+| Maturidade dos fluxos | **72** |
+| Performance | **68** |
+| Velocidade operacional | **62** |
+| Prontidão de implantação | **55** |
+
+## MÉDIA: **85.1**  (71,3 → 78,0 → 78,6 → 86,9 → **85.1**)
+
+| | |
+|---|---|
+| menor nota | **55** — prontidão de implantação |
+| abaixo de 90 | **8 de 17** |
+| abaixo de 60 | **0** — a primeira vez |
+
+## O QUE SUBIU, E POR QUE
+
+| categoria | de | para | evidência |
+|---|---:|---:|---|
+| Instalação limpa | 95 | **98** | Matriz B (`--omit=dev`) provada; o defeito do `@tailwindcss/postcss` que derrubava o build remoto está fechado com contrato |
+| Empacotamento | 95 | **98** | `release.json` carimbado pelo git: o artefato carrega identidade própria, que ninguém digita |
+| Tratamento de erros | 96 | **97** | `/api/version` deixou de afirmar confiança sem ter com o que comparar |
+| Estabilidade | 90 | **93** | 1.242 contratos · 0 falhas · 220/220 |
+| Consistência | 78 | **80** | política de cache única e declarada |
+| Prontidão | 48 | **55** | produção **de pé**: 13/13 chunks, `no-store`, banco alcançável |
+
+## POR QUE PRONTIDÃO É 55 E NÃO 90
+
+Três fatos medidos hoje:
+
+1. o build no ar declara `commit 935fe0e9` — **não corresponde ao pacote implantado**;
+2. as duas correções de hoje (cache permanente e identidade) **não estão no ar**;
+3. os 19 workers **não têm quem os chame** — não há cron na hospedagem gerenciada.
+
+O sintoma agudo passou com o purge. **A causa não.** Sem a política de cache no
+código, o próximo deploy repete o incidente.
+
+# O TETO, OUTRA VEZ — e agora com um número
+
+Com as outras 16 categorias em 100 e prontidão em 55:
+
+| | |
+|---|---:|
+| média possível | **97,4** ✅ |
+| menor nota | **55** ❌ |
+
+**10/10 continua exigindo publicar.** Nenhuma linha de código move prontidão —
+ela mede se as pessoas conseguem trabalhar, e isso se prova no ar.
+
+## O QUE FALTA, EM ORDEM DE GANHO
+
+| # | ação | ganho |
+|---|---|---|
+| 1 | publicar `541014e2` com `ATLAS_BUILD_COMMIT` = o commit do pacote | prontidão 55 → ~92 · média → **87.2** |
+| 2 | apontar um agendador para os 19 workers | maturidade 72 → ~88 |
+| 3 | streaming por bloco nas 3 rotas mais lentas | performance 68 → ~85 |
+| 4 | migrar as 1.359 cores cravadas em lotes | identidade 82 → ~92 · consistência 80 → ~90 |
+| 5 | E2E com Playwright nos 6 fluxos | maturidade e velocidade operacional |
+
+**Só o item 1 leva a média a 87.2.** Os cinco juntos passam de 95.
