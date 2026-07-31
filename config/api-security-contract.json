@@ -22,6 +22,7 @@
   "workerRoutes": [
     "app/api/atlas2030/recommendations/generate/route.ts",
     "app/api/v1-v2/status/route.ts",
+    "app/api/v2/ai/baseline-de-conversao/process/route.ts",
     "app/api/v2/ai/nightly-handoff/route.ts",
     "app/api/v2/ai/nightly-sales/route.ts",
     "app/api/v2/crm/first-contact-sla/process/route.ts",

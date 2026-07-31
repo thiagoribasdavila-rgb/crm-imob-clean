@@ -97,6 +97,13 @@
       "cadencia": "40 4 * * *",
       "porque": "Grava em marketing_spend o gasto que a Meta ja realizou. Medido em 31/07: R$ 3.612,01 em 30 dias na conta de anuncios contra 0 linhas na tabela — sete leitores do produto respondiam R$ 0. Uma vez por dia porque a Meta consolida o gasto do dia com atraso, e a janela de 30 dias reimporta o passado recente, corrigindo sozinha qualquer ajuste retroativo. 04:40 e depois da virada e fora da concorrencia com os workers do minuto 0.",
       "timeoutMs": 55000
+    },
+    {
+      "nome": "baseline-de-conversao",
+      "rota": "/api/v2/ai/baseline-de-conversao/process",
+      "cadencia": "25 4 * * *",
+      "porque": "Fotografa uma vez por dia as features de toda lead ABERTA, com a probabilidade do baseline aritmetico. Nao e previsao de IA e nao consome provider nenhum: e a serie temporal que um modelo precisaria para existir. conversion_feature_snapshots tinha 0 linhas desde que foi criada, e sem foto no momento do corte nem daqui a um ano havera base para treinar ou avaliar. Uma vez por dia porque o corte e o inicio do dia UTC — mais que isso reescreve a mesma linha. 04:25 e antes do importador de investimento e fora do minuto 0.",
+      "timeoutMs": 55000
     }
   ],
   "sobDemanda": [
