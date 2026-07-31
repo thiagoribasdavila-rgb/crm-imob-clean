@@ -291,8 +291,45 @@ async function discardOrphanCampaign(
 // não o evento.
 const CREDENTIAL_FAILURE_BREAK = 3;
 
+/**
+ * ── KILL SWITCH ─────────────────────────────────────────────────────────────
+ *
+ * Uma fila que envia mensagem de verdade precisa de um jeito de PARAR sem apagar
+ * o agendamento — desinstalar o cron para conter um incidente é a decisão que
+ * depois ninguém lembra de desfazer, e a fila fica morta por semanas. Foi
+ * exatamente esse o estado medido em 2026-07-30: 44h49m entre enfileirar e a
+ * primeira tentativa.
+ *
+ * O cuidado que decide se isto ajuda ou atrapalha: um kill switch INVISÍVEL é
+ * indistinguível de pane. Por isso ele (a) devolve 200, para o cron não disparar
+ * alarme de erro sobre uma pausa intencional, (b) diz que está pausado e por
+ * quem, e (c) aparece em `/api/v1/ready`. Pausa declarada é governança; pausa
+ * silenciosa é o mesmo defeito que este projeto já pagou várias vezes — zero
+ * mudo que parece medida.
+ */
+export function outboxPausado(): { pausado: boolean; motivo: string | null } {
+  const bruto = String(process.env.ATLAS_OUTBOX_PAUSADO ?? "").trim().toLowerCase();
+  const pausado = bruto === "1" || bruto === "true" || bruto === "sim";
+  return {
+    pausado,
+    motivo: pausado
+      ? String(process.env.ATLAS_OUTBOX_PAUSADO_MOTIVO ?? "").trim() ||
+        "Pausado por ATLAS_OUTBOX_PAUSADO, sem motivo declarado. Declare o motivo — pausa sem justificativa vira pausa esquecida."
+      : null,
+  };
+}
+
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+
+  // Antes de qualquer leitura da fila: se está pausado, não trave linha nenhuma.
+  // Reclamar um evento e devolvê-lo deixa `attempts` incrementado por uma
+  // tentativa que nunca aconteceu.
+  const pausa = outboxPausado();
+  if (pausa.pausado) {
+    logger.warn("outbox.pausado", { motivo: pausa.motivo });
+    return NextResponse.json({ pausado: true, processados: 0, motivo: pausa.motivo }, { status: 200 });
+  }
 
   const workerId = `hostinger-${crypto.randomUUID()}`;
   const admin = getSupabaseAdmin();

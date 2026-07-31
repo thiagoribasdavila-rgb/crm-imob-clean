@@ -5,6 +5,7 @@ import { montarProntidaoDasIntegracoes, ASSUNTOS } from "@/lib/integrations/pron
 import { lerEvidenciaDeProvedores } from "@/lib/ai/prontidao-generativa";
 import { defeitosDeFormaDoAmbiente } from "@/lib/ai/model-profiles";
 import { avaliarAgendador } from "@/lib/integrations/agendador-parado";
+import { outboxPausado } from "@/app/api/v2/outbox/process/route";
 
 export const dynamic = "force-dynamic";
 
@@ -130,15 +131,22 @@ export async function GET(request: NextRequest) {
         porEstado[estado] = (porEstado[estado] ?? 0) + 1;
       }
       const falhados = (porEstado.failed ?? 0) + (porEstado.dead_letter ?? 0);
+      // Pausa DECLARADA é governança; pausa silenciosa é indistinguível de pane.
+      // Sem este campo, um kill switch acionado produziria exatamente a mesma
+      // tela que o agendador morto — que é o estado que custou 44h49m em 30/07.
+      const pausa = outboxPausado();
+      const alertas = [
+        falhados > 0 ? `${falhados} item(ns) em failed/dead_letter — cada um é uma entrega que não aconteceu.` : null,
+        pausa.pausado ? `FILA PAUSADA de propósito: ${pausa.motivo}` : null,
+      ].filter(Boolean);
       return {
         medido: true,
         porEstado,
         total: (linhas ?? []).length,
-        precisaDeAtencao: falhados > 0,
-        motivo:
-          falhados > 0
-            ? `${falhados} item(ns) em failed/dead_letter — cada um é uma entrega que não aconteceu.`
-            : null,
+        pausada: pausa.pausado,
+        motivoDaPausa: pausa.motivo,
+        precisaDeAtencao: falhados > 0 || pausa.pausado,
+        motivo: alertas.length > 0 ? alertas.join(" · ") : null,
       };
     } catch (erro) {
       return { medido: false, motivo: erro instanceof Error ? erro.message.slice(0, 120) : "falha ao ler a fila" };
