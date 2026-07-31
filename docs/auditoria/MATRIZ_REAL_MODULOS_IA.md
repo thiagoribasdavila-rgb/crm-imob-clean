@@ -1,6 +1,18 @@
 # MATRIZ REAL DOS OITO MÓDULOS DE IA
 
 **2026-07-31. Somente leitura. Nada foi ligado.**
+
+> ⚠️ **DUAS CORREÇÕES PUBLICADAS EM 31/07, depois desta matriz:**
+>
+> 1. `estado-de-credencial` **não é órfão** — tem 2 consumidores
+>    (`prontidao-das-integracoes` → `/api/v1/ready`, e `prontidao-generativa`).
+>    Minha busca cobriu só o alias `@/…`; eles importam por caminho relativo com
+>    extensão. Ver `REGISTRO_FALSOS_POSITIVOS.md` FP-07.
+> 2. `registro-de-sombra` **deixou de ser órfão**: o vigia de SLA passou a
+>    registrar em sombra a redistribuição que recomendaria. `ai_shadow_decisions`
+>    saiu de 0 para 20 linhas, todas retidas, nenhuma executada.
+>
+> A lista real de órfãos hoje é **1**: `grafo-de-receita`.
 Método: rastreamento de import → consumidor → rota → banco → tela, com verificação
 do objeto e da tabela em cada elo.
 

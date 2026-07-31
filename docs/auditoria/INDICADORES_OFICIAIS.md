@@ -82,3 +82,48 @@ Verificação: **2026-07-31**. Commit: `15851336`.
 | Leads · com primeiro contato | **482** · **11** | **alta** |
 | Perfis ativos reais | **6** | **alta** |
 | Anúncios ativos · página que o CRM lê | **19** · **outra** | **alta** |
+
+---
+
+## ATUALIZAÇÃO 2026-07-31 (rodada F3–F8) — o que mudou de número
+
+Cada linha abaixo foi medida DEPOIS das entregas desta rodada. Onde o número
+anterior continua correto, ele não aparece aqui.
+
+| indicador | antes | agora | como medir de novo |
+|---|---:|---:|---|
+| linhas em `marketing_spend` | 0 | **94** | `select count(*) from marketing_spend` |
+| investimento registrado | R$ 0 | **R$ 3.612,01** | `select sum(amount) from marketing_spend` |
+| campanhas em `marketing_campaigns` | 1 | **8** | `select count(*) from marketing_campaigns` |
+| linhas em `ai_shadow_decisions` | 0 | **20** (todas retidas, 0 executadas) | `select count(*), count(*) filter (where retido) from ai_shadow_decisions` |
+| linhas em `conversion_feature_snapshots` | 0 | **370** | `select count(*) from conversion_feature_snapshots` |
+| módulos de IA órfãos | 5 (medido errado) | **1** — só `grafo-de-receita` | ver FP-07 |
+| workers agendados | 11 | **13** | `config/workers-schedule.json` |
+| rotas de worker no contrato | 17 | **19** | `config/api-security-contract.json` |
+| contratos executados | 1.114 | **1.191** | `npm run test:contracts` |
+| contratos aprovados | 1.105 | **1.182** | idem |
+| contratos **pulados** | 9 | **9** | idem — continuam os mesmos 9 de PostGIS |
+| portões | 220/220 | **220/220** | `npm run portoes:todos` |
+| falsos positivos registrados | 6 | **7** | `REGISTRO_FALSOS_POSITIVOS.md` |
+
+### O número que NÃO mudou, e é o mais importante
+
+**Leads atribuídas às 7 campanhas que gastaram R$ 3.612,01: ZERO.**
+
+As 24 leads com campanha de origem vêm de `120251113236400624`, que **não
+pertence** à conta de anúncios `act_2169318190556460` configurada no CRM — a
+Graph API recusa a consulta dela com `(#10) Application does not have
+permission`, e ela não está entre as 10 campanhas daquela conta.
+
+Existem pelo menos **duas contas de anúncio**, e a que o CRM lê não é a que
+produziu as leads que o CRM tem. Custo por lead **não é calculável** hoje, e o
+produto passa a dizer isso em vez de estampar R$ 150,50.
+
+### Estado da produção — inalterado
+
+`/api/v1/ready` continua **sem declarar** `build`, `estado`, `filas` nem
+`migrations`. Nada desta rodada está no ar. Medir com:
+
+```bash
+npm run commit-publicado:check
+```

@@ -76,6 +76,26 @@ Meu levantamento de consumidores olhou o diretório errado.
 
 ---
 
+
+## FP-07 — "estado-de-credencial é órfão" (2026-07-31)
+
+| | |
+|---|---|
+| **o que eu afirmei** | `lib/integrations/estado-de-credencial.ts` tem **0 consumidores** (Fase 3, matriz dos 8 módulos) |
+| **o que é verdade** | tem **2**: `lib/integrations/prontidao-das-integracoes.ts`, que alimenta `/api/v1/ready`, e `lib/ai/prontidao-generativa.ts` |
+| **o mecanismo** | procurei por `@/lib/integrations/estado-de-credencial`. Os dois consumidores importam por caminho **relativo com extensão** — `"./estado-de-credencial.ts"` e `"../integrations/estado-de-credencial.ts"` |
+| **consequência** | a matriz recomendou "candidato natural à prontidão" para um módulo que **já estava** na prontidão |
+| **como foi pego** | ao ir ligá-lo, encontrei `declararCredencial` sendo chamado na linha 105 do arquivo que eu tinha classificado como não-consumidor |
+
+**A lista real de órfãos é 2, não 5:** `grafo-de-receita` e `registro-de-sombra`
+— e o segundo deixou de ser órfão nesta mesma rodada (Fase 6).
+
+Mesmo mecanismo de FP-05 e FP-06: **o instrumento não coletou o que eu achei que
+coletava.** Três dos sete falsos positivos foram buscas que ignoraram uma forma
+de escrever a mesma coisa. A lição operacional ganhou um item concreto: uma
+busca por import precisa cobrir **as três formas** — alias (`@/`), relativo com
+extensão e relativo sem.
+
 ## O PADRÃO — o que estes seis têm em comum
 
 Cinco dos seis vieram de **instrumento incompleto**, não de raciocínio errado:
