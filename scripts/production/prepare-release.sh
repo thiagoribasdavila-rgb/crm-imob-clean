@@ -15,16 +15,12 @@ V=$(node -v 2>/dev/null || echo "v0")
 MAJOR=${V#v}; MAJOR=${MAJOR%%.*}
 MINOR=$(node -p "process.versions.node.split('.')[1]" 2>/dev/null || echo 0)
 echo "  node: $V"
-if [ "$MAJOR" -ge 27 ]; then
-  echo "  ✘ Node $MAJOR está ACIMA do teto (<27). O produto não foi provado nesta major."
-  falhas=$((falhas+1))
-elif [ "$MAJOR" -gt 22 ] || { [ "$MAJOR" -eq 22 ] && [ "$MINOR" -ge 6 ]; }; then
-  echo "  ✔ compatível (>=22.6 <27)"
+if [ "$MAJOR" -gt 20 ] || { [ "$MAJOR" -eq 20 ] && [ "$MINOR" -ge 9 ]; }; then
+  echo "  ✔ compatível (>=20.9, que é o que next exige)"
+  [ "$MAJOR" -lt 22 ] && echo "  • a suíte de contratos precisa de 22.6+ e não roda aqui — rode-a na máquina de origem"
 else
-  echo "  ✘ INCOMPATÍVEL. 36 scripts usam flags que não existem antes do 22.6."
-  echo "    Instale o Node 22 LTS (NodeSource, Ubuntu 24.04):"
-  echo "      curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -"
-  echo "      sudo apt-get install -y nodejs"
+  echo "  ✘ INCOMPATÍVEL — next exige >=20.9"
+  echo "    Ubuntu: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt-get install -y nodejs"
   falhas=$((falhas+1))
 fi
 

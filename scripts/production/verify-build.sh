@@ -32,10 +32,18 @@ echo "  pacote exige: $EXIGE"
 echo "  servidor tem: $(node -v 2>/dev/null || echo 'node ausente')"
 MAJOR=$(node -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)
 MINOR=$(node -p "process.versions.node.split('.')[1]" 2>/dev/null || echo 0)
-if [ "$MAJOR" -gt 22 ] || { [ "$MAJOR" -eq 22 ] && [ "$MINOR" -ge 6 ]; }; then
-  echo "  ✔ runtime compatível"
+# O alvo real é Node >=20.9 — o que `next` exige e o que a hospedagem
+# gerenciada da Hostinger oferece (20.x). A cadeia de CONTRATOS precisa de 22.6+
+# por causa de `--experimental-strip-types`, mas ela não roda no deploy:
+# a Hostinger executa apenas `npm ci → npm run build → npm start`.
+if [ "$MAJOR" -gt 20 ] || { [ "$MAJOR" -eq 20 ] && [ "$MINOR" -ge 9 ]; }; then
+  echo "  ✔ runtime compatível (>=20.9)"
+  if [ "$MAJOR" -lt 22 ]; then
+    echo "  • Node $MAJOR serve para instalar, construir e servir."
+    echo "    A suíte de contratos NÃO roda aqui (precisa de 22.6+) — rode-a antes, na sua máquina."
+  fi
 else
-  echo "  ✘ runtime INCOMPATÍVEL — 36 scripts usam flags que não existem antes do 22.6"
+  echo "  ✘ runtime INCOMPATÍVEL — next exige >=20.9"
   falhas=$((falhas+1))
 fi
 

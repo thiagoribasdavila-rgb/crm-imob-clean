@@ -369,7 +369,7 @@
     "typescript": "^5"
   },
   "engines": {
-    "node": ">=22.6 <27"
+    "node": ">=20.9"
   },
   "overrides": {
     "@hono/node-server": "^2.0.5",
