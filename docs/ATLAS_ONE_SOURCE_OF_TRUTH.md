@@ -1,5 +1,10 @@
 # ATLAS ONE — FONTE ÚNICA DE VERDADE
 
+> **Números oficiais:** `docs/auditoria/INDICADORES_OFICIAIS.md`. Quando este
+> documento e aquela tabela divergirem, **a tabela prevalece** — ela carrega o
+> comando de reprodução e a data de cada número. Os falsos positivos corrigidos
+> estão em `docs/auditoria/REGISTRO_FALSOS_POSITIVOS.md`, com o mecanismo de cada um.
+
 **Estabelecido em 2026-07-30.** Cada afirmação deste documento foi medida, e o comando
 que a produziu está ao lado. Onde não foi possível medir, está escrito **não medido** —
 que é diferente de zero.

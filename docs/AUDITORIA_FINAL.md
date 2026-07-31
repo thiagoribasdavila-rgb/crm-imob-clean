@@ -1,5 +1,9 @@
 # AUDITORIA FINAL — ATLAS ONE
 
+> **Números oficiais:** `docs/auditoria/INDICADORES_OFICIAIS.md` — prevalece sobre
+> qualquer número deste relatório. Vários foram corrigidos depois de publicados; o
+> registro de cada correção está em `docs/auditoria/REGISTRO_FALSOS_POSITIVOS.md`.
+
 **2026-07-30.** 15 dimensões auditadas em paralelo, 163 achados, 12 submetidos a
 refutação adversarial de *default refutado*.
 
