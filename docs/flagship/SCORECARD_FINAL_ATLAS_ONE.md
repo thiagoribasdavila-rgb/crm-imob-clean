@@ -118,3 +118,41 @@ E a medição entregou o diagnóstico de graça: em `/pipeline`, **FCP 280 ms co
 LCP 4.080 ms**. A casca é rápida, o dado é lento. Não é peso de JavaScript — são
 58 KB. É o dado chegando tarde. Sem medir, a aposta óbvia teria sido "reduzir o
 bundle", e teria sido a correção errada.
+
+
+---
+
+# SEGUNDO RECÁLCULO — depois da validação de pé e da auditoria de dependências
+
+| # | categoria | 1º | 2º | **agora** | o que mudou |
+|---|---|---:|---:|---:|---|
+| 7 | Acessibilidade | 80 | 72 | **72** | — |
+| 8 | Performance | 58 | 55 | **55** | — |
+| 9 | Tratamento de erros | 90 | 94 | **96** | `/api/v1/ready` deixa de responder 500 cru sem ambiente; passa a nomear o que falta |
+| 13 | Segurança | 94 | 94 | **86** | **`npm audit`: 12 vulnerabilidades, 9 ALTAS**, 3 dependências diretas — medido pela primeira vez |
+| 15 | Instalação limpa | 86 | 90 | **95** | pacote provado **de pé**: sobe, responde `/login` 200, `/ready` 503 declarado, redirect 308 |
+| 16 | Empacotamento | — | 92 | **95** | varredura por conteúdo dentro do ZIP; nenhum `git check-ignore` no extraído |
+| 17 | Prontidão de implantação | — | 40 | **48** | `engines` corrigido, guia da Hostinger com modelo verificado, 3 caminhos de agendamento |
+
+## MÉDIA: **78,6** (era 71,3 → 78,0 → **78,6**)
+
+| | |
+|---|---|
+| menor nota | **48** — prontidão de implantação |
+| categorias abaixo de 90 | **11 de 17** |
+| abaixo de 60 | **2** — performance (55), prontidão (48) |
+
+# VEREDITO FINAL: 🔴 REPROVADO
+
+A régua exige média acima de 95 e nada abaixo de 90. Faltam **16,4 pontos** de
+média e **11 categorias** precisam subir.
+
+## A SEGURANÇA CAIU 8 PONTOS AO SER MEDIDA
+
+Era 94 com base em segredos e autorização — que continuam limpos. Caiu para 86
+porque `npm audit` **nunca tinha sido rodado** nesta linha de trabalho, e ele
+devolve 9 vulnerabilidades altas.
+
+É a terceira nota desta auditoria que **piora ao ser medida** (acessibilidade,
+performance, segurança). Nenhuma piorou porque o produto regrediu. As três
+pioraram porque pararam de ser palpite.
