@@ -3393,6 +3393,56 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
    sem limite, e esse medo agora tem uma resposta melhor — a própria barra é
    limitada a 40vh e rola por dentro. O clamp mantém a altura previsível sem
    esconder a informação. */
+/* ── O GESTO: o que o corretor CLICA, não o que ele lê ─────────────────────
+   Ordem visual deliberada: rótulo "Faça agora", depois o BOTÃO, depois a frase
+   que explica. O olho encontra a ação antes da justificativa — que é a ordem em
+   que a pessoa decide.
+
+   min-height 44px porque é alvo de dedo e o padrão do produto; o cravado aqui
+   seria a exceção numa tela que já respeita 44 em todo lugar. */
+.atlas-lead-gesto {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: 6px 0 2px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--atlas-accent);
+  /* O token que VIRA: o acento é claro no tema escuro e escuro no claro, então
+     nenhuma cor fixa de texto passa nos dois. Ver a nota em atlas-tokens.css. */
+  color: var(--atlas-texto-sobre-acento);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.atlas-lead-gesto:hover { background: var(--atlas-accent-hover); }
+.atlas-lead-gesto:active { background: var(--atlas-accent-pressed); }
+.atlas-lead-gesto:focus-visible {
+  outline: 2px solid var(--atlas-accent);
+  outline-offset: 2px;
+}
+/* Desabilitado DIZ o motivo ("Sem telefone cadastrado") em vez de sumir: botão
+   que some deixa a pessoa procurando o que nunca esteve lá.
+
+   E usa `text-secondary`, não `tertiary`: o portão de contraste mediu 4,44 e
+   4,31 com o terciário — abaixo do piso. Aqui ele estava certo por um motivo
+   além da regra: este botão CARREGA INFORMAÇÃO que precisa ser lida. Desabilitar
+   apaga a ação, não a mensagem. Com o secundário: 7,91 e 6,46. */
+.atlas-lead-gesto:disabled {
+  background: var(--atlas-surface-interactive);
+  color: var(--atlas-text-secondary);
+  cursor: not-allowed;
+}
+/* Único caso urgente: ninguém falou com a pessoa e o SLA está correndo. */
+.atlas-lead-next-action[data-urgente="true"] .atlas-lead-gesto {
+  background: var(--atlas-danger);
+  color: var(--atlas-texto-sobre-acento);
+}
+
 .atlas-lead-next-action strong {
   display: -webkit-box;
   -webkit-box-orient: vertical;

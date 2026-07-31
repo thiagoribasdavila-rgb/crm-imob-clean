@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/AtlasUI";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
+import { decidirProximaAcao } from "@/lib/crm/gesto-da-proxima-acao";
 import { LeadOperationalBar } from "@/components/crm/lead-operational-bar";
 import {
   LeadContextCorrection,
@@ -438,7 +439,9 @@ export default function LeadDetailPage() {
     if (!lead)
       return {
         readiness: 0,
-        nextAction: "Carregando contexto...",
+        // Enquanto carrega não há gesto: oferecer um seria agir sobre fato que
+        // ainda não se conhece. O botão de recarregar é o único honesto aqui.
+        proximaAcao: decidirProximaAcao({ atividades: 1, oportunidadesLegiveis: false, oportunidades: 0 }),
         risk: "unknown",
       };
     let readiness = 20;
@@ -460,15 +463,18 @@ export default function LeadDetailPage() {
           : opportunities.length === 0
             ? "médio"
             : "baixo";
-    const nextAction =
-      activities.length === 0
-        ? "Realizar o primeiro contato e registrar a resposta."
-        : !opportunitiesMensuraveis
-          ? "Não foi possível ler as oportunidades desta lead agora — recarregue antes de decidir."
-          : opportunities.length === 0
-            ? "Apresentar o imóvel com maior aderência e abrir oportunidade."
-            : "Validar objeções e avançar a oportunidade para a próxima etapa.";
-    return { readiness, nextAction, risk };
+    /**
+     * A decisão saiu daqui e foi para `lib/crm/gesto-da-proxima-acao`, com 12
+     * contratos e 5 mutações. Não é organização por gosto: enquanto a regra
+     * vivia num ternário dentro do JSX, ela não podia ser testada nem devolver
+     * o GESTO junto com a frase — e era exatamente o gesto que faltava.
+     */
+    const proximaAcao = decidirProximaAcao({
+      atividades: activities.length,
+      oportunidadesLegiveis: opportunitiesMensuraveis,
+      oportunidades: opportunities.length,
+    });
+    return { readiness, proximaAcao, risk };
   }, [activities.length, lead, opportunities.length, opportunitiesMensuraveis]);
 
   async function saveLead(event: FormEvent) {
@@ -1012,7 +1018,7 @@ export default function LeadDetailPage() {
         leadId={lead.id}
         leadName={lead.name || "Lead sem nome"}
         phone={lead.phone}
-        nextAction={intelligence.nextAction}
+        proximaAcao={intelligence.proximaAcao}
         risk={intelligence.risk}
         openTasks={contactBriefing?.openTasks ?? 0}
         unreadMessages={contactBriefing?.unreadMessages ?? 0}

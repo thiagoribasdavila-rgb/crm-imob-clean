@@ -1,11 +1,18 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { caminhoDoGesto, type ProximaAcao } from "@/lib/crm/gesto-da-proxima-acao";
 
 type LeadOperationalBarProps = {
   leadId: string;
   leadName: string;
   phone: string | null;
-  nextAction: string;
+  /**
+   * A instrução E o gesto que a executa, inteiros, vindos do módulo puro
+   * `lib/crm/gesto-da-proxima-acao`. Esta barra desenha; não decide.
+   *
+   * Era `nextAction: string` — uma frase solta, sem nada para clicar.
+   */
+  proximaAcao: ProximaAcao;
   risk: string;
   openTasks: number;
   unreadMessages: number;
@@ -24,7 +31,7 @@ export function LeadOperationalBar({
   leadId,
   leadName,
   phone,
-  nextAction,
+  proximaAcao,
   risk,
   openTasks,
   unreadMessages,
@@ -40,11 +47,40 @@ export function LeadOperationalBar({
     { label: "Proposta", href: `/leads/${leadId}/simulation`, icon: "◇" },
   ] as const;
 
+  const destinoDoGesto = caminhoDoGesto(leadId, proximaAcao);
+
   return (
     <aside className="atlas-lead-operational-bar" aria-label="Resumo operacional do lead">
-      <div className="atlas-lead-next-action">
+      {/* ── A INSTRUÇÃO E O GESTO NO MESMO LUGAR ──────────────────────────
+          Antes: três elementos de texto e ZERO botões. O corretor lia a frase,
+          traduzia para um gesto e saía procurando onde executar — as ações
+          existiam do outro lado desta mesma barra, sem ligação com a instrução.
+
+          O gesto vem PRIMEIRO (é o que se faz); a frase fica abaixo explicando
+          por quê. UM gesto só: dois devolveriam ao corretor a decisão que este
+          bloco existe para tomar por ele. */}
+      <div className="atlas-lead-next-action" data-urgente={proximaAcao.urgente ? "true" : undefined}>
         <span>Faça agora</span>
-        <strong>{nextAction}</strong>
+        {destinoDoGesto ? (
+          <Link href={destinoDoGesto} className="atlas-lead-gesto">
+            {proximaAcao.gesto.rotulo}
+          </Link>
+        ) : proximaAcao.gesto.tipo === "ligar" && phone ? (
+          <a href={`tel:${phone}`} className="atlas-lead-gesto">
+            {proximaAcao.gesto.rotulo}
+          </a>
+        ) : proximaAcao.gesto.tipo === "ligar" ? (
+          /* Sem telefone não há para onde ligar. Botão desabilitado que DIZ o
+             motivo, em vez de link morto que não reage ao clique. */
+          <button type="button" className="atlas-lead-gesto" disabled>
+            Sem telefone cadastrado
+          </button>
+        ) : (
+          <button type="button" className="atlas-lead-gesto" onClick={() => window.location.reload()}>
+            {proximaAcao.gesto.rotulo}
+          </button>
+        )}
+        <strong>{proximaAcao.instrucao}</strong>
         <small>
           Risco {risk} · {openTasks} tarefa(s) · {unreadMessages} mensagem(ns)
         </small>
