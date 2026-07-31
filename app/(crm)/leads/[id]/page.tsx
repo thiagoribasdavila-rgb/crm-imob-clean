@@ -792,8 +792,21 @@ export default function LeadDetailPage() {
 
             `order` e não mover marcação: já quebrei o aninhamento uma vez
             tentando mover 143 linhas. Reverter isto é apagar uma classe. */}
-        <TiltShell maxDeg={2} className="order-[-4] cc6-reveal cc6-panel p-6 sm:p-7">
-          <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
+        {/* ── O CABEÇALHO É DENSO POR DENTRO E FROUXO POR FORA ─────────────
+            MEDIDO na produção: 325px para breadcrumb, nome, duas etiquetas,
+            telefone, dono, score e um botão. Somado à barra operacional (302px),
+            são 627px — 70% da primeira tela antes de qualquer conteúdo.
+        
+            E, ao contrário do que eu afirmei duas vezes, os dois NÃO dizem a
+            mesma coisa: medida a sobreposição, são ZERO palavras em comum. O
+            cabeçalho é identidade, dono e score; a barra é próximo passo e ações.
+            Fundi-los juntaria coisas diferentes — o problema não é repetição, é
+            respiro.
+        
+            Aqui só o respiro encolhe: padding e espaçamento entre linhas. Nenhuma
+            informação sai da tela, nenhuma estrutura muda. */}
+        <TiltShell maxDeg={2} className="order-[-4] cc6-reveal cc6-panel p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <Link
