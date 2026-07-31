@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { isMissingColumn } from "@/lib/compat/legacy-v2";
 import { enviarAlertaTelegram, montarAlertaDeSla, telegramConfigurado } from "@/lib/integrations/telegram";
+import { registrarEmSombra } from "@/lib/ai/registro-de-sombra";
+import { recomendarRedistribuicao, TETO_DE_RECOMENDACOES } from "@/lib/crm/redistribuicao-em-sombra";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -76,7 +78,20 @@ export async function POST(request: Request) {
     }
 
     const pendentes: Array<{ lead: Record<string, unknown>; estagio: Estagio; atrasoMin: number }> = [];
-    let foraDaJanela = 0;
+    /**
+     * O ACERVO ABANDONADO — vencido há mais que a janela de recuperação.
+     *
+     * Era só um contador (`let foraDaJanela = 0`), e por isso a primeira versão
+     * da sombra de redistribuição avaliou ZERO leads: ela lia `estagio ===
+     * "vencido"`, e na base real NENHUMA lead cabe ali — as 362 vencidas estão
+     * TODAS além das 48h. O agente estava ligado e não via nada, que é
+     * exatamente o estado que este trabalho existe para acabar.
+     *
+     * E o acervo é justamente o público certo da recomendação: a tarefa de SLA
+     * não o cobra porque cobrar velocidade em lead de 20 dias não recupera nada
+     * — mas trocar de dono, sim.
+     */
+    const acervoAbandonado: Array<{ lead: Record<string, unknown>; atrasoMin: number }> = [];
     for (const lead of leads.data ?? []) {
       const prazo = Date.parse(String(lead.first_contact_due_at));
       if (!Number.isFinite(prazo)) continue;
@@ -90,17 +105,26 @@ export async function POST(request: Request) {
         if (atrasoMin <= LIMITE_DE_RECUPERACAO_MIN) {
           pendentes.push({ lead, estagio: "vencido", atrasoMin });
         } else {
-          foraDaJanela += 1;
+          acervoAbandonado.push({ lead, atrasoMin });
         }
       } else if (agora >= limiteDeAviso) {
         pendentes.push({ lead, estagio: "aviso", atrasoMin: Math.max(0, Math.ceil((prazo - agora) / 60_000)) });
       }
     }
 
-    if (!pendentes.length) {
-      return NextResponse.json({ status: "completed", avaliadas: leads.data?.length ?? 0, criadas: 0, jaExistiam: 0 });
-    }
+    const foraDaJanela = acervoAbandonado.length;
 
+    // ── A SAÍDA ANTECIPADA FOI REMOVIDA, E ISSO É PROPOSITAL ─────────────────
+    //
+    // Havia aqui um `if (!pendentes.length) return`. Ele fazia sentido quando o
+    // worker só criava tarefa: sem tarefa a criar, nada a fazer. Mas o acervo
+    // abandonado NÃO gera tarefa por desenho — e é justamente ele o público da
+    // recomendação de redistribuição. Com a saída antecipada, o dia em que a
+    // fila de SLA estivesse limpa seria o dia em que a sombra não olharia as
+    // 362 leads paradas.
+    //
+    // As consultas abaixo lidam com lista vazia sem custo: `.in(coluna, [])`
+    // devolve zero linhas, e os laços não iteram.
     // Uma consulta só para saber o que já foi avisado — evita N queries.
     const chaves = pendentes.map((p) => `sla:${p.lead.id}:${p.estagio}`);
     const jaAvisado = new Set<string>();
@@ -239,6 +263,128 @@ export async function POST(request: Request) {
       }
     }
 
+    // ── A REDISTRIBUIÇÃO QUE ELE RECOMENDARIA, E NÃO EXECUTA ────────────────
+    //
+    // Até 31/07/2026 esta rota terminava reportando `ATLAS_SLA_AUTO_REASSIGN`
+    // como "habilitada por ambiente, mas ainda não implementada" — uma variável
+    // com cara de interruptor que, ligada, não acendia luz nenhuma. Pior que
+    // ausência de controle: a APARÊNCIA de controle.
+    //
+    // E, do outro lado, `ai_shadow_decisions` tinha 0 linhas porque o Shadow
+    // Mode, completo desde 30/07, nunca teve um agente que decidisse. Este é o
+    // agente.
+    //
+    // A retenção é DUPLA e por construção: `redistribuir_lead` está em
+    // `ACOES_RETIDAS_PADRAO`, então `prepararEmSombra` retém mesmo com a
+    // bandeira de ambiente ligada. Nada é reatribuído aqui — o que sai é
+    // EVIDÊNCIA, que é o único caminho para um dia sair da sombra.
+    const sombra = { avaliadas: 0, jaRecomendadas: 0, registradas: 0, retidas: 0, foraDoTeto: 0, porqueVazio: null as string | null };
+    try {
+      const abandonadas = [
+        ...pendentes.filter((p) => p.estagio === "vencido"),
+        ...acervoAbandonado,
+      ]
+        .filter((p) => p.lead.assigned_user_id)
+        .map((p) => ({
+          id: String(p.lead.id),
+          nome: p.lead.name ? String(p.lead.name) : null,
+          donoAtual: String(p.lead.assigned_user_id),
+          atrasoMin: p.atrasoMin,
+          origem: p.lead.source ? String(p.lead.source) : null,
+        }));
+      sombra.avaliadas = abandonadas.length;
+
+      if (abandonadas.length > 0) {
+        const organizationId = String((pendentes[0] ?? acervoAbandonado[0]).lead.organization_id);
+        // A carga vem do banco, não de estimativa: quem decide destino precisa
+        // olhar quem está efetivamente atendendo, e "carteira menor" não é a
+        // mesma coisa que "menos leads paradas".
+        const [perfis, carteira] = await Promise.all([
+          admin.from("profiles").select("id,name").eq("organization_id", organizationId).eq("active", true),
+          admin.from("leads").select("assigned_user_id,first_contacted_at,status").eq("organization_id", organizationId)
+            .not("assigned_user_id", "is", null)
+            .not("status", "in", "(ganho,perdido,arquivado,GANHO,PERDIDO,ARQUIVADO)"),
+        ]);
+        const porCorretor = new Map<string, { emAberto: number; semPrimeiroContato: number }>();
+        for (const linha of carteira.data ?? []) {
+          const dono = String((linha as { assigned_user_id: string }).assigned_user_id);
+          const atual = porCorretor.get(dono) ?? { emAberto: 0, semPrimeiroContato: 0 };
+          atual.emAberto += 1;
+          if (!(linha as { first_contacted_at: string | null }).first_contacted_at) atual.semPrimeiroContato += 1;
+          porCorretor.set(dono, atual);
+        }
+        const corretores = (perfis.data ?? []).map((perfil) => {
+          const p = perfil as { id: string; name: string | null };
+          const carga = porCorretor.get(p.id) ?? { emAberto: 0, semPrimeiroContato: 0 };
+          return { brokerId: p.id, nome: p.name, ...carga };
+        });
+
+        // ── IDEMPOTÊNCIA: este worker roda de 5 em 5 minutos ────────────────
+        //
+        // Sem esta guarda, as mesmas 20 leads paradas gerariam 20 registros por
+        // execução — 5.760 linhas por dia sobre as MESMAS 20 leads. A
+        // comparação recomendação × decisão humana viraria ruído em uma tarde, e
+        // a evidência que justifica sair da sombra ficaria enterrada.
+        //
+        // A régua é "recomendação ainda pendente": enquanto ninguém decidiu
+        // (`decisao_humana` nula), a recomendação continua valendo e não se
+        // repete. Depois de decidida, uma lead que volte a ser abandonada gera
+        // registro novo — que é o caso legítimo de recomendar de novo.
+        const jaEmSombra = new Set<string>();
+        const pendentesEmSombra = await admin
+          .from("ai_shadow_decisions")
+          .select("entidade_id")
+          .eq("organization_id", organizationId)
+          .eq("agent", "sla-primeiro-contato")
+          .eq("acao", "redistribuir_lead")
+          .is("decisao_humana", null)
+          .limit(2000);
+        for (const linha of pendentesEmSombra.data ?? []) {
+          const id = (linha as { entidade_id: string | null }).entidade_id;
+          if (id) jaEmSombra.add(id);
+        }
+
+        // O teto é da FILA PENDENTE, não da execução. Com "20 por execução" e
+        // deduplicação por lead, o worker de 5 em 5 minutos ainda escreveria 20
+        // linhas novas a cada rodada até cobrir as 358 — 358 recomendações que
+        // ninguém pediu, empilhadas em 90 minutos. Com o teto na fila, o
+        // sistema mantém 20 esperando decisão e só repõe quando alguém decide.
+        const vagasNaFila = Math.max(0, TETO_DE_RECOMENDACOES - jaEmSombra.size);
+        const plano = vagasNaFila === 0
+          ? { recomendacoes: [], foraDoTeto: 0, porqueVazio: `${jaEmSombra.size} recomendação(ões) já esperam decisão humana. A fila só repõe quando alguém decidir — empilhar mais transformaria evidência em ruído.` }
+          : recomendarRedistribuicao(
+              abandonadas.filter((lead) => !jaEmSombra.has(lead.id)),
+              corretores,
+              { teto: vagasNaFila },
+            );
+        sombra.jaRecomendadas = jaEmSombra.size;
+        sombra.foraDoTeto = plano.foraDoTeto;
+        sombra.porqueVazio = plano.porqueVazio;
+
+        for (const item of plano.recomendacoes) {
+          const registro = await registrarEmSombra({
+            organizationId,
+            agente: "sla-primeiro-contato",
+            acao: "redistribuir_lead",
+            preparado: {
+              deQuem: item.deQuem, paraQuem: item.paraQuem, paraQuemNome: item.paraQuemNome,
+              atrasoMin: item.atrasoMin, porque: item.porque,
+            },
+            recomendacao: item.recomendacao,
+            entidade: { tipo: "lead", id: item.leadId },
+          });
+          sombra.registradas += 1;
+          if (registro.retido) sombra.retidas += 1;
+        }
+      }
+    } catch (erro) {
+      // A sombra é EVIDÊNCIA, não proteção. Perder a evidência é ruim; derrubar
+      // o vigia de SLA por causa dela seria trocar o essencial pelo acessório.
+      logger.warn("crm.sla_sombra_de_redistribuicao_falhou", {
+        reason: erro instanceof Error ? erro.message : String(erro),
+      });
+    }
+
     const semDono = pendentes.filter((p) => !p.lead.assigned_user_id).length;
     logger.info("crm.first_contact_sla_worker_completed", {
       avaliadas: leads.data?.length ?? 0,
@@ -267,10 +413,17 @@ export async function POST(request: Request) {
         acervoAntigo: foraDaJanela
           ? `${foraDaJanela} lead(s) vencidas há mais de ${Math.round(LIMITE_DE_RECUPERACAO_MIN / 60)}h não viraram tarefa de SLA: passaram do ponto de recuperação por velocidade e precisam de campanha de reativação.`
           : null,
+        // A bandeira deixou de ser decorativa: hoje ela decide se a
+        // recomendação SERIA executada — e o Shadow Mode ainda retém, porque
+        // `redistribuir_lead` está na lista de ações retidas. Duas guardas
+        // independentes, e a de baixo não depende de configuração.
         reatribuicao: process.env.ATLAS_SLA_AUTO_REASSIGN === "true"
-          ? "habilitada por ambiente, mas ainda não implementada — exige regra de distribuição aprovada"
-          : "desligada: reatribuir por SLA é ação A2 e exige regra aprovada",
+          ? `bandeira LIGADA, e ainda assim nada foi reatribuído: o Shadow Mode reteve ${sombra.retidas} de ${sombra.registradas} recomendação(ões). Sair da sombra exige tirar "redistribuir_lead" das ações retidas depois de olhar a comparação.`
+          : "bandeira desligada: a recomendação é calculada e REGISTRADA em sombra, e nada é reatribuído.",
       },
+      // O que a sombra viu. `foraDoTeto` existe para o teto não se ler como
+      // "cobrimos tudo": corte silencioso é a forma mais educada de mentir.
+      sombraDeRedistribuicao: sombra,
     });
   } catch (erro) {
     logger.error("crm.first_contact_sla_worker_failed", erro);
