@@ -107,7 +107,16 @@ if (!build) {
 }
 
 if (dados.migrations?.medido === true && dados.migrations.emDia === false) {
-  avisos.push(`migrations atrás: banco em ${dados.migrations.topoDoBanco}, repositório em ${dados.migrations.topoDoRepo}`);
+  // Os nomes destes campos mudaram quando a comparação passou a ser por NOME em
+  // vez de por versão (ver 20260731030000). Este aviso ficou lendo os campos
+  // antigos e imprimia "banco em undefined, repositório em undefined" — um aviso
+  // que não informa é ruído, e ruído treina a ignorar o aviso seguinte.
+  const m = dados.migrations;
+  const amostra = (m.faltando ?? []).slice(0, 3).join(", ");
+  avisos.push(
+    `migrations: ${m.faltandoTotal ?? "?"} do repositório (${m.noRepo ?? "?"}) não constam aplicadas — ` +
+      `o banco tem ${m.aplicadasNoBanco ?? "?"} registradas${amostra ? `. Ex.: ${amostra}` : ""}`,
+  );
 }
 if (dados.filas?.medido === true && dados.filas.precisaDeAtencao) {
   avisos.push(`fila: ${dados.filas.motivo}`);
