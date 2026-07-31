@@ -772,7 +772,27 @@ export default function LeadDetailPage() {
       {/* ── Cartão de identidade: único lugar da página com nome, status,
           temperatura, score, contatos e dono. Nenhuma seção abaixo repete. ── */}
       <section id="lead-overview" className="scroll-mt-28 [perspective:1400px]">
-        <TiltShell maxDeg={2} className="cc6-reveal cc6-panel p-6 sm:p-7">
+        {/* ── A ORDEM DA FICHA SEGUE O QUE O CORRETOR FAZ, NÃO O ORGANOGRAMA
+            DO PRODUTO ────────────────────────────────────────────────────────
+
+            Ele abre esta tela para FALAR com alguém. A sequência é a da ligação:
+
+              -4  quem é      identidade, etapa, score
+              -3  o que fazer o gesto ("Ligar agora", "Ver imóveis")
+              -2  o que PERGUNTAR   a qualificação guiada, com respostas de 1
+                                    clique — é a IA trabalhando DURANTE a
+                                    conversa, não um relatório depois dela
+              -1  o que anotar      os dados do cliente
+               0  o resto           análise de apoio, na ordem do DOM
+
+            MEDIDO antes: a ficha tinha 3.443px (3,8 telas) e o nome do cliente
+            começava em 2.931px. A primeira correção trouxe o formulário para
+            438px — e DEIXOU O CABEÇALHO ÓRFÃO em 1.759px, no meio da ficha.
+            Regressão minha, achada medindo a produção depois de publicar.
+
+            `order` e não mover marcação: já quebrei o aninhamento uma vez
+            tentando mover 143 linhas. Reverter isto é apagar uma classe. */}
+        <TiltShell maxDeg={2} className="order-[-4] cc6-reveal cc6-panel p-6 sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -1074,7 +1094,7 @@ export default function LeadDetailPage() {
       {dataQuality?.questions.length ? (
         <section
           data-phase="30-data-gaps"
-          className="cc6-reveal cc6-panel p-5 sm:p-6"
+          className="order-[-2] cc6-reveal cc6-panel p-5 sm:p-6"
           style={{ animationDelay: "60ms" }}
         >
           <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -1160,7 +1180,7 @@ export default function LeadDetailPage() {
       ) : dataQuality?.status === "complete" ? (
         <div
           data-phase="30-data-gaps"
-          className="cc6-panel-quiet p-4 text-sm leading-6 text-[var(--atlas-texto-medio)]"
+          className="order-[-2] cc6-panel-quiet p-4 text-sm leading-6 text-[var(--atlas-texto-medio)]"
         >
           <span className="cc6-ok font-medium">Perfil comercial completo.</span>{" "}
           Confirme apenas mudanças naturais na próxima conversa.
@@ -1252,7 +1272,7 @@ export default function LeadDetailPage() {
           que já vivem na barra operacional. */}
       {contactBriefing ? (
         <section
-          className="cc6-reveal cc6-panel-quiet p-5 sm:p-6"
+          className="order-[-2] cc6-reveal cc6-panel-quiet p-5 sm:p-6"
           style={{ animationDelay: "160ms" }}
         >
           <p className="cc6-eyebrow">Briefing antes do contato</p>

@@ -3350,7 +3350,7 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
      flex-col para que o formulário do cliente pudesse subir — e sem isto ELE
      passaria na frente da barra, que é o único bloco que deve mesmo abrir a
      tela. O componente não repassa `className`, então a ordem vem daqui. */
-  order: -2;
+  order: -3;
   position: sticky;
   z-index: 20;
   top: calc(var(--atlas-topbar-height) + 10px);
