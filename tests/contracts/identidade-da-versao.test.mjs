@@ -121,3 +121,11 @@ test("release.json está declarado para substituição do git", () => {
   assert.match(attrs, /release\.json\s+export-subst/,
     "sem `export-subst` o marcador nunca é substituído e o artefato fica sem identidade");
 });
+
+test("o comentário avisa que environmentCommit é assado no BUILD, não lido em runtime", () => {
+  // Provado executando: reconstruí o mesmo pacote com ATLAS_BUILD_COMMIT=935fe0e9
+  // e a rota respondeu artifactCommit=41534b95, environmentCommit=935fe0e9,
+  // commitsMatch=false, commit=null. Trocar a variável DEPOIS do build não muda
+  // nada — quem não souber disso vai reiniciar o servidor achando que corrigiu.
+  assert.match(rota, /assado no bundle durante o|reconstruir/i);
+});

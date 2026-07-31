@@ -28,7 +28,12 @@ export const dynamic = "force-dynamic";
  *   `artifactCommit` ..... vem de `release.json`, gravado pelo **git** na hora
  *                          de montar o pacote (`export-subst`). Ninguém digita.
  *   `environmentCommit` .. vem de `ATLAS_BUILD_COMMIT`, digitado por gente no
- *                          painel da hospedagem.
+ *                          painel da hospedagem — e **assado no bundle durante o
+ *                          build**, não lido em runtime. Trocar a variável e
+ *                          reiniciar não muda este campo; é preciso reconstruir.
+ *                          Foi exatamente assim que o incidente nasceu: o painel
+ *                          tinha `935fe0e9` quando o pacote `a3379359` foi
+ *                          construído, e o build assou o valor errado.
  *
  * `identidadeConfiavel` só é `true` quando as duas existem **e concordam**.
  *
