@@ -3362,14 +3362,37 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+/* ── A FRASE MAIS IMPORTANTE DA TELA ESTAVA SENDO CORTADA ─────────────────
+   Medido no navegador, com a barra a 1440px: esta caixa tem 389px e a altura
+   renderizada era 18px — UMA linha — para uma próxima ação de 140 caracteres.
+   `white-space: nowrap` cabia ~45 caracteres e mandava o resto para as
+   reticências. O corretor lia "Retornar a ligação de Maria Aparecida Go…" e
+   não ficava sabendo sobre O QUÊ.
+
+   É o texto que responde "faça agora" — se ele não couber, a barra inteira
+   perde a razão de existir.
+
+   Duas linhas em vez de uma: o `nowrap` estava ali para a barra não crescer
+   sem limite, e esse medo agora tem uma resposta melhor — a própria barra é
+   limitada a 40vh e rola por dentro. O clamp mantém a altura previsível sem
+   esconder a informação. */
 .atlas-lead-next-action strong {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
   margin: 3px 0;
-  color: #e0f2fe;
+  color: var(--atlas-texto-forte, #e0f2fe);
   font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  /* Declarado, não presumido. Medido no navegador: com a regra antiga ainda
+     na página, `-webkit-line-clamp: 2` chegou e mesmo assim rendeu UMA linha
+     — porque `white-space: nowrap` continuava vindo de outro lugar e o clamp
+     não tem como quebrar linha que a cascata proibiu. Regra que depende da
+     ausência de outra é regra que funciona por sorte. */
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .atlas-lead-jump-nav,
 .atlas-lead-operational-actions {
