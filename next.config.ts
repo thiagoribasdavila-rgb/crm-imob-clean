@@ -77,6 +77,7 @@ const nextConfig: NextConfig = {
     // rodar um build de verdade e conferir a resposta do servidor construído —
     // ler o código dos dois arquivos não teria mostrado a lacuna entre eles.
     ATLAS_BUILD_MIGRATIONS: process.env.ATLAS_BUILD_MIGRATIONS ?? "",
+    ATLAS_BUILD_DEPLOY_ID: process.env.ATLAS_BUILD_DEPLOY_ID ?? "",
   },
   async headers() {
     return [

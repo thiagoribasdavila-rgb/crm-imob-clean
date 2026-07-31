@@ -6,6 +6,7 @@ import { lerEvidenciaDeProvedores } from "@/lib/ai/prontidao-generativa";
 import { defeitosDeFormaDoAmbiente } from "@/lib/ai/model-profiles";
 import { avaliarAgendador } from "@/lib/integrations/agendador-parado";
 import { outboxPausado } from "@/app/api/v2/outbox/process/route";
+import { avaliarProntidao, EXPLICACAO_DO_ESTADO } from "@/lib/integrations/estado-da-prontidao";
 
 export const dynamic = "force-dynamic";
 
@@ -210,9 +211,42 @@ export async function GET(request: NextRequest) {
     }
   })();
 
+  /**
+   * ── O ESTADO, COM PRECEDÊNCIA EXPLÍCITA ───────────────────────────────────
+   *
+   * Antes, a resposta trazia um booleano e uma lista de alertas. Isso juntava
+   * coisas que exigem reações OPOSTAS: pausa intencional, agendador morto,
+   * configuração ausente e leitura que falhou produziam a mesma tela.
+   *
+   * A regra que decide tudo: PAUSA VENCE PARADO. Um sistema pausado acumula fila
+   * por construção — se "parado" tivesse precedência, toda pausa viraria
+   * incidente em minutos, e alerta que grita sempre é alerta que ninguém lê.
+   *
+   * A decisão vive em `lib/integrations/estado-da-prontidao.ts`, exercitada nos
+   * seis estados e nas quatro precedências por contrato.
+   */
+  const veredito = avaliarProntidao({
+    bancoOk: checks.database?.ok !== false,
+    segredoDoCronConfigurado: Boolean(agendamento.segredoConfigurado),
+    pausada: outboxPausado().pausado,
+    filaMedida: filas.medido === true,
+    itensComFalha: filas.medido === true ? (filas.porEstado?.failed ?? 0) + (filas.porEstado?.dead_letter ?? 0) : 0,
+    agendadorMedido: agendamento.medido === true,
+    agendadorParado: agendamento.medido === true && "parado" in agendamento && agendamento.parado === true,
+  });
+
   const data = {
     service: "atlas-api-platform",
+    /**
+     * `status` continua como estava, para não quebrar quem já consome. O campo
+     * novo `estado` é o que diz a verdade com granularidade — e é ele que a tela
+     * deve ler, porque `ready: false` não distingue pausa de pane.
+     */
     status: ready ? "ready" : "not_ready",
+    estado: veredito.estado,
+    estadoMotivo: veredito.motivo,
+    estadoExigeAcao: veredito.exigeAcao,
+    estadoExplicacao: EXPLICACAO_DO_ESTADO[veredito.estado],
     latencyMs: Date.now() - startedAt,
     checks,
     integrations,
@@ -270,6 +304,7 @@ export async function GET(request: NextRequest) {
       commit: process.env.ATLAS_BUILD_COMMIT || null,
       branch: process.env.ATLAS_BUILD_BRANCH || null,
       construidoEm: process.env.ATLAS_BUILD_TIME || null,
+      deployId: process.env.ATLAS_BUILD_DEPLOY_ID || null,
       ambiente: process.env.ATLAS_ENV || process.env.NODE_ENV || null,
       motivo:
         process.env.ATLAS_BUILD_COMMIT

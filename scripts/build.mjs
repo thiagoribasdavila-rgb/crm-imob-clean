@@ -64,6 +64,16 @@ function descobrirProcedencia() {
     ATLAS_BUILD_BRANCH: process.env.ATLAS_BUILD_BRANCH || gitOu(["rev-parse", "--abbrev-ref", "HEAD"]),
     ATLAS_BUILD_TIME: process.env.ATLAS_BUILD_TIME || new Date().toISOString(),
     ATLAS_BUILD_MIGRATIONS: process.env.ATLAS_BUILD_MIGRATIONS || topoDeMigration,
+    /**
+     * Identificador do DEPLOY, não do commit. Dois builds do mesmo commit são
+     * artefatos diferentes — se um deles subiu com `.env` diferente ou num
+     * momento diferente, "o commit é o mesmo" não basta para explicar uma
+     * divergência de comportamento. O id é derivado do horário do build, que já é
+     * único por artefato, sem inventar aleatoriedade que quebraria o resume.
+     */
+    ATLAS_BUILD_DEPLOY_ID:
+      process.env.ATLAS_BUILD_DEPLOY_ID ||
+      `d-${(process.env.ATLAS_BUILD_TIME || new Date().toISOString()).replace(/[-:.TZ]/g, "").slice(0, 14)}`,
   };
   // Árvore suja significa que o que está no ar não corresponde a NENHUM commit —
   // e é exatamente essa a situação que faz a pergunta "qual versão está no ar?"
