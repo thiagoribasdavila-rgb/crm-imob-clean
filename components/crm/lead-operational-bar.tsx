@@ -38,14 +38,7 @@ export function LeadOperationalBar({
   firstContactSlot,
   metaConsentSlot,
 }: LeadOperationalBarProps) {
-  const activities = [
-    { label: "Mensagem", href: `/leads/${leadId}/messages`, icon: "↗" },
-    { label: "Ligação", href: `/leads/${leadId}/calls`, icon: "◌" },
-    { label: "Tarefa", href: `/leads/${leadId}/tasks`, icon: "✓" },
-    { label: "Visita", href: `/leads/${leadId}/schedule`, icon: "□" },
-    { label: "Nota", href: `/leads/${leadId}/notes`, icon: "+" },
-    { label: "Proposta", href: `/leads/${leadId}/simulation`, icon: "◇" },
-  ] as const;
+  
 
   const destinoDoGesto = caminhoDoGesto(leadId, proximaAcao);
 
@@ -90,15 +83,15 @@ export function LeadOperationalBar({
         <a href="#historico">Histórico</a>
         <a href="#matching">Imóveis</a>
       </nav>
-      <nav className="atlas-lead-activity-composer" aria-label={`Registrar atividade para ${leadName}`}>
-        <span className="atlas-lead-activity-label">Registrar</span>
-        {activities.map((activity) => (
-          <Link key={activity.href} href={activity.href} title={`Registrar ${activity.label.toLowerCase()}`}>
-            <span aria-hidden="true">{activity.icon}</span>
-            {activity.label}
-          </Link>
-        ))}
-      </nav>
+      {/* ── O COMPOSITOR DE ATIVIDADES SAIU DAQUI ─────────────────────────
+            MEDIDO: 44px e 6 links — Mensagem, Ligação, Tarefa, Visita, Nota,
+            Proposta — repetindo o que o formulário "Acompanhamento do contato"
+            faz logo abaixo, agora a uma tela de distância em vez de três.
+
+            Duas portas para a mesma coisa, na mesma tela, não é conveniência: é
+            o corretor tendo que escolher qual usar, e o produto tendo que manter
+            as duas em pé. A barra fica com o que só ela tem — o gesto do momento
+            e as ações de contato imediato. */}
       <div className="atlas-lead-operational-actions">
         {phone ? (
           <a href={`tel:${phone}`} className="atlas-button-secondary">

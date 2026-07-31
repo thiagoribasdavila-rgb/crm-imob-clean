@@ -3368,8 +3368,35 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
   backdrop-filter: blur(20px) saturate(140%);
 }
 .atlas-lead-next-action {
+  /* ── DE PARÁGRAFO PARA LINHA ────────────────────────────────────────────
+     MEDIDO na produção: este bloco sozinho ocupava 190px dos 360 da barra —
+     mais da metade — para um rótulo, uma frase de três linhas e uma linha de
+     contadores. Empilhado, cada pedaço ganhava uma faixa própria.
+
+     Em linha: o rótulo e o BOTÃO ficam juntos à esquerda (é o que se faz), a
+     frase ocupa o espaço restante numa linha só, os contadores fecham. A
+     informação é a mesma; o que sai é o empilhamento.
+
+     `align-items: center` alinha o botão com a frase — sem isso o botão de
+     44px estica a linha inteira para a altura dele. */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
   min-width: 0;
 }
+/* O rótulo "Faça agora" para de ocupar uma faixa inteira: vira etiqueta ao lado. */
+.atlas-lead-next-action > span { flex: 0 0 auto; }
+.atlas-lead-next-action > .atlas-lead-gesto { flex: 0 0 auto; margin: 0; }
+/* A frase toma o resto da linha e é cortada em UMA — o texto inteiro fica no
+   `title`, e quem precisa do detalhe já tem o gesto ao lado para agir. */
+.atlas-lead-next-action > strong {
+  flex: 1 1 14rem;
+  min-width: 0;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.atlas-lead-next-action > small { flex: 1 1 100%; }
 .atlas-lead-next-action span,
 .atlas-lead-next-action small {
   display: block;

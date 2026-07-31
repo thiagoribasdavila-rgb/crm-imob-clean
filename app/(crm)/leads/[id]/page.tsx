@@ -488,7 +488,26 @@ export default function LeadDetailPage() {
         body: JSON.stringify(lead),
       });
       setLead(data.lead);
-      setMessage("Lead atualizado e registrado na timeline.");
+      /**
+       * ── O LEMBRETE SAI DA TELA E VOLTA NA HORA CERTA ───────────────────
+       *
+       * A instrução do "Faça agora" ocupava 190px no topo o tempo todo — e o
+       * corretor a lia uma vez, no segundo em que abriu a ficha, e depois
+       * convivia com ela atrapalhando a visão.
+       *
+       * Salvar é o momento em que ele levanta a cabeça do formulário. É aí que
+       * lembrar do passo seguinte custa nada e serve para alguma coisa.
+       *
+       * Só lembra do que ainda NÃO foi feito: se ele acabou de registrar a
+       * primeira conversa, cobrar "faça o primeiro contato" seria o produto não
+       * prestando atenção no que a pessoa acabou de fazer.
+       */
+      const passo = intelligence.proximaAcao;
+      setMessage(
+        passo.urgente
+          ? `Alterações salvas. Lembrete: ${passo.instrucao}`
+          : "Lead atualizado e registrado na timeline.",
+      );
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Falha ao salvar.");
