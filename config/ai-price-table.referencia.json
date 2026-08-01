@@ -1,0 +1,33 @@
+{
+  "$origem": [
+    "Tabela de tarifas de REFERÊNCIA, derivada de .env.production.example (linha",
+    "comentada 'Cole como está'), que registra a data da conferência e as fontes.",
+    "Este arquivo NÃO é autoridade de preço e NÃO é lido em tempo de execução:",
+    "`lib/ai/provider-router.ts` lê apenas process.env.ATLAS_AI_PRICE_TABLE.",
+    "",
+    "Existe por um motivo só: o CI precisa de um valor válido e determinístico para",
+    "que `ai:pricing:check` MEÇA de verdade. Sem ele o portão reprovava com",
+    "'ATLAS_AI_PRICE_TABLE ausente' — um vermelho real, mas causado pela ausência",
+    "de configuração do CI, não por defeito do código.",
+    "",
+    "PRODUÇÃO NÃO USA ESTE ARQUIVO. O operador declara a tarifa vigente na variável",
+    "de ambiente ATLAS_AI_PRICE_TABLE do servidor (ver .env.production.example).",
+    "Modelo sem tarifa grava custo NULO e o painel de FinOps mostra zero parecendo",
+    "saudável — por isso a ausência continua reprovando, aqui e lá."
+  ],
+  "tarifas": {
+    "openai/gpt-5.6-luna": {
+      "input": 1,
+      "cachedInput": 0.1,
+      "output": 6
+    },
+    "anthropic/claude-sonnet-4-5": {
+      "input": 3,
+      "output": 15
+    },
+    "perplexity/sonar": {
+      "input": 1,
+      "output": 1
+    }
+  }
+}

@@ -41,6 +41,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Tarifa de IA para o CI MEDIR de verdade.
+      #
+      # `ai:pricing:check` reprovava com "ATLAS_AI_PRICE_TABLE ausente. Todo
+      # consumo de IA será gravado com custo NULO." — vermelho legítimo, mas
+      # causado por ausência de configuração NO CI, não por defeito do código.
+      #
+      # O valor NÃO é segredo (tarifa pública de provedor) e NÃO é digitado
+      # aqui: sai de config/ai-price-table.referencia.json, versionado e
+      # derivado de .env.production.example, que registra a data da conferência.
+      #
+      # Isto não afrouxa o portão. Ausência e JSON inválido continuam
+      # reprovando, aqui e em produção — `contrato: tarifa de IA` prova os dois
+      # casos. Produção declara a tarifa vigente na variável de ambiente do
+      # servidor; este arquivo nunca é lido em tempo de execução.
+      - name: Tarifa de IA (referência versionada)
+        run: |
+          set -euo pipefail
+          TABELA="$(node -e 'process.stdout.write(JSON.stringify(require("./config/ai-price-table.referencia.json").tarifas))')"
+          test -n "$TABELA"
+          echo "ATLAS_AI_PRICE_TABLE=$TABELA" >> "$GITHUB_ENV"
+
       - name: Generate Prisma client
         run: npm run prisma:generate
 
