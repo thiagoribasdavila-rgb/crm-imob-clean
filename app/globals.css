@@ -3199,6 +3199,50 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
 .atlas-app-shell textarea {
   min-height: 112px;
 }
+/* ── O CAMPO PRETO NO PRETO ────────────────────────────────────────────────
+   Medido em 01/08/2026 na produção, tema claro, em `/leads/new`: os ONZE
+   campos do formulário devolviam contraste **1,06**. Texto `rgb(11,18,32)`
+   sobre fundo `rgba(5,10,20,0.7)` — o mínimo legível é 4,5. O corretor
+   digitava e não via nada.
+
+   A causa é a regra logo acima: fundo e borda CRAVADOS, sem contraparte no
+   tema claro. O `bg-[#0b1224]` que o formulário aplicava nem chegava a
+   valer — regra unlayered de globals vence utilitário do Tailwind.
+
+   Alcance: 63 páginas do CRM e 11 componentes têm campo de formulário; 14
+   telas têm `<thead>`. Todas herdavam o escuro.
+
+   Por que o conserto é aqui e não na regra base: `--atlas-surface-subtle` só
+   existe no bloco claro (no escuro é indefinido, e `var()` sem fallback
+   apagaria o fundo), e `--atlas-border` no escuro é `rgba(226,232,240,.42)`,
+   três vezes mais forte que a borda atual do campo. Trocar a base mudaria o
+   tema escuro, que está certo. O override claro corrige só o lado quebrado.
+
+   E ele é GERAL de propósito. Já existiam remendos para
+   `.atlas-pipeline-page` e `.atlas-kanban-move-row` — o comentário oito
+   linhas acima desta regra já avisava que "remendo repetido é a forma que um
+   defeito toma quando ninguém corrige a origem". Eram 111 blocos
+   `data-theme="light"` neste arquivo. Este fecha a porta para as outras 61
+   páginas de uma vez. ── */
+:root[data-theme="light"] .atlas-app-shell input,
+:root[data-theme="light"] .atlas-app-shell select,
+:root[data-theme="light"] .atlas-app-shell textarea {
+  border-color: var(--atlas-border);
+  background: var(--atlas-surface);
+  box-shadow: none;
+}
+:root[data-theme="light"] .atlas-app-shell input::placeholder,
+:root[data-theme="light"] .atlas-app-shell textarea::placeholder {
+  color: var(--atlas-texto-fraco);
+}
+/* `--atlas-texto-fraco` (#64748b) sobre `--atlas-surface-subtle` (#eef2f8) dá
+   4,24 — e o `contraste:check` reprovou esta regra na primeira execução, três
+   minutos depois de eu escrevê-la. Cabeçalho de tabela é rótulo: continua
+   discreto com `--atlas-texto-medio` (#334155), e sobe para 9,2. */
+:root[data-theme="light"] .atlas-app-shell thead th {
+  color: var(--atlas-texto-medio);
+  background: var(--atlas-surface-subtle);
+}
 .atlas-app-shell table {
   width: 100%;
   border-collapse: separate;

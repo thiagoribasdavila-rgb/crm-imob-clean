@@ -332,6 +332,7 @@
     "cor-cravada:check": "node scripts/check-cor-cravada.mjs",
     "texto-cortado:check": "node scripts/check-texto-cortado.mjs",
     "contraste:check": "node scripts/check-contraste.mjs",
+    "campo-legivel:check": "node scripts/check-campo-legivel.mjs",
     "lead-360-regressoes:check": "node scripts/check-lead-360-regressoes.mjs",
     "linguagem-visual:check": "node scripts/check-linguagem-visual.mjs",
     "asercao-fraca:check": "node scripts/check-asercao-fraca.mjs",

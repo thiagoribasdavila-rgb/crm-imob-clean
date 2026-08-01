@@ -22,9 +22,17 @@ const initialForm = {
 };
 
 /* CC-6: campo único do formulário — hairline, foco pelo acento (borda +
-   focus-visible), inválido em rose via aria-invalid já emitido pelos campos. */
+   focus-visible), inválido em rose via aria-invalid já emitido pelos campos.
+
+   O fundo azul-escuro cravado que morava aqui saiu: era cor cravada E era
+   inerte — a regra `.atlas-app-shell input` de globals.css é unlayered e vence
+   qualquer utilitário do Tailwind. Quem pinta o campo é ela, nos dois temas.
+
+   O literal não é citado aqui de propósito: `cor-cravada:check` conta o
+   arquivo inteiro, comentário incluído. Escrever o hex na explicação segurava
+   a catraca em 365 e escondia a própria melhoria. */
 const FIELD_CLASS =
-  "mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)] aria-[invalid=true]:border-[rgba(251,113,133,0.55)]";
+  "mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] px-3.5 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)] aria-[invalid=true]:border-[rgba(251,113,133,0.55)]";
 const LABEL_CLASS = "block text-xs text-[var(--atlas-texto-fraco)]";
 
 const TEMPERATURE_TONE: Record<string, "danger" | "warning" | "info"> = {
