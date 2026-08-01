@@ -1726,17 +1726,31 @@ export default function LeadDetailPage() {
                 aria-label="Etapa do lead"
                 onChange={(e) => setLead({ ...lead, status: e.target.value })}
               >
-                {[
-                  "novo",
-                  "contato",
-                  "qualificacao",
-                  "visita",
-                  "proposta",
-                  "contrato",
-                  "ganho",
-                  "perdido",
-                  "comprou_outro",
-                ].map((status) => (
+                {/* ── AS TRES ETAPAS DE FECHAMENTO SAIRAM DAQUI ──────────────
+                    Este seletor gravava `leads.status` pela rota da lead — sem
+                    exigir motivo e sem registrar movimento em
+                    `pipeline_stage_moves`. O proprio codigo da rota admite:
+                    "A Lead 360 nao coleta motivo estruturado de descarte."
+
+                    Ou seja: fechar por aqui fazia a lead sumir do funil sem
+                    deixar rastro. Medido em 01/08/2026: dos 144 descartes
+                    registrados, os que passaram por este caminho nao aparecem
+                    em lugar nenhum — nao ha como saber quantos foram.
+
+                    So dava para tirar porque a alternativa passou a existir no
+                    mesmo dia: descarte com motivo na LINHA da lista, alem do
+                    Kanban. Fechar sem oferecer onde seria trocar perda de dado
+                    por corretor sem saida. ── */}
+                {(() => {
+                  const abertas = ["novo", "contato", "qualificacao", "visita", "proposta", "contrato"];
+                  /* Se a lead JA esta fechada, a etapa dela precisa aparecer —
+                     senao o <select> exibiria "novo" para uma lead perdida e
+                     mentiria sobre o estado. Ela entra so para ser LIDA: mudar
+                     para outra coisa daqui continua possivel, o que nao ha e
+                     como fechar por este caminho. */
+                  const atual = lead.status ?? "novo";
+                  return abertas.includes(atual) ? abertas : [...abertas, atual];
+                })().map((status) => (
                   <option key={status} value={status}>
                     {status === "comprou_outro"
                       ? "Comprou em outro lugar"

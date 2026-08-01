@@ -39,7 +39,18 @@ const FECHAMENTO = ["perdido", "ganho", "comprou_outro"];
    `leads.status` pela rota da lead. Enquanto ele viver, esta é a lista de quem
    pode fechar lead sem passar pela rota canônica. Encolher esta lista é
    progresso; aumentá-la exige justificar. */
-const CAMINHO_CRU_CONHECIDO = ["app/(crm)/leads/[id]/page.tsx"];
+/* ── A LISTA ENCOLHEU PARA ZERO EM 01/08/2026 ─────────────────────────────
+   A ficha do cliente era o unico caminho cru: um <select> que gravava
+   `leads.status` pela rota da lead, sem exigir motivo e sem registrar
+   movimento. As tres etapas de fechamento sairam dele.
+
+   So deu para tirar porque a alternativa nasceu no mesmo dia — descarte com
+   motivo na LINHA da lista, alem do Kanban. Fechar o caminho sem oferecer
+   outro seria trocar perda de dado por corretor sem saida.
+
+   Se esta lista voltar a crescer, alguem reabriu um caminho que perde o motivo
+   do descarte. */
+const CAMINHO_CRU_CONHECIDO = [];
 
 const falhas = [];
 const ok = [];
