@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { temAlvoDeToque, mediaAlcanca } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-039-agenda-time-workspace.json", "utf8"));
 const phaseThirtyEight = JSON.parse(fs.readFileSync("config/evolution-phase-038-task-execution-workspace.json", "utf8"));
@@ -80,7 +81,7 @@ const checks = [
   // Reconciliação CC-6: o Prettier quebrou "nenhum cliente é" entre linhas; a asserção aponta para
   // "nenhuma ação é concluída" + "contatado automaticamente", que seguem no aviso de não-automação.
   ["A Agenda não executa trabalho automaticamente", calendar.includes("nenhuma ação é concluída") && calendar.includes("contatado automaticamente") && config.executionPolicy.automaticTaskCompletion === false && config.executionPolicy.automaticVisitConfirmation === false && config.executionPolicy.automaticCustomerContact === false],
-  ["Layout possui responsividade, toque e movimento reduzido", styles.includes("/* Fase 039 — agenda temporal") && styles.includes(".atlas-calendar-period") && styles.includes("min-height: 44px") && styles.includes("@media (prefers-reduced-motion: reduce)")],
+  ["Layout possui responsividade, toque e movimento reduzido", temAlvoDeToque(styles, ".atlas-calendar", 44) && mediaAlcanca(styles, "prefers-reduced-motion: reduce", ".atlas-calendar")],
   ["Relatório registra limites e próxima fase", report.includes("não publica alegação de produtividade") && report.includes("Fase 040") && config.nextPhase.phase === 40],
   ["RBAC, tenant e rotas permanecem preservados", config.safetyPolicy.rbacPreserved === true && config.safetyPolicy.tenantIsolationPreserved === true && config.safetyPolicy.routesPreserved === true],
   ["Gate de homologação não foi contornado", phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false],

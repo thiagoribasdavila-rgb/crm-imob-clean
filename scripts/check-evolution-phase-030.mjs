@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { temAlvoDeToque } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-030-navigation-useful-empty-states.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -73,7 +74,11 @@ const checks = [
   ["Filtro e primeira configuração têm recuperação", criticalSource.includes("Limpar filtros") && criticalSource.includes("Criar lead") && criticalSource.includes("Cadastrar empreendimento") && criticalSource.includes("Abrir pipeline")],
   ["Rotina concluída e configuração pendente não se confundem", criticalSource.includes('reason="completed"') && criticalSource.includes('reason="not-configured"') && config.exitCriteria.completedAndConfigurationPendingAreDistinguished === true],
   ["Falha continua separada de vazio", atlasUi.includes("AtlasRecoverableError") && config.truthPolicy.emptyStateMayMaskFetchFailure === false && config.exitCriteria.failuresRemainRecoverableErrors === true],
-  ["Ações preservam alvo mínimo", styles.includes('.atlas-empty-state[data-has-action="true"]') && styles.includes("min-height: 44px") && config.accessibility.minimumActionTargetPx === 44],
+  ["Ações preservam alvo mínimo",
+    /* O `min-height: 44px` era conferido solto, longe da classe ao lado. Agora
+       o alvo é cobrado DENTRO da família do estado vazio com ação. */
+    temAlvoDeToque(styles, '.atlas-empty-state[data-has-action="true"]', config.accessibility.minimumActionTargetPx)
+    && config.accessibility.minimumActionTargetPx === 44],
   ["Cobertura estrutural não vira métrica inventada", config.structuralBaseline.runtimeOutcomesMeasured === false && config.truthPolicy.fakeRuntimeMetricPublished === false && config.truthPolicy.structuralCoverageIsRuntimeOutcomeProof === false],
   ["Relatório registra contrato, limite e próxima fase", report.includes("101 usos") && report.includes("oito superfícies") && report.includes("Falha não é estado vazio") && report.includes("Fase 031")],
   ["Rotas, RBAC e gate de homologação permanecem intactos", config.routeBehaviorChanged === false && config.safetyPolicy.rbacPreserved === true && config.exitCriteria.routeRemoved === false && phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false],

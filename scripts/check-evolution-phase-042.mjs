@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { temAlvoDeToque, mediaAlcanca } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-042-project-decision-workspace.json", "utf8"));
 const previous = JSON.parse(fs.readFileSync("config/evolution-phase-041-customer-relationship-workspace.json", "utf8"));
@@ -63,7 +64,7 @@ const checks = [
   ["API é somente leitura", !api.includes(".insert(") && !api.includes(".update(") && !api.includes(".delete(") && config.projectContract.readOnly === true],
   ["Gestão avançada fica progressivamente revelada", page.includes("<details") && page.includes("Mais gestão") && page.includes("Saúde das conexões") && config.informationHierarchy.managementActionsProgressivelyDisclosed === true],
   ["Busca, segmentos e recuperação permanecem", page.includes("Buscar projeto, incorporadora ou região") && page.includes('aria-pressed={segment === item.id}') && page.includes("Limpar filtros") && page.includes("AtlasRecoverableError")],
-  ["Layout preserva toque, celular e movimento reduzido", styles.includes("/* Fase 042 — Projetos") && styles.includes(".atlas-project-card") && styles.includes("min-height: 44px") && styles.includes("@media (prefers-reduced-motion: reduce)")],
+  ["Layout preserva toque, celular e movimento reduzido", temAlvoDeToque(styles, ".atlas-project", 44) && mediaAlcanca(styles, "prefers-reduced-motion: reduce", ".atlas-project")],
   ["Nenhuma decisão automática foi adicionada", page.includes("Nenhuma alteração é executada automaticamente") && config.executionPolicy.automaticProjectHomologation === false && config.executionPolicy.automaticCommercialDecision === false],
   ["Checkpoint especial fecha a Fase 047 e depois segue a cada cem fases", checkpoint.interval === 100 && checkpoint.specialCheckpoints.includes(47) && checkpoint.checkpoints.length === 20 && checkpoint.latestClosedCheckpoint === 47 && checkpoint.nextCheckpoint === 100 && packageScript.includes("isSpecialCheckpoint")],
   ["ZIP preserva versões e exclui dados privados", checkpoint.preservePreviousArtifacts === true && checkpoint.privateDataPolicy.envLocalIncluded === false && hostingerPackager.includes("rmSync(stage") && !hostingerPackager.includes("rmSync(outputRoot, { recursive: true")],

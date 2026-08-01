@@ -21,6 +21,7 @@
  * redirect permanente e é verificado como tal.
  */
 import fs from "node:fs";
+import { temAlvoDeToque } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-041-customer-relationship-workspace.json", "utf8"));
 const phaseForty = JSON.parse(fs.readFileSync("config/evolution-phase-040-activity-explainable-history.json", "utf8"));
@@ -76,7 +77,18 @@ const checks = [
   ["API é somente leitura e não devolve metadados brutos", !leadsApi.includes(".insert(") && !leadsApi.includes(".update(") && !leadsApi.includes(".delete(") && !leadsApi.includes("metadata:") && config.safetyPolicy.rawMetadataReturned === false],
   ["Cliente não consulta a carteira direto do navegador", !leads.includes('.from("leads")') && leads.includes("fetch(`/api/v1/crm/leads?${params}`") && config.structuralBaseline.directBrowserDatabaseQueriesAfter === 0],
   ["Nenhuma execução comercial automática foi adicionada", config.executionPolicy.automaticCustomerContact === false && config.executionPolicy.automaticReactivation === false && config.executionPolicy.automaticDecision === false],
-  ["Layout possui responsividade, toque e movimento reduzido", styles.includes("min-height: 44px") && styles.includes("@media (prefers-reduced-motion: reduce)")],
+  ["Layout possui responsividade, toque e movimento reduzido",
+    /* ── A ASERÇÃO ESTAVA APONTADA PARA A TELA ERRADA ──────────────────────
+       Duas strings genéricas, sem âncora nenhuma: `min-height: 44px` (45
+       ocorrências) e `@media (prefers-reduced-motion: reduce)` (15). Passava
+       sempre.
+
+       E ao procurar onde ancorá-la, o achado: `/customers` tem 43 linhas e é
+       um REDIRECT — "Clientes 360 morreu em 2026-07-29, aqui só resta a
+       porta", diz o próprio arquivo. Cobrar layout de uma porta não faz
+       sentido. A tela que herdou a carteira é `/leads`, e é a família dela
+       que precisa entregar o alvo. */
+    temAlvoDeToque(styles, ".atlas-leads", 44)],
   ["Relatório registra limites e próxima fase", report.includes("não publica alegação de produtividade") && report.includes("Fase 042") && config.nextPhase.phase === 42],
   ["RBAC, tenant, RLS e reativação foram preservados", config.safetyPolicy.rbacPreserved === true && config.safetyPolicy.tenantIsolationPreserved === true && config.safetyPolicy.hierarchicalRlsPreserved === true && config.safetyPolicy.reactivationGovernancePreserved === true],
   ["Gate de homologação não foi contornado", phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false],

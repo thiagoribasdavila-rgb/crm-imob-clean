@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { temAlvoDeToque } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-038-task-execution-workspace.json", "utf8"));
 const phaseThirtySeven = JSON.parse(fs.readFileSync("config/evolution-phase-037-pipeline-movement-workspace.json", "utf8"));
@@ -35,7 +36,7 @@ const checks = [
   ["API autenticada e escopo de tenant permanecem", taskApi.includes("requireAccessContext") && taskApi.includes("identity.access.organization.id") && taskApi.includes('.eq("organization_id"') && config.safetyPolicy.tenantIsolationPreserved === true && config.safetyPolicy.rbacPreserved === true],
   ["Nenhuma nova leitura de rede foi adicionada", (tasks.match(/fetch\("\/api\/v1\//g) || []).length === 4 && tasks.includes('fetch("/api/v1/tasks"') && tasks.includes('fetch("/api/v1/productivity/daily"') && config.structuralBaseline.newNetworkRequestAdded === false],
   ["Fila possui retorno acessível", tasks.includes('aria-live="polite"') && tasks.includes('aria-busy={loading}') && config.accessibility.queueUsesPoliteLiveRegion === true],
-  ["Alvos e layouts responsivos estão definidos", styles.includes(".atlas-task-item-actions :is(a, button)") && styles.includes("min-height: 44px") && styles.includes(".atlas-task-signal-grid") && config.accessibility.minimumNewTouchTargetPx === 44],
+  ["Alvos e layouts responsivos estão definidos", temAlvoDeToque(styles, ".atlas-task", config.accessibility.minimumNewTouchTargetPx) && config.accessibility.minimumNewTouchTargetPx === 44],
   // Reconciliação CC-6: a moldura anti-ranking foi reescrita — "sem ranking de pessoas" e
   // "Consolidado para coordenar apoio · sem ranking e sem atribuição". A equipe segue como apoio,
   // não avaliação/atribuição de desempenho.

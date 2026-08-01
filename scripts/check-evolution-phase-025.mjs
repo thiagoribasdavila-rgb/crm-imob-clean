@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import { temAlvoDeToque, familiaDeclara } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-025-navigation-information-compaction.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -55,8 +56,20 @@ const checks = [
   ["Busca global agrupa metadados", palette.includes("const showGroup = index === 0") && palette.includes("atlas-command-group-label")],
   ["Opções preservam categoria acessível", palette.includes("aria-label={`${command.label}, ${command.group}`}") && config.compactionChanges.commandPaletteMetadata.optionKeepsAccessibleGroupName === true],
   // O redesign global CC-6 (commit 9730415f) substituiu os px de compactação da Fase 025 pela grade do design system: grupo separado por margin-top:20px e seção com padding:0 10px 0 8px. O espaçamento governado continua explícito; guard re-apontado à realidade CC-6.
-  ["Espaçamento segue a grade governada do design system", styles.includes("margin-top: 20px") && styles.includes("padding: 0 10px 0 8px")],
-  ["Alvo mínimo de navegação foi preservado", styles.includes("min-height: 44px") && config.compactionChanges.touchTargets.minimumNavigationTargetPx === 44],
+  ["Espaçamento segue a grade governada do design system",
+    /* Antes: duas strings de espaçamento SOLTAS. Medido ao reapontar: elas
+       vivem em famílias DIFERENTES — `margin-top: 20px` em
+       `.atlas-command-actions` e `padding: 0 10px 0 8px` em
+       `.atlas-sidebar-section`. A asserção nomeava valores sem dizer de quem,
+       e passaria com os dois em qualquer regra do arquivo. */
+    familiaDeclara(styles, ".atlas-command-actions", "margin-top", "20px")
+    && familiaDeclara(styles, ".atlas-sidebar-section", "padding", "0 10px 0 8px")],
+  ["Alvo mínimo de navegação foi preservado",
+    /* `min-height: 44px` aparece 45 vezes no arquivo — a asserção antiga
+       passaria com a navegação inteira em 20px. O alvo de NAVEGAÇÃO mora na
+       família `.atlas-rail`, e é lá que ele é cobrado. */
+    temAlvoDeToque(styles, ".atlas-rail", config.compactionChanges.touchTargets.minimumNavigationTargetPx)
+    && config.compactionChanges.touchTargets.minimumNavigationTargetPx === 44],
   ["Dock móvel mantém catálogo governado", mobileDock.includes("getAtlasMobileNavigationForIdentity")],
   ["Nenhuma rota ou permissão foi removida", config.catalogPreservation.routesRemoved === 0 && config.catalogPreservation.permissionsChanged === false && config.safetyPolicy.rbacPreserved === true],
   ["Métrica comportamental não foi inventada", config.measurementPolicy.inventedBehaviorMetricAllowed === false && config.measurementPolicy.behavioralTelemetryStatus === "awaiting-runtime-telemetry"],
