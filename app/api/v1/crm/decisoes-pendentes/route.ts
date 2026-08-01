@@ -126,7 +126,8 @@ export async function POST(request: NextRequest) {
 
     const { data: aplicadas, error: erroAplicacao } = await admin
       .from("leads")
-      .update({ assigned_to: pendente.paraQuem, updated_at: new Date().toISOString() })
+      // As DUAS colunas de dono — esta rota é minha, e nasceu com o defeito.
+      .update({ assigned_to: pendente.paraQuem, assigned_user_id: pendente.paraQuem, updated_at: new Date().toISOString() })
       .eq("id", pendente.leadId)
       .eq("organization_id", organizationId)
       .select("id");

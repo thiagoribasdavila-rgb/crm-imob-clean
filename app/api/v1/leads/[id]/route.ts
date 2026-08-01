@@ -674,7 +674,10 @@ export async function POST(request: Request, context: RouteContext) {
         return NextResponse.json({ error: "Não foi possível aceitar a lead agora." }, { status: 409 });
       }
       if (!lead.assigned_user_id) {
-        await admin.from("leads").update({ assigned_user_id: identity.userId }).eq("id", id).eq("organization_id", identity.organizationId).is("assigned_user_id", null);
+        // As DUAS colunas de dono. Aceitar a lead gravando só uma deixava o
+        // corretor dono numa tela e a lead órfã na outra — logo depois de ele
+        // clicar em "assumir", que é o pior momento possível para duvidar.
+        await admin.from("leads").update({ assigned_to: identity.userId, assigned_user_id: identity.userId }).eq("id", id).eq("organization_id", identity.organizationId).is("assigned_user_id", null);
       }
       await recordLiveLeadEvent(admin, { organizationId: identity.organizationId, leadId: id, actorId: identity.userId, type: "assignment_accepted", title: "Responsabilidade aceita", description: "Lead assumida pelo corretor no Atlas." });
       return NextResponse.json({ reservation: { lead_id: id, broker_id: identity.userId, status: "accepted", accepted_at: new Date().toISOString() } });

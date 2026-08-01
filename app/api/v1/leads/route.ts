@@ -159,6 +159,16 @@ export async function POST(request: Request) {
         score: score.score,
         classificacao_ia: score.temperature,
         temperature: score.temperature,
+        // Mesmo caso do `score`/`score_ia` acima, agora na propriedade que mais
+        // importa: `assigned_to` e `assigned_user_id` são DUAS colunas para o
+        // mesmo dono, e rotas diferentes leem colunas diferentes. A criação
+        // gravava só `assigned_user_id`, então a lead nascia com dono numa tela
+        // e SEM DONO na outra.
+        //
+        // Medido no banco vivo em 01/08/2026, antes desta correção: 490 leads,
+        // 5 com dono em apenas UMA das colunas. Enquanto as duas existirem, as
+        // duas carregam o mesmo valor.
+        assigned_to: identity.userId,
         assigned_user_id: identity.userId,
         project_id: project?.id ?? null,
         project: project?.name ?? null,

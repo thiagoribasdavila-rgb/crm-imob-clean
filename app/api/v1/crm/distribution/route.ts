@@ -369,7 +369,9 @@ export async function POST(request: NextRequest) {
     if (!ids || !ids.length) continue;
     const { data: updated, error: updateError } = await admin
       .from("leads")
-      .update({ assigned_user_id: broker.id })
+      // As DUAS colunas de dono. Esta rota gravava só `assigned_user_id`, e a
+      // lead distribuída aparecia SEM DONO em toda tela que lê `assigned_to`.
+      .update({ assigned_to: broker.id, assigned_user_id: broker.id })
       .eq("organization_id", organizationId)
       .is("assigned_user_id", null)
       .in("id", ids)

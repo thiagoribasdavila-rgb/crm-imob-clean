@@ -128,6 +128,8 @@ export async function POST(request: NextRequest) {
         external_thread_id: threadId,
         status: "open",
         assigned_to: profileId,
+        // Duas colunas para o mesmo dono — ver check-dono-da-lead.mjs.
+        assigned_user_id: profileId,
         last_message_at: corpo?.enviadaEm ?? agora,
         unread_count: corpo?.direcao === "entrada" ? 1 : 0,
       })

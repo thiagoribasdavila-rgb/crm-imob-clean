@@ -827,6 +827,11 @@ export async function POST(request: Request) {
               status: "novo",
             }).score,
             assigned_to: ownership?.ownerId ?? null,
+            // O mesmo cuidado da ingestão da Meta, 190 linhas acima, que já
+            // explica por quê: gravar só a canônica produz lead com dono no
+            // banco e ÓRFÃ na tela, e o vigia de SLA nem cobra o prazo dela.
+            // O caminho do PORTAL nasceu sem esse cuidado e ficou assim.
+            assigned_user_id: ownership?.ownerId ?? null,
             metadata: { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id, listingId: portalEvent.listing_id, sourceName: sourceRow?.name || null, message: contact.message || null }, ...(atribuicaoGoogle ? { google: atribuicaoGoogle } : {}), distribution: ownership ? { tier: ownership.tier, reason: ownership.reason } : undefined },
             created_at: now,
             next_action_at: new Date(Date.now() + 5 * 60_000).toISOString(),

@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       let lead = existingMap.get(item.phone);
       let reason: string | null = blocked.has(item.phone) ? "opt_out" : qualityMap.has(item.phone) ? "invalid_phone_history" : (occurrences.get(item.phone) || 0) > 1 ? "duplicado_no_arquivo" : lead ? "lead_ja_existente" : null;
       if (!lead && !reason) {
-        const created = await admin.from("leads").insert({ organization_id: org, assigned_to: ownerId, development_id: body.developmentId || null, name: item.name, phone: item.phone, email: item.email, source: sourceType === "company_legacy" ? "Base antiga" : "Base externa do corretor", status: "novo", metadata: { reactivation: { batchId: batch.id, consentBasis: body.consentBasis.trim(), importedBy: identity.access.profile.id } } }).select("id,phone,phone_normalized,assigned_to").single();
+        const created = await admin.from("leads").insert({ organization_id: org, assigned_to: ownerId, assigned_user_id: ownerId, development_id: body.developmentId || null, name: item.name, phone: item.phone, email: item.email, source: sourceType === "company_legacy" ? "Base antiga" : "Base externa do corretor", status: "novo", metadata: { reactivation: { batchId: batch.id, consentBasis: body.consentBasis.trim(), importedBy: identity.access.profile.id } } }).select("id,phone,phone_normalized,assigned_to").single();
         if (created.data) lead = created.data;
         else reason = "falha_ao_criar_lead";
       }
