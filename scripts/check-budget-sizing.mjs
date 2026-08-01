@@ -21,6 +21,12 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { stripTypeScriptTypes } from "node:module";
+/* ── O NÚMERO É A AFIRMAÇÃO, E ERA CONFERIDO POR SUBSTRING ─────────────────
+   `l.includes("3")` casa com "13", com "23", com "R$ 3.612" e com "0,3". Onde o
+   número É o que se está verificando — "a previsão diz 3 conjuntos", "o teto é
+   50" — substring aprova qualquer coisa que contenha o dígito.
+   `citaNumero` exige o número isolado. Reapontado em 01/08/2026. */
+import { citaNumero } from "./lib/css-propriedade.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "budget-sizing-"));
@@ -69,7 +75,7 @@ function check(name, condition, extra = "") {
   check("caso 2: não sai do aprendizado", s.exitsLearning === false);
   check(
     "caso 2: reasoning cita as ~50 do aprendizado",
-    s.reasoning.some((l) => l.includes("50") && l.includes("aprendizado")),
+    s.reasoning.some((l) => citaNumero(l, 50) && l.includes("aprendizado")),
     s.reasoning.join(" | "),
   );
 }
@@ -80,7 +86,7 @@ function check(name, condition, extra = "") {
   check("caso 3: 200/8=25 → verba_insuficiente", s.verdict === "verba_insuficiente", s.verdict);
   check(
     "caso 3: fallback CPL anotado em assumptions",
-    s.assumptions.some((a) => a.includes("Sem CPL histórico") && a.includes("8")),
+    s.assumptions.some((a) => a.includes("Sem CPL histórico") && citaNumero(a, 8)),
     s.assumptions.join(" | "),
   );
   check("caso 3: minWeekly = 400 (50×8)", s.minWeeklyToExitLearningBrl === 400, String(s.minWeeklyToExitLearningBrl));
@@ -106,7 +112,7 @@ function check(name, condition, extra = "") {
   check("caso 5: cortou para 1", s.recommendedAdSets === 1, String(s.recommendedAdSets));
   check(
     "caso 5: reasoning explica o corte por verba",
-    s.reasoning.some((l) => l.includes("3") && l.includes("sustenta")),
+    s.reasoning.some((l) => citaNumero(l, 3) && l.includes("sustenta")),
     s.reasoning.join(" | "),
   );
 }
@@ -119,7 +125,7 @@ function check(name, condition, extra = "") {
   check("caso 6: maxAdSetsThatLearn = 10", s.maxAdSetsThatLearn === 10, String(s.maxAdSetsThatLearn));
   check(
     "caso 6: reasoning cita o teto de consolidação",
-    s.reasoning.some((l) => l.includes("teto de consolidação") && l.includes("3")),
+    s.reasoning.some((l) => l.includes("teto de consolidação") && citaNumero(l, 3)),
     s.reasoning.join(" | "),
   );
 }
@@ -163,7 +169,7 @@ function check(name, condition, extra = "") {
   const s = recommendAdSetSizing({ weeklyBudgetBrl: 1500, expectedCplBrl: null }, { fallbackCplBrl: 15 });
   check(
     "caso 11: fallback 15 anotado",
-    s.assumptions.some((a) => a.includes("Sem CPL histórico") && a.includes("15")),
+    s.assumptions.some((a) => a.includes("Sem CPL histórico") && citaNumero(a, 15)),
     s.assumptions.join(" | "),
   );
   check("caso 11: minWeekly = 750 (50×15)", s.minWeeklyToExitLearningBrl === 750, String(s.minWeeklyToExitLearningBrl));
@@ -208,7 +214,7 @@ function check(name, condition, extra = "") {
   const s = recommendAdSetSizing({ weeklyBudgetBrl: 1000, expectedCplBrl: 0 });
   check(
     "caso 16: CPL 0 → fallback anotado",
-    s.assumptions.some((a) => a.includes("Sem CPL histórico") && a.includes("8")),
+    s.assumptions.some((a) => a.includes("Sem CPL histórico") && citaNumero(a, 8)),
     s.assumptions.join(" | "),
   );
   check("caso 16: minWeekly = 400", s.minWeeklyToExitLearningBrl === 400, String(s.minWeeklyToExitLearningBrl));
@@ -265,7 +271,7 @@ function check(name, condition, extra = "") {
   const sum = calibrationSummary(DEFAULT_CALIBRATION);
   check(
     "cal 4: summary tem linha de dimensionamento",
-    sum.some((l) => l.includes("Dimensionamento") && l.includes("50") && l.includes("3")),
+    sum.some((l) => l.includes("Dimensionamento") && citaNumero(l, 50) && citaNumero(l, 3)),
     sum.join(" || "),
   );
   check(

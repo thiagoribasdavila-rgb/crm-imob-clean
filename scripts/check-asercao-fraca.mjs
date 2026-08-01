@@ -36,9 +36,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-/* Medido em 01/08/2026 por este script. 276 -> 272 no mesmo dia, quando
-   phase-029 foi reapontada. A catraca so desce. */
-const TETO = 272;
+/* Medido em 01/08/2026 por este script. 276 -> 272 -> 262 no mesmo dia: phase-029 reapontada, e depois os numeros
+   soltos de budget-sizing e meta-forecast virando comparacao de valor. A catraca so desce. */
+const TETO = 262;
 
 const DIR = "scripts";
 const arquivos = fs.readdirSync(DIR).filter((f) => f.startsWith("check-") && f.endsWith(".mjs"));

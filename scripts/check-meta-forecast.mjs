@@ -23,6 +23,12 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { stripTypeScriptTypes } from "node:module";
+/* ── O NÚMERO É A AFIRMAÇÃO, E ERA CONFERIDO POR SUBSTRING ─────────────────
+   `l.includes("3")` casa com "13", com "23", com "R$ 3.612" e com "0,3". Onde o
+   número É o que se está verificando — "a previsão diz 3 conjuntos", "o teto é
+   50" — substring aprova qualquer coisa que contenha o dígito.
+   `citaNumero` exige o número isolado. Reapontado em 01/08/2026. */
+import { citaNumero } from "./lib/css-propriedade.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "meta-forecast-"));
@@ -372,7 +378,7 @@ const wk = (weekStart, spend, leads) => ({ weekStart, spend, leads });
   const sum = calibrationSummary(DEFAULT_CALIBRATION);
   check(
     "cal 4: summary tem linha de previsão",
-    sum.some((l) => l.startsWith("Previsão:") && l.includes("3") && l.includes("20")),
+    sum.some((l) => l.startsWith("Previsão:") && citaNumero(l, 3) && citaNumero(l, 20)),
     sum.join(" || "),
   );
   check(

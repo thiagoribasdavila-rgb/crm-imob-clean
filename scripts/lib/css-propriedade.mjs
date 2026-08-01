@@ -84,3 +84,35 @@ export function mediaAlcanca(css, condicao, prefixo) {
   }
   return false;
 }
+
+/**
+ * A LINHA CITA ESTE NÚMERO — como número, não como pedaço de outro.
+ *
+ * Nasceu de asserções assim, em `check-budget-sizing.mjs` e
+ * `check-meta-forecast.mjs`:
+ *
+ *     s.reasoning.some((l) => l.includes("3") && l.includes("sustenta"))
+ *
+ * O número É a afirmação — "a previsão diz 3 conjuntos", "o teto é 50" — e
+ * estava sendo conferido por substring. `includes("3")` casa com "13", com
+ * "23", com "R$ 3.612" e com "0,3". A asserção passaria com o produto
+ * anunciando qualquer coisa que contivesse o dígito.
+ *
+ * Aqui o número precisa estar isolado: sem dígito, vírgula ou ponto colado de
+ * nenhum dos lados.
+ */
+export function citaNumero(texto, numero) {
+  /* Primeira versão usava lookaround para exigir o número "isolado" — e
+     reprovou "Sem CPL histórico, assumindo R$ 8,00 por lead", porque a vírgula
+     de centavos colava no 8. O portão me corrigiu: 8,00 É o número 8.
+
+     Casar padrão não serve aqui; o que serve é LER os números do texto e
+     comparar valor. Formato pt-BR: ponto separa milhar, vírgula separa
+     decimal. */
+  const alvo = Number(numero);
+  for (const m of String(texto).matchAll(/\d[\d.]*(?:,\d+)?/g)) {
+    const bruto = m[0].replace(/\.(?=\d{3}\b)/g, "").replace(",", ".");
+    if (Number(bruto) === alvo) return true;
+  }
+  return false;
+}
