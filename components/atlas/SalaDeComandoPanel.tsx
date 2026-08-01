@@ -139,12 +139,12 @@ function Indicador({
           : "atlas-panel rounded-2xl p-4"
       }
     >
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{rotulo}</p>
+      <p className="text-rotulo font-semibold uppercase tracking-wide text-slate-400">{rotulo}</p>
       <p className="mt-1.5 text-2xl font-semibold tabular-nums text-white">{valor}</p>
       {/* O detalhe carrega o DENOMINADOR ou o motivo. Número sem denominador foi
           como "442 leads" virou um dado sem significado nesta base. */}
       {detalhe ? (
-        <p className={`mt-1 text-[11px] leading-4 ${alerta ? "text-amber-300" : "text-slate-500"}`}>{detalhe}</p>
+        <p className={`mt-1 text-rotulo leading-4 ${alerta ? "text-amber-300" : "text-slate-500"}`}>{detalhe}</p>
       ) : null}
     </div>
   );
@@ -185,25 +185,25 @@ function SaidasDoFunil({ dados }: { dados: Dados["saidasDoFunil"] }) {
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <p className="text-2xl font-semibold tabular-nums text-white">{inteiro(dados.total)}</p>
-          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">saíram do funil (perdido ou comprou em outro lugar)</p>
+          <p className="mt-0.5 text-rotulo leading-4 text-slate-500">saíram do funil (perdido ou comprou em outro lugar)</p>
         </div>
         <div>
           <p className={`text-2xl font-semibold tabular-nums ${semContato >= 50 ? "text-amber-300" : "text-white"}`}>
             {inteiro(dados.semPrimeiroContato)}
             <span className="ml-1 text-sm font-normal text-slate-500">de {inteiro(dados.total)}</span>
           </p>
-          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">saíram sem nenhum primeiro contato registrado</p>
+          <p className="mt-0.5 text-rotulo leading-4 text-slate-500">saíram sem nenhum primeiro contato registrado</p>
         </div>
         <div>
           <p className="text-2xl font-semibold tabular-nums text-white">
             {inteiro(dados.semMotivoEscrito)}
             <span className="ml-1 text-sm font-normal text-slate-500">de {inteiro(dados.total)}</span>
           </p>
-          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">saíram sem motivo escrito</p>
+          <p className="mt-0.5 text-rotulo leading-4 text-slate-500">saíram sem motivo escrito</p>
         </div>
       </div>
       {/* A frase de baixo é o que transforma três números numa decisão. */}
-      <p className="text-[11px] leading-5 text-slate-400">
+      <p className="text-rotulo leading-5 text-slate-400">
         {dados.direitoDeNovo > 0 ? (
           <>
             {inteiro(dados.direitoDeNovo)} de {inteiro(dados.total)} foram direto de &quot;novo&quot; para a saída
@@ -262,26 +262,26 @@ function Investimento({ dados }: { dados: Dados["investimento"] }) {
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <p className="text-2xl font-semibold tabular-nums text-white">{brl(dados.investimentoTotal)}</p>
-          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
+          <p className="mt-0.5 text-rotulo leading-4 text-slate-500">
             investidos{dados.periodo.de && dados.periodo.ate ? ` entre ${dataCurta(dados.periodo.de)} e ${dataCurta(dados.periodo.ate)}` : ""}
           </p>
         </div>
         <div>
           <p className="text-2xl font-semibold tabular-nums text-white">{inteiro(dados.leadsAtribuidas)}</p>
-          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">leads com campanha de origem identificada</p>
+          <p className="mt-0.5 text-rotulo leading-4 text-slate-500">leads com campanha de origem identificada</p>
         </div>
         <div>
           {dados.cplGlobal !== null ? (
             <>
               <p className="text-2xl font-semibold tabular-nums text-white">{brl(dados.cplGlobal)}</p>
-              <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
+              <p className="mt-0.5 text-rotulo leading-4 text-slate-500">
                 custo por lead, sobre {inteiro(comAsDuasPontas.length)} campanha{comAsDuasPontas.length === 1 ? "" : "s"} com as duas pontas
               </p>
             </>
           ) : (
             <>
               <p className="text-2xl font-semibold tabular-nums text-slate-600">—</p>
-              <p className="mt-0.5 text-[11px] leading-4 text-slate-500">custo por lead não pode ser afirmado</p>
+              <p className="mt-0.5 text-rotulo leading-4 text-slate-500">custo por lead não pode ser afirmado</p>
             </>
           )}
         </div>
@@ -289,7 +289,7 @@ function Investimento({ dados }: { dados: Dados["investimento"] }) {
 
       {/* A frase que impede o número falso de nascer. */}
       {dados.porqueSemCpl ? (
-        <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-[11px] leading-5 text-amber-200/90">
+        <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-rotulo leading-5 text-amber-200/90">
           {dados.porqueSemCpl}
         </p>
       ) : null}
@@ -298,8 +298,8 @@ function Investimento({ dados }: { dados: Dados["investimento"] }) {
         {dados.campanhas.slice(0, 8).map((campanha) => (
           <li key={campanha.externalId} className="space-y-1">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="truncate text-[11px] leading-4 text-slate-400" title={campanha.nome}>{campanha.nome}</span>
-              <span className="shrink-0 text-[11px] leading-4 tabular-nums text-slate-300">
+              <span className="truncate text-rotulo leading-4 text-slate-400" title={campanha.nome}>{campanha.nome}</span>
+              <span className="shrink-0 text-rotulo leading-4 tabular-nums text-slate-300">
                 {campanha.reais > 0 ? brl(campanha.reais) : "sem gasto"}
                 <span className="text-slate-600"> · </span>
                 {campanha.leads > 0 ? `${inteiro(campanha.leads)} lead${campanha.leads === 1 ? "" : "s"}` : "0 leads"}
@@ -316,12 +316,12 @@ function Investimento({ dados }: { dados: Dados["investimento"] }) {
         ))}
       </ul>
       {dados.campanhas.length > 8 ? (
-        <p className="text-[11px] leading-4 text-slate-500">
+        <p className="text-rotulo leading-4 text-slate-500">
           Mostrando as 8 de maior gasto, de {inteiro(dados.campanhas.length)} campanhas.
         </p>
       ) : null}
       {dados.amostraTruncada ? (
-        <p className="text-[11px] leading-4 text-amber-300/80">
+        <p className="text-rotulo leading-4 text-amber-300/80">
           A leitura foi truncada: estes totais estão sobre amostra, não sobre a base inteira.
         </p>
       ) : null}
@@ -373,7 +373,7 @@ function Funil({ etapas }: { etapas: Etapa[] }) {
               ) : null}
             </div>
             {etapa.porqueVazia ? (
-              <p className="mt-1 text-[11px] leading-4 text-slate-500">{etapa.porqueVazia}</p>
+              <p className="mt-1 text-rotulo leading-4 text-slate-500">{etapa.porqueVazia}</p>
             ) : null}
           </li>
         );
@@ -532,7 +532,7 @@ export function SalaDeComandoPanel() {
           {/* A procedência fica ABAIXO do funil, em texto pequeno: ela não é o
               que o diretor lê primeiro, mas é o que responde "desde quando?" —
               e sem ela "3 já passaram" parece cobrir a história inteira. */}
-          <p className="mt-4 border-t border-white/[.06] pt-3 text-[11px] leading-4 text-slate-500">
+          <p className="mt-4 border-t border-white/[.06] pt-3 text-rotulo leading-4 text-slate-500">
             {dados.procedencia.registroDeMovimentoMensuravel ? (
               dados.procedencia.registroDeMovimentoDesde ? (
                 <>

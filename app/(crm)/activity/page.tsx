@@ -466,7 +466,7 @@ export default function ActivityPage() {
                     className="cc6-hairline min-w-4 flex-1 self-center"
                     aria-hidden="true"
                   />
-                  <span className="cc6-num text-[10px] text-[var(--atlas-texto-fraco)]">
+                  <span className="cc6-num text-micro text-[var(--atlas-texto-fraco)]">
                     {group.items.length}{" "}
                     {group.items.length === 1 ? "registro" : "registros"}
                   </span>
@@ -486,7 +486,7 @@ export default function ActivityPage() {
                         <time
                           dateTime={event.occurredAt}
                           title={fullLabel(event.occurredAt)}
-                          className="cc6-num w-16 shrink-0 pt-px text-right text-[11px] leading-6 text-[var(--atlas-texto-fraco)]"
+                          className="cc6-num w-16 shrink-0 pt-px text-right text-rotulo leading-6 text-[var(--atlas-texto-fraco)]"
                         >
                           {isToday
                             ? relativeTime(event.occurredAt, nowMs)
@@ -497,21 +497,21 @@ export default function ActivityPage() {
                             <strong className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                               {event.title}
                             </strong>
-                            <span className="cc6-chip text-[10px]!">
+                            <span className="cc6-chip text-micro!">
                               {activityCategoryLabels[event.category]}
                             </span>
                             {event.leadStatus ? (
-                              <span className="cc6-num text-[10px] uppercase tracking-[0.12em] text-[var(--atlas-texto-fraco)]">
+                              <span className="cc6-num text-micro uppercase tracking-[0.12em] text-[var(--atlas-texto-fraco)]">
                                 {event.leadStatus.replaceAll("_", " ")}
                               </span>
                             ) : null}
                           </span>
                           {event.description ? (
-                            <span className="mt-0.5 block max-w-[70ch] text-[13px] leading-relaxed text-[var(--atlas-texto-medio)]">
+                            <span className="mt-0.5 block max-w-[70ch] text-corpo leading-relaxed text-[var(--atlas-texto-medio)]">
                               {event.description}
                             </span>
                           ) : null}
-                          <span className="mt-1 block text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+                          <span className="mt-1 block text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                             {[event.leadName, event.actorName]
                               .filter(Boolean)
                               .join(" · ") || "Operação Atlas"}
@@ -567,7 +567,7 @@ export default function ActivityPage() {
           )}
         </div>
 
-        <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+        <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
           Somente leitura · até 500 registros no escopo, respeitando
           organização, hierarquia e RLS · ordem cronológica, sem prioridade ou
           ação automática.

@@ -133,7 +133,7 @@ export function CampaignApprovalsPanel() {
         action={
           <Link
             href="/approvals"
-            className="rounded-[8px] border border-[rgba(148,163,184,0.18)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-[#8b97ab] transition-colors hover:border-[rgba(75,141,248,0.5)] hover:text-[#4b8df8]"
+            className="rounded-[8px] border border-[rgba(148,163,184,0.18)] px-3 py-1.5 font-mono text-rotulo uppercase tracking-[0.14em] text-[#8b97ab] transition-colors hover:border-[rgba(75,141,248,0.5)] hover:text-[#4b8df8]"
           >
             Caixa de Aprovações →
           </Link>
@@ -154,7 +154,7 @@ export function CampaignApprovalsPanel() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-[var(--atlas-texto-forte)]">{c.product}</p>
-                      <p className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.1em] text-[#78a6f9]">persona: {c.persona}</p>
+                      <p className="mt-0.5 font-mono text-rotulo uppercase tracking-[0.1em] text-[#78a6f9]">persona: {c.persona}</p>
                     </div>
                     <span className="shrink-0 font-mono text-sm text-[var(--atlas-texto-medio)] [font-variant-numeric:tabular-nums]">R$ {c.dailyBrl}/dia</span>
                   </div>
@@ -162,7 +162,7 @@ export function CampaignApprovalsPanel() {
                     {c.adCount} anúncios · ângulos: {c.angles.join(", ")}
                   </p>
                   {c.missingToActivate.length ? (
-                    <p className="text-[11px] leading-4 text-[#c98a2b]">Para ativar falta: {c.missingToActivate.join("; ")}.</p>
+                    <p className="text-rotulo leading-4 text-[#c98a2b]">Para ativar falta: {c.missingToActivate.join("; ")}.</p>
                   ) : null}
                   <button
                     type="button"
@@ -178,12 +178,12 @@ export function CampaignApprovalsPanel() {
 
             {state.proposals.length ? (
               <div className="flex flex-col gap-2">
-                <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">Fila de aprovação</p>
+                <p className="font-mono text-rotulo uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">Fila de aprovação</p>
                 <ul className="flex flex-col gap-1.5">
                   {state.proposals.slice(0, 6).map((p) => (
                     <li key={p.id} className="flex items-center justify-between gap-3 rounded-[10px] border border-[rgba(148,163,184,0.08)] px-3 py-2">
                       <span className="min-w-0 truncate text-sm text-[#c3ccdb]">{p.title} <span className="text-[var(--atlas-texto-fraco)]">· {p.kind}</span></span>
-                      <span className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] ${STATUS_TONE[p.status] ?? STATUS_TONE.expired}`}>{p.status}</span>
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-micro uppercase tracking-[0.1em] ${STATUS_TONE[p.status] ?? STATUS_TONE.expired}`}>{p.status}</span>
                     </li>
                   ))}
                 </ul>

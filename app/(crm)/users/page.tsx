@@ -27,7 +27,7 @@ const roleLabel: Record<string, string> = {
   broker: "Corretor",
 };
 
-const TH_CLASS = "px-4 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]";
+const TH_CLASS = "px-4 py-2.5 text-left font-mono text-micro font-medium uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]";
 const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 
 async function readApiResponse(response: Response) {

@@ -381,7 +381,7 @@ export default function DistributionPage() {
             </div>
           </div>
           <div className="cc6-hairline mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
-            <p className="cc6-eyebrow text-[10px]!">Minha disponibilidade</p>
+            <p className="cc6-eyebrow text-micro!">Minha disponibilidade</p>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Minha disponibilidade na fila">
               {([{ key: "available", label: "Disponível" }, { key: "busy", label: "Ocupado" }, { key: "offline", label: "Sair da fila" }] as const).map((option) => (
                 <button
@@ -395,7 +395,7 @@ export default function DistributionPage() {
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-[var(--atlas-texto-fraco)]">Atualiza a fila em até 15 s · somente “Disponível” recebe leads.</p>
+            <p className="text-rotulo text-[var(--atlas-texto-fraco)]">Atualiza a fila em até 15 s · somente “Disponível” recebe leads.</p>
           </div>
         </TiltShell>
       </section>
@@ -438,7 +438,7 @@ export default function DistributionPage() {
               />
             </div>
           )}
-          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
             IA analisa sem PII · a fila entra sem atribuição automática · distribuir, alterar limites e aprovar continuam decisões humanas.
           </p>
         </div>
@@ -501,7 +501,7 @@ export default function DistributionPage() {
               />
             </div>
           )}
-          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
             Somente metadados, até 100 visíveis — sem nome, telefone ou e-mail · a distribuição atribui atomicamente a lead mais antiga do projeto, sempre por decisão explícita da liderança.
           </p>
         </div>
@@ -587,7 +587,7 @@ export default function DistributionPage() {
               })
             )}
           </div>
-          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
             Somente corretores online, disponíveis e elegíveis no projeto · ordem por carga ponderada e última atribuição, a mesma do motor.
           </p>
         </div>
@@ -613,7 +613,7 @@ export default function DistributionPage() {
                 return (
                   <div key={manager.id} className={`flex items-baseline justify-between gap-3 py-2.5 ${index ? "cc6-hairline" : ""}`}>
                     <span className="min-w-0 truncate text-xs font-medium text-[var(--atlas-texto-forte)]">{manager.full_name || "Gestor comercial"}</span>
-                    <span className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-fraco)]">
+                    <span className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]">
                       <span className={teamOnline ? "cc6-ok" : ""}>{teamOnline}</span> disponíve{teamOnline === 1 ? "l" : "is"} no time
                     </span>
                   </div>
@@ -621,7 +621,7 @@ export default function DistributionPage() {
               })
             )}
           </div>
-          <p className="cc6-hairline mt-1 pt-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-hairline mt-1 pt-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
             Na superintendência aparecem somente os gerentes diretamente subordinados.
           </p>
         </div>
@@ -692,7 +692,7 @@ export default function DistributionPage() {
                     {event.brokerId ? profilesMap.get(event.brokerId)?.full_name || "Corretor no escopo" : "Operação gerencial"}
                     {event.leadId ? ` · Lead ${event.leadId.slice(0, 8)}` : ""}
                   </span>
-                  <time className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-fraco)]">{new Date(event.occurredAt).toLocaleString("pt-BR")}</time>
+                  <time className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]">{new Date(event.occurredAt).toLocaleString("pt-BR")}</time>
                 </article>
               ))
             ) : (
@@ -705,7 +705,7 @@ export default function DistributionPage() {
                 />
               </div>
             )}
-            <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
               Escopo hierárquico · fontes operacionais preservadas · nome, telefone, e-mail e textos livres da lead não expostos.
             </p>
           </div>
@@ -734,7 +734,7 @@ export default function DistributionPage() {
                       </div>
                       <p className={`mt-0.5 text-xs ${online ? "cc6-ok" : "text-[var(--atlas-texto-fraco)]"}`}>{online ? "Online e disponível" : "Fora da fila agora"}</p>
                     </div>
-                    <label className="flex shrink-0 items-center gap-2 text-[11px] text-[var(--atlas-texto-fraco)]">
+                    <label className="flex shrink-0 items-center gap-2 text-rotulo text-[var(--atlas-texto-fraco)]">
                       Peso
                       <select
                         value={state?.weight || 1}

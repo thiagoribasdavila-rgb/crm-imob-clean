@@ -94,17 +94,17 @@ function DiscardRateLine({ item, count }: { item: DiscardBaseFields; count: numb
   if (!base.measured) {
     if (!base.reason) return null;
     return (
-      <p className="mt-1 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+      <p className="mt-1 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
         taxa de descarte <span className="cc6-num">—</span> · {base.reason}
       </p>
     );
   }
   return (
-    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
       <span className="cc6-num">
         <strong className={`font-semibold ${base.insufficient ? "text-[var(--atlas-texto-medio)]" : "text-[var(--atlas-estado-perigo)]"}`}>{base.ratePct}%</strong> descartados · {count} de {base.base} leads
       </span>
-      {base.insufficient ? <span className="cc6-chip text-[10px]!">amostra insuficiente para decidir</span> : null}
+      {base.insufficient ? <span className="cc6-chip text-micro!">amostra insuficiente para decidir</span> : null}
     </div>
   );
 }
@@ -299,7 +299,7 @@ export default function PipelineDiscardsPage() {
                     ))}
                   </div>
                   <div className="cc6-hairline flex flex-wrap items-center gap-1.5 px-5 py-3" aria-label="Agregado por categoria de qualidade Meta">
-                    <span className="cc6-eyebrow text-[10px]!">Categorias Meta</span>
+                    <span className="cc6-eyebrow text-micro!">Categorias Meta</span>
                     {report.byMetaCategory.map((item) => (
                       <span key={item.category} className="cc6-chip">
                         {item.category} <strong className="font-semibold text-[var(--atlas-texto-forte)]">{item.count}</strong> · {item.share}%
@@ -377,7 +377,7 @@ export default function PipelineDiscardsPage() {
                     </StatusBadge>
                   </div>
                 </div>
-                <p className="cc6-hairline mt-1 pt-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+                <p className="cc6-hairline mt-1 pt-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
                   Gerado em{" "}
                   {new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(report.generatedAt))}{" "}
                   · taxonomia v{report.andromeda.taxonomyVersion}.

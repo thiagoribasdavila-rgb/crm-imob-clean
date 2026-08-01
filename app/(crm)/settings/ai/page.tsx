@@ -362,7 +362,7 @@ export default function AISettings() {
                 </div>
               </div>
               {data ? (
-                <p className="cc6-num mt-4 text-[11px] text-[var(--atlas-texto-fraco)]">
+                <p className="cc6-num mt-4 text-rotulo text-[var(--atlas-texto-fraco)]">
                   {data.usage.openaiCalls} OpenAI · {data.usage.perplexityCalls}{" "}
                   pesquisa · {data.usage.economyCalls} econômicas ·{" "}
                   {data.usage.localCalls} motor local
@@ -396,7 +396,7 @@ export default function AISettings() {
                   <p className="text-[var(--atlas-texto-fraco)]">Carregando rotas…</p>
                 )}
               </div>
-              <p className="mt-3 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+              <p className="mt-3 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
                 Latência, tokens e custo registrados por chamada.
               </p>
             </div>
@@ -741,7 +741,7 @@ export default function AISettings() {
                       </p>
                     ) : null}
                     {provider.lastSuccessfulAt ? (
-                      <p className="cc6-num mt-1.5 text-[10px] text-[var(--atlas-texto-fraco)]">
+                      <p className="cc6-num mt-1.5 text-micro text-[var(--atlas-texto-fraco)]">
                         Último sucesso ·{" "}
                         {new Date(provider.lastSuccessfulAt).toLocaleString("pt-BR")}
                       </p>
@@ -863,7 +863,7 @@ export default function AISettings() {
                       {testResult.usage.totalTokens} tokens
                     </span>
                   </div>
-                  <p className="cc6-num mt-1.5 break-all text-[11px] text-[var(--atlas-texto-fraco)]">
+                  <p className="cc6-num mt-1.5 break-all text-rotulo text-[var(--atlas-texto-fraco)]">
                     Rastreio {testResult.providerRequestId || "não retornado"} ·{" "}
                     {new Date(testResult.testedAt).toLocaleString("pt-BR")}
                   </p>
@@ -903,7 +903,7 @@ export default function AISettings() {
                       {researchResult.citationCount} fontes
                     </span>
                   </div>
-                  <p className="cc6-num mt-1.5 break-all text-[11px] text-[var(--atlas-texto-fraco)]">
+                  <p className="cc6-num mt-1.5 break-all text-rotulo text-[var(--atlas-texto-fraco)]">
                     Rastreio{" "}
                     {researchResult.providerRequestId || "não retornado"} ·{" "}
                     {new Date(researchResult.testedAt).toLocaleString("pt-BR")}
@@ -984,13 +984,13 @@ export default function AISettings() {
                   <p className="cc6-num mt-2 text-xs text-[var(--atlas-texto-medio)]">
                     {route.model}
                   </p>
-                  <p className="cc6-num mt-1 text-[11px] text-[var(--atlas-texto-fraco)]">
+                  <p className="cc6-num mt-1 text-rotulo text-[var(--atlas-texto-fraco)]">
                     {route.tokens.totalTokens} tokens · {route.latencyMs} ms ·
                     US$ {route.estimatedCostUsd.toFixed(6)}
                   </p>
                 </div>
               ))}
-              <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)] lg:col-span-3">
+              <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)] lg:col-span-3">
                 Ensaio total US$ {routingResult.totalEstimatedCostUsd.toFixed(6)}{" "}
                 · sem dados pessoais ·{" "}
                 {new Date(routingResult.testedAt).toLocaleString("pt-BR")}
@@ -1048,7 +1048,7 @@ export default function AISettings() {
                     {source.title}
                   </span>
                 </span>
-                <span className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-fraco)]">
+                <span className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]">
                   {new Date(
                     `${source.verifiedAt}T12:00:00`,
                   ).toLocaleDateString("pt-BR")}

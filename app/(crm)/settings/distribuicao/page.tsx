@@ -123,7 +123,7 @@ export default function ElencoDeDistribuicao() {
             <>
               {(["projeto", "campanha"] as const).map((tipo) => (
                 <section key={tipo} className="mb-4 last:mb-0">
-                  <h2 className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--atlas-text-secondary)]">
+                  <h2 className="mb-2 flex items-center gap-2 text-rotulo font-bold uppercase tracking-wider text-[var(--atlas-text-secondary)]">
                     {tipo === "projeto" ? <Building2 className="h-3.5 w-3.5" aria-hidden="true" /> : <Megaphone className="h-3.5 w-3.5" aria-hidden="true" />}
                     {tipo === "projeto" ? "Empreendimentos" : "Campanhas"}
                   </h2>
@@ -140,7 +140,7 @@ export default function ElencoDeDistribuicao() {
                             className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-3 text-left text-sm ${atual ? "bg-[var(--atlas-surface-interactive)] text-[var(--atlas-text-primary)]" : "text-[var(--atlas-text-secondary)]"}`}
                           >
                             <span className="min-w-0 truncate">{e.nome}</span>
-                            <span className="shrink-0 text-[11px] tabular-nums">
+                            <span className="shrink-0 text-rotulo tabular-nums">
                               {quantos > 0 ? `${quantos}` : "livre"}
                             </span>
                           </button>
@@ -185,14 +185,14 @@ export default function ElencoDeDistribuicao() {
 
               {/* A frase 2: o que acontece quando o time está fora. */}
               {doEscopo.size > 0 ? (
-                <p className="mb-4 rounded-xl border border-[var(--atlas-border-subtle)] p-3 text-[13px] text-[var(--atlas-text-secondary)]">
+                <p className="mb-4 rounded-xl border border-[var(--atlas-border-subtle)] p-3 text-corpo text-[var(--atlas-text-secondary)]">
                   Se nenhum deles estiver disponível quando a lead chegar, ela <strong>não</strong> vai para quem
                   ficou de fora: sobe para o gerente, com o motivo escrito no histórico.
                 </p>
               ) : null}
 
               {aviso ? (
-                <p className="mb-4 rounded-xl border border-[var(--atlas-border-subtle)] p-3 text-[13px] text-[var(--atlas-text-primary)]">{aviso}</p>
+                <p className="mb-4 rounded-xl border border-[var(--atlas-border-subtle)] p-3 text-corpo text-[var(--atlas-text-primary)]">{aviso}</p>
               ) : null}
 
               <ul className="space-y-1">
@@ -215,7 +215,7 @@ export default function ElencoDeDistribuicao() {
                         </span>
                         <span className="min-w-0 flex-1 truncate">{c.nome}</span>
                         {gravando === c.id ? (
-                          <span className="shrink-0 text-[11px] text-[var(--atlas-text-secondary)]">gravando…</span>
+                          <span className="shrink-0 text-rotulo text-[var(--atlas-text-secondary)]">gravando…</span>
                         ) : null}
                       </button>
                     </li>

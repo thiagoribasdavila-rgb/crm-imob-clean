@@ -192,7 +192,7 @@ export default function CommandPalette({
         <div className="flex items-center gap-3 border-b border-white/[0.08] px-5 py-4">
           <span className="text-sky-300">⌕</span>
           <input ref={inputRef} value={query} onChange={(event) => { setQuery(event.target.value); setSelected(0); }} onKeyDown={handleInputKeyDown} placeholder="Buscar nome, telefone, projeto, corretor ou intenção..." className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500" role="combobox" aria-expanded="true" aria-controls="atlas-command-results" aria-activedescendant={filtered[selected] ? `atlas-command-${selected}` : undefined} />
-          <kbd className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-slate-500">ESC</kbd>
+          <kbd className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-micro text-slate-500">ESC</kbd>
           <button type="button" className="atlas-command-close" onClick={() => setOpen(false)} aria-label="Fechar busca">×</button>
         </div>
         <div id="atlas-command-results" role="listbox" className="max-h-[58vh] overflow-y-auto p-3">
@@ -218,7 +218,7 @@ export default function CommandPalette({
             </div>
           )}
         </div>
-        <div className="atlas-command-footer flex items-center justify-between border-t border-white/[0.07] px-5 py-3 text-[10px] uppercase tracking-[0.14em] text-slate-600">
+        <div className="atlas-command-footer flex items-center justify-between border-t border-white/[0.07] px-5 py-3 text-micro uppercase tracking-[0.14em] text-slate-600">
           <span>{searching ? "Buscando carteira..." : `${filtered.length} resultado(s)`}</span>
           <span>↑ ↓ navegar · Enter abrir · Esc fechar</span>
         </div>

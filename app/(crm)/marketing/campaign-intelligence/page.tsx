@@ -104,7 +104,7 @@ export default function CampaignIntelligencePage() {
                 <p className="text-sm font-semibold uppercase tracking-wide text-[var(--atlas-texto-forte)]">
                   {String(item.platform).replace("_ads", "")}
                 </p>
-                <p className="cc6-num mt-0.5 text-[11px] text-[var(--atlas-texto-fraco)]">
+                <p className="cc6-num mt-0.5 text-rotulo text-[var(--atlas-texto-fraco)]">
                   {Number(item.crmLeads || 0)} leads · {Number(item.wins || 0)} vendas
                 </p>
               </div>
@@ -130,12 +130,12 @@ export default function CampaignIntelligencePage() {
               Campanhas por resultado no CRM
             </h2>
           </div>
-          <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">Amostra mínima: 30 leads confirmadas</p>
+          <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">Amostra mínima: 30 leads confirmadas</p>
         </header>
         <div className="cc6-hairline overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
-              <tr className="cc6-eyebrow text-[10px]!">
+              <tr className="cc6-eyebrow text-micro!">
                 <th className="px-5 py-3 font-medium">Campanha</th>
                 <th className="py-3 font-medium">Canal</th>
                 <th className="py-3 font-medium">Leads</th>

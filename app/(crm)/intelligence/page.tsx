@@ -110,7 +110,7 @@ export default function IntelligencePage() {
         <TiltShell className="cc6-panel cc6-reveal overflow-hidden" delayMs={40}>
           <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5 pb-4">
             <p className="cc6-eyebrow">Sinais da operação</p>
-            <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]" aria-live="polite">
+            <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]" aria-live="polite">
               {loading ? "analisando…" : `${items.length} ${items.length === 1 ? "sinal" : "sinais"}`}
             </p>
           </div>
@@ -150,7 +150,7 @@ export default function IntelligencePage() {
                   </p>
                   {item.recommendation ? (
                     <div className="mt-3">
-                      <p className="cc6-eyebrow text-[10px]!">Recomendação</p>
+                      <p className="cc6-eyebrow text-micro!">Recomendação</p>
                       <p className="mt-1 text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                         {item.recommendation}
                       </p>

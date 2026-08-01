@@ -126,7 +126,7 @@ export default function ExternalSalesPage() {
               deixa explícito que o registro abaixo é a tela inteira — nada da
               auditoria foi filtrado por causa do parâmetro. */}
           {abertoParaRegistrar ? (
-            <p className="cc6-hairline mt-3 pt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-hairline mt-3 pt-3 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
               <strong className="font-medium text-[var(--atlas-texto-forte)]">Registro aberto pelo link que trouxe você até aqui</strong>{" "}
               — o campo abaixo já está em foco. A auditoria comercial segue completa, sem recorte.
             </p>
@@ -143,7 +143,7 @@ export default function ExternalSalesPage() {
                 aparente e a pessoa conclui que o caminho está quebrado — lista
                 vazia sem explicação se lê como "não há nada aqui". */}
             {!loading && data && data.candidates.length === 0 ? (
-              <p className="min-w-56 flex-1 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+              <p className="min-w-56 flex-1 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
                 Nenhuma lead elegível no momento: a seleção traz só leads do seu time que ainda não estão como ganho nem já marcadas como compra externa.
               </p>
             ) : null}
@@ -186,7 +186,7 @@ export default function ExternalSalesPage() {
                     </div>
                     <StatusBadge tone={evidence.tone}>{evidence.label}</StatusBadge>
                   </div>
-                  <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[var(--atlas-texto-medio)]">{item.reason_summary||"Motivo não detalhado"}</p>
+                  <p className="mt-2 max-w-3xl text-corpo leading-6 text-[var(--atlas-texto-medio)]">{item.reason_summary||"Motivo não detalhado"}</p>
                   {data?.viewer.canReviewFinancial ? (
                     <div>
                       <div className="mt-3 grid gap-3 md:grid-cols-5">

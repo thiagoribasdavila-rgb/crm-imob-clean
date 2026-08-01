@@ -182,11 +182,11 @@ const cc5Panel =
 const cc5PanelHover = "transition-colors duration-200 hover:border-[rgba(148,163,184,.22)]";
 const cc5Inner = "rounded-xl border border-[rgba(148,163,184,.12)] bg-white/[.02]";
 const cc5InnerHover = "transition-colors duration-200 hover:border-[rgba(148,163,184,.22)]";
-const cc5Eyebrow = "font-mono text-[10px] font-semibold uppercase tracking-[.18em] text-[var(--atlas-texto-fraco)]";
+const cc5Eyebrow = "font-mono text-micro font-semibold uppercase tracking-[.18em] text-[var(--atlas-texto-fraco)]";
 const cc5Focus =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 const cc5Chip =
-  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[.12em] tabular-nums";
+  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-micro font-semibold uppercase tracking-[.12em] tabular-nums";
 
 const chipTone = {
   neutral: "border-[rgba(148,163,184,.16)] text-[var(--atlas-texto-medio)]",
@@ -252,11 +252,11 @@ function MetricCard({
         {eyebrow}
       </p>
       <p
-        className={`mt-2 font-mono text-3xl font-semibold leading-none tracking-tight tabular-nums sm:text-[34px] ${valueClass}`}
+        className={`mt-2 font-mono text-3xl font-semibold leading-none tracking-tight tabular-nums sm:text-heroi ${valueClass}`}
       >
         {value}
       </p>
-      <p className="mt-2.5 font-mono text-[11px] leading-5 tabular-nums text-[var(--atlas-texto-medio)]">{detail}</p>
+      <p className="mt-2.5 font-mono text-rotulo leading-5 tabular-nums text-[var(--atlas-texto-medio)]">{detail}</p>
       {trend}
     </article>
   );
@@ -387,7 +387,7 @@ export default function CampaignsPage() {
     if (!anomaly) {
       return (
         <p
-          className="mt-1.5 font-mono text-[10px] tabular-nums text-[var(--atlas-texto-fraco)]"
+          className="mt-1.5 font-mono text-micro tabular-nums text-[var(--atlas-texto-fraco)]"
           title={`Comparação com ${isoDay(analyst.period.previous.start)} → ${isoDay(analyst.period.previous.end)}`}
         >
           sem anomalia vs janela anterior{floorSuffix}
@@ -396,7 +396,7 @@ export default function CampaignsPage() {
     }
     return (
       <p
-        className={`mt-1.5 truncate font-mono text-[10px] tabular-nums ${semanticInk[analystAnomalyTone(anomaly)]}`}
+        className={`mt-1.5 truncate font-mono text-micro tabular-nums ${semanticInk[analystAnomalyTone(anomaly)]}`}
         title={anomaly.evidence}
       >
         {anomaly.direction === "up" ? "▲" : "▼"} {analystAnomalyDelta(anomaly)} · {anomaly.campaignName}
@@ -413,11 +413,11 @@ export default function CampaignsPage() {
         aria-label="Estado da comunicação com a Meta"
         className={`cc5-reveal ${cc5Panel} flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-5`}
       >
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-[.18em] text-[var(--atlas-texto-forte)]">
+        <p className="font-mono text-rotulo font-semibold uppercase tracking-[.18em] text-[var(--atlas-texto-forte)]">
           META · ÚLTIMOS <span className="tabular-nums">{data?.period.days ?? days}</span> DIAS
         </p>
         {data ? (
-          <p className="font-mono text-[10px] tabular-nums text-[var(--atlas-texto-fraco)]" title="Janela analisada (UTC)">
+          <p className="font-mono text-micro tabular-nums text-[var(--atlas-texto-fraco)]" title="Janela analisada (UTC)">
             {isoDay(data.period.start)} → {isoDay(data.period.end)}
           </p>
         ) : null}
@@ -438,7 +438,7 @@ export default function CampaignsPage() {
             aria-label="Período"
             value={days}
             onChange={(event) => setDays(Number(event.target.value))}
-            className={`rounded-lg border border-[rgba(148,163,184,.12)] bg-white/[.03] px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[.08em] tabular-nums text-[var(--atlas-texto-forte)] transition-colors hover:border-[rgba(148,163,184,.22)] ${cc5Focus}`}
+            className={`rounded-lg border border-[rgba(148,163,184,.12)] bg-white/[.03] px-3 py-1.5 font-mono text-rotulo font-semibold uppercase tracking-[.08em] tabular-nums text-[var(--atlas-texto-forte)] transition-colors hover:border-[rgba(148,163,184,.22)] ${cc5Focus}`}
           >
             <option className="text-slate-900" value={7}>7 dias</option>
             <option className="text-slate-900" value={30}>30 dias</option>
@@ -473,7 +473,7 @@ export default function CampaignsPage() {
           </div>
           <Link
             href="/marketing/campaign-intelligence"
-            className={`inline-flex min-h-11 items-center font-mono text-[11px] font-semibold uppercase tracking-[.14em] text-[var(--atlas-accent)] transition-colors hover:text-[var(--atlas-texto-forte)] ${cc5Focus}`}
+            className={`inline-flex min-h-11 items-center font-mono text-rotulo font-semibold uppercase tracking-[.14em] text-[var(--atlas-accent)] transition-colors hover:text-[var(--atlas-texto-forte)] ${cc5Focus}`}
           >
             Inteligência multicanal →
           </Link>
@@ -582,7 +582,7 @@ export default function CampaignsPage() {
             {data.policy.windowComplete === false ? (
               <div className={`relative ${cc5Inner} p-4 pl-5`}>
                 <span aria-hidden="true" className="absolute bottom-3 left-0 top-3 w-[2px] rounded-full bg-[var(--atlas-estado-atencao)]" />
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
+                <p className="font-mono text-micro font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
                   Janela truncada
                 </p>
                 <p className="mt-1.5 text-sm leading-6 text-[var(--atlas-texto-forte)]">
@@ -594,11 +594,11 @@ export default function CampaignsPage() {
             {!data.policy.spendMeasured ? (
               <div className={`relative ${cc5Inner} p-4 pl-5`}>
                 <span aria-hidden="true" className="absolute bottom-3 left-0 top-3 w-[2px] rounded-full bg-[var(--atlas-estado-atencao)]" />
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
+                <p className="font-mono text-micro font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
                   Custo não medido
                 </p>
                 <p className="mt-1.5 text-sm leading-6 text-[var(--atlas-texto-forte)]">
-                  Custos indisponíveis (<span className="font-mono text-[13px]">marketing_spend</span>) —{" "}
+                  Custos indisponíveis (<span className="font-mono text-corpo">marketing_spend</span>) —{" "}
                   <strong className="font-semibold">CPL omitido em vez de fingir zero</strong>.
                 </p>
               </div>
@@ -615,7 +615,7 @@ export default function CampaignsPage() {
           style={{ animationDelay: "70ms" }}
         >
           <span aria-hidden="true" className="absolute bottom-4 left-0 top-4 w-[2px] rounded-full bg-[var(--atlas-estado-atencao)]" />
-          <p className="font-mono text-[10px] font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
+          <p className="font-mono text-micro font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
             Amostra mínima · {minimum} leads
           </p>
           <p className="mt-1.5 text-sm leading-6 text-[var(--atlas-texto-medio)]">
@@ -674,7 +674,7 @@ export default function CampaignsPage() {
                   Campanhas ordenadas pela qualidade da lead na janela de {data.period.days} dias.
                 </caption>
                 <thead>
-                  <tr className="border-b border-[rgba(148,163,184,.12)] font-mono text-[10px] uppercase tracking-[.14em] text-[var(--atlas-texto-fraco)]">
+                  <tr className="border-b border-[rgba(148,163,184,.12)] font-mono text-micro uppercase tracking-[.14em] text-[var(--atlas-texto-fraco)]">
                     <th scope="col" className="py-3 pr-4 font-semibold">Campanha</th>
                     <th scope="col" className="py-3 pr-4 font-semibold">Qualidade</th>
                     <th scope="col" className="py-3 pr-4 text-right font-semibold">Leads</th>
@@ -700,7 +700,7 @@ export default function CampaignsPage() {
                             estado dela na Meta, então o status não é impresso
                             como se fosse fato verificado. */}
                         <div
-                          className="mt-1 font-mono text-[10px] uppercase tracking-[.08em] text-[var(--atlas-texto-fraco)]"
+                          className="mt-1 font-mono text-micro uppercase tracking-[.08em] text-[var(--atlas-texto-fraco)]"
                           title={isAutoRegisteredCampaign(row.name) ? AUTO_REGISTERED_CAMPAIGN_STATUS_TITLE : undefined}
                         >
                           {row.platform} ·{" "}
@@ -829,12 +829,12 @@ export default function CampaignsPage() {
               </span>
             ) : null}
             {analyst ? (
-              <span className="ml-auto font-mono text-[10px] tabular-nums text-[var(--atlas-texto-fraco)]">
+              <span className="ml-auto font-mono text-micro tabular-nums text-[var(--atlas-texto-fraco)]">
                 atualizado há {analystAgeSeconds}s
               </span>
             ) : null}
           </div>
-          <p className="mt-1.5 font-mono text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+          <p className="mt-1.5 font-mono text-micro leading-4 text-[var(--atlas-texto-fraco)]">
             fonte /api/v1/ai/campaign-analyst · só agregados · zero PII · narra; quem recomenda é o conselheiro
           </p>
           <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-start">
@@ -848,7 +848,7 @@ export default function CampaignsPage() {
                   className="h-auto w-[96px] object-contain sm:w-[112px]"
                 />
               </div>
-              <figcaption className="mt-2 border-t border-[rgba(148,163,184,.12)] pt-1.5 text-center font-mono text-[9px] font-semibold uppercase tracking-[.18em] text-[var(--atlas-texto-fraco)]">
+              <figcaption className="mt-2 border-t border-[rgba(148,163,184,.12)] pt-1.5 text-center font-mono text-micro font-semibold uppercase tracking-[.18em] text-[var(--atlas-texto-fraco)]">
                 Andromeda · on
               </figcaption>
             </figure>
@@ -915,13 +915,13 @@ export default function CampaignsPage() {
               </span>
             ) : null}
           </div>
-          <p className="mt-1.5 font-mono text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+          <p className="mt-1.5 font-mono text-micro leading-4 text-[var(--atlas-texto-fraco)]">
             fonte /api/v1/ai/andromeda-advisor · só agregados · zero PII · nada é aplicado na Meta automaticamente
           </p>
           <div className="mt-4 space-y-3">
             <div className={`relative ${cc5Inner} p-4 pl-5`}>
               <span aria-hidden="true" className="absolute bottom-3 left-0 top-3 w-[2px] rounded-full bg-[var(--atlas-estado-atencao)]" />
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
+              <p className="font-mono text-micro font-semibold uppercase tracking-[.16em] text-[var(--atlas-estado-atencao)]">
                 Trava de segurança
               </p>
               <p className="mt-1.5 text-sm leading-6 text-[var(--atlas-texto-medio)]">
@@ -953,13 +953,13 @@ export default function CampaignsPage() {
                         {advisorActionLabels[rec.action]}
                       </span>
                       <span className="font-medium text-[var(--atlas-texto-forte)]">{rec.campaignName}</span>
-                      <span className="ml-auto font-mono text-[10px] uppercase tracking-[.14em] text-[var(--atlas-texto-fraco)]">
+                      <span className="ml-auto font-mono text-micro uppercase tracking-[.14em] text-[var(--atlas-texto-fraco)]">
                         confiança {advisorConfidenceLabels[rec.confidence]}
                       </span>
                     </div>
                     <p className="mt-2.5 text-sm leading-6 text-[var(--atlas-texto-medio)]">{rec.rationale}</p>
                     <div className="mt-2.5 border-t border-[rgba(148,163,184,.12)] pt-2.5">
-                      <p className="font-mono text-[9px] font-semibold uppercase tracking-[.16em] text-[var(--atlas-accent)]">
+                      <p className="font-mono text-micro font-semibold uppercase tracking-[.16em] text-[var(--atlas-accent)]">
                         Feedback → Meta
                       </p>
                       <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">{rec.metaFeedbackHint}</p>

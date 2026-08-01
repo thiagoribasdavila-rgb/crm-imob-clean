@@ -141,7 +141,7 @@ export function NextBestActionPanel({
           <button
             type="button"
             onClick={() => void load()}
-            className="rounded-[8px] border border-[rgba(148,163,184,0.18)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-[#8b97ab] transition-colors hover:border-[rgba(75,141,248,0.5)] hover:text-[#4b8df8]"
+            className="rounded-[8px] border border-[rgba(148,163,184,0.18)] px-3 py-1.5 font-mono text-rotulo uppercase tracking-[0.14em] text-[#8b97ab] transition-colors hover:border-[rgba(75,141,248,0.5)] hover:text-[#4b8df8]"
             aria-label="Recarregar playlist"
           >
             ↻ Atualizar
@@ -202,14 +202,14 @@ export function NextBestActionPanel({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="truncate text-sm font-medium text-[var(--atlas-texto-forte)]">{a.name}</span>
-                        <span className="shrink-0 rounded-full border border-[rgba(75,141,248,0.3)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#78a6f9]">
+                        <span className="shrink-0 rounded-full border border-[rgba(75,141,248,0.3)] px-2 py-0.5 font-mono text-micro uppercase tracking-[0.1em] text-[#78a6f9]">
                           {ACTION_LABEL[a.action] ?? a.action}
                         </span>
                         {/* Banda qualitativa: a rota sempre a devolveu e a tela
                             descartava. Palavra em vez de percentual — a leitura
                             não tem lastro para fingir precisão decimal. */}
                         {a.band ? (
-                          <span className="shrink-0 rounded-full border border-[rgba(148,163,184,0.22)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[#8b97ab]">
+                          <span className="shrink-0 rounded-full border border-[rgba(148,163,184,0.22)] px-2 py-0.5 font-mono text-micro uppercase tracking-[0.1em] text-[#8b97ab]">
                             {BAND_LABEL[a.band] ?? a.band}
                           </span>
                         ) : null}
@@ -222,7 +222,7 @@ export function NextBestActionPanel({
                       {/* Probabilidade nunca aparece sozinha: a linha abaixo diz sobre
                           quantos sinais ela se apoia e quais faltaram. */}
                       {a.dataCaveat ? (
-                        <p className="mt-0.5 truncate text-[11px] leading-4 text-[#5f6b80]" title={a.dataCaveat}>
+                        <p className="mt-0.5 truncate text-rotulo leading-4 text-[#5f6b80]" title={a.dataCaveat}>
                           {a.dataCaveat}
                         </p>
                       ) : null}
@@ -234,7 +234,7 @@ export function NextBestActionPanel({
                       {a.expectedValue == null && a.declaredBudget != null ? (
                         // Orçamento declarado NÃO é potencial calculado — rótulo explícito
                         // para o corretor não ler teto do cliente como preço de imóvel.
-                        <span className="font-mono text-[10px] leading-4 text-[var(--atlas-texto-fraco)] [font-variant-numeric:tabular-nums]">
+                        <span className="font-mono text-micro leading-4 text-[var(--atlas-texto-fraco)] [font-variant-numeric:tabular-nums]">
                           orç. declarado {brl(a.declaredBudget)}
                         </span>
                       ) : null}

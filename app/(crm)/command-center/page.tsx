@@ -934,7 +934,7 @@ function DepthRing({
       <canvas ref={canvasRef} aria-hidden="true" className="h-16 w-16" />
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute font-mono text-[11px] font-semibold tabular-nums text-slate-200"
+        className="pointer-events-none absolute font-mono text-rotulo font-semibold tabular-nums text-slate-200"
       >
         {centerLabel}
       </span>
@@ -1085,7 +1085,7 @@ function CorteDaFila({
   return (
     <li className="border-t border-white/[.06] pt-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-[11px] text-slate-500">
+        <p className="text-rotulo text-slate-500">
           Do que esse número é feito
           {triagem.lidoEm ? ` · leitura de ${new Date(triagem.lidoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}
         </p>
@@ -1094,14 +1094,14 @@ function CorteDaFila({
           onClick={() => setAberto((atual) => !atual)}
           aria-expanded={aberto}
           aria-controls="corte-da-fila-premissa"
-          className="min-h-11 text-[11px] font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+          className="min-h-11 text-rotulo font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
         >
           {ritmoValido ? "Em quanto tempo isso acaba?" : "Sem prazo — declarar ritmo"}
         </button>
       </div>
 
       {!triagem.medida ? (
-        <p className="mt-2 text-[11.5px] leading-5 text-[var(--atlas-texto-fraco)]">
+        <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
           Corte não medido: {triagem.motivoNaoMedida}
         </p>
       ) : (
@@ -1123,16 +1123,16 @@ function CorteDaFila({
                 diasUteis: 10,
               });
               return (
-                <li key={faixa.chave} className="text-[11.5px] leading-5">
+                <li key={faixa.chave} className="text-rotulo leading-5">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="min-w-0 text-[var(--atlas-texto-medio)]" title={faixa.criterio}>
                       {faixa.rotulo}
                     </span>
-                    <span className={`cc6-num shrink-0 text-[13px] ${faixa.atendimento ? "text-[var(--atlas-texto-forte)]" : "text-[var(--atlas-texto-fraco)]"}`}>
+                    <span className={`cc6-num shrink-0 text-corpo ${faixa.atendimento ? "text-[var(--atlas-texto-forte)]" : "text-[var(--atlas-texto-fraco)]"}`}>
                       {faixa.total}
                     </span>
                   </div>
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[11px] text-[var(--atlas-texto-fraco)]">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-rotulo text-[var(--atlas-texto-fraco)]">
                     {faixa.donos.length ? (
                       <span>
                         {faixa.donos.map((dono) => `${dono.total} com ${dono.nome}`).join(" · ")}
@@ -1162,7 +1162,7 @@ function CorteDaFila({
                     )}
                   </div>
                   {prazo ? (
-                    <p className="text-[11px] text-[#93a2b8]">
+                    <p className="text-rotulo text-[#93a2b8]">
                       {faixa.total} PRIMEIRAS ligações ÷ ({corretores} corretor(es) × {ritmoValido}/dia útil)
                       {antes > 0 ? ` — só começa depois das ${antes} acima, em ${prazo.diasUteisAteComecar} dia(s) útil(eis)` : ""}
                       {" "}= termina em {prazo.diasUteis} dia(s) útil(eis) · {dataCurta(prazo.terminaEmMs)} · premissa sua
@@ -1174,14 +1174,14 @@ function CorteDaFila({
             })}
           </ul>
 
-          <p className="mt-2 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+          <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
             Soma das faixas: {triagem.somaDasFaixas} · linha acima: {triagem.total}
             {triagem.somaDasFaixas !== triagem.total ? " — DIVERGÊNCIA: as faixas deixaram de decompor o mesmo número" : ""}
             {triagem.amostraCompleta ? "" : " · leitura truncada: todo número aqui é “ao menos”"}
           </p>
 
           {triagem.eixoGeografico.medido ? (
-            <p className="mt-1 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+            <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
               Praça = {triagem.eixoGeografico.ufs.join(", ")}, derivada de {triagem.eixoGeografico.empreendimentosAtivos} empreendimento(s) ativo(s)
               {triagem.eixoGeografico.empreendimentosSemUf > 0
                 ? ` (${triagem.eixoGeografico.empreendimentosSemUf} sem UF cadastrada — lacuna declarada, não preenchida)`
@@ -1191,7 +1191,7 @@ function CorteDaFila({
               &ldquo;fora da área de atendimento&rdquo;: ninguém falou com essas pessoas, e a faixa nunca sai da escada.
             </p>
           ) : (
-            <p className="mt-1 text-[11px] leading-5 text-[#f2b544]">
+            <p className="mt-1 text-rotulo leading-5 text-[#f2b544]">
               Eixo geográfico ausente: {triagem.eixoGeografico.motivo}. A escada mostra só &ldquo;pediu / não pediu&rdquo; —
               seria falso dizer que todo mundo está fora da praça.
             </p>
@@ -1201,7 +1201,7 @@ function CorteDaFila({
 
       {aberto ? (
         <div id="corte-da-fila-premissa" className="mt-3 rounded-xl border border-white/[.07] px-3 py-3">
-          <label className="block text-[11.5px] text-[var(--atlas-texto-medio)]" htmlFor="ritmo-declarado">
+          <label className="block text-rotulo text-[var(--atlas-texto-medio)]" htmlFor="ritmo-declarado">
             Primeiras ligações por corretor, por dia útil
           </label>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -1218,7 +1218,7 @@ function CorteDaFila({
             <button
               type="button"
               onClick={declarar}
-              className="min-h-11 rounded-lg border border-[var(--atlas-accent)] px-3 text-[11.5px] font-semibold text-[var(--atlas-accent)] hover:text-white"
+              className="min-h-11 rounded-lg border border-[var(--atlas-accent)] px-3 text-rotulo font-semibold text-[var(--atlas-accent)] hover:text-white"
             >
               {precisaReconfirmar && ritmo ? "Reconfirmar" : "Declarar"}
             </button>
@@ -1226,7 +1226,7 @@ function CorteDaFila({
               <button
                 type="button"
                 onClick={limpar}
-                className="min-h-11 text-[11.5px] font-semibold text-[#93a2b8] hover:text-white"
+                className="min-h-11 text-rotulo font-semibold text-[#93a2b8] hover:text-white"
               >
                 Limpar premissa
               </button>
@@ -1236,21 +1236,21 @@ function CorteDaFila({
               atalho é valor padrão fantasiado, e um número pré-preenchido seria
               precisamente o chute com aparência de conta que este projeto
               proíbe. Sem declaração, a resposta é "sem prazo". */}
-          <p className="mt-2 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+          <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
             O Atlas NÃO sabe este número, e não vai chutar: {capacity?.unavailableReason
               ? capacity.unavailableReason
               : `a amostra atribuída tem ${capacity?.observed.attributedMoves ?? 0} movimentação(ões) de ${capacity?.observed.actors ?? 0} pessoa(s), contra o mínimo de ${capacity?.minimumActors ?? 3} para medir ritmo`}
             . Este é o seu palpite, e ele fica marcado como seu.
           </p>
           {ritmo ? (
-            <p className="mt-1 text-[11px] leading-5 text-[#93a2b8]">
+            <p className="mt-1 text-rotulo leading-5 text-[#93a2b8]">
               Premissa sua, declarada em {dataCurta(ritmo.declaradoEmMs)}
               {precisaReconfirmar
                 ? ` — vencida (mais de ${DIAS_ATE_RECONFIRMAR_RITMO} dias). Reconfirme o ritmo para o prazo voltar a valer.`
                 : ""}
             </p>
           ) : null}
-          <ul className="mt-2 space-y-1 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+          <ul className="mt-2 space-y-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
             <li>
               A unidade é a PRIMEIRA ligação — não atendimento, não visita, não venda. O prazo não fala de receita
               nem de conversão.
@@ -2461,8 +2461,8 @@ export default function CommandCenterPage() {
                 <ul className="cc23-rows">
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Follow-up no prazo</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="text-rotulo text-slate-500">Follow-up no prazo</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
                         {teamSla?.totals.followUpComplianceRate == null
                           ? "Sem amostra medida"
                           : `Cumprimento do time direto · ${
@@ -2491,8 +2491,8 @@ export default function CommandCenterPage() {
                   </li>
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Sem 1º contato</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">SLA inicial vencido</p>
+                      <p className="text-rotulo text-slate-500">Sem 1º contato</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">SLA inicial vencido</p>
                     </div>
                     <span
                       className={`cc6-metric-value text-xl ${
@@ -2506,8 +2506,8 @@ export default function CommandCenterPage() {
                   </li>
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Follow-ups vencidos</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">Próxima ação atrasada</p>
+                      <p className="text-rotulo text-slate-500">Follow-ups vencidos</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">Próxima ação atrasada</p>
                     </div>
                     <span
                       className={`cc6-metric-value text-xl ${
@@ -2521,8 +2521,8 @@ export default function CommandCenterPage() {
                   </li>
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Sem próxima ação</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">Leads parados na carteira</p>
+                      <p className="text-rotulo text-slate-500">Sem próxima ação</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">Leads parados na carteira</p>
                     </div>
                     <span
                       className={`cc6-metric-value text-xl ${
@@ -2558,7 +2558,7 @@ export default function CommandCenterPage() {
                             {broker.brokerName}
                           </span>
                         </span>
-                        <span className="shrink-0 font-mono text-[11px] tabular-nums text-slate-400">
+                        <span className="shrink-0 font-mono text-rotulo tabular-nums text-slate-400">
                           {broker.firstContactOverdue + broker.followUpOverdue} SLA ·{" "}
                           {broker.withoutNextAction} sem ação
                         </span>
@@ -2575,7 +2575,7 @@ export default function CommandCenterPage() {
               )}
             </div>
           )}
-          <p className="cc6-hairline mt-4 pt-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-hairline mt-4 pt-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
             Leitura apenas · o painel mede e ordena, nunca redistribui sozinho. Decisão humana
             em transferir, cobrar SLA e mudar prioridade.
           </p>
@@ -2633,17 +2633,17 @@ export default function CommandCenterPage() {
                   ) : null}
                 </div>
                 {directorDaily.aiUsage.costIsPartial ? (
-                  <p className="mt-2 text-[11.5px] leading-5 text-[#f2b544]">
+                  <p className="mt-2 text-rotulo leading-5 text-[#f2b544]">
                     Custo parcial: {directorDaily.aiUsage.callsWithoutPricing} chamada(s) sem tarifa cadastrada.
                     Não use este número para decidir verba enquanto a tabela de preços estiver incompleta.
                   </p>
                 ) : null}
                 {!directorDaily.aiUsage.available ? (
-                  <p className="mt-2 text-[11.5px] leading-5 text-[var(--atlas-texto-fraco)]">
+                  <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                     Sem snapshot anterior de custo neste banco — a migration de rastreio de IA ainda não foi aplicada.
                   </p>
                 ) : null}
-                <p className="mt-2 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+                <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                   Este painel é somente leitura. Qualquer mudança de verba ou de time exige APROVAÇÃO HUMANA em /approvals.
                 </p>
               </div>
@@ -2679,8 +2679,8 @@ export default function CommandCenterPage() {
                       Os dois contadores que davam contexto viram linha própria. */}
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Carteira ativa</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="text-rotulo text-slate-500">Carteira ativa</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
                         {/* Plural correto: a legenda dizia "1 quentes". */}
                         {directorDaily.commercial.hotLeads}{" "}
                         {directorDaily.commercial.hotLeads === 1 ? "quente" : "quentes"}
@@ -2690,8 +2690,8 @@ export default function CommandCenterPage() {
                   </li>
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Sem 1º contato</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="text-rotulo text-slate-500">Sem 1º contato</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
                         {/* "Não medido" é estado de primeira classe: a rota devolve
                             `null` quando a coluna first_contacted_at não existe, e
                             traço é a leitura certa — zero seria "a fila acabou". */}
@@ -2722,8 +2722,8 @@ export default function CommandCenterPage() {
                   ) : null}
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Follow-ups vencidos</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">Próxima ação atrasada</p>
+                      <p className="text-rotulo text-slate-500">Follow-ups vencidos</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">Próxima ação atrasada</p>
                     </div>
                     <span
                       className={`cc6-metric-value text-xl ${
@@ -2737,8 +2737,8 @@ export default function CommandCenterPage() {
                   </li>
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Sinais críticos</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">Riscos executivos + IA</p>
+                      <p className="text-rotulo text-slate-500">Sinais críticos</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">Riscos executivos + IA</p>
                     </div>
                     <span
                       className={`cc6-metric-value text-xl ${
@@ -2781,8 +2781,8 @@ export default function CommandCenterPage() {
                 <ul className="cc23-rows">
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Qualificação</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="text-rotulo text-slate-500">Qualificação</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
                         {marketingQuality.totals.qualified} de {marketingQuality.totals.leads} leads ·{" "}
                         {marketingQuality.totals.sales} vendas
                       </p>
@@ -2793,8 +2793,8 @@ export default function CommandCenterPage() {
                   </li>
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">Descarte</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="text-rotulo text-slate-500">Descarte</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
                         {marketingQuality.totals.discarded} descartados na janela
                         {marketingRates.discardHigh ? " · acima do limiar (25%)" : ""}
                       </p>
@@ -2809,11 +2809,11 @@ export default function CommandCenterPage() {
                   </li>
                   <li className="cc23-row">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-slate-500">CPL</p>
+                      <p className="text-rotulo text-slate-500">CPL</p>
                       {/* A linha de baixo diz POR QUE o traço está lá. Traço mudo
                           faz o leitor supor que o dado não carregou; traço com
                           motivo faz ele ir atrás da conta de anúncios certa. */}
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="mt-0.5 text-rotulo text-slate-500">
                         {marketingRates.costPerQualified
                           ? `${marketingRates.costPerQualified} por qualificado`
                           : marketingRates.whyNoCostPerLead
@@ -2835,8 +2835,8 @@ export default function CommandCenterPage() {
                           acidentalmente verdadeiro. Com gasto importado, ele
                           passou a chamar de "com leads" 7 campanhas que têm
                           zero. */}
-                      <p className="text-[11px] text-slate-500">Campanhas em atividade</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
+                      <p className="text-rotulo text-slate-500">Campanhas em atividade</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
                         com lead ou gasto na janela · {marketingQuality.totals.campaigns} na organização
                       </p>
                     </div>
@@ -2848,7 +2848,7 @@ export default function CommandCenterPage() {
               </div>
               {marketingQuality.policy.windowComplete === false ||
               !marketingQuality.policy.spendMeasured ? (
-                <p className="mt-3 text-[11px] leading-5 text-[var(--atlas-warning)]">
+                <p className="mt-3 text-rotulo leading-5 text-[var(--atlas-warning)]">
                   {marketingQuality.policy.windowComplete === false
                     ? "Janela truncada no teto de paginação — números são piso, não total. "
                     : ""}
@@ -3004,7 +3004,7 @@ export default function CommandCenterPage() {
                de apoio gritarem logo abaixo do herói "Prioridades agora". */
             <dl className="cc23-quiet mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
               <div className="min-w-0" title="Leads da sua carteira em atendimento">
-                <dt className="text-[11px] text-slate-500">Leads ativos</dt>
+                <dt className="text-rotulo text-slate-500">Leads ativos</dt>
                 <dd className="cc6-metric-value mt-0.5 text-xl">
                   {brokerDaily.summary.activeLeads}
                 </dd>
@@ -3017,7 +3017,7 @@ export default function CommandCenterPage() {
                 className="min-w-0"
                 title="Leads sem nenhum primeiro contato registrado (leads.first_contacted_at nulo)"
               >
-                <dt className="text-[11px] text-slate-500">Sem 1º contato</dt>
+                <dt className="text-rotulo text-slate-500">Sem 1º contato</dt>
                 <dd
                   className={`cc6-metric-value mt-0.5 text-xl ${
                     (brokerDaily.summary.firstContactOverdue ?? 0) > 0
@@ -3028,11 +3028,11 @@ export default function CommandCenterPage() {
                   {brokerDaily.summary.firstContactOverdue ?? "—"}
                 </dd>
                 {brokerDaily.summary.firstContactOverdue === null ? (
-                  <p className="mt-0.5 text-[10px] text-slate-500">não medido</p>
+                  <p className="mt-0.5 text-micro text-slate-500">não medido</p>
                 ) : null}
               </div>
               <div className="min-w-0" title="Alta intenção ou score elevado">
-                <dt className="text-[11px] text-slate-500">Quentes</dt>
+                <dt className="text-rotulo text-slate-500">Quentes</dt>
                 <dd
                   className={`cc6-metric-value mt-0.5 text-xl ${
                     brokerDaily.summary.hotLeads > 0 ? "text-[var(--atlas-warning)]!" : ""
@@ -3042,13 +3042,13 @@ export default function CommandCenterPage() {
                 </dd>
               </div>
               <div className="min-w-0" title="Tarefas em aberto na sua fila">
-                <dt className="text-[11px] text-slate-500">Tarefas abertas</dt>
+                <dt className="text-rotulo text-slate-500">Tarefas abertas</dt>
                 <dd className="cc6-metric-value mt-0.5 text-xl">
                   {brokerDaily.summary.openTasks}
                 </dd>
               </div>
               <div className="min-w-0" title="Prazos vencidos aguardando ação">
-                <dt className="text-[11px] text-slate-500">Atrasadas</dt>
+                <dt className="text-rotulo text-slate-500">Atrasadas</dt>
                 <dd
                   className={`cc6-metric-value mt-0.5 text-xl ${
                     brokerDaily.summary.overdueTasks > 0 ? "text-[var(--atlas-danger)]!" : ""
@@ -3058,7 +3058,7 @@ export default function CommandCenterPage() {
                 </dd>
               </div>
               <div className="min-w-0" title="Compromissos com prazo nos próximos 7 dias">
-                <dt className="text-[11px] text-slate-500">Agenda 7 dias</dt>
+                <dt className="text-rotulo text-slate-500">Agenda 7 dias</dt>
                 <dd className="cc6-metric-value mt-0.5 text-xl">
                   {brokerDaily.summary.agendaNext7Days}
                 </dd>
@@ -3252,7 +3252,7 @@ export default function CommandCenterPage() {
               {stageDistribution.stages.map((stage, index) => (
                 <span
                   key={stage.key}
-                  className="inline-flex items-center gap-1.5 text-[11px] text-slate-500"
+                  className="inline-flex items-center gap-1.5 text-rotulo text-slate-500"
                 >
                   <span
                     aria-hidden="true"
@@ -3289,7 +3289,7 @@ export default function CommandCenterPage() {
             Telemetria · Módulos
           </p>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-[11px] tabular-nums text-slate-500">
+            <span className="font-mono text-rotulo tabular-nums text-slate-500">
               {moduleHealth.length
                 ? `${operationalModuleCount}/${moduleHealth.length} módulos · ${updatedAgoLabel}`
                 : updatedAgoLabel}
@@ -3306,7 +3306,7 @@ export default function CommandCenterPage() {
         <div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <span
-            className={`inline-flex items-center gap-2 text-[11px] font-medium ${
+            className={`inline-flex items-center gap-2 text-rotulo font-medium ${
               liveConnected ? "text-slate-300" : "text-[var(--atlas-warning)]"
             }`}
           >
@@ -3322,10 +3322,10 @@ export default function CommandCenterPage() {
             </span>
             {liveConnected ? "canal ao vivo" : "canal reconectando"}
           </span>
-          <span className="font-mono text-[11px] tabular-nums text-slate-500">
+          <span className="font-mono text-rotulo tabular-nums text-slate-500">
             {latencyEntries.length ? latencyEntries.join(" · ") : "medindo latência…"}
           </span>
-          <span className="text-[11px] tabular-nums text-slate-500">{updatedAgoLabel}</span>
+          <span className="text-rotulo tabular-nums text-slate-500">{updatedAgoLabel}</span>
         </div>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           {/* O anel de módulos era um gauge em canvas rodando rAF só para redesenhar
@@ -3335,10 +3335,10 @@ export default function CommandCenterPage() {
               inalcançável por teclado. O anel do papel (roleRing) fica. */}
           {moduleRing ? (
             <span className="flex items-center gap-2">
-              <span aria-hidden="true" className="cc6-num text-[11px] text-slate-300">
+              <span aria-hidden="true" className="cc6-num text-rotulo text-slate-300">
                 {moduleRing.centerLabel}
               </span>
-              <span aria-hidden="true" className="text-[11px] text-slate-500">
+              <span aria-hidden="true" className="text-rotulo text-slate-500">
                 Módulos
               </span>
               <span className="sr-only">
@@ -3354,7 +3354,7 @@ export default function CommandCenterPage() {
                 detail={roleRing.detail}
                 label={roleRing.label}
               />
-              <span className="text-[11px] text-slate-500">{roleRing.caption}</span>
+              <span className="text-rotulo text-slate-500">{roleRing.caption}</span>
             </span>
           ) : null}
           <span className="flex items-center gap-2">
@@ -3362,23 +3362,23 @@ export default function CommandCenterPage() {
               points={sparkSeries.leadsPerHour}
               label="Leads criados nas últimas 24 horas, por hora"
             />
-            <span className="text-[11px] text-slate-500">Leads · 24h</span>
+            <span className="text-rotulo text-slate-500">Leads · 24h</span>
           </span>
           <span className="flex items-center gap-2">
             <Sparkline
               points={sparkSeries.activityPerHour}
               label="Atividade de leads e tarefas nas últimas 24 horas, por hora"
             />
-            <span className="text-[11px] text-slate-500">Atividade · 24h</span>
+            <span className="text-rotulo text-slate-500">Atividade · 24h</span>
           </span>
-          <span className="text-[11px] text-slate-600">
-            <kbd className="rounded border border-white/[.12] bg-white/[.03] px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+          <span className="text-rotulo text-slate-600">
+            <kbd className="rounded border border-white/[.12] bg-white/[.03] px-1.5 py-0.5 font-mono text-micro text-slate-400">
               r
             </kbd>{" "}
             atualizar
           </span>
-          <span className="text-[11px] text-slate-600">
-            <kbd className="rounded border border-white/[.12] bg-white/[.03] px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+          <span className="text-rotulo text-slate-600">
+            <kbd className="rounded border border-white/[.12] bg-white/[.03] px-1.5 py-0.5 font-mono text-micro text-slate-400">
               f
             </kbd>{" "}
             apresentação
@@ -3673,7 +3673,7 @@ export default function CommandCenterPage() {
               {/* Rodapé de cobertura: o que a IA não enxerga fica FORA da fila
                   de sinais — é propriedade do sistema, não alerta do dia. */}
               {briefing?.coverage?.blindSpots?.length ? (
-                <p className="cc6-hairline mt-3 pt-3 text-[11px] leading-5 text-slate-500">
+                <p className="cc6-hairline mt-3 pt-3 text-rotulo leading-5 text-slate-500">
                   O que este painel não enxerga:{" "}
                   {briefing.coverage.blindSpots.map((spot) => `${spot.title} (${spot.reason})`).join("; ")}.
                 </p>
@@ -4045,7 +4045,7 @@ export default function CommandCenterPage() {
                         </span>
                       ))}
                     </div>
-                    <p className="text-right text-[11px] text-slate-600">
+                    <p className="text-right text-rotulo text-slate-600">
                       Atualizado em {new Date(governance.generatedAt).toLocaleString("pt-BR")} ·{" "}
                       {governance.health.hosting} · {governance.health.environment}
                     </p>
@@ -4057,7 +4057,7 @@ export default function CommandCenterPage() {
         </section>
       ) : null}
 
-      <p className="text-center text-[11px] text-slate-600">
+      <p className="text-center text-rotulo text-slate-600">
         A IA sugere e explica; nenhuma ação é executada sem a sua confirmação.
       </p>
     </div>

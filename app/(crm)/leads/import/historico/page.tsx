@@ -186,7 +186,7 @@ export default function HistoricalImportPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {sheet.headers.map((header, index) => (
               <label key={`${header}-${index}`} className="flex flex-col gap-1">
-                <span className="truncate font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
+                <span className="truncate font-mono text-rotulo uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
                   {header || `Coluna ${index + 1}`}
                 </span>
                 <select

@@ -234,7 +234,7 @@ export default function PropertyMatching() {
                   </h2>
                   <StatusBadge tone="success">Rascunho · aprovação humana</StatusBadge>
                 </div>
-                <p className="cc6-num mt-1 text-[11px] text-[var(--atlas-texto-fraco)]">{draft.mode === "generative" ? "IA generativa" : "motor local seguro"} · revise antes de enviar</p>
+                <p className="cc6-num mt-1 text-rotulo text-[var(--atlas-texto-fraco)]">{draft.mode === "generative" ? "IA generativa" : "motor local seguro"} · revise antes de enviar</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => void copyDraft()} className="cc6-ghost-btn">{copied ? "Copiado ✓" : "Copiar mensagem"}</button>
@@ -264,13 +264,13 @@ export default function PropertyMatching() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">#{String(index + 1).padStart(2, "0")}</span>
+                      <span className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">#{String(index + 1).padStart(2, "0")}</span>
                       <StatusBadge tone={rec.tone}>{rec.label}</StatusBadge>
                     </div>
                     <h3 className="mt-1.5 truncate text-[15px] font-semibold tracking-tight text-[var(--atlas-texto-forte)]" title={property.title || undefined}>
                       {property.title || "Imóvel sem título"}
                     </h3>
-                    <p className="cc6-num mt-0.5 truncate text-[11px] text-[var(--atlas-texto-fraco)]">{[property.city, property.state].filter(Boolean).join(" · ") || "Localização pendente"}</p>
+                    <p className="cc6-num mt-0.5 truncate text-rotulo text-[var(--atlas-texto-fraco)]">{[property.city, property.state].filter(Boolean).join(" · ") || "Localização pendente"}</p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="cc6-metric-value text-3xl leading-none">{match.score}</p>
@@ -285,10 +285,10 @@ export default function PropertyMatching() {
                 {/* O porquê do match em uma linha mono (íntegra no title). */}
                 <div className="space-y-1">
                   {match.reasons.length ? (
-                    <p className="cc6-num cc6-ok truncate text-[11px]" title={match.reasons.join(" · ")}>✓ {match.reasons.slice(0, 3).join(" · ")}</p>
+                    <p className="cc6-num cc6-ok truncate text-rotulo" title={match.reasons.join(" · ")}>✓ {match.reasons.slice(0, 3).join(" · ")}</p>
                   ) : null}
                   {match.risks.length ? (
-                    <p className="cc6-num cc6-warn truncate text-[11px]" title={match.risks.join(" · ")}>! {match.risks.slice(0, 2).join(" · ")}</p>
+                    <p className="cc6-num cc6-warn truncate text-rotulo" title={match.risks.join(" · ")}>! {match.risks.slice(0, 2).join(" · ")}</p>
                   ) : null}
                 </div>
 
@@ -338,7 +338,7 @@ export default function PropertyMatching() {
                     aria-pressed={isSelected}
                     disabled={match.recommendation === "não recomendar"}
                     onClick={() => toggleProperty(property.id)}
-                    className={`rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors disabled:opacity-30 ${isSelected ? "border-[rgba(52,211,153,0.4)] bg-[rgba(52,211,153,0.1)] text-[var(--atlas-estado-sucesso)]" : "border-[rgba(148,163,184,0.2)] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.35)] hover:text-[var(--atlas-texto-forte)]"} ${focusRing}`}
+                    className={`rounded-full border px-3 py-1.5 font-mono text-micro uppercase tracking-[0.12em] transition-colors disabled:opacity-30 ${isSelected ? "border-[rgba(52,211,153,0.4)] bg-[rgba(52,211,153,0.1)] text-[var(--atlas-estado-sucesso)]" : "border-[rgba(148,163,184,0.2)] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.35)] hover:text-[var(--atlas-texto-forte)]"} ${focusRing}`}
                   >
                     {isSelected ? "✓ Selecionado" : "Selecionar"}
                   </button>

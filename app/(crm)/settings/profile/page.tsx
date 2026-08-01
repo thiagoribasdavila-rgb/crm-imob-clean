@@ -108,7 +108,7 @@ export default function ProfileSettings() {
                 <input className={`${inputClass} mt-1.5`} value={profile.name || ""} onChange={(event) => setProfile({ ...profile, name: event.target.value })} />
               </label>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">Foto, telefone e CRECI entram quando homologados no banco.</p>
+                <p className="text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">Foto, telefone e CRECI entram quando homologados no banco.</p>
                 <button type="submit" disabled={saving} className="atlas-button-primary disabled:opacity-50">
                   {saving ? "Salvando…" : "Salvar perfil"}
                 </button>
@@ -134,7 +134,7 @@ export default function ProfileSettings() {
         <form onSubmit={changePassword} className="cc6-panel cc6-reveal p-5" style={{ animationDelay: "100ms" }} aria-labelledby="profile-password-title">
           <p className="cc6-eyebrow">Segurança</p>
           <h2 id="profile-password-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Trocar senha</h2>
-          <p className="cc6-num mt-1 text-[11px] text-[var(--atlas-texto-fraco)]">mínimo 12 caracteres · senha atual exigida</p>
+          <p className="cc6-num mt-1 text-rotulo text-[var(--atlas-texto-fraco)]">mínimo 12 caracteres · senha atual exigida</p>
           <div className="cc6-hairline mt-4 grid gap-3 pt-4">
             <label className="sr-only" htmlFor="profile-current-password">Senha atual</label>
             <input id="profile-current-password" className={inputClass} required type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Senha atual" />

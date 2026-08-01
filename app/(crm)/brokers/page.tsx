@@ -160,7 +160,7 @@ export default function BrokersPage() {
             {data.supportQueue.map((member) => (
               <article key={member.id} className="cc6-sev-band cc6-panel-quiet flex flex-col gap-3 py-3 pl-4 pr-3 sm:flex-row sm:items-center sm:justify-between" style={{ "--cc6-sev": "#f5b544" } as CSSProperties}>
                 <div className="min-w-0">
-                  <p className="text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{member.fullName}</p>
+                  <p className="text-corpo font-semibold text-[var(--atlas-texto-forte)]">{member.fullName}</p>
                   <p className="mt-0.5 text-xs text-[var(--atlas-texto-fraco)]">{roleLabel[member.role] || member.role}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

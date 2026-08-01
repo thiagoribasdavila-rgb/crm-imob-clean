@@ -140,18 +140,18 @@ export default function PaymentRulesPage() {
                   style={{ animationDelay: `${80 + Math.min(index, 8) * 40}ms`, "--cc6-sev": item.historyPreserved ? "#34d399" : "#f5b544" } as CSSProperties}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <strong className="truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{item.developerName}</strong>
+                    <strong className="truncate text-corpo font-semibold text-[var(--atlas-texto-forte)]">{item.developerName}</strong>
                     <StatusBadge tone={item.historyPreserved ? "success" : "warning"}>
                       {item.historyPreserved ? "Comprovado" : "Criar 2ª versão"}
                     </StatusBadge>
                   </div>
-                  <p className="cc6-num mt-1.5 text-[11px] text-[var(--atlas-texto-fraco)]">
+                  <p className="cc6-num mt-1.5 text-rotulo text-[var(--atlas-texto-fraco)]">
                     {item.versions} {item.versions === 1 ? "versão" : "versões"} · v{item.latestVersion} atual · {item.activeVersions} ativa{item.activeVersions === 1 ? "" : "s"}
                   </p>
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+            <p className="mt-3 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
               Comprovação verde exige ao menos duas versões, exatamente uma ativa e a anterior mantida no histórico.
             </p>
           </TiltShell>
@@ -260,7 +260,7 @@ export default function PaymentRulesPage() {
               {saving ? "Salvando…" : "Criar nova versão"}
             </button>
             {data && !data.canManage ? (
-              <p className="text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">Somente papéis de gestão criam versões; a leitura permanece aberta.</p>
+              <p className="text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">Somente papéis de gestão criam versões; a leitura permanece aberta.</p>
             ) : null}
           </form>
         </section>
@@ -292,21 +292,21 @@ export default function PaymentRulesPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
+                      <p className="truncate font-mono text-micro uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
                         {rule.developer_name} · v{rule.version}
                       </p>
-                      <h3 className="mt-1 truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{rule.rule_name}</h3>
+                      <h3 className="mt-1 truncate text-corpo font-semibold text-[var(--atlas-texto-forte)]">{rule.rule_name}</h3>
                     </div>
                     <StatusBadge tone={rule.active ? "success" : "neutral"}>
                       {rule.active ? "Ativa" : "Histórico"}
                     </StatusBadge>
                   </div>
-                  <p className="cc6-num mt-2 text-[11px] text-[var(--atlas-texto-fraco)]">
+                  <p className="cc6-num mt-2 text-rotulo text-[var(--atlas-texto-fraco)]">
                     entrada {rule.down_payment_percent ?? "—"}% · {rule.installments_count ?? "—"} parcelas · vigência {rule.valid_from || "aberta"} → {rule.valid_until || "aberta"}
                   </p>
                   <p className="mt-2 whitespace-pre-line text-xs leading-5 text-[var(--atlas-texto-medio)]">{rule.payment_flow}</p>
                   {rule.balloon_payment_notes || rule.financing_notes ? (
-                    <p className="cc6-hairline mt-2 pt-2 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+                    <p className="cc6-hairline mt-2 pt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
                       {[rule.balloon_payment_notes, rule.financing_notes].filter(Boolean).join(" · ")}
                     </p>
                   ) : null}

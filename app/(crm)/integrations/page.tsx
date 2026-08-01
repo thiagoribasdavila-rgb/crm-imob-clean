@@ -195,7 +195,7 @@ export default function IntegrationsPage() {
               APIs, anúncios e portais
             </h2>
           </div>
-          <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">
             {data ? `${data.catalog.length} provedores` : "—"}
           </p>
         </header>
@@ -221,7 +221,7 @@ export default function IntegrationsPage() {
                     {GROUP_LABELS[group.key] ?? group.key}
                   </h3>
                   <span className="cc6-hairline min-w-4 flex-1 self-center" aria-hidden="true" />
-                  <span className="cc6-num text-[10px] text-[var(--atlas-texto-fraco)]">
+                  <span className="cc6-num text-micro text-[var(--atlas-texto-fraco)]">
                     {group.items.length}
                   </span>
                 </header>
@@ -244,12 +244,12 @@ export default function IntegrationsPage() {
                           <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                             {item.name}
                           </p>
-                          <p className="cc6-num mt-0.5 truncate text-[10px] tracking-wide text-[var(--atlas-texto-fraco)]">
+                          <p className="cc6-num mt-0.5 truncate text-micro tracking-wide text-[var(--atlas-texto-fraco)]">
                             {item.capabilities.join(" · ").replaceAll("_", " ")}
                           </p>
                           {connection?.last_error ? (
                             <p
-                              className="cc6-crit mt-1 truncate text-[11px] leading-4"
+                              className="cc6-crit mt-1 truncate text-rotulo leading-4"
                               title={connection.last_error}
                             >
                               {connection.last_error}
@@ -260,7 +260,7 @@ export default function IntegrationsPage() {
                           <time
                             dateTime={connection.last_sync_at}
                             title={`Último teste real: ${new Date(connection.last_sync_at).toLocaleString("pt-BR")}`}
-                            className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-fraco)]"
+                            className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]"
                           >
                             {SYNC_FORMAT.format(new Date(connection.last_sync_at))}
                           </time>
@@ -290,7 +290,7 @@ export default function IntegrationsPage() {
           {policyItems.map(([enforced, label]) => (
             <span
               key={label}
-              className="cc6-num inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] text-[var(--atlas-texto-fraco)]"
+              className="cc6-num inline-flex items-center gap-1.5 text-micro uppercase tracking-[0.12em] text-[var(--atlas-texto-fraco)]"
             >
               <span aria-hidden="true" className={enforced ? "cc6-ok" : "cc6-warn"}>
                 {enforced ? "✓" : "!"}

@@ -175,7 +175,7 @@ export default function DecisionCenterPage() {
         <TiltShell className="cc6-panel cc6-reveal overflow-hidden" delayMs={40}>
           <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5">
             <p className="cc6-eyebrow">Fila priorizada</p>
-            <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]" aria-live="polite">
+            <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]" aria-live="polite">
               {loading ? "analisando…" : `${decisions.length} ${decisions.length === 1 ? "decisão" : "decisões"}`}
             </p>
           </div>
@@ -220,7 +220,7 @@ export default function DecisionCenterPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="cc6-chip">{decision.type}</span>
                       <span
-                        className={`cc6-num text-[11px] ${decision.priority >= 85 ? "cc6-crit" : decision.priority >= 70 ? "cc6-warn" : "text-[var(--atlas-texto-fraco)]"}`}
+                        className={`cc6-num text-rotulo ${decision.priority >= 85 ? "cc6-crit" : decision.priority >= 70 ? "cc6-warn" : "text-[var(--atlas-texto-fraco)]"}`}
                         title={`Prioridade ${severity.label}`}
                       >
                         Prioridade {decision.priority}
@@ -232,7 +232,7 @@ export default function DecisionCenterPage() {
                     <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">{decision.reason}</p>
                   </div>
                   <div className="shrink-0 sm:w-[240px] sm:text-right">
-                    <p className="cc6-eyebrow text-[10px]!">Próxima ação</p>
+                    <p className="cc6-eyebrow text-micro!">Próxima ação</p>
                     <p className="mt-1.5 text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                       {decision.action}
                     </p>
@@ -242,7 +242,7 @@ export default function DecisionCenterPage() {
             );
           })}
 
-          <p className="cc6-hairline px-5 py-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-hairline px-5 py-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
             Recomendações apenas — nada é executado automaticamente; a decisão final é sempre humana.
           </p>
         </TiltShell>
@@ -255,7 +255,7 @@ export default function DecisionCenterPage() {
           <TiltShell className="cc6-panel cc6-reveal overflow-hidden" delayMs={80}>
             <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5">
               <p className="cc6-eyebrow">Sala de simulação · capacidade comercial</p>
-              <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">
+              <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">
                 {capacity ? `janela de ${capacity.windowDays} dias` : "—"}
               </p>
             </div>
@@ -292,7 +292,7 @@ export default function DecisionCenterPage() {
                     <div key={metric.label} className="min-w-[140px]">
                       <p className="cc6-metric-value text-3xl leading-none">{metric.value}</p>
                       <p className="cc6-metric-label mt-1.5">{metric.label}</p>
-                      {metric.detail ? <p className="mt-1 max-w-[220px] text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">{metric.detail}</p> : null}
+                      {metric.detail ? <p className="mt-1 max-w-[220px] text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{metric.detail}</p> : null}
                     </div>
                   ))}
                 </div>
@@ -301,7 +301,7 @@ export default function DecisionCenterPage() {
                   <article key={scenario.id} className="cc6-hairline px-5 py-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="cc6-chip">{scenario.label}</span>
-                      <span className={`cc6-num text-[11px] ${scenario.hasBasis ? "text-[var(--atlas-texto-fraco)]" : "cc6-warn"}`}>
+                      <span className={`cc6-num text-rotulo ${scenario.hasBasis ? "text-[var(--atlas-texto-fraco)]" : "cc6-warn"}`}>
                         {scenario.hasBasis ? `confiança ${scenario.projection.confidence} · amostra ${scenario.projection.basis?.sample ?? 0}` : "sem lastro"}
                       </span>
                     </div>
@@ -340,7 +340,7 @@ export default function DecisionCenterPage() {
               </>
             ) : null}
 
-            <p className="cc6-hairline px-5 py-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-hairline px-5 py-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
               Simulação determinística sobre o histórico de pipeline — sem modelo generativo e sem custo de token.
               A decisão de contratar, remanejar ou distribuir continua inteiramente humana.
             </p>

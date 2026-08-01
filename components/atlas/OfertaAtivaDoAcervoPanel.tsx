@@ -160,7 +160,7 @@ export function OfertaAtivaDoAcervoPanel() {
         action={
           <Link
             href="/leads?acervo=1"
-            className="rounded-[8px] border border-[rgba(148,163,184,0.18)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-[#8b97ab] transition-colors hover:border-[rgba(75,141,248,0.5)] hover:text-[#4b8df8]"
+            className="rounded-[8px] border border-[rgba(148,163,184,0.18)] px-3 py-1.5 font-mono text-rotulo uppercase tracking-[0.14em] text-[#8b97ab] transition-colors hover:border-[rgba(75,141,248,0.5)] hover:text-[#4b8df8]"
           >
             Meu acervo →
           </Link>
@@ -176,13 +176,13 @@ export function OfertaAtivaDoAcervoPanel() {
             {/* OS NÚMEROS, SEMPRE VISÍVEIS — a trava nunca pode ser surpresa. */}
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="min-w-0">
-                <dt className="text-[11px] text-slate-500">Acervo disponível</dt>
+                <dt className="text-rotulo text-slate-500">Acervo disponível</dt>
                 <dd className="mt-0.5 font-mono text-xl text-[var(--atlas-texto-forte)] [font-variant-numeric:tabular-nums]">
                   {estado.oferta.disponivel}
                 </dd>
               </div>
               <div className="min-w-0">
-                <dt className="text-[11px] text-slate-500">Suas de resgate sem 1º contato</dt>
+                <dt className="text-rotulo text-slate-500">Suas de resgate sem 1º contato</dt>
                 <dd
                   className={`mt-0.5 font-mono text-xl [font-variant-numeric:tabular-nums] ${
                     estado.oferta.semToque >= estado.oferta.regras.limiteSemToque ? "text-[var(--atlas-estado-perigo)]" : "text-[var(--atlas-texto-forte)]"
@@ -192,13 +192,13 @@ export function OfertaAtivaDoAcervoPanel() {
                 </dd>
               </div>
               <div className="min-w-0">
-                <dt className="text-[11px] text-slate-500">Lotes hoje</dt>
+                <dt className="text-rotulo text-slate-500">Lotes hoje</dt>
                 <dd className="mt-0.5 font-mono text-xl text-[var(--atlas-texto-forte)] [font-variant-numeric:tabular-nums]">
                   {estado.oferta.lotesHoje} <span className="text-sm text-[var(--atlas-texto-fraco)]">de {estado.oferta.regras.lotesPorDia}</span>
                 </dd>
               </div>
               <div className="min-w-0">
-                <dt className="text-[11px] text-slate-500">Prazo que você assume</dt>
+                <dt className="text-rotulo text-slate-500">Prazo que você assume</dt>
                 <dd className="mt-0.5 font-mono text-xl text-[var(--atlas-texto-forte)]">{horas(estado.oferta.prazoMinutos)}</dd>
               </div>
             </dl>
@@ -218,14 +218,14 @@ export function OfertaAtivaDoAcervoPanel() {
             {/* A PRÉVIA — o que o próximo lote traz, sem PII. */}
             {estado.oferta.previa.length ? (
               <div className="flex flex-col gap-2">
-                <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
+                <p className="font-mono text-rotulo uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
                   O que o próximo lote traz ({estado.oferta.previa.length})
                 </p>
                 <ul className="flex flex-col gap-1.5">
                   {estado.oferta.previa.map((item, indice) => (
                     <li
                       key={`${item.criadoEm}-${indice}`}
-                      className="flex flex-wrap items-center gap-2 rounded-[10px] border border-[rgba(148,163,184,0.08)] px-3 py-2 text-[11px] text-[var(--atlas-texto-medio)]"
+                      className="flex flex-wrap items-center gap-2 rounded-[10px] border border-[rgba(148,163,184,0.08)] px-3 py-2 text-rotulo text-[var(--atlas-texto-medio)]"
                     >
                       <span className="font-mono uppercase tracking-[0.1em] text-[#78a6f9]">{item.status}</span>
                       <span>{item.temTelefone ? "telefone" : "sem telefone"}</span>
@@ -270,11 +270,11 @@ export function OfertaAtivaDoAcervoPanel() {
               <div className="flex flex-col gap-1.5 rounded-[10px] border border-[rgba(148,163,184,0.14)] bg-[rgba(148,163,184,0.04)] px-3 py-2.5">
                 <p className="text-sm leading-6 text-[#c3ccdb]">{estado.oferta.veredito.frase}</p>
                 {estado.oferta.vazio.acervoEsgotado ? (
-                  <p className="text-[11px] text-[var(--atlas-texto-fraco)]">
+                  <p className="text-rotulo text-[var(--atlas-texto-fraco)]">
                     Acervo esgotado: não há lead histórica sem dono agora. Quando a próxima onda de importação entrar, ela aparece aqui.
                   </p>
                 ) : estado.oferta.vazio.voceJaPegouSeuLote ? (
-                  <p className="text-[11px] text-[var(--atlas-texto-fraco)]">
+                  <p className="text-rotulo text-[var(--atlas-texto-fraco)]">
                     O acervo tem {estado.oferta.disponivel} leads esperando — a trava é sua, não do acervo. Registre o primeiro contato
                     (ligação, e-mail, WhatsApp) ou descarte com motivo para liberar o próximo lote.
                   </p>

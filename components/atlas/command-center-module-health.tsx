@@ -230,15 +230,15 @@ export function CommandCenterModuleHealth() {
                   {module.count ?? "—"}
                 </span>
               </div>
-              <p className={`mt-1 text-[10px] ${health.text || "text-slate-500"}`}>
+              <p className={`mt-1 text-micro ${health.text || "text-slate-500"}`}>
                 {health.label} · {module.detail}
               </p>
 
               <div className="cc6-hairline mt-2 pt-2">
-                <p className={`text-[11px] font-medium ${write.text || "text-slate-300"}`}>
+                <p className={`text-rotulo font-medium ${write.text || "text-slate-300"}`}>
                   {module.write.label}
                 </p>
-                <p className="mt-0.5 text-[10px] text-slate-500">{module.write.detail}</p>
+                <p className="mt-0.5 text-micro text-slate-500">{module.write.detail}</p>
                 <Link
                   href={module.write.href}
                   aria-disabled={module.write.state === "blocked"}
@@ -256,7 +256,7 @@ export function CommandCenterModuleHealth() {
         <p
           role="status"
           data-state="partial"
-          className="cc6-warn mt-3 text-[11px]"
+          className="cc6-warn mt-3 text-rotulo"
         >
           Atualização parcial do Command Center · {partial}
         </p>

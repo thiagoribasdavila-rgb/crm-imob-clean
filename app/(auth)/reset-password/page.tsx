@@ -163,7 +163,7 @@ export default function ResetPasswordPage() {
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-400/15 font-black text-sky-300">A</span>
           <div>
             <p className="text-xl font-black">ATLAS <span className="text-sky-400">AI</span></p>
-            <p className="text-[11px] font-medium text-slate-500">Credencial protegida</p>
+            <p className="text-rotulo font-medium text-slate-500">Credencial protegida</p>
           </div>
         </div>
 

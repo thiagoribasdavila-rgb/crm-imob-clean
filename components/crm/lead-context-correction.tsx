@@ -164,7 +164,7 @@ export function LeadContextCorrection({
             </label>
           </fieldset>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[11px] leading-5 text-slate-500">
+            <p className="text-rotulo leading-5 text-slate-500">
               A API confirma organização, escopo da lead, projeto e versão atual antes de salvar.
             </p>
             <button type="submit" disabled={!valid || saving} className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-50">

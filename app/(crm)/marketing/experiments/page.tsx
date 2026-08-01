@@ -323,7 +323,7 @@ export default function MediaExperimentsPage() {
                     </div>
                     <h3 className="mt-2 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{x.name}</h3>
                     <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[var(--atlas-texto-medio)]">{x.hypothesis}</p>
-                    <p className="cc6-num mt-2.5 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+                    <p className="cc6-num mt-2.5 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                       variável {variableLabels[x.single_variable] ?? x.single_variable} · primária{" "}
                       {metricLabels[x.primary_metric] ?? x.primary_metric} · proteção{" "}
                       {metricLabels[x.guardrail_metric] ?? x.guardrail_metric} · teto {money(x.budget_cap)}
@@ -415,7 +415,7 @@ export default function MediaExperimentsPage() {
                 </div>
                 {x.latestCheckpoint && (
                   <div className="cc6-panel-quiet mt-4 p-3.5">
-                    <p className="cc6-eyebrow text-[10px]">Última leitura</p>
+                    <p className="cc6-eyebrow text-micro">Última leitura</p>
                     <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">
                       {String(x.latestCheckpoint.assessment.recommendation || "em análise")}
                       {interpretation ? ` · ${interpretation}` : ""}

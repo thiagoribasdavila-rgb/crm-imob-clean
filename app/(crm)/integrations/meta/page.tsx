@@ -931,7 +931,7 @@ export default function MetaIntegration() {
                   </p>
                   <p className="cc6-metric-label mt-1.5">{step.metricLabel}</p>
                   <p
-                    className={`mt-1 text-[11px] leading-4 ${
+                    className={`mt-1 text-rotulo leading-4 ${
                       step.state === "warn" ? "cc6-warn" : "text-[var(--atlas-texto-fraco)]"
                     }`}
                   >
@@ -955,7 +955,7 @@ export default function MetaIntegration() {
               );
             })}
           </div>
-          <p className="cc6-hairline mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 pt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-hairline mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 pt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
             {data && readiness ? (
               <>
                 <ReadyToken
@@ -1179,7 +1179,7 @@ export default function MetaIntegration() {
             </div>
           </div>
         ) : (
-          <p className="mt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+          <p className="mt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
             O ID deve vir de um lead oficial de teste da Meta e permanecer
             legível pelo token configurado no servidor. Último ensaio: —
           </p>
@@ -1199,7 +1199,7 @@ export default function MetaIntegration() {
               <p className="cc6-eyebrow">Jornada 03 · Fontes de lead</p>
               <h2 className={sectionTitle}>Páginas e formulários</h2>
             </div>
-            <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">
               {data
                 ? `${activeSources} ativas · ${sharingSources} com sinal`
                 : "—"}
@@ -1232,7 +1232,7 @@ export default function MetaIntegration() {
                     <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                       {source.name}
                     </p>
-                    <p className="cc6-num mt-0.5 text-[10px] tracking-wide text-[var(--atlas-texto-fraco)]">
+                    <p className="cc6-num mt-0.5 text-micro tracking-wide text-[var(--atlas-texto-fraco)]">
                       página {source.page_id} · formulário{" "}
                       {source.form_id || "todos"}
                       {source.consent_basis
@@ -1240,7 +1240,7 @@ export default function MetaIntegration() {
                         : ""}
                     </p>
                   </div>
-                  <p className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-medio)]">
+                  <p className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-medio)]">
                     <ReadyToken
                       label="sinal"
                       done={source.conversion_sharing_enabled}
@@ -1335,7 +1335,7 @@ export default function MetaIntegration() {
             {saving ? "Salvando…" : "Ativar fonte de leads"}
           </button>
           {!data?.canManage ? (
-            <p className="text-[11px] leading-5 cc6-warn">
+            <p className="text-rotulo leading-5 cc6-warn">
               Somente gestão pode alterar esta integração.
             </p>
           ) : null}
@@ -1360,7 +1360,7 @@ export default function MetaIntegration() {
             </div>
             <StatusBadge tone="warning">Produção bloqueada</StatusBadge>
           </div>
-          <p className="text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+          <p className="text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
             Somente o código de eventos de teste é aceito nesta homologação —
             nenhum sinal real otimiza campanhas sem aceite explícito.
           </p>
@@ -1469,12 +1469,12 @@ export default function MetaIntegration() {
             </button>
           </form>
           {!data?.conversionConfig?.enabled ? (
-            <p className="mt-3 text-[11px] leading-5 cc6-warn">
+            <p className="mt-3 text-rotulo leading-5 cc6-warn">
               Informe o Dataset ID e o código de evento de teste ao lado para
               liberar o ensaio.
             </p>
           ) : !data?.conversionCandidates.length ? (
-            <p className="mt-3 text-[11px] leading-5 cc6-warn">
+            <p className="mt-3 text-rotulo leading-5 cc6-warn">
               Nenhuma lead Meta possui simultaneamente consentimento e e-mail ou
               telefone elegível.
             </p>
@@ -1626,7 +1626,7 @@ export default function MetaIntegration() {
                 {saving ? "Comparando períodos…" : "Comparar com Meta Ads"}
               </button>
               {!data?.readiness.adsInsights ? (
-                <p className="text-[11px] leading-5 cc6-warn">
+                <p className="text-rotulo leading-5 cc6-warn">
                   Conta e token de leitura do Meta Ads pendentes na Hostinger.
                 </p>
               ) : null}
@@ -1638,7 +1638,7 @@ export default function MetaIntegration() {
           {insightsResult ? (
             <div className="mt-3 space-y-3">
               <p
-                className={`cc6-num text-[11px] leading-5 ${
+                className={`cc6-num text-rotulo leading-5 ${
                   insightsResult.status === "passed" ? "cc6-ok" : "cc6-warn"
                 }`}
               >
@@ -1669,19 +1669,19 @@ export default function MetaIntegration() {
                             : "30 dias"}
                       </p>
                       <span
-                        className={`cc6-num text-[10px] uppercase tracking-[0.14em] ${
+                        className={`cc6-num text-micro uppercase tracking-[0.14em] ${
                           period.matches ? "cc6-ok" : "cc6-warn"
                         }`}
                       >
                         {period.matches ? "confere" : "diferença"}
                       </span>
                     </div>
-                    <p className="cc6-num mt-2 text-[11px] leading-5 text-[var(--atlas-texto-medio)]">
+                    <p className="cc6-num mt-2 text-rotulo leading-5 text-[var(--atlas-texto-medio)]">
                       R$ {period.actual.spend.toFixed(2)} ·{" "}
                       {period.actual.impressions.toLocaleString("pt-BR")} impr ·{" "}
                       {period.actual.clicks.toLocaleString("pt-BR")} cliques
                     </p>
-                    <p className="cc6-num mt-1 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+                    <p className="cc6-num mt-1 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
                       Δ R$ {period.difference.spend.toFixed(2)} ·{" "}
                       {period.difference.impressions} impr ·{" "}
                       {period.difference.clicks} cliques · {period.campaigns}{" "}
@@ -1734,7 +1734,7 @@ export default function MetaIntegration() {
                 </p>
                 <p className="cc6-metric-label mt-1.5">relatório no dia</p>
               </div>
-              <p className="cc6-num text-[11px] leading-5 text-[var(--atlas-texto-medio)]">
+              <p className="cc6-num text-rotulo leading-5 text-[var(--atlas-texto-medio)]">
                 {dailyReportTest.duplicateWorkPrevented ? (
                   <span className="cc6-ok">trabalho duplicado evitado</span>
                 ) : (
@@ -1749,7 +1749,7 @@ export default function MetaIntegration() {
               </p>
             </div>
           ) : (
-            <p className="cc6-num mt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-num mt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
               Última execução: —
             </p>
           )}
@@ -1823,7 +1823,7 @@ export default function MetaIntegration() {
               {saving ? "Rodando pré-voo…" : "Testar pré-disparo"}
             </button>
             {!data?.readiness.adsInsights ? (
-              <p className="mt-3 text-[11px] leading-5 cc6-warn">
+              <p className="mt-3 text-rotulo leading-5 cc6-warn">
                 Token Meta Ads e conta de anúncios são obrigatórios para este
                 teste.
               </p>
@@ -1882,11 +1882,11 @@ export default function MetaIntegration() {
                       <p className="text-xs font-medium text-[var(--atlas-texto-forte)]">
                         {check.label}
                       </p>
-                      <p className="mt-1 text-[11px] leading-5 text-[var(--atlas-texto-medio)]">
+                      <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-medio)]">
                         {check.message}
                       </p>
                       {check.technical ? (
-                        <p className="cc6-num mt-1 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+                        <p className="cc6-num mt-1 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
                           {check.technical}
                         </p>
                       ) : null}
@@ -1896,7 +1896,7 @@ export default function MetaIntegration() {
 
                 <div className="cc6-hairline pt-3">
                   <p className="cc6-eyebrow">Próximas ações</p>
-                  <ul className="mt-2 space-y-1 text-[11px] leading-5 text-[var(--atlas-texto-medio)]">
+                  <ul className="mt-2 space-y-1 text-rotulo leading-5 text-[var(--atlas-texto-medio)]">
                     {dispatchPreflight.nextActions.map((item) => (
                       <li key={item} className="flex gap-2">
                         <span aria-hidden="true" className="cc6-ok">→</span>
@@ -1904,7 +1904,7 @@ export default function MetaIntegration() {
                       </li>
                     ))}
                   </ul>
-                  <p className="cc6-num mt-3 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+                  <p className="cc6-num mt-3 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
                     Mutação externa: não · gasto automático: não · aprovação
                     humana: obrigatória.
                   </p>
@@ -1957,7 +1957,7 @@ export default function MetaIntegration() {
                     </p>
                     <p className="cc6-metric-label mt-1.5">{stage.label}</p>
                     <p
-                      className={`cc6-num mt-0.5 text-[10px] ${
+                      className={`cc6-num mt-0.5 text-micro ${
                         typeof stage.rate === "number"
                           ? "cc6-ok"
                           : "text-[var(--atlas-texto-fraco)]"
@@ -1970,7 +1970,7 @@ export default function MetaIntegration() {
                   </div>
                 ))}
               </div>
-              <p className="cc6-hairline cc6-num mt-4 pt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+              <p className="cc6-hairline cc6-num mt-4 pt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                 Perdas registradas somente para aprendizado interno:{" "}
                 <span className={data.funnelInsights.lost ? "cc6-crit" : ""}>
                   {data.funnelInsights.lost}
@@ -2099,7 +2099,7 @@ export default function MetaIntegration() {
                           {passed ? "✓" : "•"}
                         </span>
                       </p>
-                      <p className="mt-1 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+                      <p className="mt-1 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
                         {passed ? gate.pass : gate.fail}
                       </p>
                     </div>
@@ -2109,7 +2109,7 @@ export default function MetaIntegration() {
 
               <div className="cc6-hairline mt-4 grid gap-4 pt-3 lg:grid-cols-[minmax(0,1fr)_280px]">
                 {data.andromedaReadiness.recommendations.length ? (
-                  <ul className="space-y-2 text-[11px] leading-5 text-[var(--atlas-texto-medio)]">
+                  <ul className="space-y-2 text-rotulo leading-5 text-[var(--atlas-texto-medio)]">
                     {data.andromedaReadiness.recommendations.map((item) => (
                       <li key={`${item.type}:${item.title}`} className="flex gap-2">
                         <span aria-hidden="true" className="cc6-warn">
@@ -2125,11 +2125,11 @@ export default function MetaIntegration() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-[11px] leading-5 cc6-ok">
+                  <p className="text-rotulo leading-5 cc6-ok">
                     Sinal saudável para continuar a homologação controlada.
                   </p>
                 )}
-                <div className="space-y-1 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+                <div className="space-y-1 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
                   <p className="cc6-num">
                     duplicidade: {data.andromedaReadiness.duplicateRate}% ·{" "}
                     {data.andromedaReadiness.blockers.length
@@ -2232,7 +2232,7 @@ export default function MetaIntegration() {
                   ].map((column) => (
                     <th
                       key={column}
-                      className="cc6-num py-2.5 pr-4 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]"
+                      className="cc6-num py-2.5 pr-4 text-micro font-medium uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]"
                     >
                       {column}
                     </th>
@@ -2254,7 +2254,7 @@ export default function MetaIntegration() {
                           ? "Origem não identificada"
                           : campaign.campaignName || campaign.campaignId}
                       </p>
-                      <p className="cc6-num mt-1 text-[10px] text-[var(--atlas-texto-fraco)]">
+                      <p className="cc6-num mt-1 text-micro text-[var(--atlas-texto-fraco)]">
                         {campaign.total} leads · score médio{" "}
                         {campaign.averageScore}
                       </p>
@@ -2275,7 +2275,7 @@ export default function MetaIntegration() {
                             ? "Aprendendo"
                             : "Insuficiente"}
                       </StatusBadge>
-                      <p className="cc6-num mt-1.5 text-[10px] text-[var(--atlas-texto-fraco)]">
+                      <p className="cc6-num mt-1.5 text-micro text-[var(--atlas-texto-fraco)]">
                         {campaign.confidencePercent}% de confiança
                       </p>
                     </td>
@@ -2296,7 +2296,7 @@ export default function MetaIntegration() {
                     </td>
                     <td className="max-w-sm py-3 leading-5 text-[var(--atlas-texto-medio)]">
                       {campaign.recommendation}
-                      <p className="cc6-num mt-1.5 text-[11px]">
+                      <p className="cc6-num mt-1.5 text-rotulo">
                         <ReadyToken
                           label="escala"
                           done={campaign.scaleEligible}
@@ -2308,7 +2308,7 @@ export default function MetaIntegration() {
                         />
                       </p>
                       {!campaign.scaleEligible ? (
-                        <p className="mt-1 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+                        <p className="mt-1 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
                           Pendências:{" "}
                           {campaign.scaleBlockers
                             .map(
@@ -2355,7 +2355,7 @@ export default function MetaIntegration() {
               nunca executam mudanças sozinhas.
             </p>
           </div>
-          <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">
             {data?.canDecide ? `${data.dailyReports.length} recentes` : "—"}
           </p>
         </header>
@@ -2420,7 +2420,7 @@ export default function MetaIntegration() {
                         <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">
                           {item.recommendation}
                         </p>
-                        <p className="cc6-num mt-2 text-[10px] text-[var(--atlas-texto-fraco)]">
+                        <p className="cc6-num mt-2 text-micro text-[var(--atlas-texto-fraco)]">
                           qualidade {item.qualityRate}% · conversão{" "}
                           {item.conversionRate}%
                         </p>
@@ -2467,7 +2467,7 @@ export default function MetaIntegration() {
                         <p className="text-xs font-medium text-[var(--atlas-texto-forte)]">
                           Parecer {index + 1} · {analysis.provider}
                         </p>
-                        <span className="cc6-num text-[10px] text-[var(--atlas-texto-fraco)]">
+                        <span className="cc6-num text-micro text-[var(--atlas-texto-fraco)]">
                           {analysis.model}
                         </span>
                       </div>
@@ -2475,7 +2475,7 @@ export default function MetaIntegration() {
                         {analysis.analysis}
                       </p>
                       {analysis.citations.length ? (
-                        <p className="cc6-num mt-2 text-[10px] text-[var(--atlas-texto-fraco)]">
+                        <p className="cc6-num mt-2 text-micro text-[var(--atlas-texto-fraco)]">
                           {analysis.citations.length} fontes consultadas
                         </p>
                       ) : null}
@@ -2522,7 +2522,7 @@ export default function MetaIntegration() {
               <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                 <span className="cc6-num text-[var(--atlas-texto-fraco)]">{step}.</span> {title}
               </p>
-              <p className="mt-1 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+              <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                 {description}
               </p>
             </div>
@@ -2548,19 +2548,19 @@ function PeriodSummary({
         {campaigns.reduce((sum, item) => sum + item.total, 0)}
       </p>
       <p className="cc6-metric-label mt-1">leads no período</p>
-      <p className="cc6-num mt-2 text-[11px] leading-5 text-[var(--atlas-texto-medio)]">
+      <p className="cc6-num mt-2 text-rotulo leading-5 text-[var(--atlas-texto-medio)]">
         {top
           ? `Líder: ${top.campaignName || top.campaignId} · nota ${top.performanceScore}`
           : "Sem amostra no período"}
       </p>
       {top ? (
-        <p className="cc6-num mt-1 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+        <p className="cc6-num mt-1 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
           SLA 5 min {top.sla5Rate}% · SLA 15 min {top.sla15Rate}% · cobertura{" "}
           {top.responseCoverage}%
         </p>
       ) : null}
       {top?.cpl !== null && top?.cpl !== undefined ? (
-        <p className="cc6-num mt-1 text-[10px] leading-4 cc6-ok">
+        <p className="cc6-num mt-1 text-micro leading-4 cc6-ok">
           CPL R$ {top.cpl.toFixed(2)} · CPQL{" "}
           {top.costPerQualifiedLead
             ? `R$ ${top.costPerQualifiedLead.toFixed(2)}`
@@ -2568,7 +2568,7 @@ function PeriodSummary({
           · CTR {top.ctr ?? 0}%
         </p>
       ) : (
-        <p className="cc6-num mt-1 text-[10px] leading-4 cc6-warn">
+        <p className="cc6-num mt-1 text-micro leading-4 cc6-warn">
           Insights financeiros ainda não conectados
         </p>
       )}

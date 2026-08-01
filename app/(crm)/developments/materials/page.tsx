@@ -302,10 +302,10 @@ export default function ProjectMaterialsPage() {
               style={{ animationDelay: `${110 + Math.min(index, 8) * 40}ms` }}
             >
               <span className="flex items-start justify-between gap-3">
-                <strong className="truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{item.developerName}</strong>
+                <strong className="truncate text-corpo font-semibold text-[var(--atlas-texto-forte)]">{item.developerName}</strong>
                 <StatusBadge tone={item.averageCoverage === 100 ? "success" : "warning"}>{item.averageCoverage}%</StatusBadge>
               </span>
-              <span className="cc6-num mt-2 block text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+              <span className="cc6-num mt-2 block text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
                 {item.complete}/{item.projects} completos · {item.expiring} a vencer · {item.expired} vencidos · {item.pendingReview} em revisão
               </span>
             </button>
@@ -349,9 +349,9 @@ export default function ProjectMaterialsPage() {
                   onClick={() => setSelectedId(item.id)}
                   className={`w-full rounded-xl border p-3 text-left transition-colors ${selectedId === item.id ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)]" : "border-[rgba(148,163,184,0.12)] bg-white/[0.02] hover:border-[rgba(148,163,184,0.26)]"} ${focusRing}`}
                 >
-                  <span className="block truncate font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">{item.developer_name || "Sem incorporadora"}</span>
-                  <strong className="mt-1 block truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{item.name}</strong>
-                  <span className="cc6-num mt-0.5 block truncate text-[11px] text-[var(--atlas-texto-fraco)]">{item.city || "Cidade não informada"} · {item.status}</span>
+                  <span className="block truncate font-mono text-micro uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">{item.developer_name || "Sem incorporadora"}</span>
+                  <strong className="mt-1 block truncate text-corpo font-semibold text-[var(--atlas-texto-forte)]">{item.name}</strong>
+                  <span className="cc6-num mt-0.5 block truncate text-rotulo text-[var(--atlas-texto-fraco)]">{item.city || "Cidade não informada"} · {item.status}</span>
                 </button>
               ))}
               {!loading && filtered.length === 0 ? (
@@ -371,7 +371,7 @@ export default function ProjectMaterialsPage() {
             <div className="min-w-0">
               <p className="cc6-eyebrow">Kit comercial</p>
               <h2 id="materials-kit-title" className="mt-1 truncate text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{selected?.name || "Materiais do projeto"}</h2>
-              {selected ? <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--atlas-texto-fraco)]">{selected.developer_name || "Incorporadora não informada"}</p> : null}
+              {selected ? <p className="mt-0.5 truncate font-mono text-rotulo text-[var(--atlas-texto-fraco)]">{selected.developer_name || "Incorporadora não informada"}</p> : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="cc6-chip" title="Book, tabela e espelho vigentes no projeto selecionado.">{materialsLoading ? "kit …" : `kit ${essentialReady}/3`}</span>
@@ -396,13 +396,13 @@ export default function ProjectMaterialsPage() {
                     className={`cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 transition-colors hover:border-[rgba(148,163,184,0.22)]! ${focusRing}`}
                     style={{ "--cc6-sev": "#34d399" } as CSSProperties}
                   >
-                    <strong className="block truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{materialLabels[type].label}</strong>
-                    <span className="cc6-num mt-0.5 block text-[11px] text-[var(--atlas-estado-sucesso)]">vigente · v{material.version} · abrir →</span>
+                    <strong className="block truncate text-corpo font-semibold text-[var(--atlas-texto-forte)]">{materialLabels[type].label}</strong>
+                    <span className="cc6-num mt-0.5 block text-rotulo text-[var(--atlas-estado-sucesso)]">vigente · v{material.version} · abrir →</span>
                   </a>
                 ) : (
                   <div key={type} className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3" style={{ "--cc6-sev": "#f5b544" } as CSSProperties}>
-                    <strong className="block truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{materialLabels[type].label}</strong>
-                    <span className="cc6-num cc6-warn mt-0.5 block text-[11px]">pendente de publicação</span>
+                    <strong className="block truncate text-corpo font-semibold text-[var(--atlas-texto-forte)]">{materialLabels[type].label}</strong>
+                    <span className="cc6-num cc6-warn mt-0.5 block text-rotulo">pendente de publicação</span>
                   </div>
                 ))}
               </div>
@@ -451,12 +451,12 @@ export default function ProjectMaterialsPage() {
                       type="button"
                       aria-pressed={materialType === type}
                       onClick={() => setMaterialType(materialType === type ? "" : type)}
-                      className={`rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors ${materialType === type ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]" : "border-[rgba(148,163,184,0.16)] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"} ${focusRing}`}
+                      className={`rounded-full border px-3 py-1.5 font-mono text-micro uppercase tracking-[0.12em] transition-colors ${materialType === type ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]" : "border-[rgba(148,163,184,0.16)] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"} ${focusRing}`}
                     >
                       {materialLabels[type].label}
                     </button>
                   ))}
-                  <span className="cc6-num ml-auto text-[11px] text-[var(--atlas-texto-fraco)]">{visibleMaterials.length} resultado(s)</span>
+                  <span className="cc6-num ml-auto text-rotulo text-[var(--atlas-texto-fraco)]">{visibleMaterials.length} resultado(s)</span>
                 </div>
               </div>
             ) : null}
@@ -498,10 +498,10 @@ export default function ProjectMaterialsPage() {
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="truncate text-[13px] font-semibold text-[var(--atlas-texto-forte)]" title={material.title}>{material.title}</h3>
+                            <h3 className="truncate text-corpo font-semibold text-[var(--atlas-texto-forte)]" title={material.title}>{material.title}</h3>
                             <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
                           </div>
-                          <p className="cc6-num mt-1 truncate text-[11px] text-[var(--atlas-texto-fraco)]" title={material.description || config.description}>
+                          <p className="cc6-num mt-1 truncate text-rotulo text-[var(--atlas-texto-fraco)]" title={material.description || config.description}>
                             {config.label} · {formatSize(material.file_size)} · {material.valid_until ? `até ${new Date(`${material.valid_until}T12:00:00`).toLocaleDateString("pt-BR")}` : "sem vencimento"}
                           </p>
                         </div>

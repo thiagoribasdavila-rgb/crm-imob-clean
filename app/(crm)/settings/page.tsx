@@ -203,7 +203,7 @@ export default function SettingsPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">Nenhuma dessas ações executa sem uma pessoa aprovar.</p>
+          <p className="mt-3 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">Nenhuma dessas ações executa sem uma pessoa aprovar.</p>
         </section>
       </section>
 

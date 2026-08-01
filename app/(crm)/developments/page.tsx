@@ -299,7 +299,7 @@ export default function DevelopmentsPage() {
                   style={{ width: `${portfolioAbsorption}%` }}
                 />
               </div>
-              <p className="mt-2 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+              <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
                 <span className="cc6-num">{data?.portfolio.sold ?? 0}</span> de{" "}
                 <span className="cc6-num">{data?.portfolio.units ?? 0}</span> unidades vendidas
               </p>
@@ -374,7 +374,7 @@ export default function DevelopmentsPage() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2">
-                    <strong className="text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{priority.developmentName}</strong>
+                    <strong className="text-corpo font-semibold text-[var(--atlas-texto-forte)]">{priority.developmentName}</strong>
                     <StatusBadge tone={priority.tone}>{priority.label}</StatusBadge>
                   </span>
                   <span className="mt-1 block text-xs leading-5 text-[var(--atlas-texto-medio)]">{priority.detail}</span>
@@ -508,7 +508,7 @@ export default function DevelopmentsPage() {
                         <h3 className="truncate text-[15px] font-semibold tracking-tight text-[var(--atlas-texto-forte)]" title={item.name}>
                           {item.name}
                         </h3>
-                        <p className="mt-1 truncate font-mono text-[11px] text-[var(--atlas-texto-fraco)]" title={place}>
+                        <p className="mt-1 truncate font-mono text-rotulo text-[var(--atlas-texto-fraco)]" title={place}>
                           {place}
                         </p>
                       </div>
@@ -549,16 +549,16 @@ export default function DevelopmentsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="cc6-metric-label">VGV observado</p>
-                        <p className="cc6-num mt-0.5 text-[13px] text-[var(--atlas-texto-forte)]">{brl.format(metrics.totalVgv)}</p>
+                        <p className="cc6-num mt-0.5 text-corpo text-[var(--atlas-texto-forte)]">{brl.format(metrics.totalVgv)}</p>
                       </div>
                       <div title="Previsão não garante fechamento.">
                         <p className="cc6-metric-label">Receita provável</p>
-                        <p className="cc6-num mt-0.5 text-[13px] text-[var(--atlas-texto-forte)]">{brl.format(metrics.forecast)}</p>
+                        <p className="cc6-num mt-0.5 text-corpo text-[var(--atlas-texto-forte)]">{brl.format(metrics.forecast)}</p>
                       </div>
                     </div>
 
                     <div className="cc6-hairline mt-auto flex items-center justify-between gap-3 pt-3">
-                      <span className="cc6-num truncate text-[11px] text-[var(--atlas-texto-fraco)]">Entrega · {delivery}</span>
+                      <span className="cc6-num truncate text-rotulo text-[var(--atlas-texto-fraco)]">Entrega · {delivery}</span>
                       <Link
                         href={`/developments/${item.id}`}
                         aria-label={`Abrir projeto ${item.name}`}
@@ -575,7 +575,7 @@ export default function DevelopmentsPage() {
         </div>
       </section>
 
-      <p className="text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+      <p className="text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
         A tela é somente leitura. Materiais pendentes, rejeitados ou vencidos não entram como kit comercial válido; qualquer correção exige ação humana nas áreas próprias.
       </p>
     </div>

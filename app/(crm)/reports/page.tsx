@@ -28,7 +28,7 @@ type WeeklyReview = { outcomes:{completedTasks:number;completedVisits:number;int
 
 const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
-const TH_CLASS = "px-3 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]";
+const TH_CLASS = "px-3 py-2.5 text-left font-mono text-micro font-medium uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]";
 const PERIOD_LABEL: Record<Period, string> = { day: "Hoje", week: "7 dias", month: "30 dias", all: "Histórico" };
 
 export default function ReportsPage() {
@@ -210,7 +210,7 @@ export default function ReportsPage() {
                 <p><strong className="cc6-num cc6-warn font-semibold">{weeklyReview.backlog.hotLeadsWithoutNextAction}</strong> quentes sem agenda</p>
                 <p><strong className="cc6-num font-semibold text-[var(--atlas-texto-forte)]">{weeklyReview.backlog.noShows}</strong> ausências em visitas</p>
               </div>
-              <p className="cc6-hairline mt-3 pt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+              <p className="cc6-hairline mt-3 pt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                 {weeklyReview.quality.sufficientSample ? `Cumprimento observado: ${weeklyReview.quality.completionRate}% em ${weeklyReview.quality.sampleSize} tarefas.` : `Amostra pequena (${weeklyReview.quality.sampleSize}/${weeklyReview.quality.minimumSample}); sem percentual para evitar conclusão frágil.`}
               </p>
             </article>
@@ -221,7 +221,7 @@ export default function ReportsPage() {
                   <a key={item.key} href={item.href} className={`flex gap-3 rounded-xl border border-[rgba(148,163,184,0.12)] p-3 transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}>
                     <span className="cc6-num text-xs text-[var(--atlas-texto-fraco)]" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
                     <span className="min-w-0">
-                      <strong className="block text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{item.title}</strong>
+                      <strong className="block text-corpo font-semibold text-[var(--atlas-texto-forte)]">{item.title}</strong>
                       <span className="mt-0.5 block text-xs leading-5 text-[var(--atlas-texto-fraco)]">{item.evidence}</span>
                       <span className="mt-0.5 block text-xs font-medium text-[color:var(--atlas-accent-hover)]">{item.action} →</span>
                     </span>
@@ -301,7 +301,7 @@ export default function ReportsPage() {
                     <tr key={row.developer} className="border-t border-[rgba(148,163,184,0.12)] first:border-t-0 hover:bg-white/[0.015]">
                       <td className="px-3 py-3">
                         <span className="font-semibold text-[var(--atlas-texto-forte)]">{row.developer}</span>
-                        {row.allocation !== "direct" ? <span className="mt-0.5 block text-[10px] text-[var(--atlas-estado-atencao)]">rateio proporcional por leads</span> : null}
+                        {row.allocation !== "direct" ? <span className="mt-0.5 block text-micro text-[var(--atlas-estado-atencao)]">rateio proporcional por leads</span> : null}
                       </td>
                       <td className="cc6-num px-3 py-3 text-[var(--atlas-texto-medio)]">{row.leads}</td>
                       <td className="cc6-num px-3 py-3 text-[var(--atlas-texto-medio)]">{row.campaigns}</td>
@@ -322,8 +322,8 @@ export default function ReportsPage() {
           <span className="cc6-chip">{briefing?.status?.toUpperCase() || "ANÁLISE"}</span>
         </header>
         <h2 id="briefing-title" className="mt-2 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{briefing?.signals[0]?.title || "Consolidando tendências"}</h2>
-        <p className="mt-2 max-w-3xl text-[13px] leading-6 text-[var(--atlas-texto-medio)]">{briefing?.signals[0]?.evidence || "O Atlas está reunindo sinais suficientes para calcular risco, oportunidade e próxima ação."}</p>
-        {briefing?.signals[0]?.action ? <p className="mt-2 max-w-3xl text-[13px] font-medium leading-6 text-[var(--atlas-texto-forte)]">{briefing.signals[0].action}</p> : null}
+        <p className="mt-2 max-w-3xl text-corpo leading-6 text-[var(--atlas-texto-medio)]">{briefing?.signals[0]?.evidence || "O Atlas está reunindo sinais suficientes para calcular risco, oportunidade e próxima ação."}</p>
+        {briefing?.signals[0]?.action ? <p className="mt-2 max-w-3xl text-corpo font-medium leading-6 text-[var(--atlas-texto-forte)]">{briefing.signals[0].action}</p> : null}
         {briefing?.signals[0] ? (
           <a href={briefing.signals[0].href} className="cc6-ghost-btn mt-3 min-h-11">Abrir ação recomendada →</a>
         ) : null}
@@ -338,7 +338,7 @@ export default function ReportsPage() {
               const width = periodData.leads.length ? Math.max(3, (item.total / periodData.leads.length) * 100) : 3;
               return (
                 <div key={item.status}>
-                  <div className="flex items-baseline justify-between text-[13px]">
+                  <div className="flex items-baseline justify-between text-corpo">
                     <span className="capitalize text-[var(--atlas-texto-medio)]">{item.status}</span>
                     <strong className="cc6-num font-semibold text-[var(--atlas-texto-forte)]">{item.total}</strong>
                   </div>
@@ -364,8 +364,8 @@ export default function ReportsPage() {
             ) : null}
             {sources.slice(0, 10).map((item) => (
               <div key={item.source} className="flex items-center justify-between border-t border-[rgba(148,163,184,0.12)] py-3 first:border-t-0">
-                <span className="capitalize text-[13px] text-[var(--atlas-texto-medio)]">{item.source}</span>
-                <strong className="cc6-num text-[13px] font-semibold text-[var(--atlas-texto-forte)]">{item.total}</strong>
+                <span className="capitalize text-corpo text-[var(--atlas-texto-medio)]">{item.source}</span>
+                <strong className="cc6-num text-corpo font-semibold text-[var(--atlas-texto-forte)]">{item.total}</strong>
               </div>
             ))}
           </div>
@@ -374,7 +374,7 @@ export default function ReportsPage() {
 
       {/* Governança consolidada (antes repetida no cabeçalho da revisão semanal,
           no semanal de aquisição e no cartão "Leitura do período"). */}
-      <p className="cc6-reveal text-[11px] leading-5 text-[var(--atlas-texto-fraco)]" style={{ animationDelay: "360ms" }}>
+      <p className="cc6-reveal text-rotulo leading-5 text-[var(--atlas-texto-fraco)]" style={{ animationDelay: "360ms" }}>
         Somente dados do seu escopo, sem ranking de pessoas e sem decisões automáticas — forecast, campanhas e registros só mudam com revisão humana; o plano semanal é explicável e tem custo LLM zero.
       </p>
     </div>

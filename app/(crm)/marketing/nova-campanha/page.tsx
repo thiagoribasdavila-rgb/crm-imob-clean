@@ -184,7 +184,7 @@ export default function NovaCampanhaPage() {
                 className={`rounded-xl border p-3 text-left transition-colors ${objetivo === o.valor ? "border-[color:var(--atlas-accent)] bg-white/[.04]" : "border-[rgba(148,163,184,0.16)] hover:border-[rgba(148,163,184,0.35)]"}`}
               >
                 <p className="text-sm text-[var(--atlas-texto-forte)]">{o.rotulo}</p>
-                <p className="mt-0.5 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">{o.ajuda}</p>
+                <p className="mt-0.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{o.ajuda}</p>
               </button>
             ))}
           </div>
@@ -234,16 +234,16 @@ export default function NovaCampanhaPage() {
               {geracao.copies.conceitos.map((c) => (
                 <div key={c.nome} className="rounded-xl border border-[rgba(148,163,184,0.16)] p-3">
                   <p className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{c.nome}</p>
-                  <p className="mt-1 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">{c.publicoAlvo}</p>
+                  <p className="mt-1 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{c.publicoAlvo}</p>
                 </div>
               ))}
             </div>
             <p className="mt-4 text-xs text-[var(--atlas-texto-fraco)]">Títulos: {geracao.copies.titulos.map((t) => `“${t}”`).join(" · ")}</p>
             <p className="mt-2 text-xs text-[var(--atlas-texto-fraco)]">CTAs: {geracao.copies.ctas.join(" · ")}</p>
-            <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-hairline mt-4 pt-3 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
               {geracao.copies.roteirosVideo.length} roteiro(s) de vídeo escritos — <strong className="text-[#c8d3e4]">roteiro não é vídeo</strong>: nenhuma peça audiovisual foi produzida.
             </p>
-            <p className="mt-2 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+            <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
               Consumo: {geracao.consumo.tokensTotais} tokens em {geracao.consumo.chamadas} chamadas · {geracao.consumo.provedor}/{geracao.consumo.modelo} ·{" "}
               {geracao.consumo.custoEstimadoUsd == null
                 ? <span className="text-[#e8b04a]">custo não calculado — falta tarifa em ATLAS_AI_PRICE_TABLE</span>
@@ -269,7 +269,7 @@ export default function NovaCampanhaPage() {
                 <p className="cc6-metric-value mt-1">R$ {(diario * dias).toLocaleString("pt-BR")}</p>
               </div>
             </div>
-            <p className="mt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+            <p className="mt-3 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
               Nenhuma projeção de leads é exibida aqui. Sem histórico de CPL deste produto, qualquer número seria chute com aparência de previsão.
             </p>
           </section>
@@ -292,7 +292,7 @@ export default function NovaCampanhaPage() {
                 <p className="cc6-metric-label capitalize">{g === "crm" ? "CRM" : g}</p>
                 <ul className="mt-2 space-y-1.5">
                   {prontidao.grupos[g].map((i) => (
-                    <li key={i.chave} className="text-[11px] leading-4">
+                    <li key={i.chave} className="text-rotulo leading-4">
                       <span className={i.ok ? "text-[#4ade80]" : "text-[#e8b04a]"}>{i.ok ? "✓" : "○"}</span>{" "}
                       <span className="text-[#c8d3e4]">{i.rotulo}</span>
                       <span className="text-[var(--atlas-texto-fraco)]"> — {i.detalhe}</span>
@@ -302,7 +302,7 @@ export default function NovaCampanhaPage() {
               </div>
             ))}
           </div>
-          <p className="cc6-hairline mt-4 pt-3 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-hairline mt-4 pt-3 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
             A campanha fica salva como rascunho com as peças anexadas. Publicar exige aprovação e credencial válida — nada aqui move verba.
           </p>
         </section>

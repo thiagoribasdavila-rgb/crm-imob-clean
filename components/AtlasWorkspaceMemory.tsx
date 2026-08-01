@@ -209,7 +209,7 @@ export default function AtlasWorkspaceMemory() {
               <div className="rounded-2xl border border-dashed border-white/10 p-5 text-sm text-slate-500">Fixe os fluxos mais importantes usando a estrela.</div>
             ) : favorites.map((item) => (
               <div key={item.path} className="flex items-center gap-2 rounded-2xl border border-amber-300/10 bg-amber-300/[0.04] p-2">
-                <Link href={item.path} onClick={() => setOpen(false)} className="min-w-0 flex-1 rounded-xl px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/[0.04]">{item.label}<span className="mt-1 block truncate text-[11px] font-normal text-slate-500">{item.path}</span></Link>
+                <Link href={item.path} onClick={() => setOpen(false)} className="min-w-0 flex-1 rounded-xl px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/[0.04]">{item.label}<span className="mt-1 block truncate text-rotulo font-normal text-slate-500">{item.path}</span></Link>
                 <button onClick={() => toggleFavorite(item.path)} className="atlas-icon-button" aria-label="Remover dos favoritos">★</button>
               </div>
             ))}
@@ -226,7 +226,7 @@ export default function AtlasWorkspaceMemory() {
               <div className="rounded-2xl border border-dashed border-white/10 p-5 text-sm text-slate-500">Sua navegação recente aparecerá aqui.</div>
             ) : recents.map((item) => (
               <div key={item.path} className="flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.025] p-2">
-                <Link href={item.path} onClick={() => setOpen(false)} className="min-w-0 flex-1 rounded-xl px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/[0.04]">{item.label}<span className="mt-1 block truncate text-[11px] font-normal text-slate-500">{new Date(item.visitedAt).toLocaleString("pt-BR")}</span></Link>
+                <Link href={item.path} onClick={() => setOpen(false)} className="min-w-0 flex-1 rounded-xl px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/[0.04]">{item.label}<span className="mt-1 block truncate text-rotulo font-normal text-slate-500">{new Date(item.visitedAt).toLocaleString("pt-BR")}</span></Link>
                 <button onClick={() => toggleFavorite(item.path)} className="atlas-icon-button" aria-label="Adicionar aos favoritos">☆</button>
               </div>
             ))}

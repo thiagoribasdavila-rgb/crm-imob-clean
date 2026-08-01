@@ -207,7 +207,7 @@ export default function CreativesPage() {
                       {c.creative_asset?.name || "Criativo"}
                     </h3>
                     <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">{c.hook}</p>
-                    <p className="cc6-num mt-1 text-[11px] text-[var(--atlas-texto-fraco)]">
+                    <p className="cc6-num mt-1 text-rotulo text-[var(--atlas-texto-fraco)]">
                       {c.funnel_stage} · {c.persona_moment} · {c.message_angle}
                     </p>
                   </div>
@@ -241,7 +241,7 @@ export default function CreativesPage() {
                         <div key={label}>
                           <p className={`cc6-metric-value text-xl leading-none ${sold ? "cc6-ok" : ""}`}>
                             {count}
-                            {rate ? <span className="ml-1.5 text-[11px] font-normal text-[var(--atlas-texto-fraco)]">{rate}</span> : null}
+                            {rate ? <span className="ml-1.5 text-rotulo font-normal text-[var(--atlas-texto-fraco)]">{rate}</span> : null}
                           </p>
                           <p className="cc6-metric-label mt-1">{label}</p>
                         </div>
@@ -255,16 +255,16 @@ export default function CreativesPage() {
                         </div>
                       ))}
                     </div>
-                    <p className="cc6-num mt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+                    <p className="cc6-num mt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                       Leitura: {readingOf(c.performance)} · fadiga: {String(c.performance.fatigueRisk)}
                     </p>
                     {measuredAllZero(c.performance) ? (
-                      <p className="mt-1 text-[11px] leading-5 text-[var(--atlas-estado-atencao)]">
+                      <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-estado-atencao)]">
                         {num(c.performance.daysMeasured)} dia(s) de fato lançado, todos zerados — resultado medido,
                         não ausência de medição.
                       </p>
                     ) : null}
-                    <p className="mt-1 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+                    <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                       Desempenho informado manualmente pela diretoria (não reconciliado com o CRM). Contagem é fato
                       lançado; taxas e custos só aparecem com 30+ leads na versão, e “—” significa métrica sem
                       lastro, nunca 0%.

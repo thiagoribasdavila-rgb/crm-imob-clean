@@ -221,14 +221,14 @@ export default function NewLeadPage() {
                   </option>
                 ))}
               </select>
-              <span className="mt-1 block text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+              <span className="mt-1 block text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
                 Com projeto, a lead entra na fila equilibrada da equipe.
               </span>
             </label>
           </div>
 
           <details className="cc6-hairline mt-5 pt-4">
-            <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[var(--atlas-texto-medio)]">
+            <summary className="cc6-eyebrow cursor-pointer list-none text-micro! transition-colors hover:text-[var(--atlas-texto-medio)]">
               Qualificação opcional · objetivo, orçamento e regiões
             </summary>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -293,7 +293,7 @@ export default function NewLeadPage() {
                   value={form.preferred_regions}
                   onChange={(e) => setForm({ ...form, preferred_regions: e.target.value })}
                 />
-                <span className="mt-1 block text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">Separe por vírgulas.</span>
+                <span className="mt-1 block text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">Separe por vírgulas.</span>
               </label>
               <label className={`${LABEL_CLASS} md:col-span-2`} htmlFor="lead-notes">
                 Observações
@@ -305,7 +305,7 @@ export default function NewLeadPage() {
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 />
-                <span className="cc6-num mt-1 block text-right text-[11px] text-[var(--atlas-texto-fraco)]">{form.notes.length}/5000</span>
+                <span className="cc6-num mt-1 block text-right text-rotulo text-[var(--atlas-texto-fraco)]">{form.notes.length}/5000</span>
               </label>
             </div>
           </details>

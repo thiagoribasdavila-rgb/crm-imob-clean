@@ -222,7 +222,7 @@ export default function BudgetPage() {
                     <strong className="text-sm font-medium text-[var(--atlas-texto-forte)]">{c.developmentName}</strong>
                     <span className="cc6-chip">{c.platform}</span>
                   </div>
-                  <p className="cc6-num mt-1.5 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+                  <p className="cc6-num mt-1.5 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                     score {c.performanceScore} · {c.inventoryAvailable} unidades · capacidade{" "}
                     {c.capacityHeadroomPercent}% ·{" "}
                     <span className={c.sampleSufficient ? "cc6-ok" : "cc6-warn"}>
@@ -296,7 +296,7 @@ export default function BudgetPage() {
                     >
                       <div className="min-w-0">
                         <strong className="text-sm font-medium text-[var(--atlas-texto-forte)]">{a.developmentName}</strong>
-                        <p className="cc6-num mt-0.5 text-[11px] text-[var(--atlas-texto-fraco)]">
+                        <p className="cc6-num mt-0.5 text-rotulo text-[var(--atlas-texto-fraco)]">
                           {a.platform} · score {a.score} ·{" "}
                           <span className={a.sampleSufficient ? "cc6-ok" : "cc6-warn"}>
                             {a.sampleSufficient ? "amostra válida" : "exploração limitada"}

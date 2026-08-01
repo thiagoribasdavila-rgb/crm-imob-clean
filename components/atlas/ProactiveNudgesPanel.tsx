@@ -83,7 +83,7 @@ export function ProactiveNudgesPanel({ max = 4 }: { max?: number }) {
           <button
             type="button"
             onClick={() => void load()}
-            className="rounded-[8px] border border-[rgba(148,163,184,0.18)] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-[#8b97ab] transition-colors hover:border-[rgba(75,141,248,0.5)] hover:text-[#4b8df8]"
+            className="rounded-[8px] border border-[rgba(148,163,184,0.18)] px-3 py-1.5 font-mono text-rotulo uppercase tracking-[0.14em] text-[#8b97ab] transition-colors hover:border-[rgba(75,141,248,0.5)] hover:text-[#4b8df8]"
             aria-label="Recarregar sugestões"
           >
             ↻ Atualizar
@@ -116,7 +116,7 @@ export function ProactiveNudgesPanel({ max = 4 }: { max?: number }) {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-[var(--atlas-texto-forte)]">{n.title}</span>
                         <span
-                          className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em]"
+                          className="shrink-0 rounded-full px-2 py-0.5 font-mono text-micro uppercase tracking-[0.1em]"
                           style={{ color: c, border: `1px solid ${c}55` }}
                         >
                           {n.scope}

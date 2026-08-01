@@ -121,8 +121,8 @@ export default function AtlasSystemPulse() {
 
             {/* "Ambiente" saiu: nunca existiu no payload — mostrava "—" fingindo dado. */}
             <div className="mt-6 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4"><p className="text-[10px] uppercase tracking-wider text-slate-500">Latência</p><p className="mt-2 text-lg font-semibold text-white">{payload?.latencyMs ?? "—"} ms</p></div>
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4"><p className="text-[10px] uppercase tracking-wider text-slate-500">Versão da API</p><p className="mt-2 truncate text-lg font-semibold text-white">{payload?.versao ?? "—"}</p></div>
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4"><p className="text-micro uppercase tracking-wider text-slate-500">Latência</p><p className="mt-2 text-lg font-semibold text-white">{payload?.latencyMs ?? "—"} ms</p></div>
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4"><p className="text-micro uppercase tracking-wider text-slate-500">Versão da API</p><p className="mt-2 truncate text-lg font-semibold text-white">{payload?.versao ?? "—"}</p></div>
             </div>
 
             <section className="mt-6 rounded-3xl border border-white/[0.07] bg-white/[0.02] p-5">
@@ -135,7 +135,7 @@ export default function AtlasSystemPulse() {
                   <article key={check.nome} className="rounded-2xl border border-white/[0.06] bg-black/10 p-4">
                     <div className="flex items-center justify-between gap-4">
                       <div className="min-w-0"><p className="capitalize font-medium text-white">{check.nome.replaceAll("_", " ")}</p><p className="mt-1 truncate text-xs text-slate-500">{check.ok ? "Serviço respondendo normalmente" : "Sem resposta"}</p></div>
-                      <div className="text-right"><span className={`text-xs font-semibold ${check.ok ? "text-emerald-300" : "text-rose-300"}`}>{check.ok ? "ONLINE" : "FALHA"}</span><p className="mt-1 text-[10px] text-slate-500">{check.latencyMs ?? "—"} ms</p></div>
+                      <div className="text-right"><span className={`text-xs font-semibold ${check.ok ? "text-emerald-300" : "text-rose-300"}`}>{check.ok ? "ONLINE" : "FALHA"}</span><p className="mt-1 text-micro text-slate-500">{check.latencyMs ?? "—"} ms</p></div>
                     </div>
                   </article>
                 ))}
@@ -156,9 +156,9 @@ export default function AtlasSystemPulse() {
                       <div className="min-w-0">
                         <p className="capitalize font-medium text-white">{linha.nome.replaceAll("_", " ")}</p>
                         <p className="mt-1 text-xs leading-5 text-slate-500">{linha.motivo}</p>
-                        {linha.ondeSeConfigura ? <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-600">Configura-se em: {linha.ondeSeConfigura}</p> : null}
+                        {linha.ondeSeConfigura ? <p className="mt-1 text-micro uppercase tracking-wider text-slate-600">Configura-se em: {linha.ondeSeConfigura}</p> : null}
                       </div>
-                      <span className={`shrink-0 text-[10px] font-semibold tracking-wider ${linha.estado === "viva" ? "text-emerald-300" : linha.estado === "quebrada" ? "text-rose-300" : linha.estado === "ausente" ? "text-slate-400" : "text-amber-300"}`}>
+                      <span className={`shrink-0 text-micro font-semibold tracking-wider ${linha.estado === "viva" ? "text-emerald-300" : linha.estado === "quebrada" ? "text-rose-300" : linha.estado === "ausente" ? "text-slate-400" : "text-amber-300"}`}>
                         {RÓTULO_DO_ESTADO[linha.estado] ?? linha.estado.toUpperCase()}
                       </span>
                     </div>
@@ -171,7 +171,7 @@ export default function AtlasSystemPulse() {
               <span>Atualização automática a cada 30s</span>
               <span>{lastUpdated}</span>
             </div>
-            <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-slate-600">Atalho: ⌘⇧S / Ctrl⇧S</p>
+            <p className="mt-3 text-micro uppercase tracking-[0.18em] text-slate-600">Atalho: ⌘⇧S / Ctrl⇧S</p>
           </aside>
         </div>
       ) : null}

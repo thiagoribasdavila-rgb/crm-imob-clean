@@ -1334,7 +1334,7 @@ export default function AtlasCopilotDock() {
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[.22em] text-sky-300">Atlas Intelligence</p>
+                <p className="text-micro font-bold uppercase tracking-[.22em] text-sky-300">Atlas Intelligence</p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-[-.03em] text-white">Especialista imobiliário</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-400">Estoque, leads, projetos, materiais, crédito e mercado em uma leitura operacional.</p>
               </div>
@@ -1360,7 +1360,7 @@ export default function AtlasCopilotDock() {
 
             <section className="mt-6 rounded-3xl border border-sky-400/15 bg-gradient-to-br from-sky-500/[.12] to-violet-500/[.08] p-5">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-300">Ação recomendada</span>
+                <span className="text-micro font-bold uppercase tracking-[.18em] text-sky-300">Ação recomendada</span>
                 <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.8)]" />
               </div>
               <p className="mt-4 text-lg font-medium leading-7 text-white">{loading ? "Analisando a operação..." : nextAction}</p>
@@ -1378,10 +1378,10 @@ export default function AtlasCopilotDock() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[.16em] text-emerald-300">Fases 65–66 · execução governada</p>
+                    <p className="text-micro font-bold uppercase tracking-[.16em] text-emerald-300">Fases 65–66 · execução governada</p>
                     <h3 id="copilot-task-completion-title" className="mt-1 text-sm font-semibold text-white">Atualizar tarefa revisada</h3>
                   </div>
-                  <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-[.12em] text-amber-200">Confirmação</span>
+                  <span className="rounded-full bg-amber-400/10 px-2 py-1 text-micro font-bold uppercase tracking-[.12em] text-amber-200">Confirmação</span>
                 </div>
                 <div className="mt-4 rounded-2xl border border-white/[0.06] bg-slate-950/40 p-4">
                   <strong className="block text-sm text-white">{taskCompletionContext.title}</strong>
@@ -1402,7 +1402,7 @@ export default function AtlasCopilotDock() {
                   <div className="mt-4 space-y-3">
                     {canCompleteGovernedTask ? (
                       <div className="space-y-3 rounded-2xl border border-emerald-300/10 bg-emerald-400/[.035] p-4">
-                        <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Concluir</p>
+                        <p className="text-micro font-bold uppercase tracking-[.14em] text-emerald-300">Concluir</p>
                         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 text-xs leading-5 text-slate-300">
                           <input
                             type="checkbox"
@@ -1431,7 +1431,7 @@ export default function AtlasCopilotDock() {
                 {canRecordGovernedTaskOutcome && taskCompletionResult ? (
                   <div className="mt-4 space-y-3 rounded-2xl border border-violet-300/15 bg-violet-400/[.045] p-4" data-governed-write="task-outcome">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-violet-300">Fase 67 · memória comercial</p>
+                      <p className="text-micro font-bold uppercase tracking-[.14em] text-violet-300">Fase 67 · memória comercial</p>
                       <h4 className="mt-1 text-sm font-semibold text-white">Qual foi o resultado observado?</h4>
                       <p className="mt-1 text-xs leading-5 text-slate-400">O registro alimenta o histórico da lead. Não altera score, etapa, responsável nem envia mensagem.</p>
                     </div>
@@ -1450,7 +1450,7 @@ export default function AtlasCopilotDock() {
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="text-[10px] font-bold uppercase tracking-[.14em] text-cyan-300">Fase 86 · contexto que será preservado</p>
+                              <p className="text-micro font-bold uppercase tracking-[.14em] text-cyan-300">Fase 86 · contexto que será preservado</p>
                               <p className="mt-1 text-xs leading-5 text-slate-300">Revise o cadastro disponível antes de confirmar o resultado.</p>
                             </div>
                             <span className={`atlas-badge shrink-0 ${taskCompletionContext.outcomeContextPreview.status === "complete" ? "atlas-badge-success" : "atlas-badge-warning"}`}>
@@ -1459,28 +1459,28 @@ export default function AtlasCopilotDock() {
                           </div>
                           <dl className="mt-3 grid grid-cols-2 gap-2">
                             <div className="rounded-lg border border-white/[0.05] bg-slate-950/35 px-3 py-2">
-                              <dt className="text-[9px] uppercase tracking-[.1em] text-slate-500">Projeto</dt>
+                              <dt className="text-micro uppercase tracking-[.1em] text-slate-500">Projeto</dt>
                               <dd className={`mt-1 truncate text-xs ${taskCompletionContext.outcomeContextPreview.projectName ? "text-slate-100" : "text-amber-200"}`}>
                                 {taskCompletionContext.outcomeContextPreview.projectName || "Não informado"}
                               </dd>
                             </div>
                             <div className="rounded-lg border border-white/[0.05] bg-slate-950/35 px-3 py-2">
-                              <dt className="text-[9px] uppercase tracking-[.1em] text-slate-500">Origem</dt>
+                              <dt className="text-micro uppercase tracking-[.1em] text-slate-500">Origem</dt>
                               <dd className={`mt-1 truncate text-xs ${taskCompletionContext.outcomeContextPreview.sourceName ? "text-slate-100" : "text-amber-200"}`}>
                                 {taskCompletionContext.outcomeContextPreview.sourceName || "Não informada"}
                               </dd>
                             </div>
                           </dl>
-                          <p className={`mt-3 text-[10px] leading-4 ${taskCompletionContext.outcomeContextPreview.status === "complete" ? "text-emerald-100/75" : "text-amber-100/80"}`}>
+                          <p className={`mt-3 text-micro leading-4 ${taskCompletionContext.outcomeContextPreview.status === "complete" ? "text-emerald-100/75" : "text-amber-100/80"}`}>
                             {taskCompletionContext.outcomeContextPreview.primaryFinding}
                           </p>
                           {taskCompletionContext.outcomeContextPreview.missingDimensions.length > 0 && governedLeadId ? (
-                            <Link href={`/leads/${encodeURIComponent(governedLeadId)}#commercial-context`} className="mt-2 inline-flex text-[10px] font-semibold text-cyan-300 hover:text-cyan-200">
+                            <Link href={`/leads/${encodeURIComponent(governedLeadId)}#commercial-context`} className="mt-2 inline-flex text-micro font-semibold text-cyan-300 hover:text-cyan-200">
                               Revisar cadastro da lead →
                             </Link>
                           ) : null}
                         </div>
-                        <label className="block text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">
+                        <label className="block text-micro font-bold uppercase tracking-[.14em] text-slate-400">
                           Resultado observado
                           <select
                             value={taskOutcome}
@@ -1497,7 +1497,7 @@ export default function AtlasCopilotDock() {
                             {taskOutcomeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                           </select>
                         </label>
-                        <label className="block text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">
+                        <label className="block text-micro font-bold uppercase tracking-[.14em] text-slate-400">
                           Observação opcional
                           <textarea
                             value={taskOutcomeNote}
@@ -1513,7 +1513,7 @@ export default function AtlasCopilotDock() {
                             placeholder="Registre somente o fato útil para o próximo atendimento."
                             className="mt-2 w-full resize-none rounded-xl border border-white/[0.08] bg-slate-950/70 px-3 py-2.5 text-xs font-normal normal-case leading-5 tracking-normal text-white outline-none transition placeholder:text-slate-600 focus:border-violet-300/40"
                           />
-                          <span className="mt-1 block text-right text-[9px] font-normal normal-case tracking-normal text-slate-600">{taskOutcomeNote.length}/500</span>
+                          <span className="mt-1 block text-right text-micro font-normal normal-case tracking-normal text-slate-600">{taskOutcomeNote.length}/500</span>
                         </label>
                         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 text-xs leading-5 text-slate-300">
                           <input
@@ -1545,7 +1545,7 @@ export default function AtlasCopilotDock() {
                 {canRescheduleGovernedTask && !taskCompletionResult ? (
                   <div className="mt-4 space-y-3 rounded-2xl border border-sky-300/10 bg-sky-400/[.035] p-4" data-governed-write="task-reschedule">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-sky-300">Reagendar</p>
+                      <p className="text-micro font-bold uppercase tracking-[.14em] text-sky-300">Reagendar</p>
                       <p className="mt-1 text-xs leading-5 text-slate-400">Escolha o novo prazo. O Atlas não altera responsável, prioridade, lead ou pipeline.</p>
                     </div>
                     {taskRescheduleResult ? (
@@ -1559,7 +1559,7 @@ export default function AtlasCopilotDock() {
                       </div>
                     ) : (
                       <>
-                        <label className="block text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">
+                        <label className="block text-micro font-bold uppercase tracking-[.14em] text-slate-400">
                           Novo prazo
                           <input
                             type="datetime-local"
@@ -1604,12 +1604,12 @@ export default function AtlasCopilotDock() {
             <section className="mt-6 rounded-3xl border border-white/[0.08] bg-white/[0.025] p-5">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">Perguntar ao Atlas Copilot</h3>
-                <span className="text-[10px] font-bold uppercase tracking-[.18em] text-emerald-400">CALIBRADO · JUL/26</span>
+                <span className="text-micro font-bold uppercase tracking-[.18em] text-emerald-400">CALIBRADO · JUL/26</span>
               </div>
               <p className="mt-2 text-xs leading-5 text-slate-500">O Atlas consulta somente seu escopo comercial e diferencia dados internos, referências externas e recomendações.</p>
-              {persistentCopilot?.exclusive ? <div className="mt-3 rounded-2xl border border-emerald-400/15 bg-emerald-400/[.06] px-4 py-3"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-emerald-300">Fase 45 · Copiloto exclusivo</p><p className="mt-1 text-xs text-emerald-50">Memória vinculada somente a esta lead e ao corretor responsável · versão {persistentCopilot.learningVersion}</p></div> : null}
+              {persistentCopilot?.exclusive ? <div className="mt-3 rounded-2xl border border-emerald-400/15 bg-emerald-400/[.06] px-4 py-3"><p className="text-micro font-bold uppercase tracking-[.16em] text-emerald-300">Fase 45 · Copiloto exclusivo</p><p className="mt-1 text-xs text-emerald-50">Memória vinculada somente a esta lead e ao corretor responsável · versão {persistentCopilot.learningVersion}</p></div> : null}
               <div className="mt-3 flex flex-wrap gap-2">
-                {contextualQuestions.map((question) => <button key={question} type="button" onClick={() => setPrompt(question)} className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-left text-[10px] text-slate-400 transition hover:border-sky-400/25 hover:text-sky-200">{question}</button>)}
+                {contextualQuestions.map((question) => <button key={question} type="button" onClick={() => setPrompt(question)} className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-left text-micro text-slate-400 transition hover:border-sky-400/25 hover:text-sky-200">{question}</button>)}
               </div>
               <textarea
                 value={prompt}
@@ -1623,12 +1623,12 @@ export default function AtlasCopilotDock() {
               {copilotAnswer ? (
                 <div className="mt-3 rounded-2xl border border-sky-400/15 bg-sky-400/10 px-4 py-3 text-sm leading-6 text-sky-50">
                   <div className="mb-3 flex items-center justify-between gap-3 border-b border-sky-200/10 pb-3">
-                    <span className="text-[10px] font-bold uppercase tracking-[.16em] text-sky-300">Resposta imobiliária</span>
-                    <span className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[.12em] ${copilotCalibration?.mode === "local-fallback" ? "bg-amber-400/10 text-amber-200" : "bg-emerald-400/10 text-emerald-200"}`}>{copilotCalibration?.mode === "local-fallback" ? "Motor local seguro" : "IA generativa"}</span>
+                    <span className="text-micro font-bold uppercase tracking-[.16em] text-sky-300">Resposta imobiliária</span>
+                    <span className={`rounded-full px-2 py-1 text-micro font-bold uppercase tracking-[.12em] ${copilotCalibration?.mode === "local-fallback" ? "bg-amber-400/10 text-amber-200" : "bg-emerald-400/10 text-emerald-200"}`}>{copilotCalibration?.mode === "local-fallback" ? "Motor local seguro" : "IA generativa"}</span>
                   </div>
                   <MessageResponse>{copilotAnswer}</MessageResponse>
-                  {copilotCalibration ? <p className="mt-3 border-t border-sky-200/10 pt-3 text-[10px] uppercase tracking-[.12em] text-sky-200/70">{copilotCalibration.provider || "local"} · {copilotCalibration.model || "modelo seguro"} · {copilotCalibration.pricingConfigured ? `custo medido US$ ${(copilotCalibration.estimatedCostUsd ?? 0).toFixed(6)}` : "preço pendente de configuração"}</p> : null}
-                  {copilotSources.length ? <div className="mt-4 border-t border-sky-200/10 pt-3"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-sky-300">Referências consultadas</p><div className="mt-2 space-y-2">{copilotSources.map((source) => <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-white/[0.06] bg-slate-950/30 px-3 py-2 text-xs text-slate-300 transition hover:border-sky-400/25"><strong className="block text-sky-200">{source.publisher}</strong><span>{source.title} · verificado em {new Date(`${source.verifiedAt}T12:00:00`).toLocaleDateString("pt-BR")}</span></a>)}</div></div> : null}
+                  {copilotCalibration ? <p className="mt-3 border-t border-sky-200/10 pt-3 text-micro uppercase tracking-[.12em] text-sky-200/70">{copilotCalibration.provider || "local"} · {copilotCalibration.model || "modelo seguro"} · {copilotCalibration.pricingConfigured ? `custo medido US$ ${(copilotCalibration.estimatedCostUsd ?? 0).toFixed(6)}` : "preço pendente de configuração"}</p> : null}
+                  {copilotSources.length ? <div className="mt-4 border-t border-sky-200/10 pt-3"><p className="text-micro font-bold uppercase tracking-[.16em] text-sky-300">Referências consultadas</p><div className="mt-2 space-y-2">{copilotSources.map((source) => <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-white/[0.06] bg-slate-950/30 px-3 py-2 text-xs text-slate-300 transition hover:border-sky-400/25"><strong className="block text-sky-200">{source.publisher}</strong><span>{source.title} · verificado em {new Date(`${source.verifiedAt}T12:00:00`).toLocaleDateString("pt-BR")}</span></a>)}</div></div> : null}
                   {canCreateGovernedTask ? (
                     <section
                       className="mt-4 rounded-2xl border border-violet-300/15 bg-slate-950/40 p-4"
@@ -1637,10 +1637,10 @@ export default function AtlasCopilotDock() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-[.16em] text-violet-300">Próxima ação governada</p>
+                          <p className="text-micro font-bold uppercase tracking-[.16em] text-violet-300">Próxima ação governada</p>
                           <h4 id="copilot-task-confirmation-title" className="mt-1 text-sm font-semibold text-white">Transformar a recomendação em tarefa</h4>
                         </div>
-                        <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-[.12em] text-amber-200">Prévia</span>
+                        <span className="rounded-full bg-amber-400/10 px-2 py-1 text-micro font-bold uppercase tracking-[.12em] text-amber-200">Prévia</span>
                       </div>
 
                       {taskResult ? (
@@ -1656,7 +1656,7 @@ export default function AtlasCopilotDock() {
                       ) : (
                         <div className="mt-4 space-y-3">
                           <p className="text-xs leading-5 text-slate-400">Revise os campos. A tarefa só será gravada quando você confirmar.</p>
-                          <label className="block text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">
+                          <label className="block text-micro font-bold uppercase tracking-[.14em] text-slate-400">
                             Título
                             <input
                               value={taskTitle}
@@ -1666,7 +1666,7 @@ export default function AtlasCopilotDock() {
                             />
                           </label>
                           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <label className="block text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">
+                            <label className="block text-micro font-bold uppercase tracking-[.14em] text-slate-400">
                               Prazo
                               <input
                                 type="datetime-local"
@@ -1675,7 +1675,7 @@ export default function AtlasCopilotDock() {
                                 className="mt-2 w-full rounded-xl border border-white/[0.08] bg-slate-950/70 px-3 py-2.5 text-xs font-normal normal-case tracking-normal text-white outline-none transition focus:border-violet-300/40"
                               />
                             </label>
-                            <label className="block text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">
+                            <label className="block text-micro font-bold uppercase tracking-[.14em] text-slate-400">
                               Prioridade
                               <select
                                 value={taskPriority}
@@ -1719,10 +1719,10 @@ export default function AtlasCopilotDock() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-[10px] font-bold uppercase tracking-[.16em] text-sky-300">Pipeline governado</p>
+                          <p className="text-micro font-bold uppercase tracking-[.16em] text-sky-300">Pipeline governado</p>
                           <h4 id="copilot-pipeline-confirmation-title" className="mt-1 text-sm font-semibold text-white">Movimentar a lead no Kanban</h4>
                         </div>
-                        <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-[.12em] text-amber-200">Prévia</span>
+                        <span className="rounded-full bg-amber-400/10 px-2 py-1 text-micro font-bold uppercase tracking-[.12em] text-amber-200">Prévia</span>
                       </div>
 
                       {pipelineResult ? (
@@ -1761,7 +1761,7 @@ export default function AtlasCopilotDock() {
                           <p className="text-xs leading-5 text-slate-400">
                             {pipelineContext.leadName} está em <strong className="text-slate-200">{pipelineStageLabel(pipelineContext.currentStage)}</strong>. Revise o destino antes de alterar o Kanban real.
                           </p>
-                          <label className="block text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">
+                          <label className="block text-micro font-bold uppercase tracking-[.14em] text-slate-400">
                             Nova etapa
                             <select
                               value={pipelineTarget}
@@ -1845,7 +1845,7 @@ export default function AtlasCopilotDock() {
             <section className="mt-6" data-commercial-outcome-summary="local-explainable">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[.18em] text-violet-300">Fase 68 · resultados observados</p>
+                  <p className="text-micro font-bold uppercase tracking-[.18em] text-violet-300">Fase 68 · resultados observados</p>
                   <h3 className="mt-1 text-sm font-semibold text-white">O que a execução produziu</h3>
                 </div>
                 <span className="atlas-badge atlas-badge-violet">Local · sem custo IA</span>
@@ -1853,8 +1853,8 @@ export default function AtlasCopilotDock() {
               <div className="mt-3 rounded-2xl border border-white/[0.06] bg-slate-950/30 p-3" data-commercial-outcome-period-control="supervised">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-[9px] font-bold uppercase tracking-[.16em] text-slate-500">Fase 74 · período supervisionado</p>
-                    <p className="mt-1 text-[11px] text-slate-300">Escolha a extensão da leitura factual</p>
+                    <p className="text-micro font-bold uppercase tracking-[.16em] text-slate-500">Fase 74 · período supervisionado</p>
+                    <p className="mt-1 text-rotulo text-slate-300">Escolha a extensão da leitura factual</p>
                   </div>
                   <div className="flex items-center gap-1 rounded-xl border border-white/[0.06] bg-black/20 p-1" role="group" aria-label="Período da memória comercial" aria-busy={commercialOutcomePeriodLoading || commercialOutcomeFilterLoading}>
                     {commercialOutcomePeriodOptions.map((periodDays) => (
@@ -1864,28 +1864,28 @@ export default function AtlasCopilotDock() {
                         onClick={() => void selectCommercialOutcomePeriod(periodDays)}
                         disabled={commercialOutcomePeriodLoading || commercialOutcomeFilterLoading}
                         aria-pressed={commercialOutcomePeriodDays === periodDays}
-                        className={`rounded-lg px-2.5 py-1.5 text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60 disabled:cursor-wait disabled:opacity-60 ${commercialOutcomePeriodDays === periodDays ? "bg-violet-400/15 text-violet-100" : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-200"}`}
+                        className={`rounded-lg px-2.5 py-1.5 text-micro font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60 disabled:cursor-wait disabled:opacity-60 ${commercialOutcomePeriodDays === periodDays ? "bg-violet-400/15 text-violet-100" : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-200"}`}
                       >
                         {periodDays} dias
                       </button>
                     ))}
                   </div>
                 </div>
-                {commercialOutcomePeriodLoading ? <p role="status" className="mt-2 text-[10px] text-violet-200">Atualizando somente a leitura histórica...</p> : null}
-                {commercialOutcomePeriodError ? <p role="status" className="mt-2 text-[10px] leading-4 text-amber-200">{commercialOutcomePeriodError}</p> : null}
+                {commercialOutcomePeriodLoading ? <p role="status" className="mt-2 text-micro text-violet-200">Atualizando somente a leitura histórica...</p> : null}
+                {commercialOutcomePeriodError ? <p role="status" className="mt-2 text-micro leading-4 text-amber-200">{commercialOutcomePeriodError}</p> : null}
                 {commercialOutcomeSummary?.periodControl?.historyMayBeTruncated ? (
-                  <p role="status" className="mt-2 text-[10px] leading-4 text-amber-200">
+                  <p role="status" className="mt-2 text-micro leading-4 text-amber-200">
                     Esta janela atingiu o limite de {commercialOutcomeSummary.periodControl.historyLimit.toLocaleString("pt-BR")} eventos. A leitura pode ser parcial e não deve ser usada como taxa de desempenho.
                   </p>
                 ) : null}
-                <p className="mt-2 text-[9px] leading-4 text-slate-600">
+                <p className="mt-2 text-micro leading-4 text-slate-600">
                   A escolha altera somente a consulta: período atual e anterior continuam com a mesma duração, sem chamada de modelo, escrita ou ação automática.
                 </p>
               </div>
               <div className="mt-3 rounded-2xl border border-cyan-300/10 bg-cyan-400/[.025] p-3" data-commercial-outcome-filter-control="supervised">
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[.16em] text-cyan-300">Fase 75 · resultado observado</p>
-                  <p className="mt-1 text-[11px] text-slate-300">Isole uma resposta humana confirmada sem alterar a operação</p>
+                  <p className="text-micro font-bold uppercase tracking-[.16em] text-cyan-300">Fase 75 · resultado observado</p>
+                  <p className="mt-1 text-rotulo text-slate-300">Isole uma resposta humana confirmada sem alterar a operação</p>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Resultado observado da memória comercial" aria-busy={commercialOutcomeFilterLoading || commercialOutcomePeriodLoading}>
                   {commercialOutcomeFilterOptions.map((option) => (
@@ -1895,22 +1895,22 @@ export default function AtlasCopilotDock() {
                       onClick={() => void selectCommercialOutcomeFilter(option.value)}
                       disabled={commercialOutcomeFilterLoading || commercialOutcomePeriodLoading}
                       aria-pressed={commercialOutcomeFilter === option.value}
-                      className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 disabled:cursor-wait disabled:opacity-60 ${commercialOutcomeFilter === option.value ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100" : "border-white/[0.06] bg-black/15 text-slate-500 hover:bg-white/[0.04] hover:text-slate-200"}`}
+                      className={`rounded-lg border px-2.5 py-1.5 text-micro font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 disabled:cursor-wait disabled:opacity-60 ${commercialOutcomeFilter === option.value ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100" : "border-white/[0.06] bg-black/15 text-slate-500 hover:bg-white/[0.04] hover:text-slate-200"}`}
                     >
                       {option.label}
                     </button>
                   ))}
                 </div>
-                {commercialOutcomeFilterLoading ? <p role="status" className="mt-2 text-[10px] text-cyan-200">Aplicando somente o recorte factual...</p> : null}
-                {commercialOutcomeFilterError ? <p role="status" className="mt-2 text-[10px] leading-4 text-amber-200">{commercialOutcomeFilterError}</p> : null}
+                {commercialOutcomeFilterLoading ? <p role="status" className="mt-2 text-micro text-cyan-200">Aplicando somente o recorte factual...</p> : null}
+                {commercialOutcomeFilterError ? <p role="status" className="mt-2 text-micro leading-4 text-amber-200">{commercialOutcomeFilterError}</p> : null}
                 {commercialOutcomeSummary?.filterControl ? (
-                  <p className="mt-2 text-[10px] leading-4 text-slate-400">
+                  <p className="mt-2 text-micro leading-4 text-slate-400">
                     {commercialOutcomeSummary.filterControl.filtered
                       ? `${commercialOutcomeSummary.filterControl.matchingObservedTasks} de ${commercialOutcomeSummary.filterControl.totalObservedTasks} resultado(s) correspondem ao filtro neste período.`
                       : `${commercialOutcomeSummary.filterControl.totalObservedTasks} resultado(s) humano(s) confirmado(s) neste período.`}
                   </p>
                 ) : null}
-                <p className="mt-2 text-[9px] leading-4 text-slate-600">
+                <p className="mt-2 text-micro leading-4 text-slate-600">
                   O filtro afeta resumo, comparação e contexto. Cobertura e lacunas continuam globais para não tratar outro resultado como informação ausente.
                 </p>
               </div>
@@ -1922,19 +1922,19 @@ export default function AtlasCopilotDock() {
                     <div className="grid grid-cols-2 gap-2" aria-label="Resumo dos resultados confirmados">
                       <div className="rounded-xl border border-white/[0.06] bg-slate-950/45 px-3 py-2">
                         <strong className="block text-base text-white">{commercialOutcomeSummary.observedTasks}</strong>
-                        <span className="text-[9px] uppercase tracking-[.12em] text-slate-500">Resultados</span>
+                        <span className="text-micro uppercase tracking-[.12em] text-slate-500">Resultados</span>
                       </div>
                       <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[.04] px-3 py-2">
                         <strong className="block text-base text-emerald-200">{commercialOutcomeSummary.advancesObserved}</strong>
-                        <span className="text-[9px] uppercase tracking-[.12em] text-slate-500">Avanços comprovados</span>
+                        <span className="text-micro uppercase tracking-[.12em] text-slate-500">Avanços comprovados</span>
                       </div>
                       <div className="rounded-xl border border-amber-400/10 bg-amber-400/[.04] px-3 py-2">
                         <strong className="block text-base text-amber-200">{commercialOutcomeSummary.noResponseObserved}</strong>
-                        <span className="text-[9px] uppercase tracking-[.12em] text-slate-500">Sem resposta</span>
+                        <span className="text-micro uppercase tracking-[.12em] text-slate-500">Sem resposta</span>
                       </div>
                       <div className="rounded-xl border border-sky-400/10 bg-sky-400/[.04] px-3 py-2">
                         <strong className="block text-base text-sky-200">{commercialOutcomeSummary.coveragePercent}%</strong>
-                        <span className="text-[9px] uppercase tracking-[.12em] text-slate-500">Cobertura registrada</span>
+                        <span className="text-micro uppercase tracking-[.12em] text-slate-500">Cobertura registrada</span>
                       </div>
                     </div>
                     <p className="mt-3 text-xs leading-5 text-slate-300">{commercialOutcomeSummary.primaryFinding}</p>
@@ -1944,13 +1944,13 @@ export default function AtlasCopilotDock() {
                         .sort((left, right) => right.count - left.count)
                         .slice(0, 4)
                         .map((category) => (
-                          <div key={category.key} className="flex items-center justify-between gap-3 text-[11px] text-slate-400">
+                          <div key={category.key} className="flex items-center justify-between gap-3 text-rotulo text-slate-400">
                             <span>{category.label}</span>
                             <span className="font-semibold text-slate-200">{category.count} · {category.sharePercent}%</span>
                           </div>
                         ))}
                     </div>
-                    <p className="mt-3 border-t border-white/[0.05] pt-3 text-[10px] leading-4 text-slate-600">
+                    <p className="mt-3 border-t border-white/[0.05] pt-3 text-micro leading-4 text-slate-600">
                       Últimos {commercialOutcomeSummary.periodDays} dias no seu escopo · somente fatos confirmados · sem previsão ou alteração automática.
                     </p>
                   </div>
@@ -1981,7 +1981,7 @@ export default function AtlasCopilotDock() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-cyan-300">Fase 78 · recência factual</p>
+                      <p className="text-micro font-bold uppercase tracking-[.18em] text-cyan-300">Fase 78 · recência factual</p>
                       <p className="mt-1 text-xs leading-5 text-slate-300">{commercialOutcomeSummary.freshness.primaryFinding}</p>
                     </div>
                     <span className={`atlas-badge shrink-0 ${commercialOutcomeSummary.freshness.status === "current" ? "atlas-badge-success" : commercialOutcomeSummary.freshness.status === "empty" ? "atlas-badge-info" : "atlas-badge-warning"}`}>
@@ -1994,7 +1994,7 @@ export default function AtlasCopilotDock() {
                             : "Sem fatos"}
                     </span>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] leading-4 text-slate-600">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-micro leading-4 text-slate-600">
                     {commercialOutcomeSummary.freshness.latestObservedAt ? (
                       <span>
                         Último fato: <time dateTime={commercialOutcomeSummary.freshness.latestObservedAt}>{commercialOutcomeEvidenceDateFormatter.format(new Date(commercialOutcomeSummary.freshness.latestObservedAt))}</time>
@@ -2003,7 +2003,7 @@ export default function AtlasCopilotDock() {
                     <span>{commercialOutcomeSummary.freshness.observedTasks} resultado(s) no recorte</span>
                     <span>Atual até {commercialOutcomeSummary.freshness.thresholds.currentMaxHours / 24} dias · desatualizada após {commercialOutcomeSummary.freshness.thresholds.staleAfterHours / 24} dias</span>
                   </div>
-                  <p className="mt-2 text-[9px] leading-4 text-slate-600">
+                  <p className="mt-2 text-micro leading-4 text-slate-600">
                     Mede somente a idade do último resultado humano confirmado; não avalia qualidade, intenção, conversão ou chance de venda.
                   </p>
                 </section>
@@ -2018,7 +2018,7 @@ export default function AtlasCopilotDock() {
                     aria-label="Conferir recência factual por projeto e origem"
                   >
                     <span className="min-w-0">
-                      <span className="block text-[10px] font-bold uppercase tracking-[.18em] text-cyan-300">Fase 79 · recência por contexto</span>
+                      <span className="block text-micro font-bold uppercase tracking-[.18em] text-cyan-300">Fase 79 · recência por contexto</span>
                       <span className="mt-1 block text-xs leading-5 text-slate-300">{commercialOutcomeSummary.contextFreshness.primaryFinding}</span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
@@ -2035,20 +2035,20 @@ export default function AtlasCopilotDock() {
                         return (
                           <section key={dimensionKey} aria-label={`Recência por ${label.toLocaleLowerCase("pt-BR")}`} className="rounded-xl border border-white/[0.06] bg-slate-950/35 p-3">
                             <div className="flex items-center justify-between gap-2">
-                              <h4 className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-300">{label}</h4>
-                              <span className="text-[9px] text-slate-600">{dimension.classifiedTasks} classificados</span>
+                              <h4 className="text-micro font-bold uppercase tracking-[.14em] text-slate-300">{label}</h4>
+                              <span className="text-micro text-slate-600">{dimension.classifiedTasks} classificados</span>
                             </div>
                             {dimension.segments.length > 0 ? (
                               <div className="mt-2 space-y-2">
                                 {dimension.segments.map((segment) => (
                                   <div key={segment.key} className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-2">
                                     <div className="flex items-start justify-between gap-2">
-                                      <span className="min-w-0 truncate text-[11px] font-medium text-slate-200" title={segment.label}>{segment.label}</span>
+                                      <span className="min-w-0 truncate text-rotulo font-medium text-slate-200" title={segment.label}>{segment.label}</span>
                                       <span className={`atlas-badge shrink-0 ${segment.status === "current" ? "atlas-badge-success" : "atlas-badge-warning"}`}>
                                         {segment.status === "current" ? "Atual" : segment.status === "attention" ? "Atualizar" : "Desatualizada"}
                                       </span>
                                     </div>
-                                    <p className="mt-1 text-[9px] leading-4 text-slate-600">
+                                    <p className="mt-1 text-micro leading-4 text-slate-600">
                                       {segment.observedTasks} resultado(s) · último em <time dateTime={segment.latestObservedAt}>{commercialOutcomeEvidenceDateFormatter.format(new Date(segment.latestObservedAt))}</time> · há {segment.ageHours < 24 ? `${segment.ageHours}h` : `${segment.ageDays}d`}
                                     </p>
                                     <details
@@ -2056,7 +2056,7 @@ export default function AtlasCopilotDock() {
                                       data-commercial-context-evidence={segment.key}
                                     >
                                       <summary
-                                        className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-[9px] font-medium text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 [&::-webkit-details-marker]:hidden"
+                                        className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-micro font-medium text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 [&::-webkit-details-marker]:hidden"
                                         aria-label={`Conferir fatos humanos de ${segment.label}`}
                                       >
                                         <span>Conferir fatos</span>
@@ -2068,7 +2068,7 @@ export default function AtlasCopilotDock() {
                                       <div className="border-t border-white/[0.05] px-2.5 pb-2.5 pt-2">
                                         <ul className="space-y-1.5" aria-label={`Fatos que sustentam a recência de ${segment.label}`}>
                                           {segment.evidence.map((evidence) => (
-                                            <li key={evidence.eventId} className="flex items-start justify-between gap-2 text-[9px] leading-4">
+                                            <li key={evidence.eventId} className="flex items-start justify-between gap-2 text-micro leading-4">
                                               <span>
                                                 <span className="block text-slate-300">{evidence.outcomeLabel}</span>
                                                 <span className={evidence.contextBasis === "historical_outcome_snapshot" ? "text-emerald-300/70" : "text-amber-200/65"}>
@@ -2081,22 +2081,22 @@ export default function AtlasCopilotDock() {
                                           ))}
                                         </ul>
                                         {segment.remainingEvidence > 0 ? (
-                                          <p className="mt-2 text-[9px] leading-4 text-slate-600">Mais {segment.remainingEvidence} fato(s) permanecem preservados no recorte.</p>
+                                          <p className="mt-2 text-micro leading-4 text-slate-600">Mais {segment.remainingEvidence} fato(s) permanecem preservados no recorte.</p>
                                         ) : null}
-                                        <p className="mt-2 text-[9px] leading-4 text-slate-600">Somente resultado e horário; sem nome, contato ou mensagem.</p>
+                                        <p className="mt-2 text-micro leading-4 text-slate-600">Somente resultado e horário; sem nome, contato ou mensagem.</p>
                                       </div>
                                     </details>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <p className="mt-2 text-[10px] leading-4 text-slate-600">Nenhum contexto classificado neste recorte.</p>
+                              <p className="mt-2 text-micro leading-4 text-slate-600">Nenhum contexto classificado neste recorte.</p>
                             )}
                             {dimension.remainingSegments > 0 ? (
-                              <p className="mt-2 text-[9px] leading-4 text-slate-600">Mais {dimension.remainingSegments} contexto(s), com {dimension.remainingObservedTasks} resultado(s), permanecem no resumo completo.</p>
+                              <p className="mt-2 text-micro leading-4 text-slate-600">Mais {dimension.remainingSegments} contexto(s), com {dimension.remainingObservedTasks} resultado(s), permanecem no resumo completo.</p>
                             ) : null}
                             {dimension.unclassifiedTasks > 0 ? (
-                              <p className="mt-2 text-[9px] leading-4 text-amber-200/65">{dimension.unclassifiedTasks} resultado(s) ainda sem {dimensionKey === "projects" ? "projeto" : "origem"} no contexto disponível.</p>
+                              <p className="mt-2 text-micro leading-4 text-amber-200/65">{dimension.unclassifiedTasks} resultado(s) ainda sem {dimensionKey === "projects" ? "projeto" : "origem"} no contexto disponível.</p>
                             ) : null}
                           </section>
                         );
@@ -2106,8 +2106,8 @@ export default function AtlasCopilotDock() {
                       className="mt-3 rounded-xl border border-sky-300/10 bg-sky-400/[.025] p-3"
                       data-commercial-context-provenance={commercialOutcomeSummary.contextFreshness.provenance.contextTimeBasis}
                     >
-                      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-sky-300">Fase 82 · contexto supervisionado</p>
-                      <dl className="mt-2 grid gap-2 text-[9px] leading-4 sm:grid-cols-2">
+                      <p className="text-micro font-bold uppercase tracking-[.14em] text-sky-300">Fase 82 · contexto supervisionado</p>
+                      <dl className="mt-2 grid gap-2 text-micro leading-4 sm:grid-cols-2">
                         <div>
                           <dt className="font-semibold text-slate-300">Horário do resultado</dt>
                           <dd className="text-slate-600">Momento em que o resultado humano foi confirmado.</dd>
@@ -2119,7 +2119,7 @@ export default function AtlasCopilotDock() {
                           </dd>
                         </div>
                       </dl>
-                      <div className="mt-2 grid grid-cols-2 gap-2 text-[9px] leading-4">
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-micro leading-4">
                         <span className="rounded-lg border border-emerald-300/10 bg-emerald-400/[.025] px-2 py-1.5 text-emerald-200/75">
                           {commercialOutcomeSummary.contextFreshness.provenance.historicalSnapshotTasks} preservado(s) no resultado
                         </span>
@@ -2128,14 +2128,14 @@ export default function AtlasCopilotDock() {
                         </span>
                       </div>
                       {commercialOutcomeSummary.contextFreshness.provenance.currentSnapshotFallbackTasks > 0 ? (
-                        <p className="mt-2 text-[9px] leading-4 text-amber-200/65">
+                        <p className="mt-2 text-micro leading-4 text-amber-200/65">
                           Registros antigos não são reconstruídos: a lead pode ter mudado de projeto ou origem depois do resultado.
                         </p>
                       ) : commercialOutcomeSummary.contextFreshness.provenance.historicalSnapshotTasks > 0 ? (
-                        <p className="mt-2 text-[9px] leading-4 text-emerald-200/65">Todo o recorte exibido possui contexto preservado na confirmação humana.</p>
+                        <p className="mt-2 text-micro leading-4 text-emerald-200/65">Todo o recorte exibido possui contexto preservado na confirmação humana.</p>
                       ) : null}
                     </div>
-                    <p className="mt-3 text-[9px] leading-4 text-slate-600">
+                    <p className="mt-3 text-micro leading-4 text-slate-600">
                       Fase 80 · evidências sob demanda. Ordem alfabética, sem ranking. A idade considera o último resultado humano confirmado no contexto disponível e não mede qualidade, desempenho, conversão ou chance de venda.
                     </p>
                   </div>
@@ -2149,7 +2149,7 @@ export default function AtlasCopilotDock() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-300">Fase 84 · cobertura contextual</p>
+                      <p className="text-micro font-bold uppercase tracking-[.18em] text-sky-300">Fase 84 · cobertura contextual</p>
                       <h4 className="mt-1 text-sm font-semibold text-white">Quanto da memória está realmente contextualizada</h4>
                     </div>
                     <span className="atlas-badge atlas-badge-info shrink-0">
@@ -2167,10 +2167,10 @@ export default function AtlasCopilotDock() {
                     ]] as const).map(([windowLabel, window]) => (
                       <section key={windowLabel} className="rounded-xl border border-white/[0.06] bg-slate-950/35 p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <h5 className="text-[10px] font-bold uppercase tracking-[.12em] text-slate-300">{windowLabel}</h5>
-                          <span className="text-[9px] text-slate-600">{window.observedTasks} resultado(s)</span>
+                          <h5 className="text-micro font-bold uppercase tracking-[.12em] text-slate-300">{windowLabel}</h5>
+                          <span className="text-micro text-slate-600">{window.observedTasks} resultado(s)</span>
                         </div>
-                        <p className="mt-2 text-[9px] leading-4 text-slate-500">
+                        <p className="mt-2 text-micro leading-4 text-slate-500">
                           {window.historicalSnapshotTasks} com snapshot histórico · {window.currentLeadFallbackTasks} com fallback legado
                         </p>
                         <div className="mt-3 space-y-3">
@@ -2182,14 +2182,14 @@ export default function AtlasCopilotDock() {
                             window.sources,
                           ]] as const).map(([dimensionLabel, dimension]) => (
                             <div key={dimensionLabel}>
-                              <div className="flex items-center justify-between gap-2 text-[10px]">
+                              <div className="flex items-center justify-between gap-2 text-micro">
                                 <strong className="text-slate-300">{dimensionLabel}</strong>
                                 <span className="text-slate-500">{dimension.classifiedTasks}/{dimension.observedTasks} disponível</span>
                               </div>
                               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.05]" aria-hidden="true">
                                 <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-sky-400" style={{ width: `${dimension.classifiedCoveragePercent}%` }} />
                               </div>
-                              <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[9px] leading-4">
+                              <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-micro leading-4">
                                 <span className="text-cyan-200/75">Disponível {dimension.classifiedCoveragePercent}%</span>
                                 <span className="text-emerald-200/75">Preservado no fato {dimension.historicalClassifiedCoveragePercent}%</span>
                                 {dimension.unclassifiedTasks > 0 ? <span className="text-amber-200/70">Sem contexto {dimension.unclassifiedTasks}</span> : null}
@@ -2200,7 +2200,7 @@ export default function AtlasCopilotDock() {
                       </section>
                     ))}
                   </div>
-                  <p className="mt-3 border-t border-white/[0.05] pt-3 text-[9px] leading-4 text-slate-600">
+                  <p className="mt-3 border-t border-white/[0.05] pt-3 text-micro leading-4 text-slate-600">
                     Denominador: resultados humanos confirmados e únicos por tarefa em cada janela de {commercialOutcomeSummary.contextCoverage.periodDays} dias. Valor histórico nulo permanece sem contexto; fallback legado é identificado e não vira backfill. Percentuais descrevem cobertura, não qualidade, desempenho, causa ou previsão.
                   </p>
                 </section>
@@ -2213,7 +2213,7 @@ export default function AtlasCopilotDock() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-amber-300">Fase 85 · revisão contextual</p>
+                      <p className="text-micro font-bold uppercase tracking-[.18em] text-amber-300">Fase 85 · revisão contextual</p>
                       <h4 className="mt-1 text-sm font-semibold text-white">O que precisa de contexto humano</h4>
                     </div>
                     <span className={`atlas-badge shrink-0 ${commercialOutcomeSummary.contextGapQueue.outcomesWithContextGaps > 0 ? "atlas-badge-warning" : "atlas-badge-success"}`}>
@@ -2235,7 +2235,7 @@ export default function AtlasCopilotDock() {
                       commercialOutcomeSummary.contextGapQueue.missingBothTasks,
                     ]] as const).map(([label, value]) => (
                       <div key={label} className="rounded-xl border border-white/[0.06] bg-slate-950/35 px-2 py-2">
-                        <dt className="text-[9px] uppercase tracking-[.1em] text-slate-500">{label}</dt>
+                        <dt className="text-micro uppercase tracking-[.1em] text-slate-500">{label}</dt>
                         <dd className="mt-1 text-sm font-semibold text-white">{value}</dd>
                       </div>
                     ))}
@@ -2246,8 +2246,8 @@ export default function AtlasCopilotDock() {
                         <article key={gap.eventId} className="rounded-xl border border-white/[0.06] bg-slate-950/40 p-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <strong className="block truncate text-[11px] text-slate-200">{gap.taskTitle}</strong>
-                              <span className="mt-0.5 block truncate text-[9px] text-slate-500">{gap.leadName} · observado há {gap.ageDays} dia(s)</span>
+                              <strong className="block truncate text-rotulo text-slate-200">{gap.taskTitle}</strong>
+                              <span className="mt-0.5 block truncate text-micro text-slate-500">{gap.leadName} · observado há {gap.ageDays} dia(s)</span>
                             </div>
                             <span className={`atlas-badge shrink-0 ${gap.historicalEvidenceImmutable ? "atlas-badge-info" : "atlas-badge-warning"}`}>
                               {gap.historicalEvidenceImmutable ? "Fato imutável" : "Cadastro atual"}
@@ -2255,26 +2255,26 @@ export default function AtlasCopilotDock() {
                           </div>
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {gap.missingDimensions.map((dimension) => (
-                              <span key={dimension} className="rounded-full border border-amber-300/10 bg-amber-400/[.04] px-2 py-1 text-[9px] text-amber-200/75">
+                              <span key={dimension} className="rounded-full border border-amber-300/10 bg-amber-400/[.04] px-2 py-1 text-micro text-amber-200/75">
                                 {dimension === "project" ? "Projeto ausente" : "Origem ausente"}
                               </span>
                             ))}
                           </div>
-                          <Link href={gap.href} className="mt-2 inline-flex text-[10px] font-semibold text-cyan-300 hover:text-cyan-200">
+                          <Link href={gap.href} className="mt-2 inline-flex text-micro font-semibold text-cyan-300 hover:text-cyan-200">
                             {gap.correctionMode === "update_current_lead" ? "Atualizar lead" : "Preparar próximos registros"} →
                           </Link>
                         </article>
                       ))}
                       {commercialOutcomeSummary.contextGapQueue.remainingGaps > 0 ? (
-                        <p className="px-1 text-[9px] leading-4 text-slate-600">Mais {commercialOutcomeSummary.contextGapQueue.remainingGaps} lacuna(s) permanecem no recorte completo.</p>
+                        <p className="px-1 text-micro leading-4 text-slate-600">Mais {commercialOutcomeSummary.contextGapQueue.remainingGaps} lacuna(s) permanecem no recorte completo.</p>
                       ) : null}
                     </div>
                   ) : (
-                    <p className="mt-3 rounded-xl border border-emerald-300/10 bg-emerald-400/[.025] px-3 py-2 text-[10px] leading-4 text-emerald-200/75">
+                    <p className="mt-3 rounded-xl border border-emerald-300/10 bg-emerald-400/[.025] px-3 py-2 text-micro leading-4 text-emerald-200/75">
                       Nenhuma correção contextual manual é necessária neste período.
                     </p>
                   )}
-                  <p className="mt-3 border-t border-white/[0.05] pt-3 text-[9px] leading-4 text-slate-600">
+                  <p className="mt-3 border-t border-white/[0.05] pt-3 text-micro leading-4 text-slate-600">
                     Ordem: mais dimensões ausentes e depois fato observado mais antigo. Editar a lead melhora somente os próximos registros; evidência histórica nunca é reescrita. A fila não infere impacto comercial, score, ranking ou previsão e não executa ações automaticamente.
                   </p>
                 </section>
@@ -2288,7 +2288,7 @@ export default function AtlasCopilotDock() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-cyan-300">Fase 76 · suficiência factual</p>
+                      <p className="text-micro font-bold uppercase tracking-[.18em] text-cyan-300">Fase 76 · suficiência factual</p>
                       <h4 className="mt-1 text-sm font-semibold text-white">A leitura tem base descritiva suficiente?</h4>
                     </div>
                     <span className={`atlas-badge ${commercialOutcomeSummary.sampleSufficiency.status === "descriptive" ? "atlas-badge-success" : commercialOutcomeSummary.sampleSufficiency.status === "empty" ? "atlas-badge-info" : "atlas-badge-warning"}`}>
@@ -2301,16 +2301,16 @@ export default function AtlasCopilotDock() {
                       ["Período anterior", commercialOutcomeSummary.sampleSufficiency.previousObservedTasks, commercialOutcomeSummary.sampleSufficiency.previousMissing],
                     ] as const).map(([label, observed, missing]) => (
                       <div key={label} className="rounded-xl border border-white/[0.06] bg-slate-950/40 px-3 py-2">
-                        <strong className="block text-sm text-white">{observed} <span className="text-[10px] font-normal text-slate-500">/ {commercialOutcomeSummary.sampleSufficiency?.minimumPerWindow}</span></strong>
-                        <span className="text-[9px] uppercase tracking-[.1em] text-slate-500">{label}</span>
-                        <span className={`mt-1 block text-[9px] ${missing === 0 ? "text-emerald-300/80" : "text-amber-200/80"}`}>
+                        <strong className="block text-sm text-white">{observed} <span className="text-micro font-normal text-slate-500">/ {commercialOutcomeSummary.sampleSufficiency?.minimumPerWindow}</span></strong>
+                        <span className="text-micro uppercase tracking-[.1em] text-slate-500">{label}</span>
+                        <span className={`mt-1 block text-micro ${missing === 0 ? "text-emerald-300/80" : "text-amber-200/80"}`}>
                           {missing === 0 ? "mínimo operacional atingido" : `faltam ${missing} resultado(s)`}
                         </span>
                       </div>
                     ))}
                   </div>
                   <p className="mt-3 text-xs leading-5 text-slate-300">{commercialOutcomeSummary.sampleSufficiency.primaryFinding}</p>
-                  <p className="mt-2 text-[9px] leading-4 text-slate-600">
+                  <p className="mt-2 text-micro leading-4 text-slate-600">
                     Critério transparente: {commercialOutcomeSummary.sampleSufficiency.minimumPerWindow} resultados humanos confirmados em cada janela. Serve apenas para comparação descritiva; não representa significância estatística, causalidade ou previsão.
                   </p>
                 </div>
@@ -2325,7 +2325,7 @@ export default function AtlasCopilotDock() {
                     aria-label="Conferir evidências humanas da memória comercial"
                   >
                     <span>
-                      <span className="block text-[10px] font-bold uppercase tracking-[.18em] text-violet-300">Fase 77 · evidências auditáveis</span>
+                      <span className="block text-micro font-bold uppercase tracking-[.18em] text-violet-300">Fase 77 · evidências auditáveis</span>
                       <span className="mt-1 block text-sm font-semibold text-white">Conferir os fatos que formam este recorte</span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
@@ -2334,7 +2334,7 @@ export default function AtlasCopilotDock() {
                     </span>
                   </summary>
                   <div className="border-t border-white/[0.05] px-4 pb-4 pt-3">
-                    <p className="text-[10px] leading-4 text-slate-500">
+                    <p className="text-micro leading-4 text-slate-500">
                       Último resultado humano por tarefa, dentro do período e do seu acesso. Sem telefone, e-mail, previsão ou alteração automática.
                     </p>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -2356,8 +2356,8 @@ export default function AtlasCopilotDock() {
                       ] as const).map((window) => (
                         <section key={window.key} className="rounded-xl border border-white/[0.06] bg-slate-950/45 p-3" aria-label={`${window.label}: ${window.total} resultados confirmados`}>
                           <div className="flex items-center justify-between gap-2">
-                            <h5 className="text-[10px] font-bold uppercase tracking-[.12em] text-slate-400">{window.label}</h5>
-                            <span className="text-[10px] font-semibold text-violet-200">{window.total}</span>
+                            <h5 className="text-micro font-bold uppercase tracking-[.12em] text-slate-400">{window.label}</h5>
+                            <span className="text-micro font-semibold text-violet-200">{window.total}</span>
                           </div>
                           {window.items.length > 0 ? (
                             <ul className="mt-2 space-y-2">
@@ -2365,24 +2365,24 @@ export default function AtlasCopilotDock() {
                                 <li key={item.eventId} className="rounded-lg border border-white/[0.05] bg-white/[0.025] px-3 py-2">
                                   <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
-                                      <strong className="block truncate text-[11px] text-white">{item.outcomeLabel}</strong>
-                                      <span className="mt-0.5 block truncate text-[10px] text-slate-400">{item.leadName} · {item.taskTitle}</span>
+                                      <strong className="block truncate text-rotulo text-white">{item.outcomeLabel}</strong>
+                                      <span className="mt-0.5 block truncate text-micro text-slate-400">{item.leadName} · {item.taskTitle}</span>
                                     </div>
-                                    <time dateTime={item.observedAt} className="shrink-0 text-[9px] text-slate-600">
+                                    <time dateTime={item.observedAt} className="shrink-0 text-micro text-slate-600">
                                       {commercialOutcomeEvidenceDateFormatter.format(new Date(item.observedAt))}
                                     </time>
                                   </div>
                                   <div className="mt-2 flex items-center justify-between gap-2">
                                     <span className="min-w-0">
-                                      <span className="block truncate text-[9px] text-slate-600">
+                                      <span className="block truncate text-micro text-slate-600">
                                         {[item.projectName, item.sourceName].filter(Boolean).join(" · ") || "Contexto não informado"}
                                       </span>
-                                      <span className={`mt-0.5 block text-[8px] ${item.contextBasis === "historical_outcome_snapshot" ? "text-emerald-300/65" : "text-amber-200/60"}`}>
+                                      <span className={`mt-0.5 block text-micro ${item.contextBasis === "historical_outcome_snapshot" ? "text-emerald-300/65" : "text-amber-200/60"}`}>
                                         {item.contextBasis === "historical_outcome_snapshot" ? "Contexto preservado" : "Fallback legado"}
                                         {item.contextCapturedAt ? <> · <time dateTime={item.contextCapturedAt}>{commercialOutcomeEvidenceDateFormatter.format(new Date(item.contextCapturedAt))}</time></> : null}
                                       </span>
                                     </span>
-                                    <Link href={`/leads/${encodeURIComponent(item.leadId)}#commercial-context`} className="shrink-0 text-[9px] font-semibold text-violet-200 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60">
+                                    <Link href={`/leads/${encodeURIComponent(item.leadId)}#commercial-context`} className="shrink-0 text-micro font-semibold text-violet-200 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60">
                                       Abrir lead
                                     </Link>
                                   </div>
@@ -2390,15 +2390,15 @@ export default function AtlasCopilotDock() {
                               ))}
                             </ul>
                           ) : (
-                            <p className="mt-2 rounded-lg border border-dashed border-white/[0.06] px-3 py-3 text-[10px] leading-4 text-slate-600">Nenhum fato confirmado nesta janela.</p>
+                            <p className="mt-2 rounded-lg border border-dashed border-white/[0.06] px-3 py-3 text-micro leading-4 text-slate-600">Nenhum fato confirmado nesta janela.</p>
                           )}
                           {window.remaining > 0 ? (
-                            <p className="mt-2 text-[9px] leading-4 text-slate-600">Mais {window.remaining} fato(s) permanecem na contagem deste recorte.</p>
+                            <p className="mt-2 text-micro leading-4 text-slate-600">Mais {window.remaining} fato(s) permanecem na contagem deste recorte.</p>
                           ) : null}
                         </section>
                       ))}
                     </div>
-                    <p className="mt-3 text-[9px] leading-4 text-slate-600">
+                    <p className="mt-3 text-micro leading-4 text-slate-600">
                       Evidência somente leitura · escopo hierárquico preservado · contexto histórico preferido; registros antigos usam fallback atual sem reconstrução.
                     </p>
                   </div>
@@ -2408,7 +2408,7 @@ export default function AtlasCopilotDock() {
                 <div className="mt-3 rounded-2xl border border-sky-300/10 bg-sky-400/[.03] p-4" data-commercial-outcome-comparison="descriptive">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-300">Fase 69 · comparação temporal</p>
+                      <p className="text-micro font-bold uppercase tracking-[.18em] text-sky-300">Fase 69 · comparação temporal</p>
                       <h4 className="mt-1 text-sm font-semibold text-white">{commercialOutcomeSummary.comparison.periodDays} dias atuais × {commercialOutcomeSummary.comparison.periodDays} anteriores</h4>
                     </div>
                     <span className={`atlas-badge ${commercialOutcomeSummary.comparison.sampleStatus === "descriptive" ? "atlas-badge-info" : "atlas-badge-warning"}`}>
@@ -2417,7 +2417,7 @@ export default function AtlasCopilotDock() {
                   </div>
                   <p className="mt-3 text-xs leading-5 text-slate-300">{commercialOutcomeSummary.comparison.primaryFinding}</p>
                   <div className="mt-3 overflow-hidden rounded-xl border border-white/[0.06]" role="table" aria-label="Comparação dos resultados comerciais confirmados">
-                    <div className="grid grid-cols-[1fr_3rem_3rem_3.5rem] gap-2 bg-white/[0.035] px-3 py-2 text-[9px] font-bold uppercase tracking-[.1em] text-slate-500" role="row">
+                    <div className="grid grid-cols-[1fr_3rem_3rem_3.5rem] gap-2 bg-white/[0.035] px-3 py-2 text-micro font-bold uppercase tracking-[.1em] text-slate-500" role="row">
                       <span role="columnheader">Métrica</span><span role="columnheader">Atual</span><span role="columnheader">Antes</span><span role="columnheader">Dif.</span>
                     </div>
                     {([
@@ -2426,7 +2426,7 @@ export default function AtlasCopilotDock() {
                       ["Sem resposta", commercialOutcomeSummary.comparison.metrics.noResponseObserved],
                       ["Cobertura", commercialOutcomeSummary.comparison.metrics.coveragePercent],
                     ] as const).map(([label, metric]) => (
-                      <div key={label} className="grid grid-cols-[1fr_3rem_3rem_3.5rem] gap-2 border-t border-white/[0.05] px-3 py-2 text-[11px] text-slate-400" role="row">
+                      <div key={label} className="grid grid-cols-[1fr_3rem_3rem_3.5rem] gap-2 border-t border-white/[0.05] px-3 py-2 text-rotulo text-slate-400" role="row">
                         <span className="text-slate-300" role="cell">{label}</span>
                         <span role="cell">{metric.current}{metric.unit === "percentage-points" ? "%" : ""}</span>
                         <span role="cell">{metric.previous}{metric.unit === "percentage-points" ? "%" : ""}</span>
@@ -2434,7 +2434,7 @@ export default function AtlasCopilotDock() {
                       </div>
                     ))}
                   </div>
-                  <p className="mt-3 text-[10px] leading-4 text-slate-600">
+                  <p className="mt-3 text-micro leading-4 text-slate-600">
                     Leitura descritiva e local · sem atribuir causa · sem previsão · nenhuma ação automática.
                   </p>
                 </div>
@@ -2443,29 +2443,29 @@ export default function AtlasCopilotDock() {
                 <div className="mt-3 rounded-2xl border border-amber-300/10 bg-amber-400/[.025] p-4" data-commercial-memory-quality="local-supervised">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-amber-300">Fase 70 · qualidade da memória</p>
+                      <p className="text-micro font-bold uppercase tracking-[.18em] text-amber-300">Fase 70 · qualidade da memória</p>
                       <h4 className="mt-1 text-sm font-semibold text-white">Conclusões que ainda precisam de resultado</h4>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <span className={`atlas-badge ${commercialOutcomeSummary.quality.status === "complete" ? "atlas-badge-success" : commercialOutcomeSummary.quality.status === "attention" ? "atlas-badge-warning" : "atlas-badge-info"}`}>
                         {commercialOutcomeSummary.quality.coveragePercent}% coberto
                       </span>
-                      <span className="text-[8px] uppercase tracking-[.1em] text-slate-600">Todos os resultados</span>
+                      <span className="text-micro uppercase tracking-[.1em] text-slate-600">Todos os resultados</span>
                     </div>
                   </div>
                   <p className="mt-3 text-xs leading-5 text-slate-300">{commercialOutcomeSummary.quality.primaryFinding}</p>
                   <div className="mt-3 grid grid-cols-3 gap-2" aria-label="Qualidade factual da memória comercial">
                     <div className="rounded-xl border border-white/[0.06] bg-slate-950/45 px-3 py-2">
                       <strong className="block text-sm text-white">{commercialOutcomeSummary.quality.eligibleCompletedTasks}</strong>
-                      <span className="text-[9px] uppercase tracking-[.1em] text-slate-500">Concluídas</span>
+                      <span className="text-micro uppercase tracking-[.1em] text-slate-500">Concluídas</span>
                     </div>
                     <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[.04] px-3 py-2">
                       <strong className="block text-sm text-emerald-200">{commercialOutcomeSummary.quality.observedTasks}</strong>
-                      <span className="text-[9px] uppercase tracking-[.1em] text-slate-500">Com resultado</span>
+                      <span className="text-micro uppercase tracking-[.1em] text-slate-500">Com resultado</span>
                     </div>
                     <div className="rounded-xl border border-amber-400/10 bg-amber-400/[.04] px-3 py-2">
                       <strong className="block text-sm text-amber-200">{commercialOutcomeSummary.quality.missingOutcomeTasks}</strong>
-                      <span className="text-[9px] uppercase tracking-[.1em] text-slate-500">A revisar</span>
+                      <span className="text-micro uppercase tracking-[.1em] text-slate-500">A revisar</span>
                     </div>
                   </div>
                   {commercialOutcomeSummary.quality.gapQueue.length > 0 ? (
@@ -2475,16 +2475,16 @@ export default function AtlasCopilotDock() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <strong className="block truncate text-xs text-slate-100">{gap.taskTitle}</strong>
-                              <p className="mt-1 truncate text-[10px] text-slate-500">{gap.leadName} · {gap.ageDays === 0 ? "concluída hoje" : gap.ageDays === 1 ? "há 1 dia" : `há ${gap.ageDays} dias`}</p>
+                              <p className="mt-1 truncate text-micro text-slate-500">{gap.leadName} · {gap.ageDays === 0 ? "concluída hoje" : gap.ageDays === 1 ? "há 1 dia" : `há ${gap.ageDays} dias`}</p>
                             </div>
-                            <span className={`shrink-0 rounded-full px-2 py-1 text-[8px] font-bold uppercase tracking-[.1em] ${gap.urgency === "stale" ? "bg-rose-400/10 text-rose-200" : gap.urgency === "attention" ? "bg-amber-400/10 text-amber-200" : "bg-sky-400/10 text-sky-200"}`}>
+                            <span className={`shrink-0 rounded-full px-2 py-1 text-micro font-bold uppercase tracking-[.1em] ${gap.urgency === "stale" ? "bg-rose-400/10 text-rose-200" : gap.urgency === "attention" ? "bg-amber-400/10 text-amber-200" : "bg-sky-400/10 text-sky-200"}`}>
                               {gap.urgency === "stale" ? "Antiga" : gap.urgency === "attention" ? "Atenção" : "Recente"}
                             </span>
                           </div>
                           <button
                             type="button"
                             onClick={() => prepareCommercialMemoryGap(gap)}
-                            className="mt-3 text-[10px] font-semibold text-amber-200 transition hover:text-amber-100"
+                            className="mt-3 text-micro font-semibold text-amber-200 transition hover:text-amber-100"
                           >
                             Registrar resultado observado →
                           </button>
@@ -2492,11 +2492,11 @@ export default function AtlasCopilotDock() {
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-3 rounded-xl border border-emerald-300/10 bg-emerald-400/[.04] px-3 py-2 text-[11px] leading-5 text-emerald-100/80">
+                    <p className="mt-3 rounded-xl border border-emerald-300/10 bg-emerald-400/[.04] px-3 py-2 text-rotulo leading-5 text-emerald-100/80">
                       Nenhuma lacuna elegível na fila curta deste período.
                     </p>
                   )}
-                  <p className="mt-3 border-t border-white/[0.05] pt-3 text-[10px] leading-4 text-slate-600">
+                  <p className="mt-3 border-t border-white/[0.05] pt-3 text-micro leading-4 text-slate-600">
                     Somente tarefas concluídas com confirmação humana e vínculo com lead · correção manual · sem modelo generativo, previsão ou escrita automática.
                   </p>
                 </div>
@@ -2505,13 +2505,13 @@ export default function AtlasCopilotDock() {
                 <div className="mt-3 rounded-2xl border border-cyan-300/10 bg-cyan-400/[.025] p-4" data-commercial-outcome-context="historical-preferred-with-legacy-fallback">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-cyan-300">Fase 71 · contexto comercial</p>
+                      <p className="text-micro font-bold uppercase tracking-[.18em] text-cyan-300">Fase 71 · contexto comercial</p>
                       <h4 className="mt-1 text-sm font-semibold text-white">Resultados por projeto e origem</h4>
                     </div>
                     <span className="atlas-badge atlas-badge-info">Histórico preferido</span>
                   </div>
                   <p className="mt-3 text-xs leading-5 text-slate-300">{commercialOutcomeSummary.context.primaryFinding}</p>
-                  <p className="mt-2 text-[10px] leading-4 text-cyan-100/65" data-commercial-outcome-detail="factual-aggregate">
+                  <p className="mt-2 text-micro leading-4 text-cyan-100/65" data-commercial-outcome-detail="factual-aggregate">
                     Fase 72 · abra um projeto ou origem para ver os resultados humanos que compõem a contagem.
                   </p>
                   {commercialOutcomeSummary.context.observedTasks > 0 ? (
@@ -2525,13 +2525,13 @@ export default function AtlasCopilotDock() {
                       ]] as const).map(([label, dimension]) => (
                         <section key={label} className="rounded-xl border border-white/[0.06] bg-slate-950/35 p-3">
                           <div className="flex items-center justify-between gap-3">
-                            <h5 className="text-[10px] font-bold uppercase tracking-[.12em] text-slate-400">{label}</h5>
-                            <span className="text-[9px] text-slate-600">{dimension.classifiedTasks}/{commercialOutcomeSummary.context?.observedTasks} classificados</span>
+                            <h5 className="text-micro font-bold uppercase tracking-[.12em] text-slate-400">{label}</h5>
+                            <span className="text-micro text-slate-600">{dimension.classifiedTasks}/{commercialOutcomeSummary.context?.observedTasks} classificados</span>
                           </div>
                           {dimension.segments.length ? (
                             <ol className="mt-2 space-y-2">
                               {dimension.segments.map((segment) => (
-                                <li key={segment.key} className="rounded-lg border border-white/[0.04] bg-white/[0.015] px-2.5 py-2 text-[11px]">
+                                <li key={segment.key} className="rounded-lg border border-white/[0.04] bg-white/[0.015] px-2.5 py-2 text-rotulo">
                                   <details>
                                     <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-md text-slate-300 outline-none transition hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-300/50">
                                       <span className="min-w-0 truncate">{segment.label}</span>
@@ -2539,7 +2539,7 @@ export default function AtlasCopilotDock() {
                                     </summary>
                                     <dl className="mt-2 space-y-1 border-t border-white/[0.05] pt-2" aria-label={`Resultados confirmados em ${segment.label}`}>
                                       {segment.outcomes.map((outcome) => (
-                                        <div key={outcome.key} className="flex items-center justify-between gap-3 text-[10px]">
+                                        <div key={outcome.key} className="flex items-center justify-between gap-3 text-micro">
                                           <dt className="min-w-0 truncate text-slate-500">{outcome.label}</dt>
                                           <dd className="shrink-0 text-slate-300">{outcome.count} · {outcome.sharePercent}% do contexto</dd>
                                         </div>
@@ -2550,23 +2550,23 @@ export default function AtlasCopilotDock() {
                               ))}
                             </ol>
                           ) : (
-                            <p className="mt-2 text-[10px] leading-4 text-slate-600">Contexto ainda não informado nas leads observadas.</p>
+                            <p className="mt-2 text-micro leading-4 text-slate-600">Contexto ainda não informado nas leads observadas.</p>
                           )}
                           {dimension.unclassifiedTasks > 0 ? (
-                            <p className="mt-2 text-[9px] text-slate-600">{dimension.unclassifiedTasks} resultado(s) sem {label === "Projetos" ? "projeto" : "origem"} no contexto disponível.</p>
+                            <p className="mt-2 text-micro text-slate-600">{dimension.unclassifiedTasks} resultado(s) sem {label === "Projetos" ? "projeto" : "origem"} no contexto disponível.</p>
                           ) : null}
                           {dimension.remainingSegments > 0 ? (
-                            <p className="mt-2 text-[9px] text-slate-600">Mais {dimension.remainingSegments} contexto(s), somando {dimension.remainingObservedTasks} resultado(s).</p>
+                            <p className="mt-2 text-micro text-slate-600">Mais {dimension.remainingSegments} contexto(s), somando {dimension.remainingObservedTasks} resultado(s).</p>
                           ) : null}
                         </section>
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-3 rounded-xl border border-dashed border-cyan-300/10 px-3 py-3 text-[11px] leading-5 text-slate-500">
+                    <p className="mt-3 rounded-xl border border-dashed border-cyan-300/10 px-3 py-3 text-rotulo leading-5 text-slate-500">
                       O contexto aparecerá após o primeiro resultado humano confirmado.
                     </p>
                   )}
-                  <p className="mt-3 border-t border-white/[0.05] pt-3 text-[10px] leading-4 text-slate-600">
+                  <p className="mt-3 border-t border-white/[0.05] pt-3 text-micro leading-4 text-slate-600">
                     Fase 83 · todas as leituras usam o contexto preservado quando comprovado; legado usa o cadastro atual sem backfill · leitura local e descritiva · não atribui causa, não prevê conversão e não altera a operação.
                   </p>
                 </div>
@@ -2575,7 +2575,7 @@ export default function AtlasCopilotDock() {
                 <div className="mt-3 rounded-2xl border border-indigo-300/10 bg-indigo-400/[.025] p-4" data-commercial-context-comparison="raw-counts-only">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-indigo-300">Fase 73 · comparação contextual</p>
+                      <p className="text-micro font-bold uppercase tracking-[.18em] text-indigo-300">Fase 73 · comparação contextual</p>
                       <h4 className="mt-1 text-sm font-semibold text-white">Projeto e origem em janelas equivalentes</h4>
                     </div>
                     <span className={`atlas-badge ${commercialOutcomeSummary.contextComparison.sampleStatus === "descriptive" ? "atlas-badge-info" : "atlas-badge-warning"}`}>
@@ -2592,36 +2592,36 @@ export default function AtlasCopilotDock() {
                       commercialOutcomeSummary.contextComparison.sources,
                     ]] as const).map(([label, dimension]) => (
                       <section key={label} className="overflow-hidden rounded-xl border border-white/[0.06] bg-slate-950/35">
-                        <div className="grid grid-cols-[1fr_3rem_3rem_3.5rem] gap-2 bg-white/[0.025] px-3 py-2 text-[9px] font-bold uppercase tracking-[.1em] text-slate-500" role="row">
+                        <div className="grid grid-cols-[1fr_3rem_3rem_3.5rem] gap-2 bg-white/[0.025] px-3 py-2 text-micro font-bold uppercase tracking-[.1em] text-slate-500" role="row">
                           <span role="columnheader">{label}</span>
                           <span role="columnheader">Atual</span>
                           <span role="columnheader">Antes</span>
                           <span role="columnheader">Dif.</span>
                         </div>
                         {dimension.segments.length ? dimension.segments.map((segment) => (
-                          <div key={segment.key} className="grid grid-cols-[1fr_3rem_3rem_3.5rem] gap-2 border-t border-white/[0.05] px-3 py-2 text-[11px] text-slate-400" role="row">
+                          <div key={segment.key} className="grid grid-cols-[1fr_3rem_3rem_3.5rem] gap-2 border-t border-white/[0.05] px-3 py-2 text-rotulo text-slate-400" role="row">
                             <span className="truncate text-slate-300" role="cell">{segment.label}</span>
                             <span role="cell">{segment.currentObservedTasks}</span>
                             <span role="cell">{segment.previousObservedTasks}</span>
                             <span className="font-semibold text-indigo-200" role="cell">{segment.delta > 0 ? "+" : ""}{segment.delta}</span>
                           </div>
                         )) : (
-                          <p className="border-t border-white/[0.05] px-3 py-3 text-[10px] leading-4 text-slate-600">Nenhum contexto classificado nas duas janelas.</p>
+                          <p className="border-t border-white/[0.05] px-3 py-3 text-micro leading-4 text-slate-600">Nenhum contexto classificado nas duas janelas.</p>
                         )}
                         {(dimension.currentUnclassifiedTasks > 0 || dimension.previousUnclassifiedTasks > 0) ? (
-                          <p className="border-t border-white/[0.05] px-3 py-2 text-[9px] text-slate-600">
+                          <p className="border-t border-white/[0.05] px-3 py-2 text-micro text-slate-600">
                             Sem {label === "Projetos" ? "projeto" : "origem"}: atual {dimension.currentUnclassifiedTasks} · anterior {dimension.previousUnclassifiedTasks}.
                           </p>
                         ) : null}
                         {dimension.remainingSegments > 0 ? (
-                          <p className="border-t border-white/[0.05] px-3 py-2 text-[9px] text-slate-600">
+                          <p className="border-t border-white/[0.05] px-3 py-2 text-micro text-slate-600">
                             Mais {dimension.remainingSegments} contexto(s): atual {dimension.remainingCurrentObservedTasks} · anterior {dimension.remainingPreviousObservedTasks}.
                           </p>
                         ) : null}
                       </section>
                     ))}
                   </div>
-                  <p className="mt-3 border-t border-white/[0.05] pt-3 text-[10px] leading-4 text-slate-600">
+                  <p className="mt-3 border-t border-white/[0.05] pt-3 text-micro leading-4 text-slate-600">
                     {commercialOutcomeSummary.contextComparison.periodDays} dias atuais × {commercialOutcomeSummary.contextComparison.periodDays} anteriores · diferenças de contagem, não taxas · contexto histórico preferido com fallback legado explícito · sem ranking, causa, previsão ou ação automática.
                   </p>
                 </div>
@@ -2631,16 +2631,16 @@ export default function AtlasCopilotDock() {
             <section className="mt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-300">Fase 64 · prioridade explicável</p>
+                  <p className="text-micro font-bold uppercase tracking-[.18em] text-sky-300">Fase 64 · prioridade explicável</p>
                   <h3 className="mt-1 text-sm font-semibold text-white">Fila curta de hoje</h3>
                 </div>
                 <span className="text-xs text-slate-500">{dailyQueueSummary?.shown ?? dailyQueue.length} de {dailyQueueSummary?.totalCandidates ?? dailyQueue.length}</span>
               </div>
               {dailyQueueSummary ? (
                 <div className="mt-3 grid grid-cols-3 gap-2" aria-label="Resumo da fila diária">
-                  <div className="rounded-xl border border-rose-400/10 bg-rose-400/[.04] px-3 py-2"><strong className="block text-sm text-rose-200">{dailyQueueSummary.overdue}</strong><span className="text-[9px] uppercase tracking-[.12em] text-slate-500">Atrasadas</span></div>
-                  <div className="rounded-xl border border-amber-400/10 bg-amber-400/[.04] px-3 py-2"><strong className="block text-sm text-amber-200">{dailyQueueSummary.dueToday}</strong><span className="text-[9px] uppercase tracking-[.12em] text-slate-500">Hoje</span></div>
-                  <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[.04] px-3 py-2"><strong className="block text-sm text-emerald-200">{dailyQueueSummary.opportunities}</strong><span className="text-[9px] uppercase tracking-[.12em] text-slate-500">Oportunidades</span></div>
+                  <div className="rounded-xl border border-rose-400/10 bg-rose-400/[.04] px-3 py-2"><strong className="block text-sm text-rose-200">{dailyQueueSummary.overdue}</strong><span className="text-micro uppercase tracking-[.12em] text-slate-500">Atrasadas</span></div>
+                  <div className="rounded-xl border border-amber-400/10 bg-amber-400/[.04] px-3 py-2"><strong className="block text-sm text-amber-200">{dailyQueueSummary.dueToday}</strong><span className="text-micro uppercase tracking-[.12em] text-slate-500">Hoje</span></div>
+                  <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[.04] px-3 py-2"><strong className="block text-sm text-emerald-200">{dailyQueueSummary.opportunities}</strong><span className="text-micro uppercase tracking-[.12em] text-slate-500">Oportunidades</span></div>
                 </div>
               ) : null}
               {dailyQueueError ? <p role="status" className="mt-3 rounded-2xl border border-amber-400/15 bg-amber-400/[.06] px-4 py-3 text-xs leading-5 text-amber-100">{dailyQueueError}</p> : null}

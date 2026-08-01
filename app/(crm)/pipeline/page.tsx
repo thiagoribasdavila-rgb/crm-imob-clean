@@ -986,7 +986,7 @@ export default function PipelinePage() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Fila de execução</p><h3 id="atlas-pipeline-priority-title" className="mt-1 text-lg font-semibold text-white">Comece por aqui</h3><p className="mt-1 text-xs text-slate-500">Ordem prática por SLA, atraso, temperatura, risco e score — menos procura, mais ação.</p></div>
           <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar oportunidades do pipeline">
-            {focusOptions.map((option) => <button key={option.key} type="button" onClick={() => setFocus(option.key)} aria-pressed={focus === option.key} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${focus === option.key ? "border-sky-400/30 bg-sky-400/10 text-sky-200" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><span>{option.label}</span><span className={`rounded-full px-1.5 py-0.5 text-[9px] ${focus === option.key ? "bg-sky-300/15 text-sky-100" : "bg-white/[0.05] text-slate-500"}`}>{option.count}</span></button>)}
+            {focusOptions.map((option) => <button key={option.key} type="button" onClick={() => setFocus(option.key)} aria-pressed={focus === option.key} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${focus === option.key ? "border-sky-400/30 bg-sky-400/10 text-sky-200" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><span>{option.label}</span><span className={`rounded-full px-1.5 py-0.5 text-micro ${focus === option.key ? "bg-sky-300/15 text-sky-100" : "bg-white/[0.05] text-slate-500"}`}>{option.count}</span></button>)}
           </div>
         </div>
         {/* ── O RECORTE SE ANUNCIA ────────────────────────────────────────────
@@ -1097,7 +1097,7 @@ export default function PipelinePage() {
         <AtlasCardHeader eyebrow="Fluxo comercial" title="Oportunidades por etapa" description="Arraste os cards ou use o seletor. Toda movimentação permanece registrada." action={<span className="text-xs text-slate-500">{visibleLeads.length} visíveis{metrics.forecast !== null ? ` · forecast ${brl.format(metrics.forecast)}` : ""}</span>} />
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-4 sm:px-6 xl:flex-row xl:items-center xl:justify-between" aria-label="Controles do Kanban">
           <div className="flex flex-wrap items-center gap-2">
-            <label className="text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500" htmlFor="pipeline-sort">Ordenar</label>
+            <label className="text-micro font-semibold uppercase tracking-[.12em] text-slate-500" htmlFor="pipeline-sort">Ordenar</label>
             <select id="pipeline-sort" value={sort} onChange={(event) => setSort(event.target.value as SortKey)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-200 outline-none focus:border-sky-400/30">
               <option value="prioridade">Prioridade inteligente</option><option value="score">Maior score</option><option value="valor">Maior valor</option><option value="recente">Atualização recente</option>
             </select>
@@ -1157,20 +1157,20 @@ export default function PipelinePage() {
         </div>
         {/* A origem-IA passa a ser dita por 1px no acento (.cc23-seam) em vez de uma
             caixa inteira: o mesmo significado sem competir com o quadro abaixo. */}
-        {aiSuggestion ? <div className="cc23-seam mx-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 py-2 sm:mx-6" data-signal-source="deterministic-loaded-leads"><span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[.12em] text-[color:var(--atlas-accent)]">IA sugere</span><span className="min-w-0 font-mono text-[11px] leading-5 tabular-nums text-[color:var(--atlas-text-secondary)]" title="Sugestão determinística calculada apenas com os leads já carregados neste quadro.">{aiSuggestion}</span></div> : null}
+        {aiSuggestion ? <div className="cc23-seam mx-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 py-2 sm:mx-6" data-signal-source="deterministic-loaded-leads"><span className="shrink-0 font-mono text-micro font-semibold uppercase tracking-[.12em] text-[color:var(--atlas-accent)]">IA sugere</span><span className="min-w-0 font-mono text-rotulo leading-5 tabular-nums text-[color:var(--atlas-text-secondary)]" title="Sugestão determinística calculada apenas com os leads já carregados neste quadro.">{aiSuggestion}</span></div> : null}
         {escolhendoEtapas ? <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.06] px-4 py-3 sm:px-6" role="group" aria-label="Escolher quais colunas aparecem">
-          <span className="text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500">Colunas do quadro</span>
+          <span className="text-micro font-semibold uppercase tracking-[.12em] text-slate-500">Colunas do quadro</span>
           {stageData.map((stage) => {
             const marcada = etapasVisiveis ? etapasVisiveis.includes(stage.key) : boardStages.some((s2) => s2.key === stage.key);
             return <button key={stage.key} type="button" role="switch" aria-checked={marcada} onClick={() => setEtapasVisiveis((atual) => {
               const base = atual ?? boardStages.map((s2) => s2.key);
               return base.includes(stage.key) ? base.filter((k) => k !== stage.key) : [...base, stage.key];
             })} className={`rounded-full border px-3 py-1.5 text-xs transition ${marcada ? "border-sky-400/40 bg-sky-400/10 text-sky-100" : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20"}`}>
-              {stage.label} <span className="font-mono text-[10px] opacity-70">{stage.items.length}</span>
+              {stage.label} <span className="font-mono text-micro opacity-70">{stage.items.length}</span>
             </button>;
           })}
-          {etapasVisiveis ? <button type="button" onClick={() => setEtapasVisiveis(null)} className="text-[11px] text-slate-400 underline decoration-slate-600 underline-offset-4 hover:text-slate-200">voltar ao automático</button> : null}
-          <p className="w-full text-[11px] leading-4 text-slate-500">Desmarcar tudo devolveria um quadro vazio; por isso a última coluna não sai.</p>
+          {etapasVisiveis ? <button type="button" onClick={() => setEtapasVisiveis(null)} className="text-rotulo text-slate-400 underline decoration-slate-600 underline-offset-4 hover:text-slate-200">voltar ao automático</button> : null}
+          <p className="w-full text-rotulo leading-4 text-slate-500">Desmarcar tudo devolveria um quadro vazio; por isso a última coluna não sai.</p>
         </div> : null}
         <div className="atlas-kanban-mobile-nav" role="tablist" aria-label="Escolher etapa no celular">{boardStages.map((stage) => <button key={stage.key} type="button" role="tab" aria-selected={activeMobileStage === stage.key} onClick={() => setMobileStage(stage.key)} className={activeMobileStage === stage.key ? "is-active" : ""}><span>{stage.label}</span><b>{stage.items.length}</b></button>)}</div>
         <div className="atlas-kanban-scroll p-4 sm:p-6" tabIndex={0} aria-label="Quadro Kanban com rolagem horizontal" aria-busy={loading}>
@@ -1180,7 +1180,7 @@ export default function PipelinePage() {
               return (
               <section key={stage.key} role="tabpanel" aria-label={`${stage.label}: ${stage.items.length} leads${colSignals && colSignals.stalled > 0 ? `, ${colSignals.stalled} sem atualização há 3 ou mais dias` : ""}`} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""} ${activeMobileStage !== stage.key ? "is-mobile-hidden" : ""}`}>
                 <div className="atlas-pipeline-column-header mb-4 border-b border-white/[0.06] pb-3">
-                  <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white" title={conhecimentoDaEtapa(stage.key)?.significa || undefined}>{stage.label}</h3><div className="flex shrink-0 items-center gap-1.5">{colSignals && colSignals.stalled > 0 ? <span className={`cc6-chip ${colSignals.rose > 0 || colSignals.hot > 0 ? "cc6-crit" : "cc6-warn"}`} title={`${colSignals.stalled} de ${stage.items.length} lead(s) desta etapa sem atualização registrada há 3 ou mais dias.`}>{colSignals.stalled} {colSignals.stalled === 1 ? "parado" : "parados"}</span> : null}<span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] font-semibold tabular-nums text-slate-300">{stage.items.length}</span></div></div>
+                  <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white" title={conhecimentoDaEtapa(stage.key)?.significa || undefined}>{stage.label}</h3><div className="flex shrink-0 items-center gap-1.5">{colSignals && colSignals.stalled > 0 ? <span className={`cc6-chip ${colSignals.rose > 0 || colSignals.hot > 0 ? "cc6-crit" : "cc6-warn"}`} title={`${colSignals.stalled} de ${stage.items.length} lead(s) desta etapa sem atualização registrada há 3 ou mais dias.`}>{colSignals.stalled} {colSignals.stalled === 1 ? "parado" : "parados"}</span> : null}<span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-micro font-semibold tabular-nums text-slate-300">{stage.items.length}</span></div></div>
                   <p className="mt-2 text-xs text-slate-500">{stage.value === null
                     ? `${stage.items.length ? "orçamento não informado" : "—"}`
                     : `${brl.format(stage.value)}${stage.semOrcamento ? ` · ${stage.semOrcamento} sem orçamento` : ""}`}</p>
@@ -1191,7 +1191,7 @@ export default function PipelinePage() {
                       Só na visão confortável: em 9 colunas compactas viraria
                       parede de texto, e parede de texto ninguém lê. */}
                   {!compact && conhecimentoDaEtapa(stage.key) ? (
-                    <p className="mt-2 text-[11px] leading-4 text-slate-500">
+                    <p className="mt-2 text-rotulo leading-4 text-slate-500">
                       <span className="text-slate-400">Para avançar:</span> {conhecimentoDaEtapa(stage.key)?.paraAvancar}
                     </p>
                   ) : null}
@@ -1211,7 +1211,7 @@ export default function PipelinePage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-2.5">
                             <span className="atlas-lead-avatar" aria-hidden="true">{Array.from(lead.name || "??").slice(0, 2).join("").toUpperCase()}</span>
-                            <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-0.5 truncate text-[11px] text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
+                            <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-0.5 truncate text-rotulo text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
                           </div>
                           {risk !== "baixo" ? <AtlasBadge tone={riskTone(risk)}>{risk === "alto" ? "⚠️" : "•"} {risk}</AtlasBadge> : null}
                         </div>
@@ -1225,7 +1225,7 @@ export default function PipelinePage() {
                             `inline-flex` e mataria o `text-ellipsis` deste rótulo, que precisa
                             truncar dentro da coluna. Só a face numérica e a cor migram para o
                             vocabulário do sistema. */}
-                        {signalView ? <span className={`cc6-num mt-2.5 block w-fit max-w-full overflow-hidden rounded-full border border-[color:var(--atlas-border-strong)] px-2 py-1 text-[9px] leading-none text-ellipsis whitespace-nowrap ${signalView.critical ? "cc6-crit" : "cc6-warn"}`} title={signalView.title}>{signalView.label}</span> : null}
+                        {signalView ? <span className={`cc6-num mt-2.5 block w-fit max-w-full overflow-hidden rounded-full border border-[color:var(--atlas-border-strong)] px-2 py-1 text-micro leading-none text-ellipsis whitespace-nowrap ${signalView.critical ? "cc6-crit" : "cc6-warn"}`} title={signalView.title}>{signalView.label}</span> : null}
                         {contactSla ? <div className="mt-3"><AtlasBadge tone={contactSla.tone}>{contactSla.label}</AtlasBadge></div> : null}
                         <div className="atlas-card-guidance"><span>Próxima melhor ação</span><strong>{guidance.action}</strong></div>
                         <div className="atlas-kanban-primary-actions" role="group" aria-label="Ações rápidas">
@@ -1247,8 +1247,8 @@ export default function PipelinePage() {
                           <div className="atlas-card-shortcuts"><Link href={`/leads/${lead.id}/messages`} title="Criar abordagem com IA">✦ Mensagem</Link>{contact ? <><a href={contact.call} title="Ligar para a lead">Ligar</a><a href={contact.whatsapp} target="_blank" rel="noreferrer" title="Abrir WhatsApp">WhatsApp</a></> : null}</div>
                         </details>
                         <div role="group" aria-label={`Abrir ou descartar ${lead.name || "lead sem nome"}`} className="pointer-events-none mt-2 flex gap-1.5 opacity-0 motion-safe:transition-opacity motion-safe:duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
-                          <Link href={`/leads/${lead.id}`} title="Abrir a visão completa da lead" className="flex-1 rounded-xl border border-[rgba(148,163,184,.12)] px-2 py-1.5 text-center font-mono text-[10px] leading-4 text-[var(--atlas-texto-medio)] motion-safe:transition-colors hover:border-[rgba(148,163,184,.22)] hover:text-[var(--atlas-texto-forte)] focus-visible:border-[rgba(148,163,184,.22)] focus-visible:text-[var(--atlas-texto-forte)]">Abrir</Link>
-                          <button type="button" title="Descartar com motivo classificado — abre o painel de descarte" disabled={Boolean(savingId)} onClick={() => void moveLead(lead.id, "perdido")} className="atlas-card-acao-descartar flex-1 rounded-xl border border-[rgba(148,163,184,.12)] px-2 py-1.5 text-center font-mono text-[10px] leading-4 text-[var(--atlas-texto-medio)] motion-safe:transition-colors hover:border-[rgba(251,113,133,.22)] hover:text-[var(--atlas-estado-perigo)] focus-visible:border-[rgba(251,113,133,.22)] focus-visible:text-[var(--atlas-estado-perigo)] disabled:cursor-not-allowed disabled:opacity-40">Descartar</button>
+                          <Link href={`/leads/${lead.id}`} title="Abrir a visão completa da lead" className="flex-1 rounded-xl border border-[rgba(148,163,184,.12)] px-2 py-1.5 text-center font-mono text-micro leading-4 text-[var(--atlas-texto-medio)] motion-safe:transition-colors hover:border-[rgba(148,163,184,.22)] hover:text-[var(--atlas-texto-forte)] focus-visible:border-[rgba(148,163,184,.22)] focus-visible:text-[var(--atlas-texto-forte)]">Abrir</Link>
+                          <button type="button" title="Descartar com motivo classificado — abre o painel de descarte" disabled={Boolean(savingId)} onClick={() => void moveLead(lead.id, "perdido")} className="atlas-card-acao-descartar flex-1 rounded-xl border border-[rgba(148,163,184,.12)] px-2 py-1.5 text-center font-mono text-micro leading-4 text-[var(--atlas-texto-medio)] motion-safe:transition-colors hover:border-[rgba(251,113,133,.22)] hover:text-[var(--atlas-estado-perigo)] focus-visible:border-[rgba(251,113,133,.22)] focus-visible:text-[var(--atlas-estado-perigo)] disabled:cursor-not-allowed disabled:opacity-40">Descartar</button>
                         </div>
                         <div className="atlas-kanban-move-row">
                           <button type="button" onClick={() => moveByKeyboard(lead, -1)} disabled={savingId === lead.id || stages.findIndex((item) => item.key === (lead.status || "novo")) <= 0} aria-label="Mover para a etapa anterior">←</button>
@@ -1278,7 +1278,7 @@ export default function PipelinePage() {
             })}
           </div>
         </div>
-        <div className="border-t border-white/[.06] px-5 py-3 text-[10px] text-slate-500 sm:px-6">Arraste, use o seletor ou pressione <kbd className="rounded border border-white/10 px-1.5 py-0.5 text-slate-300">Alt + ←/→</kbd> com o card em foco. A movimentação continua registrada na timeline.</div>
+        <div className="border-t border-white/[.06] px-5 py-3 text-micro text-slate-500 sm:px-6">Arraste, use o seletor ou pressione <kbd className="rounded border border-white/10 px-1.5 py-0.5 text-slate-300">Alt + ←/→</kbd> com o card em foco. A movimentação continua registrada na timeline.</div>
       </AtlasCard>
       {!focusMode ? <AtlasCard>
         <AtlasCardHeader eyebrow="Inteligência de compradores" title="Compraram em outro lugar" description="Base separada do funil ativo: compradores reais que ajudam a entender público, produto, preço e concorrência sem contar como venda da empresa." />
@@ -1322,7 +1322,7 @@ export default function PipelinePage() {
                   </div>
                   <div className="flex shrink-0 items-baseline gap-2">
                     <span className="cc23-display"><span className="cc6-crit">{item.count}</span></span>
-                    <span className="text-[11px] text-slate-500">{item.share}% dos descartes</span>
+                    <span className="text-rotulo text-slate-500">{item.share}% dos descartes</span>
                   </div>
                 </li>)}
               </ul>
@@ -1365,10 +1365,10 @@ export default function PipelinePage() {
           }}>
             {DISCARD_REASONS.map((reason, reasonIndex) => <button key={reason.key} type="button" role="radio" data-reason-key={reason.key} tabIndex={discardDraft.reasonKey === reason.key || (!discardDraft.reasonKey && reasonIndex === 0) ? 0 : -1} aria-checked={discardDraft.reasonKey === reason.key} onClick={() => setDiscardDraft((current) => (current ? { ...current, reasonKey: reason.key } : current))} className={`w-full rounded-2xl border px-4 py-3 text-left transition ${discardDraft.reasonKey === reason.key ? "border-rose-400/40 bg-rose-400/10" : "border-white/[0.07] bg-white/[0.025] hover:border-white/15"}`}>
               <span className={`block text-sm font-semibold ${discardDraft.reasonKey === reason.key ? "text-rose-100" : "text-slate-200"}`}>{reason.label}</span>
-              <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">{reason.description}</span>
+              <span className="mt-0.5 block text-rotulo leading-4 text-slate-500">{reason.description}</span>
             </button>)}
           </div>
-          <label className="mt-4 block text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500" htmlFor="discard-notes">Observação (opcional)</label>
+          <label className="mt-4 block text-micro font-semibold uppercase tracking-[.12em] text-slate-500" htmlFor="discard-notes">Observação (opcional)</label>
           <input id="discard-notes" value={discardDraft.notes} maxLength={280} onChange={(event) => setDiscardDraft((current) => (current ? { ...current, notes: event.target.value } : current))} placeholder="Contexto curto para o time e para a IA..." className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-rose-400/30" />
           <div className="mt-5 flex justify-end gap-2">
             <button type="button" onClick={() => setDiscardDraft(null)} className="atlas-button-secondary">Cancelar</button>
@@ -1405,7 +1405,7 @@ export default function PipelinePage() {
           />
           {/* Diz quanto falta em vez de recusar depois: o botão desabilitado sem
               explicação é a versão silenciosa do mesmo bloqueio. */}
-          <p className="mt-2 text-[11px] text-slate-500" role="status">
+          <p className="mt-2 text-rotulo text-slate-500" role="status">
             {followUpDraft.description.trim().length < 10
               ? `Faltam ${10 - followUpDraft.description.trim().length} caractere(s) — uma linha basta.`
               : "Pronto para registrar."}
@@ -1438,7 +1438,7 @@ export default function PipelinePage() {
               className="w-full bg-transparent py-2.5 text-sm leading-6 text-white outline-none placeholder:text-slate-600"
             />
           </div>
-          <p className="mt-2 text-[11px] text-slate-500" role="status">
+          <p className="mt-2 text-rotulo text-slate-500" role="status">
             {valorEmNumero(saleDraft.value) === null
               ? "Informe o valor em reais — só números."
               : `Vai para a Meta como ${brl.format(valorEmNumero(saleDraft.value) as number)}.`}

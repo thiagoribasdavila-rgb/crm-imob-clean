@@ -204,7 +204,7 @@ export default function ImportLeadsPage() {
                         <StatusBadge tone={critical ? "danger" : "warning"}>{item.severity}</StatusBadge>
                         <span className="cc6-chip"><strong className="cc6-num font-semibold">{item.confidence}%</strong> confiança</span>
                       </div>
-                      <p className="mt-2.5 text-[13px] font-semibold leading-6 text-[var(--atlas-texto-forte)]">{item.evidence}</p>
+                      <p className="mt-2.5 text-corpo font-semibold leading-6 text-[var(--atlas-texto-forte)]">{item.evidence}</p>
                       <p className="mt-1.5 text-xs leading-5 text-[var(--atlas-texto-medio)]">Sugestão ao cliente: “{item.suggested_reply}”</p>
                       <p className="mt-1.5 text-xs text-[var(--atlas-texto-fraco)]">Corretor atual: {targetMap.get(item.broker_id) || "Responsável atual"}</p>
                     </div>
@@ -214,7 +214,7 @@ export default function ImportLeadsPage() {
                         <button disabled={working || reason.trim().length < 5} onClick={() => void decideExperience(item.id, "keep")} className={`cc6-ghost-btn min-h-11 disabled:pointer-events-none disabled:opacity-40 ${focusRing}`}>Manter e recuperar</button>
                         <button disabled={working || reason.trim().length < 5} onClick={() => void decideExperience(item.id, "change_requested")} className="atlas-button-primary disabled:opacity-40">Solicitar troca</button>
                       </div>
-                      <p className="mt-2 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">Solicitar troca não altera o responsável atual; o pedido segue para aprovação.</p>
+                      <p className="mt-2 text-micro leading-4 text-[var(--atlas-texto-fraco)]">Solicitar troca não altera o responsável atual; o pedido segue para aprovação.</p>
                     </div>
                   </div>
                 </article>
@@ -293,7 +293,7 @@ export default function ImportLeadsPage() {
               <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">A prévia é processada somente após sua confirmação.</p>
             </div>
             <textarea className={FIELD_CLASS} value={form.consentBasis} onChange={(e) => setForm({ ...form, consentBasis: e.target.value })} placeholder="Como e quando estes contatos autorizaram mensagens?" aria-label="Base do consentimento" />
-            <label className="cc6-panel-quiet flex gap-3 p-4 text-[13px] leading-6 text-[var(--atlas-texto-medio)]">
+            <label className="cc6-panel-quiet flex gap-3 p-4 text-corpo leading-6 text-[var(--atlas-texto-medio)]">
               <input type="checkbox" className="mt-1" checked={form.consentConfirmed} onChange={(e) => setForm({ ...form, consentConfirmed: e.target.checked })} />
               <span>Confirmo que esta base possui autorização válida para contato e que não contém contatos comprados sem consentimento.</span>
             </label>
@@ -350,11 +350,11 @@ export default function ImportLeadsPage() {
                   <p className="mt-0.5 text-xs text-[var(--atlas-texto-fraco)]">{targetMap.get(batch.owner_id) || "Corretor"} · {batch.development_id ? projectMap.get(batch.development_id) : "Sem projeto"}</p>
                 </div>
                 <div>
-                  <p className="cc6-num text-[13px] text-[var(--atlas-texto-medio)]">{batch.eligible_count} elegíveis</p>
+                  <p className="cc6-num text-corpo text-[var(--atlas-texto-medio)]">{batch.eligible_count} elegíveis</p>
                   <p className="cc6-num mt-0.5 text-xs text-[var(--atlas-texto-fraco)]">{batch.imported_count - batch.eligible_count} bloqueados · {batch.summary["blocked:opt_out"] || 0} opt-outs · {(batch.summary["blocked:duplicado_no_arquivo"] || 0) + (batch.summary["blocked:lead_ja_existente"] || 0)} duplicados</p>
                 </div>
                 <div>
-                  <p className="cc6-num text-[13px] text-[var(--atlas-texto-medio)]">{batch.delivered_count || 0} entregues · {batch.read_count || 0} lidas · {batch.replied_count || 0} respostas</p>
+                  <p className="cc6-num text-corpo text-[var(--atlas-texto-medio)]">{batch.delivered_count || 0} entregues · {batch.read_count || 0} lidas · {batch.replied_count || 0} respostas</p>
                   <p className="cc6-num mt-0.5 text-xs text-[var(--atlas-texto-fraco)]">saúde {batch.quality_status && batch.quality_status !== "unknown" ? batch.quality_status : "—"} · {batch.failed_count || 0} falhas</p>
                 </div>
                 <div className="flex items-center gap-2">

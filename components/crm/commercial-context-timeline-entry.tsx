@@ -26,7 +26,7 @@ function ContextSnapshot({
           : "rounded-xl border border-white/[0.06] bg-black/10 p-3"
       }
     >
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <p className="text-micro font-semibold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </p>
       <dl className="mt-2 space-y-2 text-xs">
@@ -61,10 +61,10 @@ export function CommercialContextTimelineEntry({
       data-atlas-phase="88"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="rounded-full border border-sky-400/20 bg-sky-400/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-sky-200">
+        <span className="rounded-full border border-sky-400/20 bg-sky-400/10 px-2.5 py-1 text-micro font-semibold uppercase tracking-[0.18em] text-sky-200">
           Contexto corrigido
         </span>
-        <span className="text-[10px] text-slate-500">
+        <span className="text-micro text-slate-500">
           Alteração: {changedLabel}
         </span>
       </div>
@@ -75,7 +75,7 @@ export function CommercialContextTimelineEntry({
       </div>
 
       <div className="mt-3 rounded-xl border border-white/[0.06] bg-black/10 p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <p className="text-micro font-semibold uppercase tracking-[0.18em] text-slate-500">
           Motivo registrado
         </p>
         <p className="mt-1 text-xs leading-5 text-slate-300">
@@ -83,7 +83,7 @@ export function CommercialContextTimelineEntry({
         </p>
       </div>
 
-      <div className="mt-3 grid gap-1 text-[11px] leading-5 text-slate-400">
+      <div className="mt-3 grid gap-1 text-rotulo leading-5 text-slate-400">
         <p>
           <span className="font-semibold text-emerald-300">Efeito futuro:</span>{" "}
           próximas decisões, recomendações e resultados usam o contexto atual.

@@ -159,7 +159,7 @@ export function AtlasLogo({
             .
           </span>
         </span>
-        <span className="mt-1.5 font-mono text-[9px] font-medium uppercase leading-none tracking-[.22em] text-[color:var(--atlas-text-tertiary,#6b7890)]">
+        <span className="mt-1.5 font-mono text-micro font-medium uppercase leading-none tracking-[.22em] text-[color:var(--atlas-text-tertiary,#6b7890)]">
           Real Estate Intelligence
         </span>
       </span>

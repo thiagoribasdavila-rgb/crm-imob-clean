@@ -476,12 +476,12 @@ export default function TasksPage() {
                         <strong className="max-w-full truncate text-sm font-medium text-[var(--atlas-texto-forte)]">
                           {step.title}
                         </strong>
-                        <span className="cc6-eyebrow text-[10px]!">
+                        <span className="cc6-eyebrow text-micro!">
                           {KIND_LABEL[step.kind]}
                         </span>
                         {step.dueAt ? (
                           <span
-                            className={`cc6-num text-[11px] ${sevTextClass(sev) || "text-[var(--atlas-texto-fraco)]"}`}
+                            className={`cc6-num text-rotulo ${sevTextClass(sev) || "text-[var(--atlas-texto-fraco)]"}`}
                             title={dateLabel(step.dueAt)}
                           >
                             {relativeDue(step.dueAt, nowMs)}
@@ -516,7 +516,7 @@ export default function TasksPage() {
           </div>
           {remainingSteps.length ? (
             <details className="cc6-hairline px-5 py-3">
-              <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[var(--atlas-texto-medio)]">
+              <summary className="cc6-eyebrow cursor-pointer list-none text-micro! transition-colors hover:text-[var(--atlas-texto-medio)]">
                 +{remainingSteps.length} planejadas
               </summary>
               <div className="mt-2 flex flex-col gap-1.5">
@@ -538,7 +538,7 @@ export default function TasksPage() {
               </div>
             </details>
           ) : null}
-          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
             Ordem explicável por contato, follow-up, prazo, visita, prioridade,
             temperatura e score · sem ranking de pessoas · sem execução
             automática.
@@ -626,7 +626,7 @@ export default function TasksPage() {
               </div>
 
               <details className="mt-4">
-                <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[var(--atlas-texto-medio)]">
+                <summary className="cc6-eyebrow cursor-pointer list-none text-micro! transition-colors hover:text-[var(--atlas-texto-medio)]">
                   Adicionar vínculo, descrição ou repetição
                 </summary>
                 <div className="grid gap-4 pt-4 sm:grid-cols-2">
@@ -694,7 +694,7 @@ export default function TasksPage() {
                         </option>
                       ))}
                     </select>
-                    <span className="mt-1 block text-[10px] text-[var(--atlas-texto-fraco)]">
+                    <span className="mt-1 block text-micro text-[var(--atlas-texto-fraco)]">
                       {form.leadId
                         ? "Definido pelo corretor único da lead."
                         : "Somente profissionais visíveis no seu escopo."}
@@ -756,7 +756,7 @@ export default function TasksPage() {
                           className={FIELD_CLASS}
                         />
                       </label>
-                      <p className="cc6-panel-quiet self-end p-3 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+                      <p className="cc6-panel-quiet self-end p-3 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
                         A recorrência encerra na primeira condição atingida:
                         data final ou limite.
                       </p>
@@ -798,10 +798,10 @@ export default function TasksPage() {
           className="cc6-panel-quiet cc6-reveal px-4 py-3"
           style={{ animationDelay: "140ms" }}
         >
-          <summary className="cc6-eyebrow cursor-pointer list-none text-[10px]! transition-colors hover:text-[var(--atlas-texto-medio)]">
+          <summary className="cc6-eyebrow cursor-pointer list-none text-micro! transition-colors hover:text-[var(--atlas-texto-medio)]">
             FASE 43 · TAREFAS RECORRENTES · {recurrenceSeeds.length} ativa(s)
           </summary>
-          <p className="mt-2 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+          <p className="mt-2 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
             Encerrar repetição para a geração de novas ocorrências e preserva as tarefas já criadas.
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -1084,7 +1084,7 @@ export default function TasksPage() {
                   <span className="min-w-0 truncate text-xs font-medium text-[var(--atlas-texto-forte)]">
                     {owner.name}
                   </span>
-                  <span className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-fraco)]">
+                  <span className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]">
                     {owner.overdue ? (
                       <>
                         <span className="cc6-crit font-semibold">
@@ -1110,7 +1110,7 @@ export default function TasksPage() {
                 </div>
               ) : null}
             </div>
-            <p className="cc6-hairline mt-1 pt-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-hairline mt-1 pt-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
               Consolidado para coordenar apoio · sem ranking e sem atribuição
               automática.
             </p>

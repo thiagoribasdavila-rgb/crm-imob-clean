@@ -476,7 +476,7 @@ export default function MarketingPage() {
           <span className="cc6-chip text-[var(--atlas-accent)]">dados vivos da Meta · venda consolida no CRM</span>
         ) : null}
         {updatedAt ? (
-          <span className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]" aria-live="polite">
+          <span className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]" aria-live="polite">
             atualizado {clock.format(updatedAt)} · refresh 60s
           </span>
         ) : null}
@@ -492,7 +492,7 @@ export default function MarketingPage() {
       <GateCard state={cost} onRetry={retry} waiting="Relatório de custos aguardando ativação do banco." />
 
       {report?.coverage && !report.coverage.complete ? (
-        <p role="status" className="cc6-panel-quiet cc6-reveal px-4 py-3 text-[12.5px] leading-5 text-[#f2b544]">
+        <p role="status" className="cc6-panel-quiet cc6-reveal px-4 py-3 text-corpo leading-5 text-[#f2b544]">
           ⚠️ Leitura incompleta: {[
             report.coverage.leadsTruncated ? "leads/vendas" : null,
             report.coverage.spendTruncated ? "investimento" : null,
@@ -601,7 +601,7 @@ export default function MarketingPage() {
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2 px-5 pb-3 pt-4">
           <p className="cc6-eyebrow">Leads represadas</p>
           {represa?.disponivel ? (
-            <p className="cc6-num ml-auto text-[11px] text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-num ml-auto text-rotulo text-[var(--atlas-texto-fraco)]">
               {represa.totalRepresado} lead(s) fora do CRM · {represa.formulariosComRepresa} formulário(s)
             </p>
           ) : null}
@@ -609,7 +609,7 @@ export default function MarketingPage() {
             type="button"
             onClick={() => void carregarRepresa()}
             disabled={carregandoRepresa}
-            className={`min-h-9 rounded-lg border border-white/10 px-3 text-[11px] font-semibold text-[#cdd7e5] transition hover:border-white/25 hover:text-white disabled:opacity-50 ${represa?.disponivel ? "" : "ml-auto"}`}
+            className={`min-h-9 rounded-lg border border-white/10 px-3 text-rotulo font-semibold text-[#cdd7e5] transition hover:border-white/25 hover:text-white disabled:opacity-50 ${represa?.disponivel ? "" : "ml-auto"}`}
           >
             {carregandoRepresa ? "Apurando…" : represa ? "Atualizar" : "Apurar represa"}
           </button>
@@ -638,7 +638,7 @@ export default function MarketingPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px] text-left text-[12px]">
                 <thead>
-                  <tr className="text-[10px] uppercase tracking-[.12em] text-[var(--atlas-texto-fraco)]">
+                  <tr className="text-micro uppercase tracking-[.12em] text-[var(--atlas-texto-fraco)]">
                     <th className="px-5 py-2 font-semibold">Formulário</th>
                     <th className="px-3 py-2 text-right font-semibold">Represadas</th>
                     <th className="px-3 py-2 text-right font-semibold">Já entraram</th>
@@ -664,7 +664,7 @@ export default function MarketingPage() {
                       </td>
                       <td className="cc6-num px-3 py-2.5 text-right font-semibold text-[var(--atlas-texto-forte)]">{linha.represadas}</td>
                       <td className="cc6-num px-3 py-2.5 text-right text-[var(--atlas-texto-fraco)]">{linha.jaEntraram}</td>
-                      <td className="px-5 py-2.5 text-[11px]">
+                      <td className="px-5 py-2.5 text-rotulo">
                         {!linha.registrada ? (
                           <span className="text-[#fda4af]">não registrado — descarta lead nova</span>
                         ) : linha.ativa ? (
@@ -681,7 +681,7 @@ export default function MarketingPage() {
 
             {represa.podeLiberar ? (
               <div className="flex flex-wrap items-center gap-2 border-t border-white/5 px-5 py-3">
-                <span className="text-[11.5px] text-[var(--atlas-texto-fraco)]">
+                <span className="text-rotulo text-[var(--atlas-texto-fraco)]">
                   {selecionados.length
                     ? `${selecionados.reduce((soma, id) => soma + (represa.represadas.find((l) => l.formId === id)?.represadas ?? 0), 0)} lead(s) em ${selecionados.length} formulário(s)`
                     : "Selecione os formulários a liberar"}
@@ -691,7 +691,7 @@ export default function MarketingPage() {
                     type="button"
                     disabled={!selecionados.length || liberando}
                     onClick={() => void liberarSelecionados(false)}
-                    className="min-h-9 rounded-lg border border-white/10 px-3 text-[11px] font-semibold text-[#cdd7e5] transition hover:border-white/25 disabled:opacity-40"
+                    className="min-h-9 rounded-lg border border-white/10 px-3 text-rotulo font-semibold text-[#cdd7e5] transition hover:border-white/25 disabled:opacity-40"
                   >
                     Liberar sem distribuir
                   </button>
@@ -699,20 +699,20 @@ export default function MarketingPage() {
                     type="button"
                     disabled={!selecionados.length || liberando}
                     onClick={() => void liberarSelecionados(true)}
-                    className="min-h-9 rounded-lg border border-[rgba(125,211,252,0.4)] bg-[rgba(56,189,248,0.12)] px-3 text-[11px] font-semibold text-[#bae6fd] transition hover:bg-[rgba(56,189,248,0.2)] disabled:opacity-40"
+                    className="min-h-9 rounded-lg border border-[rgba(125,211,252,0.4)] bg-[rgba(56,189,248,0.12)] px-3 text-rotulo font-semibold text-[#bae6fd] transition hover:bg-[rgba(56,189,248,0.2)] disabled:opacity-40"
                   >
                     {liberando ? "Liberando…" : "Liberar e distribuir"}
                   </button>
                 </div>
               </div>
             ) : (
-              <p className="border-t border-white/5 px-5 py-3 text-[11.5px] text-[var(--atlas-texto-fraco)]">
+              <p className="border-t border-white/5 px-5 py-3 text-rotulo text-[var(--atlas-texto-fraco)]">
                 Liberar represa é da diretoria — move verba já gasta para a operação.
               </p>
             )}
 
             {resultadoDaLiberacao?.map((linha) => (
-              <p key={linha} role="status" className="border-t border-white/5 px-5 py-2.5 text-[11.5px] leading-5 text-[#93a2b8]">{linha}</p>
+              <p key={linha} role="status" className="border-t border-white/5 px-5 py-2.5 text-rotulo leading-5 text-[#93a2b8]">{linha}</p>
             ))}
           </>
         )}
@@ -729,7 +729,7 @@ export default function MarketingPage() {
               type="button"
               onClick={() => void descobrirFormularios(false)}
               disabled={descobrindo}
-              className="min-h-9 rounded-lg border border-white/10 px-3 text-[11px] font-semibold text-[#cdd7e5] transition hover:border-white/25 hover:text-white disabled:opacity-50"
+              className="min-h-9 rounded-lg border border-white/10 px-3 text-rotulo font-semibold text-[#cdd7e5] transition hover:border-white/25 hover:text-white disabled:opacity-50"
             >
               {descobrindo ? "Consultando…" : "Conferir na Meta"}
             </button>
@@ -738,7 +738,7 @@ export default function MarketingPage() {
                 type="button"
                 onClick={() => void descobrirFormularios(true)}
                 disabled={descobrindo}
-                className="min-h-9 rounded-lg border border-[rgba(125,211,252,0.4)] bg-[rgba(56,189,248,0.12)] px-3 text-[11px] font-semibold text-[#bae6fd] transition hover:bg-[rgba(56,189,248,0.2)] disabled:opacity-50"
+                className="min-h-9 rounded-lg border border-[rgba(125,211,252,0.4)] bg-[rgba(56,189,248,0.12)] px-3 text-rotulo font-semibold text-[#bae6fd] transition hover:bg-[rgba(56,189,248,0.2)] disabled:opacity-50"
               >
                 Registrar {formularios.novos.length} (inativos)
               </button>
@@ -747,7 +747,7 @@ export default function MarketingPage() {
         </div>
 
         {erroDaDescoberta ? (
-          <p role="alert" className="mx-5 mb-4 rounded-xl border border-[rgba(251,113,133,0.32)] bg-[rgba(251,113,133,0.07)] px-4 py-3 text-[12.5px] text-[#fda4af]">
+          <p role="alert" className="mx-5 mb-4 rounded-xl border border-[rgba(251,113,133,0.32)] bg-[rgba(251,113,133,0.07)] px-4 py-3 text-corpo text-[#fda4af]">
             {erroDaDescoberta}
           </p>
         ) : null}
@@ -759,7 +759,7 @@ export default function MarketingPage() {
           </p>
         ) : (
           <>
-            <div className="flex flex-wrap gap-2 px-5 pb-3 text-[11px] text-[#93a2b8]">
+            <div className="flex flex-wrap gap-2 px-5 pb-3 text-rotulo text-[#93a2b8]">
               <span className="cc6-chip">{formularios.encontradosNaMeta} na Meta</span>
               <span className="cc6-chip">{formularios.leadsAcumuladosNaMeta} lead(s) acumulada(s) lá</span>
               <span className="cc6-chip">{formularios.jaRegistrados} já no CRM</span>
@@ -768,13 +768,13 @@ export default function MarketingPage() {
 
             {formularios.fontesOrfas.length ? (
               <div role="alert" className="mx-5 mb-3 rounded-xl border border-[rgba(251,113,133,0.32)] bg-[rgba(251,113,133,0.07)] px-4 py-3">
-                <p className="text-[12.5px] font-semibold text-[#fda4af]">
+                <p className="text-corpo font-semibold text-[#fda4af]">
                   {formularios.fontesOrfas.length} fonte(s) apontam para formulário inexistente
                 </p>
                 <p className="mt-1 text-[12px] leading-5 text-[#93a2b8]">
                   {formularios.fontesOrfas.map((f) => `${f.nome ?? "sem nome"} (${f.formId})`).join(" · ")}
                 </p>
-                <p className="mt-1 text-[11.5px] leading-5 text-[var(--atlas-texto-fraco)]">
+                <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                   O backfill dessas fontes sempre trará zero. Nenhuma foi removida — a decisão é humana.
                 </p>
               </div>
@@ -784,7 +784,7 @@ export default function MarketingPage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[420px] text-left text-[12px]">
                   <thead>
-                    <tr className="text-[10px] uppercase tracking-[.12em] text-[var(--atlas-texto-fraco)]">
+                    <tr className="text-micro uppercase tracking-[.12em] text-[var(--atlas-texto-fraco)]">
                       <th className="px-5 py-2 font-semibold">Formulário fora do CRM</th>
                       <th className="px-5 py-2 text-right font-semibold">Leads na Meta</th>
                     </tr>
@@ -802,7 +802,7 @@ export default function MarketingPage() {
             ) : null}
 
             {formularios.avisos.map((aviso) => (
-              <p key={aviso} className="border-t border-white/5 px-5 py-3 text-[11.5px] leading-5 text-[#93a2b8]">{aviso}</p>
+              <p key={aviso} className="border-t border-white/5 px-5 py-3 text-rotulo leading-5 text-[#93a2b8]">{aviso}</p>
             ))}
           </>
         )}
@@ -816,7 +816,7 @@ export default function MarketingPage() {
         <section aria-label="Campanha medida pelo CRM" hidden={foraDaEtapa("desempenho")} className="cc6-panel cc6-reveal overflow-hidden">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
             <p className="cc6-eyebrow">Campanha medida pelo CRM</p>
-            <p className="cc6-num ml-auto text-[11px] text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-num ml-auto text-rotulo text-[var(--atlas-texto-fraco)]">
               {performance.data.resumo.campanhas} campanha(s) · {performance.data.resumo.leadsAtribuidas} lead(s) atribuída(s)
             </p>
           </div>
@@ -831,18 +831,18 @@ export default function MarketingPage() {
                   : "border-[rgba(245,181,68,0.28)] bg-[rgba(245,181,68,0.05)]"
               }`}
             >
-              <p className={`text-[12.5px] font-semibold ${alerta.nivel === "critico" ? "text-[#fda4af]" : "text-[#f2b544]"}`}>
+              <p className={`text-corpo font-semibold ${alerta.nivel === "critico" ? "text-[#fda4af]" : "text-[#f2b544]"}`}>
                 {alerta.titulo}
               </p>
               <p className="mt-1 text-[12px] leading-5 text-[#93a2b8]">{alerta.detalhe}</p>
-              <p className="mt-1 text-[11.5px] leading-5 text-[var(--atlas-texto-fraco)]">{alerta.acao}</p>
+              <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">{alerta.acao}</p>
             </div>
           ))}
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-left text-[12px]">
               <thead>
-                <tr className="text-[10px] uppercase tracking-[.12em] text-[var(--atlas-texto-fraco)]">
+                <tr className="text-micro uppercase tracking-[.12em] text-[var(--atlas-texto-fraco)]">
                   <th className="px-5 py-2 font-semibold">Campanha · anúncio</th>
                   <th className="px-3 py-2 text-right font-semibold">Leads</th>
                   <th className="px-3 py-2 text-right font-semibold">Contatadas</th>
@@ -855,13 +855,13 @@ export default function MarketingPage() {
                   <tr key={`${linha.campanha}-${linha.anuncio}-${linha.canal}`} className="border-t border-white/5">
                     <td className="px-5 py-2.5">
                       <span className="cc6-num text-[#cdd7e5]">{linha.campanha}</span>
-                      <span className="ml-2 text-[11px] text-[var(--atlas-texto-fraco)]">{linha.canal ?? "—"}</span>
+                      <span className="ml-2 text-rotulo text-[var(--atlas-texto-fraco)]">{linha.canal ?? "—"}</span>
                     </td>
                     <td className="cc6-num px-3 py-2.5 text-right text-[#cdd7e5]">{linha.leads}</td>
                     <td className={`cc6-num px-3 py-2.5 text-right ${linha.contatados === 0 ? "text-[#fda4af]" : "text-[#cdd7e5]"}`}>
                       {linha.contatados}
                       {linha.taxaContato !== null ? (
-                        <span className="ml-1 text-[10px] text-[var(--atlas-texto-fraco)]">{Math.round(linha.taxaContato * 100)}%</span>
+                        <span className="ml-1 text-micro text-[var(--atlas-texto-fraco)]">{Math.round(linha.taxaContato * 100)}%</span>
                       ) : null}
                     </td>
                     <td className="cc6-num px-3 py-2.5 text-right text-[#cdd7e5]">{linha.avancaram}</td>
@@ -876,7 +876,7 @@ export default function MarketingPage() {
           </div>
 
           {!performance.data.metricasDeMidia.disponivel ? (
-            <p className="border-t border-white/5 px-5 py-3 text-[11.5px] leading-5 text-[var(--atlas-texto-fraco)]">
+            <p className="border-t border-white/5 px-5 py-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
               {performance.data.metricasDeMidia.motivo} <span className="text-[#93a2b8]">{performance.data.metricasDeMidia.proximaAcao}</span>
             </p>
           ) : null}
@@ -916,7 +916,7 @@ export default function MarketingPage() {
           <section aria-label="Decisões da IA" hidden={foraDaEtapa("agir")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "60ms" }}>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
               <p className="cc6-eyebrow">Decisões da IA</p>
-              <p className="cc6-num ml-auto text-[11px] text-[var(--atlas-texto-fraco)]">
+              <p className="cc6-num ml-auto text-rotulo text-[var(--atlas-texto-fraco)]">
                 desperdício {money.format(report.plan.summary.desperdicioSemanal)}/sem · economia {money.format(report.plan.summary.economiaPotencial)} ·{" "}
                 <span className="cc6-ok">{report.plan.summary.produtosEficientes} eficientes</span> ·{" "}
                 <span className="cc6-crit">{report.plan.summary.produtosCaros} caros</span>
@@ -932,18 +932,18 @@ export default function MarketingPage() {
                 <div key={`${move.kind}-${move.target}-${index}`} className="cc6-hairline flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-2.5">
                   <span className={`cc6-chip ${MOVE_META[move.kind].ink}`}>{MOVE_META[move.kind].label}</span>
                   <span className="text-sm font-medium text-[var(--atlas-texto-forte)]">{move.target}</span>
-                  <span className="cc6-num text-[10px] uppercase tracking-[.1em] text-[var(--atlas-texto-fraco)]">{move.scope}</span>
-                  {typeof move.amount === "number" ? <span className="cc6-num text-[11px] text-[var(--atlas-texto-medio)]">{money.format(move.amount)}</span> : null}
+                  <span className="cc6-num text-micro uppercase tracking-[.1em] text-[var(--atlas-texto-fraco)]">{move.scope}</span>
+                  {typeof move.amount === "number" ? <span className="cc6-num text-rotulo text-[var(--atlas-texto-medio)]">{money.format(move.amount)}</span> : null}
                   {dl && (dl.esperado !== 0 || dl.otimista !== 0 || dl.pessimista !== 0) ? (
                     <span className={`cc6-chip cc6-num ${dl.esperado >= 0 ? "cc6-ok" : "cc6-crit"}`} title={`Projeção · confiança ${proj?.confidence}`}>
                       {dl.esperado >= 0 ? "▲" : "▼"} {dl.pessimista > 0 ? "+" : ""}{dl.pessimista} a {dl.otimista > 0 ? "+" : ""}{dl.otimista} leads/sem
                     </span>
                   ) : null}
-                  <span className="min-w-0 flex-1 basis-full text-[13px] leading-5 text-[var(--atlas-texto-medio)] sm:basis-auto">{move.reason}</span>
+                  <span className="min-w-0 flex-1 basis-full text-corpo leading-5 text-[var(--atlas-texto-medio)] sm:basis-auto">{move.reason}</span>
                   {/* Premissas visíveis: a faixa acima é derivada delas. Número
                       sem lastro à vista é o que faz o gestor desconfiar da IA. */}
                   {proj?.assumptions?.length ? (
-                    <span className="basis-full text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">{proj.assumptions.join(" · ")}</span>
+                    <span className="basis-full text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{proj.assumptions.join(" · ")}</span>
                   ) : null}
                 </div>
                 );
@@ -972,7 +972,7 @@ export default function MarketingPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead>
-                  <tr className="cc6-hairline border-t-0! font-mono text-[10px] uppercase tracking-[.14em] text-[var(--atlas-texto-fraco)]">
+                  <tr className="cc6-hairline border-t-0! font-mono text-micro uppercase tracking-[.14em] text-[var(--atlas-texto-fraco)]">
                     <th scope="col" className="px-5 py-2.5 font-semibold">Nome</th>
                     <th scope="col" className="py-2.5 pr-4 text-right font-semibold">Invest.</th>
                     <th scope="col" className="py-2.5 pr-4 text-right font-semibold">Leads</th>
@@ -995,7 +995,7 @@ export default function MarketingPage() {
                         <td className="cc6-num py-2.5 pr-4 text-right text-[var(--atlas-texto-forte)]">{money.format(row.spend)}</td>
                         <td className="cc6-num py-2.5 pr-4 text-right text-[var(--atlas-texto-medio)]" title={note}>
                           {row.leads}
-                          {broken ? <span className="ml-1 text-[10px] text-[var(--atlas-estado-atencao)]">+?</span> : null}
+                          {broken ? <span className="ml-1 text-micro text-[var(--atlas-estado-atencao)]">+?</span> : null}
                         </td>
                         <td className="cc6-num py-2.5 pr-4 text-right text-[var(--atlas-texto-medio)]" title={note}>{broken ? "—" : row.sales}</td>
                         <td className="cc6-num py-2.5 pr-4 text-right text-[var(--atlas-texto-medio)]" title={note}>{broken ? "—" : row.cpl !== null ? money.format(row.cpl) : "—"}</td>
@@ -1005,7 +1005,7 @@ export default function MarketingPage() {
                             <span aria-hidden="true" className="block h-[3px] w-14 overflow-hidden rounded-full bg-white/[.06]">
                               <span className="block h-full rounded-full bg-[var(--atlas-accent)] opacity-80" style={{ width: `${Math.min(100, Math.max(0, row.share))}%` }} />
                             </span>
-                            <span className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">{row.share.toFixed(0)}%</span>
+                            <span className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">{row.share.toFixed(0)}%</span>
                           </span>
                         </td>
                       </tr>
@@ -1016,7 +1016,7 @@ export default function MarketingPage() {
               </table>
             </div>
             {dim === "byCampaign" && rows.some((row) => attributionOf(row.key)) ? (
-              <p className="cc6-hairline px-5 py-2.5 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+              <p className="cc6-hairline px-5 py-2.5 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                 “—” com “+?” ao lado dos leads: a campanha tem leads sem elo de atribuição (ou o elo não é
                 mensurável neste banco). Venda, CPL e CAC ficam ocultos de propósito — ali o zero seria
                 ausência de medição, não resultado.
@@ -1037,11 +1037,11 @@ export default function MarketingPage() {
                   style={{ "--cc6-sev": PACING_META[row.pacing].sev } as CSSProperties}
                 >
                   <span className="text-sm font-medium text-[var(--atlas-texto-forte)]">{row.product}</span>
-                  <span className="cc6-num text-[10px] uppercase tracking-[.1em] text-[var(--atlas-texto-fraco)]">{row.developer}</span>
-                  <span className="cc6-num text-[11px] text-[var(--atlas-texto-medio)]">
+                  <span className="cc6-num text-micro uppercase tracking-[.1em] text-[var(--atlas-texto-fraco)]">{row.developer}</span>
+                  <span className="cc6-num text-rotulo text-[var(--atlas-texto-medio)]">
                     {money.format(row.spent)} de {money.format(row.weeklyBudget)} · {row.pctUsed.toFixed(0)}% · {PACING_META[row.pacing].label}
                   </span>
-                  <span className={`cc6-num text-[11px] ${VERDICT_INK[row.verdict]}`}>
+                  <span className={`cc6-num text-rotulo ${VERDICT_INK[row.verdict]}`}>
                     {row.verdict === "sem_dados" ? "sem dados" : row.verdict}
                     {row.cac !== null ? ` · CAC ${money.format(row.cac)}` : ""}
                     {row.targetCac !== null ? ` / meta ${money.format(row.targetCac)}` : ""}
@@ -1109,35 +1109,35 @@ export default function MarketingPage() {
                 >
                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     <span className="cc6-chip cc6-crit">pausar</span>
-                    <span className="min-w-0 truncate text-[12.5px] text-[var(--atlas-texto-forte)]">{rot.pauseAd?.adName ?? "anúncio fatigado"}</span>
-                    <span className="cc6-num text-[10px] uppercase tracking-[.1em] text-[var(--atlas-texto-fraco)]">{rot.campaignName}</span>
+                    <span className="min-w-0 truncate text-corpo text-[var(--atlas-texto-forte)]">{rot.pauseAd?.adName ?? "anúncio fatigado"}</span>
+                    <span className="cc6-num text-micro uppercase tracking-[.1em] text-[var(--atlas-texto-fraco)]">{rot.campaignName}</span>
                   </div>
                   {/* Sinais de fadiga eram tooltip — invisíveis no toque e no leitor
                       de tela. São o lastro do "pausar": ficam na linha. */}
                   {rot.pauseAd?.signals?.length ? (
-                    <p className="cc6-num mt-1 text-[11px] leading-5 text-[#f2b544]">{rot.pauseAd.signals.join(" · ")}</p>
+                    <p className="cc6-num mt-1 text-rotulo leading-5 text-[#f2b544]">{rot.pauseAd.signals.join(" · ")}</p>
                   ) : null}
-                  <p className="mt-1 text-[11.5px] leading-5 text-[var(--atlas-texto-fraco)]">{rot.reason}</p>
+                  <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">{rot.reason}</p>
                   <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     <span className="cc6-chip cc6-ok">substituir por</span>
-                    <span className="cc6-num text-[11px] text-[var(--atlas-texto-medio)]">ângulo {rot.replacement.angle}</span>
+                    <span className="cc6-num text-rotulo text-[var(--atlas-texto-medio)]">ângulo {rot.replacement.angle}</span>
                   </div>
                   {rot.replacement.copy ? (
                     <div className="mt-1.5 space-y-1">
-                      <p className="text-[12.5px] leading-5 text-[#c3ccdb]">{rot.replacement.copy.primaryText}</p>
-                      <p className="text-[11.5px] leading-5 text-[#8b97ab]">
+                      <p className="text-corpo leading-5 text-[#c3ccdb]">{rot.replacement.copy.primaryText}</p>
+                      <p className="text-rotulo leading-5 text-[#8b97ab]">
                         <b className="text-[var(--atlas-texto-medio)]">{rot.replacement.copy.headline}</b>
                         {rot.replacement.copy.description ? ` · ${rot.replacement.copy.description}` : ""}
                       </p>
                     </div>
                   ) : (
-                    <p className="mt-1.5 text-[11.5px] leading-5 text-[var(--atlas-texto-fraco)]">Substituto sem copy redigido — a peça precisa de brief do produto para ser proposta.</p>
+                    <p className="mt-1.5 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">Substituto sem copy redigido — a peça precisa de brief do produto para ser proposta.</p>
                   )}
-                  <p className="cc6-num mt-2 text-[10px] uppercase tracking-[.1em] text-[var(--atlas-texto-fraco)]">proposta · nada é pausado ou publicado automaticamente</p>
+                  <p className="cc6-num mt-2 text-micro uppercase tracking-[.1em] text-[var(--atlas-texto-fraco)]">proposta · nada é pausado ou publicado automaticamente</p>
                 </div>
               ))}
               {andromeda.data.rotations.proposals.length > 4 ? (
-                <p className="cc6-num mt-2 text-[11px] text-[var(--atlas-texto-fraco)]">+{andromeda.data.rotations.proposals.length - 4} rotações propostas</p>
+                <p className="cc6-num mt-2 text-rotulo text-[var(--atlas-texto-fraco)]">+{andromeda.data.rotations.proposals.length - 4} rotações propostas</p>
               ) : null}
             </div>
           ) : null}
@@ -1148,7 +1148,7 @@ export default function MarketingPage() {
               </p>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-[var(--atlas-texto-forte)]">{item.campaignName}</p>
-                <p className="cc6-num mt-0.5 text-[11px] text-[var(--atlas-texto-fraco)]">{item.activeAds} anúncios ativos · diversidade {Math.round(item.diversityScore)}</p>
+                <p className="cc6-num mt-0.5 text-rotulo text-[var(--atlas-texto-fraco)]">{item.activeAds} anúncios ativos · diversidade {Math.round(item.diversityScore)}</p>
               </div>
               <div className="flex min-w-0 flex-1 flex-wrap justify-end gap-1.5">
                 {item.fatigue.slice(0, 3).map((signal) => (
@@ -1189,7 +1189,7 @@ export default function MarketingPage() {
           <section aria-label="Análise preditiva" hidden={foraDaEtapa("criativo")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "260ms" }}>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
               <p className="cc6-eyebrow">Análise preditiva · conta</p>
-              <span className="text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">histórico real (linha) + projeção (tracejado) · confiança {conf}</span>
+              <span className="text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">histórico real (linha) + projeção (tracejado) · confiança {conf}</span>
             </div>
             <div className="px-5 pb-2">
               <svg viewBox={`0 0 ${W} ${H}`} className="h-[112px] w-full" role="img" aria-label={`Leads por semana em ${hist.length} semanas; projeção de ${p.pessimista} a ${p.otimista} na próxima`}>
@@ -1205,7 +1205,7 @@ export default function MarketingPage() {
               <div><p className="cc6-metric-label">Semanas medidas</p><p className="cc6-metric-value mt-1 text-lg">{hist.length}</p></div>
             </div>
             {f.account.assumptions.length ? (
-              <p className="cc6-hairline px-5 py-2.5 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">{f.account.assumptions.join(" · ")}</p>
+              <p className="cc6-hairline px-5 py-2.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{f.account.assumptions.join(" · ")}</p>
             ) : null}
           </section>
         );
@@ -1224,14 +1224,14 @@ export default function MarketingPage() {
           <section aria-label="Inteligência de público" hidden={foraDaEtapa("criativo")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "280ms" }}>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
               <p className="cc6-eyebrow">Localizador de público</p>
-              <span className="text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">onde responde · onde vaza · quem responde</span>
+              <span className="text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">onde responde · onde vaza · quem responde</span>
             </div>
             <div className="cc6-hairline grid gap-5 px-5 py-4 sm:grid-cols-3">
               <div>
                 <p className="cc6-metric-label mb-2">Onde responde</p>
                 {a.placements.length ? a.placements.slice(0, 4).map((p, i) => (
                   <div key={`${p.platform}-${p.position}-${i}`} className="mb-2 flex items-baseline justify-between gap-2">
-                    <span className="min-w-0 truncate text-[12.5px] text-[#c3ccdb]">{p.platform}{p.position ? ` · ${p.position}` : ""}</span>
+                    <span className="min-w-0 truncate text-corpo text-[#c3ccdb]">{p.platform}{p.position ? ` · ${p.position}` : ""}</span>
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="cc6-num text-[12px] text-[#8b97ab]">{cpl(p.cpl)}</span>
                       <span className={`cc6-chip ${chip(p.verdict)}`} title={p.reason}>{p.verdict}</span>
@@ -1244,7 +1244,7 @@ export default function MarketingPage() {
                 {a.geo ? (
                   <>
                     <div className="mb-2 flex items-baseline justify-between gap-2">
-                      <span className="text-[12.5px] text-[#c3ccdb]">Fora da praça</span>
+                      <span className="text-corpo text-[#c3ccdb]">Fora da praça</span>
                       <span className="flex shrink-0 items-center gap-2">
                         <span className="cc6-num text-[12px] text-[#8b97ab]">{a.geo.leak.sharePct}%</span>
                         <span className={`cc6-chip ${chip(a.geo.verdict)}`}>{a.geo.verdict}</span>
@@ -1262,11 +1262,11 @@ export default function MarketingPage() {
                   <>
                     {a.demo.lines.slice(0, 3).map((d, i) => (
                       <div key={`${d.age}-${d.gender}-${i}`} className="mb-2 flex items-baseline justify-between gap-2">
-                        <span className="text-[12.5px] text-[#c3ccdb]">{d.age} · {d.gender}</span>
+                        <span className="text-corpo text-[#c3ccdb]">{d.age} · {d.gender}</span>
                         <span className="cc6-num shrink-0 text-[12px] text-[#8b97ab]">{cpl(d.cpl)}</span>
                       </div>
                     ))}
-                    <p className="mt-2 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">{a.demo.policyNote}</p>
+                    <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{a.demo.policyNote}</p>
                   </>
                 ) : <p className="text-[12px] leading-5 text-[var(--atlas-texto-fraco)]">Sem quebra demográfica disponível.</p>}
               </div>
@@ -1280,10 +1280,10 @@ export default function MarketingPage() {
                 <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
                   {a.angles.slice(0, 6).map((line) => (
                     <div key={`${line.product}-${line.angle}`} className="flex items-baseline justify-between gap-2">
-                      <span className="min-w-0 truncate text-[12.5px] text-[#c3ccdb]">{line.angle}<span className="text-[var(--atlas-texto-fraco)]"> · {line.product}</span></span>
+                      <span className="min-w-0 truncate text-corpo text-[#c3ccdb]">{line.angle}<span className="text-[var(--atlas-texto-fraco)]"> · {line.product}</span></span>
                       <span className="flex shrink-0 items-center gap-2">
                         <span className="cc6-num text-[12px] text-[#8b97ab]">{cpl(line.cpl)}</span>
-                        <span className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">{line.leads} leads · {line.ads} peças</span>
+                        <span className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">{line.leads} leads · {line.ads} peças</span>
                       </span>
                     </div>
                   ))}
@@ -1312,7 +1312,7 @@ export default function MarketingPage() {
           <section aria-label="Prescrições da IA" hidden={foraDaEtapa("agir")} className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "300ms" }}>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pb-3 pt-4">
               <p className="cc6-eyebrow">Prescrições · a IA propõe, você aprova</p>
-              <span className="text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">{pres.summary}</span>
+              <span className="text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">{pres.summary}</span>
             </div>
             <div className="cc23-rows cc6-hairline px-5 py-2">
               {shown.map((p, i) => {
@@ -1324,7 +1324,7 @@ export default function MarketingPage() {
                 return (
                   <div key={`${p.kind}-${p.target}-${i}`} className="cc23-row cc23-seam cc23-draft flex-wrap">
                     <span className={`cc6-chip ${meta.ink}`}>{meta.label}</span>
-                    <span className="min-w-0 truncate text-[13px] font-medium text-[var(--atlas-texto-forte)]">{p.target}</span>
+                    <span className="min-w-0 truncate text-corpo font-medium text-[var(--atlas-texto-forte)]">{p.target}</span>
                     {targetId ? (
                       <button
                         type="button"
@@ -1344,13 +1344,13 @@ export default function MarketingPage() {
                     {/* O lastro primeiro: é do número medido que a decisão vive.
                         Um bloco só, para o texto não virar três linhas soltas. */}
                     <div className="basis-full space-y-1">
-                      {lastro ? <p className="text-[12.5px] leading-5 text-[#c3ccdb]">{lastro}</p> : null}
+                      {lastro ? <p className="text-corpo leading-5 text-[#c3ccdb]">{lastro}</p> : null}
                       {p.expectedEffect ? (
                         <p className="text-[12px] leading-5 text-[#8b97ab]">Efeito esperado: {p.expectedEffect}</p>
                       ) : null}
-                      {why ? <p className="text-[11.5px] leading-5 text-[var(--atlas-texto-fraco)]">{why}</p> : null}
+                      {why ? <p className="text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">{why}</p> : null}
                       {!lastro && !p.expectedEffect ? (
-                        <p className="text-[11.5px] leading-5 text-[var(--atlas-texto-fraco)]">
+                        <p className="text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                           Esta prescrição chegou sem número de lastro nem efeito esperado — trate como sinal a investigar, não como recomendação.
                         </p>
                       ) : null}
@@ -1360,9 +1360,9 @@ export default function MarketingPage() {
               })}
             </div>
             {pres.proposals.length > shown.length ? (
-              <p className="cc6-num px-5 pt-2 text-[11px] text-[var(--atlas-texto-fraco)]">+{pres.proposals.length - shown.length} prescrições nesta janela</p>
+              <p className="cc6-num px-5 pt-2 text-rotulo text-[var(--atlas-texto-fraco)]">+{pres.proposals.length - shown.length} prescrições nesta janela</p>
             ) : null}
-            <p className="cc6-num px-5 pb-4 pt-2 text-[10px] uppercase tracking-[.1em] text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-num px-5 pb-4 pt-2 text-micro uppercase tracking-[.1em] text-[var(--atlas-texto-fraco)]">
               proposta · nada é pausado, consolidado ou publicado automaticamente
             </p>
           </section>
@@ -1375,7 +1375,7 @@ export default function MarketingPage() {
           <summary className="cc6-eyebrow cursor-pointer list-none select-none">como as IAs decidem ▸</summary>
           <ul className="mt-2 space-y-1">
             {calibration.data.summary.map((line) => (
-              <li key={line} className="text-[13px] leading-5 text-[var(--atlas-texto-medio)]">{line}</li>
+              <li key={line} className="text-corpo leading-5 text-[var(--atlas-texto-medio)]">{line}</li>
             ))}
           </ul>
         </details>

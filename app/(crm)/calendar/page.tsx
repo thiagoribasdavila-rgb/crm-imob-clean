@@ -125,7 +125,7 @@ function EventRow({
     >
       <time
         dateTime={item.at}
-        className={`cc6-num shrink-0 text-[13px] ${withDate ? "w-24" : "w-12"} ${
+        className={`cc6-num shrink-0 text-corpo ${withDate ? "w-24" : "w-12"} ${
           sev === "crit"
             ? "cc6-crit"
             : sev === "warn"
@@ -142,7 +142,7 @@ function EventRow({
             {item.title}
           </strong>
           {overdueTag ? (
-            <span className="cc6-crit cc6-num text-[10px] tracking-[0.14em] uppercase">
+            <span className="cc6-crit cc6-num text-micro tracking-[0.14em] uppercase">
               Em atraso
             </span>
           ) : null}
@@ -535,12 +535,12 @@ export default function CalendarPage() {
                         className="flex items-baseline gap-2 text-sm font-semibold tracking-tight"
                       >
                         <span className="cc6-crit">Em atraso</span>
-                        <span className="cc6-num text-[11px] font-normal text-[var(--atlas-texto-fraco)]">
+                        <span className="cc6-num text-rotulo font-normal text-[var(--atlas-texto-fraco)]">
                           resolver primeiro
                         </span>
                       </h3>
                       <span
-                        className="cc6-crit cc6-num text-[11px]"
+                        className="cc6-crit cc6-num text-rotulo"
                         aria-label={`${overdueItems.length} compromissos em atraso`}
                       >
                         {overdueItems.length}
@@ -576,12 +576,12 @@ export default function CalendarPage() {
                           >
                             {group.name}
                           </span>
-                          <span className="cc6-num text-[11px] font-normal text-[var(--atlas-texto-fraco)]">
+                          <span className="cc6-num text-rotulo font-normal text-[var(--atlas-texto-fraco)]">
                             {group.date}
                           </span>
                         </h3>
                         <span
-                          className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]"
+                          className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]"
                           aria-label={`${group.items.length} compromissos`}
                         >
                           {group.items.length}
@@ -664,7 +664,7 @@ export default function CalendarPage() {
               </span>
             ))}
           </div>
-          <p className="cc6-hairline px-5 py-2.5 text-[10px] leading-4 text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
             Organização, hierarquia e RLS aplicadas pela API · atualizações
             apenas reorganizam a agenda · nenhuma ação é concluída e nenhum
             cliente é contatado automaticamente.

@@ -7205,6 +7205,31 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ── A ESCALA TIPOGRÁFICA DO v3 ─────────────────────────────────────────
+     Ela NÃO foi desenhada: foi medida. Havia 809 tamanhos arbitrários em
+     `.tsx` (`text-[Npx]`), distribuídos assim:
+
+         11px  306   ·  10px  289   ·   9px   83   ·  12px   41
+         13px   35   ·  11.5   23   ·  12.5   11   ·  15px    6
+          8px    5   ·  27px    2   ·  13.5    2   ·  10.5    2
+
+     Ou seja: 11 e 10 sozinhos são 73% do uso. A operação já tinha uma escala
+     — ela só não tinha nome, e por isso ninguém conseguia consultá-la. Meio
+     pixel (11.5, 12.5, 13.5, 10.5) é o sintoma clássico disso: alguém ajustou
+     no olho porque não havia degrau para apontar.
+
+     Os degraus são nomeados pelo PAPEL, não pelo tamanho. Nome de tamanho
+     (`text-11`) convida a inventar o 11.5 de novo; nome de papel obriga a
+     perguntar "que papel isto cumpre?" — que é a pergunta certa.
+
+     Os tamanhos maiores continuam na escala do Tailwind (`text-lg` para cima),
+     que já está viva com 1.868 usos e que este repositório não redefine. ── */
+  --text-micro: 10px;    /* carimbo, unidade, legenda de eixo */
+  --text-rotulo: 11px;   /* rótulo de campo, eyebrow, meta */
+  --text-corpo: 13px;    /* o texto que se lê */
+  --text-numero: 20px;   /* o número que se compara */
+  --text-heroi: 34px;    /* o único número da tela que decide */
 }
 
 /* Fase 032 — espaço de trabalho adaptativo para desktop amplo. */

@@ -236,7 +236,7 @@ export default function Page() {
               </div>
             ))}
           </div>
-          <p className="cc6-hairline cc6-num mt-4 pt-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-hairline cc6-num mt-4 pt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
             {c ? (
               <>
                 {c.runtime.hostingProvider} · HTTPS{" "}
@@ -272,7 +272,7 @@ export default function Page() {
               Credencial, cadastro e teste real
             </h2>
           </div>
-          <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]">
+          <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">
             {c ? `${c.summary.total} monitorados` : "—"}
           </p>
         </header>
@@ -315,7 +315,7 @@ export default function Page() {
                       {PROVIDER_NAMES[provider.provider] ??
                         provider.provider.replaceAll("_", " ")}
                     </p>
-                    <p className="cc6-num mt-0.5 text-[10px] tracking-wide text-[var(--atlas-texto-fraco)]">
+                    <p className="cc6-num mt-0.5 text-micro tracking-wide text-[var(--atlas-texto-fraco)]">
                       <StepToken
                         label="ambiente"
                         done={provider.environmentReady}
@@ -347,7 +347,7 @@ export default function Page() {
                       />
                     </p>
                   </div>
-                  <p className="cc6-num shrink-0 text-[11px] text-[var(--atlas-texto-medio)]">
+                  <p className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-medio)]">
                     <span
                       title="Idade da última evidência de sincronização"
                       className={

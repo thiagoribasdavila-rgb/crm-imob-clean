@@ -41,7 +41,7 @@ export function PublicPageShell({ eyebrow, title, description, updatedAt, childr
             <AtlasLogo size={34} className="shrink-0" />
             <div>
               <p className="text-lg font-semibold tracking-[-.03em] leading-none">Atlas<span className="text-[color:var(--atlas-accent)]">.</span></p>
-              <p className="mt-1 text-[8px] font-semibold uppercase tracking-[.24em] text-[color:var(--atlas-text-tertiary)]">Inteligência comercial imobiliária</p>
+              <p className="mt-1 text-micro font-semibold uppercase tracking-[.24em] text-[color:var(--atlas-text-tertiary)]">Inteligência comercial imobiliária</p>
             </div>
           </Link>
           <Link
@@ -53,19 +53,19 @@ export function PublicPageShell({ eyebrow, title, description, updatedAt, childr
         </header>
 
         <article className="flex-1 py-14 sm:py-20">
-          <p className="text-[10px] font-bold uppercase tracking-[.24em] text-[color:var(--atlas-accent)]">{eyebrow}</p>
+          <p className="text-micro font-bold uppercase tracking-[.24em] text-[color:var(--atlas-accent)]">{eyebrow}</p>
           <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-[1.03] tracking-[-.055em] sm:text-5xl">{title}</h1>
           <p className="mt-6 max-w-2xl text-sm leading-7 text-[color:var(--atlas-text-secondary)]">{description}</p>
-          <p className="mt-4 text-[11px] uppercase tracking-[.16em] text-[color:var(--atlas-text-tertiary)]">Última atualização: {updatedAt}</p>
+          <p className="mt-4 text-rotulo uppercase tracking-[.16em] text-[color:var(--atlas-text-tertiary)]">Última atualização: {updatedAt}</p>
 
           <div className="mt-12 space-y-10">{children}</div>
         </article>
 
         <footer className="flex flex-col gap-4 border-t border-[color:var(--atlas-border)] py-8 sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-[10px] uppercase tracking-[.16em] text-[color:var(--atlas-text-tertiary)]">Atlas AI · Inteligência comercial imobiliária</span>
+          <span className="text-micro uppercase tracking-[.16em] text-[color:var(--atlas-text-tertiary)]">Atlas AI · Inteligência comercial imobiliária</span>
           <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Documentos legais">
             {footerLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="text-[11px] font-medium text-[color:var(--atlas-text-tertiary)] transition hover:text-[color:var(--atlas-accent)]">
+              <Link key={link.href} href={link.href} className="text-rotulo font-medium text-[color:var(--atlas-text-tertiary)] transition hover:text-[color:var(--atlas-accent)]">
                 {link.label}
               </Link>
             ))}

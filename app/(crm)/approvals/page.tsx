@@ -76,7 +76,7 @@ export default function ApprovalsPage() {
       <section aria-label="Fila de aprovações" className="cc6-panel cc6-reveal overflow-hidden">
         <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5 pb-4">
           <p className="cc6-eyebrow">Fila governada</p>
-          <p className="cc6-num text-[11px] text-[var(--atlas-texto-fraco)]" aria-live="polite">
+          <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]" aria-live="polite">
             {loading ? "carregando…" : `${pendingCount} ${pendingCount === 1 ? "pendente" : "pendentes"} · ${items.length} no total`}
           </p>
         </div>
@@ -108,7 +108,7 @@ export default function ApprovalsPage() {
                   <span className="cc6-chip">{item.channel} · {item.request_type}</span>
                 </div>
                 <h2 className="mt-2 text-base font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{item.leadName}</h2>
-                <p className="cc6-num mt-1 text-[11px] text-[var(--atlas-texto-fraco)]">
+                <p className="cc6-num mt-1 text-rotulo text-[var(--atlas-texto-fraco)]">
                   Corretor: {item.brokerName} · {WHEN_FORMAT.format(new Date(item.created_at))}
                   {pending && item.expires_at ? ` · expira ${WHEN_FORMAT.format(new Date(item.expires_at))}` : ""}
                 </p>
@@ -156,7 +156,7 @@ export default function ApprovalsPage() {
                   </>
                 ) : item.decision_reason ? (
                   <div className="cc6-panel-quiet p-3">
-                    <p className="cc6-eyebrow text-[10px]!">Motivo registrado</p>
+                    <p className="cc6-eyebrow text-micro!">Motivo registrado</p>
                     <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">{item.decision_reason}</p>
                   </div>
                 ) : null}
@@ -165,7 +165,7 @@ export default function ApprovalsPage() {
           );
         })}
 
-        <p className="cc6-hairline px-5 py-3 text-[11px] leading-5 text-[var(--atlas-texto-fraco)]">
+        <p className="cc6-hairline px-5 py-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
           Nada é enviado ou executado sem aprovação humana registrada nesta fila.
         </p>
       </section>

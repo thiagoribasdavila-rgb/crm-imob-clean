@@ -1194,7 +1194,7 @@ export default function LeadsPage() {
               <p className="cc6-metric-value mt-1 text-4xl leading-none">
                 {loading ? "—" : total}
               </p>
-              <p className="mt-2 text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+              <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
                 {hasFilters
                   ? "resultado dos filtros atuais"
                   : currentRole === "broker"
@@ -1228,11 +1228,11 @@ export default function LeadsPage() {
                       : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
                   } ${focusRing}`}
                 >
-                  <span className="text-[11.5px] font-medium">
+                  <span className="text-rotulo font-medium">
                     {shortcut.label}
                   </span>
                   <span
-                    className={`cc6-num text-[13px] ${
+                    className={`cc6-num text-corpo ${
                       shortcut.count > 0
                         ? shortcut.countClass
                         : "text-[var(--atlas-texto-fraco)]"
@@ -1249,7 +1249,7 @@ export default function LeadsPage() {
               dizer o nome faz a pessoa concluir que a base encolheu. */}
           {faixa ? (
             <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[rgba(75,141,248,0.35)] bg-[rgba(75,141,248,0.07)] px-3 py-2">
-              <span className="text-[11.5px] text-[var(--atlas-texto-medio)]">
+              <span className="text-rotulo text-[var(--atlas-texto-medio)]">
                 Faixa da fila ·{" "}
                 <strong className="font-semibold text-[var(--atlas-texto-forte)]">
                   {ROTULO_DA_FAIXA.get(faixa) ?? faixa}
@@ -1262,7 +1262,7 @@ export default function LeadsPage() {
                   setFaixa("");
                   setPage(1);
                 }}
-                className={`min-h-11 text-[11.5px] font-semibold text-[var(--atlas-accent)] hover:text-white ${focusRing}`}
+                className={`min-h-11 text-rotulo font-semibold text-[var(--atlas-accent)] hover:text-white ${focusRing}`}
               >
                 Limpar faixa
               </button>
@@ -1293,7 +1293,7 @@ export default function LeadsPage() {
                     setPage(1);
                   }}
                   aria-pressed={vinculo === chave}
-                  className={`min-h-11 shrink-0 rounded-xl border px-3 text-[11.5px] font-medium transition-colors ${
+                  className={`min-h-11 shrink-0 rounded-xl border px-3 text-rotulo font-medium transition-colors ${
                     vinculo === chave
                       ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
                       : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
@@ -1364,7 +1364,7 @@ export default function LeadsPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Link
                           href={`/leads/${priority.lead.id}`}
-                          className={`rounded-md text-[13px] font-semibold text-[var(--atlas-texto-forte)] transition-colors hover:text-[color:var(--atlas-accent-hover)] ${focusRing}`}
+                          className={`rounded-md text-corpo font-semibold text-[var(--atlas-texto-forte)] transition-colors hover:text-[color:var(--atlas-accent-hover)] ${focusRing}`}
                         >
                           {priority.lead.name || "Lead sem nome"}
                         </Link>
@@ -1375,7 +1375,7 @@ export default function LeadsPage() {
                       <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">
                         {priority.detail}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-[var(--atlas-texto-fraco)]">
+                      <p className="mt-0.5 text-rotulo text-[var(--atlas-texto-fraco)]">
                         {projectName(priority.lead)} ·{" "}
                         {priority.lead.status || "novo"}
                       </p>
@@ -1468,7 +1468,7 @@ export default function LeadsPage() {
                 value={sort}
                 onChange={(event) => updateFilter(setSort, event.target.value)}
                 aria-label="Ordenar leads"
-                className={`min-h-11 w-full min-w-0 rounded-xl border border-white/10 bg-[#0a1120] px-3 text-[11px] text-[#cdd7e5] ${focusRing}`}
+                className={`min-h-11 w-full min-w-0 rounded-xl border border-white/10 bg-[#0a1120] px-3 text-rotulo text-[#cdd7e5] ${focusRing}`}
               >
                 <option value="first_contact_sla">Prazo de 1º contato</option>
                 <option value="created_at">Data de entrada</option>
@@ -1667,7 +1667,7 @@ export default function LeadsPage() {
               <span className="cc6-num">{selected.size}</span> lead(s)
               selecionado(s)
             </strong>
-            <span className="mt-1 block text-[11px] leading-4 text-[var(--atlas-texto-fraco)]">
+            <span className="mt-1 block text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
               {currentRole === "broker"
                 ? "Mova as leads da sua carteira de etapa em um passo. Fechar (ganho/perdido) continua uma a uma, com a tela inteira na frente."
                 : currentRole === "manager"
@@ -1914,7 +1914,7 @@ export default function LeadsPage() {
                                   <button
                                     type="button"
                                     onClick={() => copiarContato(`${lead.id}:tel`, String(lead.phone))}
-                                    className={`cc6-chip cursor-pointer text-[10.5px] transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}
+                                    className={`cc6-chip cursor-pointer text-micro transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}
                                     title="Copiar telefone"
                                   >
                                     {copiado === `${lead.id}:tel` ? "copiado ✓" : "copiar tel"}
@@ -1924,7 +1924,7 @@ export default function LeadsPage() {
                                   <button
                                     type="button"
                                     onClick={() => copiarContato(`${lead.id}:mail`, String(lead.email))}
-                                    className={`cc6-chip cursor-pointer text-[10.5px] transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}
+                                    className={`cc6-chip cursor-pointer text-micro transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}
                                     title="Copiar e-mail"
                                   >
                                     {copiado === `${lead.id}:mail` ? "copiado ✓" : "copiar e-mail"}

@@ -51,7 +51,7 @@ export function AtlasCardHeader({
     <div className="atlas-card-header flex flex-col gap-4 border-b-[rgba(148,163,184,0.12)]! p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="atlas-eyebrow font-mono text-[11px]! font-medium uppercase! tracking-[0.14em]! text-[var(--atlas-texto-fraco)]! [font-variant-numeric:tabular-nums]">
+          <p className="atlas-eyebrow font-mono text-rotulo! font-medium uppercase! tracking-[0.14em]! text-[var(--atlas-texto-fraco)]! [font-variant-numeric:tabular-nums]">
             {eyebrow}
           </p>
         ) : null}
@@ -110,12 +110,12 @@ export function AtlasMetric({
               {icon}
             </span>
           ) : null}
-          <p className="font-mono text-[11px] font-medium uppercase leading-4 tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
+          <p className="font-mono text-rotulo font-medium uppercase leading-4 tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
             {label}
           </p>
         </div>
         {trend ? (
-          <span className="atlas-metric-trend font-mono text-[11px] [font-variant-numeric:tabular-nums]">
+          <span className="atlas-metric-trend font-mono text-rotulo [font-variant-numeric:tabular-nums]">
             {trend}
           </span>
         ) : null}

@@ -37,7 +37,7 @@ const toneClasses: Record<StatusBadgeTone, string> = {
 export function StatusBadge({ children, tone = "neutral" }: StatusBadgeProps) {
   return (
     <span
-      className={`atlas-badge atlas-badge-${tone} gap-1.5 font-mono text-[10px]! uppercase tracking-[0.14em]! [font-variant-numeric:tabular-nums] ${toneClasses[tone]}`}
+      className={`atlas-badge atlas-badge-${tone} gap-1.5 font-mono text-micro! uppercase tracking-[0.14em]! [font-variant-numeric:tabular-nums] ${toneClasses[tone]}`}
       data-tone={tone}
     >
       {children}

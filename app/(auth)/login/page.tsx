@@ -250,25 +250,25 @@ function LoginExperience() {
           <div className="relative z-10">
           <Link href="/" className="inline-flex items-center gap-4" aria-label="Voltar para a página inicial do Atlas">
             <AtlasLogo size={48} className="shrink-0" />
-            <div><p className="text-2xl font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p><p className="font-mono text-[10px] font-medium uppercase tracking-[.22em] text-slate-500">Real Estate Intelligence</p></div>
+            <div><p className="text-2xl font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p><p className="font-mono text-micro font-medium uppercase tracking-[.22em] text-slate-500">Real Estate Intelligence</p></div>
           </Link>
-          <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-sky-300/10 bg-sky-300/[.045] px-3 py-1.5 font-mono text-[11px] font-medium text-sky-200"><span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-sky-300" /> IA proativa conectada ao comercial</div>
+          <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-sky-300/10 bg-sky-300/[.045] px-3 py-1.5 font-mono text-rotulo font-medium text-sky-200"><span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-sky-300" /> IA proativa conectada ao comercial</div>
           <h1 className="mt-6 max-w-[520px] text-5xl font-semibold leading-[.98] tracking-[-.06em] xl:max-w-[580px] xl:text-6xl">Sua sala de comando para <span className="text-sky-300">decidir e vender.</span></h1>
           <p className="mt-6 max-w-sm text-base leading-7 text-slate-400">A IA prioriza, a equipe decide: leads, imóveis, campanhas e a próxima ação — num só lugar.</p>
           </div>
           <div className="relative z-10 grid max-w-[380px] grid-cols-3 border-y border-[rgba(148,163,184,.12)] py-5">
-            {[ ["Prioridades agora", "IA proativa"], ["Copiloto único", "Próxima ação"], ["Operação viva", "Tempo real"] ].map(([title, detail], index) => <div key={title} className={`px-4 ${index ? "border-l border-[rgba(148,163,184,.12)]" : ""}`}><p className="font-mono text-[10px] font-medium uppercase tracking-[.16em] text-slate-500">{title}</p><p className="mt-2 text-sm font-semibold text-slate-200">{detail}</p></div>)}
+            {[ ["Prioridades agora", "IA proativa"], ["Copiloto único", "Próxima ação"], ["Operação viva", "Tempo real"] ].map(([title, detail], index) => <div key={title} className={`px-4 ${index ? "border-l border-[rgba(148,163,184,.12)]" : ""}`}><p className="font-mono text-micro font-medium uppercase tracking-[.16em] text-slate-500">{title}</p><p className="mt-2 text-sm font-semibold text-slate-200">{detail}</p></div>)}
           </div>
         </section>
 
         <section className="mx-auto w-full max-w-lg [perspective:1400px]">
-          <div className="cc5-reveal mb-6 flex items-center justify-between gap-3 lg:hidden" style={{ animationDelay: "0ms" }}><div className="flex items-center gap-3"><AtlasLogo size={44} className="shrink-0" /><div><p className="text-xl font-black tracking-[-.03em]">ATLAS <span className="text-sky-400">AI</span></p><p className="font-mono text-[10px] uppercase tracking-[.22em] text-slate-500">Real Estate Intelligence</p></div></div><span role="img" aria-label="Assistente Atlas" className="h-16 w-12 bg-[url('/brand/atlas-robot-assistant.png')] bg-contain bg-center bg-no-repeat drop-shadow-[0_12px_20px_rgba(14,165,233,.18)]" /></div>
+          <div className="cc5-reveal mb-6 flex items-center justify-between gap-3 lg:hidden" style={{ animationDelay: "0ms" }}><div className="flex items-center gap-3"><AtlasLogo size={44} className="shrink-0" /><div><p className="text-xl font-black tracking-[-.03em]">ATLAS <span className="text-sky-400">AI</span></p><p className="font-mono text-micro uppercase tracking-[.22em] text-slate-500">Real Estate Intelligence</p></div></div><span role="img" aria-label="Assistente Atlas" className="h-16 w-12 bg-[url('/brand/atlas-robot-assistant.png')] bg-contain bg-center bg-no-repeat drop-shadow-[0_12px_20px_rgba(14,165,233,.18)]" /></div>
           <TiltShell delayMs={70} className="cc5-reveal relative overflow-hidden rounded-[28px] border border-[rgba(148,163,184,.16)] bg-[linear-gradient(180deg,#0f1830_0%,#0b1224_100%)] p-6 shadow-[0_40px_120px_rgba(0,0,0,.5)] sm:p-9">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-300/70 to-transparent" />
             <div className="motion-safe:[transform:translateZ(14px)]">
               <div className="flex items-center justify-between gap-4">
-                <p className="font-mono text-[11px] font-medium uppercase tracking-[.24em] text-slate-500">Sala de comando</p>
-                <span className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1 font-mono text-[11px] font-medium tabular-nums ${systemStatus === "online" ? "border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300" : systemStatus === "offline" ? "border-amber-400/15 bg-amber-400/[0.07] text-amber-300" : "border-[rgba(148,163,184,.22)] bg-white/[.04] text-slate-400"}`}><span className={`h-1.5 w-1.5 rounded-full ${systemStatus === "online" ? "bg-emerald-400" : systemStatus === "offline" ? "bg-amber-400" : "animate-pulse bg-slate-500"}`} /> {systemStatus === "online" ? "Sistema disponível" : systemStatus === "offline" ? "Conexão instável" : "Verificando"}</span>
+                <p className="font-mono text-rotulo font-medium uppercase tracking-[.24em] text-slate-500">Sala de comando</p>
+                <span className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1 font-mono text-rotulo font-medium tabular-nums ${systemStatus === "online" ? "border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300" : systemStatus === "offline" ? "border-amber-400/15 bg-amber-400/[0.07] text-amber-300" : "border-[rgba(148,163,184,.22)] bg-white/[.04] text-slate-400"}`}><span className={`h-1.5 w-1.5 rounded-full ${systemStatus === "online" ? "bg-emerald-400" : systemStatus === "offline" ? "bg-amber-400" : "animate-pulse bg-slate-500"}`} /> {systemStatus === "online" ? "Sistema disponível" : systemStatus === "offline" ? "Conexão instável" : "Verificando"}</span>
               </div>
               <h2 className="mt-5 text-4xl font-semibold tracking-[-.05em]">Bem-vindo de volta.</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">Entre para abrir a sua sala de comando.</p>
@@ -350,7 +350,7 @@ function LoginExperience() {
             </form>
 
             <div className="mt-7 border-t border-[rgba(148,163,184,.12)] pt-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-[10px] font-medium uppercase tracking-[.14em] text-slate-600"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" /> Sessão protegida</span><span>Dados isolados</span><span className="tabular-nums">Atlas V3</span></div>
+              <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-micro font-medium uppercase tracking-[.14em] text-slate-600"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" /> Sessão protegida</span><span>Dados isolados</span><span className="tabular-nums">Atlas V3</span></div>
             </div>
           </TiltShell>
           <Link href="/" className="cc5-reveal mx-auto mt-5 flex w-fit items-center gap-2 text-xs text-slate-600 transition hover:text-slate-300" style={{ animationDelay: "140ms" }}><span aria-hidden="true">←</span> Voltar para o início</Link>
@@ -398,7 +398,7 @@ function InstalacaoSemConfiguracao() {
           <strong className="font-semibold text-slate-400">construir a aplicação de novo</strong> —
           reiniciar não resolve, porque o endereço é gravado durante a construção.
         </p>
-        <p className="mt-4 text-[11px] leading-5 text-slate-600">
+        <p className="mt-4 text-rotulo leading-5 text-slate-600">
           Diagnóstico completo em <code className="text-slate-500">/api/v1/ready</code>.
         </p>
       </div>
