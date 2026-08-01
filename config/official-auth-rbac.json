@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "source": "profiles-table-under-rls",
+  "roles": {
+    "admin": { "initialName": "Administrador Atlas", "scope": "platform", "landing": "/users" },
+    "director_decisor": { "initialName": "Thiago", "scope": "organization_and_strategy", "landing": "/dashboard" },
+    "director": { "initialName": "Senna", "scope": "commercial_operation", "landing": "/dashboard" },
+    "broker": { "initialNames": ["Diego", "Luciano", "Adolfo"], "scope": "owned_leads", "landing": "/leads" }
+  },
+  "chain": ["Thiago", "Senna", "Diego|Luciano|Adolfo"],
+  "reset": { "environment": "homologation", "dryRunDefault": true, "deleteUsers": false, "blockOldAuthUsers": true, "deactivateOldProfiles": true, "preserveHistory": true, "passwordsStored": false, "temporaryPasswordsLocalOnly": true, "centralRecoveryInbox": true }
+}

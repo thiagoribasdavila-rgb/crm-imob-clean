@@ -1,0 +1,119 @@
+{
+  "phase": 40,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "activity-explainable-history",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "dataFetchingChanged": true,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": true,
+  "activityContract": {
+    "layoutAttribute": "cc6-reading-timeline",
+    "sourceOfTruth": "public.activities",
+    "categories": [
+      "change",
+      "contact",
+      "transfer",
+      "ai",
+      "proposal",
+      "external"
+    ],
+    "periods": [
+      "today",
+      "week",
+      "month",
+      "all"
+    ],
+    "primarySignals": 3,
+    "latestVisibleLimit": 3,
+    "maximumVisibleRecords": 500,
+    "realtimePreserved": true,
+    "manualRefreshAvailable": true,
+    "lead360LinksAvailable": true,
+    "rawMetadataReturned": false,
+    "readOnly": true
+  },
+  "informationHierarchy": {
+    "signals": [
+      "today",
+      "clients in motion",
+      "visible records"
+    ],
+    "latestMovementsUseChronologicalOrder": true,
+    "latestMovementLimit": 3,
+    "timelineGroupedByLocalDay": true,
+    "categoryCompositionProgressivelyDisclosed": false,
+    "categoryCompositionAlwaysVisible": true,
+    "searchAndFiltersRemainVisible": true,
+    "functionalityRemoved": false
+  },
+  "executionPolicy": {
+    "historyIsReadOnly": true,
+    "openingLeadRequiresHumanAction": true,
+    "automaticTaskCreation": false,
+    "automaticCustomerContact": false,
+    "automaticAssignment": false,
+    "automaticDecision": false
+  },
+  "truthPolicy": {
+    "orderingIsChronologicalNotPrediction": true,
+    "payloadLimitedToAuthorizedHistory": true,
+    "activityCountsAreObservedRecords": true,
+    "assistantPresentedAsAutonomousAi": false,
+    "productivityGainPublished": false,
+    "conversionGuaranteePublished": false
+  },
+  "accessibility": {
+    "filtersUsePressedState": true,
+    "timelineUsesSectionAndTimeSemantics": true,
+    "updatesUsePoliteLiveRegion": true,
+    "loadingUsesBusyState": true,
+    "minimumNewTouchTargetPx": 44,
+    "reducedMotionPolicyPreserved": true
+  },
+  "structuralBaseline": {
+    "note": "O QUE A FASE 040 DEIXOU, medido em 2026-07-18. Acréscimos posteriores estão em postPhaseAdditions.",
+    "measuredAt": "2026-07-18",
+    "newStateAdded": true,
+    "newEffectAdded": true,
+    "newNetworkRequestAdded": true,
+    "networkRequests": 1,
+    "realtimeSubscriptions": 1,
+    "visibleLatestLimit": 3,
+    "runtimeHistorySearchTimeMeasured": false
+  },
+  "postPhaseAdditions": {
+    "note": "A propriedade da fase 040 é UMA leitura e UMA assinatura, e ela segue intacta (networkRequests 1, realtimeSubscriptions 1). Em 2026-07-29 entrou UM efeito de montagem que não fala com a rede: o catálogo prometia um recorte para esta tela e ela não lia parâmetro nenhum. O efeito lê a intenção pelo módulo compartilhado e só aplica o período quando o alvo existe na mesma lista PERIODS que desenha os chips — chave inventada não vira recorte.",
+    "measuredAt": "2026-07-29",
+    "useStateOccurrences": 9,
+    "useEffectOccurrences": 4,
+    "addedEffect": "leitura-da-intencao-da-url",
+    "addedEffectReadsNetwork": false
+  },
+  "safetyPolicy": {
+    "databaseWriteAdded": false,
+    "databaseSchemaChanged": false,
+    "environmentSecretsExposed": false,
+    "rawMetadataReturned": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "rlsPreserved": true,
+    "existingLeadTimelinePreserved": true,
+    "routesPreserved": true
+  },
+  "exitCriteria": {
+    "activityPlaceholderRemoved": true,
+    "authorizedHistoryLoadsFromCanonicalSource": true,
+    "filtersAndSearchOperateLocally": true,
+    "technicalErrorsRemainRedacted": true,
+    "historicalRecordsRemainImmutable": true,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 41,
+    "name": "Melhorar Clientes 360",
+    "status": "planned"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "phase": 4,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "canonicalSource": "lib/atlas/navigation.ts",
+  "consumers": [
+    "components/atlas/sidebar.tsx",
+    "components/CommandPalette.tsx",
+    "components/atlas/mobile-dock.tsx"
+  ],
+  "activeDestinations": 20,
+  "mobilePrimaryActions": 4,
+  "historicalV2CommandPromoted": false,
+  "historicalRouteDeleted": false,
+  "dataMigrationPerformed": false
+}

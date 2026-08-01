@@ -1,0 +1,306 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 5,
+  "title": "Especificacao do bridge de compatibilidade e matriz RLS/grants",
+  "mode": "specification_only",
+  "status": "blocked",
+  "safeToApply": false,
+  "canonicalSources": {
+    "tenantContext": "private.current_organization_id()",
+    "projects": "public.crm_projects",
+    "campaigns": "public.marketing_campaigns",
+    "leads": "public.leads",
+    "profiles": "public.profiles"
+  },
+  "bridgeContracts": [
+    {
+      "name": "tenant_context_policy_contract",
+      "kind": "direct_private_helper",
+      "source": "private.current_organization_id()",
+      "target": "RLS policies",
+      "publicAliasAllowed": false,
+      "securityInvoker": true,
+      "readOnly": true,
+      "applyNow": false,
+      "invariants": [
+        "authenticated_session_required",
+        "organization_id_never_accepted_from_client",
+        "tenant_predicate_present_on_every_exposed_ledger"
+      ]
+    },
+    {
+      "name": "lead_visibility_policy_contract",
+      "kind": "private_security_definer_helper",
+      "source": "public.leads",
+      "target": "private.can_view_lead(uuid)",
+      "publicAliasAllowed": false,
+      "securityDefiner": true,
+      "emptySearchPathRequired": true,
+      "publicExecuteRevoked": true,
+      "authenticatedExecuteExplicit": true,
+      "readOnly": true,
+      "applyNow": false,
+      "invariants": [
+        "auth_uid_required",
+        "same_organization_required",
+        "commercial_hierarchy_enforced",
+        "lead_id_parameter_only"
+      ]
+    },
+    {
+      "name": "projects_compatibility_adapter",
+      "kind": "security_invoker_view",
+      "source": "public.crm_projects",
+      "target": "public.developments_compat",
+      "securityInvoker": true,
+      "sourceRlsRequired": true,
+      "readOnly": true,
+      "foreignKeyTargetAllowed": false,
+      "canonicalWriteTarget": "public.crm_projects",
+      "applyNow": false,
+      "invariants": [
+        "no_duplicate_developments_table",
+        "no_write_through_view",
+        "source_ids_preserved"
+      ]
+    },
+    {
+      "name": "campaigns_compatibility_adapter",
+      "kind": "security_invoker_view",
+      "source": "public.marketing_campaigns",
+      "target": "public.campaigns_compat",
+      "securityInvoker": true,
+      "sourceRlsRequired": true,
+      "readOnly": true,
+      "foreignKeyTargetAllowed": false,
+      "canonicalWriteTarget": "public.marketing_campaigns",
+      "applyNow": false,
+      "invariants": [
+        "no_duplicate_campaigns_table",
+        "no_write_through_view",
+        "source_ids_preserved"
+      ]
+    },
+    {
+      "name": "commercial_hierarchy_additive_contract",
+      "kind": "additive_columns",
+      "source": "public.profiles",
+      "target": "public.profiles",
+      "columns": ["commercial_role", "reports_to"],
+      "destructiveRewriteAllowed": false,
+      "backfillIncluded": false,
+      "applyNow": false,
+      "invariants": [
+        "existing_role_preserved",
+        "existing_profiles_preserved",
+        "hierarchy_activation_requires_separate_reviewed_backfill"
+      ]
+    },
+    {
+      "name": "lead_reference_contract",
+      "kind": "existing_identity_reference",
+      "source": "public.leads.id",
+      "target": "Meta event ledgers",
+      "massLeadRewriteAllowed": false,
+      "leadBackfillIncluded": false,
+      "applyNow": false,
+      "invariants": [
+        "existing_lead_id_preserved",
+        "project_context_stored_without_rewriting_live_lead",
+        "campaign_context_stored_without_rewriting_live_lead"
+      ]
+    }
+  ],
+  "accessMatrix": [
+    {
+      "object": "public.developments_compat",
+      "kind": "view",
+      "dataApiExposed": true,
+      "rlsRequired": false,
+      "sourceRlsRequired": true,
+      "securityInvoker": true,
+      "anonPrivileges": [],
+      "authenticatedPrivileges": ["select"],
+      "serviceRolePrivileges": ["select"],
+      "authenticatedPolicy": "underlying_crm_projects_tenant_policy",
+      "mutationPath": "none_read_only"
+    },
+    {
+      "object": "public.campaigns_compat",
+      "kind": "view",
+      "dataApiExposed": true,
+      "rlsRequired": false,
+      "sourceRlsRequired": true,
+      "securityInvoker": true,
+      "anonPrivileges": [],
+      "authenticatedPrivileges": ["select"],
+      "serviceRolePrivileges": ["select"],
+      "authenticatedPolicy": "underlying_marketing_campaigns_tenant_policy",
+      "mutationPath": "none_read_only"
+    },
+    {
+      "object": "public.integration_connections",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsRequired": true,
+      "sourceRlsRequired": false,
+      "securityInvoker": false,
+      "anonPrivileges": [],
+      "authenticatedPrivileges": ["select"],
+      "serviceRolePrivileges": ["select", "insert", "update", "delete"],
+      "authenticatedPolicy": "same_tenant_and_commercial_leadership",
+      "mutationPath": "server_only_redacted_metadata",
+      "containsSecrets": false
+    },
+    {
+      "object": "private.integration_credentials",
+      "kind": "table",
+      "dataApiExposed": false,
+      "rlsRequired": true,
+      "sourceRlsRequired": false,
+      "securityInvoker": false,
+      "anonPrivileges": [],
+      "authenticatedPrivileges": [],
+      "serviceRolePrivileges": ["select", "insert", "update", "delete"],
+      "authenticatedPolicy": "none",
+      "mutationPath": "trusted_server_only",
+      "containsSecrets": true
+    },
+    {
+      "object": "private.integration_outbox",
+      "kind": "table",
+      "dataApiExposed": false,
+      "rlsRequired": true,
+      "sourceRlsRequired": false,
+      "securityInvoker": false,
+      "anonPrivileges": [],
+      "authenticatedPrivileges": [],
+      "serviceRolePrivileges": ["select", "insert", "update", "delete"],
+      "authenticatedPolicy": "none",
+      "mutationPath": "trusted_worker_only",
+      "containsSecrets": false
+    },
+    {
+      "object": "private.dead_letter_events",
+      "kind": "table",
+      "dataApiExposed": false,
+      "rlsRequired": true,
+      "sourceRlsRequired": false,
+      "securityInvoker": false,
+      "anonPrivileges": [],
+      "authenticatedPrivileges": [],
+      "serviceRolePrivileges": ["select", "insert", "update", "delete"],
+      "authenticatedPolicy": "none",
+      "mutationPath": "trusted_worker_only",
+      "containsSecrets": false
+    },
+    {
+      "object": "public.meta_lead_sources",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsRequired": true,
+      "sourceRlsRequired": false,
+      "securityInvoker": false,
+      "anonPrivileges": [],
+      "authenticatedPrivileges": ["select"],
+      "serviceRolePrivileges": ["select", "insert", "update", "delete"],
+      "authenticatedPolicy": "same_tenant_and_can_view_lead",
+      "mutationPath": "server_ingestion_only",
+      "containsSecrets": false
+    },
+    {
+      "object": "public.meta_lead_events",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsRequired": true,
+      "sourceRlsRequired": false,
+      "securityInvoker": false,
+      "anonPrivileges": [],
+      "authenticatedPrivileges": ["select"],
+      "serviceRolePrivileges": ["select", "insert", "update", "delete"],
+      "authenticatedPolicy": "same_tenant_and_can_view_lead",
+      "mutationPath": "server_ingestion_only",
+      "containsSecrets": false
+    },
+    {
+      "object": "public.meta_conversion_configs",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsRequired": true,
+      "sourceRlsRequired": false,
+      "securityInvoker": false,
+      "anonPrivileges": [],
+      "authenticatedPrivileges": ["select"],
+      "serviceRolePrivileges": ["select", "insert", "update", "delete"],
+      "authenticatedPolicy": "same_tenant_and_director_or_admin",
+      "mutationPath": "server_admin_command_only",
+      "containsSecrets": false
+    },
+    {
+      "object": "public.meta_conversion_events",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsRequired": true,
+      "sourceRlsRequired": false,
+      "securityInvoker": false,
+      "anonPrivileges": [],
+      "authenticatedPrivileges": ["select"],
+      "serviceRolePrivileges": ["select", "insert", "update", "delete"],
+      "authenticatedPolicy": "same_tenant_and_commercial_leadership",
+      "mutationPath": "server_test_delivery_only",
+      "containsSecrets": false
+    }
+  ],
+  "functionHardening": {
+    "allowedSchemas": ["private"],
+    "securityDefinerOnlyWhenNecessary": true,
+    "emptySearchPathRequired": true,
+    "fullyQualifiedReferencesRequired": true,
+    "publicExecuteRevoked": true,
+    "anonExecuteRevoked": true,
+    "authenticatedExecuteMustBeExplicit": true,
+    "serviceRoleNeverAcceptedFromClient": true
+  },
+  "indexRequirements": [
+    "tenant_created_at_index_on_every_tenant_ledger",
+    "lead_id_index_on_every_lead_event_ledger",
+    "unique_organization_external_event_id",
+    "unique_organization_meta_event_id",
+    "outbox_pending_available_at_partial_index",
+    "foreign_key_indexes",
+    "rls_predicate_indexes"
+  ],
+  "deploymentAssertions": [
+    "canonical_sources_exist",
+    "compatibility_views_are_security_invoker",
+    "private_schema_not_exposed_to_data_api",
+    "anon_has_no_meta_privileges",
+    "authenticated_has_no_direct_meta_writes",
+    "service_role_is_server_only",
+    "tenant_cross_read_returns_zero_rows",
+    "security_definer_functions_use_empty_search_path",
+    "fresh_backup_and_restore_rehearsal_evidenced"
+  ],
+  "governance": {
+    "databaseMutation": false,
+    "migrationCreated": false,
+    "migrationApplication": false,
+    "realEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "personalDataInOutput": false,
+    "assetIdentifiersInOutput": false,
+    "secretsInOutput": false,
+    "buildExecuted": false
+  },
+  "officialReferences": [
+    "https://supabase.com/docs/guides/database/postgres/row-level-security",
+    "https://supabase.com/docs/guides/database/secure-data",
+    "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically"
+  ],
+  "nextPhase": {
+    "phase": 6,
+    "title": "Preflight executavel do bridge em ambiente isolado"
+  }
+}

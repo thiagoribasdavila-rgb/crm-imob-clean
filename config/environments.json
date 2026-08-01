@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "environments": {
+    "development": {
+      "requiresHttps": false,
+      "requiresHostinger": false,
+      "allowsBootstrap": true,
+      "allowsTestCredentials": true,
+      "externalWritesDefault": false
+    },
+    "homologation": {
+      "requiresHttps": true,
+      "requiresHostinger": true,
+      "allowsBootstrap": true,
+      "allowsTestCredentials": true,
+      "externalWritesDefault": false
+    },
+    "production": {
+      "requiresHttps": true,
+      "requiresHostinger": true,
+      "allowsBootstrap": false,
+      "allowsTestCredentials": false,
+      "externalWritesDefault": false
+    }
+  },
+  "requiredIdentityVariables": ["ATLAS_ENV", "ATLAS_ENVIRONMENT_ID", "ATLAS_DATABASE_ENVIRONMENT", "ATLAS_BASE_URL"],
+  "invariants": [
+    "ATLAS_DATABASE_ENVIRONMENT deve ser igual a ATLAS_ENV",
+    "ATLAS_ENVIRONMENT_ID deve ser exclusivo por instalação",
+    "homologation e production exigem HTTPS e Hostinger",
+    "production não aceita bootstrap ou credenciais de teste",
+    "escritas externas permanecem desativadas até homologação específica"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "phase": 49,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "efficient-continuous-delivery",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "deliveryContract": {
+    "dailyWorkInProgressLimit": 1,
+    "dailyBuilds": 0,
+    "releaseBuilds": 1,
+    "recurringPhasePackages": false,
+    "targetedRegressionRequired": true,
+    "phaseEvidenceRequired": true
+  },
+  "validation": {
+    "profile": "code-targeted",
+    "targetedChecks": [
+      "operational-access-readiness:check",
+      "post-login:check"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "priorityContract": {
+    "first": "operation-blockers",
+    "second": "lead-conversion",
+    "third": "commercial-productivity",
+    "later": ["ai-assistance", "governed-automation", "premium-experience"]
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "nextPhase": {
+    "phase": 50,
+    "name": "Jornada mínima de lead ponta a ponta",
+    "status": "planned"
+  }
+}

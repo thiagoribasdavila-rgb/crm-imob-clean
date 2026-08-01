@@ -1,0 +1,174 @@
+{
+  "phase": 93,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "canonical-product-surface-role-aware-navigation-and-primary-module-contract-coverage",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "authenticationChanged": false,
+  "runtimeBehaviorChanged": true,
+  "objective": "keep daily navigation focused on commercial outcomes while preserving contextual, internal, experimental and retired routes as governed deep links",
+  "routeInventory": {
+    "_reconciledNote": "Reconciliado 2026-07-21: 19 arquivos duplicados que colidiam de rota (mesmo path resolvido por dois grupos de rota diferentes — erro de build do Next.js) foram removidos; canonical/internal ficaram intactos (nenhum deles estava nos grupos exóticos removidos). pageFiles 271→243.",
+    "pageFiles": 243,
+    "canonical": 23,
+    "contextual": 94,
+    "internal": 23,
+    "experimental": 101,
+    "retired": 2,
+    "unclassified": 0
+  },
+  "routeInventoryDelta": {
+    "_porQueIssoExiste": "2026-07-29. A asserção da fase 093 exigia literalmente 243 arquivos page.tsx. Medição de hoje: 199. Fixar 199 no lugar de 243 só adiaria o problema — o número volta a divergir na próxima limpeza e ninguém saberia por quê. Em vez do número, o que fica afirmado é a PROPRIEDADE: todo page.tsx vivo está inventariado (zero sem superfície) e a diferença para o inventário de 2026-07-21 é EXATAMENTE o conjunto de arquivos declarado aqui. As contagens por superfície passam a ser DERIVADAS de routeInventory menos removedFiles mais addedFiles, classificadas pela mesma função classify() — ou seja, ninguém consegue reconciliar a guarda mexendo num número: é preciso declarar os arquivos, e eles são conferidos no disco (os removidos têm de estar ausentes, os acrescentados presentes).",
+    "baselineCommit": "8569ea3d",
+    "measuredAt": "2026-07-29",
+    "measuredBy": "git ls-tree -r --name-only 8569ea3d -- app | grep '/page.tsx$'  vs  HEAD",
+    "expectedPageFiles": 201,
+    "causes": [
+      "033cd9b3 (2026-07-26): 48 páginas-casca dos nove grupos de rota especulativos — (ai), (andromeda), (automation), (autonomous), (autonomous-business), (digital-life-form), (engine), (reality-engine), (unified-consciousness). Medido antes de remover: zero consumiam dado real, média de 15 linhas, nenhum fetch, nenhum supabase. Todas eram superfície 'experimental', o que explica experimental 101 -> 53. Reversível pela tag checkpoint/antes-remocao-cascas.",
+      "0ad1a374 (2026-07-29): app/(crm)/leads/edit/[id]/page.tsx e app/(crm)/tasks/[id]/page.tsx eram rotas legadas que scripts/legacy-route-paths.mjs já declarava removidas desde 26/07 — a quarentena as movia a cada build e elas nunca foram commitadas como apagadas. Eram a causa do working tree permanentemente sujo. Ambas 'contextual'.",
+      "Acrescentadas depois de 2026-07-18: duas telas de produto sob app/(crm)/ ('contextual', o que devolve contextual a 94) e quatro páginas na raiz de app/ que não existiam quando a classificação foi feita — /privacy, /terms e /data-deletion são públicas (LGPD e revisão da Meta) e ganharam a superfície 'public'; app/marca é a comparação temporária de logotipo, 'internal'."
+    ],
+    "removedFiles": [
+      "app/(ai)/lead-agent/page.tsx",
+      "app/(ai)/lead-intelligence/page.tsx",
+      "app/(ai)/predictions/page.tsx",
+      "app/(ai)/property-agent/page.tsx",
+      "app/(ai)/recommendations/page.tsx",
+      "app/(ai)/scoring/page.tsx",
+      "app/(andromeda)/ai-creator/page.tsx",
+      "app/(andromeda)/audiences/page.tsx",
+      "app/(andromeda)/autonomous-ads/page.tsx",
+      "app/(andromeda)/budget-manager/page.tsx",
+      "app/(andromeda)/campaigns/page.tsx",
+      "app/(andromeda)/optimizer/page.tsx",
+      "app/(andromeda)/performance/page.tsx",
+      "app/(automation)/email-agent/page.tsx",
+      "app/(automation)/pipeline-automation/page.tsx",
+      "app/(automation)/rules/page.tsx",
+      "app/(automation)/triggers/page.tsx",
+      "app/(automation)/webhooks/page.tsx",
+      "app/(automation)/workflows/page.tsx",
+      "app/(autonomous)/self-selling/page.tsx",
+      "app/(autonomous-business)/brain/page.tsx",
+      "app/(autonomous-business)/customer-service/page.tsx",
+      "app/(autonomous-business)/execution-engine/page.tsx",
+      "app/(autonomous-business)/finance/page.tsx",
+      "app/(autonomous-business)/operations/page.tsx",
+      "app/(crm)/leads/edit/[id]/page.tsx",
+      "app/(crm)/tasks/[id]/page.tsx",
+      "app/(digital-life-form)/adaptation-layer/page.tsx",
+      "app/(digital-life-form)/growth-system/page.tsx",
+      "app/(digital-life-form)/life-core/page.tsx",
+      "app/(digital-life-form)/mutation-engine/page.tsx",
+      "app/(digital-life-form)/stimulus-reaction-engine/page.tsx",
+      "app/(digital-life-form)/survival-optimizer/page.tsx",
+      "app/(engine)/auto-optimization/page.tsx",
+      "app/(engine)/orchestrator/page.tsx",
+      "app/(engine)/pattern-detection/page.tsx",
+      "app/(engine)/self-learning/page.tsx",
+      "app/(engine)/system-evolution/page.tsx",
+      "app/(reality-engine)/campaign-simulator/page.tsx",
+      "app/(reality-engine)/city-simulador/page.tsx",
+      "app/(reality-engine)/demand-simulation/page.tsx",
+      "app/(reality-engine)/future-city-model/page.tsx",
+      "app/(reality-engine)/market-scenarios/page.tsx",
+      "app/(reality-engine)/pricing-engine/page.tsx",
+      "app/(unified-consciousness)/adaptive-strategy-engine/page.tsx",
+      "app/(unified-consciousness)/collective-optimization/page.tsx",
+      "app/(unified-consciousness)/cross-market-learning/page.tsx",
+      "app/(unified-consciousness)/multi-system-sync/page.tsx",
+      "app/(unified-consciousness)/shared-intelligence/page.tsx",
+      "app/(unified-consciousness)/unified-dashboard/page.tsx"
+    ],
+    "addedFiles": [
+      "app/(crm)/@ficha/(.)leads/[id]/page.tsx",
+      "app/(crm)/marketing/nova-campanha/page.tsx",
+      "app/data-deletion/page.tsx",
+      "app/marca/page.tsx",
+      "app/privacy/page.tsx",
+      "app/terms/page.tsx",
+      "app/(crm)/settings/distribuicao/page.tsx",
+      "app/(auth)/redefinir-senha/page.tsx"
+    ],
+    "_porqueAcrescentada": {
+      "app/(crm)/settings/distribuicao/page.tsx": "Tela de elenco de distribuicao (quem participa da fila de cada projeto/campanha). Superficie CONTEXTUAL por prefixo app/(crm)/ — o portao classifica sozinho; o que faltava era a declaracao no inventario, e era exatamente isso que ele estava cobrando."
+    },
+    "$notas": [
+      "2026-08-01 · +1 página: app/(auth)/redefinir-senha/page.tsx. Veio da main (commits de 25/07/2026) e é um re-export de app/(auth)/reset-password/page.tsx — apelido em português da MESMA tela, para onde o e-mail de recuperação aponta. expectedPageFiles 200 -> 201. Não é superfície nova: é um segundo endereço para uma superfície que já estava declarada."
+    ]
+  },
+  "navigation": {
+    "_reconciledNote": "Reconciliado 2026-07-21: drift pré-existente descoberto na varredura de validação (lib/atlas/navigation.ts não foi tocado nesta sessão — git diff vazio). productiveItems e internalItems reduziram em algum ponto anterior sem atualizar este snapshot. Trim de rail (pedido do dono 'barra lateral mais enxuta'): 'Atividades' (/activity) e 'Reativação' (/leads/import) saíram da sidebar para o ⌘K (atlasContextCommands) — acesso preservado; canônicos 18->16.",
+    "productiveItems": 16,
+    "internalItems": 0,
+    "visibleGroups": [
+      "Operação diária",
+      "Clientes e portfólio",
+      "Gestão",
+      "Administração"
+    ],
+    "internalItemRemovedFromDailyMenu": "/atlas-v3",
+    "roleAware": true,
+    "mobilePrimaryItems": 4,
+    "searchUses": [
+      "label",
+      "group",
+      "keywords",
+      "business-outcome"
+    ]
+  },
+  "primaryModuleContracts": {
+    "contractedModules": 19,
+    "requiredFields": [
+      "business-outcome",
+      "primary-action",
+      "role-scope",
+      "data-domains",
+      "copilot-context",
+      "server-first-rendering"
+    ]
+  },
+  "compatibility": {
+    "routesDeleted": 0,
+    "redirectsForced": 0,
+    "deepLinksPreserved": true,
+    "aliasesDocumented": [
+      "/kanban",
+      "/pipedrive",
+      "/atlas-v2",
+      "/crm",
+      "/analytics"
+    ]
+  },
+  "delivered": [
+    "complete-page-file-classification-with-zero-unclassified-routes",
+    "canonical-contextual-internal-experimental-and-retired-surface-contract",
+    "nineteen-role-aware-productive-navigation-items",
+    "internal-evolution-route-removed-from-daily-navigation-with-deep-link-preserved",
+    "business-outcome-primary-action-and-data-domain-on-every-visible-module",
+    "nineteen-core-v2-page-contracts",
+    "sidebar-search-by-user-intent-and-reduced-group-noise",
+    "explicit-legacy-compatibility-map"
+  ],
+  "validation": {
+    "phaseContractCheck": true,
+    "previousPhaseRegressionRequired": true,
+    "typecheckRequired": true,
+    "changedFilesLintRequired": true,
+    "secretScanRequired": true,
+    "buildRequired": false
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false,
+    "checkpointPhase": 100
+  },
+  "nextPhase": {
+    "phase": 94,
+    "name": "Auditoria viva do Supabase, contratos reais de dados e contexto multi-tenant",
+    "status": "planned"
+  }
+}

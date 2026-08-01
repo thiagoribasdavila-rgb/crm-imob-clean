@@ -1,10 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
+import { resolveAtlasNavigationAlias } from "@/lib/atlas/navigation-aliases";
 
-export default function ChatPage() {
-  return (
-    <div>
-      <h1>Chat CRM</h1>
-      <p>Conversas com leads</p>
-    </div>
-  );
+export default function ChatCompatibilityPage() {
+  redirect(resolveAtlasNavigationAlias("/chat"));
 }

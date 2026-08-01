@@ -1,0 +1,31 @@
+{
+  "phase": 35,
+  "migration": "supabase/migrations/20260717203001_phase_35_follow_up_sla_cycles.sql",
+  "analytics": "app/api/v1/analytics/team-sla/route.ts",
+  "dashboard": "app/(crm)/command-center/page.tsx",
+  "sourceOfTruth": "leads.next_action_at",
+  "windowDays": 30,
+  "statuses": [
+    "scheduled",
+    "completed",
+    "recovered",
+    "superseded",
+    "cancelled"
+  ],
+  "validActivities": [
+    "call",
+    "email",
+    "whatsapp",
+    "visit",
+    "meeting",
+    "message",
+    "contact"
+  ],
+  "metrics": [
+    "followUpsMeasured",
+    "followUpComplianceRate",
+    "recoveredFollowUps",
+    "averageFollowUpMinutes"
+  ],
+  "dashboardNota": "O painel gerencial mudou de casa: /dashboard virou redirect para /command-center na fusão Início→Sala de comando. O contrato apontava para o arquivo esvaziado, então o indicador 'não percorria API e painel' por endereço errado, não por ausência."
+}

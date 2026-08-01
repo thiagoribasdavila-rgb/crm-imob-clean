@@ -1,0 +1,9 @@
+{
+  "phase": 29,
+  "endpoint": "app/api/v1/leads/[id]/timeline/route.ts",
+  "page": "app/(crm)/leads/[id]/timeline/page.tsx",
+  "categories": ["change", "contact", "transfer", "ai", "proposal", "external"],
+  "canonicalSources": ["activities", "messages", "lead_transfer_items", "lead_transfer_batches", "campaign_events", "commercial_simulations"],
+  "privacyControls": ["no_message_content", "no_external_identifier", "no_raw_payload"],
+  "scopeControls": ["requireApiIdentity", "requireLeadAccess", "organization_id", "hierarchicalRls"]
+}

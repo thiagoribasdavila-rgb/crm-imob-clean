@@ -1,0 +1,93 @@
+{
+  "phase": 35,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "role-aware-decision-first-command-center",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "clientPreferenceChanged": false,
+  "dataFetchingChanged": false,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": false,
+  "dashboardContract": {
+    "layoutAttribute": "decision-first",
+    "defaultMode": "focus",
+    "detailMode": "complete",
+    "primaryDecisionVisible": true,
+    "primaryDecisionFields": [
+      "status",
+      "title",
+      "evidence",
+      "action"
+    ],
+    "visiblePriorityLimit": 3,
+    "syntheticHealthScoreRemoved": true,
+    "extendedPanelsPreserved": true
+  },
+  "roleResolution": {
+    "director": "organization risks and revenue decisions",
+    "superintendent": "direct manager interventions",
+    "manager": "direct broker interventions",
+    "broker": "owned lead priorities",
+    "crossTenantAggregationAdded": false,
+    "parallelTeamExposureAdded": false
+  },
+  "focusMode": {
+    "moduleDiagnosticsHidden": true,
+    "roleDeepDivesHidden": true,
+    "historicalAnalyticsHidden": true,
+    "decisionBriefPreserved": true,
+    "roleActionQueuePreserved": true,
+    "recoverableWarningsPreserved": true
+  },
+  "aiPolicy": {
+    "explanationOnly": true,
+    "automaticExecutionAdded": false,
+    "humanApprovalPreserved": true,
+    "contextUsesVisibleScopeOnly": true
+  },
+  "truthPolicy": {
+    "inventedHealthPercentagePublished": false,
+    "runtimeProductivityClaimPublished": false,
+    "rolePriorityCountPresentedAsPerformanceMetric": false,
+    "forecastGuaranteePublished": false
+  },
+  "accessibility": {
+    "primaryActionIsNativeLink": true,
+    "refreshHasAccessibleName": true,
+    "liveDecisionRegion": true,
+    "nativeModeButtonsPreserved": true,
+    "reducedMotionPolicyPreserved": true
+  },
+  "structuralBaseline": {
+    "dashboardModesBefore": 2,
+    "dashboardModesAfter": 2,
+    "roleSpecificPrimaryQueuesBefore": 2,
+    "roleSpecificPrimaryQueuesAfter": 4,
+    "syntheticPercentagesRemoved": 1,
+    "newStateOrEffectAdded": false,
+    "runtimeDecisionTimeMeasured": false
+  },
+  "safetyPolicy": {
+    "databaseWrite": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "routesPreserved": true
+  },
+  "exitCriteria": {
+    "firstViewportLeadsWithDecision": true,
+    "allCommercialRolesReceiveScopedQueue": true,
+    "completeAnalysisRemainsAvailable": true,
+    "technicalModuleHealthMovedToDetail": true,
+    "fakeMetricRemoved": true,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 36,
+    "name": "Melhorar leads",
+    "status": "planned"
+  }
+}

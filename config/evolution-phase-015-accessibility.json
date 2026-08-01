@@ -1,0 +1,13 @@
+{
+  "phase": 15,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "keyboardFocusTrap": true,
+  "escapeClosesMobileMenu": true,
+  "focusRestoredAfterClose": true,
+  "routeSectionAnnounced": true,
+  "skipLinkPreserved": true,
+  "progressSemanticsPreserved": true,
+  "contrastPreferences": ["prefers-contrast", "forced-colors"],
+  "colorOnlyActiveState": false
+}

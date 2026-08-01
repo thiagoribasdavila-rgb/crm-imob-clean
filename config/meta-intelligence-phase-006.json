@@ -1,0 +1,80 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 6,
+  "title": "Preflight executavel do bridge em ambiente isolado",
+  "mode": "isolated_snapshot_preflight",
+  "status": "verified",
+  "safeToApply": false,
+  "inputContract": {
+    "format": "atlas_meta_schema_snapshot_v1",
+    "defaultFixture": "config/fixtures/meta-bridge-isolated-snapshot.json",
+    "acceptsRemoteConnection": false,
+    "acceptsServiceRoleKey": false,
+    "acceptsPersonalData": false,
+    "unknownStateBehavior": "fail_closed"
+  },
+  "checks": [
+    "canonical_sources_exist",
+    "duplicate_canonical_tables_absent",
+    "target_objects_exist",
+    "data_api_exposure_matches_contract",
+    "explicit_grants_match_contract",
+    "rls_enabled_on_exposed_tables",
+    "compatibility_views_use_security_invoker",
+    "security_definer_functions_are_private",
+    "security_definer_search_path_is_empty",
+    "public_and_anon_execute_are_revoked",
+    "required_indexes_are_present",
+    "cross_tenant_reads_return_zero_rows"
+  ],
+  "requiredIsolationScenarios": [
+    "anonymous_meta_access_denied",
+    "broker_cross_tenant_read_denied",
+    "broker_same_tenant_visible_lead_allowed",
+    "broker_hidden_lead_denied",
+    "leadership_same_tenant_reporting_allowed",
+    "authenticated_direct_write_denied"
+  ],
+  "negativeSelfTests": [
+    "missing_required_object",
+    "rls_disabled",
+    "anon_select_granted",
+    "authenticated_insert_granted",
+    "security_invoker_disabled",
+    "security_definer_search_path_not_empty",
+    "cross_tenant_rows_visible"
+  ],
+  "releaseGate": {
+    "fixtureMustPass": true,
+    "allNegativeSelfTestsMustFail": true,
+    "realSnapshotRequiredBeforeMigration": true,
+    "stagingCloneRequiredBeforeMigration": true,
+    "databaseMutationAllowed": false,
+    "migrationApplicationAllowed": false
+  },
+  "governance": {
+    "databaseMutation": false,
+    "migrationCreated": false,
+    "migrationApplication": false,
+    "remoteDatabaseConnection": false,
+    "serviceRoleUsed": false,
+    "realEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "personalDataInOutput": false,
+    "assetIdentifiersInOutput": false,
+    "secretsInOutput": false,
+    "buildExecuted": false
+  },
+  "officialReferences": [
+    "https://supabase.com/docs/guides/database/testing",
+    "https://supabase.com/docs/guides/local-development/testing/overview",
+    "https://supabase.com/docs/guides/api/securing-your-api",
+    "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically"
+  ],
+  "nextPhase": {
+    "phase": 7,
+    "title": "Coletor read-only do snapshot real e comparacao com o preflight"
+  }
+}

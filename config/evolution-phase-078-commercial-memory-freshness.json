@@ -1,0 +1,51 @@
+{
+  "phase": 78,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "factual-recency-and-staleness-for-supervised-commercial-memory",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "make-the-age-of-the-latest-human-confirmed-commercial-outcome-explicit-without-presenting-recency-as-quality-conversion-or-prediction",
+  "changes": [
+    "create-a-typed-current-window-freshness-contract",
+    "reuse-the-latest-human-confirmed-outcome-per-task-from-the-filtered-memory-sample",
+    "classify-memory-as-empty-current-attention-or-stale-using-transparent-fixed-thresholds",
+    "show-the-latest-observed-time-age-and-current-window-fact-count",
+    "state-that-recency-does-not-measure-quality-intention-conversion-or-sale-probability",
+    "keep-the-period-filter-organization-hierarchy-rls-and-no-store-contracts",
+    "avoid-new-queries-model-calls-database-writes-schema-changes-and-automatic-commercial-actions"
+  ],
+  "thresholds": {
+    "currentMaxHours": 72,
+    "staleAfterHours": 168,
+    "interpretation": "operational-age-signal-only"
+  },
+  "validation": {
+    "targetedChecks": [
+      "commercial-memory-freshness:check",
+      "commercial-outcome-evidence:check",
+      "commercial-outcome-filter:check",
+      "commercial-outcome-period:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Fixed operational thresholds show only how old the latest observed fact is. They do not prove that the whole portfolio is current and must never be interpreted as a performance or data-quality score.",
+  "nextPhase": {
+    "phase": 79,
+    "name": "Recência contextual por projeto e origem",
+    "status": "planned"
+  }
+}

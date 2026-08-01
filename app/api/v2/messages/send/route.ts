@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireApiIdentity } from "@/lib/security/api-auth";
+import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { normalizeEmail, normalizePhoneE164 } from "@/lib/atlas/data-contracts";
+import { claimIdempotency, completeIdempotency, enforceDistributedRateLimit, requestFingerprint } from "@/lib/security/abuse-protection";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,8 @@ type Payload = {
 };
 
 export async function POST(request: Request) {
+  const distributed = await enforceDistributedRateLimit(request, { scope: "v2-message-send", limit: 30, windowSeconds: 60 });
+  if (!distributed.allowed) return distributed.response;
   const rate = checkRateLimit(clientKey(request, "v2-message-send"), { limit: 30, windowMs: 60_000 });
   if (!rate.allowed) {
     return NextResponse.json(
@@ -36,11 +40,14 @@ export async function POST(request: Request) {
     if (!payload.conversationId || !payload.channel || !payload.recipient || !payload.content?.trim()) {
       return NextResponse.json({ error: "conversationId, channel, recipient e content são obrigatórios." }, { status: 400 });
     }
+    const requestHash = requestFingerprint(payload);
+    const idempotency = await claimIdempotency({ organizationId: identity.organizationId, scope: "v2.message.send", key: request.headers.get("idempotency-key"), requestHash });
+    if (idempotency.state !== "claimed") return idempotency.response;
 
     const admin = getSupabaseAdmin();
     const { data: conversation, error: conversationError } = await admin
       .from("conversations")
-      .select("id,organization_id")
+      .select("id,organization_id,lead_id")
       .eq("id", payload.conversationId)
       .eq("organization_id", identity.organizationId)
       .single();
@@ -48,8 +55,36 @@ export async function POST(request: Request) {
     if (conversationError || !conversation) {
       return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 });
     }
+    if (conversation.lead_id) await requireLeadAccess(identity, conversation.lead_id);
 
-    const requiresApproval = payload.channel !== "email";
+    if (conversation.lead_id && ["whatsapp", "email"].includes(payload.channel)) {
+      const { data: eligibility, error: eligibilityError } = await admin.rpc("check_lead_contact_eligibility", { p_organization_id: identity.organizationId, p_lead_id: conversation.lead_id, p_channel: payload.channel });
+      const decision = eligibility as { eligible?: boolean; reason?: string } | null;
+      if (eligibilityError || !decision?.eligible) return NextResponse.json({ error: "Contato bloqueado pela preferência ou consentimento da lead.", reason: decision?.reason || "eligibility_unavailable" }, { status: 409 });
+    }
+
+    const normalizedRecipient = payload.channel === "whatsapp" ? normalizePhoneE164(payload.recipient) : payload.channel === "email" ? normalizeEmail(payload.recipient) : payload.recipient.trim();
+    if (!normalizedRecipient) return NextResponse.json({ error: "Destinatário inválido para o canal selecionado." }, { status: 400 });
+    if (payload.channel === "whatsapp") {
+      const { data: suppression } = await admin.from("messaging_suppressions").select("id").eq("organization_id", identity.organizationId).eq("channel", "whatsapp").eq("recipient", normalizedRecipient).maybeSingle();
+      if (suppression) return NextResponse.json({ error: "Este contato solicitou a interrupção das mensagens no WhatsApp." }, { status: 409 });
+    }
+
+    // O worker de saída só entrega WhatsApp hoje. E-mail entrava na fila (e,
+    // pior, SEM aprovação humana), o worker o rejeitava com "canal não
+    // conectado", e após 5 tentativas a mensagem morria em dead_letter — no CRM
+    // ela ficava "queued" para sempre, parecendo enviada. Recusa honesta na
+    // porta é o único comportamento verdadeiro até o canal existir de fato.
+    if (payload.channel === "email") {
+      return NextResponse.json({
+        error: "O envio de e-mail pelo Atlas ainda não está conectado. Use o rascunho da tela da lead (botão copiar/mailto) até o canal ser ativado.",
+        code: "EMAIL_CHANNEL_NOT_CONNECTED",
+      }, { status: 501 });
+    }
+
+    // Com o e-mail recusado na porta, todo canal que chega aqui exige aprovação
+    // humana — era exatamente o e-mail que furava essa regra por engano.
+    const requiresApproval = true;
     const { data: message, error: messageError } = await admin
       .from("messages")
       .insert({
@@ -57,7 +92,7 @@ export async function POST(request: Request) {
         conversation_id: payload.conversationId,
         direction: "outbound",
         channel: payload.channel,
-        recipient: payload.recipient,
+        recipient: normalizedRecipient,
         content: payload.content.trim(),
         status: "queued",
       })
@@ -94,14 +129,31 @@ export async function POST(request: Request) {
       requiresApproval,
     });
 
+    const responseBody = { id: message.id, status: requiresApproval ? "pending_approval" : "queued" };
+    await completeIdempotency({ organizationId: identity.organizationId, scope: "v2.message.send", key: idempotency.key, requestHash, status: 202, body: responseBody });
     return NextResponse.json(
-      { id: message.id, status: requiresApproval ? "pending_approval" : "queued" },
+      responseBody,
       { status: 202, headers: { "X-RateLimit-Remaining": String(rate.remaining) } },
     );
   } catch (error) {
+    // Mandar mensagem para a lead de outra pessoa JÁ era recusado — esta rota
+    // chama `requireLeadAccess`, que desde o commit 722ed660 aplica o piso de
+    // carteira. Mas a recusa chegava errada: a frase "Esta lead está com outra
+    // pessoa" não casa com NENHUMA das palavras da régua abaixo, então caía no
+    // `: 500` e ainda entrava no log como `message.queue_failed` nível ERROR.
+    //
+    // Recusa de autorização virando "o servidor quebrou" tem custo dos dois
+    // lados: o corretor acha que é falha e tenta de novo, e o log de erro se
+    // enche de eventos que não são erro — escondendo os que são.
+    if (ehLeadForaDaCarteira(error)) {
+      return NextResponse.json(
+        { error: error.message, code: "MESSAGE_LEAD_OUT_OF_SCOPE" },
+        { status: 403 },
+      );
+    }
     logger.error("message.queue_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao preparar mensagem.";
-    const unauthorized = /token|sessão|autoriz/i.test(message);
+    const unauthorized = /token|sessão|autoriz|organiza|escopo/i.test(message);
     return NextResponse.json({ error: message }, { status: unauthorized ? 401 : 500 });
   }
 }

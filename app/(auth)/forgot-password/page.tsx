@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 const recoveryMessages: Record<string, string> = {
   recovery_link_invalid: "O link de recuperação é inválido ou expirou. Solicite um novo link.",
@@ -20,7 +19,10 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get("error");
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("error");
+    const suggestedEmail = params.get("email")?.trim().toLowerCase() || "";
+    if (suggestedEmail.includes("@")) setEmail(suggestedEmail);
     if (code) {
       setRouteError(
         recoveryMessages[code] || "Não foi possível concluir a recuperação. Solicite um novo link.",
@@ -42,24 +44,16 @@ export default function ForgotPasswordPage() {
     setError("");
 
     try {
-      const publicOrigin =
-        window.location.hostname === "atlasaios.com.br" ||
-        window.location.hostname === "www.atlasaios.com.br"
-          ? "https://atlasaios.com.br"
-          : window.location.origin;
-      const redirectTo = `${publicOrigin}/auth/callback?next=${encodeURIComponent("/redefinir-senha")}`;
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo,
-      });
-
-      if (resetError) {
-        const message = resetError.message.toLowerCase();
+      const response = await fetch("/api/auth/password-recovery", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail }) });
+      const body = await response.json();
+      if (!response.ok) {
+        const message = String(body.error || "").toLowerCase();
         if (message.includes("rate") || message.includes("too many")) {
           setError("Muitas solicitações em sequência. Aguarde alguns minutos antes de tentar novamente.");
         } else if (message.includes("network") || message.includes("fetch")) {
           setError("Não foi possível conectar ao Atlas. Verifique sua internet e tente novamente.");
         } else {
-          setError(`Não foi possível enviar o link agora. ${resetError.message}`);
+          setError(body.error || "Não foi possível enviar o link agora.");
         }
         return;
       }
@@ -80,7 +74,7 @@ export default function ForgotPasswordPage() {
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-400/15 font-black text-sky-300">A</span>
           <div>
             <p className="text-xl font-black">ATLAS <span className="text-sky-400">AI</span></p>
-            <p className="text-[9px] uppercase tracking-[.2em] text-slate-500">Recuperação segura</p>
+            <p className="text-rotulo font-medium text-slate-500">Recuperação segura</p>
           </div>
         </div>
 
@@ -101,7 +95,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
             <label className="block">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-[.12em] text-slate-400">E-mail corporativo</span>
+              <span className="mb-2 block text-xs font-medium text-slate-400">E-mail corporativo</span>
               <input required type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); if (error) setError(""); }} className="w-full px-4 py-3.5" placeholder="voce@empresa.com" />
             </label>
             {error ? <p role="alert" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</p> : null}

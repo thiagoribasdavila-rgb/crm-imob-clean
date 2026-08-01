@@ -1,0 +1,71 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 2,
+  "title": "Permissoes, propriedade e destinos de dados",
+  "mode": "read_only",
+  "statusVocabulary": [
+    "configured",
+    "permission_granted",
+    "asset_accessible",
+    "destination_ready",
+    "operational_proof",
+    "blocked",
+    "not_verified"
+  ],
+  "permissionContract": {
+    "adsRead": {
+      "required": ["ads_read"],
+      "purpose": "Leitura de conta, campanhas e desempenho sem mutacao"
+    },
+    "leadRetrieval": {
+      "required": [
+        "leads_retrieval",
+        "pages_show_list",
+        "pages_read_engagement"
+      ],
+      "setupRequired": ["pages_manage_metadata"],
+      "conditional": ["ads_management", "business_management"],
+      "purpose": "Descoberta de Paginas, formularios, assinatura de webhook e recuperacao de leads"
+    },
+    "conversionDelivery": {
+      "required": [],
+      "purpose": "Token dedicado, dataset acessivel e configuracao CRM autorizada"
+    }
+  },
+  "ownershipProof": {
+    "adAccount": "successful_read_only_account_request",
+    "pages": "every_configured_page_accessible",
+    "forms": "every_configured_form_visible_under_its_page",
+    "dataset": "every_enabled_dataset_accessible"
+  },
+  "dataDestinations": [
+    "meta_lead_sources",
+    "meta_lead_events",
+    "leads_attribution_contract",
+    "lead_attribution_touches",
+    "meta_conversion_configs",
+    "meta_conversion_events",
+    "integration_outbox",
+    "meta_andromeda_learning_cycles"
+  ],
+  "operationalProof": {
+    "leadIngestion": "signed_webhook_plus_imported_real_lead",
+    "conversionDelivery": "single_deduplicated_test_event_received_by_meta",
+    "learningEvidence": "consented_attributed_deep_crm_outcomes"
+  },
+  "governance": {
+    "secretsInOutput": false,
+    "assetIdentifiersInOutput": false,
+    "personalDataInOutput": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "databaseMutation": false,
+    "migrationApplication": false,
+    "directorDecisionRequired": true
+  },
+  "nextPhase": {
+    "phase": 3,
+    "title": "Contrato de eventos CRM e deduplicacao"
+  }
+}

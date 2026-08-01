@@ -1,0 +1,105 @@
+{
+  "format": "atlas_meta_schema_snapshot_v1",
+  "environment": "remote_read_only_snapshot",
+  "postgresMajor": 17,
+  "exposure": {
+    "schemas": ["public"],
+    "verifiedFromDataApiSettings": false,
+    "source": "default_public_assumption"
+  },
+  "objects": [
+    {
+      "name": "public.crm_projects",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "sourceRlsEnabled": null,
+      "securityInvoker": false,
+      "grants": {
+        "anon": ["delete", "insert", "select", "update"],
+        "authenticated": ["delete", "insert", "select", "update"],
+        "service_role": ["delete", "insert", "select", "update"]
+      },
+      "indexes": [],
+      "policies": [
+        {"command": "DELETE", "roles": ["authenticated"], "hasUsing": true, "hasWithCheck": false, "tenantGuard": true, "authUidCheck": false},
+        {"command": "INSERT", "roles": ["authenticated"], "hasUsing": false, "hasWithCheck": true, "tenantGuard": true, "authUidCheck": false},
+        {"command": "SELECT", "roles": ["authenticated"], "hasUsing": true, "hasWithCheck": false, "tenantGuard": true, "authUidCheck": false},
+        {"command": "UPDATE", "roles": ["authenticated"], "hasUsing": true, "hasWithCheck": true, "tenantGuard": true, "authUidCheck": false}
+      ]
+    },
+    {
+      "name": "public.leads",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "sourceRlsEnabled": null,
+      "securityInvoker": false,
+      "grants": {
+        "anon": ["delete", "insert", "select", "update"],
+        "authenticated": ["delete", "insert", "select", "update"],
+        "service_role": ["delete", "insert", "select", "update"]
+      },
+      "indexes": [],
+      "policies": [
+        {"command": "SELECT", "roles": ["authenticated"], "hasUsing": true, "hasWithCheck": false, "tenantGuard": true, "authUidCheck": false},
+        {"command": "UPDATE", "roles": ["authenticated"], "hasUsing": true, "hasWithCheck": true, "tenantGuard": true, "authUidCheck": false}
+      ]
+    },
+    {
+      "name": "public.marketing_campaigns",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "sourceRlsEnabled": null,
+      "securityInvoker": false,
+      "grants": {
+        "anon": ["delete", "insert", "select", "update"],
+        "authenticated": ["delete", "insert", "select", "update"],
+        "service_role": ["delete", "insert", "select", "update"]
+      },
+      "indexes": [],
+      "policies": [
+        {"command": "DELETE", "roles": ["authenticated"], "hasUsing": true, "hasWithCheck": false, "tenantGuard": true, "authUidCheck": false},
+        {"command": "INSERT", "roles": ["authenticated"], "hasUsing": false, "hasWithCheck": true, "tenantGuard": true, "authUidCheck": false},
+        {"command": "SELECT", "roles": ["authenticated"], "hasUsing": true, "hasWithCheck": false, "tenantGuard": true, "authUidCheck": false},
+        {"command": "UPDATE", "roles": ["authenticated"], "hasUsing": true, "hasWithCheck": true, "tenantGuard": true, "authUidCheck": false}
+      ]
+    },
+    {
+      "name": "public.profiles",
+      "kind": "table",
+      "dataApiExposed": true,
+      "rlsEnabled": true,
+      "sourceRlsEnabled": null,
+      "securityInvoker": false,
+      "grants": {
+        "anon": ["delete", "insert", "select", "update"],
+        "authenticated": ["delete", "insert", "select", "update"],
+        "service_role": ["delete", "insert", "select", "update"]
+      },
+      "indexes": [],
+      "policies": [
+        {"command": "SELECT", "roles": ["authenticated"], "hasUsing": true, "hasWithCheck": false, "tenantGuard": true, "authUidCheck": false}
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "name": "private.current_organization_id",
+      "securityDefiner": true,
+      "searchPath": "public, auth",
+      "publicExecute": false,
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "authUidCheck": true
+    }
+  ],
+  "isolationScenarios": [],
+  "collection": {
+    "catalogOnly": true,
+    "businessRowsRead": false,
+    "personalDataRead": false,
+    "secretsRead": false
+  }
+}

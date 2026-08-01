@@ -1,0 +1,56 @@
+{
+  "phase": 86,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "supervised-commercial-context-gap-prevention",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "show-the-current-project-and-source-before-human-outcome-confirmation-prevent-stale-context-and-allow-missing-values-without-inventing-data-or-blocking-the-broker",
+  "changes": [
+    "add-one-small-typed-commercial-context-preview-contract",
+    "reuse-project-and-source-already-loaded-by-the-daily-queue",
+    "propagate-current-context-to-open-tasks-and-memory-gaps",
+    "show-project-and-source-before-the-existing-human-confirmation",
+    "label-missing-dimensions-without-disabling-outcome-recording",
+    "link-the-existing-lead-workspace-for-optional-manual-correction",
+    "send-the-reviewed-context-with-the-confirmed-outcome",
+    "reject-stale-context-and-return-the-new-preview-for-human-reconfirmation",
+    "snapshot-only-the-server-confirmed-values",
+    "avoid-schema-changes-extra-fetches-automatic-fill-scores-rankings-predictions-and-silent-writes"
+  ],
+  "prevention": {
+    "dimensions": ["project", "source"],
+    "previewMoment": "before-outcome-save",
+    "missingContextBlocksRecording": false,
+    "humanReviewRequired": true,
+    "automaticFill": false,
+    "staleContextRequiresReconfirmation": true,
+    "historicalSnapshot": "server-confirmed-at-save"
+  },
+  "validation": {
+    "targetedChecks": [
+      "commercial-context-gap-prevention:check",
+      "commercial-context-gap-queue:check",
+      "supervised-commercial-context-snapshot:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "changed-files-lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Project or source may change after the queue is loaded. The write therefore compares the reviewed preview with the server value and requests a new human confirmation instead of silently saving a different context.",
+  "nextPhase": {
+    "phase": 87,
+    "name": "Correção contextual rápida e governada no Lead 360",
+    "status": "planned"
+  }
+}

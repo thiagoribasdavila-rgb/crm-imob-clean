@@ -1,0 +1,1 @@
+{"phase":96,"periods":["day","week","month"],"dimensions":["campaign","development","developer"],"source_of_truth":"crm","governance":{"no_pii":true,"facts_and_alerts_separated":true,"director_review_required":true,"automatic_decision":false}}

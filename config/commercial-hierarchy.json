@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "accessRoles": ["admin", "director_decisor", "director", "broker"],
+  "roles": ["director", "superintendent", "manager", "broker"],
+  "visibility": {
+    "director": "entire-organization",
+    "superintendent": "self-and-descendants",
+    "manager": "self-and-direct-brokers",
+    "broker": "self-and-owned-leads"
+  },
+  "requiredSupervisor": {
+    "director": null,
+    "superintendent": "director",
+    "manager": "superintendent",
+    "broker": "manager"
+  },
+  "authorizationSource": "profiles-table-under-rls",
+  "userMetadataIsAuthorizationSource": false,
+  "serviceRoleLocation": "server-only",
+  "inviteRequiresEmailConfirmation": true,
+  "changesAreAudited": true,
+  "selfManagedFields": ["full_name", "avatar_url", "phone", "creci", "bio"],
+  "serverManagedFields": ["organization_id", "role", "access_role", "commercial_role", "reports_to", "active"]
+}

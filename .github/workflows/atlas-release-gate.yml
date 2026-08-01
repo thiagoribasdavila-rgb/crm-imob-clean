@@ -9,6 +9,10 @@ on:
     branches:
       - atlas-v3-auth
       - atlas-v3-build
+      # O trabalho acontece em `claude/**` e o CI nunca disparava nele: os
+      # gatilhos listavam tres branches, nenhuma delas a de entrega. Um portao
+      # que so roda onde ninguem trabalha e um portao que nao existe.
+      - 'claude/**'
 
 concurrency:
   group: atlas-v3-${{ github.ref }}
@@ -19,7 +23,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      # ── POR QUE O CI RECEBIA VAZIO (medido em 01/08/2026) ──────────────────
+      #
+      # Não era environment não declarado, nem fork, nem reusable workflow sem
+      # repasse. Era mais simples e mais invisível: `gh api .../actions/secrets`
+      # devolvia **total_count: 0**. Os valores nunca estiveram em nenhuma
+      # camada do GitHub — nem repositório, nem os 10 environments (Production e
+      # Preview: 0 secrets, 0 variables). O `${{ secrets.X }}` de um segredo
+      # inexistente não falha: resolve para string vazia, e o job segue.
+      #
+      # E havia uma DIVERGÊNCIA DE NOME por baixo: o projeto usa
+      # `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (chave publishable do formato
+      # novo, `sb_publishable_…`), e aqui se pedia `..._ANON_KEY`, que não
+      # existe no `.env.local`. Mesmo com o secret cadastrado no nome antigo, o
+      # build continuaria recusando.
+      #
+      # Os dois nomes ficam declarados: o build aceita qualquer um dos dois, e
+      # instalações que ainda usem a chave JWT legada continuam funcionando.
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
     steps:
       - name: Checkout
@@ -28,11 +50,40 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          # Mesma versao do .nvmrc. Estavam divergentes (24 aqui, 22 la) — duas
+          # verdades sobre em que Node este produto roda. E `engines` agora
+          # recusa Node 26, que foi decisao do dono do produto.
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
         run: npm ci
+
+      # Tarifa de IA para o CI MEDIR de verdade.
+      #
+      # `ai:pricing:check` reprovava com "ATLAS_AI_PRICE_TABLE ausente. Todo
+      # consumo de IA será gravado com custo NULO." — vermelho legítimo, mas
+      # causado por ausência de configuração NO CI, não por defeito do código.
+      #
+      # O valor NÃO é segredo (tarifa pública de provedor) e NÃO é digitado
+      # aqui: sai de config/ai-price-table.referencia.json, versionado e
+      # derivado de .env.production.example, que registra a data da conferência.
+      #
+      # Isto não afrouxa o portão. Ausência e JSON inválido continuam
+      # reprovando, aqui e em produção — `contrato: tarifa de IA` prova os dois
+      # casos. Produção declara a tarifa vigente na variável de ambiente do
+      # servidor; este arquivo nunca é lido em tempo de execução.
+      - name: Tarifa de IA (referência versionada)
+        run: |
+          set -euo pipefail
+          TABELA="$(node -e 'process.stdout.write(JSON.stringify(require("./config/ai-price-table.referencia.json").tarifas))')"
+          test -n "$TABELA"
+          echo "ATLAS_AI_PRICE_TABLE=$TABELA" >> "$GITHUB_ENV"
+
+      # Confere PARA QUAL projeto o build vai apontar, ANTES de construir.
+      # Não imprime valor — só veredito. Sem ambiente sai 2 (NÃO EXECUTADO).
+      - name: Projeto Supabase (URL e chave pública)
+        run: npm run projeto-supabase:check
 
       - name: Generate Prisma client
         run: npm run prisma:generate
@@ -79,6 +130,14 @@ jobs:
       - name: Fail on lint errors
         if: steps.lint.outcome != 'success'
         run: exit 1
+
+      - name: Contratos
+        run: npm run test:contracts
+
+      - name: Portoes
+        # A bateria inteira. Os que dependem de ambiente saem com NAO EXECUTADO
+        # e sao contados como quarentena declarada — nunca verdes por ausencia.
+        run: npm run portoes:todos
 
       - name: Production build
         run: npm run build

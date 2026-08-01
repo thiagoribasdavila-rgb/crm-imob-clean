@@ -3,11 +3,19 @@ import { featureSnapshot } from "@/lib/platform/feature-flags";
 
 export const dynamic = "force-dynamic";
 
-const configured = (name: string) => Boolean(process.env[name]);
+function authorized(request: Request) {
+  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  return Boolean(process.env.ATLAS_CRON_SECRET && token === process.env.ATLAS_CRON_SECRET);
+}
 
-export async function GET() {
+const configured = (name: string) => Boolean(process.env[name]);
+const publicSupabaseKeyConfigured = () =>
+  configured("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") || configured("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+
+export async function GET(request: Request) {
+  if (!authorized(request)) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   const checks = {
-    supabasePublic: configured("NEXT_PUBLIC_SUPABASE_URL") && configured("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+    supabasePublic: configured("NEXT_PUBLIC_SUPABASE_URL") && publicSupabaseKeyConfigured(),
     supabaseAdmin: configured("SUPABASE_SERVICE_ROLE_KEY"),
     cronWorker: configured("ATLAS_CRON_SECRET"),
     metaWebhook: configured("META_APP_SECRET") && configured("META_WEBHOOK_VERIFY_TOKEN"),

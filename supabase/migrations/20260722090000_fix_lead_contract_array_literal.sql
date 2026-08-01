@@ -1,0 +1,30 @@
+-- Reparo: o contrato canônico de lead impedia a entrada de qualquer lead incompleto.
+--
+-- private.apply_canonical_lead_contract() (de 20260718213000_phase_71) declara
+-- `issues text[] := '{}'` e depois acumula pendências com `issues := issues || 'name'`.
+-- O literal não tem tipo, e nessa situação o Postgres resolve o operador para
+-- `anyarray || anyarray` — tenta ler 'name' como um literal de ARRAY e aborta com
+-- «22P02: malformed array literal: "name"». As dez ramificações de pendência (name,
+-- contact, source, purpose, budget, regions, bedrooms, development, next_action,
+-- commercial_context) têm exatamente o mesmo defeito.
+--
+-- CONSEQUÊNCIA, e ela é grave: como o gatilho roda em BEFORE INSERT, só entrava lead
+-- 100% completo. Um lead de formulário da Meta chega com nome e telefone e nada mais —
+-- e era rejeitado no banco. A ingestão de leads, que é a porta de entrada do CRM,
+-- estava fechada para o caso mais comum que existe.
+--
+-- A ironia é que o contrato foi desenhado para CLASSIFICAR qualidade, não para barrar:
+-- ele calcula data_quality_percent e data_quality_status justamente para que o time
+-- saiba o que falta em cada lead. O defeito transformava um medidor em cancela.
+--
+-- A correção é o cast explícito `::text`, que desfaz a ambiguidade e faz o Postgres
+-- escolher `anyarray || anyelement`. O arquivo de origem (20260718213000) também foi
+-- corrigido, para que uma reconstrução do zero nasça certa; este arquivo existe para
+-- consertar ambientes que já aplicaram a versão quebrada.
+--
+-- Verificado depois de aplicar: lead com apenas nome e telefone entra com 35% e 7
+-- pendências listadas, telefone normalizado para 5511987654321 e identity_key
+-- phone:5511987654321; lead quase vazio entra com 0% e as 10 pendências. Nenhum
+-- rejeitado.
+
+create or replace function private.apply_canonical_lead_contract()returns trigger language plpgsql security definer set search_path='' as $$declare score integer:=0;issues text[]:='{}';digits text;begin new.email_normalized:=nullif(lower(trim(coalesce(new.email,''))),'');digits:=regexp_replace(coalesce(new.phone,''),'\D','','g');if length(digits)in(10,11)then digits:='55'||digits;end if;new.phone_normalized:=case when length(digits)between 10 and 15 then digits else null end;new.source_normalized:=nullif(lower(trim(coalesce(new.source,''))),'');new.identity_key:=case when new.phone_normalized is not null then'phone:'||new.phone_normalized when new.email_normalized is not null then'email:'||new.email_normalized else null end;new.canonical_contract_version:=1;if length(trim(coalesce(new.name,'')))>=2 then score:=score+10;else issues:=issues||'name'::text;end if;if new.phone_normalized is not null or new.email_normalized is not null then score:=score+15;else issues:=issues||'contact'::text;end if;if new.source_normalized is not null then score:=score+10;else issues:=issues||'source'::text;end if;if new.purpose is not null then score:=score+10;else issues:=issues||'purpose'::text;end if;if new.budget_min is not null or new.budget_max is not null then score:=score+10;else issues:=issues||'budget'::text;end if;if coalesce(array_length(new.preferred_regions,1),0)>0 then score:=score+10;else issues:=issues||'regions'::text;end if;if new.bedrooms is not null then score:=score+5;else issues:=issues||'bedrooms'::text;end if;if new.development_id is not null then score:=score+10;else issues:=issues||'development'::text;end if;if new.next_action_at is not null then score:=score+10;else issues:=issues||'next_action'::text;end if;if coalesce(new.metadata,'{}'::jsonb)?'qualification' or coalesce(length(trim(new.notes)),0)>10 then score:=score+10;else issues:=issues||'commercial_context'::text;end if;new.data_quality_percent:=score;new.data_quality_status:=case when score>=90 then'complete'when score>=70 then'usable'when score>=40 then'incomplete'else'critical'end;new.data_quality_issues:=issues;new.quality_calculated_at:=now();return new;end $$;

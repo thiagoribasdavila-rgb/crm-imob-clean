@@ -1,0 +1,15 @@
+{
+  "phase": 9,
+  "target": "hostinger-homologation",
+  "missing_evidence_blocks": true,
+  "database": {
+    "latency_limit_ms": 500,
+    "pending_queue_transfer_limit": 1,
+    "ai_latency_sample_limit": 5000,
+    "postgres_minimum_major": 17,
+    "deprecated_extensions_block": ["timescaledb", "plv8", "pls", "plcoffee", "pgjwt"]
+  },
+  "real_evidence_required": ["four_roles", "two_tenants", "mobile_390px", "backup_restore", "rollback", "https", "workers", "integrations"],
+  "automatic_publish": false,
+  "executive_go_required": true
+}

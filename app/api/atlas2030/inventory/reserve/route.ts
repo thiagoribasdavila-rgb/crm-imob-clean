@@ -37,6 +37,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unidade indisponível para reserva." }, { status: 409 });
     }
 
+    if (body.customerId) {
+      const { data: customer, error: customerError } = await admin
+        .from("customers")
+        .select("id")
+        .eq("id", body.customerId)
+        .eq("organization_id", identity.organizationId)
+        .maybeSingle();
+
+      if (customerError) throw customerError;
+      if (!customer) {
+        return NextResponse.json(
+          { error: "Cliente inexistente ou fora da sua empresa." },
+          { status: 403 },
+        );
+      }
+    }
+
+    if (body.leadId) {
+      const { data: lead, error: leadError } = await identity.supabase
+        .from("leads")
+        .select("id")
+        .eq("id", body.leadId)
+        .eq("organization_id", identity.organizationId)
+        .maybeSingle();
+
+      if (leadError) throw leadError;
+      if (!lead) {
+        return NextResponse.json(
+          { error: "Lead inexistente ou fora do seu escopo comercial." },
+          { status: 403 },
+        );
+      }
+    }
+
     const holdMinutes = Math.min(1440, Math.max(5, Number(body.holdMinutes ?? 30)));
     const holdExpiresAt = new Date(Date.now() + holdMinutes * 60_000).toISOString();
     const { data, error } = await admin
@@ -73,7 +107,7 @@ export async function POST(request: Request) {
   } catch (error) {
     logger.error("atlas2030.inventory_reserve_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao reservar unidade.";
-    const status = /token|sessão|autoriz/i.test(message) ? 401 : 500;
+    const status = /token|sessão|autoriz|organiza|escopo/i.test(message) ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

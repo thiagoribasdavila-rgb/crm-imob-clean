@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const baseUrl = process.env.ATLAS_BASE_URL || "https://crm-imob-clean-kvkv.vercel.app";
+  const baseUrl = process.env.ATLAS_BASE_URL || "http://localhost:3000";
 
   return NextResponse.json({
     openapi: "3.1.0",

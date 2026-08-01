@@ -1,0 +1,236 @@
+{
+  "phase": 21,
+  "wave": 2,
+  "status": "completed",
+  "measuredAt": "2026-07-18",
+  "scope": "inventory-app-router-navigation-topology-without-route-mutation",
+  "productionDataModified": false,
+  "runtimeNavigationChanged": false,
+  "framework": {
+    "router": "Next.js App Router",
+    "nextVersion": "16.2.10",
+    "reactVersion": "19.2.4",
+    "persistentLayout": "app/(crm)/layout.tsx",
+    "entryRedirect": "/ -> /login -> /command-center (landing pública própria; ver repricedNote)"
+  },
+  "topology": {
+    "crmRoutes": 139,
+    "rootRedirects": 0,
+    "canonicalNavigationDestinations": 21,
+    "canonicalDestinationsPresent": 21,
+    "missingCanonicalDestinations": 0,
+    "dynamicContextRoutes": 28,
+    "deepSupportRoutes": 71,
+    "topLevelNonCanonicalRoutes": 19,
+    "repricedNote": "Re-inventariado à fonte lib/atlas/navigation.ts após a poda intencional (commit e20f8931): 25->22 destinos canônicos; /command-center consolida Início+Command Center; /ai-dashboard, /atlas-2030, /dashboard e /revenue-engine deixaram o catálogo e passaram a superfícies de topo não-canônicas; /pipedrive (adaptador legado) foi removido em commit anterior; total de rotas CRM rastreadas 141->139. Reconciliado 2026-07-21: app/(crm)/page.tsx (redirect(\"/dashboard\")) colidia de rota com a landing pública app/page.tsx (mesmo path resolvido — erro de build do Next.js) e foi removido; a raiz \"/\" agora é a landing real, entrada autenticada passa por /login->safeAuthDestination(\"/command-center\"). rootRedirects 1->0; crmRoutes 139->138. | Reconciliado 2026-07-29, com a SOMA preservada em 138 e cada delta rastreado: (a) canonicos 22->21 — 'Clientes 360' saiu do catalogo: lia a MESMA tabela leads pela mesma funcao (readCompatibleCustomers era alias de readCompatibleLeads), sem SLA, lote nem filtros, e sem o piso de carteira, entao um corretor via as 469 leads da imobiliaria inteira. A rota /customers continua respondendo como redirect para /leads, que herdou os segmentos por vinculo — por isso ela migra de 'canonico' para 'apoio profundo', e nao desaparece do inventario. (b) apoio profundo 69->70 — exatamente essa migracao de /customers. (c) contextuais dinamicas 29->28 — as rotas legadas app/(crm)/leads/edit/[id] e app/(crm)/tasks/[id], que scripts/legacy-route-paths.mjs declara removidas desde 26/07, estavam ausentes do disco e AINDA rastreadas no git; a remocao foi commitada (-2), e a lamina da ficha do lead app/(crm)/@ficha/(.)leads/[id] entrou como rota interceptada (+1). Nenhuma rota ficou sem classificacao: missingCanonicalDestinations continua vazio e a checagem de fechamento dos buckets continua exigindo que a soma bata com crmRoutes."
+  },
+  "navigationChannels": [
+    {
+      "channel": "primary-sidebar",
+      "count": 16,
+      "source": "atlasNavigation",
+      "purpose": "Destinos recorrentes governados por perfil e agrupados por trabalho. Trim 2026-07-21: Atividades e Reativação movidas para o ⌘K (rail mais enxuta, pedido do dono); acesso preservado por comando contextual."
+    },
+    {
+      "channel": "contextual-command",
+      "count": 5,
+      "source": "atlasContextCommands",
+      "purpose": "Ações e workspaces acessados por busca, contexto ou comando, sem inflar a sidebar."
+    },
+    {
+      "channel": "mobile-primary",
+      "count": 4,
+      "source": "derived from atlasNavigation",
+      "purpose": "Subconjunto móvel das rotas canônicas, não um catálogo independente."
+    }
+  ],
+  "routeBuckets": [
+    {
+      "bucket": "canonical",
+      "count": 22,
+      "disposition": "preserve"
+    },
+    {
+      "bucket": "dynamic-context",
+      "count": 29,
+      "disposition": "preserve-as-workflow-context"
+    },
+    {
+      "bucket": "deep-support",
+      "count": 69,
+      "disposition": "keep-addressable-and-audit-discoverability"
+    },
+    {
+      "bucket": "top-level-non-canonical",
+      "count": 18,
+      "disposition": "classify-before-consolidation"
+    },
+    {
+      "bucket": "root-redirect",
+      "count": 1,
+      "disposition": "preserve"
+    }
+  ],
+  "topLevelNonCanonical": [
+    {
+      "route": "/agents",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/atlas-v3/agents"
+    },
+    {
+      "route": "/ai-insights",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/intelligence"
+    },
+    {
+      "route": "/analytics",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/reports"
+    },
+    {
+      "route": "/approvals",
+      "classification": "contextual-support",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/atlas-v2",
+      "classification": "historical-compatibility",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/atlas-v3",
+      "classification": "internal-evolution-surface",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/automation",
+      "classification": "semantic-duplicate-candidate",
+      "targetToEvaluate": "/automations"
+    },
+    {
+      "route": "/automations",
+      "classification": "semantic-duplicate-candidate",
+      "targetToEvaluate": "/automation"
+    },
+    {
+      "route": "/chat",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/conversations"
+    },
+    {
+      "route": "/creatives",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/marketing/creatives"
+    },
+    {
+      "route": "/intelligence",
+      "classification": "active-contextual-support",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/kanban",
+      "classification": "consolidation-candidate",
+      "targetToEvaluate": "/pipeline"
+    },
+    {
+      "route": "/notifications",
+      "classification": "active-contextual-support",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/dashboard",
+      "classification": "compatibility-redirect",
+      "targetToEvaluate": "/command-center"
+    },
+    {
+      "route": "/ai-dashboard",
+      "classification": "quarantined-legacy-surface",
+      "targetToEvaluate": "/intelligence"
+    },
+    {
+      "route": "/revenue-engine",
+      "classification": "quarantined-legacy-surface",
+      "targetToEvaluate": "/marketing"
+    },
+    {
+      "route": "/atlas-2030",
+      "classification": "quarantined-legacy-surface",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/search",
+      "classification": "active-contextual-support",
+      "targetToEvaluate": null
+    },
+    {
+      "route": "/customers",
+      "classification": "aposentada-com-redirect",
+      "note": "Foi destino canonico ate 2026-07-29. Saiu do catalogo por ler a MESMA tabela leads pela mesma funcao, sem SLA/lote/filtros, e por NAO aplicar o piso de carteira — um corretor via as 469 leads da imobiliaria inteira. A pagina continua existindo como redirect permanente para /leads, que herdou os segmentos por vinculo: por isso ela sai de 'canonico' e entra aqui, em vez de sumir do inventario. 404 seria pior: ha link salvo no localStorage e sonda de rota apontando para ela."
+    }
+  ],
+  "architecture": {
+    "persistentShell": [
+      "AppShell",
+      "AtlasCopilotDock",
+      "AtlasSystemPulse",
+      "AtlasNotificationCenter",
+      "AtlasQuickCreate",
+      "AtlasWorkspaceMemory",
+      "AtlasFeedbackCenter",
+      "AtlasCommercialPresence"
+    ],
+    "pageContentResetsByPathname": true,
+    "nestedLayoutsDetected": 0,
+    "sharedLoadingBoundaries": 1,
+    "sharedErrorBoundaries": 1
+  },
+  "findings": [
+    {
+      "priority": "high",
+      "finding": "Dezoito superfícies de topo são acessíveis, mas não pertencem aos catálogos canônicos de navegação.",
+      "nextAction": "Definir o resultado comercial e a descoberta correta antes de consolidar qualquer rota."
+    },
+    {
+      "priority": "high",
+      "finding": "Há sobreposição semântica entre automation/automations, kanban/pipeline e creatives/marketing/creatives.",
+      "nextAction": "Escolher um conceito canônico por tarefa e preservar compatibilidade por redirecionamento somente após validação."
+    },
+    {
+      "priority": "medium",
+      "finding": "As 139 rotas CRM compartilham um único layout, loading e error boundary no grupo principal.",
+      "nextAction": "Avaliar limites aninhados por domínio quando a medição de falhas justificar isolamento."
+    },
+    {
+      "priority": "medium",
+      "finding": "O shell global mantém oito superfícies persistentes em todas as rotas.",
+      "nextAction": "Auditar colisões de camada, foco e comandos antes de adicionar novos overlays."
+    },
+    {
+      "priority": "positive",
+      "finding": "Os 22 destinos canônicos resolvem para páginas existentes.",
+      "nextAction": "Preservar cobertura integral durante a compactação futura."
+    }
+  ],
+  "exitCriteria": {
+    "routeTopologyMeasured": true,
+    "canonicalDestinationsResolved": true,
+    "nonCanonicalRoutesClassified": true,
+    "routeDeleted": false,
+    "redirectAdded": false,
+    "phaseTwentyGateBypassed": false
+  },
+  "_rebaselines": [
+    {
+      "quando": "2026-07-31",
+      "de": {
+        "crmRoutes": 138,
+        "deepSupportRoutes": 70
+      },
+      "para": {
+        "crmRoutes": 139,
+        "deepSupportRoutes": 71
+      },
+      "porque": "Rota nova app/(crm)/settings/distribuicao — tela do elenco de distribuicao (quem participa da fila de cada projeto/campanha). E rota de APOIO, aninhada sob /settings: nao entra no catalogo canonico nem na navegacao primaria. Os dois numeros sobem juntos porque a soma dos buckets tem de continuar fechando com crmRoutes — e essa assercao e a que impede alguem de acrescentar rota e esquecer de dizer a que familia ela pertence."
+    }
+  ]
+}

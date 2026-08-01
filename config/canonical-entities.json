@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "tenantKey": "organization_id",
+  "entities": [
+    { "key": "lead", "table": "leads", "primaryApi": "/api/v1/leads", "ownerKey": "assigned_to", "purpose": "Oportunidade comercial e estado atual do funil", "legacyAliases": ["prospects", "crm_leads"] },
+    { "key": "customer", "table": "customers", "primaryApi": null, "ownerKey": null, "purpose": "Pessoa convertida ou relacionamento pós-venda; não substitui a lead", "legacyAliases": ["clients"] },
+    { "key": "user", "table": "profiles", "primaryApi": "/api/v1/auth/me", "ownerKey": "id", "purpose": "Perfil, função, hierarquia e vínculo organizacional", "legacyAliases": ["brokers", "users_profile"] },
+    { "key": "project", "table": "developments", "primaryApi": "/api/v1/launch-os", "ownerKey": null, "purpose": "Empreendimento imobiliário e vínculo com incorporadora", "legacyAliases": ["projects", "launches"] },
+    { "key": "property", "table": "properties", "primaryApi": null, "ownerKey": null, "purpose": "Unidade ou imóvel comercializável vinculado ao empreendimento", "legacyAliases": ["units", "inventory_items"] },
+    { "key": "task", "table": "tasks", "primaryApi": null, "ownerKey": "assigned_to", "purpose": "Próxima ação operacional, compromisso e SLA", "legacyAliases": ["followups", "todo_items"] },
+    { "key": "campaign", "table": "campaigns", "primaryApi": null, "ownerKey": null, "purpose": "Campanha comercial normalizada entre canais", "legacyAliases": ["ads_campaigns"] },
+    { "key": "commercialActivity", "table": "activities", "primaryApi": "/api/v1/leads/[id]", "ownerKey": "user_id", "purpose": "Timeline comercial legível e vinculada à lead", "legacyAliases": ["lead_events", "pipeline_history"] },
+    { "key": "systemEvent", "table": "atlas_events", "primaryApi": "/api/v3/events/ingest", "ownerKey": null, "purpose": "Evento técnico imutável para auditoria, integração e aprendizado", "legacyAliases": ["event_log"] },
+    { "key": "material", "table": "project_materials", "primaryApi": "/api/v1/developments/[id]/materials", "ownerKey": null, "purpose": "Book, tabela, espelho, planta e demais materiais versionados", "legacyAliases": ["knowledge_documents", "development_files"] },
+    { "key": "conversation", "table": "conversations", "primaryApi": "/api/v2/messages/send", "ownerKey": "assigned_to", "purpose": "Thread de comunicação; mensagens permanecem na tabela messages", "legacyAliases": ["chats", "threads"] },
+    { "key": "integration", "table": "integrations", "primaryApi": "/api/v1/integrations", "ownerKey": null, "purpose": "Configuração por organização sem segredos retornáveis ao cliente", "legacyAliases": ["connectors"] }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "phase": 30,
+  "engine": "lib/ai/data-completeness.ts",
+  "endpoint": "app/api/v1/leads/[id]/route.ts",
+  "page": "app/(crm)/leads/[id]/page.tsx",
+  "dimensions": ["contact", "purpose", "timeline", "financing", "budget", "regions", "bedrooms", "development", "interaction", "next_action"],
+  "priorities": ["critical", "high", "medium"],
+  "actions": ["qualify", "focus", "navigate"],
+  "privacyExclusions": ["cpf", "cnpj", "exact_address", "documents"],
+  "costModel": "deterministic_local_zero_llm_cost"
+}

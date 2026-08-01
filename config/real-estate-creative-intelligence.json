@@ -1,0 +1,8 @@
+{
+  "phase": 94,
+  "minimum_crm_leads": 30,
+  "dimensions": ["development", "developer", "funnel_stage", "persona_moment", "message_angle", "objection", "format"],
+  "versioned": true,
+  "project_required": true,
+  "governance": { "director_approval_required": true, "sensitive_audience_attributes_allowed": false, "causal_claim_allowed": false, "automatic_publishing": false, "automatic_replacement": false }
+}

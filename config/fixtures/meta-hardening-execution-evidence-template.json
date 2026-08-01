@@ -1,0 +1,35 @@
+{
+  "format": "atlas_meta_hardening_execution_evidence_v1",
+  "environment": "staging_clone_required",
+  "run": {
+    "status": "not_run",
+    "productionProject": false,
+    "isolatedStaging": false,
+    "sanitizedSeedOnly": false,
+    "backupVerified": false,
+    "remoteFingerprintMatched": false,
+    "migrationDriftReconciled": false,
+    "newMigrationGeneratedWithSupabaseCli": false,
+    "legacyMigrationReplayAttempted": false,
+    "privilegedFunctionSignatureKnown": false,
+    "privilegedFunctionDefinitionVersioned": false,
+    "rollbackDryRunPassed": false,
+    "authLeakedPasswordProtectionEnabled": false,
+    "runtimeRlsEvidenceApproved": false,
+    "directorApproved": false,
+    "securityReviewerApproved": false,
+    "realEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false
+  },
+  "evidence": {
+    "backupReference": null,
+    "schemaFingerprint": null,
+    "migrationFile": null,
+    "rollbackEvidence": null,
+    "rlsEvidenceFile": null,
+    "authRecoveryEvidence": null,
+    "approvedAt": null
+  }
+}

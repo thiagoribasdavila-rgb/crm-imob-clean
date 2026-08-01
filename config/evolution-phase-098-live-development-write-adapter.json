@@ -1,0 +1,112 @@
+{
+  "phase": 98,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-19",
+  "scope": "core-v2-live-development-write-preflight-adapter",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "authenticationChanged": false,
+  "runtimeBehaviorChanged": true,
+  "objective": "create the smallest tenant-safe and auditable preflight adapter for the live crm_projects contract without enabling mutations before controlled homologation",
+  "delivered": {
+    "adapter": "lib/atlas/core-v2/live-development-write-adapter.ts",
+    "protectedEndpoint": "app/api/v1/core-v2/developments/write-preflight/route.ts",
+    "adapterContract": "live-development-write-adapter-v1",
+    "writeReadinessContract": "live-write-readiness-v2",
+    "liveSource": "public.crm_projects",
+    "operations": [
+      "preflight-create",
+      "preflight-update"
+    ],
+    "allowedStatuses": [
+      "ACTIVE",
+      "PAUSED",
+      "SOLD_OUT",
+      "ARCHIVED"
+    ],
+    "tenantTargetValidation": true,
+    "duplicateNameValidation": true,
+    "duplicateCodeValidation": true,
+    "dateOrderValidation": true,
+    "unsupportedFieldRejection": true,
+    "humanHomologationRequired": true
+  },
+  "liveEvidence": {
+    "primaryKey": "id",
+    "tenantColumn": "organization_id",
+    "uniqueConstraints": [
+      "organization_id+name",
+      "organization_id+code"
+    ],
+    "rlsEnabled": true,
+    "authenticatedPolicies": [
+      "crm_projects_tenant_select",
+      "crm_projects_tenant_insert",
+      "crm_projects_tenant_update",
+      "crm_projects_tenant_delete"
+    ],
+    "databaseManagerRoles": [
+      "ADMIN",
+      "GESTOR",
+      "INCORPORADORA"
+    ],
+    "activeProfileRolesObserved": [
+      "ADMIN",
+      "CORRETOR",
+      "DIRETOR",
+      "GERENTE"
+    ],
+    "persistentProjectEventTableLive": false,
+    "databaseRoleContractMismatch": true,
+    "anonGrantsNeedHardeningReview": true
+  },
+  "safety": {
+    "authenticatedSupabaseClientOnly": true,
+    "explicitOrganizationFilter": true,
+    "rlsPreserved": true,
+    "serviceRoleImportedByAdapter": false,
+    "insertImplemented": false,
+    "updateImplemented": false,
+    "deleteImplemented": false,
+    "rpcMutationImplemented": false,
+    "rawDatabaseErrorsReturnedToUser": false,
+    "writeProbeExecuted": false,
+    "schemaMutationExecuted": false,
+    "authMutationExecuted": false,
+    "bulkMigrationExecuted": false
+  },
+  "operationalImpact": [
+    "director-can-prevalidate-project-payloads-without-writing-live-data",
+    "duplicate-project-name-and-code-are-detected-inside-the-current-tenant",
+    "project-id-and-organization-id-cannot-be-injected-through-the-payload",
+    "live-rules-and-future-domain-are-no-longer-confused",
+    "activation-remains-blocked-until-role-policy-and-persistent-audit-are-homologated"
+  ],
+  "knownLimits": [
+    "preflight-does-not-create-or-update-projects",
+    "director-and-manager-live-profile-roles-do-not-match-the-current-database-management-function",
+    "no-persistent-project-event-table-is-live",
+    "legacy-anon-table-grants-still-require-a-separate-reviewed-hardening-change",
+    "complete-developments-domain-remains-future-only"
+  ],
+  "validation": {
+    "phaseContractCheck": true,
+    "previousPhaseRegressionRequired": true,
+    "typecheckRequired": true,
+    "changedFilesLintRequired": true,
+    "secretScanRequired": true,
+    "buildRequired": false
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false,
+    "checkpointPhase": 100
+  },
+  "nextPhase": {
+    "phase": 99,
+    "name": "Homologar o adaptador de Projetos e fechar o menor plano seguro de ativação",
+    "status": "planned"
+  }
+}

@@ -1,0 +1,191 @@
+/**
+ * Contrato de USABILIDADE do Kanban.
+ *
+ * Três defeitos que não quebram teste nenhum e mesmo assim fazem o corretor
+ * desistir da tela. Ficam fixados aqui porque são fáceis de reintroduzir: nada
+ * no build reclama de uma mensagem genérica ou de um `window.prompt`.
+ */
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+
+const raiz = path.resolve(import.meta.dirname, "..", "..");
+const pagina = fs.readFileSync(path.join(raiz, "app", "(crm)", "pipeline", "page.tsx"), "utf8");
+/** Sem comentários: eles CITAM os defeitos para explicar por que sumiram. */
+const codigo = pagina.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+
+test("a mensagem do servidor chega ao corretor", () => {
+  // A rota explica exatamente o que faltou: motivo fora da taxonomia, lead já
+  // movida por outra pessoa, confirmação humana pendente. Trocar tudo por uma
+  // frase única obrigava a adivinhar — e adivinhar errado é abandonar a lead.
+  //
+  // A REGRA vive em `extrairRecusa` e é exercitada de verdade em
+  // pipeline-caminho-de-volta.test.mjs. Aqui resta o que é da página: que ela
+  // use a função e propague o erro que voltou dela.
+  assert.match(codigo, /const recusa = extrairRecusa\(payload\);/);
+  assert.match(codigo, /throw new Error\(recusa\.erro\)/,
+    "o erro mostrado tem que ser o que a rota disse, não uma frase fixa da tela");
+});
+
+test("resposta sem JSON não vira erro mudo", () => {
+  // Um 502 do proxy devolve HTML. Sem o catch, `.json()` estoura e o corretor
+  // vê a exceção do parser no lugar do que aconteceu.
+  assert.match(codigo, /response\.json\(\)\.catch\(/);
+});
+
+test("nenhuma caixa nativa do navegador pede texto", () => {
+  // `window.prompt` pode ser bloqueado pelo navegador — e aí a etapa não
+  // acontece, sem explicação. Fora que jogava o texto fora ao validar.
+  //
+  // A versão anterior exigia o prefixo `window.` — e a forma mais comum de
+  // escrever é sem ele. `prompt("...")` passava batido. Achado por auditoria
+  // adversarial; o mutation testing não pegava porque minha mutação usava
+  // justamente a forma com prefixo.
+  const nativos = [...codigo.matchAll(/(?<![.\w$])(?:window\s*\.\s*)?(prompt|confirm|alert)\s*\(/g)].map((m) => m[0]);
+  assert.deepEqual(nativos, [],
+    `diálogo nativo ao lado de um painel desenhado: ${nativos.join(", ")}`);
+});
+
+test("o DESCARTE também abre painel, não caixa nativa", () => {
+  // Havia asserção positiva só para o follow-up. Trocar o painel de descarte
+  // por uma caixa nativa passava verde — e o descarte é o fluxo que alimenta o
+  // sinal de volta para a Meta.
+  assert.match(codigo, /setDiscardDraft\(\{ leadId: id/);
+  assert.match(codigo, /aria-labelledby="discard-panel-title"/);
+  assert.match(codigo, /role="radiogroup"/, "o motivo é escolhido de uma lista fechada, não digitado");
+});
+
+test("'comprou em outro lugar' pergunta num painel, como o descarte", () => {
+  assert.match(codigo, /setFollowUpDraft\(\{ leadId: id/);
+  assert.match(codigo, /aria-labelledby="followup-panel-title"/);
+  assert.match(codigo, /<textarea/, "é texto livre de várias linhas, não um campo de uma linha");
+});
+
+test("os dois painéis fecham com Escape e por fora", () => {
+  // Painel que só fecha no botão prende quem abriu por engano.
+  const escapes = codigo.match(/event\.key === "Escape"/g) ?? [];
+  assert.ok(escapes.length >= 2, `esperado Escape nos dois painéis, achei ${escapes.length}`);
+  assert.match(codigo, /onClick=\{\(\) => setFollowUpDraft\(null\)\}/);
+});
+
+test("o botão diz quanto falta em vez de só ficar apagado", () => {
+  // Botão desabilitado sem explicação é a versão silenciosa do bloqueio: o
+  // corretor não sabe se é bug ou regra.
+  assert.match(codigo, /Faltam \$\{10 - followUpDraft\.description\.trim\(\)\.length\} caractere/);
+  assert.match(codigo, /disabled=\{followUpDraft\.description\.trim\(\)\.length < 10/);
+});
+
+test("cancelar não move a lead", () => {
+  // Vale para os dois painéis: a lead só muda de coluna depois de confirmada.
+  assert.match(codigo, /if \(stage === "comprou_outro" && !reversalOf && !followUp\) \{[\s\S]{0,320}?return;/);
+  assert.match(codigo, /if \(stage === "perdido" && !reversalOf && !discard\) \{[\s\S]{0,320}?return;/);
+});
+
+test("o mínimo da tela é o mesmo mínimo da rota", () => {
+  // Divergir aqui devolve a lead de coluna depois de o corretor ter escrito.
+  const rota = fs.readFileSync(path.join(raiz, "app", "api", "v1", "pipeline", "route.ts"), "utf8");
+  assert.match(rota, /stage === "comprou_outro" && followUpDescription\.length < 10/);
+  assert.match(codigo, /followUpDraft\.description\.trim\(\)\.length < 10/);
+});
+
+test("o desfazer procura o movimento nas DUAS tabelas", () => {
+  // A RPC grava em `pipeline_stage_moves`; o caminho compensatório, em
+  // `pipeline_history`. A trava olhava só a segunda — e como a primeira é a que
+  // roda, o desfazer devolvia 409 sempre. O botão aparecia e nunca funcionava.
+  const rota = fs.readFileSync(path.join(raiz, "app", "api", "v1", "pipeline", "route.ts"), "utf8");
+  const guarda = rota.slice(rota.indexOf("if (reversalOf) {"), rota.indexOf("PIPELINE_STAGE_CONFLICT", rota.indexOf("if (reversalOf) {")));
+  assert.match(guarda, /from\("pipeline_stage_moves"\)/, "a tabela do caminho atômico");
+  assert.match(guarda, /from\("pipeline_history"\)/, "a tabela do caminho compensatório");
+  // Cada tabela tem seu par de colunas; trocar um pelo outro devolve undefined
+  // e derruba o desfazer de novo, silenciosamente.
+  assert.match(guarda, /from_stage[\s\S]{0,40}to_stage/, "colunas de pipeline_stage_moves");
+  assert.match(guarda, /old_status[\s\S]{0,40}new_status/, "colunas de pipeline_history");
+});
+
+test("desfazer um desfazer é barrado", () => {
+  // Sem isso, o par de movimentos vira vaivém e o histórico deixa de contar o
+  // que aconteceu de fato com a lead.
+  const rota = fs.readFileSync(path.join(raiz, "app", "api", "v1", "pipeline", "route.ts"), "utf8");
+  assert.match(rota, /jaDesfeito/);
+});
+
+test("o desfazer aceita as duas chaves que a rota pode mandar", () => {
+  // A rota tem dois caminhos (atômico e compensatório) e eles devolvem chaves
+  // diferentes. Ler só uma fazia a lead mover sem a tela confirmar nada.
+  assert.match(codigo, /payload\.move\?\.id \?\? payload\.move\?\.moveId \?\? payload\.moveId/);
+});
+
+test("nenhum ref inline devolve o foco ao contêiner a cada renderização", () => {
+  // ── O DEFEITO QUE ISTO FIXA ───────────────────────────────────────────────
+  //
+  // O painel de "comprou em outro lugar" tinha
+  // `ref={(node) => { node?.focus(); }}` na div do diálogo. Arrow inline é uma
+  // função NOVA a cada renderização, então o React a executa em TODAS elas — e
+  // cada execução roubava o foco do textarea de volta para a moldura.
+  //
+  // Efeito para quem usa: digitar uma letra muda o estado, o estado
+  // re-renderiza, o foco pula. O campo simplesmente não aceitava texto.
+  // Relatado com captura de tela, depois de eu ter declarado o painel pronto —
+  // nenhum teste desta suíte pegava, porque todos leem estrutura e este é um
+  // defeito de CICLO DE VIDA.
+  //
+  // `autoFocus` no campo resolve o que a acessibilidade pede (foco entra no
+  // diálogo ao abrir) sem repetir a cada render.
+  const suspeitos = [...codigo.matchAll(/ref=\{\s*\([a-zA-Z]+\)\s*=>[^}]*\.focus\(\)/g)].map((m) => m[0]);
+  assert.deepEqual(suspeitos, [],
+    `ref inline que foca roda a cada renderização e trava a digitação:\n${suspeitos.join("\n")}`);
+});
+
+test("o campo de texto recebe o foco na abertura", () => {
+  // Sem isto o painel abre e a pessoa precisa clicar para começar — e foi
+  // justamente ao resolver isso "na mão" que o ref quebrou a digitação.
+  assert.match(codigo, /<textarea[\s\S]{0,120}?autoFocus/);
+});
+
+test("o quadro NASCE com o funil completo", () => {
+  // ── O DEFEITO QUE ISTO FIXA ───────────────────────────────────────────────
+  //
+  // Duas decisões minhas de "limpar a tela" se somaram: `hideEmpty` nascendo
+  // `true` (some etapa sem card) e o corte de FECHAMENTO no caminho padrão
+  // (some perdido/comprou_outro). O corretor abria o quadro e via 3 de 9
+  // colunas — relatado em 2026-07-28 como "não visualiza todas as etapas".
+  //
+  // O princípio que este teste guarda: o funil é o MAPA do trabalho. A etapa
+  // vazia é o destino da próxima lead; escondê-la por padrão é esconder o
+  // próximo passo. Compactar é escolha de quem usa, nunca o estado inicial.
+  assert.match(codigo, /const \[hideEmpty, setHideEmpty\] = useState\(false\)/,
+    "hideEmpty tem que nascer false — o quadro inteiro é o padrão");
+  // E o caminho sem escolha manual parte de stageData COMPLETO, sem filtrar
+  // FECHAMENTO. (O corte por FECHAMENTO continua existindo só como opção no
+  // seletor de colunas, não como padrão imposto.)
+  const bloco = codigo.slice(codigo.indexOf("const boardStages"), codigo.indexOf("}, [", codigo.indexOf("const boardStages")));
+  assert.ok(!/FECHAMENTO\.has/.test(bloco),
+    "boardStages não pode voltar a cortar as etapas de fechamento por padrão");
+});
+
+test("preferência gravada da era 'esconde por padrão' não ressuscita o defeito", () => {
+  // A correção acima seria inútil para quem já tinha `hideEmpty: true` gravado
+  // pela versão antiga: o valor salvo vence o padrão novo. A chave versionada
+  // descarta a preferência da era errada uma única vez.
+  assert.match(codigo, /atlas:pipeline-preferences:v2/,
+    "a chave precisa ser v2+ — v1 carrega hideEmpty=true gravado nas abas abertas");
+});
+
+test("a fila de ação da página de Leads ignora lead encerrada", () => {
+  // Flagrado em 2026-07-28: lead PERDIDA na "Fila de ação" com "Ligue agora".
+  // stalledSignal já barrava lead fechada; visibleLeadPriority não — a dupla
+  // de caminhos divergentes de sempre. Os DOIS têm que passar por isOpenLead.
+  const leadsPage = fs.readFileSync(path.join(raiz, "app", "(crm)", "leads", "page.tsx"), "utf8");
+  const semComentarios = leadsPage.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+  const corpo = (nome) => {
+    const inicio = semComentarios.indexOf(`function ${nome}(`);
+    assert.ok(inicio > 0, `função ${nome} precisa existir`);
+    return semComentarios.slice(inicio, semComentarios.indexOf("\nfunction ", inicio + 1));
+  };
+  assert.match(corpo("visibleLeadPriority"), /isOpenLead\(lead\)/,
+    "a fila de ação não pode recomendar ligar para lead descartada");
+  assert.match(corpo("stalledSignal"), /isOpenLead\(lead\)/,
+    "o sinal de parada também só vale para lead em jogo");
+});

@@ -1,0 +1,8 @@
+{
+  "phase": 92,
+  "window_days": 30,
+  "signal_version": "andromeda-v2",
+  "mode": "test_only",
+  "gates": { "minimum_consented_leads": 50, "minimum_delivery_rate": 95, "minimum_deep_feedback_coverage": 35, "minimum_attribution_coverage": 80, "maximum_duplicate_rate": 2, "maximum_freshness_hours": 48 },
+  "governance": { "negative_signals": "internal_only", "pii_in_evidence": false, "director_decision_required": true, "automatic_audience_changes": false, "automatic_budget_changes": false }
+}

@@ -1,0 +1,24 @@
+begin;
+create or replace function public.distribute_project_leads_v2(p_actor_id uuid,p_organization_id uuid,p_development_id uuid,p_limit integer default 1)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare actor_role text;counter integer;selected_lead uuid;selected_broker uuid;selected_load integer;selected_weight integer;selected_last timestamptz;distributed integer:=0;changed integer;assignments jsonb:='[]'::jsonb;
+begin
+ if p_limit<1 or p_limit>100 then raise exception 'distribution_limit_invalid';end if;
+ select coalesce(commercial_role,case role when 'admin' then 'director' else role end) into actor_role from public.profiles where id=p_actor_id and organization_id=p_organization_id and active=true;
+ if actor_role not in('director','superintendent','manager') then raise exception 'distribution_actor_forbidden';end if;
+ if not exists(select 1 from public.developments where id=p_development_id and organization_id=p_organization_id) then raise exception 'distribution_project_invalid';end if;
+ perform pg_advisory_xact_lock(hashtextextended(p_organization_id::text||p_development_id::text,0));
+ for counter in 1..p_limit loop
+  select l.id into selected_lead from public.leads l where l.organization_id=p_organization_id and l.development_id=p_development_id and l.assigned_to is null order by l.created_at,l.id for update skip locked limit 1;exit when selected_lead is null;
+  with recursive descendants as(select id from public.profiles where id=p_actor_id and organization_id=p_organization_id union all select p.id from public.profiles p join descendants d on p.reports_to=d.id where p.organization_id=p_organization_id and p.active=true),candidates as(select p.id,count(l.id)::integer project_load,coalesce(m.weight,1) weight,m.last_assigned_at from public.profiles p join public.commercial_presence cp on cp.profile_id=p.id and cp.organization_id=p_organization_id and cp.availability='available' and cp.last_seen_at>=now()-interval '90 seconds' left join public.project_distribution_members m on m.development_id=p_development_id and m.profile_id=p.id left join public.leads l on l.organization_id=p_organization_id and l.development_id=p_development_id and l.assigned_to=p.id where p.organization_id=p_organization_id and p.active=true and coalesce(p.commercial_role,p.role)='broker' and coalesce(m.enabled,true) and(actor_role='director' or p.id in(select id from descendants)) group by p.id,m.weight,m.last_assigned_at)
+  select id,project_load,weight,last_assigned_at into selected_broker,selected_load,selected_weight,selected_last from candidates order by(project_load::numeric/weight),last_assigned_at nulls first,id limit 1;
+  if selected_broker is null then raise exception 'distribution_no_eligible_broker';end if;
+  update public.leads set assigned_to=selected_broker,updated_at=now() where id=selected_lead and organization_id=p_organization_id and development_id=p_development_id and assigned_to is null;get diagnostics changed=row_count;if changed<>1 then raise exception 'distribution_owner_conflict';end if;
+  insert into public.project_distribution_members(organization_id,development_id,profile_id,assignments_count,last_assigned_at,updated_at)values(p_organization_id,p_development_id,selected_broker,1,now(),now())on conflict(development_id,profile_id)do update set assignments_count=public.project_distribution_members.assignments_count+1,last_assigned_at=excluded.last_assigned_at,updated_at=excluded.updated_at;
+  insert into public.lead_distribution_events(organization_id,development_id,lead_id,assigned_to,actor_id,score_snapshot)values(p_organization_id,p_development_id,selected_lead,selected_broker,p_actor_id,jsonb_build_object('algorithm','online_project_weighted_load_v2','projectLoadBefore',selected_load,'weight',selected_weight,'weightedLoadBefore',round(selected_load::numeric/selected_weight,4),'lastAssignedAt',selected_last,'presenceWindowSeconds',90,'criteria',jsonb_build_array('same_organization','same_project','hierarchy','active','online','available','project_enabled')));
+  assignments:=assignments||jsonb_build_array(jsonb_build_object('leadId',selected_lead,'brokerId',selected_broker,'projectLoadBefore',selected_load,'weight',selected_weight,'weightedLoadBefore',round(selected_load::numeric/selected_weight,4),'reason','Menor carga ponderada; desempate pela atribuição mais antiga.'));distributed:=distributed+1;selected_lead:=null;selected_broker:=null;
+ end loop;
+ return jsonb_build_object('distributed',distributed,'developmentId',p_development_id,'algorithm','online_project_weighted_load_v2','assignments',assignments,'singleOwnerPreserved',true,'atomic',true);
+end $$;
+revoke all on function public.distribute_project_leads_v2(uuid,uuid,uuid,integer) from public,anon,authenticated;grant execute on function public.distribute_project_leads_v2(uuid,uuid,uuid,integer) to service_role;
+commit;

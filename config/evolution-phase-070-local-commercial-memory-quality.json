@@ -1,0 +1,50 @@
+{
+  "phase": 70,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "local-supervised-commercial-memory-quality-and-gap-queue",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "identify-human-confirmed-lead-linked-task-completions-without-a-valid-observed-outcome-and-offer-a-short-manual-resolution-queue-without-generative-ai-prediction-or-automatic-writes",
+  "changes": [
+    "reuse-existing-copilot-task-completion-and-outcome-events",
+    "accept-only-human-confirmed-completions-linked-to-a-lead",
+    "calculate-eligible-completed-observed-missing-coverage-and-oldest-gap",
+    "classify-gaps-as-recent-attention-or-stale-using-only-recorded-age",
+    "return-at-most-five-oldest-gaps-with-task-and-lead-context",
+    "enrich-existing-events-with-current-task-and-lead-labels-without-changing-storage",
+    "preserve-authenticated-organization-rls-rate-limit-and-no-store",
+    "reuse-the-existing-idempotent-task-outcome-api-for-manual-resolution",
+    "open-the-confirmed-outcome-form-directly-from-the-quality-queue",
+    "avoid-model-calls-predictive-claims-automatic-outcomes-and-downstream-mutations",
+    "preserve-lead-task-pipeline-score-owner-message-project-and-production-data"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "commercial-memory-quality:check",
+      "commercial-outcome-comparison:check",
+      "commercial-outcome-summary:check",
+      "copilot-governed-task-outcome:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "The queue only measures eligible Copilot completions present in the selected event window; it is a factual coverage control, not a universal data-quality score or a conversion prediction.",
+  "nextPhase": {
+    "phase": 71,
+    "name": "Contexto local dos resultados por projeto e origem",
+    "status": "planned"
+  }
+}

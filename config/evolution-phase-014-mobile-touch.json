@@ -1,0 +1,13 @@
+{
+  "phase": 14,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "viewportMaxPx": 767,
+  "minimumTouchTargetPx": 44,
+  "formFontSizePx": 16,
+  "preservedActions": ["new lead", "global search", "profile", "primary navigation"],
+  "compactWidthBreakpointPx": 479,
+  "narrowWidthBreakpointPx": 374,
+  "desktopBehaviorChanged": false,
+  "tabletBehaviorChanged": false
+}

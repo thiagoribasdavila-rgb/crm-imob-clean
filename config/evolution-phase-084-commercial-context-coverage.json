@@ -1,0 +1,57 @@
+{
+  "phase": 84,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "commercial-context-coverage-by-dimension-and-period",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "measure-project-and-source-context-coverage-across-equal-periods-with-explicit-historical-preservation-and-legacy-fallback",
+  "changes": [
+    "add-one-typed-context-coverage-contract",
+    "use-observed-human-confirmed-results-as-the-only-denominator",
+    "separate-available-context-from-context-preserved-at-confirmation",
+    "separate-project-and-source-coverage",
+    "compare-current-and-previous-equal-windows",
+    "keep-historical-null-values-unclassified",
+    "keep-legacy-current-lead-fallback-explicit",
+    "expose-coverage-through-the-tenant-scoped-daily-queue-api",
+    "add-a-compact-progressive-disclosure-copilot-card",
+    "avoid-schema-writes-backfill-model-calls-scores-rankings-and-automatic-actions"
+  ],
+  "measurement": {
+    "denominator": "observed_tasks",
+    "dimensions": ["project", "source"],
+    "windows": "current-and-previous-equal-periods",
+    "availableCoverage": "historical-or-explicit-legacy-context",
+    "historicalCoverage": "context-preserved-at-human-confirmation-only",
+    "historicalNullFallback": "forbidden",
+    "automaticBackfill": false
+  },
+  "validation": {
+    "targetedChecks": [
+      "commercial-context-coverage:check",
+      "historical-commercial-context-propagation:check",
+      "commercial-outcome-context:check",
+      "commercial-outcome-context-comparison:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "changed-files-lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Legacy outcomes can have a readable current project or source without an immutable historical association. The interface therefore reports availability and historical preservation separately.",
+  "nextPhase": {
+    "phase": 85,
+    "name": "Fila auditável de lacunas contextuais",
+    "status": "planned"
+  }
+}

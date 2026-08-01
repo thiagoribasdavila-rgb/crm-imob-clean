@@ -1,0 +1,19 @@
+{
+  "phase": 4,
+  "status": "completed",
+  "mission": "conversion_first",
+  "portfolio": {
+    "persistent_filters": "session_scoped",
+    "bulk_selection": true,
+    "governed_transfer": true,
+    "attention_shortcuts": ["overdue", "no_action", "hot", "unassigned"]
+  },
+  "lead_360": {
+    "single_owner": true,
+    "next_best_action_visible": true,
+    "quick_sections": ["qualification", "history", "matching"],
+    "quick_contacts": ["phone", "message"],
+    "local_intelligence_cost": 0
+  },
+  "unchanged_controls": ["commercial_hierarchy", "rls", "audit_history", "human_approval"]
+}

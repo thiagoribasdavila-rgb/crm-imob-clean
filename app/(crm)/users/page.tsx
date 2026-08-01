@@ -1,13 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useEffect, useState, type CSSProperties } from "react";
+import { AtlasActionLink } from "@/components/atlas/action-link";
+import { PageHeader } from "@/components/atlas/page-header";
+import { StatusBadge } from "@/components/atlas/status-badge";
+import { TiltShell } from "@/components/atlas/tilt-shell";
+import { AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { lerIntencaoDaJanela, pedeCriar } from "@/lib/atlas/intencao-da-url";
 
 type Profile = {
   id: string;
   full_name: string | null;
   phone: string | null;
   role: string;
+  access_role: "admin" | "director_decisor" | "director" | "broker";
+  commercial_role: string | null;
   active: boolean;
   organization_id: string | null;
   created_at: string;
@@ -15,25 +22,63 @@ type Profile = {
 
 const roleLabel: Record<string, string> = {
   admin: "Administrador",
-  manager: "Gestor",
+  director_decisor: "Diretor decisor",
+  director: "Diretor comercial",
   broker: "Corretor",
-  marketing: "Marketing",
-  developer: "Incorporadora",
-  finance: "Financeiro",
 };
+
+const TH_CLASS = "px-4 py-2.5 text-left font-mono text-micro font-medium uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]";
+const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
+
+async function readApiResponse(response: Response) {
+  const payload = await response.json().catch(() => null) as { data?: { profiles?: Profile[] }; error?: { message?: string } } | null;
+  if (!response.ok) throw new Error(payload?.error?.message || "Não foi possível concluir esta operação.");
+  return payload;
+}
 
 export default function UsersPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chegouParaCriar, setChegouParaCriar] = useState(false);
+
+  /**
+   * Quem clica em "Novo usuário" chega em `/users?create=1` — o catálogo
+   * (`lib/atlas/navigation.ts`) promete que "o formulário de criação abre
+   * sozinho". Esta tela não tem formulário nenhum: ela lista acessos que JÁ
+   * existem e liga/desliga cada um. `/api/v1/admin/users` expõe só GET e PATCH,
+   * não há POST. A promessa era decorativa no pior formato possível: a pessoa
+   * apertava o botão, caía numa tabela somente-leitura e nada na tela dizia por
+   * que ela estava ali nem para onde ir.
+   *
+   * Criar acesso no Atlas é convidar por e-mail, e isso mora em
+   * `/settings/team`, junto da validação de hierarquia (quais funções o ator
+   * pode criar, quem é o responsável direto) que só existe lá. Reproduzir
+   * aquele formulário aqui seria um segundo caminho para a mesma coisa — a
+   * classe de defeito que este repositório mais pagou. Então a tela não finge
+   * criar: ela assume que não cria e entrega o caminho verdadeiro.
+   *
+   * Lemos `window.location.search` no efeito de montagem em vez de
+   * `useSearchParams` porque o hook exigiria fronteira <Suspense> nesta página
+   * cliente, e a semântica desejada é exatamente a do efeito: a URL define o
+   * estado da chegada e a pessoa assume a partir dali. Intenção ausente,
+   * parâmetro desconhecido ou `create` com outro valor devolvem `null` do leitor
+   * compartilhado e não mudam nada — a tela abre igual à de sempre.
+   */
+  useEffect(() => {
+    if (pedeCriar(lerIntencaoDaJanela())) setChegouParaCriar(true);
+  }, []);
 
   useEffect(() => {
     let active = true;
     async function load() {
-      const { data, error: queryError } = await supabase.from("profiles").select("id,full_name,phone,role,active,organization_id,created_at").order("created_at");
+      const response = await fetch("/api/v1/admin/users", { cache: "no-store" });
+      const payload = await readApiResponse(response).catch((cause: unknown) => {
+        if (active) setError(cause instanceof Error ? cause.message : "Não foi possível carregar os acessos.");
+        return null;
+      });
       if (!active) return;
-      if (queryError) setError(queryError.message);
-      else setProfiles((data ?? []) as Profile[]);
+      setProfiles(payload?.data?.profiles ?? []);
       setLoading(false);
     }
     load();
@@ -43,43 +88,114 @@ export default function UsersPage() {
   async function toggleActive(profile: Profile) {
     const next = !profile.active;
     setProfiles(current => current.map(item => item.id === profile.id ? { ...item, active: next } : item));
-    const { error: updateError } = await supabase.from("profiles").update({ active: next }).eq("id", profile.id);
-    if (updateError) {
+    const response = await fetch("/api/v1/admin/users", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profileId: profile.id, active: next }) });
+    try {
+      await readApiResponse(response);
+    } catch (cause) {
       setProfiles(current => current.map(item => item.id === profile.id ? profile : item));
-      setError(updateError.message);
+      setError(cause instanceof Error ? cause.message : "Não foi possível alterar este acesso.");
     }
   }
 
+  const decisive = [
+    { label: "usuários", value: profiles.length, ink: "" },
+    { label: "ativos", value: profiles.filter(p => p.active).length, ink: "cc6-ok" },
+    { label: "liderança", value: profiles.filter(p => p.access_role !== "broker").length, ink: "" },
+  ];
+
   return (
-    <div className="space-y-8">
-      <header>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">Governança</p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight">Usuários e permissões</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">Gestão de equipe, papéis, status e preparação para controle granular de acesso por organização.</p>
-      </header>
+    <div className="space-y-4 pb-8">
+      <PageHeader
+        eyebrow="Governança · Acessos"
+        title="Usuários e permissões"
+        description="Controle administrativo dos acessos oficiais. A hierarquia comercial é administrada na área de Equipe."
+        action={{ href: "/brokers", label: "Abrir equipe", priority: "secondary" }}
+      />
 
-      {error ? <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div> : null}
+      {/* Chegada com intenção precisa ser VISÍVEL. Sem esta faixa a pessoa que
+          apertou "Novo usuário" olha uma tabela de leitura e conclui que o botão
+          não funcionou — ou pior, que o acesso já foi criado. */}
+      {chegouParaCriar ? (
+        <div
+          className="cc6-sev-band cc6-panel-quiet flex flex-wrap items-center justify-between gap-3 py-3 pl-4 pr-3"
+          role="status"
+        >
+          <p className="max-w-[62ch] text-sm leading-6 text-[var(--atlas-texto-medio)]">
+            <span className="font-semibold text-[var(--atlas-texto-forte)]">Aqui não se cria acesso — aqui se governa o que já existe.</span>{" "}
+            Um acesso novo começa por convite: o e-mail, a função comercial e o responsável direto são
+            definidos e validados em Configurações · Equipe, e a pessoa só passa a aparecer nesta lista
+            depois de confirmar o convite.
+          </p>
+          <AtlasActionLink
+            href="/settings/team"
+            label="Convidar profissional"
+            priority="primary"
+            showArrow
+          />
+        </div>
+      ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-3">
-        <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5"><p className="text-sm text-zinc-400">Usuários</p><p className="mt-3 text-3xl font-black">{loading ? "—" : profiles.length}</p></article>
-        <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5"><p className="text-sm text-zinc-400">Ativos</p><p className="mt-3 text-3xl font-black">{loading ? "—" : profiles.filter(p => p.active).length}</p></article>
-        <article className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5"><p className="text-sm text-zinc-400">Gestores/Admins</p><p className="mt-3 text-3xl font-black">{loading ? "—" : profiles.filter(p => ["admin","manager"].includes(p.role)).length}</p></article>
+      {/* Papel e estado por pessoa começam pelos números — única superfície 3D. */}
+      <section aria-label="Resumo dos acessos">
+        <TiltShell className="cc6-panel cc6-reveal p-5 sm:p-6">
+          <div className="flex flex-wrap gap-x-10 gap-y-4" aria-busy={loading}>
+            {decisive.map((metric) => (
+              <div key={metric.label}>
+                <p className={`cc6-metric-value text-2xl leading-none sm:text-3xl ${loading ? "" : metric.ink}`}>{loading ? "—" : metric.value}</p>
+                <p className="cc6-metric-label mt-1.5">{metric.label}</p>
+              </div>
+            ))}
+          </div>
+        </TiltShell>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50">
-        <table className="min-w-full text-sm">
-          <thead className="bg-zinc-900 text-left text-zinc-500"><tr>{["Usuário","Telefone","Papel","Status","Ação"].map(h => <th key={h} className="px-5 py-3 font-semibold">{h}</th>)}</tr></thead>
-          <tbody className="divide-y divide-zinc-800">
-            {!loading && profiles.length === 0 ? <tr><td colSpan={5} className="px-5 py-10 text-center text-zinc-500">Nenhum perfil encontrado.</td></tr> : null}
-            {profiles.map(profile => <tr key={profile.id} className="text-zinc-300">
-              <td className="px-5 py-4 font-semibold text-white">{profile.full_name || "Usuário sem nome"}</td>
-              <td className="px-5 py-4">{profile.phone || "—"}</td>
-              <td className="px-5 py-4">{roleLabel[profile.role] || profile.role}</td>
-              <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs ${profile.active ? "bg-emerald-500/10 text-emerald-300" : "bg-zinc-800 text-zinc-400"}`}>{profile.active ? "Ativo" : "Inativo"}</span></td>
-              <td className="px-5 py-4"><button onClick={() => toggleActive(profile)} className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-semibold hover:bg-zinc-800">{profile.active ? "Desativar" : "Ativar"}</button></td>
-            </tr>)}
-          </tbody>
-        </table>
+      {error ? (
+        <div className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-sm leading-6 text-[var(--atlas-estado-perigo)]" role="alert" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>{error}</div>
+      ) : null}
+
+      <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "60ms" }} aria-labelledby="users-table-title">
+        <header className="flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-5">
+          <h2 id="users-table-title" className="text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Acessos oficiais</h2>
+          {!loading ? <span className="cc6-chip">{profiles.length} perfis</span> : null}
+        </header>
+        {loading ? (
+          <div className="cc6-hairline space-y-2 p-5">
+            {[1, 2, 3, 4].map((row) => <AtlasSkeleton key={row} className="h-12" />)}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="border-b border-b-[rgba(148,163,184,0.12)]">
+                  {["Usuário", "Telefone", "Papel", "Status", "Ação"].map(h => <th key={h} scope="col" className={TH_CLASS}>{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {profiles.length === 0 ? (
+                  <tr><td colSpan={5} className="px-4 py-6 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Nenhum perfil encontrado — os acessos oficiais da organização aparecem aqui.</td></tr>
+                ) : null}
+                {profiles.map(profile => (
+                  <tr key={profile.id} className="border-t border-[rgba(148,163,184,0.12)] transition-colors first:border-t-0 hover:bg-white/[0.015]">
+                    <td className="px-4 py-3.5 font-semibold text-[var(--atlas-texto-forte)]">{profile.full_name || "Usuário sem nome"}</td>
+                    <td className="cc6-num px-4 py-3.5 text-[var(--atlas-texto-medio)]">{profile.phone || "—"}</td>
+                    <td className="px-4 py-3.5 text-[var(--atlas-texto-medio)]">{roleLabel[profile.access_role] || profile.access_role}</td>
+                    <td className="px-4 py-3.5"><StatusBadge tone={profile.active ? "success" : "neutral"}>{profile.active ? "Ativo" : "Inativo"}</StatusBadge></td>
+                    <td className="px-4 py-3.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleActive(profile)}
+                        aria-label={`${profile.active ? "Desativar" : "Ativar"} acesso de ${profile.full_name || "usuário sem nome"}`}
+                        className={`cc6-ghost-btn min-h-11 ${focusRing}`}
+                      >
+                        {profile.active ? "Desativar" : "Ativar"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

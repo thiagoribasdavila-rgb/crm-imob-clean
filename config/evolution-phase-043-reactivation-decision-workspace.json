@@ -1,0 +1,30 @@
+{
+  "phase": 43,
+  "wave": 3,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "reactivation-decision-workspace",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "reactivationContract": {
+    "layoutAttribute": "decision-first",
+    "coldBaseSeparated": true,
+    "visibleDecisionLimit": 3,
+    "stopOnReply": true,
+    "simulationCreatesMessages": false,
+    "automaticCustomerContact": false,
+    "humanApprovalRequired": true
+  },
+  "truthPolicy": {
+    "decisionsAreRulesNotPredictions": true,
+    "conversionIncreaseClaimPublished": false,
+    "technicalErrorsExposed": false
+  },
+  "safetyPolicy": {
+    "rbacPreserved": true,
+    "tenantRlsPreserved": true,
+    "personalDataSentInCopilotContext": false,
+    "externalActionAdded": false
+  },
+  "nextPhase": { "phase": 44, "name": "Copilot proativo de conversão", "status": "planned" }
+}

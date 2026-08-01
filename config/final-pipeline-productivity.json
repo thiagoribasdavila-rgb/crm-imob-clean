@@ -1,0 +1,16 @@
+{
+  "phase": 5,
+  "status": "completed",
+  "movement": {
+    "optimistic": true,
+    "serialized": true,
+    "rollback": true,
+    "undo": true,
+    "expected_stage_guard": true,
+    "timeline_audit": true
+  },
+  "interaction": ["drag_drop", "stage_selector", "keyboard_alt_arrows", "mobile_stage_tabs"],
+  "daily_priority": ["first_contact_sla", "overdue_action", "temperature", "risk", "score"],
+  "session_preferences": ["focus", "sort", "density", "hide_empty", "mobile_stage"],
+  "privacy": "no_lead_query_persisted"
+}

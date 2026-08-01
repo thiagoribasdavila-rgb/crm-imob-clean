@@ -1,0 +1,34 @@
+{
+  "phase": 101,
+  "title": "Safe Hostinger homologation handoff",
+  "status": "completed",
+  "scope": "homologation-package-only",
+  "productionApproved": false,
+  "releaseGateOverridden": false,
+  "automaticDeploy": false,
+  "liveDatabaseMutation": false,
+  "liveMigrationApplied": false,
+  "evidence": {
+    "phase100Build": "passed",
+    "staticRegression": "passed-through-phase-100",
+    "publicAndGuardSmoke": "passed",
+    "legacyDatabaseSchemaAudit": "completed-read-only",
+    "liveCompatibilityAdapters": "passed-read-only-17150-leads-2-tasks-1-project",
+    "authenticatedSmoke": "blocked-missing-dedicated-test-account"
+  },
+  "package": {
+    "artifact": "atlas-v3-hostinger-homologation.zip",
+    "releaseChannel": "hostinger-homologation-candidate",
+    "secretsIncluded": false,
+    "customerDataIncluded": false,
+    "source": "clean-git-commit",
+    "checksumRequired": true,
+    "singleFinalBuildRequired": true
+  },
+  "remainingReleaseGates": [
+    "apply-pending-supabase-migrations-with-backup-and-rollback",
+    "repair-dedicated-authenticated-smoke-account",
+    "run-authenticated-https-smoke-after-upload",
+    "record-explicit-production-approval"
+  ]
+}

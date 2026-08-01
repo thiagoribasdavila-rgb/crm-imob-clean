@@ -1,0 +1,11 @@
+{
+  "phase": 12,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "viewportGate": "desktop >= 1024px",
+  "contentMaxWidthPx": 1728,
+  "responsiveGutter": "clamp(24px, 2.1vw, 40px)",
+  "alignedSurfaces": ["topbar", "main content"],
+  "sidebarBehaviorPreserved": true,
+  "tabletAndMobileBehaviorChanged": false
+}

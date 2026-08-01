@@ -187,7 +187,7 @@ export default function AtlasNotificationCenter() {
                       <p className="text-sm font-medium text-white">{decision.title}</p>
                       <p className="mt-1 text-xs capitalize text-slate-500">{decision.status?.replaceAll("_", " ")}</p>
                     </div>
-                    <span className="rounded-full bg-violet-400/10 px-2.5 py-1 text-[10px] font-semibold text-violet-200">{Math.round(Number(decision.confidence ?? 0) * (Number(decision.confidence ?? 0) <= 1 ? 100 : 1))}%</span>
+                    <span className="rounded-full bg-violet-400/10 px-2.5 py-1 text-micro font-semibold text-violet-200">{Math.round(Number(decision.confidence ?? 0) * (Number(decision.confidence ?? 0) <= 1 ? 100 : 1))}%</span>
                   </div>
                 </Link>
               ))}

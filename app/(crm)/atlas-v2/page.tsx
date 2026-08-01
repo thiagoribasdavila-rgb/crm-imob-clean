@@ -49,7 +49,7 @@ export default function AtlasV2Page() {
   const modules = [
     ["Marketing AI", "/marketing", "Campanhas, CPL, ROI e atribuição"],
     ["Conversas", "/conversations", "WhatsApp, Instagram, Messenger e e-mail"],
-    ["Criativos", "/creatives", "Biblioteca, aprovação e performance"],
+    ["Criativos", "/marketing/creatives", "Biblioteca, aprovação e performance"],
     ["Automações", "/automations", "Gatilhos, ações e governança"],
     ["Aprovações", "/approvals", "Human-in-the-loop para ações sensíveis"],
     ["Integrações", "/integrations", "Meta, WhatsApp, Google e orquestradores"],

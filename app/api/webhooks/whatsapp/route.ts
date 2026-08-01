@@ -3,8 +3,21 @@ import { verifyWebhookSignature } from "@/lib/security/webhook-signature";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { assessCustomerExperience } from "@/lib/atlas/customer-experience";
+import { enforceDistributedRateLimit } from "@/lib/security/abuse-protection";
+import { fecharPrimeiroContatoPorWhatsapp, descreverContatoDeWhatsapp } from "@/lib/crm/whatsapp-first-contact";
 
 export const dynamic = "force-dynamic";
+
+function normalizePhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length === 10 || digits.length === 11 ? `55${digits}` : digits;
+}
+
+function isOptOut(value: string) {
+  const normalized = value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
+  return /^(sair|pare|parar|cancelar|remover|stop|unsubscribe|nao quero mais|nao me envie mais)$/.test(normalized);
+}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -19,6 +32,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const distributed = await enforceDistributedRateLimit(request, { scope: "whatsapp-webhook", limit: 300, windowSeconds: 60 });
+  if (!distributed.allowed) return distributed.response;
   const rate = checkRateLimit(clientKey(request, "whatsapp-webhook"), { limit: 300, windowMs: 60_000 });
   if (!rate.allowed) return NextResponse.json({ error: "Rate limit." }, { status: 429 });
 
@@ -32,11 +47,12 @@ export async function POST(request: Request) {
 
   try {
     const body = JSON.parse(rawBody) as {
-      entry?: Array<{ changes?: Array<{ value?: { metadata?: { phone_number_id?: string }; messages?: Array<{ id: string; from: string; timestamp?: string; text?: { body?: string }; type?: string }> } }> }>;
+      entry?: Array<{ changes?: Array<{ value?: { metadata?: { phone_number_id?: string }; messages?: Array<{ id: string; from: string; timestamp?: string; text?: { body?: string }; type?: string }>; statuses?: Array<{ id: string; status: "sent" | "delivered" | "read" | "failed"; timestamp?: string; errors?: Array<{ code?: number; title?: string }> }> } }> }>;
     };
 
     const admin = getSupabaseAdmin();
     let accepted = 0;
+    let duplicates = 0;
 
     for (const entry of body.entry ?? []) {
       for (const change of entry.changes ?? []) {
@@ -51,23 +67,79 @@ export async function POST(request: Request) {
           .maybeSingle();
         if (!integration?.organization_id) continue;
 
+        for (const statusEvent of change.value?.statuses ?? []) {
+          const { data: outbound } = await admin.from("messages").select("id,status,media").eq("organization_id", integration.organization_id).eq("external_message_id", statusEvent.id).maybeSingle();
+          if (!outbound || outbound.status === statusEvent.status) continue;
+          const media = Array.isArray(outbound.media) ? outbound.media : [];
+          const templateItem = media.find((item) => item && typeof item === "object" && (item as { type?: unknown }).type === "whatsapp_template") as { batchId?: string } | undefined;
+          const at = statusEvent.timestamp ? new Date(Number(statusEvent.timestamp) * 1000).toISOString() : new Date().toISOString();
+          await admin.from("messages").update({ status: statusEvent.status, ...(statusEvent.status === "delivered" ? { delivered_at: at } : {}), ...(statusEvent.status === "read" ? { read_at: at } : {}), ...(statusEvent.status === "failed" ? { error: statusEvent.errors?.[0]?.title || "Falha informada pela API do WhatsApp." } : {}) }).eq("id", outbound.id);
+          if (templateItem?.batchId) {
+            const counter = statusEvent.status === "delivered" ? "delivered_count" : statusEvent.status === "read" ? "read_count" : statusEvent.status === "failed" ? "failed_count" : null;
+            if (counter) {
+              const { data: batch } = await admin.from("lead_reactivation_batches").select("delivered_count,read_count,failed_count,queued_count").eq("id", templateItem.batchId).single();
+              if (batch) {
+                const next = Number(batch[counter as keyof typeof batch] || 0) + 1;
+                const failureRate = statusEvent.status === "failed" ? next / Math.max(1, Number(batch.queued_count || 0)) : Number(batch.failed_count || 0) / Math.max(1, Number(batch.queued_count || 0));
+                const quality = Number(batch.queued_count || 0) >= 20 && failureRate >= 0.1 ? "red" : failureRate >= 0.05 ? "yellow" : "green";
+                await admin.from("lead_reactivation_batches").update({ [counter]: next, quality_status: quality, ...(quality === "red" ? { status: "running", paused_reason: "Pausa automática: falhas acima de 10%." } : {}) }).eq("id", templateItem.batchId);
+              }
+            }
+          }
+        }
+
         for (const incoming of change.value?.messages ?? []) {
+          const sender = normalizePhone(incoming.from);
+          const incomingText = incoming.text?.body ?? "";
+          const optedOut = isOptOut(incomingText);
+          if (optedOut) {
+            const { error: optOutError } = await admin.rpc("register_whatsapp_opt_out", { p_organization_id: integration.organization_id, p_recipient: sender, p_source: "whatsapp_inbound", p_external_message_id: incoming.id });
+            if (optOutError) throw optOutError;
+          }
           const { data: conversation } = await admin
             .from("conversations")
-            .select("id")
+            .select("id,lead_id,assigned_to")
             .eq("organization_id", integration.organization_id)
             .eq("channel", "whatsapp")
-            .eq("external_thread_id", incoming.from)
+            .eq("external_thread_id", sender)
             .maybeSingle();
 
           let conversationId = conversation?.id;
+          const conversationLeadId = conversation?.lead_id || null;
+          // A lead pode vir da conversa existente OU do match por telefone feito
+          // logo abaixo, quando a conversa nasce agora. As duas pontas precisam
+          // chegar ao fechamento do relógio, senão a PRIMEIRA mensagem de uma
+          // lead nova — justamente a que mais importa — não fecharia nada.
+          let leadDesteEvento: string | null = conversationLeadId;
+          const conversationOwnerId = conversation?.assigned_to || null;
           if (!conversationId) {
+            // Antes a conversa nascia SEM lead_id e nada fazia o match depois:
+            // a mensagem existia no inbox, mas nunca aparecia na timeline da
+            // lead — o corretor respondia sem contexto. O telefone é o elo
+            // natural: `sender` já vem normalizado (dígitos com DDI 55), e as
+            // leads guardam o mesmo formato em phone_normalized (trigger do
+            // contrato canônico) ou dígitos em phone. Match ambíguo (dois leads
+            // com o mesmo número) fica sem vínculo — errar por omissão é
+            // melhor que colar a conversa na lead errada.
+            let matchedLeadId: string | null = null;
+            const { data: phoneMatches } = await admin
+              .from("leads")
+              .select("id")
+              .eq("organization_id", integration.organization_id)
+              .or(`phone_normalized.eq.${sender},phone.eq.${sender}`)
+              .limit(2);
+            if (phoneMatches?.length === 1) {
+              matchedLeadId = phoneMatches[0].id;
+              leadDesteEvento = matchedLeadId;
+            }
+
             const { data: created, error: createError } = await admin
               .from("conversations")
               .insert({
                 organization_id: integration.organization_id,
                 channel: "whatsapp",
-                external_thread_id: incoming.from,
+                external_thread_id: sender,
+                lead_id: matchedLeadId,
                 status: "open",
                 unread_count: 1,
                 last_message_at: new Date().toISOString(),
@@ -76,6 +148,7 @@ export async function POST(request: Request) {
               .single();
             if (createError || !created) throw createError ?? new Error("Falha ao criar conversa.");
             conversationId = created.id;
+            if (matchedLeadId) logger.info("whatsapp.conversation_linked_by_phone", { organizationId: integration.organization_id, conversationId, leadId: matchedLeadId });
           } else {
             await admin
               .from("conversations")
@@ -83,25 +156,94 @@ export async function POST(request: Request) {
               .eq("id", conversationId);
           }
 
-          const { error: messageError } = await admin.from("messages").insert({
+          const { data: inboundMessage, error: messageError } = await admin.from("messages").insert({
             organization_id: integration.organization_id,
             conversation_id: conversationId,
             direction: "inbound",
             channel: "whatsapp",
-            sender: incoming.from,
+            sender,
             content: incoming.text?.body ?? `[${incoming.type ?? "mensagem"}]`,
             status: "received",
             external_message_id: incoming.id,
             created_at: incoming.timestamp ? new Date(Number(incoming.timestamp) * 1000).toISOString() : new Date().toISOString(),
-          });
+          }).select("id").single();
+          if (messageError?.code === "23505") { duplicates += 1; continue; }
           if (messageError) throw messageError;
+
+          // ── A CONVERSA FECHA O RELÓGIO ──────────────────────────────────
+          //
+          // Medido: 217 leads, UMA contatada — e o WhatsApp, que é o canal que
+          // a operação de fato usa, não tocava em `first_contacted_at`. Uma
+          // conversa inteira acontecia e a lead seguia como "SLA vencido, sem
+          // primeiro contato". O corretor atendia e o painel cobrava.
+          //
+          // Entrada não é a empresa cumprindo prazo, mas é prova de que a
+          // conversa começou. Deixar o relógio correndo numa lead que está
+          // conversando faz o painel gritar sobre quem já está sendo atendido —
+          // e alarme falso é como um painel perde a confiança de quem olha.
+          //
+          // A origem fica registrada para separar "nós corremos atrás" de "ela
+          // veio". Best-effort de propósito: derrubar a entrega da mensagem
+          // porque a medição falhou seria trocar um dado por outro maior.
+          const leadDaConversa = leadDesteEvento;
+          if (leadDaConversa && !optedOut) {
+            const fechamento = await fecharPrimeiroContatoPorWhatsapp(admin, {
+              organizationId: integration.organization_id,
+              leadId: leadDaConversa,
+              origem: "entrada",
+              ocorridoEm: incoming.timestamp
+                ? new Date(Number(incoming.timestamp) * 1000).toISOString()
+                : new Date().toISOString(),
+            });
+            if (fechamento.fechou) {
+              logger.info("whatsapp.primeiro_contato_fechado", {
+                organizationId: integration.organization_id,
+                leadId: leadDaConversa,
+                origem: "entrada",
+                nota: descreverContatoDeWhatsapp("entrada"),
+              });
+            } else if (fechamento.motivo && !fechamento.jaEstavaFechado) {
+              logger.warn("whatsapp.primeiro_contato_nao_fechado", {
+                organizationId: integration.organization_id,
+                leadId: leadDaConversa,
+                motivo: fechamento.motivo,
+                indisponivel: fechamento.indisponivel,
+              });
+            }
+          }
+          if (!optedOut && inboundMessage?.id) {
+            const { error: journeyError } = await admin.rpc("route_nightly_journey_reply", { p_organization_id: integration.organization_id, p_conversation_id: conversationId, p_message_id: inboundMessage.id });
+            if (journeyError) throw journeyError;
+          }
+          // WhatsApp Intelligence (entrada) — enfileira análise por LLM apenas se
+          // habilitado (custo opt-in). Best-effort: nunca derruba o webhook.
+          if (process.env.ATLAS_WHATSAPP_NLU_ENABLED === "true" && !optedOut && inboundMessage?.id && conversationLeadId && incomingText) {
+            const { error: nluError } = await admin.from("integration_outbox").insert({ organization_id: integration.organization_id, topic: "whatsapp.inbound.analyze", aggregate_type: "message", aggregate_id: inboundMessage.id, payload: { conversationId, leadId: conversationLeadId } });
+            if (nluError) logger.warn("whatsapp.nlu_enqueue_skipped", { code: nluError.code });
+          }
+          await admin.from("lead_reactivation_contacts").update({ status: "replied" }).eq("organization_id", integration.organization_id).eq("phone", sender).in("status", ["queued", "sent"]);
+          const { data: repliedContacts } = await admin.from("lead_reactivation_contacts").select("batch_id").eq("organization_id", integration.organization_id).eq("phone", sender).eq("status", "replied");
+          for (const batchId of new Set((repliedContacts ?? []).map((contact) => contact.batch_id))) {
+            const { count } = await admin.from("lead_reactivation_contacts").select("id", { count: "exact", head: true }).eq("batch_id", batchId).eq("status", "replied");
+            await admin.from("lead_reactivation_batches").update({ replied_count: count || 0 }).eq("id", batchId);
+          }
+          if (conversationLeadId && incomingText) {
+            const assessment = assessCustomerExperience(incomingText);
+            if (assessment.friction) {
+              const { data: signal } = await admin.from("lead_experience_signals").upsert({ organization_id: integration.organization_id, lead_id: conversationLeadId, broker_id: conversationOwnerId, conversation_id: conversationId, message_id: inboundMessage?.id || null, signal_type: assessment.signalType, severity: assessment.severity, confidence: assessment.confidence, evidence: assessment.evidence, recommendation: assessment.recommendation, suggested_reply: assessment.suggestedReply }, { onConflict: "message_id", ignoreDuplicates: true }).select("id").maybeSingle();
+              await Promise.allSettled([
+                admin.from("activities").insert({ organization_id: integration.organization_id, lead_id: conversationLeadId, user_id: conversationOwnerId, type: "experience_alert", title: assessment.recommendation === "offer_broker_change" ? "IA recomenda oferecer troca de corretor" : "IA detectou atrito no atendimento", description: `${assessment.evidence} Recomendação: ${assessment.recommendation}.`, metadata: { experienceSignalId: signal?.id || null, severity: assessment.severity, confidence: assessment.confidence }, occurred_at: new Date().toISOString() }),
+                admin.from("atlas_events").insert({ organization_id: integration.organization_id, event_type: "customer.experience_friction", source: "whatsapp", aggregate_type: "lead", aggregate_id: conversationLeadId, payload: { signalType: assessment.signalType, severity: assessment.severity, recommendation: assessment.recommendation, confidence: assessment.confidence }, correlation_id: incoming.id }),
+              ]);
+            }
+          }
           accepted += 1;
         }
       }
     }
 
-    logger.info("whatsapp.webhook_processed", { accepted });
-    return NextResponse.json({ received: true, accepted });
+    logger.info("whatsapp.webhook_processed", { accepted, duplicates });
+    return NextResponse.json({ received: true, accepted, duplicates });
   } catch (error) {
     logger.error("whatsapp.webhook_failed", error);
     return NextResponse.json({ error: "Falha ao processar webhook." }, { status: 500 });

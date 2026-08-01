@@ -1,0 +1,49 @@
+{
+  "phase": 68,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "local-explainable-human-confirmed-commercial-outcome-summary",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "turn-human-confirmed-task-outcome-memory-into-a-local-explainable-commercial-summary-without-generative-ai-predictive-claims-or-downstream-mutations",
+  "changes": [
+    "define-a-single-commercial-outcome-taxonomy-shared-with-the-supervised-memory-contract",
+    "read-completion-and-outcome-evidence-from-existing-lead-events-for-the-last-thirty-days",
+    "keep-authenticated-organization-and-rls-scope-on-the-server",
+    "ignore-unconfirmed-or-unknown-outcome-evidence",
+    "use-only-the-latest-observed-result-per-task-to-prevent-double-counting",
+    "calculate-observed-results-advances-no-response-follow-up-and-recording-coverage-locally",
+    "label-small-samples-as-initial-or-descriptive-without-predictive-claims",
+    "surface-the-summary-inside-the-copilot-daily-workflow",
+    "refresh-the-summary-after-a-confirmed-outcome-is-recorded",
+    "keep-the-daily-operational-queue-available-if-historical-summary-reading-fails",
+    "avoid-generative-model-calls-and-ai-cost-for-the-summary",
+    "preserve-task-owner-priority-due-date-pipeline-score-messaging-and-production-data"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "commercial-outcome-summary:check",
+      "copilot-governed-task-outcome:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "The summary describes a supervised but potentially small and incomplete sample; it does not establish causality, predict conversion or independently verify the real-world outcome.",
+  "nextPhase": {
+    "phase": 69,
+    "name": "Comparação temporal explicável dos resultados observados",
+    "status": "planned"
+  }
+}

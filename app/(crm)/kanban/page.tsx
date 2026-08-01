@@ -1,18 +1,6 @@
-import { LeadService } from "@/lib/services/leads.services";
+import { redirect } from "next/navigation";
+import { resolveAtlasNavigationAlias } from "@/lib/atlas/navigation-aliases";
 
-export default async function KanbanPage() {
-  const service = new LeadService();
-  const leads = await service.getLeads();
-
-  return (
-    <div>
-      <h1>Kanban CRM</h1>
-
-      {leads?.map((lead: any) => (
-        <div key={lead.id}>
-          {lead.name} → {lead.status}
-        </div>
-      ))}
-    </div>
-  );
+export default function KanbanCompatibilityPage() {
+  redirect(resolveAtlasNavigationAlias("/kanban"));
 }

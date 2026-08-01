@@ -1,0 +1,61 @@
+{
+  "phase": 24,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "governed-navigation-alias-consolidation-with-compatible-redirects",
+  "productionDataModified": false,
+  "runtimeNavigationChanged": true,
+  "aliasesConsolidated": 7,
+  "routesDeleted": false,
+  "aliasesPreserved": true,
+  "redirectMode": "temporary-307",
+  "permanentRedirectUsed": false,
+  "canonicalMappings": [
+    { "concept": "automacoes", "alias": "/automation", "canonical": "/automations" },
+    { "concept": "pipeline-kanban", "alias": "/kanban", "canonical": "/pipeline" },
+    { "concept": "inteligencia-de-criativos", "alias": "/creatives", "canonical": "/marketing/creatives" },
+    { "concept": "agentes-especializados", "alias": "/agents", "canonical": "/atlas-v3/agents" },
+    { "concept": "inteligencia-operacional", "alias": "/ai-insights", "canonical": "/intelligence" },
+    { "concept": "analytics-relatorios", "alias": "/analytics", "canonical": "/reports" },
+    { "concept": "conversas", "alias": "/chat", "canonical": "/conversations" }
+  ],
+  "activeInternalReferencesMigrated": [
+    { "source": "components/Sidebar.tsx", "from": "/creatives", "to": "/marketing/creatives" },
+    { "source": "app/(crm)/atlas-v2/page.tsx", "from": "/creatives", "to": "/marketing/creatives" },
+    { "source": "scripts/test-real-routes.mjs", "from": "/agents", "to": "/atlas-v3/agents" }
+  ],
+  "legacyQuarantineEntriesRemoved": [
+    "app/(crm)/analytics",
+    "app/(crm)/kanban"
+  ],
+  "criticalJourneyImprovement": {
+    "journey": "diagnosticar-integracao",
+    "source": "/integrations",
+    "destination": "/integrations/health",
+    "directContextualEntryAdded": true
+  },
+  "behavioralTelemetry": {
+    "status": "awaiting-runtime-telemetry",
+    "usageBasedRemovalAuthorized": false,
+    "inventedMetricPublished": false
+  },
+  "safetyPolicy": {
+    "favoriteCompatibilityPreserved": true,
+    "externalLinkCompatibilityPreserved": true,
+    "redirectCanBeReversed": true,
+    "databaseRead": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "automaticDecisionAboutPeopleAllowed": false
+  },
+  "exitCriteria": {
+    "allAmbiguousConceptsHaveSingleCanonicalDestination": true,
+    "allAliasesResolveWithoutDuplicateUi": true,
+    "activeInternalReferencesUseCanonicalDestination": true,
+    "integrationHealthHasContextualEntry": true,
+    "routeDeleted": false,
+    "permanentRedirectAdded": false,
+    "phaseTwentyGateBypassed": false
+  }
+}

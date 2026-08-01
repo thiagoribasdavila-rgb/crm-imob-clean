@@ -16,12 +16,28 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const email = readArg("email");
 const password = readArg("password");
 const fullName = readArg("name") || "Atlas Administrator";
+const confirmation = readArg("confirm");
+const atlasEnvironment = process.env.ATLAS_ENV;
+const bootstrapSecret = process.env.ATLAS_BOOTSTRAP_SECRET;
+
+if (!["development", "homologation"].includes(atlasEnvironment)) {
+  fail("ATLAS_ENV must be development or homologation; bootstrap is forbidden in production");
+}
+if (!bootstrapSecret || bootstrapSecret.length < 32) {
+  fail("define a temporary ATLAS_BOOTSTRAP_SECRET with at least 32 characters");
+}
+if (confirmation !== "CREATE_FIRST_ADMIN") {
+  fail("add --confirm=CREATE_FIRST_ADMIN after checking the target environment");
+}
 
 if (!url || !serviceRoleKey) {
   fail("define NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local");
 }
 if (!email) fail("use --email=you@company.com");
-if (!password || password.length < 12) fail("use --password= with at least 12 characters");
+const passwordCategories = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter((rule) => rule.test(password ?? "")).length;
+if (!password || password.length < 12 || password.length > 128 || passwordCategories < 3) {
+  fail("use --password= with 12-128 characters and at least three character categories");
+}
 
 const admin = createClient(url, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -71,4 +87,4 @@ if (profileError) {
 console.log("\nAtlas administrator created successfully.");
 console.log(`Organization: ${organization.name}`);
 console.log(`Email: ${email}`);
-console.log("Next step: npm run dev and open http://localhost:3000/login\n");
+console.log("Next steps: validate the first login, then remove ATLAS_BOOTSTRAP_SECRET and restart the application.\n");

@@ -1,0 +1,1 @@
+{"phase":41,"engine":"lib/analytics/task-center.ts","api":"app/api/v1/tasks/route.ts","page":"app/(crm)/tasks/page.tsx","views":["priority","overdue","today","mine","team"],"actions":["complete","postpone_one_day"],"sources":["tasks","leads","profiles"],"governance":["hierarchicalRls","allowlistedActions","explainablePriority","noAutomaticAssignment","noPeopleRanking"]}

@@ -1,0 +1,11 @@
+{
+  "phase": 93,
+  "minimum_days": 7,
+  "maximum_days": 45,
+  "minimum_leads_per_arm": 50,
+  "single_variable_required": true,
+  "control_required": true,
+  "budget_cap_required": true,
+  "guardrail_required": true,
+  "governance": { "approved_andromeda_cycle_required": true, "external_execution_required": true, "causal_claim_allowed": false, "automatic_winner": false, "automatic_budget_change": false, "director_decision_required": true }
+}

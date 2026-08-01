@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "dependencyRule": "ui -> api -> domain -> data; segredos e service role permanecem no servidor",
+  "modules": [
+    {
+      "key": "crm",
+      "purpose": "Carteira, hierarquia, leads, clientes, tarefas, pipeline e conversas",
+      "entities": ["lead", "customer", "user", "task", "commercialActivity", "conversation"],
+      "uiRoots": ["app/(crm)/leads", "app/(crm)/customers", "app/(crm)/pipeline", "app/(crm)/tasks", "app/(crm)/conversations", "app/(crm)/brokers"],
+      "apiRoots": ["app/api/v1/leads", "app/api/v1/crm", "app/api/v1/pipeline", "app/api/v2/messages"],
+      "libraryRoots": ["lib/atlas", "lib/security"],
+      "dependsOn": ["platform"]
+    },
+    {
+      "key": "projects",
+      "purpose": "Incorporadoras, empreendimentos, unidades, materiais, estoque e regras comerciais",
+      "entities": ["project", "property", "material"],
+      "uiRoots": ["app/(crm)/developments", "app/(crm)/properties"],
+      "apiRoots": ["app/api/v1/developments", "app/api/v1/developers", "app/api/v1/launch-os"],
+      "libraryRoots": ["lib/storage"],
+      "dependsOn": ["platform"]
+    },
+    {
+      "key": "marketing",
+      "purpose": "Campanhas, atribuição, criativos e inteligência de aquisição",
+      "entities": ["campaign"],
+      "uiRoots": ["app/(crm)/marketing", "app/(crm)/creatives"],
+      "apiRoots": ["app/api/v2/meta"],
+      "libraryRoots": ["lib/marketing", "lib/meta"],
+      "dependsOn": ["crm", "projects", "platform"]
+    },
+    {
+      "key": "ai",
+      "purpose": "Copiloto, roteamento de modelos, score, matching, previsão e aprovação humana",
+      "entities": [],
+      "uiRoots": ["app/(crm)/ai-dashboard", "app/(crm)/ai-insights", "app/(crm)/decision-center", "app/(crm)/intelligence"],
+      "apiRoots": ["app/api/ai", "app/api/v3/agents", "app/api/v3/decisions", "app/api/v3/twins"],
+      "libraryRoots": ["lib/ai", "lib/atlas2030"],
+      "dependsOn": ["crm", "projects", "marketing", "platform"]
+    },
+    {
+      "key": "integrations",
+      "purpose": "Conectores, webhooks, outbox e comunicação com serviços externos",
+      "entities": ["integration"],
+      "uiRoots": ["app/(crm)/integrations"],
+      "apiRoots": ["app/api/v1/integrations", "app/api/webhooks", "app/api/v2/outbox"],
+      "libraryRoots": ["lib/integrations", "lib/http"],
+      "dependsOn": ["crm", "marketing", "platform"]
+    },
+    {
+      "key": "governance",
+      "purpose": "Auditoria, eventos, saúde, homologação, backup, rollback e segurança operacional",
+      "entities": ["systemEvent"],
+      "uiRoots": ["app/(crm)/atlas-v3/governance", "app/(crm)/atlas-v3/audit", "app/(crm)/atlas-v3/homologation"],
+      "apiRoots": ["app/api/v1/governance", "app/api/v1/homologation", "app/api/v3/events"],
+      "libraryRoots": ["lib/observability", "lib/automation"],
+      "dependsOn": ["platform"]
+    },
+    {
+      "key": "reports",
+      "purpose": "Leituras agregadas, indicadores, relatórios e apoio à decisão por perfil",
+      "entities": [],
+      "uiRoots": ["app/(crm)/reports", "app/(crm)/dashboard"],
+      "apiRoots": ["app/api/v1/analytics"],
+      "libraryRoots": ["lib/analytics"],
+      "dependsOn": ["crm", "projects", "marketing", "ai", "integrations", "platform"]
+    },
+    {
+      "key": "platform",
+      "purpose": "Supabase, contratos compartilhados, API core, rate limit, flags e utilitários sem regra comercial própria",
+      "entities": [],
+      "uiRoots": ["app/(auth)"],
+      "apiRoots": ["app/api/auth", "app/api/health", "app/api/ready", "app/api/bootstrap"],
+      "libraryRoots": ["lib/api", "lib/supabase", "lib/platform"],
+      "dependsOn": []
+    }
+  ]
+}

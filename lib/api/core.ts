@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { sanitizeLogMetadata } from "@/lib/observability/logger";
 
 export const ATLAS_API_VERSION = "v1";
 export const ATLAS_API_SERVICE = "atlas-api-platform";
@@ -46,12 +47,18 @@ export function createRequestContext(request: NextRequest): ApiMeta {
 
 function responseHeaders(meta: ApiMeta, extra?: HeadersInit): Headers {
   const headers = new Headers(extra);
-  headers.set("Cache-Control", "no-store");
+  // Padrão seguro: no-store. Mas se quem responde já definiu um Cache-Control
+  // (ex.: cacheHeaders({...}) privado em leitura pesada), respeita-o em vez de
+  // sobrescrever — assim o cliente pode reusar a resposta por alguns segundos.
+  if (!headers.has("Cache-Control")) headers.set("Cache-Control", "no-store");
   headers.set("Content-Type", "application/json; charset=utf-8");
   headers.set("X-Request-Id", meta.requestId);
   headers.set("X-Correlation-Id", meta.correlationId);
   headers.set("X-Atlas-Api-Version", meta.version);
   headers.set("X-Content-Type-Options", "nosniff");
+  const durationMs = Math.max(0, Date.now() - new Date(meta.timestamp).getTime());
+  headers.set("Server-Timing", `atlas;dur=${durationMs}`);
+  headers.set("X-Response-Time", `${durationMs}ms`);
   return headers;
 }
 
@@ -122,7 +129,7 @@ export function structuredApiLog(
     path: request.nextUrl.pathname,
     clientAddress: getClientAddress(request),
     timestamp: new Date().toISOString(),
-    ...data,
+    ...(sanitizeLogMetadata(data ?? {}) as Record<string, unknown>),
   };
 
   if (level === "error") console.error(JSON.stringify(payload));

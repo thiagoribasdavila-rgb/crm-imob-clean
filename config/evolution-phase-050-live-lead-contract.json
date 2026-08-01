@@ -1,0 +1,50 @@
+{
+  "phase": 50,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "live-lead-contract-and-pipeline-read",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "evidence": {
+    "liveLeadRows": 17151,
+    "inactiveRows": 16733,
+    "operationalRows": 418,
+    "missingRpcFunctions": [
+      "create_lead_atomic",
+      "move_pipeline_lead",
+      "touch_commercial_presence"
+    ],
+    "missingRelations": [
+      "atlas_events",
+      "pipeline_stage_settings"
+    ]
+  },
+  "changes": [
+    "single-compatible-database-query",
+    "database-pagination-and-count",
+    "canonical-status-normalization",
+    "legacy-field-mapping",
+    "no-failed-query-before-fallback",
+    "no-5000-row-memory-fallback",
+    "no-missing-stage-settings-call-by-default"
+  ],
+  "validation": {
+    "profile": "code-and-live-schema-targeted",
+    "targetedChecks": [
+      "live-lead-contract:check",
+      "canonical-stages:check"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "nextPhase": {
+    "phase": 51,
+    "name": "Escrita segura de leads e histórico",
+    "status": "planned"
+  }
+}

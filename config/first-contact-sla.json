@@ -1,0 +1,14 @@
+{
+  "phase": 34,
+  "migration": "supabase/migrations/20260717193000_phase_34_first_contact_sla_accuracy.sql",
+  "pipelineApi": "app/api/v1/pipeline/route.ts",
+  "pipelinePage": "app/(crm)/pipeline/page.tsx",
+  "managerAnalytics": "app/api/v1/analytics/team-sla/route.ts",
+  "defaults": {
+    "metaMinutes": 5,
+    "otherSourcesMinutes": 15
+  },
+  "validActivities": ["call", "email", "whatsapp", "visit", "meeting", "message", "contact"],
+  "validMessageStatuses": ["sent", "delivered", "read", "received"],
+  "measurements": ["first_response_minutes", "first_contact_sla_met", "complianceRate", "averageResponseMinutes"]
+}

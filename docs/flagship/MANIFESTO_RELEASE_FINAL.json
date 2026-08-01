@@ -1,0 +1,38 @@
+{
+  "artefato": "atlas-one-v3-final-hostinger-2026-07-31-1452-541014e2.zip",
+  "sha256": "3f918b098440ee310258cf3a391116b8a95adadd42a0d6ae6b28266ac48e72ef",
+  "tamanhoBytes": 6735973,
+  "entradas": 3379,
+  "commit": "541014e2",
+  "versao": "3.0.0-rc.2",
+  "geradoEmUtc": "2026-07-31T17:55:20Z",
+  "runtimeExigido": ">=22.6",
+  "correcoesDesteP acote": [
+    "cache: HTML no-store, estaticos immutable, generateBuildId=commit",
+    "identidade: release.json carimbado pelo git + comparacao artifact x environment",
+    "build recusa sem NEXT_PUBLIC_*",
+    "dependencias do build em dependencies (--omit=dev)"
+  ],
+  "validacaoDoPacote": {
+    "npmCiOmitDev": 0,
+    "build": 0,
+    "buildId": "541014e2",
+    "cssBytes": 420519,
+    "htmlCacheControl": "private, no-store",
+    "chunkCacheControl": "public, max-age=31536000, immutable",
+    "identidadeConfiavel": true,
+    "rotas200": [
+      "/",
+      "/login",
+      "/api/version",
+      "/api/v1/ready",
+      "/api/health"
+    ]
+  },
+  "scorecard": {
+    "media": 85.1,
+    "menorNota": 55,
+    "veredito": "REPROVADO na regua flagship"
+  },
+  "publicadoEmProducao": false
+}

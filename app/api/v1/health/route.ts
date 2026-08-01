@@ -5,26 +5,15 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const meta = createRequestContext(request);
-  const hasSupabaseUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const hasSupabasePublicKey = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
-  const healthy = hasSupabaseUrl && hasSupabasePublicKey;
-
-  structuredApiLog(healthy ? "info" : "warn", "api.health.checked", request, meta, {
-    healthy,
-  });
+  structuredApiLog("info", "api.health.checked", request, meta, { healthy: true });
 
   return apiSuccess(
     {
       service: "atlas-api-platform",
-      status: healthy ? "ok" : "degraded",
-      checks: {
-        application: "ok",
-        supabaseConfiguration: healthy ? "ok" : "missing",
-      },
+      status: "ok",
+      checks: { application: "ok" },
     },
     meta,
-    { status: healthy ? 200 : 503 },
+    { status: 200, headers: { "Cache-Control": "no-store" } },
   );
 }

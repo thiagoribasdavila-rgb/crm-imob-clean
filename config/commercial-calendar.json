@@ -1,0 +1,1 @@
+{"phase":46,"page":"app/(crm)/calendar/page.tsx","api":"app/api/v1/calendar/route.ts","sources":["tasks.due_date","leads.next_contact"],"optionalSources":["lead_visits"],"windows":["today","week","month","overdue","all"],"requires":["authenticatedApi","organizationScope","hierarchicalRls","optionalVisitFallback","manualFallback","noAutomaticCustomerContact"]}

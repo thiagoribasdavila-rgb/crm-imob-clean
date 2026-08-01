@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "developer": {
+    "legalName": "Kallas Incorporadora",
+    "tradeName": "Kallas",
+    "slug": "kallas",
+    "status": "active",
+    "partners": ["Paladin Realty"],
+    "defaultCommissionSlaDays": 30
+  },
+  "projects": [
+    {
+      "name": "Arvo Teixeira da Silva",
+      "slug": "arvo-teixeira-da-silva",
+      "neighborhood": "Paraíso",
+      "city": "São Paulo",
+      "state": "SP",
+      "status": "pre-launch",
+      "address": "Rua Mário Amaral, 267 — Paraíso, São Paulo/SP (esquina/face com a Rua Teixeira da Silva)",
+      "positioning": "Studios e 1 dormitório + terraço de 24 e 29 m² no coração do Paraíso, a 400 m da Av. Paulista, 800 m do Metrô Brigadeiro e 10 min do Parque Ibirapuera, conforme book oficial da Kallas. Torre única, 262 unidades, lazer completo. Unidades a partir de R$ 399 mil (peça aprovada).",
+      "materials": [
+        { "type": "presentation", "title": "Book/Apresentação Arvo Teixeira da Silva", "path": "/Users/thiagoribasdavila/Documents/Arvo - Kallas/Arvo Teixeira da Silva (1).pdf" },
+        { "type": "video", "title": "Arvo — vídeo legendado", "path": "/Users/thiagoribasdavila/Documents/Arvo - Kallas/ARVO LEGENDA (1).mp4", "ratio_hint": "9:16" },
+        { "type": "video", "title": "Arvo — reels A", "path": "/Users/thiagoribasdavila/Documents/Arvo - Kallas/arvo-reels-A.mp4", "ratio_hint": "9:16" },
+        { "type": "video", "title": "Arvo — reels B", "path": "/Users/thiagoribasdavila/Documents/Arvo - Kallas/arvo-reels-B.mp4", "ratio_hint": "9:16" },
+        { "type": "video", "title": "Arvo — vídeo complementar (WhatsApp 2026-07-07)", "path": "/Users/thiagoribasdavila/Documents/Arvo - Kallas/WhatsApp Video 2026-07-07 at 10.22.08.mp4" },
+        { "type": "static_creative", "title": "Peça estática ARVO (a partir de R$ 399 mil) — 4:5 e 9:16", "note": "Enviada na conversa; arquivo na origem do dono." }
+      ],
+      "technical": {
+        "towers": 1,
+        "units_total": 262,
+        "floors": "Térreo + 1º (lazer) + 2º ao 21º (tipo) + ático",
+        "parking": "1 vaga utilitário",
+        "typologies": [
+          { "type": "1 dorm + terraço", "area_m2": 29, "units": 182, "note": "Tipologia A · finais 01 e 06 a 14 · 100% R2V" },
+          { "type": "1 dorm + terraço", "area_m2": 24, "units": 80, "note": "Tipologia B · finais 02 a 05 · 36 HMP · 37 HIS-2 · 07 R2V" }
+        ],
+        "architects": {
+          "arquitetura": "Marcos Gavião Arquitetos",
+          "paisagismo": "Núcleo Arquitetura e Paisagismo",
+          "interiores": "DP Barros Interiores",
+          "colaboracao": "PSA / Pablo Slemenson"
+        }
+      },
+      "price": { "from_brl": 399000, "source": "peça aprovada (a partir de R$ 399 mil)" },
+      "missing": ["tabela de vendas vigente", "espelho de vendas vigente", "fluxo de pagamento", "faixa de renda (SM) — não consta do book, não inventar"]
+    }
+  ],
+  "notes": [
+    "Evidência de vínculo Arvo→Kallas: anúncio real 'Kallas-Arvo-video' na conta + book oficial (2026-07).",
+    "Parte do estoque é HMP/HIS-2 (habitação de interesse social) — o book não traz faixa de renda em salários mínimos; o criativo não afirma renda-alvo até o dono confirmar."
+  ]
+}

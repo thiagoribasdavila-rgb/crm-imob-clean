@@ -1,0 +1,109 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 3,
+  "title": "Contrato de eventos CRM e deduplicacao",
+  "mode": "audit_only",
+  "contractVersion": "atlas-meta-crm-v1",
+  "canonicalEvents": [
+    {
+      "eventName": "Lead",
+      "crmFact": "lead_received",
+      "sourceOfTruth": "meta_lead_events.external_lead_id",
+      "eventIdTemplate": "meta-lead-{externalLeadId}",
+      "minimumEvidence": ["signed_webhook", "mapped_page_and_form", "imported_lead", "consent_snapshot"]
+    },
+    {
+      "eventName": "Contact",
+      "crmFact": "first_meaningful_contact",
+      "sourceOfTruth": "pipeline_history",
+      "eventIdTemplate": "crm-stage-{leadId}-contato",
+      "minimumEvidence": ["forward_stage_transition", "authenticated_actor", "pipeline_history"]
+    },
+    {
+      "eventName": "QualifiedLead",
+      "crmFact": "lead_qualified",
+      "sourceOfTruth": "pipeline_history",
+      "eventIdTemplate": "crm-stage-{leadId}-qualificacao",
+      "minimumEvidence": ["forward_stage_transition", "authenticated_actor", "pipeline_history"]
+    },
+    {
+      "eventName": "Schedule",
+      "crmFact": "visit_scheduled",
+      "sourceOfTruth": "pipeline_history",
+      "eventIdTemplate": "crm-stage-{leadId}-visita",
+      "minimumEvidence": ["forward_stage_transition", "authenticated_actor", "pipeline_history"]
+    },
+    {
+      "eventName": "SubmitApplication",
+      "crmFact": "proposal_submitted",
+      "sourceOfTruth": "pipeline_history_or_approved_commercial_simulation",
+      "eventIdTemplate": "crm-stage-{leadId}-proposta",
+      "minimumEvidence": ["forward_stage_transition", "authenticated_actor", "pipeline_history_or_approval"]
+    },
+    {
+      "eventName": "ConvertedLead",
+      "crmFact": "sale_won",
+      "sourceOfTruth": "pipeline_history",
+      "eventIdTemplate": "crm-stage-{leadId}-ganho",
+      "minimumEvidence": ["forward_stage_transition", "authenticated_actor", "pipeline_history", "confirmed_commercial_outcome"]
+    },
+    {
+      "eventName": "BuyerProfile",
+      "crmFact": "external_purchase_profile",
+      "sourceOfTruth": "campaign_events.buyer_profile_external_purchase",
+      "eventIdTemplate": "buyer-profile-{leadId}",
+      "minimumEvidence": ["external_purchase_record", "consent_snapshot", "not_counted_as_atlas_sale"]
+    }
+  ],
+  "deduplication": {
+    "scope": ["organization_id", "event_id"],
+    "stableAcrossRetries": true,
+    "stableAcrossWorkers": true,
+    "oneSignalPerLeadMilestone": true,
+    "eventIdContainsPersonalData": false,
+    "databaseConstraint": "unique (organization_id, event_id)",
+    "serverPayloadField": "event_id"
+  },
+  "eligibility": {
+    "conversionConfigEnabled": true,
+    "testModeRequired": true,
+    "testEventCodeRequiredForDelivery": true,
+    "explicitConsentWhenRequired": true,
+    "matchKeyRequired": ["email", "phone"],
+    "forwardProgressionOnly": true,
+    "humanOrGovernedFactRequired": true
+  },
+  "forbiddenSignals": [
+    "ai_suggestion_without_human_or_crm_fact",
+    "score_change_only",
+    "task_creation_without_customer_action",
+    "stage_save_without_progression",
+    "pipeline_regression",
+    "lost_lead_as_positive_conversion",
+    "atlas_sale_for_external_purchase",
+    "cold_base_without_consent"
+  ],
+  "delivery": {
+    "topic": "meta.conversion.send",
+    "transport": "integration_outbox",
+    "retryUsesSameEventId": true,
+    "deadLetterAfterAttempts": 5,
+    "productionDeliveryEnabled": false
+  },
+  "governance": {
+    "secretsInOutput": false,
+    "assetIdentifiersInOutput": false,
+    "personalDataInOutput": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "databaseMutation": false,
+    "migrationApplication": false,
+    "realEventDelivery": false,
+    "directorDecisionRequired": true
+  },
+  "nextPhase": {
+    "phase": 4,
+    "title": "Plano seguro de compatibilidade do schema Meta"
+  }
+}

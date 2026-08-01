@@ -1,0 +1,101 @@
+{
+  "phase": 36,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "role-aware-leads-action-workspace",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "clientPreferenceChanged": false,
+  "dataFetchingChanged": false,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": false,
+  "leadsContract": {
+    "layoutAttribute": "action-first",
+    "prioritySource": "current-paginated-items",
+    "visiblePriorityLimit": 3,
+    "rankingSignals": [
+      "overdue next action",
+      "missing owner for leadership roles",
+      "observed hot score or temperature",
+      "missing next action"
+    ],
+    "newScoreCreated": false,
+    "existingPaginationPreserved": true,
+    "existingFiltersPreserved": true,
+    "bulkTransferPreserved": true,
+    "lead360Preserved": true
+  },
+  "roleResolution": {
+    "broker": "priorities from the already scoped owned portfolio",
+    "manager": "priorities from the already authorized team scope",
+    "leadership": "priorities from the already authorized commercial scope",
+    "unassignedSignalHiddenFromBrokerQueue": true,
+    "crossTenantAggregationAdded": false
+  },
+  "progressiveDisclosure": {
+    "primaryActions": [
+      "new lead",
+      "open pipeline"
+    ],
+    "secondaryTools": [
+      "data quality",
+      "deduplication",
+      "portfolio analysis"
+    ],
+    "nativeDetailsUsed": true,
+    "functionalityRemoved": false
+  },
+  "aiPolicy": {
+    "copilotPreparesApproach": true,
+    "visibleScopeOnly": true,
+    "personalContactIncludedInPrompt": false,
+    "automaticMessageSending": false,
+    "automaticCrmMutation": false,
+    "humanApprovalPreserved": true
+  },
+  "truthPolicy": {
+    "queueExplicitlyLimitedToCurrentPage": true,
+    "queuePresentedAsGlobalPortfolio": false,
+    "inventedPriorityPercentagePublished": false,
+    "runtimeProductivityClaimPublished": false,
+    "conversionGuaranteePublished": false
+  },
+  "accessibility": {
+    "queueHasLabelledRegion": true,
+    "queueUsesPoliteLiveRegion": true,
+    "primaryDestinationsUseNativeLinks": true,
+    "copilotActionsUseNativeButtons": true,
+    "minimumNewTouchTargetPx": 44,
+    "reducedMotionPolicyPreserved": true
+  },
+  "structuralBaseline": {
+    "newStateAdded": false,
+    "newEffectAdded": false,
+    "newNetworkRequestAdded": false,
+    "priorityCardsVisible": 3,
+    "secondaryHeaderToolsCollapsed": 3,
+    "runtimeDecisionTimeMeasured": false
+  },
+  "safetyPolicy": {
+    "databaseWrite": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "routesPreserved": true
+  },
+  "exitCriteria": {
+    "firstViewportShowsActionableWork": true,
+    "priorityReasonIsVisible": true,
+    "leadOpensWithoutExtraNavigation": true,
+    "copilotRemainsSupervised": true,
+    "tableAndMobileListRemainAvailable": true,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 37,
+    "name": "Melhorar pipeline",
+    "status": "planned"
+  }
+}

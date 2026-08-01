@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
+import { ComissaoDoProjetoPanel } from "@/components/atlas/ComissaoDoProjetoPanel";
 
 type Metrics = {
   inventoryTotal: number; available: number; sold: number; reserved: number;
@@ -19,6 +20,7 @@ type Development = {
   id: string; name: string; developer_name: string | null; neighborhood: string | null;
   city: string | null; state: string | null; status: string; delivery_date: string | null;
   launch_date?: string | null; metrics: Metrics;
+  intelligence?: { onboarding_status: string; readiness_percent: number; missing_information: string[] } | null;
 };
 
 type Payload = { developments: Development[]; generatedAt: string };
@@ -67,16 +69,39 @@ export default function DevelopmentCommandPage() {
             <h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">{item.name}</h1>
             <p className="mt-3 text-sm text-slate-400 sm:text-base">{item.developer_name || "Incorporadora não informada"} · {[item.neighborhood, item.city, item.state].filter(Boolean).join(" · ") || "Localização não informada"}</p>
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300">{signal.recommendation}</p>
+            <div className="mt-6 flex flex-wrap gap-3"><Link href={`/developments/${id}/dossier`} className="atlas-button-primary">Dossiê para IA</Link><Link href={`/developments/${id}/region-study`} className="atlas-button-secondary">Estudo regional</Link><Link href={`/developments/materials?project=${id}`} className="atlas-button-secondary">Book, tabela e espelho</Link><Link href={`/developments/${id}/commercial-versions`} className="atlas-button-secondary">Vigência comercial</Link><Link href={`/developments/${id}/catalog`} className="atlas-button-secondary">Tipologias e diferenciais</Link><Link href={`/developments/${id}/inventory`} className="atlas-button-secondary">Abrir estoque</Link></div>
           </div>
           <div className="min-w-72 rounded-3xl border border-white/[0.08] bg-[#070d1b]/70 p-5 backdrop-blur-xl"><div className="flex items-center justify-between"><span className="text-sm text-slate-400">Absorção</span><span className="text-3xl font-semibold text-emerald-300">{m.absorption}%</span></div><div className="mt-5"><AtlasProgress value={m.absorption} /></div><p className="mt-4 text-xs text-slate-500">Entrega: {item.delivery_date ? new Date(item.delivery_date).toLocaleDateString("pt-BR") : "a definir"}</p></div>
         </div>
       </section>
+
+      <AtlasCard>
+        <AtlasCardHeader eyebrow="Project intelligence" title="Dossiê do projeto e da região" description="Nasce junto com cada novo empreendimento e fica preparado para as IAs, sem transformar informação pendente em fato." />
+        <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[.7fr_1.3fr]">
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5"><div className="flex items-end justify-between"><span className="text-sm text-slate-400">Prontidão do estudo</span><strong className="text-3xl text-cyan-300">{item.intelligence?.readiness_percent ?? 0}%</strong></div><div className="mt-4"><AtlasProgress value={item.intelligence?.readiness_percent ?? 0} /></div><p className="mt-3 text-xs text-slate-500">{item.intelligence ? "Conteúdo separado entre fatos, fontes e pendências." : "Aguardando criação automática do dossiê."}</p></div>
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5"><p className="text-xs uppercase tracking-wider text-slate-500">Antes de liberar para a IA</p><div className="mt-3 flex flex-wrap gap-2">{(item.intelligence?.missing_information?.length ? item.intelligence.missing_information : ["Nenhuma pendência registrada"]).map((value) => <AtlasBadge key={value} tone={item.intelligence?.missing_information?.length ? "warning" : "success"}>{value}</AtlasBadge>)}</div></div>
+        </div>
+      </AtlasCard>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AtlasMetric label="VGV total" value={brl.format(m.totalVgv)} detail={`${m.inventoryTotal} unidades no estoque`} trend="PORTFÓLIO" tone="violet" />
         <AtlasMetric label="VGV vendido" value={brl.format(m.soldVgv)} detail={`${m.sold} unidades concluídas`} trend="SELL-OUT" tone="green" />
         <AtlasMetric label="Forecast" value={brl.format(m.forecast)} detail={`${m.opportunities} oportunidades`} trend="ATLAS AI" tone="blue" />
         <AtlasMetric label="ROI marketing" value={m.campaignSpend ? `${m.roi.toFixed(0)}%` : "—"} detail={`${m.campaignLeads} leads atribuídos`} trend="GROWTH" tone="amber" />
+      </section>
+
+      {/*
+        COMISSAO E PREMIO DESTE PROJETO.
+
+        A rota `/api/v1/developments/[id]/commission` foi construida hoje e ficou
+        ORFA — nenhuma tela a consumia, e `commission_rules` seguia com zero linhas.
+        Foi o portao `rotas-orfas:check`, escrito minutos depois, que pegou.
+
+        O painel se esconde sozinho para quem nao e direcao: a rota responde 403, e
+        comissao e dinheiro de terceiro — quem vende nao define quanto ganha.
+      */}
+      <section aria-label="Comissao e premio deste projeto">
+        <ComissaoDoProjetoPanel developmentId={id} />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.15fr_.85fr]">

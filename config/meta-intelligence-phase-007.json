@@ -1,0 +1,76 @@
+{
+  "program": "Atlas Meta Signal Intelligence",
+  "phase": 7,
+  "title": "Snapshot estrutural real e comparacao fail-closed",
+  "mode": "remote_catalog_read_only",
+  "status": "verified_with_blockers",
+  "safeToApply": false,
+  "collectionContract": {
+    "query": "scripts/sql/meta-bridge-readonly-snapshot.sql",
+    "sanitizedSnapshot": "config/fixtures/meta-bridge-remote-snapshot-sanitized.json",
+    "catalogSchemas": ["pg_catalog", "information_schema"],
+    "businessRowsAllowed": false,
+    "personalDataAllowed": false,
+    "secretsAllowed": false,
+    "projectIdentifiersAllowedInArtifact": false,
+    "databaseMutationAllowed": false
+  },
+  "observedBaseline": {
+    "postgresMajor": 17,
+    "canonicalSourcesExpected": 4,
+    "canonicalSourcesDetected": 4,
+    "targetObjectsExpected": 10,
+    "targetObjectsDetected": 0,
+    "canonicalSourcesWithRls": 4,
+    "canonicalSourcesWithBroadAnonGrants": 4,
+    "requiredHelpersExpected": 2,
+    "requiredHelpersDetected": 1,
+    "dataApiExposureVerified": false,
+    "tenantIsolationExecuted": false
+  },
+  "blockingFindings": [
+    "ten_target_bridge_objects_missing",
+    "private_can_view_lead_helper_missing",
+    "tenant_helper_security_definer_search_path_not_empty",
+    "data_api_exposure_setting_not_independently_verified",
+    "tenant_isolation_runtime_scenarios_not_executed"
+  ],
+  "hardeningFindings": [
+    "canonical_sources_keep_legacy_anon_crud_grants",
+    "rls_currently_prevents_anonymous_rows_but_grants_remain_broader_than_target_contract"
+  ],
+  "releaseGate": {
+    "catalogSnapshotCollected": true,
+    "catalogSnapshotSanitized": true,
+    "preflightComparisonExecuted": true,
+    "stagingSnapshotApproved": false,
+    "tenantIsolationApproved": false,
+    "migrationReady": false,
+    "deploymentReady": false
+  },
+  "governance": {
+    "remoteDatabaseRead": true,
+    "databaseMutation": false,
+    "migrationCreated": false,
+    "migrationApplication": false,
+    "businessRowsRead": false,
+    "personalDataRead": false,
+    "secretsRead": false,
+    "projectIdentifiersPersisted": false,
+    "realEventDelivery": false,
+    "campaignMutation": false,
+    "budgetMutation": false,
+    "audienceMutation": false,
+    "buildExecuted": false
+  },
+  "officialReferences": [
+    "https://supabase.com/docs/guides/database/postgres/row-level-security",
+    "https://supabase.com/docs/guides/api/securing-your-api",
+    "https://supabase.com/changelog/42949-breaking-change-removing-access-to-openapi-spec-via-the-anon-key",
+    "https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically"
+  ],
+  "nextPhase": {
+    "phase": 8,
+    "title": "Testes de isolamento RLS em clone de staging com papeis reais"
+  }
+}

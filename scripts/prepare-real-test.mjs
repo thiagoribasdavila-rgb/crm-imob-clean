@@ -30,16 +30,18 @@ const values = Object.fromEntries(
 
 const required = [
   "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
   "ATLAS_CRON_SECRET",
   "ATLAS_TEST_EMAIL",
   "ATLAS_TEST_PASSWORD",
 ];
 
+const publicSupabaseKey = values.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || values.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const missing = required.filter((key) => !values[key]);
+if (!publicSupabaseKey) missing.push("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/NEXT_PUBLIC_SUPABASE_ANON_KEY");
 console.log("\nATLAS AI — Preparação do teste real\n");
 for (const key of required) console.log(`${values[key] ? "✅" : "❌"} ${key}`);
+console.log(`${publicSupabaseKey ? "✅" : "❌"} Chave pública Supabase (publishable/anon)`);
 
 if (missing.length) {
   console.error(`\n❌ Preencha ${missing.length} variável(is) obrigatória(s) no .env.local.`);

@@ -1,0 +1,48 @@
+{
+  "phase": 66,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "human-confirmed-atomic-idempotent-copilot-task-reschedule",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "allow-a-user-to-reschedule-an-existing-daily-queue-task-from-the-copilot-with-an-explicitly-reviewed-due-date-atomic-concurrency-control-audit-and-immediate-queue-refresh",
+  "changes": [
+    "expose-reschedule-only-for-real-task-items-in-the-authenticated-daily-queue",
+    "show-the-observed-status-and-current-due-date-before-confirmation",
+    "require-a-valid-future-due-date-and-explicit-human-review",
+    "send-the-reviewed-status-reviewed-due-date-and-a-stable-idempotency-key",
+    "validate-session-organization-rls-source-action-confirmation-status-due-date-and-idempotency-on-the-server",
+    "apply-the-new-due-date-conditionally-against-both-the-reviewed-status-and-current-due-date",
+    "treat-retries-that-already-reached-the-requested-due-date-as-safe-success",
+    "reject-rescheduling-completed-tasks-or-overwriting-concurrent-changes",
+    "preserve-owner-priority-lead-and-pipeline",
+    "record-linked-reschedules-in-lead-events-with-a-structured-log-fallback",
+    "refresh-the-daily-queue-after-the-confirmed-reschedule"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "copilot-governed-task-reschedule:check",
+      "copilot-governed-task-completion:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "The reschedule remains an accountable human decision; a user can choose an operationally poor due date even though the Atlas validates format, future time, concurrency and audit evidence.",
+  "nextPhase": {
+    "phase": 67,
+    "name": "Coleta governada do resultado da tarefa para a memória comercial",
+    "status": "planned"
+  }
+}

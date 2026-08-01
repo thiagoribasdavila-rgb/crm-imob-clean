@@ -1,0 +1,9 @@
+{
+  "phase": 91,
+  "platforms": ["meta", "google_ads", "youtube", "tiktok_ads", "portal"],
+  "currency": "BRL",
+  "minimum_crm_leads_for_ranking": 30,
+  "conversion_source_of_truth": "crm",
+  "attribution_models": ["platform_reported", "first_touch", "last_touch", "crm_outcome"],
+  "governance": { "pii_allowed": false, "append_only_versions": true, "automatic_budget_changes": false, "director_decision_required": true }
+}

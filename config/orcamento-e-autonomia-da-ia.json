@@ -1,0 +1,212 @@
+{
+  "$comentario": [
+    "ORÇAMENTO E AUTONOMIA DA IA — a declaração única dos tetos e dos níveis.",
+    "",
+    "── Por que em config, e não no código ─────────────────────────────────────",
+    "",
+    "Teto é decisão do dono, não do programador. Deixá-lo no código faz cada",
+    "ajuste virar deploy, e o operador que precisa apertar o cinto às 3h da manhã",
+    "não tem como. Aqui ele é dado: dá para ler, versionar e auditar.",
+    "",
+    "O que o código NÃO delega é o inverso: nenhum valor deste arquivo consegue",
+    "tornar o gasto ILIMITADO. Ver `tetoAbsoluto` abaixo.",
+    "",
+    "── De onde saíram os números (medição de 2026-07-30) ──────────────────────",
+    "",
+    "Consultei `ai_usage_events` no banco canônico (pozbrcsfthnhmnebfoxv). O que",
+    "está lá, e nada além:",
+    "",
+    "  · 43 chamadas registradas entre 26 e 29/07/2026",
+    "  · 22 delas (51%) foram o fallback determinístico local — custo zero real",
+    "  · 21 cobráveis, TODAS Perplexity/sonar; nenhuma OpenAI, nenhuma Anthropic",
+    "  · 6 das 21 cobráveis (28,6%) têm estimated_cost_usd NULO — custo NÃO medido",
+    "  · US$ 0,011459 é o total efetivamente medido nos 4 dias",
+    "  · pico diário medido: 15 chamadas / 9.185 tokens (28/07)",
+    "  · 15 das 43 (35%) não têm user_id — tráfego de worker e de rota sem sessão",
+    "",
+    "── Por que o teto é em CHAMADAS e TOKENS, não em reais ────────────────────",
+    "",
+    "Porque 28,6% das chamadas cobráveis não têm custo medido. Um teto em dinheiro",
+    "seria CEGO para elas: passariam por baixo somando zero, e o teto que o dono",
+    "acha que instalou não existiria justamente para o pedaço não precificado.",
+    "",
+    "Chamada e token são contados pelo provedor e gravados em toda linha. É a",
+    "única unidade em que o teto é verificável hoje. O teto em dólar existe",
+    "(`tetoUsdDiario`) e vale, mas só SOMA o que tem tarifa cadastrada — e por",
+    "isso é o segundo cinto, nunca o único.",
+    "",
+    "Preço de token NÃO está declarado aqui de propósito. Ele mora em",
+    "ATLAS_AI_PRICE_TABLE, e onde falta a resposta é 'custo não medido' — nunca um",
+    "valor plausível.",
+    "",
+    "── Como desligar ─────────────────────────────────────────────────────────",
+    "",
+    "ATLAS_IA_ORCAMENTO_DESLIGADO=1 desativa a recusa por teto (o registro de",
+    "consumo continua). É o botão de emergência: some o freio, não a medição."
+  ],
+
+  "tetos": {
+    "$comentario": [
+      "MULTIPLICADOR: cada teto padrão é o pico diário medido (15 chamadas /",
+      "9.185 tokens) vezes 10. Dez vezes porque a operação tem 12 corretores",
+      "ativos e o pico medido veio de 1 pessoa homologando; abaixo disso o teto",
+      "estouraria no primeiro dia de uso real e a IA nasceria desligada.",
+      "É aritmética declarada sobre número medido — não é estimativa de mercado."
+    ],
+    "chamadasPorDia": 150,
+    "tokensPorDia": 92000,
+    "chamadasPorUsuarioPorDia": 40,
+    "tokensPorUsuarioPorDia": 25000,
+    "chamadasPorAgentePorDia": 60,
+    "tokensPorAgentePorDia": 40000,
+    "tetoUsdDiario": 2.0,
+    "$comentarioUsd": [
+      "US$ 2,00/dia. Só soma chamadas COM tarifa cadastrada — hoje isso deixa",
+      "28,6% das cobráveis fora da conta, e é por isso que ele não é o teto",
+      "principal. O gasto medido de 4 dias inteiros foi US$ 0,0115: este teto",
+      "está ~170x acima do consumo real, o que o torna um cinto de segurança",
+      "contra laço infinito, não um orçamento apertado.",
+      "Conversão para reais NÃO é feita: não há cotação declarada e inventar uma",
+      "seria inventar informação comercial."
+    ]
+  },
+
+  "tetoAbsoluto": {
+    "$comentario": [
+      "O TETO QUE A CONFIGURAÇÃO NÃO ALCANÇA.",
+      "",
+      "Sem isto, 'teto configurável' é o mesmo que sem teto: bastaria alguém",
+      "escrever 99999999 (ou `null`, ou 'ilimitado') no arquivo acima. A regra do",
+      "dono é explícita — 'nunca permitir cobrança ilimitada por configuração",
+      "padrão'. Então o valor configurado é APARADO contra estes números, e",
+      "qualquer tentativa de passar deles é registrada como recusa.",
+      "",
+      "Trocar estes números exige mexer no código do limitador junto: o contrato",
+      "`orcamento-de-ia` reprova se este bloco sumir ou virar infinito."
+    ],
+    "chamadasPorDia": 2000,
+    "tokensPorDia": 1500000,
+    "tetoUsdDiario": 25.0
+  },
+
+  "semAtribuicao": {
+    "$comentario": [
+      "O VAZAMENTO QUE 35% DO TRÁFEGO ABRIA.",
+      "",
+      "15 das 43 chamadas medidas não têm user_id: worker agendado e rota sem",
+      "sessão. Se o teto por usuário só valesse quando há usuário, essas 15",
+      "andariam SEM TETO ALGUM — a via de fuga seria maior que a estrada.",
+      "",
+      "Por isso chamada sem usuário identificado cai num balde compartilhado, com",
+      "teto próprio. Não é passe livre; é um usuário chamado 'ninguém'."
+    ],
+    "chamadasPorDia": 60,
+    "tokensPorDia": 40000
+  },
+
+  "tarefasEssenciais": {
+    "$comentario": [
+      "§8 do dono: ao estourar, 'impedir tarefa NÃO essencial'. Isso só é",
+      "aplicável se estiver escrito QUAL é essencial. Sem esta lista, ou tudo",
+      "para (e o corretor perde a ferramenta) ou nada para (e o teto é enfeite).",
+      "",
+      "Essencial = o corretor está esperando na tela, agora, para atender alguém.",
+      "Não essencial = rotina que pode rodar amanhã sem ninguém sentir."
+    ],
+    "features": [
+      "copilot",
+      "lead-qualification",
+      "message-draft",
+      "presentation-draft",
+      "conversational-qualification"
+    ]
+  },
+
+  "agentes": {
+    "$comentario": [
+      "CATÁLOGO DE AGENTES E SEUS NÍVEIS (§7).",
+      "",
+      "`nivel` só aceita 0 a 4. O nível 5 do dono é a classe do PROIBIDO",
+      "autonomamente — não existe agente que o declare, e `niveis-de-autonomia.ts`",
+      "recusa o catálogo inteiro se alguém tentar. Ver o contrato.",
+      "",
+      "0 observa · 1 sugere · 2 prepara sem enviar · 3 grava interno reversível",
+      "4 age para fora COM aprovação registrada · 5 PROIBIDO",
+      "",
+      "`porque` é obrigatório: nível sem justificativa é nível que ninguém",
+      "revisou. O portão reprova a ausência."
+    ],
+    "catalogo": [
+      {
+        "agente": "copilot",
+        "nivel": 1,
+        "porque": "Responde pergunta do corretor na tela. Sugere e explica; quem move a lead é a pessoa."
+      },
+      {
+        "agente": "lead-qualification",
+        "nivel": 1,
+        "porque": "Classifica e pontua. A pontuação orienta a fila, mas não atribui nem descarta lead."
+      },
+      {
+        "agente": "andromeda-pipeline-advisor",
+        "nivel": 1,
+        "porque": "Aponta gargalo do funil ao gestor. Nenhuma movimentação sai daqui."
+      },
+      {
+        "agente": "campaign-analyst",
+        "nivel": 1,
+        "porque": "Lê desempenho de campanha e comenta. Não mexe em verba nem em status."
+      },
+      {
+        "agente": "creative-studio",
+        "nivel": 2,
+        "porque": "Escreve copy e briefing e DEIXA salvo para revisão. Publicar é ato humano."
+      },
+      {
+        "agente": "message-draft",
+        "nivel": 2,
+        "porque": "Prepara a mensagem para o cliente. O envio é do corretor — nível 2 é exatamente 'preparei, não mandei'."
+      },
+      {
+        "agente": "presentation-draft",
+        "nivel": 2,
+        "porque": "Monta apresentação de imóvel para o corretor conferir preço e estoque antes de mostrar."
+      },
+      {
+        "agente": "whatsapp-conversation-intelligence",
+        "nivel": 1,
+        "porque": "Lê a conversa e resume intenção. Não responde ao cliente."
+      },
+      {
+        "agente": "conversion-predictor",
+        "nivel": 0,
+        "porque": "Só observa e registra probabilidade. Nem sugere ação — alimenta ranking."
+      },
+      {
+        "agente": "meta-campaign-executor",
+        "nivel": 4,
+        "porque": "É o único que age fora: cria campanha na Meta e gasta dinheiro do dono. Exige aprovação registrada, e já nasce com dry-run em campaign-executor.ts."
+      }
+    ]
+  },
+
+  "modoSombra": {
+    "$comentario": [
+      "4.8 — Shadow Mode geral. `ligado: true` significa: a IA analisa,",
+      "classifica, recomenda, PREPARA e REGISTRA — e nada sai.",
+      "",
+      "O padrão é ligado. Desligar é decisão consciente por agente, depois de",
+      "olhar a comparação recomendação × decisão humana × resultado. Nascer",
+      "desligado seria implantar agente autônomo sem sombra, que é justamente o",
+      "que o dono proibiu."
+    ],
+    "ligado": true,
+    "acoesRetidas": [
+      "enviar_mensagem",
+      "redistribuir_lead",
+      "iniciar_campanha",
+      "alterar_condicao_comercial",
+      "apagar_registro"
+    ]
+  }
+}

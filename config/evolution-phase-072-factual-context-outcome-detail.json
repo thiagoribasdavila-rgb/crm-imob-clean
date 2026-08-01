@@ -1,0 +1,49 @@
+{
+  "phase": 72,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "local-factual-outcome-composition-for-current-project-and-source-context",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "let-authorized-users-expand-each-current-project-or-source-segment-and-review-the-exact-human-confirmed-outcome-composition-without-individual-lead-exposure-generative-ai-causal-claims-prediction-or-downstream-writes",
+  "changes": [
+    "reuse-the-phase-071-authenticated-and-tenant-scoped-context",
+    "preserve-the-latest-valid-human-confirmed-outcome-per-task",
+    "count-each-valid-outcome-category-inside-its-current-project-and-source",
+    "calculate-category-share-only-against-the-observed-context-segment",
+    "omit-zero-categories-and-keep-the-response-compact",
+    "provide-native-keyboard-accessible-progressive-disclosure",
+    "avoid-individual-lead-name-phone-email-and-message-disclosure-in-context-detail",
+    "label-the-detail-as-factual-current-registration-context",
+    "preserve-authenticated-organization-rls-rate-limit-and-no-store",
+    "avoid-model-calls-causal-claims-predictive-claims-recommendations-and-automatic-actions",
+    "preserve-lead-task-pipeline-score-owner-message-project-and-production-data"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "commercial-outcome-context-detail:check",
+      "commercial-outcome-context:check",
+      "commercial-outcome-summary:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Project and source remain current CRM labels rather than immutable historical attribution. The expanded outcome mix is descriptive evidence inside each visible segment and must not be interpreted as cause, conversion probability, ranking or an automatic recommendation.",
+  "nextPhase": {
+    "phase": 73,
+    "name": "Comparação temporal factual por contexto",
+    "status": "planned"
+  }
+}

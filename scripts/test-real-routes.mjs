@@ -24,14 +24,30 @@ const protectedPages = [
   "/leads",
   "/leads/new",
   "/pipeline",
-  "/customers",
+  "/activity",
+  "/atlas-v3/agents",
+  "/ai-dashboard",
+  "/approvals",
+  "/brokers",
+  "/calendar",
+  "/conversations",
   "/properties",
   "/developments",
+  "/distribution",
+  "/external-sales",
+  "/integrations",
+  "/reports",
+  "/sales",
+  "/settings",
+  "/users",
   "/tasks",
   "/marketing",
   "/atlas-v2",
   "/atlas-v3",
   "/atlas-2030",
+  "/business-orchestrator",
+  "/world-demand-model",
+  "/collective-learning",
 ];
 
 const authenticatedApis = [
@@ -76,6 +92,27 @@ for (const path of protectedPages) {
   if (response && !location.includes("/login")) {
     failures += 1;
     console.log(`❌ Proteção ${path}: redirecionamento não aponta para /login (${location || "sem Location"})`);
+  }
+}
+
+/**
+ * Telas aposentadas: a URL tem de continuar RESPONDENDO, e responder é
+ * redirecionar — não proteger, porque não há mais nada atrás para proteger.
+ *
+ * /customers ("Clientes 360") foi apagada em 2026-07-29: lia a MESMA tabela
+ * `leads` que /leads, sem SLA nem lote, e sem o piso de carteira — um corretor
+ * via as 469 leads da imobiliária inteira. O redirect é de servidor e acontece
+ * antes de qualquer sessão, então esta rota sai da lista de proteção (onde o
+ * Location esperado é /login) e passa a ser verificada aqui. 404 seria pior:
+ * a memória de workspace do usuário guarda "/customers" no localStorage.
+ */
+const retiredPages = [["/customers", "/leads"]];
+for (const [path, destination] of retiredPages) {
+  const response = await check(`Aposentada ${path}`, path, [307, 308]);
+  const location = response?.headers.get("location") || "";
+  if (response && !location.includes(destination)) {
+    failures += 1;
+    console.log(`❌ Aposentada ${path}: redirecionamento não aponta para ${destination} (${location || "sem Location"})`);
   }
 }
 

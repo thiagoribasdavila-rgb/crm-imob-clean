@@ -1,0 +1,14 @@
+{
+  "phase": 17,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "events": ["atlas.page_viewed", "atlas.navigation_completed"],
+  "authenticatedIngestion": true,
+  "tenantIsolation": true,
+  "routeParametersNormalized": true,
+  "queryStringsCaptured": false,
+  "personalDataCaptured": false,
+  "doNotTrackRespected": true,
+  "nonBlockingTransport": true,
+  "inventedUsageMetric": false
+}

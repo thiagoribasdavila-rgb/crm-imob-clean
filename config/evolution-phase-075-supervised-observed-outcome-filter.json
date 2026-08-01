@@ -1,0 +1,51 @@
+{
+  "phase": 75,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "supervised-human-confirmed-observed-outcome-filter-with-global-memory-quality-and-coverage",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "let-authenticated-users-filter-factual-commercial-memory-by-a-human-confirmed-observed-outcome-without-changing-the-global-coverage-gap-queue-operational-queue-or-production-data",
+  "changes": [
+    "offer-all-and-seven-governed-human-confirmed-outcome-options",
+    "validate-the-outcome-filter-after-rate-limit-and-authentication",
+    "apply-the-filter-only-to-summary-comparison-context-and-context-comparison",
+    "keep-completion-events-in-the-filtered-sample-to-preserve-the-global-coverage-denominator",
+    "keep-memory-quality-gap-queue-and-coverage-global",
+    "preserve-selected-period-and-filter-after-governed-task-refreshes",
+    "show-matching-and-total-observed-result-counts",
+    "show-an-accessible-read-only-outcome-filter-control-in-the-copilot",
+    "reuse-the-user-scoped-supabase-client-organization-filter-rls-and-no-store",
+    "avoid-model-calls-causal-language-performance-rates-and-all-production-data-writes"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "commercial-outcome-filter:check",
+      "commercial-outcome-period:check",
+      "commercial-outcome-context-comparison:check",
+      "commercial-memory-quality:check",
+      "commercial-outcome-comparison:check",
+      "commercial-outcome-summary:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "A selected outcome can produce a small factual slice. The interface therefore shows matching and total observed counts, keeps coverage and memory gaps global, and never presents the slice as a conversion rate, performance score, prediction, or causal conclusion.",
+  "nextPhase": {
+    "phase": 76,
+    "name": "Indicador de suficiência da amostra filtrada",
+    "status": "planned"
+  }
+}

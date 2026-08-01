@@ -1,0 +1,21 @@
+{
+  "phase": 3,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "measuredBaseline": {
+    "crmPages": 141,
+    "primaryDestinations": 20,
+    "sidebarGroups": 4,
+    "commandPaletteEntriesBefore": 17,
+    "mobilePrimaryActions": 4,
+    "criticalJourneys": 6,
+    "independentNavigationCatalogsBefore": 3,
+    "historicalV2CommandsBefore": 1
+  },
+  "instrumentationPending": [
+    "tempo real até primeira ação",
+    "taxa de abandono por jornada",
+    "p95 de navegação por perfil"
+  ],
+  "measurementRule": "Métricas de comportamento só serão publicadas depois de telemetria real de homologação."
+}

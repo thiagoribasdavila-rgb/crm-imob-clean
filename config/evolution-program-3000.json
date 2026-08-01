@@ -1,0 +1,59 @@
+{
+  "program": "ATLAS AI OS — Evolução Contínua",
+  "referenceBacklogPhases": 3000,
+  "horizon": "continuous",
+  "deliveryCadence": "one-phase-per-day",
+  "currentPhase": 101,
+  "decisionRule": "prioritize-operational-capacity",
+  "workInProgressLimit": 1,
+  "priorityOrder": [
+    "P0-operational-blocker",
+    "P1-lead-conversion",
+    "P2-commercial-productivity",
+    "P3-ai-assistance",
+    "P4-governed-automation",
+    "P5-premium-experience"
+  ],
+  "dailyValidation": {
+    "build": false,
+    "phaseEvidence": true,
+    "targetedRegression": true,
+    "changedFilesLint": true,
+    "typecheckWhenCodeChanges": true,
+    "secretScan": true
+  },
+  "releasePolicy": {
+    "mode": "release-gated",
+    "artifact": "ATLAS_AI_OS_RELEASE_v1.zip",
+    "automaticCheckpointPackages": false,
+    "localBuildsAtClose": 1,
+    "requirements": [
+      "organized-structure",
+      "reviewed-code",
+      "validated-dependencies",
+      "consistent-database",
+      "prepared-environment",
+      "critical-tests-passed",
+      "minimum-operation-working"
+    ]
+  },
+  "truthPolicy": {
+    "phaseRequiresEvidence": true,
+    "phaseRequiresValidation": true,
+    "plannedWorkCountsAsProgress": false,
+    "productionReadinessMayBeInferred": false
+  },
+  "valueMetrics": [
+    "time-to-first-value",
+    "lead-response-time",
+    "leads-with-next-action",
+    "pipeline-movement",
+    "follow-up-compliance",
+    "qualified-to-visit-conversion"
+  ],
+  "historicalProgram": {
+    "name": "Atlas V3 Evolution 2000",
+    "closedThroughPhase": 47,
+    "phase47PackagePreserved": true
+  }
+}

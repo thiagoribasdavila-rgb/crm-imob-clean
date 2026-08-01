@@ -1,0 +1,55 @@
+{
+  "phase": 80,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "on-demand-human-confirmed-contextual-recency-evidence",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "let-authorized-users-audit-the-minimum-human-confirmed-facts-behind-project-and-source-recency-without-exposing-personal-identity-contact-content-or-triggering-actions",
+  "changes": [
+    "add-a-typed-minimal-evidence-contract-to-each-visible-project-and-source",
+    "reuse-the-existing-current-authorized-and-filtered-memory-sample",
+    "keep-the-two-newest-human-confirmed-outcomes-per-visible-context",
+    "preserve-the-count-of-additional-evidence-without-loading-another-list",
+    "show-evidence-only-after-an-explicit-native-details-disclosure",
+    "expose-only-outcome-label-and-observed-time-in-the-interface",
+    "exclude-lead-name-task-title-phone-email-and-message-content",
+    "keep-session-organization-hierarchy-rls-no-store-and-read-only-contracts",
+    "avoid-new-queries-model-calls-writes-schema-changes-and-automatic-commercial-actions"
+  ],
+  "limits": {
+    "visibleEvidencePerContext": 2,
+    "maximumEvidencePerContext": 3,
+    "interaction": "collapsed-until-user-request",
+    "displayOrder": "newest-human-confirmed-first"
+  },
+  "validation": {
+    "targetedChecks": [
+      "commercial-context-evidence:check",
+      "commercial-context-freshness:check",
+      "commercial-outcome-evidence:check",
+      "commercial-outcome-filter:check",
+      "commercial-outcome-period:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "The evidence proves only that a human-confirmed outcome was recorded at that time under the lead's current project or source. It does not prove historic attribution, portfolio coverage, data quality, conversion, or performance.",
+  "nextPhase": {
+    "phase": 81,
+    "name": "Proveniência explícita do contexto comercial",
+    "status": "planned"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "phase": 64,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "authenticated-explainable-copilot-daily-execution-queue",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "consolidate-observed-tasks-delays-and-operational-lead-opportunities-into-a-short-explainable-tenant-safe-copilot-queue",
+  "changes": [
+    "replace-direct-browser-task-reading-with-an-authenticated-server-queue",
+    "preserve-organization-role-and-hierarchical-rls-context",
+    "prioritize-overdue-due-today-and-high-unscheduled-tasks-deterministically",
+    "add-operational-lead-opportunities-only-from-observed-score-temperature-stage-and-next-action",
+    "exclude-the-cold-reactivation-memory-from-the-daily-operational-queue",
+    "deduplicate-lead-opportunities-when-an-actionable-task-already-represents-the-same-lead",
+    "show-a-five-item-queue-with-evidence-and-recommended-action",
+    "prepare-context-for-the-copilot-without-performing-external-messages-or-silent-writes",
+    "reuse-human-confirmed-task-and-pipeline-actions-only-for-lead-opportunities"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "copilot-daily-queue:check",
+      "copilot-governed-pipeline:check",
+      "copilot-governed-actions:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Completing or postponing an existing task still needs a dedicated Copilot confirmation and idempotency contract before it can be offered as an in-context write.",
+  "nextPhase": {
+    "phase": 65,
+    "name": "Conclusão governada e idempotente de tarefas pelo Copilot",
+    "status": "planned"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "phase": 37,
+  "migration": "supabase/migrations/20260717223000_phase_37_proposal_sla.sql",
+  "api": "app/api/v1/leads/[id]/commercial-simulation/route.ts",
+  "leadApi": "app/api/v1/leads/[id]/route.ts",
+  "leadPage": "app/(crm)/leads/[id]/page.tsx",
+  "states": ["draft", "proposal_review", "approved", "rejected", "sent", "accepted", "declined", "expired"],
+  "measurements": ["preparation_minutes", "review_minutes", "response_minutes"],
+  "safeguards": ["inventory", "price", "payment_rule", "validity", "human_review", "commercial_scope"]
+}

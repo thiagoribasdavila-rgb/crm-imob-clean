@@ -1,0 +1,18 @@
+{
+  "phase": 5,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "surface": "global navigation",
+  "removedRedundancies": [
+    "current-page banner duplicated by active navigation state",
+    "menu item counters without commercial meaning",
+    "favorite count duplicated by the visible favorite list"
+  ],
+  "preservedSignals": [
+    "active route indicator",
+    "search",
+    "user-selected favorites",
+    "role-based navigation groups"
+  ],
+  "decision": "Compact by removing redundant labels, not by hiding available work."
+}

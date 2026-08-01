@@ -1,0 +1,49 @@
+{
+  "phase": 74,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "supervised-seven-thirty-ninety-day-commercial-memory-period-with-equal-comparison-windows",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "let-authenticated-users-select-a-seven-thirty-or-ninety-day-factual-memory-period-with-equal-current-and-previous-windows-without-model-calls-inference-automatic-actions-or-production-data-writes",
+  "changes": [
+    "offer-only-seven-thirty-and-ninety-day-periods",
+    "validate-the-period-query-after-rate-limit-and-authentication",
+    "keep-current-and-previous-windows-equal-and-non-overlapping",
+    "reuse-the-user-scoped-supabase-client-organization-filter-rls-and-no-store",
+    "preserve-the-selected-period-after-governed-task-refreshes",
+    "show-an-accessible-read-only-period-control-in-the-copilot",
+    "expose-the-history-query-limit-and-a-visible-partial-sample-warning",
+    "reject-unsupported-periods-with-a-safe-client-error",
+    "avoid-rate-performance-causal-and-predictive-language",
+    "avoid-model-calls-and-all-production-data-writes"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "commercial-outcome-period:check",
+      "commercial-outcome-context-comparison:check",
+      "commercial-outcome-comparison:check",
+      "commercial-outcome-summary:check",
+      "copilot-daily-queue:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "The ninety-day selection reads one hundred eighty days of history and the route protects the request with an eight-thousand-event limit. If that limit is reached, the interface explicitly marks the sample as potentially partial and prohibits interpreting it as a performance rate.",
+  "nextPhase": {
+    "phase": 75,
+    "name": "Filtro supervisionado por resultado observado",
+    "status": "planned"
+  }
+}

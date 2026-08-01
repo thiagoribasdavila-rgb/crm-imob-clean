@@ -1,0 +1,41 @@
+{
+  "phase": 61,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "copilot-operational-workspaces",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "connect-the-governed-copilot-to-leads-customers-and-calendar-with-preview-only-human-confirmed-actions",
+  "changes": [
+    "reuse-one-context-action-across-commercial-workspaces",
+    "bind-lead-context-by-authorized-lead-id",
+    "add-customer-portfolio-and-per-customer-copilot-entry-points",
+    "add-calendar-planning-entry-point",
+    "show-context-aware-safe-preview-state",
+    "require-human-confirmation-before-any-write",
+    "avoid-client-side-personal-data-payloads"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "copilot-workspaces:check",
+      "atlas-copilot-command-center:check",
+      "corrective-sprint:check",
+      "typecheck-no-incremental",
+      "lint",
+      "git-diff-check"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "The Copilot prepares recommendations but does not yet expose a governed write confirmation flow for creating tasks or changing pipeline stages.",
+  "nextPhase": {
+    "phase": 62,
+    "name": "Confirmação governada das ações sugeridas pelo Copilot",
+    "status": "planned"
+  }
+}

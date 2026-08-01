@@ -1,0 +1,28 @@
+{
+  "artifact": "ATLAS_AI_OS_RELEASE_v1.zip",
+  "status": "blocked",
+  "approved": false,
+  "localBuildsRequired": 1,
+  "gates": {
+    "organizedStructure": true,
+    "reviewedCode": false,
+    "validatedDependencies": true,
+    "consistentDatabase": false,
+    "preparedEnvironment": false,
+    "criticalTestsPassed": false,
+    "minimumOperationWorking": false,
+    "directorApproval": false
+  },
+  "evidence": [
+    "evolution-static-regression-passed-through-phase-99",
+    "secret-scan-passed",
+    "dependency-audit-passed-zero-production-vulnerabilities",
+    "typecheck-passed",
+    "lint-passed",
+    "single-local-build-passed",
+    "local-health-login-route-guard-smoke-passed"
+  ],
+  "automaticDeploy": false,
+  "secretsIncluded": false,
+  "customerDataIncluded": false
+}

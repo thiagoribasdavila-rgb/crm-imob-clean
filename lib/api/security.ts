@@ -1,12 +1,51 @@
 import type { NextRequest } from "next/server";
+import { createHash } from "node:crypto";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { apiError, createRequestContext, getClientAddress } from "@/lib/api/core";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 import { createClient } from "@/utils/supabase/server";
 import { getSupabasePublicConfig } from "@/utils/supabase/env";
+import { logger } from "@/lib/observability/logger";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-type RateBucket = { count: number; resetAt: number };
 
-type AtlasRole = "admin" | "manager" | "broker" | "viewer" | string;
+export type AtlasRole = "admin" | "director" | "superintendent" | "manager" | "broker" | "viewer" | string;
+export type CommercialRole = "director" | "superintendent" | "manager" | "broker";
+export type AccessRole = "admin" | "director_decisor" | "director" | "broker";
+
+function normalizedRole(value: unknown) {
+  return String(value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+function resolveLegacyAccessRole(profile: Record<string, unknown>): AccessRole {
+  const explicit = normalizedRole(profile.access_role);
+  if (["admin", "director_decisor", "director", "broker"].includes(explicit)) return explicit as AccessRole;
+  const role = normalizedRole(profile.role);
+  if (role === "admin") return "admin";
+  if (["director_decisor", "diretor_decisor"].includes(role)) return "director_decisor";
+  if (["director", "diretor", "manager", "gerente", "superintendent", "superintendente"].includes(role)) return "director";
+  return "broker";
+}
+
+function resolveLegacyCommercialRole(profile: Record<string, unknown>): CommercialRole {
+  const explicit = normalizedRole(profile.commercial_role);
+  if (["director", "superintendent", "manager", "broker"].includes(explicit)) return explicit as CommercialRole;
+  const role = normalizedRole(profile.role);
+  if (["manager", "gerente"].includes(role)) return "manager";
+  if (["superintendent", "superintendente"].includes(role)) return "superintendent";
+  if (["broker", "corretor"].includes(role)) return "broker";
+  return "director";
+}
+
+export function resolveCommercialRole(profile: { role: AtlasRole; commercialRole?: AtlasRole | null; commercial_role?: AtlasRole | null }): AtlasRole {
+  const commercialRole = profile.commercialRole ?? profile.commercial_role;
+  if (commercialRole) return commercialRole;
+  return profile.role === "admin" ? "director" : profile.role;
+}
+
+export function isDirectorProfile(profile: { role: AtlasRole; commercialRole?: AtlasRole | null; commercial_role?: AtlasRole | null }) {
+  return resolveCommercialRole(profile) === "director";
+}
 
 type AccessContext = {
   user: {
@@ -15,8 +54,12 @@ type AccessContext = {
   };
   profile: {
     id: string;
+    name: string;
     organizationId: string;
     role: AtlasRole;
+    accessRole: AccessRole;
+    commercialRole: "director" | "superintendent" | "manager" | "broker" | null;
+    reportsTo: string | null;
     active: boolean;
   };
   organization: {
@@ -29,43 +72,99 @@ type AccessContext = {
 };
 
 const globalBuckets = globalThis as typeof globalThis & {
-  __atlasRateBuckets?: Map<string, RateBucket>;
+  __atlasIdentityCache?: Map<string, IdentityCacheEntry>;
 };
 
-const buckets = globalBuckets.__atlasRateBuckets ?? new Map<string, RateBucket>();
-globalBuckets.__atlasRateBuckets = buckets;
+// ---------------------------------------------------------------------------
+// Cache de identidade (performance): cada request pagava 3 idas ao Supabase
+// (auth.getUser + profiles + organizations) antes de qualquer trabalho útil —
+// em páginas com 10 fetches, segundos de latência pura. Cacheamos os DADOS
+// (usuário do token, perfil, organização) por TTL curto; TODOS os guards
+// (ativo, papel, organização) continuam rodando a cada request sobre o dado
+// cacheado. Trade-off documentado: revogação de token/desativação de perfil
+// propaga em até IDENTITY_CACHE_TTL_MS (60s). ATLAS_IDENTITY_CACHE_TTL_MS=0
+// desliga o cache.
+// ---------------------------------------------------------------------------
+type IdentityCacheEntry = {
+  user: import("@supabase/supabase-js").User;
+  profileRecord: Record<string, unknown> | null;
+  organizationRecord: Record<string, unknown> | null;
+  organizationId: string;
+  expiresAt: number;
+};
 
+const identityCache = globalBuckets.__atlasIdentityCache ?? new Map<string, IdentityCacheEntry>();
+globalBuckets.__atlasIdentityCache = identityCache;
+const MAX_IDENTITY_ENTRIES = 2_000;
+
+function identityCacheTtlMs(): number {
+  const raw = Number(process.env.ATLAS_IDENTITY_CACHE_TTL_MS);
+  if (Number.isFinite(raw) && raw >= 0) return Math.min(raw, 5 * 60_000);
+  return 60_000;
+}
+
+function hashIdentityToken(token: string): string {
+  // hash para a chave — o token cru nunca fica pesquisável no mapa
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function readIdentityCache(key: string): IdentityCacheEntry | null {
+  const entry = identityCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    identityCache.delete(key);
+    return null;
+  }
+  return entry;
+}
+
+function writeIdentityCache(key: string, entry: IdentityCacheEntry): void {
+  if (identityCacheTtlMs() === 0) return;
+  if (identityCache.size >= MAX_IDENTITY_ENTRIES) {
+    const now = Date.now();
+    for (const [k, v] of identityCache) {
+      if (v.expiresAt <= now) identityCache.delete(k);
+    }
+    if (identityCache.size >= MAX_IDENTITY_ENTRIES) identityCache.clear();
+  }
+  identityCache.set(key, entry);
+}
+/**
+ * Adaptador HTTP do teto de requisição.
+ *
+ * A contagem vive inteira em `lib/security/rate-limit.ts` — este arquivo apenas
+ * monta a chave a partir da rota e da origem, e traduz o veredito em 429 com os
+ * cabeçalhos `RateLimit-*`. Antes havia aqui uma segunda implementação, com
+ * mapa próprio: as 137 rotas que chamam daqui e as 22 que chamam de lá contavam
+ * em lugares diferentes, e a de lá ainda perdia a contagem a cada bundle do
+ * Next. Um projeto com duas formas de fazer a mesma coisa de segurança acaba
+ * com uma delas esquecida.
+ */
 export function enforceRateLimit(
   request: NextRequest,
   options: { limit?: number; windowMs?: number; scope?: string } = {},
 ) {
   const limit = options.limit ?? 60;
-  const windowMs = options.windowMs ?? 60_000;
   const scope = options.scope ?? request.nextUrl.pathname;
-  const now = Date.now();
-  const key = `${scope}:${getClientAddress(request)}`;
-  const current = buckets.get(key);
-  const bucket = !current || current.resetAt <= now
-    ? { count: 0, resetAt: now + windowMs }
-    : current;
+  const veredito = checkRateLimit(`${scope}:${getClientAddress(request)}`, {
+    limit,
+    windowMs: options.windowMs,
+  });
 
-  bucket.count += 1;
-  buckets.set(key, bucket);
-
-  const remaining = Math.max(0, limit - bucket.count);
   const headers = {
     "RateLimit-Limit": String(limit),
-    "RateLimit-Remaining": String(remaining),
-    "RateLimit-Reset": String(Math.ceil(bucket.resetAt / 1000)),
+    "RateLimit-Remaining": String(veredito.remaining),
+    "RateLimit-Reset": String(Math.ceil(veredito.resetAt / 1000)),
   };
 
-  if (bucket.count > limit) {
+  if (!veredito.allowed) {
     const meta = createRequestContext(request);
+    const faltam = Math.max(1, Math.ceil((veredito.resetAt - Date.now()) / 1000));
     return {
       ok: false as const,
       response: apiError("RATE_LIMIT_EXCEEDED", "Limite de requisições excedido.", meta, {
         status: 429,
-        headers: { ...headers, "Retry-After": String(Math.ceil((bucket.resetAt - now) / 1000)) },
+        headers: { ...headers, "Retry-After": String(faltam) },
       }),
     };
   }
@@ -89,6 +188,14 @@ export async function requireAuthenticatedUser(request: NextRequest) {
       global: { headers: { Authorization: `Bearer ${bearerToken}` } },
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
+
+    // cache de identidade: token já validado há <TTL → pula a ida ao Supabase
+    const cacheKey = hashIdentityToken(bearerToken);
+    const cached = readIdentityCache(cacheKey);
+    if (cached) {
+      return { ok: true as const, user: cached.user, supabase, meta, authMode: "bearer" as const };
+    }
+
     const { data, error } = await supabase.auth.getUser(bearerToken);
 
     if (error || !data.user) {
@@ -98,6 +205,10 @@ export async function requireAuthenticatedUser(request: NextRequest) {
       };
     }
 
+    writeIdentityCache(cacheKey, {
+      user: data.user, profileRecord: null, organizationRecord: null, organizationId: "",
+      expiresAt: Date.now() + identityCacheTtlMs(),
+    });
     return { ok: true as const, user: data.user, supabase, meta, authMode: "bearer" as const };
   }
 
@@ -116,47 +227,75 @@ export async function requireAuthenticatedUser(request: NextRequest) {
 
 export async function requireAccessContext(
   request: NextRequest,
-  options: { roles?: AtlasRole[] } = {},
+  options: { roles?: AtlasRole[]; accessRoles?: AccessRole[] } = {},
 ) {
   const auth = await requireAuthenticatedUser(request);
   if (!auth.ok) return auth;
 
-  const { data: profile, error: profileError } = await auth.supabase
-    .from("profiles")
-    .select("id, organization_id, role, active")
-    .eq("id", auth.user.id)
-    .maybeSingle();
+  // cache de identidade: perfil/organização resolvidos há <TTL → pula as
+  // 2 idas ao banco; TODOS os guards abaixo continuam rodando normalmente.
+  const contextToken = readBearerToken(request);
+  const contextCacheKey = contextToken ? hashIdentityToken(contextToken) : null;
+  const cachedIdentity = contextCacheKey ? readIdentityCache(contextCacheKey) : null;
 
-  if (profileError) {
-    return {
-      ok: false as const,
-      response: apiError("PROFILE_LOOKUP_FAILED", "Não foi possível validar o perfil do usuário.", auth.meta, {
-        status: 500,
-      }),
-    };
+  const admin = getSupabaseAdmin();
+  let profileRecord: Record<string, unknown> | null;
+  if (cachedIdentity?.profileRecord) {
+    profileRecord = cachedIdentity.profileRecord;
+  } else {
+    const { data: profile, error: profileError } = await admin
+      .from("profiles")
+      .select("*")
+      .eq("id", auth.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      return {
+        ok: false as const,
+        response: apiError("PROFILE_LOOKUP_FAILED", "Não foi possível validar o perfil do usuário.", auth.meta, {
+          status: 500,
+        }),
+      };
+    }
+    profileRecord = profile as Record<string, unknown> | null;
   }
-
-  if (!profile || !profile.organization_id) {
+  if (!profileRecord) {
     return {
       ok: false as const,
-      response: apiError("PROFILE_REQUIRED", "Perfil organizacional não configurado.", auth.meta, {
+      response: apiError("PROFILE_REQUIRED", "Usuário autenticado, mas sem perfil no Atlas.", auth.meta, {
         status: 403,
       }),
     };
   }
 
-  if (!profile.active) {
+  if (profileRecord.active !== true) {
     return {
       ok: false as const,
       response: apiError("PROFILE_INACTIVE", "Este usuário está inativo.", auth.meta, { status: 403 }),
     };
   }
 
-  const { data: organization, error: organizationError } = await auth.supabase
-    .from("organizations")
-    .select("id, name, slug, plan, active")
-    .eq("id", profile.organization_id)
-    .maybeSingle();
+  let organizationId = typeof profileRecord.organization_id === "string" ? profileRecord.organization_id : "";
+  let fallbackOrganizationApplied = false;
+  if (!organizationId && process.env.ATLAS_ENV === "homologation" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(process.env.ATLAS_DEFAULT_ORGANIZATION_ID || "")) {
+    organizationId = process.env.ATLAS_DEFAULT_ORGANIZATION_ID!;
+    fallbackOrganizationApplied = true;
+  }
+  if (!organizationId) return { ok: false as const, response: apiError("PROFILE_ORGANIZATION_REQUIRED", "O perfil não possui uma organização vinculada.", auth.meta, { status: 403 }) };
+
+  let organization: Record<string, unknown> | null = null;
+  let organizationError: unknown = null;
+  if (cachedIdentity?.organizationRecord && cachedIdentity.organizationId === organizationId) {
+    organization = cachedIdentity.organizationRecord;
+  } else {
+    const result = await admin
+      .from("organizations")
+      .select("*")
+      .eq("id", organizationId)
+      .maybeSingle();
+    organization = result.data as Record<string, unknown> | null;
+    organizationError = result.error;
+  }
 
   if (organizationError) {
     return {
@@ -167,21 +306,46 @@ export async function requireAccessContext(
     };
   }
 
-  if (!organization) {
+  const organizationRecord = organization as Record<string, unknown> | null;
+  if (!organizationRecord) {
     return {
       ok: false as const,
       response: apiError("ORGANIZATION_REQUIRED", "Organização não encontrada.", auth.meta, { status: 403 }),
     };
   }
 
-  if (!organization.active) {
+  const organizationStatus = normalizedRole(organizationRecord.status);
+  const organizationIsActive = organizationRecord.active === true || (["active", "ativo", "enabled"].includes(organizationStatus) && organizationRecord.active !== false);
+  if (!organizationIsActive) {
     return {
       ok: false as const,
       response: apiError("ORGANIZATION_INACTIVE", "A organização está inativa.", auth.meta, { status: 403 }),
     };
   }
 
-  if (options.roles?.length && !options.roles.includes(profile.role)) {
+  const role = normalizedRole(profileRecord.role) || "broker";
+  const commercialRole = resolveLegacyCommercialRole(profileRecord);
+  const effectiveRole = commercialRole;
+  const accessRole = resolveLegacyAccessRole(profileRecord);
+  if (options.accessRoles?.length && !options.accessRoles.includes(accessRole)) {
+    logger.warn("api.access_denied", {
+      path: request.nextUrl.pathname,
+      organizationId,
+      accessRole,
+      reason: "access_role_not_allowed",
+    });
+    return {
+      ok: false as const,
+      response: apiError("FORBIDDEN", "Permissão insuficiente para esta operação.", auth.meta, { status: 403 }),
+    };
+  }
+  if (options.roles?.length && !options.roles.includes(effectiveRole)) {
+    logger.warn("api.access_denied", {
+      path: request.nextUrl.pathname,
+      organizationId,
+      role: effectiveRole,
+      reason: "role_not_allowed",
+    });
     return {
       ok: false as const,
       response: apiError("FORBIDDEN", "Permissão insuficiente para esta operação.", auth.meta, { status: 403 }),
@@ -194,19 +358,44 @@ export async function requireAccessContext(
       email: auth.user.email ?? null,
     },
     profile: {
-      id: profile.id,
-      organizationId: profile.organization_id,
-      role: profile.role,
-      active: profile.active,
+      id: String(profileRecord.id),
+      name: String(
+        profileRecord.full_name
+        || profileRecord.name
+        || auth.user.email?.split("@")[0]
+        || "Usuário Atlas",
+      ),
+      organizationId,
+      role,
+      accessRole,
+      commercialRole,
+      reportsTo: typeof profileRecord.reports_to === "string" ? profileRecord.reports_to : null,
+      active: true,
     },
     organization: {
-      id: organization.id,
-      name: organization.name,
-      slug: organization.slug,
-      plan: organization.plan,
-      active: organization.active,
+      id: String(organizationRecord.id),
+      name: String(organizationRecord.name || "Atlas"),
+      slug: typeof organizationRecord.slug === "string" ? organizationRecord.slug : null,
+      plan: typeof organizationRecord.plan === "string" ? organizationRecord.plan : null,
+      active: true,
     },
   };
+
+  logger.info("api.access_granted", {
+    path: request.nextUrl.pathname,
+    organizationId,
+    role: effectiveRole,
+    authMode: auth.authMode,
+  });
+  if (fallbackOrganizationApplied) logger.warn("fallback organization applied", { path: request.nextUrl.pathname, userId: auth.user.id, organizationId });
+
+  // sela o cache com a identidade completa (perfil + organização)
+  if (contextCacheKey) {
+    writeIdentityCache(contextCacheKey, {
+      user: auth.user, profileRecord, organizationRecord, organizationId,
+      expiresAt: Date.now() + identityCacheTtlMs(),
+    });
+  }
 
   return {
     ok: true as const,

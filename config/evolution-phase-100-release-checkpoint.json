@@ -1,0 +1,63 @@
+{
+  "phase": 100,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-19",
+  "title": "Checkpoint técnico de release e gate humano",
+  "objective": "Executar a regressão completa, o único build do ciclo e decidir com evidência se existe autorização para gerar o pacote Hostinger.",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "authenticationChanged": false,
+  "runtimeBehaviorChanged": false,
+  "validation": {
+    "phaseHistory": "passed-through-99",
+    "secretScan": "passed",
+    "dependencyAudit": "passed-zero-production-vulnerabilities",
+    "observability": "passed",
+    "authRbac": "passed",
+    "postLogin": "passed",
+    "apiSecurity": "passed",
+    "typecheck": "passed",
+    "lint": "passed",
+    "build": "passed",
+    "localSmoke": "passed"
+  },
+  "build": {
+    "requiredExecutions": 1,
+    "executed": 1,
+    "status": "passed",
+    "compiler": "Next.js 16.2.10 Turbopack",
+    "staticPagesGenerated": 188
+  },
+  "releaseDecision": {
+    "state": "blocked",
+    "approved": false,
+    "artifactCreated": false,
+    "automaticDeploy": false,
+    "reason": "Os gates estáticos e o build passaram, mas o banco controlado, as jornadas autenticadas, a origem Git reproduzível e o aceite humano ainda não foram comprovados.",
+    "blockers": [
+      "project-write-migration-not-homologated",
+      "authenticated-commercial-journeys-not-behaviorally-proven",
+      "hostinger-runtime-smoke-not-executed",
+      "release-source-not-consolidated-in-a-clean-commit",
+      "director-release-signoff-not-recorded"
+    ]
+  },
+  "safety": {
+    "liveMigrationApplied": false,
+    "liveDataWritten": false,
+    "liveAuthChanged": false,
+    "secretsPackaged": false,
+    "customerDataPackaged": false,
+    "zipForcedPastGate": false
+  },
+  "release": {
+    "buildExecuted": true,
+    "zipCreated": false,
+    "checkpointPhase": 100
+  },
+  "nextPhase": {
+    "phase": 101,
+    "objective": "Criar a suíte comportamental isolada para login, lead, pipeline, tarefa e projeto, fechando o maior gate técnico ainda aberto sem tocar em produção."
+  }
+}

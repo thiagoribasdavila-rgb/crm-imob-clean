@@ -1,0 +1,15 @@
+{
+  "phase": 7,
+  "status": "completed",
+  "roles": {
+    "broker": "own_portfolio_only",
+    "manager": "direct_brokers_only",
+    "superintendent": "direct_managers_and_their_brokers",
+    "director": "organization_wide"
+  },
+  "decision_reports": ["day", "week", "month"],
+  "maximum_action_priorities": 5,
+  "role_resolved_before_render": true,
+  "wrong_role_request_prevented": true,
+  "governance": ["rls", "api_role_check", "minimum_sample", "explainable_forecast", "human_decision"]
+}

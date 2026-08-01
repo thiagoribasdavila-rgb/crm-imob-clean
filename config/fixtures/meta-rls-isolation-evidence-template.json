@@ -1,0 +1,26 @@
+{
+  "format": "atlas_meta_rls_evidence_v1",
+  "environment": "staging_clone_required",
+  "sanitized": true,
+  "projectIdentifiersPersisted": false,
+  "businessRowsPersisted": false,
+  "personalDataPersisted": false,
+  "run": {
+    "status": "not_run",
+    "isolatedClone": false,
+    "executedAt": null
+  },
+  "scenarios": [
+    { "id": "anonymous_canonical_read_denied", "status": "not_run", "visibleRows": null, "affectedRows": null },
+    { "id": "broker_cross_tenant_read_denied", "status": "not_run", "visibleRows": null, "affectedRows": null },
+    { "id": "broker_same_tenant_assigned_lead_allowed", "status": "not_run", "visibleRows": null, "affectedRows": null },
+    { "id": "broker_same_tenant_other_broker_denied", "status": "not_run", "visibleRows": null, "affectedRows": null },
+    { "id": "manager_same_team_lead_allowed", "status": "not_run", "visibleRows": null, "affectedRows": null },
+    { "id": "manager_other_team_lead_denied", "status": "not_run", "visibleRows": null, "affectedRows": null },
+    { "id": "director_same_tenant_commercial_leads_allowed", "status": "not_run", "visibleRows": null, "affectedRows": null },
+    { "id": "director_cross_tenant_denied", "status": "not_run", "visibleRows": null, "affectedRows": null },
+    { "id": "authenticated_direct_meta_write_denied", "status": "not_run", "visibleRows": null, "affectedRows": null },
+    { "id": "knowledge_search_anonymous_denied", "status": "not_run", "visibleRows": null, "affectedRows": null },
+    { "id": "knowledge_search_cross_tenant_denied", "status": "not_run", "visibleRows": null, "affectedRows": null }
+  ]
+}

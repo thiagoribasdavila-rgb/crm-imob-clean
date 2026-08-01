@@ -1,0 +1,148 @@
+{
+  "name": "ATLAS Core V2 — Live Data Capabilities",
+  "auditedAt": "2026-07-18",
+  "environment": "homologation",
+  "mode": "read-only",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "authenticationChanged": false,
+  "connection": {
+    "configuredProjectMatched": true,
+    "status": "ACTIVE_HEALTHY",
+    "postgresVersion": "17.6",
+    "appliedMigrations": 33,
+    "localMigrationFiles": 122,
+    "unappliedLocalMigrationFiles": 89,
+    "bulkMigrationAllowed": false
+  },
+  "liveSchema": {
+    "tables": 23,
+    "views": 1,
+    "tablesWithRls": 23,
+    "policies": 43,
+    "anonSelectGrants": 19,
+    "authenticatedSelectGrants": 19,
+    "applicationReferencedTables": 85,
+    "applicationReferencedTablesPresent": 13,
+    "applicationReferencedTablesAbsent": 72
+  },
+  "tenantHealth": {
+    "organizations": 2,
+    "authUsers": 4,
+    "profiles": 4,
+    "activeProfiles": 4,
+    "authUsersWithoutProfile": 0,
+    "profilesWithoutAuthUser": 0,
+    "profilesWithoutOrganization": 0,
+    "leadsWithoutOrganization": 0,
+    "tasksWithoutOrganization": 0,
+    "hierarchyContract": "migration-required",
+    "missingHierarchyColumns": [
+      "access_role",
+      "commercial_role",
+      "reports_to"
+    ]
+  },
+  "liveData": {
+    "leads": 17151,
+    "importedLeads": 17148,
+    "assignedLeads": 2,
+    "leadsWithInlineScore": 17151,
+    "leadScoreEvidenceRows": 2,
+    "aiLearningEvents": 0,
+    "leadsWithNextContact": 0,
+    "leadsWithPhone": 7508,
+    "leadsWithEmail": 15743,
+    "tasks": 2,
+    "pipelineEvents": 28,
+    "leadEvents": 7,
+    "crmProjects": 1,
+    "inventoryUnits": 0,
+    "knowledgeDocuments": 1,
+    "knowledgeChunks": 6,
+    "marketingCampaigns": 0,
+    "marketingSpendRows": 0
+  },
+  "fieldCompatibility": [
+    { "contract": "leads.score", "live": "leads.score_ia", "status": "adapter-ready" },
+    { "contract": "leads.assigned_to", "live": "leads.assigned_user_id", "status": "adapter-ready" },
+    { "contract": "leads.next_action_at", "live": "leads.next_contact", "status": "adapter-ready" },
+    { "contract": "profiles.full_name", "live": "profiles.name", "status": "adapter-ready" },
+    { "contract": "profiles.access_role", "live": "profiles.role", "status": "temporary-adapter" },
+    { "contract": "profiles.commercial_role", "live": "profiles.role", "status": "temporary-adapter" },
+    { "contract": "profiles.reports_to", "live": null, "status": "blocked" },
+    { "contract": "tasks.due_at", "live": "tasks.due_date", "status": "adapter-ready" },
+    { "contract": "tasks.assigned_to", "live": "tasks.user_id", "status": "adapter-ready" },
+    { "contract": "developments", "live": "crm_projects", "status": "adapter-required" },
+    { "contract": "opportunities", "live": "leads + pipeline_history", "status": "adapter-required" },
+    { "contract": "commercial-events", "live": "lead_events", "status": "adapter-required" }
+  ],
+  "missingPhysicalDomains": [
+    "external-purchases",
+    "integration-catalog",
+    "integration-health",
+    "suppression-list",
+    "commission-receivables",
+    "ai-governance",
+    "security-policy"
+  ],
+  "moduleReadiness": [
+    { "module": "command-center", "status": "adapter-required", "reason": "opportunities-derived-from-leads-and-pipeline-history" },
+    { "module": "leads", "status": "adapter-required", "reason": "legacy-column-aliases" },
+    { "module": "pipeline", "status": "adapter-required", "reason": "opportunities-table-absent" },
+    { "module": "customers-360", "status": "adapter-required", "reason": "customers-empty-leads-fallback-required" },
+    { "module": "tasks-and-agenda", "status": "adapter-required", "reason": "due-date-alias" },
+    { "module": "developments", "status": "adapter-required", "reason": "crm-projects-and-knowledge-adapters" },
+    { "module": "calendar", "status": "adapter-required", "reason": "tasks-and-lead-events-adapters" },
+    { "module": "activity", "status": "adapter-required", "reason": "lead-events-adapter" },
+    { "module": "reactivation", "status": "blocked", "reason": "suppression-list-absent" },
+    { "module": "copilot", "status": "adapter-required", "reason": "no-ai-learning-events-and-derived-opportunities" },
+    { "module": "brokers", "status": "blocked", "reason": "explicit-hierarchy-absent" },
+    { "module": "distribution", "status": "adapter-required", "reason": "distribution-rules-derived-from-history" },
+    { "module": "sales", "status": "blocked", "reason": "commissions-and-canonical-opportunities-absent" },
+    { "module": "reports", "status": "adapter-required", "reason": "legacy-metric-sources" },
+    { "module": "revenue-engine", "status": "adapter-required", "reason": "campaign-tables-empty-and-conversions-derived" },
+    { "module": "users", "status": "blocked", "reason": "explicit-access-and-hierarchy-columns-absent" },
+    { "module": "external-sales", "status": "blocked", "reason": "external-purchases-absent" },
+    { "module": "integrations", "status": "blocked", "reason": "catalog-and-health-sources-absent" },
+    { "module": "settings", "status": "blocked", "reason": "ai-governance-and-security-policy-absent" }
+  ],
+  "readinessSummary": {
+    "contractedModules": 19,
+    "adapterRequired": 12,
+    "blocked": 7,
+    "fullyHomologatedByThisAudit": 0,
+    "note": "source-existence-is-not-operational-homologation"
+  },
+  "security": {
+    "strengths": [
+      "all-public-tables-have-rls",
+      "tenant-policies-use-current-organization",
+      "legacy-tables-are-explicitly-blocked",
+      "ai-provider-performance-view-uses-security-invoker",
+      "service-role-remains-server-only"
+    ],
+    "warnings": [
+      "search-knowledge-chunks-security-definer-is-executable-by-anon-and-authenticated",
+      "leaked-password-protection-disabled",
+      "nineteen-tables-have-anon-select-grants-even-though-rls-blocks-anonymous-rows"
+    ],
+    "mutationsApplied": 0
+  },
+  "performance": {
+    "unindexedForeignKeys": 15,
+    "authRlsInitPlanWarnings": 2,
+    "multiplePermissivePolicyWarnings": 3,
+    "unusedIndexNotices": 24,
+    "unusedIndexesMayBeRemovedWithoutObservationWindow": false
+  },
+  "nextSafeActions": [
+    "make-runtime-capability-resolution-authoritative",
+    "route-all-core-v2-reads-through-compatible-repositories",
+    "fix-security-definer-execute-scope-after-staging-validation",
+    "enable-leaked-password-protection",
+    "add-only-evidence-backed-index-and-rls-optimizations",
+    "stage-minimal-contract-migrations-in-dependency-order",
+    "never-apply-the-eighty-nine-pending-migrations-as-one-batch"
+  ]
+}

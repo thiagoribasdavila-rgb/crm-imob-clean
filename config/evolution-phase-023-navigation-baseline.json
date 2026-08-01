@@ -1,0 +1,96 @@
+{
+  "phase": 23,
+  "wave": 2,
+  "status": "completed",
+  "measuredAt": "2026-07-18",
+  "scope": "source-level-navigation-baseline-with-behavioral-telemetry-boundary",
+  "productionDataModified": false,
+  "runtimeNavigationChanged": false,
+  "structuralBaseline": {
+    "trackedSourceFiles": 187,
+    "crmRoutes": 141,
+    "canonicalDestinations": 25,
+    "canonicalDestinationsPresent": 25,
+    "maximumRouteDepth": 4,
+    "averageRouteDepth": 1.91,
+    "depthDistribution": {
+      "0": 1,
+      "1": 38,
+      "2": 76,
+      "3": 25,
+      "4": 1
+    },
+    "routesAtDepthTwoOrLess": 115,
+    "routesAtDepthThreeOrMore": 26,
+    "navigationReferences": 183,
+    "uniqueInternalTargets": 68,
+    "uniqueStaticInternalTargets": 50,
+    "dynamicTemplateReferences": 84,
+    "nextLinkComponents": 201,
+    "rawInternalAnchors": 2,
+    "canonicalRoutesCoveredByGovernedCatalog": 25,
+    "canonicalRoutesWithExplicitSourceInbound": 16,
+    "canonicalRoutesWithoutExplicitSourceInbound": 9
+  },
+  "criticalJourneyBaseline": {
+    "journeysDefined": 6,
+    "journeysWithExistingEndpoints": 6,
+    "journeysWithDirectReferenceOrSameRouteAction": 5,
+    "journeysWithoutContextualDirectReference": [
+      "capturar-nova-lead"
+    ],
+    "runtimeJourneysMeasured": 0
+  },
+  "findings": [
+    {
+      "id": "governed-catalog-coverage",
+      "status": "healthy",
+      "evidence": "Os 25 destinos canônicos existem e são publicados pelo catálogo governado."
+    },
+    {
+      "id": "deep-route-discovery",
+      "status": "attention",
+      "evidence": "26 rotas possuem profundidade estrutural entre três e quatro segmentos e dependem de descoberta contextual."
+    },
+    {
+      "id": "catalog-only-destinations",
+      "status": "attention",
+      "evidence": "9 destinos canônicos não possuem referência explícita adicional no código e dependem do catálogo compartilhado."
+    },
+    {
+      "id": "new-lead-entry",
+      "status": "attention",
+      "evidence": "A jornada de nova lead possui destino válido, mas a página inicial depende do comando compartilhado e não oferece referência direta medida."
+    },
+    {
+      "id": "raw-internal-anchors",
+      "status": "attention",
+      "evidence": "Duas navegações internas usam âncora HTML em vez do componente Link do App Router."
+    }
+  ],
+  "behavioralTelemetry": {
+    "status": "blocked-awaiting-runtime-telemetry",
+    "clickThroughRate": null,
+    "medianActionsToComplete": null,
+    "taskCompletionRate": null,
+    "abandonmentRate": null,
+    "timeToCommercialOutcome": null,
+    "reason": "Estrutura de código não comprova comportamento real de usuário."
+  },
+  "measurementPolicy": {
+    "sourceLevelMeasurementIsBehavioralProof": false,
+    "inventedMetricAllowed": false,
+    "personalDataCaptured": false,
+    "environmentSecretsRead": false,
+    "automaticDecisionAboutPeopleAllowed": false
+  },
+  "exitCriteria": {
+    "baselineIsReproducible": true,
+    "canonicalCoverageMeasured": true,
+    "criticalJourneyStructureMeasured": true,
+    "behavioralUnknownsRemainExplicit": true,
+    "routeDeleted": false,
+    "redirectAdded": false,
+    "phaseTwentyGateBypassed": false
+  }
+}

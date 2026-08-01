@@ -1,0 +1,17 @@
+{
+  "phase": 7,
+  "buildOutput": ".next/static/chunks",
+  "javascript": {
+    "maximumChunkCount": 600,
+    "maximumSingleChunkBytes": 1048576,
+    "maximumSingleChunkGzipBytes": 262144,
+    "maximumTotalBytes": 26214400
+  },
+  "runtimeEvidenceRequired": [
+    "public_hostinger_url",
+    "authenticated_mobile_navigation",
+    "database_p95",
+    "api_p95",
+    "core_web_vitals"
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "phase": 19,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "correct-runtime-schema-evidence-without-production-mutation",
+  "productionDataModified": false,
+  "liveUsersModified": false,
+  "runtimeEvidence": {
+    "executed": true,
+    "profilesLegacyColumnsDetected": 10,
+    "leadsLegacyColumnsDetected": 37,
+    "authUsersDetected": 4,
+    "profilesDetected": 4,
+    "authUsersWithoutProfile": 0,
+    "profilesWithoutAuthUser": 0,
+    "hierarchyEvaluated": false,
+    "personalDataPrinted": false,
+    "profilesMissingV3Columns": [
+      "access_role",
+      "commercial_role",
+      "reports_to",
+      "full_name",
+      "avatar_url",
+      "phone",
+      "creci",
+      "bio",
+      "updated_at"
+    ],
+    "migrationApplied": false,
+    "reason": "production database changes require an approved backup, staging rehearsal and migration-history reconciliation"
+  },
+  "migrationReadiness": {
+    "commercialHierarchyMigrationPresent": true,
+    "officialRbacMigrationPresent": true,
+    "legacyBridgeMigrationPresent": true,
+    "foundationMigrationIsDocumentationOnly": true,
+    "historicalChainReplayProven": false,
+    "directDbPushAllowed": false,
+    "supabaseCliAvailableInWorkspace": false
+  },
+  "corrections": [
+    "schema audit now reports each missing table and column instead of failing at the first query",
+    "auth audit reads only safe authorization columns and never prints profile personal data",
+    "hierarchy is not inferred when the canonical columns are absent",
+    "production migration remains blocked until staging proves the complete chain"
+  ],
+  "requiredReleaseSequence": [
+    "create and verify a database backup",
+    "reconcile local and remote migration history",
+    "rehearse the complete additive chain in staging",
+    "run audit:runtime-schema and audit:auth-hierarchy in staging",
+    "obtain explicit production approval",
+    "apply the approved migration and repeat both read-only audits"
+  ],
+  "exitCriteria": {
+    "firstErrorNoLongerHidesRemainingGaps": true,
+    "runtimeGapIsExplicit": true,
+    "hierarchyEvidenceIsNotInvented": true,
+    "productionMutationWasPrevented": true,
+    "phaseTwentyRemainsBlockedUntilRuntimeApproval": true
+  }
+}

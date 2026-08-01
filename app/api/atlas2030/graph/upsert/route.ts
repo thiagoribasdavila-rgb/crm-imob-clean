@@ -55,6 +55,21 @@ export async function POST(request: Request) {
     }
 
     for (const relationship of relationships) {
+      const endpointIds = [...new Set([relationship.fromEntityId, relationship.toEntityId])];
+      const { data: scopedEntities, error: entityScopeError } = await admin
+        .from("atlas_entities")
+        .select("id")
+        .eq("organization_id", identity.organizationId)
+        .in("id", endpointIds);
+
+      if (entityScopeError) throw entityScopeError;
+      if ((scopedEntities?.length ?? 0) !== endpointIds.length) {
+        return NextResponse.json(
+          { error: "Relacionamento contém entidade inexistente ou fora da sua empresa." },
+          { status: 403 },
+        );
+      }
+
       const { error } = await admin.from("atlas_relationships").insert({
         organization_id: identity.organizationId,
         from_entity_id: relationship.fromEntityId,
@@ -73,7 +88,7 @@ export async function POST(request: Request) {
   } catch (error) {
     logger.error("atlas2030.graph_update_failed", error);
     const message = error instanceof Error ? error.message : "Falha ao atualizar o grafo.";
-    const status = /token|sessão|autoriz/i.test(message) ? 401 : 500;
+    const status = /token|sessão|autoriz|organiza|escopo/i.test(message) ? 401 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

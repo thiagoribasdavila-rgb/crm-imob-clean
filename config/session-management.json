@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "provider": "supabase",
+  "renewal": "middleware-and-client-auto-refresh",
+  "validation": "getUser-or-getClaims",
+  "logoutScopes": { "current": "local", "others": "others", "all": "global" },
+  "tokensReturnedByManagementApi": false,
+  "deviceFingerprinting": false,
+  "deviceEnumeration": "unavailable-without-trusted-provider-evidence",
+  "managementRateLimit": { "actions": 10, "windowMinutes": 15 },
+  "expiredSessionDestination": "/login",
+  "externalHomologation": ["automatic-renewal", "natural-expiration", "current-device-logout", "other-device-revocation", "global-revocation", "two-browser-test"]
+}

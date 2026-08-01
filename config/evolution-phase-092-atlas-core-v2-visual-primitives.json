@@ -1,0 +1,104 @@
+{
+  "phase": 92,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "atlas-core-v2-semantic-tokens-operational-primitives-and-calm-resilient-states",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "authenticationChanged": false,
+  "runtimeBehaviorChanged": true,
+  "objective": "maximize-relevant-commercial-information-while-minimizing-visual-noise-and-choice-competition",
+  "principles": [
+    "decision-before-decoration",
+    "one-primary-action-per-context",
+    "maximum-five-decision-metrics-per-glance",
+    "secondary-information-through-progressive-disclosure",
+    "one-action-color-and-semantic-status-colors",
+    "local-failure-never-blocks-a-healthy-section",
+    "technical-errors-never-reach-user-facing-copy"
+  ],
+  "informationArchitecture": {
+    "glance": [
+      "page-purpose",
+      "maximum-five-decision-metrics",
+      "one-primary-action"
+    ],
+    "workspace": [
+      "priority-queue",
+      "operational-list-table-or-board",
+      "contextual-secondary-actions"
+    ],
+    "context": [
+      "details-on-demand",
+      "history-and-evidence",
+      "advanced-configuration"
+    ]
+  },
+  "visualSystem": {
+    "canvas": "graphite",
+    "surfaces": "flat-hairline-border",
+    "primaryActionColor": "atlas-blue",
+    "semanticColors": [
+      "success-green",
+      "warning-amber",
+      "danger-rose"
+    ],
+    "decorativeGradients": "removed-from-core-shell",
+    "ambientOrbs": "disabled-in-core-shell",
+    "hoverMotion": "no-card-lift",
+    "numbers": "tabular"
+  },
+  "officialPrimitives": [
+    "AtlasCard",
+    "AtlasMetric",
+    "AtlasDecisionStrip",
+    "AtlasSection",
+    "AtlasPriorityQueue",
+    "AtlasDetailDisclosure",
+    "AtlasEmpty",
+    "AtlasRecoverableError",
+    "LoadingState"
+  ],
+  "resilience": {
+    "loading": "compact-local-skeleton",
+    "empty": "reason-and-next-step",
+    "error": "sanitized-local-recovery",
+    "partial": "healthy-sections-remain-visible"
+  },
+  "accessibility": [
+    "visible-keyboard-focus",
+    "reduced-motion",
+    "minimum-44px-mobile-actions",
+    "semantic-headings-and-landmarks",
+    "status-is-not-communicated-by-color-alone"
+  ],
+  "delivered": [
+    "expanded-semantic-color-surface-spacing-radius-motion-density-and-focus-tokens",
+    "official-core-v2-shell-marker-and-decision-first-information-strategy",
+    "calm-flat-surface-layer-scoped-to-the-authenticated-application",
+    "metric-relevance-card-density-and-card-emphasis-contracts",
+    "decision-strip-section-priority-queue-and-detail-disclosure-primitives",
+    "compact-empty-error-loading-and-recovery-states",
+    "technical-error-sanitization-in-the-shared-error-state"
+  ],
+  "validation": {
+    "phaseContractCheck": true,
+    "previousPhaseRegressionRequired": true,
+    "typecheckRequired": true,
+    "changedFilesLintRequired": true,
+    "secretScanRequired": true,
+    "buildRequired": false
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false,
+    "checkpointPhase": 100
+  },
+  "nextPhase": {
+    "phase": 93,
+    "name": "Superfície canônica, navegação e contratos dos módulos primários",
+    "status": "planned"
+  }
+}

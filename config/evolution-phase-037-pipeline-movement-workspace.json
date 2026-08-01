@@ -1,0 +1,103 @@
+{
+  "phase": 37,
+  "wave": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "pipeline-movement-workspace",
+  "productionDataModified": false,
+  "runtimePresentationChanged": true,
+  "clientPreferenceChanged": false,
+  "dataFetchingChanged": false,
+  "databaseSchemaChanged": false,
+  "routeBehaviorChanged": false,
+  "pipelineContract": {
+    "layoutAttribute": "movement-first",
+    "prioritySource": "authorized-loaded-pipeline",
+    "visiblePriorityLimit": 3,
+    "rankingSignals": [
+      "first contact SLA overdue",
+      "next action overdue",
+      "missing next action",
+      "observed temperature and score",
+      "observed lead risk"
+    ],
+    "newScoreCreated": false,
+    "canonicalStagesPreserved": true,
+    "safeMovementPreserved": true,
+    "undoPreserved": true,
+    "filtersPreserved": true,
+    "historyPreserved": true
+  },
+  "movementQueue": {
+    "previousDuplicateSections": 2,
+    "consolidatedSections": 1,
+    "currentStageVisible": true,
+    "nextCanonicalStageVisible": true,
+    "nextStagePresentedAsPrediction": false,
+    "movementRequiresHumanSelection": true,
+    "lead360Available": true,
+    "copilotAvailable": true,
+    "directCallAvailableWhenPhoneIsValid": true
+  },
+  "progressiveDisclosure": {
+    "focusModeDefaultPreserved": true,
+    "extendedMetricsAvailable": true,
+    "stageFlowAvailable": true,
+    "buyerProfilesAvailable": true,
+    "functionalityRemoved": false
+  },
+  "aiPolicy": {
+    "copilotPreparesApproach": true,
+    "automaticMessageSending": false,
+    "automaticStageMovement": false,
+    "automaticCrmMutation": false,
+    "humanApprovalPreserved": true
+  },
+  "truthPolicy": {
+    "queueLimitedToLoadedAuthorizedPayload": true,
+    "queuePresentedAsGlobalPortfolio": false,
+    "priorityIsHeuristicNotPrediction": true,
+    "canonicalNextStageIsNotConversionRecommendation": true,
+    "runtimeProductivityClaimPublished": false,
+    "conversionGuaranteePublished": false
+  },
+  "accessibility": {
+    "queueHasLabelledRegion": true,
+    "queueUsesPoliteLiveRegion": true,
+    "movementUsesLabelledNativeSelect": true,
+    "keyboardKanbanPreserved": true,
+    "minimumNewTouchTargetPx": 44,
+    "reducedMotionPolicyPreserved": true
+  },
+  "structuralBaseline": {
+    "newStateAdded": false,
+    "newEffectAdded": false,
+    "newNetworkRequestAdded": false,
+    "priorityCardsVisible": 3,
+    "prioritySectionsBefore": 2,
+    "prioritySectionsAfter": 1,
+    "runtimeDecisionTimeMeasured": false
+  },
+  "safetyPolicy": {
+    "databaseWriteAdded": false,
+    "environmentSecretsRead": false,
+    "personalDataCaptured": false,
+    "rbacPreserved": true,
+    "tenantIsolationPreserved": true,
+    "routesPreserved": true,
+    "transactionalMovementPreserved": true
+  },
+  "exitCriteria": {
+    "firstViewportShowsMovementPriorities": true,
+    "riskAndReasonAreVisible": true,
+    "currentAndNextStageAreVisible": true,
+    "movementRemainsExplicitAndReversible": true,
+    "kanbanRemainsAvailable": true,
+    "phaseTwentyGateBypassed": false
+  },
+  "nextPhase": {
+    "phase": 38,
+    "name": "Melhorar tarefas",
+    "status": "planned"
+  }
+}

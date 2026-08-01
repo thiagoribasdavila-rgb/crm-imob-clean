@@ -1,0 +1,75 @@
+{
+  "program": "ATLAS AI OS — Sprint corretivo operacional",
+  "range": [50, 59],
+  "objective": "eliminate-live-disconnections-before-infinite-evolution",
+  "rules": {
+    "workInProgressLimit": 1,
+    "newFeatureExpansion": false,
+    "productionDataDeletion": false,
+    "destructiveMigration": false,
+    "dailyBuild": false,
+    "zipAtSprintEnd": false
+  },
+  "phases": [
+    {
+      "phase": 50,
+      "name": "Contrato real de leads e pipeline",
+      "status": "completed",
+      "outcome": "Leitura paginada sem consultar colunas ausentes e etapas antigas traduzidas para o Kanban canônico."
+    },
+    {
+      "phase": 51,
+      "name": "Escrita segura de leads e histórico",
+      "status": "completed",
+      "outcome": "Criar, editar, contatar e registrar eventos sem depender de funções ou tabelas ausentes."
+    },
+    {
+      "phase": 52,
+      "name": "Tenant, hierarquia e presença comercial",
+      "status": "completed",
+      "outcome": "Resolver organização, perfil, papel, equipe, escopo e presença sem 404 ou fallback inseguro."
+    },
+    {
+      "phase": 53,
+      "name": "Tarefas, agenda e próxima ação",
+      "status": "completed",
+      "outcome": "Compatibilizar due_date/due_at, user_id/assigned_to e consolidar compromissos reais."
+    },
+    {
+      "phase": 54,
+      "name": "Projetos e portfólio conectados",
+      "status": "completed",
+      "outcome": "Unificar projects, crm_projects, incorporadoras, materiais, estoque, unidades e VGV."
+    },
+    {
+      "phase": 55,
+      "name": "Movimentação protegida do pipeline",
+      "status": "completed",
+      "outcome": "Mover com trava otimista, auditar, detectar conflito e aplicar rollback compensatório quando o histórico falhar."
+    },
+    {
+      "phase": 56,
+      "name": "Kanban de decisão",
+      "status": "completed",
+      "outcome": "Redesenhar colunas, cartões e fila de prioridade para reduzir ruído e orientar conversão."
+    },
+    {
+      "phase": 57,
+      "name": "Kanban de última geração",
+      "status": "completed",
+      "outcome": "Drag and drop confiável, toque, teclado, acessibilidade, ações rápidas, feedback e undo."
+    },
+    {
+      "phase": 58,
+      "name": "Kanban em escala",
+      "status": "completed",
+      "outcome": "Isolar 16.733 registros históricos, cobrir as 418 oportunidades atuais e avisar quando o limite carregado for ultrapassado."
+    },
+    {
+      "phase": 59,
+      "name": "Homologação corretiva ponta a ponta",
+      "status": "completed",
+      "outcome": "Validar papéis, lead, pipeline, tarefa, projeto e relatório com segurança e desempenho medidos."
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { mapLegacyTask, type CompatRow } from "@/lib/compat/legacy-v2";
 
 type Task = { id: string; title: string; status: string; priority: string; due_at: string | null; created_at: string };
 
@@ -22,8 +23,8 @@ export default function AutomationsPage() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from("tasks").select("id,title,status,priority,due_at,created_at").order("created_at", { ascending: false }).limit(20);
-      setTasks((data ?? []) as Task[]);
+      const { data } = await supabase.from("tasks").select("id,title,status,priority,due_date,created_at").order("created_at", { ascending: false }).limit(20);
+      setTasks(((data ?? []) as unknown as CompatRow[]).map(mapLegacyTask) as Task[]);
       setLoading(false);
     }
     load();
@@ -49,7 +50,7 @@ export default function AutomationsPage() {
 
       <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {flows.map(flow => <article key={flow.name} className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-start justify-between gap-3"><h2 className="font-bold">{flow.name}</h2><span className={`rounded-full px-2.5 py-1 text-[11px] uppercase ${flow.status === "active" ? "bg-emerald-500/10 text-emerald-300" : flow.status === "ready" ? "bg-amber-500/10 text-amber-300" : "bg-zinc-800 text-zinc-400"}`}>{flow.status === "active" ? "Ativa" : flow.status === "ready" ? "Pronta" : "Planejada"}</span></div>
+          <div className="flex items-start justify-between gap-3"><h2 className="font-bold">{flow.name}</h2><span className={`rounded-full px-2.5 py-1 text-rotulo uppercase ${flow.status === "active" ? "bg-emerald-500/10 text-emerald-300" : flow.status === "ready" ? "bg-amber-500/10 text-amber-300" : "bg-zinc-800 text-zinc-400"}`}>{flow.status === "active" ? "Ativa" : flow.status === "ready" ? "Pronta" : "Planejada"}</span></div>
           <div className="mt-4 space-y-3 text-sm"><p><span className="text-zinc-500">Gatilho:</span> <span className="text-zinc-300">{flow.trigger}</span></p><p><span className="text-zinc-500">Ação:</span> <span className="text-zinc-300">{flow.action}</span></p></div>
         </article>)}
       </section>

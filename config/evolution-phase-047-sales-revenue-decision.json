@@ -1,0 +1,36 @@
+{
+  "phase": 47,
+  "wave": 3,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "sales-revenue-decision",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "revenueContract": {
+    "layoutAttribute": "revenue-decision-first",
+    "visibleDecisionLimit": 3,
+    "signals": ["commission_overdue", "commission_due_soon", "closing_overdue", "low_probability_near_close", "incomplete_forecast"],
+    "forecastGuarantee": false,
+    "humanReviewRequired": true
+  },
+  "copilotPolicy": {
+    "mayChangeForecast": false,
+    "mayRegisterPayment": false,
+    "maySendMessages": false,
+    "humanApprovalRequired": true
+  },
+  "safetyPolicy": {
+    "existingRlsQueriesPreserved": true,
+    "commissionVisibilityPreserved": true,
+    "rbacPreserved": true,
+    "legacyFallbackPreserved": true,
+    "financialActionsRemainExplicit": true
+  },
+  "checkpoint": {
+    "specialFirstPackage": true,
+    "phase": 47,
+    "nextRecurringPackage": 100,
+    "target": "hostinger"
+  },
+  "nextPhase": { "phase": 48, "name": "Continuidade do ciclo Atlas 2000", "status": "planned" }
+}

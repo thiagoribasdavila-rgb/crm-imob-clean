@@ -1,0 +1,437 @@
+{
+  "auditVersion": 1,
+  "auditedAt": "2026-07-18",
+  "product": "ATLAS AI OS",
+  "baselinePhase": 90,
+  "purpose": "convert-measured-structural-gaps-into-evidence-bound-phases-that-increase-commercial-operating-capacity",
+  "measuredInventory": {
+    "pages": 271,
+    "apiRoutes": 142,
+    "components": 117,
+    "libraryModules": 109,
+    "supabaseMigrations": 122,
+    "staticValidationScripts": 216,
+    "loadingBoundaries": 1,
+    "errorBoundaries": 1,
+    "conventionalTestFiles": 0,
+    "directDataTouchpoints": 166,
+    "clientAppFiles": 113,
+    "clientComponentFiles": 32,
+    "canonicalNavigationItems": 20,
+    "coreV2PageContracts": 6,
+    "apiRoutesRequiringManualAuthClassification": 31,
+    "migrationRlsEnableStatements": 123,
+    "migrationPolicyStatements": 169,
+    "migrationExplicitGrantStatements": 90,
+    "migrationSecurityDefinerReferences": 127
+  },
+  "measurementLimits": [
+    "filesystem-counts-do-not-prove-live-production-state",
+    "migration-statements-do-not-prove-they-were-applied",
+    "static-auth-heuristics-require-manual-route-classification",
+    "environment-variables-were-not-read-or-exposed",
+    "configured-integrations-do-not-count-as-operational-without-a-successful-live-test"
+  ],
+  "findings": [
+    {
+      "id": "P0-01",
+      "priority": "P0",
+      "area": "product-surface",
+      "finding": "route-surface-is-larger-than-the-governed-operational-product",
+      "evidence": [
+        "271-page-files",
+        "141-pages-in-the-crm-group",
+        "multiple-speculative-route-groups-with-minimal-placeholder-pages",
+        "only-20-items-in-canonical-navigation"
+      ],
+      "businessImpact": "users-and-maintainers-cannot-distinguish-operational-modules-from-concepts-or-placeholders",
+      "treatment": "inventory-classify-and-quarantine-without-destructive-deletion",
+      "targetPhases": [93],
+      "exitCriteria": [
+        "every-page-classified-as-canonical-contextual-internal-experimental-or-retired",
+        "placeholder-routes-are-not-reachable-from-production-navigation",
+        "redirects-and-deep-links-have-an-explicit-compatibility-map"
+      ]
+    },
+    {
+      "id": "P0-02",
+      "priority": "P0",
+      "area": "supabase-live-truth",
+      "finding": "repository-migrations-do-not-prove-live-schema-data-api-grants-or-rls",
+      "evidence": [
+        "122-migration-files",
+        "123-enable-rls-statements",
+        "169-policy-statements",
+        "90-explicit-grant-statements",
+        "legacy-compatibility-migrations-exist-but-application-is-not-proven"
+      ],
+      "businessImpact": "a-module-can-render-but-fail-when-the-live-table-column-grant-or-policy-differs",
+      "treatment": "read-only-live-inventory-and-approved-non-destructive-migration-plan",
+      "targetPhases": [94],
+      "exitCriteria": [
+        "live-tables-columns-constraints-indexes-and-migration-state-inventoried",
+        "data-api-grants-and-rls-proven-separately-for-every-operational-table",
+        "auth-profile-organization-membership-and-role-resolution-proven-for-test-roles",
+        "no-production-mutation-without-backup-approval-and-rollback"
+      ]
+    },
+    {
+      "id": "P0-03",
+      "priority": "P0",
+      "area": "authentication-and-tenancy",
+      "finding": "two-parallel-api-identity-and-tenant-context-systems-have-different-semantics",
+      "evidence": [
+        "lib-security-api-auth-used-by-22-routes",
+        "lib-api-security-used-by-94-routes",
+        "both-resolve-profile-and-organization",
+        "both-support-controlled-homologation-fallback-with-different-contracts"
+      ],
+      "businessImpact": "authorization-behavior-can-vary-by-endpoint-and-create-post-login-or-scope-inconsistencies",
+      "treatment": "one-authentication-tenant-and-authorization-context-with-compatibility-adapters",
+      "targetPhases": [95],
+      "exitCriteria": [
+        "one-canonical-access-context-is-used-by-all-operational-routes",
+        "role-hierarchy-and-tenant-scope-have-behavioral-tests",
+        "homologation-fallback-is-explicit-admin-only-logged-and-disabled-in-production",
+        "service-role-remains-server-only-and-purpose-bound"
+      ]
+    },
+    {
+      "id": "P0-04",
+      "priority": "P0",
+      "area": "data-access",
+      "finding": "data-access-is-fragmented-across-pages-components-routes-and-admin-client-queries",
+      "evidence": [
+        "166-direct-data-touchpoints",
+        "94-api-routes-reference-the-admin-client",
+        "58-api-routes-use-user-scoped-supabase",
+        "tenant-filters-are-repeated-manually"
+      ],
+      "businessImpact": "tenant-safety-compatibility-and-schema-drift-depend-on-repeated-human-discipline",
+      "treatment": "tenant-aware-domain-repositories-with-user-scoped-reads-and-purpose-bound-admin-commands",
+      "targetPhases": [95, 96],
+      "exitCriteria": [
+        "leads-tasks-projects-customers-and-opportunities-use-canonical-repositories",
+        "every-admin-command-declares-purpose-actor-tenant-idempotency-and-audit-event",
+        "new-ui-code-has-no-direct-supabase-access"
+      ]
+    },
+    {
+      "id": "P0-05",
+      "priority": "P0",
+      "area": "verification",
+      "finding": "static-contract-checkers-exist-but-behavioral-tests-are-absent",
+      "evidence": [
+        "216-static-validation-scripts",
+        "zero-test-or-spec-files-found",
+        "critical-user-journeys-span-auth-api-database-and-ui"
+      ],
+      "businessImpact": "string-level-compliance-can-pass-while-login-movement-persistence-or-rbac-still-fails",
+      "treatment": "preserve-static-gates-and-add-a-real-test-pyramid-for-critical-journeys",
+      "targetPhases": [99, 100],
+      "exitCriteria": [
+        "unit-tests-cover-pure-domain-and-authorization-rules",
+        "integration-tests-cover-repositories-and-api-contracts",
+        "browser-tests-cover-login-lead-pipeline-task-and-project-journeys",
+        "tests-use-isolated-homologation-data-and-never-production-data"
+      ]
+    },
+    {
+      "id": "P0-06",
+      "priority": "P0",
+      "area": "api-security",
+      "finding": "31-route-handlers-require-manual-public-private-worker-or-webhook-classification",
+      "evidence": [
+        "142-api-route-handlers-in-total",
+        "109-recognized-as-protected-by-static-heuristic",
+        "2-recognized-as-intentionally-public",
+        "31-use-other-or-unclassified-security-patterns"
+      ],
+      "businessImpact": "an-unclassified-route-can-have-unclear-authentication-rate-limit-idempotency-or-secret-contracts",
+      "treatment": "route-manifest-with-explicit-exposure-and-security-policy",
+      "targetPhases": [95, 99],
+      "exitCriteria": [
+        "every-route-is-classified-public-authenticated-privileged-worker-or-webhook",
+        "every-write-route-has-rate-limit-idempotency-and-audit-policy",
+        "every-webhook-has-signature-replay-and-deduplication-policy"
+      ]
+    },
+    {
+      "id": "P1-01",
+      "priority": "P1",
+      "area": "pipeline",
+      "finding": "pipeline-movement-uses-a-compensating-multi-step-write-and-the-workspace-is-a-large-client-component",
+      "evidence": [
+        "pipeline-page-is-492-lines-and-client-rendered",
+        "pipeline-api-falls-back-to-admin-writes-with-compensating-rollback",
+        "pipeline-query-is-limited-to-500-leads",
+        "kanban-route-is-only-an-alias"
+      ],
+      "businessImpact": "the-primary-conversion-workspace-can-be-slow-at-scale-and-movement-is-not-yet-atomically-proven",
+      "treatment": "atomic-rpc-server-first-shell-interactive-islands-windowing-keyboard-and-mobile",
+      "targetPhases": [96, 98],
+      "exitCriteria": [
+        "stage-movement-is-atomic-idempotent-and-audited",
+        "optimistic-ui-rolls-back-from-a-single-canonical-result",
+        "large-pipelines-use-windowing-or-paginated-stage-loading",
+        "cards-move-by-drag-keyboard-and-mobile-controls",
+        "lead-context-opens-without-leaving-the-board"
+      ]
+    },
+    {
+      "id": "P1-02",
+      "priority": "P1",
+      "area": "page-contract-coverage",
+      "finding": "only-six-of-twenty-primary-navigation-modules-have-core-v2-page-contracts",
+      "evidence": [
+        "20-canonical-navigation-items",
+        "6-core-v2-page-registry-entries"
+      ],
+      "businessImpact": "different-modules-can-repeat-metrics-actions-role-scope-and-loading-decisions",
+      "treatment": "complete-page-contract-coverage-before-redesigning-every-module",
+      "targetPhases": [92, 93],
+      "exitCriteria": [
+        "all-primary-navigation-items-have-business-outcome-primary-action-role-scope-and-data-dependencies",
+        "contextual-tools-do-not-compete-with-primary-daily-work"
+      ]
+    },
+    {
+      "id": "P1-03",
+      "priority": "P1",
+      "area": "canonical-domain-model",
+      "finding": "legacy-and-canonical-entities-and-fields-are-used-in-parallel",
+      "evidence": [
+        "pipeline-reads-leads-while-core-contract-refers-to-opportunities",
+        "project-flows-reference-crm_projects-and-developments",
+        "lead-score-appears-as-score-and-score_ia",
+        "legacy-adapters-and-schema-bridge-exist"
+      ],
+      "businessImpact": "the-same-commercial-fact-can-have-different-meaning-across-dashboard-pipeline-reports-and-ai",
+      "treatment": "canonical-read-models-command-contracts-and-versioned-compatibility-adapters",
+      "targetPhases": [94, 95, 96],
+      "exitCriteria": [
+        "canonical-names-and-legacy-sources-are-documented-field-by-field",
+        "dashboard-reports-pipeline-and-ai-consume-the-same-read-model",
+        "compatibility-fallback-is-observable-and-has-a-retirement-condition"
+      ]
+    },
+    {
+      "id": "P1-04",
+      "priority": "P1",
+      "area": "resilience-ux",
+      "finding": "module-specific-loading-error-empty-and-recovery-states-are-not-systematic",
+      "evidence": [
+        "one-loading-boundary-for-271-pages",
+        "one-error-boundary-for-271-pages",
+        "past-homologation-screens-showed-global-module-failures"
+      ],
+      "businessImpact": "a-local-data-failure-can-feel-like-a-platform-failure-and-interrupt-the-corrector-workflow",
+      "treatment": "module-level-boundaries-skeletons-useful-empty-states-and-retry-with-correlation-id",
+      "targetPhases": [92, 99],
+      "exitCriteria": [
+        "every-primary-module-has-loading-empty-error-and-recovery-contracts",
+        "technical-details-never-appear-in-user-facing-copy",
+        "healthy-sections-remain-usable-when-one-widget-fails"
+      ]
+    },
+    {
+      "id": "P2-01",
+      "priority": "P2",
+      "area": "frontend-structure",
+      "finding": "critical-experiences-are-concentrated-in-monolithic-client-files",
+      "evidence": [
+        "AtlasCopilotDock-2678-lines",
+        "lead-360-page-2086-lines",
+        "meta-integration-page-1496-lines",
+        "leads-page-1463-lines",
+        "dashboard-page-1133-lines"
+      ],
+      "businessImpact": "changes-are-riskier-client-bundles-grow-and-independent-loading-is-difficult",
+      "treatment": "feature-boundaries-server-first-data-composition-and-small-client-islands",
+      "targetPhases": [92, 98, 101, 102],
+      "exitCriteria": [
+        "large-pages-have-explicit-feature-boundaries",
+        "data-fetching-remains-on-the-server-unless-interactivity-requires-client-state",
+        "copilot-pipeline-and-lead-360-load-independently"
+      ]
+    },
+    {
+      "id": "P2-02",
+      "priority": "P2",
+      "area": "design-system",
+      "finding": "visual-quality-is-high-in-isolated-screens-but-primitives-tokens-density-and-shell-behavior-are-not-yet-one-system",
+      "evidence": [
+        "multiple-layout-patterns-across-271-pages",
+        "legacy-sidebar-catalog-remains-commented-inside-the-current-sidebar",
+        "core-v2-page-contract-precedes-an-official-token-and-primitive-layer"
+      ],
+      "businessImpact": "visual-repetition-produces-inconsistency-instead-of-speed",
+      "treatment": "one-token-layer-one-shell-and-reusable-operational-primitives",
+      "targetPhases": [92, 98, 103],
+      "exitCriteria": [
+        "color-typography-spacing-radius-motion-and-density-have-semantic-tokens",
+        "cards-tables-queues-command-bars-and-drawers-use-shared-primitives",
+        "dark-theme-meets-accessibility-contrast-and-reduced-motion"
+      ]
+    },
+    {
+      "id": "P3-01",
+      "priority": "P3",
+      "area": "ai-operating-system",
+      "finding": "multi-provider-routing-is-implemented-but-operational-certification-memory-evaluation-and-budget-enforcement-remain-incomplete",
+      "evidence": [
+        "providers-openai-perplexity-deepseek-qwen-kimi-glm-and-local-exist",
+        "provider-tests-distinguish-configuration-from-live-validation",
+        "usage-latency-and-estimated-cost-events-are-recorded",
+        "pricing-depends-on-environment-values",
+        "telemetry-failure-is-non-blocking"
+      ],
+      "businessImpact": "the-platform-can-route-ai-but-cannot-yet-prove-quality-cost-and-learning-improvement-for-each-commercial-task",
+      "treatment": "provider-certification-evaluation-datasets-memory-lineage-hard-budgets-and-human-feedback",
+      "targetPhases": [104, 105, 106, 107],
+      "exitCriteria": [
+        "each-provider-is-certified-per-task-with-live-latency-cost-quality-and-data-class",
+        "unpriced-models-cannot-be-reported-as-cost-optimized",
+        "memory-records-source-consent-retention-and-outcome",
+        "model-release-requires-evaluation-and-human-approval",
+        "local-fallback-keeps-core-operation-usable"
+      ]
+    },
+    {
+      "id": "P3-02",
+      "priority": "P3",
+      "area": "digital-twin",
+      "finding": "digital-twin-v1-is-a-bounded-snapshot-not-yet-an-incremental-decision-grade-model",
+      "evidence": [
+        "rebuild-is-cron-secret-protected",
+        "rebuild-reads-at-most-200-leads-200-properties-and-100-campaigns-per-organization",
+        "snapshots-cover-buyer-property-and-campaign",
+        "version-quality-score-signals-and-expiration-are-persisted",
+        "source-event-lineage-and-incremental-rebuild-watermarks-are-not-proven"
+      ],
+      "businessImpact": "large-bases-can-be-partially-represented-and-a-simulation-can-be-mistaken-for-current-operational-truth",
+      "treatment": "event-driven-incremental-twins-with-lineage-freshness-confidence-and-simulation-boundaries",
+      "targetPhases": [97, 108, 109],
+      "exitCriteria": [
+        "every-twin-declares-source-events-data-freshness-coverage-and-confidence",
+        "incremental-processing-covers-the-entire-tenant-with-checkpoints",
+        "simulation-output-is-labeled-and-never-writes-commercial-state-without-approval",
+        "legacy-fields-are-resolved-through-canonical-read-models"
+      ]
+    },
+    {
+      "id": "P4-01",
+      "priority": "P4",
+      "area": "external-integrations",
+      "finding": "integration-catalog-and-health-model-exist-but-live-certification-is-provider-specific-and-incomplete",
+      "evidence": [
+        "catalog-separates-environment-ready-registered-and-connected",
+        "health-center-requires-fresh-evidence-and-never-promotes-automatically",
+        "meta-whatsapp-storage-hostinger-have-production-readiness-rules",
+        "google-youtube-tiktok-portals-and-calendars-still-require-provider-specific-end-to-end-tests"
+      ],
+      "businessImpact": "a-visible-integration-can-be-perceived-as-connected-before-a-real-lead-event-message-or-conversion-round-trip-succeeds",
+      "treatment": "certification-matrix-with-sandbox-round-trip-reconciliation-and-expiry",
+      "targetPhases": [110, 111, 112, 113],
+      "exitCriteria": [
+        "each-provider-has-a-signed-live-test-and-last-success-expiry",
+        "outbox-retry-dead-letter-and-reconciliation-are-proven",
+        "external-actions-require-consent-template-and-human-policy",
+        "configured-never-means-operational"
+      ]
+    }
+  ],
+  "executionWaves": [
+    {
+      "name": "release-candidate-foundation",
+      "phases": "92-100",
+      "outcome": "one-governed-operational-core-tested-on-hostinger-compatible-runtime",
+      "releaseArtifactAllowedOnlyAtEnd": true
+    },
+    {
+      "name": "operational-depth",
+      "phases": "101-130",
+      "outcome": "lead-project-material-ai-memory-reactivation-and-integration-depth"
+    },
+    {
+      "name": "measured-intelligence",
+      "phases": "131-200",
+      "outcome": "attribution-calibration-observability-mobile-and-recovery-proven-with-real-evidence"
+    },
+    {
+      "name": "saas-scale",
+      "phases": "201-500",
+      "outcome": "multi-tenant-operating-depth-and-controlled-automation"
+    },
+    {
+      "name": "platform-scale",
+      "phases": "501-1000",
+      "outcome": "repeatable-product-configuration-provider-certification-and-tenant-onboarding"
+    },
+    {
+      "name": "digital-twin-scale",
+      "phases": "1001-2000",
+      "outcome": "simulation-and-optimization-only-after-data-lineage-and-model-gates-are-proven"
+    },
+    {
+      "name": "continuous-market-evolution",
+      "phases": "2001-3000",
+      "outcome": "evidence-driven-optimization-not-a-fixed-list-of-unverified-features"
+    }
+  ],
+  "releaseCandidatePlan": [
+    {
+      "phase": 92,
+      "name": "official-design-tokens-primitives-and-resilient-states",
+      "primaryFindingIds": ["P1-02", "P1-04", "P2-01", "P2-02"]
+    },
+    {
+      "phase": 93,
+      "name": "canonical-route-surface-and-navigation-consolidation",
+      "primaryFindingIds": ["P0-01", "P1-02"]
+    },
+    {
+      "phase": 94,
+      "name": "live-supabase-schema-grant-rls-and-tenant-truth-audit",
+      "primaryFindingIds": ["P0-02", "P1-03"]
+    },
+    {
+      "phase": 95,
+      "name": "single-auth-tenant-api-context-and-domain-repositories",
+      "primaryFindingIds": ["P0-03", "P0-04", "P0-06", "P1-03"]
+    },
+    {
+      "phase": 96,
+      "name": "atomic-commercial-ledger-outbox-and-pipeline-movement",
+      "primaryFindingIds": ["P0-04", "P1-01", "P1-03"]
+    },
+    {
+      "phase": 97,
+      "name": "digital-twin-v2-evidence-lineage-and-incremental-foundation",
+      "primaryFindingIds": ["P3-02"]
+    },
+    {
+      "phase": 98,
+      "name": "next-generation-kanban-server-first-accessible-and-scalable",
+      "primaryFindingIds": ["P1-01", "P2-01", "P2-02"]
+    },
+    {
+      "phase": 99,
+      "name": "critical-operational-journeys-behavioral-tests-and-resilience",
+      "primaryFindingIds": ["P0-05", "P0-06", "P1-04"]
+    },
+    {
+      "phase": 100,
+      "name": "single-build-full-regression-hostinger-package-and-human-release-gate",
+      "primaryFindingIds": ["P0-02", "P0-05"]
+    }
+  ],
+  "releasePolicy": {
+    "buildNow": false,
+    "zipNow": false,
+    "checkpointPhase": 100,
+    "singleBuildAtCheckpoint": true,
+    "artifactRequiresAllCriticalGates": true,
+    "productionDataMutationAuthorized": false
+  }
+}

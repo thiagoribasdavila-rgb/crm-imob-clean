@@ -160,7 +160,7 @@ export default function AtlasFeedbackCenter() {
             <article key={draft.id} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
               <div className="flex items-center justify-between gap-3"><div className="flex gap-2"><span className="atlas-badge atlas-badge-info">{draft.category}</span><span className={`atlas-badge ${draft.severity === "critical" ? "atlas-badge-danger" : draft.severity === "high" ? "atlas-badge-warning" : "atlas-badge-neutral"}`}>{draft.severity}</span></div><button onClick={() => copyDraft(draft)} className="text-xs font-semibold text-sky-300">Copiar</button></div>
               <p className="mt-3 text-sm leading-6 text-slate-300">{draft.description}</p>
-              <p className="mt-3 text-[11px] text-slate-600">{draft.path} · {new Date(draft.createdAt).toLocaleString("pt-BR")}</p>
+              <p className="mt-3 text-rotulo text-slate-600">{draft.path} · {new Date(draft.createdAt).toLocaleString("pt-BR")}</p>
             </article>
           ))}
         </div>

@@ -1,0 +1,41 @@
+{
+  "phase": 1,
+  "name": "Fundação de produto vendável · Inventariar a jornada atual",
+  "status": "completed",
+  "measuredAt": "2026-07-18",
+  "inventory": {
+    "crmPages": 141,
+    "sidebarDestinations": 20,
+    "sidebarGroups": 4,
+    "globalCommands": 17,
+    "mobilePrimaryActions": 4
+  },
+  "roles": [
+    { "role": "director", "home": "/dashboard", "primaryDecision": "onde a operação exige intervenção" },
+    { "role": "superintendent", "home": "/dashboard", "primaryDecision": "qual gerente ou time precisa de apoio" },
+    { "role": "manager", "home": "/dashboard", "primaryDecision": "qual corretor, lead ou SLA precisa de ação" },
+    { "role": "broker", "home": "/dashboard", "primaryDecision": "qual é a próxima melhor ação da carteira" }
+  ],
+  "criticalJourneys": [
+    { "name": "atender nova lead", "path": ["/dashboard", "/leads", "/leads/[id]", "/leads/[id]/messages"] },
+    { "name": "avançar oportunidade", "path": ["/pipeline", "/leads/[id]", "/leads/[id]/tasks"] },
+    { "name": "organizar rotina", "path": ["/dashboard", "/tasks", "/calendar"] },
+    { "name": "consultar cliente", "path": ["/customers", "/leads/[id]", "/leads/[id]/timeline"] },
+    { "name": "consultar projeto e materiais", "path": ["/developments", "/developments/[id]", "/developments/materials"] },
+    { "name": "tomar decisão executiva", "path": ["/dashboard", "/reports", "/decision-center"] }
+  ],
+  "findings": [
+    { "severity": "high", "finding": "141 páginas CRM excedem a capacidade de navegação explícita", "nextPhase": 2 },
+    { "severity": "medium", "finding": "sidebar, command palette e mobile dock possuem catálogos independentes", "nextPhase": 2 },
+    { "severity": "medium", "finding": "Reativação aponta para importação na sidebar e possui superfícies especializadas adicionais", "nextPhase": 4 },
+    { "severity": "medium", "finding": "Command palette ainda lista superfícies históricas como Atlas V2", "nextPhase": 4 },
+    { "severity": "low", "finding": "Mobile prioriza quatro ações e usa busca para o restante", "nextPhase": 5 }
+  ],
+  "exitCriteria": {
+    "routeInventoryMeasured": true,
+    "roleJourneysMapped": true,
+    "criticalJourneysMapped": true,
+    "navigationGapsRegistered": true,
+    "noDestructiveRouteChange": true
+  }
+}

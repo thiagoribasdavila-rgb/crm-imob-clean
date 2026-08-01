@@ -1,11 +1,11 @@
 # Atlas AI CRM — Roadmap V1 a V3
 
-Branch de desenvolvimento: `atlas-v3-build`
+Branch de desenvolvimento: `develop/atlas-v3`
 
 ## Regras de execução
 
 - A branch `main` permanece estável e conectada à produção.
-- Toda construção entra primeiro em `atlas-v3-build`.
+- Toda construção entra primeiro em `develop/atlas-v3`.
 - Cada fase deve fechar com build, lint, revisão de segurança e teste das rotas principais.
 - Migrações de banco devem ser versionadas e reversíveis.
 - Recursos autônomos exigem logs, limites de ação e aprovação humana configurável.
@@ -77,8 +77,8 @@ Branch de desenvolvimento: `atlas-v3-build`
 ## Status inicial
 
 - [x] Repositório acessível com permissão administrativa.
-- [x] Branch segura `atlas-v3-build` criada a partir de `main`.
-- [x] Vercel conectado à branch `main` e deploy de produção ativo.
+- [x] Branch segura `develop/atlas-v3` criada a partir de `main`.
+- [x] Hostinger conectada ao deploy de produção atual; V3 seguirá em ambiente isolado.
 - [ ] Auditoria automatizada consolidada.
 - [ ] Banco de dados definitivo versionado.
 - [ ] Fase 1 concluída.

@@ -1,0 +1,179 @@
+/**
+ * IA de Marketing — foco único em EFICIÊNCIA.
+ *
+ * Núcleo determinístico: a partir do relatório de custo (verba por produto +
+ * agregados), decide onde escalar, pausar, revisar e REALOCAR verba — sempre
+ * como PROPOSTA (nada executa sozinho; vai à Caixa de Aprovações). A narração
+ * via LLM é opcional e vem por cima deste plano. Complementa a IA geral
+ * (commercial-orchestrator), que cuida do resto da operação.
+ */
+
+import { CAMPAIGN_QUALITY_MINIMUM_LEADS } from "@/lib/atlas/campaign-quality";
+import type { BudgetLine, CostBucket } from "@/lib/marketing/cost-report";
+
+export type MarketingMove = {
+  kind: "escalar" | "pausar" | "revisar" | "definir_meta" | "realocar" | "manter";
+  scope: "produto" | "campanha";
+  target: string;
+  reason: string;
+  amount?: number;   // R$/semana sugerido (escalar/realocar)
+  from?: string;     // realocar: produto de origem
+  to?: string;       // realocar: produto de destino
+  priority: number;  // 1 (baixa) .. 5 (alta)
+};
+
+export type MarketingPlan = {
+  moves: MarketingMove[];
+  summary: {
+    desperdicioSemanal: number;   // gasto em produtos/campanhas caros ou sem venda
+    economiaPotencial: number;    // verba liberada por pausas
+    produtosEficientes: number;
+    produtosCaros: number;
+  };
+};
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Elo de atribuição medido por campanha, na MESMA chave de CostBucket.key
+ * (o uuid da campanha).
+ *
+ * Por que existe: "0 vendas" só significa RESULTADO quando todos os leads
+ * daquela campanha estão presos a ela. leads.campaign_id tem um único escritor
+ * no repositório (a ingestão da Meta), então lead de portal, WhatsApp,
+ * importação e todo o histórico entram com o elo nulo — e a campanha aparece
+ * com 0 venda porque ninguém mediu, não porque não vendeu. As duas populações
+ * são idênticas no painel "Decisões da IA".
+ *
+ * leadsUnlinked null = NÃO FOI POSSÍVEL MEDIR (o banco não expõe o id externo
+ * do lead, por exemplo). Ausência de medição nunca vira zero: com null o motor
+ * também recusa a pausa.
+ */
+export type CampaignAttribution = { leadsLinked: number; leadsUnlinked: number | null };
+
+export type PlanOptions = {
+  /** false quando a fonte não tem venda (ex.: meta_live — venda só existe no CRM).
+   *  Nesse caso a IA julga campanhas por CPL, nunca por "0 vendas". */
+  salesKnown?: boolean;
+  /** Elo de atribuição por campanha (chave = CostBucket.key). Ausente = não medido. */
+  attributionByCampaign?: Record<string, CampaignAttribution>;
+  /** Limiar calibrável (lib/ai/calibration): gasto mínimo antes de julgar. */
+  minSpendToJudgeBrl?: number;
+  /** Limiar calibrável: revisar quando CPL passa de X× a mediana. */
+  cplRatioReview?: number;
+  /** Limiar calibrável: gasto mínimo para acionar revisão por CPL. */
+  minSpendCplReviewBrl?: number;
+};
+
+/** Plano de eficiência: escalar o que rende, cortar o que não, realocar a sobra. */
+export function marketingEfficiencyPlan(budget: BudgetLine[], campaigns: CostBucket[] = [], opts: PlanOptions = {}): MarketingPlan {
+  const salesKnown = opts.salesKnown !== false;
+  const minJudge = opts.minSpendToJudgeBrl ?? 300;
+  const cplRatio = opts.cplRatioReview ?? 2;
+  const minCplReview = opts.minSpendCplReviewBrl ?? 200;
+  const moves: MarketingMove[] = [];
+  let desperdicio = 0;
+  let liberada = 0;
+  let eficientes = 0;
+  let caros = 0;
+
+  // candidatos a RECEBER realocação (eficientes com folga de verba)
+  const receptores: Array<{ product: string; headroom: number }> = [];
+
+  for (const l of budget) {
+    if (l.verdict === "eficiente") eficientes += 1;
+    if (l.verdict === "caro") caros += 1;
+
+    if (l.verdict === "caro" && l.pacing === "estourou") {
+      moves.push({ kind: "pausar", scope: "produto", target: l.product, priority: 5,
+        reason: `CAC ${l.cac} acima da meta ${l.targetCac} e verba estourada (${l.pctUsed}%). Pausar e revisar antes de retomar.` });
+      desperdicio += l.spent; liberada += l.spent;
+    } else if (l.verdict === "caro") {
+      moves.push({ kind: "revisar", scope: "produto", target: l.product, priority: 4,
+        reason: `CAC ${l.cac} acima da meta ${l.targetCac}. Revisar criativo/público antes de escalar.` });
+      desperdicio += l.spent;
+    } else if (l.verdict === "eficiente" && (l.pacing === "abaixo" || l.pacing === "no_ritmo")) {
+      const bump = r2(Math.max(l.remaining, l.weeklyBudget * 0.3));
+      moves.push({ kind: "escalar", scope: "produto", target: l.product, amount: bump, priority: 4,
+        reason: `CAC ${l.cac} dentro da meta e verba com folga (${l.pctUsed}% usado). Escalar +R$ ${bump}/semana.` });
+      if (l.remaining > 0) receptores.push({ product: l.product, headroom: l.remaining });
+    } else if (l.verdict === "sem_dados" && l.targetCac == null) {
+      moves.push({ kind: "definir_meta", scope: "produto", target: l.product, priority: 3,
+        reason: "Sem CAC-alvo definido — defina a meta para o motor avaliar eficiência." });
+    } else {
+      moves.push({ kind: "manter", scope: "produto", target: l.product, priority: 2,
+        reason: "Rodando dentro do esperado — manter e coletar mais dados." });
+    }
+  }
+
+  // REALOCAR a verba liberada para o melhor receptor eficiente
+  if (liberada > 0 && receptores.length) {
+    const best = receptores.sort((a, b) => b.headroom - a.headroom)[0];
+    const paused = moves.find((m) => m.kind === "pausar");
+    const amount = r2(Math.min(liberada, best.headroom || liberada));
+    moves.push({ kind: "realocar", scope: "produto", target: best.product, amount,
+      from: paused?.target, to: best.product, priority: 5,
+      reason: `Mover R$ ${amount}/semana do que não rende para ${best.product}, que converte dentro da meta.` });
+  }
+
+  // CAMPANHAS que queimam verba sem vender (só quando a fonte TEM venda).
+  //
+  // DOIS PORTÕES antes de propor PAUSAR por "0 vendas" — sem amostra, sem
+  // recomendação:
+  //   (a) amostra: menos de CAMPAIGN_QUALITY_MINIMUM_LEADS leads não sustenta
+  //       decisão de verba (mesmo gate do director-daily e do campaign-quality);
+  //   (b) elo de atribuição fechado: leadsUnlinked === 0. Com lead órfão (ou
+  //       com a medição indisponível), o "0" é cegueira de atribuição, não
+  //       resultado — e pausar verba com base nele é o erro caro.
+  // Quando um portão falha a IA continua falando, mas diz a verdade: vira
+  // "manter" com o motivo explícito, em vez de sumir da tela.
+  if (salesKnown) {
+    for (const c of campaigns) {
+      if (c.spend >= minJudge && c.sales === 0 && c.cac === null) {
+        const attribution = opts.attributionByCampaign?.[c.key];
+        const unlinked = attribution ? attribution.leadsUnlinked : null;
+        const sampleOk = c.leads >= CAMPAIGN_QUALITY_MINIMUM_LEADS;
+        const linkOk = unlinked === 0;
+        if (sampleOk && linkOk) {
+          moves.push({ kind: "pausar", scope: "campanha", target: c.label, priority: 5,
+            reason: `R$ ${c.spend} gastos, ${c.leads} leads, 0 vendas — todos os leads desta campanha estão atribuídos, então o zero é medido. Pausar e diagnosticar (criativo/público/oferta).` });
+          desperdicio += c.spend;
+        } else {
+          const porque = !linkOk
+            ? unlinked === null
+              ? "não foi possível medir quantos leads ficaram sem elo de atribuição neste banco"
+              : `${unlinked} lead(s) sem elo de atribuição — 0 vendas aqui é ausência de medição, não resultado`
+            : `${c.leads} lead(s) atribuídos, abaixo do mínimo de ${CAMPAIGN_QUALITY_MINIMUM_LEADS} para decidir verba`;
+          moves.push({ kind: "manter", scope: "campanha", target: c.label, priority: 3,
+            reason: `R$ ${c.spend} gastos e nenhuma venda atribuída, mas ${porque}. Religue a atribuição antes de decidir sobre esta verba.` });
+        }
+      }
+    }
+  } else {
+    // Venda desconhecida (fonte meta_live) — julgar por CPL, nunca por "0 vendas".
+    const cpls = campaigns.filter((c) => c.leads > 0 && c.cpl != null).map((c) => c.cpl as number).sort((a, b) => a - b);
+    const medianCpl = cpls.length ? cpls[Math.floor(cpls.length / 2)] : null;
+    for (const c of campaigns) {
+      if (c.spend >= minJudge && c.leads === 0) {
+        moves.push({ kind: "pausar", scope: "campanha", target: c.label, priority: 5,
+          reason: `R$ ${c.spend} gastos e 0 leads. Pausar e diagnosticar (criativo/público/oferta).` });
+        desperdicio += c.spend;
+      } else if (medianCpl != null && c.cpl != null && c.spend >= minCplReview && c.cpl > cplRatio * medianCpl) {
+        moves.push({ kind: "revisar", scope: "campanha", target: c.label, priority: 4,
+          reason: `CPL R$ ${c.cpl} — mais de ${cplRatio}× a mediana da conta (R$ ${r2(medianCpl)}). Revisar criativo/público.` });
+        desperdicio += r2(c.spend * 0.5);
+      }
+    }
+  }
+
+  moves.sort((a, b) => b.priority - a.priority);
+  return {
+    moves,
+    summary: {
+      desperdicioSemanal: r2(desperdicio),
+      economiaPotencial: r2(liberada),
+      produtosEficientes: eficientes,
+      produtosCaros: caros,
+    },
+  };
+}

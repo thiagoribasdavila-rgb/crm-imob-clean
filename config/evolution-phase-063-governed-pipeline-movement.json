@@ -1,0 +1,46 @@
+{
+  "phase": 63,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "governed-reversible-copilot-pipeline-movement",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "turn-a-contextual-copilot-recommendation-into-a-human-reviewed-conflict-safe-audited-and-reversible-pipeline-movement",
+  "changes": [
+    "load-the-authorized-lead-and-its-current-canonical-stage-after-the-copilot-answer",
+    "show-a-separate-pipeline-preview-with-current-and-target-stages",
+    "require-an-explicit-review-checkbox-before-the-real-kanban-write",
+    "reuse-the-live-pipeline-api-and-its-optimistic-stage-lock",
+    "reject-copilot-pipeline-writes-without-human-confirmation",
+    "preserve-tenant-and-lead-scope-enforcement",
+    "record-source-confirmation-and-move-id-in-the-commercial-history",
+    "offer-a-safe-undo-using-the-original-move-as-reversal-evidence",
+    "recover-from-concurrent-stage-changes-without-overwriting-another-user"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "copilot-governed-pipeline:check",
+      "copilot-governed-actions:check",
+      "safe-movement:check",
+      "corrective-sprint:check",
+      "api-security:check",
+      "typecheck-no-incremental",
+      "lint",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "External messages and task completion still require their own governed confirmation and idempotency contracts before the Copilot can execute them.",
+  "nextPhase": {
+    "phase": 64,
+    "name": "Fila diária consolidada de execução do Copilot",
+    "status": "planned"
+  }
+}

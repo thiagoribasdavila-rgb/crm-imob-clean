@@ -1,0 +1,1 @@
+{"phase":48,"api":"app/api/v1/productivity/daily/route.ts","page":"app/(crm)/tasks/page.tsx","maximumSteps":7,"signals":["new_lead_age","next_contact","due_date","priority","temperature","score_ia"],"requires":["personalOnly","organizationScope","hierarchicalRls","explainableOrder","zeroLlmCost","humanDecision","noPeopleRanking","noAutomaticExecution"]}

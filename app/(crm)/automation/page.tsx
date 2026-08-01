@@ -1,8 +1,6 @@
-export default function AutomationPage() {
-  return (
-    <div>
-      <h1>Automações</h1>
-      <p>Fluxos automáticos do CRM</p>
-    </div>
-  );
+import { redirect } from "next/navigation";
+import { resolveAtlasNavigationAlias } from "@/lib/atlas/navigation-aliases";
+
+export default function AutomationCompatibilityPage() {
+  redirect(resolveAtlasNavigationAlias("/automation"));
 }

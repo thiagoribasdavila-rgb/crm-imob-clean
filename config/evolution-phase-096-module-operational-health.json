@@ -1,0 +1,75 @@
+{
+  "phase": 96,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-19",
+  "scope": "command-center-tenant-safe-module-operational-health",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "authenticationChanged": false,
+  "runtimeBehaviorChanged": true,
+  "objective": "replace direct dashboard table reads with one protected Core V2 boundary and expose independent operational health for each priority module",
+  "delivered": {
+    "operationalHealthService": "lib/atlas/core-v2/live-operational-health.ts",
+    "protectedEndpoint": "app/api/v1/core-v2/module-health/route.ts",
+    "commandCenter": "app/(crm)/dashboard/page.tsx",
+    "contract": "module-health-v1",
+    "priorityModules": [
+      "leads",
+      "pipeline",
+      "tasks-and-agenda",
+      "customers-360",
+      "developments"
+    ],
+    "states": [
+      "operational",
+      "degraded",
+      "unavailable"
+    ],
+    "emptyDataIsHealthy": true,
+    "partialFailureIsolation": true,
+    "deterministicLocalInsights": true
+  },
+  "safety": {
+    "authenticatedSupabaseClientOnly": true,
+    "explicitOrganizationFilter": true,
+    "rlsPreserved": true,
+    "serviceRoleImportedByHealthService": false,
+    "rawDatabaseErrorsReturnedToUser": false,
+    "schemaMutationExecuted": false,
+    "authMutationExecuted": false
+  },
+  "operationalImpact": [
+    "command-center-no-longer-reads-priority-tables-directly-in-the-browser",
+    "one-module-failure-no-longer-marks-the-whole-command-center-as-down",
+    "zero-record-modules-are-reported-as-ready-instead-of-broken",
+    "five-priority-modules-expose-a-count-and-safe-human-readable-state",
+    "local-operational-insights-remain-available-without-an-external-ai-call"
+  ],
+  "knownLimits": [
+    "realtime-subscriptions-still-refresh-the-complete-protected-snapshot",
+    "customers-360-remains-lead-backed",
+    "module-health-is-request-time-observation-not-long-term-uptime-monitoring",
+    "write-readiness-is-not-yet-part-of-the-module-contract",
+    "commercial-hierarchy-still-depends-on-existing-profile-rls"
+  ],
+  "validation": {
+    "phaseContractCheck": true,
+    "previousPhaseRegressionRequired": true,
+    "typecheckRequired": true,
+    "changedFilesLintRequired": true,
+    "secretScanRequired": true,
+    "buildRequired": false
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false,
+    "checkpointPhase": 100
+  },
+  "nextPhase": {
+    "phase": 97,
+    "name": "Medir prontidão de escrita e orientar bloqueios operacionais por módulo",
+    "status": "planned"
+  }
+}

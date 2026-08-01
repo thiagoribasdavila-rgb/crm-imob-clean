@@ -1,0 +1,29 @@
+{
+  "phase": 24,
+  "role": "director",
+  "endpoint": "app/api/v1/analytics/director-daily/route.ts",
+  "page": "app/(crm)/command-center/page.tsx",
+  "requiredAreas": [
+    "commercial",
+    "financial",
+    "forecast",
+    "campaigns",
+    "developers",
+    "ai",
+    "risks",
+    "hierarchy"
+  ],
+  "truthControls": [
+    "forecastMethod",
+    "minimumLeadsForDecision",
+    "conversionSampleSufficient",
+    "measured"
+  ],
+  "decisionControls": [
+    "readOnly",
+    "humanApprovalRequired",
+    "noAutomaticBudgetChange",
+    "noAutomaticPeopleDecision"
+  ],
+  "pageNota": "O painel do diretor mudou de casa: /dashboard virou redirect para /command-center na fusão Início→Sala de comando. O contrato apontava para o arquivo esvaziado — mesma correção feita em config/follow-up-sla.json."
+}

@@ -1,0 +1,18 @@
+{
+  "phase": 2,
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "outcome": "Cada perfil encontra e inicia a próxima ação comercial correta em até três decisões de navegação.",
+  "principles": [
+    "mostrar primeiro o que exige decisão",
+    "preservar contexto entre módulos",
+    "não confundir disponibilidade técnica com valor comercial",
+    "não expor ações fora do papel do usuário"
+  ],
+  "successMeasures": [
+    "destino crítico disponível no catálogo canônico",
+    "ação principal inequívoca por jornada",
+    "rota histórica não promovida na navegação ativa",
+    "nenhuma métrica sem origem ou evidência"
+  ]
+}

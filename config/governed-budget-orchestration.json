@@ -1,0 +1,1 @@
+{"phase":95,"evidence_window_days":30,"currency":"BRL","factors":{"crm_performance":40,"sample_confidence":20,"available_inventory":20,"commercial_capacity":20},"governance":{"inventory_required":true,"commercial_capacity_required":true,"low_sample_exploration_only":true,"director_decision_required":true,"automatic_budget_change":false,"people_ranking":false}}

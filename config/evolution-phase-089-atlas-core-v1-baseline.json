@@ -1,0 +1,71 @@
+{
+  "phase": 89,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "atlas-core-v1-architecture-baseline",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "runtimeBehaviorChanged": false,
+  "objective": "establish-one-official-atlas-core-v1-foundation-for-layout-data-digital-twins-ai-and-governed-action-before-further-feature-growth",
+  "strategicReprioritization": {
+    "previouslyPlanned": "operational-context-correction-monitoring",
+    "newPriority": "p0-architecture-consolidation",
+    "reason": "continuing-feature-work-before-consolidation-would-multiply-navigation-component-data-access-and-digital-twin-debt",
+    "historicalPhaseChanged": false
+  },
+  "repositoryInventory": {
+    "applicationTypeScriptFiles": 655,
+    "supabaseMigrationFiles": 122,
+    "applicationSupabaseTouchpointFiles": 158,
+    "migrationFilesContainingSecurityDefiner": 80,
+    "migrationFilesContainingRlsEnablement": 82
+  },
+  "confirmedFindings": [
+    "three-product-generations-coexist-in-the-same-next-application",
+    "app-atlas-route-group-imports-a-missing-components-layout-sidebar-module",
+    "canonical-role-aware-shell-already-exists-and-should-be-preserved",
+    "metric-card-and-pipeline-kanban-components-have-multiple-competing-implementations",
+    "design-token-authority-is-split-between-global-and-atlas-token-files",
+    "screens-and-routes-have-many-direct-supabase-touchpoints",
+    "digital-twin-foundation-already-exists-but-is-batch-limited-and-nonincremental",
+    "digital-twin-rebuild-creates-new-snapshots-even-when-state-is-unchanged",
+    "current-twin-signals-lack-source-observation-time-confidence-and-human-confirmation",
+    "current-rebuild-caps-leads-properties-and-campaigns-without-pagination"
+  ],
+  "delivered": [
+    "official-six-layer-atlas-core-v1-model",
+    "canonical-frontend-and-legacy-surface-register",
+    "single-data-access-target-and-safe-strangler-migration-rule",
+    "opportunity-first-digital-twin-v1-contract",
+    "five-level-ai-autonomy-policy",
+    "permanent-security-data-and-product-invariants",
+    "release-checkpoint-through-phase-100"
+  ],
+  "validation": {
+    "targetedChecks": [
+      "atlas-core-v1-baseline:check",
+      "previous-phase-regression",
+      "program-json-validation",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisks": [
+    "legacy-route-collisions-may-break-a-clean-build-until-quarantine-is-completed",
+    "security-definer-functions-require-individual-execute-grant-and-auth-scope-review",
+    "direct-data-access-cannot-be-replaced-safely-in-one-bang",
+    "database-migration-files-do-not-prove-live-environment-state"
+  ],
+  "nextPhase": {
+    "phase": 90,
+    "name": "Contratos oficiais de layout, dados e eventos do ATLAS Core V1",
+    "status": "planned"
+  }
+}

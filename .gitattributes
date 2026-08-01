@@ -1,0 +1,5 @@
+
+# `export-subst` faz o git substituir os marcadores $Format:…$ deste arquivo
+# quando `git archive` monta o pacote. É o que dá ao artefato uma identidade
+# que não depende de ninguém digitar a variável certa.
+release.json export-subst

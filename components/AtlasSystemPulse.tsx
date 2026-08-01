@@ -2,36 +2,53 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type ReadinessCheck = {
-  ok: boolean;
-  latencyMs?: number;
-  detail?: string;
-};
+import {
+  lerRespostaDeProntidao,
+  prontidaoEstaVerde,
+  type ProntidaoLida,
+} from "@/lib/integrations/leitura-da-prontidao";
 
-type ReadinessPayload = {
-  status: "ready" | "not_ready";
-  service: string;
-  version: string;
-  environment: string;
-  latencyMs: number;
-  checks: Record<string, ReadinessCheck>;
-  timestamp: string;
-};
-
+/**
+ * Este painel lia o ENVELOPE ERRADO. `/api/ready` responde
+ * `{ ok, data, meta }` (apiSuccess), e aqui se lia `body.status`,
+ * `body.checks`, `body.latencyMs`, `body.environment`, `body.version` e
+ * `body.timestamp` — todos no nível de cima, onde nenhum deles existe.
+ *
+ * Resultado medido: `status` sempre `undefined`, logo `healthy` sempre falso. O
+ * botão dizia "Atenção necessária", o painel dizia "Operação degradada" e a
+ * lista de camadas críticas dizia "Nenhuma verificação disponível" — com a rota
+ * respondendo 200 e o banco em 219 ms. `environment` nunca existiu no payload.
+ *
+ * A leitura foi extraída para `lib/integrations/leitura-da-prontidao.ts` e é
+ * EXECUTADA pelo contrato: painel de prontidão que não sabe ler a prontidão é o
+ * mesmo defeito desta entrega com o sinal invertido.
+ */
 const REFRESH_INTERVAL_MS = 30_000;
+
+const RÓTULO_DO_ESTADO: Record<string, string> = {
+  viva: "VIVA",
+  quebrada: "QUEBRADA",
+  configurada_nao_verificada: "NÃO VERIFICADA",
+  desativada: "DESLIGADA",
+  ausente: "AUSENTE",
+};
 
 export default function AtlasSystemPulse() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [payload, setPayload] = useState<ReadinessPayload | null>(null);
+  const [payload, setPayload] = useState<ProntidaoLida | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const response = await fetch("/api/ready", { cache: "no-store" });
-      const body = (await response.json()) as ReadinessPayload;
-      setPayload(body);
-      setError(response.ok ? null : "A plataforma está operando em modo degradado.");
+      const lida = lerRespostaDeProntidao(await response.json());
+      setPayload(lida);
+      setError(
+        response.ok && prontidaoEstaVerde(lida)
+          ? null
+          : lida.motivo ?? "A plataforma está operando em modo degradado.",
+      );
     } catch {
       setError("Não foi possível verificar a saúde da plataforma.");
     } finally {
@@ -60,10 +77,11 @@ export default function AtlasSystemPulse() {
     };
   }, [refresh]);
 
-  const healthy = payload?.status === "ready" && !error;
-  const checks = useMemo(() => Object.entries(payload?.checks ?? {}), [payload]);
-  const lastUpdated = payload?.timestamp
-    ? new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(payload.timestamp))
+  const healthy = Boolean(payload && prontidaoEstaVerde(payload)) && !error;
+  const checks = useMemo(() => payload?.checks ?? [], [payload]);
+  const integracoes = useMemo(() => payload?.integracoes ?? [], [payload]);
+  const lastUpdated = payload?.em
+    ? new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(payload.em))
     : "—";
 
   return (
@@ -101,10 +119,10 @@ export default function AtlasSystemPulse() {
               {error ? <p className="mt-4 text-sm leading-6 text-rose-200">{error}</p> : null}
             </section>
 
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4"><p className="text-[10px] uppercase tracking-wider text-slate-500">Latência</p><p className="mt-2 text-lg font-semibold text-white">{payload?.latencyMs ?? "—"} ms</p></div>
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4"><p className="text-[10px] uppercase tracking-wider text-slate-500">Ambiente</p><p className="mt-2 truncate text-lg font-semibold text-white">{payload?.environment ?? "—"}</p></div>
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4"><p className="text-[10px] uppercase tracking-wider text-slate-500">Versão</p><p className="mt-2 truncate text-lg font-semibold text-white">{payload?.version ?? "—"}</p></div>
+            {/* "Ambiente" saiu: nunca existiu no payload — mostrava "—" fingindo dado. */}
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4"><p className="text-micro uppercase tracking-wider text-slate-500">Latência</p><p className="mt-2 text-lg font-semibold text-white">{payload?.latencyMs ?? "—"} ms</p></div>
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4"><p className="text-micro uppercase tracking-wider text-slate-500">Versão da API</p><p className="mt-2 truncate text-lg font-semibold text-white">{payload?.versao ?? "—"}</p></div>
             </div>
 
             <section className="mt-6 rounded-3xl border border-white/[0.07] bg-white/[0.02] p-5">
@@ -113,11 +131,36 @@ export default function AtlasSystemPulse() {
                 <button type="button" onClick={() => void refresh()} className="atlas-button-secondary">Atualizar</button>
               </div>
               <div className="mt-5 space-y-3">
-                {loading ? <div className="h-20 animate-pulse rounded-2xl bg-white/[0.04]" /> : checks.length === 0 ? <p className="text-sm text-slate-400">Nenhuma verificação disponível.</p> : checks.map(([name, check]) => (
-                  <article key={name} className="rounded-2xl border border-white/[0.06] bg-black/10 p-4">
+                {loading ? <div className="h-20 animate-pulse rounded-2xl bg-white/[0.04]" /> : checks.length === 0 ? <p className="text-sm text-slate-400">Nenhuma verificação disponível.</p> : checks.map((check) => (
+                  <article key={check.nome} className="rounded-2xl border border-white/[0.06] bg-black/10 p-4">
                     <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0"><p className="capitalize font-medium text-white">{name.replaceAll("_", " ")}</p><p className="mt-1 truncate text-xs text-slate-500">{check.detail || "Serviço respondendo normalmente"}</p></div>
-                      <div className="text-right"><span className={`text-xs font-semibold ${check.ok ? "text-emerald-300" : "text-rose-300"}`}>{check.ok ? "ONLINE" : "FALHA"}</span><p className="mt-1 text-[10px] text-slate-500">{check.latencyMs ?? "—"} ms</p></div>
+                      <div className="min-w-0"><p className="capitalize font-medium text-white">{check.nome.replaceAll("_", " ")}</p><p className="mt-1 truncate text-xs text-slate-500">{check.ok ? "Serviço respondendo normalmente" : "Sem resposta"}</p></div>
+                      <div className="text-right"><span className={`text-xs font-semibold ${check.ok ? "text-emerald-300" : "text-rose-300"}`}>{check.ok ? "ONLINE" : "FALHA"}</span><p className="mt-1 text-micro text-slate-500">{check.latencyMs ?? "—"} ms</p></div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            {/*
+              As integrações vêm com ESTADO e MOTIVO, e é aqui que a diferença
+              aparece: "NÃO VERIFICADA" não é verde. Antes eram duas palavras,
+              `configured` e `not_configured`, e nada disto chegava à tela.
+            */}
+            <section className="mt-6 rounded-3xl border border-white/[0.07] bg-white/[0.02] p-5">
+              <div><p className="atlas-eyebrow">Integrações</p><h3 className="mt-2 font-semibold text-white">Presente não é o mesmo que funciona</h3></div>
+              <div className="mt-5 space-y-3">
+                {integracoes.length === 0 ? <p className="text-sm text-slate-400">Nenhum estado de integração publicado.</p> : integracoes.map((linha) => (
+                  <article key={linha.nome} className="rounded-2xl border border-white/[0.06] bg-black/10 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="capitalize font-medium text-white">{linha.nome.replaceAll("_", " ")}</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">{linha.motivo}</p>
+                        {linha.ondeSeConfigura ? <p className="mt-1 text-micro uppercase tracking-wider text-slate-600">Configura-se em: {linha.ondeSeConfigura}</p> : null}
+                      </div>
+                      <span className={`shrink-0 text-micro font-semibold tracking-wider ${linha.estado === "viva" ? "text-emerald-300" : linha.estado === "quebrada" ? "text-rose-300" : linha.estado === "ausente" ? "text-slate-400" : "text-amber-300"}`}>
+                        {RÓTULO_DO_ESTADO[linha.estado] ?? linha.estado.toUpperCase()}
+                      </span>
                     </div>
                   </article>
                 ))}
@@ -128,7 +171,7 @@ export default function AtlasSystemPulse() {
               <span>Atualização automática a cada 30s</span>
               <span>{lastUpdated}</span>
             </div>
-            <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-slate-600">Atalho: ⌘⇧S / Ctrl⇧S</p>
+            <p className="mt-3 text-micro uppercase tracking-[0.18em] text-slate-600">Atalho: ⌘⇧S / Ctrl⇧S</p>
           </aside>
         </div>
       ) : null}

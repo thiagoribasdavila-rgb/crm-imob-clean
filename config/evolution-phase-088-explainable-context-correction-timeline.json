@@ -1,0 +1,55 @@
+{
+  "phase": 88,
+  "program": "continuous",
+  "status": "completed",
+  "completedAt": "2026-07-18",
+  "scope": "explainable-context-correction-timeline",
+  "productionDataModified": false,
+  "databaseSchemaChanged": false,
+  "objective": "turn-the-existing-commercial-context-correction-event-into-an-explainable-before-and-after-timeline-entry-with-reason-author-time-and-an-explicit-future-only-impact-policy-without-changing-historical-facts",
+  "changes": [
+    "add-one-pure-parser-for-governed-commercial-context-correction-metadata",
+    "reject-incomplete-automatic-unchanged-or-historically-mutating-metadata",
+    "identify-exactly-whether-project-source-or-both-were-changed",
+    "render-the-previous-and-current-context-side-by-side-in-lead-360",
+    "show-the-human-reason-without-duplicating-the-generic-event-description",
+    "preserve-event-author-and-timestamp-in-the-existing-timeline",
+    "state-that-future-decisions-recommendations-and-results-use-the-current-context",
+    "state-that-previous-events-and-snapshots-remain-as-recorded",
+    "keep-generic-rendering-as-a-safe-fallback-for-malformed-or-legacy-events",
+    "reuse-the-already-loaded-lead-events-without-an-additional-request"
+  ],
+  "governance": {
+    "auditEvent": "commercial_context_corrected",
+    "requiresHumanConfirmationMetadata": true,
+    "requiresCurrentLeadStateOnlyMetadata": true,
+    "requiresImmutableHistoricalSnapshotMetadata": true,
+    "requiresNoAutomaticFillMetadata": true,
+    "futureDecisionsUseCurrentContext": true,
+    "historicalFactsChanged": false,
+    "safeFallbackForUnknownMetadata": true
+  },
+  "validation": {
+    "targetedChecks": [
+      "explainable-context-correction-timeline:check",
+      "governed-lead-context-correction:check",
+      "typecheck-no-incremental",
+      "changed-files-lint",
+      "react-best-practices-review",
+      "git-diff-check",
+      "secret-scan"
+    ],
+    "fullRegressionAtRelease": true
+  },
+  "release": {
+    "zipCreated": false,
+    "buildExecuted": false,
+    "gatesApproved": false
+  },
+  "knownRisk": "Legacy-or-manually-created-events-may-not-contain-the-full-governance-metadata. Those-events-keep-the-generic-timeline-renderer-instead-of-presenting-an-unverified-before-and-after.",
+  "nextPhase": {
+    "phase": 89,
+    "name": "Monitoramento operacional de correções contextuais",
+    "status": "planned"
+  }
+}

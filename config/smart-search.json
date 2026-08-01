@@ -1,0 +1,9 @@
+{
+  "phase": 27,
+  "endpoint": "app/api/v1/search/route.ts",
+  "page": "app/(crm)/search/page.tsx",
+  "palette": "components/CommandPalette.tsx",
+  "searchFields": ["name", "phone", "email", "development", "developer", "broker", "source", "purpose"],
+  "scopeControls": ["requireAccessContext", "identity.supabase", "organization_id", "hierarchicalRls", "hiddenResultsExcluded"],
+  "experienceControls": ["accent-tolerant", "debounced", "reason", "nextAction", "keyboard", "mobile"]
+}

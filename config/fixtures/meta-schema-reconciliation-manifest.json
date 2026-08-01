@@ -1,0 +1,202 @@
+{
+  "format": "atlas_meta_schema_reconciliation_manifest_v1",
+  "executionPolicy": "isolated_staging_only_after_human_approval",
+  "productionExecutionAllowed": false,
+  "historicalBridgeModificationAllowed": false,
+  "historicalBridgeReplayAllowed": false,
+  "correctedMigrationRequired": true,
+  "correctedMigration": {
+    "creationMethod": "supabase migration new reconcile_legacy_and_canonical_contracts",
+    "created": false,
+    "applyTarget": "isolated_staging_clone",
+    "productionPromotion": false
+  },
+  "requiredEnvironment": {
+    "kind": "staging_clone",
+    "isolatedFromProduction": true,
+    "sanitizedSeedOnly": true,
+    "backupBeforeApply": true,
+    "catalogFingerprintBeforeApply": true,
+    "rollbackDryRunBeforePromotion": true
+  },
+  "principles": [
+    "fail_closed",
+    "historical_migrations_are_immutable",
+    "add_columns_nullable_before_backfill",
+    "backfill_before_default_and_not_null",
+    "reject_conflicting_contract_values",
+    "explicit_data_api_privileges",
+    "rls_is_separate_from_grants",
+    "no_inferred_hierarchy",
+    "no_personal_data_in_test_evidence"
+  ],
+  "canonicalContracts": {
+    "profiles": {
+      "name": {
+        "legacy": "name",
+        "canonical": "full_name",
+        "initialBackfill": "trimmed_legacy_name_when_canonical_is_null",
+        "conflictPolicy": "reject_or_require_human_review",
+        "placeholderAllowed": false
+      },
+      "role": {
+        "legacy": "role",
+        "canonical": "commercial_role",
+        "approvedMappings": {
+          "admin": "director",
+          "manager": "manager",
+          "broker": "broker"
+        },
+        "unknownMapping": "block_migration_and_require_approval"
+      },
+      "hierarchy": {
+        "canonical": "reports_to",
+        "automaticInferenceAllowed": false,
+        "requiredEvidence": "human_reviewed_manager_broker_map"
+      }
+    },
+    "leads": {
+      "owner": {
+        "legacy": "assigned_user_id",
+        "canonical": "assigned_to",
+        "initialBackfill": "legacy_to_canonical_when_canonical_is_null",
+        "compatibilityWindow": "bidirectional_guarded_sync",
+        "conflictPolicy": "reject_write_and_log_contract_conflict"
+      },
+      "project": {
+        "legacy": "project_id",
+        "canonical": "development_id",
+        "initialBackfill": "legacy_to_canonical_when_canonical_is_null",
+        "compatibilityWindow": "bidirectional_guarded_sync",
+        "conflictPolicy": "reject_write_and_log_contract_conflict"
+      },
+      "score": {
+        "legacy": "score_ia",
+        "canonical": "score",
+        "creationOrder": [
+          "add_nullable_score_without_default",
+          "copy_score_ia_to_score",
+          "validate_range_and_row_counts",
+          "set_default_zero",
+          "set_not_null"
+        ],
+        "compatibilityWindow": "bidirectional_guarded_sync",
+        "conflictPolicy": "reject_write_and_log_contract_conflict"
+      }
+    }
+  },
+  "dataApiPrivileges": {
+    "explicitGrantRequired": true,
+    "anon": {
+      "profiles": [],
+      "leads": []
+    },
+    "authenticated": {
+      "profiles": ["select_required_columns_only"],
+      "leads": ["select", "insert_required_columns_only", "update_required_columns_only"]
+    },
+    "serviceRoleInBrowserAllowed": false,
+    "rlsStillRequired": true,
+    "privilegeMatrixRequiresSecurityApproval": true
+  },
+  "orderedStages": [
+    {
+      "order": 1,
+      "id": "capture_schema_fingerprint_and_backup",
+      "apply": "Capture catalog-only schema, grants, policies and a verified restorable staging backup.",
+      "rollback": "Discard stale evidence and recapture; no schema change.",
+      "ready": false
+    },
+    {
+      "order": 2,
+      "id": "create_new_cli_migration",
+      "apply": "Create a new migration with Supabase CLI; never edit or replay the historical bridge.",
+      "rollback": "Remove only the un-applied draft migration after review.",
+      "ready": false
+    },
+    {
+      "order": 3,
+      "id": "add_nullable_canonical_columns",
+      "apply": "Add missing canonical columns as nullable and without defaults that obscure legacy values.",
+      "rollback": "Drop only newly added empty columns before any backfill.",
+      "ready": false
+    },
+    {
+      "order": 4,
+      "id": "backfill_legacy_values",
+      "apply": "Backfill name, role, owner, project and score after proving role distributions and conflicts.",
+      "rollback": "Restore staging backup; never delete legacy source columns.",
+      "ready": false
+    },
+    {
+      "order": 5,
+      "id": "validate_backfill_invariants",
+      "apply": "Validate row counts, null deltas, foreign keys, score preservation and zero unresolved conflicts.",
+      "rollback": "Stop promotion and restore staging backup when any invariant fails.",
+      "ready": false
+    },
+    {
+      "order": 6,
+      "id": "add_constraints_defaults_and_indexes",
+      "apply": "Only after validation, add reviewed constraints, defaults and indexes.",
+      "rollback": "Drop only new constraints and indexes; preserve backfilled values for investigation.",
+      "ready": false
+    },
+    {
+      "order": 7,
+      "id": "install_guarded_compatibility_sync",
+      "apply": "Install reviewed bidirectional guards for owner, project and score during the compatibility window.",
+      "rollback": "Remove the new guards and keep the application adapters active.",
+      "ready": false
+    },
+    {
+      "order": 8,
+      "id": "apply_explicit_grants_and_rls",
+      "apply": "Version the minimum Data API grants and tenant/hierarchy RLS policies as separate controls.",
+      "rollback": "Restore the captured grant and policy snapshot.",
+      "ready": false
+    },
+    {
+      "order": 9,
+      "id": "run_contract_and_rollback_tests",
+      "apply": "Run the complete sanitized compatibility, privilege, RLS and rollback matrix.",
+      "rollback": "Remove fixtures and preserve only non-sensitive evidence.",
+      "ready": false
+    },
+    {
+      "order": 10,
+      "id": "human_promotion_decision",
+      "apply": "Prepare a separate production proposal only after director and security approval.",
+      "rollback": "Keep production unchanged whenever a gate is incomplete.",
+      "ready": false
+    }
+  ],
+  "requiredContractTests": [
+    "legacy_owner_copied_to_canonical",
+    "canonical_owner_syncs_legacy",
+    "legacy_owner_syncs_canonical",
+    "owner_conflict_rejected",
+    "legacy_project_copied_and_synchronized",
+    "legacy_score_preserved_and_synchronized",
+    "legacy_name_preserved",
+    "unknown_role_blocks_migration",
+    "reports_to_is_not_guessed",
+    "anon_profiles_and_leads_denied",
+    "same_tenant_rls_allowed",
+    "cross_tenant_rls_denied",
+    "rollback_restores_contract_without_data_loss"
+  ],
+  "forbiddenActions": [
+    "apply_to_production",
+    "edit_historical_bridge",
+    "replay_historical_bridge",
+    "infer_unknown_role_as_broker",
+    "infer_reports_to_without_approval",
+    "read_personal_data_for_testing",
+    "expose_service_role_to_browser",
+    "send_real_meta_event",
+    "mutate_campaign",
+    "mutate_budget",
+    "mutate_audience"
+  ]
+}
