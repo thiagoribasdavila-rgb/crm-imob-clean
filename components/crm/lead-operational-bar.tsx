@@ -23,8 +23,6 @@ type LeadOperationalBarProps = {
    * alimenta a métrica de tempo de resposta.
    */
   firstContactSlot?: ReactNode;
-  /** Registrar consentimento Meta — o único campo que faltava em 217 leads. */
-  metaConsentSlot?: React.ReactNode;
 };
 
 export function LeadOperationalBar({
@@ -36,7 +34,6 @@ export function LeadOperationalBar({
   openTasks,
   unreadMessages,
   firstContactSlot,
-  metaConsentSlot,
 }: LeadOperationalBarProps) {
   
 
@@ -111,7 +108,18 @@ export function LeadOperationalBar({
       <div className="atlas-lead-bar-faixa">{firstContactSlot}</div>
       {/* Consentimento fica JUNTO das ações, não numa aba de configuração:
           é o corretor que ouve a resposta do cliente, e é aqui que ele está. */}
-      <div className="atlas-lead-bar-faixa">{metaConsentSlot}</div>
+      {/* ── O CONSENTIMENTO SAIU DAQUI ────────────────────────────────────
+          MEDIDO na produção: a faixa ocupava 63px DENTRO desta barra, que é
+          `position: sticky; top: 82px; z-index: 20`. Ou seja, ficava colada no
+          topo da tela em toda lead que ainda não tinha resposta — e o próprio
+          texto dizia "Enquanto você não responder…".
+
+          Perguntar é certo: consentimento é LGPD e alimenta a CAPI. Perguntar
+          NO TOPO GRUDENTO, para sempre, até alguém responder, é cobrar com o
+          espaço de trabalho da pessoa.
+
+          Ele desce para o fluxo da página, junto do resto do contexto da lead.
+          Continua visível; para de bloquear. */}
     </aside>
   );
 }

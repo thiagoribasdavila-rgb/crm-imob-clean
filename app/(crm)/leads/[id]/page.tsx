@@ -801,6 +801,16 @@ export default function LeadDetailPage() {
             errado. Conferir que a classe existe no componente não prova que ela
             está no elemento que manda. */}
         <section id="lead-overview" className="order-[-4] scroll-mt-28 [perspective:1400px]">
+        {/* ── CONSENTIMENTO E TENTATIVAS: NO FLUXO, NÃO NO TOPO GRUDENTO ───
+            Saiu da barra sticky, onde ocupava 63px colados no alto da tela em
+            toda lead sem resposta. Fica em `order-[-2]`, junto do "o que
+            perguntar" — que é exatamente quando o corretor descobre a resposta:
+            durante a conversa, não antes dela. */}
+        <section className="order-[-2] atlas-lead-consentimento" aria-label="Consentimento e tentativas de contato">
+          <ContactAttemptsBadge leadId={String(lead.id)} />
+          <MetaConsentControl leadId={String(lead.id)} estadoInicial={lerEstado(lead.metadata)} />
+        </section>
+
         {/* ── A ORDEM DA FICHA SEGUE O QUE O CORRETOR FAZ, NÃO O ORGANOGRAMA
             DO PRODUTO ────────────────────────────────────────────────────────
 
@@ -1076,7 +1086,6 @@ export default function LeadDetailPage() {
       {/* ── Grau primário de decisão: a barra operacional já concentra próxima
           ação, risco, tarefas, mensagens e atalhos — logo sob a identidade. ── */}
       <LeadOperationalBar
-        metaConsentSlot={<><ContactAttemptsBadge leadId={String(lead.id)} /><MetaConsentControl leadId={String(lead.id)} estadoInicial={lerEstado(lead.metadata)} /></>}
         leadId={lead.id}
         leadName={lead.name || "Lead sem nome"}
         phone={lead.phone}
