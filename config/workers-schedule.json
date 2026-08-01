@@ -11,7 +11,20 @@
     "ou com cadência, ou marcada como sobDemanda com o motivo. O portão",
     "check-workers-schedule impede que uma rota nova fique órfã em silêncio.",
     "",
-    "Gere as linhas de cron com: npm run workers:crontab"
+    "Gere as linhas de cron com: npm run workers:crontab",
+    "",
+    "EVIDÊNCIA (01/08/2026). Cada vigia declara ONDE deixa rastro. Sem isso não",
+    "havia como responder 'este worker rodou?' — e a resposta importava: medido no",
+    "banco vivo, CINCO sinais de automação estavam em ZERO ABSOLUTO (nunca",
+    "rodaram): atlas_agent_runs, meta_executions, integration_health_snapshots,",
+    "nightly_broker_handoffs e meta_daily_reports. Ninguém viu, porque o portão de",
+    "saúde operacional confere se ARQUIVOS contêm certas strings, não se a",
+    "operação aconteceu.",
+    "",
+    "`inferida: true` marca o vigia cuja evidência eu deduzi do nome e da rota, e",
+    "não do código (a rota escreve por RPC ou por caminho que a leitura estática",
+    "não alcançou). É palpite declarado, não fato — confirme na primeira execução",
+    "real e troque para false."
   ],
   "workers": [
     {
@@ -19,91 +32,156 @@
       "rota": "/api/v2/crm/first-contact-sla/process",
       "cadencia": "*/5 * * * *",
       "porque": "O prazo mais curto de primeiro contato é de 5 minutos (origem Meta). Rodar mais espaçado que isso faz o aviso chegar depois do vencimento, que é o mesmo que não avisar.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "tasks",
+        "coluna": "created_at",
+        "inferida": false
+      }
     },
     {
       "nome": "outbox",
       "rota": "/api/v2/outbox/process",
       "cadencia": "*/2 * * * *",
       "porque": "Fila de saída: mensagem represada é conversa perdida. Sem este worker, nada sai do Atlas.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "integration_outbox",
+        "coluna": "updated_at",
+        "inferida": false
+      }
     },
     {
       "nome": "task-reminders",
       "rota": "/api/v2/tasks/reminders/process",
       "cadencia": "*/5 * * * *",
       "porque": "Lembretes precisam chegar perto da hora marcada para servirem de lembrete.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "task_reminders",
+        "coluna": "created_at",
+        "inferida": false
+      }
     },
     {
       "nome": "lead-reservations",
       "rota": "/api/v2/distribution/reservations/process",
       "cadencia": "*/10 * * * *",
       "porque": "Expiração de reserva de lead: segurar por 10 minutos a mais é tolerável, segurar indefinidamente trava a distribuição.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "lead_assignment_reservations",
+        "coluna": "updated_at",
+        "inferida": false
+      }
     },
     {
       "nome": "task-recurrences",
       "rota": "/api/v2/tasks/recurrences/process",
       "cadencia": "10 0 * * *",
       "porque": "Materializa as tarefas recorrentes do dia logo depois da virada, para o corretor já encontrar a agenda montada.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "tasks",
+        "coluna": "created_at",
+        "inferida": false
+      }
     },
     {
       "nome": "nightly-sales",
       "rota": "/api/v2/ai/nightly-sales",
       "cadencia": "0 3 * * *",
       "porque": "Consolidação noturna, fora do horário comercial.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "ai_sales_journeys",
+        "coluna": "created_at",
+        "inferida": false
+      }
     },
     {
       "nome": "nightly-handoff",
       "rota": "/api/v2/ai/nightly-handoff",
       "cadencia": "30 3 * * *",
       "porque": "Depois da consolidação de vendas, para trabalhar sobre o resultado dela.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "nightly_broker_handoffs",
+        "coluna": "created_at",
+        "inferida": false
+      }
     },
     {
       "nome": "meta-daily-report",
       "rota": "/api/v2/meta/daily-report",
       "cadencia": "0 7 * * *",
       "porque": "Relatório de mídia pronto antes do início do expediente comercial.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "meta_daily_reports",
+        "coluna": "created_at",
+        "inferida": true
+      }
     },
     {
       "nome": "developer-weekly-reports",
       "rota": "/api/v2/developers/weekly-reports/process",
       "cadencia": "0 7 * * 0",
       "porque": "Domingo às 7h: a semana fechou à meia-noite e a liderança encontra o book pronto na segunda de manhã. Rodar à meia-noite em ponto arriscaria apurar antes de a última escrita do domingo cair no banco; rodar segunda já seria tarde para uma prestação de contas semanal.",
-      "timeoutMs": 110000
+      "timeoutMs": 110000,
+      "evidencia": {
+        "tabela": "tasks",
+        "coluna": "created_at",
+        "inferida": true
+      }
     },
     {
       "nome": "capi-feedback",
       "rota": "/api/v2/marketing/capi-feedback/process",
       "cadencia": "17 */4 * * *",
       "porque": "Devolve para a Meta quem virou visita, proposta e venda. Sem esse sinal ela otimiza para quem PREENCHE FORMULARIO, nao para quem compra — e a verba vai para lead que nunca ia fechar. De 4 em 4 horas porque a Meta agrega o sinal por dia: rodar de hora em hora nao melhora a otimizacao e so multiplica chamada. O minuto 17 evita a rajada de todo mundo no minuto 0.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "meta_conversion_events",
+        "coluna": "created_at",
+        "inferida": true
+      }
     },
     {
       "nome": "meta-sem-destino",
       "rota": "/api/v2/marketing/meta-sem-destino/process",
       "cadencia": "17 * * * *",
       "porque": "Lead da Meta que chegou de página sem cadastro fica guardada em meta_leads_sem_destino esperando alguém cadastrar a fonte. Sem worker, ela espera PARA SEMPRE — e o script manual depende de alguém lembrar no dia certo. De hora em hora basta: o resgate só tem o que fazer depois de um cadastro, que é evento raro e manual. O minuto 17 evita competir com os workers do minuto 0.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "meta_leads_sem_destino",
+        "coluna": "created_at",
+        "inferida": false
+      }
     },
     {
       "nome": "investimento-de-midia",
       "rota": "/api/v2/marketing/investimento/process",
       "cadencia": "40 4 * * *",
       "porque": "Grava em marketing_spend o gasto que a Meta ja realizou. Medido em 31/07: R$ 3.612,01 em 30 dias na conta de anuncios contra 0 linhas na tabela — sete leitores do produto respondiam R$ 0. Uma vez por dia porque a Meta consolida o gasto do dia com atraso, e a janela de 30 dias reimporta o passado recente, corrigindo sozinha qualquer ajuste retroativo. 04:40 e depois da virada e fora da concorrencia com os workers do minuto 0.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "marketing_spend",
+        "coluna": "created_at",
+        "inferida": true
+      }
     },
     {
       "nome": "baseline-de-conversao",
       "rota": "/api/v2/ai/baseline-de-conversao/process",
       "cadencia": "25 4 * * *",
       "porque": "Fotografa uma vez por dia as features de toda lead ABERTA, com a probabilidade do baseline aritmetico. Nao e previsao de IA e nao consome provider nenhum: e a serie temporal que um modelo precisaria para existir. conversion_feature_snapshots tinha 0 linhas desde que foi criada, e sem foto no momento do corte nem daqui a um ano havera base para treinar ou avaliar. Uma vez por dia porque o corte e o inicio do dia UTC — mais que isso reescreve a mesma linha. 04:25 e antes do importador de investimento e fora do minuto 0.",
-      "timeoutMs": 55000
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "conversion_calibration_models",
+        "coluna": "created_at",
+        "inferida": true
+      }
     }
   ],
   "sobDemanda": [

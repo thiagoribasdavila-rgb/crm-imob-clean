@@ -334,6 +334,7 @@
     "contraste:check": "node scripts/check-contraste.mjs",
     "campo-legivel:check": "node scripts/check-campo-legivel.mjs",
     "dono-da-lead:check": "node scripts/check-dono-da-lead.mjs",
+    "vigias-vivos:check": "node --env-file-if-exists=.env.local scripts/check-vigias-vivos.mjs",
     "lead-360-regressoes:check": "node scripts/check-lead-360-regressoes.mjs",
     "linguagem-visual:check": "node scripts/check-linguagem-visual.mjs",
     "asercao-fraca:check": "node scripts/check-asercao-fraca.mjs",
