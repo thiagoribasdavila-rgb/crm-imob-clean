@@ -104,21 +104,63 @@ for (const arquivo of fontes) {
 if (meioPixel.length) {
   const amostra = meioPixel.slice(0, 3).map((x) => `${x.arquivo} (${x.valor}px)`).join(", ");
   falhas.push(
-    `${meioPixel.length} tamanho(s) de meio-pixel voltaram: ${amostra}. ` +
+    `${meioPixel.length} tamanho(s) de meio-pixel voltaram em .tsx: ${amostra}. ` +
       `Meio-pixel é a assinatura de ajuste no olho — o degrau certo existe, use-o`,
   );
 } else {
-  ok.push("nenhum tamanho de meio-pixel");
+  ok.push("nenhum meio-pixel em .tsx");
 }
 
 if (microscopico.length) {
   const amostra = microscopico.slice(0, 3).map((x) => `${x.arquivo} (${x.valor}px)`).join(", ");
   falhas.push(
-    `${microscopico.length} texto(s) abaixo de 10px voltaram: ${amostra}. ` +
+    `${microscopico.length} texto(s) abaixo de 10px voltaram em .tsx: ${amostra}. ` +
       `Foram eliminados em 01/08/2026 — 8px e 9px não são legíveis na tela de trabalho de ninguém`,
   );
 } else {
-  ok.push("nenhum texto abaixo de 10px");
+  ok.push("nenhum texto abaixo de 10px em .tsx");
+}
+
+/* ── O MESMO DEFEITO, DO OUTRO LADO DA FRONTEIRA ────────────────────────────
+   A primeira versão deste portão afirmava "nenhum meio-pixel" olhando só
+   `.tsx` — e estava tecnicamente certa e praticamente falsa: `globals.css`
+   tinha 33 meio-pixels e 87 tamanhos abaixo de 10px. Pior: TRÊS dos
+   meio-pixels estavam no painel de referência do próprio v3, escrito na mesma
+   sessão que escreveu este portão. Ele aprovou o próprio autor.
+
+   O defeito não tinha sido eliminado; tinha mudado de arquivo. Uma asserção
+   que só olha onde a limpeza passou sempre concorda com quem a escreveu.
+
+   Aqui vão como CATRACA, não como zero: 30 e 87 são dívida herdada de anos de
+   CSS, e travar em zero fecharia o portão sem ninguém conseguir abri-lo. Só
+   podem cair. */
+const meioPixelCss = (css.match(/font-size:\s*\d+\.\d+px/g) ?? []).length;
+const microCss = (css.match(/font-size:\s*[0-9]px/g) ?? []).length;
+const TETO_MEIO_PIXEL_CSS = 30;
+const TETO_MICRO_CSS = 87;
+
+if (meioPixelCss > TETO_MEIO_PIXEL_CSS) {
+  falhas.push(`meio-pixel em ${CSS} subiu para ${meioPixelCss} (teto ${TETO_MEIO_PIXEL_CSS}) — a escala tem degrau para isso`);
+} else {
+  ok.push(`meio-pixel em ${CSS}: ${meioPixelCss} (teto ${TETO_MEIO_PIXEL_CSS})`);
+}
+if (microCss > TETO_MICRO_CSS) {
+  falhas.push(`texto abaixo de 10px em ${CSS} subiu para ${microCss} (teto ${TETO_MICRO_CSS})`);
+} else {
+  ok.push(`abaixo de 10px em ${CSS}: ${microCss} (teto ${TETO_MICRO_CSS})`);
+}
+
+/* A superfície de referência do v3 não pode ela mesma violar a escala — é a
+   que todo mundo vai copiar. Esta é ZERO, sem catraca. */
+const blocoV3 = css.split("FILA DE DECISÕES")[1] ?? "";
+const sujeiraNaReferencia = (blocoV3.match(/font-size:\s*(\d+\.\d+|[0-9])px/g) ?? []);
+if (sujeiraNaReferencia.length) {
+  falhas.push(
+    `a superfície de referência do v3 usa tamanho fora da escala: ${sujeiraNaReferencia.join(", ")}. ` +
+      `É a que todo mundo vai copiar — ela não pode ser a exceção`,
+  );
+} else {
+  ok.push("a referência do v3 respeita a própria escala");
 }
 
 // ── 3. AS CATRACAS ──────────────────────────────────────────────────────────

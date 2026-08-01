@@ -102,7 +102,17 @@ export function FilaDeDecisoesPanel() {
   };
 
   return (
-    <div className="atlas-panel atlas-fila-decisoes">
+    /* `cc6-panel`, não `atlas-panel`. Medido: 268 usos diretos de `cc6-panel`
+       (mais 153 `<AtlasCard>` que repintam a receita dela) contra 43 de
+       `atlas-panel` — e o shell ACHATA `atlas-panel` em
+       `[data-visual-system="atlas-core-v2"]`, trocando fundo, borda e raio.
+       Esta tela é a referência do v3: se ela nascesse na primitiva perdedora,
+       cada cópia espalharia a divergência.
+
+       A separação que vale a pena guardar: a SUPERFÍCIE é `cc6-panel`; o v3 é
+       a GRAMÁTICA que vai dentro dela — faixa de severidade, ordem por
+       consequência, alvo de 44px, rótulo que diz o que acontece. */
+    <div className="cc6-panel atlas-fila-decisoes">
       <header className="atlas-fila-decisoes-topo">
         <h2>
           <span aria-hidden="true">🧠</span> Decisões que a IA preparou
