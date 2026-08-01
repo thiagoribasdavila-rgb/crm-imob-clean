@@ -823,10 +823,6 @@ export default function LeadDetailPage() {
             A rota `/api/v1/crm/leads/meta-consent` FICA. Ela deixa de ser o
             caminho do dia a dia e passa a ser o de correção — o único jeito de
             registrar ou desfazer um consentimento fora do fluxo automático. */}
-        <section className="order-[-2] atlas-lead-consentimento" aria-label="Tentativas de contato">
-          <ContactAttemptsBadge leadId={String(lead.id)} />
-        </section>
-
         {/* ── A ORDEM DA FICHA SEGUE O QUE O CORRETOR FAZ, NÃO O ORGANOGRAMA
             DO PRODUTO ────────────────────────────────────────────────────────
 
@@ -1097,6 +1093,21 @@ export default function LeadDetailPage() {
             </ul>
           </div>
         </TiltShell>
+      </section>
+
+      {/* ── TENTATIVAS DE CONTATO: NO FLUXO, JUNTO DO "O QUE PERGUNTAR" ──────
+          Estava ANINHADA dentro de `#lead-overview`, e por isso `order-[-2]`
+          não fazia nada: `order` só vale no FILHO DIRETO do flex. Medido: dar
+          `display:flex` ao pai não movia a seção um pixel.
+
+          É o mesmo erro que pôs o cabeçalho em 2.621px, duas camadas acima.
+          Aqui ele custava mais do que posição: a moldura tem borda, fundo e
+          12px 14px de padding, e `ContactAttemptsBadge` devolve `null` em três
+          casos — inclusive no primeiro paint de TODA lead. O resultado era uma
+          caixa decorada VAZIA acima do nome do cliente. A guarda `:empty` em
+          globals.css fecha esse lado; sair daqui fecha o outro. ── */}
+      <section className="order-[-2] atlas-lead-consentimento" aria-label="Tentativas de contato">
+        <ContactAttemptsBadge leadId={String(lead.id)} />
       </section>
 
       {/* ── Grau primário de decisão: a barra operacional já concentra próxima

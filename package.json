@@ -331,7 +331,8 @@
     "imports-pendurados:check": "node scripts/check-imports-pendurados.mjs",
     "cor-cravada:check": "node scripts/check-cor-cravada.mjs",
     "texto-cortado:check": "node scripts/check-texto-cortado.mjs",
-    "contraste:check": "node scripts/check-contraste.mjs"
+    "contraste:check": "node scripts/check-contraste.mjs",
+    "lead-360-regressoes:check": "node scripts/check-lead-360-regressoes.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1089.0",
