@@ -8254,9 +8254,26 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 }
 .cc6-ghost-btn:hover { color: var(--atlas-text-primary); border-color: var(--atlas-accent); background: rgba(75, 141, 248, 0.06); }
 .cc6-ghost-btn:focus-visible { outline: 2px solid var(--atlas-accent); outline-offset: 2px; }
-.cc6-crit { color: #fb7185; }
-.cc6-warn { color: #f5b544; }
-.cc6-ok { color: #34d399; }
+/* ── OS TRÊS INDICADORES DE ESTADO NÃO VIRAVAM COM O TEMA ─────────────────
+   214 usos somados (crit 60 · warn 79 · ok 75) com hex cravado. Medido, sobre o
+   fundo do tema claro:
+
+       .cc6-warn   1,71   ← o indicador de ATENÇÃO, quase invisível
+       .cc6-ok     1,81
+       .cc6-crit   2,53
+
+   Os três hex são EXATAMENTE o valor escuro dos tokens de estado que já existem
+   e já viram. A troca é invisível no tema escuro (6,97 · 10,34 · 9,76 idênticos)
+   e leva o claro para 4,88–6,29.
+
+   POR QUE AS VARREDURAS ANTERIORES NÃO PEGARAM: elas mapeavam cor cravada para
+   o token de TEXTO mais próximo, e a distância destes três até qualquer
+   `--atlas-text-*` passa de 14 — o limiar que eu mesmo pus para não mudar
+   aparência. Estava certo: eles não são texto, são ESTADO. Precisavam do token
+   de estado, e nenhuma passada procurou por esse. */
+.cc6-crit { color: var(--atlas-danger); }
+.cc6-warn { color: var(--atlas-warning); }
+.cc6-ok { color: var(--atlas-success); }
 .cc6-sev-band { position: relative; }
 .cc6-sev-band::before {
   content: "";
