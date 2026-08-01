@@ -333,7 +333,8 @@
     "texto-cortado:check": "node scripts/check-texto-cortado.mjs",
     "contraste:check": "node scripts/check-contraste.mjs",
     "lead-360-regressoes:check": "node scripts/check-lead-360-regressoes.mjs",
-    "linguagem-visual:check": "node scripts/check-linguagem-visual.mjs"
+    "linguagem-visual:check": "node scripts/check-linguagem-visual.mjs",
+    "cobertura-schema:check": "node --env-file=.env.local scripts/check-cobertura-de-schema.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1089.0",
