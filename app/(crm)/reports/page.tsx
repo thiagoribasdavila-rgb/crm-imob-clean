@@ -164,7 +164,7 @@ export default function ReportsPage() {
                   type="button"
                   aria-pressed={period === key}
                   onClick={() => setPeriod(key)}
- className={`cc6-chip cc6-interativo cursor-pointer ${period === key ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!" : " hover:text-[var(--atlas-texto-forte)]!"} ${focusRing}`}
+ className={`cc6-chip cc6-interativo cursor-pointer ${period === key ? "cc6-destaque text-[var(--atlas-texto-forte)]!" : " hover:text-[var(--atlas-texto-forte)]!"} ${focusRing}`}
                 >
                   {PERIOD_LABEL[key]}
                 </button>
@@ -218,7 +218,7 @@ export default function ReportsPage() {
               <h3 className="text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Plano da próxima semana</h3>
               <div className="mt-3 space-y-2">
                 {weeklyReview.plan.map((item, index) => (
-                  <a key={item.key} href={item.href} className={`flex gap-3 rounded-xl border border-[rgba(148,163,184,0.12)] p-3 transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}>
+                  <a key={item.key} href={item.href} className={`flex gap-3 rounded-xl border border-[rgba(148,163,184,0.12)] p-3 transition-colors hover:cc6-destaque ${focusRing}`}>
                     <span className="cc6-num text-xs text-[var(--atlas-texto-fraco)]" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
                     <span className="min-w-0">
                       <strong className="block text-corpo font-semibold text-[var(--atlas-texto-forte)]">{item.title}</strong>

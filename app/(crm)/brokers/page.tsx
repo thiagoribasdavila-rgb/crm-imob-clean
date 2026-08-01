@@ -191,7 +191,7 @@ export default function BrokersPage() {
                     type="button"
                     onClick={() => setVisao(chave)}
                     aria-pressed={visao === chave}
- className={`cc6-chip cc6-interativo shrink-0 cursor-pointer ${focusRing} ${visao === chave ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!" : " hover:text-[var(--atlas-texto-forte)]!"}`}
+ className={`cc6-chip cc6-interativo shrink-0 cursor-pointer ${focusRing} ${visao === chave ? "cc6-destaque text-[var(--atlas-texto-forte)]!" : " hover:text-[var(--atlas-texto-forte)]!"}`}
                   >
                     {label}
                   </button>
