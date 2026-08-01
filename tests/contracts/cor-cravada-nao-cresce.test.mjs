@@ -31,7 +31,13 @@ test("os seis tokens existem, e no escuro valem exatamente os hex antigos", () =
   for (const [token, hex] of [
     ["--atlas-texto-forte", "#e8eef8"],
     ["--atlas-texto-medio", "#aab6ca"],
-    ["--atlas-texto-fraco", "#6b7890"],
+    /* `#6b7890` até 01/08/2026. Trocado por `#7a8799` por MEDIÇÃO, não por
+       gosto: nos três fundos onde este token é usado (404 ocorrências) ele
+       dava 3,95, 4,21 e 4,45 — os três abaixo do piso 4,5. O contrato existe
+       para impedir mudança SILENCIOSA de valor; esta foi medida, tem motivo
+       escrito e `contraste:check` a cobre nos dois temas. Congelar o número
+       errado seria transformar o contrato em guardião do defeito. */
+    ["--atlas-texto-fraco", "#7a8799"],
     ["--atlas-estado-perigo", "#fb7185"],
     ["--atlas-estado-atencao", "#f5b544"],
     ["--atlas-estado-sucesso", "#34d399"],
@@ -52,7 +58,7 @@ test("o tema claro NÃO repete os valores do escuro", () => {
   // Um override que copia o valor original não é override: é um token que
   // finge ser temático.
   const claro = css.slice(css.lastIndexOf(':root[data-theme="light"] {'));
-  for (const hex of ["#e8eef8", "#aab6ca", "#6b7890"]) {
+  for (const hex of ["#e8eef8", "#aab6ca", "#7a8799"]) {
     assert.ok(!claro.includes(hex), `o tema claro repete ${hex} — não sobrescreve nada`);
   }
 });
