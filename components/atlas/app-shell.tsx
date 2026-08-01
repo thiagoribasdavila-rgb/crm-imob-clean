@@ -82,6 +82,31 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.dispatchEvent(new CustomEvent("atlas:density-changed", { detail: next }));
   }, [desktopDensity]);
 
+  /* ── O INTERRUPTOR DE DENSIDADE EXISTE DOS DOIS LADOS E NÃO SE ENCONTRA ────
+     MEDIDO em 01/08/2026, e deixado como está DE PROPÓSITO — com o motivo.
+
+     `data-desktop-density` é emitido logo abaixo e mexe em padding de cabeçalho
+     e de tabela. `data-cc23-density` tem as regras que mexem na PRIMITIVA —
+     `[data-cc23-density="compact"] .cc6-panel { padding: 12px }` — e NENHUM
+     componente o emite. CSS escrito e nunca ligado.
+
+     Ligar é UMA linha aqui. O que segura não é dificuldade, é consequência:
+
+       1. `.cc6-panel` não declara padding; os consumidores declaram 191 vezes
+          em 5 valores (p-5 ×91, p-4 ×63, p-6 ×21, p-3 ×15, p-8 ×1).
+       2. A regra compacta pesa (0,2,0) e o utilitário do Tailwind pesa (0,1,0)
+          dentro de uma camada — sem camada vence camada. Ela ganharia de todos.
+       3. E o estado inicial aqui é `"compact"` (veja o useState acima). Ou seja:
+          NÃO seria opt-in. Seria o padding de 421 superfícies caindo de 20px
+          para 12px para todo mundo, por padrão.
+
+     Uma mudança dessa dimensão precisa ser MEDIDA numa tela antes de embarcar,
+     e a sessão que descobriu isto estava sem navegador. Ligar sem medir seria
+     trocar um defeito conhecido por um desconhecido.
+
+     Para quem for ligar: decida primeiro o padding BASE de `.cc6-panel`, para
+     que o compacto seja um delta declarado, e não uma surpresa que vence 191
+     declarações espalhadas. ── */
   return (
     <div
       className="atlas-app-shell"
