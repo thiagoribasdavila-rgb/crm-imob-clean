@@ -3164,9 +3164,22 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
 .atlas-app-shell a {
   -webkit-tap-highlight-color: transparent;
 }
+/* ── O ALVO É 44px, E NÃO SÓ NO CELULAR ────────────────────────────────────
+   Estava 42px no desktop e 44px dentro de `@media (max-width: 767px)` — como
+   se o dedo errasse no telefone e a mão acertasse no trackpad. O v3 pede 44px
+   em qualquer controle que MUDA ESTADO, no aparelho que for.
+
+   Que 42 era insuficiente já estava escrito no próprio arquivo: havia remendos
+   pontuais de `min-height: 44px` espalhados, um deles em
+   `.atlas-empty-state[data-has-action="true"] .atlas-button-secondary` — um
+   conserto local por cima de uma regra geral errada. Remendo repetido é a
+   forma que um defeito toma quando ninguém corrige a origem.
+
+   Alcance medido: 255 usos (primary 133 · secondary 122). A mudança é de 2px
+   e vai na direção de quem clica. ── */
 .atlas-app-shell .atlas-button-primary,
 .atlas-app-shell .atlas-button-secondary {
-  min-height: 42px;
+  min-height: 44px;
   border-radius: 12px;
 }
 .atlas-app-shell input,
@@ -8307,9 +8320,14 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   color: var(--atlas-text-secondary);
   white-space: nowrap;
 }
+/* 85 usos e nenhuma altura mínima declarada: a altura saía de `padding: 7px` +
+   `font-size: 12px`, ou seja ~30px. Era o menor alvo do produto justamente na
+   primitiva mais usada depois das duas principais. */
 .cc6-ghost-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-height: 44px;
   gap: 6px;
   padding: 7px 12px;
   border: 1px solid rgba(148, 163, 184, 0.22);

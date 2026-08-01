@@ -199,6 +199,35 @@ if (usos < 500) {
   ok.push(`a escala do v3 está viva: ${usos} usos`);
 }
 
+// ── 5. O ALVO DE 44px NAS PRIMITIVAS DE BOTÃO ───────────────────────────────
+/* A regra do v3: qualquer controle que MUDA ESTADO tem 44px. Estava 42px no
+   desktop e 44px só dentro de `@media (max-width: 767px)` — como se o dedo
+   errasse no telefone e a mão acertasse no trackpad.
+
+   O portão olha a regra GERAL de cada primitiva, não a existência de "44px" em
+   algum lugar do arquivo: o `44px` já existia em remendos pontuais enquanto a
+   regra geral entregava 42. Procurar a string aprovaria o estado defeituoso. */
+const PRIMITIVAS_DE_BOTAO = [
+  { seletor: ".atlas-app-shell .atlas-button-primary,\n.atlas-app-shell .atlas-button-secondary", nome: "atlas-button-primary/secondary" },
+  { seletor: ".cc6-ghost-btn", nome: "cc6-ghost-btn" },
+];
+for (const p of PRIMITIVAS_DE_BOTAO) {
+  const i = css.indexOf(`${p.seletor} {`);
+  if (i < 0) {
+    falhas.push(`não achei a regra base de \`${p.nome}\` — o portão não pode afirmar nada sobre o alvo de toque dela`);
+    continue;
+  }
+  const bloco = css.slice(i, css.indexOf("}", i));
+  const altura = bloco.match(/min-height:\s*(\d+)px/)?.[1];
+  if (!altura) {
+    falhas.push(`\`${p.nome}\` voltou a não declarar min-height — a altura passa a sair do padding, e o alvo encolhe`);
+  } else if (Number(altura) < 44) {
+    falhas.push(`\`${p.nome}\` está com min-height ${altura}px na regra geral; o v3 pede 44px em controle que muda estado`);
+  } else {
+    ok.push(`\`${p.nome}\`: alvo de ${altura}px na regra geral`);
+  }
+}
+
 // ── SAÍDA ───────────────────────────────────────────────────────────────────
 for (const o of ok) console.log(`  ok   ${o}`);
 for (const f of falhas) console.error(`  FALHA ${f}`);
