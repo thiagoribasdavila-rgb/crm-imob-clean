@@ -9,6 +9,12 @@ const publicPages = new Set([
   "/login",
   "/forgot-password",
   "/reset-password",
+  // Apelido em português de /reset-password, criado na `main` em 25/07/2026
+  // (`app/(auth)/redefinir-senha/page.tsx` é um re-export da mesma tela). Sem
+  // esta linha o matcher abrangente abaixo alcançaria a rota, o proxy a trataria
+  // como protegida e EXPULSARIA quem chega pelo link do e-mail de recuperação —
+  // que por definição ainda não tem sessão.
+  "/redefinir-senha",
   "/auth/callback",
   "/privacy",
   "/terms",

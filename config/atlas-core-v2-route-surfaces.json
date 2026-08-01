@@ -15,6 +15,7 @@
     "app/(auth)/login/page.tsx",
     "app/(auth)/forgot-password/page.tsx",
     "app/(auth)/reset-password/page.tsx",
+    "app/(auth)/redefinir-senha/page.tsx",
     "app/(crm)/dashboard/page.tsx",
     "app/(crm)/leads/page.tsx",
     "app/(crm)/pipeline/page.tsx",

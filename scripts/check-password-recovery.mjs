@@ -41,7 +41,27 @@ function regiao(source, abre, fecha) {
 }
 
 if (!requestRoute.includes("Se o e-mail estiver cadastrado") || contract.enumerationSafe !== true) errors.push("solicitação pode revelar existência do e-mail");
-if (!requestRoute.includes("resetPasswordForEmail") || !requestRoute.includes("/auth/callback") || !requestRoute.includes("/reset-password")) errors.push("rota de envio não fecha callback e destino");
+// ── REAPONTADA EM 2026-08-01 — o destino tem DOIS nomes, e o literal congelava um
+//
+// A asserção exigia a string `/reset-password` na rota de envio. Em 25/07/2026 a
+// `main` criou `app/(auth)/redefinir-senha/page.tsx`, um re-export da MESMA tela
+// com nome em português, e passou a apontar o e-mail de recuperação para lá. Ao
+// integrar, a rota de envio mudou de destino e este portão reprovou — não por um
+// defeito, mas porque cobrava um nome em vez de cobrar o fechamento do ciclo.
+//
+// O que importa nunca foi o literal: é a rota de envio mandar para o callback, e
+// o destino que ela escolhe ser o MESMO que o callback reconhece como recuperação.
+// Dois arquivos concordando é propriedade; uma string é palpite.
+if (!requestRoute.includes("resetPasswordForEmail") || !requestRoute.includes("/auth/callback")) {
+  errors.push("rota de envio não fecha callback");
+} else {
+  const destino = requestRoute.match(/encodeURIComponent\(\s*"(\/[a-z0-9-]+)"\s*\)/)?.[1];
+  if (!destino) {
+    errors.push("rota de envio não declara destino legível após o callback");
+  } else if (!callback.includes(`"${destino}"`)) {
+    errors.push(`rota de envio manda para ${destino} e o callback não reconhece esse destino — o ciclo não fecha`);
+  }
+}
 for (const flag of ["httpOnly: true", 'sameSite: "strict"', "maxAge: 15 * 60"]) if (!callback.includes(flag)) errors.push(`cookie de intenção sem proteção: ${flag}`);
 if (!callback.includes("ATLAS_BASE_URL || process.env.NEXT_PUBLIC_APP_URL")) errors.push("callback não prioriza domínio canônico privado");
 if (!resetRoute.includes("verifiedRecovery") || !resetRoute.includes("auth.getUser()") || !resetRoute.includes('scope: "global"')) errors.push("troca não exige recuperação validada ou não revoga sessões");

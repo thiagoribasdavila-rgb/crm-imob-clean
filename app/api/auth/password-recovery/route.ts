@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   if (!/^https:\/\/[^/]+/i.test(origin) && process.env.NODE_ENV === "production") return NextResponse.json({ error: "Domínio público de recuperação não configurado." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   const safeOrigin = origin || new URL(request.url).origin;
   const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${safeOrigin}/auth/callback?next=${encodeURIComponent("/reset-password")}` });
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${safeOrigin}/auth/callback?next=${encodeURIComponent("/redefinir-senha")}` });
   if (error && /rate|too many/i.test(error.message)) return NextResponse.json({ error: "Muitas solicitações. Aguarde alguns minutos." }, { status: 429, headers: { "Cache-Control": "no-store" } });
   if (error) logger.warn("auth.recovery.provider_failed", { requestId: meta.requestId, correlationId: meta.correlationId, errorCode: error.code, status: error.status });
   return NextResponse.json({ accepted: true, message: "Se o e-mail estiver cadastrado, o link será enviado." }, { status: 202, headers: { "Cache-Control": "no-store" } });
