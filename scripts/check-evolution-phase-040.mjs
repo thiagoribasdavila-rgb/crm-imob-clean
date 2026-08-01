@@ -74,7 +74,49 @@ const checks = [
     && !efeitoDaIntencao.includes("fetch(")
     && !efeitoDaIntencao.includes(".channel(")
     && config.postPhaseAdditions.addedEffectReadsNetwork === false],
-  ["Layout possui responsividade, toque e movimento reduzido", styles.includes("/* Fase 040 — histórico explicável") && styles.includes(".atlas-activity-timeline") && styles.includes("min-height: 44px") && styles.includes("@media (prefers-reduced-motion: reduce)")],
+  ["Layout possui responsividade, toque e movimento reduzido", (() => {
+    /* ── REAPONTADA EM 01/08/2026, DA EXISTÊNCIA PARA A PROPRIEDADE ─────────
+       A versão anterior era:
+
+         styles.includes("/* Fase 040 — histórico explicável")
+         && styles.includes(".atlas-activity-timeline")
+         && styles.includes("min-height: 44px")
+         && styles.includes("@media (prefers-reduced-motion: reduce)")
+
+       Quatro `includes` DESACOPLADOS sobre um arquivo de 10.960 linhas. Medido
+       no dia da correção: `min-height: 44px` aparece 45 vezes e
+       `@media (prefers-reduced-motion: reduce)` 15 — QUALQUER uma delas, em
+       qualquer canto do arquivo, satisfazia a asserção. Ela passaria intacta
+       com a família `activity` sem um único alvo de toque e sem uma única
+       regra de movimento reduzido.
+
+       Pior: o primeiro `includes` procurava um COMENTÁRIO. Comentário como
+       evidência de implementação é a classe de defeito que este repositório
+       já pagou três vezes.
+
+       Hoje as propriedades VALEM — `.atlas-activity-hero-actions`,
+       `.atlas-activity-source-details` e `.atlas-activity-periods button` têm
+       44px, e há regra de movimento reduzido citando
+       `.atlas-activity-recent-item`. Então o veredito não muda: o que muda é
+       que agora ele pode mudar. */
+    const semComentarios = styles.replace(/\/\*[\s\S]*?\*\//g, "");
+
+    // 1. A timeline existe como regra, não como menção solta.
+    const temTimeline = /\.atlas-activity-timeline\s*[,{]/.test(semComentarios);
+
+    // 2. Algum controle DA FAMÍLIA activity entrega 44px ou mais.
+    const alvoNaFamilia = [...semComentarios.matchAll(/(\.atlas-activity[^{}]*)\{([^}]*)\}/g)]
+      .some(([, , corpo]) => {
+        const h = corpo.match(/min-height:\s*(\d+)px/);
+        return h ? Number(h[1]) >= 44 : false;
+      });
+
+    // 3. Alguma regra de movimento reduzido alcança a família activity.
+    const movimentoReduzido = [...semComentarios.matchAll(/@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*?)\n\}/g)]
+      .some(([, corpo]) => /atlas-activity/.test(corpo));
+
+    return temTimeline && alvoNaFamilia && movimentoReduzido;
+  })()],
   ["Relatório registra limites e próxima fase", report.includes("não publica alegação de produtividade") && report.includes("Fase 041") && config.nextPhase.phase === 41],
   ["RBAC, tenant, RLS e timeline existente foram preservados", config.safetyPolicy.rbacPreserved === true && config.safetyPolicy.tenantIsolationPreserved === true && config.safetyPolicy.rlsPreserved === true && config.safetyPolicy.existingLeadTimelinePreserved === true],
   ["Gate de homologação não foi contornado", phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false],
