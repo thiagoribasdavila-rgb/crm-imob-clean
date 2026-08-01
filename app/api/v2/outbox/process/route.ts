@@ -13,6 +13,7 @@ import { classifyOutboxFailure } from "@/lib/meta/outbox-failure";
 import { closeOutboxEvent, recoverExpiredLeases } from "@/lib/integrations/outbox-lease";
 import { AUTO_REGISTERED_CAMPAIGN_STATUS, autoRegisteredCampaignName } from "@/lib/marketing/campaign-provenance";
 import { fecharPrimeiroContatoPorWhatsapp } from "@/lib/crm/whatsapp-first-contact";
+import { descreverFalha } from "@/lib/integrations/descrever-falha";
 
 export const dynamic = "force-dynamic";
 
@@ -846,7 +847,21 @@ export async function POST(request: Request) {
       delivered += 1;
       consecutiveCredentialFailures = 0;
     } catch (processingError) {
-      const message = processingError instanceof Error ? processingError.message : "Falha desconhecida";
+      /* ── O QUE NÃO É `Error` TAMBÉM TEM O QUE DIZER ────────────────────
+         Antes: qualquer coisa lançada que não fosse `Error` virava a string
+         "Falha desconhecida", e o diagnóstico morria ali.
+
+         MEDIDO em 01/08/2026 na fila de produção: das 8 entregas mortas, SETE
+         tinham `last_error = "Falha desconhecida"`. Só uma guardou a mensagem
+         real — `Meta Graph HTTP 400 [code 100/33] Object with ID … does not
+         exist`. As outras sete não deixaram rastro nenhum de por que
+         morreram, no exato momento em que o rastro era a única coisa que
+         importava.
+
+         Agora o que não é `Error` é SERIALIZADO. String vira ela mesma; objeto
+         vira JSON; o resto vira `String(...)`. Só cai no texto genérico o que
+         de fato não tem representação — e, ainda assim, com o tipo junto. */
+      const message = descreverFalha(processingError);
       const cause = classifyOutboxFailure({ message });
 
       // Erro de CREDENCIAL (token 190/463/467): não é culpa do evento. NÃO
@@ -894,7 +909,13 @@ export async function POST(request: Request) {
       const terminal = attempts >= 5;
       const nextAttempt = new Date(Date.now() + Math.min(60, 2 ** attempts) * 60_000).toISOString();
 
-      await closeOutboxEvent(admin, event.id, { status: terminal ? "dead_letter" : "failed", available_at: nextAttempt, locked_at: null, locked_by: null, last_error: message, cause: null });
+      /* `cause` era gravada como `null` AQUI — depois de ser calculada oito
+         linhas acima por `classifyOutboxFailure`. A classificação existia,
+         custava uma chamada, e era descartada na hora de persistir. Medido: as
+         8 entregas mortas da fila têm `cause` nula, inclusive a que carrega o
+         código 100/33 da Graph, que a função classifica sem esforço.
+         Sem causa, `/api/ready` sabe QUANTAS falharam e não sabe POR QUÊ. */
+      await closeOutboxEvent(admin, event.id, { status: terminal ? "dead_letter" : "failed", available_at: nextAttempt, locked_at: null, locked_by: null, last_error: message, cause });
       if (event.topic === "meta.lead.fetch" && event.aggregate_id) await admin.from("meta_lead_events").update({ status: "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
       if (event.topic === "meta.conversion.send" && event.aggregate_id) await admin.from("meta_conversion_events").update({ status: terminal ? "dead_letter" : "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
       if (event.topic === "portal.lead.ingest" && event.aggregate_id) await admin.from("portal_lead_events").update({ status: terminal ? "dead_letter" : "failed", last_error: message.slice(0, 1000) }).eq("id", event.aggregate_id);
