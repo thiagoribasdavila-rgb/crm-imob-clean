@@ -635,7 +635,12 @@ textarea:focus {
   min-height: 100vh;
   isolation: isolate;
 }
+/* Alvos medidos na producao em 01/08/2026, na ficha de um cliente: skip-link
+   36px, marca 38px, atalho de busca 34px. Sao tres controles do cromo do shell
+   presentes em TODA tela — o v3 pede 44px em controle que muda o estado da
+   tela, e os tres mudam. */
 .atlas-skip-link {
+  min-height: 44px;
   position: fixed;
   z-index: 200;
   top: 12px;
@@ -695,6 +700,7 @@ textarea:focus {
 }
 .atlas-brand-link {
   display: flex;
+  min-height: 44px;
   min-width: 0;
   align-items: center;
   gap: 12px;
@@ -10568,7 +10574,7 @@ button.cc6-chip::after {
   gap: 8px;
   width: calc(100% - 16px);
   margin: 6px 8px 2px;
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 10px;
   border-radius: 10px;
   border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
