@@ -13,6 +13,17 @@ on:
       # gatilhos listavam tres branches, nenhuma delas a de entrega. Um portao
       # que so roda onde ninguem trabalha e um portao que nao existe.
       - 'claude/**'
+      # E faltava a branch que PUBLICA. Medido em 01/08/2026, logo depois do
+      # merge do PR #9: em `5f0900c2` (a main mesclada) rodou apenas o Atlas
+      # Security Gate — este workflow, que é quem roda typecheck, lint, 231
+      # portões, contratos e build, NUNCA rodou na main.
+      #
+      # O `pull_request` cobre a proposta; o merge é um PUSH, e push em main não
+      # disparava nada. Ou seja: o código validado era o do PR, e o que de fato
+      # vai para o servidor nunca era medido no lugar de onde sai o pacote.
+      #
+      # É o mesmo defeito do comentário acima, uma branch adiante.
+      - main
 
 concurrency:
   group: atlas-v3-${{ github.ref }}
