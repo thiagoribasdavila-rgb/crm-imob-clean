@@ -6881,6 +6881,49 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   min-height: 44px;
   padding: 0 14px;
 }
+/* ── A ILHA ESCURA É UM ESCOPO DE TEMA, NÃO UMA EXCEÇÃO ────────────────────
+   Medido em 01/08/2026, na produção, tema claro: **282 textos** dentro deste
+   painel com contraste **1,04**. Entre eles os NOMES DAS LEADS — Hélio
+   Queiroz, Carla Alves, Roseli Gavioli Victor — pretos sobre o gradiente
+   quase preto. A célula mais importante da tela principal do corretor,
+   invisível. Confirmado com os olhos, não só com a régua.
+
+   A decisão de manter a ilha escura nos dois temas era CONSCIENTE e está
+   registrada 300 linhas abaixo, junto de `.atlas-pagination strong`, que
+   ganhou texto claro à mão. O erro não foi a decisão: foi tratá-la como uma
+   lista de exceções. Cada descendente novo nasce com o texto do tema da
+   PÁGINA, não com o da ilha, e some.
+
+   O conserto é redeclarar os tokens aqui dentro. A ilha passa a ser um escopo
+   de tema fechado: toda regra que usa `var(--atlas-*)` — inclusive as gerais
+   de `input`, `thead th` e borda — resolve para os valores escuros quando
+   está dentro dela, sem `:not()` e sem lista para manter. ── */
+:root[data-theme="light"] .atlas-leads-table-panel {
+  /* DUAS famílias, porque o repositório tem duas para o mesmo fato:
+     `--atlas-texto-*` (português) e `--atlas-text-*` (inglês). O nome da lead
+     usa `--atlas-text-primary`; a primeira versão desta correção redeclarou só
+     a família portuguesa e não mudou nada. Enquanto as duas existirem, quem
+     abre escopo de tema tem de fechar as duas. */
+  --atlas-texto-forte: #e8eef8;
+  --atlas-texto-medio: #aab6ca;
+  --atlas-texto-fraco: #7a8799;
+  --atlas-text-primary: #e8eef8;
+  --atlas-text-secondary: #aab6ca;
+  --atlas-text-muted: #7a8799;
+  --atlas-surface: rgba(7, 12, 24, 0.82);
+  --atlas-surface-subtle: rgba(2, 6, 18, 0.36);
+  --atlas-surface-raised: rgba(14, 22, 39, 0.9);
+  --atlas-border: rgba(148, 163, 184, 0.13);
+  --atlas-border-subtle: rgba(148, 163, 184, 0.09);
+  --atlas-border-strong: rgba(148, 163, 184, 0.22);
+  color: #e8eef8;
+}
+/* A célula tem cor PRÓPRIA — um remendo de tema claro a escureceu para
+   `--atlas-text-secondary` supondo que o painel viraria claro junto. Não virou.
+   Duas verdades sobre a mesma célula, cada uma certa sozinha. */
+:root[data-theme="light"] .atlas-leads-table-panel td {
+  color: var(--atlas-text-secondary);
+}
 .atlas-leads-table-panel {
   overflow: hidden;
   border: 1px solid var(--atlas-border);
