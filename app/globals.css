@@ -6923,6 +6923,22 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 :root[data-theme="light"] .atlas-leads-table-panel {
   border-color: var(--atlas-border);
   background: var(--atlas-surface);
+  /* ── MEDIDO NA PRODUÇÃO EM 01/08/2026, DEPOIS DO DEPLOY ──────────────────
+     Eu clareei o fundo e ESQUECI a cor. A ilha era escura, então o texto lá
+     dentro herdava claro; com o fundo branco isso virou **branco sobre
+     branco** — 59 textos com contraste 1,00, entre eles os nomes das leads.
+     Troquei preto-no-preto por branco-no-branco, que é pior: o defeito
+     anterior ao menos aparecia na foto.
+
+     E não apareceu antes porque eu validei INJETANDO o CSS no DOM de uma
+     produção que ainda servia o código antigo — onde o texto já era escuro.
+     Injeção não é build: ela testa a regra nova contra o mundo velho. A régua
+     só disse a verdade quando mediu o CSS construído.
+
+     Herança carrega valor COMPUTADO, então não basta redeclarar token: a cor
+     precisa ser declarada aqui, no mesmo lugar que declara o fundo. Fundo e
+     cor são um par — quem mexe num tem de responder pelo outro. ── */
+  color: var(--atlas-text-primary);
 }
 :root[data-theme="light"] .atlas-leads-table-panel .atlas-pagination strong,
 :root[data-theme="light"] .atlas-leads-table-head strong {
