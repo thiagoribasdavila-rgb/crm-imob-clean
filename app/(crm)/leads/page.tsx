@@ -9,6 +9,7 @@ import {
   type VinculoDoCliente,
 } from "@/lib/crm/vinculo-do-cliente";
 import { CHAVES_DE_FAIXA, FAIXAS_DA_FILA, FAIXAS_SEM_PRACA } from "@/lib/atlas/triagem-da-fila";
+import { DISCARD_REASONS } from "@/lib/atlas/discard-reasons";
 import { supabase } from "@/lib/supabase";
 import { LIVE_PROFILE_SELECT, mapLegacyProfile, mapLegacyProject } from "@/lib/compat/legacy-v2";
 import { EmptyState } from "@/components/atlas/empty-state";
@@ -495,6 +496,23 @@ export default function LeadsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [transferTarget, setTransferTarget] = useState("");
   const [bulkStage, setBulkStage] = useState("");
+  /* ── DESCARTAR SEM TROCAR DE TELA ───────────────────────────────────────
+     MEDIDO em 01/08/2026: o descarte existia em UMA tela só, o Kanban.
+     Nenhuma outra chamava `/api/v1/pipeline`. Aqui, na lista onde estão as
+     473 leads sem primeiro contato, "perdido" era só um FILTRO e uma cor — e
+     a barra de lote diz ao corretor, literalmente, que fechar "continua uma a
+     uma, com a tela inteira na frente".
+
+     Uma a uma continua — fechar dispara conversão para a Meta e engano em
+     massa ali não tem desfazer. O que muda é não precisar sair da fila para
+     fazer isso 473 vezes.
+
+     Chama a MESMA rota canônica e usa a MESMA lista de motivos do Kanban.
+     Terceiro caminho de mudar etapa é o que este produto não pode ter: já
+     existe um cru na ficha do cliente, que grava `leads.status` sem motivo e
+     sem registrar movimento. */
+  const [descarte, setDescarte] = useState<{ leadId: string; leadName: string; fromStage: string; reasonKey: string; notes: string } | null>(null);
+  const [descartando, setDescartando] = useState(false);
   const [transferReason, setTransferReason] = useState("");
   const [transferring, setTransferring] = useState(false);
   const [notice, setNotice] = useState("");
@@ -1013,6 +1031,41 @@ export default function LeadsPage() {
    * CRM. Uma a uma seriam 174 telas abertas, e o que se perde aí não é tempo:
    * é a vontade de manter o CRM em dia, que não volta depois que se perde.
    */
+  async function confirmarDescarte() {
+    if (!descarte || !descarte.reasonKey || descartando) return;
+    const alvo = descarte;
+    setDescartando(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Sessão expirada. Entre novamente.");
+      const r = await fetch("/api/v1/pipeline", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          leadId: alvo.leadId,
+          stage: "perdido",
+          expectedFromStage: alvo.fromStage,
+          discardReason: { key: alvo.reasonKey, notes: alvo.notes.trim() },
+        }),
+      });
+      const payload = await r.json().catch(() => ({}));
+      /* A rota devolve 409 quando a etapa mudou entre ler e gravar. Isso NÃO é
+         erro do corretor: outra pessoa mexeu. A mensagem precisa dizer isso,
+         senão ele clica de novo achando que falhou. */
+      if (!r.ok) throw new Error(payload?.error?.message || "Não foi possível descartar esta lead.");
+      setDescarte(null);
+      /* Patch otimista na linha, como o resto desta tela faz: refazer a
+         consulta inteira para uma lead fecharia o trabalho em andamento. */
+      setItems((atuais) => atuais.map((l) => (l.id === alvo.leadId ? { ...l, status: "perdido" } : l)));
+      setNotice(`"${alvo.leadName}" foi descartada com motivo registrado.`);
+    } catch (erro) {
+      setNotice(erro instanceof Error ? erro.message : "Não foi possível descartar esta lead.");
+    } finally {
+      setDescartando(false);
+    }
+  }
+
   async function moverEtapaEmLote() {
     if (!bulkStage || selected.size === 0) return;
     try {
@@ -2197,6 +2250,25 @@ export default function LeadsPage() {
                         >
                           ✦ IA
                         </Link>
+                        {/* Só para lead ABERTA: oferecer descarte a quem já
+                            saiu do funil convida ao clique que não faz nada. */}
+                        {!["ganho", "perdido", "comprou_outro"].includes(lead.status ?? "novo") ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDescarte({
+                                leadId: lead.id,
+                                leadName: lead.name || "Lead sem nome",
+                                fromStage: lead.status ?? "novo",
+                                reasonKey: "",
+                                notes: "",
+                              })
+                            }
+                            aria-label={`Descartar ${lead.name || "lead"} com motivo classificado`}
+                          >
+                            🗑️ Descartar
+                          </button>
+                        ) : null}
                       </div>
                       {/* Marcar a próxima ação sem sair da fila. Antes disto, a
                           única forma de gravar `next_action_at` era agendar uma
@@ -2288,6 +2360,79 @@ export default function LeadsPage() {
             </div>
           ) : null}
         </section>
+      ) : null}
+
+      {/* ── PAINEL DE DESCARTE ─────────────────────────────────────────────
+          Mesma lista canônica de motivos do Kanban (`DISCARD_REASONS`) e mesma
+          rota. Duas listas de motivo seria a divergência que este repositório
+          mais paga.
+
+          O motivo é OBRIGATÓRIO — o botão de confirmar só habilita com um
+          escolhido. Não é burocracia: sem ele, "perdemos 139" não vira
+          nenhuma decisão, que foi exatamente o estado de 27 a 30/07. ── */}
+      {descarte ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:items-center"
+          role="presentation"
+          onClick={() => (descartando ? null : setDescarte(null))}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="descarte-titulo"
+            className="cc6-panel w-full max-w-lg p-5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="descarte-titulo" className="text-base font-semibold text-[var(--atlas-text-primary)]">
+              Descartar {descarte.leadName}
+            </h2>
+            <p className="mt-1 text-corpo text-[var(--atlas-text-secondary)]">
+              Escolha por que esta lead sai do funil. O motivo fica no histórico e é o que
+              transforma 139 descartes em uma decisão de mídia.
+            </p>
+
+            <div className="mt-4 max-h-64 space-y-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Motivo do descarte">
+              {DISCARD_REASONS.map((motivo) => (
+                <button
+                  key={motivo.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={descarte.reasonKey === motivo.key}
+                  onClick={() => setDescarte((atual) => (atual ? { ...atual, reasonKey: motivo.key } : atual))}
+                  className={`cc6-panel-quiet ${descarte.reasonKey === motivo.key ? "cc6-destaque" : "cc6-interativo"} flex w-full flex-col gap-0.5 px-4 py-3 text-left`}
+                  style={{ minHeight: 44 }}
+                >
+                  <span className="text-corpo font-semibold text-[var(--atlas-text-primary)]">{motivo.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <label className="mt-4 block text-rotulo text-[var(--atlas-text-secondary)]" htmlFor="descarte-notas">
+              Detalhe (opcional)
+            </label>
+            <textarea
+              id="descarte-notas"
+              value={descarte.notes}
+              onChange={(event) => setDescarte((atual) => (atual ? { ...atual, notes: event.target.value } : atual))}
+              rows={2}
+              className="mt-1 w-full rounded-xl border border-[var(--atlas-border)] bg-transparent p-2 text-corpo text-[var(--atlas-text-primary)]"
+            />
+
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button type="button" className="atlas-button-secondary" onClick={() => setDescarte(null)} disabled={descartando}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => void confirmarDescarte()}
+                disabled={!descarte.reasonKey || descartando}
+              >
+                {descartando ? "Descartando…" : "Confirmar descarte"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
