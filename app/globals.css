@@ -8346,6 +8346,32 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   font-variant-numeric: tabular-nums;
 }
 .cc6-hairline { border-top: 1px solid rgba(148, 163, 184, 0.12); }
+/* ── O CHIP QUE AGE PRECISA DE ALVO, MESMO SENDO PEQUENO ──────────────────
+   MEDIDO na producao em 01/08/2026, na ficha de um cliente real: 17 chips
+   INTERATIVOS com 25px de altura — e o exemplo e o pior possivel, o controle
+   que copia o telefone. E o gesto que o corretor mais usa, no menor alvo da
+   pagina.
+
+   A saida NAO e inchar o pilulo ate 44px: isso quebraria a densidade que faz
+   o chip existir. E estender a AREA DE TOQUE com um pseudo-elemento
+   transparente centrado, tecnica padrao para alvo pequeno por design. O chip
+   continua com 25px de tinta e passa a ter 44px de alvo.
+
+   So vale para chip que AGE (a/button). Chip que so rotula nao e alvo de nada
+   e nao deve capturar clique. ── */
+a.cc6-chip,
+button.cc6-chip { position: relative; }
+a.cc6-chip::after,
+button.cc6-chip::after {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 0;
+  translate: 0 -50%;
+  width: 100%;
+  min-width: 44px;
+  height: 44px;
+}
+
 .cc6-chip {
   display: inline-flex;
   align-items: center;
@@ -10424,7 +10450,9 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 36px;
+  /* 36px medidos na producao, em 14 links de navegacao usados o dia inteiro.
+     O v3 pede 44px em controle que muda o estado da tela — navegar muda. */
+  min-height: 44px;
   padding: 0 10px;
   border-radius: 10px;
   font-size: 13px;

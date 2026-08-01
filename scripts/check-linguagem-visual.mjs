@@ -228,6 +228,33 @@ for (const p of PRIMITIVAS_DE_BOTAO) {
   }
 }
 
+// ── 6. O CHIP QUE AGE TEM ALVO, MESMO SENDO PEQUENO ─────────────────────────
+/* Medido na produção, na ficha de um cliente: 17 chips INTERATIVOS com 25px —
+   e um deles é o controle que copia o telefone, o gesto mais usado do
+   corretor. A correção não incha o pílulo (isso mataria a densidade que o faz
+   existir): estende a área de toque com um pseudo-elemento centrado.
+
+   O portão procura o PSEUDO-ELEMENTO, não `min-height` no chip — cobrar
+   min-height aqui empurraria alguém a inchar o pílulo para passar. */
+const chipInterativo = css.match(/(a|button)\.cc6-chip::after\s*\{([^}]*)\}/);
+if (!chipInterativo) {
+  falhas.push("o chip interativo perdeu a área de toque estendida — 17 deles medem 25px de tinta e voltariam a ser alvo de 25px");
+} else if (!/height:\s*44px/.test(chipInterativo[2]) || !/position:\s*absolute/.test(chipInterativo[2])) {
+  falhas.push("a área de toque do chip existe mas não entrega 44px absolutos — confira `height` e `position`");
+} else {
+  ok.push("chip interativo: 25px de tinta, 44px de alvo");
+}
+
+const railLink = css.match(/\.atlas-rail-link\s*\{([^}]*)\}/);
+const alturaRail = railLink?.[1]?.match(/min-height:\s*(\d+)px/)?.[1];
+if (!alturaRail) {
+  falhas.push("`.atlas-rail-link` não declara min-height — são 14 links de navegação usados o dia inteiro");
+} else if (Number(alturaRail) < 44) {
+  falhas.push(`\`.atlas-rail-link\` voltou para ${alturaRail}px; navegar muda o estado da tela e o v3 pede 44px`);
+} else {
+  ok.push(`navegação lateral: alvo de ${alturaRail}px`);
+}
+
 // ── SAÍDA ───────────────────────────────────────────────────────────────────
 for (const o of ok) console.log(`  ok   ${o}`);
 for (const f of falhas) console.error(`  FALHA ${f}`);
