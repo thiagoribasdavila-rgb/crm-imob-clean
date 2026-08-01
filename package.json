@@ -334,6 +334,7 @@
     "contraste:check": "node scripts/check-contraste.mjs",
     "campo-legivel:check": "node scripts/check-campo-legivel.mjs",
     "projeto-supabase:check": "node --env-file-if-exists=.env.local scripts/check-projeto-supabase.mjs",
+    "saude-pode-dizer-nao:check": "node scripts/check-saude-pode-dizer-nao.mjs",
     "dono-da-lead:check": "node scripts/check-dono-da-lead.mjs",
     "vigias-vivos:check": "node --env-file-if-exists=.env.local scripts/check-vigias-vivos.mjs",
     "lead-360-regressoes:check": "node scripts/check-lead-360-regressoes.mjs",
