@@ -6898,31 +6898,60 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
    de tema fechado: toda regra que usa `var(--atlas-*)` — inclusive as gerais
    de `input`, `thead th` e borda — resolve para os valores escuros quando
    está dentro dela, sem `:not()` e sem lista para manter. ── */
+/* ── A ILHA ESCURA ERA A EXCEÇÃO, NÃO A REGRA ─────────────────────────────
+   Segunda medição, e ela derrubou a minha primeira correção.
+
+   Eu tinha transformado este painel em escopo de tema fechado — redeclarar os
+   tokens escuros aqui dentro. Levou as falhas de contraste da página de 291
+   para 217. Parecia progresso.
+
+   Aí medi o outro caminho: deixar o painel CLARO no tema claro. **291 para
+   10.** Não é diferença de ajuste; é diferença de tese.
+
+   O motivo aparece nos grupos que sobravam: `.atlas-badge`, `.atlas-lead-avatar`,
+   `.atlas-broker-name`, `.atlas-next-action`, `.cc6-chip` — todos com cor
+   ESCURA no tema claro, todos desenhados para fundo claro. O resto do sistema
+   já tinha decidido que este painel é claro. A ilha era o único lugar que não
+   sabia. Defender a exceção custava um remendo por família, para sempre.
+
+   Isto revoga a nota "SEM override de tema claro de propósito" que vivia perto
+   de `.atlas-pagination strong`: a decisão fazia sentido quando foi tomada — o
+   texto escuro sumia na ilha — mas o conserto certo era clarear a ilha, não
+   clarear o texto um a um.
+
+   A paginação volta ao token, senão fica claro sobre claro. ── */
 :root[data-theme="light"] .atlas-leads-table-panel {
-  /* DUAS famílias, porque o repositório tem duas para o mesmo fato:
-     `--atlas-texto-*` (português) e `--atlas-text-*` (inglês). O nome da lead
-     usa `--atlas-text-primary`; a primeira versão desta correção redeclarou só
-     a família portuguesa e não mudou nada. Enquanto as duas existirem, quem
-     abre escopo de tema tem de fechar as duas. */
-  --atlas-texto-forte: #e8eef8;
-  --atlas-texto-medio: #aab6ca;
-  --atlas-texto-fraco: #7a8799;
-  --atlas-text-primary: #e8eef8;
-  --atlas-text-secondary: #aab6ca;
-  --atlas-text-muted: #7a8799;
-  --atlas-surface: rgba(7, 12, 24, 0.82);
-  --atlas-surface-subtle: rgba(2, 6, 18, 0.36);
-  --atlas-surface-raised: rgba(14, 22, 39, 0.9);
-  --atlas-border: rgba(148, 163, 184, 0.13);
-  --atlas-border-subtle: rgba(148, 163, 184, 0.09);
-  --atlas-border-strong: rgba(148, 163, 184, 0.22);
-  color: #e8eef8;
+  border-color: var(--atlas-border);
+  background: var(--atlas-surface);
 }
-/* A célula tem cor PRÓPRIA — um remendo de tema claro a escureceu para
-   `--atlas-text-secondary` supondo que o painel viraria claro junto. Não virou.
-   Duas verdades sobre a mesma célula, cada uma certa sozinha. */
-:root[data-theme="light"] .atlas-leads-table-panel td {
+:root[data-theme="light"] .atlas-leads-table-panel .atlas-pagination strong,
+:root[data-theme="light"] .atlas-leads-table-head strong {
+  color: var(--atlas-text-primary);
+}
+/* As outras superfícies escuras da mesma página, medidas no mesmo passe:
+   o painel de filtros (2,43 em "Filtros"), a gaveta "Mais ferramentas" (2,30)
+   e o gatilho de busca da barra superior (2,56). Mesma doença, mesmo remédio. */
+:root[data-theme="light"] .atlas-leads-filter-panel,
+:root[data-theme="light"] .atlas-leads-tools > div {
+  border-color: var(--atlas-border);
+  background: var(--atlas-surface);
+}
+:root[data-theme="light"] .atlas-leads-tools summary,
+:root[data-theme="light"] .atlas-command-trigger {
   color: var(--atlas-text-secondary);
+}
+/* O rótulo "Buscar"/"Copiloto" é um <span> com cor própria (#94a3b8, cinza de
+   tema escuro) sobre a barra superior BRANCA: 2,56. Herdar não bastava — a
+   cor do pai perde para a regra do filho. */
+:root[data-theme="light"] .atlas-command-trigger span {
+  color: var(--atlas-text-secondary);
+}
+/* `.cc6-num.cc6-crit` fica em 4,47 sobre painel branco — falha por 0,03. O
+   tom vem de `--atlas-danger`, usado em toda parte; escurecer o token para
+   ganhar 0,03 num número seria mexer em tudo por causa de um. Escurece só
+   aqui, onde o número é grande e precisa ser lido de relance. */
+:root[data-theme="light"] .cc6-num.cc6-crit {
+  color: #9a3412;
 }
 .atlas-leads-table-panel {
   overflow: hidden;
@@ -10411,6 +10440,15 @@ button.cc6-chip::after {
  * claro do Kanban e dentro da ilha escura de Leads. Sem a exclusão, corrigir
  * uma tela estraga a outra — medido: Kanban 416→5, mas Leads 202→239.
  */
+/* ── A PREMISSA DESTAS EXCLUSÕES CAIU EM 01/08/2026 ────────────────────────
+   Todo `:not(.atlas-leads-table-panel *)` deste arquivo existe por um motivo
+   só: a ilha era escura, então clarear texto para o resto da página escondia
+   texto lá dentro. A ilha agora é CLARA no tema claro — medido, 291 falhas de
+   contraste na página para 1.
+
+   As exclusões não estão fazendo mal (a página foi medida com elas de pé), mas
+   são dívida: quem ler vai supor que a ilha ainda é escura. Removê-las é
+   trabalho de uma rodada com medição antes e depois, não de um `sed`. ── */
 :root[data-theme="light"] .cc6-warn:not(.atlas-leads-table-panel *) {
   color: #b45309;
 }
