@@ -7096,6 +7096,38 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   gap: 12px;
   flex-wrap: wrap;
 }
+/* "Anterior" e "Próxima" eram `<button>` sem classe do sistema: só um anel de
+   foco, nenhum tamanho. A altura saía do texto — cerca de 20px, o menor alvo de
+   uma lista de 489 leads, e o controle que mais se repete nela.
+
+   A regra vive no CONTÊINER porque é ele que sabe que aqueles filhos são
+   navegação. Pedir ao autor da tela que lembre de uma classe em cada botão é
+   pedir para o defeito voltar na próxima página que paginar. */
+.atlas-pagination-navegacao button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 12px;
+  color: var(--atlas-text-secondary);
+  background: transparent;
+  /* Sem `font-size` de propósito: o botão HERDA o tamanho do contêiner de
+     paginação. Declarar um aqui somaria mais uma decisão de tamanho ao arquivo
+     — e o portão da linguagem visual cobrou exatamente isso, com razão. */
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.atlas-pagination-navegacao button:hover:not(:disabled) {
+  color: var(--atlas-text-primary);
+  border-color: var(--atlas-border-strong);
+}
+.atlas-pagination-navegacao button:disabled { cursor: not-allowed; opacity: 0.45; }
+@media (prefers-reduced-motion: reduce) {
+  .atlas-pagination-navegacao button { transition: none; }
+}
 @media (max-width: 720px) {
   .atlas-pagination-tamanho select {
     flex: 0 1 auto;
@@ -8412,6 +8444,33 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
    e nao deve capturar clique. ── */
 a.cc6-chip,
 button.cc6-chip { position: relative; }
+/* Os mesmos PAPEIS de borda valem para o chip — o vocabulário é sobre o que a
+   borda significa, não sobre qual primitiva a carrega. Declarados aqui, e não
+   numa regra genérica, porque a limpeza de filetes do painel aninhado pesa
+   (0,2,0): um `.cc6-interativo` solto perderia para ela. Precisão vale mais
+   que economia de linhas quando a cascata decide. */
+/* `cc6-atencao` fecha o vocabulário de bordas com o terceiro estado semântico.
+   Os quatro papéis cobrem tudo que as bordas ad-hoc diziam:
+       cc6-destaque  acento   ·  o item escolhido
+       cc6-atencao   âmbar    ·  algo saiu da faixa
+       cc6-alerta    perigo   ·  algo quebrou
+       cc6-interativo(-acento) ·  responde ao ponteiro
+   Cor de estado sai de token, senão não vira com o tema — foi o defeito que
+   custou 194 textos ilegíveis nesta mesma sessão. */
+.cc6-chip.cc6-destaque { border-color: var(--atlas-accent); }
+.cc6-chip.cc6-atencao { border-color: var(--atlas-warning); }
+.cc6-chip.cc6-alerta { border-color: var(--atlas-danger); }
+.cc6-panel .cc6-panel-quiet.cc6-atencao { border-color: var(--atlas-warning); }
+
+.cc6-chip.cc6-interativo,
+.cc6-chip.cc6-interativo-acento { transition: border-color 0.2s ease; }
+.cc6-chip.cc6-interativo:hover { border-color: var(--atlas-border-strong); }
+.cc6-chip.cc6-interativo-acento:hover { border-color: var(--atlas-accent); }
+@media (prefers-reduced-motion: reduce) {
+  .cc6-chip.cc6-interativo,
+  .cc6-chip.cc6-interativo-acento { transition: none; }
+}
+
 a.cc6-chip::after,
 button.cc6-chip::after {
   content: "";

@@ -915,7 +915,7 @@ export default function AISettings() {
                         href={url}
                         target="_blank"
                         rel="noreferrer"
-                        className={`cc6-chip transition-colors hover:border-[color:var(--atlas-accent)] hover:text-[var(--atlas-texto-forte)] ${focusRing}`}
+ className={`cc6-chip cc6-interativo-acento hover:text-[var(--atlas-texto-forte)] ${focusRing}`}
                       >
                         fonte {index + 1}
                       </a>

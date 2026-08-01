@@ -137,7 +137,7 @@ export default function NovaCampanhaPage() {
               type="button"
               onClick={() => i <= etapa && setEtapa(i)}
               disabled={i > etapa}
-              className={`cc6-chip ${i === etapa ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!" : ""} disabled:opacity-40`}
+              className={`cc6-chip ${i === etapa ? "cc6-destaque text-[var(--atlas-texto-forte)]!" : ""} disabled:opacity-40`}
             >
               {i + 1}. {nome}
             </button>

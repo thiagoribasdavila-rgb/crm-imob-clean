@@ -962,7 +962,7 @@ export default function MarketingPage() {
                     role="tab"
                     aria-selected={dim === item.id}
                     onClick={() => setDim(item.id)}
-                    className={`cc6-chip transition-colors ${dim === item.id ? "border-[rgba(75,141,248,.4)]! text-[var(--atlas-accent)]" : "hover:text-[var(--atlas-texto-forte)]"}`}
+                    className={`cc6-chip cc6-interativo ${dim === item.id ? "cc6-destaque text-[var(--atlas-accent)]" : "hover:text-[var(--atlas-texto-forte)]"}`}
                   >
                     {item.label}
                   </button>
@@ -1330,7 +1330,7 @@ export default function MarketingPage() {
                         type="button"
                         onClick={() => { void copyTargetId(targetId); }}
                         title="Copiar o id do anúncio para agir na plataforma — este botão não pausa nada"
-                        className="cc6-chip cc6-num transition-colors hover:border-[rgba(75,141,248,.4)] hover:text-[var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+ className="cc6-chip cc6-interativo cc6-num hover:text-[var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
                       >
                         {copiedTargetId === targetId ? "id copiado" : `id ${targetId}`}
                       </button>
@@ -1388,7 +1388,7 @@ export default function MarketingPage() {
           <Link
             key={satellite.href}
             href={satellite.href}
-            className="cc6-chip transition-colors hover:border-[rgba(75,141,248,.4)] hover:text-[var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+ className="cc6-chip cc6-interativo hover:text-[var(--atlas-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
           >
             {satellite.label} →
           </Link>

@@ -350,7 +350,7 @@ export default function DistributionPage() {
               </p>
             ) : null}
             {aguardandoNosProjetos > 0 ? (
-              <a href="#fila-sem-responsavel" className="cc6-chip mt-2.5 inline-block hover:border-[rgba(148,163,184,0.35)]! hover:text-[var(--atlas-texto-forte)]!">
+              <a href="#fila-sem-responsavel" className="cc6-chip cc6-interativo mt-2.5 inline-block hover:text-[var(--atlas-texto-forte)]!">
                 Ir para a fila ↓
               </a>
             ) : null}
@@ -516,7 +516,7 @@ export default function DistributionPage() {
               <h2 id="distribution-order-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Ordem de recebimento</h2>
             </div>
             {!loading && weightedLoads.length > 1 ? (
-              <span className={`cc6-chip ${balanceGap > 1 ? "cc6-warn border-[rgba(245,181,68,0.28)]!" : ""}`} title="Diferença entre a maior e a menor carga ponderada dos corretores elegíveis neste projeto.">
+              <span className={`cc6-chip ${balanceGap > 1 ? "cc6-warn cc6-atencao" : ""}`} title="Diferença entre a maior e a menor carga ponderada dos corretores elegíveis neste projeto.">
                 desvio {balanceGap}
               </span>
             ) : null}

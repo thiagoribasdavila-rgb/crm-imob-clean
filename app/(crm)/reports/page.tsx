@@ -164,7 +164,7 @@ export default function ReportsPage() {
                   type="button"
                   aria-pressed={period === key}
                   onClick={() => setPeriod(key)}
-                  className={`cc6-chip cursor-pointer transition-colors ${period === key ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!" : "hover:border-[rgba(148,163,184,0.35)]! hover:text-[var(--atlas-texto-forte)]!"} ${focusRing}`}
+ className={`cc6-chip cc6-interativo cursor-pointer ${period === key ? "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!" : " hover:text-[var(--atlas-texto-forte)]!"} ${focusRing}`}
                 >
                   {PERIOD_LABEL[key]}
                 </button>

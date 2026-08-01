@@ -273,7 +273,7 @@ const inputClass =
   "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[rgba(15,24,48,0.55)] px-4 py-3 text-sm text-[var(--atlas-texto-forte)] outline-none transition placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] focus:bg-[rgba(75,141,248,0.05)]";
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)]";
-const chipButtonClass = `cc6-chip cursor-pointer transition-colors hover:border-[color:var(--atlas-accent)] hover:text-[var(--atlas-texto-forte)] disabled:cursor-default disabled:opacity-50 ${focusRing}`;
+const chipButtonClass = `cc6-chip cc6-interativo-acento cursor-pointer hover:text-[var(--atlas-texto-forte)] disabled:cursor-default disabled:opacity-50 ${focusRing}`;
 const summaryClass = `flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 rounded-xl p-4 [&::-webkit-details-marker]:hidden ${focusRing}`;
 const brl = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -1071,7 +1071,7 @@ export default function LeadDetailPage() {
                 </li>
               ) : (
                 <li
-                  className="cc6-chip cc6-warn border-[rgba(245,181,68,0.35)]"
+                  className="cc6-chip cc6-warn cc6-atencao"
                   title="Nenhuma interação registrada na timeline até agora."
                 >
                   sem contato registrado

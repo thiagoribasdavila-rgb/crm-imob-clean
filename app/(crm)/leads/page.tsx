@@ -1914,7 +1914,7 @@ export default function LeadsPage() {
                                   <button
                                     type="button"
                                     onClick={() => copiarContato(`${lead.id}:tel`, String(lead.phone))}
-                                    className={`cc6-chip cursor-pointer text-micro transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}
+ className={`cc6-chip cc6-interativo-acento cursor-pointer text-micro ${focusRing}`}
                                     title="Copiar telefone"
                                   >
                                     {copiado === `${lead.id}:tel` ? "copiado ✓" : "copiar tel"}
@@ -1924,7 +1924,7 @@ export default function LeadsPage() {
                                   <button
                                     type="button"
                                     onClick={() => copiarContato(`${lead.id}:mail`, String(lead.email))}
-                                    className={`cc6-chip cursor-pointer text-micro transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}
+ className={`cc6-chip cc6-interativo-acento cursor-pointer text-micro ${focusRing}`}
                                     title="Copiar e-mail"
                                   >
                                     {copiado === `${lead.id}:mail` ? "copiado ✓" : "copiar e-mail"}
