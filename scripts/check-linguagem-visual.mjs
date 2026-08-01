@@ -291,6 +291,44 @@ for (const p of PAPEIS) {
   }
 }
 
+// ── 8. QUANTOS TRATAMENTOS DE RÓTULO COEXISTEM ──────────────────────────────
+/* Medido em 01/08/2026: SEIS classes `*eyebrow*` no CSS. Mas o que a tela
+   RENDERIZA são quatro tratamentos, porque a regra do shell achata quatro delas
+   num só — e achata por ORDEM, com especificidade empatada em (0,3,0).
+
+   Vencedor por uso: `cc6-eyebrow`, 178 contra 54 somados. É ele o rótulo do v3.
+
+   A catraca conta as classes DECLARADAS, não os usos: classe nova de rótulo é o
+   jeito como esta divergência cresceu, uma de cada vez, cada uma parecendo
+   pequena. `atlas-eyebrow` e `atlas-page-eyebrow` continuam na conta de
+   propósito — elas têm `letter-spacing: 0` e `text-transform: none`, ou seja
+   NÃO são eyebrow, são texto normal com o nome errado. Renomear 37 sítios sem
+   navegador para medir seria trocar clareza por risco. */
+const TETO_CLASSES_EYEBROW = 6;
+const classesEyebrow = [...new Set((css.match(/^\.[a-z0-9-]*eyebrow[a-z0-9-]*/gm) ?? []))];
+if (classesEyebrow.length > TETO_CLASSES_EYEBROW) {
+  falhas.push(
+    `${classesEyebrow.length} classes de rótulo coexistem (teto ${TETO_CLASSES_EYEBROW}): ${classesEyebrow.join(", ")}. ` +
+      `O rótulo do v3 é \`cc6-eyebrow\` — 178 usos contra 54 somados das outras`,
+  );
+} else {
+  ok.push(`classes de rótulo: ${classesEyebrow.length} (teto ${TETO_CLASSES_EYEBROW}) · vencedora: cc6-eyebrow`);
+}
+
+/* E a que já foi achatada não pode voltar a declarar o que não renderiza.
+   `.atlas-empty-eyebrow` pedia 10px/700/.16em/uppercase e a tela entregava
+   12px/500/0/none. Código que descreve uma tela que ninguém vê foi o que fez
+   esta sessão concluir errado mais de uma vez. */
+const empty = css.match(/^\.atlas-empty-eyebrow\s*\{([^}]*)\}/m)?.[1] ?? "";
+if (/font-size|letter-spacing|text-transform|font-weight|color/.test(empty)) {
+  falhas.push(
+    "`.atlas-empty-eyebrow` voltou a declarar aparência que o shell sobrescreve — " +
+      "a regra de `[data-visual-system=\"atlas-core-v2\"]` empata em (0,3,0) e vence por ordem",
+  );
+} else {
+  ok.push("`.atlas-empty-eyebrow` declara só o que chega à tela");
+}
+
 // ── SAÍDA ───────────────────────────────────────────────────────────────────
 for (const o of ok) console.log(`  ok   ${o}`);
 for (const f of falhas) console.error(`  FALHA ${f}`);
