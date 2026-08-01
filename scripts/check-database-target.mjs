@@ -22,8 +22,14 @@ import { createClient } from "@supabase/supabase-js";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) {
-  console.error("ALVO DE BANCO: não avaliado — configure NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.");
-  process.exit(1);
+  console.error("ALVO DE BANCO: NÃO EXECUTADO — configure NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.");
+  /* Sai 2, não 1. O portão SABE que não pôde medir e já dizia isso na tela — mas
+     sinalizava com o código de REPROVADO. No CI (que não tem .env.local) isso
+     virava falso vermelho: em 01/08/2026 o job `validate` do PR #9 reprovou por
+     este motivo, com o código intacto. 2 é o código que `portoes-todos` lê como
+     NÃO EXECUTADO, e ele nunca conta isso como aprovação — é a diferença entre
+     "não sei" e "está errado". Mesmo tratamento de `cobertura-schema:check`. */
+  process.exit(2);
 }
 
 const client = createClient(url, key, { auth: { persistSession: false } });

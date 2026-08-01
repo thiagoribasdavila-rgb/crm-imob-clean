@@ -153,7 +153,14 @@ if (noAmbiente.estado === "ausente") {
     console.error(`\n❌ ${VARIAVEL} está correta em ${arquivoBom.caminho}, mas NÃO chegou ao processo.`);
     console.error("   O arquivo não foi carregado. Rode pelo script do package.json, que já passa");
     console.error(`   --env-file: npm run ai:pricing:check`);
-    process.exit(1);
+    /* 2 = NÃO EXECUTADO, não 1. Este ramo é exatamente "a tarifa ESTÁ certa no
+       arquivo, mas o processo não a recebeu" — ou seja, o portão não conseguiu
+       medir, e ele já dizia isso na tela. Sair 1 anunciava defeito onde havia
+       ausência de ambiente: em 01/08/2026 foi por isto que o job `validate` do
+       PR #9 ficou vermelho, com o código intacto. `portoes-todos` lê 2 como NÃO
+       EXECUTADO e nunca conta como aprovação. Mesmo tratamento de
+       `check-database-target.mjs` e `cobertura-schema:check`. */
+    process.exit(2);
   }
   console.error(`\n❌ ${VARIAVEL} ausente. Todo consumo de IA será gravado com custo NULO.`);
   console.error("   O painel de custos mostrará zero e parecerá saudável — não é.");
