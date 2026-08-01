@@ -5113,7 +5113,29 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   background: var(--atlas-accent);
 }
 .atlas-pipeline-column {
+  /* ── A COLUNA PRECISA DE TETO, E O CABEÇALHO JÁ SABIA DISSO ──────────────
+     MEDIDO na produção, viewport 1440×900:
+
+       quadro ............ 9 colunas de 271px, largura 2.538px  ✓ correto
+       rolagem lateral ... overflow-x: auto num contêiner de 1.104px  ✓ correto
+       ALTURA DE CADA .... 42.323px  ← 47 telas
+
+     A grade estica todas as colunas até a mais alta, e a mais alta renderiza os
+     240 cartões sem limite. O quadro está certo na horizontal e sem teto na
+     vertical: o corretor rola 49 telas para ver um funil.
+
+     A prova de que era para ser assim está três regras abaixo:
+     `.atlas-pipeline-column-header` é `position: sticky; top: 0` — cabeçalho
+     grudento numa coluna que nunca rolou. Ele foi escrito para esta rolagem,
+     que nunca existiu.
+
+     `calc(100vh - 22rem)` desconta o cabeçalho da página, os controles do
+     quadro e o rodapé. O piso de 560px preserva o `min-height` que já estava
+     aqui, para o quadro não colapsar em tela baixa. */
   min-height: 560px;
+  max-height: max(560px, calc(100vh - 22rem));
+  overflow-y: auto;
+  overscroll-behavior-block: contain;
   padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.065);
   border-radius: 16px;
