@@ -39,11 +39,29 @@ type PanelState =
   | { kind: "unavailable"; reason: string }
   | { kind: "ready"; campaigns: ReadyCampaign[]; proposals: ProposalItem[]; readyToActivate: boolean };
 
+/* Medido na produção em 01/08/2026, tema claro: o selo `pending` dava contraste
+   **1,67** (piso 4,5) — âmbar de tema escuro sobre painel branco.
+
+   A causa está visível no próprio mapa: METADE das entradas usava token
+   (`approved`, `rejected`, e essas viram com o tema) e metade tinha cor
+   cravada. Quem escreveu as duas primeiras sabia da regra; as outras duas
+   ficaram para trás e ninguém percebeu, porque no tema escuro as quatro
+   pareciam certas. */
 const STATUS_TONE: Record<string, string> = {
-  pending: "border-[rgba(251,191,36,0.4)] text-[#fbbf24]",
+  pending: "border-[rgba(245,181,68,0.4)] text-[var(--atlas-estado-atencao)]",
   approved: "border-[rgba(52,211,153,0.4)] text-[var(--atlas-estado-sucesso)]",
   rejected: "border-[rgba(251,113,133,0.4)] text-[var(--atlas-estado-perigo)]",
-  expired: "border-[rgba(148,163,184,0.3)] text-[#8b97ab]",
+  expired: "border-[rgba(148,163,184,0.3)] text-[var(--atlas-texto-fraco)]",
+};
+
+/* O selo mostrava `{p.status}` — a palavra do banco, em inglês, na tela de um
+   corretor brasileiro. "pending" não é informação para quem vende apartamento;
+   é o nome interno da coluna vazando para fora. */
+const STATUS_ROTULO: Record<string, string> = {
+  pending: "aguardando",
+  approved: "aprovada",
+  rejected: "recusada",
+  expired: "expirada",
 };
 
 async function authHeaders(): Promise<Record<string, string> | null> {
@@ -183,7 +201,7 @@ export function CampaignApprovalsPanel() {
                   {state.proposals.slice(0, 6).map((p) => (
                     <li key={p.id} className="flex items-center justify-between gap-3 rounded-[10px] border border-[rgba(148,163,184,0.08)] px-3 py-2">
                       <span className="min-w-0 truncate text-sm text-[#c3ccdb]">{p.title} <span className="text-[var(--atlas-texto-fraco)]">· {p.kind}</span></span>
-                      <span className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-micro uppercase tracking-[0.1em] ${STATUS_TONE[p.status] ?? STATUS_TONE.expired}`}>{p.status}</span>
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-micro uppercase tracking-[0.1em] ${STATUS_TONE[p.status] ?? STATUS_TONE.expired}`}>{STATUS_ROTULO[p.status] ?? p.status}</span>
                     </li>
                   ))}
                 </ul>
