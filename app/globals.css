@@ -11042,11 +11042,19 @@ input[type="radio"]:not([data-alvo-livre])::after {
      verdade sobre qual cinza é o cinza do produto. */
   --atlas-texto-forte: #0b1220;
   --atlas-texto-medio: #334155;
-  --atlas-texto-fraco: #64748b;
+  /* #64748b dava 4,76 sobre branco e **4,24 sobre `--atlas-surface-subtle`**
+     (#eef2f8) — medido na sala de comando em produção, 15 textos reprovando
+     por 0,26. O token passava no fundo mais comum e falhava no segundo mais
+     comum; testar contra um fundo só é como conferir metade da tela. #5a6577
+     dá 5,89 e 5,25. */
+  --atlas-texto-fraco: #5a6577;
   /* Estados escurecidos para manter contraste sobre fundo claro — o mesmo
      significado, legível nos dois temas. */
   --atlas-estado-perigo: #be123c;
-  --atlas-estado-atencao: #a16207;
+  /* #a16207 dava 4,38 sobre `--atlas-surface-subtle`. Mesma medição, mesmo
+     dia: o estado de ATENÇÃO é justamente o que precisa ser lido de relance.
+     #92400e dá 7,09 e 6,31. */
+  --atlas-estado-atencao: #92400e;
   --atlas-estado-sucesso: #047857;
 }
 
