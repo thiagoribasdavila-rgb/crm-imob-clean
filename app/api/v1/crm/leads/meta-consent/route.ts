@@ -139,14 +139,48 @@ export async function POST(request: NextRequest) {
     registradoPor: perfilId,
   });
 
-  const { error: erroGravacao } = await admin
+  /**
+   * ── "NÃO DEU ERRO" NÃO É "GRAVOU" ─────────────────────────────────────────
+   *
+   * MEDIDO em 2026-08-01, contra a base de produção:
+   *
+   *     PATCH /leads?id=eq.<id>&organization_id=eq.<org ERRADA>
+   *     → status 200 · 0 linhas afetadas · error: NENHUM
+   *
+   * O PostgREST não trata "o filtro não casou nada" como erro. Com os dois
+   * filtros abaixo, uma organização divergente devolveria sucesso sem gravar —
+   * e esta rota responderia `{ok:true}` para a tela, que mostraria
+   * "✕ Cliente não autorizou" sem existir registro nenhum.
+   *
+   * Consentimento é o pior campo possível para falhar em silêncio: ele é a
+   * PROVA de que alguém perguntou. Um "ok" sem linha gravada é o produto
+   * afirmando que a conversa aconteceu quando não há como saber.
+   *
+   * `.select("id")` faz o banco devolver o que mudou. Zero linhas vira resposta
+   * explícita, não silêncio.
+   *
+   * (Hoje o filtro casa — a leitura acima já exigiu a mesma organização e
+   * respondeu 404 se não achasse. Esta guarda existe para o dia em que aquela
+   * leitura mudar, e para que a mudança falhe alto.)
+   */
+  const { data: gravadas, error: erroGravacao } = await admin
     .from("leads")
     .update({ metadata })
     .eq("id", leadId)
-    .eq("organization_id", organizationId);
+    .eq("organization_id", organizationId)
+    .select("id");
 
   if (erroGravacao) {
     return apiError("SAVE_FAILED", "Não foi possível gravar o consentimento.", identity.meta, { status: 503 });
+  }
+
+  if (!gravadas || gravadas.length === 0) {
+    return apiError(
+      "SAVE_MATCHED_NOTHING",
+      "O consentimento NÃO foi registrado: nenhuma lead correspondeu ao filtro. Nada foi alterado — recarregue e tente de novo.",
+      identity.meta,
+      { status: 409 },
+    );
   }
 
   const atualizada = { ...lead, metadata };

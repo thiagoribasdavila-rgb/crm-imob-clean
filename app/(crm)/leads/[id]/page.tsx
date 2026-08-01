@@ -32,9 +32,7 @@ import {
 } from "@/components/crm/first-contact-quick-log";
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
 import { parseCommercialContextCorrectionTimeline } from "@/lib/atlas/commercial-context-timeline";
-import { MetaConsentControl } from "@/components/crm/meta-consent-control";
 import { ContactAttemptsBadge } from "@/components/crm/contact-attempts-badge";
-import { lerEstado } from "@/lib/crm/meta-consent";
 import { CompatibilidadeDoClientePanel } from "@/components/atlas/CompatibilidadeDoClientePanel";
 
 type LeadRow = {
@@ -806,9 +804,27 @@ export default function LeadDetailPage() {
             toda lead sem resposta. Fica em `order-[-2]`, junto do "o que
             perguntar" — que é exatamente quando o corretor descobre a resposta:
             durante a conversa, não antes dela. */}
-        <section className="order-[-2] atlas-lead-consentimento" aria-label="Consentimento e tentativas de contato">
+        {/* ── A PERGUNTA DE CONSENTIMENTO SAIU DA FICHA ────────────────────
+            Decisão do dono do produto, e ela está correta: a lead que vem de um
+            formulário da Meta JÁ traz consentimento — o formulário mostra a
+            política e o envio é voluntário. Pedir de novo era pedir ao corretor
+            que atestasse algo que ele não presenciou.
+
+            O produto já sabia disso: `consentimentoDaFonte()` marca `concedido`
+            com origem `formulario_meta` na ingestão, quando a fonte tem a
+            cláusula. A pergunta só aparecia para quem NÃO veio de lá — como a
+            lead que usei no teste, importada de `relatiro arvo.xlsx`.
+
+            O QUE ISSO MUDA, medido: lead de origem Meta continua enviável (já
+            nasce `concedido`). Lead de outra origem fica `nao_perguntado`, e
+            `faltaParaEnviar()` a mantém FORA da CAPI — que é o comportamento
+            conservador certo: sem anúncio, não houve base para o envio.
+
+            A rota `/api/v1/crm/leads/meta-consent` FICA. Ela deixa de ser o
+            caminho do dia a dia e passa a ser o de correção — o único jeito de
+            registrar ou desfazer um consentimento fora do fluxo automático. */}
+        <section className="order-[-2] atlas-lead-consentimento" aria-label="Tentativas de contato">
           <ContactAttemptsBadge leadId={String(lead.id)} />
-          <MetaConsentControl leadId={String(lead.id)} estadoInicial={lerEstado(lead.metadata)} />
         </section>
 
         {/* ── A ORDEM DA FICHA SEGUE O QUE O CORRETOR FAZ, NÃO O ORGANOGRAMA

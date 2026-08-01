@@ -129,10 +129,48 @@ test("a tela diz a consequência de não registrar", () => {
   assert.match(painel, /não volta para otimizar a campanha/);
 });
 
-test("o controle está na tela da lead, junto das ações", () => {
+test("a ficha NÃO pergunta consentimento — a lead da Meta já vem com ele", () => {
+  /**
+   * ── REAPONTADO EM 2026-08-01, POR DECISÃO DO DONO DO PRODUTO ─────────────
+   *
+   * A asserção anterior exigia `<MetaConsentControl` na ficha. Ela existia por
+   * um bom motivo — 217 leads sem consentimento registrado — e foi derrubada
+   * por um fato melhor: **a lead que vem de um formulário da Meta já traz
+   * consentimento.** O formulário mostra a política e o envio é voluntário.
+   * Pedir de novo era pedir ao corretor que atestasse algo que ele não
+   * presenciou.
+   *
+   * O produto já sabia disso antes da tela: `consentimentoDaFonte()` marca
+   * `concedido` com origem `formulario_meta` na ingestão, quando a fonte tem a
+   * cláusula de compartilhamento. A pergunta só aparecia para quem NÃO veio de
+   * lá — como as leads importadas de planilha.
+   *
+   * Este contrato inverte, e sai MAIS FORTE: além de garantir que a ficha não
+   * pergunta, passa a exigir que o caminho automático continue existindo. Sem
+   * a segunda metade, alguém poderia remover `consentimentoDaFonte` e a lead da
+   * Meta deixaria de ser enviável sem ninguém perceber.
+   */
   const pagina = ler("app", "(crm)", "leads", "[id]", "page.tsx");
-  assert.match(pagina, /<MetaConsentControl/);
-  assert.match(pagina, /estadoInicial=\{lerEstado\(lead\.metadata\)\}/);
+  assert.doesNotMatch(pagina, /<MetaConsentControl/,
+    "a ficha voltou a perguntar consentimento — a lead da Meta já vem com ele");
+
+  const fonte = ler("lib", "crm", "meta-consent.ts");
+  assert.match(fonte, /export function consentimentoDaFonte/,
+    "o caminho automático sumiu: sem ele, nenhuma lead nasce com consentimento");
+  assert.match(fonte, /estado: temClausula \? "concedido"/,
+    "a fonte com cláusula precisa continuar marcando `concedido` na ingestão");
+  assert.match(fonte, /origem: temClausula \? "formulario_meta"/,
+    "a origem precisa registrar QUE foi o formulário — é a prova da base legal");
+});
+
+test("a rota de correção continua existindo, fora do caminho do dia a dia", () => {
+  // Tirar a pergunta da ficha não pode significar ficar sem jeito nenhum de
+  // registrar ou desfazer consentimento — para lead que não veio de anúncio,
+  // ou para corrigir um registro errado.
+  const rota = ler("app", "api", "v1", "crm", "leads", "meta-consent", "route.ts");
+  assert.match(rota, /export async function POST/);
+  assert.match(rota, /SAVE_MATCHED_NOTHING/,
+    "a rota precisa recusar quando o update não casa linha nenhuma");
 });
 
 // ── Assertivo para o corretor: só pede o que falta ─────────────────────────
