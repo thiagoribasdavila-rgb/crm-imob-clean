@@ -44,6 +44,10 @@
  * Módulo puro: sem banco, sem rede, sem `server-only`.
  */
 
+/* Import RELATIVO com extensao: os modulos puros deste repositorio rodam sob
+   `node --test`, que nao conhece o alias `@/`. */
+import { pareceIdentificador } from "./fila-de-decisoes.ts";
+
 export type LeadParaRedistribuir = {
   id: string;
   nome: string | null;
@@ -103,6 +107,18 @@ export const ATRASO_MINIMO_PARA_RECOMENDAR_MIN = 360;
 export const TETO_DE_RECOMENDACOES = 20;
 
 /**
+ * Nome de gente, ou a razão de não haver — nunca um identificador.
+ *
+ * Reusa `pareceIdentificador` em vez de reescrever a checagem: a mesma regra
+ * escrita em dois lugares é a classe de defeito que este repositório mais
+ * pagou, e aqui ela decidiria o que uma pessoa lê.
+ */
+function nomeLegivel(nome: string | null | undefined, semNome: string): string {
+  const n = (nome ?? "").trim();
+  return n && !pareceIdentificador(n) ? n : semNome;
+}
+
+/**
  * Decide, para cada lead abandonada, para quem ela iria — e por quê.
  *
  * Critério de destino, nesta ordem:
@@ -129,7 +145,7 @@ export function recomendarRedistribuicao(
   if (corretores.length === 1) {
     return {
       recomendacoes: [], foraDoTeto: 0,
-      porqueVazio: `Apenas 1 corretor ativo (${corretores[0].nome || corretores[0].brokerId}) — redistribuir devolveria a lead para a mesma pessoa.`,
+      porqueVazio: `Apenas 1 corretor ativo (${nomeLegivel(corretores[0].nome, "sem nome cadastrado")}) — redistribuir devolveria a lead para a mesma pessoa.`,
     };
   }
 
@@ -164,7 +180,12 @@ export function recomendarRedistribuicao(
       paraQuem: destino.brokerId,
       paraQuemNome: destino.nome,
       atrasoMin: lead.atrasoMin,
-      recomendacao: `Passar a lead ${lead.nome || lead.id} para ${destino.nome || destino.brokerId}: ${horas}h sem primeiro contato.`,
+      /* `nome || id` entregava o UUID para dentro de uma frase que uma pessoa
+         lê. Medido na linha real: *"Passar a lead Tatiane Camargo para
+         240a6bc5-5163-42ab-9d0f-729c7d0b0d35"*. Um identificador ali não
+         informa nada e ainda parece defeito de sistema — enquanto "sem nome
+         cadastrado" é acionável: manda alguém completar o perfil. */
+      recomendacao: `Passar a lead ${nomeLegivel(lead.nome, "lead sem nome")} para ${nomeLegivel(destino.nome, "corretor sem nome cadastrado")}: ${horas}h sem primeiro contato.`,
       porque: `Destino com ${destino.semPrimeiroContato} lead(s) sem primeiro contato e ${destino.emAberto} em aberto — a menor fila de não-atendidas entre ${candidatos.length} corretor(es) elegíveis.`,
     });
 

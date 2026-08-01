@@ -58,6 +58,7 @@ const OfertaAtivaDoAcervoPanel = dynamic(() => import("@/components/atlas/Oferta
 const ProactiveNudgesPanel = dynamic(() => import("@/components/atlas/ProactiveNudgesPanel").then((m) => m.ProactiveNudgesPanel), { loading: carregando });
 const VendasSemValorPanel = dynamic(() => import("@/components/atlas/VendasSemValorPanel").then((m) => m.VendasSemValorPanel), { loading: carregando });
 import { SalaDeComandoPanel } from "@/components/atlas/SalaDeComandoPanel";
+import { FilaDeDecisoesPanel } from "@/components/atlas/FilaDeDecisoesPanel";
 import {
   AtlasBadge,
   AtlasEmpty,
@@ -3166,6 +3167,20 @@ export default function CommandCenterPage() {
 
         A reordenacao da tela inteira e trabalho proprio, ainda nao feito.
       */}
+      {/* ── A FILA DE DECISOES VEM ANTES DO PAINEL DE LEITURA ─────────────
+          Medido em 01/08/2026: a IA tinha 20 redistribuicoes preparadas em
+          `ai_shadow_decisions` (retido=true, executado=false,
+          decisao_humana=null) e NENHUMA tela lia a tabela. O modo sombra grava
+          a propria condicao de saida — "olhe a comparacao recomendacao x
+          decisao x resultado" — e sem uma porta que colete a decisao humana
+          essa comparacao nunca teria um caso. Era laco aberto, nao cautela.
+
+          Fica ACIMA da sala de comando de proposito: o que exige assinatura
+          vem antes do que informa. E a regra de hierarquia do padrao v3. ── */}
+      <section aria-label="Decisoes preparadas pela inteligencia">
+        <FilaDeDecisoesPanel />
+      </section>
+
       <section aria-label="Sala de comando">
         <SalaDeComandoPanel />
       </section>

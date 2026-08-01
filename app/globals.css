@@ -10661,3 +10661,63 @@ input[type="radio"]:not([data-alvo-livre])::after {
   --atlas-estado-atencao: #a16207;
   --atlas-estado-sucesso: #047857;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FILA DE DECISÕES — a primeira superfície escrita na linguagem v3.
+   Estrutura da v3: faixa de severidade à esquerda, glifo de emoji como
+   âncora de leitura, e o gesto com rótulo que diz a consequência.
+   Zero cor cravada: tudo sai dos tokens, senão o painel não vira com o tema.
+   ══════════════════════════════════════════════════════════════════════════ */
+.atlas-fila-decisoes { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+.atlas-fila-decisoes-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.atlas-fila-decisoes-topo h2 {
+  margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .04em;
+  color: var(--atlas-text-primary); display: flex; align-items: center; gap: 8px;
+}
+.atlas-fila-decisoes-contagem { font-size: 11px; letter-spacing: .08em; color: var(--atlas-text-secondary); font-variant-numeric: tabular-nums; }
+.atlas-fila-decisoes-vazio,
+.atlas-fila-decisoes-erro,
+.atlas-fila-decisoes-recado { margin: 0; font-size: 13px; line-height: 1.55; color: var(--atlas-text-secondary); }
+.atlas-fila-decisoes-erro { color: var(--atlas-danger); }
+.atlas-fila-decisoes-recado {
+  color: var(--atlas-text-primary); border: 1px solid var(--atlas-border-subtle);
+  border-radius: 12px; padding: 10px 12px; background: var(--atlas-surface-subtle);
+}
+.atlas-fila-decisoes-retry {
+  background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
+  color: var(--atlas-accent); text-decoration: underline;
+}
+.atlas-fila-decisoes-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.atlas-fila-decisao {
+  display: grid; grid-template-columns: 3px minmax(0, 1fr) minmax(0, auto);
+  gap: 12px; align-items: center;
+  border: 1px solid var(--atlas-border-subtle); border-radius: 14px;
+  background: var(--atlas-surface-subtle); padding: 12px 14px 12px 0; overflow: hidden;
+}
+.atlas-fila-decisao-faixa { align-self: stretch; background: var(--atlas-warning); }
+.atlas-fila-decisao[data-travada="true"] .atlas-fila-decisao-faixa { background: var(--atlas-border-strong); }
+.atlas-fila-decisao-corpo { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.atlas-fila-decisao-frase { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--atlas-text-primary); font-weight: 500; }
+.atlas-fila-decisao-porque { margin: 0; font-size: 12px; line-height: 1.5; color: var(--atlas-text-secondary); }
+.atlas-fila-decisao-meta { margin: 0; font-size: 11px; color: var(--atlas-text-tertiary); font-variant-numeric: tabular-nums; }
+.atlas-fila-decisao-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.atlas-fila-decisao-travada { margin: 0; font-size: 11.5px; color: var(--atlas-text-tertiary); max-width: 22ch; }
+
+/* Alvo de 44px: estes botões mudam o dono de uma lead — erro de clique aqui
+   custa uma conversa com o corretor errado. */
+.atlas-fila-decisao-sim,
+.atlas-fila-decisao-nao {
+  min-height: 44px; border-radius: 12px; padding: 0 16px; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 7px;
+  transition: background .15s, border-color .15s;
+}
+.atlas-fila-decisao-sim { background: var(--atlas-accent); color: var(--atlas-texto-sobre-acento); border: 0; }
+.atlas-fila-decisao-sim:hover:not(:disabled) { background: var(--atlas-accent-hover); }
+.atlas-fila-decisao-nao { background: transparent; color: var(--atlas-text-secondary); border: 1px solid var(--atlas-border); }
+.atlas-fila-decisao-nao:hover:not(:disabled) { color: var(--atlas-text-primary); border-color: var(--atlas-border-strong); }
+.atlas-fila-decisao-sim:disabled,
+.atlas-fila-decisao-nao:disabled { cursor: progress; opacity: .6; }
+@media (prefers-reduced-motion: reduce) {
+  .atlas-fila-decisao-sim, .atlas-fila-decisao-nao { transition: none; }
+}

@@ -131,6 +131,32 @@ test("a recomendação carrega nome, destino e o tamanho do atraso em horas", ()
   assert.match(r.recomendacoes[0].recomendacao, /12h sem primeiro contato/);
 });
 
+test("destino SEM NOME não vaza o identificador para dentro da frase", () => {
+  // Nasceu de uma linha REAL de `ai_shadow_decisions` em 01/08/2026:
+  //   "Passar a lead Tatiane Camargo para 240a6bc5-5163-42ab-9d0f-729c7d0b0d35"
+  // O `nome || brokerId` entregava o UUID quando o perfil não tinha nome. Um
+  // identificador ali não informa nada e parece defeito de sistema; "sem nome
+  // cadastrado" é acionável.
+  //
+  // As 14 asserções anteriores passaram sem notar esta mudança — nenhuma
+  // exercitava nome nulo. Verde que não cobre o caminho não prova nada sobre ele.
+  const semNome = { brokerId: "240a6bc5-5163-42ab-9d0f-729c7d0b0d35", nome: null, emAberto: 0, semPrimeiroContato: 0 };
+  const r = recomendarRedistribuicao([lead("l1", 720, "z")], [semNome, corretor("b", 9)]);
+  const frase = r.recomendacoes[0].recomendacao;
+  assert.equal(frase.includes("240a6bc5"), false, "o identificador do destino vazou para a frase");
+  assert.match(frase, /sem nome cadastrado/);
+  // E o destino REAL continua sendo gravado no campo estruturado — a frase é
+  // apresentação, o `paraQuem` é o dado.
+  assert.equal(r.recomendacoes[0].paraQuem, "240a6bc5-5163-42ab-9d0f-729c7d0b0d35");
+});
+
+test("lead sem nome também não vira UUID na frase", () => {
+  const semNome = { id: "2562eea4-4800-41b0-83b9-11f9e933fc1a", nome: null, donoAtual: "z", atrasoMin: 720, origem: null };
+  const r = recomendarRedistribuicao([semNome], [corretor("a", 0, 0, "Ana"), corretor("b", 9)]);
+  assert.equal(r.recomendacoes[0].recomendacao.includes("2562eea4"), false);
+  assert.match(r.recomendacoes[0].recomendacao, /lead sem nome/);
+});
+
 test("o `porque` explica a escolha com número, não com adjetivo", () => {
   const r = recomendarRedistribuicao([lead("l1", 999, "z")], [corretor("a", 2, 40), corretor("b", 9)]);
   assert.match(r.recomendacoes[0].porque, /2 lead\(s\) sem primeiro contato e 40 em aberto/);
