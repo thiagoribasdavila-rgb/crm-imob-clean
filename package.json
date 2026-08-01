@@ -334,6 +334,7 @@
     "contraste:check": "node scripts/check-contraste.mjs",
     "lead-360-regressoes:check": "node scripts/check-lead-360-regressoes.mjs",
     "linguagem-visual:check": "node scripts/check-linguagem-visual.mjs",
+    "asercao-fraca:check": "node scripts/check-asercao-fraca.mjs",
     "cobertura-schema:check": "node --env-file-if-exists=.env.local scripts/check-cobertura-de-schema.mjs"
   },
   "dependencies": {

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { familiaDeclara, mediaAlcanca } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-029-navigation-progressive-loading.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -46,8 +47,26 @@ const checks = [
   ["Status de rota é único e acessível", progressiveLoading.includes('role="status"') && progressiveLoading.includes('aria-live="polite"') && progressiveLoading.includes('aria-busy="true"') && config.accessibility.singleRouteLiveStatus === true],
   ["Skeletons permanecem silenciosos", atlasUi.includes('aria-hidden="true"') && progressiveLoading.includes('aria-hidden="true"') && config.accessibility.skeletonsHiddenFromAssistiveTechnology === true],
   ["Carregamento local informa ocupação sem criar região viva repetida", localLoading.includes('role="group"') && localLoading.includes('aria-busy="true"') && localLoading.includes('data-loading-priority="detail"') && !localLoading.includes('role="status"') && config.accessibility.repeatedLocalLiveRegionsRemoved === true],
-  ["Geometria mínima protege o layout", styles.includes(".atlas-loading-essential") && styles.includes("min-height: 188px") && styles.includes(".atlas-loading-summary") && styles.includes("min-height: 144px") && styles.includes(".atlas-loading-detail") && styles.includes("min-height: 420px")],
-  ["Entrada visual respeita movimento reduzido", styles.includes("@keyframes atlas-loading-reveal") && styles.includes(".atlas-loading-stage,") && config.accessibility.reducedMotionRespected === true],
+  ["Geometria mínima protege o layout",
+    /* Antes: seis `includes` alternando classe e altura, todos SOLTOS. A
+       asserção passaria com as três alturas em regras que não têm relação
+       nenhuma com as três classes — e nada garantia o pareamento.
+
+       Agora cada altura é cobrada DENTRO da regra da sua classe. Os valores
+       existem para reservar o espaço do conteúdo antes de ele chegar; trocar
+       um pelo outro devolveria o pulo de layout que a fase veio corrigir. */
+    [[".atlas-loading-essential", 188], [".atlas-loading-summary", 144], [".atlas-loading-detail", 420]]
+      .every(([classe, altura]) => familiaDeclara(styles, classe, "min-height", `${altura}px`))],
+  ["Entrada visual respeita movimento reduzido",
+    /* `.atlas-loading-stage,` era conferido como TEXTO, com a vírgula — ou
+       seja, dependia de a classe estar numa lista e não sozinha. Formatar o
+       CSS quebraria a asserção sem mudar comportamento nenhum.
+
+       O que importa é: existe a animação, e existe regra de movimento reduzido
+       que ALCANÇA a família. É isso que se mede. */
+    styles.includes("@keyframes atlas-loading-reveal")
+    && mediaAlcanca(styles, "prefers-reduced-motion: reduce", ".atlas-loading")
+    && config.accessibility.reducedMotionRespected === true],
   ["Shell e ação contextual permanecem fora do fallback", crmLayout.includes("<AppShell>{children}</AppShell>") && appShell.includes("<Topbar") && appShell.includes("{children}") && topbar.includes("<AtlasActionLink") && config.progressiveContract.persistentTopbarActionAvailable === true],
   ["Navegação mantém retorno imediato", appShell.includes("<NavigationPerformance") && navigationPerformance.includes('role="status"') && config.progressiveContract.routeFeedbackAvailable === true],
   ["Linha de base de sinais de carregamento permanece coberta", pagesWithClientLoadSignals >= config.structuralBaseline.pagesWithClientLoadSignals && pagesWithLocalFeedbackSignals >= config.structuralBaseline.pagesWithLocalFeedbackSignals && sharedLocalLoadingConsumers >= config.structuralBaseline.sharedLocalLoadingConsumers],
