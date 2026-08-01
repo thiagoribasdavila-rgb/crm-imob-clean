@@ -3373,49 +3373,23 @@ export default function CommandCenterPage() {
         {/* Bloco de menor valor decisório da tela: perde as até 10 bordas, mas MANTÉM
             a grade (empilhar em coluna única faria a régua virar a lista mais alta da
             página) e a hairline de topo que a separa da faixa de telemetria. Os itens
-            passam a ser <li> de verdade, então a AT volta a anunciar "lista de N". */}
-        <nav aria-label="Régua de módulos" className="mt-3 border-t border-white/[.06] pt-3">
-          {moduleHealth.length ? (
-            <ul className="grid gap-x-4 sm:grid-cols-2 xl:grid-cols-5">
-              {moduleHealth.map((module) => (
-                <li key={module.id}>
-                  <Link
-                    href={module.href}
-                    title={`${module.label}: ${module.detail}`}
-                    className="flex min-h-11 items-center gap-2.5 rounded-lg px-2 transition-colors hover:bg-white/[.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                        module.state === "operational"
-                          ? "bg-[var(--atlas-success)]"
-                          : module.state === "degraded"
-                            ? "bg-[var(--atlas-warning)]"
-                            : "bg-[var(--atlas-danger)]"
-                      }`}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-medium text-white">
-                        {module.label}
-                      </span>
-                      <span className="block truncate text-[10px] text-slate-500">
-                        {module.detail}
-                      </span>
-                    </span>
-                    <span className="cc6-num shrink-0 text-xs font-semibold text-slate-300">
-                      {module.count ?? "—"}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-slate-500">
-              Régua de módulos indisponível — restabeleça a conexão para voltar a navegar com
-              contagens e estado de saúde.
-            </p>
-          )}
-        </nav>
+        {/* ── A RÉGUA DE MÓDULOS SAIU: ERA O MESMO CONTEÚDO DO BLOCO SEGUINTE ──
+        
+            MEDIDO na produção, dois blocos ADJACENTES listando os mesmos módulos
+            com os mesmos números:
+        
+              régua (179px)                 saúde operacional (258px)
+              Leads · carteira · 482        Leads 482 · carteira · [Novo lead]
+              Pipeline · funil · 482        Pipeline 482 · funil · [Abrir prioridades]
+              Tarefas e agenda              Tarefas e agenda 7 · [Nova tarefa]
+              Clientes 360 · 482            Clientes 360 482 · [Localizar lead]
+        
+            O segundo faz tudo o que o primeiro fazia E leva a ação junto. A régua
+            era leitura pura — 179px para repetir o que vinha 190px abaixo.
+        
+            O resto desta faixa (latência por grupo, o anel e as duas sparklines)
+            FICA: aquilo o bloco de saúde não mostra. Saiu a repetição, não a
+            telemetria. */}
         </>
         )}
       </section>
