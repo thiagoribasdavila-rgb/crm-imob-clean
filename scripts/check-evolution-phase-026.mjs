@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import { temAlvoDeToque, mediaAlcanca, regrasQueCitam } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-026-navigation-visual-hierarchy.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -80,8 +81,47 @@ const checks = [
   // `pointer: coarse`, porque 44px no mouse só desperdiça altura).
   ["Grupo atual recebe marcador visual", styles.includes('.atlas-nav-group[data-current="true"] > .atlas-rail-group-label') && config.visualPriority.currentGroupIsMarked === true],
   ["Ícones possuem prioridade visual distinta", styles.includes(".atlas-rail-icon") && styles.includes('.atlas-rail-link[data-active="true"] .atlas-rail-icon')],
-  ["Topbar prioriza destino sobre contexto", styles.includes(".atlas-topbar-location") && styles.includes("font-size: 13px") && styles.includes(".atlas-topbar-context strong")],
-  ["Ações interativas preservam 44 pixels", styles.includes("@media (pointer: coarse)") && styles.includes("min-height: 44px") && styles.includes("height: 44px") && config.interactionTargets.favoriteActionMinimumPx === 44],
+  ["Topbar prioriza destino sobre contexto",
+    /* ── A FRASE VIROU UMA COMPARAÇÃO, QUE É O QUE ELA SEMPRE AFIRMOU ───────
+       Antes: `includes(".atlas-topbar-location") && includes("font-size: 13px")
+       && includes(".atlas-topbar-context strong")` — três buscas soltas num
+       arquivo de 10.960 linhas.
+
+       Medido em 01/08/2026 ao reapontar: `.atlas-topbar-location` existe e NÃO
+       declara `font-size: 13px`. O 13px mora em `.atlas-topbar-section`. Ou
+       seja, a asserção passava havia tempo com a propriedade que ela nomeava
+       AUSENTE — bastava o texto existir em outra regra qualquer.
+
+       "Prioriza destino sobre contexto" é, literalmente, uma comparação de
+       tamanho entre dois elementos. Agora é isso que se mede: o destino tem de
+       ser MAIOR que o contexto. Medido hoje: 13px contra 11px. */
+    (() => {
+      const tamanho = (prefixo) => {
+        const valores = regrasQueCitam(styles, prefixo)
+          .flatMap(({ corpo }) => [...corpo.matchAll(/font-size:\s*(\d+)px/g)].map((m) => Number(m[1])));
+        return valores.length ? Math.max(...valores) : null;
+      };
+      const destino = tamanho(".atlas-topbar-section");
+      const contexto = tamanho(".atlas-topbar-context");
+      return destino !== null && contexto !== null && destino > contexto;
+    })()],
+  ["Ações interativas preservam 44 pixels",
+    /* Antes: `includes("@media (pointer: coarse)") && includes("min-height:
+       44px") && includes("height: 44px")`. As três strings existem no arquivo
+       — 45 vezes só a primeira delas — e nenhuma prova relação com nada.
+
+       Medido ao reapontar: o bloco de ponteiro grosso alcança
+       `.atlas-rail-link` e `.atlas-rail-hint` (a navegação), não a topbar; e a
+       própria `.atlas-topbar` tem `height: 76px`. As duas propriedades VALEM,
+       só que em lugares diferentes dos que a asserção nomeava.
+
+       Agora cobra as duas onde elas moram, e o `44` de referência sai do
+       config em vez de ser digitado aqui — número repetido em dois arquivos é
+       a próxima divergência. */
+    mediaAlcanca(styles, "pointer: coarse", ".atlas-rail")
+    && temAlvoDeToque(styles, ".atlas-rail", config.interactionTargets.favoriteActionMinimumPx)
+    && temAlvoDeToque(styles, ".atlas-topbar", config.interactionTargets.favoriteActionMinimumPx)
+    && config.interactionTargets.favoriteActionMinimumPx === 44],
   ["Menu recolhido recentraliza o destino", styles.includes('.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-rail-link') && styles.includes("justify-content: center")],
   // Catálogo podado na fonte de propósito (commit e20f8931 "navegação podada na fonte") + poda 2026-07-20/21: /command-center consolida Início+Command Center e os grupos (ai)/(autonomous) foram quarentenados. mobilePrimary segue 4.
   //

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { familiaDeclara } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-034-navigation-mobile-workspace.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -23,7 +24,14 @@ const checks = [
   ["Dock distribui dois destinos, ação e dois destinos", mobileDock.includes("items.slice(0, 2)") && mobileDock.includes("items.slice(2)") && mobileDock.includes('data-primary="true"') && config.mobileContract.contextualActionPosition === 3],
   ["Ação central possui nome acessível completo", mobileDock.includes('aria-label={`Ação rápida: ${primaryAction.label}`}') && mobileDock.includes("title={primaryAction.label}")],
   ["Destinos continuam semânticos e identificam o atual", mobileDock.includes("<nav") && mobileDock.includes("<Link") && mobileDock.includes("aria-current={active ? \"page\" : undefined}")],
-  ["Topbar remove somente a ação duplicada", styles.includes('[data-mobile-layout="thumb-first"] .atlas-quick-create') && styles.includes("display: none") && topbar.includes('className="atlas-mobile-search"') && topbar.includes('aria-label="Abrir meu perfil"')],
+  ["Topbar remove somente a ação duplicada",
+    /* `display: none` e a string mais generica que existe num arquivo de CSS.
+       Ela era conferida SOLTA — a asserção passaria com a regra do
+       thumb-first vazia. Agora o `display: none` e cobrado DENTRO da regra
+       que ele deveria esconder. */
+    familiaDeclara(styles, '[data-mobile-layout="thumb-first"] .atlas-quick-create', "display", "none")
+    && topbar.includes('className="atlas-mobile-search"')
+    && topbar.includes('aria-label="Abrir meu perfil"')],
   ["Dock e área segura protegem a zona de toque", styles.includes("padding-bottom: calc(104px + env(safe-area-inset-bottom))") && styles.includes("min-height: var(--atlas-mobile-dock-action)") && styles.includes("min-height: var(--atlas-mobile-primary-action)")],
   ["Ações frequentes evitam atraso de toque", styles.includes("touch-action: manipulation") && styles.includes("-webkit-tap-highlight-color: transparent")],
   ["Celulares estreitos mantêm rótulos", styles.includes("@media (max-width: 374px)") && styles.includes(".atlas-mobile-dock-action small") && config.mobileContract.primaryActionMaximumLabelPx === 64],

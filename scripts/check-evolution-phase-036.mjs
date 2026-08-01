@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { temAlvoDeToque } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-036-leads-action-workspace.json", "utf8"));
 const phaseThirtyFive = JSON.parse(fs.readFileSync("config/evolution-phase-035-dashboard-decision-first.json", "utf8"));
@@ -19,7 +20,7 @@ const checks = [
   ["Ferramentas secundárias permanecem disponíveis", leads.includes('<details className="atlas-leads-tools">') && leads.includes('/leads/data-quality') && leads.includes('/leads/deduplication') && config.progressiveDisclosure.functionalityRemoved === false],
   ["Tabela, lista móvel, filtros e paginação foram preservados", leads.includes('className="atlas-leads-desktop"') && leads.includes('className="atlas-leads-mobile"') && leads.includes('className="atlas-leads-filter-panel"') && leads.includes('className="atlas-pagination"')],
   ["Copilot prepara sem executar nem expor contato", leads.includes("não envie mensagem nem altere o CRM") && !leads.includes("context: {\n                              phone:") && config.aiPolicy.automaticMessageSending === false && config.aiPolicy.personalContactIncludedInPrompt === false],
-  ["Fila e ações novas são acessíveis", leads.includes('aria-live="polite"') && leads.includes('aria-labelledby="atlas-leads-action-title"') && styles.includes(".atlas-leads-action-buttons") && styles.includes("min-height: 44px") && config.accessibility.minimumNewTouchTargetPx === 44],
+  ["Fila e ações novas são acessíveis", leads.includes('aria-live="polite"') && leads.includes('aria-labelledby="atlas-leads-action-title"') && temAlvoDeToque(styles, ".atlas-leads-action", 44) && config.accessibility.minimumNewTouchTargetPx === 44],
   ["Layout compacto responde a desktop e celular", styles.includes(".atlas-leads-hero-compact") && styles.includes(".atlas-leads-action-list") && styles.includes("grid-template-columns: repeat(3, minmax(0, 1fr))")],
   ["Relatório registra verdade, segurança e próxima fase", report.includes("Nenhum score, percentual ou probabilidade") && report.includes("Nenhum ganho de produtividade") && report.includes("Fase 037")],
   ["RBAC, tenant e gate de homologação permanecem", config.safetyPolicy.rbacPreserved === true && config.safetyPolicy.tenantIsolationPreserved === true && phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false]

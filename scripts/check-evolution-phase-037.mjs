@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { temAlvoDeToque } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-037-pipeline-movement-workspace.json", "utf8"));
 const phaseThirtySix = JSON.parse(fs.readFileSync("config/evolution-phase-036-leads-action-workspace.json", "utf8"));
@@ -29,7 +30,7 @@ const checks = [
   // explícita — "Sugestão determinística calculada apenas com os leads já carregados neste quadro"
   // (data-signal-source="deterministic-loaded-leads"). A interface segue declarando o recorte sem alegar previsão.
   ["Interface declara recorte sem alegar previsão", pipeline.includes("já carregados neste quadro") && pipeline.includes('data-priority-source="authorized-loaded-pipeline"') && config.truthPolicy.queuePresentedAsGlobalPortfolio === false && config.truthPolicy.priorityIsHeuristicNotPrediction === true],
-  ["Ações novas são rotuladas e tocáveis", pipeline.includes('aria-labelledby="atlas-pipeline-priority-title"') && pipeline.includes('aria-live="polite"') && styles.includes(".atlas-broker-move-select") && styles.includes("min-height: 44px")],
+  ["Ações novas são rotuladas e tocáveis", pipeline.includes('aria-labelledby="atlas-pipeline-priority-title"') && pipeline.includes('aria-live="polite"') && temAlvoDeToque(styles, ".atlas-broker-move", 44)],
   ["Cabeçalho e robô foram compactados", styles.includes("padding: clamp(20px, 3vw, 32px)") && styles.includes("width: clamp(64px, 7vw, 94px)")],
   ["Relatório registra verdade, segurança e próxima fase", report.includes("Nenhum score, percentual ou probabilidade") && report.includes("Nenhum ganho de produtividade") && report.includes("Fase 038")],
   ["RBAC, tenant e gate de homologação permanecem", config.safetyPolicy.rbacPreserved === true && config.safetyPolicy.tenantIsolationPreserved === true && phaseTwenty.status === "blocked" && config.exitCriteria.phaseTwentyGateBypassed === false]
