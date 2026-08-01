@@ -9,6 +9,10 @@ on:
     branches:
       - atlas-v3-auth
       - atlas-v3-build
+      # O trabalho acontece em `claude/**` e o CI nunca disparava nele: os
+      # gatilhos listavam tres branches, nenhuma delas a de entrega. Um portao
+      # que so roda onde ninguem trabalha e um portao que nao existe.
+      - 'claude/**'
 
 concurrency:
   group: atlas-v3-${{ github.ref }}
@@ -28,7 +32,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          # Mesma versao do .nvmrc. Estavam divergentes (24 aqui, 22 la) — duas
+          # verdades sobre em que Node este produto roda. E `engines` agora
+          # recusa Node 26, que foi decisao do dono do produto.
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
@@ -79,6 +86,14 @@ jobs:
       - name: Fail on lint errors
         if: steps.lint.outcome != 'success'
         run: exit 1
+
+      - name: Contratos
+        run: npm run test:contracts
+
+      - name: Portoes
+        # A bateria inteira. Os que dependem de ambiente saem com NAO EXECUTADO
+        # e sao contados como quarentena declarada — nunca verdes por ausencia.
+        run: npm run portoes:todos
 
       - name: Production build
         run: npm run build

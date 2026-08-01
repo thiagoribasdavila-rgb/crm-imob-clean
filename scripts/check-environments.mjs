@@ -52,6 +52,33 @@ if (packageConfig.engines?.node !== RUNTIME_OFICIAL) {
 }
 if (contract.environments?.production?.allowsBootstrap !== false || contract.environments?.production?.allowsTestCredentials !== false) errors.push("produção não pode aceitar bootstrap ou conta de teste");
 
+/**
+ * ── E O TETO DE NODE VIVE AQUI, NÃO EM `engines` ────────────────────────────
+ *
+ * O dono do produto tem uma regra: **não usar Node 26 em produção**. Em
+ * 01/08/2026 eu tentei aplicá-la subindo `engines` para `">=22.6 <26"` — e este
+ * portão reprovou, com razão. O comentário dele já dizia por quê: teto em
+ * `engines` sem medição reprova ambiente bom, e `engines` fala do que o CÓDIGO
+ * precisa, não de qual runtime a operação escolheu.
+ *
+ * A regra é real e pertence a outra camada: o runtime que o deploy e o CI usam.
+ * Quem declara isso é o `.nvmrc` — o CI o consome via `node-version-file`, e
+ * quem usa nvm na máquina também.
+ *
+ * Medido no momento em que esta asserção nasceu: `.nvmrc` = 22, e a máquina de
+ * desenvolvimento rodava Node 26.4.0. A divergência era invisível porque
+ * ninguém a media.
+ */
+const nvmrc = readFileSync(new URL("../.nvmrc", import.meta.url), "utf8").trim();
+const maiorNvmrc = Number.parseInt(nvmrc.replace(/^v/, ""), 10);
+if (!Number.isInteger(maiorNvmrc)) {
+  errors.push(`.nvmrc traz "${nvmrc}", que não é uma versão maior legível — o CI consome este arquivo e precisa dele determinístico`);
+} else if (maiorNvmrc >= 26) {
+  errors.push(`.nvmrc aponta Node ${maiorNvmrc}: o dono do produto excluiu Node 26 do runtime de produção. O teto mora aqui, não em \`engines\` — \`engines\` diz o que o código precisa.`);
+} else if (maiorNvmrc < 22) {
+  errors.push(`.nvmrc aponta Node ${maiorNvmrc}, abaixo do piso ${RUNTIME_OFICIAL} exigido pelas dependências de produção`);
+}
+
 if (errors.length) {
   console.error("ATLAS ENVIRONMENTS: FAILED");
   errors.forEach((error) => console.error(`- ${error}`));

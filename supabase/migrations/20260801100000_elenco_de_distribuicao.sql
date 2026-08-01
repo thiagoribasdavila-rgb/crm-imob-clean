@@ -66,3 +66,17 @@ create policy distribution_roster_escrita on public.distribution_roster
         and coalesce(p.commercial_role, p.role) in ('manager', 'director', 'admin', 'GERENTE-DIRETOR')
     )
   );
+
+-- ── ROLLBACK ────────────────────────────────────────────────────────────────
+-- Esta migration é ADITIVA e IDEMPOTENTE: `if not exists` em tabela, índice e
+-- política, e os `drop policy if exists` tocam apenas as políticas desta tabela.
+-- Reaplicar não faz nada; não altera nem apaga dado de nenhuma outra tabela.
+--
+-- Para desfazer por completo (a tabela nasce vazia, então nada se perde):
+--
+--   drop table if exists public.distribution_roster;
+--
+-- O produto continua funcionando sem ela: `carregarElenco()` em
+-- `lib/distribution/hierarchical-cascade.ts` devolve `[]` quando a leitura
+-- falha, e elenco vazio significa "fila aberta a toda a equipe" — que é o
+-- comportamento anterior a esta feature, não um estado quebrado.

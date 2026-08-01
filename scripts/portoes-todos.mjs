@@ -233,24 +233,45 @@ for (const [nome, motivo] of Object.entries(QUARENTENA)) console.log(`    · ${n
 console.log();
 
 const falhas = [];
+const naoExecutados = [];
 for (const [i, nome] of alvo.entries()) {
   process.stdout.write(`\r[${i + 1}/${alvo.length}] ${nome}`.padEnd(80));
   try {
     execFileSync("npm", ["run", "--silent", nome], { stdio: "pipe", timeout: 180_000, maxBuffer: 8e6 });
   } catch (erro) {
     const saida = `${erro.stdout || ""}\n${erro.stderr || ""}`;
-    falhas.push({
-      nome,
+    const primeira =
       // A PRIMEIRA linha de veredito, não o rodapé: ler a última linha já fez
       // esta sessão concluir "verde" numa guarda cuja asserção quebrada estava no meio.
-      primeira:
-        (saida.split("\n").find((l) => /✗|✖|not ok|REPROVA|falhou|ausente|missing/i.test(l)) || "").trim().slice(0, 160),
-    });
+      (saida.split("\n").find((l) => /✗|✖|not ok|REPROVA|falhou|ausente|missing|NÃO EXECUTADO/i.test(l)) || "").trim().slice(0, 160);
+
+    // ── O TERCEIRO ESTADO ────────────────────────────────────────────────
+    // Esta bateria tinha DOIS estados: verde e vermelho. Mas o próprio texto
+    // dela já dizia que existe um terceiro — "verde por ausência de medição é
+    // pior que vermelho" só faz sentido se "não medido" for distinto dos dois.
+    //
+    // Portões de ambiente saem com 2 e a frase "NÃO EXECUTADO". Tratá-los como
+    // vermelho obrigava a listá-los na quarentena ESTÁTICA lá em cima — e
+    // quarentena estática é permanente: o portão some da bateria mesmo no dia em
+    // que o ambiente passa a existir. Foi o que aconteceu com
+    // `cobertura-schema:check`, que roda verde nesta máquina e sairia 2 no CI.
+    //
+    // Agora o estado vem da EXECUÇÃO, não de uma lista: onde há ambiente ele é
+    // cobrado, onde não há ele se declara não medido. E não medido nunca conta
+    // como aprovado.
+    if (erro.status === 2) naoExecutados.push({ nome, primeira });
+    else falhas.push({ nome, primeira });
   }
 }
 process.stdout.write(`\r${" ".repeat(80)}\r`);
 
-console.log(`\n${alvo.length - falhas.length}/${alvo.length} portões verdes\n`);
+const verdes = alvo.length - falhas.length - naoExecutados.length;
+console.log(`\n${verdes}/${alvo.length} portões verdes\n`);
+if (naoExecutados.length) {
+  console.log("NÃO EXECUTADOS (o ambiente não permitiu medir — isto NÃO é aprovação):");
+  for (const n of naoExecutados) console.log(`  ⚠ ${n.nome.padEnd(46)} ${n.primeira}`);
+  console.log("");
+}
 if (falhas.length) {
   console.error("VERMELHOS (fora da quarentena — estes não eram esperados):");
   for (const f of falhas) console.error(`  ✗ ${f.nome.padEnd(46)} ${f.primeira}`);
