@@ -255,6 +255,42 @@ if (!alturaRail) {
   ok.push(`navegação lateral: alvo de ${alturaRail}px`);
 }
 
+// ── 7. FILETE DENTRO DE FILETE ──────────────────────────────────────────────
+/* Medido na ficha do cliente: 24 `.cc6-panel` + 16 `.cc6-panel-quiet`, os dois
+   com a MESMA hairline — o painel de dentro desenhava a linha que o de fora já
+   tinha desenhado, 1px adiante. Um filete quer dizer "aqui começa outra
+   coisa"; quando tudo tem filete, ele vira textura.
+
+   E o portão cobra as duas metades: sumir com a borda genérica E manter as que
+   têm papel. Sem a segunda metade, a limpeza apagaria sinal junto com ruído —
+   foi o que quase aconteceu, porque CSS sem camada vence utilitário do
+   Tailwind e passaria por cima do destaque e do hover sem ninguém notar. */
+/* A âncora `^` não é decoração: sem ela esta asserção casava com a regra do
+   TEMA CLARO (`:root[data-theme="light"] .cc6-panel .cc6-panel-quiet`), que
+   também zera a borda — e ficava verde mesmo com a regra base apagada.
+   Verificava uma regra diferente da que dizia verificar. Medido: a sabotagem
+   passou na primeira tentativa. */
+if (!/^\.cc6-panel \.cc6-panel-quiet \{[^}]*border-color:\s*transparent/m.test(css)) {
+  falhas.push("o painel aninhado voltou a desenhar filete sobre filete — os dois usam a mesma hairline e a de dentro não separa nada");
+} else {
+  ok.push("painel aninhado sem filete redundante");
+}
+/* Cada papel é cobrado pela DECLARAÇÃO que o torna visível, não pela presença
+   do nome. Na primeira versão eu pedia só o seletor: apagar a linha do `:hover`
+   do `cc6-interativo` deixava a regra do `transition` para trás, o nome
+   continuava no arquivo e o portão passava — com o hover morto. */
+const PAPEIS = [
+  { classe: "cc6-destaque", exige: /\.cc6-panel-quiet\.cc6-destaque\s*\{[^}]*border-color:\s*var\(--atlas-accent\)/, oque: "a borda de acento" },
+  { classe: "cc6-interativo", exige: /\.cc6-panel-quiet\.cc6-interativo:hover\s*\{[^}]*border-color:/, oque: "a borda que aparece no hover" },
+];
+for (const p of PAPEIS) {
+  if (!p.exige.test(css)) {
+    falhas.push(`o papel \`${p.classe}\` perdeu ${p.oque} — a limpeza de filetes volta a apagar um sinal que DIZ alguma coisa, e ninguém vê acontecer`);
+  } else {
+    ok.push(`\`${p.classe}\`: ${p.oque} sobrevive à limpeza`);
+  }
+}
+
 // ── SAÍDA ───────────────────────────────────────────────────────────────────
 for (const o of ok) console.log(`  ok   ${o}`);
 for (const f of falhas) console.error(`  FALHA ${f}`);

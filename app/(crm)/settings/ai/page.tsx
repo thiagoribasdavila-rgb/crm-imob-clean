@@ -696,7 +696,7 @@ export default function AISettings() {
                 return (
                   <article
                     key={provider.name}
-                    className="cc6-panel-quiet p-4 transition-colors hover:border-[rgba(148,163,184,0.28)]"
+ className="cc6-panel-quiet cc6-interativo p-4"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <h3
@@ -795,7 +795,7 @@ export default function AISettings() {
             : data.agents.map((agent) => (
                 <article
                   key={agent.id}
-                  className="cc6-panel-quiet p-4 transition-colors hover:border-[rgba(148,163,184,0.28)]"
+ className="cc6-panel-quiet cc6-interativo p-4"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="text-sm font-semibold text-[var(--atlas-texto-forte)]">

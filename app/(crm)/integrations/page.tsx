@@ -139,7 +139,7 @@ export default function IntegrationsPage() {
       {error ? (
         <p
           role="alert"
-          className="cc6-panel-quiet cc6-reveal border-[rgba(251,113,133,0.30)]! px-4 py-3 text-sm text-[var(--atlas-estado-perigo)]"
+ className="cc6-panel-quiet cc6-alerta cc6-reveal px-4 py-3 text-sm text-[var(--atlas-estado-perigo)]"
         >
           {error}
         </p>

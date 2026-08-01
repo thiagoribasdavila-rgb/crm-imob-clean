@@ -1130,7 +1130,7 @@ export default function LeadDetailPage() {
       {message ? (
         <div
           role="status"
-          className="cc6-panel-quiet border-[rgba(75,141,248,0.35)] p-4 text-sm leading-6 text-[var(--atlas-texto-medio)]"
+          className="cc6-panel-quiet cc6-destaque p-4 text-sm leading-6 text-[var(--atlas-texto-medio)]"
         >
           {message}
         </div>
@@ -1316,7 +1316,7 @@ export default function LeadDetailPage() {
               <Link
                 href={item.href}
                 key={item.label}
-                className={`cc6-panel-quiet block p-4 transition-colors hover:border-[color:var(--atlas-accent)] ${focusRing}`}
+ className={`cc6-panel-quiet cc6-interativo-acento block p-4 ${focusRing}`}
               >
                 <span className="cc6-eyebrow text-micro">{item.label}</span>
                 <strong
@@ -1934,7 +1934,7 @@ export default function LeadDetailPage() {
                     return (
                       <article
                         key={activity.id}
-                        className="cc6-panel-quiet p-4 transition-colors hover:border-[rgba(148,163,184,0.3)]"
+                        className="cc6-panel-quiet cc6-interativo p-4"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">

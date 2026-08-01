@@ -216,7 +216,7 @@ export default function BudgetPage() {
               {data?.candidates.map((c, i) => (
                 <div
                   key={`${c.developmentName}-${c.platform}-${i}`}
-                  className="cc6-panel-quiet p-3 transition-colors hover:border-[rgba(148,163,184,.26)]!"
+ className="cc6-panel-quiet cc6-interativo p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <strong className="text-sm font-medium text-[var(--atlas-texto-forte)]">{c.developmentName}</strong>

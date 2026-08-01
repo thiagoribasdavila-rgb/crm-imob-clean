@@ -298,7 +298,7 @@ export default function ProjectMaterialsPage() {
               key={item.developerName}
               type="button"
               onClick={() => setDeveloper(item.developerName)}
-              className={`cc6-panel-quiet cc6-reveal p-4 text-left transition-colors hover:border-[rgba(148,163,184,0.22)]! ${focusRing}`}
+ className={`cc6-panel-quiet cc6-interativo cc6-reveal p-4 text-left ${focusRing}`}
               style={{ animationDelay: `${110 + Math.min(index, 8) * 40}ms` }}
             >
               <span className="flex items-start justify-between gap-3">
@@ -393,7 +393,7 @@ export default function ProjectMaterialsPage() {
                     href={material.url}
                     target="_blank"
                     rel="noreferrer"
-                    className={`cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 transition-colors hover:border-[rgba(148,163,184,0.22)]! ${focusRing}`}
+ className={`cc6-sev-band cc6-panel-quiet cc6-interativo py-3 pl-4 pr-3 ${focusRing}`}
                     style={{ "--cc6-sev": "#34d399" } as CSSProperties}
                   >
                     <strong className="block truncate text-corpo font-semibold text-[var(--atlas-texto-forte)]">{materialLabels[type].label}</strong>
@@ -493,7 +493,7 @@ export default function ProjectMaterialsPage() {
                     return (
                       <article
                         key={material.id}
-                        className="cc6-sev-band cc6-panel-quiet cc6-reveal flex flex-col gap-3 py-3 pl-4 pr-3 transition-colors hover:border-[rgba(148,163,184,0.22)]! sm:flex-row sm:items-center"
+ className="cc6-sev-band cc6-panel-quiet cc6-interativo cc6-reveal flex flex-col gap-3 py-3 pl-4 pr-3 sm:flex-row sm:items-center"
                         style={{ animationDelay: `${Math.min(index, 8) * 40}ms`, "--cc6-sev": state.band } as CSSProperties}
                       >
                         <div className="min-w-0 flex-1">

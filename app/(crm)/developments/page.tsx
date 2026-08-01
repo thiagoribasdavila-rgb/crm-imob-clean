@@ -363,7 +363,7 @@ export default function DevelopmentsPage() {
               <Link
                 key={`${priority.developmentId}-${priority.label}`}
                 href={`/developments/${priority.developmentId}`}
-                className={`cc6-sev-band cc6-panel-quiet cc6-reveal group flex items-center gap-3 py-3 pl-4 pr-3 transition-colors hover:border-[rgba(148,163,184,0.22)]! ${focusRing}`}
+ className={`cc6-sev-band cc6-panel-quiet cc6-interativo cc6-reveal group flex items-center gap-3 py-3 pl-4 pr-3 ${focusRing}`}
                 style={{
                   animationDelay: `${120 + index * 45}ms`,
                   "--cc6-sev": priorityBand[priority.tone],
@@ -497,7 +497,7 @@ export default function DevelopmentsPage() {
                 return (
                   <article
                     key={item.id}
-                    className={`cc6-panel-quiet cc6-reveal flex flex-col gap-4 p-4 transition-colors hover:border-[rgba(148,163,184,0.22)]! focus-within:border-[rgba(148,163,184,0.22)]! ${priority ? "cc6-sev-band pl-5" : ""}`}
+ className={`cc6-panel-quiet cc6-interativo cc6-reveal flex flex-col gap-4 p-4 focus-within:border-[rgba(148,163,184,0.22)]! ${priority ? "cc6-sev-band pl-5" : ""}`}
                     style={{
                       animationDelay: `${Math.min(index, 8) * 45}ms`,
                       ...(priority ? { "--cc6-sev": priorityBand[priority.tone] } : null),

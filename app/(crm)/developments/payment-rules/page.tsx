@@ -287,7 +287,7 @@ export default function PaymentRulesPage() {
               data.rules.map((rule, index) => (
                 <article
                   key={rule.id}
-                  className={`cc6-panel-quiet cc6-reveal p-4 transition-colors hover:border-[rgba(148,163,184,0.22)]! ${rule.active ? "cc6-sev-band pl-5" : ""}`}
+ className={`cc6-panel-quiet cc6-interativo cc6-reveal p-4 ${rule.active ? "cc6-sev-band pl-5" : ""}`}
                   style={{ animationDelay: `${Math.min(index, 8) * 40}ms`, ...(rule.active ? { "--cc6-sev": "#34d399" } : null) } as CSSProperties}
                 >
                   <div className="flex items-start justify-between gap-3">

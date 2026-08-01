@@ -8284,6 +8284,43 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   border-radius: 12px;
   background: rgba(15, 24, 48, 0.55);
 }
+/* ── BORDA DENTRO DE BORDA NÃO SEPARA NADA ────────────────────────────────
+   Medido na ficha do cliente: 24 `.cc6-panel` + 16 `.cc6-panel-quiet` + 12
+   bordas utilitárias = 52 filetes numa página só. E os dois painéis usam a
+   MESMA hairline, rgba(148,163,184,.12) — o de dentro desenha exatamente a
+   linha que o de fora já desenhou, 1px adiante.
+
+   Um filete quer dizer "aqui começa outra coisa". Quando tudo tem filete, ele
+   não quer dizer nada — vira textura. O painel aninhado já se distingue pelo
+   fundo; a borda só soma ruído.
+
+   A regra é precisa por construção: `.cc6-panel .cc6-panel-quiet` só casa
+   quando há ANINHAMENTO. Painel silencioso sozinho na tela mantém a borda,
+   porque ali ela ainda separa de alguma coisa. */
+.cc6-panel .cc6-panel-quiet { border-color: transparent; }
+
+/* ── E AS DUAS BORDAS QUE DIZEM ALGUMA COISA CONTINUAM DIZENDO ────────────
+   A regra acima quase apagou dois sinais intencionais da ficha do cliente: um
+   painel com borda de acento (destaque) e outro com borda no hover
+   (interativo). Os dois estavam escritos como utilitário arbitrário no `.tsx`
+   — e utilitário do Tailwind vive em `@layer utilities`, enquanto este arquivo
+   é inteiro sem camada. Sem camada vence camada: a minha regra passaria por
+   cima dos dois sem ninguém notar.
+
+   O conserto não é abrir exceção com `!`. É trazer a intenção para a
+   linguagem: quem quer borda diz QUAL É O PAPEL dela, e o papel tem nome.
+   De quebra, as duas cores literais viram token. */
+.cc6-panel .cc6-panel-quiet.cc6-destaque { border-color: var(--atlas-accent); }
+.cc6-panel .cc6-panel-quiet.cc6-alerta { border-color: var(--atlas-danger); }
+.cc6-panel .cc6-panel-quiet.cc6-interativo,
+.cc6-panel .cc6-panel-quiet.cc6-interativo-acento { transition: border-color 0.2s ease; }
+.cc6-panel .cc6-panel-quiet.cc6-interativo:hover { border-color: var(--atlas-border-strong); }
+.cc6-panel .cc6-panel-quiet.cc6-interativo-acento:hover { border-color: var(--atlas-accent); }
+@media (prefers-reduced-motion: reduce) {
+  .cc6-panel .cc6-panel-quiet.cc6-interativo,
+  .cc6-panel .cc6-panel-quiet.cc6-interativo-acento { transition: none; }
+}
+
 /* Estados de interação da primitiva — ela passa a ser dona dos próprios.
    Antes vinham de fora, em `cc5CardChrome` (components/ui/AtlasCard.tsx), como
    utilitários com `!`. Estado de superfície pertence à superfície: cada
@@ -8322,6 +8359,14 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 :root[data-theme="light"] .cc6-panel-quiet {
   background: rgba(15, 24, 48, 0.04);
   border-color: var(--atlas-border);
+}
+/* Sem a borda, a distinção do painel aninhado passa a depender SÓ do fundo —
+   e 4% sobre um painel quase branco é fraco demais para separar. Aninhado no
+   claro ele escurece um pouco mais. É o mesmo raciocínio da regra que tirou a
+   borda: quem some tem de deixar quem fica fazer o trabalho. */
+:root[data-theme="light"] .cc6-panel .cc6-panel-quiet {
+  background: rgba(15, 24, 48, 0.065);
+  border-color: transparent;
 }
 .cc6-eyebrow {
   font-family: ui-monospace, "SF Mono", "Geist Mono", Menlo, monospace;

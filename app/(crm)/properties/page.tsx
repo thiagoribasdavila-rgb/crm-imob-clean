@@ -114,7 +114,7 @@ export default function PropertiesPage() {
             return (
               <article
                 key={item.id}
-                className="cc6-panel-quiet cc6-reveal p-4 transition-colors hover:border-[rgba(148,163,184,0.28)]"
+ className="cc6-panel-quiet cc6-interativo cc6-reveal p-4"
                 style={{ animationDelay: `${60 + Math.min(index, 8) * 40}ms` }}
               >
                 <div className="flex items-start justify-between gap-3">

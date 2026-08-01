@@ -258,7 +258,7 @@ export default function PropertyMatching() {
             return (
               <article
                 key={property.id}
-                className="cc6-sev-band cc6-panel-quiet cc6-reveal flex flex-col gap-3 py-4 pl-5 pr-4 transition-colors hover:border-[rgba(148,163,184,0.22)]!"
+ className="cc6-sev-band cc6-panel-quiet cc6-interativo cc6-reveal flex flex-col gap-3 py-4 pl-5 pr-4"
                 style={{ animationDelay: `${Math.min(index, 8) * 45}ms`, "--cc6-sev": rec.band } as CSSProperties}
               >
                 <div className="flex items-start justify-between gap-3">
