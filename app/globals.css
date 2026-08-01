@@ -10958,3 +10958,45 @@ input[type="radio"]:not([data-alvo-livre])::after {
 @media (prefers-reduced-motion: reduce) {
   .atlas-fila-decisao-sim, .atlas-fila-decisao-nao { transition: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONTROLE DE FILTRO — `<select>` e `<input>` nativos precisam de fundo.
+
+   MEDIDO numa foto da tela do dono, no Safari, tema escuro: a barra de filtros
+   da lista de leads renderizava como BLOCOS BRANCOS SÓLIDOS, sem rótulo
+   visível. Treze controles usavam `className={focusRing}` — só o anel de foco,
+   sem fundo e sem cor de texto.
+
+   Controle nativo sem `background` declarado herda o padrão do navegador, que
+   no macOS é branco. O `<select>` de ordenação, ao lado, trazia
+   `bg-[#0a1120] text-[#cdd7e5]` inline e por isso era o único legível na foto —
+   a mesma tela, com dois tratamentos.
+
+   A correção é uma primitiva, não a décima quarta cópia inline: cor de token,
+   vira com o tema, e alvo de 44px porque filtro é controle que muda o que a
+   pessoa vê.
+   ══════════════════════════════════════════════════════════════════════════ */
+.atlas-filtro-controle {
+  min-height: 44px;
+  width: 100%;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 12px;
+  color: var(--atlas-text-primary);
+  background: var(--atlas-surface-subtle);
+  /* `font: inherit` e nao um tamanho escolhido aqui. Controle nativo ignora a
+     tipografia da pagina e usa a do sistema — herdar e o que o faz pertencer a
+     tela. E o portao da linguagem visual cobrou, com razao: declarar 11px aqui
+     somaria mais uma decisao de tamanho ao arquivo, quando a decisao certa e
+     nao tomar nenhuma. */
+  font: inherit;
+}
+.atlas-filtro-controle:hover:not(:disabled) { border-color: var(--atlas-border-strong); }
+.atlas-filtro-controle:disabled { cursor: not-allowed; opacity: 0.5; }
+/* A lista aberta do `<select>` é desenhada pelo sistema: sem cor explícita nas
+   opções, o macOS pinta texto escuro sobre fundo escuro no tema noturno. */
+.atlas-filtro-controle option {
+  color: var(--atlas-text-primary);
+  background: var(--atlas-surface);
+}

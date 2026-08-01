@@ -1360,6 +1360,21 @@ export default function LeadsPage() {
         </TiltShell>
       </section>
 
+      {/* ── PAINEL VAZIO NAO OCUPA O TOPO DA TELA ─────────────────────────
+          Visto numa foto da tela do dono: a "Fila de ação" ocupava o espaço
+          mais valioso da página para dizer "Nenhuma pendência prioritária
+          nesta página". Um painel com borda, título e chip para comunicar
+          ausência — enquanto a carteira com 473 leads sem contato começava
+          abaixo da dobra.
+
+          A regra de hierarquia do v3: o que exige decisão vem antes do que
+          informa, e o que não tem nada a dizer não vem. A própria mensagem
+          admitia que "os atalhos de atenção varrem o restante" — ou seja, o
+          trabalho está em outro lugar.
+
+          Some só quando NÃO está carregando: sumir durante a carga faria a
+          fila piscar na tela a cada filtro. ── */}
+      {loading || visiblePriorityQueue.length ? (
       <section
         className="cc6-panel cc6-reveal p-4 sm:p-5"
         style={{ animationDelay: "70ms" }}
@@ -1496,6 +1511,7 @@ export default function LeadsPage() {
           </p>
         )}
       </section>
+      ) : null}
 
       <div className="cc6-reveal" style={{ animationDelay: "140ms" }}>
         <section
@@ -1578,7 +1594,7 @@ export default function LeadsPage() {
                 onChange={(event) => updateFilter(setProject, event.target.value)}
                 aria-label="Filtrar por projeto"
                 disabled={referencesLoading}
-                className={focusRing}
+                className={`atlas-filtro-controle ${focusRing}`}
               >
                 <option value="">Todos os projetos</option>
                 {developments.map((development) => (
@@ -1594,7 +1610,7 @@ export default function LeadsPage() {
                 value={status}
                 onChange={(event) => updateFilter(setStatus, event.target.value)}
                 aria-label="Filtrar por status"
-                className={focusRing}
+                className={`atlas-filtro-controle ${focusRing}`}
               >
                 {statuses.map((item) => (
                   <option key={item.value} value={item.value}>
@@ -1611,7 +1627,7 @@ export default function LeadsPage() {
                   }
                   placeholder="Todas as origens"
                   aria-label="Filtrar por origem"
-                  className={focusRing}
+                  className={`atlas-filtro-controle ${focusRing}`}
                 />
                 <datalist id="atlas-lead-sources">
                   <option value="Meta Lead Ads" />
@@ -1631,7 +1647,7 @@ export default function LeadsPage() {
                   }
                   aria-label="Filtrar por corretor"
                   disabled={referencesLoading}
-                  className={focusRing}
+                  className={`atlas-filtro-controle ${focusRing}`}
                 >
                   <option value="">
                     {currentRole === "manager"
@@ -1659,7 +1675,7 @@ export default function LeadsPage() {
                 value={score}
                 onChange={(event) => updateFilter(setScore, event.target.value)}
                 aria-label="Filtrar por score"
-                className={focusRing}
+                className={`atlas-filtro-controle ${focusRing}`}
               >
                 <option value="">Todos os scores</option>
                 <option value="hot">Quente · 70–100</option>
@@ -1675,7 +1691,7 @@ export default function LeadsPage() {
                   )
                 }
                 aria-label="Filtrar por próxima ação"
-                className={focusRing}
+                className={`atlas-filtro-controle ${focusRing}`}
               >
                 <option value="">Qualquer próxima ação</option>
                 <option value="today">Agendada para hoje</option>
@@ -2085,7 +2101,7 @@ export default function LeadsPage() {
                               <Link
                                 href={`/leads/${lead.id}`}
                                 title="Abrir Lead 360"
-                                className={focusRing}
+                                className={`atlas-filtro-controle ${focusRing}`}
                                 aria-label={`Abrir Lead 360 de ${lead.name || "lead"}`}
                               >
                                 👁️
@@ -2094,7 +2110,7 @@ export default function LeadsPage() {
                                 <a
                                   href={contact.call}
                                   title="Ligar"
-                                  className={focusRing}
+                                  className={`atlas-filtro-controle ${focusRing}`}
                                   aria-label={`Ligar para ${lead.name || "lead"}`}
                                 >
                                   📞
@@ -2106,7 +2122,7 @@ export default function LeadsPage() {
                                   target="_blank"
                                   rel="noreferrer"
                                   title="WhatsApp"
-                                  className={focusRing}
+                                  className={`atlas-filtro-controle ${focusRing}`}
                                   aria-label={`Abrir WhatsApp com ${lead.name || "lead"}`}
                                 >
                                   💬
@@ -2115,7 +2131,7 @@ export default function LeadsPage() {
                               <Link
                                 href={`/leads/${lead.id}/messages`}
                                 title="Abordagem com IA"
-                                className={focusRing}
+                                className={`atlas-filtro-controle ${focusRing}`}
                                 aria-label={`Preparar abordagem com IA para ${lead.name || "lead"}`}
                               >
                                 ✦
@@ -2306,7 +2322,7 @@ export default function LeadsPage() {
               <label className="atlas-pagination-tamanho">
                 Mostrar
                 <select
-                  className={focusRing}
+                  className={`atlas-filtro-controle ${focusRing}`}
                   value={porPagina}
                   disabled={loading}
                   onChange={(event) => {
@@ -2336,7 +2352,7 @@ export default function LeadsPage() {
               <div className="atlas-pagination-navegacao">
                 <button
                   type="button"
-                  className={focusRing}
+                  className={`atlas-filtro-controle ${focusRing}`}
                   disabled={loading || page <= 1}
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                 >
@@ -2348,7 +2364,7 @@ export default function LeadsPage() {
                 </span>
                 <button
                   type="button"
-                  className={focusRing}
+                  className={`atlas-filtro-controle ${focusRing}`}
                   disabled={loading || page >= pages}
                   onClick={() =>
                     setPage((current) => Math.min(pages, current + 1))
