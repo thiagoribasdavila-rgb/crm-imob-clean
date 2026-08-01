@@ -10878,7 +10878,17 @@ input[type="radio"]:not([data-alvo-livre])::after {
   /* Texto — do mais forte ao mais fraco, no tema escuro */
   --atlas-texto-forte: #e8eef8;
   --atlas-texto-medio: #aab6ca;
-  --atlas-texto-fraco: #6b7890;
+  /* ── MEDIDO A PARTIR DE UMA FOTO DA TELA ────────────────────────────────
+     #6b7890 reprovava contraste nos TRES fundos do produto: 3,95 sobre o
+     painel (`cc6-panel`), 4,21 sobre a superficie e 4,45 sobre o canvas. O
+     piso e 4,5. Sao 404 usos — nome de lead, telefone, rotulo de coluna: a
+     informacao que o corretor mais le, na cor que menos aparece.
+
+     O novo valor nao foi escolhido: e o mesmo de `--atlas-text-tertiary`, que
+     ja existia e ja passava (4,82 / 5,14 / 5,43). Eram dois tokens para o
+     mesmo papel, e o mais usado era justamente o que reprovava. Alinhar
+     conserta o contraste E mata a segunda verdade. */
+  --atlas-texto-fraco: #7a8799;
   /* Estado — cor como INFORMAÇÃO, não como enfeite */
   --atlas-estado-perigo: #fb7185;
   --atlas-estado-atencao: #f5b544;
