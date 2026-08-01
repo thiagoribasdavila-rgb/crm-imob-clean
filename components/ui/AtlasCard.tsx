@@ -1,18 +1,31 @@
 import type { ReactNode } from "react";
 
 /*
- * CC-5: painel com gradiente sutil (180deg, #0f1830 -> #0b1224), hairline
- * rgba(148,163,184,.12) que sobe para .22 no hover e quando um filho recebe
- * focus-visible. Profundidade por geometria, zero glow/box-shadow novo.
- * Os utilitários usam `!` porque as classes atlas-* de globals.css são
- * unlayered e venceriam utilities layered do Tailwind v4.
+ * ── O CHROME QUE ANULAVA AS PRÓPRIAS CLASSES SAIU DAQUI ───────────────────
+ *
+ * Este arquivo aplicava `atlas-panel atlas-panel-hover atlas-surface-card` e,
+ * no mesmo `className`, repintava fundo e borda com quatro utilitários `!` —
+ * um gradiente literal 180deg de #0f1830 para #0b1224, e companhia. Ou seja:
+ * baixava três classes para desfazê-las. A receita repintada era, caractere
+ * por caractere, a de `.cc6-panel`.
+ *
+ * (O nome completo daquela classe NÃO é escrito aqui de propósito: o Tailwind
+ * varre este arquivo inteiro, comentário incluído, e voltaria a emitir a regra
+ * com `!important` só porque a prosa a menciona. Medido — foi o que aconteceu
+ * na primeira versão deste comentário.)
+ *
+ * E o `!important` tinha uma consequência que ninguém tinha medido: ele vencia
+ * `:root[data-theme="light"] .atlas-surface-card`, a regra que EXISTE e que
+ * clareia o cartão. Medido na produção em 01/08/2026, forçando o tema claro em
+ * /marketing: 194 de 210 trechos de texto dentro de painel reprovavam contraste
+ * AA, com o pior em 1,06 — números como "R$ 3.612" invisíveis sobre o painel.
+ *
+ * Agora o componente usa a primitiva, e só. Os estados de interação (hover,
+ * focus-visible) passaram para `.cc6-panel` em globals.css, onde pertencem:
+ * estado de superfície é da superfície, não de cada consumidor.
+ *
+ * Alcance: 153 usos de <AtlasCard> e 171 de <AtlasMetric>.
  */
-const cc5CardChrome = [
-  "bg-[linear-gradient(180deg,#0f1830,#0b1224)]!",
-  "border-[rgba(148,163,184,0.12)]!",
-  "hover:border-[rgba(148,163,184,0.22)]!",
-  "has-[:focus-visible]:border-[rgba(148,163,184,0.22)]!",
-].join(" ");
 
 export function AtlasCard({
   children,
@@ -27,7 +40,7 @@ export function AtlasCard({
 }) {
   return (
     <section
-      className={`atlas-panel atlas-panel-hover atlas-surface-card ${cc5CardChrome} ${className}`.trim()}
+      className={`cc6-panel ${className}`.trim()}
       data-card-density={density}
       data-card-emphasis={emphasis}
     >
@@ -48,10 +61,16 @@ export function AtlasCardHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="atlas-card-header flex flex-col gap-4 border-b-[rgba(148,163,184,0.12)]! p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
+    <div className="atlas-card-header flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="atlas-eyebrow font-mono text-rotulo! font-medium uppercase! tracking-[0.14em]! text-[var(--atlas-texto-fraco)]! [font-variant-numeric:tabular-nums]">
+          /* `cc6-eyebrow`, sem sobrescrever nada. Havia SEIS classes *eyebrow*
+             no globals.css com cinco tratamentos distintos, mais esta sétima
+             variante montada aqui por cima com `!` — e num terceiro valor de
+             tracking (0.14em contra 0.22em e 0). A convergência é escolher uma:
+             a que tem o vocabulário do v3 (mono, 11px, caixa alta) e que já é a
+             família dominante. */
+          <p className="cc6-eyebrow [font-variant-numeric:tabular-nums]">
             {eyebrow}
           </p>
         ) : null}
@@ -87,19 +106,14 @@ export function AtlasMetric({
   relevance?: "primary" | "supporting";
 }) {
   /*
-   * Métricas "primary" mantêm o tratamento de acento único do visual system
-   * (borda e fundo acentuados via CSS); as demais recebem o chrome CC-5.
+   * `.atlas-metric` JÁ está na regra de tema claro de globals.css — ela sempre
+   * soube clarear. Quem a impedia era o `cc5CardChrome` com `!important` em
+   * cima, nas 171 métricas não-primárias. Removê-lo não tira tratamento: devolve
+   * o que a folha de estilo já oferecia e o componente anulava.
    */
-  const isPrimary = relevance === "primary";
   return (
     <article
-      className={[
-        "atlas-metric",
-        `atlas-metric-${tone}`,
-        isPrimary ? "" : cc5CardChrome,
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={`atlas-metric atlas-metric-${tone}`}
       data-tone={tone}
       data-relevance={relevance}
     >

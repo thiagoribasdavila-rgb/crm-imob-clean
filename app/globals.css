@@ -8278,6 +8278,45 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   border-radius: 12px;
   background: rgba(15, 24, 48, 0.55);
 }
+/* Estados de interação da primitiva — ela passa a ser dona dos próprios.
+   Antes vinham de fora, em `cc5CardChrome` (components/ui/AtlasCard.tsx), como
+   utilitários com `!`. Estado de superfície pertence à superfície: cada
+   consumidor recriando o hover é uma divergência esperando acontecer. */
+.cc6-panel { transition: border-color 0.2s ease; }
+.cc6-panel:hover,
+.cc6-panel:has(:focus-visible) { border-color: rgba(148, 163, 184, 0.22); }
+
+/* ── O PAINEL NÃO VIRAVA COM O TEMA — 268 USOS ─────────────────────────────
+   MEDIDO NA PRODUÇÃO em 01/08/2026, em /marketing, forçando `data-theme=light`
+   e lendo `getComputedStyle` de 210 trechos de texto dentro de `.cc6-panel`:
+
+       reprovam WCAG AA (4,5)  194 de 210
+       mediana                 3,50   (no tema escuro: 8,59)
+       pior                    1,06   — "R$ 3.612", "24", "R$ 151", "8"
+
+   Razão 1,06 é texto quase preto sobre painel quase preto: os números que mais
+   importam ficavam invisíveis. A página clareava (fundo #f6f8fc, texto
+   #0b1220) e o painel continuava com o gradiente escuro literal, porque
+   `.cc6-panel` era declarada UMA vez e não tinha override de tema claro.
+
+   É o inverso do defeito que este repositório já catalogou: lá o fundo virava
+   e o texto não; aqui o texto vira e o fundo não. A mesma raiz — duas metades
+   do mesmo par decididas em lugares diferentes.
+
+   A correção foi validada na página VIVA antes de ser escrita aqui: injetada
+   por `<style>` no DOM de produção, os 194 reprovados caíram para 16 e a
+   mediana subiu de 3,50 para 5,02. ── */
+:root[data-theme="light"] .cc6-panel {
+  background: rgba(255, 255, 255, 0.86);
+  border-color: var(--atlas-border);
+  box-shadow: var(--atlas-shadow-panel);
+}
+:root[data-theme="light"] .cc6-panel:hover,
+:root[data-theme="light"] .cc6-panel:has(:focus-visible) { border-color: var(--atlas-border-strong); }
+:root[data-theme="light"] .cc6-panel-quiet {
+  background: rgba(15, 24, 48, 0.04);
+  border-color: var(--atlas-border);
+}
 .cc6-eyebrow {
   font-family: ui-monospace, "SF Mono", "Geist Mono", Menlo, monospace;
   font-size: 11px;

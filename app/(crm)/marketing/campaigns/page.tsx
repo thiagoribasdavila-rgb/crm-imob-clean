@@ -177,9 +177,15 @@ const omission = (row: QualityRow) =>
    #e8eef8/#aab6ca/#6b7890, acento único var(--atlas-accent), semânticos rose
    #fb7185 / amber #f5b544 / emerald #34d399, raios 16/12px (rounded-2xl/xl),
    profundidade por geometria (barras finas + hairlines) — zero glow novo. ===== */
-const cc5Panel =
-  "rounded-2xl border border-[rgba(148,163,184,.12)] bg-[linear-gradient(180deg,#0f1830,#0b1224)]";
-const cc5PanelHover = "transition-colors duration-200 hover:border-[rgba(148,163,184,.22)]";
+/* A receita literal daqui era, caractere por caractere, a de `.cc6-panel`:
+   mesmo raio (16px), mesma hairline, mesmo gradiente. Escrita à mão, ela ficava
+   de fora de qualquer correção feita na primitiva — e ficou: quando o tema
+   claro ganhou tratamento para `.cc6-panel`, estes painéis teriam continuado
+   escuros sozinhos. Cópia de receita é a forma que uma divergência toma antes
+   de virar defeito. */
+const cc5Panel = "cc6-panel";
+/* O hover também mora na primitiva agora. */
+const cc5PanelHover = "";
 const cc5Inner = "rounded-xl border border-[rgba(148,163,184,.12)] bg-white/[.02]";
 const cc5InnerHover = "transition-colors duration-200 hover:border-[rgba(148,163,184,.22)]";
 const cc5Eyebrow = "font-mono text-micro font-semibold uppercase tracking-[.18em] text-[var(--atlas-texto-fraco)]";

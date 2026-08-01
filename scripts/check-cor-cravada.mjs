@@ -40,7 +40,12 @@ import { readFileSync } from "node:fs";
  *
  * O portão é o instrumento correto — é por isso que o teto é o número DELE.
  */
-const TETO = 369;
+/* 369 → 367 → 365 em 01/08/2026: `components/ui/AtlasCard.tsx` parou de repintar a
+   receita do `.cc6-panel` com utilitários `!`, e as duas cores literais que ele
+   carregava (o gradiente #0f1830→#0b1224 e a hairline rgba(148,163,184,.12))
+   saíram junto. A catraca desce quando o ganho é real — é isso que transforma
+   limpeza em progresso irreversível. */
+const TETO = 365;
 
 const arquivos = execFileSync("git", ["ls-files", "app", "components"], { encoding: "utf8" })
   .split("\n")
