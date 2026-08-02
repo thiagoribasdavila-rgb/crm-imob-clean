@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { camadasDoPapel } from "@/lib/atlas/camadas-da-sala-de-comando";
 import {
   useCallback,
   useEffect,
@@ -1411,6 +1412,10 @@ export default function CommandCenterPage() {
   const [seenSignalIds, setSeenSignalIds] = useState<string[]>([]);
   const [showSeenSignals, setShowSeenSignals] = useState(false);
   const [preferencesHydrated, setPreferencesHydrated] = useState(false);
+  /* Se a pessoa JÁ escolheu nesta sessão, o padrão do papel não a atropela.
+     Sem esta distinção, recolher a medição como diretor duraria até o próximo
+     render — e preferência que não gruda é pior que preferência que não existe. */
+  const [tinhaPreferenciaSalva, setTinhaPreferenciaSalva] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1508,6 +1513,7 @@ export default function CommandCenterPage() {
         const preferences = JSON.parse(saved) as CommandCenterPreferences;
         if (preferences.collapsed) {
           setCollapsedLayers((current) => ({ ...current, ...preferences.collapsed }));
+          setTinhaPreferenciaSalva(true);
         }
         if (Array.isArray(preferences.seenSignalIds)) {
           setSeenSignalIds(
@@ -1699,6 +1705,17 @@ export default function CommandCenterPage() {
   const isSuperintendent = viewerRole === "superintendent";
   const isManager = viewerRole === "manager";
   const isBroker = viewerRole === "broker";
+
+  /* O padrão do papel entra DEPOIS da hidratação e só quando a pessoa ainda não
+     escolheu. Fica aqui, e não no `useState`, por um motivo simples: `viewerRole`
+     só existe depois que o perfil chega, e um padrão aplicado antes disso seria o
+     de "papel desconhecido" — que é o genérico, ou seja, nenhum. */
+  useEffect(() => {
+    if (!preferencesHydrated || tinhaPreferenciaSalva || !viewerRole) return;
+    const doPapel = camadasDoPapel(viewerRole);
+    if (!Object.keys(doPapel).length) return;
+    setCollapsedLayers((atual) => ({ ...atual, ...doPapel }));
+  }, [preferencesHydrated, tinhaPreferenciaSalva, viewerRole]);
 
   // O briefing só é renderizado para papéis de gestão (o corretor vê a fila de
   // atenção da própria carteira), então o fetch é condicionado a esses papéis.
