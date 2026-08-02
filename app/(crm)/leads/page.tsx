@@ -18,6 +18,11 @@ import { LoadingState } from "@/components/atlas/loading-state";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { NextActionQuickSet } from "@/components/crm/next-action-quick-set";
+import { RegistroDeContatoNaLinha } from "@/components/crm/registro-de-contato-na-linha";
+import {
+  ehAceitoPelaRota,
+  type RegistroDeContato,
+} from "@/components/crm/registro-de-contato-desfechos";
 import { AcompanhamentoCorretorFilaDeRecuperacao } from "@/components/crm/acompanhamento-corretor-fila-de-recuperacao";
 
 type Lead = {
@@ -516,6 +521,109 @@ export default function LeadsPage() {
       );
     } catch {
       /* Sem área de transferência: o número segue visível para copiar à mão. */
+    }
+  }
+
+  /**
+   * REGISTRAR O CONTATO NA PRÓPRIA LINHA — otimista, com reversão que aparece.
+   *
+   * ── O que isto conserta ───────────────────────────────────────────────────
+   *
+   * MEDIDO no banco em 02/08/2026: 490 leads, 22 com `first_contacted_at`
+   * (4,5%), **0 atividades de contato** — as 481 atividades existentes são
+   * todas `pipeline_stage_changed`. A rota `POST /api/v1/leads/[id]/first-contact`
+   * já existia e já estava certa; `FirstContactQuickLog` também. Os dois só
+   * estavam montados na FICHA (`/leads/[id]`). Nesta lista — onde o corretor
+   * passa o dia — havia ZERO ocorrência dos dois.
+   *
+   * Registrar exigia abrir a ficha de cada lead e voltar. Ninguém faz isso 30
+   * vezes por dia. Não era a equipe que não ligava: era o sistema que só
+   * aceitava o registro no lugar onde ela não estava.
+   *
+   * ── Por que otimista, e por que a reversão importa mais que o otimismo ────
+   *
+   * A linha muda antes da resposta porque o corretor está em movimento: sem
+   * retorno imediato ele toca de novo e duplica o registro. Mas se a rota
+   * recusar — sessão vencida, lead fora da carteira (a rota devolve 403 para
+   * lead de colega), rede caída — o patch é DESFEITO e o erro relançado, que é
+   * o que acende o `role="alert"` na linha.
+   *
+   * Falha silenciosa aqui seria pior do que não ter o botão: o corretor jura
+   * que registrou, o banco não tem a linha, e a próxima auditoria conclui de
+   * novo que ninguém liga para lead.
+   *
+   * ── A confirmação NÃO é o 201 ─────────────────────────────────────────────
+   *
+   * A rota devolve 201 mesmo quando `complete_first_contact_sla` não existe
+   * neste banco (fase 34 não aplicada): o evento entra na linha do tempo e
+   * `first_contacted_at` continua NULO. Pintar a linha como contatada nesse
+   * caso seria desenhar um dado que o banco não tem — exatamente a métrica
+   * inventada que esta tela não pode produzir. Por isso a confirmação lê o
+   * campo que a própria rota devolve sobre o que ela conseguiu gravar.
+   */
+  async function registrarContatoDaLinha(lead: Lead, registro: RegistroDeContato) {
+    /* A guarda contra "caminhos divergentes": um par (canal, resultado) que a
+       rota não conhece vira HTTP 400 genérico na mão de quem está trabalhando,
+       e nenhum teste desta árvore o pegaria. Aqui ele nem sai — e o patch
+       otimista nem chega a acontecer, então não há o que desfazer. */
+    if (!ehAceitoPelaRota(registro)) {
+      throw new Error(
+        `desfecho fora do vocabulário da rota (${registro.canal}/${registro.resultado})`,
+      );
+    }
+    const contatoAnterior = lead.first_contacted_at;
+    const agora = new Date().toISOString();
+    /* Só `first_contacted_at`, e só quando estava vazio. `last_interaction_at`
+       fica de fora de propósito: a rota não o escreve, e antecipá-lo aqui
+       apagaria o chip de "parada há N dias" com um valor que o servidor não
+       tem — a linha voltaria a mentir sozinha na próxima carga. */
+    setItems((atuais) =>
+      atuais.map((l) =>
+        l.id === lead.id
+          ? { ...l, first_contacted_at: l.first_contacted_at ?? agora }
+          : l,
+      ),
+    );
+    const desfazer = () =>
+      setItems((atuais) =>
+        atuais.map((l) =>
+          l.id === lead.id ? { ...l, first_contacted_at: contatoAnterior } : l,
+        ),
+      );
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("sessão expirada, entre de novo");
+      const r = await fetch(`/api/v1/leads/${lead.id}/first-contact`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(registro),
+      });
+      const payload = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        throw new Error(
+          payload?.error?.message || `o servidor recusou (HTTP ${r.status})`,
+        );
+      }
+      const gravou = payload?.data ?? {};
+      /* Primeiro contato só está gravado se o SLA fechou — é a RPC que carimba
+         `first_contacted_at`. Recontato só está gravado se o evento entrou. */
+      const confirmado = gravou?.primeiroContato
+        ? gravou?.slaFechado === true
+        : gravou?.eventoRegistrado === true;
+      if (!confirmado) {
+        throw new Error(
+          typeof gravou?.aviso === "string" && gravou.aviso
+            ? gravou.aviso
+            : "o servidor não confirmou o registro",
+        );
+      }
+    } catch (erro) {
+      desfazer();
+      throw erro instanceof Error ? erro : new Error("falha de rede");
     }
   }
   const [nextAction, setNextAction] = useState<NextActionFilter>("");
@@ -2216,6 +2324,10 @@ export default function LeadsPage() {
                       <th>Score</th>
                       <th>Corretor</th>
                       <th>Último contato</th>
+                      {/* A coluna que faltava. Ela vem ANTES de "Próxima ação"
+                          porque é essa a ordem do trabalho: registra-se o que
+                          acabou de acontecer, e só depois se marca o que vem. */}
+                      <th>Primeiro contato</th>
                       <th>Próxima ação</th>
                       <th>
                         <span className="sr-only">Ações rápidas</span>
@@ -2393,6 +2505,28 @@ export default function LeadsPage() {
                                 )}
                               </span>
                             )}
+                          </td>
+                          {/* O REGISTRO FICA NA LINHA, e não atrás de hover:
+                              as "Ações rápidas" ao lado só aparecem com o
+                              ponteiro em cima — no celular elas não existem, e
+                              é do celular que o corretor liga. Esta coluna é
+                              sempre visível, nos dois dispositivos. */}
+                          {/* 268px é a conta, não um chute: dois alvos de 44px
+                              com `basis-20` (80) + o expansor (56) + 12 de
+                              respiro = 228, e a folga leva "Não atendeu" a
+                              caber numa linha só em vez de quebrar dentro do
+                              botão. Abaixo disso a coluna funciona, mas fica
+                              apertada — a tabela já rola na horizontal. */}
+                          <td style={{ minWidth: 268 }}>
+                            <RegistroDeContatoNaLinha
+                              leadId={lead.id}
+                              leadNome={lead.name || "Lead sem nome"}
+                              contatadoEm={lead.first_contacted_at}
+                              variante="tabela"
+                              aoRegistrar={(registro) =>
+                                registrarContatoDaLinha(lead, registro)
+                              }
+                            />
                           </td>
                           <td>
                             <span
@@ -2604,6 +2738,22 @@ export default function LeadsPage() {
                           </button>
                         ) : null}
                       </div>
+                      {/* LOGO ABAIXO DE "📞 Ligar", e não em outro lugar do
+                          cartão: o gesto real é tocar em Ligar, sair para o
+                          discador, voltar — e o desfecho tem de estar embaixo
+                          do polegar no instante em que ele volta. Empurrá-lo
+                          para o fim do cartão custaria uma rolagem, que é
+                          exatamente o custo que fez 95,5% da base ficar sem
+                          registro. */}
+                      <RegistroDeContatoNaLinha
+                        leadId={lead.id}
+                        leadNome={lead.name || "Lead sem nome"}
+                        contatadoEm={lead.first_contacted_at}
+                        variante="cartao"
+                        aoRegistrar={(registro) =>
+                          registrarContatoDaLinha(lead, registro)
+                        }
+                      />
                       {/* Marcar a próxima ação sem sair da fila. Antes disto, a
                           única forma de gravar `next_action_at` era agendar uma
                           VISITA ou submeter a ficha inteira — e 208 de 217 leads
