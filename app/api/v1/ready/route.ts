@@ -310,7 +310,25 @@ export async function GET(request: NextRequest) {
     filaMedida: filas.medido === true,
     itensComFalha: filas.medido === true ? (filas.porEstado?.failed ?? 0) + (filas.porEstado?.dead_letter ?? 0) : 0,
     agendadorMedido: agendamento.medido === true,
-    agendadorParado: agendamento.medido === true && "parado" in agendamento && agendamento.parado === true,
+    /* ── O DETECTOR DE AGENDADOR PARADO NUNCA DISPAROU ────────────────────
+       Até 02/08/2026 esta linha lia `"parado" in agendamento`. A lib
+       `avaliarAgendador` devolve **`agendadorParadoProvavel`** — nome
+       diferente, e nada renomeia entre as duas. `"parado" in agendamento`
+       era SEMPRE false, então `agendadorParado` era sempre false, e o ramo
+       do `estado-da-prontidao` que detecta agendador parado era código
+       morto desde que nasceu.
+
+       O `in` silencia: propriedade ausente não é erro de tipo nem de
+       execução, só devolve false. A guarda parecia defensiva e era cega.
+
+       Mesma classe de `assigned_to` vs `assigned_user_id` em `leads`: dois
+       nomes para o mesmo fato, e o consumidor lendo o que não existe. ── */
+    agendadorParado:
+      agendamento.medido === true &&
+      "agendadorParadoProvavel" in agendamento &&
+      agendamento.agendadorParadoProvavel === true,
+    agendadorObservavel:
+      agendamento.medido === true && "observavel" in agendamento ? agendamento.observavel !== false : undefined,
   });
 
   const data = {

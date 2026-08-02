@@ -53,6 +53,14 @@ export type ObservacaoDaProntidao = {
    * deixam a fila igualmente quieta.
    */
   agendadorParado: boolean;
+  /**
+   * A fila deu SINAL para opinar sobre o agendador? Ver
+   * `lib/integrations/agendador-parado.ts`: a heurística só acusa parada
+   * quando há item NUNCA TENTADO e velho. Sem isso ela devolve
+   * `parado: false`, e antes de 02/08/2026 este arquivo lia esse false como
+   * "executa". Não é a mesma coisa.
+   */
+  agendadorObservavel?: boolean;
 };
 
 export type VereditoDaProntidao = {
@@ -122,7 +130,30 @@ export function avaliarProntidao(o: ObservacaoDaProntidao): VereditoDaProntidao 
     };
   }
 
-  // 6. Roda, mas com entrega que não aconteceu.
+  // 6. NÃO DÁ PARA AFIRMAR QUE RODA — e afirmar mesmo assim foi o defeito.
+  //
+  // Medido em 02/08/2026: a fila tinha 10 itens, todos com `attempts = 1`.
+  // Nenhum nunca-tentado, então `agendadorParado` veio false e este arquivo
+  // concluía "O agendamento executa". Não executava: ZERO disparos por
+  // `schedule` em todos os workflows do repositório, medido pela API do GitHub
+  // no mesmo instante.
+  //
+  // Fila sem item elegível é indistinguível de agendador saudável. A escolha
+  // anterior era o lado otimista; a honesta é dizer que não se sabe. É a mesma
+  // regra do custo de IA: sem tarifa o custo é NULO, não zero.
+  if (o.agendadorObservavel === false) {
+    return {
+      estado: "unknown",
+      motivo:
+        o.itensComFalha > 0
+          ? `Não dá para afirmar que o agendamento executa: nenhum item elegível na fila para observar. E há ${o.itensComFalha} item(ns) em failed/dead_letter, que não saem sozinhos.`
+          : "Não dá para afirmar que o agendamento executa: nenhum item elegível na fila para observar. Fila vazia prova que não há trabalho represado, não que o worker acorda.",
+      exigeAcao: true,
+      medido: false,
+    };
+  }
+
+  // 7. Roda, mas com entrega que não aconteceu.
   if (o.itensComFalha > 0) {
     return {
       estado: "degraded",
