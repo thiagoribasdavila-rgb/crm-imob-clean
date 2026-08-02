@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { mediaAlcanca } from "./lib/css-propriedade.mjs";
 
 const read = (path) => fs.readFileSync(path, "utf8");
 const sprint = JSON.parse(read("config/corrective-sprint-050-059.json"));
@@ -68,10 +69,15 @@ const checks = [
   ],
   [
     "Kanban tem tratamento responsivo e cartão de risco",
-    styles.includes("atlas-kanban-board") &&
-      styles.includes("atlas-pipeline-lead[data-risk") &&
-      styles.includes("atlas-kanban-mobile-nav") &&
-      styles.includes("@media (max-width: 820px)"),
+    // ── REAPONTADA EM 02/08/2026 ─────────────────────────────────────────
+    // Quatro `includes` soltos: três classes e um breakpoint, sem nenhuma
+    // relação exigida entre eles. "Tratamento responsivo" É a relação — a
+    // navegação móvel do Kanban tem de estar DENTRO do bloco de 820px. Do
+    // jeito antigo, apagar o bloco @media inteiro e deixar um `@media
+    // (max-width: 820px)` decorativo em qualquer outro canto passava.
+    styles.includes("atlas-pipeline-lead[data-risk") &&
+      mediaAlcanca(styles, "max-width: 820px", ".atlas-kanban-board") &&
+      mediaAlcanca(styles, "max-width: 820px", ".atlas-kanban-mobile-nav"),
   ],
   [
     "Tarefas e agenda usam due_date e user_id ativos",

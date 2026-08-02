@@ -67,14 +67,37 @@ function arquivos(raiz) {
  *
  * Agora a janela começa em `from("leads")` e vai até a próxima chamada de
  * escrita. Fora dela, a coluna é leitura, tipo ou filtro.
+ *
+ * ── E A SEGUNDA VERSÃO ATRAVESSAVA PARA A TABELA VIZINHA ──────────────────
+ *
+ * A janela de 1200 caracteres não parava na consulta seguinte. Em
+ * `app/api/v1/whatsapp/bridge/inbound/route.ts` o arquivo faz
+ * `from("leads").select(...)` e, 36 linhas depois,
+ * `from("conversations").insert({ assigned_to })` — e a janela do `leads`
+ * alcançava o insert do `conversations`, acusando meia verdade num arquivo que
+ * nunca escreve dono de lead.
+ *
+ * Conferido no banco vivo em 02/08/2026: `conversations` tem `assigned_to` e
+ * NÃO tem `assigned_user_id`; `leads` tem as duas. Ou seja, o que o portão
+ * mandava fazer ali derrubaria o insert com PGRST204 — mandar consertar o que
+ * não está quebrado é como um portão perde a autoridade dele.
+ *
+ * A janela agora termina no próximo `from(`, seja qual for a tabela. É mais
+ * ESTREITA que a anterior, não mais frouxa: um `update` de `leads` que ficasse
+ * depois de outra consulta deixa de ser visto, e é por isso que o limite de
+ * 1200 continua valendo como teto para o caso de não haver `from(` seguinte.
  */
 function escritasEmLeads(fonte) {
   const limpo = fonte.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   const achados = { [A]: false, [B]: false };
   for (const m of limpo.matchAll(/from\(\s*["'`]leads["'`]\s*\)/g)) {
     /* Janela generosa: entre `from("leads")` e o `.update(`/`.insert(` pode
-       haver quebras de linha e encadeamento. */
-    const janela = limpo.slice(m.index, m.index + 1200);
+       haver quebras de linha e encadeamento — mas ela PARA na consulta
+       seguinte, senão a escrita da tabela vizinha é contada como de `leads`. */
+    const resto = limpo.slice(m.index + m[0].length);
+    const proximaConsulta = resto.search(/from\(\s*["'`]/);
+    const fim = proximaConsulta === -1 ? 1200 : Math.min(1200, m[0].length + proximaConsulta);
+    const janela = limpo.slice(m.index, m.index + fim);
     const escrita = janela.match(/\.(?:update|insert|upsert)\s*\(/);
     if (!escrita) continue;
     const corpo = janela.slice(escrita.index, escrita.index + 900);

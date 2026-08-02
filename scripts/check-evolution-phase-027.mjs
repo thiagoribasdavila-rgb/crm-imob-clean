@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { familiaDeclara, regrasQueCitam } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-027-navigation-task-step-reduction.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -44,7 +45,14 @@ const checks = [
   ["Ação possui nome acessível completo", topbar.includes("Ação rápida: ${taskAction.label}") && config.responsiveBehavior.accessibleNameAlwaysPresent === true],
   ["Busca global prioriza a ação da tela", palette.includes("getAtlasTaskActionForPathname(pathname, identity)") && palette.includes('group: "Ação desta tela"')],
   ["Busca remove o destino duplicado", palette.includes("item.href !== taskAction?.href") && config.sharedConsumption.commandPaletteRemovesDuplicateTarget === true],
-  ["Tablet e celular preservam densidade", styles.includes(".atlas-quick-create strong") && styles.includes("display: none") && styles.includes("text-overflow: ellipsis")],
+  // ── REAPONTADA EM 02/08/2026 ──────────────────────────────────────────────
+  // Era `includes(".atlas-quick-create strong") && includes("display: none")
+  // && includes("text-overflow: ellipsis")`. `display: none` é provavelmente a
+  // linha mais repetida de qualquer folha de estilo; a asserção passaria com a
+  // família `.atlas-quick-create` sem nenhuma das duas propriedades.
+  ["Tablet e celular preservam densidade",
+    familiaDeclara(styles, ".atlas-quick-create strong", "display", "none")
+    && regrasQueCitam(styles, ".atlas-quick-create").some(({ corpo }) => /text-overflow:\s*ellipsis/.test(corpo))],
   ["Jornadas profundas ficam a uma ação estrutural", config.criticalJourneyAcceleration.every((journey) => journey.structuralActionsFromContext === 1) && config.exitCriteria.criticalDeepDestinationsReachableInOneAction === true],
   ["Nenhum fluxo comercial paralelo foi criado", config.taskActions.duplicateFormCreated === false && config.taskActions.duplicateBusinessLogicCreated === false && config.exitCriteria.parallelWorkflowCreated === false],
   ["Métrica comportamental não foi inventada", config.measurementPolicy.inventedBehaviorMetricAllowed === false && config.measurementPolicy.structuralActionCountIsRuntimeProof === false],

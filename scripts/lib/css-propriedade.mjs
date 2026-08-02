@@ -86,6 +86,33 @@ export function mediaAlcanca(css, condicao, prefixo) {
 }
 
 /**
+ * QUANTO VALE ESTE TOKEN — em px, ou `null` se ele não é declarado em lugar nenhum.
+ *
+ * `temAlvoDeToque` já dizia, no comentário, que `var(--token)` só conta quando
+ * o chamador RESOLVE o token. Faltava a ferramenta para resolver.
+ *
+ * O caso que motivou, medido em 02/08/2026 em `check-evolution-phase-092.mjs`:
+ *
+ *     css.includes("--atlas-control-height-touch")
+ *
+ * Uma ocorrência no arquivo inteiro — e ela é um USO
+ * (`min-height: var(--atlas-control-height-touch)`), não uma declaração. O
+ * token vive em `styles/atlas-tokens.css` (44px), e por sorte: se alguém o
+ * apagasse de lá, a regra passaria a resolver para nada, o alvo de toque no
+ * celular sumiria, e a asserção continuaria verde sem saber de nada. Ela não
+ * conseguia distinguir "token que vale 44px" de "token que não existe".
+ *
+ * Recebe a fonte CONCATENADA das folhas onde o token pode estar declarado —
+ * quem sabe quais são é o chamador.
+ */
+export function valorDoToken(css, nome) {
+  const limpo = semComentarios(css);
+  const re = new RegExp(`${nome.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}:\\s*(\\d+(?:\\.\\d+)?)px`);
+  const achado = limpo.match(re);
+  return achado ? Number(achado[1]) : null;
+}
+
+/**
  * A LINHA CITA ESTE NÚMERO — como número, não como pedaço de outro.
  *
  * Nasceu de asserções assim, em `check-budget-sizing.mjs` e

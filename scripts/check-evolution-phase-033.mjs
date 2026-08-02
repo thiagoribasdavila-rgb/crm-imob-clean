@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { regrasQueCitam } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-033-navigation-tablet-workspace.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -22,7 +23,22 @@ const checks = [
   ["Regra exclusiva cobre 768 a 1179", styles.includes("@media (min-width: 768px) and (max-width: 1179px)") && styles.includes('data-tablet-layout="adaptive-overlay-workspace"')],
   ["Sidebar vira painel sobreposto em tablet grande", styles.includes("transform: translateX(-100%)") && styles.includes('.atlas-sidebar[data-mobile-open="true"]') && styles.includes("transform: translateX(0)") && config.structuralBaseline.largeTabletDesktopSidebarReservationRemoved === true],
   ["Menu aparece e controle de desktop some", styles.includes(".atlas-sidebar-close,") && styles.includes(".atlas-mobile-menu") && styles.includes(".atlas-sidebar-toggle") && config.tabletContract.desktopDensityControlVisible === false],
-  ["Workspace deixa de reservar a sidebar", styles.includes("margin-left: 0") && styles.includes("left: 0") && styles.includes("container-name: atlas-tablet-workspace")],
+  // ── REAPONTADA EM 02/08/2026 ──────────────────────────────────────────────
+  // Era `includes("margin-left: 0") && includes("left: 0") && includes(
+  // "container-name: atlas-tablet-workspace")`. `margin-left: 0` e `left: 0`
+  // são das linhas mais comuns que existem numa folha de estilo — e a asserção
+  // não dizia de quem eram. Passaria com o workspace de tablet ainda
+  // reservando a sidebar inteira.
+  // Agora cada uma é cobrada da regra certa, dentro do layout de tablet.
+  ["Workspace deixa de reservar a sidebar", (() => {
+    const noTablet = regrasQueCitam(styles, '[data-tablet-layout="adaptive-overlay-workspace"]');
+    const declara = (classe, propriedade, valor) =>
+      noTablet.some(({ seletor, corpo }) =>
+        seletor.includes(classe) && new RegExp(`${propriedade}:\\s*${valor}`).test(corpo));
+    return declara(".atlas-app-main", "margin-left", "0")
+      && declara(".atlas-app-topbar", "left", "0")
+      && declara(".atlas-app-content", "container-name", "atlas-tablet-workspace");
+  })()],
   ["Dock permanece central e governado", styles.includes("var(--atlas-tablet-dock-max)") && styles.includes("transform: translateX(-50%)") && (mobileDock.includes('aria-label="Ações rápidas"') || mobileDock.includes('aria-label="Navegação e ação rápida"')) && mobileDock.includes("aria-current={active ? \"page\" : undefined}")],
   ["Topbar preserva ações críticas", topbar.includes("taskAction.href") && topbar.includes('aria-label="Buscar em toda a plataforma"') && topbar.includes('aria-label="Notificações"') && topbar.includes('aria-label="Abrir meu perfil"') && topbar.includes("signOut")],
   ["Tablet estreito compacta apenas pistas visuais", styles.includes("@media (min-width: 768px) and (max-width: 899px)") && styles.includes(".atlas-command-trigger kbd") && config.topbarContract.narrowKeyboardHintHidden === true && config.exitCriteria.commercialActionsRemoved === false],

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { familiaDeclara, valorDoToken } from "./lib/css-propriedade.mjs";
 
 const source = fs.readFileSync("lib/atlas/evolution-500.ts", "utf8");
 const page = fs.readFileSync("app/(crm)/atlas-v3/Evolution500Program.tsx", "utf8");
@@ -117,12 +118,21 @@ const checks = [
   ["Vazios oferecem recuperação", calendarPage.includes("Criar tarefa") && developmentsPage.includes("Limpar filtros") && developmentsPage.includes("Cadastrar empreendimento")],
   ["Fase 011 padroniza recuperação", phaseEleven.status === "completed" && phaseEleven.technicalStackExposed === false],
   ["Falhas críticas podem repetir", atlasUi.includes("AtlasRecoverableError") && calendarPage.includes("AtlasRecoverableError") && developmentsPage.includes("AtlasRecoverableError")],
-  ["Fase 012 amplia o canvas desktop", phaseTwelve.status === "completed" && tokens.includes("--atlas-content-max: 1728px")],
+  // ── REAPONTADA EM 02/08/2026 ──────────────────────────────────────────────
+  // Era `tokens.includes("--atlas-content-max: 1728px")` — casa com a linha
+  // exata e SÓ com ela: um espaço a mais, ou o valor escrito como `108rem`,
+  // reprova com o canvas idêntico. `valorDoToken` lê o valor e compara número.
+  ["Fase 012 amplia o canvas desktop",
+    phaseTwelve.status === "completed" && valorDoToken(tokens, "--atlas-content-max") === 1728],
   ["Topbar e conteúdo compartilham alinhamento", topbar.includes("atlas-topbar-inner") && globalStyles.includes("max-width: var(--atlas-content-max)")],
   ["Fase 013 possui faixa exclusiva de tablet", phaseThirteen.status === "completed" && globalStyles.includes("@media (min-width: 768px) and (max-width: 1023px)")],
   ["Dock de tablet preserva a área útil", globalStyles.includes("width: min(calc(100% - 32px), 560px)") && globalStyles.includes("transform: translateX(-50%)")],
   ["Fase 014 protege a experiência móvel", phaseFourteen.status === "completed" && phaseFourteen.minimumTouchTargetPx >= 44],
-  ["Formulários móveis não provocam zoom", globalStyles.includes(".atlas-app-shell textarea") && globalStyles.includes("font-size: 16px")],
+  // Era `includes(".atlas-app-shell textarea") && includes("font-size: 16px")`
+  // — e `font-size: 16px` aparece 3 vezes no arquivo. O iOS só deixa de dar
+  // zoom quando é O CAMPO que tem 16px; a asserção não perguntava de quem era.
+  ["Formulários móveis não provocam zoom",
+    familiaDeclara(globalStyles, ".atlas-app-shell textarea", "font-size", "16px")],
   ["Topbar móvel mantém ação comercial", topbar.includes("taskAction.href") && phaseFourteen.preservedActions.includes("new lead")],
   ["Fase 015 reforça acessibilidade sistêmica", phaseFifteen.status === "completed" && phaseFifteen.keyboardFocusTrap === true],
   ["Menu móvel declara relação e estado", topbar.includes('aria-controls="atlas-primary-sidebar"') && topbar.includes("aria-expanded={mobileOpen}") && sidebar.includes('id="atlas-primary-sidebar"')],

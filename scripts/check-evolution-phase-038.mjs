@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { temAlvoDeToque } from "./lib/css-propriedade.mjs";
+import { elementoContem } from "./lib/jsx-estrutura.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-038-task-execution-workspace.json", "utf8"));
 const phaseThirtySeven = JSON.parse(fs.readFileSync("config/evolution-phase-037-pipeline-movement-workspace.json", "utf8"));
@@ -18,9 +19,30 @@ const checks = [
   // conforme a asserção "Filtros exibem contagem e semântica de abas". Os quatro sinais permanecem.
   ["Primeiro bloco mostra quatro sinais objetivos", tasks.includes("O que precisa ser feito agora") && tasks.includes('["overdue", "Vencidas"]') && tasks.includes('["today", "Hoje"]') && tasks.includes('["mine", "Minha fila"]') && tasks.includes('["no_due", "Sem prazo"]') && config.taskContract.primarySignals === 4],
   ["Assistente limita o foco a três ações", tasks.includes("assistant?.sequence.slice(0, 3)") && tasks.includes("assistant?.sequence.slice(3)") && config.taskContract.visibleDailyPriorities === 3],
-  // Reconciliação CC-6: o rótulo mudou de "Ver outras … ações planejadas" para "+{remainingSteps.length}
-  // planejadas", mas a divulgação progressiva permanece via <details>/<summary> renderizando remainingSteps.map.
-  ["Ações restantes usam divulgação progressiva", tasks.includes("+{remainingSteps.length} planejadas") && tasks.includes("remainingSteps.map") && config.informationHierarchy.remainingStepsProgressivelyDisclosed === true],
+  // ── REAPONTADA EM 02/08/2026 — do RÓTULO para a ESTRUTURA ─────────────────
+  //
+  // Era: tasks.includes("+{remainingSteps.length} planejadas")
+  //      && tasks.includes("remainingSteps.map")
+  //
+  // Dois `includes` DESACOPLADOS sobre 1.100 linhas, sob a etiqueta "usam
+  // divulgação progressiva". Divulgação progressiva é uma RELAÇÃO — a lista
+  // está DENTRO de um elemento que começa fechado. A asserção não verificava
+  // relação nenhuma: passaria intacta com o `<details>` apagado e os passos
+  // 4-em-diante despejados na cara do corretor.
+  //
+  // CAUSA MEDIDA DO VERMELHO: o rótulo mudou de propósito. "+N planejadas"
+  // mentia — são os passos 4+ da sequência, de qualquer urgência, e
+  // "planejadas" já tem dono (`summary.planned`). Virou "+N passos restantes
+  // do roteiro". Texto trocado, propriedade intacta, portão vermelho: cega
+  // para o defeito e sensível ao que não importa.
+  //
+  // Agora se afirma o que a etiqueta promete, via `lib/jsx-estrutura.mjs`:
+  // existe um `<details>` cujo CORPO contém o `<summary>` (o resumo clicável),
+  // a contagem dos restantes e o `remainingSteps.map` que os desenha. Prova de
+  // que reprova: `tests/contracts/estrutura-jsx-reprova.test.mjs`.
+  ["Ações restantes usam divulgação progressiva",
+    elementoContem(tasks, "details", "<summary", "remainingSteps.length", "remainingSteps.map")
+    && config.informationHierarchy.remainingStepsProgressivelyDisclosed === true],
   // Reconciliação CC-6: o comentário "FASE 43 · TAREFAS RECORRENTES" foi substituído pela UI
   // "Nova tarefa · Recorrência opcional" / "Repetir tarefa"; method:"POST" foi reformatado como
   // method: "POST" (espaço). A criação rápida e a recorrência (cadence/endsAt/maxOccurrences) permanecem.

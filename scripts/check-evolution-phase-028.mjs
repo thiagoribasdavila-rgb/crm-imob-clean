@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { familiaDeclara, regrasQueCitam, temAlvoDeToque } from "./lib/css-propriedade.mjs";
 import path from "node:path";
 import ts from "typescript";
 
@@ -178,8 +179,19 @@ const checks = [
 
   ["Topbar usa o mesmo componente como ação primária", topbar.includes("<AtlasActionLink") && topbar.includes('priority="primary"') && topbar.includes("getAtlasTaskActionForPathname")],
   ["Nome acessível e decoração estão separados", actionLink.includes('aria-label={props["aria-label"] ?? label}') && actionLink.includes('aria-hidden="true"') && config.accessibility.optionalArrowIsDecorative === true],
-  ["Ação preserva densidade sem cortar o nome acessível", styles.includes(".atlas-action-label") && styles.includes("text-overflow: ellipsis") && styles.includes(".atlas-page-action")],
-  ["Alvo de página e adaptação móvel estão definidos", styles.includes("min-height: 44px") && styles.includes(".atlas-page-actions > * { flex: 1 1 auto; }") && config.visualBehavior.pageActionMinimumTargetPx === 44],
+  // ── REAPONTADAS EM 02/08/2026 ─────────────────────────────────────────────
+  // Eram quatro `includes` desacoplados: duas classes e duas propriedades, sem
+  // dizer qual propriedade era de qual classe. `text-overflow: ellipsis` e
+  // `min-height: 44px` são das linhas mais repetidas do arquivo (45 ocorrências
+  // medidas para a segunda em 01/08/2026), então as duas asserções estavam
+  // satisfeitas por regras que não têm relação com ação de página nenhuma.
+  ["Ação preserva densidade sem cortar o nome acessível",
+    familiaDeclara(styles, ".atlas-action-label", "text-overflow", "ellipsis")
+    && regrasQueCitam(styles, ".atlas-page-action").length > 0],
+  ["Alvo de página e adaptação móvel estão definidos",
+    temAlvoDeToque(styles, ".atlas-page-action", config.visualBehavior.pageActionMinimumTargetPx)
+    && styles.includes(".atlas-page-actions > * { flex: 1 1 auto; }")
+    && config.visualBehavior.pageActionMinimumTargetPx === 44],
   ["Destinos, rotas e RBAC permanecem intactos", config.navigationDestinationsChanged === false && config.safetyPolicy.rbacPreserved === true && config.exitCriteria.routeRemoved === false && config.exitCriteria.permissionChanged === false],
   ["Métrica comportamental não foi inventada", config.measurementPolicy.inventedBehaviorMetricAllowed === false && config.measurementPolicy.structuralConsistencyIsRuntimeProof === false],
   ["Registro histórico da migração preservado", config.auditedConsumers.pageHeadersMigrated === 13 && report.includes("13 cabeçalhos")],

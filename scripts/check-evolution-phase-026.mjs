@@ -1,7 +1,7 @@
 import fs from "node:fs";
+import { familiaDeclara, mediaAlcanca, regrasQueCitam, temAlvoDeToque } from "./lib/css-propriedade.mjs";
 import vm from "node:vm";
 import ts from "typescript";
-import { temAlvoDeToque, mediaAlcanca, regrasQueCitam } from "./lib/css-propriedade.mjs";
 
 const config = JSON.parse(fs.readFileSync("config/evolution-phase-026-navigation-visual-hierarchy.json", "utf8"));
 const phaseTwenty = JSON.parse(fs.readFileSync("config/evolution-phase-020-wave-homologation.json", "utf8"));
@@ -122,7 +122,13 @@ const checks = [
     && temAlvoDeToque(styles, ".atlas-rail", config.interactionTargets.favoriteActionMinimumPx)
     && temAlvoDeToque(styles, ".atlas-topbar", config.interactionTargets.favoriteActionMinimumPx)
     && config.interactionTargets.favoriteActionMinimumPx === 44],
-  ["Menu recolhido recentraliza o destino", styles.includes('.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-rail-link') && styles.includes("justify-content: center")],
+  // ── REAPONTADA EM 02/08/2026 ──────────────────────────────────────────────
+  // Era o seletor num `includes` e `justify-content: center` noutro, soltos. A
+  // centralização podia ser de qualquer regra do arquivo; o trilho recolhido
+  // podia estar sem nenhuma. Agora a propriedade é cobrada DO CORPO da regra
+  // que carrega o seletor.
+  ["Menu recolhido recentraliza o destino",
+    familiaDeclara(styles, '.atlas-app-shell[data-sidebar-collapsed="true"] .atlas-rail-link', "justify-content", "center")],
   // Catálogo podado na fonte de propósito (commit e20f8931 "navegação podada na fonte") + poda 2026-07-20/21: /command-center consolida Início+Command Center e os grupos (ai)/(autonomous) foram quarentenados. mobilePrimary segue 4.
   //
   // 2026-07-26: 17 principais e 6 contextuais. /marketing subiu do ⌘K para a rail.
