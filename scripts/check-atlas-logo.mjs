@@ -213,6 +213,25 @@ if (constantePath) markBody = markBody.replace(/d=\{ATLAS_MONOGRAM_PATH\}/g, `d=
 
 check("caso 2: função AtlasMark (o desenho da marca) existe e é isolável", markBody.length > 0, "não achei o bloco function AtlasMark ... antes de type AtlasLogoProps");
 
+/**
+ * O QUE ESTE PORTÃO LÊ É CÓDIGO, NÃO PROSA.
+ *
+ * Duas vezes em 02/08/2026 uma asserção reprovou o desenho certo porque um
+ * COMENTÁRIO citava a construção que ela procura: o cabeçalho explica por que o
+ * id do gradiente não pode ser fixo, e para isso escreve `<linearGradient
+ * id="atlas-monogram-gradient">` e `url(#…)`. O parser contou os dois como se
+ * fossem traços pintados.
+ *
+ * Um portão que reprova por causa da explicação treina a pessoa a apagar a
+ * explicação — exatamente o contrário do que este repositório quer.
+ *
+ * A regra de linha é ANCORADA no início da linha (com espaços opcionais antes
+ * das duas barras) e não solta no meio do texto: solta, ela decapitaria
+ * qualquer endereço http dentro de código, que também tem duas barras.
+ */
+const semComentarios = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/[^\n]*$/gm, "");
+const logoCodigo = semComentarios(logoSrc);
+
 // --------------------------------------------------------------------------
 // Estrela de 4 pontas
 // --------------------------------------------------------------------------
@@ -255,11 +274,37 @@ check(
   );
 }
 
-check(
-  "caso 6: o SVG da marca usa viewBox 0 0 100 100 (a geometria do path pressupõe isso)",
-  /viewBox="0 0 100 100"/.test(markBody),
-  "viewBox diferente invalida as coordenadas do monograma",
-);
+// REVISÃO 2026-08-02. Este caso casava a STRING `viewBox="0 0 100 100"`. Quando
+// a marca ganhou a placa do favicon, passaram a existir dois recortes do MESMO
+// desenho — 100 sem placa, 64 com — e a asserção literal reprovou o desenho
+// certo. Ela conferia a FORMA de escrever; o que importa é a PROPRIEDADE: as
+// coordenadas do path só valem se a caixa em que elas são interpretadas tiver
+// 100 unidades. Agora é isso que se cobra, e a aritmética do enquadramento
+// entra junto — o que sai mais forte, porque um translate errado passava batido
+// pela regra antiga e agora não passa.
+{
+  const semPlaca = /"0 0 100 100"/.test(markBody);
+  const plate = /ATLAS_PLATE = \{ size: (\d+), rx: (\d+), scale: ([\d.]+), translate: ([\d.]+) \}/.exec(logoSrc);
+  const usaPlaca = /viewBox=\{[^}]*ATLAS_PLATE\.size/.test(markBody);
+  // Sem placa o monograma vale direto. Com placa ele precisa ser escalado e
+  // recentrado: translate = size/2 - 50*scale. Fora disso o desenho descola do
+  // quadrado, e foi exatamente esse cálculo que o favicon documentou em prosa
+  // e ninguém nunca conferiu.
+  const t = plate ? Number(plate[1]) / 2 - 50 * Number(plate[3]) : null;
+  const enquadramentoOk = plate ? Math.abs(t - Number(plate[4])) < 0.001 : false;
+  const transformOk = /translate\(\$\{ATLAS_PLATE\.translate\} \$\{ATLAS_PLATE\.translate\}\) scale\(\$\{ATLAS_PLATE\.scale\}\)/.test(markBody);
+  check(
+    "caso 6: as coordenadas do monograma são interpretadas numa caixa de 100 (direto, ou reescaladas para a placa)",
+    semPlaca && (!usaPlaca || (enquadramentoOk && transformOk)),
+    !semPlaca
+      ? "o recorte sem placa não usa 0 0 100 100 — as coordenadas do monograma perdem o sentido"
+      : !plate
+        ? "ATLAS_PLATE ausente: a placa existe no JSX mas não há constante para conferir o enquadramento"
+        : !enquadramentoOk
+          ? `translate deveria ser ${t} (= ${plate[1]}/2 − 50×${plate[3]}) e é ${plate[4]} — o monograma fica descentralizado na placa`
+          : "o <g> da placa não aplica translate+scale a partir de ATLAS_PLATE — placa e monograma podem divergir numa edição futura",
+  );
+}
 
 // --------------------------------------------------------------------------
 // Forma única
@@ -308,14 +353,33 @@ check(
 );
 
 {
-  const grads = elements(logoSrc, "linearGradient");
-  const stops = gradientStops(logoSrc);
+  const grads = elements(logoCodigo, "linearGradient");
+  const stops = gradientStops(logoCodigo);
   const from = stops.find((s) => s.offset === "0");
   const to = stops.find((s) => s.offset === "1");
+  // ── REVISÃO 2026-08-02: ESTE CASO EXIGIA O DEFEITO ───────────────────────
+  //
+  // A regra pedia "id ESTÁVEL", casando `GRAD_ID` — uma constante de módulo,
+  // portanto o MESMO id em toda instância da marca. `id` é global no documento:
+  // duas marcas na mesma página emitiam `id="atlas-monogram-gradient"` duas
+  // vezes, e todo `url(#…)` resolvia para a primeira.
+  //
+  // Medido na produção em 02/08/2026, na tela de acesso: a primeira cópia vivia
+  // dentro da <section> de desktop, `display:none` abaixo de `lg`, medindo 0×0.
+  // Gradiente sem caixa não pinta. Em toda largura de celular a marca do Atlas
+  // era invisível — e o portão estava VERDE, porque cobrava justamente a
+  // constante que causava isso.
+  //
+  // Inverter é mais forte que remover: agora o id tem de ser POR INSTÂNCIA, e
+  // uma volta ao id de módulo reprova.
+  const idDeModulo = /const\s+GRAD_ID\s*=\s*"/.test(logoCodigo);
+  const idPorInstancia = /const\s+gradId\s*=\s*[^;]*useId\(\)/.test(markBody);
   check(
-    "caso 11: <linearGradient> com id estável e stops offset 0 = teal e offset 1 = violet",
+    "caso 11: <linearGradient> com id POR INSTÂNCIA (nunca de módulo) e stops offset 0 = teal e offset 1 = violet",
     grads.length === 1 &&
-      (grads[0].id ?? "").includes("GRAD_ID") &&
+      !idDeModulo &&
+      idPorInstancia &&
+      (grads[0].id ?? "").includes("gradId") &&
       stops.length === 2 &&
       // O stop referencia a constante por expressão JSX, então o parser lê o
       // nome dela, não a cor. Aceita GRAD_* e BRAND_* — o valor exato já é
@@ -325,11 +389,13 @@ check(
     JSON.stringify({ grads, stops }),
   );
 
-  const gradIdLine = logoSrc.match(/const GRAD_ID\s*=\s*"([^"]+)"/);
+  // Mesmo motivo do caso 11: o fill tem de apontar para o id DAQUELA instância.
+  // Se ele apontasse para um nome de módulo, cada marca extra na página voltaria
+  // a caçar o gradiente da primeira.
   check(
-    "caso 12: o fill da assinatura referencia o MESMO id do gradiente declarado",
-    Boolean(gradIdLine) && /url\(#\$\{GRAD_ID\}\)/.test(markBody),
-    gradIdLine ? "o fill não usa url(#${GRAD_ID})" : "const GRAD_ID ausente",
+    "caso 12: o fill da assinatura referencia o id por instância do gradiente declarado",
+    /url\(#\$\{gradId\}\)/.test(markBody) && !/url\(#\$\{GRAD_ID\}\)/.test(markBody),
+    "o fill não usa url(#${gradId}) — sem id por instância, duas marcas na mesma página disputam o mesmo gradiente",
   );
 }
 
@@ -354,8 +420,14 @@ check(
 {
   // Nenhum traço da marca pode cravar url(#...) ou cor hex: tudo passa pelo pincel
   // resolvido (fill), senão a variante mono vaza gradiente.
-  const urlHits = markBody.match(/url\(#/g) ?? [];
-  const hexHits = markBody.match(/#[0-9a-fA-F]{6}\b/g) ?? [];
+  // Conta no CÓDIGO, não na prosa. A versão anterior varria o bloco inteiro e
+  // um comentário que citasse `url(#…)` — explicando justamente por que o id
+  // não pode ser fixo — era contado como se fosse um traço pintado. Portão que
+  // reprova por causa de um comentário treina a pessoa a apagar a explicação,
+  // que é o oposto do que se quer. Instrumento errado, não regra errada.
+  const codigo = semComentarios(markBody);
+  const urlHits = codigo.match(/url\(#/g) ?? [];
+  const hexHits = codigo.match(/#[0-9a-fA-F]{6}\b/g) ?? [];
   // Uma forma, um pincel. A lista existia para cobrir órbita e planeta.
   const painted = [star?.attrs.fill];
   check(

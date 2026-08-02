@@ -22,6 +22,21 @@
      Agora deriva. Um acento, um lugar para mudá-lo. */
   --primary: var(--atlas-accent);
   --primary-strong: var(--atlas-accent-strong);
+
+  /* ── A MARCA, EM TOKEN — E ATÉ HOJE ELA NÃO TINHA UM ──────────────────────
+     components/atlas/atlas-logo.tsx escreve `var(--atlas-brand-from, #3ae7d7)`
+     desde que nasceu, e o cabeçalho dele promete white-label: "troca a marca
+     sem tocar em componente". Varrendo o repositório em 02/08/2026, esses três
+     nomes NÃO existiam em lugar nenhum — só os fallbacks dentro do próprio
+     componente. O fallback vencia sempre, porque não havia nada para vencer.
+     A promessa era verdadeira em intenção e vazia na prática: não existia o
+     lugar onde ligá-la.
+     Agora existe. Os valores são os mesmos de antes — isto declara o que já
+     estava em vigor, não muda a cor de ninguém. --atlas-brand-plate é a placa
+     que app/icon.svg sempre desenhou e o componente não desenhava. */
+  --atlas-brand-from: #3ae7d7;
+  --atlas-brand-to: #8b8cff;
+  --atlas-brand-plate: #06080f;
   --violet: #8b5cf6;
   --success: #34d399;
   --warning: #fbbf24;

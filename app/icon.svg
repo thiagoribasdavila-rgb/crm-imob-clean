@@ -18,7 +18,13 @@
     desalinharem numa edição futura.
   -->
   <defs>
-    <linearGradient id="atlasIconGrad" x1="0" y1="0" x2="1" y2="1">
+    <!--
+      Vertical (0,0 → 0,1), não diagonal. O monograma é simétrico em torno de
+      x=50; gradiente diagonal dava cores diferentes às duas pernas na mesma
+      altura, e a 16px na aba do navegador a letra lia como duas peças soltas.
+      Na vertical cada altura tem uma cor só. Decisão 4 em atlas-logo.tsx.
+    -->
+    <linearGradient id="atlasIconGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#3ae7d7"/>
       <stop offset="1" stop-color="#8b8cff"/>
     </linearGradient>
