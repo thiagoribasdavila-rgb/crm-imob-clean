@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { IaAutonomaPainelDeAutonomia, IaAutonomaRobo } from "@/components/ia-autonoma-robo";
+import { ProntidaoParaLigarPanel } from "@/components/atlas/ProntidaoParaLigarPanel";
 import { supabase } from "@/lib/supabase";
 
 type AIStatus = {
@@ -329,6 +330,21 @@ export default function AISettings() {
 
       <section aria-label="Autonomia declarada">
         <IaAutonomaPainelDeAutonomia />
+      </section>
+
+      {/* ── O QUE FALTA PARA LIGAR ────────────────────────────────────────────
+          Montado aqui em 02/08/2026, e o motivo importa: este painel foi
+          entregue ÓRFÃO. Medido pelo cético da própria frente que o construiu —
+          0 montagens, contra 1 de cada um dos nove painéis irmãos. Ele existia,
+          respondia, e nenhuma tela o alcançava; a rota só era acessível por
+          quem digitasse a URL à mão.
+
+          É exatamente a doença que ele veio curar — "construído e nunca ligado"
+          — cometida pela peça que veio curá-la. Fica ACIMA do pulso de propósito:
+          "o que falta para ligar" decide o que a pessoa faz hoje; "quanto ela
+          usou" é consequência. */}
+      <section aria-label="O que falta para ligar a inteligência artificial">
+        <ProntidaoParaLigarPanel />
       </section>
 
       <section aria-label="Pulso da inteligência">
