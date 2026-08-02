@@ -59,7 +59,19 @@ const TABELA = "atlas_worker_runs";
  *
  * Só sobe.
  */
-const PISO = 6;
+// 02/08/2026: 3 → 6 → 13. A cobertura está COMPLETA: os treze vigias do
+// agendador deixam rastro em `atlas_worker_runs`.
+//
+// O piso em 13 é o mais forte que este portão pode ter, e ele muda o que uma
+// falha significa: até hoje, "o vigia não tem linha no livro" era ambíguo —
+// podia ser que ele não rodou, ou que ele rodou e não sabia registrar. Com 13
+// de 13 instrumentados, ausência de linha passa a significar UMA coisa só: ele
+// não rodou. É isso que torna `vigias-vivos:check` capaz de responder se o
+// crontab foi instalado.
+//
+// Piso que só sobe. Se um vigia novo entrar no agendador sem livro, esta
+// asserção fica vermelha — e é para ficar.
+const PISO = 13;
 
 const falhas = [];
 
