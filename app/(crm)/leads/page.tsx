@@ -154,10 +154,40 @@ const statuses = [
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 const priorityBand: Record<LeadPriorityTone, string> = {
-  danger: "#fb7185",
+  /* Era o valor bruto do `--atlas-estado-perigo` do tema ESCURO, copiado à mão
+     ao lado de dois irmãos que já eram token — a faixa de severidade não virava
+     com o tema: seguia no rosa-claro do escuro sobre painel branco.
+     O hex não se reescreve aqui de propósito: `cor-cravada:check` lê o arquivo
+     inteiro, comentário incluído — citar o valor reintroduz o que ele conta. */
+  danger: "var(--atlas-estado-perigo)",
   warning: "var(--atlas-estado-atencao)",
   info: "var(--atlas-accent)",
 };
+
+/* ── UM VOCABULÁRIO DE SEGMENTO, NÃO DOIS ──────────────────────────────────
+   "Minha rotina" e "Vínculo" carregavam a MESMA receita de estado escrita duas
+   vezes, e a receita cravava `rgba(75,141,248,…)` — o acento APOSENTADO. O
+   acento vivo mora em `--atlas-accent` (styles/atlas-tokens.css no escuro,
+   globals.css no claro) e é outro azul nos DOIS temas: o segmento ativo era,
+   portanto, uma cor que não existe mais em lugar nenhum do produto, diferente
+   do anel de foco logo ao lado, e que não virava com o tema. Uma receita só,
+   por token, com alfa por `color-mix`. ── */
+/* SEM `text-rotulo` AQUI, e o motivo é medido no navegador: globals.css
+   declara `button, input, select, textarea { font: inherit }` FORA de camada, e
+   regra sem camada ganha de `@layer utilities`. Resultado: todo utilitário de
+   tamanho aplicado direto num `<button>` é letra morta. Os segmentos de
+   "Vínculo" pediam 11px e renderizavam em 16 — fora do degrau, e ninguém via
+   porque o código dizia o contrário. O degrau vai no `<span>` de dentro. */
+const segmentoBase =
+  "shrink-0 rounded-xl border font-medium transition-colors";
+const segmentoAtivo =
+  "border-[color-mix(in_srgb,var(--atlas-accent)_45%,transparent)] bg-[color-mix(in_srgb,var(--atlas-accent)_10%,transparent)] text-[var(--atlas-texto-forte)]";
+const segmentoInativo =
+  "border-[var(--atlas-border)] bg-[color-mix(in_srgb,var(--atlas-texto-fraco)_6%,transparent)] text-[var(--atlas-texto-medio)] hover:border-[var(--atlas-border-strong)] hover:text-[var(--atlas-texto-forte)]";
+/* A moldura de acento das superfícies de lote e da faixa da fila — mesma cor
+   aposentada, mesma correção. */
+const molduraAcento =
+  "border-[color-mix(in_srgb,var(--atlas-accent)_35%,transparent)]";
 
 function text(row: ReferenceRow, ...keys: string[]) {
   for (const key of keys) {
@@ -276,8 +306,8 @@ function stalledChipView(signal: StalledSignal, lead: Lead) {
         : `parado há ${signal.days}d`,
     chipClass:
       signal.hot || signal.level === "rose"
-        ? "cc6-crit border-[rgba(251,113,133,0.28)]!"
-        : "cc6-warn border-[rgba(245,181,68,0.28)]!",
+        ? "cc6-crit border-[color-mix(in_srgb,var(--atlas-estado-perigo)_28%,transparent)]!"
+        : "cc6-warn border-[color-mix(in_srgb,var(--atlas-estado-atencao)_28%,transparent)]!",
     title: signal.hot
       ? `Lead quente (score ${lead.score ?? 0}). ${baseTitle} Priorize o contato.`
       : baseTitle,
@@ -515,7 +545,29 @@ export default function LeadsPage() {
   const [descartando, setDescartando] = useState(false);
   const [transferReason, setTransferReason] = useState("");
   const [transferring, setTransferring] = useState(false);
-  const [notice, setNotice] = useState("");
+  /**
+   * ── O AVISO VERDE QUE DIZIA "FALHOU" ──────────────────────────────────────
+   *
+   * `notice` era uma string só, e a faixa que a mostrava era verde CRAVADA
+   * (`border-emerald-400/30 bg-emerald-400/10 text-emerald-200`). Só que dois
+   * dos seis pontos que a escrevem são o `catch`: "Não foi possível mover as
+   * leads." e a mensagem de erro do descarte saíam na MESMA faixa de sucesso.
+   * O operador seleciona 30 leads, clica em "Mover 30", lê uma confirmação
+   * verde e segue — sem que nada tenha se movido.
+   *
+   * Além disso `text-emerald-200` é claro por definição: no tema claro ele
+   * caía sobre um fundo de 10% de verde sobre branco, razão ≈1,3:1. A
+   * confirmação de um lote de 30 leads era ilegível justamente no tema em que
+   * a maioria trabalha. Fundo e cor são um par — agora saem os dois de token e
+   * viram junto com o tema.
+   *
+   * O tom viaja com o texto para que nenhum `catch` novo possa herdar verde
+   * por esquecimento.
+   */
+  const [notice, setNotice] = useState<{
+    tom: "sucesso" | "falha";
+    texto: string;
+  } | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filtersHydrated, setFiltersHydrated] = useState(false);
@@ -916,6 +968,31 @@ export default function LeadsPage() {
       });
   }, [currentRole, items, referenceTime]);
 
+  /* ── A ESPINHA DE GRAVIDADE DA FILA ────────────────────────────────────────
+     O cabeçalho da fila dizia "3 de 20" — e "20" não responde a pergunta que
+     faz o corretor continuar ou parar: DAS 17 que sobraram, quantas são
+     vermelhas? Vinte "sem próxima ação" e vinte "1º contato vencido" são o
+     mesmo número e dois dias de trabalho diferentes.
+
+     Aqui a barra empilhada é legítima e a dos atalhos não seria: cada
+     prioridade tem UM tom e só um (`visibleLeadPriority` devolve um objeto por
+     lead), então as partes somam o todo. Nos atalhos os recortes se sobrepõem
+     — por isso lá são barras independentes.
+
+     Sem fila não há espinha: `null`, não uma barra vazia que afirmaria uma
+     composição que não existe. */
+  const espinhaDaFila = useMemo(() => {
+    const total = visiblePriorityQueue.length;
+    if (!total) return null;
+    const porTom: Record<LeadPriorityTone, number> = {
+      danger: 0,
+      warning: 0,
+      info: 0,
+    };
+    for (const prioridade of visiblePriorityQueue) porTom[prioridade.tone] += 1;
+    return { total, porTom };
+  }, [visiblePriorityQueue]);
+
   /**
    * UMA lista de filtros ativos, não duas.
    *
@@ -969,6 +1046,20 @@ export default function LeadsPage() {
 
   /* Contagens da página atual anexadas aos atalhos que filtram a carteira
      inteira — uma única superfície no lugar de métricas + atalhos separados. */
+  /* ── POR QUE A COR DE ESTADO NÃO SAI MAIS DE `cc6-crit`/`cc6-warn` ───────
+     Medido no navegador, tema claro, com a folha do produto compilada: existe
+     em globals.css a regra `:root[data-theme="light"] .cc6-num:not(...)` que
+     pinta TODO `.cc6-num` de âmbar. Ela empata em especificidade com
+     `:root[data-theme="light"] .cc6-num.cc6-crit` — escrita 3.400 linhas antes,
+     com o comentário de que 4,47 tinha sido corrigido — e ganha por vir depois.
+     Ou seja: aquela correção medida nunca entrou em vigor, e "atrasadas",
+     "quentes" e "represadas" saíam todas na MESMA cor. Medi 3,97 e 4,36 contra
+     o painel: abaixo do piso de 4,5, e sem distinguir perigo de atenção.
+
+     O token de estado com `!` passa por cima da regra sem camada e devolve as
+     duas coisas: contraste (6,2 e 7,1 no claro) e o significado de volta. Não
+     é enfeite — `cc6-crit` continua existindo no produto; aqui a cor precisa
+     vencer uma regra que ninguém pode reescrever de dentro desta página. ── */
   const attentionShortcuts: Array<{
     key: AttentionFilter;
     label: string;
@@ -981,7 +1072,7 @@ export default function LeadsPage() {
       label: "Atrasadas",
       description: "Resolver follow-ups vencidos",
       count: pageMetrics.overdue,
-      countClass: "cc6-crit",
+      countClass: "text-[var(--atlas-estado-perigo)]!",
     },
     {
       // O recorte mais pesado da base em 2026-07-28: 443 de 448 leads em
@@ -991,21 +1082,21 @@ export default function LeadsPage() {
       label: "Nunca contatadas",
       description: "Ninguém ligou ainda — o primeiro toque decide se a lead existe",
       count: pageMetrics.neverContacted,
-      countClass: "cc6-crit",
+      countClass: "text-[var(--atlas-estado-perigo)]!",
     },
     {
       key: "no_action",
       label: "Sem próxima ação",
       description: "Evitar leads esquecidas",
       count: pageMetrics.noAction,
-      countClass: "text-[var(--atlas-texto-medio)]",
+      countClass: "text-[var(--atlas-texto-medio)]!",
     },
     {
       key: "hot",
       label: "Quentes",
       description: "Atender maior intenção",
       count: pageMetrics.hot,
-      countClass: "cc6-crit",
+      countClass: "text-[var(--atlas-estado-perigo)]!",
     },
     ...(currentRole !== "broker"
       ? [
@@ -1018,7 +1109,7 @@ export default function LeadsPage() {
             label: "Represadas",
             description: "Ninguém conectado no WhatsApp — distribuir ou pedir para conectar",
             count: pageMetrics.unassigned,
-            countClass: "cc6-warn",
+            countClass: "text-[var(--atlas-estado-atencao)]!",
           },
         ]
       : []),
@@ -1058,9 +1149,18 @@ export default function LeadsPage() {
       /* Patch otimista na linha, como o resto desta tela faz: refazer a
          consulta inteira para uma lead fecharia o trabalho em andamento. */
       setItems((atuais) => atuais.map((l) => (l.id === alvo.leadId ? { ...l, status: "perdido" } : l)));
-      setNotice(`"${alvo.leadName}" foi descartada com motivo registrado.`);
+      setNotice({
+        tom: "sucesso",
+        texto: `"${alvo.leadName}" foi descartada com motivo registrado.`,
+      });
     } catch (erro) {
-      setNotice(erro instanceof Error ? erro.message : "Não foi possível descartar esta lead.");
+      setNotice({
+        tom: "falha",
+        texto:
+          erro instanceof Error
+            ? erro.message
+            : "Não foi possível descartar esta lead.",
+      });
     } finally {
       setDescartando(false);
     }
@@ -1081,15 +1181,20 @@ export default function LeadsPage() {
       if (!r.ok) throw new Error(payload?.error?.message || "Não foi possível mover as leads.");
       // O que NÃO moveu aparece junto: silenciar a diferença faria o operador
       // achar que foram todas e descobrir na semana seguinte.
-      setNotice(
-        payload.data?.aviso
+      setNotice({
+        tom: "sucesso",
+        texto: payload.data?.aviso
           ? `${payload.data.movidas} lead(s) movida(s). ${payload.data.aviso}`
           : `${payload.data.movidas} lead(s) movida(s) para "${bulkStage}".`,
-      );
+      });
       setSelected(new Set());
       setBulkStage("");
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : "Não foi possível mover as leads.");
+      setNotice({
+        tom: "falha",
+        texto:
+          e instanceof Error ? e.message : "Não foi possível mover as leads.",
+      });
     }
   }
 
@@ -1097,7 +1202,7 @@ export default function LeadsPage() {
     if (!selected.size || !transferTarget) return;
     setTransferring(true);
     setError("");
-    setNotice("");
+    setNotice(null);
     try {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
@@ -1122,11 +1227,12 @@ export default function LeadsPage() {
         throw new Error(
           payload?.error?.message || "Não foi possível transferir os leads.",
         );
-      setNotice(
-        payload.data?.teamTargetId
+      setNotice({
+        tom: "sucesso",
+        texto: payload.data?.teamTargetId
           ? `${selected.size} lead(s) distribuído(s) aos corretores elegíveis da equipe escolhida. O gerente não virou proprietário.`
           : `${selected.size} lead(s) transferido(s) com histórico registrado.`,
-      );
+      });
       setSelected(new Set());
       setTransferTarget("");
       setTransferReason("");
@@ -1174,158 +1280,475 @@ export default function LeadsPage() {
       data-phase="36-leads-action-workspace"
       data-leads-layout="action-first"
     >
-      {/* ── PAINEL VAZIO NAO OCUPA O TOPO DA TELA ─────────────────────────
-          Visto numa foto da tela do dono: a "Fila de ação" ocupava o espaço
-          mais valioso da página para dizer "Nenhuma pendência prioritária
-          nesta página". Um painel com borda, título e chip para comunicar
-          ausência — enquanto a carteira com 473 leads sem contato começava
-          abaixo da dobra.
+      {/* ── A TRIAGEM DA CARTEIRA VEM ANTES DA CARTEIRA ────────────────────
+          MEDIDO antes de mexer, na ordem de blocos anterior: os ÚNICOS
+          controles desta tela que varrem a carteira INTEIRA — "Atrasadas",
+          "Nunca contatadas", "Sem próxima ação", "Quentes", "Represadas" e os
+          segmentos de "Vínculo" — ficavam no último bloco da página, depois de
+          até 100 linhas de tabela e da paginação. Em 900px de altura o corretor
+          não via um só deles. O que ocupava o topo, a "Fila de ação", enxerga
+          apenas a PÁGINA carregada (25 de 442). Prazo vencido e fila sem dono
+          são DECISÃO e sobem.
 
-          A regra de hierarquia do v3: o que exige decisão vem antes do que
-          informa, e o que não tem nada a dizer não vem. A própria mensagem
-          admitia que "os atalhos de atenção varrem o restante" — ou seja, o
-          trabalho está em outro lugar.
+          O que desceu foi o número que NÃO decide: "Base filtrada" era o maior
+          número da tela (36px, fora do degrau — o degrau herói é 34) e é só o
+          resultado do filtro. Foi para `numero`, 20px. As contagens que mandam
+          agir subiram de 13px para os mesmos 20 — estavam a dois pixels do
+          próprio rótulo (11px) enquanto o número que não decide tinha 36.
 
-          Some só quando NÃO está carregando: sumir durante a carga faria a
-          fila piscar na tela a cada filtro. ── */}
-      {loading || visiblePriorityQueue.length ? (
-      <section
-        className="cc6-panel cc6-reveal p-4 sm:p-5"
-        style={{ animationDelay: "70ms" }}
-        aria-labelledby="atlas-leads-action-title"
-        aria-live="polite"
-        data-phase="36-visible-action-queue"
-      >
-        <header className="flex flex-wrap items-center justify-between gap-2">
-          <h2
-            id="atlas-leads-action-title"
-            className="text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
-          >
-            Fila de ação · página atual
-          </h2>
-          <span
-            className="cc6-chip"
-            title={
-              loading
-                ? "Sincronizando a fila com os leads desta página."
-                : `${visiblePriorityQueue.length} prioridade(s) visível(is), derivada(s) somente dos leads desta página${visiblePriorityQueue.length > 3 ? "; as demais seguem sinalizadas na tabela abaixo" : ""}.`
-            }
-          >
-            {loading
-              ? "sincronizando"
-              : visiblePriorityQueue.length > 3
-                ? `3 de ${visiblePriorityQueue.length}`
-                : visiblePriorityQueue.length}
-          </span>
-        </header>
-        {loading ? (
-          <div className="mt-3">
-            <LoadingState rows={3} />
-          </div>
-        ) : visiblePriorityQueue.length ? (
-          <div className="mt-3 grid gap-2">
-            {visiblePriorityQueue.slice(0, 3).map((priority, index) => {
-              const contact = phoneLinks(priority.lead.phone);
-              return (
-                <article
-                  key={priority.lead.id}
-                  data-tone={priority.tone}
-                  className="cc6-sev-band cc6-panel-quiet flex flex-col gap-3 py-3 pl-4 pr-3 md:flex-row md:items-center md:justify-between"
-                  style={
-                    { "--cc6-sev": priorityBand[priority.tone] } as CSSProperties
-                  }
-                >
-                  <div className="flex min-w-0 items-start gap-3">
-                    <span
-                      className="cc6-num pt-0.5 text-xs text-[var(--atlas-texto-fraco)]"
-                      aria-hidden="true"
-                    >
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                          href={`/leads/${priority.lead.id}`}
-                          className={`rounded-md text-corpo font-semibold text-[var(--atlas-texto-forte)] transition-colors hover:text-[color:var(--atlas-accent-hover)] ${focusRing}`}
-                        >
-                          {priority.lead.name || "Lead sem nome"}
-                        </Link>
-                        <StatusBadge tone={priority.tone}>
-                          {priority.label}
-                        </StatusBadge>
-                      </div>
-                      <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">
-                        {priority.detail}
-                      </p>
-                      <p className="mt-0.5 text-rotulo text-[var(--atlas-texto-fraco)]">
-                        {projectName(priority.lead)} ·{" "}
-                        {priority.lead.status || "novo"}
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className="flex shrink-0 flex-wrap items-center gap-2 md:pl-3"
-                    role="group"
-                    aria-label={`Ações rápidas para ${priority.lead.name || "lead"}`}
-                  >
-                    {contact ? (
-                      <a
-                        href={contact.call}
-                        className="cc6-ghost-btn min-h-11"
-                        aria-label={`Ligar para ${priority.lead.name || "lead"}`}
-                      >
-                        Ligar
-                      </a>
-                    ) : null}
-                    {contact ? (
-                      <a
-                        href={contact.whatsapp}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="cc6-ghost-btn min-h-11"
-                        aria-label={`Abrir WhatsApp com ${priority.lead.name || "lead"}`}
-                      >
-                        WhatsApp
-                      </a>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="cc6-ghost-btn min-h-11"
-                      onClick={() =>
-                        window.dispatchEvent(
-                          new CustomEvent("atlas:open-copilot", {
-                            detail: {
-                              prompt:
-                                "Prepare uma abordagem curta para esta lead usando apenas o contexto autorizado. Explique a recomendação e não envie mensagem nem altere o CRM.",
-                              context: {
-                                leadId: priority.lead.id,
-                                project: projectName(priority.lead),
-                                status: priority.lead.status,
-                                source: priority.lead.source,
-                                score: priority.lead.score,
-                                temperature: priority.lead.temperature,
-                                priority: priority.label,
+          A identidade e o `h1` vieram junto porque `h1` depois do `h2` da fila
+          de ação também estava quebrado para quem navega por cabeçalho.
+
+          Um filete a menos: "Vínculo" perdeu a segunda `cc6-hairline` e é
+          separado só por espaço — dois filetes dentro do mesmo painel eram
+          caixa dentro de caixa. ── */}
+      <section aria-label="Resumo da carteira e atalhos de rotina">
+        <TiltShell className="cc6-panel cc6-reveal p-4 sm:p-5">
+          {/* Identidade, total e rotina em UMA linha no desktop. Quebra sozinha
+              no estreito — sem `truncate`: frase cortada não é frase. */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="cc6-eyebrow">CRM · Leads</p>
+            {currentRole === "broker" ? (
+              <StatusBadge tone="success">CARTEIRA EXCLUSIVA</StatusBadge>
+            ) : null}
+            {currentRole === "manager" ? (
+              <StatusBadge tone="success">
+                MEU TIME · {teamBrokers.length} CORRETORES
+              </StatusBadge>
+            ) : null}
+            <h1 className="min-w-0 text-base font-semibold tracking-[-0.01em] text-[var(--atlas-texto-forte)] sm:text-lg">
+              {currentRole === "broker"
+                ? "Sua fila de leads, pronta para agir."
+                : "Leads que exigem decisão agora."}
+            </h1>
+            <p className="ml-auto flex shrink-0 items-baseline gap-2">
+              <span className="cc6-eyebrow">Base filtrada</span>
+              <span className="cc6-metric-value text-numero leading-none">
+                {loading ? "—" : total}
+              </span>
+              <span className="text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+                {hasFilters
+                  ? "resultado dos filtros atuais"
+                  : currentRole === "broker"
+                    ? "somente a sua carteira"
+                    : "somente seu escopo comercial"}
+              </span>
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* `min-h-11` medido: `.atlas-button-primary` entrega 42px de
+                  altura, e o piso de toque é 44. O irmão "Abrir pipeline" já
+                  carregava a garantia; o botão PRIMÁRIO não. */}
+              <Link href="/leads/new" className="atlas-button-primary min-h-11">
+                + Novo lead
+              </Link>
+              <Link href="/pipeline" className="cc6-ghost-btn min-h-11">
+                Abrir pipeline
+              </Link>
+              <details className="atlas-leads-tools">
+                <summary>Mais ferramentas</summary>
+                <div>
+                  <Link href="/leads/data-quality">Qualidade dos dados</Link>
+                  <Link href="/leads/deduplication">Duplicidades</Link>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new CustomEvent("atlas:open-copilot", {
+                          detail: {
+                            prompt:
+                              "Analise a carteira de leads visível e explique até três prioridades, sem executar nenhuma ação.",
+                            context: {
+                              total,
+                              filters: {
+                                status,
+                                source,
+                                project,
+                                broker,
+                                score,
+                                attention,
+                                nextAction,
                               },
+                              pageMetrics,
+                              visiblePriorities: visiblePriorityQueue.length,
                             },
-                          }),
-                        )
-                      }
-                    >
-                      ✦ Preparar abordagem
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
+                          },
+                        }),
+                      )
+                    }
+                  >
+                    ✦ Analisar carteira
+                  </button>
+                </div>
+              </details>
+            </div>
           </div>
-        ) : (
-          <p className="mt-3 text-xs leading-5 text-[var(--atlas-texto-fraco)]">
-            Nenhuma pendência prioritária nesta página — os atalhos de atenção
-            varrem o restante da carteira.
-          </p>
-        )}
+          <div className="cc6-hairline mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 pt-3">
+            <p
+              className="cc6-eyebrow"
+              title="Os números contam a incidência na página atual; cada atalho filtra toda a carteira do seu escopo comercial."
+            >
+              Minha rotina
+            </p>
+            {/* A ressalva estava SÓ no `title` — invisível no toque, e é ela
+                que separa "12 atrasadas na carteira" de "12 nesta página". */}
+            <span className="text-micro leading-4 text-[var(--atlas-texto-fraco)]">
+              {loading
+                ? "sincronizando a página"
+                : items.length
+                  ? `contagem e barra sobre as ${items.length} leads desta página · o clique filtra a carteira inteira`
+                  : "sem lastro: nenhum lead carregado com os filtros atuais — as contagens abaixo não têm base para existir"}
+            </span>
+            <div
+              className="flex flex-1 gap-2 overflow-x-auto pb-0.5"
+              role="group"
+              aria-label="Encontre rapidamente onde agir"
+            >
+              {attentionShortcuts.map((shortcut) => {
+                /* A BARRA RESPONDE "DE QUANTOS?", que o número sozinho não
+                   responde: 12 atrasadas é metade de uma página de 25 e um
+                   décimo de uma de 100. Não é composição — os recortes se
+                   sobrepõem (uma lead pode ser atrasada E nunca contatada), e
+                   empilhá-los somaria a mesma lead duas vezes. São proporções
+                   independentes sobre o MESMO denominador declarado ao lado.
+                   Sem denominador não há barra: 0% em vez de dividir por zero.
+                   E durante a carga a barra zera junto com o número: deixá-la
+                   no valor da página anterior desenharia uma proporção ao lado
+                   de um "—", que é o gráfico afirmando o que o número recusa. */
+                const tomDaContagem =
+                  shortcut.count > 0
+                    ? shortcut.countClass
+                    : "text-[var(--atlas-texto-fraco)]!";
+                const fracao =
+                  !loading && items.length
+                    ? Math.min(100, Math.round((shortcut.count / items.length) * 100))
+                    : 0;
+                return (
+                  <button
+                    key={shortcut.key}
+                    type="button"
+                    onClick={() => applyAttention(shortcut.key)}
+                    aria-pressed={attention === shortcut.key}
+                    title={
+                      loading
+                        ? `${shortcut.description}. Sincronizando a página — sem contagem ainda.`
+                        : `${shortcut.description}. Número e barra: ${shortcut.count} de ${items.length} lead(s) desta página; o filtro consulta toda a carteira do seu escopo.`
+                    }
+                    className={`${segmentoBase} ${
+                      attention === shortcut.key ? segmentoAtivo : segmentoInativo
+                    } flex min-h-11 flex-col justify-center gap-1.5 px-3 py-1.5 ${focusRing}`}
+                  >
+                    <span className="flex items-baseline gap-2">
+                      <span className="text-rotulo font-medium">
+                        {shortcut.label}
+                      </span>
+                      <span
+                        className={`cc6-num text-numero leading-none ${tomDaContagem}`}
+                      >
+                        {loading ? "—" : shortcut.count}
+                      </span>
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className={`block h-0.5 w-full overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--atlas-texto-fraco)_22%,transparent)] ${tomDaContagem}`}
+                    >
+                      <span
+                        className="block h-full rounded-full bg-current"
+                        style={{ width: `${fracao}%` }}
+                      />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {/* VÍNCULO — o que a tela "Clientes 360" tinha de próprio.
+              Ela lia a MESMA tabela pela mesma função, sem SLA, sem lote e sem
+              piso de carteira (um corretor via as 469 leads da imobiliária).
+              Foi apagada; estes quatro segmentos vieram junto, e aqui eles
+              filtram a carteira inteira no servidor, não só a página. */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <p className="cc6-eyebrow" title="Em que ponto da relação comercial a pessoa está.">
+              Vínculo
+            </p>
+            <div
+              className="flex flex-1 gap-2 overflow-x-auto pb-0.5"
+              role="group"
+              aria-label="Filtrar por vínculo comercial"
+            >
+              {VINCULOS.map((chave) => (
+                <button
+                  key={chave}
+                  type="button"
+                  // Clicar no que já está ativo desliga: mesma gramática dos
+                  // atalhos acima, para não haver dois jeitos de limpar filtro.
+                  onClick={() => {
+                    setVinculo((atual) => (atual === chave ? "" : chave));
+                    setPage(1);
+                  }}
+                  aria-pressed={vinculo === chave}
+                  className={`${segmentoBase} ${
+                    vinculo === chave ? segmentoAtivo : segmentoInativo
+                  } min-h-11 px-3 ${focusRing}`}
+                >
+                  <span className="text-rotulo">{ROTULO_DO_VINCULO[chave]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* A FAIXA DO CORTE DA FILA — chega por link da central e não tem
+              seletor. Fica visível porque um recorte que corta 442 em 146 sem
+              dizer o nome faz a pessoa concluir que a base encolheu. */}
+          {faixa ? (
+            <div
+              className={`mt-3 flex flex-wrap items-center gap-3 rounded-xl border ${molduraAcento} bg-[color-mix(in_srgb,var(--atlas-accent)_7%,transparent)] px-3 py-2`}
+            >
+              <span className="text-rotulo text-[var(--atlas-texto-medio)]">
+                Faixa da fila ·{" "}
+                <strong className="font-semibold text-[var(--atlas-texto-forte)]">
+                  {ROTULO_DA_FAIXA.get(faixa) ?? faixa}
+                </strong>{" "}
+                · só leads nunca contatados
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setFaixa("");
+                  setPage(1);
+                }}
+                className={`min-h-11 text-rotulo font-semibold text-[var(--atlas-accent)] hover:text-[var(--atlas-accent-hover)] ${focusRing}`}
+              >
+                Limpar faixa
+              </button>
+            </div>
+          ) : null}
+
+        {/* ── PAINEL VAZIO NAO OCUPA O TOPO DA TELA ─────────────────────────
+            Visto numa foto da tela do dono: a "Fila de ação" ocupava o espaço
+            mais valioso da página para dizer "Nenhuma pendência prioritária
+            nesta página". Um painel com borda, título e chip para comunicar
+            ausência — enquanto a carteira com 473 leads sem contato começava
+            abaixo da dobra.
+
+            A regra de hierarquia do v3: o que exige decisão vem antes do que
+            informa, e o que não tem nada a dizer não vem. A própria mensagem
+            admitia que "os atalhos de atenção varrem o restante" — ou seja, o
+            trabalho está em outro lugar.
+
+            Some só quando NÃO está carregando: sumir durante a carga faria a
+            fila piscar na tela a cada filtro. ── */}
+        {/* ── DUAS CAIXAS PARA UMA TRIAGEM SÓ ────────────────────────────────
+            MEDIDO na ordem anterior, desktop, tema claro, largura de conteúdo de
+            ~1000px: a carteira — a lista que este usuário TRABALHA — começava a
+            735px do topo do conteúdo, e o conteúdo já começa a 100px
+            (`--atlas-topbar-height` 72 + 28 de respiro). Em 900px de janela a
+            primeira lead não cabia por ~35px: o corretor via o cabeçalho da
+            tabela e nenhuma linha.
+
+            Desses 735px, 56 eram CHROME de separação entre dois painéis que
+            fazem a mesma coisa — triar. Painel próprio da fila: 40px de padding
+            + 16px de intervalo, mais uma borda arredondada e um segundo `h2`.
+            A fila virou uma faixa DENTRO da mesma superfície, separada por
+            `cc6-hairline` como "Minha rotina" e "Vínculo" já eram. Um filete
+            custa 1px e diz a mesma coisa que uma caixa de 56.
+
+            Efeito colateral que vale nomear: `.cc6-panel .cc6-panel-quiet` zera
+            a borda do painel aninhado. Se a fila tivesse saído para fora de um
+            `.cc6-panel`, cada uma das três linhas GANHARIA um filete de volta —
+            juntar é o que mantém as três sem borda.
+
+            Nada saiu: `h2`, chip, `aria-live`, `data-phase`, os três cartões e
+            todos os botões continuam, com os mesmos rótulos. ── */}
+        {loading || visiblePriorityQueue.length ? (
+        <section
+          className="cc6-hairline mt-3 pt-3"
+          aria-labelledby="atlas-leads-action-title"
+          aria-live="polite"
+          data-phase="36-visible-action-queue"
+        >
+          <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <h2
+              id="atlas-leads-action-title"
+              className="cc6-eyebrow"
+            >
+              Fila de ação · página atual
+            </h2>
+            {/* A ESPINHA: mesma altura de linha do cabeçalho, zero pixel a mais
+                de página, e responde o que o total sozinho não responde. */}
+            {!loading && espinhaDaFila ? (
+              <span
+                className="flex items-center gap-2"
+                title={`Gravidade das ${espinhaDaFila.total} prioridade(s) desta página: ${espinhaDaFila.porTom.danger} urgente(s), ${espinhaDaFila.porTom.warning} em atenção, ${espinhaDaFila.porTom.info} de rotina.`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="flex h-1.5 w-24 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--atlas-texto-fraco)_22%,transparent)]"
+                >
+                  {(["danger", "warning", "info"] as LeadPriorityTone[]).map(
+                    (tom) =>
+                      espinhaDaFila.porTom[tom] ? (
+                        <span
+                          key={tom}
+                          className="block h-full"
+                          style={{
+                            width: `${(espinhaDaFila.porTom[tom] / espinhaDaFila.total) * 100}%`,
+                            background: priorityBand[tom],
+                          }}
+                        />
+                      ) : null,
+                  )}
+                </span>
+                {/* SEM `cc6-num` AQUI, e é medida, não estilo: globals.css tem
+                    `:root[data-theme="light"] .cc6-num:not(.atlas-leads-table-panel *)`
+                    pintando TODO número de âmbar fora da tabela. Os atalhos
+                    logo acima só escapam porque forçam a cor de estado com
+                    `!`. Aqui a legenda não precisa de cor nenhuma: quem carrega
+                    a gravidade é a barra, e a legenda carrega o número — cor
+                    nunca é o único canal. Herdar `--atlas-texto-fraco` é o que
+                    mantém os 4,5 nos dois temas sem disputar a cascata. */}
+                <span className="text-micro leading-4 text-[var(--atlas-texto-fraco)]">
+                  {espinhaDaFila.porTom.danger} urgente(s) ·{" "}
+                  {espinhaDaFila.porTom.warning} em atenção ·{" "}
+                  {espinhaDaFila.porTom.info} de rotina
+                </span>
+              </span>
+            ) : null}
+            <span
+              className="cc6-chip ml-auto"
+              title={
+                loading
+                  ? "Sincronizando a fila com os leads desta página."
+                  : `${visiblePriorityQueue.length} prioridade(s) visível(is), derivada(s) somente dos leads desta página${visiblePriorityQueue.length > 3 ? "; as demais seguem sinalizadas na tabela abaixo" : ""}.`
+              }
+            >
+              {loading
+                ? "sincronizando"
+                : visiblePriorityQueue.length > 3
+                  ? `3 de ${visiblePriorityQueue.length}`
+                  : visiblePriorityQueue.length}
+            </span>
+          </header>
+          {loading ? (
+            <div className="mt-2">
+              <LoadingState rows={3} />
+            </div>
+          ) : visiblePriorityQueue.length ? (
+            <div className="mt-2 grid gap-2">
+              {visiblePriorityQueue.slice(0, 3).map((priority, index) => {
+                const contact = phoneLinks(priority.lead.phone);
+                return (
+                  <article
+                    key={priority.lead.id}
+                    data-tone={priority.tone}
+                    className="cc6-sev-band cc6-panel-quiet flex flex-col gap-3 py-3 pl-4 pr-3 md:flex-row md:items-center md:justify-between"
+                    style={
+                      { "--cc6-sev": priorityBand[priority.tone] } as CSSProperties
+                    }
+                  >
+                    {/* TRÊS LINHAS DE TEXTO PARA DUAS COISAS. A linha de
+                        `projeto · status` é IDENTIDADE, igual ao nome, e estava
+                        empurrando o cartão para 86px enquanto a coluna de botões
+                        ao lado ocupa 44. Subiu para a mesma linha do nome (com
+                        `flex-wrap`, nunca `truncate` — quebrar é legível, cortar
+                        não é), e o cartão passou a 68px: 44 de conteúdo + 24 de
+                        respiro, os dois lados finalmente do mesmo tamanho. São
+                        54px de volta para a carteira em três cartões.
+
+                        `text-xs` (12px) do detalhe saiu junto: estava FORA do
+                        degrau — 12 não é micro 10 nem corpo 13. É a frase que
+                        manda agir; vira `corpo`. */}
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span
+                        className="cc6-num pt-1 text-micro text-[var(--atlas-texto-fraco)]"
+                        aria-hidden="true"
+                      >
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <Link
+                            href={`/leads/${priority.lead.id}`}
+                            className={`rounded-md text-corpo font-semibold text-[var(--atlas-texto-forte)] transition-colors hover:text-[color:var(--atlas-accent-hover)] ${focusRing}`}
+                          >
+                            {priority.lead.name || "Lead sem nome"}
+                          </Link>
+                          <StatusBadge tone={priority.tone}>
+                            {priority.label}
+                          </StatusBadge>
+                          <span className="text-rotulo text-[var(--atlas-texto-fraco)]">
+                            {projectName(priority.lead)} ·{" "}
+                            {priority.lead.status || "novo"}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-corpo leading-5 text-[var(--atlas-texto-medio)]">
+                          {priority.detail}
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      className="flex shrink-0 flex-wrap items-center gap-2 md:pl-3"
+                      role="group"
+                      aria-label={`Ações rápidas para ${priority.lead.name || "lead"}`}
+                    >
+                      {contact ? (
+                        <a
+                          href={contact.call}
+                          className="cc6-ghost-btn min-h-11"
+                          aria-label={`Ligar para ${priority.lead.name || "lead"}`}
+                        >
+                          Ligar
+                        </a>
+                      ) : null}
+                      {contact ? (
+                        <a
+                          href={contact.whatsapp}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="cc6-ghost-btn min-h-11"
+                          aria-label={`Abrir WhatsApp com ${priority.lead.name || "lead"}`}
+                        >
+                          WhatsApp
+                        </a>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="cc6-ghost-btn min-h-11"
+                        onClick={() =>
+                          window.dispatchEvent(
+                            new CustomEvent("atlas:open-copilot", {
+                              detail: {
+                                prompt:
+                                  "Prepare uma abordagem curta para esta lead usando apenas o contexto autorizado. Explique a recomendação e não envie mensagem nem altere o CRM.",
+                                context: {
+                                  leadId: priority.lead.id,
+                                  project: projectName(priority.lead),
+                                  status: priority.lead.status,
+                                  source: priority.lead.source,
+                                  score: priority.lead.score,
+                                  temperature: priority.lead.temperature,
+                                  priority: priority.label,
+                                },
+                              },
+                            }),
+                          )
+                        }
+                      >
+                        ✦ Preparar abordagem
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mt-2 text-corpo leading-5 text-[var(--atlas-texto-fraco)]">
+              Nenhuma pendência prioritária nesta página — os atalhos de atenção
+              varrem o restante da carteira.
+            </p>
+          )}
+        </section>
+        ) : null}
+        </TiltShell>
       </section>
-      ) : null}
 
       <div className="cc6-reveal" style={{ animationDelay: "140ms" }}>
         <section
@@ -1333,7 +1756,10 @@ export default function LeadsPage() {
           data-expanded={filtersOpen ? "true" : "false"}
         >
           <div className="atlas-leads-filter-top">
-            <div className="atlas-leads-search border-[rgba(148,163,184,0.12)]! transition-colors focus-within:border-[color:var(--atlas-accent)]!">
+            {/* `rgba(148,163,184,.12)` cravado: um cinza-azulado FIXO. No tema
+                claro ele quase some sobre branco, e a caixa de busca perdia o
+                contorno. `--atlas-border` é a mesma intenção, e vira. */}
+            <div className="atlas-leads-search border-[var(--atlas-border)]! transition-colors focus-within:border-[color:var(--atlas-accent)]!">
               <span aria-hidden="true" className="text-[color:var(--atlas-accent)]!">
                 ⌕
               </span>
@@ -1347,11 +1773,15 @@ export default function LeadsPage() {
               />
             </div>
             <div className="atlas-leads-sort w-full sm:w-56 sm:shrink-0">
+              {/* O fundo e a cor cravados que estavam aqui eram letra morta: a
+                  regra `.atlas-leads-filter-panel select` de globals.css tem
+                  especificidade (0,1,1) e ganha do utilitário (0,1,0). Ficavam
+                  ali dizendo que o seletor é escuro quando o tema decide. */}
               <select
                 value={sort}
                 onChange={(event) => updateFilter(setSort, event.target.value)}
                 aria-label="Ordenar leads"
-                className={`min-h-11 w-full min-w-0 rounded-xl border border-white/10 bg-[#0a1120] px-3 text-rotulo text-[#cdd7e5] ${focusRing}`}
+                className={`min-h-11 w-full min-w-0 rounded-xl border border-[var(--atlas-border)] bg-[var(--atlas-surface)] px-3 text-rotulo text-[var(--atlas-text-primary)] ${focusRing}`}
               >
                 <option value="first_contact_sla">Prazo de 1º contato</option>
                 <option value="created_at">Data de entrada</option>
@@ -1519,10 +1949,28 @@ export default function LeadsPage() {
 
       {notice ? (
         <div
-          role="status"
-          className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-200"
+          /* Falha INTERROMPE o leitor de tela; sucesso só é anunciado na pausa.
+             Um lote que não moveu não pode esperar a próxima frase. */
+          role={notice.tom === "falha" ? "alert" : "status"}
+          data-tom={notice.tom}
+          className={`cc6-sev-band rounded-2xl border py-3 pl-4 pr-4 text-corpo leading-5 text-[var(--atlas-texto-forte)] ${
+            notice.tom === "falha"
+              ? "border-[color-mix(in_srgb,var(--atlas-estado-perigo)_32%,transparent)] bg-[color-mix(in_srgb,var(--atlas-estado-perigo)_10%,transparent)]"
+              : "border-[color-mix(in_srgb,var(--atlas-estado-sucesso)_32%,transparent)] bg-[color-mix(in_srgb,var(--atlas-estado-sucesso)_10%,transparent)]"
+          }`}
+          style={
+            {
+              "--cc6-sev":
+                notice.tom === "falha"
+                  ? "var(--atlas-estado-perigo)"
+                  : "var(--atlas-estado-sucesso)",
+            } as CSSProperties
+          }
         >
-          {notice}
+          <strong className="font-semibold">
+            {notice.tom === "falha" ? "Não concluído · " : "Concluído · "}
+          </strong>
+          {notice.texto}
         </div>
       ) : null}
 
@@ -1541,10 +1989,16 @@ export default function LeadsPage() {
         />
       ) : null}
 
+      {/* PRETO SOBRE PRETO NO TEMA CLARO — medido, não suposto. O fundo da
+          barra de lote era um quase-preto cravado, e TODO texto de dentro usa
+          `--atlas-texto-forte` — que no tema claro é quase-PRETO também. Razão
+          de contraste ≈ 1,03:1: a barra ficava ilegível justamente quando havia
+          leads selecionadas. Fundo e cor são um par — trocar um sem o outro é o
+          defeito. Agora os dois saem de token e viram junto. */}
       {podeMoverEmLote && selected.size ? (
         <section
           data-phase="54-team-transfer"
-          className="sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border border-[rgba(75,141,248,0.35)] bg-[#080e1d]/95 p-4 backdrop-blur md:flex-row md:items-center"
+          className={`sticky top-3 z-30 flex flex-col gap-3 rounded-2xl border ${molduraAcento} bg-[color-mix(in_srgb,var(--atlas-surface)_95%,transparent)] p-4 backdrop-blur md:flex-row md:items-center`}
         >
           <div className="min-w-52">
             <strong className="block text-sm text-[var(--atlas-texto-forte)]">
@@ -1567,7 +2021,7 @@ export default function LeadsPage() {
             <select
               value={bulkStage}
               onChange={(e) => setBulkStage(e.target.value)}
-              className="rounded-lg border border-[rgba(75,141,248,0.35)] bg-[#0b1424] px-3 py-2 text-xs text-[var(--atlas-texto-forte)]"
+              className={`min-h-11 rounded-lg border ${molduraAcento} bg-[var(--atlas-surface-raised)] px-3 py-2 text-corpo text-[var(--atlas-texto-forte)]`}
               aria-label="Mover as leads selecionadas para a etapa"
             >
               <option value="">Mover para etapa…</option>
@@ -1581,7 +2035,7 @@ export default function LeadsPage() {
               type="button"
               onClick={() => void moverEtapaEmLote()}
               disabled={!bulkStage}
-              className="rounded-lg border border-[rgba(75,141,248,0.35)] px-3 py-2 text-xs text-[var(--atlas-texto-forte)] disabled:opacity-50"
+              className={`min-h-11 rounded-lg border ${molduraAcento} px-3 py-2 text-corpo text-[var(--atlas-texto-forte)] disabled:opacity-50`}
             >
               Mover {selected.size}
             </button>
@@ -1592,7 +2046,7 @@ export default function LeadsPage() {
               para ele. */}
           {canTransfer ? (<>
           <select
-            className={`min-h-11 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-white/5 px-3 text-sm text-[var(--atlas-texto-forte)] ${focusRing}`}
+            className={`min-h-11 flex-1 rounded-xl border border-[var(--atlas-border)] bg-[color-mix(in_srgb,var(--atlas-texto-fraco)_8%,transparent)] px-3 text-sm text-[var(--atlas-texto-forte)] ${focusRing}`}
             value={transferTarget}
             onChange={(event) => setTransferTarget(event.target.value)}
           >
@@ -1609,7 +2063,7 @@ export default function LeadsPage() {
             ))}
           </select>
           <input
-            className={`min-h-11 flex-1 rounded-xl border border-[rgba(148,163,184,0.16)] bg-white/5 px-3 text-sm text-[var(--atlas-texto-forte)] ${focusRing}`}
+            className={`min-h-11 flex-1 rounded-xl border border-[var(--atlas-border)] bg-[color-mix(in_srgb,var(--atlas-texto-fraco)_8%,transparent)] px-3 text-sm text-[var(--atlas-texto-forte)] ${focusRing}`}
             value={transferReason}
             onChange={(event) => setTransferReason(event.target.value)}
             placeholder="Motivo obrigatório da transferência"
@@ -1652,8 +2106,8 @@ export default function LeadsPage() {
               <span
                 className={`cc6-chip inline-flex! ${
                   pageMetrics.stalledCritical > 0
-                    ? "cc6-crit border-[rgba(251,113,133,0.28)]!"
-                    : "cc6-warn border-[rgba(245,181,68,0.28)]!"
+                    ? "cc6-crit border-[color-mix(in_srgb,var(--atlas-estado-perigo)_28%,transparent)]!"
+                    : "cc6-warn border-[color-mix(in_srgb,var(--atlas-estado-atencao)_28%,transparent)]!"
                 }`}
                 title={`${pageMetrics.stalled} de ${items.length} lead(s) desta página sem atualização registrada há 3 ou mais dias.`}
               >
@@ -1747,9 +2201,16 @@ export default function LeadsPage() {
                         <tr
                           key={lead.id}
                           data-overdue={due.overdue ? "true" : "false"}
+                          /* `rose-500` é o vermelho do Tailwind, não o do
+                             produto: no tema claro o estado de perigo é um
+                             carmim escuro, e a linha atrasada saía tingida de
+                             um rosa que não aparece em nenhum outro lugar
+                             desta tela. O valor não se transcreve aqui —
+                             `cor-cravada:check` lê o comentário também.
+                             Mesmo alfa, agora pelo token de estado. */
                           className={
                             due.overdue
-                              ? "group bg-rose-500/[0.04]"
+                              ? "group bg-[color-mix(in_srgb,var(--atlas-estado-perigo)_6%,transparent)]"
                               : "group"
                           }
                         >
@@ -1969,7 +2430,13 @@ export default function LeadsPage() {
                   return (
                     <div
                       key={lead.id}
-                      className="grid gap-3 border-t border-white/[0.06] px-0.5 py-4 first:border-t-0"
+                      /* BRANCO A 6% SOBRE FUNDO CLARO É NADA. Este era o
+                         ÚNICO separador entre um cartão de lead e o seguinte
+                         no mobile — e no tema claro ele não existia: as leads
+                         corriam juntas numa parede de texto. `--atlas-border`
+                         é rgba(11,18,32,.12) no claro e rgba(255,255,255,.07)
+                         no escuro: o mesmo filete, dos dois lados. */
+                      className="grid gap-3 border-t border-[var(--atlas-border)] px-0.5 py-4 first:border-t-0"
                       data-overdue={due.overdue ? "true" : "false"}
                     >
                       <Link
@@ -2192,192 +2659,6 @@ export default function LeadsPage() {
           ) : null}
         </section>
       ) : null}
-
-      {/* Herói-resumo CC-6: identidade + total + atalhos de rotina em uma
-          única superfície (única com 3D). Substitui hero, cards de métricas
-          e painel "Minha rotina" separados. */}
-      <section aria-label="Resumo da carteira e atalhos de rotina">
-        <TiltShell className="cc6-panel cc6-reveal p-5 sm:p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <p className="cc6-eyebrow">CRM · Leads</p>
-                {currentRole === "broker" ? (
-                  <StatusBadge tone="success">CARTEIRA EXCLUSIVA</StatusBadge>
-                ) : null}
-                {currentRole === "manager" ? (
-                  <StatusBadge tone="success">
-                    MEU TIME · {teamBrokers.length} CORRETORES
-                  </StatusBadge>
-                ) : null}
-              </div>
-              <h1 className="mt-2 max-w-xl text-2xl font-semibold tracking-[-0.02em] text-[var(--atlas-texto-forte)] sm:text-[27px] sm:leading-9">
-                {currentRole === "broker"
-                  ? "Sua fila de leads, pronta para agir."
-                  : "Leads que exigem decisão agora."}
-              </h1>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Link href="/leads/new" className="atlas-button-primary">
-                  + Novo lead
-                </Link>
-                <Link href="/pipeline" className="cc6-ghost-btn min-h-11">
-                  Abrir pipeline
-                </Link>
-                <details className="atlas-leads-tools">
-                  <summary>Mais ferramentas</summary>
-                  <div>
-                    <Link href="/leads/data-quality">Qualidade dos dados</Link>
-                    <Link href="/leads/deduplication">Duplicidades</Link>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        window.dispatchEvent(
-                          new CustomEvent("atlas:open-copilot", {
-                            detail: {
-                              prompt:
-                                "Analise a carteira de leads visível e explique até três prioridades, sem executar nenhuma ação.",
-                              context: {
-                                total,
-                                filters: {
-                                  status,
-                                  source,
-                                  project,
-                                  broker,
-                                  score,
-                                  attention,
-                                  nextAction,
-                                },
-                                pageMetrics,
-                                visiblePriorities: visiblePriorityQueue.length,
-                              },
-                            },
-                          }),
-                        )
-                      }
-                    >
-                      ✦ Analisar carteira
-                    </button>
-                  </div>
-                </details>
-              </div>
-            </div>
-            <div className="shrink-0 lg:pl-6 lg:text-right">
-              <p className="cc6-eyebrow">Base filtrada</p>
-              <p className="cc6-metric-value mt-1 text-4xl leading-none">
-                {loading ? "—" : total}
-              </p>
-              <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
-                {hasFilters
-                  ? "resultado dos filtros atuais"
-                  : currentRole === "broker"
-                    ? "somente a sua carteira"
-                    : "somente seu escopo comercial"}
-              </p>
-            </div>
-          </div>
-          <div className="cc6-hairline mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
-            <p
-              className="cc6-eyebrow"
-              title="Os números contam a incidência na página atual; cada atalho filtra toda a carteira do seu escopo comercial."
-            >
-              Minha rotina
-            </p>
-            <div
-              className="flex flex-1 gap-2 overflow-x-auto pb-0.5"
-              role="group"
-              aria-label="Encontre rapidamente onde agir"
-            >
-              {attentionShortcuts.map((shortcut) => (
-                <button
-                  key={shortcut.key}
-                  type="button"
-                  onClick={() => applyAttention(shortcut.key)}
-                  aria-pressed={attention === shortcut.key}
-                  title={`${shortcut.description}. O número é a incidência nesta página; o filtro consulta toda a carteira do seu escopo.`}
-                  className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border px-3 transition-colors ${
-                    attention === shortcut.key
-                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
-                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
-                  } ${focusRing}`}
-                >
-                  <span className="text-rotulo font-medium">
-                    {shortcut.label}
-                  </span>
-                  <span
-                    className={`cc6-num text-corpo ${
-                      shortcut.count > 0
-                        ? shortcut.countClass
-                        : "text-[var(--atlas-texto-fraco)]"
-                    }`}
-                  >
-                    {loading ? "—" : shortcut.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* A FAIXA DO CORTE DA FILA — chega por link da central e não tem
-              seletor. Fica visível porque um recorte que corta 442 em 146 sem
-              dizer o nome faz a pessoa concluir que a base encolheu. */}
-          {faixa ? (
-            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[rgba(75,141,248,0.35)] bg-[rgba(75,141,248,0.07)] px-3 py-2">
-              <span className="text-rotulo text-[var(--atlas-texto-medio)]">
-                Faixa da fila ·{" "}
-                <strong className="font-semibold text-[var(--atlas-texto-forte)]">
-                  {ROTULO_DA_FAIXA.get(faixa) ?? faixa}
-                </strong>{" "}
-                · só leads nunca contatados
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setFaixa("");
-                  setPage(1);
-                }}
-                className={`min-h-11 text-rotulo font-semibold text-[var(--atlas-accent)] hover:text-white ${focusRing}`}
-              >
-                Limpar faixa
-              </button>
-            </div>
-          ) : null}
-          {/* VÍNCULO — o que a tela "Clientes 360" tinha de próprio.
-              Ela lia a MESMA tabela pela mesma função, sem SLA, sem lote e sem
-              piso de carteira (um corretor via as 469 leads da imobiliária).
-              Foi apagada; estes quatro segmentos vieram junto, e aqui eles
-              filtram a carteira inteira no servidor, não só a página. */}
-          <div className="cc6-hairline mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
-            <p className="cc6-eyebrow" title="Em que ponto da relação comercial a pessoa está.">
-              Vínculo
-            </p>
-            <div
-              className="flex flex-1 gap-2 overflow-x-auto pb-0.5"
-              role="group"
-              aria-label="Filtrar por vínculo comercial"
-            >
-              {VINCULOS.map((chave) => (
-                <button
-                  key={chave}
-                  type="button"
-                  // Clicar no que já está ativo desliga: mesma gramática dos
-                  // atalhos acima, para não haver dois jeitos de limpar filtro.
-                  onClick={() => {
-                    setVinculo((atual) => (atual === chave ? "" : chave));
-                    setPage(1);
-                  }}
-                  aria-pressed={vinculo === chave}
-                  className={`min-h-11 shrink-0 rounded-xl border px-3 text-rotulo font-medium transition-colors ${
-                    vinculo === chave
-                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
-                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
-                  } ${focusRing}`}
-                >
-                  {ROTULO_DO_VINCULO[chave]}
-                </button>
-              ))}
-            </div>
-          </div>
-        </TiltShell>
-      </section>
 
       {/* ── PAINEL DE DESCARTE ─────────────────────────────────────────────
           Mesma lista canônica de motivos do Kanban (`DISCARD_REASONS`) e mesma

@@ -42,7 +42,22 @@ type LeadRow = {
   sale_value_brl: number | null;
   development_id: string | null;
   first_contacted_at: string | null;
+  /**
+   * ── A COLUNA QUE IMPEDE UM DELTA DE MENTIR ──────────────────────────────
+   *
+   * Medido em 02/08/2026 na organização real: 406 leads criadas nos últimos 30
+   * dias contra 59 nos 30 anteriores. Seiscentos por cento de "crescimento" —
+   * e 270 dessas 406 entraram num ÚNICO lote de importação, em seis minutos.
+   *
+   * O delta é aritmeticamente correto e semanticamente falso: ele mede
+   * IMPORTAÇÃO, não demanda. Sem esta coluna viajando junto, o número sai
+   * como se o mercado tivesse sextuplicado. Com ela, a tela consegue dizer
+   * "leads criadas na base" e mostrar o lote ao lado.
+   */
+  import_batch_id: string | null;
 };
+type DevelopmentRow = { id: string; name: string | null };
+type ProfileRow = { id: string; name: string | null; full_name: string | null; active: boolean | null };
 type GastoRow = {
   amount: number | string | null;
   spend_date: string | null;
@@ -118,11 +133,11 @@ export async function GET(request: NextRequest) {
   // 482 leads e o número coincidia — é o pior tipo de bug, o que só aparece
   // quando a operação cresce. `fetchAllRows` é o helper canônico e carrega a
   // flag de truncamento, que viaja até a tela.
-  const [leadsPaginados, configuracao, movimentosPaginados, gastoPaginado, atribuicaoPaginada] = await Promise.all([
+  const [leadsPaginados, configuracao, movimentosPaginados, gastoPaginado, atribuicaoPaginada, empreendimentos, perfis] = await Promise.all([
     fetchAllRows<LeadRow>((from, to) =>
       admin
         .from("leads")
-        .select("id,status,assigned_to,assigned_user_id,created_at,sale_value_brl,development_id,first_contacted_at")
+        .select("id,status,assigned_to,assigned_user_id,created_at,sale_value_brl,development_id,first_contacted_at,import_batch_id")
         .eq("organization_id", organizationId)
         .order("id", { ascending: true })
         .range(from, to),
@@ -169,6 +184,20 @@ export async function GET(request: NextRequest) {
         .order("lead_id", { ascending: true })
         .range(from, to),
     ),
+    /**
+     * ── AS DUAS ÚNICAS CONSULTAS NOVAS DESTA ROTA, E POR QUE ELAS SÃO NOMES ──
+     *
+     * `leads.development_id` e `leads.assigned_to` já viajam acima. O que falta
+     * é só o NOME do empreendimento e o NOME do corretor — sem eles a tela
+     * imprimiria UUID, que não é informação para ninguém.
+     *
+     * O que NÃO é lido aqui, de propósito: `developments.price_min/price_max`
+     * (nulo em 2 dos 4) e `units.price` (só existe para um). Preço de tabela é
+     * VALOR DE ESTOQUE, não VGV vendido nem em negociação — imprimir isso como
+     * "VGV do projeto" seria exatamente a mentira que este produto já pagou.
+     */
+    admin.from("developments").select("id,name").eq("organization_id", organizationId),
+    admin.from("profiles").select("id,name,full_name,active").eq("organization_id", organizationId),
   ]);
   const { rows: data, error } = leadsPaginados;
 
@@ -367,6 +396,248 @@ export async function GET(request: NextRequest) {
     mensuravel: registroDeMovimentoMensuravel,
   };
 
+  /**
+   * ══════════════════════════════════════════════════════════════════════════
+   * O QUE A REFERÊNCIA VISUAL PEDE, MEDIDO — E O QUE ELA PEDE E NÃO EXISTE
+   * ══════════════════════════════════════════════════════════════════════════
+   *
+   * O mockup do dono pede série temporal, top de projetos por VGV, ranking de
+   * equipe e delta "vs 30 dias" em todos os seis indicadores. Três dessas
+   * quatro coisas têm lastro parcial e uma não tem nenhum. Os blocos abaixo
+   * devolvem o lastro E a fronteira dele, para a tela não ter que adivinhar.
+   */
+
+  /** Dia no fuso da operação. `created_at::date` em UTC jogaria a lead da noite
+   *  para o dia seguinte — e "quantas entraram ontem" é pergunta de calendário
+   *  brasileiro, não de calendário do servidor. */
+  const diaLocal = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+
+  const agora = Date.now();
+  const DIA_MS = 86_400_000;
+  const JANELA_DIAS = 30;
+  const corteRecente = agora - JANELA_DIAS * DIA_MS;
+  const corteAnterior = agora - 2 * JANELA_DIAS * DIA_MS;
+
+  const criadas = leads.filter((l) => l.created_at);
+  const ultimos30 = criadas.filter((l) => new Date(l.created_at!).getTime() >= corteRecente);
+  const anteriores30 = criadas.filter((l) => {
+    const t = new Date(l.created_at!).getTime();
+    return t >= corteAnterior && t < corteRecente;
+  });
+
+  /**
+   * ── O DELTA SAI COM O LOTE PENDURADO NELE, OU NÃO SAI ─────────────────────
+   *
+   * Medido em 02/08/2026: 406 contra 59 = +588%. Dessas 406, 270 vieram de UM
+   * lote de importação. O rótulo desta métrica é "leads CRIADAS NA BASE", e o
+   * lote viaja ao lado — não como nota de rodapé opcional, como campo.
+   */
+  const lotesNaJanela = new Map<string, number>();
+  for (const l of ultimos30) {
+    if (!l.import_batch_id) continue;
+    lotesNaJanela.set(l.import_batch_id, (lotesNaJanela.get(l.import_batch_id) ?? 0) + 1);
+  }
+  const maiorLoteEntrada = [...lotesNaJanela.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
+  const importadasNaJanela = [...lotesNaJanela.values()].reduce((s, n) => s + n, 0);
+
+  const deltaLeadsTotais = {
+    /** O rótulo é parte do dado: "criadas na base" ≠ "demanda". */
+    rotulo: "leads criadas na base",
+    janelaDias: JANELA_DIAS,
+    ultimos30: ultimos30.length,
+    anteriores30: anteriores30.length,
+    /** `null` quando a janela anterior é ZERO: dividir por zero vira "+∞%". */
+    variacaoPercentual:
+      anteriores30.length > 0
+        ? Math.round(((ultimos30.length - anteriores30.length) / anteriores30.length) * 1000) / 10
+        : null,
+    porqueSemVariacao:
+      anteriores30.length > 0
+        ? null
+        : "Nenhuma lead criada na janela anterior — não há base de comparação, e variação sobre zero não é percentual.",
+    importadasNaJanela,
+    maiorLote: maiorLoteEntrada ? { id: maiorLoteEntrada[0], leads: maiorLoteEntrada[1] } : null,
+    /** Sempre presente. Delta sem esta frase é opinião com seta. */
+    ressalva:
+      importadasNaJanela > 0
+        ? `${importadasNaJanela} das ${ultimos30.length} leads da janela entraram por importação${maiorLoteEntrada ? `, ${maiorLoteEntrada[1]} delas num único lote` : ""}. Esta variação mede entrada na base, não demanda de mercado.`
+        : "Nenhuma lead da janela veio de importação — a variação mede criação orgânica na base.",
+  };
+
+  /**
+   * ── OS OUTROS CINCO DELTAS NÃO EXISTEM, E O MOTIVO É UM SÓ ────────────────
+   *
+   * Leads Ativos, Em Atendimento, Negociações, VGV e Conversão exigem saber o
+   * ESTADO de cada lead 30 dias atrás. Só a série de movimentação sustenta
+   * isso — e `pipeline_stage_moves` começou a registrar em 27/07/2026. Na
+   * janela de 30 a 60 dias atrás há ZERO linhas. Qualquer delta ali seria
+   * divisão por zero apresentada como crescimento.
+   *
+   * Nenhum backfill resolve: o passado não foi registrado.
+   */
+  const movimentosNaJanelaAnterior = movimentosPaginados.rows.filter((m) => {
+    if (!m.occurred_at) return false;
+    const t = new Date(m.occurred_at).getTime();
+    return t >= corteAnterior && t < corteRecente;
+  }).length;
+  const deltasDeEstado = {
+    /** A base de comparação existe? É diferente de "o delta está calculado". */
+    baseDeComparacaoExiste: movimentosNaJanelaAnterior > 0,
+    movimentosNaJanelaAnterior,
+    /**
+     * Nunca `null`. Um campo que às vezes some faz a tela cair num galho sem
+     * frase, e painel sem frase é o painel que parece quebrado. A frase muda
+     * de CONTEÚDO conforme o registro cresce; ela não desaparece.
+     */
+    porqueIndisponivel:
+      movimentosNaJanelaAnterior > 0
+        ? `O registro de movimentação já cobre a janela anterior (${movimentosNaJanelaAnterior} movimentos), mas reconstruir a etapa de cada lead naquele dia ainda não é feito por esta rota. Enquanto não for, o delta destes indicadores fica declarado, não estimado.`
+        : `Comparar com 30 dias atrás exige saber em que etapa cada lead estava naquele dia, e o registro de movimentação${inicioDoRegistro ? ` começou em ${new Date(inicioDoRegistro).toLocaleDateString("pt-BR")}` : " ainda não começou"}. Na janela anterior não há um único movimento registrado, e nenhum backfill resolve: o passado não foi registrado.`,
+  };
+
+  /**
+   * ── EVOLUÇÃO DE LEADS: UMA LINHA, PORQUE SÓ UMA TEM LASTRO NA JANELA ──────
+   *
+   * O mockup pede três linhas — novos, qualificados, negociações. "Novos" sai
+   * de `created_at`, que cobre a base inteira sem um nulo. As outras duas só
+   * poderiam sair de `pipeline_stage_moves`, que cobre poucos dias: desenhadas
+   * no mesmo eixo, elas leriam como "caiu para zero" em todos os dias
+   * anteriores ao registro — que é o oposto do que aconteceu.
+   *
+   * Sai uma linha só, e a série de movimentação viaja em separado, com a data
+   * em que ela começa, para a tela poder demarcar o trecho medido.
+   */
+  const SERIE_MAX_DIAS = 90;
+  const porDia = new Map<string, number>();
+  const importadasPorDia = new Map<string, number>();
+  let primeiroDia: string | null = null;
+  for (const l of criadas) {
+    const dia = diaLocal(l.created_at!);
+    porDia.set(dia, (porDia.get(dia) ?? 0) + 1);
+    if (l.import_batch_id) importadasPorDia.set(dia, (importadasPorDia.get(dia) ?? 0) + 1);
+    if (!primeiroDia || dia < primeiroDia) primeiroDia = dia;
+  }
+  const hojeLocal = diaLocal(new Date().toISOString());
+  const dias: Array<{ dia: string; novos: number; importadas: number }> = [];
+  if (primeiroDia) {
+    // Série CONTÍNUA: o dia sem lead é um zero MEDIDO (`created_at` não tem um
+    // único nulo), não um buraco. Pular o dia vazio encurtaria o eixo e faria a
+    // linha parecer mais densa do que a operação é.
+    const inicio = new Date(`${primeiroDia}T12:00:00Z`).getTime();
+    const fim = new Date(`${hojeLocal}T12:00:00Z`).getTime();
+    const primeiroPlotado = Math.max(inicio, fim - (SERIE_MAX_DIAS - 1) * DIA_MS);
+    for (let t = primeiroPlotado; t <= fim; t += DIA_MS) {
+      const dia = new Date(t).toISOString().slice(0, 10);
+      dias.push({ dia, novos: porDia.get(dia) ?? 0, importadas: importadasPorDia.get(dia) ?? 0 });
+    }
+  }
+  const evolucao = {
+    dias,
+    de: dias[0]?.dia ?? null,
+    ate: dias[dias.length - 1]?.dia ?? null,
+    /** Dias cobertos pela base, mesmo quando a série plotada é mais curta. */
+    diasNaBase: primeiroDia ? Math.round((new Date(`${hojeLocal}T12:00:00Z`).getTime() - new Date(`${primeiroDia}T12:00:00Z`).getTime()) / DIA_MS) + 1 : 0,
+    serieTruncada: Boolean(primeiroDia) && dias.length > 0 && dias[0]!.dia > primeiroDia!,
+    linhasIndisponiveis: [
+      {
+        chave: "qualificados",
+        porque: `A curva de qualificação só existe em \`pipeline_stage_moves\`, que começou${inicioDoRegistro ? ` em ${new Date(inicioDoRegistro).toLocaleDateString("pt-BR")}` : " a registrar recentemente"}. No mesmo eixo dos novos, ela leria como queda a zero onde na verdade é ausência de registro.`,
+      },
+      {
+        chave: "negociacoes",
+        porque: "Mesma origem, mesma fronteira: sem histórico anterior ao início do registro, a linha inventaria um passado.",
+      },
+    ],
+    registroDeMovimentoDesde: inicioDoRegistro,
+  };
+
+  /**
+   * ── TOP PROJETOS: POR LEADS, COM O DENOMINADOR NA CARA ────────────────────
+   *
+   * O mockup pede "Top Projetos por VGV". Medido: `price_min/price_max` é nulo
+   * em 2 dos 4 empreendimentos; `units.price` só existe para um; e a ÚNICA
+   * venda com valor apurado tem `development_id` NULO — nem o VGV fechado pode
+   * ser atribuído a um projeto. O ranking sai por LEADS, com o rótulo honesto,
+   * e o VGV sai declarado sem lastro.
+   */
+  const leadsPorEmpreendimento = new Map<string, number>();
+  let semEmpreendimento = 0;
+  for (const l of leads) {
+    if (!l.development_id) { semEmpreendimento += 1; continue; }
+    leadsPorEmpreendimento.set(l.development_id, (leadsPorEmpreendimento.get(l.development_id) ?? 0) + 1);
+  }
+  const nomeDoEmpreendimento = new Map(
+    ((empreendimentos.data ?? []) as DevelopmentRow[]).map((d) => [d.id, (d.name || "").trim() || "Empreendimento sem nome"]),
+  );
+  const topProjetos = {
+    /** Sem isto, "nenhum projeto" leria como "nenhuma lead vinculada". */
+    mensuravel: !empreendimentos.error,
+    rotulo: "leads por empreendimento",
+    projetos: [...nomeDoEmpreendimento.entries()]
+      .map(([id, nome]) => ({ id, nome, leads: leadsPorEmpreendimento.get(id) ?? 0 }))
+      .sort((a, b) => b.leads - a.leads || a.nome.localeCompare(b.nome, "pt-BR")),
+    semVinculo: semEmpreendimento,
+    base: leads.length,
+    /** O que impede o painel POR VGV de existir, escrito. */
+    porqueSemVgv:
+      "Preço de tabela está em branco em parte dos empreendimentos, e a única venda com valor apurado não tem empreendimento vinculado — nem o VGV fechado pode ser atribuído a um projeto. Falta valor de negócio e empreendimento juntos na lead ganha.",
+  };
+
+  /**
+   * ── PERFORMANCE DA EQUIPE: VOLUME SIM, CONVERSÃO POR PESSOA NÃO ───────────
+   *
+   * O ranking por carteira tem lastro e é justamente o desequilíbrio que ele
+   * precisa mostrar. A COLUNA de conversão por corretor não tem: a organização
+   * inteira soma 2 vendas. Taxa sobre amostra 0, 0, 0 e 2 não distingue
+   * ninguém de ninguém — é a mesma armadilha que `conversao.afirmavel` já
+   * bloqueia no agregado, com o MESMO limiar, aplicado agora por pessoa.
+   */
+  const chavesAbertas = new Set(etapasDaOrganizacao.map((e) => e.key));
+  const porCorretor = new Map<string, { total: number; abertas: number; ganhos: number }>();
+  let semDono = 0;
+  for (const l of leads) {
+    const dono = l.assigned_to ?? l.assigned_user_id;
+    if (!dono) { semDono += 1; continue; }
+    const linha = porCorretor.get(dono) ?? { total: 0, abertas: 0, ganhos: 0 };
+    linha.total += 1;
+    const etapa = etapaDaLead(l.status);
+    if (chavesAbertas.has(etapa)) linha.abertas += 1;
+    if (etapa === "ganho") linha.ganhos += 1;
+    porCorretor.set(dono, linha);
+  }
+  const nomeDoPerfil = new Map(
+    ((perfis.data ?? []) as ProfileRow[]).map((p) => [p.id, (p.full_name || p.name || "").trim()]),
+  );
+  const corretores = [...porCorretor.entries()]
+    .map(([id, linha]) => ({
+      id,
+      nome: nomeDoPerfil.get(id) || "Corretor sem nome no cadastro",
+      total: linha.total,
+      abertas: linha.abertas,
+      ganhos: linha.ganhos,
+      /** A taxa por pessoa só é afirmável no MESMO limiar do agregado. */
+      taxaAfirmavel: linha.ganhos >= VENDAS_PARA_AFIRMAR_TAXA,
+      taxa: linha.ganhos >= VENDAS_PARA_AFIRMAR_TAXA && linha.total > 0
+        ? Math.round((linha.ganhos / linha.total) * 1000) / 10
+        : null,
+    }))
+    .sort((a, b) => b.abertas - a.abertas || b.total - a.total);
+  const maiorCarteira = Math.max(0, ...corretores.map((c) => c.total));
+  const equipe = {
+    mensuravel: !perfis.error,
+    corretores,
+    semDono,
+    base: leads.length,
+    maiorCarteira,
+    /** Proporção sem denominador esconde que quase tudo está com uma pessoa. */
+    concentracaoDoMaior: leads.length > 0 ? Math.round((maiorCarteira / leads.length) * 1000) / 10 : null,
+    limiarVendasParaTaxa: VENDAS_PARA_AFIRMAR_TAXA,
+    porqueSemTaxaPorCorretor: corretores.some((c) => c.taxaAfirmavel)
+      ? null
+      : `Nenhum corretor chegou a ${VENDAS_PARA_AFIRMAR_TAXA} vendas. Taxa de conversão por pessoa sobre essa amostra não distingue ninguém de ninguém — é o mesmo limiar que já bloqueia a taxa no total.`,
+  };
+
   return apiSuccess(
     {
       indicadores: {
@@ -401,6 +672,13 @@ export async function GET(request: NextRequest) {
       funil,
       saidasDoFunil,
       investimento,
+      /** Os quatro blocos que a referência visual pede. Três com lastro
+       *  parcial declarado, e o VGV por projeto recusado por escrito. */
+      deltaLeadsTotais,
+      deltasDeEstado,
+      evolucao,
+      topProjetos,
+      equipe,
       /**
        * ── O QUE ESTES NÚMEROS *NÃO* COBREM ────────────────────────────────
        *

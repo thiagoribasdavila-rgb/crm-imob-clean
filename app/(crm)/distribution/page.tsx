@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
@@ -28,8 +28,34 @@ async function accessToken() {
 
 /* CC-6: campo, rótulo e chip-botão padronizados; tempo de espera em unidade
    única honesta (min/h/d) reusado no herói e na fila sem responsável. */
+/**
+ * O FUNDO CRAVADO DESTE CAMPO NUNCA PINTOU NADA — ERA CÓDIGO MORTO QUE PARECIA
+ * PERIGO.
+ *
+ * A leitura à primeira vista acusa catástrofe: o fundo vinha de um arbitrário
+ * do Tailwind com azul quase preto cravado, arbitrário não vira com o tema, e
+ * `--atlas-texto-forte` no tema claro é quase preto — logo, texto preto sobre
+ * fundo preto em todo select e todo input desta tela, justamente no tema que o
+ * dono usa. Escrevi esse diagnóstico aqui e ele estava ERRADO.
+ *
+ * Medido no navegador, com `.atlas-app-shell` no ancestral (que é onde esta
+ * página vive de verdade), lendo `getComputedStyle` ANTES e DEPOIS da troca:
+ * no tema claro o campo pinta branco com texto quase preto; no escuro, o azul
+ * translúcido do app-shell com texto quase branco; `min-height` 44px nos dois.
+ *
+ * Idêntico nos dois. `:root[data-theme="light"] .atlas-app-shell select` pesa
+ * (0,3,1) e ganha do utilitário (0,1,0) — o fundo cravado JAMAIS foi aplicado,
+ * em nenhum tema, e o `min-height: 44px` já vinha da mesma regra. A conclusão
+ * que a especificidade desmente é a lição: contraste se prova no elemento
+ * COMPUTADO dentro do ancestral real, não lendo o className.
+ *
+ * O que a troca ganha, então, é modesto e verdadeiro: duas cores cravadas a
+ * menos no arquivo (a catraca `cor-cravada` desce de 2 para 0 aqui) e uma
+ * declaração que deixa de mentir para quem ler depois. Se um dia a regra do
+ * app-shell mudar, o token acompanha o tema; o hex não acompanharia.
+ */
 const FIELD_CLASS =
-  "mt-2 w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] disabled:opacity-50";
+  "mt-2 min-h-11 w-full rounded-xl border border-[var(--atlas-border)] bg-[var(--atlas-surface-subtle)] px-3 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] disabled:opacity-50";
 const LABEL_CLASS = "block text-xs text-[var(--atlas-texto-fraco)]";
 const CHIP_ACTIVE = "border-[color:var(--atlas-accent)]! text-[var(--atlas-texto-forte)]!";
 const CHIP_IDLE = "hover:border-[rgba(148,163,184,0.35)]! hover:text-[var(--atlas-texto-forte)]!";
@@ -38,6 +64,116 @@ function waitLabel(minutes: number) {
   if (minutes < 60) return `${minutes} min`;
   if (minutes < 1440) return `${Math.floor(minutes / 60)} h`;
   return `${Math.floor(minutes / 1440)} d`;
+}
+
+/**
+ * Cabeçalho de painel em UMA linha, com os dois textos preservados.
+ *
+ * Cada painel desta tela gastava duas linhas no topo: o eyebrow "Fase NN · …" e
+ * o título, empilhados, ~44px antes de a primeira informação começar. São nove
+ * painéis: ~200px de altura vendidos para dizer duas vezes onde a pessoa está.
+ * Aqui os dois textos continuam inteiros — o título assume a linha de base e a
+ * fase vira carimbo de procedência ao lado, que é o papel que ela cumpre para o
+ * gestor (nenhum). Adensar não é apagar.
+ */
+function PanelHead({ titulo, fase, id, nota, children }: { titulo: string; fase: string; id?: string; nota?: ReactNode; children?: ReactNode }) {
+  return (
+    <header className="px-5 pt-4 pb-2.5">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+        <h2 id={id} className="text-base font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{titulo}</h2>
+        <p className="cc6-eyebrow text-micro!">{fase}</p>
+        {children ? <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">{children}</div> : null}
+      </div>
+      {/* A regra do painel fica logo abaixo do título, em corpo pequeno e SEM
+          `truncate`: é frase, e frase cortada não é frase. */}
+      {nota ? <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">{nota}</p> : null}
+    </header>
+  );
+}
+
+/**
+ * PERFIL DE ENVELHECIMENTO DA FILA — o gráfico que responde o que o número
+ * sozinho não responde.
+ *
+ * "12 aguardando" e "espera máxima 6 h" descrevem igualmente bem dois mundos
+ * opostos: UMA lead velha entre onze recém-chegadas, ou onze leads apodrecendo
+ * juntas. A decisão do gestor é diferente em cada um — no primeiro ele
+ * distribui a próxima, no segundo ele para e chama o time — e nenhum dos dois
+ * números diz em qual deles ele está. A FORMA da fila diz.
+ *
+ * Cada segmento sai de `waitingMinutes` real da lead; nada é estimado, nada é
+ * arredondado para encher barra. Com menos de duas leads não há forma nenhuma
+ * para mostrar, e a barra não aparece: o número já é a resposta inteira.
+ *
+ * As faixas são as mesmas que a tela já usa para decidir tinta (60 min é o
+ * limiar de "pressionado" em `conversionSignals` e na lista) — o gráfico não
+ * inventa um segundo vocabulário de urgência.
+ */
+const FAIXAS_DE_ESPERA = [
+  { limite: 15, rotulo: "até 15 min", token: "var(--atlas-estado-sucesso)", tinta: "cc6-ok" },
+  { limite: 60, rotulo: "15–60 min", token: "var(--atlas-accent)", tinta: "" },
+  { limite: 240, rotulo: "1–4 h", token: "var(--atlas-estado-atencao)", tinta: "cc6-warn" },
+  { limite: Number.POSITIVE_INFINITY, rotulo: "+4 h", token: "var(--atlas-estado-perigo)", tinta: "cc6-crit" },
+] as const;
+
+function perfilDeEspera(fila: UnassignedLead[]) {
+  const baldes = FAIXAS_DE_ESPERA.map((faixa) => ({ ...faixa, total: 0 }));
+  for (const lead of fila) {
+    const balde = baldes.find((item) => lead.waitingMinutes < item.limite) ?? baldes[baldes.length - 1];
+    balde.total += 1;
+  }
+  return baldes;
+}
+
+function BarraDeEnvelhecimento({ fila, naFila }: { fila: UnassignedLead[]; naFila: number }) {
+  if (fila.length < 2) return null;
+  const baldes = perfilDeEspera(fila);
+  /* O deslocamento sai da SOMA das faixas anteriores, não de um acumulador
+     reatribuído durante o `map`: `react-hooks/immutability` reprova a segunda
+     forma (“Cannot reassign variable after render completes”) e o lint desta
+     página estava vermelho por causa dela. Mesmo resultado, quatro faixas — o
+     custo quadrático aqui é nenhum. */
+  const segmentos = baldes
+    .map((balde, indice) => ({
+      ...balde,
+      inicio: baldes.slice(0, indice).reduce((soma, anterior) => soma + (anterior.total / fila.length) * 100, 0),
+      largura: (balde.total / fila.length) * 100,
+    }))
+    .filter((segmento) => segmento.largura > 0);
+  const legenda = segmentos.map((segmento) => `${segmento.total} ${segmento.rotulo}`).join(", ");
+  /* A fila visível pode ser um recorte: `unassignedQueue` vem limitada pela
+     política da rota, enquanto `unassigned[projeto]` é a contagem inteira.
+     Quando os dois divergem, a barra descreve a AMOSTRA — e diz isso, em vez
+     de deixar a forma de 100 passar por forma de 400. */
+  const amostrada = naFila > fila.length;
+  return (
+    <div className="cc6-hairline px-5 py-3">
+      <svg
+        viewBox="0 0 100 6"
+        preserveAspectRatio="none"
+        className="h-1.5 w-full"
+        role="img"
+        aria-label={`Perfil de espera das ${fila.length} leads visíveis nesta fila: ${legenda}.`}
+      >
+        {segmentos.map((segmento) => (
+          <rect key={segmento.rotulo} x={segmento.inicio} y="0" width={segmento.largura} height="6" fill={segmento.token} />
+        ))}
+      </svg>
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        {segmentos.map((segmento) => (
+          <p key={segmento.rotulo} className="text-micro text-[var(--atlas-texto-fraco)]">
+            <span className={`cc6-num text-rotulo font-semibold ${segmento.tinta || "text-[var(--atlas-texto-medio)]"}`}>{segmento.total}</span>{" "}
+            {segmento.rotulo}
+          </p>
+        ))}
+        <p className="ml-auto text-micro leading-4 text-[var(--atlas-texto-fraco)]">
+          {amostrada
+            ? `forma das ${fila.length} leads visíveis, de ${naFila} na fila deste projeto`
+            : "forma da fila inteira deste projeto"}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -274,19 +410,74 @@ export default function DistributionPage() {
     : 0;
   const abertaNaEsperaMaisLonga = Boolean(data && projectId && projetoComEsperaMaisLonga(data) === projectId);
   const oldestWaitingMinutes = selectedQueue.reduce((maximum, item) => Math.max(maximum, item.waitingMinutes), 0);
+  /**
+   * FILA QUE EXISTE E NÃO APARECE — "não há trabalho" contra "o trabalho não
+   * coube na amostra".
+   *
+   * Os dois números desta tela têm alcances diferentes, e nenhum comentário
+   * dizia isso. `unassignedQueue` é o recorte das 100 leads sem responsável
+   * mais ANTIGAS da estrutura inteira: `app/api/v1/crm/distribution/route.ts`
+   * ordena por criação e corta em 100 ANTES de qualquer filtro de projeto.
+   * `unassigned[projeto]` é a contagem cheia daquele projeto. Basta a
+   * organização ter mais de 100 leads paradas para um projeto cujas leads sejam
+   * todas mais novas que essas 100 aparecer com lista vazia e contagem
+   * positiva ao mesmo tempo.
+   *
+   * O que a tela fazia nesse caso: estampava “Distribuição em dia · Fila sem
+   * pendências” — com os dois botões de distribuir HABILITADOS logo acima, já
+   * que eles nunca dependeram da lista e sim de `unassigned`. Afirmar que não
+   * há trabalho quando há é a pior mensagem que esta tela pode dar, e é o mesmo
+   * defeito que o link “Abrir fila sem responsável” já produziu uma vez.
+   */
+  const filaForaDaAmostra = unassigned > 0 && selectedQueue.length === 0;
+  /**
+   * ONDE ESTÁ A FILA — o “+N em outros projetos” que não dizia em quais.
+   *
+   * O herói informa que existe trabalho fora do recorte atual e o único caminho
+   * para descobrir onde era abrir o seletor e trocar de projeto uma vez por
+   * empreendimento, olhando o número mudar. A pergunta “37 espalhadas ou 37 num
+   * projeto só?” decide ações opostas — reforçar um time ou redistribuir entre
+   * todos — e nenhum dos dois números do herói a responde.
+   *
+   * Cada linha sai de `unassigned`, que é a contagem cheia por projeto vinda da
+   * rota; nada é somado, estimado ou completado aqui. Some da tela quando não
+   * há fila em outro projeto: aí o herói já respondeu sozinho.
+   */
+  const filasPorProjeto = data
+    ? data.projects
+        .map((project) => ({ id: project.id, name: project.name, total: data.unassigned[project.id] ?? 0 }))
+        .filter((item) => item.total > 0)
+        .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, "pt-BR"))
+    : [];
   const brokersNearCapacity = teamBrokers.filter((broker) => {
     const capacity = capacityMap.get(broker.id);
     if (!capacity) return false;
     const currentLoad = loadMap.get(broker.id)?.total ?? 0;
     return currentLoad >= capacity.max_active_leads * (capacity.warning_percent / 100);
   }).length;
+  /**
+   * Quantos corretores TÊM limite cadastrado — o denominador sem o qual
+   * `brokersNearCapacity` mente.
+   *
+   * `brokersNearCapacity` só conta quem tem linha em `capacity`. Sem nenhuma
+   * linha ele vale 0, e 0 na tela lê-se "ninguém perto do limite" quando o fato
+   * é "ninguém tem limite". É o precedente do `usageCost`: zero parece saudável,
+   * a ausência é que diz a verdade — por isso a métrica mostra "—" e a frase do
+   * que falta, nunca um zero tranquilizador.
+   */
+  const carteirasComLimite = teamBrokers.filter((broker) => capacityMap.has(broker.id)).length;
   const conversionSignals = [
     unassigned > 0 ? { title: "Leads aguardando responsável", value: String(unassigned), detail: "A liderança decide quando liberar a próxima distribuição." } : null,
     oldestWaitingMinutes >= 60 ? { title: "SLA de entrada pressionado", value: oldestWaitingMinutes < 1440 ? `${Math.floor(oldestWaitingMinutes / 60)} h` : `${Math.floor(oldestWaitingMinutes / 1440)} d`, detail: "Tempo da lead mais antiga na fila selecionada." } : null,
     unassigned > 0 && brokers.length === 0 ? { title: "Sem capacidade online", value: "AÇÃO", detail: "Há demanda, mas nenhum corretor elegível está disponível agora." } : null,
     brokersNearCapacity > 0 ? { title: "Carteiras próximas do limite", value: String(brokersNearCapacity), detail: "Apoie o time antes de distribuir novos atendimentos." } : null,
     balanceGap > 1 ? { title: "Desvio de carga no projeto", value: String(balanceGap), detail: "Revise peso, presença e capacidade antes de um novo lote." } : null,
-  ].filter((signal): signal is { title: string; value: string; detail: string } => Boolean(signal)).slice(0, 3);
+    /* O `.slice(0, 3)` que existia aqui descartava em silêncio o quarto e o
+       quinto sinal — e o descarte era por ordem de declaração, não por
+       gravidade: "sem capacidade online" sumia se três sinais mais brandos
+       tivessem disparado antes. Com cada sinal ocupando uma linha em vez de um
+       cartão, os cinco cabem; esconder deixou de pagar altura. */
+  ].filter((signal): signal is { title: string; value: string; detail: string } => Boolean(signal));
 
   function openCapacityCopilot() {
     window.dispatchEvent(new CustomEvent("atlas:open-copilot", { detail: {
@@ -295,12 +486,36 @@ export default function DistributionPage() {
     } }));
   }
 
+  /**
+   * Os números do herói, em ordem de consequência — e cada um com o que lhe dá
+   * escala.
+   *
+   * "aguardando no projeto" é O número que decide se existe trabalho agora, e é
+   * o único em tamanho de herói. Os demais comparam-se entre si no degrau de
+   * número. "carteiras no limite" entra aqui vindo de dentro do painel de
+   * sinais, onde só aparecia quando disparava — a saúde da equipe não pode ser
+   * visível somente no dia em que já é problema.
+   *
+   * `hint` existe porque número sem escala não decide nada: "desvio 3" não diz
+   * se 3 é muito, e "2 carteiras no limite" não diz de quantas.
+   */
   const heroMetrics = [
-    { label: "aguardando no projeto", value: loading ? "—" : String(unassigned), ink: !loading && unassigned > 0 ? "cc6-warn" : "" },
-    { label: "corretores disponíveis", value: loading ? "—" : String(brokers.length), ink: !loading && !brokers.length && unassigned > 0 ? "cc6-crit" : "" },
-    { label: "gestores online", value: loading ? "—" : String(managers.length), ink: "" },
-    { label: "espera máxima", value: loading || !selectedQueue.length ? "—" : waitLabel(oldestWaitingMinutes), ink: !loading && oldestWaitingMinutes >= 60 ? "cc6-warn" : "" },
-    { label: "desvio de carga", value: loading || weightedLoads.length < 2 ? "—" : String(balanceGap), ink: !loading && balanceGap > 1 ? "cc6-warn" : "" },
+    { label: "aguardando no projeto", value: loading ? "—" : String(unassigned), ink: !loading && unassigned > 0 ? "cc6-warn" : "", heroi: true, hint: aguardandoEmOutrosProjetos > 0 ? `+${aguardandoEmOutrosProjetos} em outros projetos` : "sem responsável", title: "Leads sem responsável no projeto selecionado." },
+    { label: "corretores disponíveis", value: loading ? "—" : String(brokers.length), ink: !loading && !brokers.length && unassigned > 0 ? "cc6-crit" : "", heroi: false, hint: `de ${teamBrokers.length} na estrutura`, title: "Online, disponíveis e elegíveis neste projeto — são estes que a fila alcança." },
+    { label: "espera máxima", value: loading || !selectedQueue.length ? "—" : waitLabel(oldestWaitingMinutes), ink: !loading && oldestWaitingMinutes >= 60 ? "cc6-warn" : "", heroi: false, hint: "pressiona acima de 1 h", title: "Tempo da lead mais antiga sem responsável na fila selecionada." },
+    {
+      label: "carteiras no limite",
+      /* Sem NENHUM limite cadastrado a métrica não vale zero: vale nada. */
+      value: loading ? "—" : carteirasComLimite === 0 ? "—" : String(brokersNearCapacity),
+      ink: !loading && carteirasComLimite > 0 && brokersNearCapacity > 0 ? "cc6-warn" : "",
+      heroi: false,
+      hint: carteirasComLimite === 0 ? "sem lastro: nenhum limite" : `de ${carteirasComLimite} com limite`,
+      title: carteirasComLimite === 0
+        ? "Nenhum corretor da sua estrutura tem limite de carteira cadastrado — sem limite não há como medir proximidade do teto. Defina em “Limites de carteira por corretor”, abaixo."
+        : "Corretores cujo total ativo já passou do percentual de aviso do próprio limite.",
+    },
+    { label: "desvio de carga", value: loading || weightedLoads.length < 2 ? "—" : String(balanceGap), ink: !loading && balanceGap > 1 ? "cc6-warn" : "", heroi: false, hint: "leads entre o topo e a base", title: "Diferença entre a maior e a menor carga ponderada dos corretores elegíveis neste projeto." },
+    { label: "gestores online", value: loading ? "—" : String(managers.length), ink: "", heroi: false, hint: "liderança ao vivo", title: "Gerentes diretamente subordinados a você que estão online agora." },
   ];
 
   return (
@@ -358,29 +573,114 @@ export default function DistributionPage() {
         </section>
       ) : null}
 
-      {/* Herói de comando: projeto, números decisivos e a minha presença na
-          fila em um único painel — as listas abaixo só detalham. */}
-      <section aria-label="Contexto e números da distribuição">
-        <TiltShell className="cc6-panel cc6-reveal p-5 sm:p-6" delayMs={0}>
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0 lg:max-w-sm lg:flex-1">
+      {/**
+        * PAINEL DE COMANDO — dois painéis viraram um, e o segundo era eco do
+        * primeiro.
+        *
+        * Medido antes: o herói mostrava `aguardando`, `espera máxima` e `desvio
+        * de carga`; o painel "Antes de distribuir", 300px abaixo, repetia os
+        * TRÊS com outro rótulo e uma frase de apoio — mais "sem capacidade
+        * online", que é a conjunção de outros dois números do mesmo herói.
+        * Quatro dos cinco sinais eram o mesmo dado dito duas vezes, em dois
+        * quadros, com dois cabeçalhos. É exatamente o rótulo repetido que o dono
+        * apontou: caixa dentro de caixa para não acrescentar informação.
+        *
+        * Agora o número e o que ele exige ficam ENCOSTADOS: a métrica dá a
+        * grandeza, a linha logo abaixo dá a consequência e o gesto. Nada foi
+        * removido — os cinco sinais, o botão de IA, a nota de privacidade e o
+        * vazio "Fila equilibrada" continuam todos aqui, em uma linha cada em vez
+        * de um cartão cada.
+        */}
+      <section aria-label="Contexto e números da distribuição" data-phase="46-distribution-capacity-decision">
+        <TiltShell className="cc6-panel cc6-reveal overflow-hidden" delayMs={0}>
+          <div className="flex flex-col gap-5 p-5 sm:p-6 sm:pb-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 lg:max-w-xs lg:flex-1">
               <label className="cc6-eyebrow" htmlFor="project">Projeto da distribuição</label>
               <select id="project" value={projectId} onChange={(event) => setProjectId(event.target.value)} className={FIELD_CLASS}>
                 <option value="">Selecione um projeto</option>
                 {data?.projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
               </select>
-              <p className="mt-2 text-xs text-[var(--atlas-texto-fraco)]">{selectedProject?.developer_name || "Incorporadora não informada"}</p>
+              <p className="mt-1.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{selectedProject?.developer_name || "Incorporadora não informada"}</p>
+              {/* Encostado no seletor porque é o mesmo gesto: ler onde está a
+                  fila e trocar o recorte. Chip é botão — o alvo de 44px vem do
+                  `button.cc6-chip::after` do próprio produto, sem gastar 44px de
+                  altura visível. `whitespace-normal!` porque nome comprido de
+                  empreendimento precisa quebrar dentro do chip; nome cortado
+                  com reticências não identifica projeto nenhum. */}
+              {aguardandoEmOutrosProjetos > 0 ? (
+                <div className="mt-2.5 flex flex-wrap gap-1.5" role="group" aria-label="Projetos com lead aguardando responsável">
+                  {filasPorProjeto.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setProjectId(item.id)}
+                      aria-pressed={item.id === projectId}
+                      title={`${item.total} lead(s) sem responsável em ${item.name}. Clique para recortar a tela neste projeto.`}
+                      className={`cc6-chip cc6-interativo max-w-full cursor-pointer whitespace-normal! ${item.id === projectId ? CHIP_ACTIVE : CHIP_IDLE}`}
+                    >
+                      {item.name} <strong className="cc6-num font-semibold text-[var(--atlas-texto-forte)]">{item.total}</strong>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
-            <div className="flex flex-wrap gap-x-8 gap-y-4" aria-busy={loading}>
+            {/* GRADE, NÃO `flex-wrap`. Medido no navegador em 1320px: com
+                `flex flex-wrap` os seis blocos não quebravam linha — encolhiam,
+                porque item de flex encolhe por padrão — e os rótulos colavam uns
+                nos outros ("corretores disponíveisespera máxima"). Cada coluna
+                da grade tem largura própria, então o rótulo e a legenda quebram
+                DENTRO da coluna em vez de invadir a vizinha. Nada de `truncate`
+                aqui: legenda cortada não informa escala nenhuma. */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 xl:grid-cols-6" aria-busy={loading}>
               {heroMetrics.map((metric) => (
-                <div key={metric.label}>
-                  <p className={`cc6-metric-value text-2xl leading-none ${metric.ink}`}>{metric.value}</p>
-                  <p className="cc6-metric-label mt-1.5">{metric.label}</p>
+                <div key={metric.label} className="min-w-0" title={metric.title}>
+                  <p className={`cc6-metric-value leading-none ${metric.heroi ? "text-heroi" : "text-numero"} ${metric.ink}`}>{metric.value}</p>
+                  <p className="cc6-metric-label mt-1.5 text-rotulo! leading-4">{metric.label}</p>
+                  <p className="mt-0.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">{metric.hint}</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="cc6-hairline mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
+
+          <div className="cc6-hairline flex flex-wrap items-baseline gap-x-3 gap-y-2 px-5 pt-3 pb-1.5">
+            <h2 className="text-corpo font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Antes de distribuir</h2>
+            <p className="cc6-eyebrow text-micro!">Fase 46 · Proteção da conversão</p>
+            <button type="button" onClick={openCapacityCopilot} disabled={!projectId || loading} className="cc6-ghost-btn ml-auto disabled:opacity-50">
+              ✦ Preparar decisão com IA
+            </button>
+          </div>
+          {conversionSignals.length ? (
+            conversionSignals.map((signal, index) => (
+              <div
+                key={signal.title}
+                className="cc6-reveal cc6-sev-band flex items-baseline gap-3 px-5 py-2"
+                style={{ animationDelay: `${100 + index * 60}ms`, "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}
+              >
+                <span className="cc6-metric-value cc6-warn w-12 shrink-0 text-right text-corpo">{signal.value}</span>
+                {/* Título e detalhe na MESMA frase corrida: sem `truncate`, sem
+                    segunda linha reservada para um texto que quase sempre cabe
+                    em uma. O que não cabe quebra e continua legível. */}
+                <p className="min-w-0 flex-1 text-corpo leading-5 text-[var(--atlas-texto-fraco)]">
+                  <strong className="font-medium text-[var(--atlas-texto-forte)]">{signal.title}</strong>{" "}
+                  {signal.detail}
+                </p>
+              </div>
+            ))
+          ) : (
+            <div className="px-5 pb-2">
+              <AtlasEmpty
+                reason="no-activity"
+                eyebrow="Fila equilibrada"
+                title="Sem pressão crítica na fila selecionada"
+                description="Presença, espera e carga seguem monitoradas."
+              />
+            </div>
+          )}
+          <p className="px-5 pb-3 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
+            IA analisa sem PII · a fila entra sem atribuição automática · distribuir, alterar limites e aprovar continuam decisões humanas.
+          </p>
+
+          <div className="cc6-hairline flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
             <p className="cc6-eyebrow text-micro!">Minha disponibilidade</p>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Minha disponibilidade na fila">
               {([{ key: "available", label: "Disponível" }, { key: "busy", label: "Ocupado" }, { key: "offline", label: "Sair da fila" }] as const).map((option) => (
@@ -403,75 +703,38 @@ export default function DistributionPage() {
       {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
       {notice ? <div className="cc6-panel-quiet cc6-ok px-4 py-3 text-sm leading-6" role="status" aria-live="polite">{notice}</div> : null}
 
-      <section data-phase="46-distribution-capacity-decision">
-        <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "60ms" }}>
-          <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
-            <div>
-              <p className="cc6-eyebrow">Fase 46 · Proteção da conversão</p>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Antes de distribuir</h2>
-            </div>
-            <button type="button" onClick={openCapacityCopilot} disabled={!projectId || loading} className="cc6-ghost-btn disabled:opacity-50">
-              ✦ Preparar decisão com IA
-            </button>
-          </header>
-          {conversionSignals.length ? (
-            conversionSignals.map((signal, index) => (
-              <article
-                key={signal.title}
-                className="cc6-reveal cc6-hairline cc6-sev-band flex items-baseline gap-4 px-5 py-3"
-                style={{ animationDelay: `${100 + index * 60}ms`, "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}
-              >
-                <span className="cc6-metric-value w-14 shrink-0 text-right text-lg cc6-warn">{signal.value}</span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-medium text-[var(--atlas-texto-forte)]">{signal.title}</h3>
-                  <p className="mt-0.5 text-xs leading-5 text-[var(--atlas-texto-fraco)]">{signal.detail}</p>
-                </div>
-              </article>
-            ))
-          ) : (
-            <div className="cc6-hairline px-5 py-4">
-              <AtlasEmpty
-                reason="no-activity"
-                eyebrow="Fila equilibrada"
-                title="Sem pressão crítica na fila selecionada"
-                description="Presença, espera e carga seguem monitoradas."
-              />
-            </div>
-          )}
-          <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
-            IA analisa sem PII · a fila entra sem atribuição automática · distribuir, alterar limites e aprovar continuam decisões humanas.
-          </p>
-        </div>
-      </section>
-
       {/* Alvo do "Ir para a fila" do aviso de recorte — âncora estável. */}
       <section id="fila-sem-responsavel" className="scroll-mt-6" data-phase="52-unassigned-lead-queue">
         <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "100ms" }}>
-          <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
-            <div>
-              <p className="cc6-eyebrow">Fase 52 · Fila sem responsável</p>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Leads aguardando distribuição</h2>
+          <PanelHead titulo="Leads aguardando distribuição" fase="Fase 52 · Fila sem responsável">
+            <button
+              type="button"
+              disabled={working || !projectId || !brokers.length || !unassigned}
+              onClick={() => void distribute(Math.min(100, unassigned))}
+              className="cc6-ghost-btn disabled:opacity-50"
+            >
+              {working ? "Equilibrando..." : "Equilibrar pendentes"}
+            </button>
+            <button
+              type="button"
+              disabled={working || !projectId || !brokers.length || !unassigned}
+              onClick={() => void distribute(1)}
+              className="atlas-button-primary disabled:opacity-50"
+            >
+              Distribuir próxima
+            </button>
+          </PanelHead>
+          <BarraDeEnvelhecimento fila={selectedQueue} naFila={unassigned} />
+          {loading && !data ? (
+            /* Enquanto a fila não chegou, esta caixa estampava “Distribuição em
+               dia · Fila sem pendências”: uma afirmação sobre dado que ainda não
+               existe, mostrada em TODA abertura da tela. O painel dos corretores
+               ao lado já usava esqueleto; a fila, que é o assunto da página,
+               não. */
+            <div className="cc6-hairline space-y-2 p-5" aria-busy="true">
+              {[1, 2, 3].map((item) => <AtlasSkeleton key={item} className="h-10" />)}
             </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={working || !projectId || !brokers.length || !unassigned}
-                onClick={() => void distribute(Math.min(100, unassigned))}
-                className="cc6-ghost-btn disabled:opacity-50"
-              >
-                {working ? "Equilibrando..." : "Equilibrar pendentes"}
-              </button>
-              <button
-                type="button"
-                disabled={working || !projectId || !brokers.length || !unassigned}
-                onClick={() => void distribute(1)}
-                className="atlas-button-primary disabled:opacity-50"
-              >
-                Distribuir próxima
-              </button>
-            </div>
-          </header>
-          {selectedQueue.length ? (
+          ) : selectedQueue.length ? (
             selectedQueue.slice(0, 12).map((item, index) => {
               const pressured = item.waitingMinutes >= 60;
               return (
@@ -481,11 +744,20 @@ export default function DistributionPage() {
                   style={{ animationDelay: `${120 + Math.min(index, 8) * 45}ms`, ...(pressured ? { "--cc6-sev": "var(--atlas-estado-atencao)" } : {}) } as CSSProperties}
                 >
                   <strong className="cc6-num shrink-0 text-sm font-medium text-[var(--atlas-texto-forte)]">Lead {item.id.slice(0, 8)}</strong>
-                  <span className="min-w-0 flex-1 truncate text-xs text-[var(--atlas-texto-fraco)]">{item.source} · {item.status}</span>
+                  {/* A origem é a chave da regra de prioridade configurada mais
+                      abaixo nesta mesma tela: cortá-la com reticências esconde
+                      justamente o critério que explica a posição da lead. */}
+                  <span className="min-w-0 flex-1 text-xs leading-4 text-[var(--atlas-texto-fraco)]">{item.source} · {item.status}</span>
                   <span className={`cc6-num shrink-0 text-xs ${pressured ? "cc6-warn" : "text-[var(--atlas-texto-medio)]"}`}>{waitLabel(item.waitingMinutes)}</span>
                 </article>
               );
             })
+          ) : filaForaDaAmostra ? (
+            <div className="cc6-hairline cc6-sev-band px-5 py-3.5" style={{ "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}>
+              <p className="text-corpo leading-5 text-[var(--atlas-texto-forte)]">
+                <span className="cc6-num cc6-warn font-semibold">{unassigned}</span> lead{unassigned === 1 ? "" : "s"} sem responsável neste projeto — e nenhuma delas está entre as 100 mais antigas da sua estrutura, que é o recorte carregado nesta lista. O detalhe não cabe aqui, mas o trabalho existe: distribuir continua liberado e atende sempre a lead mais antiga <strong className="font-semibold">deste</strong> projeto.
+              </p>
+            </div>
           ) : (
             <div className="cc6-hairline px-5 py-4">
               <AtlasEmpty
@@ -501,8 +773,15 @@ export default function DistributionPage() {
               />
             </div>
           )}
+          {/* O `slice(0, 12)` acima nunca se anunciou. Com 40 leads na fila a
+              pessoa via 12 linhas e nenhuma frase dizendo que havia mais — e a
+              nota falava em “até 100 visíveis”, que é o teto da AMOSTRA vinda
+              da rota (as 100 mais antigas da estrutura inteira), não o que a
+              lista mostra. Dois recortes, nenhum declarado. Ambos os números
+              são reais: o exibido e o total do projeto. */}
           <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
-            Somente metadados, até 100 visíveis — sem nome, telefone ou e-mail · a distribuição atribui atomicamente a lead mais antiga do projeto, sempre por decisão explícita da liderança.
+            {selectedQueue.length ? `Mostrando as ${Math.min(12, selectedQueue.length)} mais antigas de ${unassigned} na fila deste projeto · ` : ""}
+            Somente metadados, amostra de até 100 leads mais antigas da estrutura — sem nome, telefone ou e-mail · a distribuição atribui atomicamente a lead mais antiga do projeto, sempre por decisão explícita da liderança.
           </p>
         </div>
       </section>
@@ -510,17 +789,13 @@ export default function DistributionPage() {
       {/* Quem recebe: a ordem ponderada com nomes fortes; liderança ao lado. */}
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="cc6-panel cc6-reveal self-start overflow-hidden" style={{ animationDelay: "140ms" }} aria-labelledby="distribution-order-title">
-          <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
-            <div>
-              <p className="cc6-eyebrow">Fila de corretores</p>
-              <h2 id="distribution-order-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Ordem de recebimento</h2>
-            </div>
+          <PanelHead titulo="Ordem de recebimento" fase="Fila de corretores" id="distribution-order-title">
             {!loading && weightedLoads.length > 1 ? (
               <span className={`cc6-chip ${balanceGap > 1 ? "cc6-warn cc6-atencao" : ""}`} title="Diferença entre a maior e a menor carga ponderada dos corretores elegíveis neste projeto.">
                 desvio {balanceGap}
               </span>
             ) : null}
-          </header>
+          </PanelHead>
           <div aria-busy={loading}>
             {loading ? (
               <div className="cc6-hairline space-y-2 p-5">
@@ -560,7 +835,15 @@ export default function DistributionPage() {
                         <h3 className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{broker.full_name || "Corretor"}</h3>
                         {index === 0 ? <StatusBadge tone="info">Próximo</StatusBadge> : null}
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-[var(--atlas-texto-fraco)]">
+                      {/* SEM `truncate`: esta linha é a JUSTIFICATIVA da posição
+                          na fila, não um rótulo. O rodapé deste painel promete
+                          “ordem por carga ponderada e última atribuição” — e a
+                          última atribuição é o último item da frase, ou seja,
+                          exatamente o que as reticências comiam primeiro. Nesta
+                          coluna, em tablet e com nome de gestor comprido, o
+                          gestor lia “Time Fulano de Tal · peso 1 · última
+                          atrib…” e perdia o desempate que ordena a lista. */}
+                      <p className="mt-0.5 text-xs leading-4 text-[var(--atlas-texto-fraco)]">
                         Time {manager?.full_name || "comercial"} · peso {state?.weight || 1} · última atribuição {state?.last_assigned_at ? new Date(state.last_assigned_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "ainda não recebeu"}
                       </p>
                     </div>
@@ -627,99 +910,15 @@ export default function DistributionPage() {
         </div>
       </section>
 
-      <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "220ms" }} aria-labelledby="distribution-evidence-title">
-        <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 pb-3">
-          <div>
-            <p className="cc6-eyebrow">Fase 51 · Evidência de distribuição</p>
-            <h2 id="distribution-evidence-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Por que cada lead foi atribuída</h2>
-          </div>
-          <span className="cc6-chip" title="Cada evento preserva projeto, responsável único, carga anterior, peso e algoritmo usado.">responsável único</span>
-        </header>
-        {data?.recentAssignments.filter((item) => !projectId || item.development_id === projectId).length ? (
-          data.recentAssignments.filter((item) => !projectId || item.development_id === projectId).slice(0, 8).map((item, index) => {
-            const broker = profilesMap.get(item.assigned_to);
-            return (
-              <article key={item.id} className="cc6-reveal cc6-hairline flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-3" style={{ animationDelay: `${240 + Math.min(index, 8) * 45}ms` }}>
-                <strong className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{broker?.full_name || "Corretor"}</strong>
-                <span className="cc6-num min-w-0 truncate text-xs text-[var(--atlas-texto-fraco)]">Lead {item.lead_id.slice(0, 8)} · {new Date(item.created_at).toLocaleString("pt-BR")}</span>
-                <span className="cc6-num ml-auto shrink-0 text-xs text-[var(--atlas-texto-medio)]" title="Carga anterior no projeto ÷ peso = carga ponderada no momento da escolha.">
-                  {item.score_snapshot?.projectLoadBefore ?? "—"} ÷ {item.score_snapshot?.weight ?? 1} = {item.score_snapshot?.weightedLoadBefore ?? "—"}
-                </span>
-              </article>
-            );
-          })
-        ) : (
-          <div className="cc6-hairline px-5 py-4">
-            <AtlasEmpty
-              reason="no-activity"
-              eyebrow="Sem atribuições recentes"
-              title="Nenhuma atribuição registrada"
-              description="As próximas distribuições terão justificativa auditável."
-            />
-          </div>
-        )}
-      </div>
-
-      {data?.portfolioAudit ? (
-        <section data-phase="59-portfolio-audit">
-          <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "260ms" }} aria-labelledby="distribution-audit-title">
-            <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
-              <div>
-                <p className="cc6-eyebrow">Fase 59 · Livro da carteira</p>
-                <h2 id="distribution-audit-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Histórico gerencial unificado</h2>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {/* A promessa de privacidade deste livro precisa estar NA TELA, e
-                    não só no contrato: quem lê um histórico gerencial tem que
-                    saber, olhando, que ali não há nome, telefone, e-mail nem
-                    texto livre da lead — só metadado de movimentação. */}
-                <span className="cc6-chip" title="Nome, telefone, e-mail e textos livres da lead não são expostos neste livro.">SEM PII</span>
-                <span className="cc6-chip">até {data.portfolioAudit.maximum} eventos</span>
-              </div>
-            </header>
-            <div className="mt-3 flex flex-wrap gap-1.5 px-5 pb-4" aria-label="Resumo por tipo de movimento">
-              {([["Distribuições", data.portfolioAudit.summary.distributions], ["Transferências", data.portfolioAudit.summary.transfers], ["Reservas", data.portfolioAudit.summary.reservations], ["Devoluções", data.portfolioAudit.summary.returns], ["Ausências", data.portfolioAudit.summary.absences], ["Capacidade", data.portfolioAudit.summary.capacityChanges]] as const).map(([label, value]) => (
-                <span key={label} className="cc6-chip">
-                  {label} <strong className="font-semibold text-[var(--atlas-texto-forte)]">{value}</strong>
-                </span>
-              ))}
-            </div>
-            {data.portfolioAudit.events.length ? (
-              data.portfolioAudit.events.slice(0, 20).map((event, index) => (
-                <article key={`${event.eventType}-${event.occurredAt}-${index}`} className="cc6-hairline flex items-baseline gap-3 px-5 py-2.5">
-                  <strong className="shrink-0 text-xs font-medium text-[var(--atlas-texto-forte)]">{AUDIT_EVENT_LABELS[event.eventType] || event.eventType}</strong>
-                  <span className="min-w-0 flex-1 truncate text-xs text-[var(--atlas-texto-fraco)]">
-                    {event.brokerId ? profilesMap.get(event.brokerId)?.full_name || "Corretor no escopo" : "Operação gerencial"}
-                    {event.leadId ? ` · Lead ${event.leadId.slice(0, 8)}` : ""}
-                  </span>
-                  <time className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]">{new Date(event.occurredAt).toLocaleString("pt-BR")}</time>
-                </article>
-              ))
-            ) : (
-              <div className="cc6-hairline px-5 py-4">
-                <AtlasEmpty
-                  reason="no-activity"
-                  eyebrow="Livro da carteira vazio"
-                  title="Histórico ainda vazio"
-                  description="Os próximos movimentos aparecem aqui com rastreabilidade."
-                />
-              </div>
-            )}
-            <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
-              Escopo hierárquico · fontes operacionais preservadas · nome, telefone, e-mail e textos livres da lead não expostos.
-            </p>
-          </div>
-        </section>
-      ) : null}
-
       {data?.viewer.role === "manager" ? (
         <section aria-label="Fase 39: elegibilidade por projeto">
           <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "300ms" }} aria-labelledby="distribution-eligibility-title">
-            <header className="px-5 pt-5 pb-3">
-              <p className="cc6-eyebrow">Fase 39 · Equilíbrio por projeto</p>
-              <h2 id="distribution-eligibility-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Elegibilidade do time neste empreendimento</h2>
-              <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Ativar, pausar ou ponderar aqui vale somente para {selectedProject?.name || "o projeto selecionado"}.</p>
-            </header>
+            <PanelHead
+              titulo="Elegibilidade do time neste empreendimento"
+              fase="Fase 39 · Equilíbrio por projeto"
+              id="distribution-eligibility-title"
+              nota={`Ativar, pausar ou ponderar aqui vale somente para ${selectedProject?.name || "o projeto selecionado"}.`}
+            />
             {teamBrokers.length ? (
               teamBrokers.map((broker) => {
                 const state = stateMap.get(broker.id);
@@ -740,7 +939,7 @@ export default function DistributionPage() {
                         value={state?.weight || 1}
                         disabled={working}
                         onChange={(event) => void configureMember(broker.id, enabled, Number(event.target.value))}
-                        className="rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-2.5 py-1.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50"
+                        className="min-h-11 rounded-xl border border-[var(--atlas-border)] bg-[var(--atlas-surface-subtle)] px-2.5 py-1.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50"
                       >
                         {[1,2,3,4,5,6,7,8,9,10].map((weight) => <option key={weight} value={weight}>{weight}</option>)}
                       </select>
@@ -773,11 +972,12 @@ export default function DistributionPage() {
       {data?.viewer.role === "manager" ? (
         <section data-phase="57-distribution-priority">
           <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "340ms" }} aria-labelledby="distribution-priority-title">
-            <header className="px-5 pt-5 pb-3">
-              <p className="cc6-eyebrow">Fase 57 · Ordem inteligente da fila</p>
-              <h2 id="distribution-priority-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Prioridade por SLA e origem</h2>
-              <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Ordem: maior pressão de SLA → prioridade da origem → lead mais antiga. Nome, renda, gênero, idade e qualquer outro dado pessoal nunca entram na decisão.</p>
-            </header>
+            <PanelHead
+              titulo="Prioridade por SLA e origem"
+              fase="Fase 57 · Ordem inteligente da fila"
+              id="distribution-priority-title"
+              nota="Ordem: maior pressão de SLA → prioridade da origem → lead mais antiga. Nome, renda, gênero, idade e qualquer outro dado pessoal nunca entram na decisão."
+            />
             <div className="cc6-hairline grid gap-4 p-5 lg:grid-cols-5">
               <label className={LABEL_CLASS}>
                 Origem
@@ -825,11 +1025,12 @@ export default function DistributionPage() {
       {data?.viewer.role === "manager" ? (
         <section data-phase="56-broker-capacity">
           <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "380ms" }} aria-labelledby="distribution-capacity-title">
-            <header className="px-5 pt-5 pb-3">
-              <p className="cc6-eyebrow">Fase 56 · Proteção contra sobrecarga</p>
-              <h2 id="distribution-capacity-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Limites de carteira por corretor</h2>
-              <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Capacidade operacional, não meta nem ranking. Sem comparação pública entre corretores: o limite protege o atendimento, não classifica gente. No teto, o banco bloqueia novas distribuições e transferências.</p>
-            </header>
+            <PanelHead
+              titulo="Limites de carteira por corretor"
+              fase="Fase 56 · Proteção contra sobrecarga"
+              id="distribution-capacity-title"
+              nota="Capacidade operacional, não meta nem ranking. Sem comparação pública entre corretores: o limite protege o atendimento, não classifica gente. No teto, o banco bloqueia novas distribuições e transferências."
+            />
             <div className="cc6-hairline grid gap-4 p-5 lg:grid-cols-5">
               <label className={LABEL_CLASS}>
                 Corretor
@@ -879,11 +1080,12 @@ export default function DistributionPage() {
       {data?.viewer.role === "manager" ? (
         <section data-phase="55-absence-redistribution">
           <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "420ms" }} aria-labelledby="distribution-absence-title">
-            <header className="px-5 pt-5 pb-3">
-              <p className="cc6-eyebrow">Fase 55 · Continuidade de atendimento</p>
-              <h2 id="distribution-absence-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Cobertura por ausência</h2>
-              <p className="mt-1 text-xs leading-5 text-[var(--atlas-texto-fraco)]">Não é acionado por simples queda de conexão — exige confirmação humana, com período de ausência e motivo registrados.</p>
-            </header>
+            <PanelHead
+              titulo="Cobertura por ausência"
+              fase="Fase 55 · Continuidade de atendimento"
+              id="distribution-absence-title"
+              nota="Não é acionado por simples queda de conexão — exige confirmação humana, com período de ausência e motivo registrados."
+            />
             <div className="cc6-hairline grid gap-4 p-5 lg:grid-cols-4">
               <label className={LABEL_CLASS}>
                 Corretor ausente
@@ -917,6 +1119,108 @@ export default function DistributionPage() {
           </div>
         </section>
       ) : null}
+      {/**
+        * AUDITORIA POR ÚLTIMO — os dois livros desceram de cima dos comandos.
+        *
+        * "Por que cada lead foi atribuída" e o "Histórico gerencial unificado"
+        * estavam em 8º e 9º lugar, ACIMA de elegibilidade, prioridade,
+        * capacidade e cobertura de ausência — ou seja, o que já aconteceu vinha
+        * antes do que muda o que vai acontecer. Pela régua, o que audita é o
+        * último degrau: desce inteiro, com os mesmos eventos, os mesmos chips e
+        * as mesmas promessas de privacidade na tela.
+        *
+        * Continuam abertos e completos; só deixaram de gastar a dobra de quem
+        * abriu esta tela para distribuir lead.
+        */}
+      {/* A cascata do `cc6-reveal` acompanha a nova posição: 220ms num painel
+          que agora é o penúltimo faria o rodapé da tela aparecer ANTES do meio
+          dela. O atraso é ordem de leitura, não decoração. */}
+      <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "460ms" }} aria-labelledby="distribution-evidence-title">
+        {/* A conta “12 ÷ 1 = 12” na ponta direita de cada linha era três números
+            sem uma única palavra ao lado: o que eles significam vivia só no
+            `title`, que não existe no toque e não existe na leitura de tela.
+            A legenda sobe para o cabeçalho, dita UMA vez para as oito linhas,
+            em vez de repetida em cada uma — e o `title` de cada linha fica onde
+            está, porque nada aqui é removido. */}
+        <PanelHead
+          titulo="Por que cada lead foi atribuída"
+          fase="Fase 51 · Evidência de distribuição"
+          id="distribution-evidence-title"
+          nota="Na ponta de cada linha: carga anterior no projeto ÷ peso do corretor = carga ponderada no instante da escolha."
+        >
+          <span className="cc6-chip" title="Cada evento preserva projeto, responsável único, carga anterior, peso e algoritmo usado.">responsável único</span>
+        </PanelHead>
+        {data?.recentAssignments.filter((item) => !projectId || item.development_id === projectId).length ? (
+          data.recentAssignments.filter((item) => !projectId || item.development_id === projectId).slice(0, 8).map((item, index) => {
+            const broker = profilesMap.get(item.assigned_to);
+            return (
+              <article key={item.id} className="cc6-reveal cc6-hairline flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-3" style={{ animationDelay: `${480 + Math.min(index, 8) * 45}ms` }}>
+                <strong className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{broker?.full_name || "Corretor"}</strong>
+                <span className="cc6-num min-w-0 truncate text-xs text-[var(--atlas-texto-fraco)]">Lead {item.lead_id.slice(0, 8)} · {new Date(item.created_at).toLocaleString("pt-BR")}</span>
+                <span className="cc6-num ml-auto shrink-0 text-xs text-[var(--atlas-texto-medio)]" title="Carga anterior no projeto ÷ peso = carga ponderada no momento da escolha.">
+                  {item.score_snapshot?.projectLoadBefore ?? "—"} ÷ {item.score_snapshot?.weight ?? 1} = {item.score_snapshot?.weightedLoadBefore ?? "—"}
+                </span>
+              </article>
+            );
+          })
+        ) : (
+          <div className="cc6-hairline px-5 py-4">
+            <AtlasEmpty
+              reason="no-activity"
+              eyebrow="Sem atribuições recentes"
+              title="Nenhuma atribuição registrada"
+              description="As próximas distribuições terão justificativa auditável."
+            />
+          </div>
+        )}
+      </div>
+
+      {data?.portfolioAudit ? (
+        <section data-phase="59-portfolio-audit">
+          <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "500ms" }} aria-labelledby="distribution-audit-title">
+            <PanelHead titulo="Histórico gerencial unificado" fase="Fase 59 · Livro da carteira" id="distribution-audit-title">
+              {/* A promessa de privacidade deste livro precisa estar NA TELA, e
+                  não só no contrato: quem lê um histórico gerencial tem que
+                  saber, olhando, que ali não há nome, telefone, e-mail nem
+                  texto livre da lead — só metadado de movimentação. */}
+              <span className="cc6-chip" title="Nome, telefone, e-mail e textos livres da lead não são expostos neste livro.">SEM PII</span>
+              <span className="cc6-chip">até {data.portfolioAudit.maximum} eventos</span>
+            </PanelHead>
+            <div className="flex flex-wrap gap-1.5 px-5 pb-3" aria-label="Resumo por tipo de movimento">
+              {([["Distribuições", data.portfolioAudit.summary.distributions], ["Transferências", data.portfolioAudit.summary.transfers], ["Reservas", data.portfolioAudit.summary.reservations], ["Devoluções", data.portfolioAudit.summary.returns], ["Ausências", data.portfolioAudit.summary.absences], ["Capacidade", data.portfolioAudit.summary.capacityChanges]] as const).map(([label, value]) => (
+                <span key={label} className="cc6-chip">
+                  {label} <strong className="font-semibold text-[var(--atlas-texto-forte)]">{value}</strong>
+                </span>
+              ))}
+            </div>
+            {data.portfolioAudit.events.length ? (
+              data.portfolioAudit.events.slice(0, 20).map((event, index) => (
+                <article key={`${event.eventType}-${event.occurredAt}-${index}`} className="cc6-hairline flex items-baseline gap-3 px-5 py-2.5">
+                  <strong className="shrink-0 text-xs font-medium text-[var(--atlas-texto-forte)]">{AUDIT_EVENT_LABELS[event.eventType] || event.eventType}</strong>
+                  <span className="min-w-0 flex-1 truncate text-xs text-[var(--atlas-texto-fraco)]">
+                    {event.brokerId ? profilesMap.get(event.brokerId)?.full_name || "Corretor no escopo" : "Operação gerencial"}
+                    {event.leadId ? ` · Lead ${event.leadId.slice(0, 8)}` : ""}
+                  </span>
+                  <time className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]">{new Date(event.occurredAt).toLocaleString("pt-BR")}</time>
+                </article>
+              ))
+            ) : (
+              <div className="cc6-hairline px-5 py-4">
+                <AtlasEmpty
+                  reason="no-activity"
+                  eyebrow="Livro da carteira vazio"
+                  title="Histórico ainda vazio"
+                  description="Os próximos movimentos aparecem aqui com rastreabilidade."
+                />
+              </div>
+            )}
+            <p className="cc6-hairline px-5 py-2.5 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
+              Escopo hierárquico · fontes operacionais preservadas · nome, telefone, e-mail e textos livres da lead não expostos.
+            </p>
+          </div>
+        </section>
+      ) : null}
+
     </div>
   );
 }

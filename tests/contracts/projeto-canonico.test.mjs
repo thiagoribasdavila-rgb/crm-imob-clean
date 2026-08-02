@@ -110,6 +110,19 @@ function arquivosDoRepo() {
         // sobre ele — o CLI aponta para o projeto APOSENTADO, e e por isso que
         // `supabase db push` mira no banco errado.
         if (alvoRelativo(dir, e.name).startsWith("supabase/.temp")) continue;
+        // Worktrees de agente: `.claude/worktrees/<nome>` é um CHECKOUT INTEIRO
+        // do repositório em OUTRO commit, criado por execução isolada e ignorado
+        // via `.git/info/exclude`. A varredura de disco não sabe disso e desce
+        // dentro dele — e ali dentro mora o passado: em 02/08/2026 este contrato
+        // ficou vermelho acusando 23 arquivos com o projeto aposentado, todos
+        // dentro de um worktree parado em b810e64a. Nenhum era fonte deste
+        // repositório; eram cópias de commits antigos, corretos para a época.
+        //
+        // Contrato que reprova por causa do PASSADO congelado num diretório
+        // ignorado não protege o presente — ele só ensina que o vermelho é do
+        // ambiente, que é exatamente o vício que o cabeçalho deste arquivo
+        // combate.
+        if (alvoRelativo(dir, e.name).startsWith(".claude/worktrees")) continue;
         const alvo = path.join(dir, e.name);
         if (e.isDirectory()) andar(alvo);
         else achados.push(path.relative(raiz, alvo).split(path.sep).join("/"));

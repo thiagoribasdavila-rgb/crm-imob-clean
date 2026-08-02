@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 import {
@@ -14,16 +14,92 @@ import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 
 /*
- * CC-6 · Atividade — timeline de leitura.
- * Consolidações do redesign (mesmos dados, zero fetch novo):
- * - o card "Contexto recente" duplicava os 3 primeiros eventos da própria
- *   timeline (título, categoria, hora, lead e ator) — removido;
- * - o details "composição do histórico" repetia os contadores já visíveis
- *   nos chips de categoria — removido;
- * - "Contatos" no resumo era o mesmo número do chip Contatos
- *   (summary.contacts === counts.contact na API) — removido do pulso;
- * - hora aparece uma única vez por linha: relativa em HOJE (absoluta no
- *   title) e HH:mm nos demais dias, porque a data já vive no cabeçalho.
+ * CC-6 · Atividade — o histórico que o GESTOR audita.
+ *
+ * ── A MEDIÇÃO QUE MOTIVOU ESTA PASSADA (2026-08-02) ─────────────────────────
+ *
+ * Blocos de primeiro nível, na ordem anterior:
+ *   1. PageHeader
+ *   2. erro recuperável (condicional)
+ *   3. "Pulso do histórico" — 3 números + selo ao vivo + Atualizar
+ *   4. "Linha do tempo" — cabeçalho, busca, 4 chips de período, 7 de categoria,
+ *      grupos por dia, rodapé de governança
+ *
+ * Filetes/bordas/caixas contados num recorte típico (7 dias · 6 dias com
+ * evento · 40 registros):
+ *   2 painéis · 1 hairline do pulso · 1 borda de busca · 11 chips de filtro ·
+ *   6 hairlines de cabeçalho de dia · 34 hairlines de linha ·
+ *   **40 chips com borda, um por linha** · 1 rodapé  ≈ 95 filetes.
+ * O próprio globals.css já catalogou a doença: quando tudo tem filete, ele não
+ * quer dizer nada — vira textura. Os 40 chips de categoria eram o maior foco.
+ *
+ * Números que apareciam sem contexto:
+ *   · "Registros hoje" — 12 comparado a quê? sem base nenhuma.
+ *   · "Clientes com movimentação" — de quantos? não dizia.
+ *   · "Registros no escopo" — é o MESMO número do chip "Tudo", a 300px dele.
+ *   · os 7 contadores de chip contavam o histórico INTEIRO da resposta e não
+ *     mudavam com o período: com "Hoje" marcado, o chip dizia 88 enquanto a
+ *     lista mostrava 3. Isso não é falta de contexto, é contexto ERRADO.
+ *   · três números a `text-3xl` (30px) — fora da escala (20 · 34), e três
+ *     "heróis" significa nenhum.
+ *
+ * ── O QUE MUDOU, PELA RÉGUA (decisão > informação > auditoria) ──────────────
+ *
+ * SOBE: "Exige decisão" — proposta sem desfecho, cliente que passou de mão e
+ * parou, e silêncio de 7+ dias. Tudo derivado dos MESMOS eventos que já
+ * chegavam (último evento por cliente), zero fetch novo, zero número inventado.
+ * DESCE: "Pulso do histórico" — telemetria, por definição auditoria. Desce e
+ * ganha o gráfico de ritmo, que dá aos três números o contexto que faltava.
+ *
+ * ── POR QUE A DERIVAÇÃO É EXATA, E ONDE ELA CALA ────────────────────────────
+ *
+ * A API devolve os 500 registros MAIS RECENTES em ordem decrescente, ou seja um
+ * PREFIXO da ordem global. Logo, para todo cliente presente na janela, o evento
+ * mais recente dele está na janela — "parado há N dias" é exato para quem
+ * aparece. Sobre quem NÃO aparece nada é afirmado, e o rodapé diz o limite.
+ *
+ * O gráfico de ritmo aplica a mesma disciplina: o dia mais antigo da janela é
+ * PARCIAL (foi cortado no meio pelo limite de 500), então ele e tudo antes dele
+ * ficam de fora — barra zero ali seria "não medi" desenhado como "não houve".
+ *
+ * ── SEGUNDA MEDIÇÃO, DEPOIS QUE A ORDEM JÁ ESTAVA CERTA ────────────────────
+ *
+ * A hierarquia acima (decisão · informação · auditoria) sobreviveu à
+ * remedição: nada precisou subir nem descer. O que a segunda passada achou
+ * foram dois defeitos que a REORDENAÇÃO não toca, porque não são de posição.
+ *
+ * 1. O ZERO QUE SÓ APARECE QUANDO O PAINEL ESTÁ CEGO.
+ *    `loading ? "—" : data?.summary.today ?? 0` — o `??` nunca dispara
+ *    enquanto o fetch funciona. Dispara exatamente quando ele FALHA:
+ *    `loading` volta a false, `data` continua null, e o pulso anuncia três
+ *    zeros. Um gestor auditando lê "dia parado", não "não consegui medir".
+ *    Detalhe do caso: o erro recuperável aparece no topo da página, longe —
+ *    e um número redondo não parece defeito, então ele vence a tarja.
+ *    Corrigido para "—" + a frase do que falta, que é como os outros dois
+ *    painéis desta mesma tela já se comportavam.
+ *
+ * 2. CINCO DEGRAUS FORA DA ESCALA, num arquivo que já tinha 24 dentro dela.
+ *    `text-base` (16) no título · `text-sm` (14) na busca, no título do
+ *    evento e no vazio · `text-xs` (12) no "Lead 360" · e `cc6-metric-label`
+ *    a 11,5px, que é literalmente o meio pixel que o comentário da escala em
+ *    globals.css cita como sintoma. A superfície de referência da sala de
+ *    comando tem ZERO ocorrências de `text-sm|base|xs` em 1.149 linhas — a
+ *    escala não é sugestão, é o padrão vivo. Agora esta página também tem 0.
+ *
+ * Efeito colateral bom do item 2: os três painéis irmãos passaram a abrir com
+ * o MESMO título de 11px. Antes o do meio tinha peso próprio, o que fazia o
+ * olho procurar uma hierarquia entre eles que não existe — a hierarquia desta
+ * tela é a ordem vertical, e só ela.
+ *
+ * O que NÃO mudou, de propósito: nenhum painel, botão, texto ou fetch saiu;
+ * nenhuma cor nova; nenhum gráfico novo (o de ritmo já responde a pergunta que
+ * o número sozinho não responde, que é onde ficou o dia sem registro nenhum).
+ *
+ * ── CONSOLIDAÇÕES ANTERIORES (mantidas) ────────────────────────────────────
+ * - o card "Contexto recente" duplicava os 3 primeiros eventos da timeline;
+ * - o details "composição do histórico" repetia os contadores dos chips;
+ * - "Contatos" no resumo era o mesmo número do chip Contatos;
+ * - hora aparece uma única vez por linha.
  */
 
 type ActivityEvent = {
@@ -53,6 +129,8 @@ type ActivityData = {
 
 type Period = "today" | "week" | "month" | "all";
 type CategoryFilter = "all" | ActivityCategory;
+type BaldeKey = "proposta" | "fila" | "silencio";
+type Parada = ActivityEvent & { dias: number; balde: BaldeKey };
 
 const PERIODS = [
   ["today", "Hoje"],
@@ -71,6 +149,81 @@ const CATEGORIES = [
   ["external", "Integrações"],
 ] as const satisfies ReadonlyArray<readonly [CategoryFilter, string]>;
 
+/**
+ * OS TRÊS MOTIVOS DE PARADA, E POR QUE O LIMITE FICA VISÍVEL NA TELA.
+ *
+ * O prazo (3 · 2 · 7 dias) é regra editorial, não dado medido — então ele é
+ * ESCRITO no rótulo que o gestor lê. Limite escondido é a diferença entre "o
+ * Atlas diz que está parado" e "o Atlas conta assim, e eu concordo".
+ *
+ * A ordem importa: um cliente cai em UM balde só, o primeiro que casar. Sem
+ * isso, uma proposta de 30 dias contaria duas vezes e o total mentiria para
+ * cima — o defeito mais fácil de cometer num painel de fila.
+ *
+ * ── POR QUE `ink` NÃO USA `.cc6-crit` / `.cc6-warn` ────────────────────────
+ * MEDIDO no navegador, tema claro, com a folha real: os dois saem IDÊNTICOS,
+ * rgb(180,83,9). A causa é um empate de especificidade —
+ * `:root[data-theme=light] .cc6-num.cc6-crit` e
+ * `:root[data-theme=light] .cc6-num:not(...)` valem (0,4,0) as duas, e a
+ * segunda vem depois no arquivo, então ela vence. Resultado: dois níveis de
+ * gravidade com uma cor só, justamente no tema em que o dono trabalha.
+ *
+ * Apontar direto para o token de estado, com `!` para passar por cima da regra
+ * sem camada, devolve os dois níveis nos DOIS temas. A faixa lateral já
+ * separava (rose x marrom); agora o número acompanha em vez de contradizer.
+ */
+const BALDES = [
+  {
+    key: "proposta",
+    dias: 3,
+    rotulo: "Proposta sem desfecho",
+    detalhe: "última coisa registrada foi uma proposta, há 3 dias ou mais",
+    tom: "var(--atlas-estado-perigo)",
+    ink: "text-[var(--atlas-estado-perigo)]!",
+  },
+  {
+    key: "fila",
+    dias: 2,
+    rotulo: "Passou de mão e parou",
+    detalhe: "última coisa registrada foi uma transferência, há 2 dias ou mais",
+    tom: "var(--atlas-estado-atencao)",
+    ink: "text-[var(--atlas-estado-atencao)]!",
+  },
+  {
+    key: "silencio",
+    dias: 7,
+    rotulo: "Sem registro há 7 dias ou mais",
+    detalhe: "nenhuma atividade de qualquer tipo desde então",
+    tom: "var(--atlas-estado-atencao)",
+    ink: "text-[var(--atlas-estado-atencao)]!",
+  },
+] as const satisfies ReadonlyArray<{
+  key: BaldeKey;
+  dias: number;
+  rotulo: string;
+  detalhe: string;
+  tom: string;
+  ink: string;
+}>;
+
+const BALDE_POR_KEY = {
+  proposta: BALDES[0],
+  fila: BALDES[1],
+  silencio: BALDES[2],
+} as const;
+
+// Quantas paradas o painel mostra antes de recolher o resto.
+//
+// O excedente vai para um <details> NATIVO, e a escolha é deliberada em duas
+// frentes. A primeira é de produto: "12 parados" com 4 visíveis e nenhum
+// caminho para os outros 8 é beco sem saída — o número acusa e a tela não
+// deixa agir. A segunda é de contrato: o portão da fase 040 fixa a contagem de
+// ganchos de estado desta página, e o elemento nativo recolhe sem gastar
+// nenhum. Menos estado para o mesmo recurso é o negócio certo dos dois lados.
+const PARADAS_VISIVEIS = 4;
+const DIA_MS = 86_400_000;
+const RITMO_DIAS = 14;
+
 const TZ = "America/Sao_Paulo";
 const DAY_KEY_FORMAT = new Intl.DateTimeFormat("en-CA", {
   timeZone: TZ,
@@ -83,6 +236,11 @@ const DAY_HEADING_FORMAT = new Intl.DateTimeFormat("pt-BR", {
   weekday: "short",
   day: "2-digit",
   month: "short",
+});
+const DAY_SHORT_FORMAT = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: TZ,
+  day: "2-digit",
+  month: "2-digit",
 });
 const TIME_FORMAT = new Intl.DateTimeFormat("pt-BR", {
   timeZone: TZ,
@@ -98,13 +256,14 @@ const FULL_FORMAT = new Intl.DateTimeFormat("pt-BR", {
 const dayKey = (value: string) => DAY_KEY_FORMAT.format(new Date(value));
 const timeLabel = (value: string) => TIME_FORMAT.format(new Date(value));
 const fullLabel = (value: string) => FULL_FORMAT.format(new Date(value));
+const dayShort = (value: string) => DAY_SHORT_FORMAT.format(new Date(value));
 
 // Cabeçalho mono do dia: HOJE, ONTEM ou "SEX · 18 JUL" (ano só quando difere).
 function dayHeading(value: string, nowMs: number) {
   const key = dayKey(value);
   if (nowMs) {
     if (key === dayKey(new Date(nowMs).toISOString())) return "Hoje";
-    if (key === dayKey(new Date(nowMs - 86_400_000).toISOString())) {
+    if (key === dayKey(new Date(nowMs - DIA_MS).toISOString())) {
       return "Ontem";
     }
   }
@@ -126,6 +285,9 @@ function relativeTime(value: string, nowMs: number) {
   if (diff < 3_600_000) return `há ${Math.floor(diff / 60_000)}min`;
   return `há ${Math.floor(diff / 3_600_000)}h`;
 }
+
+const diasLabel = (dias: number) =>
+  dias <= 0 ? "hoje" : dias === 1 ? "há 1 dia" : `há ${dias} dias`;
 
 const normalize = (value: unknown) =>
   String(value || "")
@@ -232,7 +394,17 @@ export default function ActivityPage() {
     };
   }, [load]);
 
-  const visible = useMemo(() => {
+  /**
+   * O recorte de PERÍODO e BUSCA, sozinho — sem a categoria.
+   *
+   * Ele é usado em dois lugares e essa é a correção: a lista aplica período +
+   * busca + categoria; os contadores dos chips aplicam período + busca e
+   * deixam a categoria de fora, para que cada chip responda "quanto eu veria SE
+   * clicasse aqui". Antes o contador vinha de `data.counts`, que é o histórico
+   * inteiro: com "Hoje" marcado, o chip anunciava um número que a lista logo
+   * abaixo contradizia.
+   */
+  const filtroBase = useMemo(() => {
     const today = new Date(data?.generatedAt || 0);
     const now = today.getTime();
     const todayStart = new Date(
@@ -241,12 +413,11 @@ export default function ActivityPage() {
       today.getDate(),
     ).getTime();
     const normalizedQuery = normalize(query.trim());
-    return (data?.events ?? []).filter((event) => {
+    return (event: ActivityEvent) => {
       const at = new Date(event.occurredAt).getTime();
       if (period === "today" && at < todayStart) return false;
-      if (period === "week" && at < now - 7 * 86_400_000) return false;
-      if (period === "month" && at < now - 30 * 86_400_000) return false;
-      if (category !== "all" && event.category !== category) return false;
+      if (period === "week" && at < now - 7 * DIA_MS) return false;
+      if (period === "month" && at < now - 30 * DIA_MS) return false;
       if (!normalizedQuery) return true;
       return normalize(
         [
@@ -257,8 +428,130 @@ export default function ActivityPage() {
           activityCategoryLabels[event.category],
         ].join(" "),
       ).includes(normalizedQuery);
-    });
-  }, [category, data, period, query]);
+    };
+  }, [data?.generatedAt, period, query]);
+
+  const visible = useMemo(
+    () =>
+      (data?.events ?? []).filter(
+        (event) =>
+          filtroBase(event) &&
+          (category === "all" || event.category === category),
+      ),
+    [category, data, filtroBase],
+  );
+
+  const escopo = useMemo(() => {
+    const totais: Record<CategoryFilter, number> = {
+      all: 0,
+      change: 0,
+      contact: 0,
+      transfer: 0,
+      ai: 0,
+      proposal: 0,
+      external: 0,
+    };
+    for (const event of data?.events ?? []) {
+      if (!filtroBase(event)) continue;
+      totais.all += 1;
+      totais[event.category] += 1;
+    }
+    return totais;
+  }, [data, filtroBase]);
+
+  /**
+   * O QUE EXIGE DECISÃO — derivado, nunca inventado.
+   *
+   * Um passo só: o evento MAIS RECENTE de cada cliente. A comparação é por
+   * timestamp e não pela posição na lista, de propósito — depender da ordem que
+   * a API mandou é a classe de defeito que já custou caro aqui (um `order` que
+   * muda no servidor viraria um painel errado no cliente, em silêncio).
+   */
+  const paradas = useMemo(() => {
+    const eventos = data?.events ?? [];
+    const ancora = new Date(data?.generatedAt || 0).getTime();
+    if (!eventos.length || !Number.isFinite(ancora) || !ancora) return null;
+
+    const ultimoPorCliente = new Map<string, ActivityEvent>();
+    for (const event of eventos) {
+      if (!event.leadId) continue;
+      const at = new Date(event.occurredAt).getTime();
+      if (!Number.isFinite(at)) continue;
+      const atual = ultimoPorCliente.get(event.leadId);
+      if (!atual || at > new Date(atual.occurredAt).getTime()) {
+        ultimoPorCliente.set(event.leadId, event);
+      }
+    }
+
+    const itens: Parada[] = [];
+    const contagem: Record<BaldeKey, number> = {
+      proposta: 0,
+      fila: 0,
+      silencio: 0,
+    };
+    for (const event of ultimoPorCliente.values()) {
+      const dias = Math.floor(
+        (ancora - new Date(event.occurredAt).getTime()) / DIA_MS,
+      );
+      const balde =
+        event.category === "proposal" && dias >= BALDE_POR_KEY.proposta.dias
+          ? "proposta"
+          : event.category === "transfer" && dias >= BALDE_POR_KEY.fila.dias
+            ? "fila"
+            : dias >= BALDE_POR_KEY.silencio.dias
+              ? "silencio"
+              : null;
+      if (!balde) continue;
+      contagem[balde] += 1;
+      itens.push({ ...event, dias, balde });
+    }
+    const peso: Record<BaldeKey, number> = { proposta: 0, fila: 1, silencio: 2 };
+    itens.sort((a, b) => peso[a.balde] - peso[b.balde] || b.dias - a.dias);
+    return { clientes: ultimoPorCliente.size, itens, contagem };
+  }, [data]);
+
+  /**
+   * RITMO — a pergunta que o número sozinho não responde.
+   *
+   * "Registros hoje: 12" não diz se 12 é bom. A série de 14 dias diz, e mostra
+   * o que nenhum total mostra: o DIA EM QUE NINGUÉM REGISTROU NADA. Para um
+   * gestor que audita, o buraco é o achado.
+   *
+   * O dia mais antigo da janela sai fora porque foi cortado ao meio pelo limite
+   * de 500 — desenhá-lo seria transformar "não medi" em "não houve".
+   */
+  const ritmo = useMemo(() => {
+    const eventos = data?.events ?? [];
+    const ancora = new Date(data?.generatedAt || 0).getTime();
+    if (!eventos.length || !Number.isFinite(ancora) || !ancora) return null;
+
+    const porDia = new Map<string, number>();
+    let maisAntigo = Number.POSITIVE_INFINITY;
+    for (const event of eventos) {
+      const at = new Date(event.occurredAt).getTime();
+      if (!Number.isFinite(at)) continue;
+      if (at < maisAntigo) maisAntigo = at;
+      const chave = dayKey(event.occurredAt);
+      porDia.set(chave, (porDia.get(chave) ?? 0) + 1);
+    }
+    if (!Number.isFinite(maisAntigo)) return null;
+
+    const diaParcial = dayKey(new Date(maisAntigo).toISOString());
+    const dias: { chave: string; total: number; iso: string }[] = [];
+    for (let recuo = RITMO_DIAS - 1; recuo >= 0; recuo -= 1) {
+      const iso = new Date(ancora - recuo * DIA_MS).toISOString();
+      const chave = dayKey(iso);
+      if (chave <= diaParcial) continue;
+      dias.push({ chave, total: porDia.get(chave) ?? 0, iso });
+    }
+    if (!dias.length) return null;
+
+    const pico = dias.reduce((maior, dia) =>
+      dia.total > maior.total ? dia : maior,
+    );
+    const vazios = dias.filter((dia) => dia.total === 0).length;
+    return { dias, max: Math.max(pico.total, 1), pico, vazios };
+  }, [data]);
 
   // Grupos por dia (fuso SP) com offset acumulado para a revelação escalonada.
   const timelineGroups = useMemo(() => {
@@ -277,10 +570,81 @@ export default function ActivityPage() {
     });
   }, [visible]);
 
-  const categoryCount = (key: CategoryFilter) =>
+  const categoryCount = (key: CategoryFilter) => escopo[key];
+  // Não é "o histórico completo": é a JANELA de até 500 registros que a API
+  // devolveu, e o rodapé desta mesma tela já diz isso. Chamar a janela de
+  // completo é a mesma família da Lei A — afirmar mais do que se mediu.
+  const naJanela = (key: CategoryFilter) =>
     key === "all" ? data?.summary.total ?? 0 : data?.counts[key] ?? 0;
   const todayKey = nowMs ? dayKey(new Date(nowMs).toISOString()) : "";
   const filtersDirty = Boolean(query) || category !== "all" || period !== "week";
+
+  /**
+   * OS TRÊS NÚMEROS DA AUDITORIA — e por que nenhum deles pode cair para zero.
+   *
+   * `loading ? "—" : data?.summary.today ?? 0` parecia inofensivo, e é
+   * justamente por isso que passou: enquanto o fetch funciona, o `??` NUNCA
+   * dispara. Ele dispara exatamente no caso que interessa — o fetch falhou,
+   * `loading` já voltou a false, `data` continua null — e aí a tela anuncia
+   * "0 registros hoje · 0 clientes com movimentação · 0 registros no escopo".
+   *
+   * Três zeros se leem como um dia parado, não como um painel cego. O gestor
+   * que audita tira a conclusão OPOSTA à verdade, e o pior é que ele a tira
+   * com confiança, porque número redondo não parece defeito. É o precedente do
+   * `usageCost`, que devolve NULO e não zero quando não há tarifa: zero parece
+   * saudável, nulo diz a verdade.
+   *
+   * A ausência agora vira "—" e ganha, logo abaixo, a frase do que falta. O
+   * painel de decisão já falava "sem lastro" nessa situação; o pulso era o
+   * único dos três que ainda respondia com um número inventado.
+   */
+  const pulso = [
+    ["Registros hoje", data?.summary.today],
+    ["Clientes com movimentação", data?.summary.leadsInMotion],
+    ["Registros no escopo", data?.summary.total],
+  ] as const satisfies ReadonlyArray<readonly [string, number | undefined]>;
+
+  const linhaDeParada = (item: Parada) => {
+    const balde = BALDE_POR_KEY[item.balde];
+    const corpo = (
+      <>
+        <span className="min-w-0 flex-1">
+          <span className="block text-corpo font-medium leading-5 text-[var(--atlas-texto-forte)]">
+            {item.leadName || "Cliente sem nome"}
+          </span>
+          <span className="mt-0.5 block text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+            {balde.rotulo} · {item.actorName}
+          </span>
+        </span>
+        <span
+          className={`cc6-num shrink-0 self-center text-rotulo ${balde.ink}`}
+        >
+          {diasLabel(item.dias)}
+        </span>
+      </>
+    );
+    const classe =
+      "cc6-sev-band flex min-h-11 items-center gap-3 py-2 pl-3 pr-1 transition-colors hover:bg-[color-mix(in_srgb,var(--atlas-accent)_7%,transparent)]";
+    const estilo = { "--cc6-sev": balde.tom } as CSSProperties;
+    return (
+      <li key={item.id}>
+        {item.leadId ? (
+          <Link
+            href={`/leads/${item.leadId}`}
+            className={classe}
+            style={estilo}
+            title={`${balde.rotulo} — ${balde.detalhe}. Último registro: ${item.title}, em ${fullLabel(item.occurredAt)}.`}
+          >
+            {corpo}
+          </Link>
+        ) : (
+          <span className={classe} style={estilo}>
+            {corpo}
+          </span>
+        )}
+      </li>
+    );
+  };
 
   return (
     <div
@@ -307,79 +671,156 @@ export default function ActivityPage() {
         />
       ) : null}
 
-      <section aria-label="Pulso do histórico">
-        <TiltShell className="cc6-panel cc6-reveal p-5" delayMs={40}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="cc6-eyebrow">Pulso do histórico</p>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <StatusBadge
-                tone={
-                  live === "connected"
-                    ? "success"
-                    : live === "degraded"
-                      ? "warning"
-                      : "neutral"
-                }
-              >
-                {live === "connected"
-                  ? "Ao vivo"
+      {/* ── DECISÃO ──────────────────────────────────────────────────────────
+          Primeiro painel porque é o único que pede ação. O selo "ao vivo" e o
+          botão Atualizar moram aqui, e não no rodapé com a telemetria, porque
+          a pergunta "isto está fresco?" vem ANTES de confiar na fila. */}
+      <section
+        className="cc6-panel cc6-reveal overflow-hidden"
+        aria-labelledby="activity-decisao-title"
+      >
+        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 pt-4">
+          <p className="cc6-eyebrow" id="activity-decisao-title">
+            Exige decisão
+          </p>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <StatusBadge
+              tone={
+                live === "connected"
+                  ? "success"
                   : live === "degraded"
-                    ? "Atualização manual"
-                    : "Conectando"}
-              </StatusBadge>
-              <button
-                type="button"
-                onClick={() => void load()}
-                disabled={loading}
-                className="cc6-ghost-btn disabled:opacity-50"
-              >
-                {loading ? "Atualizando…" : "Atualizar"}
-              </button>
-            </div>
+                    ? "warning"
+                    : "neutral"
+              }
+            >
+              {live === "connected"
+                ? "Ao vivo"
+                : live === "degraded"
+                  ? "Atualização manual"
+                  : "Conectando"}
+            </StatusBadge>
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={loading}
+              className="cc6-ghost-btn disabled:opacity-50"
+            >
+              {loading ? "Atualizando…" : "Atualizar"}
+            </button>
           </div>
-          <div
-            className="cc6-hairline mt-4 flex flex-wrap gap-x-10 gap-y-4 pt-4"
-            aria-label="Resumo do histórico visível"
-            aria-busy={loading}
-          >
-            <div>
-              <p className="cc6-metric-value text-3xl leading-none">
-                {loading ? "—" : data?.summary.today ?? 0}
-              </p>
-              <p className="cc6-metric-label mt-1.5">Registros hoje</p>
+        </header>
+
+        <div className="px-5 pb-4 pt-3" aria-busy={loading}>
+          {loading ? (
+            <AtlasSkeleton className="h-20" />
+          ) : !paradas ? (
+            <p className="text-corpo leading-5 text-[var(--atlas-texto-medio)]">
+              <strong className="cc6-warn font-semibold">Sem lastro.</strong>{" "}
+              Nenhum registro carregado para esta organização — sem evento não há
+              como dizer o que parou.
+            </p>
+          ) : paradas.clientes === 0 ? (
+            <p className="text-corpo leading-5 text-[var(--atlas-texto-medio)]">
+              <strong className="cc6-warn font-semibold">Sem lastro.</strong>{" "}
+              Nenhum dos {data?.summary.total ?? 0} registros carregados traz
+              cliente vinculado — falta o vínculo com o lead para medir parada.
+            </p>
+          ) : paradas.itens.length === 0 ? (
+            <p className="text-corpo leading-5 text-[var(--atlas-texto-medio)]">
+              <strong className="cc6-ok font-semibold">Nada parado.</strong> Os{" "}
+              {paradas.clientes} clientes com registro tiveram movimento dentro
+              dos prazos abaixo.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-x-8 gap-y-4 lg:flex-row">
+              <div className="flex shrink-0 flex-wrap items-end gap-x-8 gap-y-3 lg:w-[26rem] lg:flex-col lg:items-stretch">
+                <div>
+                  {/* O `!` na cor NÃO é preferência de estilo, é necessidade
+                      medida: `:root[data-theme="light"] .cc6-num` pinta TODO
+                      `.cc6-num` de âmbar, sem camada — e CSS fora de
+                      camada vence utilitário do Tailwind, por mais específico
+                      que ele seja. Sem o `!`, este número sai laranja no tema
+                      claro, que aqui é cor de ESTADO: o total viraria um alerta
+                      permanente. Cor é informação neste produto; o número que
+                      resume a fila precisa ser tinta neutra. */}
+                  <p className="cc6-num text-heroi font-semibold leading-none tracking-tight text-[var(--atlas-texto-forte)]!">
+                    {paradas.itens.length}
+                  </p>
+                  <p className="mt-1 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+                    de {paradas.clientes} clientes com registro estão parados
+                  </p>
+                </div>
+                <ul className="flex flex-wrap gap-x-6 gap-y-2 lg:w-full lg:flex-col lg:gap-y-1.5">
+                  {BALDES.map((balde) => (
+                    <li
+                      key={balde.key}
+                      className="flex items-baseline gap-2 lg:justify-between"
+                      title={balde.detalhe}
+                    >
+                      <span className="text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+                        {balde.rotulo}
+                      </span>
+                      {/* Balde ZERADO precisa de tinta apagada, e por isso o
+                          `!`: sem ele o `.cc6-num` do tema claro pintaria o
+                          zero de âmbar — "0 propostas paradas" com cara de
+                          alerta é o oposto do que o número diz. */}
+                      <span
+                        className={`cc6-num text-numero font-semibold leading-none ${
+                          paradas.contagem[balde.key]
+                            ? balde.ink
+                            : "text-[var(--atlas-texto-fraco)]!"
+                        }`}
+                      >
+                        {paradas.contagem[balde.key]}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <ul>{paradas.itens.slice(0, PARADAS_VISIVEIS).map(linhaDeParada)}</ul>
+                {paradas.itens.length > PARADAS_VISIVEIS ? (
+                  <details className="mt-1">
+                    <summary className="flex min-h-11 cursor-pointer list-none items-center text-rotulo font-medium text-[color:var(--atlas-accent)] hover:underline">
+                      Ver os {paradas.itens.length - PARADAS_VISIVEIS} restantes
+                    </summary>
+                    <ul>
+                      {paradas.itens.slice(PARADAS_VISIVEIS).map(linhaDeParada)}
+                    </ul>
+                  </details>
+                ) : null}
+              </div>
             </div>
-            <div>
-              <p className="cc6-metric-value text-3xl leading-none">
-                {loading ? "—" : data?.summary.leadsInMotion ?? 0}
-              </p>
-              <p className="cc6-metric-label mt-1.5">
-                Clientes com movimentação
-              </p>
-            </div>
-            <div>
-              <p className="cc6-metric-value text-3xl leading-none">
-                {loading ? "—" : data?.summary.total ?? 0}
-              </p>
-              <p className="cc6-metric-label mt-1.5">Registros no escopo</p>
-            </div>
-          </div>
-        </TiltShell>
+          )}
+        </div>
       </section>
 
+      {/* ── INFORMAÇÃO ─────────────────────────────────────────────────────── */}
       <section
         className="cc6-panel cc6-reveal overflow-hidden"
         style={{ animationDelay: "120ms" }}
         aria-labelledby="activity-timeline-title"
       >
-        <header className="flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
-          <div className="min-w-0">
-            <p className="cc6-eyebrow">Histórico comercial</p>
-            <h2
-              id="activity-timeline-title"
-              className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
-            >
+        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 pt-4">
+          {/* Dois rótulos para o mesmo painel ocupavam duas linhas. Continuam os
+              dois — na mesma linha, com o título mandando e a categoria como
+              qualificador.
+
+              O título estava a `text-base`: 16px, degrau que a escala desta
+              casa não tem (micro 10 · rotulo 11 · corpo 13 · numero 20 ·
+              heroi 34). E era o ÚNICO dos três painéis com tratamento próprio
+              — "Exige decisão" e "Pulso do histórico" já abriam com o eyebrow
+              de 11px. Três painéis irmãos com dois pesos de título fazem o
+              olho procurar uma hierarquia que não existe. Agora abrem iguais,
+              e o que distingue os painéis é a ORDEM, que é o que a régua diz. */}
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+            <h2 id="activity-timeline-title" className="cc6-eyebrow">
               Linha do tempo
             </h2>
+            <p className="text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+              · histórico comercial
+            </p>
           </div>
           {filtersDirty ? (
             <button
@@ -396,15 +837,24 @@ export default function ActivityPage() {
           ) : null}
         </header>
 
-        <div className="mt-4 flex flex-col gap-3 px-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="mt-2 flex flex-col gap-2 px-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {/* MEDIDO no navegador, tema claro: este campo era uma caixa PRETA
+                com texto preto. `app/globals.css` traz uma regra global
+                `input, select, textarea` com fundo azul-noite cravado e SEM
+                camada — e CSS fora de camada vence utilitário do Tailwind por
+                construção, não por especificidade. O valor antigo (um hex
+                escuro) perdia para ela do mesmo jeito: trocar o hex por token
+                não bastava, porque o token nunca chegava a valer. Fundo e cor
+                são um par, então os dois levam `!` e viram juntos — senão
+                sobra metade do conserto, que é como o defeito nasceu. */}
             <input
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Cliente, atividade ou responsável"
               aria-label="Buscar no histórico"
-              className="w-full min-w-0 rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3.5 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] sm:max-w-xs"
+              className="w-full min-w-0 rounded-xl border border-[color:var(--atlas-border)]! bg-[var(--atlas-surface)]! px-3.5 py-2.5 text-corpo text-[var(--atlas-texto-forte)]! outline-none transition-colors placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)]! sm:max-w-xs"
             />
             <nav
               className="flex flex-wrap gap-1.5"
@@ -434,6 +884,7 @@ export default function ActivityPage() {
                 onClick={() => setCategory(key)}
                 aria-pressed={category === key}
                 className={chipClass(category === key)}
+                title={`${categoryCount(key)} neste recorte · ${naJanela(key)} na janela carregada`}
               >
                 {label}
                 <strong className="font-semibold">{categoryCount(key)}</strong>
@@ -442,7 +893,7 @@ export default function ActivityPage() {
           </nav>
         </div>
 
-        <div className="mt-2 pb-2" aria-live="polite" aria-busy={loading}>
+        <div className="mt-1 pb-2" aria-live="polite" aria-busy={loading}>
           {loading ? (
             <div className="space-y-2 px-5 pb-3 pt-2">
               {[1, 2, 3].map((item) => (
@@ -458,7 +909,7 @@ export default function ActivityPage() {
                   animationDelay: `${Math.min(group.offset, 10) * 40}ms`,
                 }}
               >
-                <header className="flex items-center gap-3 px-5 pb-1.5 pt-4">
+                <header className="flex items-center gap-3 px-5 pb-1 pt-3">
                   <h3 className="cc6-eyebrow text-[var(--atlas-texto-medio)]!">
                     {dayHeading(group.items[0].occurredAt, nowMs)}
                   </h3>
@@ -475,7 +926,7 @@ export default function ActivityPage() {
                   {group.items.map((event, index) => {
                     const isToday =
                       Boolean(todayKey) && dayKey(event.occurredAt) === todayKey;
-                    const rowClass = `cc6-reveal group flex items-start gap-4 px-5 py-3 transition-colors hover:bg-[rgba(75,141,248,0.04)] ${
+                    const rowClass = `cc6-reveal group flex items-start gap-4 px-5 py-2.5 transition-colors hover:bg-[color-mix(in_srgb,var(--atlas-accent)_6%,transparent)] ${
                       index ? "cc6-hairline" : ""
                     }`;
                     const rowDelay = {
@@ -493,11 +944,21 @@ export default function ActivityPage() {
                             : timeLabel(event.occurredAt)}
                         </time>
                         <span className="min-w-0 flex-1">
-                          <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                            <strong className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
+                          <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                            {/* 14px era o único degrau fora da escala no corpo
+                                da lista. A 13px o título encosta na descrição
+                                em tamanho, então o peso sobe de `medium` para
+                                `semibold` e a hierarquia continua — ela passa
+                                a vir de peso e tinta, não de meio degrau de
+                                tamanho. `leading-6` fica: é ele que alinha a
+                                primeira linha com a coluna da hora. */}
+                            <strong className="text-corpo font-semibold leading-6 text-[var(--atlas-texto-forte)]">
                               {event.title}
                             </strong>
-                            <span className="cc6-chip text-micro!">
+                            {/* Era um `cc6-chip` — 40 bordas numa tela só, uma
+                                por linha. O texto continua; a borda, que ali não
+                                separava nada, virou peso tipográfico. */}
+                            <span className="cc6-num text-rotulo uppercase tracking-[0.12em] text-[var(--atlas-texto-medio)]!">
                               {activityCategoryLabels[event.category]}
                             </span>
                             {event.leadStatus ? (
@@ -511,14 +972,14 @@ export default function ActivityPage() {
                               {event.description}
                             </span>
                           ) : null}
-                          <span className="mt-1 block text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
+                          <span className="mt-0.5 block text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
                             {[event.leadName, event.actorName]
                               .filter(Boolean)
                               .join(" · ") || "Operação Atlas"}
                           </span>
                         </span>
                         {event.leadId ? (
-                          <span className="shrink-0 self-center text-xs font-medium text-[var(--atlas-texto-medio)] transition-colors group-hover:text-[color:var(--atlas-accent)]">
+                          <span className="shrink-0 self-center text-rotulo font-medium text-[var(--atlas-texto-medio)] transition-colors group-hover:text-[color:var(--atlas-accent)]">
                             Lead 360 <span aria-hidden="true">→</span>
                           </span>
                         ) : null}
@@ -543,7 +1004,7 @@ export default function ActivityPage() {
               </section>
             ))
           ) : (
-            <p className="cc6-hairline mt-2 px-5 py-6 text-sm text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-hairline mt-2 px-5 py-6 text-corpo leading-5 text-[var(--atlas-texto-fraco)]">
               {data?.events.length ? (
                 <>
                   Nenhum registro neste recorte —{" "}
@@ -560,8 +1021,16 @@ export default function ActivityPage() {
                   </button>
                   .
                 </>
-              ) : (
+              ) : data ? (
                 "Ainda sem movimentações — novos contatos e registros autorizados aparecerão aqui."
+              ) : (
+                /* O MESMO defeito do pulso, em forma de frase. "Ainda sem
+                   movimentações" afirma algo sobre o MUNDO (nada aconteceu);
+                   com o fetch quebrado, o que se sabe é sobre a CARGA (não
+                   chegou nada). O teste que separa os dois casos: "0 na janela
+                   carregada" é verdade mesmo na falha — a janela veio vazia
+                   mesmo. "Ainda sem movimentações" não é. */
+                "O histórico não chegou nesta carga — isto é o painel cego, não a ausência de movimentação. Use Atualizar, no painel acima."
               )}
             </p>
           )}
@@ -572,6 +1041,124 @@ export default function ActivityPage() {
           organização, hierarquia e RLS · ordem cronológica, sem prioridade ou
           ação automática.
         </p>
+      </section>
+
+      {/* ── AUDITORIA ────────────────────────────────────────────────────────
+          Telemetria desce. Os três números continuam inteiros — passaram de
+          30px (fora da escala, três "heróis") para o degrau de comparação, e
+          ganharam ao lado a série que dá sentido a eles. */}
+      <section
+        className="cc6-reveal"
+        style={{ animationDelay: "200ms" }}
+        aria-labelledby="activity-pulso-title"
+      >
+        <TiltShell className="cc6-panel px-5 py-4" delayMs={40}>
+          <div className="flex flex-col gap-x-10 gap-y-4 lg:flex-row lg:items-start">
+            <div className="shrink-0">
+              <p className="cc6-eyebrow" id="activity-pulso-title">
+                Pulso do histórico
+              </p>
+              {/* `.cc6-metric-label` era 11,5px — e o próprio comentário da
+                  escala em globals.css nomeia o meio pixel (11.5, 12.5, 13.5)
+                  como "o sintoma clássico" de quem ajustou no olho por não ter
+                  degrau para apontar. O degrau existe: `text-rotulo`. A tinta
+                  passa a ser a MESMA que os outros rótulos de métrica desta
+                  página já usam, então a tela deixa de ter dois tratamentos
+                  para o mesmo papel. */}
+              <div
+                className="mt-3 flex flex-wrap gap-x-8 gap-y-3"
+                aria-busy={loading}
+              >
+                {pulso.map(([rotulo, valor]) => (
+                  <div key={rotulo}>
+                    <p className="cc6-metric-value text-numero leading-none">
+                      {loading || valor === undefined ? "—" : valor}
+                    </p>
+                    <p className="mt-1 text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+                      {rotulo}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              {!loading && !data ? (
+                <p className="mt-2 max-w-[26rem] text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+                  <strong className="cc6-warn font-semibold">Sem lastro.</strong>{" "}
+                  O histórico não chegou nesta carga. Os três ficam em
+                  &ldquo;—&rdquo; e não em zero, porque zero aqui se leria como
+                  operação parada.
+                </p>
+              ) : null}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              {loading ? (
+                <AtlasSkeleton className="h-16" />
+              ) : ritmo ? (
+                <>
+                  <p className="text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+                    Registros por dia · {ritmo.dias.length}{" "}
+                    {ritmo.dias.length === 1 ? "dia medido" : "dias medidos"} ·
+                    pico {ritmo.pico.total} em {dayShort(ritmo.pico.iso)}
+                    {ritmo.vazios
+                      ? ` · ${ritmo.vazios} ${ritmo.vazios === 1 ? "dia sem registro nenhum" : "dias sem registro nenhum"}`
+                      : ""}
+                  </p>
+                  {/* SVG à mão, sem canvas e sem biblioteca: `fillStyle` não
+                      resolve `var(--token)` e quebraria só em runtime. Cada
+                      barra é um dia; o traço fino é dia MEDIDO com zero, que é
+                      diferente de dia não medido — esse fica fora da série. */}
+                  <svg
+                    viewBox="0 0 600 44"
+                    preserveAspectRatio="none"
+                    className="mt-2 h-11 w-full"
+                    role="img"
+                    aria-label={`Registros por dia em ${ritmo.dias.length} dias medidos, de ${dayShort(ritmo.dias[0].iso)} a ${dayShort(ritmo.dias[ritmo.dias.length - 1].iso)}. Pico de ${ritmo.pico.total} em ${dayShort(ritmo.pico.iso)}. ${ritmo.vazios} dias sem registro.`}
+                  >
+                    {ritmo.dias.map((dia, indice) => {
+                      const passo = 600 / ritmo.dias.length;
+                      const altura = dia.total
+                        ? Math.max(3, (dia.total / ritmo.max) * 44)
+                        : 2;
+                      return (
+                        <rect
+                          key={dia.chave}
+                          x={indice * passo + 1.5}
+                          y={44 - altura}
+                          width={Math.max(1.5, passo - 3)}
+                          height={altura}
+                          style={{
+                            fill: dia.total
+                              ? "var(--atlas-accent)"
+                              : "var(--atlas-texto-fraco)",
+                          }}
+                        >
+                          <title>{`${dayShort(dia.iso)}: ${dia.total} ${dia.total === 1 ? "registro" : "registros"}`}</title>
+                        </rect>
+                      );
+                    })}
+                  </svg>
+                  {/* Legenda de eixo é apoio, não estado — daí o `!` contra o
+                      âmbar que o tema claro joga em todo `.cc6-num`. */}
+                  <p className="mt-1 flex justify-between text-micro leading-4 text-[var(--atlas-texto-fraco)]">
+                    <span className="cc6-num text-[var(--atlas-texto-fraco)]!">
+                      {dayShort(ritmo.dias[0].iso)}
+                    </span>
+                    <span className="cc6-num text-[var(--atlas-texto-fraco)]!">
+                      {dayShort(ritmo.dias[ritmo.dias.length - 1].iso)}
+                    </span>
+                  </p>
+                </>
+              ) : (
+                <p className="text-corpo leading-5 text-[var(--atlas-texto-medio)]">
+                  <strong className="cc6-warn font-semibold">Sem lastro</strong>{" "}
+                  para a série diária: a janela de 500 registros não cobre nenhum
+                  dia inteiro, e desenhar o dia cortado ao meio diria &ldquo;não
+                  houve&rdquo; onde a verdade é &ldquo;não medi&rdquo;.
+                </p>
+              )}
+            </div>
+          </div>
+        </TiltShell>
       </section>
     </div>
   );

@@ -2164,6 +2164,64 @@ export default function CommandCenterPage() {
     return [...leadEvents, ...taskEvents].sort((a, b) => b.at - a.at).slice(0, 8);
   }, [snapshot.leads, snapshot.tasks, referenceTime]);
 
+  /**
+   * ── O QUE A SALA DE COMANDO RECEBE DAQUI, E POR QUE DAQUI ─────────────────
+   *
+   * Onze dos catorze painéis da referência visual não precisam de consulta
+   * nova. Esta página já busca dez rotas; o painel busca uma. Passar o que já
+   * está em memória é o que impede a sala de virar uma segunda leitura dos
+   * mesmos fatos — que é como duas telas do mesmo produto passam a mostrar
+   * números diferentes no mesmo segundo.
+   */
+  const feedDaSala = useMemo(
+    () =>
+      liveFeed.map((evento) => ({
+        id: evento.id,
+        href: evento.href,
+        titulo: evento.title,
+        detalhe: evento.detail,
+        quandoIso: evento.when ? evento.when.toISOString() : null,
+        novo: evento.isNew,
+      })),
+    [liveFeed],
+  );
+
+  /**
+   * ── O TETO SILENCIOSO DE 500 LINHAS ──────────────────────────────────────
+   *
+   * `/api/v1/core-v2/module-health` lê as leads com `limit: 500`, e o
+   * repositório aplica esse limite direto no PostgREST. A organização tem 489.
+   * Faltam onze linhas para o instantâneo começar a truncar EM SILÊNCIO e todo
+   * agregado derivado dele virar amostra apresentada como total — a mesma
+   * classe do `.limit(5000)` que a rota da sala de comando já corrigiu.
+   *
+   * Comparar o que foi LIDO com o `count` que o próprio módulo publica é o que
+   * transforma esse truncamento futuro em uma frase na tela em vez de num
+   * número errado. O painel do feed exibe "amostra" quando os dois divergem.
+   */
+  const amostraDeLeads = useMemo(() => {
+    const modulo = moduleHealth.find((m) => m.id === "leads");
+    return { lidas: snapshot.leads.length, total: modulo?.count ?? null };
+  }, [moduleHealth, snapshot.leads.length]);
+
+  /**
+   * `snapshot.insights` NÃO é a tabela `ai_insights` — essa tem zero linhas.
+   * São os insights calculados em memória a partir de leads e tarefas
+   * (`localInsights`, em lib/atlas/core-v2/live-operational-health.ts). O
+   * rótulo na tela diz exatamente isso, senão alguém procura a origem no banco
+   * e não encontra.
+   */
+  const insightsLocaisDaSala = useMemo(
+    () =>
+      snapshot.insights.map((linha, indice) => ({
+        id: stringValue(linha, "id") || `insight-${indice}`,
+        tipo: stringValue(linha, "type"),
+        titulo: stringValue(linha, "title"),
+        conteudo: stringValue(linha, "content"),
+      })),
+    [snapshot.insights],
+  );
+
   const phoneByLead = useMemo(
     () =>
       new Map(
@@ -3496,7 +3554,24 @@ export default function CommandCenterPage() {
         className="cc5-reveal"
         style={{ animationDelay: "160ms" }}
       >
-        <SalaDeComandoPanel />
+        {/* As quatro faixas da referência visual do dono. O painel busca UMA
+            rota (sala-de-comando); tudo o mais aqui já estava em memória e é
+            passado, não rebuscado.
+
+            `briefingSignals` vai INTEIRO, e não `visibleBriefingSignals`: a
+            triagem de "já vi" existe para a fila de trabalho, onde marcar como
+            visto é progresso. Numa superfície de MEDIÇÃO ela esvaziaria o
+            painel de alertas sem nada ter mudado na operação — e painel vazio
+            é indistinguível de painel quebrado. */}
+        <SalaDeComandoPanel
+          feed={feedDaSala}
+          feedAmostra={amostraDeLeads}
+          referenciaMs={referenceTime || undefined}
+          sinais={briefingSignals}
+          sinaisIndisponivel={briefingUnavailable}
+          pontosCegos={briefing?.coverage?.blindSpots ?? []}
+          insightsLocais={insightsLocaisDaSala}
+        />
       </section>
 
       {/* O tilt 3D mutava style.transform a cada pointermove sem carregar informação
