@@ -1140,7 +1140,7 @@ export default function LeadDetailPage() {
         <section
           data-phase="58-lead-reservation"
           className="cc6-panel cc6-sev-band flex flex-col gap-4 p-5 pl-6 sm:flex-row sm:items-center sm:justify-between"
-          style={{ "--cc6-sev": "#f5b544" } as CSSProperties}
+          style={{ "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}
         >
           <div>
             <p className="cc6-eyebrow cc6-warn">Reserva aguardando aceite</p>
@@ -1500,7 +1500,7 @@ export default function LeadDetailPage() {
               {qualification.missingData.length ? (
                 <div
                   className="cc6-panel-quiet cc6-sev-band p-4 pl-5"
-                  style={{ "--cc6-sev": "#f5b544" } as CSSProperties}
+                  style={{ "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}
                 >
                   <p className="cc6-eyebrow cc6-warn text-micro">
                     Dados que aumentam a confiança

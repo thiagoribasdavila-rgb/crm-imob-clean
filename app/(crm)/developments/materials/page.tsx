@@ -74,7 +74,7 @@ function materialState(material: Material, referenceTime: number) {
   const expired = Boolean(material.valid_until && referenceTime > 0 && new Date(material.valid_until).getTime() < referenceTime);
   if (expired) return { label: `Vencido · v${material.version}`, tone: "danger" as const, band: "#fb7185" };
   if (material.review_status === "rejected") return { label: `Rejeitado · v${material.version}`, tone: "danger" as const, band: "#fb7185" };
-  if (material.review_status === "pending") return { label: `Validação pendente · v${material.version}`, tone: "warning" as const, band: "#f5b544" };
+  if (material.review_status === "pending") return { label: `Validação pendente · v${material.version}`, tone: "warning" as const, band: "var(--atlas-estado-atencao)" };
   return { label: `Vigente · v${material.version}`, tone: "success" as const, band: "#34d399" };
 }
 
@@ -400,7 +400,7 @@ export default function ProjectMaterialsPage() {
                     <span className="cc6-num mt-0.5 block text-rotulo text-[var(--atlas-estado-sucesso)]">vigente · v{material.version} · abrir →</span>
                   </a>
                 ) : (
-                  <div key={type} className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3" style={{ "--cc6-sev": "#f5b544" } as CSSProperties}>
+                  <div key={type} className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3" style={{ "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}>
                     <strong className="block truncate text-corpo font-semibold text-[var(--atlas-texto-forte)]">{materialLabels[type].label}</strong>
                     <span className="cc6-num cc6-warn mt-0.5 block text-rotulo">pendente de publicação</span>
                   </div>

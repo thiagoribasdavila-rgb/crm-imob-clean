@@ -254,7 +254,7 @@ export default function ReportsPage() {
           {weekly.warnings?.length ? (
             <div className="mt-4 grid gap-2">
               {weekly.warnings.map((warning) => (
-                <p key={warning} className="cc6-sev-band cc6-panel-quiet py-2.5 pl-4 pr-3 text-xs leading-5 text-[var(--atlas-estado-atencao)]" style={{ "--cc6-sev": "#f5b544" } as CSSProperties}>{warning}</p>
+                <p key={warning} className="cc6-sev-band cc6-panel-quiet py-2.5 pl-4 pr-3 text-xs leading-5 text-[var(--atlas-estado-atencao)]" style={{ "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}>{warning}</p>
               ))}
             </div>
           ) : null}

@@ -36,7 +36,7 @@ export default function CampaignIntelligencePage() {
         <p
           role="status"
           className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-atencao)]"
-          style={{ "--cc6-sev": "#f5b544" } as CSSProperties}
+          style={{ "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}
         >
           {error}
         </p>

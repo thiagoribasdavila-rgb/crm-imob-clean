@@ -208,7 +208,7 @@ const MOVE_META: Record<MoveKind, { label: string; ink: string }> = {
 const PACING_META: Record<Pacing, { label: string; sev: string }> = {
   abaixo: { label: "abaixo do ritmo", sev: "#6b7890" },
   no_ritmo: { label: "no ritmo", sev: "#34d399" },
-  estourando: { label: "estourando", sev: "#f5b544" },
+  estourando: { label: "estourando", sev: "var(--atlas-estado-atencao)" },
   estourou: { label: "estourou", sev: "#fb7185" },
 };
 const VERDICT_INK: Record<BudgetRow["verdict"], string> = { eficiente: "cc6-ok", caro: "cc6-crit", sem_dados: "" };
@@ -492,7 +492,7 @@ export default function MarketingPage() {
       <GateCard state={cost} onRetry={retry} waiting="Relatório de custos aguardando ativação do banco." />
 
       {report?.coverage && !report.coverage.complete ? (
-        <p role="status" className="cc6-panel-quiet cc6-reveal px-4 py-3 text-corpo leading-5 text-[#f2b544]">
+        <p role="status" className="cc6-panel-quiet cc6-reveal px-4 py-3 text-corpo leading-5 text-[var(--atlas-estado-atencao)]">
           ⚠️ Leitura incompleta: {[
             report.coverage.leadsTruncated ? "leads/vendas" : null,
             report.coverage.spendTruncated ? "investimento" : null,
@@ -630,7 +630,7 @@ export default function MarketingPage() {
         ) : (
           <>
             {represa.aviso ? (
-              <p className="mx-5 mb-3 rounded-xl border border-[rgba(245,181,68,0.28)] bg-[rgba(245,181,68,0.05)] px-4 py-3 text-[12px] leading-5 text-[#f2b544]">
+              <p className="mx-5 mb-3 rounded-xl border border-[rgba(245,181,68,0.28)] bg-[rgba(245,181,68,0.05)] px-4 py-3 text-[12px] leading-5 text-[var(--atlas-estado-atencao)]">
                 {represa.aviso}
               </p>
             ) : null}
@@ -670,7 +670,7 @@ export default function MarketingPage() {
                         ) : linha.ativa ? (
                           <span className="text-[#93a2b8]">ativo</span>
                         ) : (
-                          <span className="text-[#f2b544]">inativo — descarta lead nova</span>
+                          <span className="text-[var(--atlas-estado-atencao)]">inativo — descarta lead nova</span>
                         )}
                       </td>
                     </tr>
@@ -831,7 +831,7 @@ export default function MarketingPage() {
                   : "border-[rgba(245,181,68,0.28)] bg-[rgba(245,181,68,0.05)]"
               }`}
             >
-              <p className={`text-corpo font-semibold ${alerta.nivel === "critico" ? "text-[#fda4af]" : "text-[#f2b544]"}`}>
+              <p className={`text-corpo font-semibold ${alerta.nivel === "critico" ? "text-[#fda4af]" : "text-[var(--atlas-estado-atencao)]"}`}>
                 {alerta.titulo}
               </p>
               <p className="mt-1 text-[12px] leading-5 text-[#93a2b8]">{alerta.detalhe}</p>
@@ -1094,7 +1094,7 @@ export default function MarketingPage() {
             </span>
           </div>
           {andromeda.data.forecast?.anomalies?.length ? (
-            <p className="cc6-hairline px-5 py-2.5 text-[12px] leading-5 text-[#f2b544]">🔮 {andromeda.data.forecast.anomalies.join(" · ")}</p>
+            <p className="cc6-hairline px-5 py-2.5 text-[12px] leading-5 text-[var(--atlas-estado-atencao)]">🔮 {andromeda.data.forecast.anomalies.join(" · ")}</p>
           ) : null}
           {andromeda.data.rotations?.proposals?.length ? (
             <div className="cc6-hairline px-5 py-2.5">
@@ -1115,7 +1115,7 @@ export default function MarketingPage() {
                   {/* Sinais de fadiga eram tooltip — invisíveis no toque e no leitor
                       de tela. São o lastro do "pausar": ficam na linha. */}
                   {rot.pauseAd?.signals?.length ? (
-                    <p className="cc6-num mt-1 text-rotulo leading-5 text-[#f2b544]">{rot.pauseAd.signals.join(" · ")}</p>
+                    <p className="cc6-num mt-1 text-rotulo leading-5 text-[var(--atlas-estado-atencao)]">{rot.pauseAd.signals.join(" · ")}</p>
                   ) : null}
                   <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">{rot.reason}</p>
                   <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">

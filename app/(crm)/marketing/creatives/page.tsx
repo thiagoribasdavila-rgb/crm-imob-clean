@@ -22,7 +22,7 @@ const FIELD_CLASS =
   "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[#0b1224] px-3 py-2.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50";
 
 const REVIEW_META: Record<string, { tone: "warning" | "success" | "danger" | "neutral"; label: string; sev: string | null }> = {
-  draft: { tone: "warning", label: "Rascunho", sev: "#f5b544" },
+  draft: { tone: "warning", label: "Rascunho", sev: "var(--atlas-estado-atencao)" },
   approved: { tone: "success", label: "Aprovado", sev: "#34d399" },
   rejected: { tone: "danger", label: "Rejeitado", sev: "#fb7185" },
 };

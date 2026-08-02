@@ -137,7 +137,7 @@ export default function PaymentRulesPage() {
                 <div
                   key={item.developerName.toLocaleLowerCase("pt-BR")}
                   className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-4 pr-3"
-                  style={{ animationDelay: `${80 + Math.min(index, 8) * 40}ms`, "--cc6-sev": item.historyPreserved ? "#34d399" : "#f5b544" } as CSSProperties}
+                  style={{ animationDelay: `${80 + Math.min(index, 8) * 40}ms`, "--cc6-sev": item.historyPreserved ? "#34d399" : "var(--atlas-estado-atencao)" } as CSSProperties}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <strong className="truncate text-corpo font-semibold text-[var(--atlas-texto-forte)]">{item.developerName}</strong>

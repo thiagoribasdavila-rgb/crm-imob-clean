@@ -197,7 +197,7 @@ export default function ImportLeadsPage() {
               const reason = experienceReasons[item.id] || "";
               const critical = item.severity === "critical";
               return (
-                <article key={item.id} className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3" style={{ "--cc6-sev": critical ? "#fb7185" : "#f5b544" } as CSSProperties}>
+                <article key={item.id} className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3" style={{ "--cc6-sev": critical ? "#fb7185" : "var(--atlas-estado-atencao)" } as CSSProperties}>
                   <div className="grid gap-4 lg:grid-cols-[1fr_.8fr]">
                     <div className="min-w-0">
                       <div className="flex flex-wrap gap-2">

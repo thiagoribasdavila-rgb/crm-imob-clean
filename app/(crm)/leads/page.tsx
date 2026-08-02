@@ -155,7 +155,7 @@ const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 const priorityBand: Record<LeadPriorityTone, string> = {
   danger: "#fb7185",
-  warning: "#f5b544",
+  warning: "var(--atlas-estado-atencao)",
   info: "var(--atlas-accent)",
 };
 
