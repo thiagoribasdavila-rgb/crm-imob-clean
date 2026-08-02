@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
+import { ProntidaoParaPublicarPanel } from "@/components/atlas/ProntidaoParaPublicarPanel";
 
 type Approval = { id: string; request_type: string; entity_type: string; status: string; decision_reason: string | null; expires_at: string | null; created_at: string; leadName: string; brokerName: string; channel: string; preview: string };
 
@@ -72,6 +73,13 @@ export default function ApprovalsPage() {
           {error}
         </p>
       ) : null}
+
+      {/* Aprovar uma proposta de campanha é o ato que autoriza gasto — e é aqui,
+          ANTES do clique, que o dono precisa saber que a conta da proposta pode
+          não ser alcançável, que a Página dos anúncios pode não estar cadastrada
+          e que o CRM pode não ter a peça. Descobrir isso depois do "Aprovar"
+          significa descobrir na falha da execução, com a verba já comprometida. */}
+      <ProntidaoParaPublicarPanel titulo="ANTES DE APROVAR CAMPANHA" />
 
       <section aria-label="Fila de aprovações" className="cc6-panel cc6-reveal overflow-hidden">
         <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5 pb-4">
