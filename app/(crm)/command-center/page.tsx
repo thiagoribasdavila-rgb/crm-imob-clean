@@ -425,14 +425,9 @@ const brl = new Intl.NumberFormat("pt-BR", {
 
 // Fusão com o Início: mesma régua de estágios que o /dashboard usava no funil,
 // agora derivada do snapshot que esta página JÁ busca via module-health.
-const PIPELINE_STAGES = [
-  { key: "novo", label: "Novo" },
-  { key: "contato", label: "Contato" },
-  { key: "qualificacao", label: "Qualificação" },
-  { key: "visita", label: "Visita" },
-  { key: "proposta", label: "Proposta" },
-  { key: "negociacao", label: "Negociação" },
-] as const;
+/* `PIPELINE_STAGES` saiu com o bloco duplicado do funil que ele alimentava.
+   O funil que ficou lê as etapas de `pipeline_stage_moves`, a fonte canônica —
+   uma lista cravada aqui seria uma segunda declaração das mesmas etapas. */
 
 const criticalGateLabels: Record<string, string> = {
   database: "Banco",
@@ -520,6 +515,7 @@ type CommandCenterPreferences = {
   density?: "compact" | "comfortable";
   seenSignalIds?: string[];
 };
+
 
 // Profundidade 3D sutil: perspective própria no transform (autocontida) e tudo
 // condicionado a motion-safe — sob prefers-reduced-motion nada se move.
@@ -1956,7 +1952,10 @@ export default function CommandCenterPage() {
   }, [snapshot.leads, snapshot.tasks, referenceTime]);
 
   // Números vivos: count-up curto quando o valor muda (sem animação sob reduced-motion).
-  const activeDisplay = useCountUp(metrics.active);
+  /* `activeDisplay` saiu com o cartão "Leads ativos" do bloco de decisão: a
+     faixa de indicadores da SalaDeComandoPanel já imprime esse número, e
+     imprimir duas vezes o mesmo fato na mesma página faz o leitor conferir se
+     os dois batem. */
   const hotDisplay = useCountUp(metrics.hot);
   const overdueDisplay = useCountUp(metrics.overdueTasks);
   const unassignedDisplay = useCountUp(metrics.unassigned);
@@ -2048,13 +2047,9 @@ export default function CommandCenterPage() {
 
   // Fusão com o Início · distribuição por estágio do pipeline, derivada apenas
   // do snapshot já carregado (mesma contagem por status que o /dashboard fazia).
-  const stageDistribution = useMemo(() => {
-    const stages = PIPELINE_STAGES.map((stage) => ({
-      ...stage,
-      count: snapshot.leads.filter((lead) => normalized(lead.status) === stage.key).length,
-    }));
-    return { stages, total: stages.reduce((sum, stage) => sum + stage.count, 0) };
-  }, [snapshot.leads]);
+  /* `stageDistribution` saiu com o bloco duplicado do funil que ele
+     alimentava. Cálculo órfão é custo de render por um desenho que ninguém
+     mais vê. */
 
   // Primário do gerente: gargalos por corretor (SLA vencido + leads parados),
   // linhas reais do manager-daily ordenadas pelo total de travas.
@@ -2953,6 +2948,71 @@ export default function CommandCenterPage() {
               algo mudar no seu escopo, aparece aqui primeiro.
             </p>
           </div>
+        )}
+      </section>
+
+        {/* ── SUBIU PARA A ÁREA DE DECISÃO, E PERDEU UM CARTÃO ─────────────────
+            Chamava-se "Pulso da operação" e ficava DEPOIS da medição. Os três
+            cartões que sobraram — quentes, tarefas atrasadas, sem responsável —
+            são fatos de DECISÃO, e a régua do v3 diz que decisão vem antes de
+            informação. O quarto, "Leads ativos", saiu: a faixa de indicadores
+            da SalaDeComandoPanel já o imprime, e imprimir duas vezes o mesmo
+            número na mesma página é o que fazia o diretor conferir se os dois
+            batiam. */}
+        <section
+        aria-label="O que exige ação agora"
+        className="cc5-reveal grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        style={{ animationDelay: "175ms" }}
+      >
+        <AtlasMetric label="Leads quentes" value={<span className={metricValueClass}>{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
+        <AtlasMetric label="Tarefas atrasadas" value={<span className={metricValueClass}>{overdueDisplay}</span>} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
+        <AtlasMetric label="Sem responsável" value={<span className={metricValueClass}>{unassignedDisplay}</span>} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
+      </section>
+
+        <section
+        aria-label="Sala de comando"
+        className="cc5-reveal atlas-panel rounded-2xl px-5 py-3"
+        style={{ animationDelay: "160ms" }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p
+              className="cc5-eyebrow"
+              title="Medição completa da operação: seis indicadores, funil por etapa com o que já passou, atividades, equipe, evolução, top projetos, alertas, insights, investimento por campanha e saídas do funil."
+            >
+              Medição · Operação
+            </p>
+            <p className="mt-0.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+              Funil, investimento e saídas — a leitura completa, medida
+            </p>
+          </div>
+          <LayerToggle
+            collapsed={collapsedLayers.medicao}
+            onToggle={() => toggleLayer("medicao")}
+            layerLabel="medição da operação"
+          />
+        </div>
+        {collapsedLayers.medicao ? null : (
+        <div className="mt-4">
+        {/* As quatro faixas da referência visual do dono. O painel busca UMA
+            rota (sala-de-comando); tudo o mais aqui já estava em memória e é
+            passado, não rebuscado.
+
+            `briefingSignals` vai INTEIRO, e não `visibleBriefingSignals`: a
+            triagem de "já vi" existe para a fila de trabalho, onde marcar como
+            visto é progresso. Numa superfície de MEDIÇÃO ela esvaziaria o
+            painel de alertas sem nada ter mudado na operação — e painel vazio
+            é indistinguível de painel quebrado. */}
+        <SalaDeComandoPanel
+          feed={feedDaSala}
+          feedAmostra={amostraDeLeads}
+          referenciaMs={referenceTime || undefined}
+          sinais={briefingSignals}
+          sinaisIndisponivel={briefingUnavailable}
+          pontosCegos={briefing?.coverage?.blindSpots ?? []}
+          insightsLocais={insightsLocaisDaSala}
+        />
+        </div>
         )}
       </section>
 
@@ -3900,137 +3960,30 @@ export default function CommandCenterPage() {
           cabeçalho não pode exibir número vivo — por isso ele declara o que há
           dentro, e não um resumo que seria de uma leitura que não aconteceu.
           Expandir dispara a consulta. */}
-      <section
-        aria-label="Sala de comando"
-        className="cc5-reveal atlas-panel rounded-2xl px-5 py-3"
-        style={{ animationDelay: "160ms" }}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p
-              className="cc5-eyebrow"
-              title="Medição completa da operação: seis indicadores, funil por etapa com o que já passou, atividades, equipe, evolução, top projetos, alertas, insights, investimento por campanha e saídas do funil."
-            >
-              Medição · Operação
-            </p>
-            <p className="mt-0.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
-              Funil, investimento e saídas — a leitura completa, medida
-            </p>
-          </div>
-          <LayerToggle
-            collapsed={collapsedLayers.medicao}
-            onToggle={() => toggleLayer("medicao")}
-            layerLabel="medição da operação"
-          />
-        </div>
-        {collapsedLayers.medicao ? null : (
-        <div className="mt-4">
-        {/* As quatro faixas da referência visual do dono. O painel busca UMA
-            rota (sala-de-comando); tudo o mais aqui já estava em memória e é
-            passado, não rebuscado.
-
-            `briefingSignals` vai INTEIRO, e não `visibleBriefingSignals`: a
-            triagem de "já vi" existe para a fila de trabalho, onde marcar como
-            visto é progresso. Numa superfície de MEDIÇÃO ela esvaziaria o
-            painel de alertas sem nada ter mudado na operação — e painel vazio
-            é indistinguível de painel quebrado. */}
-        <SalaDeComandoPanel
-          feed={feedDaSala}
-          feedAmostra={amostraDeLeads}
-          referenciaMs={referenceTime || undefined}
-          sinais={briefingSignals}
-          sinaisIndisponivel={briefingUnavailable}
-          pontosCegos={briefing?.coverage?.blindSpots ?? []}
-          insightsLocais={insightsLocaisDaSala}
-        />
-        </div>
-        )}
-      </section>
+      {/* A medição subiu para logo depois da decisão — ver a seção "Sala de
+            comando", agora acima. Ela é a referência visual do dono, e estava
+            na linha 3903 de 4570: para chegar nela era preciso rolar a página
+            quase inteira. */}
+        
 
       {/* O tilt 3D mutava style.transform a cada pointermove sem carregar informação
           nenhuma; sai a mutação por frame e fica a métrica. Nada de `.cc23-lift` aqui:
           `.atlas-metric` já desenha borda, raio, fundo e elevação — somar o lift criaria
           o anel duplo que este redesenho existe para matar. */}
-      <section
-        aria-label="Pulso da operação"
-        className="cc5-reveal grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-        style={{ animationDelay: "175ms" }}
-      >
-        <AtlasMetric label="Leads ativos" value={<span className={metricValueClass}>{activeDisplay}</span>} detail="Base em atendimento no seu escopo" tone="blue" />
-        <AtlasMetric label="Leads quentes" value={<span className={metricValueClass}>{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
-        <AtlasMetric label="Tarefas atrasadas" value={<span className={metricValueClass}>{overdueDisplay}</span>} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
-        <AtlasMetric label="Sem responsável" value={<span className={metricValueClass}>{unassignedDisplay}</span>} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
-      </section>
+      
 
       {/* SECUNDÁRIO · herança do Início — distribuição por estágio derivada do
           snapshot já buscado: barra segmentada fina, um acento em rampa. */}
-      <section
-        aria-label="Distribuição do pipeline por estágio"
-        className="cc5-reveal atlas-panel rounded-2xl px-5 py-4 sm:px-6"
-        style={{ animationDelay: "190ms" }}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p
-            className="cc5-eyebrow"
-            title="Quantos leads do snapshot atual estão em cada estágio do funil: novo → contato → qualificação → visita → proposta → negociação."
-          >
-            Pipeline · Estágios
-          </p>
-          <Link
-            href="/pipeline"
-            className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-          >
-            Abrir pipeline →
-          </Link>
-        </div>
-        {stageDistribution.total ? (
-          <>
-            <div
-              role="img"
-              aria-label={`Distribuição por estágio: ${stageDistribution.stages
-                .map((stage) => `${stage.label} ${stage.count}`)
-                .join(", ")}.`}
-              className="mt-3 flex h-2 w-full gap-px overflow-hidden rounded-full bg-white/[.04]"
-            >
-              {stageDistribution.stages.map((stage, index) =>
-                stage.count > 0 ? (
-                  <span
-                    key={stage.key}
-                    title={`${stage.label}: ${stage.count} lead(s)`}
-                    className="h-full min-w-[6px] bg-[var(--atlas-accent)]"
-                    style={{
-                      width: `${(stage.count / stageDistribution.total) * 100}%`,
-                      opacity: 0.92 - index * 0.12,
-                    }}
-                  />
-                ) : null,
-              )}
-            </div>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-              {stageDistribution.stages.map((stage, index) => (
-                <span
-                  key={stage.key}
-                  className="inline-flex items-center gap-1.5 text-rotulo text-slate-500"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="h-1.5 w-1.5 rounded-[2px] bg-[var(--atlas-accent)]"
-                    style={{ opacity: 0.92 - index * 0.12 }}
-                  />
-                  {stage.label}
-                  <span className="font-mono font-semibold tabular-nums text-slate-300">
-                    {stage.count}
-                  </span>
-                </span>
-              ))}
-            </div>
-          </>
-        ) : (
-          <p className="mt-3 text-xs text-slate-500">
-            Nenhum lead nos estágios do funil neste escopo agora.
-          </p>
-        )}
-      </section>
+      {/* ── O FUNIL DUPLICADO SAIU (02/08/2026) ──────────────────────────────
+            Esta seção desenhava a distribuição do pipeline por estágio. A
+            `SalaDeComandoPanel`, logo acima, já desenha o MESMO fato como
+            "Funil de vendas" — e melhor: com o que já passou por cada etapa,
+            lido de `pipeline_stage_moves`, que é a fonte canônica. Aqui a
+            leitura vinha de `leads.status`, que não guarda passagem.
+            Duas verdades sobre o mesmo fato é a classe que este repositório
+            mais paga; e a página tinha 15,9 telas contra alvo de ≤3. Nenhum
+            portão nem teste exigia este bloco — conferido antes de remover. */}
+        
 
       <section
         aria-label="Agora e sinais da IA"
