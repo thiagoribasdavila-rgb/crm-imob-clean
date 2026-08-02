@@ -24,7 +24,7 @@
     "baselineCommit": "8569ea3d",
     "measuredAt": "2026-07-29",
     "measuredBy": "git ls-tree -r --name-only 8569ea3d -- app | grep '/page.tsx$'  vs  HEAD",
-    "expectedPageFiles": 201,
+    "expectedPageFiles": 202,
     "causes": [
       "033cd9b3 (2026-07-26): 48 páginas-casca dos nove grupos de rota especulativos — (ai), (andromeda), (automation), (autonomous), (autonomous-business), (digital-life-form), (engine), (reality-engine), (unified-consciousness). Medido antes de remover: zero consumiam dado real, média de 15 linhas, nenhum fetch, nenhum supabase. Todas eram superfície 'experimental', o que explica experimental 101 -> 53. Reversível pela tag checkpoint/antes-remocao-cascas.",
       "0ad1a374 (2026-07-29): app/(crm)/leads/edit/[id]/page.tsx e app/(crm)/tasks/[id]/page.tsx eram rotas legadas que scripts/legacy-route-paths.mjs já declarava removidas desde 26/07 — a quarentena as movia a cada build e elas nunca foram commitadas como apagadas. Eram a causa do working tree permanentemente sujo. Ambas 'contextual'.",
@@ -90,12 +90,15 @@
       "app/privacy/page.tsx",
       "app/terms/page.tsx",
       "app/(crm)/settings/distribuicao/page.tsx",
-      "app/(auth)/redefinir-senha/page.tsx"
+      "app/(auth)/redefinir-senha/page.tsx",
+      "app/(crm)/marketing/campanhas-criativos-proposta/page.tsx"
     ],
     "_porqueAcrescentada": {
+      "app/(crm)/marketing/campanhas-criativos-proposta/page.tsx": "Compor proposta de anuncio — a tela entre compor e propor. Criada em d7c21fba (02/08/2026) e ja empurrada para origin/main SEM declaracao aqui, o que deixou o portao vermelho na PROPRIA main antes deste PR: 202 page.tsx no disco contra 201 declarados. Nao e tela orfa — recebe link de tres lugares (integrations/meta, marketing/campaign-intelligence e marketing/campaigns) e existe porque /marketing/nova-campanha termina em 'rascunho salvo' sem nunca chamar /api/v1/marketing/proposals, e o painel da Sala de Comando so sabe propor os dois produtos cravados em ready-campaigns enquanto o banco tem 4 empreendimentos. Superficie CONTEXTUAL pelo prefixo app/(crm)/ — a classify() a resolve sozinha; o que faltava era a declaracao, e era exatamente isso que o portao cobrava.",
       "app/(crm)/settings/distribuicao/page.tsx": "Tela de elenco de distribuicao (quem participa da fila de cada projeto/campanha). Superficie CONTEXTUAL por prefixo app/(crm)/ — o portao classifica sozinho; o que faltava era a declaracao no inventario, e era exatamente isso que ele estava cobrando."
     },
     "$notas": [
+      "2026-08-02 · +1 página: app/(crm)/marketing/campanhas-criativos-proposta/page.tsx. expectedPageFiles 201 -> 202. Diagnosticada pelo CI, não localmente: a bateria já saía com este portão vermelho antes deste PR, e eu tinha reportado '231/235 verdes' tratando os 4 restantes como aceitáveis — mas dois deles NÃO estão em quarentena declarada, então a bateria sai diferente de zero e o release gate reprova. O vermelho é anterior ao PR e vive em origin/main desde d7c21fba. Nenhuma contagem por superfície foi editada à mão: elas derivam de routeInventory ± estes arquivos, classificados pela mesma classify().",
       "2026-08-01 · +1 página: app/(auth)/redefinir-senha/page.tsx. Veio da main (commits de 25/07/2026) e é um re-export de app/(auth)/reset-password/page.tsx — apelido em português da MESMA tela, para onde o e-mail de recuperação aponta. expectedPageFiles 200 -> 201. Não é superfície nova: é um segundo endereço para uma superfície que já estava declarada."
     ]
   },
