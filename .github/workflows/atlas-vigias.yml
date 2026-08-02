@@ -1,0 +1,138 @@
+name: Atlas Vigias
+
+# ── POR QUE O AGENDADOR MORA AQUI ────────────────────────────────────────────
+#
+# Medido em 01/08/2026, no banco de produção: CINCO sinais de automação em zero
+# absoluto — `atlas_agent_runs`, `meta_executions`, `integration_health_snapshots`,
+# `nightly_broker_handoffs` e `meta_daily_reports` nunca rodaram uma vez sequer.
+#
+# Chamando os 13 vigias à mão contra a produção, DOZE responderam HTTP 200. Eles
+# nunca estiveram quebrados — nunca foram CHAMADOS. Faltava agendador.
+#
+# O caminho oficial é crontab no servidor (`npm run cron:gerar` produz as 13
+# linhas). Mas o hPanel deste site NÃO expõe Cron Jobs: a seção Avançado tem só
+# `ssh-access` e `activity-log`. Enquanto ninguém instalar o crontab por SSH, a
+# automação fica em zero — e zero é o estado em que ela viveu até hoje.
+#
+# Os workers são rotas HTTP com Bearer. O GitHub Actions alcança produção, já
+# guarda segredo e já roda neste repositório. Não é o lugar mais elegante para
+# um agendador; é o que EXISTE. Um vigia rodando de um lugar imperfeito vale
+# infinitamente mais que um vigia que não roda.
+#
+# ── O QUE ESTE ARQUIVO NÃO ESCONDE ───────────────────────────────────────────
+#
+# 1. O GitHub atrasa `schedule` sob carga — minutos, às vezes mais. Para o SLA
+#    de primeiro contato (prazo de 5 min) isso significa aviso atrasado. É pior
+#    que crontab e melhor que nada, e a diferença está declarada aqui em vez de
+#    ser descoberta depois.
+# 2. O intervalo mínimo do GitHub é 5 minutos. O `outbox` pede */2 e roda */5.
+#    Cadência DEGRADADA, declarada: mensagem represada demora até 3 min a mais.
+# 3. `tasks/reminders` está FORA de propósito — ele devolve HTTP 500 porque a
+#    RPC lê `t.assigned_to` numa tabela que só tem `user_id`. A migration
+#    `20260801200000_lembrete_de_tarefa_le_a_coluna_certa.sql` conserta e NÃO
+#    foi aplicada. Agendar um worker que falha a cada 5 minutos é ruído que
+#    treina todo mundo a ignorar alerta. Entra quando a migration entrar.
+#
+# Quando o crontab do servidor for instalado, DESLIGUE este arquivo: dois
+# agendadores para o mesmo worker é a classe de defeito que este repositório
+# mais paga — duas verdades sobre o mesmo fato.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'    # curto: SLA de primeiro contato, outbox
+    - cron: '*/10 * * * *'   # reservas de lead
+    - cron: '17 * * * *'     # leads da Meta sem destino
+    - cron: '17 */4 * * *'   # feedback de conversão (CAPI)
+    - cron: '10 0 * * *'     # recorrência de tarefas
+    - cron: '0 3 * * *'      # vendas noturnas
+    - cron: '30 3 * * *'     # entrega noturna ao corretor
+    - cron: '25 4 * * *'     # baseline de conversão
+    - cron: '40 4 * * *'     # investimento de mídia
+    - cron: '0 7 * * *'      # relatório diário da Meta
+  workflow_dispatch:
+    inputs:
+      grupo:
+        description: 'Grupo a executar agora (curto, dez, hora, quatro_horas, diario_0010, diario_0300, diario_0330, diario_0425, diario_0440, diario_0700, semanal)'
+        required: true
+        default: curto
+
+concurrency:
+  group: atlas-vigias-${{ github.event.schedule || inputs.grupo }}
+  cancel-in-progress: false
+
+jobs:
+  disparar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Chamar os vigias do grupo
+        env:
+          SEGREDO: ${{ secrets.ATLAS_CRON_SECRET }}
+          QUANDO: ${{ github.event.schedule }}
+          GRUPO: ${{ inputs.grupo }}
+        run: |
+          set -uo pipefail
+
+          if [ -z "${SEGREDO}" ]; then
+            echo "NÃO EXECUTADO — ATLAS_CRON_SECRET ausente neste repositório."
+            echo "Sem o segredo os vigias respondem 401. Sair verde aqui seria dizer"
+            echo "'rodou' quando o que existe é 'não tentei'."
+            exit 1
+          fi
+
+          case "${QUANDO:-}" in
+            '*/5 * * * *')  ROTAS="crm/first-contact-sla/process outbox/process" ;;
+            '*/10 * * * *') ROTAS="distribution/reservations/process" ;;
+            '17 * * * *')   ROTAS="marketing/meta-sem-destino/process" ;;
+            '17 */4 * * *') ROTAS="marketing/capi-feedback/process" ;;
+            '10 0 * * *')   ROTAS="tasks/recurrences/process" ;;
+            '0 3 * * *')    ROTAS="ai/nightly-sales" ;;
+            '30 3 * * *')   ROTAS="ai/nightly-handoff" ;;
+            '25 4 * * *')   ROTAS="ai/baseline-de-conversao/process" ;;
+            '40 4 * * *')   ROTAS="marketing/investimento/process" ;;
+            '0 7 * * *')    ROTAS="meta/daily-report developers/weekly-reports/process" ;;
+            *)
+              case "${GRUPO:-curto}" in
+                curto)        ROTAS="crm/first-contact-sla/process outbox/process" ;;
+                dez)          ROTAS="distribution/reservations/process" ;;
+                hora)         ROTAS="marketing/meta-sem-destino/process" ;;
+                quatro_horas) ROTAS="marketing/capi-feedback/process" ;;
+                diario_0010)  ROTAS="tasks/recurrences/process" ;;
+                diario_0300)  ROTAS="ai/nightly-sales" ;;
+                diario_0330)  ROTAS="ai/nightly-handoff" ;;
+                diario_0425)  ROTAS="ai/baseline-de-conversao/process" ;;
+                diario_0440)  ROTAS="marketing/investimento/process" ;;
+                diario_0700)  ROTAS="meta/daily-report" ;;
+                semanal)      ROTAS="developers/weekly-reports/process" ;;
+                *) echo "Grupo desconhecido: ${GRUPO}"; exit 1 ;;
+              esac
+              ;;
+          esac
+
+          # `developers/weekly-reports` só faz sentido no domingo; a rota é
+          # idempotente nos outros dias, mas chamá-la à toa polui o log.
+          if [ "$(date -u +%u)" != "7" ]; then
+            ROTAS="$(echo "${ROTAS}" | sed 's#developers/weekly-reports/process##')"
+          fi
+
+          FALHAS=0
+          for R in ${ROTAS}; do
+            COD=$(curl -sS -o /tmp/resposta.json -w '%{http_code}' --max-time 120 \
+                  -X POST "https://atlasaios.com.br/api/v2/${R}" \
+                  -H "authorization: Bearer ${SEGREDO}" || echo "000")
+            # A resposta pode conter dado de cliente; só o código e o tamanho vão para o log.
+            TAM=$(wc -c < /tmp/resposta.json | tr -d ' ')
+            if [ "${COD}" = "200" ]; then
+              echo "ok    ${R}  HTTP ${COD}  (${TAM} bytes)"
+            else
+              echo "FALHA ${R}  HTTP ${COD}  (${TAM} bytes)"
+              FALHAS=$((FALHAS + 1))
+            fi
+          done
+
+          if [ "${FALHAS}" -gt 0 ]; then
+            echo ""
+            echo "${FALHAS} vigia(s) não responderam 200. Um vigia que falha em silêncio"
+            echo "é um alerta que não existe — por isso este job fica VERMELHO."
+            exit 1
+          fi
