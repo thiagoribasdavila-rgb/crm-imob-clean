@@ -41,10 +41,18 @@ const MIGRATION = "supabase/migrations/20260802120000_livro_de_execucoes_dos_vig
 const TABELA = "atlas_worker_runs";
 
 /**
- * Piso MEDIDO em 02/08/2026: os dois vigias noturnos, que já haviam sido
- * reescritos no mesmo dia para parar de engolir erro. Só sobe.
+ * Piso MEDIDO em 02/08/2026: começou em 2 (os dois vigias noturnos, já
+ * reescritos no mesmo dia para parar de engolir erro) e subiu para 3 com o
+ * `first-contact-sla`.
+ *
+ * Ele entrou por um motivo prático: é o de MAIOR cadência, 5 em 5 minutos. Com
+ * só os noturnos registrando, a primeira linha do livro apareceria às 3h da
+ * manhã seguinte ao deploy; com ele, aparece em minutos. Prova rápida vale mais
+ * que prova tardia quando o que se quer saber é "isto está funcionando?".
+ *
+ * Só sobe.
  */
-const PISO = 2;
+const PISO = 3;
 
 const falhas = [];
 

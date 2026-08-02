@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { origemDaChamada, registrarExecucao } from "@/lib/integrations/livro-de-execucoes";
 import { isMissingColumn } from "@/lib/compat/legacy-v2";
 import { enviarAlertaTelegram, montarAlertaDeSla, telegramConfigurado } from "@/lib/integrations/telegram";
 import { registrarEmSombra } from "@/lib/ai/registro-de-sombra";
@@ -44,6 +45,14 @@ export async function POST(request: Request) {
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!esperado || token !== esperado) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
 
+  // O vigia de MAIOR cadência (5 em 5 minutos) é o que prova a automação mais
+  // rápido: a primeira linha do livro aparece minutos depois do deploy, e não na
+  // madrugada seguinte, como aconteceria se só os noturnos registrassem.
+  const iniciadoEm = Date.now();
+  const origem = origemDaChamada(request);
+  const livro = (desfecho: "ok" | "sem_trabalho" | "fora_da_janela" | "falhou", resposta: Record<string, unknown>, erro?: string) =>
+    registrarExecucao({ vigia: "first-contact-sla", rota: "/api/v2/crm/first-contact-sla/process", origem, iniciadoEm, desfecho, resposta, erro });
+
   const admin = getSupabaseAdmin();
   const agora = Date.now();
   // Janela de aviso: 60% do prazo decorrido. Em lead da Meta (5 min) o corretor
@@ -72,7 +81,10 @@ export async function POST(request: Request) {
       // Banco sem a fase 34: o vigia não tem o que vigiar. Não é falha.
       if (isMissingColumn(leads.error)) {
         logger.info("crm.first_contact_sla_worker_skipped", { reason: "colunas de SLA ausentes neste banco" });
-        return NextResponse.json({ status: "skipped", reason: "sla-columns-unavailable" });
+        {
+          const corpo = { status: "skipped", reason: "sla-columns-unavailable" };
+          return NextResponse.json({ ...corpo, livro: await livro("falhou", corpo, "colunas de SLA indisponiveis") });
+        }
       }
       throw leads.error;
     }
@@ -394,7 +406,7 @@ export async function POST(request: Request) {
       semDono,
     });
 
-    return NextResponse.json({
+    const corpo = {
       status: "completed",
       avaliadas: leads.data?.length ?? 0,
       vencidas: pendentes.filter((p) => p.estagio === "vencido").length,
@@ -424,9 +436,13 @@ export async function POST(request: Request) {
       // O que a sombra viu. `foraDoTeto` existe para o teto não se ler como
       // "cobrimos tudo": corte silencioso é a forma mais educada de mentir.
       sombraDeRedistribuicao: sombra,
-    });
+    };
+    // `sem_trabalho` quando nada foi avaliado: a fila estava limpa. E desfecho
+    // legitimo, e distingui-lo de "nao rodou" e a razao de o livro existir.
+    return NextResponse.json({ ...corpo, livro: await livro(corpo.avaliadas ? "ok" : "sem_trabalho", corpo) });
   } catch (erro) {
     logger.error("crm.first_contact_sla_worker_failed", erro);
-    return NextResponse.json({ error: "Falha ao processar o SLA de primeiro contato." }, { status: 500 });
+    const registro = await livro("falhou", {}, String(erro));
+    return NextResponse.json({ error: "Falha ao processar o SLA de primeiro contato.", livro: registro }, { status: 500 });
   }
 }

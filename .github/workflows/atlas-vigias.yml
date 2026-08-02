@@ -136,13 +136,39 @@ jobs:
 
           FALHAS=0
           for R in ${ROTAS}; do
+            # ── DOIS DEFEITOS QUE SÓ APARECERAM COM EXECUÇÃO REAL ─────────────
+            #
+            # Medido em 02/08/2026, nas execuções agendadas: das 10 do dia, 3
+            # ficaram vermelhas. Duas por `curl: (28) Connection timed out after
+            # 120000 ms` — e conferido no banco, os dois vigias envolvidos
+            # (lead-reservations e capi-feedback) tinham ZERO itens na fila.
+            # Não era carga: foi hipo transitório de rede/servidor. Produção
+            # medida logo depois respondia em 45–130 ms.
+            #
+            # 1. `/tmp/resposta.json: No such file`. Quando o curl estoura o
+            #    tempo ele não cria o arquivo, e o `wc -c` da linha seguinte
+            #    quebrava também — o log dizia duas coisas erradas sobre uma
+            #    falha só. O `:>` garante o arquivo antes.
+            #
+            # 2. "não respondeu" e "respondeu errado" viravam a mesma mensagem
+            #    FALHA. São problemas diferentes: um é rede/tempo, o outro é a
+            #    rota. Agora o código 000 é nomeado como SEM RESPOSTA.
+            #
+            # NÃO foi adicionado retry, e isso é decisão: `outbox` ENVIA MENSAGEM.
+            # Repetir um POST que pode ter sido processado é arriscar mandar duas
+            # vezes para o cliente. Um vermelho transitório é barato; uma
+            # mensagem duplicada, não.
+            :> /tmp/resposta.json
             COD=$(curl -sS -o /tmp/resposta.json -w '%{http_code}' --max-time 120 \
                   -X POST "https://atlasaios.com.br/api/v2/${R}" \
                   -H "authorization: Bearer ${SEGREDO}" || echo "000")
             # A resposta pode conter dado de cliente; só o código e o tamanho vão para o log.
-            TAM=$(wc -c < /tmp/resposta.json | tr -d ' ')
+            TAM=$(wc -c < /tmp/resposta.json 2>/dev/null | tr -d ' ' || echo 0)
             if [ "${COD}" = "200" ]; then
               echo "ok    ${R}  HTTP ${COD}  (${TAM} bytes)"
+            elif [ "${COD}" = "000" ]; then
+              echo "SEM RESPOSTA ${R}  (o servidor não respondeu dentro de 120s — rede ou reinício, não erro da rota)"
+              FALHAS=$((FALHAS + 1))
             else
               echo "FALHA ${R}  HTTP ${COD}  (${TAM} bytes)"
               FALHAS=$((FALHAS + 1))
