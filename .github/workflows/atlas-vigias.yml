@@ -27,11 +27,11 @@ name: Atlas Vigias
 #    ser descoberta depois.
 # 2. O intervalo mínimo do GitHub é 5 minutos. O `outbox` pede */2 e roda */5.
 #    Cadência DEGRADADA, declarada: mensagem represada demora até 3 min a mais.
-# 3. `tasks/reminders` está FORA de propósito — ele devolve HTTP 500 porque a
-#    RPC lê `t.assigned_to` numa tabela que só tem `user_id`. A migration
-#    `20260801200000_lembrete_de_tarefa_le_a_coluna_certa.sql` conserta e NÃO
-#    foi aplicada. Agendar um worker que falha a cada 5 minutos é ruído que
-#    treina todo mundo a ignorar alerta. Entra quando a migration entrar.
+# 3. `tasks/reminders` ENTROU em 01/08/2026, depois que a migration foi
+#    aplicada com autorização do dono. Ele lia DUAS colunas inexistentes
+#    (`assigned_to` e `due_at`, contra `user_id` e `due_date`) e nunca
+#    funcionou. Medido depois do conserto: HTTP 200, `generated: 7`.
+#    São 13 de 13 vigias respondendo.
 #
 # Quando o crontab do servidor for instalado, DESLIGUE este arquivo: dois
 # agendadores para o mesmo worker é a classe de defeito que este repositório
@@ -81,7 +81,7 @@ jobs:
           fi
 
           case "${QUANDO:-}" in
-            '*/5 * * * *')  ROTAS="crm/first-contact-sla/process outbox/process" ;;
+            '*/5 * * * *')  ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process" ;;
             '*/10 * * * *') ROTAS="distribution/reservations/process" ;;
             '17 * * * *')   ROTAS="marketing/meta-sem-destino/process" ;;
             '17 */4 * * *') ROTAS="marketing/capi-feedback/process" ;;
@@ -93,7 +93,7 @@ jobs:
             '0 7 * * *')    ROTAS="meta/daily-report developers/weekly-reports/process" ;;
             *)
               case "${GRUPO:-curto}" in
-                curto)        ROTAS="crm/first-contact-sla/process outbox/process" ;;
+                curto)        ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process" ;;
                 dez)          ROTAS="distribution/reservations/process" ;;
                 hora)         ROTAS="marketing/meta-sem-destino/process" ;;
                 quatro_horas) ROTAS="marketing/capi-feedback/process" ;;
