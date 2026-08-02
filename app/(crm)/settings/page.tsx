@@ -119,7 +119,7 @@ export default function SettingsPage() {
         <div
           className="cc6-sev-band cc6-panel-quiet flex flex-wrap items-center justify-between gap-3 py-3 pl-4 pr-3"
           role="status"
-          style={{ "--cc6-sev": "#f59e0b" } as CSSProperties}
+          style={{ "--cc6-sev": "var(--atlas-warning)" } as CSSProperties}
         >
           <p className="max-w-[62ch] text-sm leading-6 text-[var(--atlas-texto-medio)]">
             <span className="font-semibold text-[var(--atlas-texto-forte)]">O ambiente não se confere aqui — aqui se governa a organização.</span>{" "}
@@ -171,7 +171,7 @@ export default function SettingsPage() {
               </label>
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button type="button" onClick={save} disabled={saving || !organization} className="atlas-button-primary disabled:opacity-50">
+              <button type="button" onClick={save} disabled={saving || !organization} className="atlas-button-primary min-h-11 disabled:opacity-50">
                 {saving ? "Salvando…" : "Salvar alterações"}
               </button>
               {message ? <p role="status" className="text-sm text-[var(--atlas-texto-medio)]">{message}</p> : null}
@@ -184,7 +184,7 @@ export default function SettingsPage() {
         <section
           aria-labelledby="settings-approval-title"
           className="cc6-sev-band cc6-panel cc6-reveal p-5"
-          style={{ "--cc6-sev": "#34d399", animationDelay: "100ms" } as CSSProperties}
+          style={{ "--cc6-sev": "var(--atlas-success)", animationDelay: "100ms" } as CSSProperties}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

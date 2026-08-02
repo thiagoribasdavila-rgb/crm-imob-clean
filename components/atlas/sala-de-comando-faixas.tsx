@@ -328,11 +328,11 @@ export function CartaoKpi({
           <SemLastro oQueFalta={valorSemLastro} />
         </div>
       ) : (
-        <p className="cc6-metric-value mt-1.5 text-numero leading-tight">{valor}</p>
+        <p className="cc6-metric-value mt-2 text-numero leading-none">{valor}</p>
       )}
 
       {detalhe ? (
-        <p className="mt-0.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{detalhe}</p>
+        <p className="mt-1 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{detalhe}</p>
       ) : null}
 
       {delta.tipo === "medido" ? (
@@ -914,6 +914,31 @@ const CLASSE_DA_SEVERIDADE: Record<string, string> = {
   opportunity: "text-[var(--atlas-accent)]",
   healthy: "text-[var(--atlas-estado-sucesso)]",
 };
+/**
+ * ── EMOJI SÓ ONDE ELE ACRESCENTA UM CANAL ───────────────────────────────────
+ *
+ * O item de alerta trazia um ponto colorido de 6px ao lado da palavra
+ * "crítico"/"atenção". O ponto não dizia nada que a palavra e a cor já não
+ * dissessem — era um terceiro codificador da MESMA informação, e quem tem baixa
+ * visão de cor perdia dois dos três.
+ *
+ * O emoji troca esse ponto por uma FORMA reconhecível de relance, que sobrevive
+ * em escala de cinza e não depende de ler a palavra. Não é decoração: é o
+ * mesmo canal, melhor.
+ *
+ * O que NÃO recebeu emoji, de propósito: o delta dos indicadores. Lá já existem
+ * seta e cor, e um terceiro símbolo seria exatamente a redundância que este
+ * comentário acaba de remover daqui.
+ *
+ * `aria-hidden` porque a palavra ao lado já nomeia a severidade — o leitor de
+ * tela não deve ouvir "triângulo vermelho crítico".
+ */
+const EMOJI_DA_SEVERIDADE: Record<string, string> = {
+  critical: "🔴",
+  attention: "⚠️",
+  opportunity: "💡",
+  healthy: "✅",
+};
 const NOME_DA_SEVERIDADE: Record<string, string> = {
   critical: "crítico",
   attention: "atenção",
@@ -964,12 +989,14 @@ export function AlertasInteligentes({
       {acionaveis.slice(0, 5).map((sinal) => (
         <li key={sinal.id} className="cc6-panel-quiet p-3">
           <p className={`flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wide ${CLASSE_DA_SEVERIDADE[sinal.severity] ?? ""}`}>
-            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+            <span aria-hidden="true" className="text-[0.85rem] leading-none">
+              {EMOJI_DA_SEVERIDADE[sinal.severity] ?? "•"}
+            </span>
             {NOME_DA_SEVERIDADE[sinal.severity] ?? sinal.severity}
             <span className="font-normal text-[var(--atlas-texto-fraco)]">· {sinal.area}</span>
           </p>
-          <p className="mt-1 text-corpo font-medium text-[var(--atlas-texto-forte)]">{sinal.title}</p>
-          <p className="mt-0.5 text-rotulo leading-5 text-[var(--atlas-texto-medio)]">{sinal.evidence}</p>
+          <p className="mt-1.5 text-corpo font-medium leading-tight text-[var(--atlas-texto-forte)]">{sinal.title}</p>
+          <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-medio)]">{sinal.evidence}</p>
           {sinal.href ? (
             <Link
               href={sinal.href}
@@ -1036,14 +1063,24 @@ export function InsightsDoCopiloto({
     />
   );
 
+  /**
+   * O emoji entra aqui pelo mesmo critério dos alertas: os quatro cartões são
+   * lidos em VARREDURA, lado a lado, e hoje só a palavra os distingue. Uma
+   * forma reconhecível na frente do título separa "oportunidade" de "atenção"
+   * antes da leitura — e sobrevive em escala de cinza, que a cor não faz.
+   *
+   * `aria-hidden` no emoji: o título ao lado já nomeia o cartão.
+   */
   const cartoes: Array<{
     chave: string;
     titulo: string;
+    emoji: string;
     corpo: React.ReactNode;
   }> = [
     {
       chave: "oportunidade",
       titulo: "Oportunidade",
+      emoji: "💡",
       corpo: indisponivel ? (
         semLeitura
       ) : oportunidade ? (
@@ -1058,6 +1095,7 @@ export function InsightsDoCopiloto({
     {
       chave: "atencao",
       titulo: "Atenção",
+      emoji: "⚠️",
       corpo: indisponivel ? (
         semLeitura
       ) : atencao ? (
@@ -1072,6 +1110,7 @@ export function InsightsDoCopiloto({
     {
       chave: "recomendacao",
       titulo: "Recomendação",
+      emoji: "🎯",
       corpo: indisponivel ? (
         semLeitura
       ) : recomendacao ? (
@@ -1090,6 +1129,7 @@ export function InsightsDoCopiloto({
          único movimento registrado. No lugar entra o que a IA declara não
          enxergar — que é a informação honesta disponível no mesmo espaço. */
       titulo: "O que a IA não enxerga",
+      emoji: "🫥",
       corpo: pontosCegos.length ? (
         <ul className="space-y-1.5">
           {pontosCegos.slice(0, 3).map((ponto) => (
@@ -1113,7 +1153,10 @@ export function InsightsDoCopiloto({
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {cartoes.map((cartao) => (
           <article key={cartao.chave} className="cc6-panel min-w-0 p-4">
-            <p className="cc6-eyebrow">{cartao.titulo}</p>
+            <p className="cc6-eyebrow flex items-center gap-1.5">
+              <span aria-hidden="true" className="text-[0.9rem] leading-none">{cartao.emoji}</span>
+              {cartao.titulo}
+            </p>
             <div className="mt-2">{cartao.corpo}</div>
           </article>
         ))}

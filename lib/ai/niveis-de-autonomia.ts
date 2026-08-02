@@ -99,6 +99,58 @@ export function aprovacaoValida(aprovacao: AprovacaoRegistrada | null | undefine
   );
 }
 
+/**
+ * ── O CATÁLOGO CHEGAVA VAZIO DENTRO DO NEXT, E NINGUÉM VIA ────────────────
+ *
+ * MEDIDO NO NAVEGADOR em 02/08/2026, em /settings/ai: os dez agentes
+ * declarados apareciam como "fora do catálogo, nível 0" — inclusive
+ * `campaign-analyst` e `andromeda-pipeline-advisor`, que estão declarados em
+ * `config/orcamento-e-autonomia-da-ia.json` desde 30/07.
+ *
+ * A causa é `import.meta.dirname`, e está provada no log do servidor vivo
+ * (/private/tmp/atlas-dev.log, 2026-08-02T06:41):
+ *
+ *     TypeError: The "path" argument must be of type string. Received undefined
+ *       at lib/ai/niveis-de-autonomia.ts
+ *
+ * Ou seja: dentro do bundle do Next `import.meta.dirname` é UNDEFINED — nem
+ * aponta para o lugar errado, simplesmente não existe. `path.join` levanta, o
+ * `catch` que envolvia a leitura devolvia `null`, e `catalogoDeAgentes()`
+ * entregava LISTA VAZIA em silêncio. Sob `node --test` a mesma expressão
+ * resolve para `lib/ai/`, e por isso os 13 testes de contrato passam: o
+ * ambiente que testa não é o ambiente que quebra.
+ *
+ * O efeito prático é grave e invisível: `nivelDoAgente()` passa a devolver 0
+ * para todo mundo. Como 0 é o mais fechado, nada quebra e nada avisa — a
+ * declaração do dono simplesmente deixa de valer no processo que atende o
+ * usuário. É exatamente o "degradar em silêncio é pior que quebrar" que
+ * `scripts/check-imports-pendurados.mjs` já anota para o arquivo vizinho.
+ *
+ * A raiz do projeto vem primeiro de `process.cwd()`, que é a raiz tanto no
+ * servidor do Next quanto no `node --test` rodado da raiz. O caminho por
+ * `import.meta.dirname` fica como segundo candidato, para quem executa de
+ * outro diretório — e só entra na lista quando ele é mesmo uma string, porque
+ * montá-lo com `undefined` é o que derrubava o módulo inteiro na importação.
+ */
+const CANDIDATOS_DA_DECLARACAO = [
+  path.join(process.cwd(), "config", "orcamento-e-autonomia-da-ia.json"),
+  ...(typeof import.meta.dirname === "string"
+    ? [path.join(import.meta.dirname, "..", "..", "config", "orcamento-e-autonomia-da-ia.json")]
+    : []),
+];
+
+function lerDeclaracao(): { agentes?: { catalogo?: unknown } } {
+  let ultimoErro: unknown = new Error("nenhum caminho candidato foi tentado");
+  for (const caminho of CANDIDATOS_DA_DECLARACAO) {
+    try {
+      return JSON.parse(fs.readFileSync(caminho, "utf8")) as { agentes?: { catalogo?: unknown } };
+    } catch (erro) {
+      ultimoErro = erro;
+    }
+  }
+  throw ultimoErro;
+}
+
 let cacheDoCatalogo: AgenteDeclarado[] | null | undefined;
 
 type ProblemaDeCatalogo = { agente: string; problema: string };
@@ -151,9 +203,7 @@ export function validarCatalogo(bruto: unknown): { agentes: AgenteDeclarado[]; p
 export function catalogoDeAgentes(): AgenteDeclarado[] {
   if (cacheDoCatalogo !== undefined) return cacheDoCatalogo ?? [];
   try {
-    const caminho = path.join(import.meta.dirname, "..", "..", "config", "orcamento-e-autonomia-da-ia.json");
-    const arquivo = JSON.parse(fs.readFileSync(caminho, "utf8")) as { agentes?: { catalogo?: unknown } };
-    const { agentes, problemas } = validarCatalogo(arquivo?.agentes?.catalogo);
+    const { agentes, problemas } = validarCatalogo(lerDeclaracao()?.agentes?.catalogo);
     cacheDoCatalogo = problemas.length ? null : agentes;
   } catch {
     cacheDoCatalogo = null;
@@ -163,9 +213,7 @@ export function catalogoDeAgentes(): AgenteDeclarado[] {
 
 export function problemasDoCatalogo(): ProblemaDeCatalogo[] {
   try {
-    const caminho = path.join(import.meta.dirname, "..", "..", "config", "orcamento-e-autonomia-da-ia.json");
-    const arquivo = JSON.parse(fs.readFileSync(caminho, "utf8")) as { agentes?: { catalogo?: unknown } };
-    return validarCatalogo(arquivo?.agentes?.catalogo).problemas;
+    return validarCatalogo(lerDeclaracao()?.agentes?.catalogo).problemas;
   } catch (erro) {
     return [{ agente: "(catálogo)", problema: `não foi possível ler a declaração: ${erro instanceof Error ? erro.message : String(erro)}` }];
   }

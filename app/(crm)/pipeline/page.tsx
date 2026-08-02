@@ -915,16 +915,16 @@ export default function PipelinePage() {
       {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
       {/* O caminho de volta, logo abaixo do que deu errado. Erro sem saída faz
           o corretor repetir a mesma tentativa até desistir da lead. */}
-      {caminho ? <div className="mt-2 flex flex-wrap items-center gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.06] px-4 py-3 text-xs leading-5 text-sky-100" role="status">
+      {caminho ? <div className="mt-2 flex flex-wrap items-center gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.06] px-4 py-3 text-rotulo leading-5 text-sky-100" role="status">
         <span className="font-semibold uppercase tracking-[.12em] text-sky-300">O que fazer</span>
         <span className="min-w-0 flex-1">{caminho.texto}</span>
         {caminho.acao === "atualizar" ? <button type="button" onClick={() => { setCaminho(null); setError(""); void load(); }} className="atlas-button-secondary shrink-0">Atualizar Kanban</button> : null}
         {caminho.acao === "tentar-de-novo" ? <button type="button" onClick={() => { setCaminho(null); setError(""); }} className="atlas-button-secondary shrink-0">Entendi</button> : null}
         {caminho.acao === "falar-com-gestor" ? <Link href="/leads" className="atlas-button-secondary shrink-0">Ver minha carteira</Link> : null}
       </div> : null}
-      {savingId ? <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status" aria-live="polite">Confirmando movimentação e registrando o histórico…</div> : null}
-      {lastMove ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.07] px-4 py-3 text-sm text-sky-100" role="status"><span><strong>{lastMove.leadName}</strong> avançou para {destinationOptions.find((item) => item.key === lastMove.to)?.label}.</span><button type="button" onClick={() => void undoLastMove()} disabled={Boolean(savingId)} className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs font-semibold hover:bg-sky-300/15 disabled:opacity-50">Desfazer movimentação</button></div> : null}
-      {!loading && pipelineScope.totalOperational > pipelineScope.loaded ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status"><span>Este quadro mostra {pipelineScope.loaded} de {pipelineScope.totalOperational} oportunidades operacionais. A memória arquivada continua isolada.</span><Link href="/leads" className="font-semibold text-amber-50 underline decoration-amber-300/40 underline-offset-4">Pesquisar a base completa</Link></div> : null}
+      {savingId ? <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-rotulo text-amber-100" role="status" aria-live="polite">Confirmando movimentação e registrando o histórico…</div> : null}
+      {lastMove ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.07] px-4 py-3 text-corpo text-sky-100" role="status"><span><strong>{lastMove.leadName}</strong> avançou para {destinationOptions.find((item) => item.key === lastMove.to)?.label}.</span><button type="button" onClick={() => void undoLastMove()} disabled={Boolean(savingId)} className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-rotulo font-semibold hover:bg-sky-300/15 disabled:opacity-50">Desfazer movimentação</button></div> : null}
+      {!loading && pipelineScope.totalOperational > pipelineScope.loaded ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-rotulo text-amber-100" role="status"><span>Este quadro mostra {pipelineScope.loaded} de {pipelineScope.totalOperational} oportunidades operacionais. A memória arquivada continua isolada.</span><Link href="/leads" className="font-semibold text-amber-50 underline decoration-amber-300/40 underline-offset-4">Pesquisar a base completa</Link></div> : null}
 
       <section className="atlas-kanban-readiness" data-status={kanbanReadiness.status} aria-label="Resumo de prontidão do Kanban">
         <div>
@@ -942,9 +942,9 @@ export default function PipelinePage() {
 
       <section className="atlas-pipeline-priority-queue" aria-labelledby="atlas-pipeline-priority-title" aria-live="polite" data-priority-source="authorized-loaded-pipeline">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-sky-300">Fila de execução</p><h3 id="atlas-pipeline-priority-title" className="mt-1 text-lg font-semibold text-white">Comece por aqui</h3><p className="mt-1 text-xs text-slate-500">Ordem prática por SLA, atraso, temperatura, risco e score — menos procura, mais ação.</p></div>
+          <div><p className="text-rotulo font-semibold uppercase tracking-[.14em] text-sky-300">Fila de execução</p><h3 id="atlas-pipeline-priority-title" className="mt-1 text-numero font-semibold text-white">Comece por aqui</h3><p className="mt-1 text-rotulo text-slate-500">Ordem prática por SLA, atraso, temperatura, risco e score — menos procura, mais ação.</p></div>
           <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Filtrar oportunidades do pipeline">
-            {focusOptions.map((option) => <button key={option.key} type="button" onClick={() => setFocus(option.key)} aria-pressed={focus === option.key} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${focus === option.key ? "border-sky-400/30 bg-sky-400/10 text-sky-200" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><span>{option.label}</span><span className={`rounded-full px-1.5 py-0.5 text-micro ${focus === option.key ? "bg-sky-300/15 text-sky-100" : "bg-white/[0.05] text-slate-500"}`}>{option.count}</span></button>)}
+            {focusOptions.map((option) => <button key={option.key} type="button" onClick={() => setFocus(option.key)} aria-pressed={focus === option.key} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-rotulo font-semibold transition ${focus === option.key ? "border-sky-400/30 bg-sky-400/10 text-sky-200" : "border-white/[0.07] bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white"}`}><span>{option.label}</span><span className={`rounded-full px-1.5 py-0.5 text-micro ${focus === option.key ? "bg-sky-300/15 text-sky-100" : "bg-white/[0.05] text-slate-500"}`}>{option.count}</span></button>)}
           </div>
         </div>
         {/* ── O RECORTE SE ANUNCIA ────────────────────────────────────────────
@@ -954,7 +954,7 @@ export default function PipelinePage() {
             aplicado e qual negócio está destacado — e some sozinho assim que a
             pessoa troca o filtro, porque aí a frase deixaria de ser verdade. */}
         {chegouPelaPrioridade && focus === "prioridade" ? (
-          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.06] px-4 py-3 text-xs leading-5 text-sky-100" role="status">
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.06] px-4 py-3 text-rotulo leading-5 text-sky-100" role="status">
             <span className="shrink-0 font-semibold uppercase tracking-[.12em] text-sky-300">Aberto na prioridade</span>
             <span className="min-w-0 flex-1">
               {loading
@@ -980,12 +980,12 @@ export default function PipelinePage() {
           <div className="atlas-kanban-next-best-action-copy">
             <span className="atlas-kanban-next-best-action-eyebrow">Próxima melhor ação</span>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Link href={`/leads/${nextBestAction.lead.id}`} className="min-w-0 text-xl font-semibold tracking-[-.04em] text-white hover:text-sky-200">{nextBestAction.lead.name || "Lead sem nome"}</Link>
+              <Link href={`/leads/${nextBestAction.lead.id}`} className="min-w-0 text-numero font-semibold tracking-[-.04em] text-white hover:text-sky-200">{nextBestAction.lead.name || "Lead sem nome"}</Link>
               {nextBestAction.contactSla ? <AtlasBadge tone={nextBestAction.contactSla.tone}>{nextBestAction.contactSla.label}</AtlasBadge> : null}
               {nextBestAction.signalView ? <AtlasBadge tone={nextBestAction.signalView.critical ? "danger" : "warning"}>{nextBestAction.signalView.label}</AtlasBadge> : null}
             </div>
-            <p className="mt-2 text-sm font-semibold text-sky-100">Decisão recomendada: {nextBestAction.guidance.action}</p>
-            <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">{nextBestAction.guidance.reason}</p>
+            <p className="mt-2 text-corpo font-semibold text-sky-100">Decisão recomendada: {nextBestAction.guidance.action}</p>
+            <p className="mt-1 max-w-3xl text-rotulo leading-5 text-slate-400">{nextBestAction.guidance.reason}</p>
           </div>
           <dl className="atlas-kanban-next-best-action-metrics" aria-label="Resumo da oportunidade priorizada">
             <div><dt>Etapa</dt><dd>{nextBestAction.currentStage?.label || "Atual"}</dd></div>
@@ -1005,7 +1005,7 @@ export default function PipelinePage() {
               {destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
             </select>
           </div>
-        </article> : !loading ? <div className="atlas-kanban-next-best-action is-empty" data-kanban-next-best-action><span className="atlas-kanban-next-best-action-eyebrow">Próxima melhor ação</span><p className="mt-2 text-sm font-semibold text-white">Nenhuma ação crítica no filtro atual.</p><p className="mt-1 text-xs text-slate-500">Troque o filtro ou registre novas próximas ações para manter a carteira aquecida.</p></div> : null}
+        </article> : !loading ? <div className="atlas-kanban-next-best-action is-empty" data-kanban-next-best-action><span className="atlas-kanban-next-best-action-eyebrow">Próxima melhor ação</span><p className="mt-2 text-corpo font-semibold text-white">Nenhuma ação crítica no filtro atual.</p><p className="mt-1 text-rotulo text-slate-500">Troque o filtro ou registre novas próximas ações para manter a carteira aquecida.</p></div> : null}
         <div className="atlas-kanban-execution-cockpit" data-kanban-execution-cockpit>
           {executionLanes.map((lane) => <button key={lane.key} type="button" data-tone={lane.tone} data-state={lane.value > 0 ? "attention" : "clear"} onClick={() => { setFocus(lane.focus); setSort(lane.sort); }} aria-label={`${lane.label}: ${lane.value}. ${lane.detail}. ${lane.action}.`} className="atlas-kanban-execution-lane">
             <span>{lane.label}</span>
@@ -1023,18 +1023,18 @@ export default function PipelinePage() {
             const currentStage = stages[currentStageIndex];
             const nextStage = currentStageIndex >= 0 ? stages[currentStageIndex + 1] : undefined;
             return <article key={lead.id} className="atlas-broker-action">
-              <div className="flex items-start justify-between gap-3"><span className="atlas-broker-rank">{String(index + 1).padStart(2, "0")}</span>{risk !== "baixo" ? <AtlasBadge tone={riskTone(risk)}>{risk === "alto" ? "⚠️" : "•"} {risk}</AtlasBadge> : null}</div>
+              <div className="flex items-start justify-between gap-3"><span className="atlas-broker-rank">{String(index + 1).padStart(2, "0")}</span>{risk !== "baixo" ? <AtlasBadge tone={riskTone(risk)}>{risk === "alto" ? <span aria-hidden="true">⚠️ </span> : null}{risk}</AtlasBadge> : null}</div>
               <div className="mt-3 flex items-center gap-2.5">
                 <span className="atlas-lead-avatar" aria-hidden="true">{Array.from(lead.name || "??").slice(0, 2).join("").toUpperCase()}</span>
-                <Link href={`/leads/${lead.id}`} className="min-w-0 truncate text-sm font-semibold text-white hover:text-sky-300">{lead.name || "Lead sem nome"}</Link>
+                <Link href={`/leads/${lead.id}`} className="min-w-0 truncate text-corpo font-semibold text-white hover:text-sky-300">{lead.name || "Lead sem nome"}</Link>
               </div>
               <div className="atlas-broker-stage"><span>{currentStage?.label || "Etapa atual"}</span><i aria-hidden="true">→</i><strong>{nextStage?.label || "Revisar fechamento"}</strong></div>
-              <p className="mt-3 text-sm font-semibold text-sky-200">{guidance.action}</p><p className="mt-1 min-h-10 text-xs leading-5 text-slate-500">{guidance.reason}</p>
+              <p className="mt-3 text-corpo font-semibold text-sky-200">{guidance.action}</p><p className="mt-1 min-h-10 text-rotulo leading-5 text-slate-500">{guidance.reason}</p>
               <label className="atlas-broker-move-label" htmlFor={`priority-stage-${lead.id}`}>Movimentar após validar</label>
               <select id={`priority-stage-${lead.id}`} value={lead.status ?? "novo"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="atlas-broker-move-select">
                 {destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
               </select>
-              <div className="mt-3 grid grid-cols-3 gap-2"><Link href={`/leads/${lead.id}`} className="atlas-broker-shortcut">👁️ Lead 360</Link><Link href={`/leads/${lead.id}/messages`} className="atlas-broker-shortcut">✦ IA</Link>{contact ? <a href={contact.call} className="atlas-broker-shortcut">📞 Ligar</a> : <span className="atlas-broker-shortcut is-disabled">Sem telefone</span>}</div>
+              <div className="mt-3 grid grid-cols-3 gap-2"><Link href={`/leads/${lead.id}`} className="atlas-broker-shortcut"><span aria-hidden="true">👁️</span> Lead 360</Link><Link href={`/leads/${lead.id}/messages`} className="atlas-broker-shortcut"><span aria-hidden="true">✦</span> IA</Link>{contact ? <a href={contact.call} className="atlas-broker-shortcut"><span aria-hidden="true">📞</span> Ligar</a> : <span className="atlas-broker-shortcut is-disabled">Sem telefone</span>}</div>
             </article>;
           })}
           {!loading && dailyFocus.length === 0 ? <div className="lg:col-span-3"><AtlasEmpty reason="completed" eyebrow="Fila prioritária concluída" title="Tudo em dia" description="Nenhuma oportunidade aberta exige ação neste momento." action={<Link href="/tasks" className="atlas-button-secondary">Revisar tarefas</Link>} /></div> : null}
@@ -1046,11 +1046,37 @@ export default function PipelinePage() {
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="flex flex-wrap gap-2"><AtlasBadge tone="info">{metrics.open} negócios</AtlasBadge></div>
-            <h2 className="atlas-pipeline-title mt-3 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Pipeline comercial</h2>
-            <p className="atlas-pipeline-subtitle mt-2 max-w-2xl text-sm leading-6 text-slate-400">Decida o próximo movimento, proteja SLAs e mantenha cada avanço registrado.</p>
+            {/* 30px no celular, 48px no desktop — dois degraus que a escala não
+                tem, e o segundo é MAIOR que o herói (34). O título de uma página
+                não decide nada: informa em que tela você está. Sai para 34 e para
+                UM tamanho só. ATENÇÃO ao limite: com o modo foco LIGADO (que é o
+                padrão), quem pinta este h2 é `.atlas-pipeline-hero.is-focus-mode h2`
+                em globals.css, com `clamp(1.8rem, 3vw, 2.6rem)` e SEM camada — a
+                classe daqui é código morto nesse estado. Esta correção só alcança
+                o modo expandido; o resto está declarado em `limites`. */}
+            <h2 className="atlas-pipeline-title mt-3 text-heroi font-semibold tracking-[-.05em] text-white">Pipeline comercial</h2>
+            <p className="atlas-pipeline-subtitle mt-2 max-w-2xl text-corpo leading-6 text-slate-400">Decida o próximo movimento, proteja SLAs e mantenha cada avanço registrado.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead, região, origem ou campanha..." className="atlas-kanban-search min-w-72 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
+            {/* ── OS SEIS CAMPOS DESTA TELA NUNCA TIVERAM O TAMANHO QUE A
+                CLASSE ANUNCIAVA ────────────────────────────────────────────
+                MEDIDO no navegador, com a folha compilada: `<input class="text-corpo">`
+                sai a **16px**; `<input class="text-corpo!">` sai a **13px**.
+                A causa é `button, input, select, textarea { font: inherit }` em
+                `app/globals.css` — regra de ELEMENTO, sem camada, e CSS sem
+                camada vence `@layer utilities`, onde mora todo utilitário do
+                Tailwind. Então a classe de 14px que estava aqui era código
+                morto: o campo herdava os 16px do `body` (medido) enquanto o
+                fonte anunciava 14. Dois números, nenhum na escala.
+                O `!` não é atalho de estilo — é a marca de que existe uma regra
+                global decidindo por baixo. É a mesma técnica já documentada em
+                `/tasks` e `/activity`, pelo mesmo motivo. Os outros cinco campos
+                deste arquivo levam a mesma correção.
+                (O nome literal da classe antiga não é citado aqui de propósito:
+                um portão que conta degrau fora da escala lê o arquivo cru, e
+                escrevê-lo para EXPLICAR que ele saiu faria o portão contar um
+                onde há zero — a mesma lição que o hex já ensinou na Agenda.) */}
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead, região, origem ou campanha..." className="atlas-kanban-search min-w-72 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-corpo! text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
             <button type="button" onClick={() => setFocusMode((value) => !value)} aria-pressed={focusMode} className={`atlas-button-secondary ${focusMode ? "border-sky-400/20 !text-sky-200" : ""}`}>{focusMode ? "Expandir inteligência" : "✦ Ativar modo foco"}</button>
             {canConfigureStages ? <Link href="/pipeline/settings" className="atlas-button-secondary">Configurar etapas</Link> : null}
             <Link href="/leads/new" className="atlas-button-primary">+ Novo lead</Link>
@@ -1059,11 +1085,11 @@ export default function PipelinePage() {
       </section>
 
       <AtlasCard>
-        <AtlasCardHeader eyebrow="Fluxo comercial" title="Oportunidades por etapa" description="Arraste os cards ou use o seletor. Toda movimentação permanece registrada." action={<span className="text-xs text-slate-500">{visibleLeads.length} visíveis{metrics.forecast !== null ? ` · forecast ${brl.format(metrics.forecast)}` : ""}</span>} />
+        <AtlasCardHeader eyebrow="Fluxo comercial" title="Oportunidades por etapa" description="Arraste os cards ou use o seletor. Toda movimentação permanece registrada." action={<span className="text-rotulo text-slate-500">{visibleLeads.length} visíveis{metrics.forecast !== null ? ` · forecast ${brl.format(metrics.forecast)}` : ""}</span>} />
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-4 sm:px-6 xl:flex-row xl:items-center xl:justify-between" aria-label="Controles do Kanban">
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-micro font-semibold uppercase tracking-[.12em] text-slate-500" htmlFor="pipeline-sort">Ordenar</label>
-            <select id="pipeline-sort" value={sort} onChange={(event) => setSort(event.target.value as SortKey)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-200 outline-none focus:border-sky-400/30">
+            <select id="pipeline-sort" value={sort} onChange={(event) => setSort(event.target.value as SortKey)} className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-rotulo! text-slate-200 outline-none focus:border-sky-400/30">
               <option value="prioridade">Prioridade inteligente</option><option value="score">Maior score</option><option value="valor">Maior valor</option><option value="recente">Atualização recente</option>
             </select>
           </div>
@@ -1130,7 +1156,7 @@ export default function PipelinePage() {
             return <button key={stage.key} type="button" role="switch" aria-checked={marcada} onClick={() => setEtapasVisiveis((atual) => {
               const base = atual ?? boardStages.map((s2) => s2.key);
               return base.includes(stage.key) ? base.filter((k) => k !== stage.key) : [...base, stage.key];
-            })} className={`rounded-full border px-3 py-1.5 text-xs transition ${marcada ? "border-sky-400/40 bg-sky-400/10 text-sky-100" : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20"}`}>
+            })} className={`rounded-full border px-3 py-1.5 text-rotulo transition ${marcada ? "border-sky-400/40 bg-sky-400/10 text-sky-100" : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-white/20"}`}>
               {stage.label} <span className="font-mono text-micro opacity-70">{stage.items.length}</span>
             </button>;
           })}
@@ -1145,8 +1171,8 @@ export default function PipelinePage() {
               return (
               <section key={stage.key} role="tabpanel" aria-label={`${stage.label}: ${stage.items.length} leads${colSignals && colSignals.stalled > 0 ? `, ${colSignals.stalled} sem atualização há 3 ou mais dias` : ""}`} onDragEnter={() => setDragOverStage(stage.key)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverStage(null); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => onDrop(event, stage.key)} className={`atlas-pipeline-column ${dragOverStage === stage.key ? "is-drop-target" : ""} ${activeMobileStage !== stage.key ? "is-mobile-hidden" : ""}`}>
                 <div className="atlas-pipeline-column-header mb-4 border-b border-white/[0.06] pb-3">
-                  <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-white" title={conhecimentoDaEtapa(stage.key)?.significa || undefined}>{stage.label}</h3><div className="flex shrink-0 items-center gap-1.5">{colSignals && colSignals.stalled > 0 ? <span className={`cc6-chip ${colSignals.rose > 0 || colSignals.hot > 0 ? "cc6-crit" : "cc6-warn"}`} title={`${colSignals.stalled} de ${stage.items.length} lead(s) desta etapa sem atualização registrada há 3 ou mais dias.`}>{colSignals.stalled} {colSignals.stalled === 1 ? "parado" : "parados"}</span> : null}<span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-micro font-semibold tabular-nums text-slate-300">{stage.items.length}</span></div></div>
-                  <p className="mt-2 text-xs text-slate-500">{stage.value === null
+                  <div className="flex items-center justify-between gap-2"><h3 className="text-corpo font-semibold text-white" title={conhecimentoDaEtapa(stage.key)?.significa || undefined}>{stage.label}</h3><div className="flex shrink-0 items-center gap-1.5">{colSignals && colSignals.stalled > 0 ? <span className={`cc6-chip ${colSignals.rose > 0 || colSignals.hot > 0 ? "cc6-crit" : "cc6-warn"}`} title={`${colSignals.stalled} de ${stage.items.length} lead(s) desta etapa sem atualização registrada há 3 ou mais dias.`}>{colSignals.stalled} {colSignals.stalled === 1 ? "parado" : "parados"}</span> : null}<span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-micro font-semibold tabular-nums text-slate-300">{stage.items.length}</span></div></div>
+                  <p className="mt-2 text-rotulo text-slate-500">{stage.value === null
                     ? `${stage.items.length ? "orçamento não informado" : "—"}`
                     : `${brl.format(stage.value)}${stage.semOrcamento ? ` · ${stage.semOrcamento} sem orçamento` : ""}`}</p>
                   {/* PONTO DE CONHECIMENTO: o que fazer para a lead sair daqui.
@@ -1176,9 +1202,24 @@ export default function PipelinePage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-2.5">
                             <span className="atlas-lead-avatar" aria-hidden="true">{Array.from(lead.name || "??").slice(0, 2).join("").toUpperCase()}</span>
-                            <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-sm font-semibold text-white transition hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-0.5 truncate text-rotulo text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
+                            <div className="min-w-0"><Link href={`/leads/${lead.id}`} className="block truncate text-corpo font-semibold text-white transition hover:text-sky-300">{lead.name || "Lead sem nome"}</Link><p className="mt-0.5 truncate text-rotulo text-slate-500">{lead.phone || lead.email || "Sem contato"}</p></div>
                           </div>
-                          {risk !== "baixo" ? <AtlasBadge tone={riskTone(risk)}>{risk === "alto" ? "⚠️" : "•"} {risk}</AtlasBadge> : null}
+                          {/* ── O PONTO QUE NÃO DIZIA NADA ────────────────────
+                              Era `{risk === "alto" ? "⚠️" : "•"} {risk}`. O "•"
+                              do risco MÉDIO é o caso exato que a sala de comando
+                              já resolveu: um ponto ao lado da palavra, sem forma
+                              própria, repetindo o que a palavra e o tom do selo
+                              já diziam — e sumindo junto com a cor para quem tem
+                              baixa visão de cor. Ele sai; a palavra "medio" e o
+                              tom "warning" ficam intactos.
+                              O ⚠️ do risco ALTO fica, agora com `aria-hidden`:
+                              antes o leitor de tela ouvia "triângulo vermelho
+                              atenção alto", com a mesma informação duas vezes.
+                              O canal novo passa a ser a PRESENÇA da marca —
+                              alto tem forma, médio não —, que é legível em
+                              escala de cinza e não depende de comparar duas
+                              palavras de cinco letras em 10px. */}
+                          {risk !== "baixo" ? <AtlasBadge tone={riskTone(risk)}>{risk === "alto" ? <span aria-hidden="true">⚠️ </span> : null}{risk}</AtlasBadge> : null}
                         </div>
                         <div className="atlas-lead-origin"><span>{lead.project || lead.source || "Projeto não informado"}</span>{metaCampaign(lead) ? <small>{metaCampaign(lead)}</small> : null}</div>
                         <div className="atlas-kanban-signal-row">
@@ -1190,7 +1231,7 @@ export default function PipelinePage() {
                             `inline-flex` e mataria o `text-ellipsis` deste rótulo, que precisa
                             truncar dentro da coluna. Só a face numérica e a cor migram para o
                             vocabulário do sistema. */}
-                        {signalView ? <span className={`cc6-num mt-2.5 block w-fit max-w-full overflow-hidden rounded-full border border-[color:var(--atlas-border-strong)] px-2 py-1 text-micro leading-none text-ellipsis whitespace-nowrap ${signalView.critical ? "cc6-crit" : "cc6-warn"}`} title={signalView.title}>{signalView.label}</span> : null}
+                        {signalView ? <span className={`cc6-num mt-2.5 block w-fit max-w-full overflow-hidden rounded-full border border-[color:var(--atlas-border-strong)] px-2 py-1 text-micro leading-none text-ellipsis whitespace-nowrap ${signalView.critical ? "text-[var(--atlas-estado-perigo)]!" : "text-[var(--atlas-estado-atencao)]!"}`} title={signalView.title}>{signalView.label}</span> : null}
                         {contactSla ? <div className="mt-3"><AtlasBadge tone={contactSla.tone}>{contactSla.label}</AtlasBadge></div> : null}
                         <div className="atlas-card-guidance"><span>Próxima melhor ação</span><strong>{guidance.action}</strong></div>
                         <div className="atlas-kanban-primary-actions" role="group" aria-label="Ações rápidas">
@@ -1209,7 +1250,7 @@ export default function PipelinePage() {
                             <p><span>Próxima ação</span><strong>{dateLabel(lead.next_action_at)}</strong></p>
                           </div>
                           <p className="atlas-kanban-guidance-reason">{guidance.reason}</p>
-                          <div className="atlas-card-shortcuts"><Link href={`/leads/${lead.id}/messages`} title="Criar abordagem com IA">✦ Mensagem</Link>{contact ? <><a href={contact.call} title="Ligar para a lead">Ligar</a><a href={contact.whatsapp} target="_blank" rel="noreferrer" title="Abrir WhatsApp">WhatsApp</a></> : null}</div>
+                          <div className="atlas-card-shortcuts"><Link href={`/leads/${lead.id}/messages`} title="Criar abordagem com IA"><span aria-hidden="true">✦</span> Mensagem</Link>{contact ? <><a href={contact.call} title="Ligar para a lead">Ligar</a><a href={contact.whatsapp} target="_blank" rel="noreferrer" title="Abrir WhatsApp">WhatsApp</a></> : null}</div>
                         </details>
                         <div role="group" aria-label={`Abrir ou descartar ${lead.name || "lead sem nome"}`} className="pointer-events-none mt-2 flex gap-1.5 opacity-0 motion-safe:transition-opacity motion-safe:duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
                           <Link href={`/leads/${lead.id}`} title="Abrir a visão completa da lead" className="flex-1 rounded-xl border border-[rgba(148,163,184,.12)] px-2 py-1.5 text-center font-mono text-micro leading-4 text-[var(--atlas-texto-medio)] motion-safe:transition-colors hover:border-[rgba(148,163,184,.22)] hover:text-[var(--atlas-texto-forte)] focus-visible:border-[rgba(148,163,184,.22)] focus-visible:text-[var(--atlas-texto-forte)]">Abrir</Link>
@@ -1259,10 +1300,31 @@ export default function PipelinePage() {
       {/* Cinco métricas, não seis: "Perfis compradores" (comprou_outro) vale
           zero e não muda decisão nenhuma — quem quiser vê a lista logo abaixo.
           Dinheiro só aparece quando a base sustenta o número. */}
+      {/* ── OS CINCO EMOJIS QUE SAÍRAM DAQUI, E POR QUE ────────────────────────
+          Eram 📊 · 💰 · 📈 · 🔥 · ⚠️, um em cada cartão desta fileira. Cinco
+          cartões lado a lado, TODOS com um símbolo: quando todos têm, nenhum
+          informa — o símbolo deixa de separar e vira textura, que é a mesma
+          doença que o filete tem neste produto.
+
+          E nenhum deles acrescentava canal: 📊 ao lado de "Negócios abertos",
+          💰 ao lado de "Pipeline", 🔥 ao lado de "Leads quentes" repetem a
+          palavra que está a 10px de distância. O próprio `AtlasMetric` já
+          declarava isso ao renderizá-los com `aria-hidden="true"`: o
+          componente sempre soube que ali não havia informação, só enfeite. É
+          exatamente o "marcador de seção" que o dono não quer.
+
+          Não é economia de emoji — é o oposto: o emoji desta entrega foi para
+          onde ele acrescenta um canal (o tipo do compromisso na Agenda, o
+          estado do prazo na Central de tarefas, o motivo da parada em
+          Atividade) e saiu de onde ele só decorava. Nenhuma PALAVRA saiu: os
+          cinco rótulos, os cinco números e os dois detalhes continuam inteiros.
+
+          `icon` é opcional em `AtlasMetric` (`icon?: ReactNode`), então omitir
+          a prop não deixa buraco: o rótulo simplesmente encosta na borda, como
+          nos cartões do produto que nunca tiveram ícone. */}
       {!focusMode ? <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-        <AtlasMetric icon="📊" label="Negócios abertos" value={loading ? "—" : metrics.open} tone="blue" />
+        <AtlasMetric label="Negócios abertos" value={loading ? "—" : metrics.open} tone="blue" />
         <AtlasMetric
-          icon="💰"
           label="Pipeline"
           value={loading ? "—" : metrics.pipeline === null ? "—" : brl.format(metrics.pipeline)}
           detail={loading ? "" : metrics.pipeline === null
@@ -1271,14 +1333,13 @@ export default function PipelinePage() {
           tone="violet"
         />
         <AtlasMetric
-          icon="📈"
           label="Forecast"
           value={loading ? "—" : metrics.forecast === null ? "—" : brl.format(metrics.forecast)}
           detail={metrics.forecast === null ? "depende do orçamento preenchido" : "ponderado por etapa"}
           tone="green"
         />
-        <AtlasMetric icon="🔥" label="Leads quentes" value={loading ? "—" : metrics.hot} tone="rose" />
-        <AtlasMetric icon="⚠️" label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} tone="amber" />
+        <AtlasMetric label="Leads quentes" value={loading ? "—" : metrics.hot} tone="rose" />
+        <AtlasMetric label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} tone="amber" />
       </section> : null}
 
       {!focusMode ? <AtlasCard>
@@ -1291,18 +1352,18 @@ export default function PipelinePage() {
         <div className="p-4 sm:p-6">{leads.filter((lead) => lead.status === "comprou_outro").length ? <ul className="cc23-rows">{leads.filter((lead) => lead.status === "comprou_outro").map((lead) => <li key={lead.id} className="cc23-row flex-wrap">
           <div className="min-w-0 flex-1">
             <Link href={`/leads/${lead.id}`} className="font-semibold text-white hover:text-emerald-300">{lead.name || "Cliente comprador"}</Link>
-            <p className="mt-1 text-xs text-slate-500">{lead.phone || lead.email || "Contato protegido"}</p>
-            <p className="mt-1 text-xs leading-5 text-slate-400">Perfil preservado para inteligência comercial e futuras estratégias de público.</p>
+            <p className="mt-1 text-rotulo text-slate-500">{lead.phone || lead.email || "Contato protegido"}</p>
+            <p className="mt-1 text-rotulo leading-5 text-slate-400">Perfil preservado para inteligência comercial e futuras estratégias de público.</p>
           </div>
           <span className="shrink-0 self-start"><AtlasBadge tone="success">COMPRADOR</AtlasBadge></span>
-          <select aria-label={`Mover ${lead.name || "cliente comprador"} para outra etapa`} value={lead.status ?? "comprou_outro"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="min-h-11 w-full rounded-xl border border-white/10 bg-white/[.035] px-3 py-2 text-xs text-slate-300 sm:w-auto">{destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select>
+          <select aria-label={`Mover ${lead.name || "cliente comprador"} para outra etapa`} value={lead.status ?? "comprou_outro"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="min-h-11 w-full rounded-xl border border-white/10 bg-white/[.035] px-3 py-2 text-rotulo! text-slate-300 sm:w-auto">{destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select>
         </li>)}</ul> : <AtlasEmpty reason="no-activity" eyebrow="Aprendizado comprador" title="Nenhum perfil comprador separado" description="Ao registrar uma compra em outro lugar, o cliente aparecerá aqui com seu aprendizado preservado." action={<Link href="/external-sales" className="atlas-button-secondary">Registrar compra externa</Link>} />}</div>
       </AtlasCard> : null}
       {!focusMode && discardReportStatus !== "restricted" ? <AtlasCard>
         <AtlasCardHeader eyebrow="Qualidade de descarte" title="Descartadas" description="Motivos estruturados dos últimos 30 dias. Sinais negativos permanecem internos até a decisão do diretor de sincronizar com a Meta." action={<Link href="/pipeline/discards" className="atlas-button-secondary">Ver relatório Andromeda</Link>} />
         <div className="p-4 sm:p-6">
           {discardReportStatus === "loading" ? <AtlasSkeleton className="h-24 w-full" /> : null}
-          {discardReportStatus === "error" ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status"><span>O resumo de descartes não pôde ser carregado agora.</span><button type="button" onClick={() => { setDiscardReportStatus("loading"); void loadDiscardReport(); }} className="font-semibold text-amber-50 underline decoration-amber-300/40 underline-offset-4">Tentar novamente</button></div> : null}
+          {discardReportStatus === "error" ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-rotulo text-amber-100" role="status"><span>O resumo de descartes não pôde ser carregado agora.</span><button type="button" onClick={() => { setDiscardReportStatus("loading"); void loadDiscardReport(); }} className="font-semibold text-amber-50 underline decoration-amber-300/40 underline-offset-4">Tentar novamente</button></div> : null}
           {discardReportStatus === "ready" && discardReport ? (discardReport.byReason.length ? <>
             <div className="flex flex-wrap items-center gap-2">
               <AtlasBadge tone="danger">{discardReport.totals.discarded} descarte(s) em {discardReport.period.days} dias</AtlasBadge>
@@ -1318,7 +1379,7 @@ export default function PipelinePage() {
               <ul className="cc23-rows">
                 {discardReport.byReason.map((item) => <li key={item.key} className="cc23-row">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-white">{item.label}</p>
+                    <p className="text-corpo font-semibold text-white">{item.label}</p>
                     <div className="mt-1"><AtlasBadge tone="violet">{item.metaCategory}</AtlasBadge></div>
                   </div>
                   <div className="flex shrink-0 items-baseline gap-2">
@@ -1348,9 +1409,9 @@ export default function PipelinePage() {
             } else if (active === last || active === panel) { event.preventDefault(); first.focus(); }
           }
         }} className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-black/40 outline-none sm:p-6">
-          <p className="text-xs font-semibold uppercase tracking-[.14em] text-rose-300">Descarte com aprendizado</p>
-          <h3 id="discard-panel-title" className="mt-1 text-lg font-semibold text-white">Por que descartar {discardDraft.leadName}?</h3>
-          <p id="discard-panel-description" className="mt-1 text-xs leading-5 text-slate-500">O motivo alimenta o relatório Andromeda e permanece interno. A lead só sai de {destinationOptions.find((item) => item.key === discardDraft.fromStage)?.label || "sua etapa"} depois da confirmação.</p>
+          <p className="text-rotulo font-semibold uppercase tracking-[.14em] text-rose-300">Descarte com aprendizado</p>
+          <h3 id="discard-panel-title" className="mt-1 text-numero font-semibold text-white">Por que descartar {discardDraft.leadName}?</h3>
+          <p id="discard-panel-description" className="mt-1 text-rotulo leading-5 text-slate-500">O motivo alimenta o relatório Andromeda e permanece interno. A lead só sai de {destinationOptions.find((item) => item.key === discardDraft.fromStage)?.label || "sua etapa"} depois da confirmação.</p>
           <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Motivo do descarte" onKeyDown={(event) => {
             // Navegação por setas com roving tabindex (dívida registrada na onda 2).
             if (!["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) return;
@@ -1365,12 +1426,12 @@ export default function PipelinePage() {
             event.currentTarget.querySelector<HTMLButtonElement>(`[data-reason-key="${nextKey}"]`)?.focus();
           }}>
             {DISCARD_REASONS.map((reason, reasonIndex) => <button key={reason.key} type="button" role="radio" data-reason-key={reason.key} tabIndex={discardDraft.reasonKey === reason.key || (!discardDraft.reasonKey && reasonIndex === 0) ? 0 : -1} aria-checked={discardDraft.reasonKey === reason.key} onClick={() => setDiscardDraft((current) => (current ? { ...current, reasonKey: reason.key } : current))} className={`w-full rounded-2xl border px-4 py-3 text-left transition ${discardDraft.reasonKey === reason.key ? "border-rose-400/40 bg-rose-400/10" : "border-white/[0.07] bg-white/[0.025] hover:border-white/15"}`}>
-              <span className={`block text-sm font-semibold ${discardDraft.reasonKey === reason.key ? "text-rose-100" : "text-slate-200"}`}>{reason.label}</span>
+              <span className={`block text-corpo font-semibold ${discardDraft.reasonKey === reason.key ? "text-rose-100" : "text-slate-200"}`}>{reason.label}</span>
               <span className="mt-0.5 block text-rotulo leading-4 text-slate-500">{reason.description}</span>
             </button>)}
           </div>
           <label className="mt-4 block text-micro font-semibold uppercase tracking-[.12em] text-slate-500" htmlFor="discard-notes">Observação (opcional)</label>
-          <input id="discard-notes" value={discardDraft.notes} maxLength={280} onChange={(event) => setDiscardDraft((current) => (current ? { ...current, notes: event.target.value } : current))} placeholder="Contexto curto para o time e para a IA..." className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-rose-400/30" />
+          <input id="discard-notes" value={discardDraft.notes} maxLength={280} onChange={(event) => setDiscardDraft((current) => (current ? { ...current, notes: event.target.value } : current))} placeholder="Contexto curto para o time e para a IA..." className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-corpo! text-white outline-none placeholder:text-slate-600 focus:border-rose-400/30" />
           <div className="mt-5 flex justify-end gap-2">
             <button type="button" onClick={() => setDiscardDraft(null)} className="atlas-button-secondary">Cancelar</button>
             <button type="button" onClick={confirmDiscard} disabled={!discardDraft.reasonKey || Boolean(savingId)} className="atlas-button-primary disabled:cursor-not-allowed disabled:opacity-50">Confirmar descarte</button>
@@ -1391,9 +1452,9 @@ export default function PipelinePage() {
         <div role="dialog" aria-modal="true" aria-labelledby="followup-panel-title" aria-describedby="followup-panel-description" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
           if (event.key === "Escape") { event.preventDefault(); setFollowUpDraft(null); }
         }} className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-black/40 outline-none sm:p-6">
-          <p className="text-xs font-semibold uppercase tracking-[.14em] text-amber-300">Comprou em outro lugar</p>
-          <h3 id="followup-panel-title" className="mt-1 text-lg font-semibold text-white">O que pesou na decisão de {followUpDraft.leadName}?</h3>
-          <p id="followup-panel-description" className="mt-1 text-xs leading-5 text-slate-500">Projeto, região, preço, prazo, financiamento ou atendimento. Fica interno ao CRM e é o que ensina onde o Atlas perde negócio.</p>
+          <p className="text-rotulo font-semibold uppercase tracking-[.14em] text-amber-300">Comprou em outro lugar</p>
+          <h3 id="followup-panel-title" className="mt-1 text-numero font-semibold text-white">O que pesou na decisão de {followUpDraft.leadName}?</h3>
+          <p id="followup-panel-description" className="mt-1 text-rotulo leading-5 text-slate-500">Projeto, região, preço, prazo, financiamento ou atendimento. Fica interno ao CRM e é o que ensina onde o Atlas perde negócio.</p>
           <textarea
             id="followup-description"
             autoFocus
@@ -1402,7 +1463,7 @@ export default function PipelinePage() {
             value={followUpDraft.description}
             onChange={(event) => setFollowUpDraft((current) => (current ? { ...current, description: event.target.value } : current))}
             placeholder="Ex.: fechou num lançamento a 2 km, entrega 8 meses antes e entrada parcelada em 36x."
-            className="mt-4 w-full resize-y rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm leading-6 text-white outline-none placeholder:text-slate-600 focus:border-amber-400/30"
+            className="mt-4 w-full resize-y rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-corpo! leading-6 text-white outline-none placeholder:text-slate-600 focus:border-amber-400/30"
           />
           {/* Diz quanto falta em vez de recusar depois: o botão desabilitado sem
               explicação é a versão silenciosa do mesmo bloqueio. */}
@@ -1422,13 +1483,13 @@ export default function PipelinePage() {
         <div role="dialog" aria-modal="true" aria-labelledby="sale-panel-title" aria-describedby="sale-panel-description" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
           if (event.key === "Escape") { event.preventDefault(); setSaleDraft(null); }
         }} className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-5 shadow-2xl shadow-black/40 outline-none sm:p-6">
-          <p className="text-xs font-semibold uppercase tracking-[.14em] text-emerald-300">Venda fechada</p>
-          <h3 id="sale-panel-title" className="mt-1 text-lg font-semibold text-white">Por quanto {saleDraft.leadName} fechou?</h3>
-          <p id="sale-panel-description" className="mt-1 text-xs leading-5 text-slate-500">
+          <p className="text-rotulo font-semibold uppercase tracking-[.14em] text-emerald-300">Venda fechada</p>
+          <h3 id="sale-panel-title" className="mt-1 text-numero font-semibold text-white">Por quanto {saleDraft.leadName} fechou?</h3>
+          <p id="sale-panel-description" className="mt-1 text-rotulo leading-5 text-slate-500">
             O valor do contrato, em reais. É este número que volta para a Meta como conversão e ensina a campanha a procurar mais clientes como este — por isso não pode ser estimado a partir do orçamento declarado.
           </p>
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 focus-within:border-emerald-400/30">
-            <span className="text-sm text-slate-500">R$</span>
+            <span className="text-corpo text-slate-500">R$</span>
             <input
               id="sale-value"
               autoFocus
@@ -1436,7 +1497,7 @@ export default function PipelinePage() {
               value={saleDraft.value}
               onChange={(event) => setSaleDraft((current) => (current ? { ...current, value: event.target.value } : current))}
               placeholder="450.000,00"
-              className="w-full bg-transparent py-2.5 text-sm leading-6 text-white outline-none placeholder:text-slate-600"
+              className="w-full bg-transparent py-2.5 text-corpo! leading-6 text-white outline-none placeholder:text-slate-600"
             />
           </div>
           <p className="mt-2 text-rotulo text-slate-500" role="status">

@@ -97,9 +97,13 @@ export default function IntelligencePage() {
         <div
           role="status"
           className="cc6-sev-band cc6-panel-quiet cc6-reveal flex flex-wrap items-center justify-between gap-3 py-3 pl-5 pr-4"
-          style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
+          /* Era o rosa do tema NOTURNO copiado à mão. Hex não é sobrescrito
+             por tema nenhum: no tema claro a banda continuava rosa-clara ao
+             lado de um texto que JÁ sai do token de perigo e vira. Os dois
+             lados do par saem agora da mesma fonte. */
+          style={{ "--cc6-sev": "var(--atlas-estado-perigo)" } as CSSProperties}
         >
-          <span className="text-sm text-[var(--atlas-estado-perigo)]">{error}</span>
+          <span className="text-corpo leading-6 text-[var(--atlas-estado-perigo)]">{error}</span>
           <button type="button" onClick={() => void load()} className="cc6-ghost-btn">
             Tentar novamente
           </button>
@@ -140,18 +144,18 @@ export default function IntelligencePage() {
                   style={meta.sev ? ({ "--cc6-sev": meta.sev } as CSSProperties) : undefined}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-                    <h2 className="min-w-0 text-base font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
+                    <h2 className="min-w-0 text-corpo font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                       {item.title}
                     </h2>
                     <StatusBadge tone={meta.tone}>{item.status}</StatusBadge>
                   </div>
-                  <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">
+                  <p className="mt-1 text-corpo leading-6 text-[var(--atlas-texto-medio)]">
                     {item.summary || "Insight sem resumo."}
                   </p>
                   {item.recommendation ? (
                     <div className="mt-3">
                       <p className="cc6-eyebrow text-micro!">Recomendação</p>
-                      <p className="mt-1 text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
+                      <p className="mt-1 text-corpo font-medium leading-6 text-[var(--atlas-texto-forte)]">
                         {item.recommendation}
                       </p>
                     </div>
@@ -181,7 +185,7 @@ export default function IntelligencePage() {
         style={{ animationDelay: "120ms" }}
       >
         <StatusBadge tone="success">Seguro por padrão</StatusBadge>
-        <p className="text-sm leading-6 text-[var(--atlas-texto-medio)]">
+        <p className="text-corpo leading-6 text-[var(--atlas-texto-medio)]">
           Nenhuma decisão automática sobre pessoas — os sinais explicam; a execução é sempre humana.
         </p>
       </section>

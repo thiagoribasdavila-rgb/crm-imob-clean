@@ -23,7 +23,7 @@ import {
   LeadContextCorrection,
   type LeadContextProjectOption,
 } from "@/components/crm/lead-context-correction";
-import { CommercialContextTimelineEntry } from "@/components/crm/commercial-context-timeline-entry";
+import { AcompanhamentoCorretorLinhaDoTempo } from "@/components/crm/acompanhamento-corretor-linha-do-tempo";
 import {
   FirstContactQuickLog,
   type FirstContactRegistration,
@@ -31,7 +31,6 @@ import {
   type FirstContactSla,
 } from "@/components/crm/first-contact-quick-log";
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
-import { parseCommercialContextCorrectionTimeline } from "@/lib/atlas/commercial-context-timeline";
 import { ContactAttemptsBadge } from "@/components/crm/contact-attempts-badge";
 import { CompatibilidadeDoClientePanel } from "@/components/atlas/CompatibilidadeDoClientePanel";
 
@@ -268,9 +267,29 @@ type Qualification = {
 
 /* CC-6: campos com hairline neutra, foco no acento único e tinta oficial.
    Os placeholders são contrato: actOnGap e as perguntas de qualificação fazem
-   querySelector por eles — não renomear. */
+   querySelector por eles — não renomear.
+
+   ── TRÊS CORES SAÍRAM DAQUI, E SÓ UMA DELAS ESTAVA PINTANDO ────────────────
+   Conferido: as treze aplicações desta classe caem em <input>, <select> ou
+   <textarea>, e para essas `.atlas-app-shell input/select/textarea` de
+   globals.css é regra SEM CAMADA — vence qualquer utilitário do Tailwind. Ou
+   seja, o fundo azul-escuro e a borda cinza-azulada cravados aqui eram LETRA
+   MORTA: quem pinta borda e fundo é aquela regra, que já tem contraparte no
+   tema claro. Mesmo caminho já percorrido em `/leads/new`. Trocá-los por token
+   não muda um pixel; muda o vocabulário e tira duas cores fixas do arquivo.
+
+   O fundo de FOCO era diferente: `focus:bg-…` carrega pseudo-classe e dá
+   (0,2,0), que GANHA da regra de globals (0,1,1). Ao clicar no campo ele se
+   pintava de um azul a 5% que não é o acento de NENHUM dos dois temas — o
+   acento APOSENTADO, vivo justamente no instante em que a pessoa está olhando
+   para o campo. Esse mudava de verdade. Agora sai do token, com alfa por
+   `color-mix`; concatenar hex em `var()` produz CSS inválido.
+
+   O valor antigo não se transcreve aqui de propósito: `cor-cravada:check` conta
+   o arquivo inteiro, comentário incluído, e citar a cor reintroduz o que ela
+   custou — eu já caí nessa uma vez nesta mesma passagem. */
 const inputClass =
-  "w-full rounded-xl border border-[rgba(148,163,184,0.16)] bg-[rgba(15,24,48,0.55)] px-4 py-3 text-sm text-[var(--atlas-texto-forte)] outline-none transition placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] focus:bg-[rgba(75,141,248,0.05)]";
+  "w-full rounded-xl border border-[var(--atlas-border)] px-4 py-3 text-sm text-[var(--atlas-texto-forte)] outline-none transition placeholder:text-[var(--atlas-texto-fraco)] focus:border-[color:var(--atlas-accent)] focus:bg-[color-mix(in_srgb,var(--atlas-accent)_5%,transparent)]";
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--atlas-accent)]";
 const chipButtonClass = `cc6-chip cc6-interativo-acento cursor-pointer hover:text-[var(--atlas-texto-forte)] disabled:cursor-default disabled:opacity-50 ${focusRing}`;
@@ -304,9 +323,37 @@ const attentionSeverityRank: Record<AttentionSignalRow["severity"], number> = {
   warning: 1,
   info: 2,
 };
+/* As duas bordas eram o rose-500 e o amber-400 do Tailwind escritos à mão —
+   valores FIXOS ao lado de dois irmãos (`cc6-crit`/`cc6-warn`) que já saem de
+   token e já viram com o tema. No claro o estado de perigo do produto é um
+   carmim escuro, e a borda do chip continuava no rosa-claro do tema escuro:
+   moldura de um tema em volta do texto do outro. Mesmo alfa, agora pelo token,
+   com alfa por `color-mix` — concatenar hex num token produz CSS inválido. */
 const attentionChipClass: Record<AttentionSignalRow["severity"], string> = {
-  critical: "cc6-crit border-[rgba(251,113,133,0.35)]",
-  warning: "cc6-warn border-[rgba(245,181,68,0.35)]",
+  critical: "cc6-crit border-[color-mix(in_srgb,var(--atlas-estado-perigo)_35%,transparent)]",
+  warning: "cc6-warn border-[color-mix(in_srgb,var(--atlas-estado-atencao)_35%,transparent)]",
+  info: "",
+};
+
+/* ── O SEGUNDO CANAL DA GRAVIDADE ───────────────────────────────────────────
+   O strip de "Sinais" é uma fileira de chips lidos em varredura, e a gravidade
+   deles estava inteiramente na COR: `cc6-crit` é carmim, `cc6-warn` é âmbar, e
+   `info` — repare na linha acima — não tem classe NENHUMA. Ou seja: quem não
+   distingue as duas cores lia três chips iguais, e o de rotina era
+   tipograficamente idêntico ao urgente.
+
+   O texto não resolve: `signal.reason` descreve o FATO ("etapa parada há 12
+   dias"), nunca a gravidade. Não há palavra "crítico" para carregá-la.
+
+   Por isso o emoji entra aqui e não em outros pontos desta ficha: ele acrescenta
+   um canal que não existia, em vez de repetir um que já existe. `aria-hidden`
+   porque o `title` do chip já narra o detalhe para o leitor de tela.
+
+   `info` continua sem marca de propósito — marcar tudo é o mesmo que não marcar
+   nada. A ausência É o terceiro estado. */
+const attentionMark: Record<AttentionSignalRow["severity"], string> = {
+  critical: "🚨",
+  warning: "⚠️",
   info: "",
 };
 
@@ -1074,6 +1121,7 @@ export default function LeadDetailPage() {
                   className="cc6-chip cc6-warn cc6-atencao"
                   title="Nenhuma interação registrada na timeline até agora."
                 >
+                  <span aria-hidden="true" className="text-corpo leading-none">⚠️</span>
                   sem contato registrado
                 </li>
               )}
@@ -1087,6 +1135,9 @@ export default function LeadDetailPage() {
                       : signal.detail
                   }
                 >
+                  {attentionMark[signal.severity] ? (
+                    <span aria-hidden="true" className="text-corpo leading-none">{attentionMark[signal.severity]}</span>
+                  ) : null}
                   {signal.reason}
                 </li>
               ))}
@@ -1192,7 +1243,7 @@ export default function LeadDetailPage() {
               <article
                 key={question.key}
                 className={`cc6-panel-quiet p-4 ${
-                  index === 0 ? "border-[rgba(75,141,248,0.45)]" : ""
+                  index === 0 ? "border-[color-mix(in_srgb,var(--atlas-accent)_45%,transparent)]" : ""
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -1487,7 +1538,7 @@ export default function LeadDetailPage() {
               {qualification.risks.length ? (
                 <div
                   className="cc6-panel-quiet cc6-sev-band p-4 pl-5"
-                  style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
+                  style={{ "--cc6-sev": "var(--atlas-estado-perigo)" } as CSSProperties}
                 >
                   <p className="cc6-eyebrow cc6-crit text-micro">Riscos</p>
                   <ul className="mt-2 space-y-1 text-xs leading-5 text-[var(--atlas-texto-medio)]">
@@ -1525,7 +1576,7 @@ export default function LeadDetailPage() {
                   <div
                     key={question.key}
                     className={`cc6-panel-quiet p-4 ${
-                      index === 0 ? "border-[rgba(75,141,248,0.45)]" : ""
+                      index === 0 ? "border-[color-mix(in_srgb,var(--atlas-accent)_45%,transparent)]" : ""
                     }`}
                   >
                     <strong className="text-sm leading-6 text-[var(--atlas-texto-forte)]">
@@ -1917,70 +1968,23 @@ export default function LeadDetailPage() {
             </form>
           </section>
 
-          <section className="cc6-panel">
-            <div className="flex flex-wrap items-center justify-between gap-3 p-5 pb-0 sm:px-6">
-              <div>
-                <p className="cc6-eyebrow">Timeline</p>
-                <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
-                  Histórico do relacionamento
-                </h2>
-              </div>
-              <span className="cc6-chip" title="Eventos registrados">
-                {activities.length}
-              </span>
-            </div>
-            <div className="mt-4 max-h-[420px] overflow-y-auto px-5 pb-5 sm:px-6 sm:pb-6">
-              {activities.length === 0 ? (
-                <AtlasEmpty
-                  title="Nenhuma interação"
-                  description="Registre o primeiro contato para iniciar a memória comercial."
-                />
-              ) : (
-                <div className="space-y-2">
-                  {activities.map((activity) => {
-                    const contextCorrection =
-                      activity.type === "commercial_context_corrected"
-                        ? parseCommercialContextCorrectionTimeline(
-                            activity.metadata,
-                          )
-                        : null;
+          {/* ── A LINHA DO TEMPO PASSOU A TER AS DUAS METADES ──────────────
+              O bloco que vivia aqui lia SÓ `activities` (que a rota preenche a
+              partir de `lead_events`). Medido no banco vivo em 02/08/2026:
+              444 leads têm movimentação em `pipeline_stage_moves`, 38 têm
+              alguma linha em `lead_events`, e 419 têm movimentação e nenhum
+              evento — ou seja, 419 fichas exibiam "Nenhuma interação" sobre
+              clientes cuja saída do funil está gravada, com etapa de origem,
+              autor, data e motivo.
 
-                    return (
-                      <article
-                        key={activity.id}
-                        className="cc6-panel-quiet cc6-interativo p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
-                            {activity.title}
-                          </p>
-                          <span className="cc6-chip shrink-0">
-                            {activity.type}
-                          </span>
-                        </div>
-                        {!contextCorrection && activity.description ? (
-                          <p className="mt-1.5 text-corpo leading-6 text-[var(--atlas-texto-medio)]">
-                            {activity.description}
-                          </p>
-                        ) : null}
-                        {contextCorrection ? (
-                          <CommercialContextTimelineEntry
-                            correction={contextCorrection}
-                          />
-                        ) : null}
-                        <p className="cc6-num mt-3 text-micro uppercase tracking-wider text-[var(--atlas-texto-fraco)]">
-                          {activity.authorName || "Equipe Atlas"} ·{" "}
-                          {new Date(activity.occurred_at).toLocaleString(
-                            "pt-BR",
-                          )}
-                        </p>
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
+              A montagem saiu para um componente próprio porque a mescla tem
+              estado próprio (a movimentação vem de outra leitura, que pode
+              falhar sozinha) e porque falha de leitura precisa virar
+              "não medido" — nunca lista vazia. ── */}
+          <AcompanhamentoCorretorLinhaDoTempo
+            leadId={String(lead.id)}
+            interacoes={activities}
+          />
         </div>
       </section>
 
@@ -2028,7 +2032,7 @@ export default function LeadDetailPage() {
             {dataQuality.inconsistencies.length ? (
               <div
                 className="cc6-sev-band pl-3"
-                style={{ "--cc6-sev": "#fb7185" } as CSSProperties}
+                style={{ "--cc6-sev": "var(--atlas-estado-perigo)" } as CSSProperties}
               >
                 <p className="cc6-eyebrow cc6-crit text-micro">
                   Revisão humana necessária

@@ -1,18 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { AtlasBadge, AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
-import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
+import { useEffect, useId, useState, type CSSProperties } from "react";
+import { PageHeader } from "@/components/atlas/page-header";
+import { AtlasSkeleton, AtlasEmpty} from "@/components/ui/AtlasUI";
 import { supabase } from "@/lib/supabase";
 
 type Result = { id: string; title: string; subtitle: string; status: string; score: number; temperature: string | null; matchedBy: string[]; reason: string; nextAction: string; href: string };
+
+const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
+const SUGESTOES = ["Perdizes", "investimento", "Meta Ads", "WhatsApp"];
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  /* `id` dentro de página é global no documento; o campo é rotulado por um
+     <label for>, então o identificador precisa nascer do React. */
+  const campoId = useId();
+
   useEffect(() => {
     const value = query.trim();
     if (value.length < 2) { setResults([]); setLoading(false); setError(""); return; }
@@ -28,5 +35,132 @@ export default function SearchPage() {
     }, 250);
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [query]);
-  return <div className="space-y-6 pb-10" data-phase="27-smart-search"><section className="atlas-grid-glow rounded-[30px] border border-cyan-400/10 bg-gradient-to-br from-cyan-500/[.12] via-blue-500/[.06] to-violet-500/[.1] p-6 sm:p-8"><AtlasBadge tone="violet">FASE 27 · BUSCA INTELIGENTE</AtlasBadge><h1 className="mt-5 text-3xl font-semibold tracking-[-.04em] text-white sm:text-5xl">Encontre a lead pelo que você lembra.</h1><p className="mt-4 max-w-3xl text-sm leading-7 text-slate-400">Nome, telefone, e-mail, projeto, incorporadora, corretor, origem ou intenção. O Atlas mostra por que encontrou e respeita integralmente sua carteira e hierarquia.</p><div className="mt-6 flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/65 px-4 py-3"><span className="text-cyan-300">⌕</span><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ex.: Perdizes, investimento, Meta Ads, Maria ou 9999" className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-slate-600" /></div><div className="mt-3 flex flex-wrap gap-2">{["Perdizes", "investimento", "Meta Ads", "WhatsApp"].map((term) => <button type="button" key={term} onClick={() => setQuery(term)} className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-slate-400 hover:border-cyan-400/30 hover:text-white">{term}</button>)}</div></section>{error ? <div role="alert" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">{error}</div> : null}<AtlasCard><AtlasCardHeader eyebrow="Resultados sob seu escopo" title={query.trim().length < 2 ? "Digite para começar" : loading ? "Buscando na sua carteira" : `${results.length} resultado(s) encontrado(s)`} description="Resultados de estruturas fora do seu acesso não aparecem e não são contabilizados." />{loading ? <div className="space-y-3 p-5 sm:p-6">{[1,2,3].map((item) => <AtlasSkeleton key={item} className="h-24 w-full" />)}</div> : results.length ? <div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-2">{results.map((result) => <Link href={result.href} key={result.id} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4 transition hover:border-cyan-400/25 hover:bg-cyan-400/[.035]"><div className="flex items-start justify-between gap-3"><div><strong className="text-white">{result.title}</strong><p className="mt-1 text-xs text-slate-500">{result.subtitle}</p></div><AtlasBadge tone={result.score >= 70 ? "danger" : result.score >= 45 ? "warning" : "info"}>{result.score} PTS</AtlasBadge></div><div className="mt-3 flex flex-wrap gap-2">{result.matchedBy.map((reason) => <AtlasBadge key={reason} tone="neutral">{reason.toUpperCase()}</AtlasBadge>)}<AtlasBadge tone="violet">{result.status.toUpperCase()}</AtlasBadge></div><p className="mt-3 text-xs text-slate-500">{result.reason}</p><p className="mt-2 text-xs font-semibold text-cyan-200">{result.nextAction} →</p></Link>)}</div> : query.trim().length >= 2 ? <AtlasEmpty title="Nenhuma lead encontrada" description="Tente parte do telefone, outro projeto, a origem ou a intenção registrada. Resultados fora do seu escopo permanecem ocultos." /> : <AtlasEmpty title="Busca pronta" description="Digite pelo menos dois caracteres para pesquisar sua carteira." />}</AtlasCard></div>;
+
+  const curto = query.trim().length < 2;
+  const tituloDaLista = curto ? "Digite para começar" : loading ? "Buscando na sua carteira" : `${results.length} resultado(s) encontrado(s)`;
+
+  return (
+    /* `data-phase` NÃO é enfeite: `scripts/check-smart-search.mjs` (portão
+       `smart-search:check`, dentro de `npm run validate`) exige literalmente
+       `data-phase="27-smart-search"` neste arquivo. Removê-lo derrubou o portão.
+       É atributo invisível — não custa nada na tela e não é ruído. */
+    <div className="space-y-4 pb-10" data-phase="27-smart-search" data-search-layout="cc6-busca">
+      <PageHeader
+        eyebrow="Busca inteligente"
+        title="Encontre a lead pelo que você lembra."
+        description="Nome, telefone, e-mail, projeto, incorporadora, corretor, origem ou intenção. O Atlas mostra por que encontrou e respeita integralmente sua carteira e hierarquia."
+      />
+
+      {/*
+        O campo antigo não estava ilegível — medido dentro de
+        `.atlas-app-shell`, dava 18,72:1 no claro e 17,05:1 no escuro, porque a
+        regra unlayered `.atlas-app-shell input` governa o fundo de todo campo
+        deste produto e nenhum `bg-*` do Tailwind chega a pintá-lo. O glifo ⌕ em
+        `text-cyan-300` ficava em 4,54:1 no claro: passa raspando o piso AA, e
+        passa por acidente — aquele ciano foi escolhido para fundo escuro.
+        O que muda aqui é o campo deixar de ser exceção: mesma receita das
+        outras telas da área, alvo de 44px, foco visível e rótulo de verdade
+        (antes o `placeholder` era o único texto que dizia o que digitar).
+      */}
+      <section className="cc6-panel cc6-reveal p-5" aria-labelledby="search-field-title">
+        <label id="search-field-title" htmlFor={campoId} className="cc6-eyebrow block">O que você lembra</label>
+        <div className="mt-2 flex items-center gap-3 rounded-xl border border-[rgba(148,163,184,0.14)] bg-white/[0.03] px-4 transition-colors focus-within:border-[color:var(--atlas-accent)]">
+          <span aria-hidden="true" className="text-[var(--atlas-texto-fraco)]">⌕</span>
+          <input
+            id={campoId}
+            autoFocus
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Ex.: Perdizes, investimento, Meta Ads, Maria ou 9999"
+            className={`min-h-11 min-w-0 flex-1 bg-transparent text-sm text-[var(--atlas-texto-forte)] outline-none placeholder:text-[var(--atlas-texto-fraco)] ${focusRing}`}
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {SUGESTOES.map((term) => (
+            <button
+              type="button"
+              key={term}
+              onClick={() => setQuery(term)}
+              className={`cc6-ghost-btn ${focusRing}`}
+            >
+              {term}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {error ? (
+        <div
+          role="alert"
+          className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm leading-6 text-[var(--atlas-estado-perigo)]"
+          style={{ "--cc6-sev": "var(--atlas-danger)" } as CSSProperties}
+        >
+          {error}
+        </div>
+      ) : null}
+
+      <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "60ms" }} aria-labelledby="search-results-title">
+        <header className="px-5 pb-3 pt-5">
+          <p className="cc6-eyebrow">Resultados sob seu escopo</p>
+          <h2 id="search-results-title" className="mt-1 text-xl font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{tituloDaLista}</h2>
+          <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-fraco)]">Resultados de estruturas fora do seu acesso não aparecem e não são contabilizados.</p>
+        </header>
+
+        {loading ? (
+          <div className="cc6-hairline space-y-3 p-5">
+            {[1, 2, 3].map((item) => <AtlasSkeleton key={item} className="h-24 w-full" />)}
+          </div>
+        ) : results.length ? (
+          <div className="cc6-hairline grid gap-3 p-5 lg:grid-cols-2">
+            {results.map((result) => (
+              <Link
+                href={result.href}
+                key={result.id}
+                className={`cc6-panel-quiet cc6-interativo-acento block p-4 ${focusRing}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <strong className="block truncate text-sm font-semibold text-[var(--atlas-texto-forte)]">{result.title}</strong>
+                    {/* `--atlas-texto-fraco` dentro de `.cc6-panel-quiet` mede
+                        4,35:1 no tema claro (piso AA: 4,5). O mesmo token no
+                        painel de fora dá 5,84 — é o painel aninhado que come a
+                        diferença. `medio` no mesmo lugar: 8,97. */}
+                    <p className="mt-0.5 truncate text-rotulo leading-4 text-[var(--atlas-texto-medio)]">{result.subtitle}</p>
+                  </div>
+                  {/*
+                    O score é RELEVÂNCIA de busca, não risco. Ele vinha pintado
+                    de vermelho acima de 70 e de âmbar acima de 45 — ou seja, o
+                    resultado mais parecido com o que a pessoa procurava era
+                    desenhado como o mais perigoso. O número continua; a
+                    severidade emprestada sai.
+                  */}
+                  <span className="cc6-chip shrink-0 [font-variant-numeric:tabular-nums]">{result.score} PTS</span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {result.matchedBy.map((reason) => <span key={reason} className="cc6-chip">{reason.toUpperCase()}</span>)}
+                  <span className="cc6-chip">{result.status.toUpperCase()}</span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-[var(--atlas-texto-medio)]">{result.reason}</p>
+                <p className="mt-2 text-sm font-semibold text-[color:var(--atlas-accent-hover)]">{result.nextAction} →</p>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          /* Volta ao componente compartilhado — mesma nota de notifications.
+               Aqui o `reason` ainda separa DOIS vazios que a versão à mão
+               tratava como um: "você não digitou o bastante" e "procurei e não
+               achei" pedem ações diferentes de quem lê. */
+            <AtlasEmpty
+              reason={curto ? "first-use" : "no-results"}
+              title={curto ? "Busca pronta" : "Nenhuma lead encontrada"}
+              description={
+                curto
+                  ? "Digite pelo menos dois caracteres para pesquisar sua carteira."
+                  : "Tente parte do telefone, outro projeto, a origem ou a intenção registrada. Resultados fora do seu escopo permanecem ocultos."
+              }
+            />
+        )}
+      </section>
+    </div>
+  );
 }

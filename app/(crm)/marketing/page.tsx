@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/atlas/page-header";
 import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { CreativeFunnelPanel } from "@/components/marketing/creative-funnel-panel";
 import { CampaignIntakePanel } from "@/components/marketing/campaign-intake-panel";
+import { reconciliaInvestimento } from "@/lib/marketing/reconciliacao-de-investimento";
 
 /*
  * CC-6 · Hub de marketing vivo — menos ruído, mais informação por pixel.
@@ -469,9 +470,54 @@ export default function MarketingPage() {
       ? "Não foi possível medir quantos leads desta campanha ficaram sem elo de atribuição neste banco — o número não é 0, é desconhecido."
       : `${leadsUnlinked} lead(s) com o id externo desta campanha estão SEM elo de atribuição. Venda e custo por venda aqui seriam ausência de medição, não resultado.`;
 
+  /**
+   * ═══ O CPL QUE DIVIDIA O DINHEIRO DE UMA CONTA PELAS LEADS DE OUTRA ═══════
+   *
+   * Medido nesta organização em 02/08/2026, direto de /api/v1/marketing/cost-report:
+   *
+   *   7 campanhas com gasto ..... R$ 4.122,19 ..... leads: 0 em TODAS
+   *   1 campanha com leads ...... 24 leads ........ spend: 0
+   *
+   * Nenhuma linha do relatório tem as duas pontas. A conta que gastou não é a
+   * que produziu as leads (a das 24 é `120251113236400624`, fora da conta de
+   * anúncios que o CRM lê). E a tela estampava, no terceiro degrau da faixa:
+   *
+   *   CPL médio ......... R$ 172
+   *
+   * que é 4.122,19 ÷ 24 — redondo, apresentável em reunião, e falso. É verba de
+   * um lugar dividida por resultado de outro, e é justamente o número pelo qual
+   * o diretor decide escalar ou pausar.
+   *
+   * `lib/marketing/reconciliacao-de-investimento.ts` já existia com esta regra
+   * escrita e testada — CPL só onde as duas pontas são a MESMA campanha — e a
+   * tela não a consultava. Passa a consultar: quando existe campanha com gasto
+   * E lead, o número aparece (média ponderada só sobre essas); quando não
+   * existe, o degrau mostra "—" e a frase abaixo diz por quê. Ausência com
+   * motivo é diagnóstico; número inventado vira decisão de verba.
+   *
+   * O que NÃO muda: "Investimento", "Leads" e "Campanhas" continuam sendo os
+   * mesmos fatos observados, na mesma posição.
+   */
+  const reconciliacao = useMemo(() => {
+    if (!report) return null;
+    const linhas = report.byCampaign.aggregate;
+    return reconciliaInvestimento(
+      linhas
+        .filter((row) => row.spend > 0)
+        .map((row) => ({ externalId: row.key, nome: row.label, reais: row.spend, de: null, ate: null })),
+      linhas.filter((row) => row.leads > 0).map((row) => ({ externalId: row.key, leads: row.leads })),
+    );
+  }, [report]);
+
   // O único número que decide nesta tela é o investimento — é a pergunta que o
   // diretor traz. Ele carrega a escala de herói; os outros três comparam.
-  const strip: Array<{ label: string; value: string; heroi?: boolean; nota?: string }> = report
+  const strip: Array<{
+    label: string;
+    value: string;
+    heroi?: boolean;
+    nota?: string;
+    notaAlerta?: boolean;
+  }> = report
     ? [
         {
           label: "Investimento",
@@ -483,7 +529,18 @@ export default function MarketingPage() {
           nota: report.source === "meta_live" ? "dados vivos da Meta" : undefined,
         },
         { label: "Leads", value: String(leads) },
-        { label: "CPL médio", value: leads > 0 ? money.format(report.totals.spend / leads) : "—" },
+        {
+          label: "CPL médio",
+          value: reconciliacao?.cplGlobal !== null && reconciliacao?.cplGlobal !== undefined
+            ? money.format(reconciliacao.cplGlobal)
+            : "—",
+          // Curto de propósito: a frase inteira já vem logo abaixo, e repetir
+          // o motivo dentro do rótulo empurrava a faixa para duas linhas —
+          // duas frases dizendo o mesmo é o ruído que este passe remove.
+          // "sem lastro" é o vocabulário que o produto já usa para isto.
+          nota: reconciliacao?.cplGlobal === null ? "sem lastro" : undefined,
+          notaAlerta: reconciliacao?.cplGlobal === null,
+        },
         { label: "Campanhas", value: String(report.totals.campaigns) },
       ]
     : [];
@@ -587,11 +644,36 @@ export default function MarketingPage() {
                     do tema escuro. Passa AA nos dois temas e nos dois fundos. */}
                 <p className="cc6-metric-label mt-1.5">
                   {item.label}
-                  {item.nota ? <span className="text-[var(--atlas-accent)]"> · {item.nota}</span> : null}
+                  {/* Acento = PROCEDÊNCIA ("dados vivos da Meta"). Recusa de
+                      cálculo não é procedência: ela vai com a tinta de atenção,
+                      senão as duas notas dizem a mesma coisa em azul. */}
+                  {item.nota ? (
+                    <span
+                      className={
+                        item.notaAlerta
+                          ? "text-[var(--atlas-estado-atencao)]"
+                          : "text-[var(--atlas-accent)]"
+                      }
+                    >
+                      {" "}
+                      · {item.nota}
+                    </span>
+                  ) : null}
                 </p>
               </div>
             ))}
           </div>
+
+          {/* A frase que impede o número inventado de voltar. Sem borda nova:
+              o painel já separa, e filete a 12px do grid seria textura.
+              Só existe quando a recusa acontece — quando as duas pontas se
+              encontram, o CPL fala por si e esta linha some. */}
+          {reconciliacao?.porqueSemCpl ? (
+            <p className="px-5 pb-4 text-corpo leading-5 text-[var(--atlas-texto-medio)]">
+              <span className="font-semibold text-[var(--atlas-estado-atencao)]">CPL não calculado.</span>{" "}
+              {reconciliacao.porqueSemCpl}
+            </p>
+          ) : null}
 
           {/* ═══ O CONTROLE MORA ONDE ELE MANDA ═══════════════════════════
               O seletor de dimensão (Campanha · Projeto · Incorporador) vivia
@@ -801,9 +883,18 @@ export default function MarketingPage() {
                       /approvals. Recomendação que exige redigitação não vira
                       ação em dia corrido. */}
                   <div className="atlas-stop-loss-acao">
+                    {/* Medido no navegador: este botão saía com 27px de altura
+                        — o menor alvo da tela era o ÚNICO gesto que muda estado
+                        nela (redige a decisão e a manda para /approvals).
+                        `min-height` não é declarado por `.atlas-stop-loss-acao
+                        button` em globals.css, então o utilitário alcança sem
+                        precisar de `!`. A largura mínima existe para que
+                        "Enviando…" não encolha o botão sob o cursor — estado de
+                        carregamento não pode mover layout. */}
                     <button
                       type="button"
-                                            onClick={() => levarParaAprovacao(d.regra)}
+                      className="min-h-11 min-w-[168px]"
+                      onClick={() => levarParaAprovacao(d.regra)}
                       disabled={propondo === d.regra || Boolean(propostas[d.regra])}
                     >
                       {propondo === d.regra ? "Enviando…" : "Levar para aprovação"}
@@ -1151,24 +1242,86 @@ export default function MarketingPage() {
                     rows.map((row) => {
                       const broken = attributionOf(row.key);
                       const note = broken ? attributionNote(broken.leadsUnlinked) : undefined;
+                      /* Gasto que o CRM não conhece. Nomeado uma vez porque
+                         DUAS células dependem dele: o investimento e a fatia.
+                         `share` é `spend ÷ total` (lib/marketing/cost-report.ts),
+                         ou seja, é DERIVADA do mesmo número ausente — imprimir
+                         "0%" ali afirma "não consumiu verba nenhuma" com a
+                         mesma autoridade com que a coluna ao lado admite não
+                         saber. Ausência não vira zero em nenhuma das duas. */
+                      const gastoNaoImportado = dim === "byCampaign" && row.spend === 0 && row.leads > 0;
                       return (
                       <tr key={row.key} className="cc6-hairline transition-colors hover:bg-[color-mix(in_srgb,var(--atlas-accent)_5%,transparent)]">
                         <td className="max-w-56 break-words px-5 py-2.5 font-medium text-[var(--atlas-texto-forte)]" title={row.label}>{row.label}</td>
-                        <td className="cc6-num py-2.5 pr-4 text-right text-[var(--atlas-texto-forte)]">{money.format(row.spend)}</td>
+                        {/* O MESMO defeito, do outro lado da tabela. A campanha
+                            que trouxe as 24 leads saía com "R$ 0" — e R$ 0 lido
+                            de relance é "não custou nada", quando a verdade é
+                            que o CRM não conhece o gasto dela: ela não pertence
+                            à conta de anúncios que o Atlas lê. É exatamente o
+                            caso que `reconciliaInvestimento` chama de
+                            `leadSemGasto`, e a frase no topo já o declara.
+                            Só vale no corte por campanha, que é onde a
+                            reconciliação por id externo faz sentido. */}
+                        <td
+                          className="cc6-num py-2.5 pr-4 text-right text-[var(--atlas-texto-forte)]"
+                          title={
+                            gastoNaoImportado
+                              ? "Nenhuma linha de investimento importada para esta campanha — ela não está na conta de anúncios que o CRM lê. Zero aqui seria ausência de importação, não gasto medido."
+                              : undefined
+                          }
+                        >
+                          {gastoNaoImportado ? (
+                            <span className="text-rotulo text-[var(--atlas-estado-atencao)]">gasto não importado</span>
+                          ) : (
+                            money.format(row.spend)
+                          )}
+                        </td>
+                        {/* ═══ O ZERO QUE MENTIA ═══════════════════════════
+                            Sete das oito campanhas desta conta saíam com "0"
+                            nesta célula — e as sete gastaram entre R$ 341 e
+                            R$ 991. Lido de relance, "0" é veredito: a campanha
+                            rodou e não trouxe ninguém. A verdade é outra:
+                            `leadsUnlinked` chega NULL, ou seja, o banco não
+                            conseguiu medir quantas leads carregam o id externo
+                            desta campanha — e as 24 leads que este CRM tem vêm
+                            de uma campanha que nem está nesta conta.
+
+                            Ausência de medição desenhada como zero é a mesma
+                            classe de defeito que "0 vendas": some a diferença
+                            entre "não trouxe" e "não sei". A célula passa a
+                            dizer a palavra — `sem atribuição` — e o número só
+                            volta quando existe número. A contagem continua
+                            aparecendo sempre que ela é fato (leads > 0), com o
+                            "+?" que já avisava que pode haver mais. */}
                         <td className="cc6-num py-2.5 pr-4 text-right text-[var(--atlas-texto-medio)]" title={note}>
-                          {row.leads}
-                          {broken ? <span className="ml-1 text-micro text-[var(--atlas-estado-atencao)]">+?</span> : null}
+                          {broken && row.leads === 0 ? (
+                            <span className="text-rotulo text-[var(--atlas-estado-atencao)]">sem atribuição</span>
+                          ) : (
+                            <>
+                              {row.leads}
+                              {broken ? <span className="ml-1 text-rotulo text-[var(--atlas-estado-atencao)]">+?</span> : null}
+                            </>
+                          )}
                         </td>
                         <td className="cc6-num py-2.5 pr-4 text-right text-[var(--atlas-texto-medio)]" title={note}>{broken ? "—" : row.sales}</td>
                         <td className="cc6-num py-2.5 pr-4 text-right text-[var(--atlas-texto-medio)]" title={note}>{broken ? "—" : row.cpl !== null ? money.format(row.cpl) : "—"}</td>
                         <td className="cc6-num py-2.5 pr-4 text-right text-[var(--atlas-texto-medio)]" title={note}>{broken ? "—" : row.cac !== null ? money.format(row.cac) : "—"}</td>
-                        <td className="py-2.5 pr-5">
-                          <span className="flex items-center justify-end gap-2">
-                            <span aria-hidden="true" className="block h-[3px] w-14 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--atlas-texto-fraco)_28%,transparent)]">
-                              <span className="block h-full rounded-full bg-[var(--atlas-accent)] opacity-80" style={{ width: `${Math.min(100, Math.max(0, row.share))}%` }} />
-                            </span>
-                            <span className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">{row.share.toFixed(0)}%</span>
-                          </span>
+                        {/* A barrinha de 3px que morava aqui reimprimia, em
+                            forma, o MESMO número impresso a 6px de distância —
+                            e a comparação entre linhas que ela prometia já é
+                            respondida, melhor e acima da dobra, pela faixa
+                            "Para onde a verba foi", que é 100% e mostra
+                            concentração. Gráfico redundante é ruído com cara de
+                            informação. O número fica; a forma sai. */}
+                        <td
+                          className="cc6-num py-2.5 pr-5 text-right text-rotulo text-[var(--atlas-texto-fraco)]"
+                          title={
+                            gastoNaoImportado
+                              ? "Fatia da verba não calculável: ela é o gasto desta campanha dividido pelo total, e o gasto desta campanha não foi importado."
+                              : undefined
+                          }
+                        >
+                          {gastoNaoImportado ? "—" : `${row.share.toFixed(0)}%`}
                         </td>
                       </tr>
                       );
@@ -1179,9 +1332,11 @@ export default function MarketingPage() {
             </div>
             {dim === "byCampaign" && rows.some((row) => attributionOf(row.key)) ? (
               <p className="cc6-hairline px-5 py-2.5 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-                “—” com “+?” ao lado dos leads: a campanha tem leads sem elo de atribuição (ou o elo não é
-                mensurável neste banco). Venda, CPL e CAC ficam ocultos de propósito — ali o zero seria
-                ausência de medição, não resultado.
+                “sem atribuição” na coluna de leads (e “+?” quando há contagem): a campanha tem leads sem elo
+                de atribuição, ou o elo não é mensurável neste banco. “gasto não importado” em Invest.: a
+                campanha trouxe lead e o CRM não tem nenhuma linha de investimento dela. Venda, CPL e CAC
+                ficam ocultos de propósito — em todos esses casos o zero seria ausência de medição, não
+                resultado.
               </p>
             ) : null}
           </section>

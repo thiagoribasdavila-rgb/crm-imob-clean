@@ -75,7 +75,7 @@ async function apurar(
   // lead. Isso importa além da economia de consulta: uma visita agendada nesta
   // semana para uma lead que entrou no mês passado CONTA para o empreendimento,
   // e amarrá-la à lead da semana a deixaria de fora.
-  const [leads, campanhas, visitas, propostas, gastos] = await Promise.all([
+  const [leads, campanhas, projetos, visitas, propostas, gastos] = await Promise.all([
     admin.from("leads")
       .select("id,development_id,created_at,first_contacted_at,first_contact_due_at,status")
       .eq("organization_id", organizationId)
@@ -84,6 +84,12 @@ async function apurar(
       .lte("created_at", semana.fim),
     admin.from("marketing_campaigns")
       .select("id,name,project_id")
+      .eq("organization_id", organizationId),
+    // A PONTE. `marketing_campaigns.project_id` aponta `crm_projects.id`, e
+    // `crm_projects.development_id` aponta `developments.id` — dois cadastros
+    // diferentes para os MESMOS 4 empreendimentos, com IDs diferentes.
+    admin.from("crm_projects")
+      .select("id,development_id")
       .eq("organization_id", organizationId),
     admin.from("lead_visits")
       .select("id,development_id")
@@ -123,16 +129,39 @@ async function apurar(
   const visitasPorEmpreendimento = contarPor(visitas.data);
   const propostasPorEmpreendimento = contarPor(propostas.data);
 
-  const projetoDaCampanha = new Map(
-    (campanhas.data ?? []).map((c) => [c.id, c.project_id as string | null]),
+  /* ── O SALTO QUE FALTAVA ENTRE A CAMPANHA E O EMPREENDIMENTO ─────────────
+     Esta função montava `gastoPorEmpreendimento` com a chave
+     `campanha.project_id` e depois consultava esse mapa com `development.id`.
+     São tabelas diferentes: `project_id` é FK de `crm_projects`, e `e.id` é PK
+     de `developments`. Conferido no catálogo de chaves da produção em
+     02/08/2026 — os dois cadastros guardam os MESMOS 4 empreendimentos com IDs
+     diferentes, então a comparação devolvia `false` sempre.
+
+     Não estava dando erro por sorte: as 8 campanhas da base têm `project_id`
+     NULL, e o laço nunca chegava a montar o mapa. No dia em que alguém
+     vinculasse a primeira campanha a um projeto, o relatório do parceiro
+     continuaria dizendo "gasto não medido" para sempre, em silêncio, e
+     nenhuma campanha apareceria na coluna de campanhas.
+
+     A ponte é `crm_projects.development_id`. Com ela, campanha e empreendimento
+     passam a se encontrar de fato. */
+  const empreendimentoDoProjeto = new Map<string, string>();
+  for (const projeto of projetos.data ?? []) {
+    if (projeto.development_id) empreendimentoDoProjeto.set(projeto.id, projeto.development_id);
+  }
+  const empreendimentoDaCampanha = new Map<string, string | null>(
+    (campanhas.data ?? []).map((c) => [
+      c.id,
+      c.project_id ? empreendimentoDoProjeto.get(c.project_id) ?? null : null,
+    ]),
   );
   const gastoPorEmpreendimento = new Map<string, number>();
   for (const g of gastos.data ?? []) {
-    const projeto = g.campaign_id ? projetoDaCampanha.get(g.campaign_id) : null;
-    if (!projeto) continue;
+    const empreendimento = g.campaign_id ? empreendimentoDaCampanha.get(g.campaign_id) : null;
+    if (!empreendimento) continue;
     gastoPorEmpreendimento.set(
-      projeto,
-      (gastoPorEmpreendimento.get(projeto) ?? 0) + Number(g.amount ?? 0),
+      empreendimento,
+      (gastoPorEmpreendimento.get(empreendimento) ?? 0) + Number(g.amount ?? 0),
     );
   }
 
@@ -159,8 +188,10 @@ async function apurar(
       visitasAgendadas: visitasPorEmpreendimento.get(e.id) ?? 0,
       propostas: propostasPorEmpreendimento.get(e.id) ?? 0,
       vendas: minhas.filter((l) => vendido(l.status)).length,
+      // Mesmo salto do gasto: comparar `project_id` com `e.id` cruzava chave de
+      // `crm_projects` com PK de `developments` e nunca casava.
       campanhas: (campanhas.data ?? [])
-        .filter((c) => c.project_id === e.id)
+        .filter((c) => empreendimentoDaCampanha.get(c.id) === e.id)
         .map((c) => c.name)
         .filter(Boolean),
       gasto: gastoPorEmpreendimento.has(e.id) ? gastoPorEmpreendimento.get(e.id) ?? 0 : null,

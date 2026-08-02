@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FilaDeRecuperacao } from "@/components/crm/fila-de-recuperacao";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
@@ -53,6 +54,19 @@ export default function ReactivationGovernancePage() {
       <div className="mt-6 flex flex-wrap gap-3"><Link href="/leads/import" className="atlas-button-primary">Importar base autorizada</Link><Link href="/leads/reactivation" className="atlas-button-secondary">Abrir central operacional</Link></div>
     </section>
     {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
+    {/* A fila vem ANTES das bases e do simulador, e a ordem e a resposta a uma
+        pergunta de ordem: o botao "Importar base autorizada" logo acima nunca
+        disse importar QUEM. Medido no banco em 02/08/2026: das 419 leads
+        perdidas, 252 foram descartadas como `inalcancavel` -- que nao e "nao
+        quer", e "ligamos e nao atenderam". */}
+    <AtlasCard>
+      <AtlasCardHeader
+        eyebrow="Antes de importar"
+        title="Quem vale recuperar, e por qual canal"
+        description="Leads perdidas que nunca recusaram nada. A ordem ja vem por onde atacar primeiro."
+      />
+      <FilaDeRecuperacao />
+    </AtlasCard>
     {data?.decisionQueue.length ? <AtlasCard><AtlasCardHeader eyebrow="Decisão antes do volume" title="O que protege conversão agora" description="Até três situações explicáveis. A IA prepara o plano; a liderança aprova qualquer ação."/><div className="grid gap-3 p-5 pt-0 lg:grid-cols-3">{data.decisionQueue.map((decision) => <article key={decision.batchId} className="rounded-2xl border border-white/[.08] bg-white/[.025] p-4"><AtlasBadge tone={decision.severity === "critical" ? "danger" : decision.severity === "opportunity" ? "success" : "warning"}>{decision.severity}</AtlasBadge><h3 className="mt-3 font-semibold text-white">{decision.title}</h3><p className="mt-2 text-xs leading-5 text-slate-400">{decision.evidence}</p><p className="mt-3 text-xs text-sky-200">{decision.nextAction}</p><button type="button" onClick={() => openCopilot(decision)} className="atlas-button-secondary mt-4 w-full">Preparar decisão com IA</button></article>)}</div></AtlasCard> : null}
     {data ? <section className="grid gap-4 sm:grid-cols-4"><AtlasMetric label="Bases" value={data.summary.batches} detail="Fora da carteira ativa" trend="RLS" tone="blue"/><AtlasMetric label="Em operação" value={data.summary.running} detail="Aprovadas ou enfileiradas" trend="OFICIAL" tone="green"/><AtlasMetric label="Pausadas" value={data.summary.paused} detail="Qualidade ou controle humano" trend="SEGURANÇA" tone="amber"/><AtlasMetric label="Respostas" value={data.summary.replies} detail="Cadência interrompida" trend="CONVERSÃO" tone="violet"/></section> : loading ? <AtlasSkeleton className="h-40 w-full" /> : null}
     <section className="grid gap-6 xl:grid-cols-[.65fr_1.35fr]">

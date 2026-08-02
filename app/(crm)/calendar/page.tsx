@@ -66,6 +66,45 @@ const KIND_ACTION = {
   follow_up: "Abrir lead",
 } as const;
 
+/**
+ * O TIPO DO COMPROMISSO — o único canal que faltava numa lista MISTA.
+ *
+ * ── Por que aqui o emoji entra ─────────────────────────────────────────────
+ * Esta linha do tempo é a junção de TRÊS fontes (`kind: task | visit |
+ * follow_up`, montadas em `/api/v1/calendar`). Preparar uma visita, cumprir
+ * uma tarefa e retomar um lead são trabalhos diferentes, com preparação
+ * diferente — e até agora o único lugar da linha que dizia QUAL dos três era
+ * o verbo da ponta direita ("Ver tarefa" · "Preparar visita" · "Abrir lead"),
+ * a até 700px do horário, no fim de uma linha que o olho percorre de cima
+ * para baixo, não da esquerda para a direita. Na varredura vertical de um dia
+ * com oito compromissos, os três tipos eram indistinguíveis.
+ *
+ * O glifo entra na coluna do horário, que é justamente a coluna que o olho já
+ * percorre. Ele é a MESMA largura em todas as linhas (`w-5 text-center`),
+ * então os três formam colunas alinhadas e a diferença aparece sem leitura.
+ *
+ * ── Por que ele não é "emoji em toda linha de lista homogênea" ─────────────
+ * A reprova é para lista onde todos recebem O MESMO símbolo — aí ele não
+ * separa nada. Aqui o valor está exatamente em ser DIFERENTE por linha: as
+ * três formas (prancheta · casa · telefone) se distinguem entre si em escala
+ * de cinza, que é o teste que o ponto colorido não passava.
+ *
+ * ── Por que `aria-hidden` ──────────────────────────────────────────────────
+ * O verbo da ponta continua no DOM e continua dizendo o tipo em palavras. O
+ * leitor de tela não deve ouvir "casa" antes de "Preparar visita": seria a
+ * mesma informação duas vezes, e a segunda em forma pior.
+ *
+ * ── Onde ele é ensinado ────────────────────────────────────────────────────
+ * Os chips de composição no rodapé ("Tarefas · Visitas · Follow-ups") passam a
+ * carregar os mesmos três glifos ao lado das mesmas três palavras. Quem não
+ * conhece o vocabulário tem onde aprendê-lo, na mesma tela, sem legenda nova.
+ */
+const KIND_GLIFO = {
+  task: "📋",
+  visit: "🏠",
+  follow_up: "📞",
+} as const;
+
 /* Semânticos CC-6: rose para atrasado, amber para hoje; futuro fica neutro.
  *
  * O crítico estava CRAVADO em hex enquanto o irmão ao lado, na MESMA linha, já
@@ -166,7 +205,7 @@ function CargaDeSeteDias({ dias }: { dias: DiaCarga[] }) {
     <div className="min-w-[184px] flex-1 basis-[184px] sm:max-w-[252px]">
       <div className="flex items-baseline justify-between gap-2">
         <span className="cc6-eyebrow">Carga · 7 dias</span>
-        <span className="cc6-num text-micro text-[var(--atlas-texto-medio)]">
+        <span className="cc6-num text-micro text-[var(--atlas-texto-medio)]!">
           {total === 0
             ? "nada agendado"
             : `mais livre ${maisLivre.weekday} ${shortDate(maisLivre.iso)} · ${maisLivre.count}`}
@@ -209,7 +248,7 @@ function CargaDeSeteDias({ dias }: { dias: DiaCarga[] }) {
           <span
             key={dia.key}
             className={`cc6-num text-micro leading-3 ${
-              dia.today ? "cc6-warn" : "text-[var(--atlas-texto-fraco)]"
+              dia.today ? "text-[var(--atlas-estado-atencao)]!" : "text-[var(--atlas-texto-fraco)]!"
             }`}
           >
             {dia.weekday}
@@ -248,19 +287,38 @@ function EventRow({
       data-kind={item.kind}
       data-overdue={item.overdue}
     >
-      <time
-        dateTime={item.at}
-        className={`cc6-num shrink-0 text-corpo ${withDate ? "w-24" : "w-12"} ${
-          sev === "crit"
-            ? "cc6-crit"
-            : sev === "warn"
-              ? "cc6-warn"
-              : "text-[var(--atlas-texto-medio)]"
-        }`}
-      >
-        {withDate ? `${shortDate(item.at)} · ` : ""}
-        {timeLabel(item.at)}
-      </time>
+      {/* Glifo e horário são UM bloco (gap-2), e não dois filhos da linha: o
+          `gap-4` da linha separa assuntos diferentes, e "quando" e "de que
+          tipo" são o mesmo assunto. Sem isto, a linha ganharia 16px de vão a
+          mais e a coluna do horário desencostaria do texto que ela data. */}
+      <span className="flex shrink-0 items-center gap-2">
+        <span
+          aria-hidden="true"
+          className="w-5 shrink-0 text-center text-corpo leading-6"
+        >
+          {KIND_GLIFO[item.kind]}
+        </span>
+        {/* ── `w-24` NÃO CABIA A DATA COM HORA ──────────────────────────────
+            MEDIDO no navegador: "31/12 · 09:00" a 13px na face tabular pede
+            **101px**; `w-24` são 96. Faltavam 5px, e o resultado era a data
+            quebrando em DUAS linhas — caixa de 39px de altura em vez de 20 —
+            exatamente nas linhas de ATRASO, que são as únicas que usam
+            `withDate` e as mais importantes da tela. `w-28` (112px) devolve a
+            linha única: 39px → 20px por linha atrasada, medido. */}
+        <time
+          dateTime={item.at}
+          className={`cc6-num shrink-0 text-corpo ${withDate ? "w-28" : "w-12"} ${
+            sev === "crit"
+              ? "text-[var(--atlas-estado-perigo)]!"
+              : sev === "warn"
+                ? "text-[var(--atlas-estado-atencao)]!"
+                : "text-[var(--atlas-texto-medio)]!"
+          }`}
+        >
+          {withDate ? `${shortDate(item.at)} · ` : ""}
+          {timeLabel(item.at)}
+        </time>
+      </span>
       {/* ── AS DUAS FRASES DA LINHA NÃO PODEM SER CORTADAS ───────────────────
           Título e detalhe vinham com `truncate` — `nowrap` + reticências numa
           FRASE. O detalhe é literalmente "com quem é o compromisso": "Ana
@@ -276,7 +334,7 @@ function EventRow({
             {item.title}
           </strong>
           {overdueTag ? (
-            <span className="cc6-crit cc6-num text-micro tracking-[0.14em] uppercase">
+            <span className="cc6-num text-[var(--atlas-estado-perigo)]! text-micro tracking-[0.14em] uppercase">
               Em atraso
             </span>
           ) : null}
@@ -586,11 +644,16 @@ export default function CalendarPage() {
   }, [hasOverduePin, visible, overdueItems]);
 
   const summary = data?.summary;
+  /* O terceiro elemento é o glifo do tipo — o mesmo que a linha do tempo
+     desenha. Aqui ele aparece COLADO na palavra, e é isso que transforma o
+     rodapé em legenda: a pessoa lê "🏠 Visitas 4" uma vez e passa a reconhecer
+     o 🏠 nas linhas de cima sem precisar chegar até o verbo da ponta direita.
+     "Total" fica sem glifo de propósito: não é um tipo, é a soma dos três. */
   const composition = [
-    ["Tarefas", summary?.tasks],
-    ["Visitas", summary?.visits],
-    ["Follow-ups", summary?.followUps],
-    ["Total", summary?.total],
+    ["Tarefas", summary?.tasks, KIND_GLIFO.task],
+    ["Visitas", summary?.visits, KIND_GLIFO.visit],
+    ["Follow-ups", summary?.followUps, KIND_GLIFO.follow_up],
+    ["Total", summary?.total, null],
   ] as const;
 
   return (
@@ -662,9 +725,20 @@ export default function CalendarPage() {
           <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 pt-4 pb-2.5">
             <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1">
               <p className="cc6-eyebrow">Linha do tempo</p>
+              {/* ── O QUINTO DEGRAU ────────────────────────────────────────
+                  `text-lg` é 18px, MEDIDO no navegador com a folha compilada —
+                  e a escala desta casa tem 10 · 11 · 13 · 20 · 34. Era o único
+                  tamanho fora da escala em todo o arquivo, e estava no lugar
+                  mais caro: entre o eyebrow de 11 e a pilha de atraso de 20,
+                  criando três alturas para dizer duas coisas.
+                  Some do jeito certo — o título continua inteiro, com o mesmo
+                  peso, no degrau que os painéis irmãos de /tasks e /activity já
+                  usam para abrir. Efeito colateral bom: o vão entre o título
+                  (13) e o número que decide (20) cresce, que é exatamente o que
+                  a régua pede quando um informa e o outro cobra ação. */}
               <h2
                 id="atlas-calendar-timeline-title"
-                className="text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
+                className="text-corpo font-semibold tracking-tight text-[var(--atlas-texto-forte)]"
               >
                 {WINDOW_TITLES[window]}
               </h2>
@@ -730,10 +804,10 @@ export default function CalendarPage() {
                       <strong
                         className={`cc6-num font-semibold ${
                           key === "overdue" && count
-                            ? "cc6-crit"
+                            ? "text-[var(--atlas-estado-perigo)]!"
                             : key === "today" && count
-                              ? "cc6-warn"
-                              : ""
+                              ? "text-[var(--atlas-estado-atencao)]!"
+                              : "text-[var(--atlas-texto-medio)]!"
                         }`}
                       >
                         {count}
@@ -746,7 +820,7 @@ export default function CalendarPage() {
             {!loading && cargaDaSemana ? (
               <CargaDeSeteDias dias={cargaDaSemana} />
             ) : !loading && !cargaDaSemana ? (
-              <p className="cc6-num text-micro leading-4 text-[var(--atlas-texto-medio)]">
+              <p className="cc6-num text-micro leading-4 text-[var(--atlas-texto-medio)]!">
                 Carga · 7 dias sem lastro — a agenda não respondeu.
               </p>
             ) : null}
@@ -773,7 +847,7 @@ export default function CalendarPage() {
                         className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-corpo font-semibold tracking-tight"
                       >
                         <span className="cc6-crit">Em atraso</span>
-                        <span className="cc6-num text-rotulo font-normal text-[var(--atlas-texto-fraco)]">
+                        <span className="cc6-num text-rotulo font-normal text-[var(--atlas-texto-fraco)]!">
                           resolver primeiro
                           {atrasoMaisAntigo ? ` · ${atrasoMaisAntigo}` : ""}
                           {/* A frase que reconcilia as duas contagens. Sem ela,
@@ -795,11 +869,26 @@ export default function CalendarPage() {
                           compara"; sobe para ele e passa o título. A contagem
                           por dia FICA em 11px de propósito: é o contraste entre
                           os dois degraus que diz qual dos dois cobra ação.
-                          Cor e classes não mudam — `.cc6-num.cc6-crit` já tem o
-                          override de tema claro escrito exatamente para "onde o
-                          número é grande e precisa ser lido de relance". */}
+
+                          ── CORREÇÃO DE 02/08/2026, E O QUE ELA DESMENTE ─────
+                          A versão anterior deste comentário afirmava: "cor e
+                          classes não mudam — `.cc6-num.cc6-crit` já tem o
+                          override de tema claro". MEDIDO no navegador, com a
+                          folha compilada: esse número saía **rgb(180,83,9)** no
+                          tema claro, que é o âmbar GENÉRICO de todo `.cc6-num`,
+                          e não o vermelho do estado de perigo. O override
+                          existe em globals.css, empata em especificidade com a
+                          regra genérica e PERDE por vir antes dela no arquivo.
+                          Ou seja: a maior evidência de atraso da tela era
+                          pintada com a mesma tinta de uma data qualquer, no
+                          tema em que o dono trabalha. O comentário garantia o
+                          contrário porque descrevia a INTENÇÃO da regra, não o
+                          valor computado — a armadilha que este repositório já
+                          catalogou. Agora a tinta é o token, com `!` para
+                          passar por cima da regra sem camada; no tema escuro o
+                          valor final é idêntico ao de antes. */}
                       <span
-                        className="cc6-crit cc6-num shrink-0 text-numero leading-none"
+                        className="cc6-num text-[var(--atlas-estado-perigo)]! shrink-0 text-numero leading-none"
                         aria-label={`${overdueItems.length} compromissos em atraso${
                           atrasoForaDoRecorte
                             ? `, sendo ${atrasoForaDoRecorte} de dias anteriores a este recorte`
@@ -839,12 +928,12 @@ export default function CalendarPage() {
                           >
                             {group.name}
                           </span>
-                          <span className="cc6-num text-rotulo font-normal text-[var(--atlas-texto-fraco)]">
+                          <span className="cc6-num text-rotulo font-normal text-[var(--atlas-texto-fraco)]!">
                             {group.date}
                           </span>
                         </h3>
                         <span
-                          className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]"
+                          className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]!"
                           aria-label={`${group.items.length} compromissos`}
                         >
                           {group.items.length}
@@ -932,8 +1021,9 @@ export default function CalendarPage() {
             >
               <span className="cc6-eyebrow">Agenda inteira</span>
               <span className="flex flex-wrap items-center gap-1.5">
-                {composition.map(([label, value]) => (
+                {composition.map(([label, value, glifo]) => (
                   <span key={label} className="cc6-chip">
+                    {glifo ? <span aria-hidden="true">{glifo}</span> : null}
                     {label}
                     <strong className="font-semibold text-[var(--atlas-texto-forte)]">
                       {loading || value === undefined ? "—" : value}

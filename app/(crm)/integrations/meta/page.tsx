@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState, type CSSProperties } from "react";
+import Link from "next/link";
 import { AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
@@ -886,6 +887,12 @@ export default function MetaIntegration() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="cc6-eyebrow">Jornada da conexão</p>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {/* Esta tela diz o que ESTÁ conectado; não dizia para que serve
+                  conectar. A prontidão da composição aponta para cá quando falta
+                  Página ou formulário — o caminho de volta faltava. */}
+              <Link href="/marketing/campanhas-criativos-proposta" className="cc6-chip cc6-interativo-acento">
+                Compor proposta de anúncio →
+              </Link>
               <span
                 className="cc6-chip"
                 title="Assinatura do webhook, token de captura, token de conversões, leitura de insights e worker cron"

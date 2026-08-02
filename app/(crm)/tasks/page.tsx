@@ -165,6 +165,41 @@ const SEV_INK = {
 } as const;
 const STEP_SEV = { now: "crit", today: "warn", planned: null } as const;
 
+/**
+ * O ESTADO DO PRAZO — e por que ele ganha forma, e não mais uma cor.
+ *
+ * ── O que a linha já dizia, e por quantos canais ───────────────────────────
+ * Vencida e "para hoje" chegavam ao corretor por DOIS canais, e os dois são a
+ * mesma coisa: a faixa lateral `cc6-sev-band` (2px de cor) e a tinta do texto
+ * do prazo (`cc6-crit` / `cc6-warn`). Quem tem baixa visão de cor perde os
+ * dois de uma vez. Sobra o texto — "há 2d" contra "em 6h" —, e a diferença
+ * entre estar atrasado e estar no prazo passa a ser UMA preposição de duas
+ * letras, em 11px, na quarta coluna de leitura. Numa fila de vinte linhas
+ * ninguém lê vinte preposições.
+ *
+ * O glifo é o canal que faltava: forma reconhecível de relance, no mesmo
+ * espaço, sobrevivendo em escala de cinza. É exatamente a troca que a sala de
+ * comando fez nos alertas — lá o ponto de 6px saiu e o glifo entrou.
+ *
+ * ── Por que NÃO é "emoji em cada item" ─────────────────────────────────────
+ * `taskSeverity` devolve `null` para tudo que está no futuro ou sem prazo, e
+ * `STEP_SEV.planned` também. Essas linhas não recebem glifo nenhum. Numa fila
+ * saudável a coluna fica vazia, e é essa ausência que faz a marca informar
+ * quando aparece. O preço está declarado em `limites`: no recorte "Vencidas",
+ * onde toda linha é vencida por construção, o glifo deixa de separar linhas
+ * entre si — continua dizendo o estado, não mais a diferença.
+ *
+ * ── As duas formas, e por que estas ────────────────────────────────────────
+ * ⚠️ é triângulo, ⏳ é ampulheta: silhuetas que não se confundem nem sem cor.
+ * E ⚠️ já é, neste produto, a marca de risco alto no cartão do Kanban — um
+ * vocabulário só, duas telas.
+ *
+ * `aria-hidden` porque o texto ao lado (`relativeDue`) e o `title` com a data
+ * absoluta já dizem a mesma coisa em palavras. O leitor de tela não deve ouvir
+ * "triângulo vermelho atenção há 2 dias".
+ */
+const SEV_GLIFO = { crit: "⚠️", warn: "⏳" } as const;
+
 /* ── O CAMPO DO FORMULÁRIO É ILEGÍVEL NO TEMA CLARO, E O `bg-` DA CLASSE
       NUNCA TEVE NADA A VER COM ISSO ────────────────────────────────────────
    MEDIDO no navegador, com o CSS compilado de verdade, painel branco, tema
@@ -363,8 +398,47 @@ function taskSeverity(task: Task): "crit" | "warn" | null {
   return null;
 }
 
+/**
+ * A TINTA DA SEVERIDADE — e por que ela não pode mais sair de `.cc6-crit`.
+ *
+ * MEDIDO no navegador em 02/08/2026, com o CSS compilado do produto, tema
+ * CLARO (que é onde o dono trabalha), num elemento que carrega `cc6-num`:
+ *
+ *     cc6-num + cc6-crit .......... rgb(180, 83, 9)
+ *     cc6-num + cc6-warn .......... rgb(180, 83, 9)
+ *     cc6-num sozinho ............. rgb(180, 83, 9)
+ *
+ * As TRÊS situações — vencida, para hoje e no futuro — saem exatamente da
+ * mesma cor. A causa é `:root[data-theme="light"] .cc6-num:not(.atlas-leads-table-panel *)`
+ * em `app/globals.css`: regra SEM camada, especificidade (0,4,0), declarada
+ * DEPOIS de `:root[data-theme="light"] .cc6-num.cc6-crit`, que vale (0,4,0)
+ * também. Empate resolvido pela ordem, e o genérico âmbar vence o semântico.
+ *
+ * Duas consequências, e a segunda é pior que a primeira:
+ *   1. no tema claro a cor deixa de separar vencida de hoje;
+ *   2. uma tarefa NEUTRA — "em 3d", nenhuma urgência — é pintada de âmbar,
+ *      que neste produto é a cor de atenção. A tela alarma sobre algo que
+ *      está em dia.
+ *
+ * A saída a partir do `.tsx` é apontar direto para o token de estado com `!`,
+ * exatamente como `/activity` já faz e documenta. `!` aqui não é preferência:
+ * é a marca de que existe uma regra global decidindo por baixo.
+ *
+ * NO TEMA ESCURO A TROCA É UM NÃO-EVENTO, e isso foi medido: `.cc6-crit` e
+ * `text-[var(--atlas-estado-perigo)]!` dão o MESMO rgb(251,113,133); `.cc6-warn`
+ * e o token de atenção dão o mesmo rgb(245,181,68). Só o claro muda — que é
+ * onde estava errado.
+ *
+ * O caso nulo devolve a tinta fraca em vez de string vazia: sem classe, quem
+ * pintava era o `.cc6-num` âmbar, não o parágrafo pai. Devolver o token é
+ * restaurar a intenção que já estava escrita no pai.
+ */
 function sevTextClass(sev: "crit" | "warn" | null) {
-  return sev === "crit" ? "cc6-crit" : sev === "warn" ? "cc6-warn" : "";
+  return sev === "crit"
+    ? "text-[var(--atlas-estado-perigo)]!"
+    : sev === "warn"
+      ? "text-[var(--atlas-estado-atencao)]!"
+      : "text-[var(--atlas-texto-fraco)]!";
 }
 
 export default function TasksPage() {
@@ -673,7 +747,7 @@ export default function TasksPage() {
                 escrito ("roteiro"): são os até 7 passos da sequência, entre
                 tarefas, leads e visitas, e não a fila de tarefas abaixo. */}
             {assistant ? (
-              <p className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]">
+              <p className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]!">
                 roteiro de {assistant.summary.steps}
                 {assistant.summary.now ? (
                   <>
@@ -755,7 +829,7 @@ export default function TasksPage() {
                         compara com nada. Os 20px pertencem ao número que decide,
                         e ele está na faixa de decisão da fila. */}
                     <span
-                      className="cc6-num w-4 shrink-0 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]"
+                      className="cc6-num w-4 shrink-0 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]!"
                       aria-hidden="true"
                     >
                       {step.position}
@@ -772,9 +846,12 @@ export default function TasksPage() {
                         </span>
                         {step.dueAt ? (
                           <span
-                            className={`cc6-num text-rotulo ${sevTextClass(sev) || "text-[var(--atlas-texto-fraco)]"}`}
+                            className={`cc6-num inline-flex items-baseline gap-1 text-rotulo ${sevTextClass(sev)}`}
                             title={dateLabel(step.dueAt)}
                           >
+                            {sev ? (
+                              <span aria-hidden="true">{SEV_GLIFO[sev]}</span>
+                            ) : null}
                             {relativeDue(step.dueAt, nowMs)}
                           </span>
                         ) : null}
@@ -822,7 +899,7 @@ export default function TasksPage() {
                     href={step.href}
                     className="flex items-baseline gap-2 text-rotulo leading-4 text-[var(--atlas-texto-medio)] transition-colors hover:text-[var(--atlas-texto-forte)]"
                   >
-                    <span className="cc6-num shrink-0 text-[var(--atlas-texto-fraco)]">
+                    <span className="cc6-num shrink-0 text-[var(--atlas-texto-fraco)]!">
                       {step.position}
                     </span>
                     <span className="min-w-0 flex-1">{step.title}</span>
@@ -1276,10 +1353,17 @@ export default function TasksPage() {
                         ) : null}
                       </div>
                       <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+                        {/* O glifo fica DENTRO do mesmo span do prazo, e não
+                            solto na linha: ele qualifica aquele prazo, e um
+                            `gap-x-2` de distância o faria parecer um item de
+                            metadado próprio, do mesmo nível do nome da lead. */}
                         <span
-                          className={`cc6-num ${sevTextClass(sev)}`}
+                          className={`cc6-num inline-flex items-baseline gap-1 ${sevTextClass(sev)}`}
                           title={dateLabel(task.due_at)}
                         >
+                          {sev ? (
+                            <span aria-hidden="true">{SEV_GLIFO[sev]}</span>
+                          ) : null}
                           {relativeDue(task.due_at, nowMs)}
                         </span>
                         {task.lead_id ? (
@@ -1468,7 +1552,7 @@ export default function TasksPage() {
                   <span className="min-w-0 truncate text-corpo font-medium text-[var(--atlas-texto-forte)]">
                     {owner.name}
                   </span>
-                  <span className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]">
+                  <span className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]!">
                     {owner.overdue ? (
                       <>
                         <span className="cc6-crit font-semibold">

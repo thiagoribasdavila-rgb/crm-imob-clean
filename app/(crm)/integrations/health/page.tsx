@@ -137,16 +137,64 @@ const PROVIDER_NAMES: Record<string, string> = {
 const nomeDoProvedor = (chave: string) =>
   PROVIDER_NAMES[chave] ?? chave.replaceAll("_", " ");
 
-// Estados reais do avaliador (operational-health) → chip único por linha.
-const STATE_META: Record<string, { tone: "success" | "danger" | "warning" | "neutral"; label: string }> = {
-  healthy: { tone: "success", label: "Saudável" },
-  degraded: { tone: "danger", label: "Degradada" },
-  stale: { tone: "warning", label: "Evidência antiga" },
-  ready_to_test: { tone: "warning", label: "Pronta p/ teste" },
-  environment_only: { tone: "warning", label: "Sem cadastro" },
-  registered_only: { tone: "warning", label: "Sem credenciais" },
-  not_configured: { tone: "neutral", label: "Não configurada" },
+/* Estados reais do avaliador (operational-health) → chip único por linha.
+ *
+ * ── POR QUE ENTRA EMOJI AQUI, E SÓ AQUI ────────────────────────────────────
+ *
+ * Medido no navegador, tema claro, com os 11 provedores desta conta: SETE das
+ * onze pastilhas saem com o MESMO trio computado —
+ *   color rgb(146,64,14) · background rgba(245,181,68,.09) · borda rgba(245,181,68,.3)
+ * — cobrindo TRÊS estados diferentes: "Pronta p/ teste" (×4), "Sem credenciais"
+ * (×1) e "Sem cadastro" (×2). Ou seja: a pastilha não distingue nada entre
+ * eles; só a PALAVRA distingue. E a palavra não ordena — ninguém lê "Sem
+ * credenciais" e "Sem cadastro" e sabe qual está mais perto de operar, embora a
+ * lista esteja ordenada exatamente por isso (ORDEM_DO_ESTADO).
+ *
+ * O emoji entra como o canal que falta: forma reconhecível de relance, que
+ * sobrevive em escala de cinza e para quem não separa âmbar de rosa. E entra
+ * apontando para a AÇÃO de cada estado — 🔑 é credencial no servidor, 📋 é
+ * cadastro no CRM, 🧪 é o teste real que falta, 🕗 é evidência velha, 🛑 é o
+ * que quebrou agora, ✅ é o que está de pé.
+ *
+ * `not_configured` fica SEM emoji de propósito: é o único estado que não pede
+ * nada de ninguém. Marcar as onze linhas transformaria o glifo em textura —
+ * se todas têm, nenhuma informa. A ausência do glifo é, ela mesma, o sinal de
+ * "não há o que fazer aqui".
+ *
+ * O glifo é `aria-hidden`: o rótulo ao lado já diz a mesma coisa, e o leitor de
+ * tela não deve ouvir "chave" antes de "sem credenciais". */
+const STATE_META: Record<
+  string,
+  { tone: "success" | "danger" | "warning" | "neutral"; label: string; glyph: string | null }
+> = {
+  healthy: { tone: "success", label: "Saudável", glyph: "✅" },
+  // ⛔ e não 🛑: em escala de cinza o octógono vira um disco uniforme — ou
+  // seja, exatamente o "ponto colorido" que este passe existe para eliminar.
+  // ⛔ mantém a barra branca no meio e continua legível sem cor nenhuma.
+  degraded: { tone: "danger", label: "Degradada", glyph: "⛔" },
+  stale: { tone: "warning", label: "Evidência antiga", glyph: "🕗" },
+  ready_to_test: { tone: "warning", label: "Pronta p/ teste", glyph: "🧪" },
+  environment_only: { tone: "warning", label: "Sem cadastro", glyph: "📋" },
+  registered_only: { tone: "warning", label: "Sem credenciais", glyph: "🔑" },
+  not_configured: { tone: "neutral", label: "Não configurada", glyph: null },
 };
+
+/* O glifo precisa da própria altura: a pastilha é `text-micro!` (10px) e um
+   emoji a 10px vira mancha. `font-size` declarado no FILHO vence a herança do
+   pai mesmo com `!important` no pai — `!` só decide disputa dentro do mesmo
+   elemento. Degrau nomeado (13px = corpo), nunca meio-pixel no olho. */
+function EstadoDoProvedor({ glyph, label }: { glyph: string | null; label: string }) {
+  return (
+    <>
+      {glyph ? (
+        <span aria-hidden="true" className="text-corpo leading-none">
+          {glyph}
+        </span>
+      ) : null}
+      {label}
+    </>
+  );
+}
 
 /* Distância até "operando". A lista é ORDENADA por isto e nada é filtrado: os
    11 provedores continuam os 11, só que o que exige decisão vem primeiro. */
@@ -714,6 +762,10 @@ export default function Page() {
               const state = STATE_META[provider.state] ?? {
                 tone: "warning" as const,
                 label: provider.state.replaceAll("_", " "),
+                // Estado que o avaliador venha a criar entra sem glifo: inventar
+                // um símbolo para o que a tela ainda não entende seria dar cara
+                // de diagnóstico a um palpite.
+                glyph: null,
               };
               const blockers = provider.blockers
                 .map((blocker) => BLOCKER_LABELS[blocker] ?? blocker.replaceAll("_", " "))
@@ -798,7 +850,9 @@ export default function Page() {
                       falhas {provider.failed}
                     </span>
                   </p>
-                  <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
+                  <StatusBadge tone={state.tone}>
+                    <EstadoDoProvedor glyph={state.glyph} label={state.label} />
+                  </StatusBadge>
                   {motivos.length ? (
                     <p
                       className={`basis-full text-rotulo leading-4 ${degraded ? "cc6-crit" : "cc6-warn"}`}

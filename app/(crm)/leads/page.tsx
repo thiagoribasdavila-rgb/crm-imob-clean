@@ -18,6 +18,7 @@ import { LoadingState } from "@/components/atlas/loading-state";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { NextActionQuickSet } from "@/components/crm/next-action-quick-set";
+import { AcompanhamentoCorretorFilaDeRecuperacao } from "@/components/crm/acompanhamento-corretor-fila-de-recuperacao";
 
 type Lead = {
   id: string;
@@ -293,21 +294,40 @@ function stalledSignal(lead: Lead, referenceTime: number): StalledSignal | null 
   };
 }
 
+/* ── O LIMIAR DOS 7 DIAS SÓ EXISTIA NA COR ─────────────────────────────────
+   `stalledSignal` acima corta em 7 dias: abaixo é âmbar, a partir dali é
+   carmim. Mas o RÓTULO é o mesmo dos dois lados — "parado há 5d" e "parado há
+   9d" saem com as mesmas palavras, na mesma tipografia, no mesmo chip. A única
+   coisa que muda entre um e outro é a tinta.
+
+   Numa coluna de até 100 linhas, lida em varredura, isso significa que quem não
+   separa âmbar de carmim (ou quem imprime a lista, ou quem olha a tela no sol)
+   não enxerga o limiar: vê cem chips iguais e teria de LER e comparar cada
+   número contra um 7 que não está escrito em lugar nenhum.
+
+   O emoji carrega a gravidade que a palavra não carrega. Ele não repete nada —
+   é o segundo canal de um sinal que só tinha um. Mesmo par usado no strip de
+   sinais do Lead 360, para não haver dois vocabulários de gravidade no caminho
+   que o corretor percorre entre a fila e a ficha.
+
+   `aria-hidden` porque o `title` do chip narra o mesmo em palavras, e o leitor
+   de tela não deve anunciar "sirene". */
 function stalledChipView(signal: StalledSignal, lead: Lead) {
   const fromCreation = signal.basis === "criacao";
   const baseTitle = fromCreation
     ? `Sem atualização registrada desde a criação, há ${signal.days} dia(s) — contagem baseada na data de criação, único registro disponível.`
     : `Sem atualização registrada há ${signal.days} dia(s) — base: atualização ou interação mais recente.`;
+  const critico = signal.hot || signal.level === "rose";
   return {
+    marca: critico ? "🚨" : "⚠️",
     label: signal.hot
       ? `quente sem toque · ${signal.days}d`
       : fromCreation
         ? `${signal.days}d desde a criação`
         : `parado há ${signal.days}d`,
-    chipClass:
-      signal.hot || signal.level === "rose"
-        ? "cc6-crit border-[color-mix(in_srgb,var(--atlas-estado-perigo)_28%,transparent)]!"
-        : "cc6-warn border-[color-mix(in_srgb,var(--atlas-estado-atencao)_28%,transparent)]!",
+    chipClass: critico
+      ? "cc6-crit border-[color-mix(in_srgb,var(--atlas-estado-perigo)_28%,transparent)]!"
+      : "cc6-warn border-[color-mix(in_srgb,var(--atlas-estado-atencao)_28%,transparent)]!",
     title: signal.hot
       ? `Lead quente (score ${lead.score ?? 0}). ${baseTitle} Priorize o contato.`
       : baseTitle,
@@ -1750,6 +1770,20 @@ export default function LeadsPage() {
         </TiltShell>
       </section>
 
+      {/* ── O MOTIVO DO DESCARTE VOLTA PARA QUEM O DIGITOU ──────────────────
+          O corretor é obrigado a escolher um motivo para descartar, e o motivo
+          não aparecia em nenhuma tela que ele abre — o relatório de descartes
+          exige papel de liderança. Medido em 02/08/2026: 273 saídas com motivo
+          gravado, das quais 252 dizem "Sem resposta após tentativas" e 250
+          dessas não têm NENHUM sinal de contato no CRM.
+
+          Fica ACIMA dos filtros e da tabela porque é decisão (quem rechamar
+          hoje), e a tabela é consulta. Fica ABAIXO da fila de ação porque a
+          fila trata de prazo correndo, que vence antes. ── */}
+      <div className="cc6-reveal" style={{ animationDelay: "120ms" }}>
+        <AcompanhamentoCorretorFilaDeRecuperacao />
+      </div>
+
       <div className="cc6-reveal" style={{ animationDelay: "140ms" }}>
         <section
           className="atlas-leads-filter-panel"
@@ -2349,6 +2383,7 @@ export default function LeadsPage() {
                                 className={`cc6-chip ${stallView.chipClass}`}
                                 title={stallView.title}
                               >
+                                <span aria-hidden="true" className="text-corpo leading-none">{stallView.marca}</span>
                                 {stallView.label}
                               </span>
                             ) : (
@@ -2497,6 +2532,7 @@ export default function LeadsPage() {
                             className={`cc6-chip ${stallView.chipClass}`}
                             title={stallView.title}
                           >
+                            <span aria-hidden="true" className="text-corpo leading-none">{stallView.marca}</span>
                             {stallView.label}
                           </span>
                         ) : (
