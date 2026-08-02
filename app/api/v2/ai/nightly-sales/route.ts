@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { evaluateNightlyEligibility, nightlyWindow } from "@/lib/ai/governed-nightly-copilot";
+import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,10 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: "Não foi possível selecionar as leads." }, { status: 500 });
   let prepared = 0;
   let blocked = 0;
+  // `blocked` conta lead que a POLITICA barrou -- desfecho legitimo. `falhas`
+  // conta o que QUEBROU. Somar os dois num numero so foi o que deixou este
+  // vigia responder 200 enquanto nao conseguia escrever nada.
+  const falhas: { leadId: string; etapa: string; code?: string }[] = [];
   for (const lead of leads ?? []) {
     const metadata = lead.metadata && typeof lead.metadata === "object" ? lead.metadata as Record<string, unknown> : {};
     const reactivation = metadata.reactivation && typeof metadata.reactivation === "object" ? metadata.reactivation as Record<string, unknown> : {};
@@ -35,18 +40,36 @@ export async function POST(request: Request) {
       admin.from("message_templates").select("id").eq("organization_id",lead.organization_id).eq("channel","whatsapp").eq("name",templateName).eq("status","approved").maybeSingle(),admin.rpc("check_lead_contact_eligibility",{p_organization_id:lead.organization_id,p_lead_id:lead.id,p_channel:"whatsapp"}),
     ]);
     const eligibility=evaluateNightlyEligibility({consent:Boolean(consentBasis)&&Boolean((contactEligibility as{eligible?:boolean}|null)?.eligible),suppressed:Boolean(suppression),officialApiReady:Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID&&process.env.WHATSAPP_ACCESS_TOKEN),approvedTemplate:Boolean(approvedTemplate),assignedBroker:Boolean(lead.assigned_to),projectReady:Boolean(development)&&Number(materialCount||0)>=2,existingJourney:Boolean(existing)});if(!eligibility.eligible){blocked+=1;continue}
-    let { data: conversation } = await admin.from("conversations").select("id").eq("organization_id", lead.organization_id).eq("lead_id", lead.id).eq("channel", "whatsapp").maybeSingle();
-    if (!conversation) conversation = (await admin.from("conversations").insert({ organization_id: lead.organization_id, lead_id: lead.id, channel: "whatsapp", external_thread_id: phone, assigned_to: lead.assigned_to, status: "open" }).select("id").single()).data;
-    if (!conversation) continue;
+    let { data: conversation, error: erroConversa } = await admin.from("conversations").select("id").eq("organization_id", lead.organization_id).eq("lead_id", lead.id).eq("channel", "whatsapp").maybeSingle();
+    if (!conversation && !erroConversa) {
+      const criada = await admin.from("conversations").insert({ organization_id: lead.organization_id, lead_id: lead.id, channel: "whatsapp", external_thread_id: phone, assigned_to: lead.assigned_to, status: "open" }).select("id").single();
+      conversation = criada.data;
+      erroConversa = criada.error;
+    }
+    // `continue` mudo era o mesmo desfecho para "não deu" e "não precisava".
+    if (erroConversa || !conversation) { falhas.push({ leadId: lead.id, etapa: "conversa", code: erroConversa?.code }); continue; }
     const projectName = development?.name || "o projeto de interesse";
     const content = `Abordagem noturna Atlas: apresentar ${projectName}, contextualizar ${development?.city || "a região"} e iniciar a descoberta consultiva. Em seguida: qualificar, simular e preparar proposta para revisão humana.`;
-    const { data: message } = await admin.from("messages").insert({ organization_id: lead.organization_id, conversation_id: conversation.id, direction: "outbound", channel: "whatsapp", recipient: phone, content, media: [{ type: "whatsapp_template", name: templateName, language: "pt_BR", journey: "nightly_sales" }], status: "queued" }).select("id").single();
-    if (!message) continue;
+    const { data: message, error: erroMensagem } = await admin.from("messages").insert({ organization_id: lead.organization_id, conversation_id: conversation.id, direction: "outbound", channel: "whatsapp", recipient: phone, content, media: [{ type: "whatsapp_template", name: templateName, language: "pt_BR", journey: "nightly_sales" }], status: "queued" }).select("id").single();
+    if (erroMensagem || !message) { falhas.push({ leadId: lead.id, etapa: "mensagem", code: erroMensagem?.code }); continue; }
     const snapshot = { project: development || null, currentMaterials: materialCount || 0, region: development?.city || null, mission: ["discovery", "qualification", "simulation_draft", "human_handoff"],policy:eligibility };
-    const { data: journey } = await admin.from("ai_sales_journeys").insert({ organization_id: lead.organization_id, lead_id: lead.id, broker_id: lead.assigned_to, development_id: lead.development_id, conversation_id: conversation.id, stage: "approach", status: "pending_approval", last_message_id: message.id, consent_basis: consentBasis, context_snapshot: snapshot,policy_version:1,maximum_automated_stage:"qualification",outbound_count:1,morning_handoff_required:true }).select("id").single();
-    if (!journey) continue;
-    await admin.from("approval_requests").insert({ organization_id: lead.organization_id, request_type: "ai_nightly_approach", entity_type: "message", entity_id: message.id, payload: { journeyId: journey.id, leadId: lead.id, brokerId: lead.assigned_to, project: projectName, afterHour: 22, stages: snapshot.mission }, requested_by: lead.assigned_to });
+    const { data: journey, error: erroJornada } = await admin.from("ai_sales_journeys").insert({ organization_id: lead.organization_id, lead_id: lead.id, broker_id: lead.assigned_to, development_id: lead.development_id, conversation_id: conversation.id, stage: "approach", status: "pending_approval", last_message_id: message.id, consent_basis: consentBasis, context_snapshot: snapshot,policy_version:1,maximum_automated_stage:"qualification",outbound_count:1,morning_handoff_required:true }).select("id").single();
+    if (erroJornada || !journey) { falhas.push({ leadId: lead.id, etapa: "jornada", code: erroJornada?.code }); continue; }
+    // ── O DEFEITO DE MAIOR CONSEQUENCIA DESTE ARQUIVO ──────────────────────
+    // Este insert nao era verificado, e `prepared += 1` rodava logo abaixo.
+    // Sem o pedido de aprovacao a jornada existe, a mensagem existe, e NAO HA
+    // COMO APROVA-LA: ela nao aparece em /approvals. O contador dizia
+    // "preparei" para trabalho que nasceu impossivel de concluir -- e a
+    // resposta ainda afirmava requiresApproval:true, que era literalmente
+    // falso para essa lead.
+    const { error: erroAprovacao } = await admin.from("approval_requests").insert({ organization_id: lead.organization_id, request_type: "ai_nightly_approach", entity_type: "message", entity_id: message.id, payload: { journeyId: journey.id, leadId: lead.id, brokerId: lead.assigned_to, project: projectName, afterHour: 22, stages: snapshot.mission }, requested_by: lead.assigned_to });
+    if (erroAprovacao) { falhas.push({ leadId: lead.id, etapa: "aprovacao", code: erroAprovacao.code }); continue; }
     prepared += 1;
   }
-  return NextResponse.json({ prepared, blocked, window: window.label, requiresApproval: true,maximumAutomatedStage:"qualification",proposalAllowed:false,morningHandoff:true });
+  const corpo = { prepared, blocked, falhas: falhas.length, motivo: falhas.length ? "etapas_falharam" : prepared ? "ok" : "nada_elegivel", window: window.label, requiresApproval: true, maximumAutomatedStage: "qualification", proposalAllowed: false, morningHandoff: true };
+  if (falhas.length) {
+    logger.error("ai.nightly_sales_etapas_falharam", { falhas: falhas.length, etapas: [...new Set(falhas.map((f) => f.etapa))] });
+    return NextResponse.json(corpo, { status: 500 });
+  }
+  return NextResponse.json(corpo);
 }
