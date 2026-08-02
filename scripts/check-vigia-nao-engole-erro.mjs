@@ -66,15 +66,32 @@ const VIGIAS = [
  * chutado é a mesma doença que este arquivo persegue — número que ninguém
  * conferiu.
  *
+ * 29 → 22 na mesma sessão, depois da passada dedicada no `outbox/process`. Ela
+ * NÃO foi um pente-fino uniforme: os 24 sítios do outbox não têm a mesma
+ * consequência, e tratar todos igual seria trocar risco por trabalho. Os SETE
+ * corrigidos foram os que mudam o que acontece com o cliente:
+ *
+ *   · a consulta de opt-out — erro virava `undefined`, o `if` não entrava e a
+ *     mensagem SAÍA. Falha de banco lida como consentimento.
+ *   · as duas dedupes de lead (Meta e portal) — erro virava "não existe" e a
+ *     lead nascia DUPLICADA.
+ *   · o `update` de "sent" depois do envio do WhatsApp — a mensagem já saiu; se
+ *     o banco não registra, o vigia ENVIA DE NOVO na rodada seguinte.
+ *   · o `update` de "delivered" da conversão da Meta — mesma forma, e conversão
+ *     duplicada infla a atribuição e envenena onde investir.
+ *   · as duas cartas mortas — não existe camada abaixo delas. Falhando calado,
+ *     a falha terminal some do mundo.
+ *
  * A dívida restante, nomeada:
- *   24  outbox/process                       ← precisa de passada dedicada
+ *   17  outbox/process   ← status de lock e transições intermediárias, cuja
+ *                          falha atrasa mas não corrompe. Merecem log, não throw.
  *    2  marketing/meta-sem-destino/process
  *    2  developers/weekly-reports/process
  *    1  meta/daily-report
  *
  * Ele só desce.
  */
-const TETO = 29;
+const TETO = 22;
 
 /**
  * Conta as duas formas de engolir erro num fonte de rota.
