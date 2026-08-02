@@ -5,6 +5,7 @@ import { qualifyRealEstateLead } from "@/lib/ai/lead-qualification";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
+import { registrarAtividade } from "@/lib/crm/registro-de-atividade";
 
 export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ id: string }> };
@@ -79,22 +80,34 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }).eq("id", id).eq("organization_id", identity.organizationId);
     if (error) return NextResponse.json({ error: "Não foi possível salvar a qualificação." }, { status: 500 });
 
-    await admin.from("activities").insert({
-      organization_id: identity.organizationId,
-      lead_id: id,
-      user_id: identity.userId,
+    // ── AS 14 QUALIFICAÇÕES PERDIDAS ─────────────────────────────────────
+    //
+    // Este insert mandava `title`, coluna que `activities` não tem. Cada
+    // chamada devolvia 42703 e o `await` sem `error` jogava fora. Resultado
+    // medido: 14 qualificações de IA rodaram, custaram chamada de modelo,
+    // alteraram `score_ia` da lead — e não deixaram UMA linha de trilha.
+    // Ninguém conseguia responder "por que o score desta lead mudou".
+    //
+    // Agora a manchete vai em `metadata.title` e o retorno é conferido.
+    const trilha = await registrarAtividade(admin, {
+      organizationId: identity.organizationId,
+      leadId: id,
+      userId: identity.userId,
       type: "ai_qualification",
-      title: `Qualificação recalibrada: ${qualification.score}/100`,
+      titulo: `Qualificação recalibrada: ${qualification.score}/100`,
       description: qualification.nextBestAction,
       metadata: { score: qualification.score, confidence: qualification.confidence, historicalDataConfidence: qualification.historicalIntelligence.dataConfidence, historicalAdjustment: qualification.historicalIntelligence.adjustment, temperature: qualification.temperature, answered: Object.keys(newAnswers) },
-      occurred_at: new Date().toISOString(),
     });
     if (Object.keys(newAnswers).length) { const answerSignature = Object.entries(answers).sort(([a],[b]) => a.localeCompare(b)).map(([key,value]) => `${key}-${value}`).join("-"); const { error: campaignEventError } = await admin.from("campaign_events").upsert({ organization_id: identity.organizationId, lead_id: id, event_type: "qualification_signal", source: "crm-qualification", external_event_id: `qualification-${id}-${answerSignature}`, payload: { decision_signals: Object.entries(newAnswers).map(([key, value]) => `${key}:${value}`) }, occurred_at: new Date().toISOString() }, { onConflict: "organization_id,source,external_event_id", ignoreDuplicates: true });
     // O 200 de sucesso era devolvido mesmo com o upsert falhando (ex.: tabela
     // ausente pelo schema drift) — a resposta continua igual, mas a falha do
     // sinal de aprendizado agora fica registrada.
     if (campaignEventError) logger.warn("lead.qualify.campaign_event_failed", { organizationId: identity.organizationId, leadId: id, error: campaignEventError.message }); }
-    return NextResponse.json({ qualification: { ...qualification, progress: { answered: Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length, total: 3, percent: Math.round(Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length / 3 * 100) }, scoreChange: { previous: Number(lead.score || 0), current: qualification.score, delta: qualification.score - Number(lead.score || 0) } } });
+    // `trilha` vai no corpo, e não como 500, porque a qualificação JÁ foi
+    // gravada em `leads` acima. Devolver erro aqui faria o corretor recalibrar
+    // de novo por cima de um score que mudou — trocaria um dado perdido por um
+    // dado duplicado. O que não pode é a falha continuar invisível.
+    return NextResponse.json({ qualification: { ...qualification, progress: { answered: Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length, total: 3, percent: Math.round(Object.keys(answers).filter((key) => ["purpose","timeline","financing"].includes(key)).length / 3 * 100) }, scoreChange: { previous: Number(lead.score || 0), current: qualification.score, delta: qualification.score - Number(lead.score || 0) } }, trilha: trilha.ok ? { registrada: true } : { registrada: false, motivo: trilha.code || "erro_desconhecido" } });
   } catch (error) {
     // Requalificar lead alheia reescreve `score_ia`, `temperature` e o metadata
     // inteiro — medido em 2026-07-29 com sessão de corretor: 200 e score do

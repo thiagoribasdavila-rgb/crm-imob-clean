@@ -13,6 +13,7 @@ import { classifyOutboxFailure } from "@/lib/meta/outbox-failure";
 import { closeOutboxEvent, recoverExpiredLeases } from "@/lib/integrations/outbox-lease";
 import { AUTO_REGISTERED_CAMPAIGN_STATUS, autoRegisteredCampaignName } from "@/lib/marketing/campaign-provenance";
 import { fecharPrimeiroContatoPorWhatsapp } from "@/lib/crm/whatsapp-first-contact";
+import { linhaDeAtividade } from "@/lib/crm/registro-de-atividade";
 import { descreverFalha } from "@/lib/integrations/descrever-falha";
 import { origemDaChamada, registrarExecucao } from "@/lib/integrations/livro-de-execucoes";
 
@@ -948,7 +949,11 @@ export async function POST(request: Request) {
           // como separar "já existia" de "não gravou".
           if (erroDoInsight) logger.warn("outbox.insight_nao_gravado", { messageId: message.id, code: erroDoInsight.code });
           if (insightRow && leadId) {
-            await gravar("activities.whatsapp_recebido", admin.from("activities").insert({ organization_id: message.organization_id, lead_id: leadId, type: "whatsapp_insight", title: `IA leu a conversa: ${insight.intent} (${insight.temperature})`, description: `${insight.summary} · Próxima ação sugerida: ${insight.recommendedAction}${insight.objectionKeys.length ? ` · Objeções: ${insight.objectionKeys.join(", ")}` : ""}`, metadata: { source: insight.source, model: insight.model, intent: insight.intent, objections: insight.objectionKeys, recommendedAction: insight.recommendedAction }, occurred_at: now }));
+            // `gravar` já conferia o retorno — este ponto era o ÚNICO das sete
+            // escritas que gritava. Mas gritava 42703 a cada insight de IA
+            // porque mandava `title`, coluna inexistente. `linhaDeAtividade`
+            // monta com as colunas reais e põe a manchete em `metadata.title`.
+            await gravar("activities.whatsapp_recebido", admin.from("activities").insert(linhaDeAtividade({ organizationId: message.organization_id, leadId, type: "whatsapp_insight", titulo: `IA leu a conversa: ${insight.intent} (${insight.temperature})`, description: `${insight.summary} · Próxima ação sugerida: ${insight.recommendedAction}${insight.objectionKeys.length ? ` · Objeções: ${insight.objectionKeys.join(", ")}` : ""}`, metadata: { source: insight.source, model: insight.model, intent: insight.intent, objections: insight.objectionKeys, recommendedAction: insight.recommendedAction }, occurredAt: now })));
           }
         }
       } else if (event.topic === "portal.lead.ingest" && event.aggregate_id) {

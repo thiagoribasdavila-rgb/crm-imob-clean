@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/api/security";
+import { registrarAtividade } from "@/lib/crm/registro-de-atividade";
+import { logger } from "@/lib/observability/logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
 const STATES = new Set(["scheduled", "confirmed", "completed", "cancelled", "no_show"]);
@@ -52,11 +54,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const format = body.format === "video" ? "video" : "onsite";
       const { data, error } = await admin.from("lead_visits").insert({ organization_id: identity.organizationId, lead_id: id, broker_id: lead.assigned_to, development_id: lead.development_id, scheduled_at: scheduledAt.toISOString(), format, location: String(body.location || "").trim().slice(0, 300) || null, notes: String(body.notes || "").trim().slice(0, 2000) || null }).select("id,scheduled_at,status,format,location,notes").single();
       if (error) return NextResponse.json({ error: /duplicate/i.test(error.message) ? "Esta visita já está agendada." : "Não foi possível agendar a visita." }, { status: 400 });
-      await Promise.allSettled([
-        admin.from("activities").insert({ organization_id: identity.organizationId, lead_id: id, user_id: identity.userId, title: "Visita agendada", description: `${format === "video" ? "Videochamada" : "Visita presencial"} para ${scheduledAt.toLocaleString("pt-BR")}.`, type: "system", occurred_at: new Date().toISOString() }),
+      // O `Promise.allSettled` daqui descartava o 42703 de `activities.title`
+      // junto com qualquer outra falha: a visita entrava na agenda e a trilha
+      // não existia. `allSettled` continua sendo o certo para não deixar uma
+      // falha derrubar a outra — o que faltava era LER o que ele devolveu.
+      const [trilha, proximaAcao] = await Promise.all([
+        registrarAtividade(admin, { organizationId: identity.organizationId, leadId: id, userId: identity.userId, type: "system", titulo: "Visita agendada", description: `${format === "video" ? "Videochamada" : "Visita presencial"} para ${scheduledAt.toLocaleString("pt-BR")}.` }),
         admin.from("leads").update({ next_action_at: scheduledAt.toISOString(), updated_at: new Date().toISOString() }).eq("id", id).eq("organization_id", identity.organizationId),
       ]);
-      return NextResponse.json({ visit: data }, { status: 201 });
+      if (proximaAcao.error) logger.error("lead.visits.next_action_failed", proximaAcao.error, { leadId: id, organizationId: identity.organizationId, code: proximaAcao.error.code });
+      return NextResponse.json({ visit: data, trilha: trilha.ok ? { registrada: true } : { registrada: false, motivo: trilha.code || "erro_desconhecido" } }, { status: 201 });
     }
 
     if (body.action === "transition") {
@@ -69,11 +76,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const { data, error } = await admin.from("lead_visits").update({ status }).eq("id", visitId).eq("status", current.status).eq("organization_id", identity.organizationId).select("id,status,confirmed_at,completed_at,cancelled_at,no_show_at,confirmation_minutes,completion_delay_minutes").single();
       if (error || !data) return NextResponse.json({ error: "Não foi possível atualizar a visita com segurança." }, { status: 409 });
       const labels: Record<string, string> = { confirmed: "Visita confirmada", completed: "Visita realizada", cancelled: "Visita cancelada", no_show: "Cliente não compareceu" };
-      await Promise.allSettled([
-        admin.from("activities").insert({ organization_id: identity.organizationId, lead_id: id, user_id: identity.userId, title: labels[status], description: `Resultado da visita registrado: ${status}.`, type: status === "completed" ? "visit" : "system", occurred_at: new Date().toISOString() }),
-        ...(["completed", "cancelled", "no_show"].includes(status) ? [admin.from("leads").update({ next_action_at: null, updated_at: new Date().toISOString() }).eq("id", id).eq("organization_id", identity.organizationId).eq("next_action_at", current.scheduled_at)] : []),
-      ]);
-      return NextResponse.json({ visit: data });
+      // Mesma correção do agendamento: a visita REALIZADA é o evento comercial
+      // mais caro da trilha, e era exatamente o que sumia calado.
+      const trilha = await registrarAtividade(admin, { organizationId: identity.organizationId, leadId: id, userId: identity.userId, type: status === "completed" ? "visit" : "system", titulo: labels[status], description: `Resultado da visita registrado: ${status}.` });
+      if (["completed", "cancelled", "no_show"].includes(status)) {
+        const { error: erroDaProximaAcao } = await admin.from("leads").update({ next_action_at: null, updated_at: new Date().toISOString() }).eq("id", id).eq("organization_id", identity.organizationId).eq("next_action_at", current.scheduled_at);
+        if (erroDaProximaAcao) logger.error("lead.visits.next_action_clear_failed", erroDaProximaAcao, { leadId: id, organizationId: identity.organizationId, code: erroDaProximaAcao.code });
+      }
+      return NextResponse.json({ visit: data, trilha: trilha.ok ? { registrada: true } : { registrada: false, motivo: trilha.code || "erro_desconhecido" } });
     }
     return NextResponse.json({ error: "Ação não suportada." }, { status: 400 });
   } catch (error) { return unauthorized(error); }

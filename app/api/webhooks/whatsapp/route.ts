@@ -6,6 +6,7 @@ import { logger } from "@/lib/observability/logger";
 import { assessCustomerExperience } from "@/lib/atlas/customer-experience";
 import { enforceDistributedRateLimit } from "@/lib/security/abuse-protection";
 import { fecharPrimeiroContatoPorWhatsapp, descreverContatoDeWhatsapp } from "@/lib/crm/whatsapp-first-contact";
+import { registrarAtividade } from "@/lib/crm/registro-de-atividade";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,10 @@ export async function POST(request: Request) {
     const admin = getSupabaseAdmin();
     let accepted = 0;
     let duplicates = 0;
+    // Webhook não pode devolver erro para a Meta por causa da trilha (ela
+    // reenviaria a mensagem inteira). Então a falha vira NÚMERO no corpo e no
+    // log: zero é o esperado, e deixar de ser zero é motivo para investigar.
+    let atritosNaoRegistrados = 0;
 
     for (const entry of body.entry ?? []) {
       for (const change of entry.changes ?? []) {
@@ -231,10 +236,16 @@ export async function POST(request: Request) {
             const assessment = assessCustomerExperience(incomingText);
             if (assessment.friction) {
               const { data: signal } = await admin.from("lead_experience_signals").upsert({ organization_id: integration.organization_id, lead_id: conversationLeadId, broker_id: conversationOwnerId, conversation_id: conversationId, message_id: inboundMessage?.id || null, signal_type: assessment.signalType, severity: assessment.severity, confidence: assessment.confidence, evidence: assessment.evidence, recommendation: assessment.recommendation, suggested_reply: assessment.suggestedReply }, { onConflict: "message_id", ignoreDuplicates: true }).select("id").maybeSingle();
-              await Promise.allSettled([
-                admin.from("activities").insert({ organization_id: integration.organization_id, lead_id: conversationLeadId, user_id: conversationOwnerId, type: "experience_alert", title: assessment.recommendation === "offer_broker_change" ? "IA recomenda oferecer troca de corretor" : "IA detectou atrito no atendimento", description: `${assessment.evidence} Recomendação: ${assessment.recommendation}.`, metadata: { experienceSignalId: signal?.id || null, severity: assessment.severity, confidence: assessment.confidence }, occurred_at: new Date().toISOString() }),
+              // O alerta de atrito é o sinal que dispara "oferecer troca de
+              // corretor". Ele ia para `activities.title` (42703) dentro de um
+              // `Promise.allSettled` que descartava o erro: o cliente reclamava,
+              // a IA detectava, e a operação nunca ficava sabendo.
+              const [trilhaDoAtrito, eventoDoAtrito] = await Promise.all([
+                registrarAtividade(admin, { organizationId: integration.organization_id, leadId: conversationLeadId, userId: conversationOwnerId, type: "experience_alert", titulo: assessment.recommendation === "offer_broker_change" ? "IA recomenda oferecer troca de corretor" : "IA detectou atrito no atendimento", description: `${assessment.evidence} Recomendação: ${assessment.recommendation}.`, metadata: { experienceSignalId: signal?.id || null, severity: assessment.severity, confidence: assessment.confidence } }),
                 admin.from("atlas_events").insert({ organization_id: integration.organization_id, event_type: "customer.experience_friction", source: "whatsapp", aggregate_type: "lead", aggregate_id: conversationLeadId, payload: { signalType: assessment.signalType, severity: assessment.severity, recommendation: assessment.recommendation, confidence: assessment.confidence }, correlation_id: incoming.id }),
               ]);
+              if (!trilhaDoAtrito.ok) atritosNaoRegistrados += 1;
+              if (eventoDoAtrito.error) logger.error("whatsapp.experience_event_failed", eventoDoAtrito.error, { leadId: conversationLeadId, code: eventoDoAtrito.error.code });
             }
           }
           accepted += 1;
@@ -242,8 +253,8 @@ export async function POST(request: Request) {
       }
     }
 
-    logger.info("whatsapp.webhook_processed", { accepted, duplicates });
-    return NextResponse.json({ received: true, accepted, duplicates });
+    logger.info("whatsapp.webhook_processed", { accepted, duplicates, atritosNaoRegistrados });
+    return NextResponse.json({ received: true, accepted, duplicates, atritosNaoRegistrados });
   } catch (error) {
     logger.error("whatsapp.webhook_failed", error);
     return NextResponse.json({ error: "Falha ao processar webhook." }, { status: 500 });

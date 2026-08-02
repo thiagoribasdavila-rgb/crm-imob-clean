@@ -5,6 +5,7 @@ import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/l
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { auditMessageDraft, fallbackMessageDraft } from "@/lib/ai/real-estate-message";
 import { checkRateLimit, clientKey } from "@/lib/security/rate-limit";
+import { logger } from "@/lib/observability/logger";
 
 export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ id: string }> };
@@ -26,11 +27,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (eligibilityError || !contactDecision?.eligible) return NextResponse.json({ error: "A IA não pode preparar contato sem consentimento e horário válidos.", reason: contactDecision?.reason || "eligibility_unavailable" }, { status: 409 });
     const [leadResult, activityResult, projectResult] = await Promise.all([
       admin.from("leads").select("id,name,status,source,budget_min,budget_max,preferred_regions,bedrooms,purpose,next_action_at").eq("id", id).eq("organization_id", identity.organizationId).single(),
-      admin.from("activities").select("title,type,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(5),
+      admin.from("activities").select("type,description,occurred_at").eq("lead_id", id).eq("organization_id", identity.organizationId).order("occurred_at", { ascending: false }).limit(5),
       body.projectId ? admin.from("developments").select("id,name,developer_name,status").eq("id", body.projectId).eq("organization_id", identity.organizationId).maybeSingle() : Promise.resolve({ data: null, error: null }),
     ]);
     if (leadResult.error || !leadResult.data) return NextResponse.json({ error: "Lead não encontrado." }, { status: 404 });
     const lead = leadResult.data;
+    // O select pedia `activities.title`, coluna que não existe: 42703 em toda
+    // chamada, `data ?? []` engolindo, e a IA redigindo com ZERO histórico
+    // achando que a lead nunca teve atividade. O rascunho ainda é útil sem o
+    // histórico, então a falha não derruba a rota — mas para de ser invisível,
+    // e quem recebe o rascunho passa a saber que ele foi escrito às cegas.
+    if (activityResult.error) logger.error("lead.message_draft.activities_read_failed", activityResult.error, { leadId: id, organizationId: identity.organizationId, code: activityResult.error.code });
+    const historicoDisponivel = !activityResult.error;
     const fallback = fallbackMessageDraft({ name: lead.name || "Cliente", channel, objective, tone, project: projectResult.data?.name, nextAction: lead.next_action_at });
     let content = fallback;
     let mode: "generative" | "local-fallback" = "generative";
@@ -59,7 +67,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     const audit = auditMessageDraft(content);
     if (!audit.safe) { content = fallback; mode = "local-fallback"; }
-    return NextResponse.json({ draft: { content, channel, objective, tone, mode, warnings: audit.warnings, requiresHumanApproval: true }, lead: { id: lead.id, name: lead.name }, project: projectResult.data });
+    return NextResponse.json({ draft: { content, channel, objective, tone, mode, warnings: audit.warnings, requiresHumanApproval: true, historicoDisponivel }, lead: { id: lead.id, name: lead.name }, project: projectResult.data });
   } catch (error) {
     // Recusa de carteira chegando como 500 diria "o servidor quebrou" para uma
     // regra que funcionou exatamente como devia.

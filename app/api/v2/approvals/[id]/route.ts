@@ -7,6 +7,7 @@ import { recordFunnelLearning } from "@/lib/atlas/funnel-learning";
 import { resolveLeadOwner, recordDistribution } from "@/lib/distribution/hierarchical-cascade";
 import { ACTION_PROPOSAL_REQUEST_TYPE, type ActionProposalPayload } from "@/lib/ai/action-proposals";
 import { canDecideMetaCampaign, isMetaCampaignApproval, META_CAMPAIGN_AUTHORITY_MESSAGE } from "@/lib/meta/marketing/approval-authority";
+import { registrarAtividade } from "@/lib/crm/registro-de-atividade";
 
 export const dynamic = "force-dynamic";
 
@@ -180,7 +181,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       await admin.from("commercial_simulations").update({ status: body.decision, updated_at: decidedAt }).eq("id", approval.entity_id).eq("organization_id", identity.organizationId);
       const { data: simulation } = await admin.from("commercial_simulations").select("lead_id").eq("id", approval.entity_id).eq("organization_id", identity.organizationId).single();
       if (simulation) {
-        await admin.from("activities").insert({ organization_id: identity.organizationId, lead_id: simulation.lead_id, user_id: identity.userId, type: "commercial_proposal_decision", title: body.decision === "approved" ? "Proposta comercial aprovada" : "Proposta comercial devolvida", description: body.reason || (body.decision === "approved" ? "Preço, estoque e regra revisados pela gestão." : "Requer ajuste antes do envio ao cliente."), metadata: { simulationId: approval.entity_id, decision: body.decision }, occurred_at: decidedAt });
+        // A DECISÃO da gestão sobre a proposta — aprovar ou devolver — é o
+        // registro que a auditoria comercial procura primeiro, e era o que o
+        // 42703 de `activities.title` apagava sem deixar vestígio.
+        await registrarAtividade(admin, { organizationId: identity.organizationId, leadId: String(simulation.lead_id), userId: identity.userId, type: "commercial_proposal_decision", titulo: body.decision === "approved" ? "Proposta comercial aprovada" : "Proposta comercial devolvida", description: body.reason || (body.decision === "approved" ? "Preço, estoque e regra revisados pela gestão." : "Requer ajuste antes do envio ao cliente."), metadata: { simulationId: approval.entity_id, decision: body.decision }, occurredAt: decidedAt });
         if (body.decision === "approved") {
           const { data: lead } = await admin.from("leads").select("status").eq("id", simulation.lead_id).eq("organization_id", identity.organizationId).single();
           const previousStage = lead?.status || "qualificacao";
