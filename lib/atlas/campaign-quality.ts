@@ -52,9 +52,34 @@
 // "modulo com contrato" cujo contrato nao conseguia nem importa-lo.
 import { getDiscardReason } from "./discard-reasons.ts";
 import { canonicalPipelineStage } from "./pipeline-stages.ts";
+import {
+  HOT_LEAD_CRITERION,
+  HOT_SCORE_THRESHOLD,
+  isDeclaredHotTemperature,
+  isHotLead,
+} from "./temperatura-do-lead.ts";
 
 export const CAMPAIGN_QUALITY_MINIMUM_LEADS = 30; // mesmo gate do director-daily
-export const CAMPAIGN_QUALITY_QUALIFIED_SCORE = 70; // mesmo corte de hotLeads
+
+/**
+ * ── ERA UM SEGUNDO `70`, ESCOLHIDO AQUI ────────────────────────────────────
+ *
+ * O comentário desta linha dizia "mesmo corte de hotLeads" — e era verdade por
+ * COINCIDÊNCIA: um literal 70 aqui, outro em `lib/atlas/scoring.ts`, outro em
+ * `lib/ai/lead-qualification.ts`, outro em `lib/atlas/attention-signals.ts`.
+ *
+ * Como 70 é exatamente a fronteira em que o scorer passa a gravar
+ * `temperature: "quente"` (medido por execução: `calculateLeadScore` com o
+ * payload máximo da criação por API devolve `{ score: 70, temperature:
+ * "quente" }`), o critério `score_ia >= 70 OU temperature === "quente"` é
+ * `X OU X` para toda lead cuja temperatura foi DERIVADA. A metade "score alto"
+ * não é uma segunda prova: é a mesma prova, escrita de novo.
+ *
+ * O corte NÃO foi baixado — 70 é a definição de "quente" do produto inteiro, e
+ * baixá-lo para acender um cartão redefiniria "quente" para todas as telas em
+ * silêncio. O que mudou é que ele deixou de ser ESCOLHIDO aqui.
+ */
+export const CAMPAIGN_QUALITY_QUALIFIED_SCORE = HOT_SCORE_THRESHOLD;
 
 // Etapas que constituem LASTRO COMERCIAL: o lead foi visto, recebeu proposta ou
 // fechou. É a única evidência de qualificação que não depende de cadastro bem
@@ -82,7 +107,11 @@ export const CAMPAIGN_QUALITY_GRADE_B_MAX_DISCARD = 50;
 // Vocabulário publicado nos payloads: as duas qualificações têm nomes próprios
 // para nunca serem lidas como a mesma grandeza.
 export const CAMPAIGN_QUALITY_DEFINITIONS = {
-  qualificacaoDeCadastro: `score_ia >= ${CAMPAIGN_QUALITY_QUALIFIED_SCORE} OU temperature "quente" — proxy de cadastro completo/quente; NÃO é evidência de intenção de compra`,
+  // A frase antiga era `score_ia >= 70 OU temperature "quente"`, e vendia dois
+  // caminhos independentes para o mesmo fato. `HOT_LEAD_CRITERION` diz o que o
+  // produto de fato testa: UM fato ("quente") com DUAS proveniências (declarada
+  // na Lead 360 ou derivada pelo scorer no MESMO corte).
+  qualificacaoDeCadastro: `${HOT_LEAD_CRITERION} Proxy de cadastro completo/quente; NÃO é evidência de intenção de compra`,
   qualificacaoComercial: `etapa canônica em ${CAMPAIGN_QUALITY_COMMERCIAL_STAGES.join(" | ")} — evidência verificável registrada por humano no funil`,
   denominadorDeCadastro:
     "qualificationRate é calculada SÓ sobre os leads com o eixo de cadastro medido (score_ia preenchido ou temperature quente): lead nunca pontuado NÃO conta como não qualificado — conta como não medido, e o denominador é publicado em qualificationBaseLeads",
@@ -210,12 +239,17 @@ const pct = (count: number, total: number) =>
   total > 0 ? Math.round((count / total) * 1000) / 10 : 0;
 const money = (value: number) => Math.round(value * 100) / 100;
 
-/** Qualificação DE CADASTRO — proxy: cadastro completo/quente. Não é evidência comercial. */
+/**
+ * Qualificação DE CADASTRO — proxy: cadastro completo/quente. Não é evidência comercial.
+ *
+ * Delega para `isHotLead` porque o corte e a normalização precisam ser os
+ * MESMOS que o resto do produto usa. A versão local aqui reimplantava as duas
+ * coisas: `(scoreOf(...) ?? 0) >= 70` com um 70 próprio, e um `normalize()`
+ * próprio. Duas reimplementações da mesma regra é como as duas metades do
+ * critério anunciado se soltaram uma da outra.
+ */
 export function isQualifiedLead(lead: Pick<CampaignQualityLead, "score_ia" | "temperature">) {
-  return (
-    (scoreOf(lead.score_ia) ?? 0) >= CAMPAIGN_QUALITY_QUALIFIED_SCORE
-    || normalize(lead.temperature) === "quente"
-  );
+  return isHotLead(lead);
 }
 
 /** Qualificação COMERCIAL — etapa canônica em visita/proposta/contrato/ganho. */
@@ -235,7 +269,10 @@ export function isCommerciallyQualifiedLead(lead: Pick<CampaignQualityLead, "sta
 export function hasMeasuredRegistrationAxis(
   lead: Pick<CampaignQualityLead, "score_ia" | "temperature">,
 ) {
-  return scoreOf(lead.score_ia) !== null || normalize(lead.temperature) === "quente";
+  // `isDeclaredHotTemperature` no lugar do `normalize()` local: mesma régua de
+  // normalização do resto do produto (a base tem "MORNO", "FRIO" e "quente"
+  // convivendo, e agora também "  quente  " é lido como quente).
+  return scoreOf(lead.score_ia) !== null || isDeclaredHotTemperature(lead.temperature);
 }
 
 function gradeFor(input: {

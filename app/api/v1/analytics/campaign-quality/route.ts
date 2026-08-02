@@ -7,9 +7,9 @@ import {
   CAMPAIGN_QUALITY_GRADE_RULE,
   CAMPAIGN_QUALITY_GRADE_VERSION,
   CAMPAIGN_QUALITY_MINIMUM_LEADS,
-  CAMPAIGN_QUALITY_QUALIFIED_SCORE,
   buildCampaignQuality,
 } from "@/lib/atlas/campaign-quality";
+import { HOT_LEAD_CRITERION } from "@/lib/atlas/temperatura-do-lead";
 import { fetchCampaignQualitySource } from "@/lib/atlas/campaign-quality-data";
 import { DISCARD_TAXONOMY_VERSION } from "@/lib/atlas/discard-reasons";
 import { logger } from "@/lib/observability/logger";
@@ -179,7 +179,12 @@ export async function GET(request: NextRequest) {
       ranking: rankedCampaigns,
       policy: {
         minimumLeadsForDecision: CAMPAIGN_QUALITY_MINIMUM_LEADS,
-        qualifiedDefinition: `score_ia >= ${CAMPAIGN_QUALITY_QUALIFIED_SCORE} || temperature === "quente"`,
+        // A frase era `score_ia >= 70 || temperature === "quente"`, escrita à mão
+        // aqui e de novo na outra rota. 70 é a MESMA fronteira em que o scorer
+        // grava temperature "quente": o `||` anunciava duas provas independentes
+        // onde há uma prova com duas proveniências. O texto agora sai da
+        // constante (`HOT_LEAD_CRITERION`), não de um literal por arquivo.
+        qualifiedDefinition: HOT_LEAD_CRITERION,
         // As DUAS qualificações publicadas lado a lado e nomeadas: cadastro é
         // proxy, comercial é evidência de funil. Consumidor nenhum deve ler
         // "qualificado" sem saber qual das duas está olhando.

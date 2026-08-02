@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_PIPELINE_STAGES } from "@/lib/atlas/pipeline-stages";
 import { avaliarNuncaContatado, NEVER_CONTACTED_CRITICAL_HOURS } from "@/lib/atlas/regra-nunca-contatado";
+import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 
 /**
  * Fase 100 · Sinais de atenção proativos
@@ -119,7 +120,14 @@ const STAGE_LABEL: Record<string, string> = Object.fromEntries(
 
 // Mesmo corte de "lead quente" já usado em broker-daily, team-sla,
 // manager-daily e director-daily — não inventamos um novo critério de score.
-export const HOT_SCORE_THRESHOLD = 70;
+//
+// Era `= 70` aqui, um literal próprio. O problema não é o valor: é ele ser
+// ESCOLHIDO aqui. 70 é a fronteira em que `calculateLeadScore` grava
+// temperature "quente"; se este arquivo a movesse sozinho, "quente por score"
+// e "quente na coluna" passariam a ser fatos diferentes com o mesmo nome.
+// A fronteira mora em `temperatura-do-lead.ts`; aqui só é reexportada, porque
+// as rotas já importam os limiares deste módulo.
+export { HOT_SCORE_THRESHOLD };
 
 // Dias úteis sem nenhum lead_event antes de um lead quente virar sinal.
 export const HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS = 3;
