@@ -172,6 +172,30 @@ const CATEGORIES = [
  * sem camada, devolve os dois níveis nos DOIS temas. A faixa lateral já
  * separava (rose x marrom); agora o número acompanha em vez de contradizer.
  */
+/**
+ * ── O GLIFO DO BALDE, E O BURACO EXATO QUE ELE TAPA ────────────────────────
+ *
+ * Repare nos `tom` logo abaixo: `fila` e `silencio` usam o MESMO token
+ * (`--atlas-estado-atencao`). Não é descuido — os dois são atenção, não
+ * perigo. Só que a consequência é medível: na lista de paradas, ordenada por
+ * balde, a faixa lateral pinta "Passou de mão e parou" e "Sem registro há 7
+ * dias" com a mesma tinta. Dois motivos de parada, duas conversas diferentes
+ * com o corretor (um cliente que caiu na fila de alguém contra um cliente que
+ * ninguém tocou), e ZERO canal visual separando os dois. O que separa hoje é
+ * uma frase de 30 caracteres em 11px cinza, na segunda linha da entrada.
+ *
+ * É a definição do critério: o glifo acrescenta um canal que ainda não existe.
+ * Não substitui a cor — a cor continua dizendo a gravidade; o glifo passa a
+ * dizer o MOTIVO, que a cor nunca disse.
+ *
+ * As três formas foram escolhidas para não se confundirem sem cor nenhuma:
+ * uma folha (a proposta que ficou), uma caixa de entrada (o cliente que caiu
+ * na mão de alguém) e um alto-falante cortado (o silêncio). Nenhuma delas é um
+ * círculo colorido, que é justamente o que o passe da sala de comando removeu.
+ *
+ * Todos os três levam `aria-hidden`: `rotulo` fica ao lado, em palavras, tanto
+ * na legenda quanto em cada linha.
+ */
 const BALDES = [
   {
     key: "proposta",
@@ -180,6 +204,7 @@ const BALDES = [
     detalhe: "última coisa registrada foi uma proposta, há 3 dias ou mais",
     tom: "var(--atlas-estado-perigo)",
     ink: "text-[var(--atlas-estado-perigo)]!",
+    glifo: "📄",
   },
   {
     key: "fila",
@@ -188,6 +213,7 @@ const BALDES = [
     detalhe: "última coisa registrada foi uma transferência, há 2 dias ou mais",
     tom: "var(--atlas-estado-atencao)",
     ink: "text-[var(--atlas-estado-atencao)]!",
+    glifo: "📥",
   },
   {
     key: "silencio",
@@ -196,6 +222,7 @@ const BALDES = [
     detalhe: "nenhuma atividade de qualquer tipo desde então",
     tom: "var(--atlas-estado-atencao)",
     ink: "text-[var(--atlas-estado-atencao)]!",
+    glifo: "🔇",
   },
 ] as const satisfies ReadonlyArray<{
   key: BaldeKey;
@@ -204,6 +231,7 @@ const BALDES = [
   detalhe: string;
   tom: string;
   ink: string;
+  glifo: string;
 }>;
 
 const BALDE_POR_KEY = {
@@ -613,7 +641,8 @@ export default function ActivityPage() {
             {item.leadName || "Cliente sem nome"}
           </span>
           <span className="mt-0.5 block text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
-            {balde.rotulo} · {item.actorName}
+            <span aria-hidden="true" className="mr-1">{balde.glifo}</span>{balde.rotulo} ·{" "}
+            {item.actorName}
           </span>
         </span>
         <span
@@ -757,7 +786,10 @@ export default function ActivityPage() {
                       className="flex items-baseline gap-2 lg:justify-between"
                       title={balde.detalhe}
                     >
+                      {/* A legenda ensina o vocabulário: mesmo glifo, mesma
+                          palavra, mesma ordem das linhas logo ao lado. */}
                       <span className="text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+                        <span aria-hidden="true" className="mr-1">{balde.glifo}</span>
                         {balde.rotulo}
                       </span>
                       {/* Balde ZERADO precisa de tinta apagada, e por isso o
@@ -917,7 +949,7 @@ export default function ActivityPage() {
                     className="cc6-hairline min-w-4 flex-1 self-center"
                     aria-hidden="true"
                   />
-                  <span className="cc6-num text-micro text-[var(--atlas-texto-fraco)]">
+                  <span className="cc6-num text-micro text-[var(--atlas-texto-fraco)]!">
                     {group.items.length}{" "}
                     {group.items.length === 1 ? "registro" : "registros"}
                   </span>
@@ -937,7 +969,7 @@ export default function ActivityPage() {
                         <time
                           dateTime={event.occurredAt}
                           title={fullLabel(event.occurredAt)}
-                          className="cc6-num w-16 shrink-0 pt-px text-right text-rotulo leading-6 text-[var(--atlas-texto-fraco)]"
+                          className="cc6-num w-16 shrink-0 pt-px text-right text-rotulo leading-6 text-[var(--atlas-texto-fraco)]!"
                         >
                           {isToday
                             ? relativeTime(event.occurredAt, nowMs)
@@ -962,7 +994,7 @@ export default function ActivityPage() {
                               {activityCategoryLabels[event.category]}
                             </span>
                             {event.leadStatus ? (
-                              <span className="cc6-num text-micro uppercase tracking-[0.12em] text-[var(--atlas-texto-fraco)]">
+                              <span className="cc6-num text-micro uppercase tracking-[0.12em] text-[var(--atlas-texto-fraco)]!">
                                 {event.leadStatus.replaceAll("_", " ")}
                               </span>
                             ) : null}

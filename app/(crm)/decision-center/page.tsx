@@ -64,7 +64,11 @@ type CapacityStatus = "loading" | "ok" | "denied" | "error";
 
 const SEVERITY = (priority: number) =>
   priority >= 85
-    ? { color: "#fb7185", label: "crítica" }
+    /* O crítico era hex cravado — o rosa do tema NOTURNO, copiado à mão —
+       enquanto os outros dois já saíam de token. No tema claro ele ficava
+       parado, rosa-claro sobre painel branco, justamente na severidade mais
+       alta. Agora os três degraus vêm da mesma família. */
+    ? { color: "var(--atlas-estado-perigo)", label: "crítica" }
     : priority >= 70
       ? { color: "var(--atlas-estado-atencao)", label: "alta" }
       : { color: "var(--atlas-accent)", label: "normal" };
@@ -165,7 +169,7 @@ export default function DecisionCenterPage() {
       {loadError ? (
         <p
           role="status"
-          className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-atencao)]"
+          className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-corpo leading-6 text-[var(--atlas-estado-atencao)]"
           style={{ "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}
         >
           O Atlas não conseguiu atualizar todos os sinais agora. Seus dados permanecem protegidos — recarregue a página para tentar de novo.
@@ -201,7 +205,7 @@ export default function DecisionCenterPage() {
               { label: "Insights ativos", value: insights.length, accent: "" },
             ].map((metric) => (
               <div key={metric.label}>
-                <p className={`cc6-metric-value text-3xl leading-none ${metric.accent}`}>
+                <p className={`cc6-metric-value text-numero leading-none ${metric.accent}`}>
                   {loading ? "—" : metric.value}
                 </p>
                 <p className="cc6-metric-label mt-1.5">{metric.label}</p>
@@ -210,7 +214,7 @@ export default function DecisionCenterPage() {
           </div>
 
           {!loading && decisions.length === 0 ? (
-            <p className="cc6-hairline px-5 py-8 text-center text-sm text-[var(--atlas-texto-fraco)]">
+            <p className="cc6-hairline px-5 py-8 text-center text-corpo leading-6 text-[var(--atlas-texto-fraco)]">
               {loadError
                 ? "A fila não pôde ser calculada agora."
                 : `Nenhuma decisão pendente — ${leads.length} leads analisados e nenhum exige ação imediata.`}
@@ -236,14 +240,14 @@ export default function DecisionCenterPage() {
                         Prioridade {decision.priority}
                       </span>
                     </div>
-                    <h2 className="mt-2 text-base font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
+                    <h2 className="mt-2 text-corpo font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                       {decision.title}
                     </h2>
-                    <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">{decision.reason}</p>
+                    <p className="mt-1 text-corpo leading-6 text-[var(--atlas-texto-medio)]">{decision.reason}</p>
                   </div>
                   <div className="shrink-0 sm:w-[240px] sm:text-right">
                     <p className="cc6-eyebrow text-micro!">Próxima ação</p>
-                    <p className="mt-1.5 text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
+                    <p className="mt-1.5 text-corpo font-medium leading-6 text-[var(--atlas-texto-forte)]">
                       {decision.action}
                     </p>
                   </div>
@@ -269,13 +273,13 @@ export default function DecisionCenterPage() {
                 {capacity ? `janela de ${capacity.windowDays} dias` : "—"}
               </p>
             </div>
-            <p className="px-5 pt-2 text-sm leading-6 text-[var(--atlas-texto-medio)]">
+            <p className="px-5 pt-2 text-corpo leading-6 text-[var(--atlas-texto-medio)]">
               Projeção de <strong className="font-semibold text-[var(--atlas-texto-forte)]">leads trabalhados por semana</strong> — não de receita.
               Nada aqui contrata, atribui ou remaneja alguém.
             </p>
 
             {capacityStatus === "error" ? (
-              <p className="cc6-hairline mt-4 px-5 py-6 text-sm leading-6 text-[var(--atlas-estado-atencao)]">
+              <p className="cc6-hairline mt-4 px-5 py-6 text-corpo leading-6 text-[var(--atlas-estado-atencao)]">
                 A capacidade não pôde ser medida agora — a leitura do painel executivo falhou. Nenhum número é exibido:
                 projeção sobre leitura incompleta seria pior do que a ausência dela.
               </p>
@@ -300,7 +304,7 @@ export default function DecisionCenterPage() {
                     },
                   ].map((metric) => (
                     <div key={metric.label} className="min-w-[140px]">
-                      <p className="cc6-metric-value text-3xl leading-none">{metric.value}</p>
+                      <p className="cc6-metric-value text-numero leading-none">{metric.value}</p>
                       <p className="cc6-metric-label mt-1.5">{metric.label}</p>
                       {metric.detail ? <p className="mt-1 max-w-[220px] text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{metric.detail}</p> : null}
                     </div>
@@ -324,13 +328,13 @@ export default function DecisionCenterPage() {
                           { label: "Otimista", value: scenario.projection.weeklyLeadsDelta.otimista },
                         ].map((point) => (
                           <div key={point.label}>
-                            <p className="cc6-metric-value text-2xl leading-none">{point.value}</p>
+                            <p className="cc6-metric-value text-numero leading-none">{point.value}</p>
                             <p className="cc6-metric-label mt-1">{point.label} · leads/semana</p>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="mt-3 text-sm leading-6 text-[var(--atlas-estado-atencao)]">
+                      <p className="mt-3 text-corpo leading-6 text-[var(--atlas-estado-atencao)]">
                         Ainda não sei projetar este cenário
                         {scenario.projection.basis?.reason ? `: ${scenario.projection.basis.reason}` : "."}
                         {" "}Nenhum número é exibido de propósito — um número inventado aqui vira uma contratação errada.

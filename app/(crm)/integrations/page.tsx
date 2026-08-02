@@ -53,27 +53,46 @@ const SYNC_FORMAT = new Intl.DateTimeFormat("pt-BR", {
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 
-// Chip único e honesto: status real da conexão > ambiente detectado > nada.
+/* Chip único e honesto: status real da conexão > ambiente detectado > nada.
+ *
+ * ── POR QUE ENTRA EMOJI NO ESTADO ──────────────────────────────────────────
+ *
+ * Três dos sete desfechos abaixo saem com a MESMA palavra ("Configurar") e o
+ * MESMO tom (warning) — e mandam fazer coisas opostas: instalar credencial no
+ * servidor, cadastrar no CRM, ou rodar o teste real. Quem varre as 13 linhas do
+ * catálogo lê a mesma pastilha três vezes e só descobre a diferença passando o
+ * mouse. A distinção existia no payload (`hint`) e morria no `title`.
+ *
+ * O glifo passa a carregar essa distinção — 🔑 credencial, 📋 cadastro, 🧪
+ * teste — e a mesma gramática vale em /integrations/health, para o leitor não
+ * ter de aprender dois vocabulários.
+ *
+ * Como aqui o glifo diz algo que o texto visível NÃO diz, ele não pode ser só
+ * `aria-hidden`: a linha ganha o `hint` em `sr-only`, e o leitor de tela passa
+ * a ouvir a mesma distinção que o olho recebe. "Indisponível" fica sem glifo —
+ * é a ausência de estado, e não pede ação de ninguém. */
 function providerState(item: Catalog, connection?: Connection) {
   if (connection?.status === "connected") {
-    return { tone: "success" as const, label: "Conectada", hint: "Teste real comprovado" };
+    return { tone: "success" as const, label: "Conectada", glyph: "✅", hint: "Teste real comprovado" };
   }
   if (connection?.status === "error") {
-    return { tone: "danger" as const, label: "Falha", hint: "Último teste real falhou" };
+    // ⛔ (e não 🛑) pelo mesmo motivo de /integrations/health: em escala de
+    // cinza o octógono vira disco uniforme — um ponto colorido com outro nome.
+    return { tone: "danger" as const, label: "Falha", glyph: "⛔", hint: "Último teste real falhou" };
   }
   if (connection?.status === "degraded") {
-    return { tone: "warning" as const, label: "Degradada", hint: "Conexão cadastrada com sinais degradados" };
+    return { tone: "warning" as const, label: "Degradada", glyph: "⚠️", hint: "Conexão cadastrada com sinais degradados" };
   }
   if (item.environmentReady && connection) {
-    return { tone: "warning" as const, label: "Configurar", hint: "Ambiente e cadastro prontos · falta o teste real" };
+    return { tone: "warning" as const, label: "Configurar", glyph: "🧪", hint: "Ambiente e cadastro prontos · falta o teste real" };
   }
   if (item.environmentReady) {
-    return { tone: "warning" as const, label: "Configurar", hint: "Credenciais detectadas no servidor · falta cadastro no CRM" };
+    return { tone: "warning" as const, label: "Configurar", glyph: "📋", hint: "Credenciais detectadas no servidor · falta cadastro no CRM" };
   }
   if (connection) {
-    return { tone: "warning" as const, label: "Configurar", hint: "Cadastro existe no CRM · faltam credenciais no servidor" };
+    return { tone: "warning" as const, label: "Configurar", glyph: "🔑", hint: "Cadastro existe no CRM · faltam credenciais no servidor" };
   }
-  return { tone: "neutral" as const, label: "Indisponível", hint: "Sem credenciais no servidor e sem cadastro no CRM" };
+  return { tone: "neutral" as const, label: "Indisponível", glyph: null, hint: "Sem credenciais no servidor e sem cadastro no CRM" };
 }
 
 export default function IntegrationsPage() {
@@ -195,7 +214,19 @@ export default function IntegrationsPage() {
               APIs, anúncios e portais
             </h2>
           </div>
-          <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]">
+          {/* ── O `!` NÃO É ENFEITE: MEDIDO NESTA PÁGINA ────────────────────
+              `:root[data-theme="light"] .cc6-num:not(...)` (globals.css:10352)
+              crava a tinta âmbar SEM camada, e regra sem camada vence
+              `@layer utilities` do Tailwind. Resultado medido no navegador,
+              tema claro: os 21 elementos `.cc6-num` desta tela — inclusive
+              "listings · leads · inventory" e as contagens — saíam em
+              rgb(180,83,9), que é a tinta de ATENÇÃO, exatamente a mesma
+              família da pastilha "Configurar". O alerta desaparecia dentro do
+              texto inerte. Com `!` o valor computado passa a ser o pretendido,
+              rgb(90,101,119), e o contraste sobre o painel sobe de 5,02 para
+              5,89. `background` e `color` são um par; aqui o par certo é
+              texto fraco sobre painel, não âmbar sobre painel. */}
+          <p className="cc6-num text-rotulo text-[var(--atlas-texto-fraco)]!">
             {data ? `${data.catalog.length} provedores` : "—"}
           </p>
         </header>
@@ -221,7 +252,7 @@ export default function IntegrationsPage() {
                     {GROUP_LABELS[group.key] ?? group.key}
                   </h3>
                   <span className="cc6-hairline min-w-4 flex-1 self-center" aria-hidden="true" />
-                  <span className="cc6-num text-micro text-[var(--atlas-texto-fraco)]">
+                  <span className="cc6-num text-micro text-[var(--atlas-texto-fraco)]!">
                     {group.items.length}
                   </span>
                 </header>
@@ -244,7 +275,10 @@ export default function IntegrationsPage() {
                           <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
                             {item.name}
                           </p>
-                          <p className="cc6-num mt-0.5 truncate text-micro tracking-wide text-[var(--atlas-texto-fraco)]">
+                          {/* Meta de linha é degrau de RÓTULO (11px), não de
+                              carimbo (10px): esta é a linha mais longa de cada
+                              provedor e a que mais se lê em varredura. */}
+                          <p className="cc6-num mt-0.5 truncate text-rotulo tracking-wide text-[var(--atlas-texto-fraco)]!">
                             {item.capabilities.join(" · ").replaceAll("_", " ")}
                           </p>
                           {connection?.last_error ? (
@@ -260,13 +294,29 @@ export default function IntegrationsPage() {
                           <time
                             dateTime={connection.last_sync_at}
                             title={`Último teste real: ${new Date(connection.last_sync_at).toLocaleString("pt-BR")}`}
-                            className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]"
+                            className="cc6-num shrink-0 text-rotulo text-[var(--atlas-texto-fraco)]!"
                           >
                             {SYNC_FORMAT.format(new Date(connection.last_sync_at))}
                           </time>
                         ) : null}
                         <span className="shrink-0" title={state.hint}>
-                          <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
+                          <StatusBadge tone={state.tone}>
+                            {/* O glifo precisa da própria altura: a pastilha é
+                                `text-micro!` (10px) e um emoji a 10px vira
+                                mancha. `font-size` declarado no FILHO vence a
+                                herança do pai mesmo com `!important` no pai —
+                                `!` só decide disputa dentro do mesmo elemento. */}
+                            {state.glyph ? (
+                              <span aria-hidden="true" className="text-corpo leading-none">
+                                {state.glyph}
+                              </span>
+                            ) : null}
+                            {state.label}
+                            {/* O que o glifo diz e a palavra não: sem isto,
+                                "Configurar" chega ao leitor de tela como três
+                                estados idênticos que pedem ações opostas. */}
+                            <span className="sr-only"> · {state.hint}</span>
+                          </StatusBadge>
                         </span>
                         {panel ? (
                           <Link
@@ -290,7 +340,7 @@ export default function IntegrationsPage() {
           {policyItems.map(([enforced, label]) => (
             <span
               key={label}
-              className="cc6-num inline-flex items-center gap-1.5 text-micro uppercase tracking-[0.12em] text-[var(--atlas-texto-fraco)]"
+              className="cc6-num inline-flex items-center gap-1.5 text-rotulo uppercase tracking-[0.12em] text-[var(--atlas-texto-fraco)]!"
             >
               <span aria-hidden="true" className={enforced ? "cc6-ok" : "cc6-warn"}>
                 {enforced ? "✓" : "!"}

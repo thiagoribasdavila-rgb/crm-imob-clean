@@ -358,7 +358,7 @@ export default function PipelineDiscardsPage() {
       />
 
       {status === "restricted" ? (
-        <p className="cc6-panel-quiet cc6-reveal px-4 py-3.5 text-sm leading-6 text-[var(--atlas-texto-medio)]" role="status">
+        <p className="cc6-panel-quiet cc6-reveal px-4 py-3.5 text-corpo leading-6 text-[var(--atlas-texto-medio)]" role="status">
           Relatório liberado para gestor, superintendente e diretor — fale com a gestão da sua operação para receber o consolidado.
         </p>
       ) : null}
@@ -379,7 +379,7 @@ export default function PipelineDiscardsPage() {
               <header className="flex flex-wrap items-end justify-between gap-3 px-5 pt-5">
                 <div>
                   <p className="cc6-eyebrow">Taxonomia Meta · contagem por motivo</p>
-                  <h2 id="discard-taxonomy-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
+                  <h2 id="discard-taxonomy-title" className="mt-1 text-corpo font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                     Descartes por motivo
                   </h2>
                 </div>
@@ -484,7 +484,7 @@ export default function PipelineDiscardsPage() {
                   não houve saída · houve saída e nenhuma foi classificada ·
                   houve saída antes do registro existir. */}
               {status === "ready" && report && !hasData ? (
-                <div className="cc6-hairline px-5 py-6 text-sm leading-6 text-[var(--atlas-texto-fraco)]">
+                <div className="cc6-hairline px-5 py-6 text-corpo leading-6 text-[var(--atlas-texto-fraco)]">
                   {report.totals.discarded > 0 ? (
                     <>
                       <strong className="text-[var(--atlas-texto-forte)]">
@@ -559,7 +559,7 @@ export default function PipelineDiscardsPage() {
               <section className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "120ms" }} aria-labelledby="discard-origin-title">
                 <header className="px-5 pt-5 pb-3">
                   <p className="cc6-eyebrow">Origem do lead · Mídia paga</p>
-                  <h2 id="discard-origin-title" className="mt-1 text-sm font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
+                  <h2 id="discard-origin-title" className="mt-1 text-corpo font-semibold tracking-tight text-[var(--atlas-texto-forte)]">
                     Onde nascem as leads descartadas
                   </h2>
                 </header>

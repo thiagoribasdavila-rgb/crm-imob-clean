@@ -63,7 +63,7 @@ export default function ProfileSettings() {
 
   if (loading) return <div className="cc6-panel-quiet animate-pulse p-6 text-sm text-[var(--atlas-texto-fraco)]">Carregando seu perfil…</div>;
   if (!profile) return (
-    <div role="alert" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-perigo)]" style={{ "--cc6-sev": "#fb7185" } as CSSProperties}>
+    <div role="alert" className="cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-perigo)]" style={{ "--cc6-sev": "var(--atlas-danger)" } as CSSProperties}>
       Não foi possível localizar seu perfil.
     </div>
   );
@@ -78,7 +78,7 @@ export default function ProfileSettings() {
           <div
             role="status"
             className={`cc6-sev-band cc6-panel-quiet py-3 pl-5 pr-4 text-sm ${notice.tone === "success" ? "text-[var(--atlas-estado-sucesso)]" : "text-[var(--atlas-estado-perigo)]"}`}
-            style={{ "--cc6-sev": notice.tone === "success" ? "#34d399" : "#fb7185" } as CSSProperties}
+            style={{ "--cc6-sev": notice.tone === "success" ? "var(--atlas-success)" : "var(--atlas-danger)" } as CSSProperties}
           >
             {notice.text}
           </div>
@@ -96,7 +96,11 @@ export default function ProfileSettings() {
               </span>
               <div className="min-w-0">
                 <h2 className="truncate text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">{profile.name || "Usuário Atlas"}</h2>
-                <p className="cc6-num mt-0.5 truncate text-[12px] text-[var(--atlas-texto-fraco)]" title={email}>{email}</p>
+                {/* `.cc6-num` recebe um âmbar escuro cravado de uma regra global do tema
+                    claro (escrita para o chip de estado "parado há Nd"): o
+                    e-mail da própria pessoa saía âmbar, como se fosse alerta, em
+                    4,98:1. Sem a classe: 5,84:1 e cinza. */}
+                <p className="mt-0.5 truncate text-[12px] text-[var(--atlas-texto-fraco)]" title={email}>{email}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <StatusBadge tone="info">{profile.role}</StatusBadge>
                   <span className="cc6-chip">{profile.availability_status || "OFFLINE"}</span>
@@ -109,7 +113,7 @@ export default function ProfileSettings() {
               </label>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">Foto, telefone e CRECI entram quando homologados no banco.</p>
-                <button type="submit" disabled={saving} className="atlas-button-primary disabled:opacity-50">
+                <button type="submit" disabled={saving} className="atlas-button-primary min-h-11 disabled:opacity-50">
                   {saving ? "Salvando…" : "Salvar perfil"}
                 </button>
               </div>
@@ -122,9 +126,14 @@ export default function ProfileSettings() {
           pessoal do corretor e quem decide conectar é ele, não a empresa.
           Integrações é onde a liderança configura o que é da empresa. */}
       <section className="cc6-panel cc6-reveal p-5" aria-labelledby="profile-whatsapp-title" style={{ animationDelay: "110ms" }}>
-        <p className="atlas-eyebrow">Atendimento</p>
+        <p className="cc6-eyebrow">Atendimento</p>
         <h2 id="profile-whatsapp-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Meu WhatsApp</h2>
-        <p className="mt-1 mb-4 text-xs text-slate-500">
+        {/* Medido: `.atlas-eyebrow` pinta 12px, sem caixa alta e sem tracking;
+            `.cc6-eyebrow` pinta 11px mono uppercase. Esta era a ÚNICA das seis
+            seções da tela com a primeira — um quinto degrau tipográfico, criado
+            por uma classe só. E `text-slate-500` era o único texto da página
+            fora dos tokens de cor. */}
+        <p className="mt-1 mb-4 text-sm leading-6 text-[var(--atlas-texto-fraco)]">
           Conectando, cada conversa sua entra sozinha no histórico da lead — nada de copiar e colar no fim do dia.
         </p>
         <BrokerConnectionPanel />
@@ -134,7 +143,7 @@ export default function ProfileSettings() {
         <form onSubmit={changePassword} className="cc6-panel cc6-reveal p-5" style={{ animationDelay: "100ms" }} aria-labelledby="profile-password-title">
           <p className="cc6-eyebrow">Segurança</p>
           <h2 id="profile-password-title" className="mt-1 text-lg font-semibold tracking-tight text-[var(--atlas-texto-forte)]">Trocar senha</h2>
-          <p className="cc6-num mt-1 text-rotulo text-[var(--atlas-texto-fraco)]">mínimo 12 caracteres · senha atual exigida</p>
+          <p className="mt-1 text-rotulo text-[var(--atlas-texto-fraco)] [font-variant-numeric:tabular-nums]">mínimo 12 caracteres · senha atual exigida</p>
           <div className="cc6-hairline mt-4 grid gap-3 pt-4">
             <label className="sr-only" htmlFor="profile-current-password">Senha atual</label>
             <input id="profile-current-password" className={inputClass} required type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Senha atual" />
