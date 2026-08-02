@@ -16,6 +16,7 @@ import { assessAIComplexity } from "@/lib/ai/complexity";
 import { structuredMemoryFromGovernedContext } from "@/lib/ai/structured-commercial-memory";
 import { playbookForPrompt, resolveActivePlaybook } from "@/lib/ai/versioned-real-estate-playbooks";
 import { qualificationProgress, type QualificationProfile } from "@/lib/ai/conversational-qualification";
+import { perfilConfirmadoNoCrm, respostasDoFormularioNoMetadata, respostasLegadoNoMetadata, sinaisUnificados, unificarQualificacao } from "@/lib/crm/qualificacao-canonica";
 
 export const dynamic = "force-dynamic";
 
@@ -85,8 +86,28 @@ export async function POST(request: NextRequest) {
     if (leadId) {
       const { data: memory } = await identity.supabase.from("lead_commercial_memory_states").select("interaction_count,memory_version,intent_key,timeline_key,financing_key,objection_keys,signal_keys,stage_key,recommended_action_key,last_interaction_at,expires_at").eq("lead_id", leadId).gt("expires_at", new Date().toISOString()).maybeSingle();
       if (memory) contextPackage.sections.continuity = { interactionCount: memory.interaction_count, memoryVersion: memory.memory_version, intent: memory.intent_key, timeline: memory.timeline_key, financing: memory.financing_key, objections: memory.objection_keys, signals: memory.signal_keys, stage: memory.stage_key, recommendedAction: memory.recommended_action_key, lastInteractionAt: memory.last_interaction_at, expiresAt: memory.expires_at, previousConversationTextIncluded: false };
-      const { data: qualification } = await identity.supabase.from("lead_qualification_profiles").select("purpose_key,timeline_key,financing_key,budget_readiness_key,region_readiness_key,unit_profile_key,decision_role_key,contact_preference_key").eq("lead_id", leadId).maybeSingle();
-      if (qualification) { const profile: QualificationProfile = { purpose: qualification.purpose_key||undefined, timeline: qualification.timeline_key||undefined, financing: qualification.financing_key||undefined, budget_readiness: qualification.budget_readiness_key||undefined, region_readiness: qualification.region_readiness_key||undefined, unit_profile: qualification.unit_profile_key||undefined, decision_role: qualification.decision_role_key||undefined, contact_preference: qualification.contact_preference_key||undefined }; confirmedQualification = profile; (contextPackage.sections as Record<string, unknown>).qualification = { profile, ...qualificationProgress(profile), rawConversationStored: false, brokerConfirmed: true }; }
+      // ── O COPILOTO ESCREVIA COMO SE A LEAD NUNCA TIVESSE FALADO ──────────
+      //
+      // Só `lead_qualification_profiles` era lido. Medido em 02/08/2026: 13 das
+      // 15 leads que responderam em `/qualify` não têm linha lá, e o copiloto
+      // redigia a abordagem sem objetivo, prazo nem forma de pagamento — dados
+      // que estavam gravados na outra gaveta o tempo todo.
+      //
+      // O perfil continua sendo a gaveta canônica. `brokerConfirmed` deixou de
+      // ser `true` cravado: agora só é verdadeiro quando TODO sinal creditado
+      // veio de confirmação dentro do CRM. E a memória comercial recebe apenas
+      // esse recorte, porque ela promete não guardar prazo e pagamento sem
+      // confirmação do corretor — o que a lead declarou no anúncio informa o
+      // texto, mas não vira sinal confirmado.
+      const [{ data: qualification }, { data: leadRow, error: erroDaLead }] = await Promise.all([
+        identity.supabase.from("lead_qualification_profiles").select("purpose_key,timeline_key,financing_key,budget_readiness_key,region_readiness_key,unit_profile_key,decision_role_key,contact_preference_key").eq("lead_id", leadId).maybeSingle(),
+        identity.supabase.from("leads").select("purpose,metadata").eq("id", leadId).maybeSingle(),
+      ]);
+      // Falha de leitura vira "a lead não disse nada" — indistinguível do
+      // silêncio verdadeiro. O texto continua saindo; o motivo fica no log.
+      if (erroDaLead) logger.warn("copilot.lead_read_failed", { organizationId: identity.organizationId, leadId, code: erroDaLead.code, message: erroDaLead.message });
+      const unificada = unificarQualificacao({ perfil: qualification as Record<string, unknown> | null, respostasLegado: respostasLegadoNoMetadata(leadRow?.metadata), finalidadeDaLead: (leadRow?.purpose as string | null) ?? null, respostasDoFormulario: respostasDoFormularioNoMetadata(leadRow?.metadata) });
+      if (sinaisUnificados(unificada) > 0) { const profile: QualificationProfile = unificada.profile; confirmedQualification = perfilConfirmadoNoCrm(unificada); (contextPackage.sections as Record<string, unknown>).qualification = { profile, origens: unificada.origens, divergencias: unificada.divergencias, declarado: unificada.declarado, ...qualificationProgress(profile), rawConversationStored: false, brokerConfirmed: Object.values(unificada.origens).every((origem) => origem === "corretor") }; }
     }
     const operationalContext = contextPackage.sections.operation;
     const leadContext = contextPackage.sections.lead as { stage?: string } | undefined;

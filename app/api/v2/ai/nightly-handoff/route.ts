@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
 import { origemDaChamada, registrarExecucao } from "@/lib/integrations/livro-de-execucoes";
 import { morningHandoff, nightlyWindow } from "@/lib/ai/governed-nightly-copilot";
+import { respostasDoFormularioNoMetadata, respostasLegadoNoMetadata, sinaisUnificados, unificarQualificacao } from "@/lib/crm/qualificacao-canonica";
 export const dynamic = "force-dynamic";
 
 /**
@@ -72,11 +73,21 @@ export async function POST(request: Request) {
     const falhas: { journeyId: string; code?: string }[] = [];
 
     for (const journey of elegiveis) {
-      const [{ data: qualification }, { data: simulation }, { data: existing }] = await Promise.all([
-        admin.from("lead_qualification_profiles").select("answered_count").eq("organization_id", journey.organization_id).eq("lead_id", journey.lead_id).maybeSingle(),
+      // A mesma família da qualificação com duas gavetas: `answered_count`
+      // sozinho dá 0% para quem respondeu em `/qualify` (13 das 15 leads,
+      // medido em 02/08/2026) e a entrega matinal nasce dizendo ao corretor que
+      // a lead não falou nada. O perfil segue canônico; as outras fontes só
+      // deixaram de ser ignoradas.
+      const [{ data: qualification }, { data: leadRow, error: erroDaLead }, { data: simulation }, { data: existing }] = await Promise.all([
+        admin.from("lead_qualification_profiles").select("purpose_key,timeline_key,financing_key,budget_readiness_key,region_readiness_key,unit_profile_key,decision_role_key,contact_preference_key,answered_count").eq("organization_id", journey.organization_id).eq("lead_id", journey.lead_id).maybeSingle(),
+        admin.from("leads").select("purpose,metadata").eq("organization_id", journey.organization_id).eq("id", journey.lead_id).maybeSingle(),
         admin.from("commercial_simulations").select("id").eq("organization_id", journey.organization_id).eq("lead_id", journey.lead_id).gt("valid_until", new Date().toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle(),
         admin.from("nightly_broker_handoffs").select("id").eq("journey_id", journey.id).eq("status", "pending").maybeSingle(),
       ]);
+      // Leitura falha aqui devolveria 0% de qualificação com cara de "a lead não
+      // falou nada" — a mesma ausência que este arquivo está corrigindo, só que
+      // vinda de um erro. Não derruba a entrega, mas não passa calada.
+      if (erroDaLead) logger.warn("nightly.handoff.lead_read_failed", { organizationId: journey.organization_id, leadId: journey.lead_id, code: erroDaLead.code, message: erroDaLead.message });
       if (existing) {
         jaExistiam += 1;
         continue;
@@ -84,7 +95,7 @@ export async function POST(request: Request) {
       const summary = morningHandoff({
         stage: journey.stage,
         status: journey.status,
-        qualificationPercent: Math.round((Number(qualification?.answered_count || 0) / 8) * 100),
+        qualificationPercent: Math.round((sinaisUnificados(unificarQualificacao({ perfil: qualification as Record<string, unknown> | null, respostasLegado: respostasLegadoNoMetadata(leadRow?.metadata), finalidadeDaLead: (leadRow?.purpose as string | null) ?? null, respostasDoFormulario: respostasDoFormularioNoMetadata(leadRow?.metadata) })) / 8) * 100),
         hasSimulation: Boolean(simulation),
         lastActivityAt: journey.updated_at,
       });

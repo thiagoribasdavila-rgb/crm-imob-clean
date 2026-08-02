@@ -1,3 +1,5 @@
+import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
+
 type QualificationLead = {
   email?: string | null;
   phone?: string | null;
@@ -134,7 +136,11 @@ export function qualifyRealEstateLead({ lead, activityCount, opportunityCount, p
   score = Math.max(0, Math.min(100, Math.round(score)));
 
   const confidence = Math.max(20, Math.min(100, Math.round(100 - missingData.length * 9 + Math.min(activityCount, 5) * 3)));
-  const temperature = score >= 70 ? "quente" : score >= 40 ? "morno" : "frio";
+  // Mesma fronteira de "quente" do scorer de cadastro e do leitor de qualidade
+  // de campanha — uma constante só (`lib/atlas/temperatura-do-lead.ts`). Era um
+  // `70` literal aqui também: quatro cópias do mesmo número, e o cartão do
+  // diretor anunciando as duas metades como se fossem testes independentes.
+  const temperature = score >= HOT_SCORE_THRESHOLD ? "quente" : score >= 40 ? "morno" : "frio";
   const nextBestAction = risks.includes("Próxima ação atrasada")
     ? "Executar o follow-up atrasado hoje e registrar o resultado."
     : !lead.phone && !lead.email
