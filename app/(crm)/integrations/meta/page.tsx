@@ -1143,7 +1143,7 @@ export default function MetaIntegration() {
               {
                 "--cc6-sev": webhookResult.attributionPreserved
                   ? "#34d399"
-                  : "#f5b544",
+                  : "var(--atlas-estado-atencao)",
               } as CSSProperties
             }
           >
@@ -1489,7 +1489,7 @@ export default function MetaIntegration() {
                     conversionResult.mode === "test" &&
                     !conversionResult.productionEnabled
                       ? "#34d399"
-                      : "#f5b544",
+                      : "var(--atlas-estado-atencao)",
                 } as CSSProperties
               }
             >
@@ -1656,7 +1656,7 @@ export default function MetaIntegration() {
                     className="cc6-sev-band cc6-panel-quiet p-3 pl-4"
                     style={
                       {
-                        "--cc6-sev": period.matches ? "#34d399" : "#f5b544",
+                        "--cc6-sev": period.matches ? "#34d399" : "var(--atlas-estado-atencao)",
                       } as CSSProperties
                     }
                   >
@@ -1724,7 +1724,7 @@ export default function MetaIntegration() {
                     dailyReportTest.duplicateWorkPrevented &&
                     dailyReportTest.reportCount === 1
                       ? "#34d399"
-                      : "#f5b544",
+                      : "var(--atlas-estado-atencao)",
                 } as CSSProperties
               }
             >
@@ -1874,7 +1874,7 @@ export default function MetaIntegration() {
                             check.status === "ok"
                               ? "#34d399"
                               : check.status === "warning"
-                                ? "#f5b544"
+                                ? "var(--atlas-estado-atencao)"
                                 : "#fb7185",
                         } as CSSProperties
                       }

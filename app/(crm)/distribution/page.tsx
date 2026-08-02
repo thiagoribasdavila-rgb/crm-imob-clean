@@ -419,7 +419,7 @@ export default function DistributionPage() {
               <article
                 key={signal.title}
                 className="cc6-reveal cc6-hairline cc6-sev-band flex items-baseline gap-4 px-5 py-3"
-                style={{ animationDelay: `${100 + index * 60}ms`, "--cc6-sev": "#f5b544" } as CSSProperties}
+                style={{ animationDelay: `${100 + index * 60}ms`, "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}
               >
                 <span className="cc6-metric-value w-14 shrink-0 text-right text-lg cc6-warn">{signal.value}</span>
                 <div className="min-w-0 flex-1">
@@ -478,7 +478,7 @@ export default function DistributionPage() {
                 <article
                   key={item.id}
                   className={`cc6-reveal cc6-hairline flex items-center gap-4 px-5 py-3 ${pressured ? "cc6-sev-band" : ""}`}
-                  style={{ animationDelay: `${120 + Math.min(index, 8) * 45}ms`, ...(pressured ? { "--cc6-sev": "#f5b544" } : {}) } as CSSProperties}
+                  style={{ animationDelay: `${120 + Math.min(index, 8) * 45}ms`, ...(pressured ? { "--cc6-sev": "var(--atlas-estado-atencao)" } : {}) } as CSSProperties}
                 >
                   <strong className="cc6-num shrink-0 text-sm font-medium text-[var(--atlas-texto-forte)]">Lead {item.id.slice(0, 8)}</strong>
                   <span className="min-w-0 flex-1 truncate text-xs text-[var(--atlas-texto-fraco)]">{item.source} · {item.status}</span>

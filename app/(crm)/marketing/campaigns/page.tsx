@@ -198,7 +198,7 @@ const chipTone = {
   neutral: "border-[rgba(148,163,184,.16)] text-[var(--atlas-texto-medio)]",
   accent: "border-[rgba(75,141,248,.35)] text-[var(--atlas-accent)]",
   emerald: "border-[rgba(52,211,153,.3)] text-[var(--atlas-estado-sucesso)]",
-  amber: "border-[rgba(245,181,68,.32)] text-[var(--atlas-estado-atencao)]",
+  amber: "border-[color-mix(in_srgb,var(--atlas-estado-atencao)_32%,transparent)] text-[var(--atlas-estado-atencao)]",
   rose: "border-[rgba(251,113,133,.32)] text-[var(--atlas-estado-perigo)]",
 } as const;
 type ChipToneKey = keyof typeof chipTone;

@@ -48,7 +48,7 @@ function localInsights(leads: Row[], tasks: Row[]): Insight[] {
  */
 
 const STATUS_META: Record<string, { tone: "warning" | "success" | "info" | "neutral"; sev: string | null }> = {
-  "atenção": { tone: "warning", sev: "#f5b544" },
+  "atenção": { tone: "warning", sev: "var(--atlas-estado-atencao)" },
   "oportunidade": { tone: "info", sev: "var(--atlas-accent)" },
   "saudável": { tone: "success", sev: null },
   "monitorando": { tone: "neutral", sev: null },

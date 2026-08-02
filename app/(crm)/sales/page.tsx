@@ -26,7 +26,7 @@ const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL",
 
 /* CC-6: tinta semântica por significado — vencido/urgente em rose, revisão em
    amber. Rótulos de comissão em pt-BR no lugar do enum técnico. */
-const SEV_INK = { crit: "#fb7185", warn: "#f5b544" } as const;
+const SEV_INK = { crit: "#fb7185", warn: "var(--atlas-estado-atencao)" } as const;
 const COMMISSION_LABEL: Record<string, string> = {
   received: "Recebida",
   partial: "Parcial",

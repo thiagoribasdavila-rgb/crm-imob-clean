@@ -67,7 +67,7 @@ const KIND_ACTION = {
 } as const;
 
 // Semânticos CC-6: rose para atrasado, amber para hoje; futuro fica neutro.
-const SEV_INK = { crit: "#fb7185", warn: "#f5b544" } as const;
+const SEV_INK = { crit: "#fb7185", warn: "var(--atlas-estado-atencao)" } as const;
 
 const dayKey = (value: string) =>
   new Intl.DateTimeFormat("en-CA", {

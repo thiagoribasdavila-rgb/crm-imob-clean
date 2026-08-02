@@ -116,7 +116,7 @@ const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]";
 const priorityBand: Record<Priority["tone"], string> = {
   danger: "#fb7185",
-  warning: "#f5b544",
+  warning: "var(--atlas-estado-atencao)",
   info: "var(--atlas-accent)",
 };
 const priorityInk: Record<Priority["tone"], string> = {
@@ -542,7 +542,7 @@ export default function DevelopmentsPage() {
                       <CoverageBar
                         label="Kit comercial"
                         value={item.readiness.materialCoverage}
-                        fill={kitComplete ? "#34d399" : "#f5b544"}
+                        fill={kitComplete ? "#34d399" : "var(--atlas-estado-atencao)"}
                       />
                     </div>
 

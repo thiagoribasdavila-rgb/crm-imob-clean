@@ -118,7 +118,7 @@ const KIND_LABEL = {
 const HIGH_PRIORITY = new Set(["alta", "high", "critical"]);
 
 // Semânticos CC-6: rose para vencido, amber para hoje; futuro fica neutro.
-const SEV_INK = { crit: "#fb7185", warn: "#f5b544" } as const;
+const SEV_INK = { crit: "#fb7185", warn: "var(--atlas-estado-atencao)" } as const;
 const STEP_SEV = { now: "crit", today: "warn", planned: null } as const;
 
 const FIELD_CLASS =

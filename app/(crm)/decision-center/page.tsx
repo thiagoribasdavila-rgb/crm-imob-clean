@@ -65,7 +65,7 @@ const SEVERITY = (priority: number) =>
   priority >= 85
     ? { color: "#fb7185", label: "crítica" }
     : priority >= 70
-      ? { color: "#f5b544", label: "alta" }
+      ? { color: "var(--atlas-estado-atencao)", label: "alta" }
       : { color: "var(--atlas-accent)", label: "normal" };
 
 export default function DecisionCenterPage() {
@@ -165,7 +165,7 @@ export default function DecisionCenterPage() {
         <p
           role="status"
           className="cc6-sev-band cc6-panel-quiet cc6-reveal py-3 pl-5 pr-4 text-sm text-[var(--atlas-estado-atencao)]"
-          style={{ "--cc6-sev": "#f5b544" } as CSSProperties}
+          style={{ "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}
         >
           O Atlas não conseguiu atualizar todos os sinais agora. Seus dados permanecem protegidos — recarregue a página para tentar de novo.
         </p>
