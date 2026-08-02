@@ -26,6 +26,32 @@
     "não alcançou). É palpite declarado, não fato — confirme na primeira execução",
     "real e troque para false."
   ],
+  "$evidenciaCondicional": {
+    "todosOs13SaoCondicionais": true,
+    "porque": [
+      "MEDIDO EM 02/08/2026, lendo as 13 rotas: NENHUMA delas grava",
+      "incondicionalmente. Toda escrita acontece dentro de um laço sobre uma fila,",
+      "ou dentro de uma RPC que só age quando há item elegível.",
+      "",
+      "Isso quebra a premissa de check-vigias-vivos, que lia 'sem rastro' como",
+      "'nunca rodou'. Para estes 13, 'sem rastro' é o desfecho CORRETO de um",
+      "sistema quieto: o vigia acordou, olhou a fila, não achou nada e foi dormir.",
+      "",
+      "É a mesma doença corrigida hoje em /api/v1/ready: ausência de trabalho",
+      "elegível é indistinguível de ausência de execução, e o produto escolhia o",
+      "lado confiante. Lá a cura foi o campo `observavel`; aqui é este campo.",
+      "",
+      "CONSEQUÊNCIA QUE NÃO DÁ PARA CONSERTAR SÓ COM CÓDIGO: rastro condicional",
+      "não prova vida. Para responder 'este vigia rodou?' com honestidade seria",
+      "preciso UMA LINHA POR INVOCAÇÃO, independente de ter havido trabalho — um",
+      "livro de execuções. Isso exige tabela nova, e tabela nova exige migration,",
+      "que está fora do que foi autorizado. Fica declarado aqui em vez de fingido",
+      "no portão.",
+      "",
+      "A tabela `atlas_agent_runs` existe e tem ZERO linhas — ela seria o lugar",
+      "natural desse livro, e hoje ninguém escreve nela."
+    ]
+  },
   "$fusoDaCadencia": {
     "fuso": "America/Sao_Paulo",
     "porque": [
@@ -59,6 +85,7 @@
       "evidencia": {
         "tabela": "tasks",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -71,6 +98,7 @@
       "evidencia": {
         "tabela": "integration_outbox",
         "coluna": "updated_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -83,6 +111,7 @@
       "evidencia": {
         "tabela": "task_reminders",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -94,7 +123,8 @@
       "timeoutMs": 55000,
       "evidencia": {
         "tabela": "lead_assignment_reservations",
-        "coluna": "updated_at",
+        "coluna": "released_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -107,6 +137,7 @@
       "evidencia": {
         "tabela": "tasks",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -119,6 +150,7 @@
       "evidencia": {
         "tabela": "ai_sales_journeys",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -131,6 +163,7 @@
       "evidencia": {
         "tabela": "nightly_broker_handoffs",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -143,6 +176,7 @@
       "evidencia": {
         "tabela": "meta_daily_reports",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": true
       }
     },
@@ -155,6 +189,7 @@
       "evidencia": {
         "tabela": "tasks",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": true
       }
     },
@@ -167,6 +202,7 @@
       "evidencia": {
         "tabela": "meta_conversion_events",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": true
       }
     },
@@ -179,6 +215,7 @@
       "evidencia": {
         "tabela": "meta_leads_sem_destino",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -191,6 +228,7 @@
       "evidencia": {
         "tabela": "marketing_spend",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": true
       }
     },
@@ -203,6 +241,7 @@
       "evidencia": {
         "tabela": "conversion_calibration_models",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": true
       }
     }
