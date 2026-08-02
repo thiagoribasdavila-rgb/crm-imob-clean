@@ -159,13 +159,36 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         headers: [{ key: "Cache-Control", value: "no-store" }],
       },
-      {
         // Imutável de verdade: o nome contém o hash do conteúdo. Se o conteúdo
         // muda, o nome muda — não existe cópia velha para servir. Esta regra
         // vem por ÚLTIMO para sobrescrever o `no-store` da geral.
-        source: "/_next/static/:path*",
-        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
-      },
+        //
+        // ── E SÓ VALE EM PRODUÇÃO ────────────────────────────────────────────
+        //
+        // A premissa inteira desta regra é "o nome contém o hash do conteúdo".
+        // Em DESENVOLVIMENTO isso é falso: o Turbopack serve nomes estáveis
+        // (`app_(auth)_login_page_tsx_*.js`) cujo CONTEÚDO muda a cada edição.
+        // Com `immutable` por um ano o navegador nunca reabaixa o chunk — o
+        // servidor entrega o HTML novo, o React hidrata com o componente VELHO
+        // que estava em cache, e a tela volta a ser a de antes.
+        //
+        // Custou uma hora hoje (02/08/2026): editei a marca, o `curl` mostrava
+        // o código novo no HTML servido, e o navegador continuava desenhando o
+        // antigo. O próprio Next avisa disso a cada boot — "Custom Cache-Control
+        // headers detected for /_next/static/:path* … can break Next.js
+        // development behavior" — e o aviso estava certo.
+        //
+        // Pior que a hora perdida é o que isso ensina: quem edita e não vê
+        // mudança conclui que a edição não funcionou, e vai "consertar" o que
+        // já estava certo. O cache não fica errado — ele faz VOCÊ ficar errado.
+        ...(process.env.NODE_ENV === "development"
+          ? []
+          : [
+              {
+                source: "/_next/static/:path*",
+                headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+              },
+            ]),
     ];
   },
 

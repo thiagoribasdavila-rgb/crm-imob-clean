@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import {
+  type CSSProperties,
   FormEvent,
   KeyboardEvent,
   Suspense,
@@ -232,51 +233,93 @@ function LoginExperience() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#070b16] text-white">
-      {/* Deck de comando 3D: céu limpo com um único wash do acento + chão em grade
-          que recede em perspectiva real (transform estático — custo zero de frame). */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1100px_520px_at_74%_-10%,rgba(56,189,248,.09),transparent_60%)]" />
+    /* ── A ESCALA, DECLARADA NA PRÓPRIA TELA ────────────────────────────────
+       Medido em 02/08/2026, nesta página em 1440×900: OITO tamanhos de fonte
+       (60, 36, 24, 16, 14, 12, 11, 10) para 21 textos — quase um tamanho a
+       cada dois textos —, quatro pesos e QUATRO raios de canto distintos.
+       Isso não é falta de beleza, é falta de regra: sem escala para
+       consultar, cada texto novo inventa o próprio tamanho, e foi assim que
+       nasceu o `11.5px` que existe em outras telas do produto.
+       Quatro degraus, e todo texto desta tela sai de um deles. Ficam à vista
+       aqui em vez de espalhados em classes: uma escala que você não consegue
+       ler é uma escala que ninguém segue. */
+    <main
+      className="relative min-h-screen overflow-hidden bg-[#070b16] text-[color:var(--atlas-text-primary,#f0f4fb)]"
+      style={
+        {
+          "--t1": "11px", // rótulo — mono, caixa alta, tracking largo
+          "--t2": "13px", // corpo — campos, botões, apoio
+          "--t3": "20px", // título do cartão
+          "--t4": "34px", // herói
+          "--r": "16px", // raio único das superfícies; a pílula é a exceção declarada
+        } as CSSProperties
+      }
+    >
+      {/* Fundo em três camadas, e nenhuma delas é imagem: um wash do acento da
+          marca, o chão em grade que recua em perspectiva real (transform
+          estático, custo zero de frame) e a linha do horizonte. É daqui que
+          vem o "futurista" — geometria, não efeito. */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(1100px_520px_at_74%_-10%,color-mix(in_srgb,var(--atlas-brand-from,#3ae7d7)_10%,transparent),transparent_60%)]" />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-[-35%] bottom-0 h-[78%] opacity-[.55] [transform:perspective(820px)_rotateX(58deg)] [transform-origin:50%_100%] [background-image:linear-gradient(rgba(56,189,248,.26)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,.26)_1px,transparent_1px)] [background-size:54px_54px] [mask-image:linear-gradient(to_top,black_26%,transparent_92%)]"
+        className="pointer-events-none absolute inset-x-[-35%] bottom-0 h-[78%] opacity-40 [transform:perspective(820px)_rotateX(58deg)] [transform-origin:50%_100%] [background-image:linear-gradient(color-mix(in_srgb,var(--atlas-brand-from,#3ae7d7)_22%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_srgb,var(--atlas-brand-from,#3ae7d7)_22%,transparent)_1px,transparent_1px)] [background-size:54px_54px] [mask-image:linear-gradient(to_top,black_26%,transparent_92%)]"
       />
-      <div className="pointer-events-none absolute inset-x-0 bottom-[36%] h-px bg-gradient-to-r from-transparent via-sky-300/20 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-[36%] h-px bg-gradient-to-r from-transparent via-[color-mix(in_srgb,var(--atlas-brand-from,#3ae7d7)_28%,transparent)] to-transparent" />
 
       <div className="relative mx-auto grid min-h-screen w-full max-w-[1440px] items-center gap-12 px-5 py-8 lg:grid-cols-[1.1fr_440px] lg:px-12 xl:gap-24">
-        <section className="cc5-reveal relative hidden min-h-[720px] overflow-hidden border-r border-[rgba(148,163,184,.12)] p-10 lg:flex lg:flex-col lg:justify-between xl:p-12" style={{ animationDelay: "0ms" }}>
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_65%_42%,rgba(14,165,233,.11),transparent_24rem)]" />
-          <Image src="/brand/atlas-robot-assistant.png" alt="Assistente de inteligência Atlas" width={420} height={630} priority className="pointer-events-none absolute -bottom-4 -right-20 h-[380px] w-auto select-none object-contain opacity-80 drop-shadow-[0_24px_42px_rgba(14,165,233,.14)] xl:-right-20 xl:h-[420px]" />
-          <div className="pointer-events-none absolute bottom-14 right-16 h-20 w-56 rounded-[50%] bg-sky-400/15 blur-3xl" />
+        {/* ── A COLUNA DA ESQUERDA PERDEU TRÊS BLOCOS ────────────────────────
+            Saíram a pastilha "IA proativa conectada ao comercial", a faixa de
+            três colunas ("Prioridades agora / Copiloto único / Operação viva")
+            e a faixa de rodapé de três selos. Nenhum dos três ajudava a
+            entrar: numa tela de acesso a pessoa já decidiu usar o produto —
+            argumento de venda ali é ruído entre ela e o campo de senha.
+            Ficou o que uma capa precisa ter: quem é, o que faz, e o robô. */}
+        <section className="cc5-reveal relative hidden min-h-[560px] overflow-hidden border-r border-[rgba(148,163,184,.12)] p-10 lg:flex lg:flex-col lg:justify-center xl:p-12" style={{ animationDelay: "0ms" }}>
+          {/* O robô continua — ele é a IA tendo corpo, e o produto inteiro
+              conversa com ela. Mudou o PAPEL: era um pôster de 380px disputando
+              a tela com o texto, virou presença ao lado dele. */}
+          <Image src="/brand/atlas-robot-assistant.png" alt="" aria-hidden="true" width={420} height={630} priority className="pointer-events-none absolute -bottom-6 right-0 h-[260px] w-auto select-none object-contain opacity-60 xl:h-[300px]" />
+          <div className="pointer-events-none absolute bottom-10 right-10 h-16 w-44 rounded-[50%] bg-[color-mix(in_srgb,var(--atlas-brand-from,#3ae7d7)_12%,transparent)] blur-3xl" />
+
           <div className="relative z-10">
-          <Link href="/" className="inline-flex items-center gap-4" aria-label="Voltar para a página inicial do Atlas">
-            <AtlasLogo size={48} className="shrink-0" />
-            <div><p className="text-2xl font-black tracking-[-.04em]">ATLAS <span className="text-sky-400">AI</span></p><p className="font-mono text-micro font-medium uppercase tracking-[.22em] text-slate-500">Real Estate Intelligence</p></div>
-          </Link>
-          <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-sky-300/10 bg-sky-300/[.045] px-3 py-1.5 font-mono text-rotulo font-medium text-sky-200"><span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-sky-300" /> IA proativa conectada ao comercial</div>
-          <h1 className="mt-6 max-w-[520px] text-5xl font-semibold leading-[.98] tracking-[-.06em] xl:max-w-[580px] xl:text-6xl">Sua sala de comando para <span className="text-sky-300">decidir e vender.</span></h1>
-          <p className="mt-6 max-w-sm text-base leading-7 text-slate-400">A IA prioriza, a equipe decide: leads, imóveis, campanhas e a próxima ação — num só lugar.</p>
-          </div>
-          <div className="relative z-10 grid max-w-[380px] grid-cols-3 border-y border-[rgba(148,163,184,.12)] py-5">
-            {[ ["Prioridades agora", "IA proativa"], ["Copiloto único", "Próxima ação"], ["Operação viva", "Tempo real"] ].map(([title, detail], index) => <div key={title} className={`px-4 ${index ? "border-l border-[rgba(148,163,184,.12)]" : ""}`}><p className="font-mono text-micro font-medium uppercase tracking-[.16em] text-slate-500">{title}</p><p className="mt-2 text-sm font-semibold text-slate-200">{detail}</p></div>)}
+            <Link href="/" className="inline-flex" aria-label="Voltar para a página inicial do Atlas">
+              <AtlasLogo size={52} wordmark />
+            </Link>
+            <h1 className="mt-10 max-w-[520px] font-semibold leading-[1.05] tracking-[-.045em] text-[length:var(--t4)]">
+              Sua sala de comando para{" "}
+              <span className="bg-clip-text text-transparent [background-image:linear-gradient(110deg,var(--atlas-brand-from,#3ae7d7),var(--atlas-brand-to,#8b8cff))]">decidir e vender.</span>
+            </h1>
+            <p className="mt-5 max-w-sm leading-6 text-[length:var(--t2)] text-[color:var(--atlas-text-secondary,#94a3b8)]">
+              A IA prioriza, a equipe decide: leads, imóveis, campanhas e a próxima ação — num só lugar.
+            </p>
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-lg [perspective:1400px]">
-          <div className="cc5-reveal mb-6 flex items-center justify-between gap-3 lg:hidden" style={{ animationDelay: "0ms" }}><div className="flex items-center gap-3"><AtlasLogo size={44} className="shrink-0" /><div><p className="text-xl font-black tracking-[-.03em]">ATLAS <span className="text-sky-400">AI</span></p><p className="font-mono text-micro uppercase tracking-[.22em] text-slate-500">Real Estate Intelligence</p></div></div><span role="img" aria-label="Assistente Atlas" className="h-16 w-12 bg-[url('/brand/atlas-robot-assistant.png')] bg-contain bg-center bg-no-repeat drop-shadow-[0_12px_20px_rgba(14,165,233,.18)]" /></div>
-          <TiltShell delayMs={70} className="cc5-reveal relative overflow-hidden rounded-[28px] border border-[rgba(148,163,184,.16)] bg-[linear-gradient(180deg,#0f1830_0%,#0b1224_100%)] p-6 shadow-[0_40px_120px_rgba(0,0,0,.5)] sm:p-9">
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-300/70 to-transparent" />
-            <div className="motion-safe:[transform:translateZ(14px)]">
+        <section className="mx-auto w-full max-w-lg">
+          {/* No celular a marca aparece uma vez, com o wordmark do componente —
+              e não reconstruída à mão como estava. Eram duas grafias do mesmo
+              nome na MESMA tela. */}
+          <div className="cc5-reveal mb-7 lg:hidden" style={{ animationDelay: "0ms" }}>
+            <AtlasLogo size={46} wordmark />
+          </div>
+
+          <TiltShell delayMs={70} className="cc5-reveal relative overflow-hidden border border-[rgba(148,163,184,.16)] bg-[linear-gradient(180deg,#0f1830_0%,#0b1224_100%)] p-6 shadow-[0_40px_120px_rgba(0,0,0,.5)] sm:p-9 rounded-[calc(var(--r)*1.5)]">
+            {/* A única linha de brilho da tela, e ela é de 1px: o filete no topo
+                do cartão, no gradiente da marca. Um realce que você precisa
+                procurar vale mais que cinco que competem. */}
+            <div className="absolute inset-x-0 top-0 h-px [background:linear-gradient(90deg,transparent,var(--atlas-brand-from,#3ae7d7),var(--atlas-brand-to,#8b8cff),transparent)]" />
+            <div>
               <div className="flex items-center justify-between gap-4">
-                <p className="font-mono text-rotulo font-medium uppercase tracking-[.24em] text-slate-500">Sala de comando</p>
-                <span className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1 font-mono text-rotulo font-medium tabular-nums ${systemStatus === "online" ? "border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300" : systemStatus === "offline" ? "border-amber-400/15 bg-amber-400/[0.07] text-amber-300" : "border-[rgba(148,163,184,.22)] bg-white/[.04] text-slate-400"}`}><span className={`h-1.5 w-1.5 rounded-full ${systemStatus === "online" ? "bg-emerald-400" : systemStatus === "offline" ? "bg-amber-400" : "animate-pulse bg-slate-500"}`} /> {systemStatus === "online" ? "Sistema disponível" : systemStatus === "offline" ? "Conexão instável" : "Verificando"}</span>
+                <p className="font-mono font-medium uppercase tracking-[.24em] text-[length:var(--t1)] text-[color:var(--atlas-text-tertiary,#6b7890)]">Sala de comando</p>
+                <span className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1 font-mono font-medium tabular-nums text-[length:var(--t1)] ${systemStatus === "online" ? "border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300" : systemStatus === "offline" ? "border-amber-400/15 bg-amber-400/[0.07] text-amber-300" : "border-[rgba(148,163,184,.22)] bg-white/[.04] text-slate-400"}`}><span className={`h-1.5 w-1.5 rounded-full ${systemStatus === "online" ? "bg-emerald-400" : systemStatus === "offline" ? "bg-amber-400" : "animate-pulse bg-slate-500"}`} /> {systemStatus === "online" ? "Sistema disponível" : systemStatus === "offline" ? "Conexão instável" : "Verificando"}</span>
               </div>
-              <h2 className="mt-5 text-4xl font-semibold tracking-[-.05em]">Bem-vindo de volta.</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">Entre para abrir a sua sala de comando.</p>
+              <h2 className="mt-6 font-semibold tracking-[-.03em] text-[length:var(--t3)]">Bem-vindo de volta.</h2>
+              <p className="mt-1.5 leading-5 text-[length:var(--t2)] text-[color:var(--atlas-text-tertiary,#6b7890)]">Entre para abrir a sua sala de comando.</p>
             </div>
 
-            <form className="mt-8 space-y-5 motion-safe:[transform:translateZ(8px)]" onSubmit={handleSubmit} noValidate>
+            <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-slate-400">E-mail corporativo</span>
+                <span className="mb-2 block font-medium text-[length:var(--t2)] text-[color:var(--atlas-text-secondary,#94a3b8)]">E-mail corporativo</span>
                 <div className="relative">
                   <input
                     ref={emailRef}
@@ -289,7 +332,8 @@ function LoginExperience() {
                     autoComplete="username"
                     value={email}
                     onChange={(event) => { setEmail(event.target.value); if (error) setError(""); }}
-                    className="h-14 w-full border-[rgba(148,163,184,.16)] bg-white/[.03] px-4 pr-11 transition hover:border-[rgba(148,163,184,.22)] focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
+                    className="h-13 w-full border-[rgba(148,163,184,.16)] bg-white/[.03] px-4 pr-11 text-[length:var(--t2)] transition hover:border-[rgba(148,163,184,.22)] focus:border-[color:var(--atlas-brand-from,#3ae7d7)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--atlas-brand-from,#3ae7d7)_18%,transparent)]"
+                    style={{ borderRadius: "var(--r)", height: "52px" }}
                     placeholder="voce@empresa.com"
                     aria-invalid={Boolean(error)}
                   />
@@ -298,7 +342,7 @@ function LoginExperience() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-slate-400">Senha</span>
+                <span className="mb-2 block font-medium text-[length:var(--t2)] text-[color:var(--atlas-text-secondary,#94a3b8)]">Senha</span>
                 <div className="relative">
                   <input
                     ref={passwordRef}
@@ -311,7 +355,8 @@ function LoginExperience() {
                     onKeyDown={updateCapsLock}
                     onKeyUp={updateCapsLock}
                     onBlur={() => setCapsLock(false)}
-                    className="h-14 w-full border-[rgba(148,163,184,.16)] bg-white/[.03] px-4 pr-14 transition hover:border-[rgba(148,163,184,.22)] focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/10"
+                    className="w-full border-[rgba(148,163,184,.16)] bg-white/[.03] px-4 pr-14 text-[length:var(--t2)] transition hover:border-[rgba(148,163,184,.22)] focus:border-[color:var(--atlas-brand-from,#3ae7d7)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--atlas-brand-from,#3ae7d7)_18%,transparent)]"
+                    style={{ borderRadius: "var(--r)", height: "52px" }}
                     placeholder="Digite sua senha"
                     aria-invalid={Boolean(error)}
                     aria-describedby={[capsLock ? "caps-lock-warning" : "", error ? "login-error" : ""].filter(Boolean).join(" ") || undefined}
@@ -319,7 +364,7 @@ function LoginExperience() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((current) => !current)}
-                    className="absolute inset-y-0 right-0 grid w-14 place-items-center text-slate-500 transition hover:text-sky-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/70"
+                    className="absolute inset-y-0 right-0 grid w-14 place-items-center text-slate-500 transition hover:text-[color:var(--atlas-brand-from,#3ae7d7)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--atlas-brand-from,#3ae7d7)]"
                     aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                     aria-pressed={showPassword}
                     title={showPassword ? "Ocultar senha" : "Mostrar senha"}
@@ -327,33 +372,40 @@ function LoginExperience() {
                     <EyeIcon hidden={showPassword} />
                   </button>
                 </div>
-                {capsLock ? <p id="caps-lock-warning" className="mt-2 text-xs font-medium text-amber-300">Caps Lock está ativado.</p> : null}
+                {capsLock ? <p id="caps-lock-warning" className="mt-2 font-medium text-[length:var(--t2)] text-amber-300">Caps Lock está ativado.</p> : null}
               </label>
 
               <div className="flex items-center justify-between gap-4">
-                <label className="flex cursor-pointer items-center gap-2.5 text-xs text-slate-400">
-                  <input type="checkbox" checked={rememberEmail} onChange={(event) => setRememberEmail(event.target.checked)} className="h-4 w-4 rounded border-white/20 bg-white/5 accent-sky-400" />
+                <label className="flex cursor-pointer items-center gap-2.5 text-[length:var(--t2)] text-[color:var(--atlas-text-secondary,#94a3b8)]">
+                  <input type="checkbox" checked={rememberEmail} onChange={(event) => setRememberEmail(event.target.checked)} className="h-4 w-4 rounded border-white/20 bg-white/5 accent-[color:var(--atlas-brand-from,#3ae7d7)]" />
                   Lembrar meu e-mail
                 </label>
-                <Link href="/forgot-password" className="text-xs font-medium text-sky-300 transition hover:text-sky-200">Esqueci minha senha</Link>
+                <Link href="/forgot-password" className="font-medium text-[length:var(--t2)] text-[color:var(--atlas-brand-from,#3ae7d7)] transition hover:opacity-80">Esqueci minha senha</Link>
               </div>
 
-              {error ? <div id="login-error" role="alert" aria-live="assertive" className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"><p className="font-semibold">Não foi possível entrar</p><p className="mt-1 leading-5 text-rose-200/90">{error}</p>{/senha|credenciais|incorretos/i.test(error) ? <Link href={`/forgot-password${email ? `?email=${encodeURIComponent(email.trim().toLowerCase())}` : ""}`} className="mt-3 inline-flex text-xs font-bold text-white underline underline-offset-4">Redefinir minha senha</Link> : null}</div> : null}
+              {error ? <div id="login-error" role="alert" aria-live="assertive" className="border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-[length:var(--t2)] text-rose-100" style={{ borderRadius: "var(--r)" }}><p className="font-semibold">Não foi possível entrar</p><p className="mt-1 leading-5 text-rose-200/90">{error}</p>{/senha|credenciais|incorretos/i.test(error) ? <Link href={`/forgot-password${email ? `?email=${encodeURIComponent(email.trim().toLowerCase())}` : ""}`} className="mt-3 inline-flex font-bold text-white underline underline-offset-4 text-[length:var(--t1)]">Redefinir minha senha</Link> : null}</div> : null}
 
-              <button type="submit" disabled={loading} aria-busy={loading} className="group flex h-14 w-full items-center justify-center gap-2 rounded-full bg-white px-5 text-sm font-bold !text-slate-950 shadow-[0_16px_45px_rgba(255,255,255,.08)] transition hover:-translate-y-0.5 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60">
-                {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" /> {loginStage === "profile" ? "Preparando sua operação..." : loginStage === "redirect" ? "Abrindo seu painel..." : "Validando acesso..."}</> : <>Entrar no Atlas OS <span aria-hidden="true">→</span></>}
+              {/* O botão principal deixou de ser um comprimido branco. Ele é a
+                  marca: mesmo gradiente do "A", texto escuro por cima. A pílula
+                  é a segunda família de raio desta tela, e a única. */}
+              <button type="submit" disabled={loading} aria-busy={loading} style={{ fontSize: "var(--t2)" }} className="group flex h-[52px] w-full items-center justify-center gap-2 rounded-full px-5 font-bold !text-[#06121a] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 [background:linear-gradient(110deg,var(--atlas-brand-from,#3ae7d7),var(--atlas-brand-to,#8b8cff))]">
+                {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/25 border-t-black/70" aria-hidden="true" /> {loginStage === "profile" ? "Preparando sua operação..." : loginStage === "redirect" ? "Abrindo seu painel..." : "Validando acesso..."}</> : <>Entrar no Atlas OS <span aria-hidden="true">→</span></>}
               </button>
               <p className="sr-only" role="status" aria-live="polite">
                 {loading ? (loginStage === "profile" ? "Acesso validado. Preparando sua operação." : loginStage === "redirect" ? "Acesso validado. Abrindo seu painel." : "Validando suas credenciais.") : "Formulário de acesso pronto."}
               </p>
-              {systemStatus === "offline" ? <button type="button" onClick={() => window.location.reload()} className="w-full text-center text-xs font-semibold text-amber-200">Tentar reconectar</button> : null}
+              {systemStatus === "offline" ? <button type="button" onClick={() => window.location.reload()} className="w-full text-center font-semibold text-[length:var(--t2)] text-amber-200">Tentar reconectar</button> : null}
             </form>
 
-            <div className="mt-7 border-t border-[rgba(148,163,184,.12)] pt-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-micro font-medium uppercase tracking-[.14em] text-slate-600"><span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-400" /> Sessão protegida</span><span>Dados isolados</span><span className="tabular-nums">Atlas V3</span></div>
+            {/* Eram três selos ("Sessão protegida · Dados isolados · Atlas V3").
+                Ficou um: o que diz algo sobre a SESSÃO que está começando. Os
+                outros dois eram o produto se elogiando para quem ainda não
+                entrou. */}
+            <div className="mt-7 flex items-center gap-2 border-t border-[rgba(148,163,184,.12)] pt-5 font-mono font-medium uppercase tracking-[.14em] text-[length:var(--t1)] text-[color:var(--atlas-text-tertiary,#6b7890)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--atlas-brand-from,#3ae7d7)]" /> Sessão protegida · dados isolados por empresa
             </div>
           </TiltShell>
-          <Link href="/" className="cc5-reveal mx-auto mt-5 flex w-fit items-center gap-2 text-xs text-slate-600 transition hover:text-slate-300" style={{ animationDelay: "140ms" }}><span aria-hidden="true">←</span> Voltar para o início</Link>
+          <Link href="/" className="cc5-reveal mx-auto mt-5 flex w-fit items-center gap-2 text-[length:var(--t2)] text-[color:var(--atlas-text-tertiary,#6b7890)] transition hover:text-[color:var(--atlas-text-secondary,#94a3b8)]" style={{ animationDelay: "140ms" }}><span aria-hidden="true">←</span> Voltar para o início</Link>
         </section>
       </div>
     </main>
