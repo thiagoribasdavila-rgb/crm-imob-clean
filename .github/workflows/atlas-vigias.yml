@@ -158,10 +158,24 @@ jobs:
             # Repetir um POST que pode ter sido processado é arriscar mandar duas
             # vezes para o cliente. Um vermelho transitório é barato; uma
             # mensagem duplicada, não.
+            # ── QUEM CHAMOU, DITO E NAO ADIVINHADO ────────────────────────────
+            #
+            # O livro de execucoes tem um campo `origem` cuja funcao inteira e
+            # responder "quem disparou este vigia?". Medido na primeira execucao
+            # real (02/08/2026, run 30739060313): ele gravou `crontab-ou-curl`.
+            #
+            # A deducao do lado do servidor olha o user-agent, e o curl do GitHub
+            # Actions manda um `curl/8.x` indistinguivel do curl de um crontab no
+            # servidor. Palpite silencioso no campo que existe para dar certeza e
+            # pior que campo vazio.
+            #
+            # `lib/integrations/livro-de-execucoes.ts` ja aceita este cabecalho e
+            # o prefere sobre a deducao. Declarar custa uma linha.
             :> /tmp/resposta.json
             COD=$(curl -sS -o /tmp/resposta.json -w '%{http_code}' --max-time 120 \
                   -X POST "https://atlasaios.com.br/api/v2/${R}" \
-                  -H "authorization: Bearer ${SEGREDO}" || echo "000")
+                  -H "authorization: Bearer ${SEGREDO}" \
+                  -H "x-atlas-origem: github-actions" || echo "000")
             # A resposta pode conter dado de cliente; só o código e o tamanho vão para o log.
             TAM=$(wc -c < /tmp/resposta.json 2>/dev/null | tr -d ' ' || echo 0)
             if [ "${COD}" = "200" ]; then
