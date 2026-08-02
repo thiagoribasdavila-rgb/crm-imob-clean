@@ -82,16 +82,21 @@ const VIGIAS = [
  *   · as duas cartas mortas — não existe camada abaixo delas. Falhando calado,
  *     a falha terminal some do mundo.
  *
- * A dívida restante, nomeada:
- *   17  outbox/process   ← status de lock e transições intermediárias, cuja
- *                          falha atrasa mas não corrompe. Merecem log, não throw.
- *    2  marketing/meta-sem-destino/process
- *    2  developers/weekly-reports/process
- *    1  meta/daily-report
+ * 22 → 17 em seguida, fechando TODAS as rotas fora do outbox:
+ *   · meta-sem-destino — erro na leitura das fontes deixava `fontes` em
+ *     `undefined`: nenhuma lead resolvida, e o vigia respondendo 200 como se
+ *     tivesse varrido a fila.
+ *   · weekly-reports — a dedupe por `weeklyReportKey` virava "não existe" e o
+ *     relatório semanal do incorporador era criado DE NOVO, toda semana.
+ *   · daily-report — o registro de que o relatório FALHOU podia falhar calado.
+ *
+ * A dívida restante, nomeada — e é UMA rota só:
+ *   17  outbox/process   ← transições de status e lock, cuja falha ATRASA mas
+ *                          não corrompe. Merecem log, não throw.
  *
  * Ele só desce.
  */
-const TETO = 22;
+const TETO = 17;
 
 /**
  * Conta as duas formas de engolir erro num fonte de rota.
