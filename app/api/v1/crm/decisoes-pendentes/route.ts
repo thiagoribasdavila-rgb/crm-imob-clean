@@ -4,6 +4,7 @@ import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { registrarDecisaoHumana } from "@/lib/ai/registro-de-sombra";
 import { montarFila, normalizarDecisao, porqueNaoPodeDecidir, decisaoValida } from "@/lib/crm/fila-de-decisoes";
+import { AGENTES_QUE_ESPERAM_PESSOA } from "@/lib/ai/quem-espera-uma-pessoa";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,27 @@ export async function GET(request: NextRequest) {
     .eq("organization_id", identity.access.organization.id)
     .is("decisao_humana", null)
     .eq("retido", true)
+    // ── SÓ O QUE ESPERA UMA PESSOA ENTRA NA FILA DE UMA PESSOA ───────────────
+    //
+    // `ai_shadow_decisions` ganhou um SEGUNDO escritor em 02/08/2026 — o vigia
+    // `sombra-do-atendimento` — e ele grava exatamente a forma que esta fila
+    // procura: `retido = true`, `decisao_humana = null`.
+    //
+    // Só que a semântica é OPOSTA. O que o SLA registra aqui é uma proposta
+    // esperando alguém decidir. O que a sombra registra é um ensaio: ela prepara
+    // o que faria e retém POR DESENHO, para sempre — nenhuma decisão humana muda
+    // aquilo, porque nada será enviado.
+    //
+    // Sem este recorte as linhas da sombra entrariam na fila de aprovação. E
+    // como a consulta ordena por `created_at desc` com teto de 50, elas não
+    // apenas apareceriam: sendo as mais novas, EXPULSARIAM as decisões reais. O
+    // gestor abriria a fila e veria trabalho que ninguém pediu para aprovar,
+    // enquanto o que esperava por ele sumia por baixo do corte.
+    //
+    // O recorte é por LISTA DECLARADA, e não por exclusão do nome da sombra: um
+    // terceiro agente de ensaio inundaria a fila do mesmo jeito. A lista obriga
+    // quem somar um escritor a dizer de qual lado ele está.
+    .in("agent", [...AGENTES_QUE_ESPERAM_PESSOA])
     .order("created_at", { ascending: false })
     .limit(50);
 
