@@ -452,7 +452,20 @@ type CollapsedLayers = Record<LayerKey, boolean>;
 
 const defaultCollapsedLayers: CollapsedLayers = {
   ia: false,
-  operacao: false,
+  /* `operacao` nasce RECOLHIDA desde 01/08/2026. O que ela guarda é
+     "telemetria e módulos" — auditoria, pela régua do v3: o que exige decisão é
+     maior que o que informa, e o que informa é maior que o que audita.
+     A reordenação desta tela pôs o certo em cima, mas não encurtou nada: a
+     página tinha 15,9 telas de altura contra alvo de ≤3. Reordenar move; só
+     recolher reduz.
+     O cabeçalho da camada CONTINUA visível com o resumo vivo
+     (`N/M módulos · atualizado há X`) e um LayerToggle de um clique, e a
+     preferência persiste. Nada foi apagado — o diretor que quiser telemetria
+     abre e ela fica aberta.
+     Por que só esta: `collapsedLayers.fila` é lido por DOIS blocos — a camada
+     de gestão e a "Fila do dia" DO CORRETOR. Recolhê-la esconderia o bloco de
+     decisão primário de outro papel. `operacao` é lida num ponto só. */
+  operacao: true,
   fila: false,
   feed: false,
 };
