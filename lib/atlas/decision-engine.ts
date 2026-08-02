@@ -42,7 +42,8 @@ export function leadDecision(lead: Record<string, unknown>): DecisionCandidate |
 
 export function overdueTaskDecision(task: Record<string, unknown>): DecisionCandidate | null {
   const id = String(task.id ?? "");
-  const dueAt = task.due_at ? new Date(String(task.due_at)) : null;
+  // `due_date` é o nome real da coluna em `public.tasks`; `due_at` nunca existiu.
+  const dueAt = task.due_date ? new Date(String(task.due_date)) : null;
   const status = String(task.status ?? "").toLowerCase();
   if (!id || !dueAt || dueAt >= new Date() || ["done", "concluida", "completed"].includes(status)) return null;
 
@@ -56,7 +57,7 @@ export function overdueTaskDecision(task: Record<string, unknown>): DecisionCand
     title: `Recuperar tarefa atrasada: ${String(task.title ?? "follow-up")}`,
     rationale: `Tarefa vencida há aproximadamente ${overdueHours} hora(s), criando risco de perda de SLA e conversão.`,
     recommendedAction: { action: "escalate_task", overdueHours, notify: ["assignee", "manager"] },
-    evidence: [{ metric: "due_at", value: dueAt.toISOString() }, { metric: "overdue_hours", value: overdueHours }],
+    evidence: [{ metric: "due_date", value: dueAt.toISOString() }, { metric: "overdue_hours", value: overdueHours }],
     confidence: 96,
     requiresApproval: false,
     expiresAt: expires(12),

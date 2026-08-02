@@ -9,7 +9,24 @@ import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 
-type Organization = { id: string; name: string; slug: string | null; plan: string; active: boolean };
+/**
+ * `plan` NÃO existe em public.organizations. As colunas reais, conferidas no
+ * information_schema da produção (pozbrcsfthnhmnebfoxv), são exatamente estas:
+ * id, name, slug, status, created_at, active. Pedir `plan` fazia o PostgREST
+ * responder 42703, o `const { data }` engolia o erro, e a tela abria com nome e
+ * slug em branco — com a organização cadastrada e o botão Salvar inerte, porque
+ * ele depende de `organization` ter sido carregada.
+ *
+ * DECISÃO sobre o chip que dizia "plano": não existe plano no banco nem em
+ * lugar nenhum do código (a única menção em todo o repositório era esta linha),
+ * então não há o que exibir e inventar coluna ou migration está fora de
+ * questão. O chip passa a mostrar `status`, que é coluna real e não repete o
+ * badge ao lado: `lib/security/api-auth.ts:89` libera a organização com
+ * `active === true || (active !== false && status ∈ {active, ativo, enabled})`
+ * — ou seja, `active` e `status` são as DUAS entradas independentes do mesmo
+ * portão. Vê-las lado a lado é o que permite notar quando discordam.
+ */
+type Organization = { id: string; name: string; slug: string | null; status: string | null; active: boolean };
 
 /* Índice do hub: uma linha por área — o destino explica o resto. */
 const areas: Array<[string, string, string]> = [
@@ -41,6 +58,7 @@ export default function SettingsPage() {
   const [slug, setSlug] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [chegouParaRevisarAmbiente, setChegouParaRevisarAmbiente] = useState(false);
 
   /**
@@ -78,29 +96,76 @@ export default function SettingsPage() {
     if (alvoDaIntencao(lerIntencaoDaJanela(), "visao") === "environment") setChegouParaRevisarAmbiente(true);
   }, []);
 
+  /* Cada `return` mudo deste carregamento tinha o mesmo desfecho na tela:
+     campos em branco e botão desabilitado, sem uma palavra de explicação. Falha
+     de sessão, perfil sem organização e erro do PostgREST eram indistinguíveis
+     de "a empresa não tem nome". Agora cada saída diz o que houve. */
   useEffect(() => {
     async function load() {
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) return;
-      const { data: profile } = await supabase.from("profiles").select("organization_id").eq("id", auth.user.id).maybeSingle();
-      if (!profile?.organization_id) return;
-      const { data } = await supabase.from("organizations").select("id,name,slug,plan,active").eq("id", profile.organization_id).single();
-      if (data) {
-        const org = data as Organization;
-        setOrganization(org);
-        setName(org.name);
-        setSlug(org.slug || "");
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError || !auth.user) {
+        setLoadError("Sessão expirada ou inválida. Entre novamente para carregar a organização.");
+        return;
       }
+      const { data: profile, error: profileError } = await supabase.from("profiles").select("organization_id").eq("id", auth.user.id).maybeSingle();
+      if (profileError) {
+        console.error("settings.profile_load_failed", profileError);
+        setLoadError(`Não foi possível ler seu perfil: ${profileError.message}`);
+        return;
+      }
+      if (!profile?.organization_id) {
+        setLoadError("Seu perfil não está vinculado a nenhuma organização — por isso os campos estão vazios.");
+        return;
+      }
+      const { data, error: orgError } = await supabase.from("organizations").select("id,name,slug,status,active").eq("id", profile.organization_id).single();
+      if (orgError) {
+        console.error("settings.organization_load_failed", orgError);
+        setLoadError(`Não foi possível carregar a organização: ${orgError.message}`);
+        return;
+      }
+      const org = data as Organization;
+      setLoadError(null);
+      setOrganization(org);
+      setName(org.name);
+      setSlug(org.slug || "");
     }
-    load();
+    void load();
   }, []);
 
+  /* O `update` sem `.select()` não distingue "gravou" de "a RLS descartou a
+     linha": a política `org_update_admin` só deixa admin e manager escreverem,
+     e para todo o resto o PostgREST devolve sucesso com ZERO linhas afetadas —
+     a tela dizia "salvas com sucesso" sem nada ter sido gravado. Pedindo a
+     linha de volta, a confirmação passa a ser prova: ou o banco devolve o
+     registro gravado, ou a tela diz por que não gravou. */
   async function save() {
-    if (!organization || !name.trim()) return;
+    if (!organization) {
+      setMessage("A organização não foi carregada — não há o que salvar.");
+      return;
+    }
+    if (!name.trim()) {
+      setMessage("O nome da empresa não pode ficar em branco.");
+      return;
+    }
     setSaving(true);
     setMessage(null);
-    const { error } = await supabase.from("organizations").update({ name: name.trim(), slug: slug.trim() || null }).eq("id", organization.id);
-    setMessage(error ? error.message : "Configurações salvas com sucesso.");
+    const { data, error } = await supabase
+      .from("organizations")
+      .update({ name: name.trim(), slug: slug.trim() || null })
+      .eq("id", organization.id)
+      .select("id,name,slug,status,active");
+    if (error) {
+      console.error("settings.organization_save_failed", error);
+      setMessage(`Não foi possível salvar: ${error.message}`);
+    } else if (!data?.length) {
+      setMessage("Nada foi gravado: seu perfil não tem permissão para alterar a organização.");
+    } else {
+      const org = data[0] as Organization;
+      setOrganization(org);
+      setName(org.name);
+      setSlug(org.slug || "");
+      setMessage("Configurações salvas com sucesso.");
+    }
     setSaving(false);
   }
 
@@ -145,7 +210,8 @@ export default function SettingsPage() {
 
       <section className="grid gap-4 xl:grid-cols-[1.1fr_.9fr] xl:items-start">
         {/* Identidade da organização (única superfície com 3D): nome + slug
-            editáveis, plano e status como chips — sem cards dedicados. */}
+            editáveis, situação (`status`) e disponibilidade (`active`) como
+            chips — as duas colunas reais que o portão de acesso combina. */}
         <section aria-labelledby="settings-org-title">
           <TiltShell className="cc6-panel cc6-reveal p-5" delayMs={40}>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -156,12 +222,23 @@ export default function SettingsPage() {
                 </h2>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <span className="cc6-chip">plano {organization?.plan || "—"}</span>
+                <span className="cc6-chip" title="Coluna organizations.status">situação {organization?.status || "—"}</span>
                 <StatusBadge tone={organization ? (organization.active ? "success" : "danger") : "neutral"}>
                   {organization ? (organization.active ? "Ativa" : "Indisponível") : "Carregando…"}
                 </StatusBadge>
               </div>
             </div>
+            {/* Campo em branco por falha de leitura tem exatamente a mesma cara
+                de campo em branco por dado ausente. Esta faixa é a diferença. */}
+            {loadError ? (
+              <div
+                role="alert"
+                className="cc6-sev-band cc6-panel-quiet mt-4 py-3 pl-4 pr-3 text-sm leading-6 text-[var(--atlas-texto-medio)]"
+                style={{ "--cc6-sev": "var(--atlas-danger)" } as CSSProperties}
+              >
+                {loadError}
+              </div>
+            ) : null}
             <div className="cc6-hairline mt-4 grid gap-3 pt-4 sm:grid-cols-2">
               <label className="block text-xs font-medium text-[var(--atlas-texto-medio)]">Nome da empresa
                 <input value={name} onChange={(e) => setName(e.target.value)} className={`${fieldClass} mt-1.5`} />

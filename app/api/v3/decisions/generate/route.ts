@@ -17,8 +17,15 @@ export async function POST(request: Request) {
 
   try {
     const admin = getSupabaseAdmin();
-    const { data: organizations, error: orgError } = await admin.from("organizations").select("id").eq("status", "active");
+    // `organizations.status` está gravado em CAIXA ALTA ("ACTIVE") nas 2 organizações
+    // vivas. Com `.eq("status","active")` o filtro casava com ZERO linhas, o laço
+    // abaixo nunca rodava e a rota respondia 200 com `generated: 0` — o mesmo silêncio
+    // da coluna errada, só que por valor. `ilike` sem curinga é igualdade sem caixa.
+    const { data: organizations, error: orgError } = await admin.from("organizations").select("id").ilike("status", "active");
     if (orgError) throw orgError;
+    if (!organizations?.length) {
+      logger.warn("v3.decisions_no_active_organizations", { hint: "nenhuma organização casou com status ~ 'active'" });
+    }
 
     let generated = 0;
     let skipped = 0;
@@ -26,9 +33,24 @@ export async function POST(request: Request) {
     for (const organization of organizations ?? []) {
       const [leadsResult, tasksResult, campaignsResult] = await Promise.all([
         admin.from("leads").select("id,name,score,temperature,status").eq("organization_id", organization.id).order("score", { ascending: false }).limit(100),
-        admin.from("tasks").select("id,title,status,due_at,priority").eq("organization_id", organization.id).not("due_at", "is", null).limit(100),
+        // A coluna real de `public.tasks` é `due_date`. Pedindo `due_at` o PostgREST
+        // devolvia 42703, o `?? []` abaixo transformava o erro em zero candidatos e
+        // NENHUMA decisão de tarefa atrasada era gerada — sem erro, sem log.
+        admin.from("tasks").select("id,title,status,due_date,priority").eq("organization_id", organization.id).not("due_date", "is", null).limit(100),
         admin.from("campaigns").select("id,name,status,spend,leads_count").eq("organization_id", organization.id).limit(100),
       ]);
+
+      // Sem esta verificação, qualquer falha de leitura vira lista vazia e o endpoint
+      // responde 200 com `generated: 0`, indistinguível de "não havia o que gerar".
+      for (const [source, sourceError] of [
+        ["leads", leadsResult.error],
+        ["tasks", tasksResult.error],
+        ["campaigns", campaignsResult.error],
+      ] as const) {
+        if (!sourceError) continue;
+        logger.error("v3.decisions_source_failed", sourceError, { organizationId: organization.id, source });
+        throw new Error(`Falha ao ler ${source} da organização ${organization.id}: ${sourceError.message}`);
+      }
 
       const candidates: DecisionCandidate[] = [
         ...(leadsResult.data ?? []).map(leadDecision),
