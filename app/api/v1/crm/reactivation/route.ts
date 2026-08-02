@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { filaDeRecuperacao, resumoDaRecuperacao } from "@/lib/crm/recuperacao-da-base";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -65,13 +66,61 @@ export async function GET(request: NextRequest) {
   const contacts = contactsResult.data ?? [];
   const batchIds = batches.map((item) => item.id);
   const { data: offerContacts } = batchIds.length ? await admin.from("lead_reactivation_contacts").select("id,batch_id,status,lead:leads!lead_id(id,name,status,score,assigned_to,next_action_at,metadata)").eq("organization_id", org).in("batch_id", batchIds).in("status", ["imported","replied"]).limit(200) : { data: [] };
-  return apiSuccess({
+  /* As leads perdidas, com o motivo canônico de `pipeline_stage_moves` — e
+       NÃO de `leads.status`, que não guarda o porquê. Duas fontes para o mesmo
+       fato é a classe de defeito que este repositório mais paga. */
+    const [perdidas, motivos, supressoes] = await Promise.all([
+      admin.from("leads").select("id,phone,email,metadata").eq("organization_id", org).in("status", ["perdido", "comprou_outro"]).limit(2000),
+      admin.from("pipeline_stage_moves").select("lead_id,discard_reason_key,occurred_at").eq("organization_id", org).eq("to_stage", "perdido").limit(4000),
+      admin.from("messaging_suppressions").select("recipient").eq("organization_id", org).limit(2000),
+    ]);
+
+    const motivoDaLead = new Map<string, string | null>();
+    for (const m of motivos.data ?? []) {
+      if (m.lead_id && !motivoDaLead.has(m.lead_id)) motivoDaLead.set(m.lead_id, m.discard_reason_key ?? null);
+    }
+    const suprimidos = new Set((supressoes.data ?? []).map((s) => String(s.recipient ?? "").replace(/\D/g, "")));
+
+    const paraRecuperar = (perdidas.data ?? []).map((l) => {
+      const meta = (l.metadata && typeof l.metadata === "object" ? (l.metadata as Record<string, unknown>).meta : null) ?? {};
+      const telefone = String(l.phone ?? "").replace(/\D/g, "");
+      return {
+        id: String(l.id),
+        motivoDoDescarte: motivoDaLead.get(String(l.id)) ?? null,
+        temTelefone: telefone.length > 0,
+        temEmail: Boolean(l.email),
+        suprimido: telefone.length > 0 && suprimidos.has(telefone),
+        origem: meta as { dataSharingConsent?: unknown; consentBasis?: unknown; origem?: unknown },
+      };
+    });
+
+    /* `mensuravel: false` quando a leitura falhou. Sem ele, "não consegui ler
+       as leads perdidas" e "não há lead perdida" viram a mesma tela vazia. */
+    const recuperacao = {
+      mensuravel: !perdidas.error && !motivos.error,
+      porqueNaoMensuravel: perdidas.error?.code ?? motivos.error?.code ?? null,
+      resumo: resumoDaRecuperacao(paraRecuperar),
+      fila: filaDeRecuperacao(paraRecuperar).slice(0, 100),
+    };
+
+    return apiSuccess({
     viewer: { id: identity.access.profile.id, role },
     targets: profiles.filter((item) => visible.has(item.id) && (item.commercial_role || item.role) === "broker"),
     projects: projectsResult.data ?? [],
     batches: batches.map((batch) => ({ ...batch, summary: contacts.filter((item) => item.batch_id === batch.id).reduce((sum, item) => { sum[item.status] = (sum[item.status] || 0) + 1; if (item.block_reason) sum[`blocked:${item.block_reason}`] = (sum[`blocked:${item.block_reason}`] || 0) + 1; return sum; }, {} as Record<string, number>) })),
     offers: (offerContacts ?? []).map((contact) => { const lead = Array.isArray(contact.lead) ? contact.lead[0] : contact.lead; const score = Number(lead?.score || 0); return { contactId: contact.id, batchId: contact.batch_id, status: contact.status, lead, aiPriority: score >= 70 ? "high" : score >= 45 ? "medium" : "learning", aiSuggestion: score >= 70 ? "Priorizar abordagem consultiva hoje." : contact.status === "replied" ? "Retomar a conversa com base na última resposta." : "Validar interesse e atualizar o perfil antes da oferta." }; }).filter((item) => item.lead),
-    experiences: (experienceResult.data ?? []).filter((item) => item.broker_id && visible.has(item.broker_id)),
+    /* ── A FILA QUE ALIMENTA O LOTE ──────────────────────────────────────
+       Esta rota já sabia EXECUTAR um lote de reativação — cria conversa,
+       mensagem e pedido de aprovação. O que ela não respondia era a pergunta
+       anterior: QUAIS leads entram no lote. Sem isso, alguém precisava saber
+       de cor, e `lead_reactivation_batches` tem zero linhas desde sempre.
+
+       Medido no banco em 02/08/2026: das 419 leads perdidas, 252 (61%) foram
+       descartadas como `inalcancavel` — que não é "não quer", é "ligamos e não
+       atenderam". A decisão de quem volta e por qual canal está em
+       `lib/crm/recuperacao-da-base.ts`, com 20 contratos. ────────────────── */
+    recuperacao,
+      experiences: (experienceResult.data ?? []).filter((item) => item.broker_id && visible.has(item.broker_id)),
   }, identity.meta, { headers: rate.headers });
 }
 
