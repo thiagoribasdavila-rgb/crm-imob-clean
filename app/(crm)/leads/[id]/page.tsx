@@ -33,6 +33,7 @@ import {
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
 import { ContactAttemptsBadge } from "@/components/crm/contact-attempts-badge";
 import { CompatibilidadeDoClientePanel } from "@/components/atlas/CompatibilidadeDoClientePanel";
+import { estadoDoFechamento } from "@/lib/crm/fechamento-valor-da-venda";
 
 type LeadRow = {
   id: string;
@@ -46,6 +47,16 @@ type LeadRow = {
   score: number | null;
   budget_min: number | null;
   budget_max: number | null;
+  /* ── O VALOR DA VENDA VOLTAVA DA API E MORRIA AQUI ─────────────────────────
+     `sale_value_brl` já vem no `LIVE_LEAD_SELECT`, ou seja, a rota
+     `/api/v1/leads/[id]` SEMPRE devolveu este campo. A ficha nunca o declarou e
+     nunca o mostrou: o corretor é obrigado a informar o valor para fechar
+     (a rota do pipeline recusa `ganho` sem ele, com `SALE_VALUE_REQUIRED`) e
+     depois não encontra esse número em lugar nenhum na ficha da lead.
+     Exigir e não devolver é a classe "cobra e destrói" — a mesma que jogou
+     fora 102 motivos de descarte. Aqui o dado já existia; faltava exibir. */
+  sale_value_brl?: number | string | null;
+  sale_value_recorded_at?: string | null;
   preferred_regions: string[] | null;
   bedrooms: number | null;
   purpose: string | null;
@@ -396,6 +407,12 @@ export default function LeadDetailPage() {
   const [contextSaving, setContextSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  /* O valor da venda tem estado próprio: ele NÃO entra no `setLead` do
+     formulário porque não é editado pela rota da lead — vai pela rota que já
+     existia para isso, e que até agora nenhuma tela do corretor chamava. */
+  const [valorDaVenda, setValorDaVenda] = useState("");
+  const [gravandoValor, setGravandoValor] = useState(false);
+  const [erroDoValor, setErroDoValor] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [activityTitle, setActivityTitle] = useState("");
   const [activityDescription, setActivityDescription] = useState("");
@@ -447,6 +464,39 @@ export default function LeadDetailPage() {
       medicao: dados?.medicao ?? null,
       aviso: dados?.aviso ?? null,
     };
+  }
+
+  /**
+   * Informar o valor de uma venda já fechada.
+   *
+   * Chama `POST /api/v1/crm/vendas-sem-valor`, que existia, tinha contrato e
+   * NENHUMA tela do corretor chamava — só o painel de liderança da sala de
+   * comando. Quem fecha a venda é quem sabe o número, e ele não tinha onde
+   * informá-lo depois do fechamento.
+   *
+   * Recarrega a ficha ao gravar: o valor precisa VOLTAR na tela, senão isto
+   * seria mais um lugar que cobra o dado e não devolve.
+   */
+  async function informarValorDaVenda() {
+    if (!lead) return;
+    setGravandoValor(true);
+    setErroDoValor(null);
+    try {
+      await api("/api/v1/crm/vendas-sem-valor", {
+        method: "POST",
+        body: JSON.stringify({ leadId: lead.id, valor: valorDaVenda }),
+      });
+      setValorDaVenda("");
+      await load();
+    } catch (cause) {
+      setErroDoValor(
+        cause instanceof Error
+          ? cause.message
+          : "Não foi possível registrar o valor.",
+      );
+    } finally {
+      setGravandoValor(false);
+    }
   }
 
   async function load() {
@@ -819,6 +869,13 @@ export default function LeadDetailPage() {
     );
 
   // Derivações determinísticas do strip de sinais (zero fetch novo).
+  /* Em que pé está o fechamento. A decisão vem do módulo puro — o mesmo que a
+     tela de Vendas usa — para que a ficha e o VGV nunca discordem sobre o que
+     conta como venda apurada. */
+  const fechamento = estadoDoFechamento({
+    status: lead.status,
+    sale_value_brl: lead.sale_value_brl ?? null,
+  });
   const leadAgeDays = daysSince(lead.created_at);
   const lastTouchAt = contactBriefing?.lastInteractionAt ?? null;
   const lastTouchDays = daysSince(lastTouchAt);
@@ -1896,6 +1953,74 @@ export default function LeadDetailPage() {
               </button>
             </div>
           </form>
+          {/* ── O VALOR DA VENDA, DE VOLTA NA FICHA ────────────────────────────
+              Fica FORA do <form> de propósito: um <button> dentro dele nasce
+              `type="submit"` e informar o valor salvaria a lead inteira junto.
+
+              O painel só aparece para venda fechada. "Aguardando" é estado
+              declarado, não erro: o corretor fecha em pé, na obra, e nem sempre
+              tem o número final na hora — o que não pode é a ausência ficar
+              muda, como ficou na venda de 28/07 que segue sem valor até hoje. */}
+          {fechamento.estado !== "nao_e_venda" && (
+            <div className="mt-4 rounded-xl border border-[var(--atlas-border)] p-4">
+              {fechamento.estado === "apurado" ? (
+                <>
+                  <p className="text-rotulo uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
+                    Valor da venda
+                  </p>
+                  {/* `text-numero` (20px) é o degrau "o número que se compara"
+                      da escala de `globals.css`. Escrever `text-titulo` aqui
+                      não pintaria nada: esse degrau não existe no tema. */}
+                  <p className="cc6-num mt-1 text-numero font-medium text-[var(--atlas-texto-forte)]">
+                    {brl.format(fechamento.valor)}
+                  </p>
+                  <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
+                    {lead.sale_value_recorded_at
+                      ? `Informado em ${new Date(lead.sale_value_recorded_at).toLocaleDateString("pt-BR")}.`
+                      : "Informado no fechamento."}{" "}
+                    Este é o número que sustenta o VGV e a comissão — orçamento
+                    declarado não entra aqui.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-rotulo uppercase tracking-[0.14em] text-[var(--atlas-texto-fraco)]">
+                    Venda fechada, valor não informado
+                  </p>
+                  <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
+                    Sem o valor, esta venda não entra no VGV, não vira evento
+                    Purchase na Meta e não conta como receita para nenhuma
+                    métrica.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={valorDaVenda}
+                      placeholder="Valor da venda (R$)"
+                      aria-label="Valor da venda em reais"
+                      onChange={(e) => setValorDaVenda(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      disabled={gravandoValor || valorDaVenda.trim() === ""}
+                      className="atlas-button-primary disabled:opacity-50"
+                      onClick={() => void informarValorDaVenda()}
+                    >
+                      {gravandoValor ? "Registrando..." : "Registrar valor"}
+                    </button>
+                  </div>
+                  {erroDoValor && (
+                    <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-estado-perigo)]">
+                      {erroDoValor}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </section>
 
         <div className="space-y-4">

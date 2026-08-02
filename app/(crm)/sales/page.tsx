@@ -9,6 +9,12 @@ import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { isMissingRelation, leadAsOpportunity, mapLegacyLead } from "@/lib/compat/legacy-v2";
+import {
+  apurarVgv,
+  lastroDoVgv,
+  valorApuradoDaVenda,
+  type LinhaDeFechamento,
+} from "@/lib/crm/fechamento-valor-da-venda";
 
 type Opportunity = {
   id: string; stage: string; value: number | null; probability: number; expected_close_at: string | null;
@@ -17,6 +23,12 @@ type Opportunity = {
   commission_net: number | null; commission_gross: number | null; commission_percentage: number | null;
   commission_split_percentage: number | null; commission_received_amount: number;
   leads: { id: string; name: string | null } | null; properties: { title: string | null } | null;
+  /* ── O LASTRO DA VENDA VIAJA COM A LINHA ─────────────────────────────────
+     `value` responde "quanto este negócio pesa" e serve o forecast. Ele NÃO
+     responde "quanto esta venda rendeu" — e confundir os dois foi o defeito
+     desta tela. `fechamento` carrega a linha crua para o módulo puro decidir,
+     nos dois caminhos de carga, com um vocabulário só. */
+  fechamento: LinhaDeFechamento;
 };
 /* "forecast" é o recorte que faltava: os negócios que ainda podem virar receita
    — exatamente a base do número "forecast ponderado" exibido no topo. Sem ele o
@@ -122,16 +134,68 @@ export default function SalesPage() {
     if ((loadError && isMissingRelation(loadError)) || (!loadError && (data ?? []).length === 0)) {
       const legacy = await supabase.from("leads").select("*").neq("status", "arquivado").order("created_at", { ascending: false }).limit(2000);
       if (legacy.error) setError("Não foi possível carregar as oportunidades.");
-      else setItems(((legacy.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead).map(leadAsOpportunity).map((item) => ({
-        ...item, expected_close_at: null, won_at: ["ganho", "won", "fechado"].includes(String(item.stage).toLowerCase()) ? String(item.updated_at || item.created_at) : null,
-        lost_at: ["perdido", "lost"].includes(String(item.stage).toLowerCase()) ? String(item.updated_at || item.created_at) : null,
-        commission_sla_days: null, commission_due_at: null, commission_received_at: null, commission_status: "not_applicable",
-        commission_net: null, commission_gross: null, commission_percentage: null, commission_split_percentage: null, commission_received_amount: 0,
-        leads: { id: String(item.lead_id), name: String(item.name || "Lead sem nome") }, properties: null,
-      })) as Opportunity[]);
+      /* ── A LINHA CRUA PRECISA SOBREVIVER AO MAPEAMENTO ────────────────────
+         `leadAsOpportunity` devolve um objeto NOVO, com uma lista fixa de
+         chaves — `sale_value_brl` não está nela e era descartado aqui. Por
+         isso o `.map(leadAsOpportunity)` encadeado virou um `.map` que
+         segura a linha crua e o mapeamento lado a lado. */
+      else setItems(((legacy.data ?? []) as Record<string, unknown>[]).map(mapLegacyLead).map((bruta) => {
+        const item = leadAsOpportunity(bruta);
+        const fechamento: LinhaDeFechamento = {
+          status: String(item.stage ?? ""),
+          sale_value_brl: (bruta.sale_value_brl ?? null) as number | string | null,
+          sale_value_recorded_at: (bruta.sale_value_recorded_at ?? null) as string | null,
+          budget_min: (bruta.budget_min ?? null) as number | string | null,
+          budget_max: (bruta.budget_max ?? null) as number | string | null,
+          updated_at: String(item.updated_at || item.created_at || ""),
+        };
+        /* ── ORÇAMENTO DEIXA DE SER LIDO COMO RECEITA ───────────────────────
+           `leadAsOpportunity` resolve o valor por
+           `first(lead, "value", "budget_max", "budget_min") ?? 0`, e `leads`
+           não tem coluna `value`. Nas duas vendas reais da base isso saía
+           INVERTIDO: a de R$ 550.000 (apurada) virava R$ 0 porque não tem
+           orçamento declarado, e a que ninguém apurou virava R$ 756.000 —
+           o orçamento do cliente exibido como receita.
+
+           Para venda fechada o valor passa a sair de `sale_value_brl`, e
+           `null` quando ninguém apurou: `null` é "não medido" e a tela já
+           sabe desenhar isso como "—", enquanto `0` diria "valeu zero".
+           Negócio EM ABERTO segue com o valor de antes — ali o orçamento é
+           previsão declarada, que é outra pergunta, e mexer nela seria
+           trocar o forecast de assunto sem medir. */
+        const valorApurado = valorApuradoDaVenda(fechamento);
+        const ganha = ["ganho", "won", "fechado"].includes(String(item.stage).toLowerCase());
+        /* O `?? 0` do mapeamento também atinge o negócio EM ABERTO sem
+           orçamento: a coluna "Valor" imprimia "R$ 0" para quem nunca declarou
+           nada, e a própria tela já define `temValor` como "> 0". Zero e
+           não-medido viravam a mesma tinta. `null` devolve o "—" que a célula
+           já sabe desenhar — a regra do produto é que ausência de dado nunca
+           se desenha como zero. */
+        const valorEmAberto = Number(item.value) > 0 ? Number(item.value) : null;
+        return {
+          ...item, fechamento,
+          value: ganha ? valorApurado : valorEmAberto,
+          expected_close_at: null, won_at: ganha ? String(item.updated_at || item.created_at) : null,
+          lost_at: ["perdido", "lost"].includes(String(item.stage).toLowerCase()) ? String(item.updated_at || item.created_at) : null,
+          commission_sla_days: null, commission_due_at: null, commission_received_at: null, commission_status: "not_applicable",
+          commission_net: null, commission_gross: null, commission_percentage: null, commission_split_percentage: null, commission_received_amount: 0,
+          leads: { id: String(item.lead_id), name: String(item.name || "Lead sem nome") }, properties: null,
+        };
+      }) as Opportunity[]);
     } else {
       if (loadError) setError("Não foi possível carregar as oportunidades.");
-      setItems((data ?? []) as unknown as Opportunity[]);
+      /* No caminho canônico o valor da oportunidade GANHA é o valor da venda —
+         `opportunities` tem semântica própria e não passa por `budget_*`. A
+         linha de fechamento é montada aqui para que a apuração do VGV tenha um
+         caminho só, e não dois que concordam hoje e divergem depois. */
+      setItems(((data ?? []) as unknown as Opportunity[]).map((item) => ({
+        ...item,
+        fechamento: {
+          status: item.won_at ? "ganho" : String(item.stage ?? ""),
+          sale_value_brl: item.won_at ? item.value : null,
+          updated_at: item.won_at,
+        } satisfies LinhaDeFechamento,
+      })));
     }
     setReferenceTime(Date.now()); setLoading(false);
   }, []);
@@ -235,10 +299,20 @@ export default function SalesPage() {
     const porEtapa = [...pesoPorEtapa.entries()]
       .map(([etapa, dados]) => ({ etapa, ...dados }))
       .sort((a, b) => b.peso - a.peso);
+    /* O VGV sai da apuração, e SÓ do que foi apurado. Antes ele era
+       `ganhos.reduce(Number(item.value ?? 0))` sobre um `value` que vinha do
+       orçamento: nas duas vendas reais da base o total dava R$ 756.000 de
+       receita que nunca existiu, enquanto a venda de R$ 550.000 entrava como
+       zero. `aguardando` viaja junto porque um VGV com venda não apurada está
+       certo como soma do medido e errado como receita da operação — e a tela
+       tem de dizer qual dos dois está mostrando. */
+    const apuracao = apurarVgv(items.map((item) => item.fechamento));
     return {
+      apuracao,
+      lastroVgv: lastroDoVgv(apuracao),
       total: items.reduce((sum, item) => sum + Number(item.value ?? 0), 0),
       weighted: open.reduce((sum, item) => sum + Number(item.value ?? 0) * item.probability / 100, 0),
-      won: ganhos.reduce((sum, item) => sum + Number(item.value ?? 0), 0),
+      won: apuracao.vgv,
       open: open.length,
       comValor: items.filter(temValor).length,
       abertosComValor: open.filter(temValor).length,
@@ -246,7 +320,7 @@ export default function SalesPage() {
       abertosSemLastro: open.filter((item) => !temValor(item) || !item.expected_close_at).length,
       baseForecast: baseForecast.length,
       ganhos: ganhos.length,
-      ganhosComValor: ganhos.filter(temValor).length,
+      ganhosComValor: apuracao.apuradas,
       porEtapa,
       pesoTotal: porEtapa.reduce((sum, faixa) => sum + faixa.peso, 0),
     };
@@ -332,7 +406,12 @@ export default function SalesPage() {
       lastro: metrics.ganhos === 0 || metrics.ganhosComValor > 0,
       value: brl.format(metrics.won),
       falta: `${metrics.ganhos} vendas ganhas e nenhuma com valor registrado`,
-      nota: metrics.ganhos === 0 ? "nenhuma venda ganha na base" : `${metrics.ganhosComValor}/${metrics.ganhos} vendas com valor`,
+      /* A frase sai do módulo puro, não daqui: é a mesma decisão que o contrato
+         mede, e decisão escrita em `.tsx` fica fora do alcance de qualquer
+         contrato (`node --test` não tira tipos de JSX). Ela diz "1 de 2 vendas
+         com valor informado — 1 aguardando", em vez de deixar R$ 550.000 passar
+         por receita fechada da operação. */
+      nota: metrics.lastroVgv,
       ink: metrics.won ? "cc6-ok" : "",
     },
     {
