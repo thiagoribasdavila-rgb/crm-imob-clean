@@ -74,6 +74,7 @@
     "cron:gerar": "node scripts/gera-crontab-dos-workers.mjs",
     "cron:validar": "node --experimental-strip-types scripts/instala-crontab-no-servidor.mjs --validar",
     "cron:instalar": "node --experimental-strip-types scripts/instala-crontab-no-servidor.mjs --instalar",
+    "cadencia-janela:check": "node scripts/check-cadencia-vs-janela.mjs",
     "vigia-silencio:check": "node scripts/check-vigia-nao-engole-erro.mjs",
     "portoes:todos": "node scripts/portoes-todos.mjs",
     "coerencia-ambiente:check": "node scripts/check-coerencia-de-ambiente.mjs",

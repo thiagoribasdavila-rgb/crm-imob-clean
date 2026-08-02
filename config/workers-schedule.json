@@ -26,6 +26,29 @@
     "não alcançou). É palpite declarado, não fato — confirme na primeira execução",
     "real e troque para false."
   ],
+  "$fusoDaCadencia": {
+    "fuso": "America/Sao_Paulo",
+    "porque": [
+      "MEDIDO EM 02/08/2026: a cadência não dizia em que relógio ela valia.",
+      "Nem o gerador de crontab emitia CRON_TZ, nem o ecosystem.config.cjs fixava",
+      "TZ. Um `0 3 * * *` significava 3h do relógio DO SERVIDOR, e ninguém sabia",
+      "qual era esse relógio.",
+      "",
+      "Isso não é detalhe: DOIS dos treze vigias decidem sozinhos se trabalham,",
+      "olhando a hora em America/Sao_Paulo (lib/ai/governed-nightly-copilot.ts).",
+      "Quando a cadência e a janela falam relógios diferentes, o vigia dispara e",
+      "recusa — e o resultado é indistinguível de 'não havia trabalho'.",
+      "",
+      "Agora o fuso é declarado aqui, o gerador emite CRON_TZ e o portão",
+      "cadencia-vs-janela confere se cada cadência cai DENTRO da janela que o",
+      "código daquele vigia impõe.",
+      "",
+      "O Brasil não tem mais horário de verão desde 2019, então America/Sao_Paulo",
+      "é UTC-3 o ano inteiro. O agendador do GitHub NÃO aceita fuso (é sempre UTC),",
+      "por isso as cadências de lá são as daqui somadas de 3 horas — e o portão",
+      "confere essa conversão em vez de confiar em quem editou."
+    ]
+  },
   "workers": [
     {
       "nome": "first-contact-sla",
@@ -102,8 +125,8 @@
     {
       "nome": "nightly-handoff",
       "rota": "/api/v2/ai/nightly-handoff",
-      "cadencia": "30 3 * * *",
-      "porque": "Depois da consolidação de vendas, para trabalhar sobre o resultado dela.",
+      "cadencia": "30 7 * * *",
+      "porque": "A ENTREGA MATINAL É DE MANHÃ, E ISSO NÃO ERA VERDADE. Até 02/08/2026 a cadência era `30 3 * * *`, e a rota só trabalha quando `nightlyWindow().morningHandoff` é verdadeiro — isto é, entre 7h e 11h59 em America/Sao_Paulo. Às 3h30, em QUALQUER relógio plausível do servidor (SP ou UTC), a janela está fechada: a rota respondia `created: 0, motivo: fora_da_janela` e ia embora. Todo dia, para sempre. É por isso que `nightly_broker_handoffs` está em zero absoluto — e o zero não era só 'nunca foi chamado', era também 'quando fosse, recusaria'. 7h30 fica logo no início da janela: o corretor recebe a entrega antes de começar o dia, e sobram 4h29 de folga para atraso do agendador.",
       "timeoutMs": 55000,
       "evidencia": {
         "tabela": "nightly_broker_handoffs",
