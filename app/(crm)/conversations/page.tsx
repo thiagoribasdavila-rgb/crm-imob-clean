@@ -71,6 +71,15 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     void carregar();
+    // A versão anterior desta tela recarregava ao voltar o foco para a aba. A
+    // reescrita perdeu isso sem dizer, e numa caixa de entrada o custo é direto:
+    // o corretor volta para a aba, vê a mesma lista de minutos atrás e conclui
+    // que ninguém respondeu. Reposto aqui — agora relendo a rota certa.
+    const reler = () => {
+      if (document.visibilityState === "visible") void carregar();
+    };
+    document.addEventListener("visibilitychange", reler);
+    return () => document.removeEventListener("visibilitychange", reler);
   }, [carregar]);
 
   return (
