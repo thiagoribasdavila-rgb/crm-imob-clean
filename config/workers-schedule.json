@@ -248,6 +248,30 @@
       }
     },
     {
+      "nome": "sombra-do-atendimento",
+      "rota": "/api/v2/ai/sombra-do-atendimento/process",
+      "cadencia": "10 8 * * *",
+      "porque": "O DEGRAU 1 DO ATENDIMENTO AUTÔNOMO, e o único que não depende do dono. Medido em 02/08/2026: message_templates tem 0 linhas de QUALQUER status, e sem template aprovado a IA não envia, sem envio não nasce jornada (ai_sales_journeys: 0) e sem jornada não há entrega matinal (nightly_broker_handoffs: 0). O modo sombra não precisa de template, número nem aprovação: ele PREPARA a fila do dia (qual lead, qual gesto, qual mensagem, qual prioridade), REGISTRA a intenção em ai_shadow_decisions e não envia nada. Na mesma execução ele CONCILIA o que o humano fez depois — sem isso a sombra é opinião da IA sobre si mesma, que é exatamente o estado das 20 linhas existentes (todas com decisao_humana nula). 08h10 fica dentro da janela de 7h–11h59 que a própria rota impõe (nightlyWindow().morningHandoff) e ANTES de o corretor trabalhar o dia: preparar depois compararia a IA com um dia que já aconteceu. Uma vez por dia porque a unidade da comparação é o dia de trabalho do humano; rodar de hora em hora multiplicaria intenção sobre a mesma lead sem nenhum humano novo para observar.",
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "ai_shadow_decisions",
+        "coluna": "created_at",
+        "filtro": "agent=eq.sombra-do-atendimento",
+        "condicional": true,
+        "inferida": false,
+        "$porqueOFiltro": [
+          "MEDIDO EM 02/08/2026: ai_shadow_decisions já tem 20 linhas, TODAS do agente",
+          "`sla-primeiro-contato`, gravadas em 31/07. Sem o filtro, check-vigias-vivos",
+          "leria o carimbo daquelas linhas e declararia este vigia VIVO no dia em que",
+          "ele ainda não existia — falso verde produzido pela tabela ser compartilhada.",
+          "",
+          "É a mesma família do defeito que aquele portão foi escrito para caçar, e",
+          "por isso a declaração de evidência ganhou recorte em vez de o portão ganhar",
+          "uma exceção."
+        ]
+      }
+    },
+    {
       "nome": "baseline-de-conversao",
       "rota": "/api/v2/ai/baseline-de-conversao/process",
       "cadencia": "25 4 * * *",

@@ -71,7 +71,12 @@ const TABELA = "atlas_worker_runs";
 //
 // Piso que só sobe. Se um vigia novo entrar no agendador sem livro, esta
 // asserção fica vermelha — e é para ficar.
-const PISO = 13;
+//
+// 13 → 14 em 02/08/2026: entrou `sombra-do-atendimento`, o degrau 1 do
+// atendimento autônomo. Ele nasceu COM livro — que é a única forma de um vigia
+// novo entrar sem derrubar esta catraca, e é exatamente o efeito pretendido:
+// a cobertura completa de ontem não pode virar 14/15 amanhã em silêncio.
+const PISO = 14;
 
 const falhas = [];
 

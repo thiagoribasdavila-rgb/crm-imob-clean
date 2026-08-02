@@ -40,7 +40,14 @@
  */
 import { readFileSync, existsSync } from "node:fs";
 
-/** As 13 rotas que .github/workflows/atlas-vigias.yml chama. */
+/**
+ * As 14 rotas que .github/workflows/atlas-vigias.yml chama.
+ *
+ * `ai/sombra-do-atendimento/process` entrou em 02/08/2026 e entrou COM o teto em
+ * ZERO: um vigia novo que engolisse um erro sequer deixaria este portão
+ * vermelho no mesmo commit. É o oposto de somar a rota depois de ela estar
+ * limpa — assim a régua vale desde a primeira linha dela.
+ */
 const VIGIAS = [
   "crm/first-contact-sla/process",
   "outbox/process",
@@ -51,6 +58,7 @@ const VIGIAS = [
   "tasks/recurrences/process",
   "ai/nightly-sales",
   "ai/nightly-handoff",
+  "ai/sombra-do-atendimento/process",
   "ai/baseline-de-conversao/process",
   "marketing/investimento/process",
   "meta/daily-report",

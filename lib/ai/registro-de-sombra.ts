@@ -108,6 +108,65 @@ export async function registrarDecisaoHumana(input: {
   }
 }
 
+/**
+ * O GESTO OBSERVADO — a decisão humana que NINGUÉM DIGITA, lida do rastro.
+ *
+ * ── Por que `registrarDecisaoHumana` não bastava ────────────────────────────
+ *
+ * Ela existe desde 30/07 e nunca foi chamada por caminho nenhum do produto:
+ * medido em 02/08/2026, as 20 linhas de `ai_shadow_decisions` têm
+ * `decisao_humana` NULA, e a comparação de 4.8 responde "nenhum caso comparável"
+ * — verdadeiro, e permanente. Uma tela onde o gestor classifique cada
+ * recomendação da IA resolveria no papel; na prática seria trabalho novo para
+ * uma equipe de três corretores que hoje não contata 466 leads.
+ *
+ * Esta função grava o que o humano fez SEM PEDIR NADA A ELE: o gesto é deduzido
+ * do rastro que o trabalho dele já deixa no banco (primeiro contato, movimento
+ * de etapa, evento de lead).
+ *
+ * ── As duas diferenças que a assinatura carrega ─────────────────────────────
+ *
+ * `decididoEm` é o instante do ATO, não o do processamento. Com ele e com
+ * `created_at` da própria linha, qualquer leitor calcula o tempo entre a IA
+ * preparar e o humano agir — que é a métrica com N suficiente segundo
+ * `docs/design/ATENDIMENTO_AUTONOMO_MODELO.md` §4 (444 eventos; conversão tem
+ * 2 e não serve).
+ *
+ * `decididoPor` é opcional e vai NULO quando o rastro não nomeia o autor.
+ * Preencher com o dono da lead seria inventar quem trabalhou.
+ *
+ * Devolve o MOTIVO da falha em vez de um booleano: quem chama precisa poder
+ * transformar isso em 500, senão a observação falha calada — que é exatamente a
+ * doença que este arquivo existe para não ter.
+ */
+export async function registrarGestoObservado(input: {
+  registroId: string;
+  gesto: string;
+  decididoEm: string;
+  decididoPor?: string | null;
+}): Promise<{ gravado: true } | { gravado: false; detalhe: string }> {
+  try {
+    const { error } = await getSupabaseAdmin()
+      .from("ai_shadow_decisions")
+      .update({
+        decisao_humana: input.gesto,
+        decidido_em: input.decididoEm,
+        decidido_por: input.decididoPor ?? null,
+      })
+      .eq("id", input.registroId)
+      // Só fecha o que ainda está aberto. Sem isto, uma reexecução sobrescreveria
+      // uma observação já gravada com uma leitura mais nova — e o instante do
+      // primeiro ato humano, que é o dado que importa, seria perdido.
+      .is("decisao_humana", null);
+    if (error) throw new Error(error.message);
+    return { gravado: true };
+  } catch (erro) {
+    const detalhe = erro instanceof Error ? erro.message : String(erro);
+    logger.warn("ia.gesto_observado_nao_registrado", { registroId: input.registroId, gesto: input.gesto, reason: detalhe });
+    return { gravado: false, detalhe };
+  }
+}
+
 /** O DESFECHO. Terceira coluna: sem ela dá para medir concordância, não acerto. */
 export async function registrarResultado(input: { registroId: string; resultado: string }): Promise<boolean> {
   try {

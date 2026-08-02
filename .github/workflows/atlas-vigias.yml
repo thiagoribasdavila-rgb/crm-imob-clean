@@ -65,13 +65,14 @@ on:
     - cron: '0 6 * * *'      # vendas noturnas               — 03h00 em São Paulo
     - cron: '25 7 * * *'     # baseline de conversão         — 04h25 em São Paulo
     - cron: '40 7 * * *'     # investimento de mídia         — 04h40 em São Paulo
+    - cron: '10 11 * * *'    # sombra do atendimento         — 08h10 em São Paulo
     - cron: '30 10 * * *'    # entrega matinal ao corretor   — 07h30 em São Paulo
     - cron: '0 10 * * *'     # relatório diário da Meta      — 07h00 em São Paulo
     - cron: '0 10 * * 0'     # relatório semanal (domingo)   — 07h00 em São Paulo
   workflow_dispatch:
     inputs:
       grupo:
-        description: 'Grupo a executar agora (curto, dez, hora, quatro_horas, diario_0010, diario_0300, diario_0330, diario_0425, diario_0440, diario_0700, semanal)'
+        description: 'Grupo a executar agora (curto, dez, hora, quatro_horas, diario_0010, diario_0300, diario_0330, diario_0425, diario_0440, diario_0700, diario_0810, semanal)'
         required: true
         default: curto
 
@@ -109,6 +110,7 @@ jobs:
             '30 10 * * *')  ROTAS="ai/nightly-handoff" ;;
             '25 7 * * *')   ROTAS="ai/baseline-de-conversao/process" ;;
             '40 7 * * *')   ROTAS="marketing/investimento/process" ;;
+            '10 11 * * *')  ROTAS="ai/sombra-do-atendimento/process" ;;
             '0 10 * * *')   ROTAS="meta/daily-report" ;;
             '0 10 * * 0')   ROTAS="developers/weekly-reports/process" ;;
             *)
@@ -122,6 +124,7 @@ jobs:
                 diario_0330)  ROTAS="ai/nightly-handoff" ;;
                 diario_0425)  ROTAS="ai/baseline-de-conversao/process" ;;
                 diario_0440)  ROTAS="marketing/investimento/process" ;;
+                diario_0810)  ROTAS="ai/sombra-do-atendimento/process" ;;
                 diario_0700)  ROTAS="meta/daily-report" ;;
                 semanal)      ROTAS="developers/weekly-reports/process" ;;
                 *) echo "Grupo desconhecido: ${GRUPO}"; exit 1 ;;
