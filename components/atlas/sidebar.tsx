@@ -213,7 +213,17 @@ export function Sidebar({
       data-mobile-open={mobileOpen ? "true" : "false"}
     >
       <div className="atlas-sidebar-brand">
-        <Link href="/command-center" className="atlas-brand-link" onClick={onCloseMobile}>
+        {/* O nome acessível é OBRIGATÓRIO aqui e não era emitido. Medido em
+            02/08/2026: recolhida, `.atlas-sidebar-label` some por `display:none`
+            e a marca é `aria-hidden` (AtlasLogo sem `title`) — sobrava um link
+            sem nome nenhum, que o leitor de tela anuncia como "link" e pronto.
+            Expandida ninguém percebe, porque o texto está ali. */}
+        <Link
+          href="/command-center"
+          className="atlas-brand-link"
+          aria-label="Atlas AI — ir para a sala de comando"
+          onClick={onCloseMobile}
+        >
           <AtlasLogo size={38} className="shrink-0" />
           <span className="atlas-sidebar-label">
             <strong>
@@ -231,7 +241,16 @@ export function Sidebar({
         </button>
       </div>
 
-      <button type="button" className="atlas-rail-hint" onClick={abrirPaleta}>
+      {/* Recolhida, o texto some e sobra a tecla: `aria-label` e `title` mantêm
+          o botão nomeado nos dois estados — a mesma regra que vale para os
+          destinos ("ícone sozinho é enigma") vale para este. */}
+      <button
+        type="button"
+        className="atlas-rail-hint"
+        onClick={abrirPaleta}
+        title="Buscar em tudo (⌘K)"
+        aria-label="Buscar em tudo (⌘K)"
+      >
         <span>Buscar em tudo</span>
         <kbd>⌘K</kbd>
       </button>
@@ -245,10 +264,23 @@ export function Sidebar({
             de rebaixar a marcação. */}
         {grupos.map((grupo) => {
           const groupHeadingId = `atlas-nav-group-${grupo.toLocaleLowerCase("pt-BR").replaceAll(" ", "-")}`;
+          const doGrupo = itens.filter((item) => item.group === grupo);
+          // MEDIDO em 02/08/2026, no navegador: `data-current` NÃO existia em
+          // .tsx nenhum do repositório — zero ocorrências — enquanto CINCO
+          // regras de globals.css e o portão da fase 026 dependiam dele. O
+          // rótulo do grupo atual nunca acendeu, e ninguém viu, porque o portão
+          // confere se a REGRA existe no CSS, não se o atributo chega ao DOM.
+          // Com o atributo emitido aqui, a afirmação do portão passa a ser
+          // verdadeira em vez de decorativa.
+          const grupoAtual = doGrupo.some((item) => estaAtivo(pathname, item.href));
           return (
-            <section className="atlas-nav-group" aria-labelledby={groupHeadingId} key={grupo}>
+            // A abertura fica numa linha só de propósito: `check-evolution-phase-026`
+            // cobra o literal `<section className="atlas-nav-group` para provar que
+            // os grupos continuam sendo região semântica. Quebrar a linha some com
+            // a propriedade aos olhos do portão sem mudar nada no DOM.
+            <section className="atlas-nav-group" data-current={grupoAtual ? "true" : "false"} aria-labelledby={groupHeadingId} key={grupo}>
               <h2 id={groupHeadingId} className="atlas-rail-group-label">{grupo}</h2>
-              {itens.filter((item) => item.group === grupo).map(renderItem)}
+              {doGrupo.map(renderItem)}
             </section>
           );
         })}

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { LIVE_LEAD_SELECT, mapLegacyLead } from "@/lib/compat/legacy-v2";
 import { PageHeader } from "@/components/atlas/page-header";
 import { TiltShell } from "@/components/atlas/tilt-shell";
+import { IaAutonomaRobo } from "@/components/ia-autonoma-robo";
 
 type Insight = { id: string; title: string; summary: string | null; recommendation: string | null; score: number | null; status: string; entity_type: string; created_at: string };
 type Lead = { id: string; name: string | null; score: number | null; temperature: string | null; status: string | null; next_action_at: string | null };
@@ -170,6 +171,15 @@ export default function DecisionCenterPage() {
           O Atlas não conseguiu atualizar todos os sinais agora. Seus dados permanecem protegidos — recarregue a página para tentar de novo.
         </p>
       ) : null}
+
+      {/* O robô ANTES da fila, e não depois: a fila mostra o que o Atlas
+          recomenda; o robô mostra se o Atlas está em condição de recomendar.
+          Medido em 02/08/2026, as cinco tabelas de execução da IA estão em zero
+          — quem lê a fila sem esse contexto assume que alguém está agindo por
+          trás dela, e ninguém está. */}
+      <section aria-label="Presença da inteligência artificial">
+        <IaAutonomaRobo />
+      </section>
 
       <section aria-label="Fila priorizada de decisões">
         <TiltShell className="cc6-panel cc6-reveal overflow-hidden" delayMs={40}>

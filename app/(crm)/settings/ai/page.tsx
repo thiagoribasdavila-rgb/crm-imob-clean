@@ -7,6 +7,7 @@ import { AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
+import { IaAutonomaPainelDeAutonomia, IaAutonomaRobo } from "@/components/ia-autonoma-robo";
 import { supabase } from "@/lib/supabase";
 
 type AIStatus = {
@@ -305,6 +306,18 @@ export default function AISettings() {
           {error}
         </div>
       ) : null}
+
+      {/* O robô e o painel de autonomia vêm ANTES do pulso de provedores.
+          "Pulso · uso real" responde "os motores respondem?"; estas duas seções
+          respondem "e o que ela fez com isso?". Medido em 02/08/2026, a segunda
+          resposta é ZERO execuções — e é a que muda o que a pessoa faz hoje. */}
+      <section aria-label="Presença da inteligência artificial">
+        <IaAutonomaRobo />
+      </section>
+
+      <section aria-label="Autonomia declarada">
+        <IaAutonomaPainelDeAutonomia />
+      </section>
 
       <section aria-label="Pulso da inteligência">
         <TiltShell className="cc6-panel cc6-reveal p-5" delayMs={40}>

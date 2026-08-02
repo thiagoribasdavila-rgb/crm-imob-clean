@@ -58,6 +58,11 @@ export default function CampaignIntelligencePage() {
                 <option value={30}>30 dias</option>
                 <option value={90}>90 dias</option>
               </select>
+              {/* Esta tela compara custo do que JÁ rodou. A pergunta seguinte —
+                  "então o que eu subo agora?" — não tinha destino a partir daqui. */}
+              <Link href="/marketing/campanhas-criativos-proposta" className="cc6-ghost-btn">
+                Compor proposta
+              </Link>
               <Link href="/integrations/meta/andromeda" className="cc6-ghost-btn">
                 Loop Andromeda
               </Link>

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { comPresencaDeIa } from "@/lib/ai/presence";
 import { MessageResponse } from "@/components/ai-elements/message";
+import { IaAutonomaSelo } from "@/components/ia-autonoma-robo";
 import {
   canonicalPipelineStage,
   DEFAULT_PIPELINE_STAGES,
@@ -1340,6 +1341,13 @@ export default function AtlasCopilotDock() {
               </div>
               <button type="button" onClick={closeCopilot} className="atlas-icon-button" aria-label="Fechar copilot">×</button>
             </div>
+
+            {/* "Especialista imobiliário" logo acima leva quem abre o copiloto a
+                supor que existe uma IA rodando por trás da ação recomendada.
+                Medido em 02/08/2026, as cinco tabelas de execução da IA estão em
+                zero: a recomendação abaixo é determinística. O selo diz isso em
+                uma linha, com o número, antes que a suposição se forme. */}
+            <IaAutonomaSelo />
 
             {previewOnly ? (
               <div

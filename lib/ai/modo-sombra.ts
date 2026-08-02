@@ -49,13 +49,34 @@ type Declaracao = { modoSombra?: { ligado?: unknown; acoesRetidas?: unknown } };
 
 let cache: Declaracao | null | undefined;
 
+/**
+ * Mesma correção de `niveis-de-autonomia.ts`, pela mesma prova: no log do
+ * servidor vivo em 02/08/2026, `import.meta.dirname` é UNDEFINED dentro do
+ * bundle do Next, `path.join` levanta e o `catch` engolia.
+ *
+ * Aqui a degradação era FECHADA — a sombra continuava ligada e `acoesRetidas()`
+ * caía no padrão do código —, então nada quebrava. Mas a lista declarada pelo
+ * dono era ignorada sem aviso, que é o mesmo defeito com consequência menor.
+ *
+ * O candidato por `import.meta.dirname` só entra quando ele é string.
+ */
+const CANDIDATOS_DA_DECLARACAO = [
+  path.join(process.cwd(), "config", "orcamento-e-autonomia-da-ia.json"),
+  ...(typeof import.meta.dirname === "string"
+    ? [path.join(import.meta.dirname, "..", "..", "config", "orcamento-e-autonomia-da-ia.json")]
+    : []),
+];
+
 function declaracao(): Declaracao | null {
   if (cache !== undefined) return cache;
-  try {
-    const caminho = path.join(import.meta.dirname, "..", "..", "config", "orcamento-e-autonomia-da-ia.json");
-    cache = JSON.parse(fs.readFileSync(caminho, "utf8")) as Declaracao;
-  } catch {
-    cache = null;
+  cache = null;
+  for (const caminho of CANDIDATOS_DA_DECLARACAO) {
+    try {
+      cache = JSON.parse(fs.readFileSync(caminho, "utf8")) as Declaracao;
+      break;
+    } catch {
+      // próximo candidato
+    }
   }
   return cache;
 }

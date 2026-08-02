@@ -23,7 +23,7 @@ import {
   LeadContextCorrection,
   type LeadContextProjectOption,
 } from "@/components/crm/lead-context-correction";
-import { CommercialContextTimelineEntry } from "@/components/crm/commercial-context-timeline-entry";
+import { AcompanhamentoCorretorLinhaDoTempo } from "@/components/crm/acompanhamento-corretor-linha-do-tempo";
 import {
   FirstContactQuickLog,
   type FirstContactRegistration,
@@ -31,7 +31,6 @@ import {
   type FirstContactSla,
 } from "@/components/crm/first-contact-quick-log";
 import { CopilotContextAction } from "@/components/atlas/copilot-context-action";
-import { parseCommercialContextCorrectionTimeline } from "@/lib/atlas/commercial-context-timeline";
 import { ContactAttemptsBadge } from "@/components/crm/contact-attempts-badge";
 import { CompatibilidadeDoClientePanel } from "@/components/atlas/CompatibilidadeDoClientePanel";
 
@@ -1917,70 +1916,23 @@ export default function LeadDetailPage() {
             </form>
           </section>
 
-          <section className="cc6-panel">
-            <div className="flex flex-wrap items-center justify-between gap-3 p-5 pb-0 sm:px-6">
-              <div>
-                <p className="cc6-eyebrow">Timeline</p>
-                <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
-                  Histórico do relacionamento
-                </h2>
-              </div>
-              <span className="cc6-chip" title="Eventos registrados">
-                {activities.length}
-              </span>
-            </div>
-            <div className="mt-4 max-h-[420px] overflow-y-auto px-5 pb-5 sm:px-6 sm:pb-6">
-              {activities.length === 0 ? (
-                <AtlasEmpty
-                  title="Nenhuma interação"
-                  description="Registre o primeiro contato para iniciar a memória comercial."
-                />
-              ) : (
-                <div className="space-y-2">
-                  {activities.map((activity) => {
-                    const contextCorrection =
-                      activity.type === "commercial_context_corrected"
-                        ? parseCommercialContextCorrectionTimeline(
-                            activity.metadata,
-                          )
-                        : null;
+          {/* ── A LINHA DO TEMPO PASSOU A TER AS DUAS METADES ──────────────
+              O bloco que vivia aqui lia SÓ `activities` (que a rota preenche a
+              partir de `lead_events`). Medido no banco vivo em 02/08/2026:
+              444 leads têm movimentação em `pipeline_stage_moves`, 38 têm
+              alguma linha em `lead_events`, e 419 têm movimentação e nenhum
+              evento — ou seja, 419 fichas exibiam "Nenhuma interação" sobre
+              clientes cuja saída do funil está gravada, com etapa de origem,
+              autor, data e motivo.
 
-                    return (
-                      <article
-                        key={activity.id}
-                        className="cc6-panel-quiet cc6-interativo p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="text-sm font-medium leading-6 text-[var(--atlas-texto-forte)]">
-                            {activity.title}
-                          </p>
-                          <span className="cc6-chip shrink-0">
-                            {activity.type}
-                          </span>
-                        </div>
-                        {!contextCorrection && activity.description ? (
-                          <p className="mt-1.5 text-corpo leading-6 text-[var(--atlas-texto-medio)]">
-                            {activity.description}
-                          </p>
-                        ) : null}
-                        {contextCorrection ? (
-                          <CommercialContextTimelineEntry
-                            correction={contextCorrection}
-                          />
-                        ) : null}
-                        <p className="cc6-num mt-3 text-micro uppercase tracking-wider text-[var(--atlas-texto-fraco)]">
-                          {activity.authorName || "Equipe Atlas"} ·{" "}
-                          {new Date(activity.occurred_at).toLocaleString(
-                            "pt-BR",
-                          )}
-                        </p>
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
+              A montagem saiu para um componente próprio porque a mescla tem
+              estado próprio (a movimentação vem de outra leitura, que pode
+              falhar sozinha) e porque falha de leitura precisa virar
+              "não medido" — nunca lista vazia. ── */}
+          <AcompanhamentoCorretorLinhaDoTempo
+            leadId={String(lead.id)}
+            interacoes={activities}
+          />
         </div>
       </section>
 

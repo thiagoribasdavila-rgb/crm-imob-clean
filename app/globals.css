@@ -720,18 +720,12 @@ textarea:focus {
   align-items: center;
   gap: 12px;
 }
-.atlas-brand-mark {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  color: var(--atlas-texto-acento);
-  background: var(--atlas-accent-soft);
-  font-weight: 700;
-}
+/* `.atlas-brand-mark` saiu daqui em 02/08/2026. Ela dava uma PLACA (raio 12px +
+   --atlas-accent-soft) a um elemento que o componente parou de renderizar na
+   poda de 2026-07-29 — e o AtlasLogo hoje desenha a placa do favicon por conta
+   própria. Manter a regra era garantir duas placas empilhadas no dia em que
+   alguém reintroduzisse a classe. Medido antes de remover: 0 usos em .tsx,
+   0 literais em scripts/ e tests/. */
 .atlas-brand-link strong {
   display: block;
   letter-spacing: -0.04em;
@@ -739,13 +733,6 @@ textarea:focus {
 .atlas-brand-link em {
   color: var(--atlas-accent);
   font-style: normal;
-}
-.atlas-brand-link small,
-.atlas-sidebar-footer small {
-  display: block;
-  margin-top: 2px;
-  color: var(--atlas-text-muted);
-  font-size: 10px;
 }
 .atlas-sidebar-close,
 .atlas-sidebar-toggle,
@@ -764,73 +751,31 @@ textarea:focus {
   border-radius: 10px;
   font-size: 20px;
 }
-.atlas-sidebar-nav {
-  flex: 1;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 10px 12px 20px;
-}
-.atlas-sidebar-search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 12px 12px 6px;
-  padding: 0 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  background: rgba(255,255,255,.025);
-}
-.atlas-sidebar-search > span { color: var(--atlas-text-tertiary); font-size: 16px; }
-.atlas-sidebar-search input {
-  width: 100%;
-  min-width: 0;
-  min-height: 40px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  color: var(--atlas-text-primary);
-  background: transparent;
-  box-shadow: none;
-  font-size: 11px;
-}
-.atlas-sidebar-search input:focus { border: 0; background: transparent; box-shadow: none; }
-.atlas-sidebar-search button,
-.atlas-sidebar-search kbd {
-  flex: 0 0 auto;
-  border: 0;
-  color: #52637a;
-  background: transparent;
-  font-size: 10px;
-}
-.atlas-sidebar-search kbd { border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 2px 4px; }
-.atlas-sidebar-current {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0 14px 8px;
-  padding: 4px 8px;
-  color: #52637a;
-  font-size: 10px;
-}
-.atlas-sidebar-current strong { min-width: 0; flex: 1; overflow: hidden; color: #8da0b8; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.atlas-sidebar-current button { border: 0; color: #7dd3fc; background: transparent; font-size: 12px; }
-.atlas-sidebar-empty {
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  padding: 28px 12px;
-  text-align: center;
-}
-.atlas-sidebar-empty > span { color: #38bdf8; font-size: 22px; }
-.atlas-sidebar-empty strong { color: #cbd5e1; font-size: 11px; }
-.atlas-sidebar-empty small { color: #52637a; font-size: 9px; line-height: 1.5; }
-.atlas-sidebar-empty button { margin-top: 4px; border: 0; color: #7dd3fc; background: transparent; font-size: 10px; font-weight: 700; }
+/* ── PODA DE 02/08/2026 — quatro vocabulários que a tela parou de montar ─────
+   `.atlas-sidebar-nav` (1 regra), `.atlas-sidebar-search` (9),
+   `.atlas-sidebar-current` (3) e `.atlas-sidebar-empty` (5) saíram daqui.
+   O componente deixou de renderizar esses elementos na poda de 2026-07-29 e o
+   CSS ficou: 18 regras pintando nada.
+
+   Medido ANTES de remover, uma a uma — 0 ocorrências em .tsx e 0 literais em
+   scripts/ e tests/. O cuidado não é teórico: neste repositório já se podaram
+   cinco vocabulários e quebraram cinco portões, porque portão que exige classe
+   por `includes` transforma CSS órfão em CSS obrigatório.
+   `.atlas-sidebar-section` é exatamente esse caso e por isso CONTINUA no
+   arquivo, mesmo órfã — ver o comentário na regra dela.
+   ────────────────────────────────────────────────────────────────────────── */
 .atlas-nav-group + .atlas-nav-group {
   margin-top: 14px;
   padding-top: 0;
   border-top: none;
 }
+/* ÓRFÃ E MANTIDA DE PROPÓSITO (02/08/2026). Nenhum .tsx monta
+   `.atlas-sidebar-section` desde a poda de 2026-07-29, mas
+   `scripts/check-evolution-phase-025.mjs` exige, por literal, que ela declare
+   `padding: 0 10px 0 8px`. Remover reprovaria o portão; reapontá-lo para a
+   propriedade real (o espaçamento governado do rótulo de grupo, hoje em
+   `.atlas-rail-group-label`) é a correção certa — e ela mora num arquivo que
+   não é desta entrega. Fica aqui, declarada, até o portão ser reapontado. */
 .atlas-sidebar-section {
   margin: 0 0 6px;
   padding: 0 10px 0 8px;
@@ -998,25 +943,10 @@ textarea:focus {
   background: rgba(56, 189, 248, 0.15);
   box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.1);
 }
-.atlas-sidebar-footer {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  margin: 0 12px 10px;
-  padding: 12px;
-  border: 1px solid var(--atlas-border);
-  border-radius: 12px;
-  background: var(--atlas-surface-soft);
-  font-size: 11px;
-}
-.atlas-tenant-indicator {
-  width: 9px;
-  height: 9px;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--atlas-success);
-  box-shadow: none;
-}
+/* `.atlas-sidebar-footer` e `.atlas-tenant-indicator` saíram em 02/08/2026.
+   Eram o cartão "Ambiente protegido / Contexto multi-tenant ativo" e o ponto
+   verde ao lado dele — texto fixo que nunca mudava, removido do componente em
+   2026-07-29. 0 usos em .tsx, 0 literais em scripts/ e tests/. */
 .atlas-sidebar-toggle {
   display: none;
   min-height: 44px;
@@ -1533,9 +1463,6 @@ textarea:focus {
   }
   .atlas-app-shell[data-sidebar-collapsed="true"] .atlas-nav-item .atlas-nav-link {
     padding-inline: 10px;
-  }
-  .atlas-app-shell[data-sidebar-collapsed="true"] .atlas-sidebar-footer {
-    justify-content: center;
   }
   .atlas-app-shell[data-sidebar-collapsed="true"] .atlas-app-main {
     margin-left: var(--atlas-sidebar-collapsed-width);
@@ -3298,9 +3225,6 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
 .atlas-sidebar-brand {
   background: linear-gradient(180deg, rgba(255,255,255,.018), transparent);
 }
-.atlas-brand-mark {
-  box-shadow: none;
-}
 .atlas-nav-link::before {
   content: "";
   position: absolute;
@@ -5032,8 +4956,6 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
 .atlas-progress-value { background: var(--atlas-accent); box-shadow: none; transition: width .5s cubic-bezier(.2,.8,.2,1); }
 .atlas-app-topbar { border-bottom-color: rgba(255,255,255,.065); }
 .atlas-sidebar { border-right-color: rgba(255,255,255,.065); }
-.atlas-brand-mark { position: relative; border-radius: 12px; background: var(--atlas-accent-soft); box-shadow: none; }
-.atlas-brand-mark::after { content: none; }
 table { border-collapse: separate; border-spacing: 0; }
 thead { position: sticky; z-index: 2; top: 0; background: rgba(7, 12, 24, .88); backdrop-filter: blur(18px); }
 tbody tr { transition: background .18s ease; }
@@ -8373,11 +8295,9 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 .atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-sidebar-brand {
   border-bottom-color: rgba(148, 163, 184, 0.12);
 }
-.atlas-app-shell[data-visual-system="atlas-core-v2"] :is(
-  .atlas-sidebar-footer,
-  .atlas-sidebar-search,
-  .atlas-nav-favorites
-) {
+/* `.atlas-sidebar-footer` e `.atlas-sidebar-search` saíram deste :is() em
+   02/08/2026 junto com as regras-base delas — nenhum .tsx as monta. */
+.atlas-app-shell[data-visual-system="atlas-core-v2"] .atlas-nav-favorites {
   border-color: rgba(148, 163, 184, 0.12);
 }
 
@@ -9049,7 +8969,6 @@ button.cc6-chip::after {
   background: rgba(255, 255, 255, 0.82);
   box-shadow: 0 1px 2px rgba(11, 18, 32, 0.04);
 }
-:root[data-theme="light"] .atlas-sidebar-search,
 :root[data-theme="light"] .atlas-global-search {
   border-color: var(--atlas-border);
   background: rgba(255, 255, 255, 0.88);
@@ -9064,7 +8983,13 @@ button.cc6-chip::after {
   background: rgba(11, 99, 197, 0.08);
   color: var(--atlas-text-primary);
 }
-:root[data-theme="light"] .atlas-brand-link,
+/* `.atlas-brand-link` SAIU deste grupo em 02/08/2026 — medido no navegador, no
+   tema claro: ele computava `background rgba(255,255,255,.78)`, a sombra de
+   painel e `border-radius: 0`, desenhando uma laje branca de 114,8 × 44 px em
+   volta da marca. E a marca já traz placa própria desde hoje (AtlasLogo com
+   `plate` padrão, a mesma do favicon). Eram DUAS placas empilhadas, uma delas
+   de canto vivo, e só no tema claro — que é onde a operação trabalha de dia.
+   O link da marca não é cartão: é um link. */
 :root[data-theme="light"] .atlas-user-menu,
 :root[data-theme="light"] .atlas-surface-card,
 :root[data-theme="light"] .atlas-card,
@@ -10702,7 +10627,52 @@ button.cc6-chip::after {
 
    Tudo em currentColor e tokens: o mesmo bloco serve tema claro e escuro sem
    um segundo conjunto de regras.
+
+   ── REVISÃO DE 02/08/2026 — o que foi MEDIDO no navegador antes de mexer ────
+
+   Medido em http://localhost:3000, viewport 1440×732, nos dois temas, com
+   `transition` e `animation` desligadas (aba em segundo plano congela cor):
+
+     · SEIS tamanhos de fonte convivendo dentro de `.atlas-sidebar`:
+       16 · 20 · 13 · 12 · 10,5 · 10 px. Só o 13 pertencia à escala do v3.
+     · TRÊS raios de retângulo: 10px (16×), 12px (1×) e 5px (1×).
+     · SEIS alturas de linha: 24 · 30 · 18 · 15,75 · 15 · 15,6 px.
+     · Contraste abaixo do piso 4,5 em QUATRO lugares:
+         rótulo de grupo ...... 3,66 escuro · 2,76 claro
+         "Buscar em tudo" ..... 5,04 escuro · 3,75 CLARO
+         a tecla ⌘K ........... 5,04 escuro · 3,75 CLARO
+       (o tema claro é o que a operação usa de dia, e é o que reprovava.)
+
+   O que esta revisão faz, e por quê:
+
+   1. TRÊS DEGRAUS, E SÓ ELES — 11 (rótulo, mono, caixa alta, tracking .22em),
+      13 (corpo) e 20 (a marca). Os degraus vêm de `--text-rotulo/corpo/numero`,
+      não de números soltos: número solto é como se chega em 10,5.
+
+   2. UM RAIO SÓ — `--atlas-barra-raio`, declarado na barra e consumido por
+      toda caixa dela. Antes eram três valores decidindo o mesmo assunto.
+
+   3. ATIVO E HOVER SEPARÁVEIS SEM COR. Antes os dois eram "um fundo um pouco
+      diferente" — para quem tem baixa visão de cor, a mesma coisa. Agora cada
+      estado tem ASSINATURA GEOMÉTRICA própria:
+        repouso  · nada
+        hover    · filete de 1px em volta (inset), sem traço
+        ativo    · traço de 3px à esquerda + peso 600 + cor plena
+      Três desenhos distintos em escala de cinza, não três tons.
+
+   4. O ACENTO CHEIO APARECE UMA VEZ SÓ — na pastilha de lead nova. Ela é a
+      única informação VIVA desta coluna (todo o resto é cromo que não muda), e
+      hierarquia se compra tirando concorrente. O item ativo devolveu o
+      preenchimento de acento e ficou com o traço; de quebra o rótulo dele
+      subiu de 6,34/4,98 para o texto pleno.
    ══════════════════════════════════════════════════════════════════════════ */
+
+/* O raio da barra, em um lugar só. Quem quiser a barra mais macia ou mais seca
+   mexe aqui, e não em oito regras que podem divergir — foi assim que 10, 12 e
+   5 px passaram a coexistir. */
+.atlas-sidebar {
+  --atlas-barra-raio: 10px;
+}
 
 .atlas-rail-nav {
   display: flex;
@@ -10714,15 +10684,22 @@ button.cc6-chip::after {
 }
 
 /* Rótulo do grupo: presente para quem varre a coluna, silencioso para quem já
-   sabe onde está. Sem borda, sem fundo, sem linha divisória. */
+   sabe onde está. Sem borda, sem fundo, sem linha divisória.
+
+   É o degrau RÓTULO do v3 — 11px, mono, caixa alta, tracking .22em. Estava em
+   10px/.14em, que é o mesmo tratamento com dois números escolhidos no olho.
+   O alfa subiu de 42% para 62% porque 42% media 3,66 no escuro e 2,76 no
+   claro: silêncio abaixo do piso não é discrição, é texto que some. */
 .atlas-rail-group-label {
-  margin: 14px 0 4px;
+  margin: 16px 0 4px;
   padding: 0 10px;
-  font-size: 10px;
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--text-rotulo);
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.22em;
+  line-height: 1.4;
   text-transform: uppercase;
-  color: color-mix(in srgb, currentColor 42%, transparent);
+  color: color-mix(in srgb, currentColor 62%, transparent);
 }
 .atlas-rail-nav > .atlas-rail-group-label:first-child {
   margin-top: 2px;
@@ -10737,20 +10714,27 @@ button.cc6-chip::after {
      O v3 pede 44px em controle que muda o estado da tela — navegar muda. */
   min-height: 44px;
   padding: 0 10px;
-  border-radius: 10px;
-  font-size: 13px;
+  border-radius: var(--atlas-barra-raio);
+  font-size: var(--text-corpo);
   font-weight: 450;
-  line-height: 1.2;
+  line-height: 1.25;
   color: color-mix(in srgb, currentColor 68%, transparent);
   text-decoration: none;
-  /* Só cor e fundo animam. Transicionar `all` fazia o layout tremer no
-     primeiro quadro de cada navegação. */
-  transition: color 140ms ease, background-color 140ms ease;
+  /* Só cor, fundo e o filete animam. Transicionar `all` fazia o layout tremer
+     no primeiro quadro de cada navegação. */
+  transition: color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
 }
 
+/* ── HOVER: A ASSINATURA É O FILETE ────────────────────────────────────────
+   O fundo sozinho não servia. Hover pintava `currentColor 6%` e ativo pintava
+   `acento 10%` — em escala de cinza, dois cinzas quase iguais, e quem tem
+   baixa visão de cor via a MESMA coisa nos dois. O filete de 1px é geometria:
+   ou tem contorno, ou não tem. Ele some no item ativo de propósito — lá quem
+   fala é o traço. */
 .atlas-rail-link:hover {
   color: currentColor;
   background: color-mix(in srgb, currentColor 6%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 16%, transparent);
 }
 
 /* Foco visível de verdade: contorno externo, nunca `outline: none`. Quem
@@ -10760,21 +10744,28 @@ button.cc6-chip::after {
   outline-offset: 2px;
 }
 
-/* Estado ativo: o traço vertical à esquerda é o que identifica de relance,
-   e ele nasce do próprio item — sem elemento extra no DOM. */
+/* ── ATIVO: O TRAÇO, O PESO E A COR PLENA ──────────────────────────────────
+   Três cues, e dois deles sobrevivem em escala de cinza. O rótulo deixou o
+   acento e foi para o texto pleno: medido, isso levou o contraste dele de
+   6,34 → texto pleno no escuro e 4,98 → texto pleno no claro, e liberou o
+   acento CHEIO para a pastilha, que é a única informação viva da coluna. */
 .atlas-rail-link[data-active="true"] {
-  color: var(--atlas-accent);
-  background: color-mix(in srgb, var(--atlas-accent) 10%, transparent);
-  font-weight: 550;
+  color: var(--atlas-text-primary);
+  background: color-mix(in srgb, currentColor 9%, transparent);
+  box-shadow: none;
+  font-weight: 600;
+}
+.atlas-rail-link[data-active="true"]:hover {
+  box-shadow: none;
 }
 .atlas-rail-link[data-active="true"]::before {
   content: "";
   position: absolute;
   left: 0;
   top: 50%;
-  width: 2px;
-  height: 16px;
-  border-radius: 0 2px 2px 0;
+  width: 3px;
+  height: 22px;
+  border-radius: 0 999px 999px 0;
   background: var(--atlas-accent);
   transform: translateY(-50%);
 }
@@ -10788,7 +10779,11 @@ button.cc6-chip::after {
   /* O ícone é sempre um pouco mais quieto que o texto — exceto no ativo, onde
      os dois têm o mesmo peso. Isso é o que impede a coluna de ícones de virar
      uma segunda leitura competindo com as palavras. */
-  opacity: 0.75;
+  opacity: 0.72;
+  transition: opacity 140ms ease;
+}
+.atlas-rail-link:hover .atlas-rail-icon {
+  opacity: 0.9;
 }
 .atlas-rail-link[data-active="true"] .atlas-rail-icon {
   opacity: 1;
@@ -10802,27 +10797,44 @@ button.cc6-chip::after {
   white-space: nowrap;
 }
 
-/* ── O AVISO DE LEAD NOVA ──────────────────────────────────────────────────
+/* ── O AVISO DE LEAD NOVA — A ÚNICA COISA VIVA DESTA COLUNA ────────────────
    Pastilha à direita do item Leads. Azul, não vermelha: vermelho neste produto
    já significa prazo estourado, e lead nova é oportunidade, não falha.
    Anima UMA vez na chegada e para — pulso permanente é o que ensina a ignorar.
-   ────────────────────────────────────────────────────────────────────────── */
+
+   HIERARQUIA, 02/08/2026. Todo o resto da barra é cromo: 14 destinos que não
+   mudam, 4 rótulos de grupo que não mudam, uma marca que não muda. Este número
+   é o ÚNICO pixel da coluna que responde ao que está acontecendo no negócio, e
+   ele estava empatado com o cromo — 10,5px contra 10px do rótulo de grupo.
+
+   A hierarquia não veio de crescer (a linha tem 44px e o número não pode
+   empurrar o rótulo do destino): veio de TIRAR CONCORRENTE. O item ativo
+   devolveu o preenchimento de acento, então o acento cheio agora aparece
+   exatamente UMA vez na barra inteira, e é aqui. O anel de 2px na cor da
+   própria navegação recorta a pastilha do fundo do item — geometria, não
+   brilho.
+
+   O tamanho subiu de 10,5px para o degrau RÓTULO (11px): 10,5 era meio-pixel,
+   e meio-pixel neste repositório é a assinatura de ajuste no olho. */
 .atlas-rail-badge {
   flex: 0 0 auto;
-  min-width: 20px;
+  min-width: 22px;
+  height: 20px;
   padding: 0 6px;
   border-radius: 999px;
   background: var(--atlas-accent);
+  box-shadow: 0 0 0 2px var(--atlas-navigation);
   /* Era `#06101f` cravado. O fundo é o acento, que vira entre os temas — e o
-     texto ficava parado. Medido: 7,01 no escuro, 3,27 no claro. A 10,5px isto
-     é texto pequeno, e o piso do WCAG AA é 4,5: o número do crachá (quantas
-     leads esperam) reprovava justamente no tema em que a operação trabalha de
-     dia. Com o token que vira: 7,01 e 5,82. */
+     texto ficava parado. Medido: 7,01 no escuro, 3,27 no claro. O piso do
+     WCAG AA é 4,5: o número do crachá (quantas leads esperam) reprovava
+     justamente no tema em que a operação trabalha de dia. Com o token que
+     vira: 7,01 e 5,82. */
   color: var(--atlas-texto-sobre-acento);
-  font-size: 10.5px;
+  font-size: var(--text-rotulo);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 18px;
+  letter-spacing: 0;
+  line-height: 20px;
   text-align: center;
 }
 .atlas-rail-badge[data-chegou="true"] {
@@ -10839,8 +10851,11 @@ button.cc6-chip::after {
    (ausência declarada) virando pixel. */
 .atlas-rail-badge[data-estado="nao-medido"] {
   background: transparent;
-  color: color-mix(in srgb, currentColor 55%, transparent);
-  border: 1px dashed color-mix(in srgb, currentColor 32%, transparent);
+  /* Sem preenchimento não há o que recortar do fundo: o anel sai junto, senão
+     desenha um halo em volta de um anel tracejado. */
+  box-shadow: none;
+  color: color-mix(in srgb, currentColor 78%, transparent);
+  border: 1px dashed color-mix(in srgb, currentColor 42%, transparent);
   font-weight: 600;
 }
 
@@ -10853,11 +10868,17 @@ button.cc6-chip::after {
   margin: 6px 8px 2px;
   min-height: 44px;
   padding: 0 10px;
-  border-radius: 10px;
+  border-radius: var(--atlas-barra-raio);
   border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
   background: transparent;
-  color: color-mix(in srgb, currentColor 52%, transparent);
-  font-size: 12px;
+  /* 52% media 5,04 no escuro e 3,75 no CLARO — reprovado no tema em que a
+     operação trabalha de dia. 66% resolve os dois sem gritar. */
+  color: color-mix(in srgb, currentColor 66%, transparent);
+  font-size: var(--text-corpo);
+  /* Cada degrau tem UMA entrelinha: 1.25 no corpo, 1.4 no rótulo, 1.1 na
+     marca. Sem declarar, o elemento herda a do body (1.5) e a coluna passa a
+     ter seis entrelinhas para três tamanhos. */
+  line-height: 1.25;
   text-align: left;
   cursor: pointer;
   transition: color 140ms ease, border-color 140ms ease;
@@ -10870,14 +10891,17 @@ button.cc6-chip::after {
   outline: 2px solid var(--atlas-accent);
   outline-offset: 2px;
 }
+/* A tecla herda o raio da barra como todo o resto: 5px era o terceiro raio
+   desta coluna, decidido em separado. E sai do 10,5px para o degrau RÓTULO. */
 .atlas-rail-hint kbd {
   margin-left: auto;
-  padding: 1px 5px;
-  border-radius: 5px;
+  padding: 2px 6px;
+  border-radius: var(--atlas-barra-raio);
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
-  font-family: inherit;
-  font-size: 10.5px;
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--text-rotulo);
   letter-spacing: 0.04em;
+  line-height: 1.4;
 }
 
 /* Barra recolhida: some o texto, ficam os ícones centrados. O título nativo
@@ -10927,9 +10951,47 @@ button.cc6-chip::after {
 }
 
 /* Grupo que contém o destino atual: o rótulo acende junto, para o olho achar a
-   seção sem precisar varrer item por item. */
+   seção sem precisar varrer item por item. Acento OPACO — a 11px, `color-mix`
+   com transparente vinha do fundo e derrubava o contraste do rótulo que mais
+   precisa ser lido. */
 .atlas-nav-group[data-current="true"] > .atlas-rail-group-label {
-  color: color-mix(in srgb, var(--atlas-accent) 72%, transparent);
+  color: var(--atlas-accent);
+}
+
+/* ── O TOPO E O RODAPÉ DA BARRA, NA MESMA ESCADA ───────────────────────────
+   Estas três regras existem AQUI, no fim do arquivo, e não junto das regras
+   base lá em cima, por uma razão medida: `app/globals.css` é inteiramente
+   unlayered, e cinco blocos diferentes disputam `.atlas-sidebar-*`. Com
+   especificidade empatada quem vence é quem vem depois. Reescrever no meio da
+   pilha é como se perde uma tarde descobrindo que "o CSS não pega".
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* A marca sobe para o degrau DESTAQUE (20px). Ela vinha do 16px herdado do
+   body — não era uma escolha, era a ausência de uma. */
+.atlas-brand-link strong {
+  font-size: var(--text-numero);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+/* "Recolher menu" é rótulo, não corpo: mesmo tratamento dos rótulos de grupo,
+   para a coluna ter DOIS tratamentos de texto e não quatro. */
+.atlas-sidebar-toggle {
+  border-radius: var(--atlas-barra-raio);
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--text-rotulo);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+/* O × de fechar (celular) é glifo de 20px — o degrau DESTAQUE. A entrelinha
+   cravada em 1.1 é a mesma da marca: uma entrelinha por degrau, não uma por
+   elemento que esqueceu de declarar. */
+.atlas-sidebar-close {
+  border-radius: var(--atlas-barra-raio);
+  line-height: 1.1;
 }
 
 /* ============================================================================
@@ -10990,6 +11052,44 @@ input[type="radio"]:not([data-alvo-livre])::after {
   transform: translate(-50%, -50%);
   pointer-events: auto;
   /* Sem fundo, sem borda: a área existe para o dedo, não para o olho. */
+}
+
+/* ── O ATALHO "IR PARA O CONTEÚDO" VOLTOU A SER FIXO ───────────────────────
+   MEDIDO em 02/08/2026, no navegador, com a página recém-carregada e
+   `document.activeElement === BODY` (ou seja: NADA focado):
+
+     position ....... relative   (a regra pede `fixed`, 10.370 linhas acima)
+     getBoundingClientRect ... top 7,5 · altura 35,5
+     transform ...... matrix(1,0,0,1,0,0)  — o translateY(-160%) não aconteceu
+
+   O atalho estava VISÍVEL o tempo todo, em cima da marca do Atlas, em toda
+   tela do produto. Ele só deve aparecer com foco de teclado; é a primeira
+   parada do Tab e não uma pílula permanente sobre o logotipo.
+
+   A causa é a regra genérica logo acima: `a[href]:not([data-alvo-livre])`
+   pede `position: relative` e vence `.atlas-skip-link { position: fixed }` por
+   especificidade. Ninguém escreveu isso de propósito — o alvo de toque de 24px
+   alcançou um elemento que já estava resolvido e desmontou o posicionamento.
+
+   E UMA TROCA SÓ EXPLICA OS TRÊS SINTOMAS. `<a>` é inline por padrão;
+   `position: fixed` o "blockifica", `relative` não. Sem virar bloco:
+     · `min-height: 44px` deixa de valer  → altura medida 35,5px;
+     · `transform` não se aplica a inline → o translateY(-160%) some;
+     · e o elemento passa a ocupar lugar no fluxo, em cima da marca.
+   Devolver `fixed` conserta os três de uma vez. Medido depois, com transição
+   desligada: em repouso `position: fixed`, transform `translateY(-70,4px)`,
+   top -58,4, altura 44 — fora da tela; com foco, top 12, altura 44, na tela.
+
+   Não afrouxa nada: a regra genérica continua valendo para todo `a[href]`; o
+   que muda é UM elemento cuja posição já era declarada e explícita.
+
+   O SELETOR PRECISA DA MESMA FORMA, e isto foi medido também: escrito como
+   `.atlas-skip-link` (0,1,0) o conserto NÃO pegava — `a[href]:not([data-alvo-livre])`
+   pesa (0,2,1), porque `[href]` conta e o argumento do `:not()` conta. Vir
+   depois no arquivo só decide empate. `a.atlas-skip-link[href]` empata em
+   (0,2,1) e ganha na ordem. */
+a.atlas-skip-link[href] {
+  position: fixed;
 }
 
 /* ============================================================================

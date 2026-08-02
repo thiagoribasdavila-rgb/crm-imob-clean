@@ -770,6 +770,17 @@ export default function CampaignsPage() {
             </p>
           ) : null}
           <div className="ml-auto flex items-center gap-2">
+            {/* Esta central MEDE campanha que já existe; não havia dela nenhum
+                caminho para PROPOR uma nova. As duas propostas que a Sala de
+                Comando sabe enviar são produtos cravados em ready-campaigns
+                ("Arvo" e "Spin Mood") — os outros 2 dos 4 empreendimentos do
+                banco não tinham porta nenhuma até /approvals (medido 02/08/2026). */}
+            <Link
+              href="/marketing/campanhas-criativos-proposta"
+              className={`inline-flex min-h-11 items-center font-mono text-rotulo font-semibold uppercase tracking-[.14em] text-[var(--atlas-accent)] transition-colors hover:text-[var(--atlas-texto-forte)] ${cc5Focus}`}
+            >
+              Compor proposta →
+            </Link>
             <Link
               href="/marketing/campaign-intelligence"
               className={`inline-flex min-h-11 items-center font-mono text-rotulo font-semibold uppercase tracking-[.14em] text-[var(--atlas-accent)] transition-colors hover:text-[var(--atlas-texto-forte)] ${cc5Focus}`}

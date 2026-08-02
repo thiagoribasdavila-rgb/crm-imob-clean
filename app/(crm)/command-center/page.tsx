@@ -446,7 +446,7 @@ const criticalGateLabels: Record<string, string> = {
 // versionada em sessionStorage, hidratação com try/catch e flag antes de gravar.
 const COMMAND_CENTER_PREFERENCES_KEY = "atlas:command-center-preferences:v1";
 
-type LayerKey = "ia" | "operacao" | "fila" | "feed";
+type LayerKey = "ia" | "operacao" | "fila" | "feed" | "medicao" | "sistema";
 
 type CollapsedLayers = Record<LayerKey, boolean>;
 
@@ -467,7 +467,33 @@ const defaultCollapsedLayers: CollapsedLayers = {
      decisão primário de outro papel. `operacao` é lida num ponto só. */
   operacao: true,
   fila: false,
-  feed: false,
+  /* `feed`, `medicao` e `sistema` nascem RECOLHIDAS desde 02/08/2026, pela mesma
+     régua que recolheu `operacao`: o que exige decisão é maior que o que
+     informa, e o que informa é maior que o que audita.
+
+     Nenhuma delas é decisão de ninguém:
+       feed    — log de atividade ("o que mudou por último"). Leitura pura, e o
+                 mesmo material chega ao `AtividadesEmTempoReal` dentro da
+                 medição, que é onde ele tem denominador.
+       medicao — a medição completa (funil, investimento, saídas). É a superfície
+                 mais alta da página inteira e responde "como estamos", não "o
+                 que eu assino agora". A pergunta do dinheiro na primeira tela
+                 passou a ser respondida pela linha de comando, com o mesmo
+                 número e um clique para o detalhe.
+       sistema — governança e pulso do sistema. Latência de banco, fila de
+                 outbox e custo de IA são AUDITORIA; eram os quatro números em
+                 escala de comparação (20px) mais destacados da página.
+
+     Recolher não apaga: cada cabeçalho continua vivo (estado, contagem e
+     motivo), o toggle é de um clique e a preferência persiste em
+     sessionStorage. Reordenar move; só recolher reduz altura.
+
+     Por que `fila` continua aberta: ela é lida por DOIS blocos — a camada de
+     gestão e a "Fila do dia" DO CORRETOR. Recolhê-la esconderia o bloco de
+     decisão primário de outro papel. */
+  feed: true,
+  medicao: true,
+  sistema: true,
 };
 
 type CommandCenterPreferences = {
@@ -593,6 +619,48 @@ type ProactivePriority = {
   // cockpit, o card ganha "Preparar ação". `id` já é o leadId (fila do corretor).
   actionSignal?: ProposalSignalKind;
   actionMetric?: number;
+};
+
+/**
+ * ── A LINHA DE COMANDO — o contrato da PRIMEIRA TELA ────────────────────────
+ *
+ * MEDIDO na produção em 02/08/2026, tema claro, 1440x900: os quatro números em
+ * maior escala da página eram `896 ms` (latência do banco), `—` (fila de
+ * outbox), `US$ 0.01` (custo de IA) e `0` (homologação). Telemetria de
+ * infraestrutura ocupando o lugar de maior atenção da diretoria, enquanto a fila
+ * do primeiro contato aparecia como texto de 11px dentro de uma lista.
+ *
+ * Não faltava informação: faltava HIERARQUIA. Esta faixa é a resposta, e o
+ * contrato dela é estreito de propósito — em 900px o diretor responde três
+ * perguntas sem rolar:
+ *
+ *   1. a operação está de pé?          → estado da régua de módulos
+ *   2. o que exige a minha assinatura? → a fila de decisão do papel
+ *   3. onde o dinheiro está indo?      → gasto medido e a quem ele encontrou
+ *
+ * REGRAS QUE ESTE TIPO IMPÕE, e por isso `valor` e `semLastro` são exclusivos:
+ *
+ *   · nenhum número de INFRAESTRUTURA entra em escala de herói. A pergunta 1 é
+ *     respondida por uma PALAVRA de estado ("De pé" / "Parcial"), com a razão
+ *     N/M em 11px — latência é auditoria, e auditoria não decide nada;
+ *   · ausência de dado NUNCA vira zero. Sem lastro, o tile imprime o motivo em
+ *     13px no lugar do número, e o motivo é o que a fonte declarou;
+ *   · o rótulo do link só promete contagem onde o filtro do destino é o MESMO
+ *     recorte do número (hoje só `attention=never_contacted`, que esta página já
+ *     usa na escada do corte). Nos demais o verbo é neutro ("Abrir tarefas"),
+ *     porque número ao lado de link é promessa de que o clique devolve aquilo.
+ */
+type TileDeComando = {
+  chave: string;
+  pergunta: string;
+  /** O valor em escala de herói. `null` quando não há lastro. */
+  valor: string | null;
+  /** Obrigatório quando `valor` é `null`: por que não dá para afirmar. */
+  semLastro: string | null;
+  detalhe: string;
+  href: string;
+  acao: string;
+  alerta: boolean;
 };
 
 // Sinais que produzem ação preparável só com o que o cockpit tem em mãos.
@@ -2131,6 +2199,10 @@ export default function CommandCenterPage() {
   const prioritiesLoading = isBroker
     ? brokerDaily === null
     : briefing === null && !briefingUnavailable;
+  // Escalares para a linha de comando: o array é remontado a cada render e não
+  // pode entrar como dependência de memo (o portão do React Compiler reprova).
+  const totalDePrioridades = priorities.length;
+  const prioridadesCriticas = priorities.filter((card) => card.severity === "critical").length;
 
   const liveFeed = useMemo(() => {
     const reference = referenceTime;
@@ -2356,6 +2428,195 @@ export default function CommandCenterPage() {
     return null;
   }, [directorDaily, isDirector, isManager, isSuperintendent, managerDaily, marketingQuality, superintendentSummary]);
 
+  /**
+   * As três perguntas da primeira tela, montadas SÓ com o que a página já
+   * buscou. Nenhuma rota nova, nenhum número recalculado: cada tile aponta para
+   * a mesma fonte que o bloco detalhado adiante usa, para não nascerem duas
+   * verdades sobre o mesmo fato.
+   */
+  /* Sem `useMemo`: o React Compiler está ligado e memoiza isto sozinho. A
+     memoização manual foi REPROVADA pelo portão do lint — `priorities` é
+     ordenado in loco e o compilador recusa depender de valor que pode mudar
+     depois. Tirar a memoização manual é mais forte que enganá-la com um
+     escalar: some a dependência frágil e o compilador volta a otimizar. */
+  const linhaDeComando = ((): TileDeComando[] => {
+    const tiles: TileDeComando[] = [];
+
+    // 1 · A OPERAÇÃO ESTÁ DE PÉ — palavra de estado, nunca número de infra.
+    const modulosDegradados = moduleHealth.filter((module) => module.state !== "operational").length;
+    tiles.push(
+      moduleHealth.length === 0
+        ? {
+            chave: "operacao",
+            pergunta: "A operação está de pé?",
+            valor: null,
+            semLastro:
+              "A régua de módulos não respondeu nesta leitura. O estado é desconhecido — não é saudável.",
+            detalhe: updatedAgoLabel,
+            href: "/integrations/health",
+            acao: "Abrir saúde",
+            alerta: true,
+          }
+        : {
+            chave: "operacao",
+            pergunta: "A operação está de pé?",
+            valor: modulosDegradados === 0 ? "De pé" : "Parcial",
+            semLastro: null,
+            detalhe: `${operationalModuleCount} de ${moduleHealth.length} módulos operacionais · ${updatedAgoLabel}`,
+            href: "/integrations/health",
+            acao: "Abrir saúde",
+            alerta: modulosDegradados > 0,
+          },
+    );
+
+    // 2 · O QUE PEDE A SUA ASSINATURA — a fila de decisão do papel.
+    // `#fila-da-gestao` e `#prioridades-agora` são âncoras desta mesma página:
+    // o número e a lista são o MESMO array, então o clique não pode divergir.
+    const aprovacoesPendentes = governance?.queues.approvals ?? null;
+    const sufixoAprovacoes =
+      aprovacoesPendentes === null ? "" : ` · ${aprovacoesPendentes} aguardando aprovação`;
+    if (managementQueue) {
+      tiles.push(
+        managementQueue.ready
+          ? {
+              chave: "assinatura",
+              pergunta: "O que pede a sua assinatura?",
+              valor: String(managementQueue.items.length),
+              semLastro: null,
+              detalhe: `${managementQueue.title.toLowerCase()}${sufixoAprovacoes}`,
+              href: "#fila-da-gestao",
+              acao: "Ver a fila",
+              /* Cor só onde há limiar: a fila quase sempre tem algo dentro, e é
+                 a severidade CRÍTICA que muda o que se faz hoje de manhã. */
+              alerta: managementQueue.items.some((item) => item.severity === "critical"),
+            }
+          : {
+              chave: "assinatura",
+              pergunta: "O que pede a sua assinatura?",
+              valor: null,
+              semLastro: "A fila do seu papel ainda não respondeu — zero aqui seria invenção.",
+              detalhe: `${managementQueue.title.toLowerCase()}${sufixoAprovacoes}`,
+              href: "#fila-da-gestao",
+              acao: "Ver a fila",
+              alerta: false,
+            },
+      );
+    } else {
+      tiles.push({
+        chave: "assinatura",
+        pergunta: "O que atender primeiro?",
+        valor: String(totalDePrioridades),
+        semLastro: null,
+        detalhe: "sinais da IA priorizados na sua carteira",
+        href: "#prioridades-agora",
+        acao: "Ver prioridades",
+        alerta: prioridadesCriticas > 0,
+      });
+    }
+
+    // 3 · QUEM AINDA NÃO FOI CHAMADO — a fila que o corte decompõe logo abaixo.
+    const triagem = directorDaily?.triagem;
+    if (triagem) {
+      tiles.push(
+        triagem.medida && triagem.total !== null
+          ? {
+              chave: "primeiro-contato",
+              pergunta: "Quem ainda não foi chamado?",
+              valor: String(triagem.total),
+              semLastro: null,
+              detalhe: `${triagem.faixas.length} filas de naturezas diferentes${triagem.amostraCompleta ? "" : " · leitura truncada: é “ao menos”"}`,
+              // Mesmo destino que a escada do corte já usa por faixa. O recorte
+              // do filtro é o MESMO do número, então a contagem pode ir no link.
+              href: "/leads?attention=never_contacted&sort=first_contact_sla&direction=asc",
+              acao: `Abrir a lista (${triagem.total})`,
+              /* SEM cor: uma fila de primeiro contato praticamente nunca está em
+                 zero, e âmbar que fica aceso todo dia é enfeite, não estado.
+                 A exceção MEDIDA aqui é outra — a fila fria maior que o pedido
+                 real, que a rota já publica como `distribuicaoInvertida`. */
+              alerta: triagem.distribuicaoInvertida,
+            }
+          : {
+              chave: "primeiro-contato",
+              pergunta: "Quem ainda não foi chamado?",
+              valor: null,
+              semLastro: `Corte não medido: ${triagem.motivoNaoMedida ?? "a fonte não declarou o motivo"}`,
+              detalhe: "sem esta leitura não dá para saber quem nunca foi tocado",
+              href: "/leads?attention=never_contacted",
+              acao: "Abrir a lista",
+              alerta: false,
+            },
+      );
+    } else {
+      tiles.push({
+        chave: "atrasadas",
+        pergunta: "O que já venceu?",
+        valor: String(metrics.overdueTasks),
+        semLastro: null,
+        detalhe: "tarefas com prazo vencido no seu escopo",
+        // Verbo neutro: /tasks não recebe o mesmo recorte deste número, e link
+        // com contagem seria promessa de que o clique devolve exatamente isto.
+        href: "/tasks",
+        acao: "Abrir tarefas",
+        alerta: metrics.overdueTasks > 0,
+      });
+    }
+
+    // 4 · ONDE O DINHEIRO ESTÁ INDO — só existe onde a diretoria tem a leitura.
+    if (isDirector) {
+      const totais = marketingQuality?.totals;
+      const semAtribuicao = totais && totais.campaignsSpendWithoutLeads > 0;
+      tiles.push(
+        !marketingQuality
+          ? {
+              chave: "dinheiro",
+              pergunta: "Onde o dinheiro está indo?",
+              valor: null,
+              semLastro: "A qualidade das campanhas ainda não respondeu nesta leitura.",
+              detalhe: "gasto e atribuição de lead vêm da mesma janela",
+              href: "/marketing/campaigns",
+              acao: "Abrir campanhas",
+              alerta: false,
+            }
+          : !marketingQuality.policy.spendMeasured
+            ? {
+                chave: "dinheiro",
+                pergunta: "Onde o dinheiro está indo?",
+                valor: null,
+                semLastro:
+                  "Gasto não medido (marketing_spend indisponível). Em branco aqui leria como zero, e zero seria mentira.",
+                detalhe: `janela de ${marketingQuality.period.days} dias`,
+                href: "/marketing/campaigns",
+                acao: "Abrir campanhas",
+                alerta: false,
+              }
+            : {
+                chave: "dinheiro",
+                pergunta: "Onde o dinheiro está indo?",
+                valor: brl.format(totais?.spend ?? 0),
+                semLastro: null,
+                /* O fato que decide: gasto existe para N campanhas e atribuição
+                   de lead para bem menos — são duas contas de anúncio, e isso é
+                   um fato do negócio, não uma tela quebrada. Dizer "sem lead
+                   atribuída" é o que manda procurar a conta certa.
+
+                   `totals.leads` é `input.leads.length` — TODAS as leads da
+                   janela, não as atribuídas a campanha. Chamá-lo de "leads
+                   atribuídas" imprimia "406 lead(s) atribuída(s)" numa base com
+                   24 leads carregando campanha. O rótulo aqui repete o
+                   vocabulário que a própria fonte usa. */
+                detalhe: semAtribuicao
+                  ? `${brl.format(totais!.spendWithoutLeads)} em ${totais!.campaignsSpendWithoutLeads} campanha(s) sem lead atribuída · janela de ${marketingQuality.period.days}d`
+                  : `${totais!.campaignsRanked} campanha(s) com lead ou gasto · janela de ${marketingQuality.period.days}d`,
+                href: "/marketing/campaigns",
+                acao: "Abrir campanhas",
+                alerta: Boolean(semAtribuicao),
+              },
+      );
+    }
+
+    return tiles;
+  })();
+
   const roleLabel = isDirector
     ? "Diretoria"
     : isSuperintendent
@@ -2511,7 +2772,59 @@ export default function CommandCenterPage() {
         />
       ) : null}
 
+      {/* ── A LINHA DE COMANDO ──────────────────────────────────────────────
+          As três perguntas da primeira tela, cada uma com destino próprio. Ver
+          o contrato completo em `TileDeComando`, no topo do arquivo.
+
+          Cada tile é um LINK inteiro (não um cartão com um link dentro): a
+          primeira tela tinha UMA ação clicável — o botão de atualizar — e o
+          diretor precisava rolar para agir em qualquer coisa.
+
+          `min-h-11` no link porque um alvo de toque de 44px é a régua desta
+          base, e um cartão que age não pode ser menor do que isso. */}
       <section
+        aria-label="As perguntas da primeira tela"
+        className={`cc5-reveal grid gap-3 sm:grid-cols-2 ${linhaDeComando.length >= 4 ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
+        style={{ animationDelay: "25ms" }}
+      >
+        {linhaDeComando.map((tile) => (
+          <Link
+            key={tile.chave}
+            href={tile.href}
+            className="atlas-panel flex min-h-11 flex-col justify-between gap-2 rounded-2xl p-4 transition-colors hover:border-white/[.14] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+          >
+            <p className="cc6-eyebrow">{tile.pergunta}</p>
+            {tile.valor === null ? (
+              /* Sem lastro o MOTIVO ocupa o lugar do número, em corpo de 13px.
+                 Nem traço mudo nem zero: os dois se leem como medida. */
+              <p className="text-corpo leading-5 text-[var(--atlas-texto-medio)]">{tile.semLastro}</p>
+            ) : (
+              <p
+                className={`cc23-display ${tile.alerta ? "text-[var(--atlas-warning)]!" : ""}`}
+                /* `.cc23-display` fixa `font-family: var(--cc23-font-num)` fora
+                   de @layer, então nenhum utilitário do Tailwind a vence. A
+                   pergunta 1 responde com PALAVRA ("De pé"), e palavra em fonte
+                   de número sai com o espaçamento de tabela — medido no
+                   navegador em 02/08/2026: "De  pé" com o branco de um dígito
+                   entre as sílabas. `style` é o único lugar de onde dá para
+                   devolver a face de texto. */
+                style={/\d/.test(tile.valor) ? undefined : { fontFamily: "inherit" }}
+              >
+                {tile.valor}
+              </p>
+            )}
+            <span className="text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+              {tile.detalhe}
+            </span>
+            <span className="text-rotulo font-semibold text-[var(--atlas-accent)]">
+              {tile.acao} →
+            </span>
+          </Link>
+        ))}
+      </section>
+
+      <section
+        id="prioridades-agora"
         aria-label="Prioridades agora"
         className="cc5-reveal atlas-panel rounded-2xl p-5 sm:p-6"
         style={{ animationDelay: "40ms" }}
@@ -3306,7 +3619,7 @@ export default function CommandCenterPage() {
       </section>
 
       {managementQueue ? (
-        <section aria-label="Camada gestão" className="[transform-style:preserve-3d]">
+        <section id="fila-da-gestao" aria-label="Camada gestão" className="[transform-style:preserve-3d]">
           <div className={depthShell}>
             <AtlasCard>
               <AtlasCardHeader
@@ -3549,11 +3862,50 @@ export default function CommandCenterPage() {
         atualizacao parcial, que subiu da 19a para a 3a. Nenhum bloco foi
         apagado: os 24 continuam os 24, na ordem em que a decisao acontece.
       */}
+      {/* A MEDIÇÃO COMPLETA VIROU CAMADA (2026-08-02).
+
+          Ela é a superfície mais alta da página — seis KPIs, funil, atividades,
+          equipe, evolução, top projetos, alertas, insights, investimento e
+          saídas — e é LEITURA: responde "como estamos", não "o que eu assino
+          agora". Pela régua do v3 ela fica abaixo da decisão, e nasce recolhida
+          para a página caber em telas em vez de metros.
+
+          O cabeçalho continua dizendo o que há dentro (nenhum painel é
+          removido), o toggle é de um clique e a preferência persiste. As três
+          perguntas da primeira tela — incluindo a do dinheiro — passaram a ser
+          respondidas na linha de comando lá em cima, com a MESMA fonte.
+
+          DIFERENÇA HONESTA em relação às outras camadas: aqui o corpo é
+          DESMONTADO, não escondido. `SalaDeComandoPanel` busca a própria rota no
+          `useEffect` de montagem, então recolhido ele não consulta nada e o
+          cabeçalho não pode exibir número vivo — por isso ele declara o que há
+          dentro, e não um resumo que seria de uma leitura que não aconteceu.
+          Expandir dispara a consulta. */}
       <section
         aria-label="Sala de comando"
-        className="cc5-reveal"
+        className="cc5-reveal atlas-panel rounded-2xl px-5 py-3"
         style={{ animationDelay: "160ms" }}
       >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p
+              className="cc5-eyebrow"
+              title="Medição completa da operação: seis indicadores, funil por etapa com o que já passou, atividades, equipe, evolução, top projetos, alertas, insights, investimento por campanha e saídas do funil."
+            >
+              Medição · Operação
+            </p>
+            <p className="mt-0.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+              Funil, investimento e saídas — a leitura completa, medida
+            </p>
+          </div>
+          <LayerToggle
+            collapsed={collapsedLayers.medicao}
+            onToggle={() => toggleLayer("medicao")}
+            layerLabel="medição da operação"
+          />
+        </div>
+        {collapsedLayers.medicao ? null : (
+        <div className="mt-4">
         {/* As quatro faixas da referência visual do dono. O painel busca UMA
             rota (sala-de-comando); tudo o mais aqui já estava em memória e é
             passado, não rebuscado.
@@ -3572,6 +3924,8 @@ export default function CommandCenterPage() {
           pontosCegos={briefing?.coverage?.blindSpots ?? []}
           insightsLocais={insightsLocaisDaSala}
         />
+        </div>
+        )}
       </section>
 
       {/* O tilt 3D mutava style.transform a cada pointermove sem carregar informação
@@ -4060,7 +4414,15 @@ export default function CommandCenterPage() {
       <CommandCenterModuleHealth />
 
       {/* A antiga "Saúde dos módulos" foi fundida na régua de módulos da camada
-          terciária; a governança segue exclusiva da diretoria. */}
+          terciária; a governança segue exclusiva da diretoria.
+
+          ── ONDE ESTAVAM OS QUATRO MAIORES NÚMEROS DA PÁGINA ──────────────────
+          MEDIDO em 02/08/2026: `896 ms`, `—`, `US$ 0.01` e `0` — latência do
+          banco, fila de outbox, custo de IA e homologação — eram impressos em
+          `text-xl` (20px), o degrau do "número que se compara". Nada nesta
+          página é MENOS comparável que a latência de uma consulta: ela audita,
+          não decide. Os quatro caem para 13px de corpo, ficam ao lado do rótulo
+          e a camada nasce recolhida com o selo de estado vivo no cabeçalho. */}
       {isDirector ? (
         <section
           aria-label="Governança e pulso do sistema"
@@ -4073,16 +4435,24 @@ export default function CommandCenterPage() {
                 title="Pulso do sistema"
                 description="Gates críticos, filas e custo medido — visão exclusiva da diretoria."
                 action={
-                  governance ? (
-                    <AtlasBadge tone={governance.status === "ready" ? "success" : governance.status === "blocked" ? "danger" : "warning"}>
-                      {governance.status === "ready" ? "PRONTO" : governance.status === "blocked" ? "BLOQUEADO" : "SEM EVIDÊNCIA"}
-                    </AtlasBadge>
-                  ) : undefined
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {governance ? (
+                      <AtlasBadge tone={governance.status === "ready" ? "success" : governance.status === "blocked" ? "danger" : "warning"}>
+                        {governance.status === "ready" ? "PRONTO" : governance.status === "blocked" ? "BLOQUEADO" : "SEM EVIDÊNCIA"}
+                      </AtlasBadge>
+                    ) : null}
+                    <LayerToggle
+                      collapsed={collapsedLayers.sistema}
+                      onToggle={() => toggleLayer("sistema")}
+                      layerLabel="governança e pulso do sistema"
+                    />
+                  </div>
                 }
               />
+              {collapsedLayers.sistema ? null : (
               <div className="border-t border-white/[.06] p-5 sm:p-6">
                 {governanceNote ? (
-                  <p className="cc23-quiet text-sm text-slate-400">{governanceNote}</p>
+                  <p className="cc23-quiet text-corpo text-slate-400">{governanceNote}</p>
                 ) : !governance ? (
                   <AtlasSkeleton className="h-48 w-full" />
                 ) : (
@@ -4094,34 +4464,34 @@ export default function CommandCenterPage() {
                       <ul className="cc23-rows">
                         <li className="cc23-row">
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs text-slate-500">Banco</p>
-                            <p className="mt-0.5 text-xs text-slate-500">
+                            <p className="text-rotulo text-slate-500">Banco</p>
+                            <p className="mt-0.5 text-rotulo text-slate-500">
                               {governance.health.databaseOk ? "Consulta aprovada" : "Sem evidência"}
                             </p>
                           </div>
-                          <span className="cc6-metric-value text-xl">
+                          <span className="cc6-metric-value text-corpo">
                             {governance.health.databaseLatencyMs} ms
                           </span>
                         </li>
                         <li className="cc23-row">
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs text-slate-500">Fila de integração</p>
-                            <p className="mt-0.5 text-xs text-slate-500">
+                            <p className="text-rotulo text-slate-500">Fila de integração</p>
+                            <p className="mt-0.5 text-rotulo text-slate-500">
                               {governance.queues.failedOutbox ?? "—"} falhas ou dead letter
                             </p>
                           </div>
-                          <span className="cc6-metric-value text-xl">
+                          <span className="cc6-metric-value text-corpo">
                             {governance.queues.pendingOutbox ?? "—"}
                           </span>
                         </li>
                         <li className="cc23-row">
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs text-slate-500">Custo IA · 30 dias</p>
-                            <p className="mt-0.5 text-xs text-slate-500">
+                            <p className="text-rotulo text-slate-500">Custo IA · 30 dias</p>
+                            <p className="mt-0.5 text-rotulo text-slate-500">
                               {governance.ai.calls30d} chamadas medidas
                             </p>
                           </div>
-                          <span className="cc6-metric-value text-xl">
+                          <span className="cc6-metric-value text-corpo">
                             {governance.ai.measured
                               ? `US$ ${governance.ai.estimatedCostUsd30d.toFixed(2)}`
                               : "—"}
@@ -4129,12 +4499,12 @@ export default function CommandCenterPage() {
                         </li>
                         <li className="cc23-row">
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs text-slate-500">Homologação</p>
-                            <p className="mt-0.5 text-xs text-slate-500">
+                            <p className="text-rotulo text-slate-500">Homologação</p>
+                            <p className="mt-0.5 text-rotulo text-slate-500">
                               {governance.homologation.failed ?? "—"} reprovações
                             </p>
                           </div>
-                          <span className="cc6-metric-value text-xl">
+                          <span className="cc6-metric-value text-corpo">
                             {governance.homologation.passed ?? "—"}
                           </span>
                         </li>
@@ -4144,7 +4514,7 @@ export default function CommandCenterPage() {
                       {Object.entries(governance.critical).map(([key, value]) => (
                         <span
                           key={key}
-                          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/[.07] px-4 text-xs text-slate-300"
+                          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/[.07] px-4 text-rotulo text-slate-300"
                         >
                           <span
                             aria-hidden="true"
@@ -4167,6 +4537,7 @@ export default function CommandCenterPage() {
                   </div>
                 )}
               </div>
+              )}
             </AtlasCard>
           </div>
         </section>

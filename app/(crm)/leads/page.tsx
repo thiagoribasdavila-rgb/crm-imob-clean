@@ -18,6 +18,7 @@ import { LoadingState } from "@/components/atlas/loading-state";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { NextActionQuickSet } from "@/components/crm/next-action-quick-set";
+import { AcompanhamentoCorretorFilaDeRecuperacao } from "@/components/crm/acompanhamento-corretor-fila-de-recuperacao";
 
 type Lead = {
   id: string;
@@ -1749,6 +1750,20 @@ export default function LeadsPage() {
         ) : null}
         </TiltShell>
       </section>
+
+      {/* ── O MOTIVO DO DESCARTE VOLTA PARA QUEM O DIGITOU ──────────────────
+          O corretor é obrigado a escolher um motivo para descartar, e o motivo
+          não aparecia em nenhuma tela que ele abre — o relatório de descartes
+          exige papel de liderança. Medido em 02/08/2026: 273 saídas com motivo
+          gravado, das quais 252 dizem "Sem resposta após tentativas" e 250
+          dessas não têm NENHUM sinal de contato no CRM.
+
+          Fica ACIMA dos filtros e da tabela porque é decisão (quem rechamar
+          hoje), e a tabela é consulta. Fica ABAIXO da fila de ação porque a
+          fila trata de prazo correndo, que vence antes. ── */}
+      <div className="cc6-reveal" style={{ animationDelay: "120ms" }}>
+        <AcompanhamentoCorretorFilaDeRecuperacao />
+      </div>
 
       <div className="cc6-reveal" style={{ animationDelay: "140ms" }}>
         <section
