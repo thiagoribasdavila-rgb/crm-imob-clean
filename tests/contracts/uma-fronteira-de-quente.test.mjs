@@ -139,6 +139,115 @@ test("as cinco cópias do 70 sumiram do código", () => {
   }
 });
 
+/**
+ * A LIÇÃO DA ONDA ANTERIOR, VIRADA EM PORTÃO.
+ *
+ * O teste acima confere CINCO caminhos escritos à mão. Enquanto ele ficava
+ * verde, `app/api` inteiro seguia com NOVE sítios vivos escolhendo o próprio 70
+ * — cada rota de painel (broker/manager/director-daily, dashboard,
+ * productivity daily/weekly, team/conversion) e, o mais escondido de todos,
+ * `crm/leads/route.ts`, onde o número morava DENTRO da string do PostgREST
+ * (`"score_ia.gte.70"`) e nenhuma busca por `>= 70` o alcançava.
+ *
+ * Lista de arquivos não pega o arquivo que ninguém lembrou de listar. Este
+ * portão varre a ÁRVORE e cobre as DUAS grafias — a expressão JS e a string do
+ * PostgREST. MEDIDO em 2026-08-02: 9 sítios vivos antes, 0 depois.
+ */
+
+/**
+ * ── O PREDICADO APONTA PARA O NÚMERO, NÃO PARA A PALAVRA (02/08/2026) ────────
+ *
+ * A versão anterior exigia `temperature` ou `quente` NA MESMA LINHA. Uma rota
+ * que diz "high"/"medium" e nunca escreve "quente" ficava invisível — e foi
+ * exatamente ela que sobreviveu, com o portão chamado "a árvore inteira, não
+ * uma lista" verde por cima.
+ *
+ * Agora a pergunta é a propriedade: ESTA LINHA COMPARA ALGO COM O NÚMERO 70?
+ * Comparar com 70 É escolher a fronteira, escreva-se a palavra ou não.
+ *
+ * As três exceções são medidas, não conveniências:
+ *   · `confidence`/`confianca` — confiança do preditor é outra grandeza;
+ *   · chave de objeto (`proposta: 70`) — peso de etapa, não corte;
+ *   · a própria constante canônica e quem já a importa.
+ * Sem elas o portão gritaria à toa, e portão que grita à toa é ignorado.
+ */
+const comparaComOCorte = (linha) => {
+  // ── A DISPENSA PELA CONSTANTE SAIU, E O MOTIVO É MEDIDO ───────────────────
+  //
+  // A primeira versão deste helper começava com
+  // `if (/HOT_SCORE_THRESHOLD/.test(linha)) return false`. Parecia inofensivo e
+  // era o mesmo ponto cego que este contrato veio fechar: uma linha pode usar a
+  // constante numa metade e o literal na outra, e era EXATAMENTE o caso real —
+  //
+  //   aiPriority: score >= 70 ? "high" : ... , aiSuggestion: score >= HOT_SCORE_THRESHOLD ? ...
+  //
+  // Provado por mutação: com a dispensa, reintroduzir o literal 70 nessa linha
+  // deixava o portão VERDE. A dispensa também era desnecessária — o nome da
+  // constante não contém "70", então `>= HOT_SCORE_THRESHOLD` jamais casaria
+  // com o padrão de literal. Exceção que não precisava existir e cegava o alvo.
+  if (/confidence|confianca|confiança/i.test(linha)) return false;
+  // `gte.70` do PostgREST não tem operador de comparação em JS.
+  if (/\bgte\.70\b/.test(linha)) return true;
+  // Comparação de verdade: >=, >, ===, ==, ? ... : com o literal 70.
+  return /(?:>=|>|===|==|<=|<)\s*70\b/.test(linha);
+};
+
+test("nenhuma rota de app/api escolhe o próprio 70 — a árvore inteira, não uma lista", () => {
+  const arquivos = [];
+  const varrer = (dir) => {
+    for (const entrada of fs.readdirSync(path.join(raiz, dir), { withFileTypes: true })) {
+      const filho = `${dir}/${entrada.name}`;
+      if (entrada.isDirectory()) varrer(filho);
+      else if (entrada.name.endsWith(".ts")) arquivos.push(filho);
+    }
+  };
+  varrer("app/api");
+  assert.ok(arquivos.length > 100, `a varredura não achou rotas (${arquivos.length}) — o caminho mudou`);
+
+  const reincidentes = [];
+  for (const arquivo of arquivos) {
+    const linhas = semComentarios(ler(arquivo)).split("\n");
+    linhas.forEach((linha, indice) => {
+      if (comparaComOCorte(linha)) reincidentes.push(`${arquivo}:${indice + 1}`);
+    });
+  }
+  assert.deepEqual(reincidentes, [],
+    "rota voltou a digitar o corte de quente em vez de importar HOT_SCORE_THRESHOLD");
+});
+
+test("o portão reprova as DUAS grafias E a rota que nunca escreve 'quente'", () => {
+  // Um portão que só sabe reprovar o que já não existe é decoração. Os dois
+  // lados: a forma proibida reprova, a forma correta passa.
+  assert.equal(comparaComOCorte('query.or("temperature.ilike.quente,score_ia.gte.70")'), true,
+    "a grafia do PostgREST escapou do portão — era exatamente onde o 70 se escondeu");
+  assert.equal(comparaComOCorte('normalize(lead.temperature) === "quente" || score >= 70'), true);
+
+  // ── O CASO QUE DERRUBOU A VERSÃO ANTERIOR DESTE PORTÃO ────────────────────
+  //
+  // Ele exigia a palavra `temperature` ou `quente` NA MESMA LINHA. Uma rota que
+  // diz "high"/"medium" e nunca escreve "quente" era invisível — e foi
+  // exatamente essa que sobreviveu, escolhendo o próprio 70 DUAS vezes:
+  //
+  //   app/api/v1/crm/reactivation/route.ts:111
+  //     aiPriority: score >= 70 ? "high" : score >= 45 ? "medium" : "learning"
+  //
+  // O portão se chamava "a árvore inteira, não uma lista" e estava verde. Trocar
+  // uma lista escrita à mão por um predicado cego é a mesma falha de "só olha
+  // onde alguém lembrou de olhar", um nível acima.
+  assert.equal(comparaComOCorte('aiPriority: score >= 70 ? "high" : score >= 45 ? "medium" : "learning"'), true,
+    "a rota que diz 'high' sem escrever 'quente' voltou a ser invisível para o portão");
+  assert.equal(comparaComOCorte("const hot = pontuacao >= 70;"), true,
+    "comparar QUALQUER coisa com 70 é escolher a fronteira, escreva-se a palavra ou não");
+
+  assert.equal(comparaComOCorte("normalize(lead.temperature) === \"quente\" || score >= HOT_SCORE_THRESHOLD"), false,
+    "a forma CORRETA não pode reprovar — portão que reprova tudo não ensina nada");
+  assert.equal(comparaComOCorte("const STAGE_PROBABILITY = { proposta: 70 }"), false,
+    "70 que não é fronteira de quente (peso de etapa) não pode ser confundido com ela");
+  assert.equal(comparaComOCorte("if (confianca >= 70) mostrarPrevisao();"), false,
+    "confiança do preditor é outra grandeza — reprovar aqui seria portão que grita à toa");
+  assert.equal(comparaComOCorte("await esperar(70);"), false, "70 que não é comparação não é fronteira");
+});
+
 test("a temperatura é lida normalizada — a base tem MORNO, FRIO e quente", () => {
   // Comparação `=== "quente"` crua deixava uma lead gravada "QUENTE" fora da
   // conta, sem erro nenhum. MEDIDO no banco vivo: 5 leads "MORNO", 2 "FRIO".

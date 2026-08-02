@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { derivarPraca, ehChaveDeFaixa, fragmentoDaFaixa } from "@/lib/atlas/triagem-da-fila";
+import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { filtroDaCarteiraDaPessoa, filtroDaMinhaCarteira, leSoAPropriaCarteira } from "@/lib/crm/escopo-de-leitura";
 import { ehVinculoValido, STATUS_DO_VINCULO, statusForaDoAtendimento } from "@/lib/crm/vinculo-do-cliente";
@@ -452,7 +453,10 @@ export async function GET(request: NextRequest) {
         // dizendo "sem ação" para quem acabou de agendar uma.
         query = query.is("next_action_at", null).is("next_contact", null);
       }
-      if (attention === "hot") query = query.or("temperature.ilike.quente,score_ia.gte.70");
+      // O 70 aqui é a MESMA fronteira de "quente" do scorer, e por isso sai da
+      // constante — não de um literal digitado dentro da string do PostgREST,
+      // onde nenhuma busca por `>= 70` jamais o encontraria.
+      if (attention === "hot") query = query.or(`temperature.ilike.quente,score_ia.gte.${HOT_SCORE_THRESHOLD}`);
       if (attention === "unassigned") query = query.is("assigned_user_id", null);
       // Mesmo predicado por coluna que a central usa para contar. Se a base
       // não tem a coluna (comSla falso), NÃO aplicamos o filtro: devolver a

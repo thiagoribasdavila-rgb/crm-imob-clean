@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { filtroDaCarteiraDaPessoa } from "@/lib/crm/escopo-de-leitura";
 import { primeiroContatoAtrasado } from "@/lib/crm/acervo-de-resgate";
+import { tarefaEstaConcluida } from "@/lib/atlas/tarefa-em-aberto";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import {
   LIVE_LEAD_SELECT,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/compat/legacy-v2";
 import {
   computeAttentionSignals,
+  medirFontesDosSinais,
   groupAttentionSignalsByLead,
   severityRank,
   HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS,
@@ -24,14 +26,10 @@ import {
 export const dynamic = "force-dynamic";
 
 const CLOSED = new Set(["ganho", "perdido", "arquivado", "comprou_outro"]);
-const DONE = new Set([
-  "done",
-  "concluido",
-  "concluida",
-  "completed",
-  "cancelado",
-  "cancelada",
-]);
+// O conjunto de "tarefa encerrada" mora em `tarefa-em-aberto.ts` porque o sinal
+// de atenção `follow_up_overdue` agora lê a MESMA tabela (`tasks`) que esta
+// rota. Duas cópias do mesmo critério significariam dois números para o mesmo
+// fato na mesma tela — a classe de defeito mais cara deste repositório.
 const DAY = 86_400_000;
 const normalize = (value: unknown) =>
   String(value || "")
@@ -131,7 +129,7 @@ export async function GET(request: NextRequest) {
     .map(mapLegacyTask)
     .filter(
       (task) =>
-        !DONE.has(normalize(task.status)) &&
+        !tarefaEstaConcluida(task.status) &&
         (!task.lead_id || activeIds.has(String(task.lead_id))),
     );
   const overdueByLead = new Set(
@@ -161,6 +159,11 @@ export async function GET(request: NextRequest) {
     })),
     { now, primeiroContatoMensuravel },
   );
+  // Estado das FONTES dos sinais. Sem isto, um alerta cuja tabela está vazia
+  // devolve zero — e zero de fonte vazia é indistinguível de zero de operação
+  // impecável. Quem lê a resposta precisa conseguir separar "não há problema"
+  // de "não há como saber".
+  const attentionSources = await medirFontesDosSinais(identity.supabase, organizationId);
   const attentionByLead = groupAttentionSignalsByLead(attentionSignals);
   const attentionQueueCompleta = activeLeads
     .map((lead) => {
@@ -197,7 +200,7 @@ export async function GET(request: NextRequest) {
   const prioritiesCompletas = activeLeads
     .map((lead) => {
       const score = Number(lead.score || 0);
-      const hot = normalize(lead.temperature) === "quente" || score >= 70;
+      const hot = normalize(lead.temperature) === "quente" || score >= HOT_SCORE_THRESHOLD;
       const createdAt = timestamp(lead.created_at);
       const nextActionAt = timestamp(lead.next_action_at);
       // ── O ÚLTIMO LUGAR ONDE O PREDICADO ERA POR ETAPA ────────────────────
@@ -336,7 +339,7 @@ export async function GET(request: NextRequest) {
         activeLeads: activeLeads.length,
         hotLeads: activeLeads.filter(
           (lead) =>
-            normalize(lead.temperature) === "quente" || Number(lead.score || 0) >= 70,
+            normalize(lead.temperature) === "quente" || Number(lead.score || 0) >= HOT_SCORE_THRESHOLD,
         ).length,
         openTasks: openTasks.length,
         overdueTasks: openTasks.filter(
@@ -363,14 +366,22 @@ export async function GET(request: NextRequest) {
       attention: {
         explainable: true,
         humanApprovalRequired: true,
+        // Cada regra declara a tabela que de fato consulta. Estas frases
+        // apontavam para `pipeline_history` e `followups` — duas tabelas com
+        // ZERO linhas em produção. A explicação do alerta descrevia uma leitura
+        // que não acontecia.
         rules: {
-          staleStage: `Sem mudança de etapa em pipeline_history além do limite por etapa (${Object.entries(STAGE_STALE_THRESHOLD_DAYS).map(([stage, days]) => `${stage}: ${days}d`).join(", ")}); usa leads.created_at quando o lead nunca mudou de etapa.`,
-          followUpOverdue: "followups.scheduled_at no passado com completed=false.",
+          staleStage: `Sem mudança de etapa em pipeline_stage_moves além do limite por etapa (${Object.entries(STAGE_STALE_THRESHOLD_DAYS).map(([stage, days]) => `${stage}: ${days}d`).join(", ")}); usa leads.created_at quando o lead nunca mudou de etapa.`,
+          followUpOverdue: "tasks.due_date no passado com a tarefa ainda em aberto (status fora de concluído/cancelado).",
           highScoreNoContact: `score_ia >= ${HOT_SCORE_THRESHOLD} ou temperatura "quente" sem nenhuma linha em lead_events nos últimos ${HIGH_SCORE_NO_CONTACT_BUSINESS_DAYS} dias úteis.`,
           neverContacted: primeiroContatoMensuravel
             ? `leads.first_contacted_at nulo com first_contact_due_at vencido (crítico a partir de ${NEVER_CONTACTED_CRITICAL_HOURS}h de atraso); sem prazo gravado, conta desde a criação.`
             : "Não medido: as colunas de SLA de primeiro contato não existem nesta base.",
         },
+        // Estado de cada fonte. `mensuravel: false` é o alerta DIZENDO que não
+        // tem o que ler, no lugar de nunca acender e parecer operação em dia.
+        sources: attentionSources,
+        naoMensuraveis: attentionSources.filter((source) => !source.mensuravel).map((source) => source.kind),
         queue: attentionQueue,
         // O corte é declarado para que ninguém leia o tamanho da lista como
         // se fosse o tamanho do problema.

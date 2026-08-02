@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/legacy-v2";
 import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
 
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     const available = teamBrokers.filter((broker) => ["available", "disponivel"].includes(normalize(broker.availability_status))).length;
     return {
       managerId: text(manager.id), managerName: text(manager.full_name) || "Gerente", brokers: teamBrokers.length, online, available,
-      leads: portfolio.length, activeLeads: activeLeads.length, hotLeads: activeLeads.filter((lead) => normalize(lead.temperature) === "quente" || number(lead.score) >= 70).length,
+      leads: portfolio.length, activeLeads: activeLeads.length, hotLeads: activeLeads.filter((lead) => normalize(lead.temperature) === "quente" || number(lead.score) >= HOT_SCORE_THRESHOLD).length,
       firstContactOverdue, followUpOverdue, withoutNextAction, overdueLeads: firstContactOverdue + followUpOverdue, won,
       conversionRate: portfolio.length ? Math.round(won / portfolio.length * 1000) / 10 : 0,
       conversionSampleSufficient: portfolio.length >= 30,

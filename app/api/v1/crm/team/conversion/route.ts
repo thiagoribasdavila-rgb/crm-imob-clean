@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 import { LIVE_LEAD_SELECT, mapLegacyLead, type CompatRow } from "@/lib/compat/legacy-v2";
 import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, resolveLiveHierarchy } from "@/lib/compat/live-hierarchy";
 
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
   const members = hierarchy.filter((profile) => visibleIds.has(text(profile.id))).map((profile) => {
     const memberLeads = compatibleLeads.filter((lead) => text(lead.assigned_to) === text(profile.id));
     const activeLeads = memberLeads.filter((lead) => !closed.has(text(lead.status).toLowerCase()));
-    const hotLeads = activeLeads.filter((lead) => number(lead.score) >= 70 || hotTemperatures.has(text(lead.temperature).toLowerCase()));
+    const hotLeads = activeLeads.filter((lead) => number(lead.score) >= HOT_SCORE_THRESHOLD || hotTemperatures.has(text(lead.temperature).toLowerCase()));
     const withoutNextAction = activeLeads.filter((lead) => !lead.next_action_at);
     const overdue = activeLeads.filter((lead) => { const due = Date.parse(text(lead.next_action_at)); return Number.isFinite(due) && due < now; });
     const hotWithoutNextAction = hotLeads.filter((lead) => !lead.next_action_at);

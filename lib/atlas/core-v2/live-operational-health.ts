@@ -18,6 +18,7 @@ import {
   type OperationalWriteReadiness,
 } from "./live-write-readiness";
 import { contarAlcancaveis, contarNoFunil } from "./contagem-por-modulo";
+import { isHotLead } from "@/lib/atlas/temperatura-do-lead";
 
 export const ATLAS_OPERATIONAL_HEALTH_VERSION = "module-health-v2";
 
@@ -94,10 +95,13 @@ function readState(
 function localInsights(leads: CompatRow[], tasks: CompatRow[]) {
   const now = Date.now();
   const unassigned = leads.filter((lead) => !lead.assigned_to).length;
-  const hot = leads.filter((lead) => {
-    const temperature = String(lead.temperature ?? "").toLocaleLowerCase("pt-BR");
-    return temperature === "quente" || Number(lead.score ?? 0) >= 70;
-  }).length;
+  // Este contador vira o card "Leads quentes" da saúde operacional. Ele lia o
+  // próprio 70; agora aplica a fronteira de `lib/atlas/temperatura-do-lead.ts`,
+  // a MESMA em que o scorer grava `temperature: "quente"`. A normalização da
+  // temperatura continua existindo — sai de `toLocaleLowerCase("pt-BR")` para a
+  // canônica, que além de minusculizar tira acento e espaço. MEDIDO na produção
+  // em 2026-08-02: as 3 leads `quente` são as mesmas nas duas formas.
+  const hot = leads.filter((lead) => isHotLead({ score_ia: lead.score, temperature: lead.temperature })).length;
   const overdue = tasks.filter((task) => {
     const dueAt = typeof task.due_at === "string" ? new Date(task.due_at).getTime() : Number.NaN;
     const status = String(task.status ?? "").toLocaleLowerCase("pt-BR");

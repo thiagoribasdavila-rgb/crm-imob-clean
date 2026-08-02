@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 import {
   LIVE_LEAD_SELECT,
   mapLegacyLead,
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
   );
   const withoutNext = active.filter((lead) => !lead.next_action_at);
   const hotWithoutNext = withoutNext.filter(
-    (lead) => normalize(lead.temperature) === "quente" || Number(lead.score || 0) >= 70,
+    (lead) => normalize(lead.temperature) === "quente" || Number(lead.score || 0) >= HOT_SCORE_THRESHOLD,
   );
   const interactions = eventResult.data?.length ?? 0;
   const measured = completed.length + open.length;

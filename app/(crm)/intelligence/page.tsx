@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { isMissingRelation, mapLegacyLead, mapLegacyTask } from "@/lib/compat/legacy-v2";
+import { HOT_SCORE_THRESHOLD, isHotLead } from "@/lib/atlas/temperatura-do-lead";
 
 type Insight = {
   id: string;
@@ -27,11 +28,21 @@ function localInsights(leads: Row[], tasks: Row[]): Insight[] {
   const now = Date.now();
   const active = leads.filter((lead) => !["ganho", "perdido", "arquivado", "comprou_outro"].includes(text(lead.status).toLowerCase()));
   const withoutContact = active.filter((lead) => !lead.last_interaction_at);
-  const hot = active.filter((lead) => Number(lead.score || 0) >= 70 || ["quente", "hot"].includes(text(lead.temperature).toLowerCase()));
+  // A fronteira de "quente" sai de `lib/atlas/temperatura-do-lead.ts`, a mesma
+  // em que o scorer passa a gravar `temperature: "quente"` — esta tela não
+  // escolhe mais o próprio 70.
+  //
+  // O alias inglês "hot" fica FORA da constante de propósito (o produto grava
+  // "quente"/"morno"/"frio") e por isso continua aqui, à parte: tirá-lo seria
+  // estreitar o recorte desta tela de carona numa mudança que não é sobre ele.
+  // MEDIDO na produção em 2026-08-02: os 490 leads usam sete valores de
+  // `temperature` (frio, null, morno, MORNO, quente, DESCARTADO, FRIO) e
+  // NENHUM é "hot" — o alias não acende nada hoje, nem antes nem depois.
+  const hot = active.filter((lead) => isHotLead({ score_ia: lead.score, temperature: lead.temperature }) || text(lead.temperature).toLowerCase() === "hot");
   const overdue = tasks.filter((task) => !["done", "concluido", "concluida", "completed", "cancelado"].includes(text(task.status).toLowerCase()) && Boolean(date(task.due_at) && date(task.due_at)!.getTime() < now));
   return [
     { id: "local-no-contact", title: `${withoutContact.length} leads sem contato registrado`, summary: "Carteira ativa sem interação identificada na base atual.", recommendation: withoutContact.length ? "Priorize primeiro contato e registre o resultado no Lead 360." : "A carteira ativa possui contato registrado.", score: withoutContact.length, confidence: 100, status: withoutContact.length ? "atenção" : "saudável", created_at: new Date(now).toISOString() },
-    { id: "local-hot", title: `${hot.length} oportunidades quentes`, summary: "Leads com score igual ou superior a 70 ou temperatura quente.", recommendation: hot.length ? "Revise a próxima ação e o prazo de retorno dessas oportunidades." : "Continue qualificando para identificar intenção de compra.", score: hot.length, confidence: 100, status: hot.length ? "oportunidade" : "monitorando", created_at: new Date(now).toISOString() },
+    { id: "local-hot", title: `${hot.length} oportunidades quentes`, summary: `Leads com temperatura quente declarada ou score igual ou superior a ${HOT_SCORE_THRESHOLD}.`, recommendation: hot.length ? "Revise a próxima ação e o prazo de retorno dessas oportunidades." : "Continue qualificando para identificar intenção de compra.", score: hot.length, confidence: 100, status: hot.length ? "oportunidade" : "monitorando", created_at: new Date(now).toISOString() },
     { id: "local-overdue", title: `${overdue.length} tarefas atrasadas`, summary: "Compromissos abertos cujo prazo já venceu.", recommendation: overdue.length ? "Recupere os atrasos antes de iniciar ações de menor prioridade." : "A agenda comercial está em dia.", score: overdue.length, confidence: 100, status: overdue.length ? "atenção" : "saudável", created_at: new Date(now).toISOString() },
   ];
 }

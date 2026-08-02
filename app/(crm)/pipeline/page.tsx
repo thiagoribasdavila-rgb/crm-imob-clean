@@ -9,6 +9,7 @@ import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCa
 import { DEFAULT_PIPELINE_STAGES, type PipelineStageDefinition, type PipelineStageKey } from "@/lib/atlas/pipeline-stages";
 import { DISCARD_REASONS } from "@/lib/atlas/discard-reasons";
 import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
+import { HOT_SCORE_THRESHOLD, isHotLead } from "@/lib/atlas/temperatura-do-lead";
 import { conhecimentoDaEtapa, extrairRecusa } from "@/lib/crm/pipeline-guidance";
 
 /**
@@ -128,6 +129,42 @@ type Lead = {
 };
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+
+/**
+ * ── ESTA TELA PARA DE ESCOLHER O PRÓPRIO 70 ─────────────────────────────────
+ *
+ * SETE lugares aqui escreviam `lead.temperature === "quente" ||
+ * Number(lead.score ?? 0) >= 70`: a sugestão de ação do corretor, o sinal
+ * "quente sem toque", o filtro da aba "Leads quentes", a fila de "Minha
+ * prioridade" (no filtro E na contagem da aba), o contador do cartão e a
+ * contagem da aba quente. Sete cópias do mesmo número, cada uma livre para
+ * divergir das outras e da definição do produto.
+ *
+ * CONFERIDO um a um: todas as sete respondem a MESMA pergunta — "esta lead é
+ * quente?". Duas delas (fila de prioridade) apenas somam essa resposta a
+ * outros sinais (SLA, atraso, sem próxima ação, risco alto) com OR; a
+ * fronteira de quente dentro delas é a mesma. Nenhuma quis dizer outra coisa,
+ * e nenhuma tinha licença para responder diferente das outras.
+ *
+ * O 70 mora em `lib/atlas/temperatura-do-lead.ts` — é a MESMA fronteira em que
+ * o scorer passa a gravar `temperature: "quente"`. Aqui ele só é aplicado.
+ *
+ * O eixo numérico NÃO muda: a tela continua lendo `lead.score`, que
+ * `mapLegacyLead` preenche da coluna `score` com `score_ia` de reserva.
+ * `isHotLead` chama o parâmetro de `score_ia` porque nasceu no leitor de
+ * qualidade de campanha; é o mesmo eixo 0–100 do scorer.
+ *
+ * MEDIDO na produção em 2026-08-02 (490 leads): nenhuma lead troca de lado.
+ * `score >= 70` = 0 leads (máximo 67); `score_ia >= 70` = 0 leads (máximo 63);
+ * `temperature = 'quente'` = 3 leads, as mesmas 3 na comparação literal e na
+ * normalizada — não existe "QUENTE" maiúsculo hoje. A normalização que vem
+ * junto (a base tem "MORNO" e "FRIO" maiúsculos convivendo com minúsculos) é
+ * seguro para o dia em que existir, não mudança de recorte agora.
+ */
+function leadEstaQuente(lead: Lead) {
+  return isHotLead({ score_ia: lead.score, temperature: lead.temperature });
+}
+
 /**
  * v2 porque o SIGNIFICADO do padrão mudou, não só o valor: na v1 o quadro
  * nascia escondendo etapas (vazias + fechamento) e a preferência gravada
@@ -210,7 +247,7 @@ function brokerGuidance(lead: Lead) {
   if (!lead.next_action_at) return { action: "Definir a próxima ação", reason: "A oportunidade está sem compromisso futuro registrado.", tone: "warning" as const };
   if ((lead.status ?? "novo") === "proposta") return { action: "Validar proposta e objeções", reason: "Confirme preço, fluxo, prazo e quem participa da decisão.", tone: "info" as const };
   if ((lead.status ?? "novo") === "visita") return { action: "Preparar a visita", reason: "Reconfirme horário, interesse principal e unidade disponível.", tone: "info" as const };
-  if (lead.temperature === "quente" || Number(lead.score ?? 0) >= 70) return { action: "Avançar a oportunidade", reason: "A lead combina intenção e sinais comerciais fortes.", tone: "success" as const };
+  if (leadEstaQuente(lead)) return { action: "Avançar a oportunidade", reason: "A lead combina intenção e sinais comerciais fortes.", tone: "success" as const };
   return { action: "Manter o acompanhamento", reason: `Próxima ação em ${dateLabel(lead.next_action_at)}.`, tone: "info" as const };
 }
 
@@ -246,7 +283,7 @@ function proactiveSignal(lead: Lead): ProactiveSignal | null {
     days,
     basis: hasActivity ? "atividade" : "criacao",
     level: days >= 7 ? "rose" : "amber",
-    hot: lead.temperature === "quente" || Number(lead.score ?? 0) >= 70,
+    hot: leadEstaQuente(lead),
   };
 }
 
@@ -632,8 +669,8 @@ export default function PipelinePage() {
       if (focus === "sla") return Boolean(firstContactSla(lead)?.overdue);
       if (focus === "atrasadas") return isNextActionOverdue(lead);
       if (focus === "sem_acao") return !lead.next_action_at;
-      if (focus === "quentes") return lead.temperature === "quente" || Number(lead.score ?? 0) >= 70;
-      return Boolean(firstContactSla(lead)?.overdue) || isNextActionOverdue(lead) || !lead.next_action_at || lead.temperature === "quente" || Number(lead.score ?? 0) >= 70 || leadRisk(lead) === "alto";
+      if (focus === "quentes") return leadEstaQuente(lead);
+      return Boolean(firstContactSla(lead)?.overdue) || isNextActionOverdue(lead) || !lead.next_action_at || leadEstaQuente(lead) || leadRisk(lead) === "alto";
     });
     return [...filtered].sort((a, b) => {
       if (sort === "score") return Number(b.score ?? 0) - Number(a.score ?? 0);
@@ -681,7 +718,7 @@ export default function PipelinePage() {
         }, 0)
       : null;
 
-    const hot = open.filter((lead) => lead.temperature === "quente" || Number(lead.score ?? 0) >= 70).length;
+    const hot = open.filter(leadEstaQuente).length;
     const highRisk = open.filter((lead) => leadRisk(lead) === "alto").length;
     // Somava `budget_max` — o orçamento DECLARADO pelo cliente — e chamava isso
     // de valor ganho. Intenção apresentada como fato. Agora soma o valor
@@ -864,11 +901,11 @@ export default function PipelinePage() {
   const focusOptions = useMemo(() => {
     const open = leads.filter(isOpenLead);
     return [
-      { key: "prioridade" as const, label: "Minha prioridade", count: open.filter((lead) => firstContactSla(lead)?.overdue || isNextActionOverdue(lead) || !lead.next_action_at || lead.temperature === "quente" || Number(lead.score ?? 0) >= 70 || leadRisk(lead) === "alto").length },
+      { key: "prioridade" as const, label: "Minha prioridade", count: open.filter((lead) => firstContactSla(lead)?.overdue || isNextActionOverdue(lead) || !lead.next_action_at || leadEstaQuente(lead) || leadRisk(lead) === "alto").length },
       { key: "sla" as const, label: "SLA vencido", count: open.filter((lead) => firstContactSla(lead)?.overdue).length },
       { key: "atrasadas" as const, label: "Ações atrasadas", count: open.filter(isNextActionOverdue).length },
       { key: "sem_acao" as const, label: "Sem próxima ação", count: open.filter((lead) => !lead.next_action_at).length },
-      { key: "quentes" as const, label: "Leads quentes", count: open.filter((lead) => lead.temperature === "quente" || Number(lead.score ?? 0) >= 70).length },
+      { key: "quentes" as const, label: "Leads quentes", count: open.filter(leadEstaQuente).length },
       { key: "todas" as const, label: "Todos", count: leads.length },
     ];
   }, [leads]);
@@ -876,7 +913,13 @@ export default function PipelinePage() {
   const executionLanes = useMemo(() => [
     { key: "sla", label: "Responder agora", value: metrics.firstContactOverdue, detail: "SLA inicial vencido", action: "Ver SLAs", tone: "danger", focus: "sla" as FocusKey, sort: "prioridade" as SortKey },
     { key: "sem_acao", label: "Agendar próximo passo", value: metrics.noNextAction, detail: "Sem compromisso futuro", action: "Organizar agenda", tone: "warning", focus: "sem_acao" as FocusKey, sort: "prioridade" as SortKey },
-    { key: "quentes", label: "Atacar quentes", value: metrics.hot, detail: "Score ≥ 70 ou temperatura quente", action: "Avançar hoje", tone: "success", focus: "quentes" as FocusKey, sort: "score" as SortKey },
+    // O rótulo também escolhia o número ("Score ≥ 70"), com "≥" em vez de ">=",
+    // e por isso escapava da varredura que achou os outros sete. Agora o 70 sai
+    // da mesma constante que o filtro aplica: o texto não pode mais discordar do
+    // recorte que ele descreve. A frase mudou junto porque "score alto OU
+    // temperatura quente" vendia dois critérios independentes — é UM fato com
+    // duas proveniências (ver `lib/atlas/temperatura-do-lead.ts`).
+    { key: "quentes", label: "Atacar quentes", value: metrics.hot, detail: `Quente: temperatura declarada ou score ≥ ${HOT_SCORE_THRESHOLD}`, action: "Avançar hoje", tone: "success", focus: "quentes" as FocusKey, sort: "score" as SortKey },
     { key: "risco", label: "Reduzir risco", value: metrics.highRisk + metrics.stalled, detail: "Parados, atrasados ou críticos", action: "Revisar gargalos", tone: "info", focus: "prioridade" as FocusKey, sort: "prioridade" as SortKey },
   ], [metrics.firstContactOverdue, metrics.highRisk, metrics.hot, metrics.noNextAction, metrics.stalled]);
 

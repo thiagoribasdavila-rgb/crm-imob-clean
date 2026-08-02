@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
+import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 import {
   LIVE_LEAD_SELECT,
   mapLegacyLead,
@@ -130,7 +131,7 @@ export async function GET(request: NextRequest) {
       createdAt !== null &&
       createdAt < now - 15 * 60_000;
     const followLate = nextAt !== null && nextAt < now;
-    const hot = normalize(lead.temperature) === "quente" || Number(lead.score || 0) >= 70;
+    const hot = normalize(lead.temperature) === "quente" || Number(lead.score || 0) >= HOT_SCORE_THRESHOLD;
     if (!firstLate && !followLate && !hot && nextAt !== null) continue;
     steps.push({
       id: String(lead.id),
