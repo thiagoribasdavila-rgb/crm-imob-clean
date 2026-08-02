@@ -1,3 +1,6 @@
+// A fronteira de quente/morno vem do modulo canonico — este arquivo escolhia
+// o proprio numero para a MESMA pergunta.
+import { HOT_SCORE_THRESHOLD, WARM_SCORE_THRESHOLD } from "./temperatura-do-lead";
 export type DecisionCandidate = {
   key: string;
   sourceType: string;
@@ -22,7 +25,7 @@ export function leadDecision(lead: Record<string, unknown>): DecisionCandidate |
   const score = Number(lead.score ?? 0);
   const temperature = String(lead.temperature ?? "").toLowerCase();
   const status = String(lead.status ?? "novo");
-  if (!id || (score < 70 && !["quente", "hot"].includes(temperature))) return null;
+  if (!id || (score < HOT_SCORE_THRESHOLD && !["quente", "hot"].includes(temperature))) return null;
 
   return {
     key: `lead-priority:${id}:${status}`,

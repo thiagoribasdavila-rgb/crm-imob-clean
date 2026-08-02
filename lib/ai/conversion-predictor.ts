@@ -1,3 +1,6 @@
+// A fronteira de quente/morno vem do modulo canonico — este arquivo escolhia
+// o proprio numero para a MESMA pergunta.
+import { HOT_SCORE_THRESHOLD, WARM_SCORE_THRESHOLD } from "../atlas/temperatura-do-lead";
 export type ConversionSignals = {
   status?: string | null;
   stage?: string | null;
@@ -68,7 +71,7 @@ export function predictConversionDetailed(lead: ConversionSignals): ConversionPr
 
   if (finite(lead.score)) {
     logit += clamp((lead.score - 50) / 50, -1, 1) * 1.15;
-    (lead.score >= 70 ? positiveFactors : lead.score < 35 ? riskFactors : []).push(`score comercial ${lead.score}/100`);
+    (lead.score >= HOT_SCORE_THRESHOLD ? positiveFactors : lead.score < WARM_SCORE_THRESHOLD ? riskFactors : []).push(`score comercial ${lead.score}/100`);
   } else missingSignals.push("score comercial");
 
   const responseMinutes = finite(lead.responseTime) ? lead.responseTime : null;

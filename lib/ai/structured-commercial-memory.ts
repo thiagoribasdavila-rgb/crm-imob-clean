@@ -1,4 +1,7 @@
 import { options, type QualificationProfile } from "@/lib/ai/conversational-qualification";
+// A fronteira de quente/morno vem do modulo canonico — este arquivo escolhia
+// o proprio numero para a MESMA pergunta.
+import { HOT_SCORE_THRESHOLD, WARM_SCORE_THRESHOLD } from "../atlas/temperatura-do-lead";
 
 // Memória comercial estruturada: transforma o contexto governado (e a qualificação
 // confirmada pelo corretor) nas chaves da RPC record_structured_copilot_memory.
@@ -24,7 +27,7 @@ export function structuredMemoryFromGovernedContext(sections: Record<string, unk
   const project = (sections.project || null) as Record<string, unknown> | null;
   const stage = String(lead.stage || "novo").toLowerCase();
   const signals = [
-    Number(lead.score) >= 70 ? "score_high" : Number(lead.score) < 35 ? "score_low" : null,
+    Number(lead.score) >= HOT_SCORE_THRESHOLD ? "score_high" : Number(lead.score) < WARM_SCORE_THRESHOLD ? "score_low" : null,
     ["visita", "proposta", "contrato"].includes(stage) ? "stage_advanced" : null,
     (lead.behavior?.visits || 0) > 0 ? "visit_signal" : null,
     (lead.behavior?.proposals || 0) > 0 ? "proposal_signal" : null,

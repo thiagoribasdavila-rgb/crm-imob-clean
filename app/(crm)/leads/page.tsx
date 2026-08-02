@@ -24,6 +24,9 @@ import {
   type RegistroDeContato,
 } from "@/components/crm/registro-de-contato-desfechos";
 import { AcompanhamentoCorretorFilaDeRecuperacao } from "@/components/crm/acompanhamento-corretor-fila-de-recuperacao";
+// A fronteira de quente/morno vem do modulo canonico — este arquivo escolhia
+// o proprio numero para a MESMA pergunta.
+import { HOT_SCORE_THRESHOLD, WARM_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 
 type Lead = {
   id: string;
@@ -225,7 +228,7 @@ function statusTone(value: string | null) {
 }
 
 function scoreTone(score: number | null) {
-  if (Number(score ?? 0) >= 70) return "danger";
+  if (Number(score ?? 0) >= HOT_SCORE_THRESHOLD) return "danger";
   if (Number(score ?? 0) >= 40) return "warning";
   return "info";
 }
@@ -263,7 +266,7 @@ function phoneLinks(phone: string | null) {
 function isHotLead(lead: Lead) {
   return (
     (lead.temperature ?? "").toLowerCase() === "quente" ||
-    Number(lead.score ?? 0) >= 70
+    Number(lead.score ?? 0) >= HOT_SCORE_THRESHOLD
   );
 }
 
