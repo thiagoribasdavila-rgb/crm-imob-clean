@@ -1,2 +1,15 @@
-import{NextResponse}from"next/server";import{getSupabaseAdmin}from"@/lib/supabase/admin";import{logger}from"@/lib/observability/logger";export const dynamic="force-dynamic";export const maxDuration=60;
-export async function POST(request:Request){const expected=process.env.ATLAS_CRON_SECRET;const token=request.headers.get("authorization")?.replace(/^Bearer\s+/i,"");if(!expected||token!==expected)return NextResponse.json({error:"Não autorizado."},{status:401});try{const{data,error}=await getSupabaseAdmin().rpc("generate_smart_task_reminders",{p_limit:1000});if(error)throw error;logger.info("tasks.reminder_worker_completed",{generated:Number(data?.generated||0),customerContacted:false});return NextResponse.json({status:"completed",...(data||{}),customerContacted:false});}catch(error){logger.error("tasks.reminder_worker_failed",error);return NextResponse.json({error:"Falha ao gerar lembretes."},{status:500});}}
+import{NextResponse}from"next/server";import{getSupabaseAdmin}from"@/lib/supabase/admin";import{logger}from"@/lib/observability/logger";import{origemDaChamada,registrarExecucao}from"@/lib/integrations/livro-de-execucoes";export const dynamic="force-dynamic";export const maxDuration=60;
+export async function POST(request:Request){const expected=process.env.ATLAS_CRON_SECRET;const token=request.headers.get("authorization")?.replace(/^Bearer\s+/i,"");if(!expected||token!==expected)return NextResponse.json({error:"Não autorizado."},{status:401});
+  /* O livro de execucoes: uma linha por invocacao, inclusive quando nao ha
+     trabalho. Sem isto, "task-reminders nao rodou" e "task-reminders rodou e a fila estava
+     vazia" sao a MESMA ausencia no banco -- e foi assim que a automacao ficou
+     em zero sem ninguem conseguir dizer por que. */
+  const iniciadoEm = Date.now();
+  const origem = origemDaChamada(request);
+  const livro = (desfecho: "ok" | "sem_trabalho" | "falhou", resposta: Record<string, unknown>, erro?: string) =>
+    registrarExecucao({ vigia: "task-reminders", rota: "/api/v2/tasks/reminders/process", origem, iniciadoEm, desfecho, resposta, erro });
+try{const{data,error}=await getSupabaseAdmin().rpc("generate_smart_task_reminders",{p_limit:1000});if(error)throw error;logger.info("tasks.reminder_worker_completed",{generated:Number(data?.generated||0),customerContacted:false});const corpo = {status:"completed",...(data||{}),customerContacted:false};
+    /* `sem_trabalho` quando a RPC nao mexeu em nada: desfecho LEGITIMO, e
+       justamente o que se confundia com "nunca rodou". */
+    const fez = Object.values(data ?? {}).some((v) => typeof v === "number" && v > 0);
+    return NextResponse.json({ ...corpo, livro: await livro(fez ? "ok" : "sem_trabalho", corpo) });}catch(error){logger.error("tasks.reminder_worker_failed",error);return NextResponse.json({error:"Falha ao gerar lembretes.", livro: await livro("falhou", {}, String(error))},{status:500});}}

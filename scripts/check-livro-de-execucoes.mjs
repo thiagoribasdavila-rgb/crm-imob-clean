@@ -45,6 +45,13 @@ const TABELA = "atlas_worker_runs";
  * reescritos no mesmo dia para parar de engolir erro) e subiu para 3 com o
  * `first-contact-sla`.
  *
+ * 3 → 6 em 02/08/2026: entraram `task-reminders`, `lead-reservations` e
+ * `task-recurrences`. Os três têm a MESMA forma — autenticação, uma RPC, um
+ * retorno — e por isso foram os de menor risco para ligar em lote. O desfecho
+ * sai do que a RPC contou: se nenhum número voltou maior que zero, é
+ * `sem_trabalho`, que é desfecho legítimo e era justamente o que se confundia
+ * com "nunca rodou".
+ *
  * Ele entrou por um motivo prático: é o de MAIOR cadência, 5 em 5 minutos. Com
  * só os noturnos registrando, a primeira linha do livro apareceria às 3h da
  * manhã seguinte ao deploy; com ele, aparece em minutos. Prova rápida vale mais
@@ -52,7 +59,7 @@ const TABELA = "atlas_worker_runs";
  *
  * Só sobe.
  */
-const PISO = 3;
+const PISO = 6;
 
 const falhas = [];
 
