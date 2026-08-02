@@ -444,7 +444,12 @@ const criticalGateLabels: Record<string, string> = {
 
 // Preferências locais do Command Center (mesmo padrão do pipeline): chave
 // versionada em sessionStorage, hidratação com try/catch e flag antes de gravar.
-const COMMAND_CENTER_PREFERENCES_KEY = "atlas:command-center-preferences:v1";
+/* v2 em 02/08/2026: a v1 pode ter `medicao: true` guardado de uma sessão
+   anterior, e o valor salvo VENCE o padrão novo. Trocar a chave faz a
+   preferência antiga ser ignorada uma vez — quem tinha recolhido de propósito
+   recolhe de novo com um clique; quem nunca escolheu passa a ver os gráficos,
+   que é o que estava quebrado. */
+const COMMAND_CENTER_PREFERENCES_KEY = "atlas:command-center-preferences:v2";
 
 type LayerKey = "ia" | "operacao" | "fila" | "feed" | "medicao" | "sistema";
 
@@ -492,7 +497,21 @@ const defaultCollapsedLayers: CollapsedLayers = {
      gestão e a "Fila do dia" DO CORRETOR. Recolhê-la esconderia o bloco de
      decisão primário de outro papel. */
   feed: true,
-  medicao: true,
+  /* ── `medicao` NASCE ABERTA, e a correção é de 02/08/2026 ─────────────────
+     Ela guarda o funil, a evolução de leads, a performance da equipe, os top
+     projetos, os alertas e os insights do copiloto — ou seja, TUDO o que a
+     referência visual do dono pede, e o que ele foi conferir na tela e não
+     achou.
+     Ela tinha sido recolhida junto com a telemetria, numa rodada que reduziu a
+     página de 15,9 telas para o alvo de ≤3. O raciocínio estava certo para
+     `operacao` e `sistema`, que são AUDITORIA. Aplicá-lo aqui enterrou a
+     entrega: a régua do v3 diz que o que informa vem antes do que audita, e
+     medição da operação informa.
+     E o custo era maior do que esconder. O corpo desta camada é DESMONTADO
+     quando recolhido — então ela não exibia nada E não buscava nada. Quem
+     abrisse a sala de comando via a tela sem gráfico nenhum e sem nem uma
+     requisição tendo saído. */
+  medicao: false,
   sistema: true,
 };
 
