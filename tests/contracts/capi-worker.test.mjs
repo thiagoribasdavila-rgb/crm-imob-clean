@@ -103,10 +103,19 @@ test("mode='test' sem código é RECUSADO — o acidente que isso impede", () =>
     "em modo teste o código precisa ir no corpo, senão a Meta trata como produção");
 });
 
-test("valor desconhecido de mode cai para TESTE, não para produção", () => {
+test("valor desconhecido de mode cai para TESTE, não para produção", async () => {
+  // A asserção antiga era a FORMA da linha (`data.mode === "live" ? ... : ...`)
+  // e por isso travava a única correção que a regra pedia: sair daqui e virar
+  // uma definição só, compartilhada com a fila e com o worker. Agora ela é a
+  // propriedade — executada — mais a prova de que este arquivo delega.
+  const { normalizarModoDeEnvio } = await import("../../lib/meta/modo-de-envio.ts");
+  assert.equal(normalizarModoDeEnvio("live"), "live");
+  for (const estranho of [undefined, null, "", "LIVE", "producao"]) {
+    assert.equal(normalizarModoDeEnvio(estranho), "test",
+      "errar para o teste custa um evento; errar para o outro contamina a otimização");
+  }
   const nucleo = ler("lib", "integrations", "meta", "capi-window.ts");
-  assert.match(nucleo, /data\.mode === "live" \? "live" : "test"/,
-    "errar para o teste custa um evento; errar para o outro contamina a otimização");
+  assert.match(nucleo, /mode: normalizarModoDeEnvio\(data\.mode\)/);
 });
 
 test("sem linha de config, ninguém envia", () => {

@@ -12,8 +12,19 @@ export type MetaConversionQueueOutcome =
 
 export async function queueMetaConversion(input: { organizationId: string; leadId: string; eventName: string; eventId: string; occurredAt?: string; customData?: Record<string, unknown>; internalOnly?: string | null }): Promise<MetaConversionQueueOutcome> {
   const admin = getSupabaseAdmin();
-  const { data: config } = await admin.from("meta_conversion_configs").select("enabled,mode,consent_required").eq("organization_id", input.organizationId).maybeSingle();
-  if (!config?.enabled || config.mode !== "test") return { queued: false, reason: "conversion_test_disabled" };
+  const { data: config } = await admin.from("meta_conversion_configs").select("enabled,consent_required").eq("organization_id", input.organizationId).maybeSingle();
+  // A FILA NÃO OLHA O MODO — e é por isso que `mode` nem é lido aqui.
+  //
+  // Até 02/08/2026 esta linha exigia `mode = 'test'`. Promover o dataset para
+  // produção (a rota `conversion_go_live` existe e é de diretoria) fazia a fila
+  // parar de ser alimentada em SILÊNCIO: não enfileirar era o caminho de sucesso
+  // deste `return`, nada estourava, nada era logado, e o painel continuaria
+  // mostrando "dataset configurado" com zero evento novo entrando.
+  //
+  // Quem decide se a conversão sai é `enabled`. O `mode` decide só se ela sai
+  // com `test_event_code`, e essa pergunta é feita na entrega — ver
+  // `lib/meta/modo-de-envio.ts`.
+  if (!config?.enabled) return { queued: false, reason: "conversion_disabled" };
   const { data: lead } = await admin.from("leads").select("metadata").eq("id", input.leadId).eq("organization_id", input.organizationId).maybeSingle();
   const metadata = lead?.metadata && typeof lead.metadata === "object" ? lead.metadata as Record<string, unknown> : {};
   const meta = metadata.meta && typeof metadata.meta === "object" ? metadata.meta as Record<string, unknown> : {};

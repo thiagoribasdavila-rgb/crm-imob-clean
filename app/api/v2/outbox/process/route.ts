@@ -4,6 +4,7 @@ import { calculateLeadScore } from "@/lib/atlas/scoring";
 import { chaveDaCampanhaDoGoogle, lerAtribuicaoDoGoogle, nomeDaCampanhaDoGoogle } from "@/lib/marketing/google-attribution";
 import { logger } from "@/lib/observability/logger";
 import { hashMetaValue, queueMetaConversion } from "@/lib/meta/conversions";
+import { deveEnviarCodigoDeTeste, normalizarModoDeEnvio } from "@/lib/meta/modo-de-envio";
 import { resilientFetch } from "@/lib/http/resilient-fetch";
 import { integrationCatalog } from "@/lib/integrations/catalog";
 import { analyzeInboundWhatsApp } from "@/lib/ai/whatsapp-conversation-intelligence";
@@ -905,7 +906,15 @@ export async function POST(request: Request) {
            ausente aqui precisa dizer QUAL registro, não um código. */
         if (conversionError || !conversion) throw conversionError ?? new Error("Evento de conversão não encontrado.");
         if (configError || !config) throw configError ?? new Error("Configuração de conversão não encontrada.");
-        if (!config.enabled || config.mode !== "test" || !config.test_event_code) throw new Error("Conversões Meta permanecem bloqueadas fora do modo de teste.");
+        if (!config.enabled) throw new Error("Envio de conversões desligado para esta organização (meta_conversion_configs.enabled = false).");
+        /* O modo decide UMA coisa: se o `test_event_code` acompanha o evento.
+           Ele não decide mais se a conversão existe — essa parte era metade de
+           uma pinça que fechava dos dois lados (em teste a Meta não aprendia;
+           fora do teste o CRM não enviava) e saiu em 02/08/2026.
+           `deveEnviarCodigoDeTeste` é o MESMO predicado que monta o corpo lá
+           embaixo: exigir aqui e esquecer lá mandaria o ensaio como produção. */
+        const modoDeEnvio = normalizarModoDeEnvio(config.mode);
+        if (deveEnviarCodigoDeTeste(modoDeEnvio) && !config.test_event_code) throw new Error("mode='test' sem test_event_code: sem ele o evento iria como PRODUÇÃO e entraria na otimização real. Informe o código do Gerenciador de Eventos ou promova o dataset para mode='live'.");
         const accessToken = process.env.META_CONVERSIONS_ACCESS_TOKEN;
         if (!accessToken) throw new Error("META_CONVERSIONS_ACCESS_TOKEN não configurado.");
         const { data: lead, error: leadError } = await admin.from("leads").select("id,email,phone,metadata").eq("id", conversion.lead_id).eq("organization_id", conversion.organization_id).single();
@@ -927,7 +936,7 @@ export async function POST(request: Request) {
         const response = await resilientFetch(`https://graph.facebook.com/${apiVersion}/${encodeURIComponent(config.dataset_id)}/events`, {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ data: [{ event_name: conversion.event_name, event_time: Math.floor(new Date(conversion.occurred_at).getTime() / 1000), event_id: conversion.event_id, action_source: conversion.action_source, user_data: userData, custom_data: { ...conversion.custom_data, atlas_signal_version: "andromeda-v1" } }], test_event_code: config.test_event_code }),
+          body: JSON.stringify({ data: [{ event_name: conversion.event_name, event_time: Math.floor(new Date(conversion.occurred_at).getTime() / 1000), event_id: conversion.event_id, action_source: conversion.action_source, user_data: userData, custom_data: { ...conversion.custom_data, atlas_signal_version: "andromeda-v1" } }], ...(deveEnviarCodigoDeTeste(modoDeEnvio) ? { test_event_code: config.test_event_code } : {}) }),
         }, { timeoutMs: 30_000, retries: 1, retryUnsafe: true, operation: "Meta Conversions API" });
         const metaResponse = await response.json() as Record<string, unknown>;
         // Mesma razão do WhatsApp: preserva code/subcode na mensagem para o
