@@ -45,7 +45,7 @@ import { readFileSync } from "node:fs";
    carregava (o gradiente #0f1830→#0b1224 e a hairline rgba(148,163,184,.12))
    saíram junto. A catraca desce quando o ganho é real — é isso que transforma
    limpeza em progresso irreversível. */
-const TETO = 330;
+const TETO = 326;
 
 const arquivos = execFileSync("git", ["ls-files", "app", "components"], { encoding: "utf8" })
   .split("\n")

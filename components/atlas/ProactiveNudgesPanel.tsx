@@ -26,13 +26,37 @@ type PanelState =
   | { kind: "unavailable" }
   | { kind: "ready"; nudges: Nudge[]; digest: string };
 
-/** Cor de estado por urgência (tokens do sistema; verde só para o nudge calmo). */
+/**
+ * Cor de estado por urgência.
+ *
+ * ── Por que estas cores eram hex cravado até 01/08/2026 ────────────────────
+ *
+ * Medido na sala de comando, tema claro: o rótulo deste selo dava contraste
+ * **1,67** — âmbar do tema ESCURO sobre painel branco.
+ *
+ * A varredura que trocou 26 âmbares no resto do produto RECUSOU este arquivo,
+ * e a recusa estava certa: a cor volta daqui e é usada em dois lugares, um
+ * deles concatenando `55` no fim para sintetizar 33% de alfa
+ * (`border: 1px solid ${c}55`). `var(--atlas-estado-atencao)55` não é isso —
+ * substituição de custom property acontece em nível de TOKEN, não de texto, e
+ * o resultado vira shorthand inválido: a borda some.
+ *
+ * `color-mix()` desfaz o nó. O token continua sendo a fonte da cor (e vira com
+ * o tema), e o alfa passa a ser declarado como alfa em vez de ser costurado no
+ * fim de uma string. A função devolve UM valor, como antes — nenhuma
+ * assinatura mudou.
+ */
 function tone(urgency: number, emoji: string): string {
-  if (emoji === "✅") return "#34d399";
-  if (urgency >= 5) return "#fb7185";
-  if (urgency === 4) return "#fbbf24";
-  if (urgency === 3) return "#8b8cf7";
-  return "#4b8df8";
+  if (emoji === "✅") return "var(--atlas-estado-sucesso)";
+  if (urgency >= 5) return "var(--atlas-estado-perigo)";
+  if (urgency === 4) return "var(--atlas-estado-atencao)";
+  if (urgency === 3) return "var(--atlas-estado-info, #8b8cf7)";
+  return "var(--atlas-accent)";
+}
+
+/** A mesma cor, com alfa — sem costurar dígitos no fim de um hex. */
+function comAlfa(cor: string, porcento: number): string {
+  return `color-mix(in srgb, ${cor} ${porcento}%, transparent)`;
 }
 
 export function ProactiveNudgesPanel({ max = 4 }: { max?: number }) {
@@ -117,7 +141,7 @@ export function ProactiveNudgesPanel({ max = 4 }: { max?: number }) {
                         <span className="text-sm font-medium text-[var(--atlas-texto-forte)]">{n.title}</span>
                         <span
                           className="shrink-0 rounded-full px-2 py-0.5 font-mono text-micro uppercase tracking-[0.1em]"
-                          style={{ color: c, border: `1px solid ${c}55` }}
+                          style={{ color: c, border: `1px solid ${comAlfa(c, 33)}` }}
                         >
                           {n.scope}
                         </span>
