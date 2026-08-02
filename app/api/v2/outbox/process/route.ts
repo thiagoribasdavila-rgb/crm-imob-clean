@@ -14,6 +14,7 @@ import { closeOutboxEvent, recoverExpiredLeases } from "@/lib/integrations/outbo
 import { AUTO_REGISTERED_CAMPAIGN_STATUS, autoRegisteredCampaignName } from "@/lib/marketing/campaign-provenance";
 import { fecharPrimeiroContatoPorWhatsapp } from "@/lib/crm/whatsapp-first-contact";
 import { descreverFalha } from "@/lib/integrations/descrever-falha";
+import { origemDaChamada, registrarExecucao } from "@/lib/integrations/livro-de-execucoes";
 
 export const dynamic = "force-dynamic";
 
@@ -334,8 +335,52 @@ export function outboxPausado(): { pausado: boolean; motivo: string | null } {
   };
 }
 
+/**
+ * ── O LIVRO DE EXECUÇÕES CHEGA AO VIGIA QUE ENVIA MENSAGEM (02/08/2026) ──────
+ *
+ * Este é o último dos treze, e foi deixado por último de propósito: é o único
+ * que fala com o cliente. Um registro errado aqui não polui um painel — ele
+ * mente sobre uma mensagem que saiu (ou não saiu) para uma pessoa real.
+ *
+ * O que estava indistinguível, medido lendo os quatro `return` deste arquivo:
+ *
+ *   · PAUSADO por variável de ambiente ....... 200 {pausado:true}
+ *   · fila VAZIA ............................. 200 {claimed:0}
+ *   · lote inteiro entregue ................... 200 {delivered:N}
+ *   · parado por CREDENCIAL QUEBRADA .......... 200 {stoppedEarly:"token_unhealthy"}
+ *   · parado por LIMITE DA PLATAFORMA ......... 200 {stoppedEarly:"rate_limited"}
+ *
+ * Os dois últimos são opostos e saíam iguais. `rate_limited` é a plataforma
+ * segurando o ritmo — é o comportamento esperado, e acender alarme nele ensina
+ * a operação a ignorar alarme. `token_unhealthy` é credencial quebrada: nenhuma
+ * mensagem sai até uma PESSOA renovar o token, e nesse caso o agendador
+ * (.github/workflows/atlas-vigias.yml) precisa ficar VERMELHO — ele só olha o
+ * código HTTP, e o arquivo dele promete exatamente isso.
+ *
+ * Por isso `token_unhealthy` passa a devolver 500. É a única mudança de código
+ * HTTP deste arquivo, e ela existe porque um 200 ali era a definição de falha
+ * em silêncio: a fila para de andar e ninguém fica sabendo.
+ *
+ * ── O QUE EU DELIBERADAMENTE NÃO FIZ, E POR QUÊ ─────────────────────────────
+ *
+ * `failed > 0` NÃO vira `falhou` no livro. A fila tem `attempts`, reentrega e
+ * `dead_letter`: falha de entrega individual é um estado PREVISTO, tratado pela
+ * própria máquina. Marcar `falhou` aqui deixaria o livro vermelho todo dia por
+ * um número inválido na base, e vermelho permanente é indistinguível de nenhum
+ * vermelho. O caso fica visível pelo `motivo`, não pelo desfecho.
+ *
+ * Se um dia a medição mostrar lote inteiro falhando sem causa de credencial,
+ * este é o lugar de apertar — com o número na mão, não por simetria.
+ */
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+
+  // O relógio começa ANTES da checagem de pausa: "recusei porque estou pausado"
+  // também é execução, e é justamente a que hoje some sem deixar rastro nenhum.
+  const iniciadoEm = Date.now();
+  const origem = origemDaChamada(request);
+  const livro = (desfecho: "ok" | "sem_trabalho" | "fora_da_janela" | "falhou", resposta: Record<string, unknown>, erro?: string) =>
+    registrarExecucao({ vigia: "outbox", rota: "/api/v2/outbox/process", origem, iniciadoEm, desfecho, resposta, erro });
 
   // Antes de qualquer leitura da fila: se está pausado, não trave linha nenhuma.
   // Reclamar um evento e devolvê-lo deixa `attempts` incrementado por uma
@@ -343,7 +388,10 @@ export async function POST(request: Request) {
   const pausa = outboxPausado();
   if (pausa.pausado) {
     logger.warn("outbox.pausado", { motivo: pausa.motivo });
-    return NextResponse.json({ pausado: true, processados: 0, motivo: pausa.motivo }, { status: 200 });
+    // `fora_da_janela` e não `falhou`: pausa é decisão humana declarada, e o
+    // livro precisa saber diferenciar "alguém desligou" de "quebrou".
+    const corpo = { pausado: true, processados: 0, motivo: pausa.motivo };
+    return NextResponse.json({ ...corpo, livro: await livro("fora_da_janela", corpo) }, { status: 200 });
   }
 
   const workerId = `hostinger-${crypto.randomUUID()}`;
@@ -375,7 +423,10 @@ export async function POST(request: Request) {
     p_limite: 20,
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    const corpo = { error: error.message, motivo: "reivindicacao_falhou" };
+    return NextResponse.json({ ...corpo, livro: await livro("falhou", { motivo: corpo.motivo }, error.message) }, { status: 500 });
+  }
 
   let delivered = 0;
   let failed = 0;
@@ -1041,14 +1092,36 @@ export async function POST(request: Request) {
 
   // `processed` passa a contar o que foi REALMENTE reivindicado: com a parada
   // por credencial, dizer que o lote inteiro foi processado seria mentira.
-  return NextResponse.json({
+  const claimed = (events ?? []).length;
+  const corpo = {
     workerId,
-    claimed: (events ?? []).length,
+    claimed,
     processed,
     delivered,
     failed,
     stoppedEarly,
-    remaining: stoppedEarly ? (events ?? []).length - processed : 0,
+    remaining: stoppedEarly ? claimed - processed : 0,
     leases,
-  });
+    // `motivo` existe para que "não entreguei nada" nunca seja ambíguo. Cada
+    // valor pede uma ação diferente de quem lê, e é essa a razão de existirem
+    // cinco em vez de um booleano.
+    motivo:
+      stoppedEarly === "token_unhealthy" ? "credencial_quebrada"
+      : stoppedEarly === "rate_limited" ? "limite_da_plataforma"
+      : claimed === 0 ? "fila_vazia"
+      : delivered === 0 ? "nenhuma_entrega_no_lote"
+      : failed ? "entregue_com_falhas_parciais"
+      : "ok",
+  };
+
+  // Credencial quebrada é a ÚNICA saída deste bloco que precisa de gente: a fila
+  // não anda mais sozinha. 500 é o que faz o agendador acender.
+  if (stoppedEarly === "token_unhealthy") {
+    logger.error("outbox.credencial_quebrada", { workerId, claimed, processed, remaining: corpo.remaining });
+    return NextResponse.json({ ...corpo, livro: await livro("falhou", corpo) }, { status: 500 });
+  }
+
+  // Fila vazia NÃO é falha: o vigia acordou, olhou e não havia o que enviar — e
+  // é exatamente esse o desfecho que hoje se confunde com "nunca rodou".
+  return NextResponse.json({ ...corpo, livro: await livro(claimed === 0 ? "sem_trabalho" : "ok", corpo) });
 }
