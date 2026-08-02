@@ -117,12 +117,17 @@ export const dynamic = "force-dynamic";
  * antes disso daria a qualquer anônimo uma escrita no livro por requisição.
  */
 function authorized(request: Request) {
+  const segredo = process.env.ATLAS_CRON_SECRET;
   const token = request.headers
     .get("authorization")
     ?.replace(/^Bearer\s+/i, "");
-  return Boolean(
-    process.env.ATLAS_CRON_SECRET && token === process.env.ATLAS_CRON_SECRET,
-  );
+  // A forma é literal de propósito, e `tests/contracts/travas-dos-workers` cobra
+  // isso: só DUAS grafias são aceitas no repositório inteiro. A versão anterior
+  // desta linha — `Boolean(segredo && token === segredo)` — também fechava quando
+  // o segredo falta, mas era uma TERCEIRA forma. O contrato recusa formas novas
+  // porque cada variante somada às cegas é uma chance de aceitar, sem perceber,
+  // uma que não fecha. Menos liberdade aqui é menos superfície para errar.
+  return Boolean(segredo && token && token === segredo);
 }
 function reportDate() {
   return new Intl.DateTimeFormat("en-CA", {

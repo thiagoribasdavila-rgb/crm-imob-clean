@@ -120,8 +120,32 @@ test("e a recusa FALHA FECHADA quando o segredo não está configurado", () => {
   ];
 
   for (const w of agenda.workers) {
-    const src = fs.readFileSync(arquivoDaRota(w.rota), "utf8");
+    const bruto = fs.readFileSync(arquivoDaRota(w.rota), "utf8");
+    /**
+     * ── OS COMENTÁRIOS SAEM ANTES DA BUSCA (02/08/2026) ──────────────────────
+     *
+     * A janela ancorava na PRIMEIRA ocorrência do nome do segredo no arquivo
+     * inteiro — inclusive dentro de comentário. Quando `meta-daily-report`
+     * ganhou um cabeçalho que explica o comportamento do 401 e cita o nome da
+     * variável, a âncora passou a cair 35 linhas ACIMA da função, a janela
+     * cobriu a prosa e a asserção acusou furo numa rota que fecha corretamente.
+     *
+     * É a mesma correção que `scripts/check-dono-da-lead.mjs` já tinha: o
+     * instrumento mede CÓDIGO, não texto sobre o código. Um portão que reprova
+     * quem documenta ensina a não documentar.
+     *
+     * Isto NÃO afrouxa: as duas asserções continuam idênticas, a negativa
+     * continua sendo a que protege, e a busca segue partindo da primeira
+     * ocorrência — só que agora a primeira ocorrência é necessariamente código.
+     */
+    const src = bruto.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     const i = src.indexOf("ATLAS_CRON_SECRET");
+    assert.notEqual(
+      i,
+      -1,
+      `"${w.nome}" não menciona ATLAS_CRON_SECRET em CÓDIGO (só em comentário, ou em lugar nenhum). ` +
+        "Uma ponte máquina-a-máquina sem o segredo no código é uma rota aberta.",
+    );
     // A janela começa ANTES da ocorrência. A primeira versão começava nela, e o
     // `Boolean(process.env.` do `nightly-sales` — que vem à esquerda — caía fora:
     // o instrumento cortava a evidência e acusava furo onde não havia.
