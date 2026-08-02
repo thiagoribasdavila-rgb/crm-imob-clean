@@ -85,8 +85,8 @@ const GRUPOS_EM_QUARENTENA = [
     motivo:
       "SERVICE-ONLY — RLS ligada e zero policy (deny-all), E a migration revoga explicitamente os privilégios de anon/authenticated. Tabela de infraestrutura, tocada só por service_role (BYPASSRLS). Policy aqui ABRIRIA o que hoje está fechado.",
     tabelas: [
-      "api_rate_limit_buckets", "dead_letter_events", "geocode_cache", "idempotency_keys",
-      "integration_outbox",
+      "api_rate_limit_buckets", "atlas_worker_runs", "dead_letter_events", "geocode_cache",
+      "idempotency_keys", "integration_outbox",
     ],
   },
   {
@@ -118,7 +118,23 @@ const GRUPOS_EM_QUARENTENA = [
  *   Escrever policy aqui ABRIRIA um cache global (endereço -> coordenada) que
  *   hoje nenhum inquilino alcança.
  */
-const QUARENTENA_MEDIDA_EM_2026_07_30 = 34;
+/*
+ * 2026-08-02: 35. CAUSA: `atlas_worker_runs`, criada por
+ *   `20260802120000_livro_de_execucoes_dos_vigias.sql` — o livro de execuções
+ *   dos vigias, uma linha por invocação inclusive quando não houve trabalho.
+ *   Entra no grupo SERVICE-ONLY: a migration revoga public/anon/authenticated
+ *   explicitamente e concede só a service_role.
+ *
+ *   Escrever policy aqui seria pior que inútil: daria a um usuário final a
+ *   capacidade de INSERIR uma linha de execução, e linha falsa neste livro faz a
+ *   operação PARECER viva — que é exatamente o defeito que a tabela existe para
+ *   acabar.
+ *
+ *   Este contrato REPROVOU a primeira versão da migration, que tinha RLS ligada
+ *   e nenhum REVOKE. Ele estava certo, e o conserto foi fechar a tabela de
+ *   verdade em vez de declará-la fechada.
+ */
+const QUARENTENA_MEDIDA_EM_2026_07_30 = 35;
 
 const QUARENTENA = new Map();
 for (const grupo of GRUPOS_EM_QUARENTENA) {

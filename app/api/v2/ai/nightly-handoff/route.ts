@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { logger } from "@/lib/observability/logger";
+import { origemDaChamada, registrarExecucao } from "@/lib/integrations/livro-de-execucoes";
 import { morningHandoff, nightlyWindow } from "@/lib/ai/governed-nightly-copilot";
 export const dynamic = "force-dynamic";
 
@@ -41,9 +42,17 @@ export async function POST(request: Request) {
   if (!process.env.ATLAS_CRON_SECRET || request.headers.get("authorization") !== `Bearer ${process.env.ATLAS_CRON_SECRET}`) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
+  // O relógio começa ANTES de qualquer decisão: "recusei por horário" também é
+  // execução, e é justamente a que hoje some sem deixar rastro.
+  const iniciadoEm = Date.now();
+  const origem = origemDaChamada(request);
+  const livro = (desfecho: "ok" | "sem_trabalho" | "fora_da_janela" | "falhou", resposta: Record<string, unknown>, erro?: string) =>
+    registrarExecucao({ vigia: "nightly-handoff", rota: "/api/v2/ai/nightly-handoff", origem, iniciadoEm, desfecho, resposta, erro });
+
   const window = nightlyWindow();
   if (!window.morningHandoff) {
-    return NextResponse.json({ created: 0, motivo: "fora_da_janela", detalhe: "Handoff disponível entre 7h e 11h59 em São Paulo." });
+    const corpo = { created: 0, motivo: "fora_da_janela", detalhe: "Handoff disponível entre 7h e 11h59 em São Paulo." };
+    return NextResponse.json({ ...corpo, livro: await livro("fora_da_janela", corpo) });
   }
 
   try {
@@ -109,11 +118,15 @@ export async function POST(request: Request) {
 
     if (falhas.length) {
       logger.error("ai.nightly_handoff_insercoes_falharam", { falhas: falhas.length, primeiroCode: falhas[0]?.code });
-      return NextResponse.json(corpo, { status: 500 });
+      return NextResponse.json({ ...corpo, livro: await livro("falhou", corpo) }, { status: 500 });
     }
-    return NextResponse.json(corpo);
+    // `sem_trabalho` NÃO é falha: o vigia acordou, olhou a fila e não havia
+    // ninguém para entregar. É exatamente o desfecho que hoje se confunde com
+    // "nunca rodou".
+    return NextResponse.json({ ...corpo, livro: await livro(created ? "ok" : "sem_trabalho", corpo) });
   } catch (erro) {
     logger.error("ai.nightly_handoff_worker_failed", erro);
-    return NextResponse.json({ error: "Falha ao preparar a entrega matinal.", motivo: "excecao" }, { status: 500 });
+    const registro = await livro("falhou", {}, String(erro));
+    return NextResponse.json({ error: "Falha ao preparar a entrega matinal.", motivo: "excecao", livro: registro }, { status: 500 });
   }
 }

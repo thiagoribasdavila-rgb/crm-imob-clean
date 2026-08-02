@@ -32,11 +32,20 @@
  * misturava as duas coisas. Agora vigia condicional sem rastro sai como NÃO
  * MEDIDO (código 2), e não como MORTO.
  *
- * O que ficaria REALMENTE provado com uma linha por invocação, independente de
- * ter havido trabalho — um livro de execuções. `atlas_agent_runs` existe, tem
- * zero linhas e ninguém escreve nela; seria o lugar natural. Exige migration, e
- * por isso está declarado como pendência em config/workers-schedule.json em vez
- * de fingido aqui.
+ * O que ficaria REALMENTE provado é uma linha por invocação, independente de ter
+ * havido trabalho — um livro de execuções. Ele existe agora:
+ * `lib/integrations/livro-de-execucoes.ts` escreve em `atlas_worker_runs`, e a
+ * migration que cria a tabela está em
+ * supabase/migrations/20260802120000_livro_de_execucoes_dos_vigias.sql.
+ *
+ * ESCRITA e NÃO APLICADA: aplicar migration em produção é decisão do dono.
+ * Enquanto não for, o helper devolve `livro_nao_instalado` e a resposta do vigia
+ * publica isso.
+ *
+ * (Eu tinha escrito, mais cedo hoje, que `atlas_agent_runs` seria o lugar
+ * natural do livro. Estava errado: `app/api/v3/agents/process` seleciona dela
+ * `status=queued` e EXECUTA o que encontra. Registro de vigia ali viraria tarefa
+ * para a IA rodar.)
  *
  * O portão NÃO perdeu os dentes: ele continua saindo VERMELHO para `atrasado`,
  * que é o caso que ele consegue julgar — worker que já escreveu e parou.

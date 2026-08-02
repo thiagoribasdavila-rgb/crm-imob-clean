@@ -48,8 +48,23 @@
       "que está fora do que foi autorizado. Fica declarado aqui em vez de fingido",
       "no portão.",
       "",
-      "A tabela `atlas_agent_runs` existe e tem ZERO linhas — ela seria o lugar",
-      "natural desse livro, e hoje ninguém escreve nela."
+      "CORREÇÃO DO MESMO DIA: eu escrevi antes que `atlas_agent_runs` seria o",
+      "lugar natural desse livro. ESTAVA ERRADO, e a verificação pegou.",
+      "`app/api/v3/agents/process` seleciona dela `status=queued`, trava a linha e",
+      "EXECUTA o que encontra — inserir invocação de vigia ali faria a IA tentar",
+      "rodar o registro como se fosse tarefa dela. Não é questão de nome, é de",
+      "comportamento.",
+      "",
+      "As outras candidatas também não servem, por FORMA e não por gosto:",
+      "integration_outbox é fila de entrega com claim e lock;",
+      "integration_health_snapshots é snapshot agregado, não por vigia;",
+      "meta_executions é chave de idempotência da Meta.",
+      "",
+      "O livro ganhou tabela própria: supabase/migrations/",
+      "20260802120000_livro_de_execucoes_dos_vigias.sql cria `atlas_worker_runs`.",
+      "A migration está ESCRITA e NÃO APLICADA — aplicar em produção é decisão do",
+      "dono. Enquanto não for, o helper devolve `livro_nao_instalado` e a resposta",
+      "do vigia diz isso em voz alta, em vez de falhar calado."
     ]
   },
   "$fusoDaCadencia": {

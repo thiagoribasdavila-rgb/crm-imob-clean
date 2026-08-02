@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { evaluateNightlyEligibility, nightlyWindow } from "@/lib/ai/governed-nightly-copilot";
 import { logger } from "@/lib/observability/logger";
+import { origemDaChamada, registrarExecucao } from "@/lib/integrations/livro-de-execucoes";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,16 @@ function authorized(request: Request) {
 
 export async function POST(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
-  const window=nightlyWindow();if(!window.active)return NextResponse.json({ prepared: 0, reason: "A jornada opera somente entre 22h e 6h59 em São Paulo.",window:window.label });
+  const iniciadoEm = Date.now();
+  const origem = origemDaChamada(request);
+  const livro = (desfecho: "ok" | "sem_trabalho" | "fora_da_janela" | "falhou", resposta: Record<string, unknown>) =>
+    registrarExecucao({ vigia: "nightly-sales", rota: "/api/v2/ai/nightly-sales", origem, iniciadoEm, desfecho, resposta });
+
+  const window = nightlyWindow();
+  if (!window.active) {
+    const corpo = { prepared: 0, reason: "A jornada opera somente entre 22h e 6h59 em São Paulo.", window: window.label };
+    return NextResponse.json({ ...corpo, livro: await livro("fora_da_janela", corpo) });
+  }
   const templateName = String(process.env.WHATSAPP_NIGHTLY_APPROACH_TEMPLATE || "").trim();
   if (!/^[a-z0-9_]{2,512}$/.test(templateName)) return NextResponse.json({ error: "Configure um template oficial em WHATSAPP_NIGHTLY_APPROACH_TEMPLATE." }, { status: 503 });
 
@@ -69,7 +79,7 @@ export async function POST(request: Request) {
   const corpo = { prepared, blocked, falhas: falhas.length, motivo: falhas.length ? "etapas_falharam" : prepared ? "ok" : "nada_elegivel", window: window.label, requiresApproval: true, maximumAutomatedStage: "qualification", proposalAllowed: false, morningHandoff: true };
   if (falhas.length) {
     logger.error("ai.nightly_sales_etapas_falharam", { falhas: falhas.length, etapas: [...new Set(falhas.map((f) => f.etapa))] });
-    return NextResponse.json(corpo, { status: 500 });
+    return NextResponse.json({ ...corpo, livro: await livro("falhou", corpo) }, { status: 500 });
   }
-  return NextResponse.json(corpo);
+  return NextResponse.json({ ...corpo, livro: await livro(prepared ? "ok" : "sem_trabalho", corpo) });
 }
