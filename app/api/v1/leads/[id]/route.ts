@@ -22,6 +22,33 @@ export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ id: string }> };
 type JsonRow = Record<string, unknown>;
 
+/**
+ * ── A FICHA É A ÚNICA LEITURA QUE PRECISA DO `metadata` ─────────────────────
+ *
+ * `metadata` não está em `LIVE_LEAD_SELECT` nem no estendido, e ficar fora dos
+ * selects COMPARTILHADOS é correto: `distribution` e `director-daily` buscam até
+ * 20.000 leads, e a coluna pesa 509 B em média nesta base (243 KB no total).
+ * Somá-la lá acrescentaria ~10 MB a rotas que não leem o conteúdo.
+ *
+ * Mas `completenessInput` (logo abaixo) LÊ `lead.metadata`, e `mapLegacyLead`
+ * resolve chave ausente para `{}`. Sem a coluna no select, a ficha recebia `{}`
+ * SEMPRE — e `assessLeadCompleteness` tira `prazo de compra` (peso 12) e
+ * `forma de pagamento` (peso 10) de `metadata.qualificationAnswers`.
+ *
+ * Efeito medido antes desta correção, executando as duas funções reais sobre uma
+ * lead com TODOS os campos preenchidos: nota 78 de 100, com "prazo de compra" e
+ * "forma de pagamento" listados como incompletos e a próxima pergunta sendo
+ * "Quando pretende comprar?". Nenhuma lead da base conseguia passar de 78, e as
+ * 14 que responderam as duas perguntas em /qualify eram interrogadas de novo —
+ * a rota GRAVA a resposta num lugar que a rota de leitura não busca.
+ *
+ * Aqui a leitura é de UMA lead: 509 B. As duas escadas carregam a coluna porque
+ * a degradação por 42703 troca o select inteiro — se só a primeira a tivesse, o
+ * banco sem as colunas de SLA perderia junto o `metadata`, que nada tem a ver.
+ */
+const COLUNAS_DA_FICHA = `${LIVE_LEAD_SELECT_WITH_SLA},metadata`;
+const COLUNAS_DA_FICHA_SEM_SLA = `${LIVE_LEAD_SELECT},metadata`;
+
 function requestError(error: unknown) {
   // Lead de outra carteira é RECUSA, não falha de sessão nem dado inválido: a
   // Lead 360 escreve o MESMO campo que o Kanban (`leads.status`) e por aqui não
@@ -69,10 +96,10 @@ export async function GET(request: Request, context: RouteContext) {
       .maybeSingle();
 
     let slaMensuravel = true;
-    let { data: storedLead, error: leadError } = await lerLead(LIVE_LEAD_SELECT_WITH_SLA);
+    let { data: storedLead, error: leadError } = await lerLead(COLUNAS_DA_FICHA);
     if (leadError && isMissingColumn(leadError)) {
       slaMensuravel = false;
-      ({ data: storedLead, error: leadError } = await lerLead(LIVE_LEAD_SELECT));
+      ({ data: storedLead, error: leadError } = await lerLead(COLUNAS_DA_FICHA_SEM_SLA));
     }
     if (leadError || !storedLead) return NextResponse.json({ error: "Lead fora do seu escopo comercial." }, { status: 403 });
 
