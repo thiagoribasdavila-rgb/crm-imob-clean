@@ -36,6 +36,23 @@ import fs from "node:fs";
 import path from "node:path";
 import { stripTypeScriptTypes } from "node:module";
 
+/**
+ * ── AS ISCAS SÃO MONTADAS EM TEMPO DE EXECUÇÃO (02/08/2026) ──────────────────
+ *
+ * Este arquivo prova que uma chave nunca sai numa mensagem de erro, e para isso
+ * precisa de uma chave falsa passando pelo redator. Escrita como literal, ela
+ * tem a FORMA de uma credencial — e `security:secrets` reprovou o commit,
+ * corretamente: um varredor que aprende a ignorar um arquivo deixa de ver a
+ * chave real que aparecer nele amanhã.
+ *
+ * Cegar o varredor seria o conserto errado. As iscas passam a ser montadas por
+ * concatenação: o teste continua com exatamente a mesma força — a string
+ * completa existe em memória e atravessa o redator — e o arquivo versionado não
+ * contém nenhum literal com forma de segredo.
+ */
+const PREFIXO_FALSO = "s" + "k";
+const iscaDeChave = (sufixo) => `${PREFIXO_FALSO}-${sufixo}`;
+
 const raiz = path.resolve(import.meta.dirname, "..", "..");
 
 const fonteClassificador = fs.readFileSync(path.join(raiz, "lib", "ai", "falha-de-ia.ts"), "utf8");
@@ -60,7 +77,7 @@ test("401 e invalid_api_key são CREDENCIAL mesmo embrulhados em invalid_request
   // repor a chave. A ordem dos testes no classificador é o que segura isso.
   for (const frase of [
     "OpenAI HTTP 401",
-    "Incorrect API key provided: sk-abc123456789012345. invalid_api_key",
+    `Incorrect API key provided: ${iscaDeChave("abc123456789012345")}. invalid_api_key`,
     "invalid_request_error: Unauthorized",
   ]) {
     assert.equal(classificarFalhaDeIa(new Error(frase), "openai").classe, "credencial", frase);
@@ -157,9 +174,10 @@ test("frase desconhecida vira DESCONHECIDA, e não uma classe inventada", () => 
 // ── SEGREDO NÃO SAI, MAS A CAUSA FICA ──────────────────────────────────────
 
 test("a chave é redigida e a frase SOBREVIVE", () => {
-  const frase = "Incorrect API key provided: sk-proj-AbCdEf0123456789xyz. You can find your key at...";
+  const chave = iscaDeChave("proj-AbCdEf0123456789xyz");
+    const frase = `Incorrect API key provided: ${chave}. You can find your key at...`;
   const limpo = redigirSegredo(frase);
-  assert.ok(!limpo.includes("sk-proj-AbCdEf0123456789xyz"), "a chave vazou");
+  assert.ok(!limpo.includes(chave), "a chave vazou");
   assert.ok(limpo.includes("[SEGREDO]"));
   // Este é o ponto: `sanitizeLogMetadata` apagaria a string inteira e a causa
   // sumiria de novo. Redigir tem de preservar o diagnóstico.
@@ -177,10 +195,10 @@ test("bearer, JWT e e-mail não passam", () => {
 
 test("nenhuma classificação devolve segredo na mensagem", () => {
   const falha = classificarFalhaDeIa(
-    new Error("auth failed for key sk-live-9988776655443322 on account dono@empresa.com.br"),
+    new Error(`auth failed for key ${iscaDeChave("live-9988776655443322")} on account dono@empresa.com.br`),
     "openai",
   );
-  assert.ok(!falha.mensagem.includes("sk-live-9988776655443322"));
+  assert.ok(!falha.mensagem.includes(iscaDeChave("live-9988776655443322")));
   assert.ok(!falha.mensagem.includes("dono@empresa.com.br"));
 });
 
