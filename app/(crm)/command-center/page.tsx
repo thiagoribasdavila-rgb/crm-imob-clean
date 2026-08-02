@@ -2361,15 +2361,29 @@ export default function CommandCenterPage() {
       <span role="status" aria-live="polite" className="sr-only">
         {presentationAnnouncement}
       </span>
+
       <section
         aria-label="Estado da sala de comando"
-        className={`cc5-reveal atlas-panel flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5 sm:p-6 ${depthShellSoft}`}
+        className={`cc5-reveal atlas-panel flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-2xl px-4 py-1.5 sm:px-5 ${depthShellSoft}`}
       >
-        <div className="min-w-0">
+        {/* FAIXA FINA (2026-08-01): as quatro linhas empilhadas (eyebrow, saudação,
+            data operacional e descrição do papel) passam a dividir UMA linha.
+            Nenhum texto foi apagado — a pergunta "a máquina está de pé?" continua
+            respondida no topo, agora em ~56px em vez de ~150px, e os ~100px
+            devolvidos vão para o bloco de decisão logo abaixo. Os alvos de toque
+            seguem em min-h-11: comprimir a faixa não pode encolher o que se clica. */}
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-base font-semibold tracking-tight text-white">{greeting}</h1>
           <p className="cc5-eyebrow">Sala de comando · {roleLabel}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">{greeting}</h1>
-          <p className="cc5-opdate mt-1">{operationalDate}</p>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">{roleDescription}</p>
+          <p className="cc5-opdate">{operationalDate}</p>
+          {/* Sem `truncate`: a frase do papel tem 62-88 caracteres e a linha em
+              text-xs cabe ~55 num viewport de 375px — ela apareceria cortada
+              com reticências. É a classe de defeito que este repositório já
+              registrou (a frase principal do Lead 360 que cabia 42%). Texto no
+              DOM não é texto legível. Quebra em vez de cortar. */}
+          <p className="min-w-0 max-w-full text-xs leading-5 text-slate-400">
+            {roleDescription}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <span
@@ -2416,6 +2430,634 @@ export default function CommandCenterPage() {
         </div>
       </section>
 
+      {warnings.length ? (
+        <AtlasRecoverableError
+          title="Atualização parcial da sala de comando"
+          description={warnings.join(" · ")}
+          onRetry={() => void load()}
+          busy={loading}
+          scope="page"
+        />
+      ) : null}
+
+      <section
+        aria-label="Prioridades agora"
+        className="cc5-reveal atlas-panel rounded-2xl p-5 sm:p-6"
+        style={{ animationDelay: "40ms" }}
+      >
+        <div className="cc5-hero-head">
+          <div className="min-w-0">
+            <p className="cc5-eyebrow">Prioridades agora</p>
+            <h2 className="cc5-hero-title">
+              {isBroker ? "O que atender primeiro" : "O que pede a sua decisão"}
+            </h2>
+          </div>
+          <span className="cc5-tag">
+            <span aria-hidden="true">◇</span> IA proativa · {priorities.length}
+          </span>
+        </div>
+        {prioritiesLoading ? (
+          <AtlasSkeleton className="mt-4 h-40 w-full" />
+        ) : priorities.length ? (
+          <ul className="cc5-priority-list">
+            {priorities.map((card, index) => (
+              <li
+                key={card.id}
+                className={`cc5-priority cc5-sev-${card.severity}${index === 0 ? " cc5-priority-lead" : ""}`}
+              >
+                <span aria-hidden="true" className="cc5-priority-band" />
+                <span aria-hidden="true" className="cc5-priority-glyph">
+                  {card.glyph}
+                </span>
+                <div className="cc5-priority-body">
+                  <p className="cc5-priority-title">{card.title}</p>
+                  <p className="cc5-priority-reason">{card.reason}</p>
+                </div>
+                <div
+                  className="cc5-priority-actions"
+                  role="group"
+                  aria-label={`Ações para ${card.title}`}
+                >
+                  <Link
+                    href={card.primaryHref}
+                    className="cc5-action cc5-action-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                  >
+                    {card.primaryLabel}
+                  </Link>
+                  {card.actionSignal ? (
+                    (() => {
+                      const state = proposalState[card.id];
+                      if (state?.status === "sent" || state?.status === "deduped") {
+                        return (
+                          /* "A IA propõe, o humano aprova": o tracejado vai para a borda
+                             que a pílula JÁ tem — o `.cc23-seam` desenharia uma reta de
+                             1px cruzando o raio de 999px, virando artefato. O `!` é
+                             obrigatório porque `.cc6-chip` declara `border: 1px solid`
+                             fora de @layer e venceria o utilitário. */
+                          <span className="cc6-chip border-dashed! tabular-nums" role="status">
+                            {state.status === "deduped"
+                              ? "Já havia proposta · aguarda aprovação"
+                              : "Proposta enviada · aguarda aprovação"}
+                            <Link
+                              href="/approvals"
+                              className="ml-2 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                            >
+                              Abrir aprovações →
+                            </Link>
+                          </span>
+                        );
+                      }
+                      if (state?.status === "error") {
+                        return (
+                          <span className="cc6-crit text-sm" role="status">
+                            {state.message}
+                          </span>
+                        );
+                      }
+                      return (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            prepareAction(card.id, card.actionSignal as ProposalSignalKind, card.actionMetric)
+                          }
+                          className="cc5-action"
+                          aria-busy={state?.status === "loading"}
+                          disabled={state?.status === "loading"}
+                          aria-label={`Preparar ação para ${card.title}`}
+                        >
+                          {state?.status === "loading" ? "Preparando…" : "Preparar ação"}
+                        </button>
+                      );
+                    })()
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => toggleSignalSeen(card.id)}
+                    className="cc5-action"
+                    aria-label={`Adiar o sinal ${card.title}`}
+                  >
+                    Adiar
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="cc5-hero-empty">
+            <p className="cc5-hero-empty-title">Nada pede sua decisão agora.</p>
+            <p className="cc5-hero-empty-detail">
+              A IA proativa não encontrou sinais que exijam sua decisão neste momento. Assim que
+              algo mudar no seu escopo, aparece aqui primeiro.
+            </p>
+          </div>
+        )}
+      </section>
+
+      {/* PRIMÁRIO · diretoria — saúde do negócio (director-daily + briefing) e o
+          módulo de Marketing · Meta (único fetch novo, ausente em falha/403). */}
+      {isDirector ? (
+        <section
+          aria-label="Saúde do negócio e marketing"
+          className={`cc5-reveal grid gap-4 ${marketingRates ? "xl:grid-cols-[1.05fr_.95fr]" : ""}`}
+          style={{ animationDelay: "55ms" }}
+        >
+          <div className="atlas-panel rounded-2xl p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p
+                  className="cc5-eyebrow"
+                  title="Primário da diretoria: conversão, SLA agregado e sinais críticos, medidos por director-daily e pelo briefing da IA."
+                >
+                  Negócio · Saúde · Agora
+                </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                  Saúde do negócio
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+                  Conversão, SLA agregado e sinais críticos do escopo inteiro — o essencial antes de
+                  qualquer decisão.
+                </p>
+              </div>
+              <Link
+                href="/reports"
+                className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+              >
+                Abrir relatórios →
+              </Link>
+            </div>
+            {!directorDaily ? (
+              <AtlasSkeleton className="mt-4 h-32 w-full" />
+            ) : (
+              /* Mesma conversão do primário do gerente: 4 tiles bordados viram lista
+                 densa. Conversão geral é o número que abre a decisão, então recebe a
+                 escala de herói com a unidade recuada (aninhada, para o 0.5em resolver
+                 contra o display e não contra a linha). */
+              <div className="cc23-quiet mt-4">
+                <ul className="cc23-rows">
+                  {/* ── O TILE "CONVERSÃO GERAL" FOI REMOVIDO (2026-07-30) ────────
+                      Ele imprimia `0.2%` em escala de herói. Setecentas linhas
+                      abaixo, o SalaDeComandoPanel se RECUSA a imprimir essa mesma
+                      taxa e escreve "1 venda — abaixo de 5 vendas isto é contagem,
+                      não taxa". O diretor via as duas, e via o percentual PRIMEIRO.
+
+                      Medido: base 482 · ganho 1 · ganho com valor informado 0. A
+                      taxa se apoiava num evento cujo valor o produto não conhece, e
+                      0,2% lido como medida manda cortar verba de aquisição — quando
+                      a leitura correta é "ainda não dá para afirmar; feche a
+                      segunda venda".
+
+                      Foi REMOVIDO em vez de alinhado de propósito: alinhar criaria
+                      um terceiro limiar dentro de director-daily, que já convive com
+                      dois (campanha ≥30 leads, superintendente ≥50). Tirar uma voz
+                      custa menos que inventar mais uma regra. `conversionRate`
+                      continua na rota — /reports consome — só não é mais publicado
+                      aqui sem a ressalva de amostra.
+
+                      Os dois contadores que davam contexto viram linha própria. */}
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Carteira ativa</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        {/* Plural correto: a legenda dizia "1 quentes". */}
+                        {directorDaily.commercial.hotLeads}{" "}
+                        {directorDaily.commercial.hotLeads === 1 ? "quente" : "quentes"}
+                      </p>
+                    </div>
+                    <span className="cc23-display">{directorDaily.commercial.activeLeads}</span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Sem 1º contato</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        {/* "Não medido" é estado de primeira classe: a rota devolve
+                            `null` quando a coluna first_contacted_at não existe, e
+                            traço é a leitura certa — zero seria "a fila acabou". */}
+                        {directorDaily.commercial.firstContactOverdue === null
+                          ? "não medido neste banco"
+                          : "SLA inicial vencido"}
+                      </p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        (directorDaily.commercial.firstContactOverdue ?? 0) > 0
+                          ? "text-[var(--atlas-danger)]!"
+                          : ""
+                      }`}
+                    >
+                      {directorDaily.commercial.firstContactOverdue ?? "—"}
+                    </span>
+                  </li>
+                  {/* A ESCADA — decomposição do número logo acima, dentro do
+                      mesmo painel. Nenhum painel novo, nenhum cartão ao lado. */}
+                  {directorDaily.triagem ? (
+                    <CorteDaFila
+                      triagem={directorDaily.triagem}
+                      capacity={directorDaily.capacity}
+                      semProximaAcao={directorDaily.commercial.withoutNextAction ?? null}
+                      filaFechada={filaFechada}
+                    />
+                  ) : null}
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Follow-ups vencidos</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">Próxima ação atrasada</p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        directorDaily.commercial.followUpOverdue > 0
+                          ? "text-[var(--atlas-warning)]!"
+                          : ""
+                      }`}
+                    >
+                      {directorDaily.commercial.followUpOverdue}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Sinais críticos</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">Riscos executivos + IA</p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        directorCriticalSignals > 0 ? "text-[var(--atlas-danger)]!" : ""
+                      }`}
+                    >
+                      {directorCriticalSignals}
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            )}
+            {directorDaily?.aiUsage ? (
+              <div data-phase="24-director-command-center" className="mt-4 rounded-xl border border-white/[.07] px-4 py-3">
+                <p className="cc6-eyebrow">Custo de IA · {directorDaily.aiUsage.windowDays} dias</p>
+                <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-[#93a2b8]">
+                  <span className="cc6-num text-sm text-[var(--atlas-texto-forte)]">
+                    {/* Sem tarifa não há custo. Traço, nunca US$ 0,00. */}
+                    {directorDaily.aiUsage.measuredCostUsd === null
+                      ? "—"
+                      : `US$ ${directorDaily.aiUsage.measuredCostUsd.toFixed(2)}`}
+                  </span>
+                  <span>{directorDaily.aiUsage.calls} chamada(s)</span>
+                  {directorDaily.aiUsage.cacheHitRate !== null ? (
+                    <span>{Math.round(directorDaily.aiUsage.cacheHitRate * 100)}% em cache</span>
+                  ) : null}
+                  {directorDaily.aiUsage.providers.length ? (
+                    <span>{directorDaily.aiUsage.providers.join(" · ")}</span>
+                  ) : null}
+                </div>
+                {directorDaily.aiUsage.costIsPartial ? (
+                  <p className="mt-2 text-rotulo leading-5 text-[#f2b544]">
+                    Custo parcial: {directorDaily.aiUsage.callsWithoutPricing} chamada(s) sem tarifa cadastrada.
+                    Não use este número para decidir verba enquanto a tabela de preços estiver incompleta.
+                  </p>
+                ) : null}
+                {!directorDaily.aiUsage.available ? (
+                  <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
+                    Sem snapshot anterior de custo neste banco — a migration de rastreio de IA ainda não foi aplicada.
+                  </p>
+                ) : null}
+                <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
+                  Este painel é somente leitura. Qualquer mudança de verba ou de time exige APROVAÇÃO HUMANA em /approvals.
+                </p>
+              </div>
+            ) : null}
+          </div>
+          {marketingQuality && marketingRates ? (
+            <div className="atlas-panel rounded-2xl p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p
+                    className="cc5-eyebrow"
+                    title="Qualidade dos leads de campanha medida no CRM: quem qualifica, quem é descartado e quanto custou — janela de 30 dias."
+                  >
+                    Marketing · Meta · {marketingQuality.period.days}d
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                    Qualidade das campanhas
+                  </h2>
+                </div>
+                <Link
+                  href="/marketing/campaigns"
+                  className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                >
+                  Abrir campanhas →
+                </Link>
+              </div>
+              {/* Descarte é a taxa que dispara decisão (tem limiar), então é o único
+                  herói do bloco. Qualificação, CPL e o custo por qualificado já chegam
+                  como string formatada pelo useMemo (Intl com NBSP), então entram
+                  inteiros — fatiar a unidade aqui quebraria o caso "—". */}
+              <div className="cc23-quiet mt-4">
+                <ul className="cc23-rows">
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Qualificação</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        {marketingQuality.totals.qualified} de {marketingQuality.totals.leads} leads ·{" "}
+                        {marketingQuality.totals.sales} vendas
+                      </p>
+                    </div>
+                    <span className="cc6-metric-value text-xl">
+                      {marketingRates.qualificationRate}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Descarte</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        {marketingQuality.totals.discarded} descartados na janela
+                        {marketingRates.discardHigh ? " · acima do limiar (25%)" : ""}
+                      </p>
+                    </div>
+                    <span
+                      className={`cc23-display ${
+                        marketingRates.discardHigh ? "text-[var(--atlas-danger)]!" : ""
+                      }`}
+                    >
+                      {marketingRates.discardRate}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">CPL</p>
+                      {/* A linha de baixo diz POR QUE o traço está lá. Traço mudo
+                          faz o leitor supor que o dado não carregou; traço com
+                          motivo faz ele ir atrás da conta de anúncios certa. */}
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        {marketingRates.costPerQualified
+                          ? `${marketingRates.costPerQualified} por qualificado`
+                          : marketingRates.whyNoCostPerLead
+                            ? `${brl.format(marketingRates.spendWithoutLeads)} em ${marketingRates.campaignsSpendWithoutLeads} campanha(s) sem lead atribuída`
+                            : marketingQuality.policy.spendMeasured
+                              ? `${brl.format(marketingQuality.totals.spend)} investidos`
+                              : "Custo não medido"}
+                      </p>
+                    </div>
+                    <span className="cc6-metric-value text-xl">
+                      {marketingRates.costPerLead ?? "—"}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      {/* O rótulo era "Campanhas com leads" e a fonte conta
+                          `leads > 0 OU spend > 0`. Enquanto `marketing_spend`
+                          estava vazia os dois coincidiam, e o rótulo era
+                          acidentalmente verdadeiro. Com gasto importado, ele
+                          passou a chamar de "com leads" 7 campanhas que têm
+                          zero. */}
+                      <p className="text-rotulo text-slate-500">Campanhas em atividade</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        com lead ou gasto na janela · {marketingQuality.totals.campaigns} na organização
+                      </p>
+                    </div>
+                    <span className="cc6-metric-value text-xl">
+                      {marketingQuality.totals.campaignsRanked}
+                    </span>
+                  </li>
+                </ul>
+              </div>
+              {marketingQuality.policy.windowComplete === false ||
+              !marketingQuality.policy.spendMeasured ? (
+                <p className="mt-3 text-rotulo leading-5 text-[var(--atlas-warning)]">
+                  {marketingQuality.policy.windowComplete === false
+                    ? "Janela truncada no teto de paginação — números são piso, não total. "
+                    : ""}
+                  {!marketingQuality.policy.spendMeasured
+                    ? "Gasto não medido (marketing_spend indisponível) — CPL omitido em vez de fingir zero."
+                    : ""}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {/* ── A FILA DE DECISOES VEM ANTES DO PAINEL DE LEITURA ─────────────
+          Medido em 01/08/2026: a IA tinha 20 redistribuicoes preparadas em
+          `ai_shadow_decisions` (retido=true, executado=false,
+          decisao_humana=null) e NENHUMA tela lia a tabela. O modo sombra grava
+          a propria condicao de saida — "olhe a comparacao recomendacao x
+          decisao x resultado" — e sem uma porta que colete a decisao humana
+          essa comparacao nunca teria um caso. Era laco aberto, nao cautela.
+
+          Fica ACIMA da sala de comando de proposito: o que exige assinatura
+          vem antes do que informa. E a regra de hierarquia do padrao v3. ── */}
+      <section
+        aria-label="Decisoes preparadas pela inteligencia"
+        className="cc5-reveal"
+        style={{ animationDelay: "70ms" }}
+      >
+        <FilaDeDecisoesPanel />
+      </section>
+
+      {/* IA · liderança — a fila dos leads ABERTOS sem responsável. O painel só
+          existia para o corretor, e a maior massa de receita parada da base não
+          está em carteira nenhuma: está sem dono, invisível em todas as telas.
+          Aditivo e sem automação — o painel leva ao lead, quem escolhe o dono
+          continua sendo gente.
+          A condição espelha o conjunto LEADERSHIP da rota (director |
+          superintendent | manager). Com `!isBroker`, papéis como marketing,
+          finance, developer e viewer renderizavam a seção e recebiam 403 —
+          erro fixo na tela para quem nunca deveria ver a seção. */}
+      {isDirector || isSuperintendent || isManager ? (
+        <section
+          aria-label="Leads abertos sem responsável"
+          className="cc5-reveal [transform-style:preserve-3d]"
+          style={{ animationDelay: "85ms" }}
+        >
+          <NextBestActionPanel max={5} scope="sem_dono" />
+        </section>
+      ) : null}
+
+      {/* Governança · liderança — aprovar as campanhas Meta prontas (Arvo/Spin)
+          com 1 clique, direto para a Caixa de Aprovações. */}
+      {!isBroker ? (
+        <section
+          aria-label="Aprovar campanhas Meta"
+          className="cc5-reveal [transform-style:preserve-3d]"
+          style={{ animationDelay: "100ms" }}
+        >
+          <CampaignApprovalsPanel />
+        </section>
+      ) : null}
+
+      {/*
+        O VALOR DA VENDA FECHADA.
+
+        A rota `/api/v1/crm/vendas-sem-valor` existia, com contrato e prova, e
+        NENHUMA tela a consumia. O custo tem data: a primeira venda fecha amanhã e
+        a única lead `ganho` da base está com valor nulo.
+
+        O painel se esconde sozinho quando não há pendência — ocupar a tela do
+        diretor com card vazio treina a pessoa a ignorar o lugar onde a cobrança
+        aparece.
+      */}
+      <section aria-label="Vendas fechadas sem valor informado" className="cc5-reveal" style={{ animationDelay: "115ms" }}>
+        <VendasSemValorPanel />
+      </section>
+
+      {/* IA mais ativa · corretor — a playlist de próxima-melhor-ação (motor que
+          já existia e não tinha UI), surfada direto na Sala de Comando. */}
+      {isBroker ? (
+        <section
+          aria-label="Próxima melhor ação"
+          className="cc5-reveal [transform-style:preserve-3d]"
+          style={{ animationDelay: "120ms" }}
+        >
+          <NextBestActionPanel max={5} />
+        </section>
+      ) : null}
+
+      {isBroker ? (
+        <section aria-label="Fila do dia" className="[transform-style:preserve-3d]">
+          <div className={depthShell}>
+            <AtlasCard>
+              <AtlasCardHeader
+                eyebrow="Camada corretor"
+                title="Fila do dia"
+                description="Quem atender agora, por que entrou na fila e a próxima melhor ação — com atalhos de um clique."
+                action={
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {brokerDaily ? (
+                      <AtlasBadge tone={brokerDaily.priorities.length ? "info" : "success"}>
+                        {brokerDaily.priorities.length
+                          ? `${brokerDaily.priorities.length} NA FILA`
+                          : "FILA CONCLUÍDA"}
+                      </AtlasBadge>
+                    ) : null}
+                    <LayerToggle
+                      collapsed={collapsedLayers.fila}
+                      onToggle={() => toggleLayer("fila")}
+                      layerLabel="fila do dia"
+                    />
+                  </div>
+                }
+              />
+              {collapsedLayers.fila ? null : (
+              <div className={`border-t border-white/[.06] ${layerBodyPad}`}>
+                {!brokerDaily ? (
+                  <AtlasSkeleton className="h-56 w-full" />
+                ) : brokerDaily.priorities.length ? (
+                  /* Superfície de trabalho do corretor: N cards bordados dentro de um
+                     AtlasCard viravam caixa-dentro-de-caixa em série. O wrapper interno
+                     com flex-wrap FICA (é ele que empurra as 4 ações para a segunda linha
+                     no mobile) e ganha w-full para o justify-between não colapsar agora
+                     que o article virou flex container. */
+                  <div className="cc23-rows">
+                    {brokerDaily.priorities.map((item, index) => {
+                      const contact = phoneLinks(phoneByLead.get(item.leadId) ?? "");
+                      const urgent = /sla|vencid|atrasad/i.test(item.reason);
+                      return (
+                        <article
+                          key={item.leadId}
+                          className="cc23-row transition-colors hover:bg-white/[.02]"
+                        >
+                          <div className="flex w-full flex-wrap items-start justify-between gap-3">
+                            <div className="flex min-w-0 items-start gap-3">
+                              <span
+                                aria-hidden="true"
+                                className="grid h-8 w-8 shrink-0 place-items-center text-xs font-semibold tabular-nums text-[var(--atlas-accent)]"
+                              >
+                                {index + 1}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Link
+                                    href={`/leads/${item.leadId}`}
+                                    className="font-semibold text-white hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                                  >
+                                    {item.leadName}
+                                  </Link>
+                                  <AtlasBadge tone={urgent ? "danger" : item.hot ? "warning" : "info"}>
+                                    {item.reason}
+                                  </AtlasBadge>
+                                </div>
+                                <p className="mt-1 text-sm leading-6 text-slate-300">{item.nextBestAction}</p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  Score {item.score} · etapa {item.status} · {item.conversionProbability}% de conversão estimada
+                                  {item.dueAt
+                                    ? ` · prazo ${new Date(item.dueAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
+                                    : ""}
+                                </p>
+                              </div>
+                            </div>
+                            <div
+                              className="flex shrink-0 items-center gap-2"
+                              role="group"
+                              aria-label={`Ações rápidas para ${item.leadName}`}
+                            >
+                              <Link
+                                href={`/leads/${item.leadId}`}
+                                aria-label={`Abrir lead ${item.leadName}`}
+                                title="Abrir lead"
+                                className={quickActionClass}
+                              >
+                                <span aria-hidden="true">👁</span>
+                              </Link>
+                              {contact ? (
+                                <a
+                                  href={contact.call}
+                                  aria-label={`Ligar para ${item.leadName}`}
+                                  title="Ligar"
+                                  className={quickActionClass}
+                                >
+                                  <span aria-hidden="true">📞</span>
+                                </a>
+                              ) : null}
+                              {contact ? (
+                                <a
+                                  href={contact.whatsapp}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  aria-label={`Abrir WhatsApp com ${item.leadName}`}
+                                  title="WhatsApp"
+                                  className={quickActionClass}
+                                >
+                                  <span aria-hidden="true">💬</span>
+                                </a>
+                              ) : null}
+                              <button
+                                type="button"
+                                aria-label={`Preparar abordagem com IA para ${item.leadName}`}
+                                title="Preparar com IA"
+                                className={quickActionClass}
+                                onClick={() =>
+                                  openCopilot(
+                                    "Prepare uma abordagem curta para esta lead usando apenas o contexto autorizado. Explique a recomendação e não envie mensagem nem altere o CRM.",
+                                    {
+                                      leadId: item.leadId,
+                                      status: item.status,
+                                      score: item.score,
+                                      reason: item.reason,
+                                      nextBestAction: item.nextBestAction,
+                                      conversionProbability: item.conversionProbability,
+                                    },
+                                  )
+                                }
+                              >
+                                <span aria-hidden="true">✦</span>
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <AtlasEmpty
+                    reason="completed"
+                    title="Fila do dia concluída"
+                    description="Sua carteira não possui ação urgente neste momento."
+                  />
+                )}
+              </div>
+              )}
+            </AtlasCard>
+          </div>
+        </section>
+      ) : null}
+
       {/* PRIMÁRIO · gerente — a decisão do papel vem antes de tudo: gargalos da
           equipe (team-sla + manager-daily). O herói de IA vira secundário. */}
       {isManager ? (
@@ -2423,7 +3065,7 @@ export default function CommandCenterPage() {
           aria-label="Gargalos da equipe"
           data-phase="22-manager-daily"
           className="cc5-reveal atlas-panel rounded-2xl p-5 sm:p-6"
-          style={{ animationDelay: "40ms" }}
+          style={{ animationDelay: "125ms" }}
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
@@ -2582,405 +3224,133 @@ export default function CommandCenterPage() {
         </section>
       ) : null}
 
-      {/* PRIMÁRIO · diretoria — saúde do negócio (director-daily + briefing) e o
-          módulo de Marketing · Meta (único fetch novo, ausente em falha/403). */}
-      {isDirector ? (
-        <section
-          aria-label="Saúde do negócio e marketing"
-          className={`cc5-reveal grid gap-4 ${marketingRates ? "xl:grid-cols-[1.05fr_.95fr]" : ""}`}
-          style={{ animationDelay: "40ms" }}
-        >
-          <div className="atlas-panel rounded-2xl p-5 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p
-                  className="cc5-eyebrow"
-                  title="Primário da diretoria: conversão, SLA agregado e sinais críticos, medidos por director-daily e pelo briefing da IA."
-                >
-                  Negócio · Saúde · Agora
-                </p>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
-                  Saúde do negócio
-                </h2>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
-                  Conversão, SLA agregado e sinais críticos do escopo inteiro — o essencial antes de
-                  qualquer decisão.
-                </p>
-              </div>
-              <Link
-                href="/reports"
-                className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-              >
-                Abrir relatórios →
-              </Link>
-            </div>
-            {directorDaily?.aiUsage ? (
-              <div data-phase="24-director-command-center" className="mt-4 rounded-xl border border-white/[.07] px-4 py-3">
-                <p className="cc6-eyebrow">Custo de IA · {directorDaily.aiUsage.windowDays} dias</p>
-                <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-[#93a2b8]">
-                  <span className="cc6-num text-sm text-[var(--atlas-texto-forte)]">
-                    {/* Sem tarifa não há custo. Traço, nunca US$ 0,00. */}
-                    {directorDaily.aiUsage.measuredCostUsd === null
-                      ? "—"
-                      : `US$ ${directorDaily.aiUsage.measuredCostUsd.toFixed(2)}`}
-                  </span>
-                  <span>{directorDaily.aiUsage.calls} chamada(s)</span>
-                  {directorDaily.aiUsage.cacheHitRate !== null ? (
-                    <span>{Math.round(directorDaily.aiUsage.cacheHitRate * 100)}% em cache</span>
-                  ) : null}
-                  {directorDaily.aiUsage.providers.length ? (
-                    <span>{directorDaily.aiUsage.providers.join(" · ")}</span>
-                  ) : null}
-                </div>
-                {directorDaily.aiUsage.costIsPartial ? (
-                  <p className="mt-2 text-rotulo leading-5 text-[#f2b544]">
-                    Custo parcial: {directorDaily.aiUsage.callsWithoutPricing} chamada(s) sem tarifa cadastrada.
-                    Não use este número para decidir verba enquanto a tabela de preços estiver incompleta.
-                  </p>
-                ) : null}
-                {!directorDaily.aiUsage.available ? (
-                  <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-                    Sem snapshot anterior de custo neste banco — a migration de rastreio de IA ainda não foi aplicada.
-                  </p>
-                ) : null}
-                <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-                  Este painel é somente leitura. Qualquer mudança de verba ou de time exige APROVAÇÃO HUMANA em /approvals.
-                </p>
-              </div>
-            ) : null}
-            {!directorDaily ? (
-              <AtlasSkeleton className="mt-4 h-32 w-full" />
-            ) : (
-              /* Mesma conversão do primário do gerente: 4 tiles bordados viram lista
-                 densa. Conversão geral é o número que abre a decisão, então recebe a
-                 escala de herói com a unidade recuada (aninhada, para o 0.5em resolver
-                 contra o display e não contra a linha). */
-              <div className="cc23-quiet mt-4">
-                <ul className="cc23-rows">
-                  {/* ── O TILE "CONVERSÃO GERAL" FOI REMOVIDO (2026-07-30) ────────
-                      Ele imprimia `0.2%` em escala de herói. Setecentas linhas
-                      abaixo, o SalaDeComandoPanel se RECUSA a imprimir essa mesma
-                      taxa e escreve "1 venda — abaixo de 5 vendas isto é contagem,
-                      não taxa". O diretor via as duas, e via o percentual PRIMEIRO.
+      {/* IA proativa · todos os papéis — os "próximos passos" endereçados ao papel
+          (motor proactive-hierarchy, antes sem UI). Cada papel só vê o seu mundo. */}
+      <section
+        aria-label="Próximos passos da IA"
+        className="cc5-reveal [transform-style:preserve-3d]"
+        style={{ animationDelay: "130ms" }}
+      >
+        <ProactiveNudgesPanel max={4} />
+      </section>
 
-                      Medido: base 482 · ganho 1 · ganho com valor informado 0. A
-                      taxa se apoiava num evento cujo valor o produto não conhece, e
-                      0,2% lido como medida manda cortar verba de aquisição — quando
-                      a leitura correta é "ainda não dá para afirmar; feche a
-                      segunda venda".
-
-                      Foi REMOVIDO em vez de alinhado de propósito: alinhar criaria
-                      um terceiro limiar dentro de director-daily, que já convive com
-                      dois (campanha ≥30 leads, superintendente ≥50). Tirar uma voz
-                      custa menos que inventar mais uma regra. `conversionRate`
-                      continua na rota — /reports consome — só não é mais publicado
-                      aqui sem a ressalva de amostra.
-
-                      Os dois contadores que davam contexto viram linha própria. */}
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Carteira ativa</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        {/* Plural correto: a legenda dizia "1 quentes". */}
-                        {directorDaily.commercial.hotLeads}{" "}
-                        {directorDaily.commercial.hotLeads === 1 ? "quente" : "quentes"}
-                      </p>
-                    </div>
-                    <span className="cc23-display">{directorDaily.commercial.activeLeads}</span>
-                  </li>
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Sem 1º contato</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        {/* "Não medido" é estado de primeira classe: a rota devolve
-                            `null` quando a coluna first_contacted_at não existe, e
-                            traço é a leitura certa — zero seria "a fila acabou". */}
-                        {directorDaily.commercial.firstContactOverdue === null
-                          ? "não medido neste banco"
-                          : "SLA inicial vencido"}
-                      </p>
-                    </div>
-                    <span
-                      className={`cc6-metric-value text-xl ${
-                        (directorDaily.commercial.firstContactOverdue ?? 0) > 0
-                          ? "text-[var(--atlas-danger)]!"
-                          : ""
-                      }`}
-                    >
-                      {directorDaily.commercial.firstContactOverdue ?? "—"}
-                    </span>
-                  </li>
-                  {/* A ESCADA — decomposição do número logo acima, dentro do
-                      mesmo painel. Nenhum painel novo, nenhum cartão ao lado. */}
-                  {directorDaily.triagem ? (
-                    <CorteDaFila
-                      triagem={directorDaily.triagem}
-                      capacity={directorDaily.capacity}
-                      semProximaAcao={directorDaily.commercial.withoutNextAction ?? null}
-                      filaFechada={filaFechada}
+      {managementQueue ? (
+        <section aria-label="Camada gestão" className="[transform-style:preserve-3d]">
+          <div className={depthShell}>
+            <AtlasCard>
+              <AtlasCardHeader
+                eyebrow="Camada gestão"
+                title={managementQueue.title}
+                description={managementQueue.description}
+                action={
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {managementQueue.ready ? (
+                      <AtlasBadge tone={managementQueue.items.length ? "warning" : "success"}>
+                        {managementQueue.items.length
+                          ? `${managementQueue.items.length} PARA REVISAR`
+                          : "SEM EXCEÇÕES"}
+                      </AtlasBadge>
+                    ) : null}
+                    <LayerToggle
+                      collapsed={collapsedLayers.fila}
+                      onToggle={() => toggleLayer("fila")}
+                      layerLabel="fila de gestão"
                     />
-                  ) : null}
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Follow-ups vencidos</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">Próxima ação atrasada</p>
+                  </div>
+                }
+              />
+              {collapsedLayers.fila ? null : (
+              <div className={`border-t border-white/[.06] ${layerBodyPad}`}>
+                {isManager && teamSla ? (
+                  /* Três pílulas desenhadas à mão viram o primitivo que já existe.
+                     `whitespace-normal!` é necessário porque `.cc6-chip` fixa
+                     `white-space: nowrap` fora de @layer, e estes rótulos são longos o
+                     bastante para forçar rolagem horizontal em 320px. */
+                  <div data-phase="35-follow-up-sla" className="mb-4">
+                    <p className="cc6-eyebrow mb-2">Cadência, atraso e recuperação</p>
+                    <div className="flex flex-wrap gap-2 text-xs text-slate-400">
+                      <span className="cc6-chip whitespace-normal!">
+                        SLA de follow-up:{" "}
+                        {/* A taxa vem como razão 0–1. Imprimi-la crua mostrava
+                            "1%" para 100% de cumprimento — e nunca cruzava
+                            nenhum limiar de cor. */}
+                        {teamSla.totals.followUpComplianceRate === null
+                          ? teamSla.totals.followUpMensuravel
+                            ? "sem amostra"
+                            : "não medido neste banco"
+                          : `${Math.round(teamSla.totals.followUpComplianceRate * 100)}%`}
+                      </span>
+                      <span className="cc6-chip whitespace-normal!">
+                        {teamSla.totals.followUpsMeasured} follow-up(s) medido(s)
+                      </span>
+                      <span className="cc6-chip whitespace-normal!">
+                        {teamSla.totals.averageFollowUpMinutes === null
+                          ? "tempo médio sem amostra"
+                          : `${teamSla.totals.averageFollowUpMinutes} min de resposta média`}
+                      </span>
+                      <span className="cc6-chip whitespace-normal!">
+                        {teamSla.totals.recoveredFollowUps} recuperado(s) após o prazo
+                      </span>
+                      <span className="cc6-chip whitespace-normal!">
+                        {teamSla.totals.firstContactOverdue} sem primeiro contato
+                      </span>
+                      <span className="cc6-chip whitespace-normal!">
+                        {teamSla.totals.brokersWithAlerts} corretor(es) com alerta
+                      </span>
                     </div>
-                    <span
-                      className={`cc6-metric-value text-xl ${
-                        directorDaily.commercial.followUpOverdue > 0
-                          ? "text-[var(--atlas-warning)]!"
-                          : ""
-                      }`}
-                    >
-                      {directorDaily.commercial.followUpOverdue}
-                    </span>
-                  </li>
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Sinais críticos</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">Riscos executivos + IA</p>
-                    </div>
-                    <span
-                      className={`cc6-metric-value text-xl ${
-                        directorCriticalSignals > 0 ? "text-[var(--atlas-danger)]!" : ""
-                      }`}
-                    >
-                      {directorCriticalSignals}
-                    </span>
-                  </li>
-                </ul>
+                  </div>
+                ) : null}
+                {!managementQueue.ready ? (
+                  <AtlasSkeleton className="h-40 w-full" />
+                ) : managementQueue.items.length ? (
+                  /* Fila de exceção da liderança: coluna única e densa, para a varredura
+                     ir do mais severo ao menos sem borda concorrente. O Link continua
+                     `block` (os três spans empilhados dependem disso) e mantém o próprio
+                     anel de foco — `.cc23-row` NÃO vai no focável, porque o
+                     `.cc23-row:focus-visible` do CSS resolve para outline inválido. */
+                  <div className="cc23-quiet">
+                    <ul className="cc23-rows">
+                      {managementQueue.items.map((item, index) => (
+                        <li key={item.key} className={index === 0 ? "" : "cc6-hairline"}>
+                          <Link
+                            href={item.href}
+                            className="block rounded-lg px-2 py-3 transition-colors hover:bg-white/[.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                          >
+                            <span className="flex flex-wrap items-center gap-2">
+                              <AtlasBadge tone={interventionTone(item.severity)}>
+                                {item.severity === "critical" ? "AGORA" : item.severity === "attention" ? "ATENÇÃO" : "EQUILÍBRIO"}
+                              </AtlasBadge>
+                              <span className="text-sm font-medium text-white">{item.label}</span>
+                            </span>
+                            <span className="mt-2 block text-xs leading-5 text-slate-400">{item.reason}</span>
+                            <span className="mt-2 block text-xs font-semibold text-[var(--atlas-accent)]">
+                              {item.action} →
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <AtlasEmpty
+                    reason="completed"
+                    title="Sem exceções críticas"
+                    description="O escopo visível não apresenta intervenção urgente neste momento."
+                  />
+                )}
               </div>
-            )}
+              )}
+            </AtlasCard>
           </div>
-          {marketingQuality && marketingRates ? (
-            <div className="atlas-panel rounded-2xl p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p
-                    className="cc5-eyebrow"
-                    title="Qualidade dos leads de campanha medida no CRM: quem qualifica, quem é descartado e quanto custou — janela de 30 dias."
-                  >
-                    Marketing · Meta · {marketingQuality.period.days}d
-                  </p>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
-                    Qualidade das campanhas
-                  </h2>
-                </div>
-                <Link
-                  href="/marketing/campaigns"
-                  className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-                >
-                  Abrir campanhas →
-                </Link>
-              </div>
-              {/* Descarte é a taxa que dispara decisão (tem limiar), então é o único
-                  herói do bloco. Qualificação, CPL e o custo por qualificado já chegam
-                  como string formatada pelo useMemo (Intl com NBSP), então entram
-                  inteiros — fatiar a unidade aqui quebraria o caso "—". */}
-              <div className="cc23-quiet mt-4">
-                <ul className="cc23-rows">
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Qualificação</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        {marketingQuality.totals.qualified} de {marketingQuality.totals.leads} leads ·{" "}
-                        {marketingQuality.totals.sales} vendas
-                      </p>
-                    </div>
-                    <span className="cc6-metric-value text-xl">
-                      {marketingRates.qualificationRate}
-                    </span>
-                  </li>
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Descarte</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        {marketingQuality.totals.discarded} descartados na janela
-                        {marketingRates.discardHigh ? " · acima do limiar (25%)" : ""}
-                      </p>
-                    </div>
-                    <span
-                      className={`cc23-display ${
-                        marketingRates.discardHigh ? "text-[var(--atlas-danger)]!" : ""
-                      }`}
-                    >
-                      {marketingRates.discardRate}
-                    </span>
-                  </li>
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">CPL</p>
-                      {/* A linha de baixo diz POR QUE o traço está lá. Traço mudo
-                          faz o leitor supor que o dado não carregou; traço com
-                          motivo faz ele ir atrás da conta de anúncios certa. */}
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        {marketingRates.costPerQualified
-                          ? `${marketingRates.costPerQualified} por qualificado`
-                          : marketingRates.whyNoCostPerLead
-                            ? `${brl.format(marketingRates.spendWithoutLeads)} em ${marketingRates.campaignsSpendWithoutLeads} campanha(s) sem lead atribuída`
-                            : marketingQuality.policy.spendMeasured
-                              ? `${brl.format(marketingQuality.totals.spend)} investidos`
-                              : "Custo não medido"}
-                      </p>
-                    </div>
-                    <span className="cc6-metric-value text-xl">
-                      {marketingRates.costPerLead ?? "—"}
-                    </span>
-                  </li>
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      {/* O rótulo era "Campanhas com leads" e a fonte conta
-                          `leads > 0 OU spend > 0`. Enquanto `marketing_spend`
-                          estava vazia os dois coincidiam, e o rótulo era
-                          acidentalmente verdadeiro. Com gasto importado, ele
-                          passou a chamar de "com leads" 7 campanhas que têm
-                          zero. */}
-                      <p className="text-rotulo text-slate-500">Campanhas em atividade</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        com lead ou gasto na janela · {marketingQuality.totals.campaigns} na organização
-                      </p>
-                    </div>
-                    <span className="cc6-metric-value text-xl">
-                      {marketingQuality.totals.campaignsRanked}
-                    </span>
-                  </li>
-                </ul>
-              </div>
-              {marketingQuality.policy.windowComplete === false ||
-              !marketingQuality.policy.spendMeasured ? (
-                <p className="mt-3 text-rotulo leading-5 text-[var(--atlas-warning)]">
-                  {marketingQuality.policy.windowComplete === false
-                    ? "Janela truncada no teto de paginação — números são piso, não total. "
-                    : ""}
-                  {!marketingQuality.policy.spendMeasured
-                    ? "Gasto não medido (marketing_spend indisponível) — CPL omitido em vez de fingir zero."
-                    : ""}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
         </section>
       ) : null}
-
-      <section
-        aria-label="Prioridades agora"
-        className="cc5-reveal atlas-panel rounded-2xl p-5 sm:p-6"
-        style={{ animationDelay: "70ms" }}
-      >
-        <div className="cc5-hero-head">
-          <div className="min-w-0">
-            <p className="cc5-eyebrow">Prioridades agora</p>
-            <h2 className="cc5-hero-title">
-              {isBroker ? "O que atender primeiro" : "O que pede a sua decisão"}
-            </h2>
-          </div>
-          <span className="cc5-tag">
-            <span aria-hidden="true">◇</span> IA proativa · {priorities.length}
-          </span>
-        </div>
-        {prioritiesLoading ? (
-          <AtlasSkeleton className="mt-4 h-40 w-full" />
-        ) : priorities.length ? (
-          <ul className="cc5-priority-list">
-            {priorities.map((card, index) => (
-              <li
-                key={card.id}
-                className={`cc5-priority cc5-sev-${card.severity}${index === 0 ? " cc5-priority-lead" : ""}`}
-              >
-                <span aria-hidden="true" className="cc5-priority-band" />
-                <span aria-hidden="true" className="cc5-priority-glyph">
-                  {card.glyph}
-                </span>
-                <div className="cc5-priority-body">
-                  <p className="cc5-priority-title">{card.title}</p>
-                  <p className="cc5-priority-reason">{card.reason}</p>
-                </div>
-                <div
-                  className="cc5-priority-actions"
-                  role="group"
-                  aria-label={`Ações para ${card.title}`}
-                >
-                  <Link
-                    href={card.primaryHref}
-                    className="cc5-action cc5-action-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-                  >
-                    {card.primaryLabel}
-                  </Link>
-                  {card.actionSignal ? (
-                    (() => {
-                      const state = proposalState[card.id];
-                      if (state?.status === "sent" || state?.status === "deduped") {
-                        return (
-                          /* "A IA propõe, o humano aprova": o tracejado vai para a borda
-                             que a pílula JÁ tem — o `.cc23-seam` desenharia uma reta de
-                             1px cruzando o raio de 999px, virando artefato. O `!` é
-                             obrigatório porque `.cc6-chip` declara `border: 1px solid`
-                             fora de @layer e venceria o utilitário. */
-                          <span className="cc6-chip border-dashed! tabular-nums" role="status">
-                            {state.status === "deduped"
-                              ? "Já havia proposta · aguarda aprovação"
-                              : "Proposta enviada · aguarda aprovação"}
-                            <Link
-                              href="/approvals"
-                              className="ml-2 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-                            >
-                              Abrir aprovações →
-                            </Link>
-                          </span>
-                        );
-                      }
-                      if (state?.status === "error") {
-                        return (
-                          <span className="cc6-crit text-sm" role="status">
-                            {state.message}
-                          </span>
-                        );
-                      }
-                      return (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            prepareAction(card.id, card.actionSignal as ProposalSignalKind, card.actionMetric)
-                          }
-                          className="cc5-action"
-                          aria-busy={state?.status === "loading"}
-                          disabled={state?.status === "loading"}
-                          aria-label={`Preparar ação para ${card.title}`}
-                        >
-                          {state?.status === "loading" ? "Preparando…" : "Preparar ação"}
-                        </button>
-                      );
-                    })()
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => toggleSignalSeen(card.id)}
-                    className="cc5-action"
-                    aria-label={`Adiar o sinal ${card.title}`}
-                  >
-                    Adiar
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="cc5-hero-empty">
-            <p className="cc5-hero-empty-title">Nada pede sua decisão agora.</p>
-            <p className="cc5-hero-empty-detail">
-              A IA proativa não encontrou sinais que exijam sua decisão neste momento. Assim que
-              algo mudar no seu escopo, aparece aqui primeiro.
-            </p>
-          </div>
-        )}
-      </section>
 
       {/* SECUNDÁRIO · corretor — números do dia direto do broker-daily. */}
       {isBroker ? (
         <section
           aria-label="Meus números do dia"
           className="cc5-reveal atlas-panel rounded-2xl px-5 py-4 sm:px-6"
-          style={{ animationDelay: "100ms" }}
+          style={{ animationDelay: "145ms" }}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p
@@ -3068,18 +3438,6 @@ export default function CommandCenterPage() {
         </section>
       ) : null}
 
-      {/* IA mais ativa · corretor — a playlist de próxima-melhor-ação (motor que
-          já existia e não tinha UI), surfada direto na Sala de Comando. */}
-      {isBroker ? (
-        <section
-          aria-label="Próxima melhor ação"
-          className="cc5-reveal [transform-style:preserve-3d]"
-          style={{ animationDelay: "120ms" }}
-        >
-          <NextBestActionPanel max={5} />
-        </section>
-      ) : null}
-
       {/* OFERTA ATIVA · corretor — o balcão do acervo de resgate.
           Espelha, para o CORRETOR, a seção que a liderança tem logo abaixo
           ("Leads abertos sem responsável"): mesma forma, público oposto.
@@ -3092,72 +3450,20 @@ export default function CommandCenterPage() {
         <section
           aria-label="Oferta ativa · acervo de resgate"
           className="cc5-reveal [transform-style:preserve-3d]"
-          style={{ animationDelay: "122ms" }}
+          style={{ animationDelay: "150ms" }}
         >
           <OfertaAtivaDoAcervoPanel />
         </section>
       ) : null}
 
-      {/* IA · liderança — a fila dos leads ABERTOS sem responsável. O painel só
-          existia para o corretor, e a maior massa de receita parada da base não
-          está em carteira nenhuma: está sem dono, invisível em todas as telas.
-          Aditivo e sem automação — o painel leva ao lead, quem escolhe o dono
-          continua sendo gente.
-          A condição espelha o conjunto LEADERSHIP da rota (director |
-          superintendent | manager). Com `!isBroker`, papéis como marketing,
-          finance, developer e viewer renderizavam a seção e recebiam 403 —
-          erro fixo na tela para quem nunca deveria ver a seção. */}
-      {isDirector || isSuperintendent || isManager ? (
-        <section
-          aria-label="Leads abertos sem responsável"
-          className="cc5-reveal [transform-style:preserve-3d]"
-          style={{ animationDelay: "125ms" }}
-        >
-          <NextBestActionPanel max={5} scope="sem_dono" />
-        </section>
-      ) : null}
-
-      {/* Governança · liderança — aprovar as campanhas Meta prontas (Arvo/Spin)
-          com 1 clique, direto para a Caixa de Aprovações. */}
-      {!isBroker ? (
-        <section
-          aria-label="Aprovar campanhas Meta"
-          className="cc5-reveal [transform-style:preserve-3d]"
-          style={{ animationDelay: "130ms" }}
-        >
-          <CampaignApprovalsPanel />
-        </section>
-      ) : null}
-
-      {/* IA proativa · todos os papéis — os "próximos passos" endereçados ao papel
-          (motor proactive-hierarchy, antes sem UI). Cada papel só vê o seu mundo. */}
-      <section
-        aria-label="Próximos passos da IA"
-        className="cc5-reveal [transform-style:preserve-3d]"
-        style={{ animationDelay: "140ms" }}
-      >
-        <ProactiveNudgesPanel max={4} />
-      </section>
-
-      {/*
-        O VALOR DA VENDA FECHADA.
-
-        A rota `/api/v1/crm/vendas-sem-valor` existia, com contrato e prova, e
-        NENHUMA tela a consumia. O custo tem data: a primeira venda fecha amanhã e
-        a única lead `ganho` da base está com valor nulo.
-
-        O painel se esconde sozinho quando não há pendência — ocupar a tela do
-        diretor com card vazio treina a pessoa a ignorar o lugar onde a cobrança
-        aparece.
-      */}
       {/*
         SALA DE COMANDO — os seis indicadores, o funil e as saidas, medidos.
 
         CORRECAO DE UMA AFIRMACAO FALSA (2026-07-30): este comentario dizia "vem
         ANTES do resto de proposito: e o que o diretor le nos primeiros cinco
-        segundos". Era falso na ordem do DOM — o bloco esta por volta da setima
-        posicao. Comentario que descreve uma intencao nao cumprida engana quem le
-        o codigo depois, entao ou a ordem muda ou o comentario conta a verdade.
+        segundos". Era falso na ordem do DOM. Comentario que descreve uma
+        intencao nao cumprida engana quem le o codigo depois, entao ou a ordem
+        muda ou o comentario conta a verdade.
 
         O que este bloco garante, e isso e verificado por contrato: ele nao
         imprime taxa de conversao com amostra de uma venda, ele desenha as etapas
@@ -3165,28 +3471,19 @@ export default function CommandCenterPage() {
         "a etapa esvaziou" de "ninguem chegou" — que mandam a direcao fazer
         coisas opostas.
 
-        A reordenacao da tela inteira e trabalho proprio, ainda nao feito.
+        A REORDENACAO DA TELA INTEIRA FOI FEITA (2026-08-01): decisao em cima,
+        informacao no meio, auditoria embaixo. Este bloco e LEITURA, entao abre a
+        faixa de informacao na 17a posicao — depois da fila de decisoes
+        preparadas pela IA, que subiu da 12a para a 6a, e depois do banner de
+        atualizacao parcial, que subiu da 19a para a 3a. Nenhum bloco foi
+        apagado: os 24 continuam os 24, na ordem em que a decisao acontece.
       */}
-      {/* ── A FILA DE DECISOES VEM ANTES DO PAINEL DE LEITURA ─────────────
-          Medido em 01/08/2026: a IA tinha 20 redistribuicoes preparadas em
-          `ai_shadow_decisions` (retido=true, executado=false,
-          decisao_humana=null) e NENHUMA tela lia a tabela. O modo sombra grava
-          a propria condicao de saida — "olhe a comparacao recomendacao x
-          decisao x resultado" — e sem uma porta que colete a decisao humana
-          essa comparacao nunca teria um caso. Era laco aberto, nao cautela.
-
-          Fica ACIMA da sala de comando de proposito: o que exige assinatura
-          vem antes do que informa. E a regra de hierarquia do padrao v3. ── */}
-      <section aria-label="Decisoes preparadas pela inteligencia">
-        <FilaDeDecisoesPanel />
-      </section>
-
-      <section aria-label="Sala de comando">
+      <section
+        aria-label="Sala de comando"
+        className="cc5-reveal"
+        style={{ animationDelay: "160ms" }}
+      >
         <SalaDeComandoPanel />
-      </section>
-
-      <section aria-label="Vendas fechadas sem valor informado" className="cc5-reveal" style={{ animationDelay: "160ms" }}>
-        <VendasSemValorPanel />
       </section>
 
       {/* O tilt 3D mutava style.transform a cada pointermove sem carregar informação
@@ -3196,7 +3493,7 @@ export default function CommandCenterPage() {
       <section
         aria-label="Pulso da operação"
         className="cc5-reveal grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-        style={{ animationDelay: "140ms" }}
+        style={{ animationDelay: "175ms" }}
       >
         <AtlasMetric label="Leads ativos" value={<span className={metricValueClass}>{activeDisplay}</span>} detail="Base em atendimento no seu escopo" tone="blue" />
         <AtlasMetric label="Leads quentes" value={<span className={metricValueClass}>{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
@@ -3209,7 +3506,7 @@ export default function CommandCenterPage() {
       <section
         aria-label="Distribuição do pipeline por estágio"
         className="cc5-reveal atlas-panel rounded-2xl px-5 py-4 sm:px-6"
-        style={{ animationDelay: "170ms" }}
+        style={{ animationDelay: "190ms" }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p
@@ -3273,157 +3570,6 @@ export default function CommandCenterPage() {
           </p>
         )}
       </section>
-
-      {/* TERCIÁRIO · telemetria + régua de módulos — discreto e colapsável
-          (reusa collapsedLayers; contadores do cabeçalho seguem vivos). */}
-      <section
-        aria-label="Telemetria e régua de módulos"
-        className="cc5-reveal atlas-panel rounded-2xl px-5 py-3"
-        style={{ animationDelay: "210ms" }}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p
-            className="cc5-eyebrow"
-            title="Camada terciária: latência real medida por grupo de dados, séries das últimas 24h e a régua de módulos com contagem e estado de saúde."
-          >
-            Telemetria · Módulos
-          </p>
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-rotulo tabular-nums text-slate-500">
-              {moduleHealth.length
-                ? `${operationalModuleCount}/${moduleHealth.length} módulos · ${updatedAgoLabel}`
-                : updatedAgoLabel}
-            </span>
-            <LayerToggle
-              collapsed={collapsedLayers.operacao}
-              onToggle={() => toggleLayer("operacao")}
-              layerLabel="telemetria e módulos"
-            />
-          </div>
-        </div>
-        {collapsedLayers.operacao ? null : (
-        <>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <span
-            className={`inline-flex items-center gap-2 text-rotulo font-medium ${
-              liveConnected ? "text-slate-300" : "text-[var(--atlas-warning)]"
-            }`}
-          >
-            <span aria-hidden="true" className="relative inline-flex h-1.5 w-1.5">
-              {liveConnected ? (
-                <span className="absolute inline-flex h-full w-full rounded-full bg-[var(--atlas-success)] opacity-60 motion-safe:animate-ping" />
-              ) : null}
-              <span
-                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${
-                  liveConnected ? "bg-[var(--atlas-success)]" : "bg-[var(--atlas-warning)]"
-                }`}
-              />
-            </span>
-            {liveConnected ? "canal ao vivo" : "canal reconectando"}
-          </span>
-          <span className="font-mono text-rotulo tabular-nums text-slate-500">
-            {latencyEntries.length ? latencyEntries.join(" · ") : "medindo latência…"}
-          </span>
-          <span className="text-rotulo tabular-nums text-slate-500">{updatedAgoLabel}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          {/* O anel de módulos era um gauge em canvas rodando rAF só para redesenhar
-              "X/Y", que já aparece em texto no cabeçalho desta mesma faixa. Vira par
-              textual — e o `detail`, que antes só existia no aria-label do canvas,
-              passa a ser lido no fluxo (sr-only), em vez de ficar preso num `title`
-              inalcançável por teclado. O anel do papel (roleRing) fica. */}
-          {moduleRing ? (
-            <span className="flex items-center gap-2">
-              <span aria-hidden="true" className="cc6-num text-rotulo text-slate-300">
-                {moduleRing.centerLabel}
-              </span>
-              <span aria-hidden="true" className="text-rotulo text-slate-500">
-                Módulos
-              </span>
-              <span className="sr-only">
-                {moduleRing.label}: {moduleRing.detail}
-              </span>
-            </span>
-          ) : null}
-          {roleRing ? (
-            <span className="flex items-center gap-2">
-              <DepthRing
-                fraction={roleRing.fraction}
-                centerLabel={roleRing.centerLabel}
-                detail={roleRing.detail}
-                label={roleRing.label}
-              />
-              <span className="text-rotulo text-slate-500">{roleRing.caption}</span>
-            </span>
-          ) : null}
-          <span className="flex items-center gap-2">
-            <Sparkline
-              points={sparkSeries.leadsPerHour}
-              label="Leads criados nas últimas 24 horas, por hora"
-            />
-            <span className="text-rotulo text-slate-500">Leads · 24h</span>
-          </span>
-          <span className="flex items-center gap-2">
-            <Sparkline
-              points={sparkSeries.activityPerHour}
-              label="Atividade de leads e tarefas nas últimas 24 horas, por hora"
-            />
-            <span className="text-rotulo text-slate-500">Atividade · 24h</span>
-          </span>
-          <span className="text-rotulo text-slate-600">
-            <kbd className="rounded border border-white/[.12] bg-white/[.03] px-1.5 py-0.5 font-mono text-micro text-slate-400">
-              r
-            </kbd>{" "}
-            atualizar
-          </span>
-          <span className="text-rotulo text-slate-600">
-            <kbd className="rounded border border-white/[.12] bg-white/[.03] px-1.5 py-0.5 font-mono text-micro text-slate-400">
-              f
-            </kbd>{" "}
-            apresentação
-          </span>
-        </div>
-        </div>
-        {/* Bloco de menor valor decisório da tela: perde as até 10 bordas, mas MANTÉM
-            a grade (empilhar em coluna única faria a régua virar a lista mais alta da
-            página) e a hairline de topo que a separa da faixa de telemetria. Os itens
-        {/* ── A RÉGUA DE MÓDULOS SAIU: ERA O MESMO CONTEÚDO DO BLOCO SEGUINTE ──
-        
-            MEDIDO na produção, dois blocos ADJACENTES listando os mesmos módulos
-            com os mesmos números:
-        
-              régua (179px)                 saúde operacional (258px)
-              Leads · carteira · 482        Leads 482 · carteira · [Novo lead]
-              Pipeline · funil · 482        Pipeline 482 · funil · [Abrir prioridades]
-              Tarefas e agenda              Tarefas e agenda 7 · [Nova tarefa]
-              Clientes 360 · 482            Clientes 360 482 · [Localizar lead]
-        
-            O segundo faz tudo o que o primeiro fazia E leva a ação junto. A régua
-            era leitura pura — 179px para repetir o que vinha 190px abaixo.
-        
-            O resto desta faixa (latência por grupo, o anel e as duas sparklines)
-            FICA: aquilo o bloco de saúde não mostra. Saiu a repetição, não a
-            telemetria. */}
-        </>
-        )}
-      </section>
-
-      {/* TERCIÁRIO · saúde operacional dos módulos + orientação de escrita segura.
-          Fronteira protegida única (fetch a /api/v1/core-v2/module-health, sem
-          leitura direta ao banco). Restaura a governança CC-6 dos cinco módulos
-          prioritários com semáforo e ação de escrita segura. */}
-      <CommandCenterModuleHealth />
-
-      {warnings.length ? (
-        <AtlasRecoverableError
-          title="Atualização parcial da sala de comando"
-          description={warnings.join(" · ")}
-          onRetry={() => void load()}
-          busy={loading}
-          scope="page"
-        />
-      ) : null}
 
       <section
         aria-label="Agora e sinais da IA"
@@ -3684,265 +3830,146 @@ export default function CommandCenterPage() {
         </div>
       </section>
 
-      {isBroker ? (
-        <section aria-label="Fila do dia" className="[transform-style:preserve-3d]">
-          <div className={depthShell}>
-            <AtlasCard>
-              <AtlasCardHeader
-                eyebrow="Camada corretor"
-                title="Fila do dia"
-                description="Quem atender agora, por que entrou na fila e a próxima melhor ação — com atalhos de um clique."
-                action={
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    {brokerDaily ? (
-                      <AtlasBadge tone={brokerDaily.priorities.length ? "info" : "success"}>
-                        {brokerDaily.priorities.length
-                          ? `${brokerDaily.priorities.length} NA FILA`
-                          : "FILA CONCLUÍDA"}
-                      </AtlasBadge>
-                    ) : null}
-                    <LayerToggle
-                      collapsed={collapsedLayers.fila}
-                      onToggle={() => toggleLayer("fila")}
-                      layerLabel="fila do dia"
-                    />
-                  </div>
-                }
-              />
-              {collapsedLayers.fila ? null : (
-              <div className={`border-t border-white/[.06] ${layerBodyPad}`}>
-                {!brokerDaily ? (
-                  <AtlasSkeleton className="h-56 w-full" />
-                ) : brokerDaily.priorities.length ? (
-                  /* Superfície de trabalho do corretor: N cards bordados dentro de um
-                     AtlasCard viravam caixa-dentro-de-caixa em série. O wrapper interno
-                     com flex-wrap FICA (é ele que empurra as 4 ações para a segunda linha
-                     no mobile) e ganha w-full para o justify-between não colapsar agora
-                     que o article virou flex container. */
-                  <div className="cc23-rows">
-                    {brokerDaily.priorities.map((item, index) => {
-                      const contact = phoneLinks(phoneByLead.get(item.leadId) ?? "");
-                      const urgent = /sla|vencid|atrasad/i.test(item.reason);
-                      return (
-                        <article
-                          key={item.leadId}
-                          className="cc23-row transition-colors hover:bg-white/[.02]"
-                        >
-                          <div className="flex w-full flex-wrap items-start justify-between gap-3">
-                            <div className="flex min-w-0 items-start gap-3">
-                              <span
-                                aria-hidden="true"
-                                className="grid h-8 w-8 shrink-0 place-items-center text-xs font-semibold tabular-nums text-[var(--atlas-accent)]"
-                              >
-                                {index + 1}
-                              </span>
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <Link
-                                    href={`/leads/${item.leadId}`}
-                                    className="font-semibold text-white hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-                                  >
-                                    {item.leadName}
-                                  </Link>
-                                  <AtlasBadge tone={urgent ? "danger" : item.hot ? "warning" : "info"}>
-                                    {item.reason}
-                                  </AtlasBadge>
-                                </div>
-                                <p className="mt-1 text-sm leading-6 text-slate-300">{item.nextBestAction}</p>
-                                <p className="mt-1 text-xs text-slate-500">
-                                  Score {item.score} · etapa {item.status} · {item.conversionProbability}% de conversão estimada
-                                  {item.dueAt
-                                    ? ` · prazo ${new Date(item.dueAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
-                                    : ""}
-                                </p>
-                              </div>
-                            </div>
-                            <div
-                              className="flex shrink-0 items-center gap-2"
-                              role="group"
-                              aria-label={`Ações rápidas para ${item.leadName}`}
-                            >
-                              <Link
-                                href={`/leads/${item.leadId}`}
-                                aria-label={`Abrir lead ${item.leadName}`}
-                                title="Abrir lead"
-                                className={quickActionClass}
-                              >
-                                <span aria-hidden="true">👁</span>
-                              </Link>
-                              {contact ? (
-                                <a
-                                  href={contact.call}
-                                  aria-label={`Ligar para ${item.leadName}`}
-                                  title="Ligar"
-                                  className={quickActionClass}
-                                >
-                                  <span aria-hidden="true">📞</span>
-                                </a>
-                              ) : null}
-                              {contact ? (
-                                <a
-                                  href={contact.whatsapp}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  aria-label={`Abrir WhatsApp com ${item.leadName}`}
-                                  title="WhatsApp"
-                                  className={quickActionClass}
-                                >
-                                  <span aria-hidden="true">💬</span>
-                                </a>
-                              ) : null}
-                              <button
-                                type="button"
-                                aria-label={`Preparar abordagem com IA para ${item.leadName}`}
-                                title="Preparar com IA"
-                                className={quickActionClass}
-                                onClick={() =>
-                                  openCopilot(
-                                    "Prepare uma abordagem curta para esta lead usando apenas o contexto autorizado. Explique a recomendação e não envie mensagem nem altere o CRM.",
-                                    {
-                                      leadId: item.leadId,
-                                      status: item.status,
-                                      score: item.score,
-                                      reason: item.reason,
-                                      nextBestAction: item.nextBestAction,
-                                      conversionProbability: item.conversionProbability,
-                                    },
-                                  )
-                                }
-                              >
-                                <span aria-hidden="true">✦</span>
-                              </button>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <AtlasEmpty
-                    reason="completed"
-                    title="Fila do dia concluída"
-                    description="Sua carteira não possui ação urgente neste momento."
-                  />
-                )}
-              </div>
-              )}
-            </AtlasCard>
+      {/* TERCIÁRIO · telemetria + régua de módulos — discreto e colapsável
+          (reusa collapsedLayers; contadores do cabeçalho seguem vivos). */}
+      <section
+        aria-label="Telemetria e régua de módulos"
+        className="cc5-reveal atlas-panel rounded-2xl px-5 py-3"
+        style={{ animationDelay: "220ms" }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p
+            className="cc5-eyebrow"
+            title="Camada terciária: latência real medida por grupo de dados, séries das últimas 24h e a régua de módulos com contagem e estado de saúde."
+          >
+            Telemetria · Módulos
+          </p>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-rotulo tabular-nums text-slate-500">
+              {moduleHealth.length
+                ? `${operationalModuleCount}/${moduleHealth.length} módulos · ${updatedAgoLabel}`
+                : updatedAgoLabel}
+            </span>
+            <LayerToggle
+              collapsed={collapsedLayers.operacao}
+              onToggle={() => toggleLayer("operacao")}
+              layerLabel="telemetria e módulos"
+            />
           </div>
-        </section>
-      ) : null}
+        </div>
+        {collapsedLayers.operacao ? null : (
+        <>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <span
+            className={`inline-flex items-center gap-2 text-rotulo font-medium ${
+              liveConnected ? "text-slate-300" : "text-[var(--atlas-warning)]"
+            }`}
+          >
+            <span aria-hidden="true" className="relative inline-flex h-1.5 w-1.5">
+              {liveConnected ? (
+                <span className="absolute inline-flex h-full w-full rounded-full bg-[var(--atlas-success)] opacity-60 motion-safe:animate-ping" />
+              ) : null}
+              <span
+                className={`relative inline-flex h-1.5 w-1.5 rounded-full ${
+                  liveConnected ? "bg-[var(--atlas-success)]" : "bg-[var(--atlas-warning)]"
+                }`}
+              />
+            </span>
+            {liveConnected ? "canal ao vivo" : "canal reconectando"}
+          </span>
+          <span className="font-mono text-rotulo tabular-nums text-slate-500">
+            {latencyEntries.length ? latencyEntries.join(" · ") : "medindo latência…"}
+          </span>
+          <span className="text-rotulo tabular-nums text-slate-500">{updatedAgoLabel}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          {/* O anel de módulos era um gauge em canvas rodando rAF só para redesenhar
+              "X/Y", que já aparece em texto no cabeçalho desta mesma faixa. Vira par
+              textual — e o `detail`, que antes só existia no aria-label do canvas,
+              passa a ser lido no fluxo (sr-only), em vez de ficar preso num `title`
+              inalcançável por teclado. O anel do papel (roleRing) fica. */}
+          {moduleRing ? (
+            <span className="flex items-center gap-2">
+              <span aria-hidden="true" className="cc6-num text-rotulo text-slate-300">
+                {moduleRing.centerLabel}
+              </span>
+              <span aria-hidden="true" className="text-rotulo text-slate-500">
+                Módulos
+              </span>
+              <span className="sr-only">
+                {moduleRing.label}: {moduleRing.detail}
+              </span>
+            </span>
+          ) : null}
+          {roleRing ? (
+            <span className="flex items-center gap-2">
+              <DepthRing
+                fraction={roleRing.fraction}
+                centerLabel={roleRing.centerLabel}
+                detail={roleRing.detail}
+                label={roleRing.label}
+              />
+              <span className="text-rotulo text-slate-500">{roleRing.caption}</span>
+            </span>
+          ) : null}
+          <span className="flex items-center gap-2">
+            <Sparkline
+              points={sparkSeries.leadsPerHour}
+              label="Leads criados nas últimas 24 horas, por hora"
+            />
+            <span className="text-rotulo text-slate-500">Leads · 24h</span>
+          </span>
+          <span className="flex items-center gap-2">
+            <Sparkline
+              points={sparkSeries.activityPerHour}
+              label="Atividade de leads e tarefas nas últimas 24 horas, por hora"
+            />
+            <span className="text-rotulo text-slate-500">Atividade · 24h</span>
+          </span>
+          <span className="text-rotulo text-slate-600">
+            <kbd className="rounded border border-white/[.12] bg-white/[.03] px-1.5 py-0.5 font-mono text-micro text-slate-400">
+              r
+            </kbd>{" "}
+            atualizar
+          </span>
+          <span className="text-rotulo text-slate-600">
+            <kbd className="rounded border border-white/[.12] bg-white/[.03] px-1.5 py-0.5 font-mono text-micro text-slate-400">
+              f
+            </kbd>{" "}
+            apresentação
+          </span>
+        </div>
+        </div>
+        {/* Bloco de menor valor decisório da tela: perde as até 10 bordas, mas MANTÉM
+            a grade (empilhar em coluna única faria a régua virar a lista mais alta da
+            página) e a hairline de topo que a separa da faixa de telemetria. Os itens
+        {/* ── A RÉGUA DE MÓDULOS SAIU: ERA O MESMO CONTEÚDO DO BLOCO SEGUINTE ──
+        
+            MEDIDO na produção, dois blocos ADJACENTES listando os mesmos módulos
+            com os mesmos números:
+        
+              régua (179px)                 saúde operacional (258px)
+              Leads · carteira · 482        Leads 482 · carteira · [Novo lead]
+              Pipeline · funil · 482        Pipeline 482 · funil · [Abrir prioridades]
+              Tarefas e agenda              Tarefas e agenda 7 · [Nova tarefa]
+              Clientes 360 · 482            Clientes 360 482 · [Localizar lead]
+        
+            O segundo faz tudo o que o primeiro fazia E leva a ação junto. A régua
+            era leitura pura — 179px para repetir o que vinha 190px abaixo.
+        
+            O resto desta faixa (latência por grupo, o anel e as duas sparklines)
+            FICA: aquilo o bloco de saúde não mostra. Saiu a repetição, não a
+            telemetria. */}
+        </>
+        )}
+      </section>
 
-      {managementQueue ? (
-        <section aria-label="Camada gestão" className="[transform-style:preserve-3d]">
-          <div className={depthShell}>
-            <AtlasCard>
-              <AtlasCardHeader
-                eyebrow="Camada gestão"
-                title={managementQueue.title}
-                description={managementQueue.description}
-                action={
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    {managementQueue.ready ? (
-                      <AtlasBadge tone={managementQueue.items.length ? "warning" : "success"}>
-                        {managementQueue.items.length
-                          ? `${managementQueue.items.length} PARA REVISAR`
-                          : "SEM EXCEÇÕES"}
-                      </AtlasBadge>
-                    ) : null}
-                    <LayerToggle
-                      collapsed={collapsedLayers.fila}
-                      onToggle={() => toggleLayer("fila")}
-                      layerLabel="fila de gestão"
-                    />
-                  </div>
-                }
-              />
-              {collapsedLayers.fila ? null : (
-              <div className={`border-t border-white/[.06] ${layerBodyPad}`}>
-                {isManager && teamSla ? (
-                  /* Três pílulas desenhadas à mão viram o primitivo que já existe.
-                     `whitespace-normal!` é necessário porque `.cc6-chip` fixa
-                     `white-space: nowrap` fora de @layer, e estes rótulos são longos o
-                     bastante para forçar rolagem horizontal em 320px. */
-                  <div data-phase="35-follow-up-sla" className="mb-4">
-                    <p className="cc6-eyebrow mb-2">Cadência, atraso e recuperação</p>
-                    <div className="flex flex-wrap gap-2 text-xs text-slate-400">
-                      <span className="cc6-chip whitespace-normal!">
-                        SLA de follow-up:{" "}
-                        {/* A taxa vem como razão 0–1. Imprimi-la crua mostrava
-                            "1%" para 100% de cumprimento — e nunca cruzava
-                            nenhum limiar de cor. */}
-                        {teamSla.totals.followUpComplianceRate === null
-                          ? teamSla.totals.followUpMensuravel
-                            ? "sem amostra"
-                            : "não medido neste banco"
-                          : `${Math.round(teamSla.totals.followUpComplianceRate * 100)}%`}
-                      </span>
-                      <span className="cc6-chip whitespace-normal!">
-                        {teamSla.totals.followUpsMeasured} follow-up(s) medido(s)
-                      </span>
-                      <span className="cc6-chip whitespace-normal!">
-                        {teamSla.totals.averageFollowUpMinutes === null
-                          ? "tempo médio sem amostra"
-                          : `${teamSla.totals.averageFollowUpMinutes} min de resposta média`}
-                      </span>
-                      <span className="cc6-chip whitespace-normal!">
-                        {teamSla.totals.recoveredFollowUps} recuperado(s) após o prazo
-                      </span>
-                      <span className="cc6-chip whitespace-normal!">
-                        {teamSla.totals.firstContactOverdue} sem primeiro contato
-                      </span>
-                      <span className="cc6-chip whitespace-normal!">
-                        {teamSla.totals.brokersWithAlerts} corretor(es) com alerta
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
-                {!managementQueue.ready ? (
-                  <AtlasSkeleton className="h-40 w-full" />
-                ) : managementQueue.items.length ? (
-                  /* Fila de exceção da liderança: coluna única e densa, para a varredura
-                     ir do mais severo ao menos sem borda concorrente. O Link continua
-                     `block` (os três spans empilhados dependem disso) e mantém o próprio
-                     anel de foco — `.cc23-row` NÃO vai no focável, porque o
-                     `.cc23-row:focus-visible` do CSS resolve para outline inválido. */
-                  <div className="cc23-quiet">
-                    <ul className="cc23-rows">
-                      {managementQueue.items.map((item, index) => (
-                        <li key={item.key} className={index === 0 ? "" : "cc6-hairline"}>
-                          <Link
-                            href={item.href}
-                            className="block rounded-lg px-2 py-3 transition-colors hover:bg-white/[.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-                          >
-                            <span className="flex flex-wrap items-center gap-2">
-                              <AtlasBadge tone={interventionTone(item.severity)}>
-                                {item.severity === "critical" ? "AGORA" : item.severity === "attention" ? "ATENÇÃO" : "EQUILÍBRIO"}
-                              </AtlasBadge>
-                              <span className="text-sm font-medium text-white">{item.label}</span>
-                            </span>
-                            <span className="mt-2 block text-xs leading-5 text-slate-400">{item.reason}</span>
-                            <span className="mt-2 block text-xs font-semibold text-[var(--atlas-accent)]">
-                              {item.action} →
-                            </span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <AtlasEmpty
-                    reason="completed"
-                    title="Sem exceções críticas"
-                    description="O escopo visível não apresenta intervenção urgente neste momento."
-                  />
-                )}
-              </div>
-              )}
-            </AtlasCard>
-          </div>
-        </section>
-      ) : null}
+      {/* TERCIÁRIO · saúde operacional dos módulos + orientação de escrita segura.
+          Fronteira protegida única (fetch a /api/v1/core-v2/module-health, sem
+          leitura direta ao banco). Restaura a governança CC-6 dos cinco módulos
+          prioritários com semáforo e ação de escrita segura. */}
+      <CommandCenterModuleHealth />
 
       {/* A antiga "Saúde dos módulos" foi fundida na régua de módulos da camada
           terciária; a governança segue exclusiva da diretoria. */}

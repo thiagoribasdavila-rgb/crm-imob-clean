@@ -1174,192 +1174,6 @@ export default function LeadsPage() {
       data-phase="36-leads-action-workspace"
       data-leads-layout="action-first"
     >
-      {/* Herói-resumo CC-6: identidade + total + atalhos de rotina em uma
-          única superfície (única com 3D). Substitui hero, cards de métricas
-          e painel "Minha rotina" separados. */}
-      <section aria-label="Resumo da carteira e atalhos de rotina">
-        <TiltShell className="cc6-panel cc6-reveal p-5 sm:p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <p className="cc6-eyebrow">CRM · Leads</p>
-                {currentRole === "broker" ? (
-                  <StatusBadge tone="success">CARTEIRA EXCLUSIVA</StatusBadge>
-                ) : null}
-                {currentRole === "manager" ? (
-                  <StatusBadge tone="success">
-                    MEU TIME · {teamBrokers.length} CORRETORES
-                  </StatusBadge>
-                ) : null}
-              </div>
-              <h1 className="mt-2 max-w-xl text-2xl font-semibold tracking-[-0.02em] text-[var(--atlas-texto-forte)] sm:text-[27px] sm:leading-9">
-                {currentRole === "broker"
-                  ? "Sua fila de leads, pronta para agir."
-                  : "Leads que exigem decisão agora."}
-              </h1>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Link href="/leads/new" className="atlas-button-primary">
-                  + Novo lead
-                </Link>
-                <Link href="/pipeline" className="cc6-ghost-btn min-h-11">
-                  Abrir pipeline
-                </Link>
-                <details className="atlas-leads-tools">
-                  <summary>Mais ferramentas</summary>
-                  <div>
-                    <Link href="/leads/data-quality">Qualidade dos dados</Link>
-                    <Link href="/leads/deduplication">Duplicidades</Link>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        window.dispatchEvent(
-                          new CustomEvent("atlas:open-copilot", {
-                            detail: {
-                              prompt:
-                                "Analise a carteira de leads visível e explique até três prioridades, sem executar nenhuma ação.",
-                              context: {
-                                total,
-                                filters: {
-                                  status,
-                                  source,
-                                  project,
-                                  broker,
-                                  score,
-                                  attention,
-                                  nextAction,
-                                },
-                                pageMetrics,
-                                visiblePriorities: visiblePriorityQueue.length,
-                              },
-                            },
-                          }),
-                        )
-                      }
-                    >
-                      ✦ Analisar carteira
-                    </button>
-                  </div>
-                </details>
-              </div>
-            </div>
-            <div className="shrink-0 lg:pl-6 lg:text-right">
-              <p className="cc6-eyebrow">Base filtrada</p>
-              <p className="cc6-metric-value mt-1 text-4xl leading-none">
-                {loading ? "—" : total}
-              </p>
-              <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
-                {hasFilters
-                  ? "resultado dos filtros atuais"
-                  : currentRole === "broker"
-                    ? "somente a sua carteira"
-                    : "somente seu escopo comercial"}
-              </p>
-            </div>
-          </div>
-          <div className="cc6-hairline mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
-            <p
-              className="cc6-eyebrow"
-              title="Os números contam a incidência na página atual; cada atalho filtra toda a carteira do seu escopo comercial."
-            >
-              Minha rotina
-            </p>
-            <div
-              className="flex flex-1 gap-2 overflow-x-auto pb-0.5"
-              role="group"
-              aria-label="Encontre rapidamente onde agir"
-            >
-              {attentionShortcuts.map((shortcut) => (
-                <button
-                  key={shortcut.key}
-                  type="button"
-                  onClick={() => applyAttention(shortcut.key)}
-                  aria-pressed={attention === shortcut.key}
-                  title={`${shortcut.description}. O número é a incidência nesta página; o filtro consulta toda a carteira do seu escopo.`}
-                  className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border px-3 transition-colors ${
-                    attention === shortcut.key
-                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
-                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
-                  } ${focusRing}`}
-                >
-                  <span className="text-rotulo font-medium">
-                    {shortcut.label}
-                  </span>
-                  <span
-                    className={`cc6-num text-corpo ${
-                      shortcut.count > 0
-                        ? shortcut.countClass
-                        : "text-[var(--atlas-texto-fraco)]"
-                    }`}
-                  >
-                    {loading ? "—" : shortcut.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* A FAIXA DO CORTE DA FILA — chega por link da central e não tem
-              seletor. Fica visível porque um recorte que corta 442 em 146 sem
-              dizer o nome faz a pessoa concluir que a base encolheu. */}
-          {faixa ? (
-            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[rgba(75,141,248,0.35)] bg-[rgba(75,141,248,0.07)] px-3 py-2">
-              <span className="text-rotulo text-[var(--atlas-texto-medio)]">
-                Faixa da fila ·{" "}
-                <strong className="font-semibold text-[var(--atlas-texto-forte)]">
-                  {ROTULO_DA_FAIXA.get(faixa) ?? faixa}
-                </strong>{" "}
-                · só leads nunca contatados
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setFaixa("");
-                  setPage(1);
-                }}
-                className={`min-h-11 text-rotulo font-semibold text-[var(--atlas-accent)] hover:text-white ${focusRing}`}
-              >
-                Limpar faixa
-              </button>
-            </div>
-          ) : null}
-          {/* VÍNCULO — o que a tela "Clientes 360" tinha de próprio.
-              Ela lia a MESMA tabela pela mesma função, sem SLA, sem lote e sem
-              piso de carteira (um corretor via as 469 leads da imobiliária).
-              Foi apagada; estes quatro segmentos vieram junto, e aqui eles
-              filtram a carteira inteira no servidor, não só a página. */}
-          <div className="cc6-hairline mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
-            <p className="cc6-eyebrow" title="Em que ponto da relação comercial a pessoa está.">
-              Vínculo
-            </p>
-            <div
-              className="flex flex-1 gap-2 overflow-x-auto pb-0.5"
-              role="group"
-              aria-label="Filtrar por vínculo comercial"
-            >
-              {VINCULOS.map((chave) => (
-                <button
-                  key={chave}
-                  type="button"
-                  // Clicar no que já está ativo desliga: mesma gramática dos
-                  // atalhos acima, para não haver dois jeitos de limpar filtro.
-                  onClick={() => {
-                    setVinculo((atual) => (atual === chave ? "" : chave));
-                    setPage(1);
-                  }}
-                  aria-pressed={vinculo === chave}
-                  className={`min-h-11 shrink-0 rounded-xl border px-3 text-rotulo font-medium transition-colors ${
-                    vinculo === chave
-                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
-                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
-                  } ${focusRing}`}
-                >
-                  {ROTULO_DO_VINCULO[chave]}
-                </button>
-              ))}
-            </div>
-          </div>
-        </TiltShell>
-      </section>
-
       {/* ── PAINEL VAZIO NAO OCUPA O TOPO DA TELA ─────────────────────────
           Visto numa foto da tela do dono: a "Fila de ação" ocupava o espaço
           mais valioso da página para dizer "Nenhuma pendência prioritária
@@ -1703,6 +1517,15 @@ export default function LeadsPage() {
         </section>
       </div>
 
+      {notice ? (
+        <div
+          role="status"
+          className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-200"
+        >
+          {notice}
+        </div>
+      ) : null}
+
       {error ? (
         <ErrorState
           description={error}
@@ -1716,14 +1539,6 @@ export default function LeadsPage() {
             </button>
           }
         />
-      ) : null}
-      {notice ? (
-        <div
-          role="status"
-          className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-4 text-sm text-emerald-200"
-        >
-          {notice}
-        </div>
       ) : null}
 
       {podeMoverEmLote && selected.size ? (
@@ -2377,6 +2192,192 @@ export default function LeadsPage() {
           ) : null}
         </section>
       ) : null}
+
+      {/* Herói-resumo CC-6: identidade + total + atalhos de rotina em uma
+          única superfície (única com 3D). Substitui hero, cards de métricas
+          e painel "Minha rotina" separados. */}
+      <section aria-label="Resumo da carteira e atalhos de rotina">
+        <TiltShell className="cc6-panel cc6-reveal p-5 sm:p-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <p className="cc6-eyebrow">CRM · Leads</p>
+                {currentRole === "broker" ? (
+                  <StatusBadge tone="success">CARTEIRA EXCLUSIVA</StatusBadge>
+                ) : null}
+                {currentRole === "manager" ? (
+                  <StatusBadge tone="success">
+                    MEU TIME · {teamBrokers.length} CORRETORES
+                  </StatusBadge>
+                ) : null}
+              </div>
+              <h1 className="mt-2 max-w-xl text-2xl font-semibold tracking-[-0.02em] text-[var(--atlas-texto-forte)] sm:text-[27px] sm:leading-9">
+                {currentRole === "broker"
+                  ? "Sua fila de leads, pronta para agir."
+                  : "Leads que exigem decisão agora."}
+              </h1>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Link href="/leads/new" className="atlas-button-primary">
+                  + Novo lead
+                </Link>
+                <Link href="/pipeline" className="cc6-ghost-btn min-h-11">
+                  Abrir pipeline
+                </Link>
+                <details className="atlas-leads-tools">
+                  <summary>Mais ferramentas</summary>
+                  <div>
+                    <Link href="/leads/data-quality">Qualidade dos dados</Link>
+                    <Link href="/leads/deduplication">Duplicidades</Link>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        window.dispatchEvent(
+                          new CustomEvent("atlas:open-copilot", {
+                            detail: {
+                              prompt:
+                                "Analise a carteira de leads visível e explique até três prioridades, sem executar nenhuma ação.",
+                              context: {
+                                total,
+                                filters: {
+                                  status,
+                                  source,
+                                  project,
+                                  broker,
+                                  score,
+                                  attention,
+                                  nextAction,
+                                },
+                                pageMetrics,
+                                visiblePriorities: visiblePriorityQueue.length,
+                              },
+                            },
+                          }),
+                        )
+                      }
+                    >
+                      ✦ Analisar carteira
+                    </button>
+                  </div>
+                </details>
+              </div>
+            </div>
+            <div className="shrink-0 lg:pl-6 lg:text-right">
+              <p className="cc6-eyebrow">Base filtrada</p>
+              <p className="cc6-metric-value mt-1 text-4xl leading-none">
+                {loading ? "—" : total}
+              </p>
+              <p className="mt-2 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+                {hasFilters
+                  ? "resultado dos filtros atuais"
+                  : currentRole === "broker"
+                    ? "somente a sua carteira"
+                    : "somente seu escopo comercial"}
+              </p>
+            </div>
+          </div>
+          <div className="cc6-hairline mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
+            <p
+              className="cc6-eyebrow"
+              title="Os números contam a incidência na página atual; cada atalho filtra toda a carteira do seu escopo comercial."
+            >
+              Minha rotina
+            </p>
+            <div
+              className="flex flex-1 gap-2 overflow-x-auto pb-0.5"
+              role="group"
+              aria-label="Encontre rapidamente onde agir"
+            >
+              {attentionShortcuts.map((shortcut) => (
+                <button
+                  key={shortcut.key}
+                  type="button"
+                  onClick={() => applyAttention(shortcut.key)}
+                  aria-pressed={attention === shortcut.key}
+                  title={`${shortcut.description}. O número é a incidência nesta página; o filtro consulta toda a carteira do seu escopo.`}
+                  className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border px-3 transition-colors ${
+                    attention === shortcut.key
+                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
+                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
+                  } ${focusRing}`}
+                >
+                  <span className="text-rotulo font-medium">
+                    {shortcut.label}
+                  </span>
+                  <span
+                    className={`cc6-num text-corpo ${
+                      shortcut.count > 0
+                        ? shortcut.countClass
+                        : "text-[var(--atlas-texto-fraco)]"
+                    }`}
+                  >
+                    {loading ? "—" : shortcut.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* A FAIXA DO CORTE DA FILA — chega por link da central e não tem
+              seletor. Fica visível porque um recorte que corta 442 em 146 sem
+              dizer o nome faz a pessoa concluir que a base encolheu. */}
+          {faixa ? (
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[rgba(75,141,248,0.35)] bg-[rgba(75,141,248,0.07)] px-3 py-2">
+              <span className="text-rotulo text-[var(--atlas-texto-medio)]">
+                Faixa da fila ·{" "}
+                <strong className="font-semibold text-[var(--atlas-texto-forte)]">
+                  {ROTULO_DA_FAIXA.get(faixa) ?? faixa}
+                </strong>{" "}
+                · só leads nunca contatados
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setFaixa("");
+                  setPage(1);
+                }}
+                className={`min-h-11 text-rotulo font-semibold text-[var(--atlas-accent)] hover:text-white ${focusRing}`}
+              >
+                Limpar faixa
+              </button>
+            </div>
+          ) : null}
+          {/* VÍNCULO — o que a tela "Clientes 360" tinha de próprio.
+              Ela lia a MESMA tabela pela mesma função, sem SLA, sem lote e sem
+              piso de carteira (um corretor via as 469 leads da imobiliária).
+              Foi apagada; estes quatro segmentos vieram junto, e aqui eles
+              filtram a carteira inteira no servidor, não só a página. */}
+          <div className="cc6-hairline mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 pt-4">
+            <p className="cc6-eyebrow" title="Em que ponto da relação comercial a pessoa está.">
+              Vínculo
+            </p>
+            <div
+              className="flex flex-1 gap-2 overflow-x-auto pb-0.5"
+              role="group"
+              aria-label="Filtrar por vínculo comercial"
+            >
+              {VINCULOS.map((chave) => (
+                <button
+                  key={chave}
+                  type="button"
+                  // Clicar no que já está ativo desliga: mesma gramática dos
+                  // atalhos acima, para não haver dois jeitos de limpar filtro.
+                  onClick={() => {
+                    setVinculo((atual) => (atual === chave ? "" : chave));
+                    setPage(1);
+                  }}
+                  aria-pressed={vinculo === chave}
+                  className={`min-h-11 shrink-0 rounded-xl border px-3 text-rotulo font-medium transition-colors ${
+                    vinculo === chave
+                      ? "border-[rgba(75,141,248,0.45)] bg-[rgba(75,141,248,0.08)] text-[var(--atlas-texto-forte)]"
+                      : "border-[rgba(148,163,184,0.14)] bg-white/[0.02] text-[var(--atlas-texto-medio)] hover:border-[rgba(148,163,184,0.3)] hover:text-[var(--atlas-texto-forte)]"
+                  } ${focusRing}`}
+                >
+                  {ROTULO_DO_VINCULO[chave]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </TiltShell>
+      </section>
 
       {/* ── PAINEL DE DESCARTE ─────────────────────────────────────────────
           Mesma lista canônica de motivos do Kanban (`DISCARD_REASONS`) e mesma

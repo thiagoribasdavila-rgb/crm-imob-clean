@@ -912,23 +912,6 @@ export default function PipelinePage() {
 
   return (
     <div className="atlas-pipeline-page space-y-5 pb-8" data-phase="37-pipeline-movement-workspace" data-pipeline-layout="movement-first">
-      <section className={`atlas-pipeline-hero atlas-grid-glow ${focusMode ? "is-focus-mode" : ""}`}>
-        <Image className="atlas-pipeline-robot" src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas acompanhando o pipeline comercial" width={210} height={315} priority />
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <div className="flex flex-wrap gap-2"><AtlasBadge tone="info">{metrics.open} negócios</AtlasBadge></div>
-            <h2 className="atlas-pipeline-title mt-3 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Pipeline comercial</h2>
-            <p className="atlas-pipeline-subtitle mt-2 max-w-2xl text-sm leading-6 text-slate-400">Decida o próximo movimento, proteja SLAs e mantenha cada avanço registrado.</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead, região, origem ou campanha..." className="atlas-kanban-search min-w-72 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
-            <button type="button" onClick={() => setFocusMode((value) => !value)} aria-pressed={focusMode} className={`atlas-button-secondary ${focusMode ? "border-sky-400/20 !text-sky-200" : ""}`}>{focusMode ? "Expandir inteligência" : "✦ Ativar modo foco"}</button>
-            {canConfigureStages ? <Link href="/pipeline/settings" className="atlas-button-secondary">Configurar etapas</Link> : null}
-            <Link href="/leads/new" className="atlas-button-primary">+ Novo lead</Link>
-          </div>
-        </div>
-      </section>
-
       {error ? <AtlasRecoverableError description={error} onRetry={() => void load()} busy={loading} /> : null}
       {/* O caminho de volta, logo abaixo do que deu errado. Erro sem saída faz
           o corretor repetir a mesma tentativa até desistir da lead. */}
@@ -939,9 +922,9 @@ export default function PipelinePage() {
         {caminho.acao === "tentar-de-novo" ? <button type="button" onClick={() => { setCaminho(null); setError(""); }} className="atlas-button-secondary shrink-0">Entendi</button> : null}
         {caminho.acao === "falar-com-gestor" ? <Link href="/leads" className="atlas-button-secondary shrink-0">Ver minha carteira</Link> : null}
       </div> : null}
-      {!loading && pipelineScope.totalOperational > pipelineScope.loaded ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status"><span>Este quadro mostra {pipelineScope.loaded} de {pipelineScope.totalOperational} oportunidades operacionais. A memória arquivada continua isolada.</span><Link href="/leads" className="font-semibold text-amber-50 underline decoration-amber-300/40 underline-offset-4">Pesquisar a base completa</Link></div> : null}
       {savingId ? <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status" aria-live="polite">Confirmando movimentação e registrando o histórico…</div> : null}
       {lastMove ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.07] px-4 py-3 text-sm text-sky-100" role="status"><span><strong>{lastMove.leadName}</strong> avançou para {destinationOptions.find((item) => item.key === lastMove.to)?.label}.</span><button type="button" onClick={() => void undoLastMove()} disabled={Boolean(savingId)} className="rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs font-semibold hover:bg-sky-300/15 disabled:opacity-50">Desfazer movimentação</button></div> : null}
+      {!loading && pipelineScope.totalOperational > pipelineScope.loaded ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3 text-xs text-amber-100" role="status"><span>Este quadro mostra {pipelineScope.loaded} de {pipelineScope.totalOperational} oportunidades operacionais. A memória arquivada continua isolada.</span><Link href="/leads" className="font-semibold text-amber-50 underline decoration-amber-300/40 underline-offset-4">Pesquisar a base completa</Link></div> : null}
 
       <section className="atlas-kanban-readiness" data-status={kanbanReadiness.status} aria-label="Resumo de prontidão do Kanban">
         <div>
@@ -956,31 +939,6 @@ export default function PipelinePage() {
           <div><dt>Visíveis</dt><dd>{loading ? "—" : visibleLeads.length}</dd></div>
         </dl>
       </section>
-
-      {/* Cinco métricas, não seis: "Perfis compradores" (comprou_outro) vale
-          zero e não muda decisão nenhuma — quem quiser vê a lista logo abaixo.
-          Dinheiro só aparece quando a base sustenta o número. */}
-      {!focusMode ? <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-        <AtlasMetric icon="📊" label="Negócios abertos" value={loading ? "—" : metrics.open} tone="blue" />
-        <AtlasMetric
-          icon="💰"
-          label="Pipeline"
-          value={loading ? "—" : metrics.pipeline === null ? "—" : brl.format(metrics.pipeline)}
-          detail={loading ? "" : metrics.pipeline === null
-            ? `${metrics.semOrcamento} negócio(s) sem orçamento — some com a base atual seria chute`
-            : `sobre ${Math.round(metrics.coberturaDeOrcamento * 100)}% da carteira com orçamento`}
-          tone="violet"
-        />
-        <AtlasMetric
-          icon="📈"
-          label="Forecast"
-          value={loading ? "—" : metrics.forecast === null ? "—" : brl.format(metrics.forecast)}
-          detail={metrics.forecast === null ? "depende do orçamento preenchido" : "ponderado por etapa"}
-          tone="green"
-        />
-        <AtlasMetric icon="🔥" label="Leads quentes" value={loading ? "—" : metrics.hot} tone="rose" />
-        <AtlasMetric icon="⚠️" label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} tone="amber" />
-      </section> : null}
 
       <section className="atlas-pipeline-priority-queue" aria-labelledby="atlas-pipeline-priority-title" aria-live="polite" data-priority-source="authorized-loaded-pipeline">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -1083,15 +1041,22 @@ export default function PipelinePage() {
         </div>
       </section>
 
-      {!focusMode ? <section className="atlas-pipeline-flow" style={{ "--kanban-columns": stageData.length } as CSSProperties} aria-label="Resumo visual das etapas do pipeline">
-        {stageData.map((stage, index) => (
-          <div key={stage.key} style={{ "--flow": `${stage.probability}%` } as CSSProperties}>
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <p><strong>{stage.label}</strong><small>{stage.items.length} leads{stage.value !== null ? ` · ${brl.format(stage.value)}` : ""}</small></p>
-            <i><b /></i>
+      <section className={`atlas-pipeline-hero atlas-grid-glow ${focusMode ? "is-focus-mode" : ""}`}>
+        <Image className="atlas-pipeline-robot" src="/brand/atlas-robot-broker.png" alt="Robô-corretor Atlas acompanhando o pipeline comercial" width={210} height={315} priority />
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <div className="flex flex-wrap gap-2"><AtlasBadge tone="info">{metrics.open} negócios</AtlasBadge></div>
+            <h2 className="atlas-pipeline-title mt-3 text-3xl font-semibold tracking-[-.05em] text-white sm:text-5xl">Pipeline comercial</h2>
+            <p className="atlas-pipeline-subtitle mt-2 max-w-2xl text-sm leading-6 text-slate-400">Decida o próximo movimento, proteja SLAs e mantenha cada avanço registrado.</p>
           </div>
-        ))}
-      </section> : null}
+          <div className="flex flex-wrap gap-3">
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead, região, origem ou campanha..." className="atlas-kanban-search min-w-72 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
+            <button type="button" onClick={() => setFocusMode((value) => !value)} aria-pressed={focusMode} className={`atlas-button-secondary ${focusMode ? "border-sky-400/20 !text-sky-200" : ""}`}>{focusMode ? "Expandir inteligência" : "✦ Ativar modo foco"}</button>
+            {canConfigureStages ? <Link href="/pipeline/settings" className="atlas-button-secondary">Configurar etapas</Link> : null}
+            <Link href="/leads/new" className="atlas-button-primary">+ Novo lead</Link>
+          </div>
+        </div>
+      </section>
 
       <AtlasCard>
         <AtlasCardHeader eyebrow="Fluxo comercial" title="Oportunidades por etapa" description="Arraste os cards ou use o seletor. Toda movimentação permanece registrada." action={<span className="text-xs text-slate-500">{visibleLeads.length} visíveis{metrics.forecast !== null ? ` · forecast ${brl.format(metrics.forecast)}` : ""}</span>} />
@@ -1280,6 +1245,42 @@ export default function PipelinePage() {
         </div>
         <div className="border-t border-white/[.06] px-5 py-3 text-micro text-slate-500 sm:px-6">Arraste, use o seletor ou pressione <kbd className="rounded border border-white/10 px-1.5 py-0.5 text-slate-300">Alt + ←/→</kbd> com o card em foco. A movimentação continua registrada na timeline.</div>
       </AtlasCard>
+
+      {!focusMode ? <section className="atlas-pipeline-flow" style={{ "--kanban-columns": stageData.length } as CSSProperties} aria-label="Resumo visual das etapas do pipeline">
+        {stageData.map((stage, index) => (
+          <div key={stage.key} style={{ "--flow": `${stage.probability}%` } as CSSProperties}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <p><strong>{stage.label}</strong><small>{stage.items.length} leads{stage.value !== null ? ` · ${brl.format(stage.value)}` : ""}</small></p>
+            <i><b /></i>
+          </div>
+        ))}
+      </section> : null}
+
+      {/* Cinco métricas, não seis: "Perfis compradores" (comprou_outro) vale
+          zero e não muda decisão nenhuma — quem quiser vê a lista logo abaixo.
+          Dinheiro só aparece quando a base sustenta o número. */}
+      {!focusMode ? <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        <AtlasMetric icon="📊" label="Negócios abertos" value={loading ? "—" : metrics.open} tone="blue" />
+        <AtlasMetric
+          icon="💰"
+          label="Pipeline"
+          value={loading ? "—" : metrics.pipeline === null ? "—" : brl.format(metrics.pipeline)}
+          detail={loading ? "" : metrics.pipeline === null
+            ? `${metrics.semOrcamento} negócio(s) sem orçamento — some com a base atual seria chute`
+            : `sobre ${Math.round(metrics.coberturaDeOrcamento * 100)}% da carteira com orçamento`}
+          tone="violet"
+        />
+        <AtlasMetric
+          icon="📈"
+          label="Forecast"
+          value={loading ? "—" : metrics.forecast === null ? "—" : brl.format(metrics.forecast)}
+          detail={metrics.forecast === null ? "depende do orçamento preenchido" : "ponderado por etapa"}
+          tone="green"
+        />
+        <AtlasMetric icon="🔥" label="Leads quentes" value={loading ? "—" : metrics.hot} tone="rose" />
+        <AtlasMetric icon="⚠️" label="Risco alto" value={loading ? "—" : metrics.highRisk} detail={`${metrics.firstContactOverdue} SLA inicial vencido(s)`} tone="amber" />
+      </section> : null}
+
       {!focusMode ? <AtlasCard>
         <AtlasCardHeader eyebrow="Inteligência de compradores" title="Compraram em outro lugar" description="Base separada do funil ativo: compradores reais que ajudam a entender público, produto, preço e concorrência sem contar como venda da empresa." />
         {/* Seção de aprendizado (contexto, não decisão): N cards bordados dentro de um
