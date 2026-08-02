@@ -27,28 +27,47 @@ name: Atlas Vigias
 #    ser descoberta depois.
 # 2. O intervalo mínimo do GitHub é 5 minutos. O `outbox` pede */2 e roda */5.
 #    Cadência DEGRADADA, declarada: mensagem represada demora até 3 min a mais.
-# 3. `tasks/reminders` está FORA de propósito — ele devolve HTTP 500 porque a
-#    RPC lê `t.assigned_to` numa tabela que só tem `user_id`. A migration
-#    `20260801200000_lembrete_de_tarefa_le_a_coluna_certa.sql` conserta e NÃO
-#    foi aplicada. Agendar um worker que falha a cada 5 minutos é ruído que
-#    treina todo mundo a ignorar alerta. Entra quando a migration entrar.
+# 3. `tasks/reminders` ENTROU em 01/08/2026, depois que a migration foi
+#    aplicada com autorização do dono. Ele lia DUAS colunas inexistentes
+#    (`assigned_to` e `due_at`, contra `user_id` e `due_date`) e nunca
+#    funcionou. Medido depois do conserto: HTTP 200, `generated: 7`.
+#    São 13 de 13 vigias respondendo.
 #
 # Quando o crontab do servidor for instalado, DESLIGUE este arquivo: dois
 # agendadores para o mesmo worker é a classe de defeito que este repositório
 # mais paga — duas verdades sobre o mesmo fato.
 
+# ── O GITHUB AGENDA EM UTC, E ISSO ESTAVA ERRADO AQUI ────────────────────────
+#
+# Medido em 02/08/2026. As cadências abaixo eram cópia literal das de
+# `config/workers-schedule.json`, que são horário de **America/Sao_Paulo**. Mas o
+# `schedule` do GitHub NÃO aceita fuso: ele é sempre UTC. Resultado — todo vigia
+# diário disparava TRÊS HORAS ANTES do pretendido.
+#
+# O pior era `task-recurrences`: pretendido 00h10 de São Paulo, disparava às
+# 00h10 UTC, que é 21h10 do DIA ANTERIOR em São Paulo. A recorrência de tarefas
+# nascia no dia errado.
+#
+# Agora cada linha é a cadência do JSON somada de 3 horas, e o portão
+# `check-cadencia-vs-janela` confere essa conversão a cada execução — em vez de
+# confiar em quem editou. O Brasil não tem horário de verão desde 2019, então
+# America/Sao_Paulo é UTC-3 o ano inteiro e a soma é constante.
+#
+# O comentário ao lado de cada linha diz a hora PRETENDIDA, em São Paulo. É ela
+# que importa para quem opera.
 on:
   schedule:
-    - cron: '*/5 * * * *'    # curto: SLA de primeiro contato, outbox
+    - cron: '*/5 * * * *'    # curto: SLA de primeiro contato, outbox, lembretes
     - cron: '*/10 * * * *'   # reservas de lead
     - cron: '17 * * * *'     # leads da Meta sem destino
     - cron: '17 */4 * * *'   # feedback de conversão (CAPI)
-    - cron: '10 0 * * *'     # recorrência de tarefas
-    - cron: '0 3 * * *'      # vendas noturnas
-    - cron: '30 3 * * *'     # entrega noturna ao corretor
-    - cron: '25 4 * * *'     # baseline de conversão
-    - cron: '40 4 * * *'     # investimento de mídia
-    - cron: '0 7 * * *'      # relatório diário da Meta
+    - cron: '10 3 * * *'     # recorrência de tarefas        — 00h10 em São Paulo
+    - cron: '0 6 * * *'      # vendas noturnas               — 03h00 em São Paulo
+    - cron: '25 7 * * *'     # baseline de conversão         — 04h25 em São Paulo
+    - cron: '40 7 * * *'     # investimento de mídia         — 04h40 em São Paulo
+    - cron: '30 10 * * *'    # entrega matinal ao corretor   — 07h30 em São Paulo
+    - cron: '0 10 * * *'     # relatório diário da Meta      — 07h00 em São Paulo
+    - cron: '0 10 * * 0'     # relatório semanal (domingo)   — 07h00 em São Paulo
   workflow_dispatch:
     inputs:
       grupo:
@@ -81,19 +100,20 @@ jobs:
           fi
 
           case "${QUANDO:-}" in
-            '*/5 * * * *')  ROTAS="crm/first-contact-sla/process outbox/process" ;;
+            '*/5 * * * *')  ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process" ;;
             '*/10 * * * *') ROTAS="distribution/reservations/process" ;;
             '17 * * * *')   ROTAS="marketing/meta-sem-destino/process" ;;
             '17 */4 * * *') ROTAS="marketing/capi-feedback/process" ;;
-            '10 0 * * *')   ROTAS="tasks/recurrences/process" ;;
-            '0 3 * * *')    ROTAS="ai/nightly-sales" ;;
-            '30 3 * * *')   ROTAS="ai/nightly-handoff" ;;
-            '25 4 * * *')   ROTAS="ai/baseline-de-conversao/process" ;;
-            '40 4 * * *')   ROTAS="marketing/investimento/process" ;;
-            '0 7 * * *')    ROTAS="meta/daily-report developers/weekly-reports/process" ;;
+            '10 3 * * *')   ROTAS="tasks/recurrences/process" ;;
+            '0 6 * * *')    ROTAS="ai/nightly-sales" ;;
+            '30 10 * * *')  ROTAS="ai/nightly-handoff" ;;
+            '25 7 * * *')   ROTAS="ai/baseline-de-conversao/process" ;;
+            '40 7 * * *')   ROTAS="marketing/investimento/process" ;;
+            '0 10 * * *')   ROTAS="meta/daily-report" ;;
+            '0 10 * * 0')   ROTAS="developers/weekly-reports/process" ;;
             *)
               case "${GRUPO:-curto}" in
-                curto)        ROTAS="crm/first-contact-sla/process outbox/process" ;;
+                curto)        ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process" ;;
                 dez)          ROTAS="distribution/reservations/process" ;;
                 hora)         ROTAS="marketing/meta-sem-destino/process" ;;
                 quatro_horas) ROTAS="marketing/capi-feedback/process" ;;
@@ -109,21 +129,46 @@ jobs:
               ;;
           esac
 
-          # `developers/weekly-reports` só faz sentido no domingo; a rota é
-          # idempotente nos outros dias, mas chamá-la à toa polui o log.
-          if [ "$(date -u +%u)" != "7" ]; then
-            ROTAS="$(echo "${ROTAS}" | sed 's#developers/weekly-reports/process##')"
-          fi
+          # O filtro de domingo em bash SAIU. Ele existia porque o semanal andava
+          # de carona na linha do relatório diário; agora ele tem cron próprio
+          # ('0 10 * * 0'), e o dia da semana é responsabilidade do agendador.
+          # Uma regra a menos escrita duas vezes.
 
           FALHAS=0
           for R in ${ROTAS}; do
+            # ── DOIS DEFEITOS QUE SÓ APARECERAM COM EXECUÇÃO REAL ─────────────
+            #
+            # Medido em 02/08/2026, nas execuções agendadas: das 10 do dia, 3
+            # ficaram vermelhas. Duas por `curl: (28) Connection timed out after
+            # 120000 ms` — e conferido no banco, os dois vigias envolvidos
+            # (lead-reservations e capi-feedback) tinham ZERO itens na fila.
+            # Não era carga: foi hipo transitório de rede/servidor. Produção
+            # medida logo depois respondia em 45–130 ms.
+            #
+            # 1. `/tmp/resposta.json: No such file`. Quando o curl estoura o
+            #    tempo ele não cria o arquivo, e o `wc -c` da linha seguinte
+            #    quebrava também — o log dizia duas coisas erradas sobre uma
+            #    falha só. O `:>` garante o arquivo antes.
+            #
+            # 2. "não respondeu" e "respondeu errado" viravam a mesma mensagem
+            #    FALHA. São problemas diferentes: um é rede/tempo, o outro é a
+            #    rota. Agora o código 000 é nomeado como SEM RESPOSTA.
+            #
+            # NÃO foi adicionado retry, e isso é decisão: `outbox` ENVIA MENSAGEM.
+            # Repetir um POST que pode ter sido processado é arriscar mandar duas
+            # vezes para o cliente. Um vermelho transitório é barato; uma
+            # mensagem duplicada, não.
+            :> /tmp/resposta.json
             COD=$(curl -sS -o /tmp/resposta.json -w '%{http_code}' --max-time 120 \
                   -X POST "https://atlasaios.com.br/api/v2/${R}" \
                   -H "authorization: Bearer ${SEGREDO}" || echo "000")
             # A resposta pode conter dado de cliente; só o código e o tamanho vão para o log.
-            TAM=$(wc -c < /tmp/resposta.json | tr -d ' ')
+            TAM=$(wc -c < /tmp/resposta.json 2>/dev/null | tr -d ' ' || echo 0)
             if [ "${COD}" = "200" ]; then
               echo "ok    ${R}  HTTP ${COD}  (${TAM} bytes)"
+            elif [ "${COD}" = "000" ]; then
+              echo "SEM RESPOSTA ${R}  (o servidor não respondeu dentro de 120s — rede ou reinício, não erro da rota)"
+              FALHAS=$((FALHAS + 1))
             else
               echo "FALHA ${R}  HTTP ${COD}  (${TAM} bytes)"
               FALHAS=$((FALHAS + 1))

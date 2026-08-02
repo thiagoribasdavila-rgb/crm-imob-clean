@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     // A liderança comercial da organização recebe a tarefa. Sem ninguém para
     // receber, a tarefa não é criada — tarefa órfã é lixo que ninguém vê e que
     // depois faz o painel mentir sobre trabalho pendente.
-    const { data: responsavel } = await admin
+    const responsavelQuery = await admin
       .from("profiles")
       .select("id")
       .eq("organization_id", incorporador.organization_id)
@@ -70,18 +70,26 @@ export async function POST(request: Request) {
       .order("commercial_role")
       .limit(1)
       .maybeSingle();
+    // Sem isto, falha de consulta virava "nao ha responsavel" e o relatorio
+    // semanal do incorporador nascia sem dono -- ou nao nascia.
+    if (responsavelQuery.error) throw responsavelQuery.error;
+    const responsavel = responsavelQuery.data;
 
     if (!responsavel) {
       semResponsavel.push(incorporador.trade_name || incorporador.id);
       continue;
     }
 
-    const { data: existente } = await admin
+    // Dedupe: mesma doenca do outbox. Erro virava "nao existe" e o relatorio
+    // semanal era criado DE NOVO -- toda semana, para sempre, sem ninguem ver.
+    const existenteQuery = await admin
       .from("tasks")
       .select("id")
       .eq("organization_id", incorporador.organization_id)
       .contains("metadata", { weeklyReportKey: chave })
       .limit(1);
+    if (existenteQuery.error) throw existenteQuery.error;
+    const existente = existenteQuery.data;
 
     if (existente?.length) {
       jaExistiam.push(incorporador.trade_name || incorporador.id);

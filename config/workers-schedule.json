@@ -26,6 +26,70 @@
     "não alcançou). É palpite declarado, não fato — confirme na primeira execução",
     "real e troque para false."
   ],
+  "$evidenciaCondicional": {
+    "todosOs13SaoCondicionais": true,
+    "porque": [
+      "MEDIDO EM 02/08/2026, lendo as 13 rotas: NENHUMA delas grava",
+      "incondicionalmente. Toda escrita acontece dentro de um laço sobre uma fila,",
+      "ou dentro de uma RPC que só age quando há item elegível.",
+      "",
+      "Isso quebra a premissa de check-vigias-vivos, que lia 'sem rastro' como",
+      "'nunca rodou'. Para estes 13, 'sem rastro' é o desfecho CORRETO de um",
+      "sistema quieto: o vigia acordou, olhou a fila, não achou nada e foi dormir.",
+      "",
+      "É a mesma doença corrigida hoje em /api/v1/ready: ausência de trabalho",
+      "elegível é indistinguível de ausência de execução, e o produto escolhia o",
+      "lado confiante. Lá a cura foi o campo `observavel`; aqui é este campo.",
+      "",
+      "CONSEQUÊNCIA QUE NÃO DÁ PARA CONSERTAR SÓ COM CÓDIGO: rastro condicional",
+      "não prova vida. Para responder 'este vigia rodou?' com honestidade seria",
+      "preciso UMA LINHA POR INVOCAÇÃO, independente de ter havido trabalho — um",
+      "livro de execuções. Isso exige tabela nova, e tabela nova exige migration,",
+      "que está fora do que foi autorizado. Fica declarado aqui em vez de fingido",
+      "no portão.",
+      "",
+      "CORREÇÃO DO MESMO DIA: eu escrevi antes que `atlas_agent_runs` seria o",
+      "lugar natural desse livro. ESTAVA ERRADO, e a verificação pegou.",
+      "`app/api/v3/agents/process` seleciona dela `status=queued`, trava a linha e",
+      "EXECUTA o que encontra — inserir invocação de vigia ali faria a IA tentar",
+      "rodar o registro como se fosse tarefa dela. Não é questão de nome, é de",
+      "comportamento.",
+      "",
+      "As outras candidatas também não servem, por FORMA e não por gosto:",
+      "integration_outbox é fila de entrega com claim e lock;",
+      "integration_health_snapshots é snapshot agregado, não por vigia;",
+      "meta_executions é chave de idempotência da Meta.",
+      "",
+      "O livro ganhou tabela própria: supabase/migrations/",
+      "20260802120000_livro_de_execucoes_dos_vigias.sql cria `atlas_worker_runs`.",
+      "A migration está ESCRITA e NÃO APLICADA — aplicar em produção é decisão do",
+      "dono. Enquanto não for, o helper devolve `livro_nao_instalado` e a resposta",
+      "do vigia diz isso em voz alta, em vez de falhar calado."
+    ]
+  },
+  "$fusoDaCadencia": {
+    "fuso": "America/Sao_Paulo",
+    "porque": [
+      "MEDIDO EM 02/08/2026: a cadência não dizia em que relógio ela valia.",
+      "Nem o gerador de crontab emitia CRON_TZ, nem o ecosystem.config.cjs fixava",
+      "TZ. Um `0 3 * * *` significava 3h do relógio DO SERVIDOR, e ninguém sabia",
+      "qual era esse relógio.",
+      "",
+      "Isso não é detalhe: DOIS dos treze vigias decidem sozinhos se trabalham,",
+      "olhando a hora em America/Sao_Paulo (lib/ai/governed-nightly-copilot.ts).",
+      "Quando a cadência e a janela falam relógios diferentes, o vigia dispara e",
+      "recusa — e o resultado é indistinguível de 'não havia trabalho'.",
+      "",
+      "Agora o fuso é declarado aqui, o gerador emite CRON_TZ e o portão",
+      "cadencia-vs-janela confere se cada cadência cai DENTRO da janela que o",
+      "código daquele vigia impõe.",
+      "",
+      "O Brasil não tem mais horário de verão desde 2019, então America/Sao_Paulo",
+      "é UTC-3 o ano inteiro. O agendador do GitHub NÃO aceita fuso (é sempre UTC),",
+      "por isso as cadências de lá são as daqui somadas de 3 horas — e o portão",
+      "confere essa conversão em vez de confiar em quem editou."
+    ]
+  },
   "workers": [
     {
       "nome": "first-contact-sla",
@@ -36,6 +100,7 @@
       "evidencia": {
         "tabela": "tasks",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -48,6 +113,7 @@
       "evidencia": {
         "tabela": "integration_outbox",
         "coluna": "updated_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -60,6 +126,7 @@
       "evidencia": {
         "tabela": "task_reminders",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -71,7 +138,8 @@
       "timeoutMs": 55000,
       "evidencia": {
         "tabela": "lead_assignment_reservations",
-        "coluna": "updated_at",
+        "coluna": "released_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -84,6 +152,7 @@
       "evidencia": {
         "tabela": "tasks",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -96,18 +165,20 @@
       "evidencia": {
         "tabela": "ai_sales_journeys",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
     {
       "nome": "nightly-handoff",
       "rota": "/api/v2/ai/nightly-handoff",
-      "cadencia": "30 3 * * *",
-      "porque": "Depois da consolidação de vendas, para trabalhar sobre o resultado dela.",
+      "cadencia": "30 7 * * *",
+      "porque": "A ENTREGA MATINAL É DE MANHÃ, E ISSO NÃO ERA VERDADE. Até 02/08/2026 a cadência era `30 3 * * *`, e a rota só trabalha quando `nightlyWindow().morningHandoff` é verdadeiro — isto é, entre 7h e 11h59 em America/Sao_Paulo. Às 3h30, em QUALQUER relógio plausível do servidor (SP ou UTC), a janela está fechada: a rota respondia `created: 0, motivo: fora_da_janela` e ia embora. Todo dia, para sempre. É por isso que `nightly_broker_handoffs` está em zero absoluto — e o zero não era só 'nunca foi chamado', era também 'quando fosse, recusaria'. 7h30 fica logo no início da janela: o corretor recebe a entrega antes de começar o dia, e sobram 4h29 de folga para atraso do agendador.",
       "timeoutMs": 55000,
       "evidencia": {
         "tabela": "nightly_broker_handoffs",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -120,6 +191,7 @@
       "evidencia": {
         "tabela": "meta_daily_reports",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": true
       }
     },
@@ -132,6 +204,7 @@
       "evidencia": {
         "tabela": "tasks",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": true
       }
     },
@@ -144,6 +217,7 @@
       "evidencia": {
         "tabela": "meta_conversion_events",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": true
       }
     },
@@ -156,6 +230,7 @@
       "evidencia": {
         "tabela": "meta_leads_sem_destino",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": false
       }
     },
@@ -168,6 +243,7 @@
       "evidencia": {
         "tabela": "marketing_spend",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": true
       }
     },
@@ -180,6 +256,7 @@
       "evidencia": {
         "tabela": "conversion_calibration_models",
         "coluna": "created_at",
+        "condicional": true,
         "inferida": true
       }
     }

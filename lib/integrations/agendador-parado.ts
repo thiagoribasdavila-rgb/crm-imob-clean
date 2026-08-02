@@ -32,6 +32,23 @@ export type EstadoDoAgendador = {
   /** Idade do mais antigo da fila, em horas. `null` quando a fila está vazia. */
   maisAntigaHoras: number | null;
   agendadorParadoProvavel: boolean;
+  /**
+   * A fila deu SINAL suficiente para opinar sobre o agendador?
+   *
+   * Medido em 02/08/2026: `agendadorParadoProvavel` só acusa quando há item
+   * NUNCA TENTADO e velho. Naquele dia a fila tinha 10 itens, todos com
+   * `attempts = 1` — nenhum nunca-tentado. Resultado: a heurística não acusou,
+   * e `/api/v1/ready` concluiu **"O agendamento executa"**.
+   *
+   * Não executava. Zero disparos por `schedule` em TODOS os workflows do
+   * repositório, medido pela API do GitHub no mesmo momento.
+   *
+   * O defeito não é a heurística — ela mede bem o que se propõe. É a ausência
+   * de sinal virando afirmação de saúde: fila sem nada elegível é
+   * indistinguível de agendador funcionando, e o produto escolhia o lado
+   * otimista. `observavel` separa "medi e está bom" de "não havia o que medir".
+   */
+  observavel: boolean;
 };
 
 /**
@@ -63,5 +80,9 @@ export function avaliarAgendador(
     // normalmente; item velho JÁ tentado é worker que acorda e falha, que é outro
     // problema, com outro conserto.
     agendadorParadoProvavel: nuncaTentadas > 0 && (maisAntigaHoras ?? 0) >= HORAS_PARA_SUSPEITAR,
+    /* Sem item nunca-tentado na fila, esta função não tem como distinguir
+       agendador vivo de agendador morto. Dizer isso é mais honesto do que
+       devolver `parado: false` e deixar quem lê concluir que está tudo bem. */
+    observavel: nuncaTentadas > 0,
   };
 }

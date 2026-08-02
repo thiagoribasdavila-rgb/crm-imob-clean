@@ -402,11 +402,31 @@ export async function POST(request: Request) {
     try {
       const now = new Date().toISOString();
       if (event.topic === "message.send" && event.aggregate_id) {
-        const { data: message, error: messageError } = await admin.from("messages").select("id,channel,recipient,content,media,conversation_id").eq("id", event.aggregate_id).single();
+        const { data: message, error: messageError } = await admin.from("messages").select("id,channel,recipient,content,media,conversation_id").eq("id", event.aggregate_id).maybeSingle();
         if (messageError || !message) throw messageError ?? new Error("Mensagem não encontrada.");
         if (message.channel !== "whatsapp") throw new Error(`Canal ainda não conectado ao worker: ${message.channel}`);
         const normalizedRecipient = String(message.recipient || "").replace(/\D/g, "");
-        const { data: universalSuppression } = await admin.from("messaging_suppressions").select("id").eq("organization_id", event.organization_id).eq("channel", "whatsapp").eq("recipient", normalizedRecipient).maybeSingle();
+        // ── ERRO DE CONSULTA NÃO PODE VIRAR CONSENTIMENTO ────────────────────
+        //
+        // Até 02/08/2026 esta linha era `const { data: universalSuppression } =`
+        // — o `error` ia para o lixo. A pergunta que ela faz é "este número
+        // pediu para não receber?". Falhando a consulta, `universalSuppression`
+        // fica `undefined`, o `if` abaixo não entra, e a mensagem SAI.
+        //
+        // Ou seja: banco indisponível, RLS negando, coluna renomeada — qualquer
+        // uma dessas era lida como "não, ele não bloqueou". A ausência de
+        // resposta virava um SIM para enviar.
+        //
+        // A linha 406 logo acima já fazia certo com a própria mensagem
+        // (`if (messageError || !message) throw`). O padrão estava a três linhas
+        // de distância.
+        //
+        // Opt-out é promessa ao cliente e é lei. Na dúvida não se envia: o
+        // `throw` cai no catch do laço, que marca o evento e tenta de novo
+        // depois — atraso é recuperável, mensagem indevida não é.
+        const suppressionQuery = await admin.from("messaging_suppressions").select("id").eq("organization_id", event.organization_id).eq("channel", "whatsapp").eq("recipient", normalizedRecipient).maybeSingle();
+        if (suppressionQuery.error) throw suppressionQuery.error;
+        const universalSuppression = suppressionQuery.data;
         if (universalSuppression) {
           await admin.from("messages").update({ status: "failed", error: "Contato bloqueado por opt-out." }).eq("id", message.id);
           // 'blocked' é terminal e diz a verdade (não foi entregue). Onde o
@@ -472,7 +492,11 @@ export async function POST(request: Request) {
             // Entra na DLQ com retry HUMANO: se o cliente responder depois, a
             // janela reabre e o reenvio deliberado passa — mas a decisão de
             // reenviar uma mensagem antiga é de gente, não do worker.
-            await admin.from("dead_letter_events").insert({
+            // A carta morta e a ULTIMA linha de defesa: e onde a falha fica
+            // registrada depois que as tentativas acabaram. Se o insert DELA
+            // falhar em silencio, a falha some do mundo -- nao existe camada
+            // abaixo desta para pegar. Ate 02/08/2026 o retorno era descartado.
+            const cartaMorta = await admin.from("dead_letter_events").insert({
               organization_id: event.organization_id,
               outbox_event_id: event.id,
               topic: event.topic,
@@ -480,6 +504,7 @@ export async function POST(request: Request) {
               error_message: reason,
               attempts,
             });
+            if (cartaMorta.error) logger.error("outbox.carta_morta_nao_gravada", { eventId: event.id, topic: event.topic, motivoOriginal: reason, code: cartaMorta.error.code });
             logger.warn("outbox.whatsapp_outside_window", { eventId: event.id, organizationId: event.organization_id, messageId: message.id });
             failed += 1;
             continue;
@@ -487,7 +512,27 @@ export async function POST(request: Request) {
         }
 
         const externalMessageId = await deliverWhatsApp(message.recipient, message.content, template);
-        await admin.from("messages").update({ status: "sent", sent_at: now, external_message_id: externalMessageId, error: null }).eq("id", message.id);
+        // ── A LINHA MAIS PERIGOSA DO ARQUIVO ──────────────────────────────────
+        //
+        // A mensagem JÁ SAIU. O WhatsApp já entregou ao cliente. Se este
+        // `update` falhar e ninguém olhar, a mensagem continua `queued` no
+        // banco — e na próxima rodada do vigia ela é ENVIADA DE NOVO. O cliente
+        // recebe duas vezes, três, até alguém perceber.
+        //
+        // Até 02/08/2026 o retorno era descartado. Não dá para desfazer o envio,
+        // então não há como "consertar" aqui — o que dá é NÃO DEIXAR PASSAR
+        // CALADO. O erro vai para o log com o id externo, que é a única prova de
+        // que a entrega aconteceu, e o `throw` impede que o evento seja fechado
+        // como sucesso enquanto o banco discorda da realidade.
+        const marcouEnviada = await admin.from("messages").update({ status: "sent", sent_at: now, external_message_id: externalMessageId, error: null }).eq("id", message.id);
+        if (marcouEnviada.error) {
+          logger.error("outbox.mensagem_enviada_sem_registro", {
+            messageId: message.id,
+            externalMessageId,
+            code: marcouEnviada.error.code,
+          });
+          throw marcouEnviada.error;
+        }
 
         // ── ENVIAR É PRIMEIRO CONTATO ─────────────────────────────────────
         //
@@ -524,8 +569,26 @@ export async function POST(request: Request) {
           await admin.from("lead_reactivation_batches").update({ status: remaining ? "running" : "completed", updated_at: now }).eq("id", templateItem.batchId);
         }
       } else if (event.topic === "meta.lead.fetch" && event.aggregate_id) {
-        const { data: metaEvent, error: metaError } = await admin.from("meta_lead_events").select("id,organization_id,source_id,external_lead_id,status,page_id,form_id,ad_id,adset_id,campaign_external_id").eq("id", event.aggregate_id).single();
-        if (metaError || !metaEvent) throw metaError ?? new Error("Evento Meta não encontrado.");
+        const { data: metaEvent, error: metaError } = await admin.from("meta_lead_events").select("id,organization_id,source_id,external_lead_id,status,page_id,form_id,ad_id,adset_id,campaign_external_id").eq("id", event.aggregate_id).maybeSingle();
+        /* `.single()` até 02/08/2026, e a mensagem abaixo NUNCA aparecia.
+           Medido na fila de produção: um item morreu com
+           "Cannot coerce the result to a single JSON object [code PGRST116]"
+           — o erro cru do PostgREST. A causa real é banal: o
+           `aggregate_id` aponta para uma linha de `meta_lead_events` que
+           não existe mais (confirmado, a consulta devolve zero linhas).
+
+           `.single()` transforma "zero linhas" em ERRO. Então `metaError`
+           vinha preenchido, vencia o `??`, e a frase em português que o
+           autor escreveu para exatamente este caso ficava inalcançável.
+           O operador lia um código PostgREST e ia procurar defeito de
+           serialização, quando o que havia era um agregado órfão.
+
+           `.maybeSingle()` devolve `data: null, error: null` quando não
+           acha — aí a guarda abaixo dispara a mensagem certa. Mesma
+           família de "Falha desconhecida" que este repositório já
+           corrigiu no `descreverFalha`: o diagnóstico existia e era
+           descartado no caminho. */
+        if (metaError || !metaEvent) throw metaError ?? new Error(`Evento Meta ${event.aggregate_id} não encontrado — agregado órfão na fila.`);
         if (metaEvent.status !== "imported") {
           await admin.from("meta_lead_events").update({ status: "processing", last_error: null }).eq("id", metaEvent.id);
           const [leadData, sourceResult] = await Promise.all([
@@ -537,7 +600,13 @@ export async function POST(request: Request) {
           const name = metaField(fields, "full_name", "name") || [metaField(fields, "first_name"), metaField(fields, "last_name")].filter(Boolean).join(" ") || "Lead Meta";
           const email = metaField(fields, "email");
           const phone = metaField(fields, "phone_number", "phone");
-          const { data: existingLead } = await admin.from("leads").select("id").eq("organization_id", metaEvent.organization_id).contains("metadata", { meta: { externalLeadId: metaEvent.external_lead_id } }).maybeSingle();
+          // Erro aqui virava "não existe" e a lead nascia DUPLICADA. Mesma
+          // doença da consulta de opt-out acima: a pergunta é "esta lead já
+          // entrou?" e a ausência de resposta era lida como "não". Ver o
+          // gêmeo no ramo de portal, mais abaixo.
+          const existingLeadQuery = await admin.from("leads").select("id").eq("organization_id", metaEvent.organization_id).contains("metadata", { meta: { externalLeadId: metaEvent.external_lead_id } }).maybeSingle();
+          if (existingLeadQuery.error) throw existingLeadQuery.error;
+          const existingLead = existingLeadQuery.data;
           // ── FONTE INATIVA RETÉM, NÃO CRIA ───────────────────────────────
           //
           // `active: false` significa "esta fonte ainda não foi aceita na
@@ -696,9 +765,17 @@ export async function POST(request: Request) {
         }
       } else if (event.topic === "meta.conversion.send" && event.aggregate_id) {
         const [{ data: conversion, error: conversionError }, { data: config, error: configError }] = await Promise.all([
-          admin.from("meta_conversion_events").select("id,organization_id,lead_id,event_name,event_id,action_source,custom_data,occurred_at,status,attempts").eq("id", event.aggregate_id).single(),
-          admin.from("meta_conversion_configs").select("dataset_id,mode,enabled,test_event_code,consent_required").eq("organization_id", event.organization_id).single(),
+          admin.from("meta_conversion_events").select("id,organization_id,lead_id,event_name,event_id,action_source,custom_data,occurred_at,status,attempts").eq("id", event.aggregate_id).maybeSingle(),
+          admin.from("meta_conversion_configs").select("dataset_id,mode,enabled,test_event_code,consent_required").eq("organization_id", event.organization_id).maybeSingle(),
         ]);
+        /* `.maybeSingle()` desde 02/08/2026, nas três consultas acima e na de
+           `meta_lead_events`. Com `.single()`, "zero linhas" vira ERRO do
+           PostgREST, o `??` escolhe esse erro, e a frase em português que o
+           autor escreveu para exatamente este caso fica INALCANÇÁVEL — o
+           operador lê `PGRST116` e vai procurar defeito de serialização.
+           Medido na fila de produção: foi assim que um item morreu.
+           Este caminho é o das conversões da Meta (Grupo A): registro
+           ausente aqui precisa dizer QUAL registro, não um código. */
         if (conversionError || !conversion) throw conversionError ?? new Error("Evento de conversão não encontrado.");
         if (configError || !config) throw configError ?? new Error("Configuração de conversão não encontrada.");
         if (!config.enabled || config.mode !== "test" || !config.test_event_code) throw new Error("Conversões Meta permanecem bloqueadas fora do modo de teste.");
@@ -729,7 +806,17 @@ export async function POST(request: Request) {
         // Mesma razão do WhatsApp: preserva code/subcode na mensagem para o
         // catch distinguir token expirado de erro de dado da conversão.
         if (!response.ok) throw new Error(describeMetaGraphFailure(response.status, metaResponse));
-        await admin.from("meta_conversion_events").update({ status: "delivered", delivered_at: now, meta_response: metaResponse, last_error: null }).eq("id", conversion.id);
+        // Mesma forma da linha de envio do WhatsApp: a conversão JÁ foi entregue
+        // à Meta. Falhando este `update` em silêncio, o evento volta na próxima
+        // rodada e a MESMA conversão é enviada de novo — e conversão duplicada
+        // não é só ruído: ela infla a atribuição da campanha e envenena a
+        // decisão de onde investir. O `event_id` protege contra duplicata do
+        // lado da Meta, mas só enquanto a janela de dedupe dela estiver aberta.
+        const marcouEntregue = await admin.from("meta_conversion_events").update({ status: "delivered", delivered_at: now, meta_response: metaResponse, last_error: null }).eq("id", conversion.id);
+        if (marcouEntregue.error) {
+          logger.error("outbox.conversao_entregue_sem_registro", { conversionId: conversion.id, eventId: conversion.event_id, code: marcouEntregue.error.code });
+          throw marcouEntregue.error;
+        }
       } else if (event.topic === "whatsapp.inbound.analyze" && event.aggregate_id) {
         const { data: message } = await admin.from("messages").select("id,organization_id,conversation_id,content,direction").eq("id", event.aggregate_id).maybeSingle();
         if (message && message.direction === "inbound") {
@@ -763,7 +850,13 @@ export async function POST(request: Request) {
           const { data: sourceRow } = await admin.from("portal_lead_sources").select("default_owner_id,name").eq("id", portalEvent.source_id).single();
           const contact = portalEvent.contact && typeof portalEvent.contact === "object" ? portalEvent.contact as { name?: string; email?: string; phone?: string; message?: string } : {};
           const providerLabel = integrationCatalog.find((item) => item.provider === portalEvent.provider)?.name || portalEvent.provider;
-          const { data: existingLead } = await admin.from("leads").select("id").eq("organization_id", portalEvent.organization_id).contains("metadata", { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id } }).maybeSingle();
+          // Gêmeo da dedupe do caminho Meta: erro virava "não existe" e a lead
+          // do portal nascia DUPLICADA. E aqui o dano é maior, porque logo
+          // abaixo `existingLead` decide se há atribuição de dono — sem ele, a
+          // duplicata ainda cai na fila de um corretor.
+          const existingLeadQuery = await admin.from("leads").select("id").eq("organization_id", portalEvent.organization_id).contains("metadata", { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id } }).maybeSingle();
+          if (existingLeadQuery.error) throw existingLeadQuery.error;
+          const existingLead = existingLeadQuery.data;
           // Mesma cascata RBAC do caminho Meta — portais tinham o mesmo gap.
           const ownership = existingLead
             ? null
@@ -929,7 +1022,9 @@ export async function POST(request: Request) {
         await admin.from("lead_reactivation_contacts").update({ status: "failed", block_reason: message.slice(0, 500) }).eq("batch_id", reactivationBatchId).eq("message_id", event.aggregate_id);
       }
       if (terminal) {
-        await admin.from("dead_letter_events").insert({
+        // Mesma razao da carta morta do ramo acima: sem camada abaixo, o
+        // silencio aqui apaga o registro da falha terminal.
+        const cartaMortaTerminal = await admin.from("dead_letter_events").insert({
           organization_id: event.organization_id,
           outbox_event_id: event.id,
           topic: event.topic,
@@ -937,6 +1032,7 @@ export async function POST(request: Request) {
           error_message: message,
           attempts,
         });
+        if (cartaMortaTerminal.error) logger.error("outbox.carta_morta_nao_gravada", { eventId: event.id, topic: event.topic, motivoOriginal: message, code: cartaMortaTerminal.error.code });
       }
       failed += 1;
       logger.error("outbox.delivery_failed", processingError, { eventId: event.id, topic: event.topic, attempts });

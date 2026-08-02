@@ -230,8 +230,19 @@ export async function POST(request: NextRequest) {
       generated += 1;
     } catch (reportError) {
       failed += 1;
-      if (reportId)
-        await admin
+      // Este é o registro de que o relatório FALHOU. Se ele próprio falhar em
+      // silêncio, o relatório fica preso no estado anterior e a falha não
+      // existe para ninguém — mesma forma da carta morta do outbox: não há
+      // camada abaixo desta para pegar.
+      //
+      // O `if` era de uma linha só, sem chaves. Ao capturar o retorno numa
+      // `const` eu o transformei em bloco sem abrir bloco, e o `tsc` reprovou
+      // com "'const' declarations can only be declared inside a block". Vale
+      // registrar: o portão `vigia-silencio:check` ficou VERDE nesse estado,
+      // porque ele lê a FORMA do código e não o compila. Catraca não substitui
+      // degrau — a escada tem os dois.
+      if (reportId) {
+        const marcouFalha = await admin
           .from("meta_daily_reports")
           .update({
             status: "failed",
@@ -243,6 +254,8 @@ export async function POST(request: NextRequest) {
           })
           .eq("id", reportId)
           .eq("organization_id", organization.id);
+        if (marcouFalha.error) logger.error("meta.daily_report_falha_nao_gravada", { code: marcouFalha.error.code });
+      }
       logger.error("meta.daily_report_failed", reportError, {
         organizationId: organization.id,
       });

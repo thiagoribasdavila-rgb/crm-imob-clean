@@ -49,6 +49,14 @@ if (!workers.length) {
   process.exit(1);
 }
 
+// O fuso vem do JSON, nunca de um literal aqui: cadência e fuso são a MESMA
+// declaração, e separá-los em dois arquivos é como a cadência ficou ambígua.
+const fuso = bruto.$fusoDaCadencia?.fuso;
+if (!fuso) {
+  console.error("config/workers-schedule.json não declara $fusoDaCadencia.fuso — sem isso a cadência não diz em que relógio vale.");
+  process.exit(1);
+}
+
 const linhas = [
   "# ATLAS ONE — agendamento dos workers",
   "# GERADO por scripts/gera-crontab-dos-workers.mjs a partir de config/workers-schedule.json.",
@@ -58,9 +66,22 @@ const linhas = [
   "# O SEGREDO NÃO ENTRA NESTE ARQUIVO. Ele é lido de ATLAS_CRON_SECRET, que precisa",
   "# estar no ambiente do cron — a linha abaixo carrega o .env do app antes de cada",
   "# chamada. Crontab é texto puro e legível por quem tiver a conta.",
+  "#",
+  "# ── O FUSO, QUE ATÉ 02/08/2026 NÃO ERA DITO ─────────────────────────────────",
+  "#",
+  "# Sem CRON_TZ, `0 3 * * *` significa 3h do relógio DO SERVIDOR — e ninguém",
+  "# sabia qual era esse relógio. Isso não é detalhe: dois dos treze vigias",
+  "# decidem sozinhos se trabalham, olhando a hora em America/Sao_Paulo. Quando a",
+  "# cadência e a janela falam relógios diferentes, o vigia dispara e RECUSA, e o",
+  "# resultado é indistinguível de 'não havia trabalho'.",
+  "#",
+  "# Foi o que aconteceu com o nightly-handoff: agendado às 3h30 e programado para",
+  "# só trabalhar entre 7h e 11h59. Em nenhum relógio plausível ele caía dentro da",
+  "# própria janela.",
   "",
   "SHELL=/bin/bash",
   "MAILTO=\"\"",
+  `CRON_TZ=${fuso}`,
   "",
 ];
 

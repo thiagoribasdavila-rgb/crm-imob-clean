@@ -42,6 +42,26 @@ import { useCallback, useEffect, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
 import { AtlasCard, AtlasCardHeader } from "@/components/ui/AtlasCard";
+import {
+  AlertasInteligentes,
+  AtividadesEmTempoReal,
+  CartaoKpi,
+  EvolucaoDeLeads,
+  FunilEmDegraus,
+  InsightsDoCopiloto,
+  PerformanceDaEquipe,
+  SemLastro,
+  TopProjetosPorLeads,
+  type DeltaLeadsTotais,
+  type DeltasDeEstado,
+  type Equipe,
+  type Evolucao,
+  type InsightLocal,
+  type ItemDoFeed,
+  type PontoCego,
+  type SinalDoBriefing,
+  type TopProjetos,
+} from "@/components/atlas/sala-de-comando-faixas";
 
 type Etapa = {
   chave: string;
@@ -99,6 +119,41 @@ type Dados = {
     registroDeMovimentoMensuravel: boolean;
     movimentosLidos: number;
   };
+  /* Os quatro blocos da referência visual. Ver sala-de-comando-faixas.tsx. */
+  deltaLeadsTotais: DeltaLeadsTotais;
+  deltasDeEstado: DeltasDeEstado;
+  evolucao: Evolucao;
+  topProjetos: TopProjetos;
+  equipe: Equipe;
+  /** Quando a MEDIÇÃO foi feita. É esta a régua do "há X min", não o relógio
+   *  do render — que além de impuro faria o mesmo item mudar de idade a cada
+   *  repintura sem nada ter acontecido na operação. */
+  geradoEm: string;
+};
+
+/**
+ * ── O QUE A PÁGINA ENTREGA, E POR QUE NÃO É BUSCADO AQUI ───────────────────
+ *
+ * Onze dos catorze painéis desta referência não precisam de consulta nova: a
+ * página já busca dez rotas. Feed, sinais e insights chegam por propriedade,
+ * de `/api/ai/briefing` e do instantâneo de `/api/v1/core-v2/module-health`,
+ * que a página JÁ buscou. Refazer essas chamadas aqui criaria uma segunda
+ * verdade sobre o mesmo fato — que é a doença que este repositório mais paga.
+ *
+ * Todas são opcionais: `<SalaDeComandoPanel />` sem propriedade nenhuma
+ * continua válido, e cada painel sem fonte nasce declarando o que falta em vez
+ * de sumir.
+ */
+export type PropriedadesDaSala = {
+  feed?: ItemDoFeed[];
+  /** Leads lidas contra o total do módulo: divergiu, o feed diz "amostra". */
+  feedAmostra?: { lidas: number; total: number | null } | null;
+  /** Momento da leitura, para o "há X min" não depender do relógio do render. */
+  referenciaMs?: number;
+  sinais?: SinalDoBriefing[];
+  sinaisIndisponivel?: boolean;
+  pontosCegos?: PontoCego[];
+  insightsLocais?: InsightLocal[];
 };
 
 const inteiro = (n: number) => n.toLocaleString("pt-BR");
@@ -382,7 +437,15 @@ function Funil({ etapas }: { etapas: Etapa[] }) {
   );
 }
 
-export function SalaDeComandoPanel() {
+export function SalaDeComandoPanel({
+  feed = [],
+  feedAmostra = null,
+  referenciaMs,
+  sinais = [],
+  sinaisIndisponivel = false,
+  pontosCegos = [],
+  insightsLocais = [],
+}: PropriedadesDaSala = {}) {
   const [dados, setDados] = useState<Dados | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [semAcesso, setSemAcesso] = useState(false);
@@ -488,73 +551,245 @@ export function SalaDeComandoPanel() {
 
   const { indicadores: i, conversao: c } = dados;
 
+  const semLastroDeEstado = { tipo: "sem-lastro" as const, porque: dados.deltasDeEstado.porqueIndisponivel };
+  const d = dados.deltaLeadsTotais;
+
   return (
     <div className="space-y-5">
-      <section aria-label="Indicadores da operação" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <Indicador rotulo="Leads na base" valor={inteiro(i.leadsTotais)} detalhe={`${inteiro(i.emAberto)} em aberto no funil`} />
-        <Indicador
-          rotulo="Com primeiro contato"
-          valor={inteiro(i.comPrimeiroContato)}
-          detalhe={`de ${inteiro(i.leadsTotais)} — o resto nunca foi tocado`}
-          alerta={i.comPrimeiroContato < i.leadsTotais * 0.1}
-        />
-        <Indicador rotulo="Em atendimento" valor={inteiro(i.emAtendimento)} detalhe="status contato" />
-        <Indicador
-          rotulo="Em negociação"
-          valor={inteiro(i.emNegociacao)}
-          detalhe={i.vgvEmNegociacaoIndisponivel}
-          alerta={i.emNegociacao === 0}
-        />
-        <Indicador
-          rotulo="VGV fechado"
-          valor={brl(i.vgvFechado)}
-          detalhe={i.vendasSemValorInformado > 0 ? `${i.vendasSemValorInformado} venda sem valor informado` : null}
-          alerta={i.vendasSemValorInformado > 0}
-        />
-        {/* A conversão é o único indicador que se RECUSA a mostrar número quando a
-            amostra não sustenta. Uma venda em 482 não distingue 0,2% de 2%. */}
-        <Indicador
-          rotulo="Conversão"
-          valor={c.afirmavel && c.taxa !== null ? `${c.taxa}%` : `${c.ganhos} venda${c.ganhos === 1 ? "" : "s"}`}
-          detalhe={c.afirmavel ? `${inteiro(c.ganhos)} de ${inteiro(c.base)}` : c.porqueNaoAfirmavel}
-          alerta={!c.afirmavel}
-        />
+      {/* ══════════════════════════════════════════════════════════════════
+          FAIXA 1 · SEIS CARTÕES DE KPI — ícone, valor e delta.
+
+          Os seis do desenho de referência vêm primeiro; os dois que esta tela
+          já media e que a referência não lista vêm logo abaixo, na forma em
+          que sempre estiveram. NADA foi apagado: "em aberto no funil", que era
+          um detalhe do primeiro cartão, virou cartão próprio ("Leads ativos"),
+          e a frase do VGV em negociação, que era detalhe do quarto, virou o
+          cartão que a referência pede — declarado sem lastro.
+
+          UM delta é medido, cinco são declarados. Não é economia: é a única
+          coisa que a base sustenta, e está escrito em cada um deles.
+          ══════════════════════════════════════════════════════════════════ */}
+      <section aria-label="Indicadores da operação" className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+          <CartaoKpi
+            rotulo="Leads na base"
+            glifo="base"
+            valor={inteiro(i.leadsTotais)}
+            delta={{
+              tipo: "medido",
+              percentual: d.variacaoPercentual,
+              rotulo: `${d.rotulo}, ${d.janelaDias}d`,
+              ressalva: d.ressalva,
+            }}
+          />
+          <CartaoKpi
+            rotulo="Leads ativos"
+            glifo="ativos"
+            valor={inteiro(i.emAberto)}
+            detalhe="em aberto no funil"
+            delta={semLastroDeEstado}
+          />
+          <CartaoKpi
+            rotulo="Em atendimento"
+            glifo="atendimento"
+            valor={inteiro(i.emAtendimento)}
+            detalhe="status contato"
+            delta={semLastroDeEstado}
+          />
+          <CartaoKpi
+            rotulo="Em negociação"
+            glifo="negociacao"
+            valor={inteiro(i.emNegociacao)}
+            detalhe={i.emNegociacao === 0 ? "nenhuma oferta viva agora" : "proposta e contrato"}
+            delta={semLastroDeEstado}
+            estado={i.emNegociacao === 0 ? "atencao" : "neutro"}
+          />
+          {/* ── O CARTÃO QUE O MOCKUP MOSTRAVA COM "R$ 24,7M" ───────────────
+              Confirmado por três caminhos independentes: não há lead em
+              proposta ou contrato para somar; `sale_value_brl` está preenchida
+              em 1 de 490 linhas; e a saída de fuga tentadora — somar
+              `budget_max` — é o ORÇAMENTO DECLARADO DO COMPRADOR, não o valor
+              do negócio, e está preenchida em 1 de 490. O cartão nasce
+              declarando o que falta. */}
+          <CartaoKpi
+            rotulo="VGV em negociação"
+            glifo="dinheiro"
+            valorSemLastro={
+              i.vgvEmNegociacaoIndisponivel ??
+              "Falta valor de negócio preenchido na lead ao entrar em proposta ou contrato. Sem ele não há o que somar."
+            }
+            delta={semLastroDeEstado}
+          />
+          {/* A conversão é o único indicador que se RECUSA a mostrar número quando a
+              amostra não sustenta. Uma venda em 482 não distingue 0,2% de 2%. */}
+          <CartaoKpi
+            rotulo="Conversão"
+            glifo="conversao"
+            valor={c.afirmavel && c.taxa !== null ? `${c.taxa}%` : `${c.ganhos} venda${c.ganhos === 1 ? "" : "s"}`}
+            detalhe={c.afirmavel ? `${inteiro(c.ganhos)} de ${inteiro(c.base)}` : null}
+            delta={
+              c.afirmavel
+                ? semLastroDeEstado
+                : { tipo: "nenhum", detalhe: c.porqueNaoAfirmavel }
+            }
+            estado={c.afirmavel ? "neutro" : "atencao"}
+          />
+        </div>
+
+        {/* Os dois indicadores que esta tela já media antes da referência. Eles
+            não estão no desenho do dono, e continuam aqui exatamente como
+            estavam — a referência acrescenta e reorganiza, não substitui. */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Indicador
+            rotulo="Com primeiro contato"
+            valor={inteiro(i.comPrimeiroContato)}
+            detalhe={`de ${inteiro(i.leadsTotais)} — o resto nunca foi tocado`}
+            alerta={i.comPrimeiroContato < i.leadsTotais * 0.1}
+          />
+          <Indicador
+            rotulo="VGV fechado"
+            valor={brl(i.vgvFechado)}
+            detalhe={i.vendasSemValorInformado > 0 ? `${i.vendasSemValorInformado} venda sem valor informado` : null}
+            alerta={i.vendasSemValorInformado > 0}
+          />
+        </div>
       </section>
 
-      <AtlasCard>
-        <AtlasCardHeader
-          eyebrow="Funil de vendas"
-          title="Onde as leads estão agora"
-          description={`${inteiro(i.emAberto)} em aberto · ${inteiro(c.ganhos)} ganha${c.ganhos === 1 ? "" : "s"} · ${inteiro(c.perdidos)} perdida${c.perdidos === 1 ? "" : "s"}`}
-        />
-        <div className="p-5 sm:p-6">
-          <Funil etapas={dados.funil} />
-          {/* A procedência fica ABAIXO do funil, em texto pequeno: ela não é o
-              que o diretor lê primeiro, mas é o que responde "desde quando?" —
-              e sem ela "3 já passaram" parece cobrir a história inteira. */}
-          <p className="mt-4 border-t border-white/[.06] pt-3 text-rotulo leading-4 text-slate-500">
-            {dados.procedencia.registroDeMovimentoMensuravel ? (
-              dados.procedencia.registroDeMovimentoDesde ? (
-                <>
-                  &quot;Já passaram&quot; cobre {inteiro(dados.procedencia.movimentosLidos)} movimentos
-                  registrados desde{" "}
-                  {new Date(dados.procedencia.registroDeMovimentoDesde).toLocaleDateString("pt-BR")}. O que
-                  aconteceu antes disso não tem registro.
-                </>
+      {/* ══════════════════════════════════════════════════════════════════
+          FAIXA 2 · FUNIL · ATIVIDADES · EQUIPE
+          ══════════════════════════════════════════════════════════════════ */}
+      <div className="grid gap-4 xl:grid-cols-3">
+        <AtlasCard className="min-w-0">
+          <AtlasCardHeader
+            eyebrow="Funil de vendas"
+            title="Onde as leads estão agora"
+            description={`${inteiro(i.emAberto)} em aberto · ${inteiro(c.ganhos)} ganha${c.ganhos === 1 ? "" : "s"} · ${inteiro(c.perdidos)} perdida${c.perdidos === 1 ? "" : "s"}`}
+          />
+          <div className="p-5 sm:p-6">
+            {/* A FORMA responde onde o funil aperta; a LISTA abaixo responde
+                quanto há em cada etapa e é a versão lida por leitor de tela.
+                As duas leem o mesmo `funil[]` — não há segunda contagem. */}
+            <FunilEmDegraus etapas={dados.funil} />
+            <div className="mt-4">
+              <Funil etapas={dados.funil} />
+            </div>
+            {/* A procedência fica ABAIXO do funil, em texto pequeno: ela não é o
+                que o diretor lê primeiro, mas é o que responde "desde quando?" —
+                e sem ela "3 já passaram" parece cobrir a história inteira. */}
+            <p className="mt-4 border-t border-white/[.06] pt-3 text-rotulo leading-4 text-slate-500">
+              {dados.procedencia.registroDeMovimentoMensuravel ? (
+                dados.procedencia.registroDeMovimentoDesde ? (
+                  <>
+                    &quot;Já passaram&quot; cobre {inteiro(dados.procedencia.movimentosLidos)} movimentos
+                    registrados desde{" "}
+                    {new Date(dados.procedencia.registroDeMovimentoDesde).toLocaleDateString("pt-BR")}. O que
+                    aconteceu antes disso não tem registro.
+                  </>
+                ) : (
+                  <>Nenhuma movimentação de etapa registrada ainda — &quot;já passaram&quot; começa a contar a partir da primeira.</>
+                )
               ) : (
-                <>Nenhuma movimentação de etapa registrada ainda — &quot;já passaram&quot; começa a contar a partir da primeira.</>
-              )
-            ) : (
-              <>Não foi possível ler o histórico de movimentação; &quot;já passaram&quot; está indisponível, não é zero.</>
-            )}
-            {dados.procedencia.amostraTruncada ? (
-              <span className="ml-1 text-amber-300">
-                Atenção: a leitura de leads foi truncada — estes agregados estão sobre amostra, não sobre a base inteira.
-              </span>
+                <>Não foi possível ler o histórico de movimentação; &quot;já passaram&quot; está indisponível, não é zero.</>
+              )}
+              {dados.procedencia.amostraTruncada ? (
+                <span className="ml-1 text-amber-300">
+                  Atenção: a leitura de leads foi truncada — estes agregados estão sobre amostra, não sobre a base inteira.
+                </span>
+              ) : null}
+            </p>
+          </div>
+        </AtlasCard>
+
+        <AtlasCard className="min-w-0">
+          <AtlasCardHeader
+            eyebrow="Atividades em tempo real"
+            title="O que mudou por último"
+            description="Leads e tarefas do instantâneo desta tela, das mais recentes para as mais antigas."
+          />
+          <div className="p-5 sm:p-6">
+            <AtividadesEmTempoReal
+              itens={feed}
+              referenciaMs={referenciaMs ?? new Date(dados.geradoEm).getTime()}
+              amostra={feedAmostra}
+            />
+            {/* O mockup pede ícone POR CANAL. Medido: `activities.type` tem UM
+                único valor em 481 de 481 linhas, e messages/conversations/
+                followups estão todas em zero. Seis ícones sobre um valor só é
+                decoração que finge variedade. */}
+            <p className="mt-3 border-t border-white/[.06] pt-3 text-micro leading-4 text-[var(--atlas-texto-fraco)]">
+              Sem ícone por canal: não há registro de interação por WhatsApp, ligação ou e-mail nesta base — todo
+              evento registrado é mudança de etapa. Falta gravar o canal do toque para o feed poder distingui-los.
+            </p>
+          </div>
+        </AtlasCard>
+
+        <AtlasCard className="min-w-0">
+          <AtlasCardHeader
+            eyebrow="Performance da equipe"
+            title="Como a carteira está distribuída"
+            description="Ranking por volume de carteira. Conversão por pessoa só aparece acima do mesmo limiar que libera a taxa no total."
+          />
+          <div className="p-5 sm:p-6">
+            <PerformanceDaEquipe equipe={dados.equipe} />
+            {dados.equipe.porqueSemTaxaPorCorretor ? (
+              <div className="mt-3">
+                <SemLastro titulo="sem lastro · conversão por corretor" oQueFalta={dados.equipe.porqueSemTaxaPorCorretor} />
+              </div>
             ) : null}
-          </p>
-        </div>
-      </AtlasCard>
+          </div>
+        </AtlasCard>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          FAIXA 3 · EVOLUÇÃO · TOP PROJETOS · ALERTAS
+          ══════════════════════════════════════════════════════════════════ */}
+      <div className="grid gap-4 xl:grid-cols-3">
+        <AtlasCard className="min-w-0">
+          <AtlasCardHeader
+            eyebrow="Evolução de leads"
+            title="O salto foi demanda ou importação?"
+            description={`${inteiro(dados.evolucao.diasNaBase)} dias de base${dados.evolucao.serieTruncada ? `, mostrando os ${inteiro(dados.evolucao.dias.length)} mais recentes` : ""}.`}
+          />
+          <div className="p-5 sm:p-6">
+            <EvolucaoDeLeads evolucao={dados.evolucao} />
+          </div>
+        </AtlasCard>
+
+        <AtlasCard className="min-w-0">
+          <AtlasCardHeader
+            eyebrow="Top projetos"
+            title={dados.topProjetos.rotulo}
+            description="Ranking por LEADS, não por VGV — o rótulo diz o que o número é."
+          />
+          <div className="p-5 sm:p-6">
+            <TopProjetosPorLeads dados={dados.topProjetos} />
+          </div>
+        </AtlasCard>
+
+        <AtlasCard className="min-w-0">
+          <AtlasCardHeader
+            eyebrow="Alertas inteligentes"
+            title="O que pede decisão agora"
+            description="Sinais com severidade e destino, do briefing que esta página já busca."
+          />
+          <div className="p-5 sm:p-6">
+            <AlertasInteligentes sinais={sinais} indisponivel={sinaisIndisponivel} />
+          </div>
+        </AtlasCard>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          FAIXA 4 · INSIGHTS DO COPILOTO
+          ══════════════════════════════════════════════════════════════════ */}
+      <section aria-label="Insights do copiloto" className="space-y-3">
+        <p className="cc6-eyebrow">Insights do copiloto</p>
+        <InsightsDoCopiloto
+          sinais={sinais}
+          pontosCegos={pontosCegos}
+          insightsLocais={insightsLocais}
+          indisponivel={sinaisIndisponivel}
+        />
+      </section>
 
       {/* O lado da COMPRA. Ficou fora desta tela enquanto `marketing_spend`
           estava vazia — e o comentário da rota dizia exatamente isso. Entrou no

@@ -49,10 +49,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, pendentes: 0, resgatadas: 0, aindaSemFonte: 0, duracaoMs: Date.now() - inicio });
   }
 
-  const { data: fontes } = await admin
+  // Erro descartado aqui deixava `fontes` em `undefined`: nenhuma fonte para
+  // casar, nenhuma lead resolvida, e o vigia respondendo 200 como se tivesse
+  // varrido a fila. "Nao achei destino para ninguem" e "nao consegui ler as
+  // fontes" viravam a mesma resposta.
+  const fontesQuery = await admin
     .from("meta_lead_sources")
     .select("id,organization_id,page_id,form_id")
     .eq("active", true);
+  if (fontesQuery.error) throw fontesQuery.error;
+  const fontes = fontesQuery.data;
 
   let resgatadas = 0;
   let aindaSemFonte = 0;
@@ -105,9 +111,12 @@ export async function POST(request: Request) {
       }
     }
 
-    await admin.from("meta_leads_sem_destino")
+    // A lead so esta REALMENTE resolvida se a marcacao gravou. Sem conferir,
+        // o contador subia e a lead continuava orfa na proxima rodada.
+        const marcou = await admin.from("meta_leads_sem_destino")
       .update({ resolvido: true, resolvido_em: new Date().toISOString() })
       .eq("id", lead.id);
+        if (marcou.error) throw marcou.error;
     resgatadas += 1;
   }
 
