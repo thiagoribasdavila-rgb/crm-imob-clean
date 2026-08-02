@@ -50,6 +50,21 @@ type CompatibleLeadReadInput = CompatibleReadInput & {
    * `ownerId`: quem pede a equipe já resolveu quem está dentro dela.
    */
   ownerIds?: string[] | null;
+  /**
+   * Traz a coluna `metadata`. Só quem LÊ o conteúdo deve pedir.
+   *
+   * Medido em 02/08/2026: `metadata` pesa 509 B por lead (`pg_column_size`,
+   * 243 KB nas 490 desta base). Dos cinco chamadores desta função, só o Kanban
+   * (`/api/v1/pipeline`, teto de 500 leads → 254 KB) lê o conteúdo: o card
+   * mostra `metadata.meta.campaignName`. Agenda, tarefas, launch-os e o painel
+   * de saúde operacional nunca tocam no campo, e launch-os sozinho lê 5.000
+   * leads — pagariam 2,5 MB por uma coluna que não abrem.
+   *
+   * Sem isto o card caía em `metadata.meta.campaignId` → `lead.campaign_id`, e
+   * o Kanban exibia o UUID da campanha no lugar do nome: medido em 2 de 2 cards
+   * com nome gravado, e 20 leads na base têm `meta.campaignName`.
+   */
+  comMetadata?: boolean;
 };
 
 type CompatibleReadFailure = {
@@ -146,11 +161,17 @@ export async function readCompatibleLeads(
     return query.order("created_at", { ascending: false, nullsFirst: false }).limit(limit);
   };
 
+  // As DUAS escadas carregam `metadata` quando ela foi pedida: a degradação por
+  // 42703 troca o select inteiro, e se só a de cima a tivesse, um banco sem as
+  // colunas de SLA perderia o `metadata` junto — que nada tem a ver com SLA.
+  const estendido = input.comMetadata ? `${LIVE_LEAD_SELECT_WITH_SLA},metadata` : LIVE_LEAD_SELECT_WITH_SLA;
+  const base = input.comMetadata ? `${LIVE_LEAD_SELECT},metadata` : LIVE_LEAD_SELECT;
+
   let comSla = true;
-  let result = await executar(LIVE_LEAD_SELECT_WITH_SLA);
+  let result = await executar(estendido);
   if (result.error && isMissingColumn(result.error)) {
     comSla = false;
-    result = await executar(LIVE_LEAD_SELECT);
+    result = await executar(base);
   }
   if (result.error) return unavailable(result.error.code);
 

@@ -46,8 +46,12 @@
 // (Math.round(sales / leads * 1000) / 10) — extraída para cá sem alterar o
 // consumidor existente.
 
-import { getDiscardReason } from "@/lib/atlas/discard-reasons";
-import { canonicalPipelineStage } from "@/lib/atlas/pipeline-stages";
+// Import RELATIVO com extensao .ts, e nao o atalho @/: os contratos rodam em
+// `node --test`, que nao conhece os `paths` do tsconfig. Modulo puro que usa @/
+// fica INALCANCAVEL por contrato — e foi assim que este repositorio ja entregou
+// "modulo com contrato" cujo contrato nao conseguia nem importa-lo.
+import { getDiscardReason } from "./discard-reasons.ts";
+import { canonicalPipelineStage } from "./pipeline-stages.ts";
 
 export const CAMPAIGN_QUALITY_MINIMUM_LEADS = 30; // mesmo gate do director-daily
 export const CAMPAIGN_QUALITY_QUALIFIED_SCORE = 70; // mesmo corte de hotLeads

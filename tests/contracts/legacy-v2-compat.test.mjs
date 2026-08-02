@@ -21,11 +21,35 @@ test("normaliza etapas comerciais legadas sem perder o significado", () => {
   assert.ok(compatibleLeadStatuses("qualificacao").includes("QUALIFICADO"));
 });
 
+/**
+ * ── ASSERÇÃO REAPONTADA EM 02/08/2026, COM A CAUSA MEDIDA ───────────────────
+ *
+ * Esta linha exigia `liveLeadSortColumn("updated_at") === "created_at"`. O nome
+ * do teste diz o critério — "colunas existentes no banco V3" — e a asserção
+ * estava certa quanto ao critério e ERRADA quanto ao fato: `updated_at` existe.
+ * Conferido no banco vivo (pozbrcsfthnhmnebfoxv) antes de mexer aqui:
+ *
+ *   information_schema.columns → leads.updated_at, timestamptz, is_nullable=NO
+ *   criada na ponte V3 20260717213001, no mesmo `add column` de next_action_at
+ *
+ * O que a asserção congelava: a tela oferece "Última atualização" no seletor de
+ * ordenação (app/(crm)/leads/page.tsx), e ordenar por ela ordenava por data de
+ * CADASTRO. Em 468 das 490 leads desta base as duas datas diferem por mais de um
+ * dia — não é a mesma ordem, é outra lista com o mesmo rótulo.
+ *
+ * O portão não foi removido: foi apontado para a coluna certa e ganhou o caso
+ * que faltava — o recuo continua valendo para chave DESCONHECIDA, que é o que a
+ * asserção deveria proteger desde o começo. Um teste que exige o valor errado
+ * não protege: ele obriga o defeito a continuar.
+ */
 test("usa colunas existentes no banco V3 para ordenação", () => {
   assert.equal(liveLeadSortColumn("score"), "score_ia");
-  assert.equal(liveLeadSortColumn("updated_at"), "created_at");
+  assert.equal(liveLeadSortColumn("updated_at"), "updated_at",
+    "leads.updated_at existe e é not null; mandar para created_at faz 'Última atualização' ordenar por cadastro");
   assert.equal(liveLeadSortColumn("name"), "name");
-  assert.equal(liveLeadSortColumn("unknown"), "created_at");
+  assert.equal(liveLeadSortColumn("unknown"), "created_at",
+    "chave desconhecida não escolhe coluna: created_at é a única presente em qualquer banco");
+  assert.equal(liveLeadSortColumn(""), "created_at");
 });
 
 test("converte lead legado em oportunidade sem inventar probabilidade", () => {

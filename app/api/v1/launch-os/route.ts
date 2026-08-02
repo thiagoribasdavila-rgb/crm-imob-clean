@@ -129,7 +129,26 @@ export async function GET(request: NextRequest) {
     }
 
     const [propertyResult, leadResult, campaignResult, materialResult, leadsPorEmpreendimento] = await Promise.all([
-      db.from("inventory_units").select("id,project_id,price,status,unit_code,typology,bedrooms,private_area").eq("organization_id", organizationId).limit(5000),
+      // Estoque vem de `properties`, e não de `inventory_units`.
+      //
+      // MEDIDO na produção: `inventory_units` tem 0 linhas; `properties` tem 30
+      // (24 disponíveis + 6 reservadas, R$ 9.205.000 no Spin Mood). O gravador
+      // do produto — a RPC `upsert_canonical_inventory_unit`, chamada por
+      // /api/v1/developments/[id]/inventory — INSERE e ATUALIZA `properties` e
+      // não encosta em `inventory_units`. Nenhuma função do banco escreve na
+      // tabela antiga; no repositório ela só tinha LEITORES.
+      //
+      // A junção também estava partida, e não só a fonte: `inventory_units.
+      // project_id` aponta para `crm_projects`, enquanto o painel lista
+      // `developments` (readCompatibleDevelopments). Mesmo que a tabela antiga
+      // tivesse linhas, nenhum id fecharia — é o mesmo defeito que já esvaziou
+      // a contagem de leads por empreendimento. `properties.development_id`
+      // aponta para `developments.id`: a MESMA chave que o painel lista.
+      //
+      // Colunas conferidas uma a uma no banco (os nomes divergem entre as
+      // duas): project_id→development_id, unit_code→unit_number,
+      // private_area→area. price/status/id/typology/bedrooms coincidem.
+      db.from("properties").select("id,development_id,price,status,unit_code:unit_number,typology,bedrooms,private_area:area").eq("organization_id", organizationId).limit(5000),
       readCompatiblePipeline(db, { organizationId, limit: 5000 }),
       // Paginado pelo mesmo motivo do director-daily: acima de 1000 campanhas o
       // PostgREST corta sem erro e a campanha desaparece do painel em silêncio.
@@ -156,7 +175,11 @@ export async function GET(request: NextRequest) {
     }
     const opportunities: AnyRow[] = leadResult.ok ? leadResult.opportunities : [];
     const pipelineCompatibility: ModuleStatus = leadResult.ok ? "legacy" : "unavailable";
-    const properties: AnyRow[] = propertyResult.error ? [] : ((propertyResult.data ?? []) as unknown as AnyRow[]).map((row) => ({ ...row, development_id: row.project_id }));
+    // Sem remapear: `properties.development_id` JÁ é a chave que o painel usa.
+    // O `development_id: row.project_id` que existia aqui servia à tabela
+    // antiga; mantido, gravaria `undefined` por cima da chave boa e zeraria
+    // tudo de novo — em silêncio.
+    const properties: AnyRow[] = propertyResult.error ? [] : ((propertyResult.data ?? []) as unknown as AnyRow[]);
     const campaigns: AnyRow[] = campaignResult.error ? [] : campaignResult.rows;
     const reservations: AnyRow[] = [];
     const intelligence: AnyRow[] = [];
