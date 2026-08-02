@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { assessLeadCompleteness } from "@/lib/ai/data-completeness";
+import { perfilConfirmadoNoCrm, respostasDoFormularioNoMetadata, respostasLegadoDoPerfil, respostasLegadoNoMetadata, unificarQualificacao } from "@/lib/crm/qualificacao-canonica";
 import {
   buildGovernedLeadContextAuditMetadata,
   normalizeCommercialContextText,
@@ -11,6 +12,7 @@ import { commercialOutcomeFromStages } from "@/lib/ai/learning-loop";
 import { LIVE_LEAD_SELECT, LIVE_LEAD_SELECT_WITH_SLA, canonicalLeadStatus, isMissingColumn, isMissingRelation, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
 import { liveLeadUpdatePayload, mapLiveLeadEvent, recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { computeAttentionSignalsForLead } from "@/lib/atlas/attention-signals";
+import { FONTES_DO_HISTORICO, lerHistoricoDoLead } from "@/lib/crm/historico-do-lead";
 import { logger } from "@/lib/observability/logger";
 import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -104,14 +106,22 @@ export async function GET(request: Request, context: RouteContext) {
     if (leadError || !storedLead) return NextResponse.json({ error: "Lead fora do seu escopo comercial." }, { status: 403 });
 
     const lead = mapLegacyLead(storedLead as unknown as JsonRow);
-    const [eventResult, taskResult, ownerResult, projectResult, projectOptionsResult, oportunidadesResult] = await Promise.all([
-      admin
-        .from("lead_events")
-        .select("id,lead_id,event_type,type,description,metadata,created_by,created_at")
-        .eq("lead_id", id)
-        .eq("organization_id", identity.organizationId)
-        .order("created_at", { ascending: false })
-        .limit(100),
+    const [historico, taskResult, ownerResult, projectResult, projectOptionsResult, oportunidadesResult, perfilResult] = await Promise.all([
+      // ── A FICHA LIA UMA GAVETA DE TRÊS ────────────────────────────────────
+      //
+      // Aqui havia um `select` direto em `lead_events`, e só nela. Medido no
+      // banco vivo em 02/08/2026: 42 leads têm linha em `lead_events` e 444 têm
+      // movimentação registrada — 415 leads tinham história e NENHUM evento.
+      // Para essas 415 a ficha afirmava "Ainda não há interação registrada com
+      // este cliente" e marcava `interação registrada` como campo incompleto na
+      // nota de completude, enquanto a pontuação de qualificação contava a OUTRA
+      // gaveta. Duas leituras, duas respostas, o mesmo cliente.
+      //
+      // A união (interações das duas gavetas + movimentação da fonte canônica,
+      // sem o espelho que a RPC grava em `activities`) vive num lugar só:
+      // `lib/crm/historico-do-lead.ts`. Repetir a mescla aqui seria repetir o
+      // defeito com mais linhas.
+      lerHistoricoDoLead(admin, { organizationId: identity.organizationId, leadId: id, limite: 100 }),
       admin
         .from("tasks")
         .select("id,title,description,status,due_date,priority,user_id,created_at")
@@ -144,6 +154,19 @@ export async function GET(request: Request, context: RouteContext) {
         .eq("organization_id", identity.organizationId)
         .order("created_at", { ascending: false })
         .limit(50),
+      // A GAVETA CANÔNICA DA QUALIFICAÇÃO. `assessLeadCompleteness` tira 22 dos
+      // 100 pontos de `metadata.qualificationAnswers`, mas o corretor confirma
+      // prazo e forma de pagamento na tela conversacional, e aquilo grava em
+      // `lead_qualification_profiles`. Sem esta leitura, quem respondeu POR LÁ
+      // continuava com teto de 78 e a ficha continuava mandando perguntar de
+      // novo — a mesma ausência que o contrato `ficha-le-o-metadata` já pegou
+      // uma vez, agora pela outra gaveta.
+      admin
+        .from("lead_qualification_profiles")
+        .select("purpose_key,timeline_key,financing_key,budget_readiness_key,region_readiness_key,unit_profile_key,decision_role_key,contact_preference_key")
+        .eq("lead_id", id)
+        .eq("organization_id", identity.organizationId)
+        .maybeSingle(),
     ]);
 
     if (oportunidadesResult.error) {
@@ -215,15 +238,19 @@ export async function GET(request: Request, context: RouteContext) {
       logger.warn("lead.reservation.read_failed", { leadId: id, code: reserva.error.code });
     }
 
-    const eventRows = (eventResult.data ?? []) as JsonRow[];
-    const authorIds = [...new Set(eventRows.map((row) => String(row.created_by || "")).filter(Boolean))];
+    // Gaveta que FALHOU não pode virar "esta lead não tem história": o total
+    // menor derrubaria a nota de completude e o engajamento sem ninguém saber.
+    for (const falha of historico.falhas) {
+      logger.warn("lead.historico.read_failed", { leadId: id, fonte: falha.fonte, code: falha.code, message: falha.message });
+    }
+    const authorIds = [...new Set(historico.interacoes.map((item) => String(item.user_id || "")).filter(Boolean))];
     const { data: authors } = authorIds.length
       ? await admin.from("profiles").select("id,name").eq("organization_id", identity.organizationId).in("id", authorIds)
       : { data: [] as Array<{ id: string; name: string | null }> };
     const authorNames = new Map((authors ?? []).map((profile) => [profile.id, profile.name || "Equipe Atlas"]));
-    const activities = eventRows.map((row) => ({
-      ...mapLiveLeadEvent(row),
-      authorName: row.created_by ? authorNames.get(String(row.created_by)) || "Equipe Atlas" : "Automação Atlas",
+    const activities = historico.interacoes.map((item) => ({
+      ...item,
+      authorName: item.user_id ? authorNames.get(String(item.user_id)) || "Equipe Atlas" : "Automação Atlas",
     }));
     const tasks = (taskResult.data ?? []).map((task) => ({
       ...task,
@@ -231,7 +258,22 @@ export async function GET(request: Request, context: RouteContext) {
       assigned_to: task.user_id ?? null,
     }));
     const openTasks = tasks.filter((task) => !tarefaEncerrada(task.status));
-    const completeness = assessLeadCompleteness(completenessInput(lead), activities.length > 0);
+    // A união devolve o perfil canônico traduzido para o vocabulário que a
+    // régua de completude já entende. A gaveta legada não é apagada: ela entra
+    // primeiro e a canônica vence onde as duas falam do mesmo campo.
+    const qualificacaoUnificada = unificarQualificacao({
+      perfil: perfilResult.data as Record<string, unknown> | null,
+      respostasLegado: respostasLegadoNoMetadata(lead.metadata),
+      finalidadeDaLead: typeof lead.purpose === "string" ? lead.purpose : null,
+      respostasDoFormulario: respostasDoFormularioNoMetadata(lead.metadata),
+    });
+    const respostasParaAFicha = { ...respostasLegadoNoMetadata(lead.metadata), ...respostasLegadoDoPerfil(perfilConfirmadoNoCrm(qualificacaoUnificada)) };
+    const leadComQualificacao = { ...lead, metadata: { ...(lead.metadata && typeof lead.metadata === "object" ? lead.metadata as Record<string, unknown> : {}), qualificationAnswers: respostasParaAFicha } };
+    // `historico.total`, não `activities.length`: o campo "interação registrada"
+    // pergunta se existe história com este cliente, e a movimentação do funil é
+    // história — 415 leads a tinham e eram marcadas como incompletas por causa
+    // da gaveta que esta rota não abria.
+    const completeness = assessLeadCompleteness(completenessInput(leadComQualificacao as JsonRow), historico.total > 0);
     const inconsistencies = [
       lead.budget_min != null && lead.budget_max != null && Number(lead.budget_min) > Number(lead.budget_max) ? "Orçamento mínimo maior que o máximo" : null,
       !lead.phone && !lead.email ? "Cliente sem canal de contato" : null,
@@ -281,7 +323,7 @@ export async function GET(request: Request, context: RouteContext) {
         /** `false` = a leitura FALHOU. Lista vazia com isto `true` é ausência de verdade. */
         campaignEventsMensuraveis: campanhaMensuravel,
         historicalMemories: [],
-        sources: ["CRM", ...(lead.import_batch_id ? ["Base histórica"] : []), ...(activities.length ? ["Histórico comercial"] : [])],
+        sources: ["CRM", ...(lead.import_batch_id ? ["Base histórica"] : []), ...(historico.total ? ["Histórico comercial"] : [])],
       },
       relationshipContext: {
         owner,
@@ -308,8 +350,13 @@ export async function GET(request: Request, context: RouteContext) {
         unreadMessages: 0,
         openTasks: openTasks.length,
         activeOpportunities: 0,
-        lastInteractionAt: activities[0]?.occurred_at || lead.last_interaction_at || null,
-        context: activities[0]?.description || activities[0]?.title || "Ainda não há interação registrada com este cliente.",
+        // O fato mais recente de QUALQUER natureza — e a frase que o descreve.
+        // Antes, uma lead movida para "perdido" ontem, sem evento em
+        // `lead_events`, era apresentada ao corretor como "Ainda não há
+        // interação registrada com este cliente": ele ligava sem saber que o
+        // cliente já tinha sido encerrado, e por quê.
+        lastInteractionAt: historico.ultimoFato?.quando || lead.last_interaction_at || null,
+        context: historico.ultimoFato?.resumo || "Ainda não há interação registrada com este cliente.",
         actions: [nextTask?.due_at ? `Concluir a próxima tarefa prevista para ${new Date(String(nextTask.due_at)).toLocaleDateString("pt-BR")}.` : null, nextAction].filter((value): value is string => Boolean(value)).slice(0, 3),
         generatedBy: "Atlas Intelligence local",
         requiresApproval: true,
@@ -330,7 +377,17 @@ export async function GET(request: Request, context: RouteContext) {
         dentroDoPrazo: lead.first_contact_sla_met ?? null,
       },
       projectOptions: projectOptionsResult.data ?? [],
-      compatibility: { source: "live_v2", history: "lead_events", projects: "crm_projects" },
+      // O histórico que a ficha usa para decidir "há interação?" — publicado com
+      // as contagens separadas para a tela poder dizer O QUE existe, e com
+      // `mensuravel` por gaveta: lista curta porque a leitura falhou é diferente
+      // de lista curta porque não houve história.
+      historico: {
+        interacoes: historico.interacoesTotal,
+        movimentacoes: historico.movimentosTotal,
+        total: historico.total,
+        mensuravel: historico.mensuravel,
+      },
+      compatibility: { source: "live_v2", history: FONTES_DO_HISTORICO, projects: "crm_projects" },
     });
   } catch (error) {
     logger.warn("lead.intelligence.read_failed", { error: error instanceof Error ? error.message : String(error) });

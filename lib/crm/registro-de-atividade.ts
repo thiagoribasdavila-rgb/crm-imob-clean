@@ -101,34 +101,17 @@ export async function registrarAtividade(
 /** Colunas que EXISTEM — use este select em vez de listar na mão. */
 export const SELECT_DE_ATIVIDADE = "id,user_id,description,type,metadata,occurred_at";
 
-const rotulosPorTipo: Record<string, string> = {
-  pipeline_stage_changed: "Etapa do funil alterada",
-  ai_qualification: "Qualificação recalibrada pela IA",
-  commercial_simulation: "Simulação comercial criada",
-  commercial_proposal_decision: "Decisão sobre proposta comercial",
-  whatsapp_insight: "IA leu a conversa no WhatsApp",
-  experience_alert: "IA detectou atrito no atendimento",
-  visit: "Visita realizada",
-  system: "Registro do sistema",
-};
-
 /**
- * Manchete de uma linha de `activities`.
+ * ── A MANCHETE MUDOU DE CASA, E NÃO DE DONO ────────────────────────────────
  *
- * Prioridade: `metadata.title` (o que as escritas novas gravam) → rótulo do
- * tipo → o tipo humanizado. As 481 linhas que a RPC já gravou não têm
- * `metadata.title`, e é por isso que o rótulo por tipo existe: elas precisam
- * aparecer na timeline como "Etapa do funil alterada", não como o genérico
- * "Atividade registrada" que não diz nada a ninguém.
+ * `tituloDaAtividade` vale para as DUAS gavetas de histórico (`activities` e
+ * `lead_events`): as duas guardam a manchete em `metadata.title` e as duas caem
+ * no rótulo por tipo quando ela falta. Vocabulário duplicado em dois arquivos é
+ * como as duas gavetas começaram a divergir — então ele passou a morar em
+ * `historico-do-lead.ts`, que é PURO e por isso alcançável por contrato (este
+ * arquivo usa `@/` e some do `node --test`).
+ *
+ * O reexport mantém `registro-de-atividade` como o ponto único de quem já a
+ * importava: nada muda para quem chama.
  */
-export function tituloDaAtividade(row: { type?: unknown; metadata?: unknown }): string {
-  const metadata =
-    row.metadata && typeof row.metadata === "object"
-      ? (row.metadata as Record<string, unknown>)
-      : {};
-  const titulo = typeof metadata.title === "string" ? metadata.title.trim() : "";
-  if (titulo) return titulo;
-  const tipo = String(row.type ?? "").trim();
-  if (!tipo) return "Atividade registrada";
-  return rotulosPorTipo[tipo] ?? tipo.replaceAll("_", " ");
-}
+export { tituloDaAtividade } from "./historico-do-lead.ts";

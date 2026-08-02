@@ -66,11 +66,28 @@ export function aggregate(rows: SpendRow[], dim: Dimension): CostBucket[] {
     map.set(key, b);
     total += num(row.spend);
   }
+  // ── CPL/CAC EXIGEM GASTO MEDIDO ──────────────────────────────────────────
+  //
+  // `spend / leads` com gasto ZERO devolve 0, e "CPL R$ 0,00" na tela do
+  // diretor lê-se como "esse produto traz lead de graça". A verdade é o oposto:
+  // o gasto daquela linha não foi amarrado a ela. É a mesma classe de defeito
+  // que o zero de leads não atribuídos — ausência de medição desenhada como
+  // número.
+  //
+  // O caso não é hipotético: a campanha que trouxe as 24 leads desta conta não
+  // pertence à conta de anúncios que o CRM importa (gasto 0), e agrupar por
+  // produto/incorporadora — que é o que esta correção passou a fazer — coloca
+  // leads sem gasto em bucket próprio.
+  //
+  // Dividir por esse zero também vazava para fora: `decision-simulator`
+  // projeta `verba ÷ cpl`, e `cpl = 0` daria leads infinitos (a rota de
+  // propostas já se defendia sozinha com `cpl <= 0`, prova de que o zero já
+  // incomodava). Com null, todo mundo lê "não sei" — que é o fato.
   const out = [...map.values()].map((b) => ({
     ...b,
     spend: r2(b.spend),
-    cpl: b.leads > 0 ? r2(b.spend / b.leads) : null,
-    cac: b.sales > 0 ? r2(b.spend / b.sales) : null,
+    cpl: b.leads > 0 && b.spend > 0 ? r2(b.spend / b.leads) : null,
+    cac: b.sales > 0 && b.spend > 0 ? r2(b.spend / b.sales) : null,
     share: total > 0 ? r2((b.spend / total) * 100) : 0,
   }));
   return out.sort((a, b) => b.spend - a.spend);

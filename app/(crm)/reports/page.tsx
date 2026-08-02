@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import { LIVE_LEAD_SELECT, leadAsOpportunity, mapLegacyLead } from "@/lib/compat/legacy-v2";
+import { avisoDeTruncamento, fetchAllRowsPure } from "@/lib/supabase/paginacao-exaustiva";
 import { AtlasEmpty } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
@@ -132,6 +133,11 @@ export default function ReportsPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /* Quantas leads entraram na conta QUANDO a leitura foi cortada. `null` = não
+     houve corte. Guardar o número, e não um booleano, é o que permite o aviso
+     dizer sobre quantas linhas os agregados foram calculados — "cortado" sem
+     tamanho não ajuda ninguém a julgar o estrago. */
+  const [leadsTruncados, setLeadsTruncados] = useState<number | null>(null);
   const [period, setPeriod] = useState<Period>(PERIODO_PADRAO);
   const [periodHydrated, setPeriodHydrated] = useState(false);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
@@ -146,8 +152,34 @@ export default function ReportsPage() {
       // com spend/revenue zerados foi removida: zero hardcoded exibido como
       // ROI/CPL "medido" é dado fabricado — mesma classe de problema das
       // antigas páginas de analytics.
-      const leadResult = await supabase.from("leads").select(LIVE_LEAD_SELECT).not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)").limit(5000);
-      const mappedLeads = ((leadResult.data ?? []) as unknown as Record<string, unknown>[]).map(mapLegacyLead);
+      /* ── `.limit(5000)` ERA LETRA MORTA, E ESTA É A TELA DO DIRETOR ─────────
+         O PostgREST corta a resposta em 1000 linhas SEM erro — o próprio
+         repositório documenta isso em
+         `app/api/v1/analytics/sala-de-comando/route.ts`, e as rotas de
+         agregação já usam `fetchAllRows` por causa disso. Esta tela pedia 5000
+         numa consulta só, sem paginação e sem NENHUMA sentinela de
+         truncamento: funil, conversão, VGV, ranking de origem e o resumo do
+         período saíam todos de uma amostra cortada, com a tela verde.
+
+         Hoje são 490 leads e o corte não acontece — é o pior tipo de defeito,
+         o que só aparece quando a operação cresce, e aí aparece como número
+         plausível, não como erro.
+
+         Agora pagina de verdade (`fetchAllRowsPure`, o mesmo helper das rotas,
+         extraído para um módulo sem `server-only` justamente porque tela de
+         cliente não conseguia carregá-lo) E, se ainda assim o teto de páginas
+         for atingido, o corte é DECLARADO na tela — número truncado sem aviso
+         é exatamente o que este relatório não pode publicar. */
+      const leadResult = await fetchAllRowsPure<Record<string, unknown>>((from, to) =>
+        supabase
+          .from("leads")
+          .select(LIVE_LEAD_SELECT)
+          .not("status", "in", "(arquivado,ARQUIVADO,archived,ARCHIVED)")
+          .order("id", { ascending: true })
+          .range(from, to) as unknown as PromiseLike<{ data: Record<string, unknown>[] | null; error: { code?: string; message?: string } | null }>,
+      );
+      const mappedLeads = leadResult.rows.map(mapLegacyLead);
+      setLeadsTruncados(leadResult.truncated ? leadResult.rows.length : null);
       if (leadResult.error) setError("Parte dos relatórios está temporariamente indisponível.");
       setLeads(mappedLeads as Lead[]);
       setOpportunities(mappedLeads.map(leadAsOpportunity) as Opportunity[]);
@@ -315,6 +347,27 @@ export default function ReportsPage() {
         description="VGV, forecast, conversão, marketing e qualidade da base — números para decidir, não coleção de gráficos."
         action={{ href: "/decision-center", label: "Abrir decisões", priority: "secondary" }}
       />
+
+      {/* ── A SENTINELA DE CORTE VEM ANTES DOS NÚMEROS QUE ELA QUALIFICA ────
+          Um aviso de amostra truncada colocado no rodapé é um aviso que
+          ninguém lê a tempo: quem abre esta tela lê os quatro números
+          decisivos primeiro e decide. Por isso a banda fica ACIMA deles.
+
+          Ela usa o mesmo vocabulário da banda de erro logo abaixo, no token de
+          ALERTA e não no de perigo: não é falha da consulta, é resultado
+          válido sobre base incompleta — e essas duas coisas pedem reações
+          diferentes de quem lê. `role="alert"` porque o número já está na tela
+          quando o aviso aparece. */}
+      {leadsTruncados !== null ? (
+        <div
+          className="cc6-sev-band cc6-panel-quiet py-3 pl-4 pr-3 text-corpo leading-6 text-[var(--atlas-warning)]"
+          role="alert"
+          data-truncamento="leads"
+          style={{ "--cc6-sev": "var(--atlas-warning)" } as CSSProperties}
+        >
+          {avisoDeTruncamento(leadsTruncados)}
+        </div>
+      ) : null}
 
       {/* Números decisivos primeiro, com o recorte de período na mesma régua.
           Única superfície com 3D da página. */}
