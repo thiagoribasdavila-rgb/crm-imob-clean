@@ -402,7 +402,7 @@ export async function POST(request: Request) {
     try {
       const now = new Date().toISOString();
       if (event.topic === "message.send" && event.aggregate_id) {
-        const { data: message, error: messageError } = await admin.from("messages").select("id,channel,recipient,content,media,conversation_id").eq("id", event.aggregate_id).single();
+        const { data: message, error: messageError } = await admin.from("messages").select("id,channel,recipient,content,media,conversation_id").eq("id", event.aggregate_id).maybeSingle();
         if (messageError || !message) throw messageError ?? new Error("Mensagem não encontrada.");
         if (message.channel !== "whatsapp") throw new Error(`Canal ainda não conectado ao worker: ${message.channel}`);
         const normalizedRecipient = String(message.recipient || "").replace(/\D/g, "");
@@ -524,8 +524,26 @@ export async function POST(request: Request) {
           await admin.from("lead_reactivation_batches").update({ status: remaining ? "running" : "completed", updated_at: now }).eq("id", templateItem.batchId);
         }
       } else if (event.topic === "meta.lead.fetch" && event.aggregate_id) {
-        const { data: metaEvent, error: metaError } = await admin.from("meta_lead_events").select("id,organization_id,source_id,external_lead_id,status,page_id,form_id,ad_id,adset_id,campaign_external_id").eq("id", event.aggregate_id).single();
-        if (metaError || !metaEvent) throw metaError ?? new Error("Evento Meta não encontrado.");
+        const { data: metaEvent, error: metaError } = await admin.from("meta_lead_events").select("id,organization_id,source_id,external_lead_id,status,page_id,form_id,ad_id,adset_id,campaign_external_id").eq("id", event.aggregate_id).maybeSingle();
+        /* `.single()` até 02/08/2026, e a mensagem abaixo NUNCA aparecia.
+           Medido na fila de produção: um item morreu com
+           "Cannot coerce the result to a single JSON object [code PGRST116]"
+           — o erro cru do PostgREST. A causa real é banal: o
+           `aggregate_id` aponta para uma linha de `meta_lead_events` que
+           não existe mais (confirmado, a consulta devolve zero linhas).
+
+           `.single()` transforma "zero linhas" em ERRO. Então `metaError`
+           vinha preenchido, vencia o `??`, e a frase em português que o
+           autor escreveu para exatamente este caso ficava inalcançável.
+           O operador lia um código PostgREST e ia procurar defeito de
+           serialização, quando o que havia era um agregado órfão.
+
+           `.maybeSingle()` devolve `data: null, error: null` quando não
+           acha — aí a guarda abaixo dispara a mensagem certa. Mesma
+           família de "Falha desconhecida" que este repositório já
+           corrigiu no `descreverFalha`: o diagnóstico existia e era
+           descartado no caminho. */
+        if (metaError || !metaEvent) throw metaError ?? new Error(`Evento Meta ${event.aggregate_id} não encontrado — agregado órfão na fila.`);
         if (metaEvent.status !== "imported") {
           await admin.from("meta_lead_events").update({ status: "processing", last_error: null }).eq("id", metaEvent.id);
           const [leadData, sourceResult] = await Promise.all([
@@ -696,9 +714,17 @@ export async function POST(request: Request) {
         }
       } else if (event.topic === "meta.conversion.send" && event.aggregate_id) {
         const [{ data: conversion, error: conversionError }, { data: config, error: configError }] = await Promise.all([
-          admin.from("meta_conversion_events").select("id,organization_id,lead_id,event_name,event_id,action_source,custom_data,occurred_at,status,attempts").eq("id", event.aggregate_id).single(),
-          admin.from("meta_conversion_configs").select("dataset_id,mode,enabled,test_event_code,consent_required").eq("organization_id", event.organization_id).single(),
+          admin.from("meta_conversion_events").select("id,organization_id,lead_id,event_name,event_id,action_source,custom_data,occurred_at,status,attempts").eq("id", event.aggregate_id).maybeSingle(),
+          admin.from("meta_conversion_configs").select("dataset_id,mode,enabled,test_event_code,consent_required").eq("organization_id", event.organization_id).maybeSingle(),
         ]);
+        /* `.maybeSingle()` desde 02/08/2026, nas três consultas acima e na de
+           `meta_lead_events`. Com `.single()`, "zero linhas" vira ERRO do
+           PostgREST, o `??` escolhe esse erro, e a frase em português que o
+           autor escreveu para exatamente este caso fica INALCANÇÁVEL — o
+           operador lê `PGRST116` e vai procurar defeito de serialização.
+           Medido na fila de produção: foi assim que um item morreu.
+           Este caminho é o das conversões da Meta (Grupo A): registro
+           ausente aqui precisa dizer QUAL registro, não um código. */
         if (conversionError || !conversion) throw conversionError ?? new Error("Evento de conversão não encontrado.");
         if (configError || !config) throw configError ?? new Error("Configuração de conversão não encontrada.");
         if (!config.enabled || config.mode !== "test" || !config.test_event_code) throw new Error("Conversões Meta permanecem bloqueadas fora do modo de teste.");
