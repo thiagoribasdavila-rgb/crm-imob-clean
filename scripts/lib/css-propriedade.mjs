@@ -107,7 +107,14 @@ export function mediaAlcanca(css, condicao, prefixo) {
  */
 export function valorDoToken(css, nome) {
   const limpo = semComentarios(css);
-  const re = new RegExp(`${nome.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}:\\s*(\\d+(?:\\.\\d+)?)px`);
+  /* O escape usa a MESMA forma de `regrasQueCitam` e `familiaDeclara` (linhas 35
+     e 58). A primeira versão desta linha escrevia a classe como
+     `[.*+?^${}()|[\\]\\\\]` e o substituto como `"\\\\$&"`: a classe nunca casava
+     nada, então o escape era INERTE — `valorDoToken(css, "--a.b")` casava
+     `--aXb` e devolvia o valor errado. Não acendia hoje porque nome de custom
+     property não tem metacaractere, mas é o defeito que este módulo existe para
+     caçar: a função não fazia o que o nome dela diz. */
+  const re = new RegExp(`${nome.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*(\\d+(?:\\.\\d+)?)px`);
   const achado = limpo.match(re);
   return achado ? Number(achado[1]) : null;
 }
