@@ -204,8 +204,20 @@ export default function AISettings() {
         headers: { Authorization: `Bearer ${session.session?.access_token}` },
       });
       const body = await response.json();
-      if (!response.ok)
-        throw new Error(body.error?.message || "Teste OpenAI falhou.");
+      if (!response.ok) {
+        // A rota agora devolve a CAUSA classificada e QUEM resolve. Antes ela
+        // respondia `details: error.name` — a string "Error" — e a tela dizia
+        // "Teste OpenAI falhou" mandando procurar o log da Hostinger, que quem
+        // opera não alcança. Falha sem responsável é o mesmo beco de antes.
+        const causa = body.error?.details as
+          | { classe?: string; quemResolve?: string }
+          | undefined;
+        throw new Error(
+          [body.error?.message || "Teste OpenAI falhou.", causa?.quemResolve]
+            .filter(Boolean)
+            .join(" · "),
+        );
+      }
       setTestResult(body.data);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Teste OpenAI falhou.");

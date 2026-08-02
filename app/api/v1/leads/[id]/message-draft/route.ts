@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { generateAIText } from "@/lib/ai/provider-router";
+import { tentativaFalhaDe, type TentativaFalha } from "@/lib/ai/falha-de-ia";
 import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { auditMessageDraft, fallbackMessageDraft } from "@/lib/ai/real-estate-message";
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const fallback = fallbackMessageDraft({ name: lead.name || "Cliente", channel, objective, tone, project: projectResult.data?.name, nextAction: lead.next_action_at });
     let content = fallback;
     let mode: "generative" | "local-fallback" = "generative";
+    // A causa, quando o texto NÃO veio da IA. Sem ela a tela mostra "rascunho
+    // local" sem dizer por quê nem quem destrava.
+    let causaDaFalha: TentativaFalha | null = null;
     try {
       const result = await generateAIText({
         task: "fast",
@@ -62,12 +66,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
         prompt: JSON.stringify({ channel, objective, tone, lead: { firstName: String(lead.name || "Cliente").split(" ")[0], status: lead.status, source: lead.source, budgetRangeKnown: Boolean(lead.budget_max), regions: lead.preferred_regions, bedrooms: lead.bedrooms, purpose: lead.purpose }, project: projectResult.data, recentActivityTypes: (activityResult.data ?? []).map((item) => item.type) }),
       });
       content = result.text.trim();
-    } catch {
+      // `generateAIText` NÃO lança quando os provedores falham: ela devolve o
+      // texto determinístico com provider="local". Confiar só no `catch` fazia o
+      // rascunho sair marcado como "generative" tendo vindo do fallback — e o
+      // corretor não tinha como saber que a IA não escreveu aquilo. Medido em
+      // 02/08/2026: 48 tentativas de OpenAI, 0 respostas, e `copilot` caiu no
+      // determinístico 13 vezes sem nada na tela dizendo isso.
+      if (result.provider === "local") {
+        mode = "local-fallback";
+        causaDaFalha = result.falhas?.[0] ?? null;
+      }
+    } catch (error) {
       mode = "local-fallback";
+      causaDaFalha = tentativaFalhaDe(error, "desconhecido");
     }
     const audit = auditMessageDraft(content);
     if (!audit.safe) { content = fallback; mode = "local-fallback"; }
-    return NextResponse.json({ draft: { content, channel, objective, tone, mode, warnings: audit.warnings, requiresHumanApproval: true, historicoDisponivel }, lead: { id: lead.id, name: lead.name }, project: projectResult.data });
+    return NextResponse.json({ draft: { content, channel, objective, tone, mode, warnings: audit.warnings, requiresHumanApproval: true, historicoDisponivel, motivoDoFallback: causaDaFalha ? { classe: causaDaFalha.classe, mensagem: causaDaFalha.mensagem, quemResolve: causaDaFalha.quemResolve } : null }, lead: { id: lead.id, name: lead.name }, project: projectResult.data });
   } catch (error) {
     // Recusa de carteira chegando como 500 diria "o servidor quebrou" para uma
     // regra que funcionou exatamente como devia.

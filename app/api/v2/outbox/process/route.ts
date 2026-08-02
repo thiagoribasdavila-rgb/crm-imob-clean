@@ -16,6 +16,7 @@ import { fecharPrimeiroContatoPorWhatsapp } from "@/lib/crm/whatsapp-first-conta
 import { linhaDeAtividade } from "@/lib/crm/registro-de-atividade";
 import { descreverFalha } from "@/lib/integrations/descrever-falha";
 import { origemDaChamada, registrarExecucao } from "@/lib/integrations/livro-de-execucoes";
+import { abrirJornadaEmSombra } from "@/lib/ai/jornada-em-sombra";
 
 export const dynamic = "force-dynamic";
 
@@ -861,6 +862,33 @@ export async function POST(request: Request) {
             admin.from("campaign_events").insert({ organization_id: metaEvent.organization_id, lead_id: lead.id, event_type: "lead_created", source: "meta", external_event_id: metaEvent.external_lead_id, payload: { pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id }, occurred_at: leadData.created_time || now }),
           ]);
           await queueMetaConversion({ organizationId: metaEvent.organization_id, leadId: lead.id, eventName: "Lead", eventId: `meta-lead-${metaEvent.external_lead_id}`, occurredAt: leadData.created_time || now, customData: { campaign_id: leadData.campaign_id || metaEvent.campaign_external_id, form_id: leadData.form_id || metaEvent.form_id } });
+          // ── O SORTEIO ACONTECE NA ENTRADA, E É CEGO ─────────────────────
+          //
+          // §3 de docs/design/ATENDIMENTO_AUTONOMO_MODELO.md. Esta é a porta de
+          // MAIOR volume: 57% da demanda orgânica chega entre 19h e 7h59, e o
+          // tempo mediano até alguém tocar a lead era de 92,8 horas.
+          //
+          // A jornada nasce em SOMBRA — nada é enviado. Ela é a unidade do
+          // experimento, e até 02/08/2026 só existia como efeito colateral de
+          // uma mensagem que depende de template aprovado pelo dono; por isso
+          // `ai_sales_journeys` estava em zero absoluto.
+          //
+          // Falha aqui NUNCA derruba a ingestão: a promessa desta rota é que
+          // lead paga não se perde por causa de registro acessório. A função
+          // não lança — devolve desfecho — e o que não deu vai para o log.
+          const jornadaEmSombra = await abrirJornadaEmSombra({
+            id: lead.id,
+            organizacaoId: metaEvent.organization_id,
+            corretorId: ownership?.ownerId ?? null,
+            status: "novo",
+            entradaEm: leadData.created_time || now,
+            empreendimentoId: developmentIdDaPonte,
+            nome: name,
+            origem: "Meta Lead Ads",
+          });
+          if (jornadaEmSombra.desfecho === "falhou") {
+            logger.warn("outbox.jornada_em_sombra_falhou", { leadId: lead.id, code: jornadaEmSombra.code, motivo: jornadaEmSombra.motivo });
+          }
         }
       } else if (event.topic === "meta.conversion.send" && event.aggregate_id) {
         const [{ data: conversion, error: conversionError }, { data: config, error: configError }] = await Promise.all([

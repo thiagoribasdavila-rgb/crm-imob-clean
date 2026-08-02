@@ -79,9 +79,22 @@ export type LinhaDeConsumo = {
 /**
  * As cinco contagens de EXECUÇÃO. `null` em qualquer uma significa leitura
  * falhada, e a tela é obrigada a dizer isso em vez de desenhar zero.
+ *
+ * ── 02/08/2026: `jornadasDeVenda` deixou de ser "linhas em ai_sales_journeys" ─
+ *
+ * `lib/ai/jornada-em-sombra.ts` passou a abrir jornada na ENTRADA de toda lead,
+ * sem enviar nada. Contar essas linhas como execução faria a postura desta tela
+ * virar "executando" na primeira lead que entrasse, com a frase «Executei N
+ * ação(ões) registrada(s) — todas com aprovação nomeada» sobre um banco em que
+ * NADA saiu. Seria a doença desta tela ao contrário: ausência de ação desenhada
+ * como ação.
+ *
+ * Agora o campo conta jornada COM envio (`outbound_count > 0`), e a preparada
+ * anda ao lado, fora da soma, em `jornadasEmSombra`.
  */
 export type ContagemDeExecucao = {
   corridasDeAgente: number | null;
+  /** Jornadas que ENVIARAM. Preparada e não enviada não entra aqui. */
   jornadasDeVenda: number | null;
   execucoesNaMeta: number | null;
   passagensParaCorretor: number | null;
@@ -106,6 +119,12 @@ export type EntradaDoEstado = {
    */
   sombraNaOrganizacao: number | null;
   execucao: ContagemDeExecucao;
+  /**
+   * Jornadas ABERTAS E NÃO ENVIADAS (`outbound_count = 0`). Fica fora de
+   * `ContagemDeExecucao` de propósito: somá-la seria chamar de execução o que a
+   * sombra existe para impedir. `null` = não consegui contar.
+   */
+  jornadasEmSombra: number | null;
   catalogo: AgenteDoCatalogo[];
   /**
    * Problemas apontados por `problemasDoCatalogo()`. Catálogo ilegível devolve
@@ -303,6 +322,8 @@ export type EstadoDaIa = {
   /** Soma das execuções lidas. `null` quando nenhuma das cinco tabelas foi lida. */
   execucoes: number | null;
   execucao: ContagemDeExecucao;
+  /** Jornadas preparadas e não enviadas. NUNCA somada em `execucoes`. */
+  jornadasEmSombra: number | null;
   /** Recomendações preparadas e retidas pelo modo sombra, entre as LEGÍVEIS. */
   retidas: number | null;
   /** Existem na organização e não chegaram na leitura. Zero é o estado saudável. */
@@ -366,11 +387,15 @@ export function derivarEstadoDaIa(entrada: EntradaDoEstado): EstadoDaIa {
     execucoes === null && sombra === null && entrada.aprovacoes === null && entrada.orquestracao === null;
 
   const propostasVivas = propostas?.filter((item) => item.estado !== "vencida").length ?? 0;
+  const jornadasEmSombra = entrada.jornadasEmSombra;
+  // Jornada preparada empurra a postura para "propondo", NUNCA para
+  // "executando": ela é trabalho feito e retido, que é exatamente o que
+  // "propondo" descreve.
   const postura: PosturaDaIa = nadaFoiLido
     ? "sem_leitura"
     : (execucoes ?? 0) > 0
       ? "executando"
-      : (retidas ?? 0) > 0 || (propostas?.length ?? 0) > 0 || sombraOculta > 0
+      : (retidas ?? 0) > 0 || (propostas?.length ?? 0) > 0 || sombraOculta > 0 || (jornadasEmSombra ?? 0) > 0
         ? "propondo"
         : "parada";
 
@@ -403,6 +428,17 @@ export function derivarEstadoDaIa(entrada: EntradaDoEstado): EstadoDaIa {
         `A organização tem ${entrada.sombraNaOrganizacao} registro(s) em modo sombra e a sua leitura devolveu ${sombra?.length ?? 0}. ` +
         "Não estou dizendo que a IA não preparou nada — estou dizendo que a lista chegou incompleta. A política de leitura de `ai_shadow_decisions` precisa ser revista pelo time de banco.",
       classe: "leitura",
+    });
+  }
+
+  if ((jornadasEmSombra ?? 0) > 0) {
+    motivos.push({
+      id: "jornada-em-sombra",
+      titulo: `${jornadasEmSombra} jornada(s) de venda abertas e nenhuma mensagem enviada`,
+      detalhe:
+        "Cada lead que entra recebe um braço sorteado — `ia` ou `humano` — e a jornada nasce preparada. Nada sai: `message_templates` não tem template aprovado, e sem template oficial a IA não fala com ninguém. " +
+        "QUEM RESOLVE: o dono, submetendo e aprovando o template na conta oficial da Meta. Enquanto isso, os DOIS braços recebem o mesmo tratamento — o que existe é preparação, não experimento.",
+      classe: "configuracao",
     });
   }
 
@@ -464,12 +500,13 @@ export function derivarEstadoDaIa(entrada: EntradaDoEstado): EstadoDaIa {
     });
   }
 
-  const frase = montarFrase({ postura, execucoes, retidas, sombraOculta, propostasVencidas, propostasVivas, roteamento });
+  const frase = montarFrase({ postura, execucoes, retidas, sombraOculta, propostasVencidas, propostasVivas, roteamento, jornadasEmSombra });
 
   return {
     postura,
     execucoes,
     execucao,
+    jornadasEmSombra,
     retidas,
     sombraOculta,
     retidasSemVeredicto: semVeredicto.length,
@@ -494,12 +531,14 @@ function montarFrase(dados: {
   propostasVencidas: number;
   propostasVivas: number;
   roteamento: RepartoDeRoteamento | null;
+  jornadasEmSombra: number | null;
 }): string {
   if (dados.postura === "sem_leitura") return "Não consegui ler o meu histórico. Prefiro dizer isso a fingir atividade.";
   if (dados.postura === "executando") return `Executei ${dados.execucoes} ação(ões) registrada(s) — todas com aprovação nomeada.`;
   if (dados.postura === "propondo") {
     const partes: string[] = [];
     if (dados.roteamento?.total) partes.push(`analisei ${dados.roteamento.total} vezes`);
+    if (dados.jornadasEmSombra) partes.push(`abri ${dados.jornadasEmSombra} jornadas com o braço sorteado e não enviei nada`);
     if (dados.retidas) partes.push(`preparei ${dados.retidas} ações`);
     if (dados.sombraOculta) partes.push(`preparei outras ${dados.sombraOculta} que esta tela não consegue ler`);
     if (dados.propostasVivas) partes.push(`${dados.propostasVivas} esperam sua assinatura`);

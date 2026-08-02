@@ -26,6 +26,11 @@ const migration = fs.readFileSync(
   "utf8",
 );
 
+/** Remove comentários para que um portão meça o código, e não o que se escreveu sobre ele. */
+function semComentarios(fonte) {
+  return fonte.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+}
+
 test("a leitura de empreendimentos usa a tabela canônica", () => {
   const bloco = repo.slice(
     repo.indexOf("export async function readCompatibleDevelopments"),
@@ -55,6 +60,53 @@ test("a migration é idempotente e não apaga nada", () => {
 test("a migration confere o resultado em vez de torcer", () => {
   assert.match(migration, /raise exception 'Unificacao incompleta/,
     "sem a verificação, uma unificação parcial passaria despercebida");
+});
+
+test("o estoque do painel vem da tabela em que o produto grava", () => {
+  // MEDIDO na produção: `inventory_units` 0 linhas, `properties` 30 (R$ 9.205.000).
+  // A RPC `upsert_canonical_inventory_unit` — o gravador chamado por
+  // /api/v1/developments/[id]/inventory — insere e atualiza `properties` e não
+  // encosta em `inventory_units`; nenhuma função do banco escreve na antiga.
+  assert.match(semComentarios(launchOs), /\.from\("properties"\)/,
+    "a canônica de estoque é `properties`: é nela que o gravador escreve");
+  assert.ok(!/\.from\("inventory_units"\)/.test(semComentarios(launchOs)),
+    "ler a tabela vazia desenha 0 unidade e R$ 0 de VGV como se fosse medição");
+});
+
+test("as colunas de estoque são mapeadas uma a uma, e a chave de junção não é remapeada", () => {
+  // Os nomes divergem entre as duas tabelas; conferidos no banco.
+  assert.match(launchOs, /unit_code:unit_number/, "`unit_code` só existe na tabela antiga");
+  assert.match(launchOs, /private_area:area/, "`private_area` só existe na tabela antiga");
+  // `properties.development_id` aponta para `developments.id` — a MESMA chave
+  // que o painel lista. `inventory_units.project_id` apontava para
+  // `crm_projects`: nenhum id fecharia mesmo que a tabela tivesse linhas.
+  //
+  // A asserção roda sobre o CÓDIGO, sem comentários: a primeira versão deste
+  // portão reprovou porque casou com o comentário que documenta o remapeamento
+  // removido. Portão que lê prosa mede a prosa, não o comportamento.
+  //
+  // E recorta a linha DO ESTOQUE. Sem o recorte, ele também casava com a linha
+  // de `materials`, que remapeia `development_id: row.project_id` a partir de
+  // `knowledge_documents` — cujo `project_id` aponta para `crm_projects`, a
+  // órfã. Essa é uma irmã LATENTE deste defeito (0 linhas hoje, então sem
+  // efeito medível) e continua em pé de propósito: não é o que esta entrega
+  // mediu, e não se conserta no escuro uma junção sem um único dado.
+  const codigo = semComentarios(launchOs);
+  const linhaEstoque = codigo.slice(codigo.indexOf("const properties: AnyRow[]"));
+  assert.ok(!/development_id: row\.project_id/.test(linhaEstoque.slice(0, linhaEstoque.indexOf(";") + 1)),
+    "remapear de `project_id` grava undefined por cima da chave boa e zera tudo em silêncio");
+});
+
+test("o cartão do projeto não imprime estoque sem lastro", () => {
+  // Zero de estoque é afirmação forte: se a fonte não respondeu, a tela diz que
+  // não sabe em vez de desenhar 0 unidade, 0% de absorção e R$ 0 de VGV.
+  const painel = fs.readFileSync(path.join(raiz, "app", "(crm)", "developments", "page.tsx"), "utf8");
+  const cartao = painel.slice(painel.indexOf("Unidades disponíveis"));
+  for (const cifra of [/metrics\.inventoryTotal/, /metrics\.absorption/, /metrics\.totalVgv/]) {
+    const trecho = cartao.slice(Math.max(0, cartao.search(cifra) - 400), cartao.search(cifra));
+    assert.match(trecho, /lastroEstoque\.medido/,
+      `a cifra ${cifra} é impressa sem conferir se o estoque respondeu`);
+  }
 });
 
 test("a contagem de leads do projeto vem da fonte, não da campanha", () => {

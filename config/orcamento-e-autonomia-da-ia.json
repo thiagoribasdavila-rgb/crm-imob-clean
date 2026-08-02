@@ -183,6 +183,11 @@
         "porque": "Só observa e registra probabilidade. Nem sugere ação — alimenta ranking."
       },
       {
+        "agente": "sombra-do-atendimento",
+        "nivel": 2,
+        "porque": "Prepara a fila do dia — qual lead, qual gesto, qual mensagem, qual prioridade — e DEIXA salvo em ai_shadow_decisions. Nível 2 é literalmente 'preparei, não mandei', e é o teto certo: a ação que ele prepara (enviar_mensagem) exige nível 4 com aprovação registrada, então o próprio catálogo o recusa. Declarar 2 não afrouxa nada — deixá-lo fora do catálogo o faria rodar como nível 0 e a recusa diria 'agente não declarado', que descreve um esquecimento, não uma decisão."
+      },
+      {
         "agente": "meta-campaign-executor",
         "nivel": 4,
         "porque": "É o único que age fora: cria campanha na Meta e gasta dinheiro do dono. Exige aprovação registrada, e já nasce com dry-run em campaign-executor.ts."

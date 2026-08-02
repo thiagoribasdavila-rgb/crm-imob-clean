@@ -993,23 +993,39 @@ export default function DevelopmentsPage() {
                       </p>
                     ) : null}
 
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <p className="cc6-num text-numero leading-6 text-[var(--atlas-texto-forte)]">{metrics.inventoryTotal}</p>
-                        <p className="cc6-metric-label leading-4">Unidades</p>
+                    {/* O herói já passava por `lastroEstoque`; ESTE cartão não.
+                        Unidades, Vendidas, Disponíveis, Absorção e VGV saíam
+                        crus — se o estoque não responde, o cartão imprimia
+                        0 · 0 · 0 · 0% · R$ 0,00 com a mesma confiança de um
+                        número medido. Zero de estoque é afirmação forte. */}
+                    {lastroEstoque.medido ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <p className="cc6-num text-numero leading-6 text-[var(--atlas-texto-forte)]">{metrics.inventoryTotal}</p>
+                          <p className="cc6-metric-label leading-4">Unidades</p>
+                        </div>
+                        <div>
+                          <p className="cc6-num cc6-ok text-numero leading-6">{metrics.sold}</p>
+                          <p className="cc6-metric-label leading-4">Vendidas</p>
+                        </div>
+                        <div>
+                          <p className="cc6-num text-numero leading-6 text-[color:var(--atlas-accent-hover)]">{metrics.available}</p>
+                          <p className="cc6-metric-label leading-4">Disponíveis</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="cc6-num cc6-ok text-numero leading-6">{metrics.sold}</p>
-                        <p className="cc6-metric-label leading-4">Vendidas</p>
-                      </div>
-                      <div>
-                        <p className="cc6-num text-numero leading-6 text-[color:var(--atlas-accent-hover)]">{metrics.available}</p>
-                        <p className="cc6-metric-label leading-4">Disponíveis</p>
-                      </div>
-                    </div>
+                    ) : (
+                      <SemLastro frase={lastroEstoque.falta} />
+                    )}
 
                     <div className="grid gap-2.5 sm:grid-cols-2">
-                      <CoverageBar label="Absorção" value={metrics.absorption} fill="var(--atlas-accent)" />
+                      {lastroEstoque.medido ? (
+                        <CoverageBar label="Absorção" value={metrics.absorption} fill="var(--atlas-accent)" />
+                      ) : (
+                        <div className="min-w-0">
+                          <span className="cc6-metric-label">Absorção</span>
+                          <div className="mt-1"><SemLastro frase={lastroEstoque.falta} /></div>
+                        </div>
+                      )}
                       <CoverageBar
                         label="Kit comercial"
                         value={item.readiness.materialCoverage}
@@ -1020,7 +1036,11 @@ export default function DevelopmentsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <p className="cc6-metric-label leading-4">VGV observado</p>
-                        <p className="cc6-num mt-0.5 text-corpo leading-4 text-[var(--atlas-texto-forte)]">{brl.format(metrics.totalVgv)}</p>
+                        {lastroEstoque.medido ? (
+                          <p className="cc6-num mt-0.5 text-corpo leading-4 text-[var(--atlas-texto-forte)]">{brl.format(metrics.totalVgv)}</p>
+                        ) : (
+                          <div className="mt-0.5"><SemLastro frase={lastroEstoque.falta} /></div>
+                        )}
                       </div>
                       <div title="Previsão não garante fechamento.">
                         <p className="cc6-metric-label leading-4">Receita provável</p>

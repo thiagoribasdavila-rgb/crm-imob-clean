@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
   const contarNaOrganizacao = (tabela: string, coluna = "id") =>
     getSupabaseAdmin().from(tabela).select(coluna, { count: "exact", head: true }).eq("organization_id", organizacao);
 
-  const [orquestracaoRes, sombraRes, aprovacoesRes, consumoRes, corridasRes, metaRes, jornadasRes, handoffsRes, retratosRes, sombraOrgRes] =
+  const [orquestracaoRes, sombraRes, aprovacoesRes, consumoRes, corridasRes, metaRes, jornadasRes, jornadasEmSombraRes, handoffsRes, retratosRes, sombraOrgRes] =
     await Promise.all([
       supabase
         .from("ai_orchestration_decisions")
@@ -105,7 +105,18 @@ export async function GET(request: NextRequest) {
       // contrário. Contadas pela organização inteira, e só contadas.
       contarNaOrganizacao("atlas_agent_runs"),
       contarNaOrganizacao("meta_executions", "idempotency_key"),
-      contarNaOrganizacao("ai_sales_journeys"),
+      // ── EXECUÇÃO É ENVIO, NÃO É LINHA GRAVADA ─────────────────────────────
+      //
+      // Desde 02/08/2026, `lib/ai/jornada-em-sombra.ts` abre jornada na entrada
+      // de toda lead viva — e NÃO envia nada. Contar a tabela inteira aqui faria
+      // esta tela virar a postura para "executando" na primeira lead que
+      // entrasse, afirmando «executei N ações, todas com aprovação nomeada»
+      // sobre um banco em que nada saiu. É a doença desta tela ao contrário.
+      //
+      // `outbound_count` é a régua porque é o campo que o único enviador
+      // (`app/api/v2/ai/nightly-sales`) incrementa quando enfileira a mensagem.
+      contarNaOrganizacao("ai_sales_journeys").gt("outbound_count", 0),
+      contarNaOrganizacao("ai_sales_journeys").eq("outbound_count", 0),
       contarNaOrganizacao("nightly_broker_handoffs"),
       contarNaOrganizacao("integration_health_snapshots"),
       contarNaOrganizacao("ai_shadow_decisions"),
@@ -134,6 +145,7 @@ export async function GET(request: NextRequest) {
     aprovacoes,
     consumo,
     sombraNaOrganizacao: contagem(sombraOrgRes),
+    jornadasEmSombra: contagem(jornadasEmSombraRes),
     execucao: {
       corridasDeAgente: contagem(corridasRes),
       execucoesNaMeta: contagem(metaRes),

@@ -19,6 +19,16 @@ function roleOf(access: { profile: { commercialRole?: string | null; role: strin
 }
 const isDirector = (role: string) => ["director", "superintendent"].includes(role);
 
+// public.developers NÃO tem coluna "name" — tem legal_name (razão social) e
+// trade_name (nome fantasia). Pedir "name" devolve 42703, e como o erro era
+// descartado o relatório saía com TODA linha de incorporador sem rótulo, sem
+// erro nem log: ausência de evidência passando por ausência de dado.
+// Relatório comercial fala o nome fantasia ("Kallas"), com recuo para a razão
+// social ("Kallas Incorporações") quando o fantasia não estiver preenchido.
+type DeveloperNameRow = { id: string; trade_name: string | null; legal_name: string | null };
+const DEVELOPER_NAME_COLUMNS = "id,trade_name,legal_name";
+const developerDisplayName = (row: DeveloperNameRow): string | null => row.trade_name || row.legal_name || null;
+
 // GET — relatório de custo: semanal por campanha / projeto / incorporador + a
 // visão de verba por produto (planejado × real). Liderança comercial.
 export async function GET(request: NextRequest) {
@@ -68,10 +78,22 @@ export async function GET(request: NextRequest) {
           admin.from("developments").select("name,developer_id").eq("organization_id", org),
           admin.from("product_budgets").select("product,developer,weekly_budget,target_cac,active").eq("organization_id", org).eq("active", true),
         ]);
+        let liveDevelopersResolved = true;
         if (!dvs.error && dvs.data?.length) {
           const ids = [...new Set(dvs.data.map((d) => d.developer_id).filter(Boolean))] as string[];
-          const drs = ids.length ? await admin.from("developers").select("id,name").in("id", ids) : { data: [] };
-          const drMap = new Map((drs.data ?? []).map((d) => [d.id, d.name]));
+          const drs = ids.length
+            ? await admin.from("developers").select(DEVELOPER_NAME_COLUMNS).in("id", ids).eq("organization_id", org)
+            : { data: [] as DeveloperNameRow[], error: null };
+          // Silêncio fechado: se a leitura falhar, o relatório PRECISA dizer que
+          // não sabe nomear — antes isso virava rótulo nulo indistinguível de
+          // "empreendimento sem incorporadora".
+          if (drs.error) {
+            liveDevelopersResolved = false;
+            logger.error("marketing.cost_report.developers_lookup_failed", {
+              organizationId: org, source: "meta_live", code: drs.error.code, message: drs.error.message,
+            });
+          }
+          const drMap = new Map<string, string | null>((drs.data ?? []).map((d) => [d.id, developerDisplayName(d)]));
           for (const d of dvs.data) devPairs.push({ name: d.name, developer: d.developer_id ? drMap.get(d.developer_id) ?? null : null });
         }
         const rows = insightsToCostRows(insights, (_id, name) => {
@@ -100,6 +122,10 @@ export async function GET(request: NextRequest) {
           byCampaign: { aggregate: agg, weekly: weekly(rows, "campaign") },
           byProject: { aggregate: aggregate(rows, "product"), weekly: weekly(rows, "product") },
           byDeveloper: { aggregate: aggregate(rows, "developer"), weekly: weekly(rows, "developer") },
+          developerLabels: {
+            resolved: liveDevelopersResolved,
+            basis: "incorporador = developers.trade_name (fantasia) com recuo para legal_name (razão social). resolved=false → a leitura das incorporadoras falhou; rótulo nulo é 'não sei', não 'sem incorporadora'.",
+          },
           budget: bud,
           plan: livePlan,
           // projeção de cada movimento ANTES de aprovar (dado 30d → semanal)
@@ -162,9 +188,23 @@ export async function GET(request: NextRequest) {
   ]);
   for (const d of dvs.data ?? []) prodMap.set(d.id, { name: d.name, developerId: d.developer_id });
   const developerIds = [...new Set((dvs.data ?? []).map((d) => d.developer_id).filter(Boolean))] as string[];
+  // Rótulo do incorporador. Silêncio fechado: o erro de leitura era descartado
+  // em `drs.data ?? []`, então 42703 (coluna inexistente) e uma indisponibilidade
+  // real do banco produziam exatamente a mesma tela — todo agrupamento por
+  // incorporador sem nome, sem log, sem pista.
+  let developersResolved = true;
   if (developerIds.length) {
-    const drs = await admin.from("developers").select("id,name").in("id", developerIds).eq("organization_id", org);
-    for (const dr of drs.data ?? []) devrMap.set(dr.id, dr.name);
+    const drs = await admin.from("developers").select(DEVELOPER_NAME_COLUMNS).in("id", developerIds).eq("organization_id", org);
+    if (drs.error) {
+      developersResolved = false;
+      logger.error("marketing.cost_report.developers_lookup_failed", {
+        organizationId: org, source: "database", code: drs.error.code, message: drs.error.message,
+      });
+    }
+    for (const dr of drs.data ?? []) {
+      const nome = developerDisplayName(dr);
+      if (nome) devrMap.set(dr.id, nome);
+    }
   }
   const productOf = (campaignId: string) => {
     const c = campMap.get(campaignId);
@@ -289,6 +329,10 @@ export async function GET(request: NextRequest) {
     byCampaign: { aggregate: byCampaignAgg, weekly: weekly(spendRows, "campaign") },
     byProject: { aggregate: aggregate(all, "product"), weekly: weekly(spendRows, "product") },
     byDeveloper: { aggregate: aggregate(all, "developer"), weekly: weekly(spendRows, "developer") },
+    developerLabels: {
+      resolved: developersResolved,
+      basis: "incorporador = developers.trade_name (fantasia) com recuo para legal_name (razão social). resolved=false → a leitura das incorporadoras falhou; rótulo nulo é 'não sei', não 'sem incorporadora'.",
+    },
     budget,
     // IA de marketing (eficiência) — propostas de escalar/pausar/realocar verba
     plan: dbPlan,
