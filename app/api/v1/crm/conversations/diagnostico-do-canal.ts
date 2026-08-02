@@ -170,7 +170,7 @@ export function diagnosticarCanal(fatos: FatosDoCanal): DiagnosticoDoCanal {
   const oficial = fatos.numerosOficiais > 0;
   const ponte = fatos.ponteConfigurada && fatos.sessoesDeCorretorConectadas > 0;
 
-  const podeReceber = true; // MUTACAO DO AUDITOR: canal morto passa a "ninguem conversou"
+  const podeReceber = oficial || ponte;
   // Enviar pelo oficial exige o par número+template; pela ponte, quem fala é o
   // WhatsApp do próprio corretor e template não se aplica.
   const podeEnviar = (oficial && fatos.templatesAprovados > 0) || ponte;

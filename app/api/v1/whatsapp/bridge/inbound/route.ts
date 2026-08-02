@@ -127,9 +127,12 @@ export async function POST(request: NextRequest) {
         channel: "whatsapp",
         external_thread_id: threadId,
         status: "open",
+        // `leads` tem duas colunas para o mesmo dono (ver check-dono-da-lead.mjs).
+        // `conversations` NÃO tem: só `assigned_to`. Escrever `assigned_user_id`
+        // aqui derrubava o insert inteiro com PGRST204, e como esta tabela nunca
+        // teve linha, a primeira mensagem de todo corretor se perdia sem que
+        // nenhum teste notasse. Conferido contra o banco vivo em 02/08/2026.
         assigned_to: profileId,
-        // Duas colunas para o mesmo dono — ver check-dono-da-lead.mjs.
-        assigned_user_id: profileId,
         last_message_at: corpo?.enviadaEm ?? agora,
         unread_count: corpo?.direcao === "entrada" ? 1 : 0,
       })

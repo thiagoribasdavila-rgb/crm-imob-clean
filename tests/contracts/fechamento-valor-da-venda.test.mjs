@@ -155,6 +155,35 @@ test("a tela de Vendas apura o valor pelo módulo, não pelo mapa de compatibili
 });
 
 /**
+ * ── ESTA ASSERÇÃO EXISTE PORQUE A DE CIMA NÃO SEGURA NADA ───────────────────
+ *
+ * MEDIDO na auditoria desta entrega: revertendo a correção da TELA — trocando
+ * `value: ganha ? valorApurado : valorEmAberto` por `value: item.value` e
+ * `won: apuracao.vgv` pela soma antiga — o defeito volta INTEIRO (o card
+ * "vendas ganhas" exibe de novo os R$ 756.000 de orçamento como receita) e o
+ * contrato continuava 14/14 VERDE. As duas asserções acima só perguntam se o
+ * NOME do módulo aparece no arquivo; chamar e ignorar passa igual.
+ *
+ * Aqui a asserção aponta para a PROPRIEDADE que decide — o campo `value` da
+ * linha e o campo `won` do card —, não para a linha de import. Se o nome da
+ * variável mudar numa refatoração honesta, reaponte a asserção para o novo
+ * nome; não a remova, porque o que ela guarda é o único número real do produto.
+ */
+test("REGRESSÃO DE FIAÇÃO: o valor da linha e o card saem da apuração, e não do `value` do mapa", () => {
+  const tela = readFileSync(new URL("../../app/(crm)/sales/page.tsx", import.meta.url), "utf8");
+  assert.match(
+    tela,
+    /value:\s*ganha\s*\?\s*valorApurado/,
+    "o `value` da venda fechada tem de vir de valorApuradoDaVenda, não do `first(value, budget_max, budget_min) ?? 0`",
+  );
+  assert.match(
+    tela,
+    /won:\s*apuracao\.vgv/,
+    "o card 'vendas ganhas' tem de somar a apuração, não `item.value` (que carrega orçamento)",
+  );
+});
+
+/**
  * "COBRA E DESTRÓI" — o outro lado da prova.
  *
  * A rota do pipeline RECUSA fechar em `ganho` sem valor (`SALE_VALUE_REQUIRED`),
@@ -179,8 +208,21 @@ test("a ficha da lead devolve o valor que o fechamento exigiu", () => {
 test("a ficha da lead liga a rota que registra o valor depois do fechamento", () => {
   const ficha = readFileSync(new URL("../../app/(crm)/leads/[id]/page.tsx", import.meta.url), "utf8");
   assert.match(ficha, /"\/api\/v1\/crm\/vendas-sem-valor"/, "a ficha precisa chamar a rota que já existia");
+  /* ── A ASSERÇÃO LÊ O CORPO DO HANDLER, NÃO O ARQUIVO ─────────────────────
+     A versão anterior desta linha era `assert.match(ficha, /await load\(\);/)`.
+     MEDIDO: `await load();` aparece 8 vezes neste arquivo, 7 delas escritas
+     ANTES desta entrega — apagando o `await load()` de dentro de
+     `informarValorDaVenda` o contrato seguia 14/14 VERDE. Uma asserção que as
+     linhas de outra pessoa já satisfazem não é asserção: é decoração.
+     Agora o recorte é o corpo da função, e só ele. */
+  const corpo = ficha.match(/async function informarValorDaVenda\(\)[\s\S]*?\n {2}\}/);
+  assert.ok(corpo, "o handler `informarValorDaVenda` precisa existir na ficha");
+  assert.match(corpo[0], /vendas-sem-valor/, "é este handler que chama a rota");
   // Gravar e não reler deixaria o corretor sem confirmação — o defeito de novo.
-  assert.match(ficha, /await load\(\);/, "depois de gravar, a ficha relê para o valor VOLTAR à tela");
+  assert.match(corpo[0], /await load\(\)/, "depois de gravar, a ficha relê para o valor VOLTAR à tela");
+  // Escrita que falha em silêncio envenena a base de medição desta rodada.
+  assert.match(corpo[0], /catch \(/, "a falha da rota precisa ser capturada");
+  assert.match(corpo[0], /setErroDoValor\(/, "e precisa virar mensagem na tela, não console");
 });
 
 /**
