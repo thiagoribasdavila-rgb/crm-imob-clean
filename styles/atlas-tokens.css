@@ -90,4 +90,42 @@
   --atlas-radius-pill: 999px;
   --atlas-transition-fast: 120ms ease-out;
   --atlas-transition: 180ms cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── A SUPERFÍCIE TEM UMA RECEITA SÓ ────────────────────────────────────
+     MEDIDO em 02/08/2026: 12 classes de painel/cartão coexistiam com CINCO
+     raios (10, 12, 16, 20, 24, 28px) e três hairlines diferentes. O raio era
+     escolhido no lugar de uso, então nunca havia uma resposta para "qual é o
+     raio do produto?".
+
+     Estes tokens não inventam valor nenhum: apontam para os degraus de raio
+     que já existiam acima (`--atlas-radius-lg/md`). A troca é literalmente
+     16px → 16px e 12px → 12px. O que muda não é o pixel, é ONDE a decisão
+     mora — passa a ser uma, e não uma por painel.
+
+     Quem vence por USO é a família `cc6-`: 330,6 usos por classe contra 4,9
+     da `atlas-` (medido em 02/08/2026, 592 classes declaradas). Por isso a
+     receita oficial é a do `.cc6-panel`, e o nome oficial (`.atlas-superficie`)
+     é um APELIDO na mesma regra — não uma segunda receita. */
+  --atlas-superficie-raio: var(--atlas-radius-lg);
+  --atlas-superficie-raio-quieto: var(--atlas-radius-md);
+  --atlas-superficie-borda: rgba(148, 163, 184, 0.12);
+  --atlas-superficie-borda-forte: rgba(148, 163, 184, 0.22);
+
+  /* ── DENSIDADE ──────────────────────────────────────────────────────────
+     `--spacing` é a raiz de onde o Tailwind v4 deriva TODO `p-*` e `gap-*`
+     (medido no bundle servido: `.p-5 { padding: calc(var(--spacing) * 5) }`).
+     Redefini-lo no escopo do shell compacto é o único jeito de a densidade
+     alcançar o padding da primitiva e o gap da grade sem reescrever 1.863
+     ocorrências — e sem perder a proporção que cada página escolheu: quem
+     usava `p-3` continua menor que quem usava `p-6`.
+
+     `--atlas-densidade-fator` multiplica padding e gap. Vale 1 por padrão —
+     confortável não recebe aperto nenhum. O modo compacto troca esse único
+     número, e as 120 regras de densidade em globals.css o consultam.
+
+     O valor compacto foi MEDIDO, não escolhido: é o que faz a promessa de
+     >= 15% de altura a menos se cumprir nos dois cenários testados (painel de
+     indicadores e lista longa). O relatório da entrega traz a curva inteira. */
+  --atlas-densidade-fator: 1;
+  --atlas-densidade-compacta: 0.62;
 }

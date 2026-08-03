@@ -32,6 +32,13 @@ import { canonicalPipelineStage, mergePipelineStageSettings } from "@/lib/atlas/
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { fetchAllRows } from "@/lib/supabase/fetch-all-rows";
 import { reconciliaInvestimento, type GastoDeCampanha, type LeadsDeCampanha } from "@/lib/marketing/reconciliacao-de-investimento";
+import {
+  comparacaoDeEstado,
+  coorteDeEntrada,
+  declaraLeituras,
+  medidaDoInvestimento,
+  montaEtapasDoFunil,
+} from "@/lib/atlas/sala-de-comando-medicao";
 
 type LeadRow = {
   id: string;
@@ -201,13 +208,45 @@ export async function GET(request: NextRequest) {
   ]);
   const { rows: data, error } = leadsPaginados;
 
-  // Leitura que falhou não pode virar "operação vazia": a tela diria que não há
-  // lead nenhuma sobre uma consulta que ninguém conseguiu fazer.
-  if (error) {
-    return apiError("SALA_DE_COMANDO_INDISPONIVEL", "Não foi possível medir a operação agora.", identity.meta, {
-      status: 503,
-      details: { motivo: error.message },
-    });
+  /**
+   * ── AS DUAS LEITURAS SEM AS QUAIS ESTA TELA NÃO EXISTE ────────────────────
+   *
+   * Leitura que falhou não pode virar "operação vazia": a tela diria que não há
+   * lead nenhuma sobre uma consulta que ninguém conseguiu fazer.
+   *
+   * `pipeline_stage_settings` entrou nesta lista em 02/08/2026. O erro dela era
+   * ENGOLIDO: `configuracao.data ?? []` cai em `mergePipelineStageSettings`, que
+   * devolve a régua PADRÃO do código. Nesta organização a régua padrão e a
+   * configurada são idênticas (medido: mesmas 9 chaves, mesmos rótulos, mesmas
+   * posições) — o funil sairia igual e ninguém veria nada. A falha só apareceria
+   * na empresa que tivesse configurado o funil de outro jeito, que é exatamente
+   * quem mais precisa de um funil correto.
+   *
+   * E não é só o desenho: `emAberto` (o número de cabeçalho do painel) e
+   * `equipe[].abertas` contam SOBRE essa régua. Publicá-los sobre uma régua
+   * assumida seria a terceira verdade sobre o mesmo funil — a que este arquivo
+   * já pagou para eliminar uma vez.
+   */
+  const leiturasFatais = [
+    { fonte: "leads", erro: error },
+    { fonte: "pipeline_stage_settings", erro: configuracao.error },
+  ].filter((leitura) => leitura.erro);
+
+  if (leiturasFatais.length > 0) {
+    return apiError(
+      "SALA_DE_COMANDO_INDISPONIVEL",
+      leiturasFatais.some((l) => l.fonte === "pipeline_stage_settings") && !error
+        ? "Não foi possível ler as etapas configuradas do funil. Desenhar o funil com a régua padrão mostraria etapas que talvez não sejam as desta empresa."
+        : "Não foi possível medir a operação agora.",
+      identity.meta,
+      {
+        status: 503,
+        details: {
+          motivo: leiturasFatais.map((l) => `${l.fonte}: ${l.erro?.message ?? "leitura falhou"}`).join(" · "),
+          fontes: leiturasFatais.map((l) => l.fonte),
+        },
+      },
+    );
   }
 
   const leads = data ?? [];
@@ -257,27 +296,38 @@ export async function GET(request: NextRequest) {
     ? new Date(inicioDoRegistro).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
     : null;
 
-  const funil = etapasDaOrganizacao.map((etapa) => {
-    const quantidade = porEtapa.get(etapa.key) ?? 0;
-    const passaram = jaPassaram.get(etapa.key)?.size ?? 0;
-    return {
-      chave: etapa.key,
-      rotulo: etapa.label,
-      quantidade,
-      /** Quantas leads DISTINTAS já alcançaram esta etapa, desde que há registro. */
-      jaPassaram: passaram,
-      /** Proporção contra o TOPO do funil, que é como funil se lê. */
-      percentualDoTopo: topo > 0 ? Math.round((quantidade / topo) * 1000) / 10 : null,
-      // Três frases, três diagnósticos diferentes. A do meio é a que faltava.
-      porqueVazia:
-        quantidade > 0
-          ? null
-          : !registroDeMovimentoMensuravel
-            ? "Nenhuma lead nesta etapa agora. Não foi possível ler o histórico de movimentação, então não dá para dizer se alguma já passou por aqui."
-            : passaram > 0
-              ? `Nenhuma lead aqui agora, mas ${passaram} já passaram por esta etapa${dataDoRegistro ? ` desde ${dataDoRegistro}` : ""}. A etapa esvaziou — o funil vazou aqui, não deixou de chegar.`
-              : `Nenhuma lead aqui, e nenhuma passou por esta etapa${dataDoRegistro ? ` desde ${dataDoRegistro}, quando o registro de movimentação começou` : ""}. ${topo} das ${leads.length} ainda estão em "novo".`,
-    };
+  /**
+   * ── O DENOMINADOR DO FUNIL ERA O ESTOQUE PARADO, NÃO O TOPO ───────────────
+   *
+   * `percentualDoTopo` dividia cada etapa por `porEtapa.get("novo")` — quantas
+   * leads estão PARADAS na primeira coluna neste instante. Medido em 02/08/2026
+   * na organização real (489 leads):
+   *
+   *     etapa          estoque   % do topo ANTES   % da coorte AGORA
+   *     novo                34       100,0%              7,0%
+   *     contato             25        73,5%              5,1%
+   *     qualificação         8        23,5%              1,6%
+   *
+   * Quatorze vezes de diferença, e na direção que ESCONDE o problema: 73,5%
+   * descreve uma operação que leva três de cada quatro leads ao primeiro
+   * contato. A real leva uma de cada vinte. O denominador antigo ENCOLHE
+   * conforme as leads avançam ou são descartadas — o número sobe quando a
+   * operação piora, e bateria 100% no dia em que a coluna "novo" esvaziasse.
+   *
+   * A coorte é calculável e não depende de histórico: toda lead entra por
+   * "novo", então quem entrou é quem existe. `created_at` não tem um único nulo
+   * nesta base (medido: 0 de 489), e a janela da coorte viaja junto.
+   */
+  const coorte = coorteDeEntrada(leads);
+  const funil = montaEtapasDoFunil({
+    etapas: etapasDaOrganizacao,
+    quantidadePorEtapa: porEtapa,
+    jaPassaramPorEtapa: new Map([...jaPassaram].map(([chave, ids]) => [chave, ids.size])),
+    coorte,
+    movimentoMensuravel: registroDeMovimentoMensuravel,
+    desdeQuando: dataDoRegistro,
+    emNovo: topo,
+    totalDeLeads: leads.length,
   });
 
   // Dinheiro na mesa: as etapas em que já existe oferta viva. Nesta régua são
@@ -371,11 +421,43 @@ export async function GET(request: NextRequest) {
     }];
   });
   const leadsPorCampanha: LeadsDeCampanha[] = [...leadsPorCampanhaExterna.entries()].map(([externalId, leads]) => ({ externalId, leads: leads.size }));
+  /**
+   * ── "NENHUM INVESTIMENTO IMPORTADO" É UM DIAGNÓSTICO, E PRECISA SER VERDADE ─
+   *
+   * `importado: rows.length > 0` sai FALSE de dois jeitos completamente
+   * diferentes: a tabela estar vazia, e a leitura ter falhado. O erro de
+   * `marketing_spend` e o de `lead_attribution_touches` NÃO eram conferidos em
+   * lugar nenhum desta rota — `fetchAllRows` devolve `{rows: [], error}` e só as
+   * linhas eram usadas.
+   *
+   * A consequência era medível: a tela imprime "Nenhum investimento importado
+   * ainda. O worker investimento-de-midia grava o gasto da Meta uma vez por
+   * dia..." — mandando alguém depurar o worker por causa de um erro de banco.
+   * Hoje a tabela tem 102 linhas de gasto e 47 toques de atribuição: a frase
+   * seria falsa E apontaria para o culpado errado.
+   */
+  const investimentoMedido = medidaDoInvestimento({
+    gastoErro: gastoPaginado.error,
+    atribuicaoErro: atribuicaoPaginada.error,
+    linhasDeGasto: gastoPaginado.rows.length,
+  });
   const investimento = {
     ...reconciliaInvestimento(gastosPorCampanha, leadsPorCampanha),
     /** Sem linha nenhuma, a tela precisa saber que é ausência de importação. */
-    importado: gastoPaginado.rows.length > 0,
+    importado: investimentoMedido.importado,
+    /** false = a leitura não respondeu. Nada abaixo disto é zero: é desconhecido. */
+    mensuravel: investimentoMedido.mensuravel,
+    porqueIndisponivel: investimentoMedido.porqueIndisponivel,
     amostraTruncada: gastoPaginado.truncated || atribuicaoPaginada.truncated,
+    /**
+     * A frase do CPL, quando a leitura falhou, não pode ser a do módulo de
+     * reconciliação — ela diria "Sem investimento importado e sem lead com
+     * campanha de origem", que é uma afirmação sobre duas tabelas que ninguém
+     * conseguiu ler.
+     */
+    ...(investimentoMedido.porqueIndisponivel
+      ? { porqueSemCpl: investimentoMedido.porqueIndisponivel }
+      : {}),
   };
 
   const arredonda = (n: number) => Math.round(n * 10) / 10;
@@ -481,20 +563,22 @@ export async function GET(request: NextRequest) {
     const t = new Date(m.occurred_at).getTime();
     return t >= corteAnterior && t < corteRecente;
   }).length;
-  const deltasDeEstado = {
-    /** A base de comparação existe? É diferente de "o delta está calculado". */
-    baseDeComparacaoExiste: movimentosNaJanelaAnterior > 0,
+  /**
+   * A frase daqui AFIRMA sobre o banco: "Na janela anterior não há um único
+   * movimento registrado". Ela nascia de `movimentosNaJanelaAnterior === 0` —
+   * que é exatamente o valor que sai quando `pipeline_stage_moves` não pôde ser
+   * lida. Afirmação sobre um banco que ninguém leu é chute com cara de medida.
+   *
+   * Nunca `null`. Um campo que às vezes some faz a tela cair num galho sem
+   * frase, e painel sem frase é o painel que parece quebrado. A frase muda de
+   * CONTEÚDO conforme o registro cresce (ou conforme a leitura falha); ela não
+   * desaparece.
+   */
+  const deltasDeEstado = comparacaoDeEstado({
+    movimentoMensuravel: registroDeMovimentoMensuravel,
     movimentosNaJanelaAnterior,
-    /**
-     * Nunca `null`. Um campo que às vezes some faz a tela cair num galho sem
-     * frase, e painel sem frase é o painel que parece quebrado. A frase muda
-     * de CONTEÚDO conforme o registro cresce; ela não desaparece.
-     */
-    porqueIndisponivel:
-      movimentosNaJanelaAnterior > 0
-        ? `O registro de movimentação já cobre a janela anterior (${movimentosNaJanelaAnterior} movimentos), mas reconstruir a etapa de cada lead naquele dia ainda não é feito por esta rota. Enquanto não for, o delta destes indicadores fica declarado, não estimado.`
-        : `Comparar com 30 dias atrás exige saber em que etapa cada lead estava naquele dia, e o registro de movimentação${inicioDoRegistro ? ` começou em ${new Date(inicioDoRegistro).toLocaleDateString("pt-BR")}` : " ainda não começou"}. Na janela anterior não há um único movimento registrado, e nenhum backfill resolve: o passado não foi registrado.`,
-  };
+    inicioFormatado: inicioDoRegistro ? new Date(inicioDoRegistro).toLocaleDateString("pt-BR") : null,
+  });
 
   /**
    * ── EVOLUÇÃO DE LEADS: UMA LINHA, PORQUE SÓ UMA TEM LASTRO NA JANELA ──────
@@ -542,14 +626,20 @@ export async function GET(request: NextRequest) {
     linhasIndisponiveis: [
       {
         chave: "qualificados",
-        porque: `A curva de qualificação só existe em \`pipeline_stage_moves\`, que começou${inicioDoRegistro ? ` em ${new Date(inicioDoRegistro).toLocaleDateString("pt-BR")}` : " a registrar recentemente"}. No mesmo eixo dos novos, ela leria como queda a zero onde na verdade é ausência de registro.`,
+        porque: registroDeMovimentoMensuravel
+          ? `A curva de qualificação só existe em \`pipeline_stage_moves\`, que começou${inicioDoRegistro ? ` em ${new Date(inicioDoRegistro).toLocaleDateString("pt-BR")}` : " a registrar recentemente"}. No mesmo eixo dos novos, ela leria como queda a zero onde na verdade é ausência de registro.`
+          : "A curva de qualificação sai de `pipeline_stage_moves`, e esta leitura NÃO respondeu agora. Não é ausência de registro: é leitura indisponível — pode haver histórico e não estamos conseguindo vê-lo.",
       },
       {
         chave: "negociacoes",
-        porque: "Mesma origem, mesma fronteira: sem histórico anterior ao início do registro, a linha inventaria um passado.",
+        porque: registroDeMovimentoMensuravel
+          ? "Mesma origem, mesma fronteira: sem histórico anterior ao início do registro, a linha inventaria um passado."
+          : "Mesma origem, mesma falha: a leitura do histórico não respondeu, então a linha não pode ser nem desenhada nem declarada ausente.",
       },
     ],
+    /** `null` sozinho não distingue "não começou" de "não consegui ler". */
     registroDeMovimentoDesde: inicioDoRegistro,
+    registroDeMovimentoMensuravel,
   };
 
   /**
@@ -670,6 +760,17 @@ export async function GET(request: NextRequest) {
             : `${ganhos} venda${ganhos === 1 ? "" : "s"} fechada${ganhos === 1 ? "" : "s"}: a próxima mudaria a taxa em mais de 100%. Abaixo de ${VENDAS_PARA_AFIRMAR_TAXA} vendas isto é contagem, não taxa.`,
       },
       funil,
+      /** O denominador do funil, publicado: razão sem denominador é opinião. */
+      coorteDoFunil: {
+        entradas: coorte.entradas,
+        semDataDeEntrada: coorte.semDataDeEntrada,
+        de: coorte.de,
+        ate: coorte.ate,
+        rotulo: coorte.rotulo,
+        porqueEsteDenominador:
+          "O percentual de cada etapa é sobre quem ENTROU no funil, não sobre o estoque parado em \"novo\". "
+          + "O estoque encolhe conforme as leads avançam ou são descartadas: usá-lo como base faz o número SUBIR quando a operação piora.",
+      },
       saidasDoFunil,
       investimento,
       /** Os quatro blocos que a referência visual pede. Três com lastro
@@ -693,6 +794,27 @@ export async function GET(request: NextRequest) {
         registroDeMovimentoDesde: inicioDoRegistro,
         registroDeMovimentoMensuravel,
         movimentosLidos: movimentosPaginados.rows.length,
+        /**
+         * ── O ROSTER: QUANTAS DAS LEITURAS DESTA TELA FORAM MEDIDAS ────────
+         *
+         * A sala mostra um chip "5/5 operacionais" que conta MÓDULOS de outra
+         * rota (`/api/v1/core-v2/module-health`) e não sabe nada sobre as sete
+         * leituras que fazem os números daqui. Resultado: o chip continua verde
+         * enquanto este painel diz "Não foi possível medir".
+         *
+         * Este roster é o lastro para um contador honesto: ele diz, leitura por
+         * leitura, se ela respondeu POR INTEIRO — erro e truncamento contam
+         * igual, porque agregado sobre amostra cortada não é medida.
+         */
+        leituras: declaraLeituras([
+          { fonte: "leads", serve: "Todos os indicadores, o funil e a conversão", erro: leadsPaginados.error, truncada: leadsPaginados.truncated },
+          { fonte: "pipeline_stage_settings", serve: "As etapas do funil desta empresa", erro: configuracao.error },
+          { fonte: "pipeline_stage_moves", serve: "\"Já passaram\", as saídas do funil e a base de comparação", erro: movimentosPaginados.error, truncada: movimentosPaginados.truncated },
+          { fonte: "marketing_spend", serve: "O investimento e o custo por lead", erro: gastoPaginado.error, truncada: gastoPaginado.truncated },
+          { fonte: "lead_attribution_touches", serve: "A campanha de origem das leads", erro: atribuicaoPaginada.error, truncada: atribuicaoPaginada.truncated },
+          { fonte: "developments", serve: "O ranking de projetos", erro: empreendimentos.error },
+          { fonte: "profiles", serve: "O nome dos corretores no ranking de equipe", erro: perfis.error },
+        ]),
       },
       geradoEm: new Date().toISOString(),
     },

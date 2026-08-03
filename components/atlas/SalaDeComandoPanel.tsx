@@ -198,8 +198,16 @@ function Indicador({
       <p className="mt-1.5 text-2xl font-semibold tabular-nums text-white">{valor}</p>
       {/* O detalhe carrega o DENOMINADOR ou o motivo. Número sem denominador foi
           como "442 leads" virou um dado sem significado nesta base. */}
+      {/* ── O AVISO PRECISA SER LEGÍVEL NO TEMA EM QUE ELE APARECE ───────────
+          MEDIDO no navegador, tema claro, 02/08/2026: `text-amber-300` sobre a
+          tinta de alerta dá 1,40:1 em 11px. O piso é 4,5:1 — este texto não
+          estava fraco, estava AUSENTE para quem lê no claro, e o que ele diz é
+          "de 489 — o resto nunca foi tocado". `var(--atlas-warning)` vira com o
+          tema (âmbar escuro no claro) e mede 5,19:1. A superfície âmbar fica: ela
+          funciona nos dois temas; era só o TEXTO que não virava. Herança carrega
+          valor computado, não referência — fundo e cor são um par. */}
       {detalhe ? (
-        <p className={`mt-1 text-rotulo leading-4 ${alerta ? "text-amber-300" : "text-slate-500"}`}>{detalhe}</p>
+        <p className={`mt-1 text-rotulo leading-4 ${alerta ? "text-[var(--atlas-warning)]" : "text-slate-500"}`}>{detalhe}</p>
       ) : null}
     </div>
   );
@@ -237,13 +245,16 @@ function SaidasDoFunil({ dados }: { dados: Dados["saidasDoFunil"] }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         <div>
           <p className="text-2xl font-semibold tabular-nums text-white">{inteiro(dados.total)}</p>
           <p className="mt-0.5 text-rotulo leading-4 text-slate-500">saíram do funil (perdido ou comprou em outro lugar)</p>
         </div>
         <div>
-          <p className={`text-2xl font-semibold tabular-nums ${semContato >= 50 ? "text-amber-300" : "text-white"}`}>
+          {/* MEDIDO no claro: 1,45:1 em 24px, piso 3:1. E este é o número mais
+              acusador da tela — 403 de 414 leads saíram sem uma única ligação.
+              O número que mais pesa era o menos visível. */}
+          <p className={`text-2xl font-semibold tabular-nums ${semContato >= 50 ? "text-[var(--atlas-warning)]" : "text-white"}`}>
             {inteiro(dados.semPrimeiroContato)}
             <span className="ml-1 text-sm font-normal text-slate-500">de {inteiro(dados.total)}</span>
           </p>
@@ -314,7 +325,7 @@ function Investimento({ dados }: { dados: Dados["investimento"] }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         <div>
           <p className="text-2xl font-semibold tabular-nums text-white">{brl(dados.investimentoTotal)}</p>
           <p className="mt-0.5 text-rotulo leading-4 text-slate-500">
@@ -342,9 +353,12 @@ function Investimento({ dados }: { dados: Dados["investimento"] }) {
         </div>
       </div>
 
-      {/* A frase que impede o número falso de nascer. */}
+      {/* A frase que impede o número falso de nascer — e que MEDIDA no tema
+          claro dava 1,18:1 em 11px, o pior contraste desta tela. A única frase
+          da página cujo trabalho é impedir uma decisão errada ("são contas de
+          anúncio diferentes") era a que ninguém conseguia ler. */}
       {dados.porqueSemCpl ? (
-        <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-rotulo leading-5 text-amber-200/90">
+        <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-rotulo leading-5 text-[var(--atlas-warning)]">
           {dados.porqueSemCpl}
         </p>
       ) : null}
@@ -358,7 +372,13 @@ function Investimento({ dados }: { dados: Dados["investimento"] }) {
                 {campanha.reais > 0 ? brl(campanha.reais) : "sem gasto"}
                 <span className="text-slate-600"> · </span>
                 {campanha.leads > 0 ? `${inteiro(campanha.leads)} lead${campanha.leads === 1 ? "" : "s"}` : "0 leads"}
-                {campanha.cpl !== null ? <span className="text-emerald-300"> · {brl(campanha.cpl)}/lead</span> : null}
+                {/* Mesmo defeito da faixa âmbar, medido na mesma passada: no
+                    tema claro `text-emerald-300` fica sob o piso. Não aparecia
+                    na varredura porque nenhuma campanha desta base tem as duas
+                    pontas — ou seja, era um texto ilegível esperando o primeiro
+                    dado que o fizesse nascer. `var(--atlas-success)` mede
+                    5,48:1 no claro. */}
+                {campanha.cpl !== null ? <span className="text-[var(--atlas-success)]"> · {brl(campanha.cpl)}/lead</span> : null}
               </span>
             </div>
             <div className="h-1 overflow-hidden rounded-full bg-white/5">
@@ -376,7 +396,7 @@ function Investimento({ dados }: { dados: Dados["investimento"] }) {
         </p>
       ) : null}
       {dados.amostraTruncada ? (
-        <p className="text-rotulo leading-4 text-amber-300/80">
+        <p className="text-rotulo leading-4 text-[var(--atlas-warning)]">
           A leitura foi truncada: estes totais estão sobre amostra, não sobre a base inteira.
         </p>
       ) : null}
@@ -569,8 +589,15 @@ export function SalaDeComandoPanel({
           UM delta é medido, cinco são declarados. Não é economia: é a única
           coisa que a base sustenta, e está escrito em cada um deles.
           ══════════════════════════════════════════════════════════════════ */}
+      {/* ── OS TRÊS PONTOS DE QUEBRA, COM PAPEL DECLARADO ────────────────────
+          base (<768) EMPILHADO · md (≥768) DUAS COLUNAS · xl (≥1280) COMANDO.
+          Antes daqui a grade quebrava em `sm` (640) e `lg` (1024) — dois
+          degraus sem papel escrito, e um deles punha seis KPIs em três colunas
+          de ~200px, que é onde "VGV em negociação" perde a linha. O degrau de
+          seis colunas fica só no `2xl`, porque é a única largura em que a
+          coluna passa de 250px. */}
       <section aria-label="Indicadores da operação" className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
           <CartaoKpi
             rotulo="Leads na base"
             glifo="base"
@@ -639,7 +666,7 @@ export function SalaDeComandoPanel({
         {/* Os dois indicadores que esta tela já media antes da referência. Eles
             não estão no desenho do dono, e continuam aqui exatamente como
             estavam — a referência acrescenta e reorganiza, não substitui. */}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-2">
           <Indicador
             rotulo="Com primeiro contato"
             valor={inteiro(i.comPrimeiroContato)}
@@ -692,7 +719,7 @@ export function SalaDeComandoPanel({
                 <>Não foi possível ler o histórico de movimentação; &quot;já passaram&quot; está indisponível, não é zero.</>
               )}
               {dados.procedencia.amostraTruncada ? (
-                <span className="ml-1 text-amber-300">
+                <span className="ml-1 text-[var(--atlas-warning)]">
                   Atenção: a leitura de leads foi truncada — estes agregados estão sobre amostra, não sobre a base inteira.
                 </span>
               ) : null}
@@ -791,34 +818,53 @@ export function SalaDeComandoPanel({
         />
       </section>
 
-      {/* O lado da COMPRA. Ficou fora desta tela enquanto `marketing_spend`
-          estava vazia — e o comentário da rota dizia exatamente isso. Entrou no
-          dia em que o importador passou a gravar, com a régua de que CPL só
-          aparece onde gasto e lead são da mesma campanha. */}
-      <AtlasCard>
-        <AtlasCardHeader
-          eyebrow="Investimento"
-          title="O dinheiro encontra as leads?"
-          description="Gasto real importado da conta de anúncios, campanha a campanha, confrontado com as leads que declararam vir de cada uma."
-        />
-        <div className="p-5 sm:p-6">
-          <Investimento dados={dados.investimento} />
-        </div>
-      </AtlasCard>
+      {/* ══════════════════════════════════════════════════════════════════
+          FAIXA 5 · AS DUAS METADES DA MESMA CONTA, LADO A LADO NO COMANDO
 
-      {/* Fica logo abaixo do funil de propósito: é a mesma história vista pelo
-          outro lado. O funil mostra onde as leads estão; este mostra como as que
-          já não estão foram embora. */}
-      <AtlasCard>
-        <AtlasCardHeader
-          eyebrow="Saídas do funil"
-          title="Como as leads que saíram foram embora"
-          description="A outra metade da conta: não quanto custou a lead, e sim se ela chegou a ser trabalhada antes de ser largada."
-        />
-        <div className="p-5 sm:p-6">
-          <SaidasDoFunil dados={dados.saidasDoFunil} />
-        </div>
-      </AtlasCard>
+          MEDIDO no navegador, diretor, 1440×900: estes dois cartões eram os
+          únicos da medição ainda empilhados em largura inteira — 530px e 259px,
+          um sobre o outro, enquanto as faixas 2 e 3 acima já dividiam a linha
+          em três. Somavam 789px de altura para desenhar duas listas curtas num
+          cartão de 1.066px de largura.
+
+          Eles são pares de conteúdo, não vizinhos por acaso: um responde
+          "quanto custou trazer a lead", o outro "ela chegou a ser trabalhada
+          antes de ser largada". Ler os dois lado a lado é a comparação — e é o
+          papel do ponto de quebra `xl`, o de COMANDO.
+
+          `items-start` para que o cartão mais curto não estique até a altura do
+          mais alto: espaço em branco esticado dentro de um cartão é o que faz
+          parecer que falta conteúdo.
+          ══════════════════════════════════════════════════════════════════ */}
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        {/* O lado da COMPRA. Ficou fora desta tela enquanto `marketing_spend`
+            estava vazia — e o comentário da rota dizia exatamente isso. Entrou no
+            dia em que o importador passou a gravar, com a régua de que CPL só
+            aparece onde gasto e lead são da mesma campanha. */}
+        <AtlasCard className="min-w-0">
+          <AtlasCardHeader
+            eyebrow="Investimento"
+            title="O dinheiro encontra as leads?"
+            description="Gasto real importado da conta de anúncios, campanha a campanha, confrontado com as leads que declararam vir de cada uma."
+          />
+          <div className="p-5 sm:p-6">
+            <Investimento dados={dados.investimento} />
+          </div>
+        </AtlasCard>
+
+        {/* É a mesma história vista pelo outro lado. O funil mostra onde as
+            leads estão; este mostra como as que já não estão foram embora. */}
+        <AtlasCard className="min-w-0">
+          <AtlasCardHeader
+            eyebrow="Saídas do funil"
+            title="Como as leads que saíram foram embora"
+            description="A outra metade da conta: não quanto custou a lead, e sim se ela chegou a ser trabalhada antes de ser largada."
+          />
+          <div className="p-5 sm:p-6">
+            <SaidasDoFunil dados={dados.saidasDoFunil} />
+          </div>
+        </AtlasCard>
+      </div>
     </div>
   );
 }

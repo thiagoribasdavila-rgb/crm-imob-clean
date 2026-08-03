@@ -14,32 +14,32 @@ type StatusBadgeProps = {
 };
 
 /*
- * CC-5: semântica por cor (accent para info, emerald ok, amber alerta, rose
- * crítico), micro-tipografia mono uppercase com tracking largo, sem glow.
- * "violet" é mapeado para a variante quieta do acento único (hairline neutra
- * + tinta do acento) para não introduzir uma segunda cor decorativa.
- * Utilitários com `!` vencem as classes atlas-badge-* unlayered de globals.css.
+ * ── A GUERRA DE CLASSES SAIU DAQUI ────────────────────────────────────────
+ *
+ * Este arquivo baixava `atlas-badge atlas-badge-<tom>` e, no mesmo className,
+ * anulava com `!` exatamente as três propriedades que a variante existe para
+ * dar: borda, fundo e cor. Mais `text-micro!` e `tracking-[0.14em]!` por cima
+ * do `font-size` e do `letter-spacing` da base. Eram 6 variantes carregadas
+ * para serem 100% descartadas, em 219 instâncias.
+ *
+ * O `!` era obrigatório porque `.atlas-badge-*` é regra SEM CAMADA em
+ * globals.css, e sem camada vence `@layer utilities` do Tailwind — o mesmo
+ * mecanismo que obrigou o AtlasCard a repintar a receita do painel.
+ *
+ * Agora a aparência é declarada uma vez, em `.cc6-badge` / `.cc6-badge-<tom>`,
+ * com os valores LIDOS do getComputedStyle das 6 variantes antes da troca.
+ * Nada aqui sobrescreve nada.
+ *
+ * `.atlas-badge-*` continua existindo e continua servindo: são 17 usos diretos
+ * em AtlasUI, CopilotDock e FeedbackCenter, com outro tratamento (Geist 11px,
+ * sem caixa alta). O que era uma classe desfeita virou duas classes honestas.
+ *
+ * "violet" segue mapeado para a variante quieta do acento único — nunca foi
+ * violeta, e não é aqui que uma segunda cor decorativa vai nascer.
  */
-const toneClasses: Record<StatusBadgeTone, string> = {
-  neutral:
-    "border-[rgba(148,163,184,0.18)]! bg-[rgba(148,163,184,0.07)]! text-[var(--atlas-texto-medio)]!",
-  info: "border-[rgba(75,141,248,0.32)]! bg-[rgba(75,141,248,0.10)]! text-[color:var(--atlas-accent-hover)]!",
-  success:
-    "border-[rgba(52,211,153,0.28)]! bg-[rgba(52,211,153,0.09)]! text-[var(--atlas-estado-sucesso)]!",
-  warning:
-    "border-[rgba(245,181,68,0.30)]! bg-[rgba(245,181,68,0.09)]! text-[var(--atlas-estado-atencao)]!",
-  danger:
-    "border-[rgba(251,113,133,0.30)]! bg-[rgba(251,113,133,0.10)]! text-[var(--atlas-estado-perigo)]!",
-  violet:
-    "border-[rgba(148,163,184,0.18)]! bg-[rgba(148,163,184,0.05)]! text-[color:var(--atlas-accent-hover)]!",
-};
-
 export function StatusBadge({ children, tone = "neutral" }: StatusBadgeProps) {
   return (
-    <span
-      className={`atlas-badge atlas-badge-${tone} gap-1.5 font-mono text-micro! uppercase tracking-[0.14em]! [font-variant-numeric:tabular-nums] ${toneClasses[tone]}`}
-      data-tone={tone}
-    >
+    <span className={`cc6-badge cc6-badge-${tone}`} data-tone={tone}>
       {children}
     </span>
   );

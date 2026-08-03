@@ -2815,7 +2815,13 @@ export default function CommandCenterPage() {
           base, e um cartão que age não pode ser menor do que isso. */}
       <section
         aria-label="As perguntas da primeira tela"
-        className={`cc5-reveal grid gap-3 sm:grid-cols-2 ${linhaDeComando.length >= 4 ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
+        /* ── OS TRÊS PONTOS DE QUEBRA, COM PAPEL DECLARADO ──────────────────
+           base (<768) EMPILHADO · md (≥768) DUAS COLUNAS · xl (≥1280) COMANDO.
+           A quebra de duas colunas era `sm:` (640px): quatro tiles a 640
+           ficavam com ~300px cada, e a pergunta mais longa ("O QUE PEDE A SUA
+           ASSINATURA?") não cabe em 300px sem quebrar em três linhas. Sobe para
+           md:768, onde a coluna tem ~360px. */
+        className={`cc5-reveal grid gap-3 md:grid-cols-2 ${linhaDeComando.length >= 4 ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
         style={{ animationDelay: "25ms" }}
       >
         {linhaDeComando.map((tile) => (
@@ -2978,340 +2984,13 @@ export default function CommandCenterPage() {
             batiam. */}
         <section
         aria-label="O que exige ação agora"
-        className="cc5-reveal grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        className="cc5-reveal grid gap-4 md:grid-cols-2 xl:grid-cols-3"
         style={{ animationDelay: "175ms" }}
       >
         <AtlasMetric label="Leads quentes" value={<span className={metricValueClass}>{hotDisplay}</span>} detail="Score alto ou temperatura quente" tone={metrics.hot ? "amber" : "green"} />
         <AtlasMetric label="Tarefas atrasadas" value={<span className={metricValueClass}>{overdueDisplay}</span>} detail="Prazos vencidos aguardando ação" tone={metrics.overdueTasks ? "rose" : "green"} />
         <AtlasMetric label="Sem responsável" value={<span className={metricValueClass}>{unassignedDisplay}</span>} detail="Leads aguardando distribuição" tone={metrics.unassigned ? "amber" : "green"} />
       </section>
-
-        <section
-        aria-label="Sala de comando"
-        className="cc5-reveal atlas-panel rounded-2xl px-5 py-3"
-        style={{ animationDelay: "160ms" }}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p
-              className="cc5-eyebrow"
-              title="Medição completa da operação: seis indicadores, funil por etapa com o que já passou, atividades, equipe, evolução, top projetos, alertas, insights, investimento por campanha e saídas do funil."
-            >
-              Medição · Operação
-            </p>
-            <p className="mt-0.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
-              Funil, investimento e saídas — a leitura completa, medida
-            </p>
-          </div>
-          <LayerToggle
-            collapsed={collapsedLayers.medicao}
-            onToggle={() => toggleLayer("medicao")}
-            layerLabel="medição da operação"
-          />
-        </div>
-        {collapsedLayers.medicao ? null : (
-        <div className="mt-4">
-        {/* As quatro faixas da referência visual do dono. O painel busca UMA
-            rota (sala-de-comando); tudo o mais aqui já estava em memória e é
-            passado, não rebuscado.
-
-            `briefingSignals` vai INTEIRO, e não `visibleBriefingSignals`: a
-            triagem de "já vi" existe para a fila de trabalho, onde marcar como
-            visto é progresso. Numa superfície de MEDIÇÃO ela esvaziaria o
-            painel de alertas sem nada ter mudado na operação — e painel vazio
-            é indistinguível de painel quebrado. */}
-        <SalaDeComandoPanel
-          feed={feedDaSala}
-          feedAmostra={amostraDeLeads}
-          referenciaMs={referenceTime || undefined}
-          sinais={briefingSignals}
-          sinaisIndisponivel={briefingUnavailable}
-          pontosCegos={briefing?.coverage?.blindSpots ?? []}
-          insightsLocais={insightsLocaisDaSala}
-        />
-        </div>
-        )}
-      </section>
-
-      {/* PRIMÁRIO · diretoria — saúde do negócio (director-daily + briefing) e o
-          módulo de Marketing · Meta (único fetch novo, ausente em falha/403). */}
-      {isDirector ? (
-        <section
-          aria-label="Saúde do negócio e marketing"
-          className={`cc5-reveal grid gap-4 ${marketingRates ? "xl:grid-cols-[1.05fr_.95fr]" : ""}`}
-          style={{ animationDelay: "55ms" }}
-        >
-          <div className="atlas-panel rounded-2xl p-5 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p
-                  className="cc5-eyebrow"
-                  title="Primário da diretoria: conversão, SLA agregado e sinais críticos, medidos por director-daily e pelo briefing da IA."
-                >
-                  Negócio · Saúde · Agora
-                </p>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
-                  Saúde do negócio
-                </h2>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
-                  Conversão, SLA agregado e sinais críticos do escopo inteiro — o essencial antes de
-                  qualquer decisão.
-                </p>
-              </div>
-              <Link
-                href="/reports"
-                className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-              >
-                Abrir relatórios →
-              </Link>
-            </div>
-            {!directorDaily ? (
-              <AtlasSkeleton className="mt-4 h-32 w-full" />
-            ) : (
-              /* Mesma conversão do primário do gerente: 4 tiles bordados viram lista
-                 densa. Conversão geral é o número que abre a decisão, então recebe a
-                 escala de herói com a unidade recuada (aninhada, para o 0.5em resolver
-                 contra o display e não contra a linha). */
-              <div className="cc23-quiet mt-4">
-                <ul className="cc23-rows">
-                  {/* ── O TILE "CONVERSÃO GERAL" FOI REMOVIDO (2026-07-30) ────────
-                      Ele imprimia `0.2%` em escala de herói. Setecentas linhas
-                      abaixo, o SalaDeComandoPanel se RECUSA a imprimir essa mesma
-                      taxa e escreve "1 venda — abaixo de 5 vendas isto é contagem,
-                      não taxa". O diretor via as duas, e via o percentual PRIMEIRO.
-
-                      Medido: base 482 · ganho 1 · ganho com valor informado 0. A
-                      taxa se apoiava num evento cujo valor o produto não conhece, e
-                      0,2% lido como medida manda cortar verba de aquisição — quando
-                      a leitura correta é "ainda não dá para afirmar; feche a
-                      segunda venda".
-
-                      Foi REMOVIDO em vez de alinhado de propósito: alinhar criaria
-                      um terceiro limiar dentro de director-daily, que já convive com
-                      dois (campanha ≥30 leads, superintendente ≥50). Tirar uma voz
-                      custa menos que inventar mais uma regra. `conversionRate`
-                      continua na rota — /reports consome — só não é mais publicado
-                      aqui sem a ressalva de amostra.
-
-                      Os dois contadores que davam contexto viram linha própria. */}
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Carteira ativa</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        {/* Plural correto: a legenda dizia "1 quentes". */}
-                        {directorDaily.commercial.hotLeads}{" "}
-                        {directorDaily.commercial.hotLeads === 1 ? "quente" : "quentes"}
-                      </p>
-                    </div>
-                    <span className="cc23-display">{directorDaily.commercial.activeLeads}</span>
-                  </li>
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Sem 1º contato</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        {/* "Não medido" é estado de primeira classe: a rota devolve
-                            `null` quando a coluna first_contacted_at não existe, e
-                            traço é a leitura certa — zero seria "a fila acabou". */}
-                        {directorDaily.commercial.firstContactOverdue === null
-                          ? "não medido neste banco"
-                          : "SLA inicial vencido"}
-                      </p>
-                    </div>
-                    <span
-                      className={`cc6-metric-value text-xl ${
-                        (directorDaily.commercial.firstContactOverdue ?? 0) > 0
-                          ? "text-[var(--atlas-danger)]!"
-                          : ""
-                      }`}
-                    >
-                      {directorDaily.commercial.firstContactOverdue ?? "—"}
-                    </span>
-                  </li>
-                  {/* A ESCADA — decomposição do número logo acima, dentro do
-                      mesmo painel. Nenhum painel novo, nenhum cartão ao lado. */}
-                  {directorDaily.triagem ? (
-                    <CorteDaFila
-                      triagem={directorDaily.triagem}
-                      capacity={directorDaily.capacity}
-                      semProximaAcao={directorDaily.commercial.withoutNextAction ?? null}
-                      filaFechada={filaFechada}
-                    />
-                  ) : null}
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Follow-ups vencidos</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">Próxima ação atrasada</p>
-                    </div>
-                    <span
-                      className={`cc6-metric-value text-xl ${
-                        directorDaily.commercial.followUpOverdue > 0
-                          ? "text-[var(--atlas-warning)]!"
-                          : ""
-                      }`}
-                    >
-                      {directorDaily.commercial.followUpOverdue}
-                    </span>
-                  </li>
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Sinais críticos</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">Riscos executivos + IA</p>
-                    </div>
-                    <span
-                      className={`cc6-metric-value text-xl ${
-                        directorCriticalSignals > 0 ? "text-[var(--atlas-danger)]!" : ""
-                      }`}
-                    >
-                      {directorCriticalSignals}
-                    </span>
-                  </li>
-                </ul>
-              </div>
-            )}
-            {directorDaily?.aiUsage ? (
-              <div data-phase="24-director-command-center" className="mt-4 rounded-xl border border-white/[.07] px-4 py-3">
-                <p className="cc6-eyebrow">Custo de IA · {directorDaily.aiUsage.windowDays} dias</p>
-                <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-[#93a2b8]">
-                  <span className="cc6-num text-sm text-[var(--atlas-texto-forte)]">
-                    {/* Sem tarifa não há custo. Traço, nunca US$ 0,00. */}
-                    {directorDaily.aiUsage.measuredCostUsd === null
-                      ? "—"
-                      : `US$ ${directorDaily.aiUsage.measuredCostUsd.toFixed(2)}`}
-                  </span>
-                  <span>{directorDaily.aiUsage.calls} chamada(s)</span>
-                  {directorDaily.aiUsage.cacheHitRate !== null ? (
-                    <span>{Math.round(directorDaily.aiUsage.cacheHitRate * 100)}% em cache</span>
-                  ) : null}
-                  {directorDaily.aiUsage.providers.length ? (
-                    <span>{directorDaily.aiUsage.providers.join(" · ")}</span>
-                  ) : null}
-                </div>
-                {directorDaily.aiUsage.costIsPartial ? (
-                  <p className="mt-2 text-rotulo leading-5 text-[#f2b544]">
-                    Custo parcial: {directorDaily.aiUsage.callsWithoutPricing} chamada(s) sem tarifa cadastrada.
-                    Não use este número para decidir verba enquanto a tabela de preços estiver incompleta.
-                  </p>
-                ) : null}
-                {!directorDaily.aiUsage.available ? (
-                  <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-                    Sem snapshot anterior de custo neste banco — a migration de rastreio de IA ainda não foi aplicada.
-                  </p>
-                ) : null}
-                <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
-                  Este painel é somente leitura. Qualquer mudança de verba ou de time exige APROVAÇÃO HUMANA em /approvals.
-                </p>
-              </div>
-            ) : null}
-          </div>
-          {marketingQuality && marketingRates ? (
-            <div className="atlas-panel rounded-2xl p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p
-                    className="cc5-eyebrow"
-                    title="Qualidade dos leads de campanha medida no CRM: quem qualifica, quem é descartado e quanto custou — janela de 30 dias."
-                  >
-                    Marketing · Meta · {marketingQuality.period.days}d
-                  </p>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
-                    Qualidade das campanhas
-                  </h2>
-                </div>
-                <Link
-                  href="/marketing/campaigns"
-                  className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-                >
-                  Abrir campanhas →
-                </Link>
-              </div>
-              {/* Descarte é a taxa que dispara decisão (tem limiar), então é o único
-                  herói do bloco. Qualificação, CPL e o custo por qualificado já chegam
-                  como string formatada pelo useMemo (Intl com NBSP), então entram
-                  inteiros — fatiar a unidade aqui quebraria o caso "—". */}
-              <div className="cc23-quiet mt-4">
-                <ul className="cc23-rows">
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Qualificação</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        {marketingQuality.totals.qualified} de {marketingQuality.totals.leads} leads ·{" "}
-                        {marketingQuality.totals.sales} vendas
-                      </p>
-                    </div>
-                    <span className="cc6-metric-value text-xl">
-                      {marketingRates.qualificationRate}
-                    </span>
-                  </li>
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">Descarte</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        {marketingQuality.totals.discarded} descartados na janela
-                        {marketingRates.discardHigh ? " · acima do limiar (25%)" : ""}
-                      </p>
-                    </div>
-                    <span
-                      className={`cc23-display ${
-                        marketingRates.discardHigh ? "text-[var(--atlas-danger)]!" : ""
-                      }`}
-                    >
-                      {marketingRates.discardRate}
-                    </span>
-                  </li>
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-rotulo text-slate-500">CPL</p>
-                      {/* A linha de baixo diz POR QUE o traço está lá. Traço mudo
-                          faz o leitor supor que o dado não carregou; traço com
-                          motivo faz ele ir atrás da conta de anúncios certa. */}
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        {marketingRates.costPerQualified
-                          ? `${marketingRates.costPerQualified} por qualificado`
-                          : marketingRates.whyNoCostPerLead
-                            ? `${brl.format(marketingRates.spendWithoutLeads)} em ${marketingRates.campaignsSpendWithoutLeads} campanha(s) sem lead atribuída`
-                            : marketingQuality.policy.spendMeasured
-                              ? `${brl.format(marketingQuality.totals.spend)} investidos`
-                              : "Custo não medido"}
-                      </p>
-                    </div>
-                    <span className="cc6-metric-value text-xl">
-                      {marketingRates.costPerLead ?? "—"}
-                    </span>
-                  </li>
-                  <li className="cc23-row">
-                    <div className="min-w-0 flex-1">
-                      {/* O rótulo era "Campanhas com leads" e a fonte conta
-                          `leads > 0 OU spend > 0`. Enquanto `marketing_spend`
-                          estava vazia os dois coincidiam, e o rótulo era
-                          acidentalmente verdadeiro. Com gasto importado, ele
-                          passou a chamar de "com leads" 7 campanhas que têm
-                          zero. */}
-                      <p className="text-rotulo text-slate-500">Campanhas em atividade</p>
-                      <p className="mt-0.5 text-rotulo text-slate-500">
-                        com lead ou gasto na janela · {marketingQuality.totals.campaigns} na organização
-                      </p>
-                    </div>
-                    <span className="cc6-metric-value text-xl">
-                      {marketingQuality.totals.campaignsRanked}
-                    </span>
-                  </li>
-                </ul>
-              </div>
-              {marketingQuality.policy.windowComplete === false ||
-              !marketingQuality.policy.spendMeasured ? (
-                <p className="mt-3 text-rotulo leading-5 text-[var(--atlas-warning)]">
-                  {marketingQuality.policy.windowComplete === false
-                    ? "Janela truncada no teto de paginação — números são piso, não total. "
-                    : ""}
-                  {!marketingQuality.policy.spendMeasured
-                    ? "Gasto não medido (marketing_spend indisponível) — CPL omitido em vez de fingir zero."
-                    : ""}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
 
       {/* ── A FILA DE DECISOES VEM ANTES DO PAINEL DE LEITURA ─────────────
           Medido em 01/08/2026: a IA tinha 20 redistribuicoes preparadas em
@@ -3340,27 +3019,50 @@ export default function CommandCenterPage() {
           superintendent | manager). Com `!isBroker`, papéis como marketing,
           finance, developer e viewer renderizavam a seção e recebiam 403 —
           erro fixo na tela para quem nunca deveria ver a seção. */}
-      {isDirector || isSuperintendent || isManager ? (
-        <section
-          aria-label="Leads abertos sem responsável"
-          className="cc5-reveal [transform-style:preserve-3d]"
-          style={{ animationDelay: "85ms" }}
-        >
-          <NextBestActionPanel max={5} scope="sem_dono" />
-        </section>
-      ) : null}
+      {/* ── xl = COMANDO: as duas decisões de liderança dividem a linha ───────
+          As duas seções têm condições DIFERENTES (leads sem dono é
+          director|superintendent|manager; campanhas Meta é !isBroker), então
+          existe papel — marketing, finance, viewer — que renderiza uma só, e
+          `xl:grid-cols-2` cravado deixaria esse painel em meia tela com um vão
+          branco do lado. A segunda coluna só é declarada quando os DOIS filhos
+          existem, e isso é decidido aqui, com as mesmas condições dos filhos.
 
-      {/* Governança · liderança — aprovar as campanhas Meta prontas (Arvo/Spin)
-          com 1 clique, direto para a Caixa de Aprovações. */}
-      {!isBroker ? (
-        <section
-          aria-label="Aprovar campanhas Meta"
-          className="cc5-reveal [transform-style:preserve-3d]"
-          style={{ animationDelay: "100ms" }}
-        >
-          <CampaignApprovalsPanel />
-        </section>
-      ) : null}
+          NÃO use `grid-flow-col`/`auto-cols-fr` aqui. MEDIDO em 02/08/2026: com
+          `xl:grid-flow-col xl:auto-cols-fr` a aba travou — screenshot continuava
+          saindo (compositor), mas `Runtime.evaluate` de `1+1` estourava 45s
+          (main thread bloqueada). A causa é circular: `auto-cols-fr` dimensiona
+          a coluna pelo tamanho INTRÍNSECO do filho, e `.atlas-panel` declara
+          `content-visibility: auto` em app/globals.css — o tamanho intrínseco
+          do filho depende de ele ser renderizado, e ser renderizado depende da
+          coluna já ter tamanho. Fração explícita não pergunta nada ao conteúdo
+          e sai do laço. */}
+      <div
+        className={`grid gap-4 ${
+          (isDirector || isSuperintendent || isManager) && !isBroker ? "xl:grid-cols-2" : ""
+        }`}
+      >
+        {isDirector || isSuperintendent || isManager ? (
+          <section
+            aria-label="Leads abertos sem responsável"
+            className="cc5-reveal min-w-0 [transform-style:preserve-3d]"
+            style={{ animationDelay: "85ms" }}
+          >
+            <NextBestActionPanel max={5} scope="sem_dono" />
+          </section>
+        ) : null}
+
+        {/* Governança · liderança — aprovar as campanhas Meta prontas (Arvo/Spin)
+            com 1 clique, direto para a Caixa de Aprovações. */}
+        {!isBroker ? (
+          <section
+            aria-label="Aprovar campanhas Meta"
+            className="cc5-reveal min-w-0 [transform-style:preserve-3d]"
+            style={{ animationDelay: "100ms" }}
+          >
+            <CampaignApprovalsPanel />
+          </section>
+        ) : null}
+      </div>
 
       {/*
         O VALOR DA VENDA FECHADA.
@@ -3977,11 +3679,360 @@ export default function CommandCenterPage() {
           cabeçalho não pode exibir número vivo — por isso ele declara o que há
           dentro, e não um resumo que seria de uma leitura que não aconteceu.
           Expandir dispara a consulta. */}
-      {/* A medição subiu para logo depois da decisão — ver a seção "Sala de
-            comando", agora acima. Ela é a referência visual do dono, e estava
-            na linha 3903 de 4570: para chegar nela era preciso rolar a página
-            quase inteira. */}
-        
+      {/* ══ A FAIXA QUE INFORMA — E POR QUE ELA DESCEU (02/08/2026) ══════════
+          MEDIDO no navegador, diretor, 1440×900, sem preferência salva: a
+          medição da operação ocupava 3.144px e a saúde do negócio 947px, e as
+          duas ficavam ENTRE a linha de comando e cinco superfícies que pedem
+          assinatura (decisões preparadas pela IA, leads sem dono, campanhas
+          Meta, vendas sem valor, próximos passos, camada gestão). O diretor
+          atravessava 4,5 telas de LEITURA para chegar na primeira coisa que
+          precisava assinar, e a última decisão da página terminava em 10,97
+          telas.
+
+          O comentário da fila de decisões, logo acima, já afirmava "Fica ACIMA
+          da sala de comando de propósito: o que exige assinatura vem antes do
+          que informa". Era falso na ordem do DOM — a mesma classe de defeito
+          que este arquivo já registrou em 2026-07-30 ("comentário que descreve
+          uma intenção não cumprida engana quem lê o código depois"). Ou a ordem
+          muda, ou o comentário conta a verdade. A ordem mudou.
+
+          A régua, escrita para poder ser cobrada: o que exige DECISÃO é maior
+          que o que INFORMA; o que informa é maior que o que AUDITA. Estes dois
+          blocos INFORMAM — respondem "como estamos", não "o que eu assino
+          agora" —, então abrem a faixa do meio, acima de "Agora e sinais da IA"
+          (informa) e das três camadas de auditoria ao pé.
+
+          NADA foi escondido, recolhido ou apagado: `medicao` continua nascendo
+          ABERTA para o diretor (decisão do dono em `camadasDoPapel`), com o
+          mesmo conteúdo e o mesmo toggle. Só desceu. ══════════════════════ */}
+
+      <section
+        aria-label="Sala de comando"
+        className="cc5-reveal atlas-panel rounded-2xl px-5 py-3"
+        style={{ animationDelay: "160ms" }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p
+              className="cc5-eyebrow"
+              title="Medição completa da operação: seis indicadores, funil por etapa com o que já passou, atividades, equipe, evolução, top projetos, alertas, insights, investimento por campanha e saídas do funil."
+            >
+              Medição · Operação
+            </p>
+            <p className="mt-0.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+              Funil, investimento e saídas — a leitura completa, medida
+            </p>
+          </div>
+          <LayerToggle
+            collapsed={collapsedLayers.medicao}
+            onToggle={() => toggleLayer("medicao")}
+            layerLabel="medição da operação"
+          />
+        </div>
+        {collapsedLayers.medicao ? null : (
+        <div className="mt-4">
+        {/* As quatro faixas da referência visual do dono. O painel busca UMA
+            rota (sala-de-comando); tudo o mais aqui já estava em memória e é
+            passado, não rebuscado.
+
+            `briefingSignals` vai INTEIRO, e não `visibleBriefingSignals`: a
+            triagem de "já vi" existe para a fila de trabalho, onde marcar como
+            visto é progresso. Numa superfície de MEDIÇÃO ela esvaziaria o
+            painel de alertas sem nada ter mudado na operação — e painel vazio
+            é indistinguível de painel quebrado. */}
+        <SalaDeComandoPanel
+          feed={feedDaSala}
+          feedAmostra={amostraDeLeads}
+          referenciaMs={referenceTime || undefined}
+          sinais={briefingSignals}
+          sinaisIndisponivel={briefingUnavailable}
+          pontosCegos={briefing?.coverage?.blindSpots ?? []}
+          insightsLocais={insightsLocaisDaSala}
+        />
+        </div>
+        )}
+      </section>
+
+      {/* PRIMÁRIO · diretoria — saúde do negócio (director-daily + briefing) e o
+          módulo de Marketing · Meta (único fetch novo, ausente em falha/403). */}
+      {isDirector ? (
+        <section
+          aria-label="Saúde do negócio e marketing"
+          className={`cc5-reveal grid gap-4 ${marketingRates ? "xl:grid-cols-[1.05fr_.95fr]" : ""}`}
+          style={{ animationDelay: "55ms" }}
+        >
+          <div className="atlas-panel rounded-2xl p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p
+                  className="cc5-eyebrow"
+                  title="Primário da diretoria: conversão, SLA agregado e sinais críticos, medidos por director-daily e pelo briefing da IA."
+                >
+                  Negócio · Saúde · Agora
+                </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                  Saúde do negócio
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+                  Conversão, SLA agregado e sinais críticos do escopo inteiro — o essencial antes de
+                  qualquer decisão.
+                </p>
+              </div>
+              <Link
+                href="/reports"
+                className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+              >
+                Abrir relatórios →
+              </Link>
+            </div>
+            {!directorDaily ? (
+              <AtlasSkeleton className="mt-4 h-32 w-full" />
+            ) : (
+              /* Mesma conversão do primário do gerente: 4 tiles bordados viram lista
+                 densa. Conversão geral é o número que abre a decisão, então recebe a
+                 escala de herói com a unidade recuada (aninhada, para o 0.5em resolver
+                 contra o display e não contra a linha). */
+              <div className="cc23-quiet mt-4">
+                <ul className="cc23-rows">
+                  {/* ── O TILE "CONVERSÃO GERAL" FOI REMOVIDO (2026-07-30) ────────
+                      Ele imprimia `0.2%` em escala de herói. Setecentas linhas
+                      abaixo, o SalaDeComandoPanel se RECUSA a imprimir essa mesma
+                      taxa e escreve "1 venda — abaixo de 5 vendas isto é contagem,
+                      não taxa". O diretor via as duas, e via o percentual PRIMEIRO.
+
+                      Medido: base 482 · ganho 1 · ganho com valor informado 0. A
+                      taxa se apoiava num evento cujo valor o produto não conhece, e
+                      0,2% lido como medida manda cortar verba de aquisição — quando
+                      a leitura correta é "ainda não dá para afirmar; feche a
+                      segunda venda".
+
+                      Foi REMOVIDO em vez de alinhado de propósito: alinhar criaria
+                      um terceiro limiar dentro de director-daily, que já convive com
+                      dois (campanha ≥30 leads, superintendente ≥50). Tirar uma voz
+                      custa menos que inventar mais uma regra. `conversionRate`
+                      continua na rota — /reports consome — só não é mais publicado
+                      aqui sem a ressalva de amostra.
+
+                      Os dois contadores que davam contexto viram linha própria. */}
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Carteira ativa</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        {/* Plural correto: a legenda dizia "1 quentes". */}
+                        {directorDaily.commercial.hotLeads}{" "}
+                        {directorDaily.commercial.hotLeads === 1 ? "quente" : "quentes"}
+                      </p>
+                    </div>
+                    <span className="cc23-display">{directorDaily.commercial.activeLeads}</span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Sem 1º contato</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        {/* "Não medido" é estado de primeira classe: a rota devolve
+                            `null` quando a coluna first_contacted_at não existe, e
+                            traço é a leitura certa — zero seria "a fila acabou". */}
+                        {directorDaily.commercial.firstContactOverdue === null
+                          ? "não medido neste banco"
+                          : "SLA inicial vencido"}
+                      </p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        (directorDaily.commercial.firstContactOverdue ?? 0) > 0
+                          ? "text-[var(--atlas-danger)]!"
+                          : ""
+                      }`}
+                    >
+                      {directorDaily.commercial.firstContactOverdue ?? "—"}
+                    </span>
+                  </li>
+                  {/* A ESCADA — decomposição do número logo acima, dentro do
+                      mesmo painel. Nenhum painel novo, nenhum cartão ao lado. */}
+                  {directorDaily.triagem ? (
+                    <CorteDaFila
+                      triagem={directorDaily.triagem}
+                      capacity={directorDaily.capacity}
+                      semProximaAcao={directorDaily.commercial.withoutNextAction ?? null}
+                      filaFechada={filaFechada}
+                    />
+                  ) : null}
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Follow-ups vencidos</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">Próxima ação atrasada</p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        directorDaily.commercial.followUpOverdue > 0
+                          ? "text-[var(--atlas-warning)]!"
+                          : ""
+                      }`}
+                    >
+                      {directorDaily.commercial.followUpOverdue}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Sinais críticos</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">Riscos executivos + IA</p>
+                    </div>
+                    <span
+                      className={`cc6-metric-value text-xl ${
+                        directorCriticalSignals > 0 ? "text-[var(--atlas-danger)]!" : ""
+                      }`}
+                    >
+                      {directorCriticalSignals}
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            )}
+            {directorDaily?.aiUsage ? (
+              <div data-phase="24-director-command-center" className="mt-4 rounded-xl border border-white/[.07] px-4 py-3">
+                <p className="cc6-eyebrow">Custo de IA · {directorDaily.aiUsage.windowDays} dias</p>
+                <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-[#93a2b8]">
+                  <span className="cc6-num text-sm text-[var(--atlas-texto-forte)]">
+                    {/* Sem tarifa não há custo. Traço, nunca US$ 0,00. */}
+                    {directorDaily.aiUsage.measuredCostUsd === null
+                      ? "—"
+                      : `US$ ${directorDaily.aiUsage.measuredCostUsd.toFixed(2)}`}
+                  </span>
+                  <span>{directorDaily.aiUsage.calls} chamada(s)</span>
+                  {directorDaily.aiUsage.cacheHitRate !== null ? (
+                    <span>{Math.round(directorDaily.aiUsage.cacheHitRate * 100)}% em cache</span>
+                  ) : null}
+                  {directorDaily.aiUsage.providers.length ? (
+                    <span>{directorDaily.aiUsage.providers.join(" · ")}</span>
+                  ) : null}
+                </div>
+                {directorDaily.aiUsage.costIsPartial ? (
+                  <p className="mt-2 text-rotulo leading-5 text-[#f2b544]">
+                    Custo parcial: {directorDaily.aiUsage.callsWithoutPricing} chamada(s) sem tarifa cadastrada.
+                    Não use este número para decidir verba enquanto a tabela de preços estiver incompleta.
+                  </p>
+                ) : null}
+                {!directorDaily.aiUsage.available ? (
+                  <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
+                    Sem snapshot anterior de custo neste banco — a migration de rastreio de IA ainda não foi aplicada.
+                  </p>
+                ) : null}
+                <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
+                  Este painel é somente leitura. Qualquer mudança de verba ou de time exige APROVAÇÃO HUMANA em /approvals.
+                </p>
+              </div>
+            ) : null}
+          </div>
+          {marketingQuality && marketingRates ? (
+            <div className="atlas-panel rounded-2xl p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p
+                    className="cc5-eyebrow"
+                    title="Qualidade dos leads de campanha medida no CRM: quem qualifica, quem é descartado e quanto custou — janela de 30 dias."
+                  >
+                    Marketing · Meta · {marketingQuality.period.days}d
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                    Qualidade das campanhas
+                  </h2>
+                </div>
+                <Link
+                  href="/marketing/campaigns"
+                  className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--atlas-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                >
+                  Abrir campanhas →
+                </Link>
+              </div>
+              {/* Descarte é a taxa que dispara decisão (tem limiar), então é o único
+                  herói do bloco. Qualificação, CPL e o custo por qualificado já chegam
+                  como string formatada pelo useMemo (Intl com NBSP), então entram
+                  inteiros — fatiar a unidade aqui quebraria o caso "—". */}
+              <div className="cc23-quiet mt-4">
+                <ul className="cc23-rows">
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Qualificação</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        {marketingQuality.totals.qualified} de {marketingQuality.totals.leads} leads ·{" "}
+                        {marketingQuality.totals.sales} vendas
+                      </p>
+                    </div>
+                    <span className="cc6-metric-value text-xl">
+                      {marketingRates.qualificationRate}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">Descarte</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        {marketingQuality.totals.discarded} descartados na janela
+                        {marketingRates.discardHigh ? " · acima do limiar (25%)" : ""}
+                      </p>
+                    </div>
+                    <span
+                      className={`cc23-display ${
+                        marketingRates.discardHigh ? "text-[var(--atlas-danger)]!" : ""
+                      }`}
+                    >
+                      {marketingRates.discardRate}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rotulo text-slate-500">CPL</p>
+                      {/* A linha de baixo diz POR QUE o traço está lá. Traço mudo
+                          faz o leitor supor que o dado não carregou; traço com
+                          motivo faz ele ir atrás da conta de anúncios certa. */}
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        {marketingRates.costPerQualified
+                          ? `${marketingRates.costPerQualified} por qualificado`
+                          : marketingRates.whyNoCostPerLead
+                            ? `${brl.format(marketingRates.spendWithoutLeads)} em ${marketingRates.campaignsSpendWithoutLeads} campanha(s) sem lead atribuída`
+                            : marketingQuality.policy.spendMeasured
+                              ? `${brl.format(marketingQuality.totals.spend)} investidos`
+                              : "Custo não medido"}
+                      </p>
+                    </div>
+                    <span className="cc6-metric-value text-xl">
+                      {marketingRates.costPerLead ?? "—"}
+                    </span>
+                  </li>
+                  <li className="cc23-row">
+                    <div className="min-w-0 flex-1">
+                      {/* O rótulo era "Campanhas com leads" e a fonte conta
+                          `leads > 0 OU spend > 0`. Enquanto `marketing_spend`
+                          estava vazia os dois coincidiam, e o rótulo era
+                          acidentalmente verdadeiro. Com gasto importado, ele
+                          passou a chamar de "com leads" 7 campanhas que têm
+                          zero. */}
+                      <p className="text-rotulo text-slate-500">Campanhas em atividade</p>
+                      <p className="mt-0.5 text-rotulo text-slate-500">
+                        com lead ou gasto na janela · {marketingQuality.totals.campaigns} na organização
+                      </p>
+                    </div>
+                    <span className="cc6-metric-value text-xl">
+                      {marketingQuality.totals.campaignsRanked}
+                    </span>
+                  </li>
+                </ul>
+              </div>
+              {marketingQuality.policy.windowComplete === false ||
+              !marketingQuality.policy.spendMeasured ? (
+                <p className="mt-3 text-rotulo leading-5 text-[var(--atlas-warning)]">
+                  {marketingQuality.policy.windowComplete === false
+                    ? "Janela truncada no teto de paginação — números são piso, não total. "
+                    : ""}
+                  {!marketingQuality.policy.spendMeasured
+                    ? "Gasto não medido (marketing_spend indisponível) — CPL omitido em vez de fingir zero."
+                    : ""}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
 
       {/* O tilt 3D mutava style.transform a cada pointermove sem carregar informação
           nenhuma; sai a mutação por frame e fica a métrica. Nada de `.cc23-lift` aqui:
@@ -4261,11 +4312,23 @@ export default function CommandCenterPage() {
         </div>
       </section>
 
+      {/* ── O PÉ DA PÁGINA É UMA LINHA SÓ DE AUDITORIA ────────────────────────
+          xl = COMANDO: as duas camadas que AUDITAM (telemetria + módulos, e
+          governança + pulso do sistema) dividem a última linha em vez de
+          empilhar. As duas nascem recolhidas, então recolhidas elas medem 61px
+          e 109px — duas faixas quase vazias uma sobre a outra ao pé da tela.
+          Lado a lado a linha vale a mais alta das duas.
+
+          A segunda coluna só nasce para quem tem as duas: governança é exclusiva
+          da diretoria, e para quem não é diretor a telemetria precisa ocupar a
+          linha inteira, não meia. Fração explícita e não `auto-cols-fr` — ver a
+          trava medida, explicada no par de liderança lá em cima. */}
+      <div className={`grid gap-4 ${isDirector ? "xl:grid-cols-2" : ""}`}>
       {/* TERCIÁRIO · telemetria + régua de módulos — discreto e colapsável
           (reusa collapsedLayers; contadores do cabeçalho seguem vivos). */}
       <section
         aria-label="Telemetria e régua de módulos"
-        className="cc5-reveal atlas-panel rounded-2xl px-5 py-3"
+        className="cc5-reveal atlas-panel min-w-0 self-start rounded-2xl px-5 py-3"
         style={{ animationDelay: "220ms" }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -4392,15 +4455,33 @@ export default function CommandCenterPage() {
             O resto desta faixa (latência por grupo, o anel e as duas sparklines)
             FICA: aquilo o bloco de saúde não mostra. Saiu a repetição, não a
             telemetria. */}
+
+        {/* ── A AUDITORIA VIROU UMA LINHA SÓ AO PÉ (02/08/2026) ──────────────
+            TERCIÁRIO · saúde operacional dos módulos. Fronteira protegida única
+            (fetch a /api/v1/core-v2/module-health, sem leitura direta ao
+            banco); governança CC-6 dos cinco módulos com semáforo e ação de
+            escrita segura.
+
+            MEDIDO no navegador, diretor, 1440×900: este bloco ocupava 229px
+            ABERTOS ao pé da página, fora de qualquer camada — enquanto a faixa
+            logo acima, que fala dos MESMOS módulos, nascia recolhida em 61px.
+            Duas vizinhas sobre o mesmo assunto, uma recolhida e outra não, é a
+            régua do v3 aplicada pela metade: auditoria é o degrau mais baixo da
+            hierarquia, e ela não escolhe quem recolhe.
+
+            Ele passa a viver DENTRO da camada `operacao`, que já se chama
+            "telemetria e módulos" e já nasce recolhida. Ganho colateral e
+            deliberado: recolhido, ele não é montado — e como o componente busca
+            a própria rota no `useEffect` de montagem, a página deixa de fazer
+            uma requisição de auditoria para desenhar a primeira tela.
+
+            Nada foi apagado: o cabeçalho da camada continua vivo com o resumo
+            (`N/M módulos · atualizado há X`), o toggle é de um clique e a
+            preferência sobrevive à sessão. */}
+        <CommandCenterModuleHealth />
         </>
         )}
       </section>
-
-      {/* TERCIÁRIO · saúde operacional dos módulos + orientação de escrita segura.
-          Fronteira protegida única (fetch a /api/v1/core-v2/module-health, sem
-          leitura direta ao banco). Restaura a governança CC-6 dos cinco módulos
-          prioritários com semáforo e ação de escrita segura. */}
-      <CommandCenterModuleHealth />
 
       {/* A antiga "Saúde dos módulos" foi fundida na régua de módulos da camada
           terciária; a governança segue exclusiva da diretoria.
@@ -4415,7 +4496,7 @@ export default function CommandCenterPage() {
       {isDirector ? (
         <section
           aria-label="Governança e pulso do sistema"
-          className="[transform-style:preserve-3d]"
+          className="min-w-0 self-start [transform-style:preserve-3d]"
         >
           <div className={depthShell}>
             <AtlasCard>
@@ -4531,6 +4612,7 @@ export default function CommandCenterPage() {
           </div>
         </section>
       ) : null}
+      </div>
 
       <p className="text-center text-rotulo text-slate-600">
         A IA sugere e explica; nenhuma ação é executada sem a sua confirmação.
