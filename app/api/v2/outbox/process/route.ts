@@ -18,6 +18,7 @@ import { linhaDeAtividade } from "@/lib/crm/registro-de-atividade";
 import { descreverFalha } from "@/lib/integrations/descrever-falha";
 import { origemDaChamada, registrarExecucao } from "@/lib/integrations/livro-de-execucoes";
 import { abrirJornadaEmSombra } from "@/lib/ai/jornada-em-sombra";
+import { cabeNaJanelaDaCapi, STATUS_FORA_DA_JANELA } from "@/lib/meta/janela-de-conversao";
 
 export const dynamic = "force-dynamic";
 
@@ -940,6 +941,39 @@ export async function POST(request: Request) {
            embaixo: exigir aqui e esquecer lá mandaria o ensaio como produção. */
         const modoDeEnvio = normalizarModoDeEnvio(config.mode);
         if (deveEnviarCodigoDeTeste(modoDeEnvio) && !config.test_event_code) throw new Error("mode='test' sem test_event_code: sem ele o evento iria como PRODUÇÃO e entraria na otimização real. Informe o código do Gerenciador de Eventos ou promova o dataset para mode='live'.");
+        /* ── A JANELA DE 7 DIAS, CONFERIDA NA HORA DE ENVIAR ────────────────
+           `cabeNaJanelaDaCapi` existia desde a entrega da janela e era chamada
+           SÓ no enfileiramento (`capi-feedback/process`). O envio não conferia
+           nada — então evento que envelheceu DENTRO da fila saía assim mesmo,
+           levava 2804003 da Meta e voltava para `failed`, para ser retentado
+           de novo, para sempre.
+
+           Medido em 03/08/2026: 78 conversões, UMA entregue. As 67 em `failed`
+           têm `occurred_at` entre 23/06 e 26/07 — ZERO dentro da janela. O laço
+           reenviava, quatro vezes por dia, eventos que a Meta não pode aceitar
+           por definição, e pintava o painel de vermelho com uma causa que não
+           era a real.
+
+           Recusar aqui não perde nada: o que está fora da janela já estava
+           perdido. O que muda é parar de gastar chamada, parar de chamar isso
+           de "falha" e passar a dizer QUAL é o problema — que é a conversão ter
+           demorado a chegar, não o dataset nem o token. */
+        const janela = cabeNaJanelaDaCapi({ ocorridoEm: conversion.occurred_at, agora: now });
+        if (!janela.dentro) {
+          await gravar("meta_conversion_events.fora_da_janela", admin
+            .from("meta_conversion_events")
+            .update({ status: STATUS_FORA_DA_JANELA, last_error: janela.motivo?.slice(0, 1000) ?? "fora da janela da CAPI" })
+            .eq("id", conversion.id));
+          logger.warn("outbox.conversao_fora_da_janela", {
+            conversionId: conversion.id, idadeEmHoras: Math.round(janela.idadeEmHoras),
+          });
+          // Entrega FECHADA, não falhada: não há o que retentar, e marcar como
+          // falha manteria o evento voltando à fila até virar carta morta.
+          await closeOutboxEvent(admin, event.id, { status: "delivered", delivered_at: now, locked_at: null, locked_by: null, last_error: janela.motivo?.slice(0, 500) ?? null, cause: "fora_da_janela" });
+          delivered += 1;
+          continue;
+        }
+
         const accessToken = process.env.META_CONVERSIONS_ACCESS_TOKEN;
         if (!accessToken) throw new Error("META_CONVERSIONS_ACCESS_TOKEN não configurado.");
         const { data: lead, error: leadError } = await admin.from("leads").select("id,email,phone,metadata").eq("id", conversion.lead_id).eq("organization_id", conversion.organization_id).single();

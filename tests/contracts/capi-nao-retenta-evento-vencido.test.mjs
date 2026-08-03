@@ -23,6 +23,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   cabeNaJanelaDaCapi, DIAS_DA_JANELA_CAPI, HORAS_DE_MARGEM, STATUS_FORA_DA_JANELA,
 } from "../../lib/meta/janela-de-conversao.ts";
@@ -112,4 +113,32 @@ test("o agora entra como parâmetro: duas chamadas iguais dão o mesmo resultado
   const entrada = { ocorridoEm: diasAtras(3), agora: AGORA };
   assert.deepEqual(cabeNaJanelaDaCapi(entrada), cabeNaJanelaDaCapi(entrada));
   assert.equal(cabeNaJanelaDaCapi(entrada).idadeEmHoras, 72);
+});
+
+// ── O ENVIO TAMBÉM CONFERE, NÃO SÓ O ENFILEIRAMENTO ─────────────────────────
+
+test("o caminho de ENVIO do outbox confere a janela antes de chamar a Meta", () => {
+  /**
+   * `cabeNaJanelaDaCapi` existia e era chamada só em `capi-feedback/process`,
+   * que ENFILEIRA. O envio não conferia nada: evento que envelhecia DENTRO da
+   * fila saía assim mesmo, levava 2804003 e voltava para `failed` — para ser
+   * retentado quatro vezes por dia, para sempre.
+   *
+   * Medido em 03/08/2026: 78 conversões, UMA entregue; as 67 em `failed` com
+   * `occurred_at` entre 23/06 e 26/07, ZERO dentro da janela.
+   *
+   * Este portão confere SUBSTÂNCIA, não a presença do import: a chamada precisa
+   * acontecer antes do `fetch` para a Graph, e o desfecho precisa ser fechado
+   * (`STATUS_FORA_DA_JANELA`), nunca `failed` — que traria o evento de volta.
+   */
+  const rota = readFileSync(new URL("../../app/api/v2/outbox/process/route.ts", import.meta.url), "utf8");
+  const bloco = rota.slice(rota.indexOf('event.topic === "meta.conversion.send"'));
+  const ondeConfere = bloco.indexOf("cabeNaJanelaDaCapi(");
+  const ondeEnvia = bloco.indexOf("graph.facebook.com");
+  assert.ok(ondeConfere > -1, "o envio precisa conferir a janela");
+  assert.ok(ondeEnvia > -1, "o bloco de envio precisa existir");
+  assert.ok(ondeConfere < ondeEnvia,
+    "conferir DEPOIS de chamar a Graph não evita nada — a chamada já foi feita e já falhou");
+  assert.match(bloco.slice(ondeConfere, ondeEnvia), /STATUS_FORA_DA_JANELA/,
+    "vencido precisa fechar com o status de bloqueado; `failed` traz o evento de volta à fila");
 });
