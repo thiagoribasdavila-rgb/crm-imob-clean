@@ -31,6 +31,7 @@
     "app/api/v2/developers/weekly-reports/process/route.ts",
     "app/api/v2/distribution/reservations/process/route.ts",
     "app/api/v2/integrations/carta-morta/vigia/route.ts",
+    "app/api/v2/integrations/ingestao/vigia/route.ts",
     "app/api/v2/marketing/capi-feedback/process/route.ts",
     "app/api/v2/marketing/investimento/process/route.ts",
     "app/api/v2/marketing/meta-backfill/process/route.ts",

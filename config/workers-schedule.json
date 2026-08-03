@@ -298,6 +298,19 @@
       }
     },
     {
+      "nome": "ingestao-parada",
+      "rota": "/api/v2/integrations/ingestao/vigia",
+      "cadencia": "53 * * * *",
+      "porque": "A entrada de leads da Meta parou às 15:29 de 03/08/2026 e seis leads reais (16:16 → 21:52) nunca chegaram ao CRM. Ninguém soube por seis horas: o painel de saúde media integração CONFIGURADA, não integração PRODUZINDO. O vigia acende em duas entradas independentes — silêncio anômalo comparado com o histórico da MESMA faixa de horário (para não tocar toda madrugada) ou evento entrando e não virando lead. De hora em hora acompanha o backfill (33 * * * *) sem competir com ele; o minuto 53 evita 0, 17, 33 e 47, já ocupados.",
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "atlas_worker_runs",
+        "coluna": "concluido_em",
+        "condicional": false,
+        "inferida": false
+      }
+    },
+    {
       "nome": "meta-backfill",
       "rota": "/api/v2/marketing/meta-backfill/process",
       "cadencia": "33 * * * *",
