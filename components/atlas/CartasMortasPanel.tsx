@@ -45,7 +45,13 @@ type Linha = {
   idadeHoras: number | null;
   tentativas: number | null;
   resolvida: boolean;
-  ultimoErro?: string | null;
+  /* Os campos que a rota REALMENTE emite (app/api/v3/dlq/route.ts:142-153).
+     O painel lia `ultimoErro`, que a rota nunca emitiu: o commit prometeu
+     "carta morta ganha causa" e a tela não mostrava causa nenhuma. */
+  causa?: string | null;
+  comoResolver?: string | null;
+  podeReprocessar?: boolean;
+  bloqueio?: string | null;
 };
 
 type Resposta = {
@@ -111,7 +117,6 @@ export function CartasMortasPanel() {
   }
 
   const linhas = (dados?.linhas ?? []).filter((l) => !l.resolvida);
-  const podeReprocessar = dados?.quemResolve?.euPosso === true;
   const operacionais = quantasOperacionais(dados?.contagem);
 
   return (
@@ -140,12 +145,19 @@ export function CartasMortasPanel() {
                   {typeof linha.tentativas === "number" ? ` · ${linha.tentativas} tentativa(s)` : ""}
                 </span>
               </div>
-              {linha.ultimoErro ? (
-                <p className="text-sm leading-6 text-[var(--atlas-texto-medio)]">{linha.ultimoErro}</p>
+              {linha.causa ? (
+                <p className="text-corpo leading-6 text-[var(--atlas-texto-medio)]">{linha.causa}</p>
+              ) : null}
+              {linha.comoResolver ? (
+                <p className="text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">{linha.comoResolver}</p>
               ) : null}
               {recuperadas[linha.id] ? (
                 <p className="text-sm leading-6 text-[var(--atlas-texto-medio)]">{recuperadas[linha.id]}</p>
-              ) : podeReprocessar ? (
+              ) : linha.podeReprocessar ? (
+                /* A decisão é POR LINHA. Antes o botão olhava só `euPosso`, e
+                   aparecia em item que o servidor ia recusar — botão que falha
+                   ensina a ignorar o painel. A rota já resolve as duas
+                   condições (causa caída E diretoria) em `podeReprocessar`. */
                 <div className="flex justify-end">
                   <button
                     type="button"
@@ -157,8 +169,8 @@ export function CartasMortasPanel() {
                   </button>
                 </div>
               ) : (
-                <p className="text-rotulo text-[var(--atlas-texto-fraco)]">
-                  {dados?.quemResolve?.porque ?? "Reprocessar é decisão da diretoria."}
+                <p className="text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
+                  {linha.bloqueio ?? dados?.quemResolve?.porque ?? "Reprocessar é decisão da diretoria."}
                 </p>
               )}
             </li>

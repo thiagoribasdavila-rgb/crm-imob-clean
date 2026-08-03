@@ -323,7 +323,7 @@ export async function POST(request: Request) {
         // olhar quem está efetivamente atendendo, e "carteira menor" não é a
         // mesma coisa que "menos leads paradas".
         const [perfis, carteira] = await Promise.all([
-          admin.from("profiles").select("id,name").eq("organization_id", organizationId).eq("active", true),
+          admin.from("profiles").select("id,name,full_name").eq("organization_id", organizationId).eq("active", true),
           admin.from("leads").select("assigned_user_id,first_contacted_at,status").eq("organization_id", organizationId)
             .not("assigned_user_id", "is", null)
             .not("status", "in", "(ganho,perdido,arquivado,GANHO,PERDIDO,ARQUIVADO)"),
@@ -337,9 +337,21 @@ export async function POST(request: Request) {
           porCorretor.set(dono, atual);
         }
         const corretores = (perfis.data ?? []).map((perfil) => {
-          const p = perfil as { id: string; name: string | null };
+          const p = perfil as { id: string; name: string | null; full_name: string | null };
           const carga = porCorretor.get(p.id) ?? { emAberto: 0, semPrimeiroContato: 0 };
-          return { brokerId: p.id, nome: p.name, ...carga };
+          /* ── O NOME QUE O CRM MOSTRA É `full_name`, NÃO `name` ─────────────
+             MEDIDO em 03/08/2026: `profiles.name` é NULO em 5 dos 6 perfis
+             ATIVOS, e `full_name` está preenchido em todos. Como este worker
+             lia só `name`, 15 das 20 recomendações já gravadas em
+             `ai_shadow_decisions` pedem que o líder mande a lead para
+             "corretor sem nome cadastrado (…fc71)" — enquanto o nome está na
+             MESMA linha de profiles, na outra coluna.
+             A ordem é a que todo o resto do produto usa (mapLegacyProfile,
+             /api/v1/team): full_name primeiro, `name` de reserva. */
+          const nome = (typeof p.full_name === "string" && p.full_name.trim())
+            || (typeof p.name === "string" && p.name.trim())
+            || null;
+          return { brokerId: p.id, nome, ...carga };
         });
 
         // ── IDEMPOTÊNCIA: este worker roda de 5 em 5 minutos ────────────────

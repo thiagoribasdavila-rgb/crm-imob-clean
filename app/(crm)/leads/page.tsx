@@ -881,7 +881,7 @@ export default function LeadsPage() {
     let active = true;
 
     async function loadReferences() {
-      const [profileResult, campaignResult, developmentResult, meResult] =
+      const [profileResult, campaignResult, developmentResult, empreendimentoResult, meResult] =
         await Promise.all([
           supabase.from("profiles").select(LIVE_PROFILE_SELECT).eq("active", true).order("created_at"),
           // Lista de referência do filtro (não é agregado): o teto de 500 fica,
@@ -891,12 +891,28 @@ export default function LeadsPage() {
           // aparecer no filtro. Mais recentes primeiro.
           supabase.from("marketing_campaigns").select("id,name,platform,status,created_at").order("created_at", { ascending: false }).limit(500),
           supabase.from("crm_projects").select("id,organization_id,name,developer_name,code,status,city,neighborhood,address,launch_date,delivery_date,created_at,updated_at").order("name").limit(100),
+          /* ── OS DOIS ESPAÇOS DE ID, PORQUE AS LEADS USAM OS DOIS ────────────
+             MEDIDO em 03/08/2026: 203 leads têm referência de projeto e só 5
+             resolviam nesta tela — 198 pintavam "Projeto não identificado".
+             `leads.development_id` guarda id de `developments`; o mapa era
+             montado só com `crm_projects`, e os dois conjuntos de id são
+             DISJUNTOS. Carregar os dois faz o nome aparecer venha de onde vier. */
+          supabase.from("developments").select("id,name").limit(500),
           fetch("/api/v1/auth/me").then((response) => response.json()),
         ]);
       if (!active) return;
       setProfiles(((profileResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProfile) as unknown as Profile[]);
       setCampaigns((campaignResult.data ?? []) as ReferenceRow[]);
-      setDevelopments(((developmentResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProject) as ReferenceRow[]);
+      // O filtro continua listando `crm_projects` (é o que a rota casa em
+      // `project_id`), mas o MAPA de nomes recebe os dois: quem EXIBE não pode
+      // depender de qual das duas tabelas a lead referenciou.
+      const deCrmProjects = ((developmentResult.data ?? []) as Record<string, unknown>[]).map(mapLegacyProject) as ReferenceRow[];
+      const deDevelopments = ((empreendimentoResult.data ?? []) as Record<string, unknown>[]).map((row) => ({
+        id: String(row.id ?? ""),
+        name: String(row.name ?? ""),
+      })) as ReferenceRow[];
+      const jaListados = new Set(deCrmProjects.map((item) => item.id));
+      setDevelopments([...deCrmProjects, ...deDevelopments.filter((d) => d.id && !jaListados.has(d.id))]);
       setCurrentRole(
         meResult?.data?.profile?.commercialRole ||
           meResult?.data?.profile?.role ||
@@ -904,7 +920,7 @@ export default function LeadsPage() {
       );
       setCurrentProfileId(meResult?.data?.profile?.id || "");
       const referenceError =
-        profileResult.error || campaignResult.error || developmentResult.error;
+        profileResult.error || campaignResult.error || developmentResult.error || empreendimentoResult.error;
       if (referenceError) setError("Alguns filtros auxiliares estão sincronizando. A carteira principal continua protegida.");
       setReferencesLoading(false);
     }

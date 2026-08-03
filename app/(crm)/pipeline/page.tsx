@@ -152,8 +152,12 @@ const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL",
  * O 70 mora em `lib/atlas/temperatura-do-lead.ts` — é a MESMA fronteira em que
  * o scorer passa a gravar `temperature: "quente"`. Aqui ele só é aplicado.
  *
- * O eixo numérico NÃO muda: a tela continua lendo `lead.score`, que
- * `mapLegacyLead` preenche da coluna `score` com `score_ia` de reserva.
+ * O eixo numérico NÃO muda: a tela continua lendo `lead.score`. A ORDEM das
+ * colunas por trás dele inverteu em 03/08/2026 (commit b6528fa1): `mapLegacyLead`
+ * passou a preencher de `score_ia`, com `score` de reserva — porque a consulta
+ * FILTRA e ORDENA por `score_ia`, e devolver a outra fazia 8 leads que o filtro
+ * chamava de morna chegarem pintadas de fria. Este comentário dizia o inverso e
+ * virou mentira no mesmo dia em que a correção subiu.
  * `isHotLead` chama o parâmetro de `score_ia` porque nasceu no leitor de
  * qualidade de campanha; é o mesmo eixo 0–100 do scorer.
  *
