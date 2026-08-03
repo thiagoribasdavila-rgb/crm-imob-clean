@@ -15,6 +15,7 @@ import { computeAttentionSignalsForLead } from "@/lib/atlas/attention-signals";
 import { canonicalPipelineStage } from "@/lib/atlas/pipeline-stages";
 import { FONTES_DO_HISTORICO, lerHistoricoDoLead } from "@/lib/crm/historico-do-lead";
 import { logger } from "@/lib/observability/logger";
+import { montarOrigemDaLead } from "@/lib/crm/origem-da-lead";
 import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/api/security";
@@ -244,6 +245,77 @@ export async function GET(request: Request, context: RouteContext) {
       logger.warn("lead.campaign_events.read_failed", { leadId: id, code: eventosDeCampanha.error.code });
     }
 
+    /**
+     * ── DE ONDE ESTA LEAD VEIO ────────────────────────────────────────────
+     *
+     * Três leituras, em paralelo, para responder a pergunta que a ficha não
+     * respondia: campanha (nome e verba), o evento da Meta (anúncio, conjunto,
+     * formulário, Página e a RESPOSTA que a pessoa deu no anúncio) e o nome do
+     * formulário.
+     *
+     * Nenhuma delas derruba a ficha: relação ausente ou erro degrada para
+     * `medido: false`, e a tela distingue "esta lead não tem campanha" de "não
+     * consegui ler a campanha". Zero silencioso aqui seria o mesmo defeito que
+     * escondeu 103 leads na represa.
+     */
+    const [campanhaDaLead, eventoDaMeta] = await Promise.all([
+      lead.campaign_id
+        ? admin
+            .from("marketing_campaigns")
+            .select("id,name,external_campaign_id,platform,status")
+            .eq("id", lead.campaign_id)
+            .eq("organization_id", identity.organizationId)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      admin
+        .from("meta_lead_events")
+        .select("ad_id,adset_id,form_id,page_id,campaign_external_id,payload")
+        .eq("lead_id", id)
+        .eq("organization_id", identity.organizationId)
+        .order("received_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    const gastoDaCampanha = lead.campaign_id
+      ? await admin
+          .from("marketing_spend")
+          .select("amount")
+          .eq("campaign_id", lead.campaign_id)
+          .limit(1000)
+          .then((r) =>
+            r.error
+              ? null
+              // Centavos, não binário: somar 22 diárias em ponto flutuante
+              // produziu 378.06000000000006 no primeiro ensaio. Dinheiro
+              // arredonda na fronteira, senão a tela herda o resíduo.
+              : Math.round((r.data ?? []).reduce((soma, l) => soma + (Number(l.amount) || 0), 0) * 100) / 100)
+      : null;
+
+    // O nome do formulário mora na fonte, não no evento — é o que o corretor
+    // reconhece ("Inside Smart | Form - Mai26"), e o id sozinho não diz nada.
+    const fonteDoFormulario = eventoDaMeta.data?.form_id
+      ? await admin
+          .from("meta_lead_sources")
+          .select("name")
+          .eq("form_id", String(eventoDaMeta.data.form_id))
+          .eq("organization_id", identity.organizationId)
+          .maybeSingle()
+      : { data: null, error: null };
+
+    const origemDaLead = montarOrigemDaLead({
+      fonteDaLead: lead.source ? String(lead.source) : null,
+      campanha: campanhaDaLead.data ?? null,
+      gastoDaCampanha,
+      evento: eventoDaMeta.data ?? null,
+      nomeDoFormulario: fonteDoFormulario.data?.name ? String(fonteDoFormulario.data.name) : null,
+      // Erro de LEITURA vira `medido: false`. Ausência de relação (banco sem a
+      // migration) não é falha de medição: é ausência honesta.
+      medido:
+        !(campanhaDaLead.error && !isMissingRelation(campanhaDaLead.error))
+        && !(eventoDaMeta.error && !isMissingRelation(eventoDaMeta.error)),
+    });
+
     // Reserva pendente de aceite (fase 58). Relação ausente não derruba a ficha.
     const reserva = await admin
       .from("lead_assignment_reservations")
@@ -362,7 +434,14 @@ export async function GET(request: Request, context: RouteContext) {
       relationshipContext: {
         owner,
         development: project,
-        campaign: null,
+        // Era `campaign: null` CRAVADO. A lead carregava `campaign_id` (FK para
+        // marketing_campaigns), a campanha tinha nome e verba registrada, e a
+        // ficha mostrava campanha vazia — o corretor abria a lead sem saber de
+        // qual anúncio ela veio, e o diretor não podia perguntar quanto ela
+        // custou. Medido em 03/08/2026: 7 das 8 campanhas cadastradas são
+        // "[Cia360] Inside Smart", somando R$ 4.122 de verba.
+        campaign: origemDaLead.campanha,
+        origemCompleta: origemDaLead,
         communications: { conversations: 0, messages: 0, inbound: 0, outbound: 0, unread: 0, channels: [], lastMessageAt: null },
         // A contagem também era zero cravado — e é ela que a tela mostra no
         // resumo de origem, ao lado da lista.
