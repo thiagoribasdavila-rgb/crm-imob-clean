@@ -79,7 +79,70 @@ export function elegerPagina(
 }
 
 /**
- * Lê as fontes da organização e elege a Página.
+ * TODAS as Páginas com pelo menos uma fonte ATIVA.
+ *
+ * ── Por que esta função existe ao lado de `elegerPagina` ──────────────────
+ *
+ * De manhã, 03/08/2026, `elegerPagina` consertou a represa: ela lia a Página de
+ * uma variável de ambiente ausente e devolvia zero com 103 leads esperando.
+ * À tarde, conectada a Página da Inside, o produto passou a ter DUAS — e a
+ * represa devolveu zero de novo, agora com 198 leads esperando lá.
+ *
+ * A rota SABIA que havia duas: respondia `paginasRegistradas: 2, ambigua: true`.
+ * Eu tinha construído o aviso e não a cobertura. Marcar "houve escolha" é
+ * inútil quando a escolha não devia existir — represa não é uma pergunta sobre
+ * UMA Página, é sobre tudo que a operação paga e não recebe.
+ *
+ * As duas convivem porque respondem perguntas diferentes:
+ *   · `elegerPagina`   → "qual Página preencho neste campo?" (uma, com aviso)
+ *   · `paginasRegistradas` → "de onde pode estar entrando lead?" (todas)
+ *
+ * Só ATIVAS: consultar a Graph por uma Página cujas fontes a operação desligou
+ * gasta cota e não muda decisão nenhuma — fonte inativa descarta a lead de
+ * qualquer jeito.
+ */
+export function paginasRegistradas(
+  linhas: Array<{ page_id: string | null; active?: boolean | null }>,
+): Array<{ pageId: string; fontesAtivas: number; fontesTotais: number }> {
+  const porPagina = new Map<string, { ativas: number; totais: number }>();
+  for (const linha of linhas) {
+    const pagina = String(linha.page_id ?? "").trim();
+    if (!pagina) continue;
+    const atual = porPagina.get(pagina) ?? { ativas: 0, totais: 0 };
+    atual.totais += 1;
+    if (linha.active) atual.ativas += 1;
+    porPagina.set(pagina, atual);
+  }
+
+  return [...porPagina.entries()]
+    .filter(([, v]) => v.ativas > 0)
+    .sort((a, b) => b[1].ativas - a[1].ativas || a[0].localeCompare(b[0]))
+    .map(([pageId, v]) => ({ pageId, fontesAtivas: v.ativas, fontesTotais: v.totais }));
+}
+
+/**
+ * Lê as fontes da organização e devolve TODAS as Páginas com fonte ativa.
+ *
+ * Erro de consulta devolve lista vazia — e quem chama precisa saber distinguir
+ * isso de "não há Página". Por isso devolve também `falhou`: vazio com
+ * `falhou: true` é "não consegui olhar", e nunca pode virar zero na tela.
+ */
+export async function paginasDaOrganizacao(
+  admin: SupabaseClient,
+  organizationId: string,
+): Promise<{ paginas: Array<{ pageId: string; fontesAtivas: number; fontesTotais: number }>; falhou: boolean }> {
+  const { data, error } = await admin
+    .from("meta_lead_sources")
+    .select("page_id,active")
+    .eq("organization_id", organizationId)
+    .limit(1000);
+
+  if (error || !data) return { paginas: [], falhou: true };
+  return { paginas: paginasRegistradas(data as Array<{ page_id: string | null; active: boolean | null }>), falhou: false };
+}
+
+/**
+ * Lê as fontes da organização e elege UMA Página.
  *
  * Erro de consulta devolve o vazio — e quem chama precisa tratar `pageId: null`
  * como "não sei", nunca como "não tem". A diferença é o que separa este módulo

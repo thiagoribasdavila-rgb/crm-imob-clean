@@ -141,8 +141,11 @@ type FilaDeRepresadas = {
   formulariosComRepresa: number;
   podeLiberar: boolean;
   aviso: string | null;
+  paginas?: Array<{ pageId: string; formularios: number; represado: number }>;
+  paginasComFalha?: Array<{ pageId: string; motivo: string }>;
+  parcial?: boolean;
   represadas: Array<{
-    formId: string; nome: string | null;
+    pageId: string; formId: string; nome: string | null;
     leadsNaMeta: number; jaEntraram: number; represadas: number;
     registrada: boolean; ativa: boolean; descartaLeadNova: boolean;
   }>;
@@ -271,7 +274,9 @@ type SaudeDaEntrada = {
   erros: Array<{ causa: string; quantidade: number; esperado: boolean }>;
   errosInesperados: number;
   fontes: { ativas: number; registradas: number };
-  pagina: { pageId: string | null; ambigua: boolean };
+  paginas: Array<{ pageId: string; fontesAtivas: number; fontesTotais: number }>;
+  paginasConectadas: number;
+  naoConsegiLerPaginas: boolean;
 };
 
 export default function MarketingPage() {
@@ -1032,6 +1037,16 @@ export default function MarketingPage() {
           </p>
         ) : (
           <>
+            {represa.parcial ? (
+              <p
+                className="cc6-hairline cc6-sev-band py-2.5 pl-5 pr-5 text-corpo leading-5 text-[var(--atlas-estado-perigo)]"
+                style={{ "--cc6-sev": "var(--atlas-estado-perigo)" } as CSSProperties}
+              >
+                {represa.paginasComFalha?.length} Página(s) não responderam — este total está INCOMPLETO:{" "}
+                {(represa.paginasComFalha ?? []).map((f) => `${f.pageId} (${f.motivo})`).join("; ")}
+              </p>
+            ) : null}
+
             {represa.aviso ? (
               /* Caixa dentro de caixa vira faixa de severidade: mesma
                  informação, um filete de 3px no lugar de uma borda inteira. */
@@ -1067,7 +1082,18 @@ export default function MarketingPage() {
                               : atual.filter((id) => id !== linha.formId))}
                             className="size-4 accent-[var(--atlas-accent)] disabled:opacity-40"
                           />
-                          <span className="text-[var(--atlas-texto-forte)]">{linha.nome ?? linha.formId}</span>
+                          <span className="min-w-0">
+                            <span className="block truncate text-[var(--atlas-texto-forte)]">{linha.nome ?? linha.formId}</span>
+                            {/* Com mais de uma Página conectada, o nome do
+                                formulário deixa de identificar a origem: dois
+                                "Formulário 2-copy" em Páginas diferentes são
+                                campanhas diferentes, com verba diferente. */}
+                            {(represa.paginas?.length ?? 0) > 1 ? (
+                              <span className="block truncate text-micro text-[var(--atlas-texto-fraco)]">
+                                Página {linha.pageId}
+                              </span>
+                            ) : null}
+                          </span>
                         </label>
                       </td>
                       <td className="cc6-num px-3 py-2.5 text-right font-semibold text-[var(--atlas-texto-forte)]">{linha.represadas}</td>
@@ -1171,6 +1197,12 @@ export default function MarketingPage() {
                 <dt className="cc6-eyebrow text-micro!">7 dias</dt>
                 <dd className="text-numero tabular-nums text-[var(--atlas-texto-forte)]">{saudeDaEntrada.volume.ultimos7dias}</dd>
               </div>
+              {saudeDaEntrada.paginasConectadas > 1 ? (
+                <div className="text-right">
+                  <dt className="cc6-eyebrow text-micro!">Páginas</dt>
+                  <dd className="text-numero tabular-nums text-[var(--atlas-texto-forte)]">{saudeDaEntrada.paginasConectadas}</dd>
+                </div>
+              ) : null}
               <div className="text-right">
                 <dt className="cc6-eyebrow text-micro!">formulários ativos</dt>
                 <dd className="text-numero tabular-nums text-[var(--atlas-texto-forte)]">

@@ -17,7 +17,7 @@ import { apiError, apiSuccess } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { avaliarEntradaDaMeta, HORAS_ATE_MUDO } from "@/lib/meta/saude-da-entrada";
-import { paginaDaOrganizacao } from "@/lib/meta/pagina-da-organizacao";
+import { paginasDaOrganizacao } from "@/lib/meta/pagina-da-organizacao";
 
 export const dynamic = "force-dynamic";
 
@@ -129,7 +129,10 @@ export async function GET(request: NextRequest) {
     agora: agora.toISOString(),
   });
 
-  const pagina = await paginaDaOrganizacao(admin, organizationId);
+  // TODAS as Páginas, não a eleita: a saúde da entrada com duas Páginas
+  // conectadas e só uma reportada esconde exatamente o que o painel existe para
+  // mostrar. Foi assim que 198 leads ficaram invisíveis na represa.
+  const { paginas, falhou: falhouAoLerPaginas } = await paginasDaOrganizacao(admin, organizationId);
 
   return apiSuccess({
     estado: veredito.estado,
@@ -138,7 +141,10 @@ export async function GET(request: NextRequest) {
     horasSemEvento: veredito.horasSemEvento,
     limiteDeHorasParaMudo: HORAS_ATE_MUDO,
 
-    pagina: { pageId: pagina.pageId, ambigua: pagina.ambigua, paginasRegistradas: pagina.paginasDistintas },
+    paginas,
+    paginasConectadas: paginas.length,
+    // Vazio por falha de leitura e vazio por não ter Página são fatos opostos.
+    naoConsegiLerPaginas: falhouAoLerPaginas,
     fontes: { ativas: fontesAtivas, registradas: (fontes.data ?? []).length },
 
     ultimoEventoEm,
