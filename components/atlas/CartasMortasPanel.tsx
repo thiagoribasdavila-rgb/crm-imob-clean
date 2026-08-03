@@ -15,10 +15,17 @@
  * Meta, que estava no mesmo caso.
  *
  * E há trabalho esperando: `integration_outbox` tem 10 linhas em `dead_letter`,
- * todas `meta.conversion.send`, todas com o mesmo erro —
- * `META_CONVERSIONS_ACCESS_TOKEN não configurado`. São 10 sinais de conversão
- * que o algoritmo da Meta nunca recebeu. Ferramenta pronta, defeito conhecido,
- * e nenhum lugar no produto onde apertar o botão.
+ * todas `meta.conversion.send`, todas com o mesmo erro — o token de conversões
+ * da Meta não está configurado no servidor. São 10 sinais de conversão que o
+ * algoritmo da Meta nunca recebeu. Ferramenta pronta, defeito conhecido, e
+ * nenhum lugar no produto onde apertar o botão.
+ *
+ * O nome exato da variável fica FORA deste arquivo de propósito:
+ * `check-secret-governance` reprova componente cliente que referencie segredo
+ * privado, e a regra vale para a menção também. Um comentário não vaza em
+ * runtime — o Next remove comentários do bundle —, mas afrouxar um portão de
+ * segurança para acomodar prosa minha é o começo de afrouxá-lo para o resto.
+ * O motivo medido está em docs/DEPLOY_PARA_100.md §2, onde ele pertence.
  *
  * ── Por que o painel diz de quem é a vez ───────────────────────────────────
  *
