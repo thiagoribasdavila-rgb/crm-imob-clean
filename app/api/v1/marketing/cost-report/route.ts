@@ -81,10 +81,22 @@ export async function GET(request: NextRequest) {
   // projetos) vem em paralelo: nenhum dos dois depende do outro, e os DOIS
   // caminhos de resposta (banco e Meta ao vivo) precisam dele para nomear.
   const [spendFetch, catalogo] = await Promise.all([
-    fetchAllRows<{ campaign_id: string; spend_date: string; amount: number | string }>(
+    // `leads_count` é o DENOMINADOR do CPL, e ele não estava no select.
+    //
+    // Medido em 03/08/2026: as sete campanhas "[Cia360] Inside Smart" somam
+    // R$ 4.355,83 e geraram 119 leads segundo a Meta. O CRM tem 4 ligadas a
+    // elas. Sem esta coluna, `leadsNaOrigem` chegava indefinido em `aggregate` e
+    // a divisão caía sobre as 4 que ENTRARAM: R$ 1.089 por lead, contra os
+    // ~R$ 37 reais. Um erro de 30 vezes, em verde, na tela que decide onde
+    // colocar verba.
+    //
+    // `aggregate` já sabia fazer a conta certa desde a manhã do mesmo dia — o
+    // que faltava era alguém passar o número. É a mesma classe do `escopo` que
+    // nenhum chamador da cascata passava: os dois lados prontos, o fio no chão.
+    fetchAllRows<{ campaign_id: string; spend_date: string; amount: number | string; leads_count: number | null }>(
       (from, to) => admin
         .from("marketing_spend")
-        .select("campaign_id,spend_date,amount")
+        .select("campaign_id,spend_date,amount,leads_count")
         .eq("organization_id", org)
         .order("spend_date", { ascending: true })
         .order("id", { ascending: true })
@@ -227,7 +239,18 @@ export async function GET(request: NextRequest) {
 
   const spendRows: SpendRow[] = (spend ?? []).map((s) => {
     const pd = productOf(s.campaign_id);
-    return { campaignId: s.campaign_id, campaignName: campMap.get(s.campaign_id)?.name ?? s.campaign_id, product: pd.product, developer: pd.developer, date: s.spend_date, spend: Number(s.amount) || 0, leads: 0, sales: 0 };
+    return {
+      campaignId: s.campaign_id, campaignName: campMap.get(s.campaign_id)?.name ?? s.campaign_id,
+      product: pd.product, developer: pd.developer, date: s.spend_date,
+      spend: Number(s.amount) || 0,
+      // `leads: 0` continua sendo "esta linha é de GASTO, não de lead" — as que
+      // chegaram vêm de `leadRows`, abaixo. Já `leadsNaOrigem` é o que a Meta
+      // contou no formulário: `null` quando a linha não trouxe o número, nunca
+      // zero. Zero aqui afirmaria que a campanha não gerou lead nenhuma, e a
+      // diferença entre "não gerou" e "não perguntei" é o defeito inteiro.
+      leadsNaOrigem: s.leads_count == null ? null : Number(s.leads_count),
+      sales: 0,
+    };
   });
   const leadRows: SpendRow[] = (leads ?? []).map((l) => {
     const pd = productOf(l.campaign_id, l.development_id);
