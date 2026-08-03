@@ -59,6 +59,23 @@ test("\"leads mornas\" sozinho cai na genérica", () => {
   assert.equal(r.intencao.id, "mornas");
 });
 
+test("as TRÊS intenções que dividem o grupo \"sem contato\" não se sequestram", () => {
+  // perdidas-sem-contato, mornas-sem-contato e sem-primeiro-contato compartilham
+  // o mesmo grupo de termos. As duas primeiras se distinguem só pelo OUTRO grupo,
+  // e a terceira é a genérica. Um termo a mais no lugar errado faz uma engolir as
+  // outras — e a pessoa recebe 409 quando perguntou por 160, sem saber.
+  const casos = [
+    ["quantas perdidas sem contato?", "perdidas-sem-contato"],
+    ["mornas sem contato", "mornas-sem-contato"],
+    ["leads sem primeiro contato", "sem-primeiro-contato"],
+  ];
+  for (const [pergunta, esperado] of casos) {
+    const r = resolverPergunta(pergunta);
+    assert.equal(r.tipo, "entendi", `"${pergunta}" deixou de casar`);
+    assert.equal(r.intencao.id, esperado, `"${pergunta}" caiu em "${r.intencao.id}" em vez de "${esperado}"`);
+  }
+});
+
 test("acento e caixa não mudam a resposta", () => {
   const a = resolverPergunta("DECISÕES PENDÊNCIAS");
   const b = resolverPergunta("decisoes pendencias");

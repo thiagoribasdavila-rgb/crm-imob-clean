@@ -66,6 +66,37 @@ export type Intencao = {
  */
 export const INTENCOES: readonly Intencao[] = [
   {
+    /**
+     * ── A PRIMEIRA, PORQUE É O MAIOR NÚMERO DA OPERAÇÃO ───────────────────────
+     *
+     * MEDIDO no banco vivo em 03/08/2026, sobre 490 leads:
+     *
+     *     perdidas .................................. 419
+     *     perdidas que NUNCA foram contatadas ....... 409  (97,6%)
+     *     leads que já receberam algum contato ....... 26
+     *     ainda vivas e sem contato .................. 55
+     *
+     * O negócio não está perdendo lead para concorrente: está perdendo para o
+     * silêncio. Vinte e seis contatos em quatrocentas e noventa entradas.
+     *
+     * Esta intenção vem antes de todas porque nenhuma outra resposta desta tela
+     * muda tanto o que a diretoria faz amanhã — e porque, enquanto ela existir
+     * neste tamanho, discutir conversão, criativo ou verba é discutir a segunda
+     * casa decimal de um número cuja primeira está errada.
+     */
+    id: "perdidas-sem-contato",
+    titulo: "Leads perdidas que ninguém chegou a contatar",
+    responde: "quantas leads foram dadas como perdidas sem que uma pessoa tivesse falado com elas",
+    termos: [
+      ["perdida", "perdidas", "perdemos", "perdi", "perda", "descartada", "descartadas"],
+      ["sem contato", "sem primeiro contato", "nao contatada", "não contatada", "nunca contatad", "sem atendimento", "ninguem falou", "ninguém falou", "sem falar"],
+    ],
+    acoes: [
+      { rotulo: "Ver as perdidas sem contato", href: "/leads?status=perdido&attention=sem-primeiro-contato" },
+      { rotulo: "Abrir a reativação", href: "/leads/reactivation-governance" },
+    ],
+  },
+  {
     id: "mornas-sem-contato",
     titulo: "Leads mornas ainda sem primeiro contato",
     responde: "quantas leads na faixa morna nunca foram contatadas, e quem pode assumi-las",
