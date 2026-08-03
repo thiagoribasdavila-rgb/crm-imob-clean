@@ -11,7 +11,7 @@ import { TiltShell } from "@/components/atlas/tilt-shell";
 import { supabase } from "@/lib/supabase";
 
 type Profile = { id: string; full_name: string | null; reports_to: string | null; resolved_role: string };
-type Presence = { profile_id: string; availability: string; last_seen_at: string; online: boolean };
+type Presence = { profile_id: string; availability: string; last_seen_at: string; online: boolean; na_janela_do_motor?: boolean };
 type Project = { id: string; name: string; developer_name: string | null; status: string | null };
 type Load = { profile_id: string; total: number; by_project: Record<string, number> };
 type QueueState = { profile_id: string; development_id: string; enabled: boolean; weight: number; assignments_count: number; last_assigned_at: string | null };
@@ -439,12 +439,29 @@ export default function DistributionPage() {
   const profilesMap = useMemo(() => new Map((data?.profiles ?? []).map((item) => [item.id, item])), [data]);
   const managers = (data?.profiles ?? []).filter((item) => item.resolved_role === "manager" && (data?.viewer.role !== "superintendent" || item.reports_to === data.viewer.id) && presenceMap.get(item.id)?.online);
   const teamBrokers = (data?.profiles ?? []).filter((item) => item.resolved_role === "broker" && (data?.viewer.role !== "manager" || item.reports_to === data.viewer.id));
-  const brokers = (data?.profiles ?? []).filter((item) => item.resolved_role === "broker" && presenceMap.get(item.id)?.online && presenceMap.get(item.id)?.availability === "available" && stateMap.get(item.id)?.enabled !== false).sort((a, b) => {
+  /**
+   * QUEM A FILA ALCANÇA — a lista que decide se o botão pode ser clicado.
+   *
+   * Esta lista exigia `availability === "available"`, que é a bandeira que a
+   * pessoa levanta. O motor governado exige outra coisa: linha em
+   * `commercial_presence` com `last_seen_at` nos últimos 90 segundos. As duas
+   * divergem por horas — a bandeira fica levantada com o Atlas fechado.
+   *
+   * Enquanto a tela contava a bandeira, ela habilitava "Distribuir próxima" com
+   * "3 corretores disponíveis" e o banco recusava por não achar candidato
+   * nenhum. Contar o que o motor conta é a diferença entre um botão que promete
+   * e um botão que cumpre.
+   */
+  const brokers = (data?.profiles ?? []).filter((item) => item.resolved_role === "broker" && presenceMap.get(item.id)?.na_janela_do_motor && stateMap.get(item.id)?.enabled !== false).sort((a, b) => {
     const aLoad = (loadMap.get(a.id)?.by_project[projectId] ?? 0) / (stateMap.get(a.id)?.weight || 1);
     const bLoad = (loadMap.get(b.id)?.by_project[projectId] ?? 0) / (stateMap.get(b.id)?.weight || 1);
     if (aLoad !== bLoad) return aLoad - bLoad;
     return (stateMap.get(a.id)?.last_assigned_at || "").localeCompare(stateMap.get(b.id)?.last_assigned_at || "");
   });
+  /** Quem levantou a bandeira, esteja à mesa ou não. Denominador do sinal abaixo. */
+  const marcadosDisponiveis = (data?.profiles ?? []).filter(
+    (item) => item.resolved_role === "broker" && presenceMap.get(item.id)?.availability === "available",
+  ).length;
   const selectedProject = data?.projects.find((item) => item.id === projectId);
   const unassigned = data?.unassigned[projectId] ?? 0;
   const weightedLoads = brokers.map((broker) => (loadMap.get(broker.id)?.by_project[projectId] ?? 0) / (stateMap.get(broker.id)?.weight || 1));
@@ -524,6 +541,21 @@ export default function DistributionPage() {
     unassigned > 0 ? { title: "Leads aguardando responsável", value: String(unassigned), detail: "A liderança decide quando liberar a próxima distribuição." } : null,
     oldestWaitingMinutes >= 60 ? { title: "SLA de entrada pressionado", value: oldestWaitingMinutes < 1440 ? `${Math.floor(oldestWaitingMinutes / 60)} h` : `${Math.floor(oldestWaitingMinutes / 1440)} d`, detail: "Tempo da lead mais antiga na fila selecionada." } : null,
     unassigned > 0 && brokers.length === 0 ? { title: "Sem capacidade online", value: "AÇÃO", detail: "Há demanda, mas nenhum corretor elegível está disponível agora." } : null,
+    /**
+     * A DIFERENÇA ENTRE "MARCOU DISPONÍVEL" E "ESTÁ AÍ".
+     *
+     * Sem este sinal, um time inteiro com a bandeira levantada e o Atlas fechado
+     * aparece como zero disponíveis, e o gestor não tem como saber por quê —
+     * conclui que ninguém marcou presença quando todos marcaram, só não estão à
+     * mesa. O motor exige batimento nos últimos 90 segundos.
+     */
+    marcadosDisponiveis > brokers.length
+      ? {
+        title: "Marcados como disponíveis, mas fora da janela",
+        value: String(marcadosDisponiveis - brokers.length),
+        detail: "A bandeira está levantada e o Atlas está fechado. A distribuição só alcança quem deu sinal nos últimos 90 segundos.",
+      }
+      : null,
     brokersNearCapacity > 0 ? { title: "Carteiras próximas do limite", value: String(brokersNearCapacity), detail: "Apoie o time antes de distribuir novos atendimentos." } : null,
     balanceGap > 1 ? { title: "Desvio de carga no projeto", value: String(balanceGap), detail: "Revise peso, presença e capacidade antes de um novo lote." } : null,
     /* O `.slice(0, 3)` que existia aqui descartava em silêncio o quarto e o
@@ -555,7 +587,7 @@ export default function DistributionPage() {
    */
   const heroMetrics = [
     { label: "aguardando no projeto", value: loading ? "—" : String(unassigned), ink: !loading && unassigned > 0 ? "cc6-warn" : "", heroi: true, hint: aguardandoEmOutrosProjetos > 0 ? `+${aguardandoEmOutrosProjetos} em outros projetos` : "sem responsável", title: "Leads sem responsável no projeto selecionado." },
-    { label: "corretores disponíveis", value: loading ? "—" : String(brokers.length), ink: !loading && !brokers.length && unassigned > 0 ? "cc6-crit" : "", heroi: false, hint: `de ${teamBrokers.length} na estrutura`, title: "Online, disponíveis e elegíveis neste projeto — são estes que a fila alcança." },
+    { label: "corretores disponíveis", value: loading ? "—" : String(brokers.length), ink: !loading && !brokers.length && unassigned > 0 ? "cc6-crit" : "", heroi: false, hint: marcadosDisponiveis > brokers.length ? `${marcadosDisponiveis} marcados, ${brokers.length} à mesa` : `de ${teamBrokers.length} na estrutura`, title: "Com sinal nos últimos 90 segundos e elegíveis neste projeto — é exatamente quem o motor de distribuição alcança. Marcar-se disponível não basta: o Atlas precisa estar aberto." },
     { label: "espera máxima", value: loading || !selectedQueue.length ? "—" : waitLabel(oldestWaitingMinutes), ink: !loading && oldestWaitingMinutes >= 60 ? "cc6-warn" : "", heroi: false, hint: "pressiona acima de 1 h", title: "Tempo da lead mais antiga sem responsável na fila selecionada." },
     {
       label: "carteiras no limite",
