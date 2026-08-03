@@ -211,6 +211,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  /* Visita e proposta vêm de tabelas próprias — contagem DISTINTA por lead, para
+     duas visitas da mesma pessoa não virarem dois degraus. */
+  const [visitasResp, propostasResp] = await Promise.all([
+    admin.from("lead_visits").select("lead_id").eq("organization_id", org).limit(TETO),
+    admin.from("commercial_simulations").select("lead_id").eq("organization_id", org).limit(TETO),
+  ]);
+  const comVisita = new Set((visitasResp.data ?? []).map((v) => String(v.lead_id))).size;
+  const comProposta = new Set((propostasResp.data ?? []).map((v) => String(v.lead_id))).size;
+
   const painel = erroLinhas
     ? null
     : {
@@ -223,13 +232,36 @@ export async function GET(request: NextRequest) {
           vendas: base.filter((l) => ehStatus(l, "ganho")).length,
           vgvFechado: base.filter((l) => ehStatus(l, "ganho")).reduce((s, l) => s + Number(l.sale_value_brl ?? 0), 0),
         },
+        /**
+         * OS SETE DEGRAUS, e cada um de uma fonte PROVADA.
+         *
+         * Visita e proposta não vivem em `leads.status`: moram em `lead_visits` e
+         * `commercial_simulations`. Derivá-las do status daria zero sempre e o
+         * funil pareceria ter dois degraus mortos por desenho, quando na verdade
+         * a informação está em outra tabela.
+         *
+         * MEDIDO em 03/08/2026: 1 lead com visita, 0 com proposta. O funil
+         * colapsa no meio — e é exatamente isso que ele precisa mostrar.
+         */
         funil: [
           { etapa: "Leads na base", valor: base.length },
           { etapa: "Leads ativos", valor: base.filter((l) => vivo(l.status)).length },
           { etapa: "Em atendimento", valor: base.filter((l) => ehStatus(l, "contato", "qualificacao")).length },
+          { etapa: "Visita", valor: comVisita },
+          { etapa: "Proposta", valor: comProposta },
           { etapa: "Negociação", valor: base.filter((l) => ehStatus(l, "proposta", "contrato", "negociacao")).length },
-          { etapa: "Fechadas", valor: base.filter((l) => ehStatus(l, "ganho")).length },
+          { etapa: "Venda", valor: base.filter((l) => ehStatus(l, "ganho")).length },
         ],
+        /**
+         * A conversão só é AFIRMADA com base suficiente. Com 2 ganhos em 490, a
+         * segunda venda dobraria a taxa — o número existe, e dizer "0,41%" sem
+         * dizer sobre quantos seria precisão fingida.
+         */
+        conversao: {
+          taxa: base.length ? Number(((base.filter((l) => ehStatus(l, "ganho")).length / base.length) * 100).toFixed(2)) : null,
+          ganhos: base.filter((l) => ehStatus(l, "ganho")).length,
+          base: base.length,
+        },
         serie: [...porDia.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([dia, v]) => ({ dia, ...v })),
         equipe: [...porCorretor.entries()]
           .map(([id, v]) => ({ id, nome: nomes.get(id) ?? "Sem nome cadastrado", ...v }))

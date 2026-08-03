@@ -37,7 +37,8 @@ type Kpis = {
 type Etapa = { etapa: string; valor: number };
 type Ponto = { dia: string; criadas: number; contatadas: number };
 type Corretor = { id: string; nome: string; leads: number; ativos: number; vendas: number; vgv: number };
-type Painel = { amostraTruncada: boolean; kpis: Kpis; funil: Etapa[]; serie: Ponto[]; equipe: Corretor[] };
+type Conversao = { taxa: number | null; ganhos: number; base: number };
+type Painel = { amostraTruncada: boolean; kpis: Kpis; funil: Etapa[]; conversao: Conversao; serie: Ponto[]; equipe: Corretor[] };
 
 const N = new Intl.NumberFormat("pt-BR");
 const MOEDA = (v: number) =>
@@ -190,6 +191,20 @@ export function PainelDaSala() {
               ))}
             </ul>
           </div>
+          {/* A conversão vem com o DENOMINADOR ao lado. Com 2 ganhos em 490, a
+              segunda venda dobraria a taxa — "0,41%" sozinho é precisão fingida. */}
+          {painel.conversao?.taxa !== null && painel.conversao ? (
+            <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-[var(--atlas-border)] pt-3">
+              <span className="text-corpo text-[var(--atlas-texto-medio)]">Conversão total</span>
+              <span className="cc6-num text-corpo text-[var(--atlas-texto-forte)]">
+                {painel.conversao.taxa!.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}%
+                <span className="ml-2 text-micro text-[var(--atlas-texto-fraco)]">
+                  {N.format(painel.conversao.ganhos)} de {N.format(painel.conversao.base)}
+                </span>
+              </span>
+            </div>
+          ) : null}
+
           {painel.funil.some((e) => e.valor === 0) ? (
             /* O degrau vazio é NOMEADO. É o fato mais importante que este funil
                tem a contar hoje, e escondê-lo faria o desenho mentir. */
