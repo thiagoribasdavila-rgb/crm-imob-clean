@@ -346,7 +346,8 @@
     "asercao-fraca:check": "node scripts/check-asercao-fraca.mjs",
     "caminho-descarte:check": "node scripts/check-caminho-do-descarte.mjs",
     "cobertura-schema:check": "node --env-file-if-exists=.env.local scripts/check-cobertura-de-schema.mjs",
-    "package:portao": "node scripts/scan-secrets.mjs && node scripts/check-secret-governance.mjs && node --experimental-strip-types --test \"tests/contracts/*.test.mjs\""
+    "package:portao": "node scripts/scan-secrets.mjs && node scripts/check-secret-governance.mjs && node --experimental-strip-types --test \"tests/contracts/*.test.mjs\"",
+    "regra-sem-chamador:check": "node scripts/check-regra-sem-chamador.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1089.0",
