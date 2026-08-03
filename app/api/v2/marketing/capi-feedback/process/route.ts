@@ -5,6 +5,7 @@ import { isMissingColumn, isMissingRelation } from "@/lib/compat/legacy-v2";
 import { origemDaChamada, registrarExecucao } from "@/lib/integrations/livro-de-execucoes";
 import { loadWindowBatch, loadOrgCapiConfig } from "@/lib/integrations/meta/capi-window";
 import { sendCapiBatch, type CapiSendOutcome } from "@/lib/integrations/meta/capi-feedback";
+import { cabeNaJanelaDaCapi, DIAS_DA_JANELA_CAPI } from "@/lib/meta/janela-de-conversao";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -279,6 +280,43 @@ export async function POST(request: Request) {
         resultado.bloqueados.push({ organizationId, motivo: impedimentos[0] });
         continue;
       }
+      // ── A JANELA DE 7 DIAS, MEDIDA E APLICADA ANTES DE SAIR ──────────────
+      //
+      // Provado em 03/08/2026 por bisseção contra o dataset real: `2804003
+      // Invalid parameter` é `event_time` fora da janela de 7 dias. 6 dias
+      // passa, 8 não. Não é dataset, não é token, não é payload — foram todos
+      // descartados um a um.
+      //
+      // Sem esta guarda o lote inteiro é recusado por causa de um evento velho:
+      // a Meta responde 400 para o batch, e os que CABIAM na janela morrem
+      // junto. Era assim que 67 eventos de 23–25/06 voltavam a cada 4 horas
+      // levando os novos com eles.
+      const agoraDaJanela = new Date().toISOString();
+      type Triagem = { evento: (typeof batch.events)[number]; veredito: ReturnType<typeof cabeNaJanelaDaCapi> };
+      const dentroDaJanela: Triagem[] = [];
+      const vencidos: Triagem[] = [];
+      for (const evento of batch.events) {
+        const veredito = cabeNaJanelaDaCapi({
+          ocorridoEm: new Date(evento.event_time * 1000).toISOString(),
+          agora: agoraDaJanela,
+        });
+        (veredito.dentro ? dentroDaJanela : vencidos).push({ evento, veredito });
+      }
+      if (vencidos.length) {
+        // Vencido não é falha de envio: é prazo. Registrar como `failed`
+        // devolveria as 67 "falhas" ao painel de erros, e nenhuma delas é falha
+        // de nada.
+        resultado.avisos.push({
+          organizationId,
+          motivo: `${vencidos.length} evento(s) fora da janela de ${DIAS_DA_JANELA_CAPI} dias — não enviados e não retentados. ${vencidos[0].veredito.motivo}`,
+        });
+        logger.warn("capi-feedback: eventos vencidos descartados do lote", {
+          organizationId, quantidade: vencidos.length,
+          maisVelhoEmDias: Number((Math.max(...vencidos.map((v) => v.veredito.idadeEmHoras)) / 24).toFixed(1)),
+        });
+      }
+      batch.events = dentroDaJanela.map((v) => v.evento);
+
       if (!batch.events.length) continue;
 
       // ── SILÊNCIO 2: A EXCEÇÃO QUE MATAVA O LAÇO ─────────────────────────
