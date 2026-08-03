@@ -19,8 +19,41 @@ export async function GET(request: Request) {
     return new NextResponse(challenge, { status: 200 });
   }
 
-  logger.warn("meta.webhook.verification_failed", { mode, hasToken: Boolean(token) });
-  return NextResponse.json({ error: "verification_failed" }, { status: 403 });
+  /**
+   * ── TRÊS CAUSAS, TRÊS RESPOSTAS ───────────────────────────────────────────
+   *
+   * Era um 403 único para tudo. Medido em 03/08/2026 contra a produção: o
+   * verify token do .env.local desta máquina recebeu 403 — e não havia como
+   * saber, de fora, se o servidor tinha OUTRO token ou NENHUM. As duas causas
+   * têm consertos opostos (alinhar o valor vs. definir a variável) e a mesma
+   * resposta obrigava a adivinhar.
+   *
+   * Nenhuma resposta revela o valor esperado — dizer "o token do servidor é X"
+   * entregaria a chave de reinscrição a quem apenas bateu na porta.
+   */
+  if (!expected) {
+    logger.error("meta.webhook.verify_token_ausente", new Error("META_WEBHOOK_VERIFY_TOKEN não configurada"), { mode });
+    return NextResponse.json(
+      {
+        error: "verify_token_nao_configurado",
+        detalhe:
+          "Este servidor não tem META_WEBHOOK_VERIFY_TOKEN. Sem ela a Meta não consegue (re)inscrever o webhook — " +
+          "a entrega já ativa continua funcionando, mas a inscrição não pode ser refeita.",
+      },
+      { status: 503 },
+    );
+  }
+
+  logger.warn("meta.webhook.verification_failed", { mode, hasToken: Boolean(token), hasChallenge: Boolean(challenge) });
+  return NextResponse.json(
+    {
+      error: "verification_failed",
+      detalhe: challenge
+        ? "O hub.verify_token não confere com o configurado neste servidor."
+        : "Faltou hub.challenge na chamada de verificação.",
+    },
+    { status: 403 },
+  );
 }
 
 export async function POST(request: Request) {

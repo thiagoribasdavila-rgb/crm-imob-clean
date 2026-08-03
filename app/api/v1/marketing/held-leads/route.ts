@@ -195,6 +195,13 @@ export async function GET(request: NextRequest) {
   const total = represadas.reduce((soma, l) => soma + l.represadas, 0);
   return apiSuccess({
     disponivel: true,
+    // A Página e DE ONDE ela veio, ditas em voz alta. Sem isto, a origem só se
+    // deduz por efeito colateral — e foi uma origem não observável (a variável
+    // de ambiente ausente) que produziu o zero silencioso desta rota.
+    pageId,
+    origemDaPagina: vereditoDaPagina.ok ? vereditoDaPagina.origem : null,
+    paginasRegistradas: paginaRegistrada.paginasDistintas,
+    paginaAmbigua: paginaRegistrada.ambigua,
     totalRepresado: total,
     formulariosComRepresa: represadas.length,
     tetoPorLiberacao: TETO_POR_LIBERACAO,

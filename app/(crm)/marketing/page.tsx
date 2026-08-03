@@ -257,6 +257,23 @@ function GateCard({ state, onRetry, waiting }: { state: FetchState<unknown>; onR
   return null;
 }
 
+type SaudeDaEntrada = {
+  estado: "sem_configuracao" | "em_dia" | "atrasado" | "mudo" | "nunca_recebeu";
+  resumo: string;
+  exigeAcao: boolean;
+  horasSemEvento: number | null;
+  ultimoEventoEm: string | null;
+  leadMaisNovaEm: string | null;
+  volume: { ultimas24h: number; ultimos7dias: number; ultimos30dias: number; total: number };
+  importados: number;
+  importadosSemLead: number;
+  semDestino: number;
+  erros: Array<{ causa: string; quantidade: number; esperado: boolean }>;
+  errosInesperados: number;
+  fontes: { ativas: number; registradas: number };
+  pagina: { pageId: string | null; ambigua: boolean };
+};
+
 export default function MarketingPage() {
   const [cost, setCost] = useState<FetchState<CostReport>>({ status: "loading" });
   const [andromeda, setAndromeda] = useState<FetchState<Andromeda>>({ status: "loading" });
@@ -289,6 +306,7 @@ export default function MarketingPage() {
   const [formularios, setFormularios] = useState<DescobertaDeFormularios | null>(null);
   const [descobrindo, setDescobrindo] = useState(false);
   const [represa, setRepresa] = useState<FilaDeRepresadas | null>(null);
+  const [saudeDaEntrada, setSaudeDaEntrada] = useState<SaudeDaEntrada | null>(null);
   const [carregandoRepresa, setCarregandoRepresa] = useState(false);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [liberando, setLiberando] = useState(false);
@@ -303,7 +321,19 @@ export default function MarketingPage() {
         headers: { Authorization: `Bearer ${sessao.session?.access_token || ""}` },
       });
       const corpo = await r.json();
-      if (r.ok) setRepresa(corpo.data as FilaDeRepresadas);
+      const fila = r.ok ? (corpo.data as FilaDeRepresadas) : null;
+      if (fila) setRepresa(fila);
+
+      // A saúde recebe a represa MEDIDA na Meta. Sem ela, a rota cairia na fila
+      // sem destino como substituto — honesto, mas menor: lead que a Meta tem e
+      // nunca bateu à porta não aparece lá. Passar o número aqui é o que separa
+      // "nada esperando" de "nada que eu tenha visto".
+      const rs = await fetch(
+        `/api/v1/integrations/meta/saude${fila ? `?represa=${Number(fila.totalRepresado ?? 0)}` : ""}`,
+        { headers: { Authorization: `Bearer ${sessao.session?.access_token || ""}` } },
+      );
+      const cs = await rs.json();
+      if (rs.ok) setSaudeDaEntrada(cs.data as SaudeDaEntrada);
     } finally {
       setCarregandoRepresa(false);
     }
@@ -1100,6 +1130,71 @@ export default function MarketingPage() {
           porque campanha sem formulário registrado não gera lead nenhuma — e o
           erro é silencioso: o webhook recebe e descarta. */}
       <section aria-label="Formulários de lead da Meta" hidden={foraDaEtapa("entrada")} className="cc6-panel cc6-reveal overflow-hidden">
+        {/* ── A ENTRADA DA META, EM UMA LINHA ──────────────────────────────
+            Responder "as leads da Meta estão entrando?" exigia abrir o Supabase
+            e o Gerenciador de Anúncios lado a lado. O produto não sabia dizer.
+
+            O estado NÃO é o silêncio: em 03/08/2026 fazia 6 dias sem evento e a
+            integração estava perfeita — a lead mais nova na Meta era de 26/07,
+            não havia o que entregar. Acender ali teria ensinado a operação a
+            ignorar o vigia. O sintoma é a DIVERGÊNCIA: a Meta tem lead que o
+            CRM não tem, e o tempo passa. */}
+        {saudeDaEntrada ? (
+          <div
+            className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-5 py-3"
+            style={{
+              borderColor: "var(--atlas-border)",
+              background: saudeDaEntrada.exigeAcao
+                ? "color-mix(in srgb, var(--atlas-danger) 10%, transparent)"
+                : "transparent",
+            }}
+          >
+            <span aria-hidden className="text-numero leading-none">
+              {saudeDaEntrada.estado === "mudo" ? "\u{1F507}"
+                : saudeDaEntrada.estado === "atrasado" ? "\u{23F3}"
+                : saudeDaEntrada.estado === "sem_configuracao" ? "\u{1F6AB}"
+                : "\u{1F7E2}"}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="cc6-eyebrow text-micro!">Entrada da Meta</p>
+              <p className="text-corpo text-[var(--atlas-texto-forte)]">{saudeDaEntrada.resumo}</p>
+            </div>
+            <dl className="flex flex-wrap items-center gap-x-5 gap-y-1">
+              {/* Volume por chegada, não por idade da lead: uma recuperação de
+                  leads antigas apareceria como semana parada se contasse pela
+                  data de origem. */}
+              <div className="text-right">
+                <dt className="cc6-eyebrow text-micro!">entraram · 24h</dt>
+                <dd className="text-numero tabular-nums text-[var(--atlas-texto-forte)]">{saudeDaEntrada.volume.ultimas24h}</dd>
+              </div>
+              <div className="text-right">
+                <dt className="cc6-eyebrow text-micro!">7 dias</dt>
+                <dd className="text-numero tabular-nums text-[var(--atlas-texto-forte)]">{saudeDaEntrada.volume.ultimos7dias}</dd>
+              </div>
+              <div className="text-right">
+                <dt className="cc6-eyebrow text-micro!">formulários ativos</dt>
+                <dd className="text-numero tabular-nums text-[var(--atlas-texto-forte)]">
+                  {saudeDaEntrada.fontes.ativas}<span className="text-rotulo opacity-60">/{saudeDaEntrada.fontes.registradas}</span>
+                </dd>
+              </div>
+              {saudeDaEntrada.errosInesperados > 0 ? (
+                <div className="text-right">
+                  <dt className="cc6-eyebrow text-micro!">erros a olhar</dt>
+                  <dd className="text-numero tabular-nums text-[var(--atlas-danger)]">{saudeDaEntrada.errosInesperados}</dd>
+                </div>
+              ) : null}
+              {/* Importado sem lead vinculada é o pior estado silencioso: o
+                  contador sobe e ninguém atende ninguém. Só aparece quando
+                  existe — um zero permanente aqui vira ruído. */}
+              {saudeDaEntrada.importadosSemLead > 0 ? (
+                <div className="text-right">
+                  <dt className="cc6-eyebrow text-micro!">importadas sem lead</dt>
+                  <dd className="text-numero tabular-nums text-[var(--atlas-danger)]">{saudeDaEntrada.importadosSemLead}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </div>
+        ) : null}
         {/* ── CONECTAR PÁGINA / FORMULÁRIO ─────────────────────────────────
             Estes campos NÃO existiam. A tela mandava só `{ aplicar }` e a rota
             caía em META_PAGE_ID — que não está no ambiente do servidor. Em
