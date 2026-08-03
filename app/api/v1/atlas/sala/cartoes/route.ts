@@ -257,6 +257,14 @@ export async function GET(request: NextRequest) {
          * segunda venda dobraria a taxa — o número existe, e dizer "0,41%" sem
          * dizer sobre quantos seria precisão fingida.
          */
+        /* O DESFECHO, que vinha do funil antigo e não podia se perder ao
+           remover a duplicata: "em aberto · ganhas · perdidas" responde para onde
+           as leads FORAM, e o funil sozinho só diz onde elas estão. */
+        desfecho: {
+          emAberto: base.filter((l) => vivo(l.status)).length,
+          ganhas: base.filter((l) => ehStatus(l, "ganho")).length,
+          perdidas: base.filter((l) => ehStatus(l, "perdido", "comprou_outro")).length,
+        },
         conversao: {
           taxa: base.length ? Number(((base.filter((l) => ehStatus(l, "ganho")).length / base.length) * 100).toFixed(2)) : null,
           ganhos: base.filter((l) => ehStatus(l, "ganho")).length,

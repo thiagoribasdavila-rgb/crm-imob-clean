@@ -38,7 +38,8 @@ type Etapa = { etapa: string; valor: number };
 type Ponto = { dia: string; criadas: number; contatadas: number };
 type Corretor = { id: string; nome: string; leads: number; ativos: number; vendas: number; vgv: number };
 type Conversao = { taxa: number | null; ganhos: number; base: number };
-type Painel = { amostraTruncada: boolean; kpis: Kpis; funil: Etapa[]; conversao: Conversao; serie: Ponto[]; equipe: Corretor[] };
+type Desfecho = { emAberto: number; ganhas: number; perdidas: number };
+type Painel = { amostraTruncada: boolean; kpis: Kpis; funil: Etapa[]; conversao: Conversao; desfecho: Desfecho; serie: Ponto[]; equipe: Corretor[] };
 
 const N = new Intl.NumberFormat("pt-BR");
 const MOEDA = (v: number) =>
@@ -179,7 +180,17 @@ export function PainelDaSala() {
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
         {/* ── FUNIL ────────────────────────────────────────────────────── */}
         <section className="cc6-panel p-5">
-          <p className="cc6-eyebrow">Funil de vendas</p>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="cc6-eyebrow">Funil de vendas</p>
+            {/* Para onde as leads FORAM. O funil sozinho só diz onde elas estão —
+                esta linha veio do painel antigo, que foi removido por duplicar o
+                mesmo gráfico; tirar a redundância não podia custar a informação. */}
+            {painel.desfecho ? (
+              <span className="cc6-num text-micro text-[var(--atlas-texto-fraco)]">
+                {N.format(painel.desfecho.emAberto)} em aberto · {N.format(painel.desfecho.ganhas)} ganha{painel.desfecho.ganhas === 1 ? "" : "s"} · {N.format(painel.desfecho.perdidas)} perdidas
+              </span>
+            ) : null}
+          </div>
           <div className="mt-4 flex items-start gap-4">
             <Funil etapas={painel.funil} />
             <ul className="flex-1 space-y-2">
