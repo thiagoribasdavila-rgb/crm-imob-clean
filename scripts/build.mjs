@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { legacyRoutePaths } from "./legacy-route-paths.mjs";
 import { createRouteQuarantine } from "./route-quarantine.mjs";
@@ -59,8 +59,56 @@ function descobrirProcedencia() {
     topoDeMigration = null; // ausência declarada; a rota diz "não medido"
   }
 
+  /**
+   * ── O COMMIT VIAJA COM O CÓDIGO, NÃO COM O SERVIDOR ────────────────────────
+   *
+   * MEDIDO na produção em 03/08/2026, logo após uma implantação real: o
+   * `deployId` mudou (`d-20260803022458`), a lista de migrations passou de 183
+   * para 190 — provando que o código NOVO estava no ar — e o `build.commit`
+   * continuava dizendo `935fe0e9`, o commit da véspera.
+   *
+   * A cadeia que produz a mentira:
+   *
+   *   1. o pacote não leva `.git` (correto: histórico não vai para produção);
+   *   2. então `git rev-parse HEAD` falha no servidor e `gitOu` devolve null;
+   *   3. e sobra `process.env.ATLAS_BUILD_COMMIT`, que no painel da hospedagem
+   *      foi definido UMA vez, no deploy anterior, e nunca mais mudou.
+   *
+   * Variável de ambiente é ajustada por uma pessoa e esquecida; ela descreve o
+   * dia em que foi escrita, não o código que está rodando. O
+   * `HOSTINGER_PACKAGE.json` é escrito pelo empacotador no instante em que o
+   * ZIP nasce e VIAJA DENTRO dele — se o arquivo está aqui, ele é a única
+   * fonte que não pode estar defasada em relação ao código ao lado.
+   *
+   * Por isso o manifesto VENCE a variável, e não o contrário. E quando os dois
+   * discordam, isso é dito em voz alta: a divergência é o sintoma de um
+   * ambiente com valor velho, e calar sobre ela devolveria o defeito.
+   *
+   * Consequência prática: sem isto, o portão que compara "o que está no ar" com
+   * "o que deveria estar" comparava um carimbo fóssil — ficava verde num deploy
+   * que não aconteceu e vermelho num que aconteceu.
+   */
+  let commitDoManifesto = null;
+  try {
+    const manifesto = resolve(root, "HOSTINGER_PACKAGE.json");
+    if (existsSync(manifesto)) {
+      const lido = JSON.parse(readFileSync(manifesto, "utf8"))?.commit;
+      if (typeof lido === "string" && /^[0-9a-f]{7,40}$/.test(lido)) commitDoManifesto = lido;
+    }
+  } catch {
+    commitDoManifesto = null; // manifesto ilegível não inventa commit
+  }
+
+  const commitDoAmbiente = process.env.ATLAS_BUILD_COMMIT || null;
+  if (commitDoManifesto && commitDoAmbiente && !commitDoManifesto.startsWith(commitDoAmbiente) && !commitDoAmbiente.startsWith(commitDoManifesto)) {
+    console.warn(
+      `ATLAS build: ATLAS_BUILD_COMMIT do ambiente (${commitDoAmbiente}) NÃO bate com o manifesto do pacote (${commitDoManifesto}). ` +
+        `Usando o do manifesto — ele viaja com o código. Limpe a variável do painel: ela descreve um deploy antigo.`,
+    );
+  }
+
   const procedencia = {
-    ATLAS_BUILD_COMMIT: process.env.ATLAS_BUILD_COMMIT || gitOu(["rev-parse", "HEAD"]),
+    ATLAS_BUILD_COMMIT: commitDoManifesto || commitDoAmbiente || gitOu(["rev-parse", "HEAD"]),
     ATLAS_BUILD_BRANCH: process.env.ATLAS_BUILD_BRANCH || gitOu(["rev-parse", "--abbrev-ref", "HEAD"]),
     ATLAS_BUILD_TIME: process.env.ATLAS_BUILD_TIME || new Date().toISOString(),
     ATLAS_BUILD_MIGRATIONS: process.env.ATLAS_BUILD_MIGRATIONS || topoDeMigration,
