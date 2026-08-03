@@ -129,7 +129,15 @@ export async function auditarPecaDoEmpreendimento(input: {
     valoresCadastrados: lastro.valoresCadastrados,
     leituraIncompleta: lastro.leituraIncompleta,
     motivo: poda.auditoria.aprovado
-      ? `Todos os ${input.textos.length} texto(s) têm lastro: ${utilizaveis} fonte(s) regional(is) verificada(s) e vigente(s) e ${lastro.valoresCadastrados.length} valor(es) cadastrado(s) do produto.`
+      ? // `Object.keys(...).length`, e não `.length` direto: `valoresCadastrados`
+        // é `Record<string, string>` — um objeto, não uma lista. O `.length` que
+        // estava aqui vinha de quando ele ERA lista, e sobreviveu à troca de
+        // forma porque o `tsc` não reclama: a assinatura de índice
+        // `[key: string]: string` casa com QUALQUER acesso por nome, `.length`
+        // inclusive, e o tipo resultante é `string`. Verificado: compila limpo e
+        // imprime "undefined valor(es) cadastrado(s)" — na frase de APROVAÇÃO,
+        // que é justamente a que deveria dar confiança a quem publica.
+        `Todos os ${input.textos.length} texto(s) têm lastro: ${utilizaveis} fonte(s) regional(is) verificada(s) e vigente(s) e ${Object.keys(lastro.valoresCadastrados).length} valor(es) cadastrado(s) do produto.`
       : `${poda.removidos.length} de ${input.textos.length} texto(s) reprovados.${lastro.leituraIncompleta ? " ATENÇÃO: a leitura do lastro falhou, então o portão reprovou por não conseguir conferir — não por ter conferido e negado." : ""}`,
   };
 }
