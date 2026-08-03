@@ -52,7 +52,29 @@ test("usa colunas existentes no banco V3 para ordenação", () => {
   assert.equal(liveLeadSortColumn(""), "created_at");
 });
 
-test("converte lead legado em oportunidade sem inventar probabilidade", () => {
+/**
+ * ── ASSERÇÃO REAPONTADA EM 03/08/2026, COM A CAUSA MEDIDA ──────────────────
+ *
+ * O teste antigo exigia `value: 900_000` vindo de `budget_max` e estava VERDE,
+ * congelando um mal-entendido: `value` é o ORÇAMENTO QUE A PESSOA DECLAROU no
+ * formulário, e /reports somava isso chamando de "VGV em oportunidades".
+ *
+ * Medido no banco vivo:
+ *   · a tela mostrava .......... R$ 5.011.616.337
+ *   · vendas apuradas .......... R$ 1.506.000 (2 vendas)
+ *   · uma ÚNICA lead ........... 99,77% daquele número (orçamento de 5 bilhões)
+ *   · menor orçamento na base .. −5
+ *
+ * E /sales já mostrava R$ 1.506.000, porque usa `apurarVgv`. A mesma empresa
+ * tinha duas receitas em dois itens do mesmo menu, com 3.328× de diferença.
+ *
+ * `value` NÃO mudou de valor: consumidores antigos leem essa chave, e este
+ * arquivo não pode importar o módulo canônico (contratos o carregam por `data:`
+ * URL, onde nem alias nem caminho relativo resolvem). O que mudou é que agora a
+ * verdade tem nome ao lado — e a asserção passa a EXIGIR que os dois campos
+ * existam separados, para ninguém voltar a confundi-los.
+ */
+test("orçamento declarado e valor de venda são campos DIFERENTES", () => {
   const opportunity = leadAsOpportunity({
     id: "lead-1",
     name: "Cliente",
@@ -67,7 +89,8 @@ test("converte lead legado em oportunidade sem inventar probabilidade", () => {
     {
       id: opportunity.id,
       stage: opportunity.stage,
-      value: opportunity.value,
+      orcamentoDeclarado: opportunity.orcamentoDeclarado,
+      saleValueBrl: opportunity.saleValueBrl,
       probability: opportunity.probability,
       assigned_to: opportunity.assigned_to,
       development_id: opportunity.development_id,
@@ -76,13 +99,34 @@ test("converte lead legado em oportunidade sem inventar probabilidade", () => {
     {
       id: "lead-1",
       stage: "proposta",
-      value: 900_000,
+      orcamentoDeclarado: 900_000,
+      // Proposta enviada NÃO é venda. Somar isto como receita produziu os
+      // R$ 5,01 bilhões.
+      saleValueBrl: null,
       probability: 0,
       assigned_to: "broker-1",
       development_id: "project-1",
       source: "legacy_lead",
     },
   );
+});
+
+test("com venda fechada, os dois números convivem sem se confundir", () => {
+  // O caso real: Monique Teles declarou R$ 756.000 e pagou R$ 956.000. A tela
+  // antiga mostrava o que ela DISSE que podia pagar.
+  const vendida = leadAsOpportunity({
+    id: "lead-2", name: "Monique", status: "ganho",
+    budget_max: 756_000, sale_value_brl: 956_000,
+    created_at: "2026-07-20T10:00:00.000Z",
+  });
+  assert.equal(vendida.orcamentoDeclarado, 756_000);
+  assert.equal(vendida.saleValueBrl, 956_000, "quem soma receita usa ESTE, pelo módulo canônico");
+});
+
+test("orçamento NEGATIVO não vira número: a base tem uma lead com −5", () => {
+  const suja = leadAsOpportunity({ id: "lead-3", name: "Edson", status: "novo", budget_min: -5, created_at: "2026-07-20T10:00:00.000Z" });
+  assert.equal(suja.orcamentoDeclarado, null, "número impossível é ausência de dado, não dado");
+  assert.equal(suja.saleValueBrl, null);
 });
 
 test("compatibiliza score, temperatura, próxima ação e preferências do lead", () => {

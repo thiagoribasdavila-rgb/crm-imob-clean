@@ -471,7 +471,37 @@ export function leadAsOpportunity(row: CompatRow): CompatRow {
     lead_id: lead.id,
     name: first(lead, "name") || "Lead sem nome",
     stage: first(lead, "status") || "novo",
+    /**
+     * ── ATENÇÃO: `value` É ORÇAMENTO DECLARADO, NÃO VENDA ─────────────────
+     *
+     * A coluna `value` não existe em `leads`; este campo SEMPRE cai em
+     * `budget_max`/`budget_min` — o que a pessoa DISSE que podia pagar no
+     * formulário. Quem somar isto e chamar de receita erra por ordens de
+     * grandeza.
+     *
+     * Medido em 03/08/2026: /reports somava exatamente isto e exibia "VGV em
+     * oportunidades: R$ 5.011.616.337". As vendas apuradas da empresa somam
+     * R$ 1.506.000, e 99,77% daquele número era UMA lead com orçamento
+     * declarado de 5 bilhões. A base tem inclusive um orçamento de −5.
+     *
+     * O nome fica por compatibilidade (consumidores antigos leem esta chave),
+     * mas `orcamentoDeclarado` diz a verdade ao lado. Quem quer RECEITA usa
+     * `apurarVgv` de lib/crm/fechamento-valor-da-venda.ts — o dono único desse
+     * fato, que /sales e a ficha da lead já usam.
+     *
+     * Este arquivo NÃO PODE IMPORTAR NADA: contratos o carregam por `data:` URL
+     * e nem alias nem caminho relativo resolvem ali. Por isso a apuração não
+     * acontece aqui — acontece em quem consome.
+     */
     value: first(lead, "value", "budget_max", "budget_min") ?? 0,
+    orcamentoDeclarado: (() => {
+      const bruto = first(lead, "budget_max", "budget_min");
+      const numero = Number(bruto);
+      // Negativo e não numérico são ausência de dado, não dado.
+      return Number.isFinite(numero) && numero > 0 ? numero : null;
+    })(),
+    /** Passagem CRUA de `sale_value_brl`. A regra de apuração não mora aqui. */
+    saleValueBrl: first(lead, "sale_value_brl"),
     probability: 0,
     assigned_to: lead.assigned_to,
     development_id: lead.development_id,

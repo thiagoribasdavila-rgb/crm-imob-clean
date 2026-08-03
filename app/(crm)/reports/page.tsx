@@ -7,6 +7,7 @@ import { avisoDeTruncamento, fetchAllRowsPure } from "@/lib/supabase/paginacao-e
 import { AtlasEmpty } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
+import { apurarVgv } from "@/lib/crm/fechamento-valor-da-venda";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import {
   DASHBOARD_PERIOD_KEY,
@@ -23,7 +24,7 @@ import {
    Enumerá-lo aqui de novo era o caminho para as duas listas divergirem. */
 type Period = PeriodoDoResumo;
 type Lead = { id: string; status: string | null; source: string | null; score: number | null; created_at: string };
-type Opportunity = { id: string; stage: string; value: number | null; probability: number; created_at: string; won_at: string | null };
+type Opportunity = { id: string; stage: string; value: number | null; orcamentoDeclarado?: number | null; saleValueBrl?: number | string | null; probability: number; created_at: string; won_at: string | null };
 type Briefing = { status: string; signals: Array<{ id: string; severity: string; title: string; evidence: string; action: string; href: string }> };
 type WeeklyReport = { totals: { leads: number; spend: number | null; cpl: number | null; campaigns: number; developers: number }; campaigns: Array<{ campaignId: string; campaignName: string; leads: number; qualified: number; spend: number | null; cpl: number | null; costSource: string }>; developers: Array<{ developer: string; leads: number; spend: number | null; cpl: number | null; campaigns: number; allocation: string }>; warnings: string[]; period: { start: string; end: string } };
 type WeeklyReview = { outcomes:{completedTasks:number;completedVisits:number;interactions:number;newLeads:number};backlog:{openTasks:number;overdueTasks:number;leadsWithoutNextAction:number;hotLeadsWithoutNextAction:number;noShows:number};quality:{completionRate:number|null;sampleSize:number;minimumSample:number;sufficientSample:boolean};plan:Array<{key:string;title:string;evidence:string;action:string;href:string}>;method:{llmCost:number;peopleRanking:boolean;humanDecisionRequired:boolean} };
@@ -254,7 +255,25 @@ export default function ReportsPage() {
       baseForecast: baseForecast.length,
       comScore: comScore.length,
       ganhas: ganhas.length,
-      vgv: comValor.reduce((sum, item) => sum + Number(item.value), 0),
+      /**
+       * ── VGV É VENDA APURADA, NÃO ORÇAMENTO DECLARADO ──────────────────
+       *
+       * Isto somava `item.value`, que é `budget_max ?? budget_min` — o que a
+       * pessoa DISSE que podia pagar no formulário. Medido em 03/08/2026 no
+       * banco vivo:
+       *
+       *   exibido aqui ............ R$ 5.011.616.337
+       *   vendas apuradas ......... R$ 1.506.000  (2 vendas)
+       *   uma ÚNICA lead .......... 99,77% do número (orçamento de 5 bilhões)
+       *   sem ela ................. R$ 11.616.337
+       *
+       * E /sales já mostrava R$ 1.506.000, porque usa `apurarVgv`. A mesma
+       * empresa tinha duas receitas em dois itens do mesmo menu, com 3.328
+       * vezes de diferença. Agora é uma só, e o dono do fato é o módulo.
+       */
+      vgv: apurarVgv(negocios as unknown as Parameters<typeof apurarVgv>[0]).vgv,
+      /** O que se esperava receber, com o nome certo — some `null` e negativo. */
+      orcamentoEmJogo: comValor.reduce((sum, item) => sum + Math.max(0, Number(item.orcamentoDeclarado ?? 0)), 0),
       forecast: baseForecast.reduce((sum, item) => sum + Number(item.value) * Number(item.probability) / 100, 0),
       conversion: leads ? (ganhas.length / leads) * 100 : 0,
       /* A próxima venda, com o MESMO denominador. É o tamanho do degrau que a
