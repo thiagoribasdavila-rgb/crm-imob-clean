@@ -113,12 +113,59 @@ o ciclo fechado não fechou por falta de uma variável de ambiente.
 
 ---
 
-## 3. O agendamento dos vigias
+## 3. O agendamento dos vigias — 12 dos 15 nunca rodaram
 
-As cadências estão versionadas em `config/workers-schedule.json`. **Instalar o
-crontab é etapa obrigatória do deploy** — vigia que ninguém agenda é vigia que
-nunca acende, e foi por isso que `estado` está `unknown`: não houve execução para
+Medido em `atlas_worker_runs` em 03/08/2026. São **15 vigias declarados** em
+`config/workers-schedule.json`, e o livro de execuções só conhece três:
+
+| vigia | passagens | última |
+|---|---|---|
+| `first-contact-sla` | 10 | 1,7 h atrás |
+| `baseline-de-conversao` | 5 | 9,3 h |
+| `nightly-handoff` | 1 | 14,4 h |
+| **os outros 12** | **0** | nunca |
+
+Entre os que nunca rodaram está o **`outbox`, de cadência `*/2`** — a fila de
+saída. É por isso que `/api/v1/ready` responde `estado: unknown` com o motivo
+*"não dá para afirmar que o agendamento executa"*: não houve execução para
 observar.
+
+**Os 15 registram passagem.** Conferido rota a rota: todas chamam
+`registrarExecucao`. Não é falta de instrumentação — é falta de quem os chame.
+
+### Não escreva o crontab à mão
+
+A automação já existe inteira, e um script separado a instala:
+
+```bash
+npm run cron:gerar     # imprime o bloco, com o porquê de cada cadência
+npm run cron:validar   # confere se ESTA máquina pode instalar
+npm run cron:instalar  # instala — só no servidor
+```
+
+`instala-crontab-no-servidor.mjs` **recusa** em qualquer máquina que não seja o
+servidor, e é separado do gerador por um motivo pago em 30/07/2026: alguém rodou
+`gera-crontab... && crontab` num Mac de desenvolvimento e agendou 11 workers
+comerciais na máquina local apontando para PRODUÇÃO — inclusive o `outbox`, que
+envia mensagem de verdade a cada 2 minutos.
+
+Rodando aqui agora, ele recusa com três motivos nomeados: plataforma `darwin` é
+máquina de desenvolvimento, falta `ATLAS_AUTORIZA_INSTALAR_CRON`, e
+`/var/www/atlas` não existe.
+
+### A prova de que pegou
+
+Instalar não é o desfecho — o desfecho é passagem no livro. Depois de instalar,
+espere a cadência mais curta (2 minutos, o `outbox`) e confira:
+
+```sql
+select vigia, count(*) passagens, max(concluido_em) ultima
+from public.atlas_worker_runs
+group by vigia order by ultima desc nulls last;
+```
+
+Só está pronto quando os **15** aparecerem — e `/api/v1/ready` sair de
+`estado: unknown` para um estado afirmado.
 
 ---
 
