@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { FilaDeAtendimentoPanel } from "@/components/atlas/FilaDeAtendimentoPanel";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -336,17 +337,34 @@ export default function DistributionPage() {
     });
     const result = await response.json();
     if (!response.ok) setError(result.error?.message || "Não foi possível distribuir.");
-    else setNotice(`${result.data.distributed} lead${result.data.distributed === 1 ? "" : "s"} distribuída${result.data.distributed === 1 ? "" : "s"}. Responsável único preservado; escolha explicada por carga ponderada e última atribuição.`);
-    await load(true); setWorking(false);
-  }
-
-  async function configureMember(profileId: string, enabled: boolean, weight: number) {
-    if (!projectId) return;
-    setWorking(true); setError(""); setNotice("");
-    const response = await fetch("/api/v1/crm/distribution", { method: "POST", headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "configure_member", developmentId: projectId, profileId, enabled, weight }) });
-    const result = await response.json();
-    if (!response.ok) setError(result.error?.message || "Não foi possível atualizar a elegibilidade.");
-    else setNotice(`Elegibilidade atualizada somente para ${selectedProject?.name || "o projeto selecionado"}.`);
+    else {
+      /**
+       * O AVISO DIZIA "undefined lead distribuídas".
+       *
+       * A tela lia `result.data.distributed`. A rota nunca devolveu esse campo:
+       * no caminho do motor governado ela responde `{engine, result}`, e no
+       * caminho de menor carga em Node, `{assigned, distribution[]}`. Os dois
+       * ramos, os dois errados — e nada acusava, porque `undefined` numa
+       * template string vira texto e a mensagem aparece verde, como sucesso.
+       *
+       * O número da RPC vem dentro de `result`, e o nome da chave varia com a
+       * versão da função no banco; por isso a leitura tenta as duas formas e,
+       * quando nenhuma responde, ADMITE que não sabe em vez de estampar zero.
+       * "0 leads distribuídas" seria uma afirmação falsa sobre trabalho que
+       * pode ter acontecido.
+       */
+      const doMotor = result.data?.result as Record<string, unknown> | null | undefined;
+      const quantas = typeof result.data?.assigned === "number"
+        ? result.data.assigned as number
+        : typeof doMotor?.distributed === "number"
+          ? doMotor.distributed as number
+          : typeof doMotor?.assigned === "number"
+            ? doMotor.assigned as number
+            : null;
+      setNotice(quantas === null
+        ? "Distribuição executada pelo motor governado. Confira a fila abaixo: o número exato vem no histórico desta tela."
+        : `${quantas} lead${quantas === 1 ? "" : "s"} distribuída${quantas === 1 ? "" : "s"}. Responsável único preservado; a escolha fica explicada no histórico.`);
+    }
     await load(true); setWorking(false);
   }
 
@@ -354,10 +372,22 @@ export default function DistributionPage() {
     if (!absenceBrokerId || !absenceEndsAt || absenceReason.trim().length < 10) return;
     if (!window.confirm("Confirmar a cobertura? A carteira comercial ativa será redistribuída dentro da mesma equipe.")) return;
     setWorking(true); setError(""); setNotice("");
-    const response = await fetch("/api/v1/crm/distribution", { method: "POST", headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "cover_absence", profileId: absenceBrokerId, endsAt: new Date(absenceEndsAt).toISOString(), reason: absenceReason.trim(), limit: 200 }) });
+    // `brokerId`, não `profileId`. A rota lê `raw.brokerId` para esta ação (as
+    // outras duas leem `profileId`), então TODA cobertura de ausência morria em
+    // "Informe o corretor ausente" — 400 com um corretor selecionado na tela.
+    const response = await fetch("/api/v1/crm/distribution", { method: "POST", headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" }, body: JSON.stringify({ action: "cover_absence", brokerId: absenceBrokerId, endsAt: new Date(absenceEndsAt).toISOString(), reason: absenceReason.trim(), limit: 200 }) });
     const result = await response.json();
     if (!response.ok) setError(result.error?.message || "Não foi possível ativar a cobertura.");
-    else { setNotice(`Cobertura registrada: ${result.data.transferred} lead(s) ativa(s) redistribuída(s), com histórico e tarefas preservados.`); setAbsenceBrokerId(""); setAbsenceEndsAt(""); setAbsenceReason(""); }
+    else {
+      // Mesmo cuidado do aviso de distribuição: o número vem de dentro de
+      // `result` e a chave depende da versão da RPC. Sem número, a frase diz o
+      // que aconteceu sem inventar quantidade.
+      const transferidas = (result.data?.result as Record<string, unknown> | null | undefined)?.transferred;
+      setNotice(typeof transferidas === "number"
+        ? `Cobertura registrada: ${transferidas} lead(s) ativa(s) redistribuída(s), com histórico e tarefas preservados.`
+        : "Cobertura registrada. A carteira ativa foi redistribuída na mesma equipe, com histórico e tarefas preservados.");
+      setAbsenceBrokerId(""); setAbsenceEndsAt(""); setAbsenceReason("");
+    }
     await load(true); setWorking(false);
   }
 
@@ -367,7 +397,18 @@ export default function DistributionPage() {
     const response = await fetch("/api/v1/crm/distribution", { method:"POST", headers:{ Authorization:`Bearer ${await accessToken()}`, "Content-Type":"application/json" }, body:JSON.stringify({ action:"configure_capacity", profileId:capacityBrokerId, maxActiveLeads, maxProjectLeads, warningPercent, reason:capacityReason.trim() }) });
     const result=await response.json();
     if(!response.ok)setError(result.error?.message||"Não foi possível atualizar a capacidade.");
-    else { setNotice(`Capacidade atualizada: ${result.data.maxActiveLeads} leads ativas e ${result.data.maxProjectLeads} por projeto.${result.data.currentlyOverLimit?" A carteira atual já está acima do novo limite; novas entradas foram bloqueadas.":""}`);setCapacityReason(""); }
+    else {
+      // A rota responde `{action, result, humanDecided}`; os campos lidos aqui
+      // moram dentro de `result`. Lendo do nível de cima, a tela estampava
+      // "Capacidade atualizada: undefined leads ativas e undefined por projeto"
+      // — em verde, como se tivesse dado certo. Na falta do eco, a frase usa os
+      // valores que a própria pessoa acabou de enviar, que são verdade.
+      const doMotor = result.data?.result as Record<string, unknown> | null | undefined;
+      const ativas = typeof doMotor?.maxActiveLeads === "number" ? doMotor.maxActiveLeads : maxActiveLeads;
+      const porProjeto = typeof doMotor?.maxProjectLeads === "number" ? doMotor.maxProjectLeads : maxProjectLeads;
+      setNotice(`Capacidade atualizada: ${ativas} leads ativas e ${porProjeto} por projeto.${doMotor?.currentlyOverLimit?" A carteira atual já está acima do novo limite; novas entradas foram bloqueadas.":""}`);
+      setCapacityReason("");
+    }
     await load(true);setWorking(false);
   }
 
@@ -375,7 +416,20 @@ export default function DistributionPage() {
     if(!projectId||!prioritySource||priorityReason.trim().length<10)return;
     setWorking(true);setError("");setNotice("");
     const response=await fetch("/api/v1/crm/distribution",{method:"POST",headers:{Authorization:`Bearer ${await accessToken()}`,"Content-Type":"application/json"},body:JSON.stringify({action:"configure_priority",developmentId:projectId,sourceKey:prioritySource,priority:sourcePriority,slaMinutes:sourceSlaMinutes,enabled:true,reason:priorityReason.trim()})});
-    const result=await response.json();if(!response.ok)setError(result.error?.message||"Não foi possível salvar a prioridade.");else{setNotice(`Regra salva para ${result.data.sourceKey}: prioridade ${result.data.priority}, SLA ${result.data.slaMinutes} minutos.`);setPriorityReason("");}await load(true);setWorking(false);
+    const result=await response.json();
+    if(!response.ok)setError(result.error?.message||"Não foi possível salvar a prioridade.");
+    else{
+      // Mesma doença dos outros dois avisos: os campos moram em `result.result`.
+      // Sem eco do banco, a frase repete o que foi enviado — que é o que a
+      // pessoa acabou de decidir, e não um `undefined` vestido de sucesso.
+      const doMotor = result.data?.result as Record<string, unknown> | null | undefined;
+      const origem = typeof doMotor?.sourceKey === "string" ? doMotor.sourceKey : prioritySource;
+      const prioridade = typeof doMotor?.priority === "number" ? doMotor.priority : sourcePriority;
+      const sla = typeof doMotor?.slaMinutes === "number" ? doMotor.slaMinutes : sourceSlaMinutes;
+      setNotice(`Regra salva para ${origem}: prioridade ${prioridade}, SLA ${sla} minutos.`);
+      setPriorityReason("");
+    }
+    await load(true);setWorking(false);
   }
 
   const presenceMap = useMemo(() => new Map((data?.presence ?? []).map((item) => [item.profile_id, item])), [data]);
@@ -910,64 +964,36 @@ export default function DistributionPage() {
         </div>
       </section>
 
-      {data?.viewer.role === "manager" ? (
-        <section aria-label="Fase 39: elegibilidade por projeto">
-          <div className="cc6-panel cc6-reveal overflow-hidden" style={{ animationDelay: "300ms" }} aria-labelledby="distribution-eligibility-title">
-            <PanelHead
-              titulo="Elegibilidade do time neste empreendimento"
-              fase="Fase 39 · Equilíbrio por projeto"
-              id="distribution-eligibility-title"
-              nota={`Ativar, pausar ou ponderar aqui vale somente para ${selectedProject?.name || "o projeto selecionado"}.`}
-            />
-            {teamBrokers.length ? (
-              teamBrokers.map((broker) => {
-                const state = stateMap.get(broker.id);
-                const enabled = state?.enabled !== false;
-                const online = presenceMap.get(broker.id)?.online && presenceMap.get(broker.id)?.availability === "available";
-                return (
-                  <article key={broker.id} className="cc6-hairline flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-sm font-semibold text-[var(--atlas-texto-forte)]">{broker.full_name || "Corretor"}</h3>
-                        {!enabled ? <StatusBadge tone="neutral">Pausado</StatusBadge> : null}
-                      </div>
-                      <p className={`mt-0.5 text-xs ${online ? "cc6-ok" : "text-[var(--atlas-texto-fraco)]"}`}>{online ? "Online e disponível" : "Fora da fila agora"}</p>
-                    </div>
-                    <label className="flex shrink-0 items-center gap-2 text-rotulo text-[var(--atlas-texto-fraco)]">
-                      Peso
-                      <select
-                        value={state?.weight || 1}
-                        disabled={working}
-                        onChange={(event) => void configureMember(broker.id, enabled, Number(event.target.value))}
-                        className="min-h-11 rounded-xl border border-[var(--atlas-border)] bg-[var(--atlas-surface-subtle)] px-2.5 py-1.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50"
-                      >
-                        {[1,2,3,4,5,6,7,8,9,10].map((weight) => <option key={weight} value={weight}>{weight}</option>)}
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      disabled={working}
-                      onClick={() => void configureMember(broker.id, !enabled, state?.weight || 1)}
-                      className={enabled ? "cc6-ghost-btn disabled:opacity-50" : "atlas-button-primary disabled:opacity-50"}
-                    >
-                      {enabled ? "Pausar" : "Ativar"}
-                    </button>
-                  </article>
-                );
-              })
-            ) : (
-              <div className="cc6-hairline px-5 py-4">
-                <AtlasEmpty
-                  reason="not-configured"
-                  eyebrow="Equipe sem vínculo"
-                  title="Nenhum corretor direto"
-                  description="Vincule corretores ao gerente antes de configurar projetos."
-                />
-              </div>
-            )}
-          </div>
-        </section>
-      ) : null}
+      {/**
+        * QUEM ENTRA NA FILA — e o painel morto que ficava aqui.
+        *
+        * Até 2026-08-03 este lugar tinha "Elegibilidade do time neste
+        * empreendimento": um seletor de peso de 1 a 10 e um botão Pausar/Ativar
+        * por corretor. Os três controles mandavam `action: "configure_member"`
+        * para `/api/v1/crm/distribution`, que NÃO conhece essa ação — a rota
+        * caía no `DISTRIBUTION_ACTION_INVALID` e devolvia 400 a cada clique.
+        * O `queue` que alimentava a tela também era sintético: a rota montava
+        * `enabled: true, weight: 1` para todo par corretor×projeto, então
+        * "Pausado" nunca aparecia e o peso mostrado nunca vinha de lugar nenhum
+        * (`project_distribution_members` tem zero linhas nesta base).
+        *
+        * Não é remoção de código que funcionava: é a troca de três controles
+        * que erravam por controles que gravam. Peso saiu de propósito — a fila
+        * agora é rodízio, e peso dentro de um rodízio é a contradição de
+        * "cada um na sua vez".
+        *
+        * O escopo aqui é o do EMPREENDIMENTO DA LEAD (`developments`), não o do
+        * seletor de projeto do topo desta página (`crm_projects`) — são tabelas
+        * diferentes, com ids diferentes, para os mesmos quatro empreendimentos.
+        * Por isso o painel traz o próprio seletor em vez de herdar o de cima:
+        * herdar casaria id de uma tabela com fila da outra e não acharia nada,
+        * em silêncio.
+        */}
+      <section aria-label="Fila de atendimento por empreendimento e por campanha">
+        <div className="cc6-reveal" style={{ animationDelay: "300ms" }}>
+          <FilaDeAtendimentoPanel podeEditar={data?.viewer.role !== "broker"} />
+        </div>
+      </section>
 
       {data?.viewer.role === "manager" ? (
         <section data-phase="57-distribution-priority">

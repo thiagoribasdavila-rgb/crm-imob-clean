@@ -71,12 +71,21 @@ export async function GET(request: NextRequest) {
   const escopo = escopoPedido && (ESCOPOS as readonly string[]).includes(escopoPedido) ? (escopoPedido as Escopo) : null;
 
   const admin = getSupabaseAdmin();
+  // `contexto=1` significa "estou desenhando a tela inteira": ela precisa saber
+  // quantos participam de CADA escopo para mostrar o número ao lado de cada
+  // empreendimento e de cada campanha na lista. Recortar `membros` pelo escopo
+  // selecionado zeraria todos os outros — e "0 na fila" é justamente a leitura
+  // que este produto não pode dar por engano, porque significa "aberta a todos".
+  // O escopo pedido continua valendo para `fila`, que é o que ele seleciona.
+  const querContexto = url.searchParams.get("contexto") === "1";
   let consulta = admin
     .from("distribution_roster")
     .select("id,escopo,escopo_id,profile_id,ativo,posicao,created_at")
     .eq("organization_id", organizationId);
-  if (escopo) consulta = consulta.eq("escopo", escopo);
-  if (escopoIdPedido) consulta = consulta.eq("escopo_id", escopoIdPedido);
+  if (!querContexto) {
+    if (escopo) consulta = consulta.eq("escopo", escopo);
+    if (escopoIdPedido) consulta = consulta.eq("escopo_id", escopoIdPedido);
+  }
 
   const { data, error } = await consulta.order("created_at", { ascending: true });
   if (error) {
@@ -130,7 +139,6 @@ export async function GET(request: NextRequest) {
     porque: string;
   } | null = null;
 
-  const querContexto = url.searchParams.get("contexto") === "1";
   const querFila = Boolean(escopo && escopoIdPedido);
 
   if (querContexto || querFila) {
