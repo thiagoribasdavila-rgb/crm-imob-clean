@@ -61,6 +61,7 @@ const VendasSemValorPanel = dynamic(() => import("@/components/atlas/VendasSemVa
 import { SalaDeComandoPanel } from "@/components/atlas/SalaDeComandoPanel";
 import { FilaDeDecisoesPanel } from "@/components/atlas/FilaDeDecisoesPanel";
 import { FaixaDeComando } from "@/components/atlas/FaixaDeComando";
+import { PainelDaSala } from "@/components/atlas/PainelDaSala";
 import {
   AtlasBadge,
   AtlasEmpty,
@@ -2734,6 +2735,8 @@ export default function CommandCenterPage() {
           A faixa responde a pergunta do diretor com o número em degrau de herói
           e a ação embutida, numa grade única. O que era telemetria continua
           abaixo, onde auditoria pertence. */}
+      <PainelDaSala />
+
       <FaixaDeComando />
 
       <section

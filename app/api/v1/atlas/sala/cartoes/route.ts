@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { medirContagem, type Medida } from "@/lib/ai/prontidao-para-ligar";
 import { HOT_SCORE_THRESHOLD, WARM_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 import { AGENTES_QUE_ESPERAM_PESSOA } from "@/lib/ai/quem-espera-uma-pessoa";
-import { forasDoJogoParaPostgrest, LEGENDA_DO_RECORTE } from "@/lib/crm/recorte-operacional";
+import { estaEmJogo, forasDoJogoParaPostgrest, LEGENDA_DO_RECORTE } from "@/lib/crm/recorte-operacional";
 import { INTENCOES, resolverPergunta, type Intencao } from "@/lib/atlas/perguntas-da-sala";
 
 /**
@@ -155,9 +155,94 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  /**
+   * ── O PAINEL: KPIs, FUNIL, SÉRIE E EQUIPE ─────────────────────────────────
+   *
+   * Uma leitura só de `leads` alimenta os quatro blocos. São 490 linhas hoje e
+   * o teto explícito é 1000 — o PostgREST corta em 1000 EM SILÊNCIO, e é por
+   * isso que o corte vai declarado: quando a base passar disso, a resposta diz
+   * `amostraTruncada` em vez de mentir uma soma parcial.
+   */
+  const TETO = 1000;
+  const desde30 = new Date(Date.now() - 30 * 86_400_000);
+  const { data: linhas, error: erroLinhas } = await admin
+    .from("leads")
+    .select("id,status,score_ia,created_at,first_contacted_at,assigned_to,sale_value_brl")
+    .eq("organization_id", org)
+    .limit(TETO);
+
+  const base = erroLinhas ? [] : (linhas ?? []);
+  const vivo = (s: unknown) => estaEmJogo(s);
+  const ehStatus = (l: (typeof base)[number], ...quais: string[]) =>
+    quais.some((q) => String(l.status ?? "").toLowerCase() === q);
+
+  const porDia = new Map<string, { criadas: number; contatadas: number }>();
+  for (const l of base) {
+    const criadaEm = l.created_at ? new Date(String(l.created_at)) : null;
+    if (criadaEm && criadaEm >= desde30) {
+      const dia = criadaEm.toISOString().slice(0, 10);
+      const atual = porDia.get(dia) ?? { criadas: 0, contatadas: 0 };
+      atual.criadas += 1;
+      if (l.first_contacted_at) atual.contatadas += 1;
+      porDia.set(dia, atual);
+    }
+  }
+
+  const porCorretor = new Map<string, { leads: number; ativos: number; vendas: number; vgv: number }>();
+  for (const l of base) {
+    const dono = l.assigned_to ? String(l.assigned_to) : null;
+    if (!dono) continue;
+    const atual = porCorretor.get(dono) ?? { leads: 0, ativos: 0, vendas: 0, vgv: 0 };
+    atual.leads += 1;
+    if (vivo(l.status)) atual.ativos += 1;
+    if (ehStatus(l, "ganho")) { atual.vendas += 1; atual.vgv += Number(l.sale_value_brl ?? 0); }
+    porCorretor.set(dono, atual);
+  }
+
+  const nomes = new Map<string, string>();
+  if (porCorretor.size) {
+    const { data: perfis } = await admin
+      .from("profiles")
+      .select("id,full_name,name")
+      .in("id", [...porCorretor.keys()]);
+    for (const p of perfis ?? []) {
+      // full_name primeiro: `name` é NULO em 5 dos 6 perfis ativos.
+      nomes.set(String(p.id), String(p.full_name || p.name || "Sem nome cadastrado"));
+    }
+  }
+
+  const painel = erroLinhas
+    ? null
+    : {
+        amostraTruncada: base.length >= TETO,
+        kpis: {
+          leadsNaBase: base.length,
+          leadsAtivos: base.filter((l) => vivo(l.status)).length,
+          emAtendimento: base.filter((l) => ehStatus(l, "contato", "qualificacao")).length,
+          negociacao: base.filter((l) => ehStatus(l, "proposta", "contrato", "negociacao")).length,
+          vendas: base.filter((l) => ehStatus(l, "ganho")).length,
+          vgvFechado: base.filter((l) => ehStatus(l, "ganho")).reduce((s, l) => s + Number(l.sale_value_brl ?? 0), 0),
+        },
+        funil: [
+          { etapa: "Leads na base", valor: base.length },
+          { etapa: "Leads ativos", valor: base.filter((l) => vivo(l.status)).length },
+          { etapa: "Em atendimento", valor: base.filter((l) => ehStatus(l, "contato", "qualificacao")).length },
+          { etapa: "Negociação", valor: base.filter((l) => ehStatus(l, "proposta", "contrato", "negociacao")).length },
+          { etapa: "Fechadas", valor: base.filter((l) => ehStatus(l, "ganho")).length },
+        ],
+        serie: [...porDia.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([dia, v]) => ({ dia, ...v })),
+        equipe: [...porCorretor.entries()]
+          .map(([id, v]) => ({ id, nome: nomes.get(id) ?? "Sem nome cadastrado", ...v }))
+          .sort((a, b) => b.leads - a.leads)
+          .slice(0, 8),
+      };
+
   return apiSuccess(
     {
       cartoes,
+      painel,
+      // Leitura falha NÃO vira painel de zeros: `null` diz que não foi medido.
+      painelIndisponivel: erroLinhas ? "não foi possível ler as leads agora" : null,
       // O catálogo inteiro vai junto: é o que a tela oferece quando não entende
       // a pergunta, em vez de devolver o cartão mais parecido.
       perguntasQueSeiResponder: INTENCOES.map((i) => ({ id: i.id, titulo: i.titulo, responde: i.responde })),
