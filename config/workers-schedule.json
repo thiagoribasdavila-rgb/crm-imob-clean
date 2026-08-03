@@ -296,6 +296,19 @@
         "condicional": false,
         "inferida": false
       }
+    },
+    {
+      "nome": "meta-backfill",
+      "rota": "/api/v2/marketing/meta-backfill/process",
+      "cadencia": "33 * * * *",
+      "porque": "Nem toda Página tem webhook. Medido em 03/08/2026: a Página 1115087091694606 (Inside Smart Apartment Perdizes) concentra 85 anúncios e produz de 5 a 15 leads POR DIA, e NÃO aceita inscrição leadgen — inscrever exige a tarefa MANAGE, recusada com (#200) porque é Página de cliente e só o dono concede. Sem este vigia, a única entrada dessas leads é alguém lembrar de clicar no botão do backfill todo dia. Janela de 48h com cadência de 1h: a sobreposição é de propósito, para uma execução que falha não abrir buraco — repetição vira 'duplicadas' pela unique de external_lead_id, e duplicado sem tarefa no outbox ainda é reparado. Minuto 33 para não competir com meta-sem-destino (17) nem carta-morta (47) pela cota da Graph.",
+      "timeoutMs": 290000,
+      "evidencia": {
+        "tabela": "meta_lead_events",
+        "coluna": "created_at",
+        "condicional": true,
+        "inferida": false
+      }
     }
   ],
   "sobDemanda": [

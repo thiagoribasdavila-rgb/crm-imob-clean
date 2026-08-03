@@ -5,6 +5,7 @@ import { LIVE_PROFILE_SELECT, descendantsFromLiveProfiles, liveStorageRole, reso
 import { mapLegacyProfile, type CompatRow } from "@/lib/compat/legacy-v2";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { traduzirRecusaDaHierarquia } from "@/lib/crm/recusa-da-hierarquia";
 import { recordAuditLog, clientIp, userAgentOf } from "@/lib/api/authorization";
 
 export const dynamic = "force-dynamic";
@@ -46,14 +47,47 @@ function publicProfile(profile: Record<string, unknown>) {
  */
 async function validateSupervisor(db: SupabaseClient, organizationId: string, actorId: string, reportsTo: string | null) {
   if (!reportsTo) return { ok: true as const };
-  const { data, error } = await db.from("profiles").select(LIVE_PROFILE_SELECT).eq("organization_id", organizationId).eq("active", true).limit(1000);
-  if (error) return { ok: false as const, message: "Não foi possível validar a hierarquia comercial agora." };
-  const hierarchy = resolveLiveHierarchy((data ?? []) as unknown as CompatRow[]);
+
+  // Carrega TODOS, não só os ativos.
+  //
+  // Antes esta consulta filtrava `active=true`, e um supervisor DESATIVADO
+  // simplesmente não era encontrado — a rota respondia "Responsável direto fora
+  // do seu escopo de visão", que é falso: ele está no escopo, só está desligado.
+  // Medido em 03/08/2026: desligar um gestor e tentar reativar um corretor da
+  // equipe dele produzia exatamente essa mensagem, e o conserto ("reative o
+  // gestor") não aparecia em lugar nenhum.
+  const { data, error } = await db
+    .from("profiles")
+    .select(LIVE_PROFILE_SELECT)
+    .eq("organization_id", organizationId)
+    .limit(1000);
+  if (error) return { ok: false as const, codigo: "HIERARQUIA_ILEGIVEL", message: "Não foi possível validar a hierarquia comercial agora." };
+
+  const todos = (data ?? []) as unknown as CompatRow[];
+  const alvo = todos.find((profile) => String(profile.id) === reportsTo);
+  if (!alvo) {
+    return { ok: false as const, codigo: "RESPONSAVEL_NAO_ENCONTRADO", message: "Responsável direto não encontrado nesta organização." };
+  }
+  // Inativo tem código próprio: o conserto está em OUTRO perfil, e sem dizer
+  // isso a pessoa fica clicando num botão que nunca vai funcionar.
+  if (!alvo.active) {
+    return {
+      ok: false as const,
+      codigo: "RESPONSAVEL_INATIVO",
+      message:
+        "O responsável direto está INATIVO. Reative-o primeiro — a hierarquia só aceita cadeia viva. " +
+        "É a armadilha comum: desligar um gestor prende a equipe dele fora do sistema.",
+    };
+  }
+
+  // A visibilidade se decide entre os ATIVOS: hierarquia com nó desligado no
+  // meio não é linha de comando.
+  const hierarchy = resolveLiveHierarchy(todos.filter((profile) => profile.active) as unknown as CompatRow[]);
   const supervisor = hierarchy.find((profile) => String(profile.id) === reportsTo);
-  if (!supervisor) return { ok: false as const, message: "Responsável direto fora do seu escopo de visão." };
+  if (!supervisor) return { ok: false as const, codigo: "RESPONSAVEL_FORA_DO_ESCOPO", message: "Responsável direto fora do seu escopo de visão." };
   const linhaDoAtor = descendantsFromLiveProfiles(hierarchy, actorId);
   if (String(supervisor.id) !== actorId && !linhaDoAtor.has(String(supervisor.id))) {
-    return { ok: false as const, message: "O responsável direto precisa estar na sua linha hierárquica — estrutura paralela não é permitida." };
+    return { ok: false as const, codigo: "RESPONSAVEL_FORA_DA_SUA_LINHA", message: "O responsável direto precisa estar na sua linha hierárquica — estrutura paralela não é permitida." };
   }
   return { ok: true as const };
 }
@@ -121,7 +155,7 @@ export async function PATCH(request: NextRequest) {
   // direto abaixo não faz nenhuma das duas coisas — aceita qualquer supervisor
   // e não deixa rastro da mudança de hierarquia.
   const supervisorCheck = await validateSupervisor(identity.supabase, identity.access.organization.id, identity.access.profile.id, typeof body.reportsTo === "string" ? body.reportsTo : null);
-  if (!supervisorCheck.ok) return apiError("INVALID_SUPERVISOR", supervisorCheck.message, identity.meta, { status: 403, headers: rate.headers });
+  if (!supervisorCheck.ok) return apiError(supervisorCheck.codigo, supervisorCheck.message, identity.meta, { status: 403, headers: rate.headers });
 
   const governed = await getSupabaseAdmin().rpc("manage_commercial_profile", {
     p_actor_id: identity.access.profile.id,
@@ -138,9 +172,30 @@ export async function PATCH(request: NextRequest) {
       return apiSuccess({ profile: mapLegacyProfile(refreshed.data as CompatRow), governed: true }, identity.meta, { headers: rate.headers });
     }
   } else if (governed.error.code !== "42883" && governed.error.code !== "PGRST202") {
-    // Recusa da regra de hierarquia (ex.: supervisor fora da linha do ator).
-    // É resposta legítima do banco — não se contorna com update direto.
-    return apiError("INVALID_SUPERVISOR", "A hierarquia comercial recusou esta alteração: confira o responsável direto escolhido.", identity.meta, { status: 403, headers: rate.headers });
+    // Recusa legítima do banco — não se contorna com update direto.
+    //
+    // Antes, TODA recusa virava a mesma frase: "confira o responsável direto
+    // escolhido". Medido em 03/08/2026: o gatilho
+    // `private.validate_commercial_hierarchy` levanta SEIS exceções diferentes,
+    // e em quatro delas o responsável direto não tem nada a ver com o problema —
+    // quem lia ia conferir o campo errado.
+    //
+    // A mais traiçoeira é `supervisor_outside_organization_or_inactive`: o
+    // conserto não está NESTE perfil, está no do gestor que alguém desligou. Sem
+    // dizer isso, a pessoa fica clicando num botão que nunca vai funcionar.
+    const traduzida = traduzirRecusaDaHierarquia(governed.error.message);
+    structuredApiLog("warn", "team.hierarchy_refused", request, identity.meta, {
+      profileId: body.profileId, paraAtivo: body.active, causa: governed.error.message, traduzida: traduzida?.codigo ?? null,
+    });
+    return apiError(
+      traduzida?.codigo ?? "HIERARQUIA_RECUSOU",
+      // Recusa desconhecida mostra o erro ORIGINAL. Inventar explicação para
+      // causa que não conheço é exatamente como esta rota passou a culpar o
+      // responsável direto por tudo.
+      traduzida?.mensagem ?? `A hierarquia recusou: ${governed.error.message}`,
+      identity.meta,
+      { status: 403, headers: rate.headers, details: { campo: traduzida?.campo ?? null, ativando: body.active } },
+    );
   }
 
   // Banco sem a migration da hierarquia governada: caminho direto de sempre.

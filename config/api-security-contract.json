@@ -33,6 +33,7 @@
     "app/api/v2/integrations/carta-morta/vigia/route.ts",
     "app/api/v2/marketing/capi-feedback/process/route.ts",
     "app/api/v2/marketing/investimento/process/route.ts",
+    "app/api/v2/marketing/meta-backfill/process/route.ts",
     "app/api/v2/marketing/meta-sem-destino/process/route.ts",
     "app/api/v2/meta/daily-report/route.ts",
     "app/api/v2/outbox/process/route.ts",
