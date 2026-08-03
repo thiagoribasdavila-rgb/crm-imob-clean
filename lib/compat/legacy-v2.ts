@@ -394,7 +394,31 @@ export function mapLegacyLead(row: CompatRow): CompatRow {
   return {
     ...row,
     status: canonicalLeadStatus(first(row, "status")),
-    score: Number(first(row, "score", "score_ia") ?? 0),
+    /**
+     * ── O NÚMERO QUE FILTRA E O NÚMERO QUE PINTA ERAM DIFERENTES ────────────
+     *
+     * A ordem era `first(row, "score", "score_ia")`, e o select traz AS DUAS
+     * colunas — então `row.score` sempre vencia. Só que a rota de leads FILTRA
+     * por `score_ia` (crm/leads/route.ts:428-429, :459) e ORDENA por `score_ia`
+     * (o próprio `liveLeadSortColumn` deste arquivo, :346, traduz "score" para
+     * "score_ia"). Quem escolhe a lead e quem a desenha olhavam colunas
+     * distintas.
+     *
+     * MEDIDO no banco vivo em 03/08/2026, sobre 490 leads: as duas colunas
+     * divergem em 29, e em NOVE a divergência atravessa a fronteira de faixa —
+     *
+     *     8 leads  filtro diz MORNA (score_ia 35–55)  ·  tela pinta FRIA (score 0–28)
+     *     1 lead   filtro diz FRIA  (score_ia 30)     ·  tela pinta MORNA (score 48)
+     *
+     * O corretor filtra "Morno", recebe as 8 e elas chegam com cara de fria —
+     * então ele pula justamente o que pediu para ver. E a ordenação piorava:
+     * a lista era ordenada por um número e exibida com outro.
+     *
+     * `score_ia` passa a vir primeiro porque é a coluna que a consulta usa.
+     * `score` continua como reserva para linha legada que não tenha `score_ia`
+     * — que é a razão de este mapa existir.
+     */
+    score: Number(first(row, "score_ia", "score") ?? 0),
     temperature: text(rawTemperature).trim().toLocaleLowerCase("pt-BR") || null,
     assigned_to: first(row, "assigned_to", "assigned_user_id"),
     development_id: first(row, "development_id", "project_id"),
