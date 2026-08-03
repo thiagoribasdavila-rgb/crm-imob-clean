@@ -71,10 +71,56 @@ export async function GET(request: NextRequest) {
   }
 
   const pendentes = data ?? [];
+
+  /**
+   * QUEM CHEGOU — e por que o nome pode sair daqui.
+   *
+   * Até aqui esta rota devolvia só `leadIds`: a pastilha dizia "3" e o corretor
+   * tinha que abrir a lista e procurar quais. Com SLA de primeiro contato de 5
+   * minutos, o caminho "vejo um número → abro a lista → descubro quais → abro a
+   * ficha" gasta o orçamento em navegação.
+   *
+   * O nome não é exposição nova: a consulta acima já filtra por
+   * `destinatario_id = eu` (ou, para liderança, as órfãs, que ela enxerga no
+   * funil inteiro de qualquer jeito). São leads da PRÓPRIA carteira de quem
+   * pergunta — a mesma pessoa vê o nome, o telefone e o histórico inteiro ao
+   * abrir a ficha.
+   *
+   * Telefone e e-mail continuam FORA: o aviso precisa identificar, não
+   * qualificar. Menos dado no caminho quente é menos dado para vazar.
+   */
+  let chegadas: Array<{ leadId: string; nome: string; origem: string; esperaMinutos: number; motivo: string }> = [];
+  if (pendentes.length) {
+    const { data: leads } = await admin
+      .from("leads")
+      .select("id,name,source,created_at")
+      .eq("organization_id", organizationId)
+      .in("id", pendentes.slice(0, 20).map((linha) => String(linha.lead_id)))
+      .limit(20);
+    const porId = new Map((leads ?? []).map((lead) => [String(lead.id), lead]));
+    chegadas = pendentes
+      .slice(0, 20)
+      .map((linha) => {
+        const lead = porId.get(String(linha.lead_id));
+        if (!lead) return null;
+        const criadaEm = Date.parse(String(lead.created_at));
+        return {
+          leadId: String(lead.id),
+          nome: String(lead.name || "Lead sem nome").slice(0, 60),
+          origem: String(lead.source || "não informada").slice(0, 40),
+          esperaMinutos: Number.isFinite(criadaEm) ? Math.max(0, Math.floor((Date.now() - criadaEm) / 60_000)) : 0,
+          motivo: String(linha.motivo),
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }
+
   return apiSuccess(
     {
       escopo: lideranca ? "organizacao" : "carteira",
       novas: count ?? pendentes.length,
+      // A lista que permite ir direto à ficha, sem passar pela lista de leads.
+      chegadas,
       // Distinguir as duas origens importa para a frase da tela: "chegou" e
       // "passou a ser sua" são eventos diferentes para quem lê.
       porMotivo: {

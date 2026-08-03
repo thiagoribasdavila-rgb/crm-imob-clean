@@ -15,6 +15,7 @@ import { LIVE_PROFILE_SELECT, mapLegacyProfile, mapLegacyProject } from "@/lib/c
 import { EmptyState } from "@/components/atlas/empty-state";
 import { ErrorState } from "@/components/atlas/error-state";
 import { LoadingState } from "@/components/atlas/loading-state";
+import { AtivarAvisoDeLead } from "@/components/atlas/AtivarAvisoDeLead";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { NextActionQuickSet } from "@/components/crm/next-action-quick-set";
@@ -1754,6 +1755,14 @@ export default function LeadsPage() {
 
             Nada saiu: `h2`, chip, `aria-live`, `data-phase`, os três cartões e
             todos os botões continuam, com os mesmos rótulos. ── */}
+        {/* A oferta de ativar o aviso do navegador. Fica ACIMA da fila de ação
+            porque é sobre perceber a lead antes de trabalhá-la, e some sozinha
+            quando não há nada a oferecer (permissão já concedida, negada, ou
+            navegador sem suporte). */}
+        <div className="mt-3">
+          <AtivarAvisoDeLead />
+        </div>
+
         {loading || visiblePriorityQueue.length ? (
         <section
           className="cc6-hairline mt-3 pt-3"
