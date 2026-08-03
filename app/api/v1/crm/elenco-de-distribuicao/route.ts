@@ -118,6 +118,8 @@ export async function GET(request: NextRequest) {
       escopo: Escopo; id: string; nome: string;
       leadsTotal: number; leads30d: number; leadsSemDono: number;
       plataforma: string | null; situacao: string | null;
+      /** Só para campanha: a qual empreendimento ela pertence, já no id canônico. */
+      empreendimentoId: string | null; empreendimentoNome: string | null;
     }>;
     /**
      * O que impede a fila inteira de girar, quando é a mesma coisa para todo
@@ -142,17 +144,29 @@ export async function GET(request: NextRequest) {
   const querFila = Boolean(escopo && escopoIdPedido);
 
   if (querContexto || querFila) {
-    const [perfis, projetos, campanhas, leads, sessoes] = await Promise.all([
+    const [perfis, projetos, campanhas, leads, sessoes, ponte] = await Promise.all([
       admin.from("profiles").select("id,full_name,name,commercial_role,role,active,availability_status,max_active_leads")
         .eq("organization_id", organizationId).eq("active", true),
       admin.from("developments").select("id,name").eq("organization_id", organizationId).limit(200),
-      admin.from("marketing_campaigns").select("id,name,status,platform").eq("organization_id", organizationId).limit(200),
+      admin.from("marketing_campaigns").select("id,name,status,platform,project_id").eq("organization_id", organizationId).limit(200),
       // `development_id` E `campaign_id`: são as duas colunas que a lead carrega
       // e que os dois escopos desta tela usam. Ler só uma faria metade dos
       // escopos aparecer com volume zero — que se lê como "não gera lead".
       admin.from("leads").select("id,assigned_to,assigned_user_id,status,development_id,campaign_id,created_at,import_batch_id")
         .eq("organization_id", organizationId).limit(5000),
       admin.from("whatsapp_broker_sessions").select("profile_id,status").eq("organization_id", organizationId),
+      // ── A PONTE ENTRE AS DUAS TABELAS DE EMPREENDIMENTO ──────────────────
+      //
+      // `marketing_campaigns.project_id` tem FK para `crm_projects`, enquanto
+      // toda esta tela (e as leads, e o elenco) fala `developments`. A ponte é
+      // `crm_projects.development_id`, e ela existe justamente porque o produto
+      // convive com as duas identidades para os mesmos empreendimentos.
+      //
+      // Lida aqui para traduzir nos DOIS sentidos: mostrar a qual empreendimento
+      // a campanha pertence, e gravar o vínculo a partir do id canônico que a
+      // tela conhece. Sem a ponte, a tela ou mostraria um id que ela não sabe
+      // nomear, ou gravaria um id que a FK recusaria.
+      admin.from("crm_projects").select("id,development_id").eq("organization_id", organizationId).limit(200),
     ]);
 
     // Nenhuma destas leituras pode virar silêncio: contagem zero por falha de
@@ -217,6 +231,14 @@ export async function GET(request: NextRequest) {
         return { leadsTotal, leads30d, leadsSemDono };
       };
 
+      const crmParaDevelopment = new Map(
+        (ponte.data ?? [])
+          .filter((linha) => linha.development_id)
+          .map((linha) => [String(linha.id), String(linha.development_id)]),
+      );
+      const nomeDoEmpreendimento = new Map(
+        (projetos.data ?? []).map((d) => [String(d.id), String(d.name || d.id)]),
+      );
       const semNinguem = corretores.length === 0;
       const semWhatsapp = corretores.length > 0 && corretores.every((c) => !c.whatsappConectado);
       const todosFora = corretores.length > 0 && corretores.every((c) => !c.disponivel);
@@ -228,13 +250,22 @@ export async function GET(request: NextRequest) {
             escopo: "projeto" as Escopo, id: String(d.id), nome: String(d.name || d.id),
             ...volumeDe("development_id", String(d.id)),
             plataforma: null, situacao: null,
+            empreendimentoId: null as string | null, empreendimentoNome: null as string | null,
           })),
-          ...(campanhas.data ?? []).map((c) => ({
-            escopo: "campanha" as Escopo, id: String(c.id), nome: String(c.name || c.id),
-            ...volumeDe("campaign_id", String(c.id)),
-            plataforma: c.platform ? String(c.platform) : null,
-            situacao: c.status ? String(c.status) : null,
-          })),
+          ...(campanhas.data ?? []).map((c) => {
+            // O id que a tela conhece é o de `developments`; o que a campanha
+            // guarda é o de `crm_projects`. A tradução acontece aqui, uma vez,
+            // e não em cada componente que precisar do nome.
+            const empreendimentoId = c.project_id ? (crmParaDevelopment.get(String(c.project_id)) ?? null) : null;
+            return {
+              escopo: "campanha" as Escopo, id: String(c.id), nome: String(c.name || c.id),
+              ...volumeDe("campaign_id", String(c.id)),
+              plataforma: c.platform ? String(c.platform) : null,
+              situacao: c.status ? String(c.status) : null,
+              empreendimentoId,
+              empreendimentoNome: empreendimentoId ? (nomeDoEmpreendimento.get(empreendimentoId) ?? null) : null,
+            };
+          }),
         ],
         travaGeral: semNinguem
           ? "Nenhum corretor ativo na organização — não há fila para montar."
@@ -355,7 +386,7 @@ export async function POST(request: NextRequest) {
     return apiError("ELENCO_CORPO_INVALIDO", "Corpo inválido: esperado JSON.", identity.meta, { status: 400 });
   }
 
-  const { escopo, escopoId, profileId, ativo, acao, direcao } = (corpo ?? {}) as Record<string, unknown>;
+  const { escopo, escopoId, profileId, ativo, acao, direcao, empreendimentoId } = (corpo ?? {}) as Record<string, unknown>;
 
   // Validação explícita e por campo. Mensagem genérica obriga quem chama a
   // adivinhar qual dos quatro está errado.
@@ -365,11 +396,69 @@ export async function POST(request: NextRequest) {
   if (typeof escopoId !== "string" || escopoId.trim().length === 0) {
     return apiError("ELENCO_ESCOPO_ID_AUSENTE", "`escopoId` é obrigatório: o id do empreendimento ou da campanha.", identity.meta, { status: 400 });
   }
+
+  const admin = getSupabaseAdmin();
+
+  // ── VINCULAR CAMPANHA A EMPREENDIMENTO ───────────────────────────────────
+  //
+  // Vem ANTES da validação de `profileId`: vincular não fala de corretor
+  // nenhum, e exigir o campo aqui obrigaria quem chama a inventar um uuid.
+  //
+  // As 8 campanhas desta base têm `project_id` nulo — ninguém conseguia ver, nem
+  // dizer, a qual empreendimento cada campanha pertence. A tela mostra o volume
+  // de leads de cada uma; sem o vínculo, ela não consegue dizer de qual produto
+  // aquele volume é.
+  //
+  // Recebe o id CANÔNICO (`developments`) e grava o da FK (`crm_projects`),
+  // atravessando a ponte. Gravar o que chegou seria estourar a FK — ou pior,
+  // acertar por acidente num ambiente e falhar em outro.
+  if (acao === "vincular") {
+    if (escopo !== "campanha") {
+      return apiError("ELENCO_VINCULO_SO_DE_CAMPANHA", "Só campanha se vincula a empreendimento — empreendimento já é o escopo.", identity.meta, { status: 400 });
+    }
+    const alvo = empreendimentoId === null || empreendimentoId === "" ? null : empreendimentoId;
+    if (alvo !== null && (typeof alvo !== "string" || !/^[0-9a-f-]{36}$/i.test(alvo))) {
+      return apiError("ELENCO_EMPREENDIMENTO_INVALIDO", "`empreendimentoId` deve ser o uuid do empreendimento, ou nulo para desvincular.", identity.meta, { status: 400 });
+    }
+
+    let projetoDaFk: string | null = null;
+    if (alvo !== null) {
+      const { data: ponte, error: erroPonte } = await admin
+        .from("crm_projects")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("development_id", alvo)
+        .maybeSingle();
+      if (erroPonte) {
+        return apiError("ELENCO_PONTE_ILEGIVEL", "Não foi possível ler a ponte entre as duas tabelas de empreendimento.", identity.meta, { status: 503 });
+      }
+      if (!ponte?.id) {
+        // Ponte ausente NÃO vira vínculo inventado: sem a linha, não há id que a
+        // FK aceite, e escolher outro projeto "parecido" produziria funil errado.
+        return apiError(
+          "ELENCO_PONTE_AUSENTE",
+          "Este empreendimento não tem correspondência em `crm_projects`, que é onde a campanha guarda o vínculo. Preencha `crm_projects.development_id` para ele antes de vincular.",
+          identity.meta,
+          { status: 409 },
+        );
+      }
+      projetoDaFk = String(ponte.id);
+    }
+
+    const { error: erroVinculo } = await admin
+      .from("marketing_campaigns")
+      .update({ project_id: projetoDaFk, updated_at: new Date().toISOString() })
+      .eq("organization_id", organizationId)
+      .eq("id", escopoId.trim());
+    if (erroVinculo) {
+      return apiError("ELENCO_VINCULO_FALHOU", "Não foi possível gravar o vínculo da campanha.", identity.meta, { status: 503 });
+    }
+    return apiSuccess({ campanha: escopoId.trim(), empreendimentoId: alvo, projetoDaFk }, identity.meta);
+  }
+
   if (typeof profileId !== "string" || !/^[0-9a-f-]{36}$/i.test(profileId)) {
     return apiError("ELENCO_PERFIL_INVALIDO", "`profileId` deve ser o uuid do perfil do corretor.", identity.meta, { status: 400 });
   }
-
-  const admin = getSupabaseAdmin();
 
   // ── MOVER NA FILA ─────────────────────────────────────────────────────────
   //

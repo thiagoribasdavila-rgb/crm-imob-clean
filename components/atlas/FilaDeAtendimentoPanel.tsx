@@ -51,6 +51,7 @@ type EscopoItem = {
   escopo: "projeto" | "campanha"; id: string; nome: string;
   leadsTotal: number; leads30d: number; leadsSemDono: number;
   plataforma: string | null; situacao: string | null;
+  empreendimentoId: string | null; empreendimentoNome: string | null;
 };
 
 type Membro = { id: string; escopo: string; escopoId: string; profileId: string; ativo: boolean; posicao: number | null };
@@ -264,6 +265,9 @@ export function FilaDeAtendimentoPanel({ podeEditar = true }: { podeEditar?: boo
                                     ? <><span className="cc6-num">{item.leadsTotal}</span> no total · nada em 30 dias</>
                                     : "nenhuma lead ainda"}
                                 {item.leadsSemDono > 0 ? <> · <span className="cc6-warn cc6-num">{item.leadsSemDono}</span> sem dono</> : null}
+                                {/* Sem o empreendimento ao lado, "23 leads em 30
+                                    dias" não diz de qual produto é o volume. */}
+                                {item.escopo === "campanha" ? <> · {item.empreendimentoNome ?? "sem empreendimento"}</> : null}
                               </span>
                             </span>
                             {/* "livre" não é enfeite: é a diferença entre "fila
@@ -313,6 +317,40 @@ export function FilaDeAtendimentoPanel({ podeEditar = true }: { podeEditar?: boo
             <>
               <div className="cc6-hairline px-5 py-3 lg:border-t-0">
                 <p className="text-sm font-semibold leading-5 text-[var(--atlas-texto-forte)]">{escopoAtual?.nome ?? "Escopo selecionado"}</p>
+
+                {/**
+                  * DE QUAL EMPREENDIMENTO É ESSA CAMPANHA.
+                  *
+                  * As 8 campanhas desta base tinham `project_id` nulo: a tela
+                  * mostrava "23 leads em 30 dias" sem conseguir dizer de qual
+                  * produto aquele volume era. Quem monta o time precisa saber —
+                  * é a diferença entre escalar quem conhece o Arvo e escalar
+                  * quem conhece o Spin Mood.
+                  *
+                  * O vínculo NÃO muda a fila: campanha continua com elenco
+                  * próprio e continua vencendo o do empreendimento. Ele serve
+                  * para nomear o que a campanha vende.
+                  */}
+                {selecionado?.escopo === "campanha" ? (
+                  <label className="mt-2 flex flex-wrap items-center gap-2 text-micro text-[var(--atlas-texto-fraco)]">
+                    Empreendimento desta campanha
+                    <select
+                      value={escopoAtual?.empreendimentoId ?? ""}
+                      disabled={!podeEditar || gravando !== null}
+                      onChange={(evento) => void escrever(
+                        { acao: "vincular", empreendimentoId: evento.target.value || null },
+                        `vincular:${selecionado.id}`,
+                      )}
+                      className="min-h-11 max-w-full rounded-xl border border-[var(--atlas-border)] bg-[var(--atlas-surface-subtle)] px-2.5 py-1.5 text-sm text-[var(--atlas-texto-forte)] outline-none transition-colors focus:border-[color:var(--atlas-accent)] disabled:opacity-50"
+                    >
+                      <option value="">não vinculada</option>
+                      {escopos.filter((item) => item.escopo === "projeto").map((item) => (
+                        <option key={item.id} value={item.id}>{item.nome}</option>
+                      ))}
+                    </select>
+                    {gravando === `vincular:${selecionado.id}` ? <span>gravando…</span> : null}
+                  </label>
+                ) : null}
                 {/* A frase 1: o que significa fila vazia. */}
                 <p className="mt-1 text-corpo leading-5 text-[var(--atlas-texto-fraco)]">
                   {fila && fila.lugares.length > 0 ? (

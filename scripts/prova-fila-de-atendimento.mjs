@@ -46,6 +46,8 @@ const ler = async (busca = "") => (await fetch(`${ROTA}${busca}`, { headers: H }
 const escrever = async (corpo) => (await fetch(ROTA, { method: "POST", headers: H, body: JSON.stringify(corpo) })).json();
 
 const tocados = [];
+/** O vínculo que a campanha tinha antes da prova, para devolver no `finally`. */
+let vinculoOriginal = null;
 
 try {
   console.log(`\nempreendimento de prova: ${empreendimentos[0].name}\n`);
@@ -154,7 +156,33 @@ try {
         "sem isso a lista lateral mostraria 'livre' em escopos que têm fila montada");
     }
   }
+  console.log("\n── vincular campanha a empreendimento ──");
+  const campanha = escopos.find((e) => e.escopo === "campanha");
+  if (campanha) {
+    const { data: antes } = await admin.from("marketing_campaigns").select("project_id").eq("id", campanha.id).maybeSingle();
+    vinculoOriginal = { id: campanha.id, projectId: antes?.project_id ?? null };
+    const vinculou = await escrever({ escopo: "campanha", escopoId: campanha.id, acao: "vincular", empreendimentoId: ESCOPO_ID });
+    t(vinculou?.ok === true, "vincula sem exigir corretor nenhum", JSON.stringify(vinculou?.error ?? {}));
+    // O id gravado é o da FK (`crm_projects`), não o que a tela mandou.
+    t(vinculou?.data?.projetoDaFk && vinculou.data.projetoDaFk !== ESCOPO_ID,
+      "a ponte traduziu: a tela manda `developments`, o banco guarda `crm_projects`",
+      `enviado ${ESCOPO_ID} · gravado ${vinculou?.data?.projetoDaFk}`);
+    const depoisDoVinculo = await ler("?contexto=1");
+    const naLista = (depoisDoVinculo?.data?.contexto?.escopos ?? []).find((e) => e.id === campanha.id);
+    t(naLista?.empreendimentoId === ESCOPO_ID,
+      "e a tela lê de volta o id CANÔNICO, não o da FK",
+      `veio ${naLista?.empreendimentoId}`);
+    t(typeof naLista?.empreendimentoNome === "string" && naLista.empreendimentoNome.length > 0,
+      `com o nome resolvido (${naLista?.empreendimentoNome})`);
+    const desvinculou = await escrever({ escopo: "campanha", escopoId: campanha.id, acao: "vincular", empreendimentoId: null });
+    t(desvinculou?.ok === true, "desvincular é aceito — nulo não é erro de validação");
+    const empreendimentoComoCampanha = await escrever({ escopo: "projeto", escopoId: ESCOPO_ID, acao: "vincular", empreendimentoId: ESCOPO_ID });
+    t(empreendimentoComoCampanha?.ok !== true, "vincular um EMPREENDIMENTO a outro é recusado");
+  }
 } finally {
+  if (vinculoOriginal) {
+    await admin.from("marketing_campaigns").update({ project_id: vinculoOriginal.projectId }).eq("id", vinculoOriginal.id);
+  }
   for (const profileId of tocados) {
     await admin.from("distribution_roster").delete()
       .eq("organization_id", org).eq("escopo", "projeto").eq("escopo_id", ESCOPO_ID).eq("profile_id", profileId);
