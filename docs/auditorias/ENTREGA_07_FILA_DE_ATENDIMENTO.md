@@ -260,29 +260,66 @@ no chão, sem nada vermelho.
 
 ---
 
+## 6-C. Terceira onda — CPL, ingestão e o alerta do corretor
+
+### 6-C.1 A entrada da Meta destravada, e provada
+
+O worker `meta-backfill` foi executado à mão contra o banco vivo: **22 leads
+lidas na Meta, 18 enfileiradas, 4 duplicadas**. Drenando o outbox, **duas leads
+reais entraram** que ninguém tinha — Marcia Regina Gothard (22:41) e MANFERP
+COMERCIAL (22:29). Ambas nasceram **sem dono**, porque a cascata exige WhatsApp
+conectado e ninguém tem.
+
+Isso prova as duas pontas: o backfill funciona, e ele não estava rodando.
+
+### 6-C.2 Vigia da ingestão
+
+Duas entradas independentes, porque uma só não cobre os dois modos de falha:
+silêncio anômalo (comparado com o histórico da MESMA faixa de horário, para não
+tocar toda madrugada) e evento entrando e não virando lead — este último o
+critério de silêncio jamais pegaria.
+
+### 6-C.3 O alerta do corretor, em três camadas
+
+| camada | alcance | leva nome? |
+| --- | --- | --- |
+| pastilha na barra lateral | Atlas em primeiro plano | sim, agora nomeia quem chegou |
+| aviso do navegador + som | Atlas em segundo plano | sim — não sai do dispositivo autenticado |
+| Telegram (worker de 5 min) | Atlas fechado | **não** — contagem e link, só |
+
+O WhatsApp foi descartado por motivo técnico, não por preferência:
+`messages.conversation_id` é NOT NULL e aponta para a conversa de UMA LEAD. O
+aviso interno entrando ali apareceria no histórico do cliente.
+
+---
+
 ## 7. Pendências (não entram nesta entrega)
 
-**As quatro originais foram fechadas na segunda onda (§6-B).** O que segue aberto:
+**As quatro originais foram fechadas na segunda onda (§6-B), e as três frentes
+do pedido seguinte na terceira (§6-C).** O que segue aberto:
 
-1. **A entrada de leads da Meta está parada desde 15:29 de 03/08.** Seis leads
-   reais (16:16 → 21:52) não entraram; foram lançadas à mão e atribuídas ao
-   corretor Luciano, com a dedupe por telefone protegendo contra a duplicata da
-   reentrega. A causa: o worker `meta-backfill` (`33 * * * *`), que busca leads
-   de Página sem webhook, existe **apenas em commits locais**. GitHub Actions só
-   agenda a partir do branch padrão — enquanto o branch não for integrado à
-   `main`, o backfill nunca dispara. **É decisão de merge, não de código.**
-2. **Nada denuncia a ingestão parada.** Seis horas sem lead nova não acenderam
-   nenhum alerta. Um vigia que compare "última lead da Meta" contra a cadência
-   esperada é a próxima peça óbvia.
-3. **O alerta de lead nova não sai da aba.** `useAlertaDeLeadNova` relê a cada
-   60s e acende uma pastilha — correto e honesto, mas invisível para quem está
-   com o Atlas em segundo plano. Sem notificação do navegador, sem som, sem aviso
-   no WhatsApp do corretor, e sem dizer QUEM chegou. Com SLA de primeiro contato
-   de 5 minutos, até 60s do orçamento vão só em perceber.
+1. **O cron continua sem disparar sozinho.** Todos os workers desta entrega — o
+   backfill, o vigia da ingestão e o aviso ao corretor — estão declarados no JSON
+   e no YAML, e o YAML está no branch de entrega. GitHub Actions só lê
+   `schedule:` do **branch padrão**: enquanto `claude/fila-de-atendimento` não
+   for integrada à `main`, nada dispara sozinho. **É decisão de merge, não de
+   código** — e é o único item que impede a operação de rodar sem alguém puxar.
+2. **Ninguém pode ser avisado fora do Atlas hoje.** 5 corretores ativos, **zero**
+   com `telegram_chat_id` e zero com `phone`. O worker roda, responde 200 e
+   informa a lacuna em `semCanal` — mas até alguém cadastrar o canal, a terceira
+   camada do alerta não alcança ninguém. O aviso do navegador cobre o caso
+   enquanto isso.
+3. **A cascata não entrega para ninguém enquanto não houver WhatsApp conectado.**
+   `whatsapp_broker_sessions` tem 0 linhas, e as duas leads destravadas pelo
+   backfill nasceram sem dono por causa disso. É regra deliberada (lead de
+   anúncio se atende por WhatsApp), mas hoje ela represa 100% da entrada.
 4. `priorityRules` e `recentAssignments` agora vêm das tabelas reais, mas ambas
    estão vazias na base: nenhuma regra de prioridade foi salva com sucesso até
    hoje (a gravação morria no mesmo 409 da §6-B.1) e o livro de evidência só
    passa a ter linhas a partir da próxima distribuição.
+5. **67 eventos de conversão da Meta em `failed`** com o erro 2804003, e 10 em
+   carta morta por `META_CONVERSIONS_ACCESS_TOKEN` ausente. Fora do escopo desta
+   entrega, mas apareceu ao drenar o outbox e vale registrar.
 
 1. **A página de distribuição não enxerga o empreendimento de 198 leads.**
    `LIVE_LEAD_SELECT` não inclui `development_id` (só `LIVE_LEAD_SELECT_WITH_SLA`
