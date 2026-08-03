@@ -1,8 +1,18 @@
 import "server-only";
 import { resilientFetch } from "@/lib/http/resilient-fetch";
 import { metaGraphVersion, describeMetaGraphFailure } from "@/lib/meta/graph";
+import { leadsDoInsight, CAMPOS_DE_INSIGHT, type AcaoDaMeta } from "@/lib/meta/resultado-de-lead";
 
-export type MetaPaidInsight = { campaignId: string; campaignName: string; spend: number; impressions: number; clicks: number };
+export type MetaPaidInsight = {
+  campaignId: string; campaignName: string; spend: number; impressions: number; clicks: number;
+  /**
+   * Leads que a Meta diz que a campanha gerou. `null` = a resposta não trouxe
+   * `actions`. NUNCA zero por conveniência: zero afirma que não houve lead, e
+   * essa afirmação errada é o que fazia o custo por lead dividir pelas leads que
+   * CHEGARAM ao CRM — R$ 1.030 onde o real era R$ 33.
+   */
+  leads: number | null;
+};
 
 export type MetaInsightPeriod = 1 | 7 | 30;
 
@@ -15,7 +25,7 @@ export async function fetchMetaCampaignInsights(days: MetaInsightPeriod): Promis
   const accessToken = process.env.META_ADS_ACCESS_TOKEN;
   if (!accountId || !accessToken) return [];
   const apiVersion = metaGraphVersion();
-  const params = new URLSearchParams({ level: "campaign", fields: "campaign_id,campaign_name,spend,impressions,clicks", date_preset: datePreset(days), limit: "500" });
+  const params = new URLSearchParams({ level: "campaign", fields: CAMPOS_DE_INSIGHT, date_preset: datePreset(days), limit: "500" });
 
   // SEGUE a paginação por cursor (não trunca em 500) — este dado alimenta
   // relatórios financeiros; teto de segurança de páginas evita loop infinito.
@@ -25,13 +35,13 @@ export async function fetchMetaCampaignInsights(days: MetaInsightPeriod): Promis
   for (let page = 0; url && page < MAX_PAGES; page += 1) {
     const response = await resilientFetch(url, { headers: { Authorization: `Bearer ${accessToken}` } }, { timeoutMs: 30_000, retries: 2, operation: "Meta Insights" });
     const body = await response.json() as {
-      data?: Array<{ campaign_id?: string; campaign_name?: string; spend?: string; impressions?: string; clicks?: string }>;
+      data?: Array<{ campaign_id?: string; campaign_name?: string; spend?: string; impressions?: string; clicks?: string; actions?: AcaoDaMeta[] }>;
       paging?: { next?: string; cursors?: { after?: string } };
       error?: { message?: string };
     };
     if (!response.ok) throw new Error(describeMetaGraphFailure(response.status, body));
     for (const row of body.data ?? []) {
-      rows.push({ campaignId: String(row.campaign_id || ""), campaignName: String(row.campaign_name || row.campaign_id || "Campanha Meta"), spend: Number(row.spend || 0), impressions: Number(row.impressions || 0), clicks: Number(row.clicks || 0) });
+      rows.push({ campaignId: String(row.campaign_id || ""), campaignName: String(row.campaign_name || row.campaign_id || "Campanha Meta"), spend: Number(row.spend || 0), impressions: Number(row.impressions || 0), clicks: Number(row.clicks || 0), leads: leadsDoInsight(row.actions) });
     }
     // usa paging.next (URL completa) quando presente; senão monta pelo cursor
     const after = body.paging?.cursors?.after;
@@ -73,7 +83,7 @@ export async function fetchMetaDailyCampaignInsights(days: MetaInsightPeriod): P
   const apiVersion = metaGraphVersion();
   const params = new URLSearchParams({
     level: "campaign",
-    fields: "campaign_id,campaign_name,spend,impressions,clicks",
+    fields: CAMPOS_DE_INSIGHT,
     date_preset: datePreset(days),
     time_increment: "1",
     limit: "500",
@@ -88,7 +98,7 @@ export async function fetchMetaDailyCampaignInsights(days: MetaInsightPeriod): P
   for (let page = 0; url && page < MAX_PAGES; page += 1) {
     const response = await resilientFetch(url, { headers: { Authorization: `Bearer ${accessToken}` } }, { timeoutMs: 30_000, retries: 2, operation: "Meta Insights (dia a dia)" });
     const body = await response.json() as {
-      data?: Array<{ campaign_id?: string; campaign_name?: string; spend?: string; impressions?: string; clicks?: string; date_start?: string }>;
+      data?: Array<{ campaign_id?: string; campaign_name?: string; spend?: string; impressions?: string; clicks?: string; date_start?: string; actions?: AcaoDaMeta[] }>;
       paging?: { next?: string; cursors?: { after?: string } };
       error?: { message?: string };
     };
@@ -106,6 +116,7 @@ export async function fetchMetaDailyCampaignInsights(days: MetaInsightPeriod): P
         spend: Number(row.spend || 0),
         impressions: Number(row.impressions || 0),
         clicks: Number(row.clicks || 0),
+        leads: leadsDoInsight(row.actions),
       });
     }
     const after = body.paging?.cursors?.after;
