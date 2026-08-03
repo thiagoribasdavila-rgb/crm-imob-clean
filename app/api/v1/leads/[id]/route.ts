@@ -591,7 +591,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
        * Achado executando, não lendo: o contrato da regra pura estava verde e a
        * rota devolvia 400 em todas as chamadas de um campo só.
        */
-      .select("name,email,phone,status,source,temperature,score_ia,budget_min,budget_max,preferred_bedrooms,preferred_neighborhoods,notes")
+      /* Esta leitura é o que faz "campo ausente no PATCH preserva o gravado"
+         funcionar: `liveLeadUpdatePayload` cai nela quando a tela não manda o
+         campo. Coluna que falta AQUI não é preservada — é apagada, e em
+         silêncio, com HTTP 200.
+
+         Os cinco campos da ficha do comprador entraram por isso: medido em
+         03/08/2026, salvar só o orçamento zerava forma de pagamento, prazo,
+         renda, finalidade e "precisa financiar" que já estavam preenchidos. É a
+         mesma doença que já apagou nome e telefone por aqui, uma entrega atrás. */
+      .select("name,email,phone,status,source,temperature,score_ia,budget_min,budget_max,preferred_bedrooms,preferred_neighborhoods,notes,purpose,payment_method,purchase_timeline,monthly_income,financing_required")
       .eq("id", id)
       .eq("organization_id", identity.organizationId)
       .maybeSingle();

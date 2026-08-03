@@ -18,6 +18,7 @@ import {
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
 import { decidirProximaAcao } from "@/lib/crm/gesto-da-proxima-acao";
+import { FichaDoComprador } from "@/components/crm/FichaDoComprador";
 import { LeadOperationalBar } from "@/components/crm/lead-operational-bar";
 import {
   LeadContextCorrection,
@@ -1850,132 +1851,56 @@ export default function LeadDetailPage() {
             Dados e qualificação
           </h2>
           <form onSubmit={saveLead} className="mt-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <input
-                className={inputClass}
-                value={lead.name ?? ""}
-                placeholder="Nome"
-                aria-label="Nome"
-                onChange={(e) => setLead({ ...lead, name: e.target.value })}
-              />
-              <input
-                className={inputClass}
-                value={lead.phone ?? ""}
-                placeholder="Telefone"
-                aria-label="Telefone"
-                onChange={(e) => setLead({ ...lead, phone: e.target.value })}
-              />
-              <input
-                className={inputClass}
-                value={lead.email ?? ""}
-                placeholder="E-mail"
-                aria-label="E-mail"
-                onChange={(e) => setLead({ ...lead, email: e.target.value })}
-              />
-              <select
-                className={inputClass}
-                value={lead.status ?? "novo"}
-                aria-label="Etapa do lead"
-                onChange={(e) => setLead({ ...lead, status: e.target.value })}
-              >
-                {/* ── AS TRES ETAPAS DE FECHAMENTO SAIRAM DAQUI ──────────────
-                    Este seletor gravava `leads.status` pela rota da lead — sem
-                    exigir motivo e sem registrar movimento em
-                    `pipeline_stage_moves`. O proprio codigo da rota admite:
-                    "A Lead 360 nao coleta motivo estruturado de descarte."
+            {/* ── A GRADE PLANA DE NOVE CAMPOS SAIU DAQUI ────────────────────
+                Ela identificava cada campo só pelo `placeholder`, que some ao
+                digitar: campo preenchido virava valor sem nome, e quem revisava
+                a ficha de outra pessoa não sabia se "3" era dormitórios ou
+                prazo. E não tinha input nenhum para forma de pagamento, prazo
+                de compra, renda e "precisa financiar" — os quatro campos que,
+                medidos em 03/08/2026, estavam vazios em 613 de 613 leads.
 
-                    Ou seja: fechar por aqui fazia a lead sumir do funil sem
-                    deixar rastro. Medido em 01/08/2026: dos 144 descartes
-                    registrados, os que passaram por este caminho nao aparecem
-                    em lugar nenhum — nao ha como saber quantos foram.
+                Etapa e temperatura continuam FORA da ficha do comprador: elas
+                não são dado do cliente, são estado do atendimento, e a etapa
+                tem caminho próprio (o seletor abaixo) porque mover funil grava
+                no ledger. ── */}
+            <FichaDoComprador
+              lead={lead as unknown as Record<string, unknown>}
+              aoMudar={(campo, valor) => setLead({ ...lead, [campo]: valor })}
+            />
 
-                    So dava para tirar porque a alternativa passou a existir no
-                    mesmo dia: descarte com motivo na LINHA da lista, alem do
-                    Kanban. Fechar sem oferecer onde seria trocar perda de dado
-                    por corretor sem saida. ── */}
-                {(() => {
-                  const abertas = ["novo", "contato", "qualificacao", "visita", "proposta", "contrato"];
-                  /* Se a lead JA esta fechada, a etapa dela precisa aparecer —
-                     senao o <select> exibiria "novo" para uma lead perdida e
-                     mentiria sobre o estado. Ela entra so para ser LIDA: mudar
-                     para outra coisa daqui continua possivel, o que nao ha e
-                     como fechar por este caminho. */
-                  const atual = lead.status ?? "novo";
-                  return abertas.includes(atual) ? abertas : [...abertas, atual];
-                })().map((status) => (
-                  <option key={status} value={status}>
-                    {status === "comprou_outro"
-                      ? "Comprou em outro lugar"
-                      : status}
-                  </option>
-                ))}
-              </select>
-              <select
-                className={inputClass}
-                value={lead.temperature ?? "frio"}
-                aria-label="Temperatura do lead"
-                onChange={(e) =>
-                  setLead({ ...lead, temperature: e.target.value })
-                }
-              >
-                <option>frio</option>
-                <option>morno</option>
-                <option>quente</option>
-              </select>
-              <input
-                className={inputClass}
-                type="number"
-                value={lead.budget_min ?? ""}
-                placeholder="Orçamento mínimo"
-                aria-label="Orçamento mínimo"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    budget_min: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-              />
-              <input
-                className={inputClass}
-                type="number"
-                value={lead.budget_max ?? ""}
-                placeholder="Orçamento máximo"
-                aria-label="Orçamento máximo"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    budget_max: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-              />
-              <input
-                className={inputClass}
-                type="number"
-                value={lead.bedrooms ?? ""}
-                placeholder="Dormitórios"
-                aria-label="Dormitórios"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    bedrooms: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-              />
-              <input
-                className={inputClass}
-                value={(lead.preferred_regions ?? []).join(", ")}
-                placeholder="Regiões preferidas"
-                aria-label="Regiões preferidas"
-                onChange={(e) =>
-                  setLead({
-                    ...lead,
-                    preferred_regions: e.target.value
-                      .split(",")
-                      .map((item) => item.trim())
-                      .filter(Boolean),
-                  })
-                }
-              />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label htmlFor="ficha-status" className="block text-rotulo text-[var(--atlas-texto-fraco)]">Etapa</label>
+                <select
+                  id="ficha-status"
+                  className={`${inputClass} mt-1`}
+                  value={lead.status ?? "novo"}
+                  onChange={(e) => setLead({ ...lead, status: e.target.value })}
+                >
+                  {(() => {
+                    const abertas = ["novo", "contato", "qualificacao", "visita", "proposta", "contrato"];
+                    const atual = lead.status ?? "novo";
+                    return abertas.includes(atual) ? abertas : [...abertas, atual];
+                  })().map((status) => (
+                    <option key={status} value={status}>
+                      {status === "comprou_outro" ? "Comprou em outro lugar" : status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="min-w-0">
+                <label htmlFor="ficha-temperatura" className="block text-rotulo text-[var(--atlas-texto-fraco)]">Temperatura</label>
+                <select
+                  id="ficha-temperatura"
+                  className={`${inputClass} mt-1`}
+                  value={lead.temperature ?? "frio"}
+                  onChange={(e) => setLead({ ...lead, temperature: e.target.value })}
+                >
+                  <option>frio</option>
+                  <option>morno</option>
+                  <option>quente</option>
+                </select>
+              </div>
             </div>
             <textarea
               className={`${inputClass} mt-3 min-h-32`}

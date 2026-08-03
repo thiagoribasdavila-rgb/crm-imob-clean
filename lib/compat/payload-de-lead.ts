@@ -175,5 +175,59 @@ export function liveLeadUpdatePayload(
     preferred_bedrooms: bedrooms,
     preferred_neighborhoods: preferredNeighborhoods,
     notes: enrichedNotes,
+    /**
+     * ── OS QUATRO CAMPOS QUE NÃO TINHAM COMO SER GRAVADOS ──────────────────
+     *
+     * Medido no banco vivo em 03/08/2026, sobre 613 leads: `payment_method`,
+     * `purchase_timeline`, `monthly_income` e `financing_required` com 100% de
+     * vazios — 613 de 613, os quatro.
+     *
+     * Não era desleixo de quem atende. A ficha não tinha input para nenhum
+     * deles, e este construtor não os mapeava: mesmo que a tela mandasse, o
+     * PATCH descartaria em silêncio, com HTTP 200 e a ficha desenhando normal.
+     *
+     * `purpose` entra junto pelo mesmo motivo — ele só chegava ao banco de
+     * carona no texto das observações (`Objetivo declarado: …`), nunca na
+     * coluna, e por isso 424 leads estão sem finalidade enquanto a frase existe
+     * na nota.
+     *
+     * Todos seguem a regra da casa: AUSENTE preserva o que está gravado, VAZIO
+     * limpa de propósito.
+     */
+    purpose: sent("purpose")
+      ? (typeof body.purpose === "string" && body.purpose.trim() ? body.purpose.trim() : null)
+      : textoAtual(currentLead.purpose),
+    payment_method: sent("payment_method")
+      ? (typeof body.payment_method === "string" && body.payment_method.trim() ? body.payment_method.trim() : null)
+      : textoAtual(currentLead.payment_method),
+    purchase_timeline: sent("purchase_timeline")
+      ? (typeof body.purchase_timeline === "string" && body.purchase_timeline.trim() ? body.purchase_timeline.trim() : null)
+      : textoAtual(currentLead.purchase_timeline),
+    /**
+     * `financing_required` é BOOLEAN no banco vivo — conferido em
+     * `information_schema` depois de a prova derrubar o PATCH inteiro com um
+     * texto ali. Um `"sim"` nesta coluna faz o Postgres recusar a gravação toda
+     * e leva junto os outros nove campos da ficha.
+     *
+     * A tela manda `"sim"`/`"nao"` (os valores estáveis do catálogo); a tradução
+     * para booleano acontece AQUI, uma vez, e não em cada tela que precisar.
+     */
+    financing_required: sent("financing_required")
+      ? (() => {
+        const cru = body.financing_required;
+        if (cru === null || cru === "" || cru === undefined) return null;
+        if (typeof cru === "boolean") return cru;
+        const texto = String(cru).trim().toLowerCase();
+        if (texto === "sim" || texto === "true") return true;
+        if (texto === "nao" || texto === "não" || texto === "false") return false;
+        // Valor que não é nenhum dos dois NÃO vira `false` por conveniência:
+        // `false` afirma "não precisa financiar", e afirmar isso a partir de um
+        // texto desconhecido é inventar resposta do cliente.
+        return null;
+      })()
+      : (typeof currentLead.financing_required === "boolean" ? currentLead.financing_required : null),
+    monthly_income: sent("monthly_income")
+      ? (body.monthly_income === null || body.monthly_income === "" ? null : Number(body.monthly_income) || null)
+      : readCurrentNumber(currentLead.monthly_income),
   };
 }
