@@ -94,13 +94,91 @@ export default function ApprovalsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
+  /**
+   * ── O ELO ATIVAR, QUE NÃO TINHA PORTA ──────────────────────────────────────
+   *
+   * `/api/v1/marketing/execute` é a ÚNICA rota que age de verdade na Meta —
+   * criar, pausar, ativar, mexer em verba — com portão de aprovação, auditoria
+   * em `meta_execution_audit` e idempotência. MEDIDO em 03/08/2026: nenhum
+   * arquivo sob `app/(crm)` ou `components/` a chamava. O ciclo PROPOR →
+   * APROVAR → ATIVAR terminava no segundo elo: campanha aprovada nunca ia ao ar
+   * por dentro do produto, e quem quisesse publicar saía do caminho governado e
+   * fazia à mão no Gerenciador de Anúncios — perdendo auditoria, idempotência e
+   * o vínculo com o `approvalId`.
+   *
+   * `ativacao.podeAtivar` já vinha calculado da API e nunca era lido: o produto
+   * sabia dizer que podia publicar e não oferecia o gesto.
+   *
+   * ── POR QUE DOIS PASSOS, E NÃO UM BOTÃO ────────────────────────────────────
+   *
+   * Este clique GASTA DINHEIRO REAL. A rota já tem a rede certa — `dryRun` é
+   * `true` por padrão, e ela só age de verdade se receber `false` explícito.
+   * Então o gesto espelha isso: primeiro o ENSAIO mostra o que aconteceria, e
+   * só depois de o ensaio voltar bem é que o botão de publicar aparece. Um
+   * botão único com `confirm()` pediria à pessoa que confirmasse algo que ela
+   * ainda não viu.
+   *
+   * O ensaio é apagado a cada recarga da lista: um ensaio de dez minutos atrás
+   * não autoriza a publicação de agora.
+   */
+  const [ensaio, setEnsaio] = useState<Record<string, { ok: boolean; resumo: string }>>({});
+  const [publicado, setPublicado] = useState<Record<string, string>>({});
 
   async function load() {
     const session = await supabase.auth.getSession();
     const response = await fetch("/api/v2/approvals", { headers: { Authorization: `Bearer ${session.data.session?.access_token || ""}` }, cache: "no-store" });
     const body = await response.json();
     if (response.ok) { setItems(body.data.items); setError(""); } else setError(body.error?.message || "Não foi possível carregar aprovações.");
+    // O ensaio morre com a lista. O plano pode ter mudado entre um e outro, e
+    // "ensaiei há dez minutos" não autoriza gastar agora.
+    setEnsaio({});
     setLoading(false);
+  }
+
+  /**
+   * Publica a proposta aprovada na Meta — ensaio primeiro, gasto depois.
+   *
+   * `deVerdade === false` manda `dryRun: true` e a rota apenas simula: nenhum
+   * byte sai para a Graph. `deVerdade === true` manda `dryRun: false`, e é o
+   * único caminho que gasta.
+   */
+  async function publicar(id: string, deVerdade: boolean) {
+    setBusy(id);
+    const session = await supabase.auth.getSession();
+    const response = await fetch("/api/v1/marketing/execute", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.data.session?.access_token || ""}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "create", proposalId: id, dryRun: !deVerdade }),
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      // A frase do servidor, e não uma genérica: 403 de alçada, 503 de "Meta não
+      // configurada" e 422 de proposta inválida pedem coisas diferentes de quem
+      // está lendo, e "não foi possível" não distingue nenhuma delas.
+      const frase = body?.error?.message || body?.error || "Não foi possível publicar agora.";
+      if (deVerdade) setError(frase);
+      else setEnsaio((atual) => ({ ...atual, [id]: { ok: false, resumo: frase } }));
+      setBusy(null);
+      return;
+    }
+    if (deVerdade) {
+      setPublicado((atual) => ({ ...atual, [id]: "Publicado na Meta. A entrega e o gasto passam a valer a partir de agora." }));
+      await load();
+    } else {
+      const dados = body?.data ?? body;
+      const passos = Array.isArray(dados?.steps) ? dados.steps.length : null;
+      setEnsaio((atual) => ({
+        ...atual,
+        [id]: {
+          ok: true,
+          resumo:
+            typeof dados?.resumo === "string"
+              ? dados.resumo
+              : `Ensaio aceito${passos === null ? "" : `: ${passos} passo(s) seriam enviados à Meta`}. Nada foi publicado.`,
+        },
+      }));
+    }
+    setBusy(null);
   }
 
   useEffect(() => { load(); }, []);
@@ -228,6 +306,50 @@ export default function ApprovalsPage() {
                   <div className="cc6-panel-quiet p-3">
                     <p className="cc6-eyebrow text-micro!">Motivo registrado</p>
                     <p className="mt-1 text-sm leading-6 text-[var(--atlas-texto-medio)]">{item.decision_reason}</p>
+                  </div>
+                ) : null}
+
+                {/* ── O ELO ATIVAR ────────────────────────────────────────────
+                    Só aparece para campanha Meta APROVADA que a régua liberou.
+                    `podeAtivar` vinha calculado da API e não era lido por
+                    ninguém: o produto sabia dizer que podia publicar e não
+                    oferecia o gesto. */}
+                {item.status === "approved" && item.entity_type === "meta_campaign" && item.ativacao?.podeAtivar ? (
+                  <div className="cc6-panel-quiet space-y-2 p-3">
+                    <p className="cc6-eyebrow text-micro!">Publicar na Meta</p>
+                    {publicado[item.id] ? (
+                      <p className="text-sm leading-6 text-[var(--atlas-texto-medio)]">{publicado[item.id]}</p>
+                    ) : (
+                      <>
+                        <p className="text-sm leading-6 text-[var(--atlas-texto-medio)]">
+                          {ensaio[item.id]?.resumo
+                            ?? "Aprovada e liberada pela régua. O ensaio mostra o que seria enviado à Meta sem gastar nada."}
+                        </p>
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <button
+                            type="button"
+                            disabled={busy === item.id}
+                            onClick={() => void publicar(item.id, false)}
+                            className="cc6-ghost-btn disabled:opacity-40"
+                          >
+                            {busy === item.id ? "Ensaiando…" : ensaio[item.id] ? "Ensaiar de novo" : "Ensaiar publicação"}
+                          </button>
+                          {/* O botão que GASTA só existe depois de um ensaio que
+                              voltou bem. Um botão único com confirmação pediria
+                              à pessoa que confirmasse algo que ela não viu. */}
+                          {ensaio[item.id]?.ok ? (
+                            <button
+                              type="button"
+                              disabled={busy === item.id}
+                              onClick={() => void publicar(item.id, true)}
+                              className="atlas-button-primary px-4 py-2 text-xs disabled:opacity-40"
+                            >
+                              {busy === item.id ? "Publicando…" : "Publicar de verdade (gasta)"}
+                            </button>
+                          ) : null}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : null}
               </div>

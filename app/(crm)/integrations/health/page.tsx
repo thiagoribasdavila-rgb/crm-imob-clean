@@ -5,6 +5,7 @@ import { AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
+import { CartasMortasPanel } from "@/components/atlas/CartasMortasPanel";
 
 /*
  * CC-6 · Saúde operacional das integrações. Quem lê é o DIRETOR, e ele abre
@@ -625,6 +626,13 @@ export default function Page() {
           {notice}
         </p>
       ) : null}
+
+      {/* A fila de mortos entra AQUI, e não numa tela só dela: "configurado,
+          testado e saudável são estados diferentes" é exatamente a régua desta
+          página, e entrega que não aconteceu é o caso mais duro dessa régua.
+          Medido em 03/08/2026: 10 conversões em dead_letter esperando, com a
+          ferramenta de repescagem pronta e sem nenhuma porta no produto. */}
+      <CartasMortasPanel />
 
       <section aria-label="Sinais vitais das integrações">
         <TiltShell className="cc6-panel cc6-reveal p-5" delayMs={40}>
