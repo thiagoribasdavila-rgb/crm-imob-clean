@@ -47,7 +47,6 @@ import {
   AtividadesEmTempoReal,
   CartaoKpi,
   EvolucaoDeLeads,
-  FunilEmDegraus,
   InsightsDoCopiloto,
   PerformanceDaEquipe,
   SemLastro,
@@ -404,58 +403,10 @@ function Investimento({ dados }: { dados: Dados["investimento"] }) {
   );
 }
 
-function Funil({ etapas }: { etapas: Etapa[] }) {
-  const maior = Math.max(1, ...etapas.map((e) => e.quantidade));
-  const maiorPassagem = Math.max(1, ...etapas.map((e) => e.jaPassaram));
-  return (
-    <ul className="space-y-2.5">
-      {etapas.map((etapa) => {
-        const largura = Math.max(etapa.quantidade > 0 ? 4 : 0, (etapa.quantidade / maior) * 100);
-        return (
-          <li key={etapa.chave}>
-            <div className="flex items-baseline justify-between gap-3 text-xs">
-              <span className="font-medium text-slate-200">{etapa.rotulo}</span>
-              <span className="tabular-nums text-slate-400">
-                {inteiro(etapa.quantidade)}
-                {etapa.percentualDoTopo !== null && etapa.quantidade > 0 ? (
-                  <span className="ml-1.5 text-slate-500">{etapa.percentualDoTopo}% do topo</span>
-                ) : null}
-                {/* O segundo número é o que distingue "não chegou" de "vazou".
-                    Sem ele, uma etapa em zero conta a história errada. */}
-                {etapa.jaPassaram > 0 ? (
-                  <span className="ml-2 text-slate-500">· {inteiro(etapa.jaPassaram)} já passaram</span>
-                ) : null}
-              </span>
-            </div>
-            {/* Barra em div, não em SVG: uma barra é um retângulo, e retângulo com
-                largura percentual e texto ao lado é legível por leitor de tela.
-                A trilha usa currentColor a 10% em vez de branco: branco a 5% some
-                no tema claro, e trilha invisível faz a barra flutuar sem escala. */}
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-[color-mix(in_srgb,currentColor_12%,transparent)] text-slate-400">
-              <div
-                className={`h-full rounded-full ${etapa.quantidade > 0 ? "bg-[var(--atlas-accent)]" : ""}`}
-                style={{ width: `${largura}%` }}
-                role="presentation"
-              />
-              {/* Marca de "já passou por aqui" quando a etapa está vazia: uma
-                  trilha fantasma, para o zero não parecer nunca-visitado. */}
-              {etapa.quantidade === 0 && etapa.jaPassaram > 0 ? (
-                <div
-                  className="-mt-2 h-2 rounded-full border border-dashed border-[var(--atlas-accent)] opacity-40"
-                  style={{ width: `${Math.max(4, (etapa.jaPassaram / maiorPassagem) * 100)}%` }}
-                  role="presentation"
-                />
-              ) : null}
-            </div>
-            {etapa.porqueVazia ? (
-              <p className="mt-1 text-rotulo leading-4 text-slate-500">{etapa.porqueVazia}</p>
-            ) : null}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
+/* A funcao `Funil` local foi removida junto com o painel duplicado: ela
+   desenhava o MESMO grafico que components/atlas/PainelDaSala.tsx ja faz,
+   com sete degraus e a conversao. Deixar a funcao viva depois de tirar o
+   unico chamador seria guardar a proxima duplicata pronta para uso. */
 
 export function SalaDeComandoPanel({
   feed = [],
@@ -686,46 +637,14 @@ export function SalaDeComandoPanel({
           FAIXA 2 · FUNIL · ATIVIDADES · EQUIPE
           ══════════════════════════════════════════════════════════════════ */}
       <div className="grid gap-4 xl:grid-cols-3">
-        <AtlasCard className="min-w-0">
-          <AtlasCardHeader
-            eyebrow="Funil de vendas"
-            title="Onde as leads estão agora"
-            description={`${inteiro(i.emAberto)} em aberto · ${inteiro(c.ganhos)} ganha${c.ganhos === 1 ? "" : "s"} · ${inteiro(c.perdidos)} perdida${c.perdidos === 1 ? "" : "s"}`}
-          />
-          <div className="p-5 sm:p-6">
-            {/* A FORMA responde onde o funil aperta; a LISTA abaixo responde
-                quanto há em cada etapa e é a versão lida por leitor de tela.
-                As duas leem o mesmo `funil[]` — não há segunda contagem. */}
-            <FunilEmDegraus etapas={dados.funil} />
-            <div className="mt-4">
-              <Funil etapas={dados.funil} />
-            </div>
-            {/* A procedência fica ABAIXO do funil, em texto pequeno: ela não é o
-                que o diretor lê primeiro, mas é o que responde "desde quando?" —
-                e sem ela "3 já passaram" parece cobrir a história inteira. */}
-            <p className="mt-4 border-t border-white/[.06] pt-3 text-rotulo leading-4 text-slate-500">
-              {dados.procedencia.registroDeMovimentoMensuravel ? (
-                dados.procedencia.registroDeMovimentoDesde ? (
-                  <>
-                    &quot;Já passaram&quot; cobre {inteiro(dados.procedencia.movimentosLidos)} movimentos
-                    registrados desde{" "}
-                    {new Date(dados.procedencia.registroDeMovimentoDesde).toLocaleDateString("pt-BR")}. O que
-                    aconteceu antes disso não tem registro.
-                  </>
-                ) : (
-                  <>Nenhuma movimentação de etapa registrada ainda — &quot;já passaram&quot; começa a contar a partir da primeira.</>
-                )
-              ) : (
-                <>Não foi possível ler o histórico de movimentação; &quot;já passaram&quot; está indisponível, não é zero.</>
-              )}
-              {dados.procedencia.amostraTruncada ? (
-                <span className="ml-1 text-[var(--atlas-warning)]">
-                  Atenção: a leitura de leads foi truncada — estes agregados estão sobre amostra, não sobre a base inteira.
-                </span>
-              ) : null}
-            </p>
-          </div>
-        </AtlasCard>
+        {/* O FUNIL SAIU DAQUI: ele existia DUAS vezes na Sala de Comando, com
+            o mesmo titulo. O de cima (components/atlas/PainelDaSala.tsx) desenha
+            os mesmos degraus com sete etapas e a conversao com denominador.
+            Dois graficos do mesmo fato, um acima do outro, fazem o leitor
+            procurar a diferenca que nao existe.
+            O que este tinha de unico -- em aberto / ganhas / perdidas -- subiu
+            para o painel de cima ANTES da remocao (commit 35cf6214): tirar
+            redundancia nao pode custar informacao. */}
 
         <AtlasCard className="min-w-0">
           <AtlasCardHeader
