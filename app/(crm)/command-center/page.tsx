@@ -60,6 +60,7 @@ const ProactiveNudgesPanel = dynamic(() => import("@/components/atlas/ProactiveN
 const VendasSemValorPanel = dynamic(() => import("@/components/atlas/VendasSemValorPanel").then((m) => m.VendasSemValorPanel), { loading: carregando });
 import { SalaDeComandoPanel } from "@/components/atlas/SalaDeComandoPanel";
 import { FilaDeDecisoesPanel } from "@/components/atlas/FilaDeDecisoesPanel";
+import { FaixaDeComando } from "@/components/atlas/FaixaDeComando";
 import {
   AtlasBadge,
   AtlasEmpty,
@@ -2724,6 +2725,16 @@ export default function CommandCenterPage() {
       <span role="status" aria-live="polite" className="sr-only">
         {presentationAnnouncement}
       </span>
+
+      {/* ── A FAIXA DE COMANDO ABRE A TELA ─────────────────────────────────
+          Medido em 03/08/2026, antes disto: os três maiores números da primeira
+          tela eram 5, 50 e R$ 3.792 — todos a 44px, nada distinguindo o que
+          exige decisão do que informa. A linha que decide o dia aparecia a 16px.
+
+          A faixa responde a pergunta do diretor com o número em degrau de herói
+          e a ação embutida, numa grade única. O que era telemetria continua
+          abaixo, onde auditoria pertence. */}
+      <FaixaDeComando />
 
       <section
         aria-label="Estado da sala de comando"

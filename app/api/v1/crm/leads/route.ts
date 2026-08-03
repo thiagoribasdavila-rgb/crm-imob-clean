@@ -6,6 +6,7 @@ import { HOT_SCORE_THRESHOLD } from "@/lib/atlas/temperatura-do-lead";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { filtroDaCarteiraDaPessoa, filtroDaMinhaCarteira, leSoAPropriaCarteira } from "@/lib/crm/escopo-de-leitura";
 import { ehVinculoValido, STATUS_DO_VINCULO, statusForaDoAtendimento } from "@/lib/crm/vinculo-do-cliente";
+import { STATUS_QUE_ENCERRAM } from "@/lib/crm/recorte-operacional";
 import {
   canonicalCommercialRole,
   compatibleLeadStatuses,
@@ -82,7 +83,18 @@ function campaignFilters(raw: string | null) {
     .slice(0, 50);
 }
 const uuidPattern = /^[0-9a-f-]{36}$/i;
-const terminalStorageStatuses = ["ganho", "GANHO", "venda", "VENDA", "vendido", "VENDIDO", "perdido", "PERDIDO", "comprou_outro", "COMPROU_OUTRO"];
+/**
+ * A lista saiu daqui e virou `lib/crm/recorte-operacional.ts`.
+ *
+ * Ela estava declarada NOVE vezes em SETE arquivos, com conteúdos diferentes —
+ * inclusive uma divergência semântica (o acervo de resgate trata `contrato` e
+ * `proposta` como encerrados; esta rota não). E o recorte muda o número em até
+ * 9x: 463 leads sem primeiro contato na base inteira contra 50 em jogo.
+ *
+ * Um cartão que conte com uma lista e leve a uma tela que filtra com outra não
+ * mostra um número velho — mostra OUTRA PERGUNTA.
+ */
+const terminalStorageStatuses: string[] = [...STATUS_QUE_ENCERRAM];
 
 type CompatibleProfile = Record<string, unknown> & {
   id: string;
