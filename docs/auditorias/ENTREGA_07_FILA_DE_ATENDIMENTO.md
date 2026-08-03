@@ -205,7 +205,84 @@ montada sem ninguém marcado como próximo e sem explicação.
 
 ---
 
+## 6-B. Segunda onda — as pendências viraram entrega
+
+O dono pediu "vamos consertar tudo". As quatro pendências da §7 foram fechadas, e
+duas delas escondiam defeitos maiores do que o relatado.
+
+### 6-B.1 Os dois botões de distribuir NUNCA funcionaram
+
+`distribute_project_leads_v3` começa recusando qualquer empreendimento fora de
+`developments`; a tela mandava id de `crm_projects`. Toda distribuição morria em
+`distribution_project_invalid` e virava um 409 genérico. Não era limitação de
+regra de negócio — era id de outra tabela.
+
+Empreendimento canônico passa a ser `developments`: 30 FKs contra 6, a ponte vai
+de `crm_projects` PARA `developments`, `leads.development_id` tem 198 de 596
+contra 14 de `project_id`, e a ponte está 100% preenchida.
+
+### 6-B.2 A presença que o motor lê não tinha escritor
+
+O batimento gravava `profiles`; o motor lê `commercial_presence` numa janela de
+90 segundos. Medido: 2 linhas na tabela, **zero** dentro da janela, contra 8
+perfis marcados como disponíveis. Mesmo com o id certo, não haveria candidato.
+Um único instante agora carimba as duas tabelas.
+
+### 6-B.3 `distribute_project_leads_v5`
+
+O botão passa a honrar a fila. Sem isso, a fila valeria para a lead que entra
+sozinha e não para a mesma lead distribuída pela liderança — duas verdades sobre
+de quem é a vez. Descem junto: acervo de resgate entrando como demanda nova,
+lead com dono no banco e órfã na tela (a v3 gravava só `assigned_to`), e o
+ponteiro do rodízio sem casa única.
+
+### 6-B.4 Campanha ↔ empreendimento
+
+Gravação atravessa a ponte: a tela manda o id canônico, o banco guarda o da FK.
+
+### 6-B.5 CPL — erro de 30 vezes
+
+`lib/marketing/cost-report.ts` já dividia pelo que a campanha GEROU. A rota
+pedia `campaign_id,spend_date,amount` a `marketing_spend` e deixava `leads_count`
+no banco: `leadsNaOrigem` chegava indefinido e a divisão caía sobre as leads que
+entraram.
+
+| | valor |
+| --- | --- |
+| verba das 7 campanhas "[Cia360] Inside Smart" | R$ 4.355,83 |
+| leads geradas (Meta) | 119 |
+| leads ligadas a elas no CRM | 4 |
+| CPL que a tela mostrava | **R$ 1.088,96** |
+| CPL real | **R$ 36,60** |
+
+Terceira ocorrência da mesma classe nesta entrega: os dois lados prontos e o fio
+no chão, sem nada vermelho.
+
+---
+
 ## 7. Pendências (não entram nesta entrega)
+
+**As quatro originais foram fechadas na segunda onda (§6-B).** O que segue aberto:
+
+1. **A entrada de leads da Meta está parada desde 15:29 de 03/08.** Seis leads
+   reais (16:16 → 21:52) não entraram; foram lançadas à mão e atribuídas ao
+   corretor Luciano, com a dedupe por telefone protegendo contra a duplicata da
+   reentrega. A causa: o worker `meta-backfill` (`33 * * * *`), que busca leads
+   de Página sem webhook, existe **apenas em commits locais**. GitHub Actions só
+   agenda a partir do branch padrão — enquanto o branch não for integrado à
+   `main`, o backfill nunca dispara. **É decisão de merge, não de código.**
+2. **Nada denuncia a ingestão parada.** Seis horas sem lead nova não acenderam
+   nenhum alerta. Um vigia que compare "última lead da Meta" contra a cadência
+   esperada é a próxima peça óbvia.
+3. **O alerta de lead nova não sai da aba.** `useAlertaDeLeadNova` relê a cada
+   60s e acende uma pastilha — correto e honesto, mas invisível para quem está
+   com o Atlas em segundo plano. Sem notificação do navegador, sem som, sem aviso
+   no WhatsApp do corretor, e sem dizer QUEM chegou. Com SLA de primeiro contato
+   de 5 minutos, até 60s do orçamento vão só em perceber.
+4. `priorityRules` e `recentAssignments` agora vêm das tabelas reais, mas ambas
+   estão vazias na base: nenhuma regra de prioridade foi salva com sucesso até
+   hoje (a gravação morria no mesmo 409 da §6-B.1) e o livro de evidência só
+   passa a ter linhas a partir da próxima distribuição.
 
 1. **A página de distribuição não enxerga o empreendimento de 198 leads.**
    `LIVE_LEAD_SELECT` não inclui `development_id` (só `LIVE_LEAD_SELECT_WITH_SLA`
