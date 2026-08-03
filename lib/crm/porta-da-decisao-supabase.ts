@@ -11,11 +11,25 @@
  * devolve 200 para um update que não casou com nada, e a corrida some.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PortaDaDecisao } from "@/lib/crm/corrida-pela-lead";
 
-type ClienteMinimo = {
-  from: (tabela: string) => any;
-};
+/**
+ * A porta estreita, DERIVADA do cliente real em vez de redesenhada à mão.
+ *
+ * Era `from: (tabela: string) => any`, e o `any` desligava a checagem no exato
+ * ponto que mais precisa dela: uma escrita sem `.select(...)` continuaria
+ * compilando, e é ela que faz o PostgREST devolver 200 para um update que não
+ * casou com nada — a corrida some sem ninguém ver.
+ *
+ * Tentar declarar a cadeia à mão (`update` → `eq` → `is` → `select`) parece
+ * mais explícito e é uma armadilha: `from()` devolve o construtor da tabela e
+ * os filtros só existem no que `update()` retorna, então a interface caseira
+ * deixa de aceitar o cliente de verdade. `Pick` mantém a intenção — este
+ * adaptador só precisa de `from` — sem inventar uma segunda descrição da mesma
+ * API, que divergiria na próxima versão da biblioteca.
+ */
+type ClienteMinimo = Pick<SupabaseClient, "from">;
 
 export function portaDaDecisaoSupabase(admin: ClienteMinimo, organizationId: string): PortaDaDecisao {
   return {

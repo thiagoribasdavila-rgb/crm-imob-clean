@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server";
 import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { resolverPageId } from "@/lib/meta/identificadores";
+import { paginaDaOrganizacao } from "@/lib/meta/pagina-da-organizacao";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -44,18 +46,34 @@ async function tokenDaPagina(pageId: string, systemToken: string, versao: string
   return corpo.access_token ?? null;
 }
 
+/**
+ * Lista os formulários da Página e DIZ quando falhou.
+ *
+ * Antes: `corpo.data ?? []`, e erro da Graph virava lista vazia. Como a rota
+ * calcula represa a partir dessa lista, qualquer falha — token expirado, cota
+ * estourada, permissão revogada — produzia "0 leads represadas" com 200 OK.
+ * Nenhuma tela do produto conseguiria distinguir "não há represa" de "não
+ * consegui olhar", e as duas frases levam a decisões opostas.
+ */
 async function formulariosDaPagina(pageId: string, pageToken: string, versao: string) {
   const formularios: FormularioDaMeta[] = [];
   let after: string | null = null;
   for (let volta = 0; volta < 20; volta += 1) {
     const url = `${GRAPH}/${versao}/${encodeURIComponent(pageId)}/leadgen_forms?fields=id,name,leads_count&limit=50${after ? `&after=${encodeURIComponent(after)}` : ""}`;
     const resposta = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(20_000), headers: { Authorization: `Bearer ${pageToken}` } });
-    const corpo = await resposta.json().catch(() => ({})) as { data?: FormularioDaMeta[]; paging?: { cursors?: { after?: string } } };
+    const corpo = await resposta.json().catch(() => ({})) as {
+      data?: FormularioDaMeta[];
+      paging?: { cursors?: { after?: string } };
+      error?: { message?: string };
+    };
+    if (!resposta.ok || corpo.error) {
+      return { formularios, erro: corpo.error?.message ?? `HTTP ${resposta.status}` };
+    }
     formularios.push(...(corpo.data ?? []));
     after = corpo.paging?.cursors?.after ?? null;
     if (!after || !(corpo.data ?? []).length) break;
   }
-  return formularios;
+  return { formularios, erro: null as string | null };
 }
 
 function podeLiberar(papel: string) {
@@ -77,9 +95,27 @@ export async function GET(request: NextRequest) {
 
   const systemToken = process.env.META_LEAD_ACCESS_TOKEN;
   const versao = process.env.META_GRAPH_API_VERSION || "v23.0";
-  const pageId = String(process.env.META_PAGE_ID || "").trim();
   const organizationId = access.access.organization.id;
   const admin = getSupabaseAdmin();
+
+  /**
+   * ── A PÁGINA VEM DO BANCO ─────────────────────────────────────────────────
+   *
+   * Antes: `process.env.META_PAGE_ID`. Medido em 03/08/2026, esta variável NÃO
+   * existe no ambiente do servidor — e sem ela a rota respondia 200 OK com
+   * `totalRepresado: 0` enquanto 103 leads pagas esperavam na Meta. O diretor
+   * via zero, sem erro e sem nada para clicar.
+   *
+   * O ID estava em `meta_lead_sources.page_id`, na mesma tabela lida logo
+   * abaixo. A configuração da operação é a fonte da verdade; a variável de
+   * ambiente ficou como compatibilidade, na ordem que `resolverPageId` impõe.
+   */
+  const paginaRegistrada = await paginaDaOrganizacao(admin, organizationId);
+  const vereditoDaPagina = resolverPageId({
+    daFonteSalva: paginaRegistrada.pageId,
+    doAmbiente: process.env.META_PAGE_ID,
+  });
+  const pageId = vereditoDaPagina.ok ? vereditoDaPagina.valor : "";
 
   const fontes = await admin
     .from("meta_lead_sources")
@@ -102,10 +138,22 @@ export async function GET(request: NextRequest) {
     if (chave) jaEntraram.set(chave, (jaEntraram.get(chave) ?? 0) + 1);
   }
 
-  if (!systemToken || !pageId) {
+  // Duas causas independentes, duas frases. "TOKEN ou PAGE_ID ausente" obrigava
+  // quem lia a testar as duas hipóteses — e a segunda, hoje, tem conserto pela
+  // própria tela: basta registrar um formulário da Página.
+  if (!systemToken) {
     return apiSuccess({
       disponivel: false,
-      motivo: "META_LEAD_ACCESS_TOKEN ou META_PAGE_ID ausente — sem eles não dá para saber o que está represado na Meta.",
+      motivo: "META_LEAD_ACCESS_TOKEN ausente no servidor — sem o token não dá para consultar a Meta.",
+      represadas: [], totalRepresado: 0,
+    }, access.meta, { headers: rate.headers });
+  }
+  if (!pageId) {
+    return apiSuccess({
+      disponivel: false,
+      motivo: paginaRegistrada.pageId
+        ? `A Página registrada (${paginaRegistrada.pageId}) foi recusada: ${vereditoDaPagina.ok ? "" : vereditoDaPagina.mensagem}`
+        : "Nenhuma Página Meta registrada nesta organização. Cadastre os formulários de lead em Marketing → Formulários da Meta.",
       represadas: [], totalRepresado: 0,
     }, access.meta, { headers: rate.headers });
   }
@@ -114,7 +162,12 @@ export async function GET(request: NextRequest) {
   if (!pageToken) {
     return apiError("META_PAGE_TOKEN_INDISPONIVEL", "Não foi possível derivar o token da página.", access.meta, { status: 502, headers: rate.headers });
   }
-  const formularios = await formulariosDaPagina(pageId, pageToken, versao);
+  const { formularios, erro: erroDosFormularios } = await formulariosDaPagina(pageId, pageToken, versao);
+  if (erroDosFormularios) {
+    // 502, não 200 com zero: "não consegui olhar" e "não há represa" levam a
+    // decisões opostas, e a tela precisa poder dizer qual dos dois aconteceu.
+    return apiError("META_FORMULARIOS_INDISPONIVEIS", `A Meta recusou a listagem de formulários da Página ${pageId}: ${erroDosFormularios}`, access.meta, { status: 502, headers: rate.headers });
+  }
 
   const represadas = formularios
     .map((f) => {

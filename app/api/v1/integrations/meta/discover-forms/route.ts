@@ -3,6 +3,7 @@ import { apiError, apiSuccess, structuredApiLog } from "@/lib/api/core";
 import { enforceRateLimit, requireAccessContext } from "@/lib/api/security";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { resolverPageId, validarFormId } from "@/lib/meta/identificadores";
+import { paginaDaOrganizacao } from "@/lib/meta/pagina-da-organizacao";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -102,8 +103,18 @@ export async function POST(request: NextRequest) {
    * cópias da mesma regra divergem, e este repositório já pagou por isso em
    * `score`/`score_ia` e no recorte de status declarado nove vezes.
    */
+  const organizationId = access.access.organization.id;
+  const admin = getSupabaseAdmin();
+
+  // A Página já registrada entra na ordem como segunda opção. Sem isto o ramo
+  // "fonte salva" de `resolverPageId` existiria só nos testes — e quem abrisse
+  // a tela sem digitar nada cairia direto em META_PAGE_ID, que não existe no
+  // servidor. É o mesmo defeito de held-leads, um andar acima.
+  const paginaRegistrada = await paginaDaOrganizacao(admin, organizationId);
+
   const vereditoDaPagina = resolverPageId({
     doPedido: body.pageId,
+    daFonteSalva: paginaRegistrada.pageId,
     doAmbiente: process.env.META_PAGE_ID,
   });
   if (!vereditoDaPagina.ok) {
@@ -120,10 +131,6 @@ export async function POST(request: NextRequest) {
       status: 400,
       headers: rate.headers,
     });
-  }
-
-  if (!pageId) {
-    return apiError("META_PAGE_AUSENTE", "Informe pageId ou configure META_PAGE_ID.", access.meta, { status: 400, headers: rate.headers });
   }
 
   const { token: pageToken, erro: erroDeToken } = await paginaAccessToken(pageId, systemToken, versao);
@@ -151,8 +158,6 @@ export async function POST(request: NextRequest) {
     if (!after || !(corpo.data ?? []).length) break;
   }
 
-  const organizationId = access.access.organization.id;
-  const admin = getSupabaseAdmin();
   const registradas = await admin
     .from("meta_lead_sources")
     .select("id,page_id,form_id,name,active")

@@ -16,7 +16,6 @@ import {
   EXPLICACAO_DO_GERAL,
   FILTRO_DE_CHAMADA_REAL,
   QUEM_RESOLVE,
-  avaliarProntidaoParaLigar,
   medirContagem,
   medirRetornoDeFuncao,
   medirVariaveisDeAmbiente,

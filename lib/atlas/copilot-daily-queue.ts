@@ -5,7 +5,7 @@ import {
   DEFAULT_PIPELINE_STAGES,
   type PipelineStageKey,
 } from "@/lib/atlas/pipeline-stages";
-import { HOT_SCORE_THRESHOLD, WARM_SCORE_THRESHOLD } from "./temperatura-do-lead";
+import { HOT_SCORE_THRESHOLD } from "./temperatura-do-lead";
 
 export type DailyQueueSeverity = "critical" | "attention" | "opportunity";
 export type DailyQueueKind = "overdue-task" | "due-today-task" | "unscheduled-task" | "lead-opportunity";
