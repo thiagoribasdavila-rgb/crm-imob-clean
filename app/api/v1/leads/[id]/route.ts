@@ -303,6 +303,52 @@ export async function GET(request: Request, context: RouteContext) {
           .maybeSingle()
       : { data: null, error: null };
 
+    /**
+     * ── A CONVERSA DO WHATSAPP, QUE A FICHA DECLARAVA COMO ZERO ───────────
+     *
+     * `conversations: []` e `communications: {conversations: 0, messages: 0…}`
+     * estavam CRAVADOS. A captura existe e é boa: `/api/v1/whatsapp/bridge/inbound`
+     * cria a conversa, liga à lead, grava a mensagem e ainda fecha o relógio de
+     * primeiro contato nos dois sentidos — corretor respondendo OU lead falando
+     * primeiro.
+     *
+     * Nada disso chegava à ficha. Medido em 03/08/2026: 0 conversas e 0
+     * mensagens, porque a ponte não está no ar — mas no dia em que subir, o
+     * corretor abriria a lead e veria "nenhuma conversa" sobre alguém com quem
+     * acabou de falar. Zero cravado sobrevive à chegada do dado.
+     */
+    const [conversasDaLead, mensagensDaLead] = await Promise.all([
+      admin
+        .from("conversations")
+        .select("id,channel,status,last_message_at,unread_count")
+        .eq("lead_id", id)
+        .eq("organization_id", identity.organizationId)
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(20),
+      admin
+        .from("messages")
+        .select("id,direction,body,created_at,conversation_id")
+        .eq("lead_id", id)
+        .eq("organization_id", identity.organizationId)
+        .order("created_at", { ascending: false })
+        .limit(200),
+    ]);
+
+    // Relação ausente (banco sem a migração) não é falha de medição; erro de
+    // leitura é. A ficha precisa distinguir "não conversou" de "não consegui ver".
+    const conversaMensuravel =
+      !(conversasDaLead.error && !isMissingRelation(conversasDaLead.error))
+      && !(mensagensDaLead.error && !isMissingRelation(mensagensDaLead.error));
+    if (!conversaMensuravel) {
+      logger.warn("lead.conversas.leitura_falhou", {
+        leadId: id,
+        conversas: conversasDaLead.error?.code, mensagens: mensagensDaLead.error?.code,
+      });
+    }
+    const conversas = conversasDaLead.data ?? [];
+    const mensagens = mensagensDaLead.data ?? [];
+    const entrada = mensagens.filter((m) => String(m.direction) === "inbound").length;
+
     const origemDaLead = montarOrigemDaLead({
       fonteDaLead: lead.source ? String(lead.source) : null,
       campanha: campanhaDaLead.data ?? null,
@@ -423,7 +469,9 @@ export async function GET(request: Request, context: RouteContext) {
       // proposta". Zero em cima de ausência é o erro que esta rota já cometia.
       proposalsMensuraveis: propostasMensuraveis,
       unifiedProfile: {
-        conversations: [],
+        conversations: conversas,
+        /** `false` = a leitura FALHOU. Lista vazia com isto `true` é ausência de verdade. */
+        conversationsMensuraveis: conversaMensuravel,
         tasks,
         campaignEvents: eventosDeCampanha.data ?? [],
         /** `false` = a leitura FALHOU. Lista vazia com isto `true` é ausência de verdade. */
@@ -442,7 +490,19 @@ export async function GET(request: Request, context: RouteContext) {
         // "[Cia360] Inside Smart", somando R$ 4.122 de verba.
         campaign: origemDaLead.campanha,
         origemCompleta: origemDaLead,
-        communications: { conversations: 0, messages: 0, inbound: 0, outbound: 0, unread: 0, channels: [], lastMessageAt: null },
+        communications: {
+          conversations: conversas.length,
+          messages: mensagens.length,
+          inbound: entrada,
+          outbound: mensagens.length - entrada,
+          unread: conversas.reduce((soma, c) => soma + (Number(c.unread_count) || 0), 0),
+          // Canal importa: WhatsApp do corretor e Cloud API são caminhos
+          // diferentes, e a ficha precisa dizer por onde a conversa aconteceu.
+          channels: [...new Set(conversas.map((c) => String(c.channel ?? "")).filter(Boolean))],
+          lastMessageAt: mensagens[0]?.created_at ?? conversas[0]?.last_message_at ?? null,
+          /** Zero com isto `false` é cegueira, não silêncio. */
+          medido: conversaMensuravel,
+        },
         // A contagem também era zero cravado — e é ela que a tela mostra no
         // resumo de origem, ao lado da lista.
         origin: { source: lead.source || "Não informada", createdAt: lead.created_at || null, campaignEvents: (eventosDeCampanha.data ?? []).length, historicalMemories: lead.import_batch_id ? 1 : 0 },
