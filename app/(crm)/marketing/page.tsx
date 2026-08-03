@@ -8,6 +8,7 @@ import { AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { CreativeFunnelPanel } from "@/components/marketing/creative-funnel-panel";
 import { CampaignIntakePanel } from "@/components/marketing/campaign-intake-panel";
 import { reconciliaInvestimento } from "@/lib/marketing/reconciliacao-de-investimento";
+import { validarPageId, validarFormId } from "@/lib/meta/identificadores";
 
 /*
  * CC-6 · Hub de marketing vivo — menos ruído, mais informação por pixel.
@@ -368,8 +369,40 @@ export default function MarketingPage() {
   }
 
   const [erroDaDescoberta, setErroDaDescoberta] = useState<string | null>(null);
+  /* Os campos da tela “Conectar Página/Formulário”. `todosOsFormularios` nasce
+     VERDADEIRO: uma Página com vários formulários ativos e uma origem presa a
+     um deles perde as leads dos outros em silêncio — elas chegam, não casam a
+     fonte e vão parar em meta_leads_sem_destino esperando alguém notar. */
+  const [paginaMeta, setPaginaMeta] = useState("");
+  const [formularioMeta, setFormularioMeta] = useState("");
+  const [nomeDaOrigem, setNomeDaOrigem] = useState("");
+  const [todosOsFormularios, setTodosOsFormularios] = useState(true);
 
   async function descobrirFormularios(aplicar: boolean) {
+    /**
+     * ── O CONTRATO QUE FALTAVA ────────────────────────────────────────────
+     *
+     * Esta função mandava apenas `{ aplicar }`. A rota, sem `pageId`, caía em
+     * `META_PAGE_ID` — que NÃO existe no ambiente do servidor (medido: só o
+     * .env.local desta máquina tem). Resultado em produção: 400
+     * META_PAGE_AUSENTE, sempre, e o campo de Página na tela era decorativo.
+     *
+     * A validação acontece AQUI antes de sair, e de novo no servidor. Não é
+     * redundância: a tela recusa para dar resposta imediata a quem digitou; o
+     * servidor recusa porque não pode confiar em quem chama. As duas leem a
+     * MESMA regra de lib/meta/identificadores.ts — duas cópias divergiriam.
+     */
+    const veredito = validarPageId(paginaMeta);
+    if (!veredito.ok) {
+      setErroDaDescoberta(veredito.mensagem);
+      return; // os valores digitados ficam na tela — refazer o preenchimento pune quem errou uma vez
+    }
+    const vereditoDoFormulario = validarFormId(formularioMeta, todosOsFormularios);
+    if (!vereditoDoFormulario.ok) {
+      setErroDaDescoberta(vereditoDoFormulario.mensagem);
+      return;
+    }
+
     setDescobrindo(true);
     setErroDaDescoberta(null);
     try {
@@ -377,7 +410,15 @@ export default function MarketingPage() {
       const resposta = await fetch("/api/v1/integrations/meta/discover-forms", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessao.session?.access_token || ""}` },
-        body: JSON.stringify({ aplicar }),
+        body: JSON.stringify({
+          pageId: veredito.valor,
+          // `null` e não string vazia: o banco distingue "sem formulário" de
+          // "formulário chamado string vazia", e a coluna é nullable de propósito.
+          formId: todosOsFormularios ? null : vereditoDoFormulario.valor,
+          sourceName: nomeDaOrigem.trim() || null,
+          allForms: todosOsFormularios,
+          aplicar,
+        }),
       });
       const corpo = await resposta.json();
       if (!resposta.ok) throw new Error(corpo?.error?.message || "Não foi possível ler os formulários da Meta.");
@@ -1059,6 +1100,44 @@ export default function MarketingPage() {
           porque campanha sem formulário registrado não gera lead nenhuma — e o
           erro é silencioso: o webhook recebe e descarta. */}
       <section aria-label="Formulários de lead da Meta" hidden={foraDaEtapa("entrada")} className="cc6-panel cc6-reveal overflow-hidden">
+        {/* ── CONECTAR PÁGINA / FORMULÁRIO ─────────────────────────────────
+            Estes campos NÃO existiam. A tela mandava só `{ aplicar }` e a rota
+            caía em META_PAGE_ID — que não está no ambiente do servidor. Em
+            produção isso era 400 META_PAGE_AUSENTE, sempre, e o caminho da lead
+            nunca podia ser configurado pelo produto.
+
+            O ID da Página não é o da conta de anúncios. Colar um no lugar do
+            outro faz a Graph responder erro de PERMISSÃO, e o diagnóstico erra
+            de camada — `validarPageId` recusa aqui e diz o que o número é. */}
+        <div className="grid gap-3 px-5 pt-4 md:grid-cols-2 xl:grid-cols-4">
+          <label className="flex flex-col gap-1">
+            <span className="cc6-eyebrow text-micro!">Nome da origem</span>
+            <input value={nomeDaOrigem} onChange={(e) => setNomeDaOrigem(e.target.value)}
+              placeholder="Inside · Senna" className="min-h-11 rounded-lg px-3 text-corpo" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="cc6-eyebrow text-micro!">ID da Página Meta</span>
+            <input value={paginaMeta} onChange={(e) => setPaginaMeta(e.target.value)}
+              inputMode="numeric" placeholder="só dígitos, sem act_" aria-describedby="ajuda-pagina-meta"
+              className="min-h-11 rounded-lg px-3 text-corpo" />
+            <span id="ajuda-pagina-meta" className="text-micro text-[var(--atlas-texto-fraco)]">
+              É a Página que publica o anúncio — não a conta de anúncios.
+            </span>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="cc6-eyebrow text-micro!">ID do formulário</span>
+            <input value={formularioMeta} onChange={(e) => setFormularioMeta(e.target.value)}
+              inputMode="numeric" disabled={todosOsFormularios}
+              placeholder={todosOsFormularios ? "todos os formulários" : "só dígitos"}
+              className="min-h-11 rounded-lg px-3 text-corpo disabled:opacity-40" />
+          </label>
+          <label className="flex items-center gap-2 self-end pb-1">
+            <input type="checkbox" checked={todosOsFormularios}
+              onChange={(e) => setTodosOsFormularios(e.target.checked)} className="size-4" />
+            <span className="text-corpo text-[var(--atlas-texto-medio)]">Todos os formulários desta Página</span>
+          </label>
+        </div>
+
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2 px-5 pb-3 pt-4">
           <p className="cc6-eyebrow">Formulários da Meta</p>
           <div className="ml-auto flex flex-wrap gap-2">
