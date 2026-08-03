@@ -191,6 +191,11 @@
         "agente": "meta-campaign-executor",
         "nivel": 4,
         "porque": "É o único que age fora: cria campanha na Meta e gasta dinheiro do dono. Exige aprovação registrada, e já nasce com dry-run em campaign-executor.ts."
+      },
+      {
+        "agente": "pesquisa-de-regiao",
+        "nivel": 3,
+        "porque": "Pesquisa a região na web e grava fonte em project_region_sources SEMPRE como 'pending' — escrita interna e reversível, porque a RPC review_project_region_source deixa uma pessoa rejeitá-la. Nível 3 e não 4: nada sai para cliente nem para a Meta. Nível 3 e não 2 porque ele de fato ESCREVE no banco, e declarar 2 faria a própria coleta ser recusada pelo catálogo — que é o comportamento certo se um dia ela deixar de ser reversível."
       }
     ]
   },

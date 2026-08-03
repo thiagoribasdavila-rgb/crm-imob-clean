@@ -17,7 +17,7 @@ const briefingRoute = readFileSync(resolve(root, "app/api/ai/briefing/route.ts")
 const messageDraft = readFileSync(resolve(root, "app/api/v1/leads/[id]/message-draft/route.ts"), "utf8");
 const messageSafety = readFileSync(resolve(root, "lib/ai/real-estate-message.ts"), "utf8");
 const matching = readFileSync(resolve(root, "lib/atlas/matching.ts"), "utf8");
-const matchingStudio = readFileSync(resolve(root, "app/(crm)/properties/mtching/page.tsx"), "utf8");
+const matchingStudio = readFileSync(resolve(root, "app/(crm)/properties/matching/page.tsx"), "utf8");
 const presentationRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/presentation-draft/route.ts"), "utf8");
 const presentationSafety = readFileSync(resolve(root, "lib/ai/property-presentation.ts"), "utf8");
 const leadIntelligenceRoute = readFileSync(resolve(root, "app/api/v1/leads/[id]/route.ts"), "utf8");
@@ -106,6 +106,8 @@ const leadExportRoute = readFileSync(resolve(root, "app/api/v1/crm/leads/export/
 const sessionPanel = readFileSync(resolve(root, "app/(crm)/settings/profile/SessionSecurityPanel.tsx"), "utf8");
 const costConversionMigration = readFileSync(resolve(root, "supabase/migrations/20260716223608_ai_cost_and_meta_conversions.sql"), "utf8");
 const metaConversions = readFileSync(resolve(root, "lib/meta/conversions.ts"), "utf8");
+const conversionModeMigration = readFileSync(resolve(root, "supabase/migrations/20260802230000_modo_de_producao_aceito_no_capi.sql"), "utf8");
+const conversionMode = readFileSync(resolve(root, "lib/meta/modo-de-envio.ts"), "utf8");
 const metaSettings = readFileSync(resolve(root, "app/api/v1/integrations/meta/route.ts"), "utf8");
 const metaSettingsPage = readFileSync(resolve(root, "app/(crm)/integrations/meta/page.tsx"), "utf8");
 const resilientFetch = readFileSync(resolve(root, "lib/http/resilient-fetch.ts"), "utf8");
@@ -362,7 +364,14 @@ const checks = [
   ["conversão Meta é idempotente", costConversionMigration.includes("unique (organization_id, event_id)")],
   ["conversão exige consentimento explícito", metaConversions.includes("dataSharingConsent !== true") && outboxWorker.includes("consentimento não registrado")],
   ["consentimento é isolado por origem", costConversionMigration.includes("conversion_sharing_enabled") && metaSettings.includes("consentBasis")],
-  ["produção Meta permanece bloqueada", costConversionMigration.includes("check (mode = 'test')") && metaSettings.includes('mode: "test"') && metaSettingsPage.includes("Modo produção bloqueado")],
+  // Antes: "produção Meta permanece bloqueada", provada por `check (mode =
+  // 'test')` na migration. A trava estava do lado errado: `conversion_go_live`
+  // — rota de diretoria que existe justamente para promover — terminava em erro
+  // de constraint, e a fila parava de ser alimentada em silêncio ao sair do
+  // teste. O que precisa continuar verdadeiro não é "produção é impossível", é
+  // "produção só acontece por gesto deliberado de quem decide".
+  ["ir para produção é gesto deliberado da diretoria", conversionModeMigration.includes("check (mode in ('test', 'live'))") && metaSettings.includes('mode: "test", enabled: true') && metaSettings.includes('body.action === "conversion_go_live"') && metaSettings.includes("isDirector") && metaSettings.includes('mode: "live"')],
+  ["modo desconhecido cai para teste, nunca para produção", conversionMode.includes('valor === "live" ? "live" : "test"') && metaConversions.includes("A FILA NÃO OLHA O MODO")],
   ["conversão envia identificadores protegidos", outboxWorker.includes("hashMetaValue(lead.email)") && outboxWorker.includes("hashMetaValue(phone)")],
   ["worker entrega conversões de forma resiliente", outboxWorker.includes('event.topic === "meta.conversion.send"') && outboxWorker.includes('status: terminal ? "dead_letter" : "failed"')],
   ["Andromeda recebe identificador externo protegido", outboxWorker.includes("external_id") && outboxWorker.includes("hashMetaValue(`atlas:")],

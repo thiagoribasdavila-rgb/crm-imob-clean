@@ -27,6 +27,24 @@ export type PortfolioDeveloper = {
   products: PortfolioProduct[];
 };
 
+/**
+ * Chave de geolocalização da Meta para São Paulo/SP.
+ *
+ * MEDIDA, não lembrada — GET /search?type=adgeolocation&location_types=["city"]
+ * &q=São Paulo&country_code=BR (leitura, 02/08/2026) devolveu, em primeiro
+ * lugar: { "key": "269969", "name": "São Paulo", "type": "city",
+ * "region": "São Paulo (state)" }.
+ *
+ * A mesma leitura mostra por que o nome não serve de chave e por que pegar o
+ * primeiro resultado é perigoso: a lista traz Campinas e Osasco logo abaixo, e
+ * bairros ("Morumbi") misturados com cidades.
+ *
+ * Uma constante nomeada, e não o literal repetido três vezes: quando o dono
+ * abrir um produto em outra praça, o compilador mostra exatamente onde a chave
+ * nova precisa entrar.
+ */
+const SAO_PAULO = "269969";
+
 /** O rol definido pelo dono (2026-07): SPIN + Shpaisman, Paladin, Kallas, Teixeira Duarte. */
 export const DEVELOPER_PORTFOLIO: PortfolioDeveloper[] = [
   {
@@ -41,6 +59,7 @@ export const DEVELOPER_PORTFOLIO: PortfolioDeveloper[] = [
           developer: "SPIN Empreendimentos",
           neighborhood: "Perdizes",
           city: "São Paulo",
+          cityKey: SAO_PAULO,
           metroDistanceM: 700,
           areaM2: "27 a 29 m²",
           incomeMinSm: 6,
@@ -71,6 +90,7 @@ export const DEVELOPER_PORTFOLIO: PortfolioDeveloper[] = [
           developer: "Kallas Incorporações",
           neighborhood: "Paraíso",
           city: "São Paulo",
+          cityKey: SAO_PAULO,
           metroDistanceM: 800,
           areaM2: "24 e 29 m²",
           priceFrom: 399000,
@@ -103,6 +123,7 @@ export const DEVELOPER_PORTFOLIO: PortfolioDeveloper[] = [
           developer: "Construtora Shpaisman",
           neighborhood: "Aclimação",
           city: "São Paulo",
+          cityKey: SAO_PAULO,
           areaM2: "24 m² a 61 m²",
           delivered: false,
           differentials: [

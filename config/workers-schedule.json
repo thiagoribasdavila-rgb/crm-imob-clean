@@ -283,6 +283,19 @@
         "condicional": true,
         "inferida": true
       }
+    },
+    {
+      "nome": "carta-morta",
+      "rota": "/api/v2/integrations/carta-morta/vigia",
+      "cadencia": "47 * * * *",
+      "porque": "A fila morta encheu EM SILÊNCIO: medido em 02/08/2026, 12 linhas, zero resolvidas, a mais antiga de 31/07 01:50 — três dias sem ninguém saber. O vigia acende em duas entradas (a fila cresceu desde a última passagem, ou existe entrega morta acima de 24 h), porque um alarme só de crescimento deixaria as doze de hoje caladas para sempre. De hora em hora basta: carta morta só nasce depois de 5 tentativas do worker do outbox, então nada aqui é transitório. O minuto 47 evita o minuto 0 e o minuto 17 já ocupados.",
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "atlas_worker_runs",
+        "coluna": "concluido_em",
+        "condicional": false,
+        "inferida": false
+      }
     }
   ],
   "sobDemanda": [

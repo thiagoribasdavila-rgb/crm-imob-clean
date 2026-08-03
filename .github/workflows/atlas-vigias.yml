@@ -60,6 +60,7 @@ on:
     - cron: '*/5 * * * *'    # curto: SLA de primeiro contato, outbox, lembretes
     - cron: '*/10 * * * *'   # reservas de lead
     - cron: '17 * * * *'     # leads da Meta sem destino
+    - cron: '47 * * * *'     # carta morta: cresceu ou envelheceu
     - cron: '17 */4 * * *'   # feedback de conversão (CAPI)
     - cron: '10 3 * * *'     # recorrência de tarefas        — 00h10 em São Paulo
     - cron: '0 6 * * *'      # vendas noturnas               — 03h00 em São Paulo
@@ -104,6 +105,7 @@ jobs:
             '*/5 * * * *')  ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process" ;;
             '*/10 * * * *') ROTAS="distribution/reservations/process" ;;
             '17 * * * *')   ROTAS="marketing/meta-sem-destino/process" ;;
+            '47 * * * *')   ROTAS="integrations/carta-morta/vigia" ;;
             '17 */4 * * *') ROTAS="marketing/capi-feedback/process" ;;
             '10 3 * * *')   ROTAS="tasks/recurrences/process" ;;
             '0 6 * * *')    ROTAS="ai/nightly-sales" ;;
