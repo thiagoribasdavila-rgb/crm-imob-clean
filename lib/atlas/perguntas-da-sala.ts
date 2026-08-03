@@ -144,31 +144,42 @@ export const INTENCOES: readonly Intencao[] = [
     id: "estoque",
     titulo: "Estoque disponível",
     /**
-     * ── ESTA É A ÚNICA INTENÇÃO QUE NÃO AFIRMA UM NÚMERO, E É DE PROPÓSITO ────
+     * ── A FONTE É `properties`. DECIDIDO EM 03/08/2026, SOB REFUTAÇÃO ─────────
      *
-     * MEDIDO no banco vivo em 03/08/2026: existem TRÊS tabelas disputando o
-     * significado de "unidade", e elas discordam.
+     * Havia quatro candidatas discordando. O critério aplicado não foi "a que
+     * tem mais linhas" nem "a que o código mais cita" — foi: quem tem escritor
+     * vivo, leitor vivo e FK correta. Três céticos independentes tentaram
+     * derrubar a conclusão por lentes distintas (integridade referencial, quem
+     * escreve hoje, o que o usuário já vê). Nenhum conseguiu.
      *
-     *   properties        110 linhas, 104 disponíveis   R$ 41.822.186
-     *   units              30 linhas                    R$  9.205.000
-     *   inventory_units     0 linhas                    —  (o fluxo de
-     *                                                      importação trata
-     *                                                      esta como canônica)
+     *   properties       ESCRITOR: 1 de 131 funções do banco
+     *                              (`upsert_canonical_inventory_unit`, chamada
+     *                              pela edição manual e pela importação)
+     *                    LEITOR:   19 arquivos sob app/
+     *                    FK:       development_id → developments(id), e é ALVO
+     *                              de 5 FKs (reservas, simulações,
+     *                              oportunidades, importação, eventos)
+     *   units            0 escritores, 0 leitores, nenhuma FK além de
+     *                    organizations — tem as colunas development_id,
+     *                    property_id e project_id, e as duas últimas são NULAS
+     *                    nas 30 linhas
+     *   inventory_units  0 linhas, e sua FK aponta para `crm_projects`, que é a
+     *                    OUTRA tabela de empreendimento — nenhum id fecharia
+     *                    nem se houvesse dado
+     *   developments.total_units  não é estoque: é número digitado no cadastro,
+     *                    declaração de intenção de lançamento
      *
-     * E `developments.total_units` declara um quarto número: 693 unidades
-     * somadas (Tiê 321, Arvo 262, Inside Perdizes 80, Spin Mood 30).
+     * ── O QUE A DECISÃO REVELOU, E É PIOR QUE A DÚVIDA ────────────────────────
      *
-     * Escolher uma delas aqui produziria um cartão confiante e provavelmente
-     * errado, respondendo "onde o dinheiro está" — a pergunta mais cara que a
-     * diretoria faz — com a tabela que por acaso o programador conhecia. Este
-     * repositório já pagou por isso: duas verdades sobre o mesmo fato, cada
-     * leitor com a sua, e ninguém sabendo qual olhar.
+     * 583 das 693 unidades declaradas NÃO EXISTEM como linha em lugar nenhum.
+     * Arvo declara 262 e tem 0; Tiê declara 321 e tem 0. Só Inside Perdizes (80)
+     * e Spin Mood (30) foram cadastrados de fato.
      *
-     * Enquanto a fonte não for decidida, o cartão leva a pessoa ao lugar onde o
-     * dado mora e diz que há divergência. Responder "não sei ainda, e é por
-     * isto" é mais útil do que um total que não se sustenta.
+     * Por isso o cartão diz as DUAS coisas: o que existe cadastrado e o que foi
+     * declarado sem cadastro. Mostrar só o primeiro esconde 583 unidades; só o
+     * segundo promete estoque que ninguém consegue vender.
      */
-    responde: "onde as unidades estão cadastradas hoje — há três fontes divergentes, e a boa ainda não foi decidida",
+    responde: "quantas unidades existem cadastradas e quanto somam — e quantas foram declaradas no empreendimento sem nunca ter sido cadastradas",
     termos: [["estoque", "unidade", "unidades", "vgv", "disponivel", "disponível", "inventario", "inventário"]],
     acoes: [{ rotulo: "Ver empreendimentos", href: "/developments" }],
   },
