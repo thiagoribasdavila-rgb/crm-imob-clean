@@ -83,7 +83,7 @@ export function ConversaLista({ conversas, truncado, teto }: { conversas: Conver
                 Conversa aberta sem nenhuma mensagem gravada.
               </p>
             )}
-            <p className="mt-1 text-[11px] leading-5 text-[var(--atlas-text-tertiary)]">
+            <p className="mt-1 text-rotulo leading-5 text-[var(--atlas-text-tertiary)]">
               {conversa.donoNome ? `Responsável: ${conversa.donoNome}` : "Sem responsável definido"} · situação {conversa.status}
             </p>
           </div>
@@ -101,7 +101,7 @@ export function ConversaLista({ conversas, truncado, teto }: { conversas: Conver
         </li>
       ))}
       {truncado ? (
-        <li className="border-t border-[var(--atlas-border)] pt-3 text-[11px] leading-5 text-[var(--atlas-text-tertiary)]">
+        <li className="border-t border-[var(--atlas-border)] pt-3 text-rotulo leading-5 text-[var(--atlas-text-tertiary)]">
           Mostrando as {teto} conversas mais recentes do seu escopo. Há mais além deste recorte.
         </li>
       ) : null}

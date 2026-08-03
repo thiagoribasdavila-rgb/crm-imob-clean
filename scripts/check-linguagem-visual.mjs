@@ -37,12 +37,23 @@ const CSS = "app/globals.css";
    Medidas em 01/08/2026, depois de 757 conversões. Só podem CAIR.
    Quem baixar o número, baixe também a catraca — é o que transforma a
    limpeza em progresso irreversível. */
-// 52 → 27 em 03/08/2026. A queda veio de converter os 18 `text-[13px]` da tela
-// de templates do WhatsApp para `text-corpo` — conversão 1:1, porque
-// `--text-corpo` É 13px (app/globals.css:7356). A catraca desce no MESMO commit
-// que produz o ganho: folga guardada não é margem de segurança, é permissão
-// silenciosa para regredir até o teto velho sem nenhum portão reclamar.
-const TETO_ARBITRARIOS_TSX = 27;
+/* 52 → 27 → 16, em 03/08/2026, nos dois passos abaixo. Só conversões EXATAS:
+   `--text-corpo` É 13px e `--text-rotulo` É 11px (globals.css:7356-7357), então
+   nenhum pixel mudou na tela.
+
+     52 → 27  os 18 `text-[13px]` da tela de templates do WhatsApp
+     27 → 16  os 13px e 11px de /conversations, conversa-estado-do-canal
+              e conversa-lista
+
+   Os 16 que RESTAM não são esquecimento: 12px×11, 15px×2, 32px e 40px não têm
+   degrau equivalente. Convertê-los MUDA tamanho na tela — é decisão de desenho,
+   não conversão mecânica, e por isso ficam medidos e visíveis em vez de
+   arredondados no escuro.
+
+   A catraca desce no MESMO commit que produz o ganho. Folga guardada não é
+   margem de segurança: é permissão silenciosa para regredir até o teto velho
+   sem nenhum portão reclamar. */
+const TETO_ARBITRARIOS_TSX = 16;
 const TETO_FONT_SIZE_CSS = 355;
 
 /** Os degraus, nomeados pelo PAPEL. Nome de tamanho convidaria a inventar o 11.5 de novo. */

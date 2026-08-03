@@ -100,14 +100,14 @@ export default function ConversationsPage() {
       {estado.fase === "erro" ? (
         <section className="cc6-panel p-4 sm:p-5" role="alert">
           <h2 className="text-sm font-semibold tracking-tight text-[var(--atlas-text-primary)]">Não foi possível ler as conversas</h2>
-          <p className="mt-1.5 max-w-[68ch] text-[13px] leading-6 text-[var(--atlas-text-secondary)]">{estado.mensagem}</p>
+          <p className="mt-1.5 max-w-[68ch] text-corpo leading-6 text-[var(--atlas-text-secondary)]">{estado.mensagem}</p>
           <p className="mt-1.5 text-xs leading-5 text-[var(--atlas-text-tertiary)]">
             Isto <strong>não</strong> quer dizer que não há conversas — quer dizer que não deu para olhar agora.
           </p>
           <button
             type="button"
             onClick={() => void carregar()}
-            className="mt-3 inline-flex min-h-[44px] items-center rounded-lg border border-[var(--atlas-border)] px-4 text-[13px] font-semibold text-[var(--atlas-text-primary)] transition-colors hover:border-[var(--atlas-border-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+            className="mt-3 inline-flex min-h-[44px] items-center rounded-lg border border-[var(--atlas-border)] px-4 text-corpo font-semibold text-[var(--atlas-text-primary)] transition-colors hover:border-[var(--atlas-border-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
           >
             Tentar ler de novo
           </button>
@@ -136,7 +136,7 @@ export default function ConversationsPage() {
 
             <div className="mt-3">
               {estado.dados.conversas.length === 0 ? (
-                <p className="max-w-[68ch] text-[13px] leading-6 text-[var(--atlas-text-secondary)]">
+                <p className="max-w-[68ch] text-corpo leading-6 text-[var(--atlas-text-secondary)]">
                   {estado.dados.diagnostico.leituraDoZero === "canal_desligado"
                     ? "Nada para listar, e o motivo está no painel acima: nenhuma mensagem teria como chegar até aqui. Esta lista vazia não mede a operação."
                     : "Nenhuma conversa no seu escopo ainda. O canal recebe — então este vazio é sobre quem ainda não foi procurado, e não sobre a instalação."}

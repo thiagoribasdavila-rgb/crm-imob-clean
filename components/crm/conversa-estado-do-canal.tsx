@@ -34,9 +34,9 @@ function Linha({ ligado, titulo, detalhe }: { ligado: boolean; titulo: string; d
         className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${ligado ? "bg-[var(--atlas-success)]" : "bg-[var(--atlas-border-strong)]"}`}
       />
       <span className="min-w-0">
-        <span className="text-[13px] font-medium text-[var(--atlas-text-primary)]">{titulo}</span>
+        <span className="text-corpo font-medium text-[var(--atlas-text-primary)]">{titulo}</span>
         <span className="sr-only">{ligado ? " — ligado." : " — desligado."}</span>
-        <span className={`ml-2 text-[11px] font-semibold uppercase tracking-wide ${ligado ? "cc6-ok" : "text-[var(--atlas-text-tertiary)]"}`}>
+        <span className={`ml-2 text-rotulo font-semibold uppercase tracking-wide ${ligado ? "cc6-ok" : "text-[var(--atlas-text-tertiary)]"}`}>
           {ligado ? "ligado" : "desligado"}
         </span>
         <span className="mt-0.5 block text-xs leading-5 text-[var(--atlas-text-secondary)]">{detalhe}</span>
@@ -70,7 +70,7 @@ export function ConversaEstadoDoCanal({
             <span aria-hidden="true">{desligado ? "🔌" : "✅"}</span>
             {desligado ? "O canal de conversa está desligado" : "O canal de conversa está de pé"}
           </h2>
-          <p className="mt-1.5 max-w-[68ch] text-[13px] leading-6 text-[var(--atlas-text-secondary)]">{diagnostico.frase}</p>
+          <p className="mt-1.5 max-w-[68ch] text-corpo leading-6 text-[var(--atlas-text-secondary)]">{diagnostico.frase}</p>
         </div>
         <span className="cc6-chip shrink-0" title={escopo === "organizacao" ? "Você vê as conversas da organização inteira." : "Você vê as conversas atribuídas a você e as das leads da sua carteira."}>
           {escopo === "organizacao" ? "escopo: organização" : "escopo: minha carteira"}
@@ -123,9 +123,9 @@ export function ConversaEstadoDoCanal({
                 className="cc6-panel-quiet cc6-sev-band py-2.5 pl-3.5 pr-3"
                 style={{ "--cc6-sev": pendencia.bloqueia.includes("receber") ? "var(--atlas-danger)" : "var(--atlas-warning)" } as CSSProperties}
               >
-                <p className="text-[13px] font-medium leading-5 text-[var(--atlas-text-primary)]">{pendencia.titulo}</p>
+                <p className="text-corpo font-medium leading-5 text-[var(--atlas-text-primary)]">{pendencia.titulo}</p>
                 <p className="mt-1 text-xs leading-5 text-[var(--atlas-text-secondary)]">{pendencia.porque}</p>
-                <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--atlas-text-tertiary)]">
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-rotulo text-[var(--atlas-text-tertiary)]">
                   <span>
                     <span aria-hidden="true">{EMOJI_DE_QUEM[pendencia.quemResolve]} </span>
                     {ROTULO_DE_QUEM[pendencia.quemResolve]}
@@ -145,7 +145,7 @@ export function ConversaEstadoDoCanal({
 
       {/* Enviar e-mail é recusado na porta pela própria rota de envio — está no
           código, não é suposição, e o corretor precisa saber antes de tentar. */}
-      <p className="mt-3.5 text-[11px] leading-5 text-[var(--atlas-text-tertiary)]">
+      <p className="mt-3.5 text-rotulo leading-5 text-[var(--atlas-text-tertiary)]">
         E-mail não é um canal de saída do Atlas hoje: a rota de envio recusa com <code className="cc6-num">501 EMAIL_CHANNEL_NOT_CONNECTED</code> e orienta usar o rascunho da tela da lead.
       </p>
     </section>
