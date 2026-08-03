@@ -11,6 +11,7 @@ import { DISCARD_REASONS } from "@/lib/atlas/discard-reasons";
 import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 import { HOT_SCORE_THRESHOLD, isHotLead } from "@/lib/atlas/temperatura-do-lead";
 import { conhecimentoDaEtapa, extrairRecusa } from "@/lib/crm/pipeline-guidance";
+import { NextActionQuickSet } from "@/components/crm/next-action-quick-set";
 
 /**
  * ── AS ETAPAS DE FECHAMENTO VOLTAM A SER COLUNA ─────────────────────────────
@@ -117,6 +118,8 @@ type Lead = {
   purpose: string | null;
   last_interaction_at: string | null;
   next_action_at: string | null;
+  /** O QUÊ do compromisso. Sem ele o cartão diria só a data, e "algo às 14h30" não é combinado. */
+  next_action: string | null;
   first_contact_due_at: string | null;
   first_contacted_at: string | null;
   first_contact_sla_minutes: number | null;
@@ -511,6 +514,33 @@ export default function PipelinePage() {
   }
 
   useEffect(() => { void loadDiscardReport(); }, []);
+
+  /**
+   * ── O QUADRO COBRAVA E NÃO OFERECIA ────────────────────────────────────────
+   *
+   * O Kanban tinha um recorte "Sem próxima ação" com contador, e
+   * `brokerGuidance` mandava textualmente "Definir a próxima ação" no cartão —
+   * mas não existia um único lugar nesta tela para definir. O escritor
+   * (`NextActionQuickSet`) só era montado no cartão MOBILE da lista de leads,
+   * escondido pelo CSS a partir de 1180px. Medido em produção: das 67 leads
+   * abertas, ZERO tinham próxima ação.
+   *
+   * O patch é local e cirúrgico, como o de `moveLead`: `visibleLeads` ordena
+   * por `priorityWeight`, que soma +80 justamente quando `next_action_at` é
+   * nulo. Trocar o campo no estado faz o cartão MUDAR DE POSIÇÃO na coluna e o
+   * contador do recorte cair, sem recarregar o quadro — recarregar aqui
+   * perderia filtro, busca e a rolagem horizontal da pessoa.
+   *
+   * `quando` é gravado como veio: `null` significa LIMPOU, e cair de volta no
+   * valor antigo deixaria o cartão mentindo até a próxima carga.
+   */
+  function aplicarProximaAcao(id: string, quando: string | null, descricao: string | null) {
+    setLeads((current) =>
+      current.map((lead) =>
+        lead.id === id ? { ...lead, next_action_at: quando, next_action: descricao } : lead,
+      ),
+    );
+  }
 
   async function moveLead(id: string, stage: StageKey, reversalOf?: string, discard?: { key: string; notes: string }, followUp?: string, saleValue?: number) {
     if (savingId) {
@@ -1277,6 +1307,18 @@ export default function PipelinePage() {
                         {signalView ? <span className={`cc6-num mt-2.5 block w-fit max-w-full overflow-hidden rounded-full border border-[color:var(--atlas-border-strong)] px-2 py-1 text-micro leading-none text-ellipsis whitespace-nowrap ${signalView.critical ? "text-[var(--atlas-estado-perigo)]!" : "text-[var(--atlas-estado-atencao)]!"}`} title={signalView.title}>{signalView.label}</span> : null}
                         {contactSla ? <div className="mt-3"><AtlasBadge tone={contactSla.tone}>{contactSla.label}</AtlasBadge></div> : null}
                         <div className="atlas-card-guidance"><span>Próxima melhor ação</span><strong>{guidance.action}</strong></div>
+                        {/* LOGO ABAIXO DA ORIENTAÇÃO, e não escondido no "Ver
+                            contexto": quando o cartão diz "Definir a próxima
+                            ação", o lugar de fazê-lo tem que ser a linha
+                            seguinte. Enfiá-lo dentro do <details> repetiria o
+                            defeito que isto corrige — a instrução visível e a
+                            porta fechada. */}
+                        <NextActionQuickSet
+                          leadId={lead.id}
+                          proximaAcaoEm={lead.next_action_at}
+                          descricaoAtual={lead.next_action}
+                          aoMarcar={(quando, descricao) => aplicarProximaAcao(lead.id, quando, descricao)}
+                        />
                         <div className="atlas-kanban-primary-actions" role="group" aria-label="Ações rápidas">
                           <Link href={`/leads/${lead.id}`} title="Abrir Lead 360" aria-label="Abrir Lead 360">👁️</Link>
                           {contact ? <a href={contact.call} title="Ligar" aria-label="Ligar para a lead">📞</a> : null}

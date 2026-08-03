@@ -58,7 +58,13 @@ export async function POST(request: NextRequest, context: Context) {
     const validUntil = new Date(Math.min(Date.now() + 24 * 60 * 60_000, ruleDeadline, releaseDeadline)).toISOString();
     const { data, error } = await admin.from("commercial_simulations").insert({ organization_id: identity.organizationId, lead_id: id, property_id: property.id, development_id: development.id, payment_rule_id: rule.id, commercial_release_id: release.id, created_by: identity.userId, property_price: price, down_payment: down, financed_balance: balance, installment_amount: installment, installments_count: count, rule_snapshot: snapshot, valid_until: validUntil,scenario_type:calculation.scenarioType,requested_down_percent:body.requestedDownPercent||null,requested_installments:body.requestedInstallments||null,calculation_version:1,assumptions:calculation.assumptions,requires_human_approval:true,confirmed_as_proposal:false }).select("id,property_price,down_payment,financed_balance,installment_amount,installments_count,scenario_type,assumptions,rule_snapshot,status,valid_until").single();
     if (error) return NextResponse.json({ error: "Não foi possível registrar a simulação." }, { status: 400 });
-    await admin.from("commercial_simulation_events").insert({organization_id:identity.organizationId,lead_id:id,simulation_id:data.id,actor_id:identity.userId,event_type:"created",scenario_type:calculation.scenarioType,release_version:release.version,rule_version:rule.version});
+    /* O `await` solto jogava fora o retorno: se o evento do ciclo comercial falhasse
+ * (coluna ausente, FK, RLS), a simulação nascia sem a linha que conta "quando
+ * foi criada, com qual versão de regra e de tabela" — que é a base do SLA de
+ * proposta. Mesma classe do `activities.title`: sem erro, sem log, sem pista.
+ * A simulação JÁ está gravada, então a falha do evento não vira 500 — vira log
+ * de erro e um campo no corpo. */
+const{error:erroDoEvento}=await admin.from("commercial_simulation_events").insert({organization_id:identity.organizationId,lead_id:id,simulation_id:data.id,actor_id:identity.userId,event_type:"created",scenario_type:calculation.scenarioType,release_version:release.version,rule_version:rule.version});if(erroDoEvento)logger.error("commercial_simulation_events.escrita_nao_confirmada",erroDoEvento,{organizationId:identity.organizationId,leadId:id,simulationId:data.id,code:erroDoEvento.code});
     // `properties.title` existe; `activities.title` NÃO. O insert mandava as
     // duas com o mesmo nome e morria em 42703 — a timeline perdia a simulação,
     // e com ela o `metadata.simulationId` que a rota de timeline usa para não

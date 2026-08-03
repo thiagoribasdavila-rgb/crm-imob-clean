@@ -69,6 +69,14 @@ type LeadRow = {
       adsetId?: string;
       adId?: string;
       formId?: string;
+      /* Os NOMES vêm na mesma gaveta que os ids desde a ingestão da Meta, e a
+         ficha só declarava os ids — então mostrava "120219…" onde o banco tem
+         "Inside Perdizes · Conversão". Medido em 02/08/2026: 20 leads têm
+         `campaignName`, `adsetName`, `adName` e `formName` gravados. */
+      campaignName?: string;
+      adsetName?: string;
+      adName?: string;
+      formName?: string;
       sourceName?: string;
       dataSharingConsent?: boolean;
     };
@@ -176,6 +184,11 @@ type UnifiedProfile = {
     event_type: string;
     occurred_at: string;
   }>;
+  /* `false` = a leitura de `campaign_events` FALHOU. A rota publica isto desde
+     que passou a buscar a tabela; a ficha não declarava o campo e por isso não
+     tinha como distinguir "nenhum sinal" de "não deu para medir" — que é o
+     mesmo zero silencioso que a rota levou meses para tirar de si. */
+  campaignEventsMensuraveis?: boolean;
   sources: string[];
 };
 type ContactBriefing = {
@@ -1397,9 +1410,40 @@ export default function LeadDetailPage() {
                 value:
                   relationshipContext.campaign?.name ||
                   relationshipContext.origin.source,
-                detail: relationshipContext.campaign
-                  ? `${relationshipContext.campaign.channel || "Canal não informado"} · ${relationshipContext.origin.campaignEvents} sinais`
-                  : `${relationshipContext.origin.historicalMemories} memórias históricas`,
+                /* ── A CONTAGEM DE SINAIS ERA INALCANÇÁVEL ──────────────────
+                   `origin.campaignEvents` só aparecia no ramo
+                   `relationshipContext.campaign ? … : …`, e a rota devolve
+                   `campaign: null` CRAVADO (a tabela `campaigns` está vazia
+                   nesta base). Ou seja: o ramo que mostra os sinais nunca era
+                   alcançado, e a lead caía sempre no texto das memórias
+                   históricas.
+
+                   Medido no banco vivo em 02/08/2026: `campaign_events` tem 54
+                   linhas com `lead_id`; a lead de teste (Danilo Ferreira) tem 3
+                   sinais e o painel dizia "0 memórias históricas". A rota
+                   passou a BUSCAR os eventos e a ficha continuava sem lugar
+                   para mostrá-los.
+
+                   Ausência de leitura não vira zero: quando a leitura falha, a
+                   frase diz que não foi medido. */
+                detail: (() => {
+                  if (unifiedProfile?.campaignEventsMensuraveis === false) {
+                    return "sinais de campanha não medidos";
+                  }
+                  const partes = [
+                    relationshipContext.campaign
+                      ? relationshipContext.campaign.channel ||
+                        "Canal não informado"
+                      : null,
+                    relationshipContext.origin.campaignEvents
+                      ? `${relationshipContext.origin.campaignEvents} sinais de campanha`
+                      : null,
+                    relationshipContext.origin.historicalMemories
+                      ? `${relationshipContext.origin.historicalMemories} memórias históricas`
+                      : null,
+                  ].filter((parte): parte is string => Boolean(parte));
+                  return partes.join(" · ") || "Sem sinais registrados";
+                })(),
                 href: "#commercial-context",
               },
               {
@@ -2146,7 +2190,15 @@ export default function LeadDetailPage() {
               {([
                 ["Conversas", unifiedProfile.conversations.length],
                 ["Tarefas", unifiedProfile.tasks.length],
-                ["Sinais de campanha", unifiedProfile.campaignEvents.length],
+                /* Leitura que falhou não vira "0 sinais": a rota já diz qual
+                   dos dois é, e este número é o único lugar da ficha que
+                   publica a contagem de `campaign_events`. */
+                [
+                  "Sinais de campanha",
+                  unifiedProfile.campaignEventsMensuraveis === false
+                    ? "—"
+                    : unifiedProfile.campaignEvents.length,
+                ],
               ] as const).map(([label, value]) => (
                 <div key={label} className="cc6-panel-quiet p-3 text-center">
                   <span className="cc6-metric-value text-lg">{value}</span>
@@ -2176,7 +2228,27 @@ export default function LeadDetailPage() {
         </details>
       ) : null}
 
-      {lead.source === "Meta Lead Ads" ? (
+      {/* ── O BLOCO OLHAVA PARA O RÓTULO DA FONTE, NÃO PARA O DADO ────────
+          A condição era `lead.source === "Meta Lead Ads"`. Medido no banco vivo
+          em 02/08/2026, sobre 490 leads:
+
+            source = "Meta Lead Ads" ..........   9   (todas com campaignId)
+            source = "meta_ads" ............... 195, das quais 20 têm
+              campaignId, adsetId, adId, formId — e ainda campaignName,
+              adsetName, adName e formName
+
+          Ou seja: 20 leads carregam a atribuição inteira da Meta e este bloco
+          nunca abria para elas, porque a ingestão gravou o rótulo da fonte com
+          outro nome. Ninguém escreveu um dado errado; o gatilho é que olhava
+          para a etiqueta em vez de olhar para o conteúdo.
+
+          A pergunta certa é "esta lead TEM atribuição da Meta?", e ela se
+          responde no próprio metadata. Fonte que não tem nada continua sem o
+          bloco — inclusive as 270 do relatório importado, cujo `metadata.meta`
+          só guarda consentimento. */}
+      {lead.metadata?.meta?.campaignId ||
+      lead.metadata?.meta?.adId ||
+      lead.metadata?.meta?.formId ? (
         <details className="cc6-panel-quiet group">
           <summary className={summaryClass}>
             <span className="cc6-eyebrow">
@@ -2191,28 +2263,56 @@ export default function LeadDetailPage() {
           </summary>
           <div className="cc6-hairline p-4 sm:p-5">
             <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {/* O NOME NA FRENTE, O ID NO `title`. A ingestão grava os dois;
+                  a ficha só lia o id, então o corretor via "120219…" onde o
+                  banco tem o nome da campanha. O id continua alcançável — é o
+                  que se usa para conferir no Gerenciador — mas deixa de ser a
+                  única coisa legível. */}
               {[
-                ["Origem", lead.metadata?.meta?.sourceName || "Meta Lead Ads"],
-                [
-                  "Campanha",
-                  lead.metadata?.meta?.campaignId || "Não identificada",
-                ],
-                [
-                  "Conjunto",
-                  lead.metadata?.meta?.adsetId || "Não identificado",
-                ],
-                ["Anúncio", lead.metadata?.meta?.adId || "Não identificado"],
-                [
-                  "Aprendizado",
-                  lead.metadata?.meta?.dataSharingConsent
+                {
+                  label: "Origem",
+                  value: lead.metadata?.meta?.sourceName || "Meta Lead Ads",
+                  id: null,
+                },
+                {
+                  label: "Campanha",
+                  value:
+                    lead.metadata?.meta?.campaignName ||
+                    lead.metadata?.meta?.campaignId ||
+                    "Não identificada",
+                  id: lead.metadata?.meta?.campaignId || null,
+                },
+                {
+                  label: "Conjunto",
+                  value:
+                    lead.metadata?.meta?.adsetName ||
+                    lead.metadata?.meta?.adsetId ||
+                    "Não identificado",
+                  id: lead.metadata?.meta?.adsetId || null,
+                },
+                {
+                  label: "Anúncio",
+                  value:
+                    lead.metadata?.meta?.adName ||
+                    lead.metadata?.meta?.adId ||
+                    "Não identificado",
+                  id: lead.metadata?.meta?.adId || null,
+                },
+                {
+                  label: "Aprendizado",
+                  value: lead.metadata?.meta?.dataSharingConsent
                     ? "Autorizado"
                     : "Sem autorização",
-                ],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt className="cc6-eyebrow text-micro">{label}</dt>
-                  <dd className="cc6-num mt-1.5 break-all text-sm text-[var(--atlas-texto-forte)]">
-                    {value}
+                  id: null,
+                },
+              ].map((item) => (
+                <div key={item.label}>
+                  <dt className="cc6-eyebrow text-micro">{item.label}</dt>
+                  <dd
+                    className="cc6-num mt-1.5 break-all text-sm text-[var(--atlas-texto-forte)]"
+                    title={item.id && item.id !== item.value ? `ID ${item.id}` : undefined}
+                  >
+                    {item.value}
                   </dd>
                 </div>
               ))}

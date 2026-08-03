@@ -12,6 +12,7 @@ import { commercialOutcomeFromStages } from "@/lib/ai/learning-loop";
 import { LIVE_LEAD_SELECT, LIVE_LEAD_SELECT_WITH_SLA, canonicalLeadStatus, isMissingColumn, isMissingRelation, mapLegacyLead, mapLegacyProfile } from "@/lib/compat/legacy-v2";
 import { liveLeadUpdatePayload, mapLiveLeadEvent, recordCommercialLearningEvent, recordLiveLeadEvent } from "@/lib/compat/live-writes";
 import { computeAttentionSignalsForLead } from "@/lib/atlas/attention-signals";
+import { canonicalPipelineStage } from "@/lib/atlas/pipeline-stages";
 import { FONTES_DO_HISTORICO, lerHistoricoDoLead } from "@/lib/crm/historico-do-lead";
 import { logger } from "@/lib/observability/logger";
 import { ehLeadForaDaCarteira, requireApiIdentity, requireLeadAccess } from "@/lib/security/api-auth";
@@ -129,8 +130,27 @@ export async function GET(request: Request, context: RouteContext) {
         .eq("organization_id", identity.organizationId)
         .order("due_date", { ascending: true, nullsFirst: false })
         .limit(100),
+      // ── O DONO DA LEAD SUMIA DA FICHA ─────────────────────────────────────
+      //
+      // O select pedia `id,name,role,team`. `mapLegacyProfile` resolve
+      // `full_name: first(row,"full_name","name")` e
+      // `commercial_role: first(row,"commercial_role","role")` — ele PREFERE as
+      // canônicas, mas nenhuma das duas estava aqui, então as duas caíam na
+      // legada. E a ficha lê exatamente `owner.full_name`.
+      //
+      // Medido no banco vivo em 02/08/2026: 23 perfis, `full_name` preenchido em
+      // 23, `name` em 10 — e 488 das 489 leads com dono pertencem a alguém com
+      // `name` NULO. Ou seja, o cabeçalho dizia "Sem responsável · distribuição
+      // necessária" em 488 fichas cujo dono está gravado, e o link ao lado
+      // convidava a ATRIBUIR uma lead que já tem corretor.
+      //
+      // É a mesma doença que `LIVE_PROFILE_SELECT` documenta uma tabela adiante.
+      // Não uso aquele select inteiro aqui de propósito: ele carrega `email` e
+      // `organization_id`, e este objeto vai INTEIRO para o navegador dentro de
+      // `relationshipContext.owner`. Pedir só o que o mapeador e a tela leem
+      // conserta o nome sem alargar o que sai do servidor.
       lead.assigned_to
-        ? admin.from("profiles").select("id,name,role,team").eq("id", lead.assigned_to).eq("organization_id", identity.organizationId).maybeSingle()
+        ? admin.from("profiles").select("id,name,full_name,role,commercial_role,team").eq("id", lead.assigned_to).eq("organization_id", identity.organizationId).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
       lead.development_id
         ? admin.from("crm_projects").select("id,name,developer_name,status,city").eq("id", lead.development_id).eq("organization_id", identity.organizationId).maybeSingle()
@@ -243,11 +263,25 @@ export async function GET(request: Request, context: RouteContext) {
     for (const falha of historico.falhas) {
       logger.warn("lead.historico.read_failed", { leadId: id, fonte: falha.fonte, code: falha.code, message: falha.message });
     }
+    // ── QUEM ASSINOU CADA INTERAÇÃO — MESMA COLUNA FALTANDO, SEGUNDO LUGAR ──
+    //
+    // Este select pedia só `name`. Medido em 02/08/2026: das 481 linhas de
+    // `activities`, 479 têm autor cujo `name` é NULO e cujo `full_name` está
+    // preenchido — todas apareciam assinadas como "Equipe Atlas".
+    //
+    // E o pior é na MESMA tela: a linha do tempo mescla estas interações com a
+    // movimentação de `/api/v1/acompanhamento-corretor/linha-do-tempo`, que lê
+    // `id,name,full_name` e resolve `full_name || name`. O mesmo corretor, na
+    // mesma lista, assinava "ddcorretorsp" na movimentação e "Equipe Atlas" na
+    // interação de dois minutos antes.
+    //
+    // "Equipe Atlas" é o rótulo de quem NÃO tem perfil identificado; usá-lo para
+    // quem tem apaga a autoria em vez de admitir a ausência.
     const authorIds = [...new Set(historico.interacoes.map((item) => String(item.user_id || "")).filter(Boolean))];
     const { data: authors } = authorIds.length
-      ? await admin.from("profiles").select("id,name").eq("organization_id", identity.organizationId).in("id", authorIds)
-      : { data: [] as Array<{ id: string; name: string | null }> };
-    const authorNames = new Map((authors ?? []).map((profile) => [profile.id, profile.name || "Equipe Atlas"]));
+      ? await admin.from("profiles").select("id,name,full_name").eq("organization_id", identity.organizationId).in("id", authorIds)
+      : { data: [] as Array<{ id: string; name: string | null; full_name: string | null }> };
+    const authorNames = new Map((authors ?? []).map((profile) => [profile.id, profile.full_name || profile.name || "Equipe Atlas"]));
     const activities = historico.interacoes.map((item) => ({
       ...item,
       authorName: item.user_id ? authorNames.get(String(item.user_id)) || "Equipe Atlas" : "Automação Atlas",
@@ -444,6 +478,94 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "O orçamento mínimo não pode superar o máximo." }, { status: 400 });
     }
 
+    /**
+     * ── A ETAPA MUDAVA AQUI E O LEDGER NUNCA FICAVA SABENDO ──────────────────
+     *
+     * `pipeline_stage_moves` é a fonte canônica da movimentação de funil: é ela
+     * que a linha do tempo da ficha desenha, que o relatório de descarte conta e
+     * que `move_pipeline_lead` escreve na MESMA transação que muda
+     * `leads.status`. O Kanban passa por lá. Esta rota não passava: fazia
+     * `update leads set status = …` direto, e nenhum gatilho do banco supre isso
+     * — conferido em `pg_trigger`, nada em `leads` escreve no ledger.
+     *
+     * MEDIDO em produção (pozbrcsfthnhmnebfoxv) em 02/08/2026, cruzando os
+     * eventos `lead_updated` desta rota com o ledger: 5 mudanças de etapa feitas
+     * por aqui, 5 AUSENTES de `pipeline_stage_moves`. Entre elas:
+     *
+     *   41297361 · contrato → ganho ....... a VENDA, e o ledger não a tem
+     *   c5eb4a8c · novo → qualificacao .... buraco: o movimento seguinte
+     *                                       (qualificacao → perdido) parte de uma
+     *                                       etapa que o ledger nunca viu chegar
+     *   f7333996 · novo → contato ......... lead com ZERO linha no ledger
+     *   cf80b198 · novo → contato ......... idem
+     *
+     * Não é número errado: é fato comercial que some. E some CALADO — HTTP 200,
+     * ficha mostrando a etapa nova, e a auditoria do funil sem uma linha.
+     *
+     * A correção manda a troca de etapa pelo MESMO caminho atômico do Kanban.
+     * Ou as duas escritas acontecem (ledger + `leads.status`), ou nenhuma.
+     */
+    let movimentoNoLedger: string | null = null;
+    let ledgerIndisponivel = false;
+    let etapaAplicadaPeloLedger = false;
+    if (nextStatus !== previousStatus
+      && canonicalPipelineStage(nextStatus)
+      && canonicalPipelineStage(previousStatus)) {
+      const movimento = await admin.rpc("move_pipeline_lead", {
+        p_actor_id: identity.userId,
+        p_organization_id: identity.organizationId,
+        p_lead_id: id,
+        p_to_stage: nextStatus,
+        p_expected_from_stage: previousStatus,
+        // A Lead 360 não coleta motivo estruturado de descarte (só o Kanban o
+        // exige). O que ela TEM é a observação — e mandá-la é melhor do que
+        // gravar `reason` nulo, que foi o defeito que custou 102 motivos.
+        p_reason: notes || null,
+        p_reversal_of: null,
+      });
+      if (!movimento.error) {
+        const movida = (movimento.data ?? {}) as JsonRow;
+        movimentoNoLedger = typeof movida.moveId === "string" ? movida.moveId : null;
+        // A RPC JÁ gravou `leads.status = nextStatus` na transação dela. A
+        // guarda de concorrência abaixo precisa saber disso, ou compararia com a
+        // etapa velha e devolveria 409 sobre a própria escrita.
+        etapaAplicadaPeloLedger = true;
+      } else {
+        const motivo = String(movimento.error.message || "");
+        // Banco sem a fase do ledger: a etapa continua mudando pelo caminho
+        // simples. É degradação declarada, não silêncio.
+        ledgerIndisponivel = movimento.error.code === "42883" || movimento.error.code === "PGRST202";
+        if (/pipeline_stage_conflict/.test(motivo)) {
+          return NextResponse.json(
+            { error: "A etapa deste lead mudou em outra sessão. Recarregue a ficha antes de salvar.", code: "LEAD_STATUS_CONFLICT" },
+            { status: 409 },
+          );
+        }
+        if (/pipeline_move_out_of_scope|pipeline_lead_not_found/.test(motivo)) {
+          return NextResponse.json(
+            { error: "Você não pode mover a etapa desta lead. Peça ao gestor responsável.", code: "LEAD_STAGE_OUT_OF_SCOPE" },
+            { status: 403 },
+          );
+        }
+        if (/pipeline_buyer_reason_required/.test(motivo)) {
+          return NextResponse.json(
+            { error: "Descreva o acompanhamento da compra em outro lugar no campo de observações.", code: "LEAD_STAGE_REASON_REQUIRED" },
+            { status: 400 },
+          );
+        }
+        if (!ledgerIndisponivel) {
+          // Falha desconhecida do ledger NÃO pode virar "grava a etapa e segue":
+          // seria recriar exatamente o defeito, agora por dentro do conserto.
+          logger.error("lead.stage_move_failed", movimento.error, { leadId: id, from: previousStatus, to: nextStatus, code: movimento.error.code });
+          return NextResponse.json(
+            { error: "Não foi possível registrar a mudança de etapa no histórico do funil. Nada foi alterado.", code: "LEAD_STAGE_LEDGER_UNAVAILABLE" },
+            { status: 503 },
+          );
+        }
+        logger.warn("lead.stage_move_ledger_missing", { leadId: id, from: previousStatus, to: nextStatus, code: movimento.error.code });
+      }
+    }
+
     // Guarda de concorrência espelhando a do Kanban: sem o `.eq("status", …)`,
     // duas requisições simultâneas liam o mesmo status anterior e gravavam DOIS
     // eventos de aprendizado para a mesma transição, inflando aquele desfecho.
@@ -453,10 +575,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .update(update)
       .eq("id", id)
       .eq("organization_id", identity.organizationId);
+    // Depois da RPC, a etapa gravada no banco é a NOVA — comparar com a velha
+    // faria a guarda barrar a continuação da própria operação.
+    const etapaEsperadaNoBanco = etapaAplicadaPeloLedger ? nextStatus : currentLead.status;
     // `.eq(coluna, null)` não casa em SQL; linha sem status precisa de `.is`.
-    const { data: stored, error } = await (currentLead.status == null
+    const { data: stored, error } = await (etapaEsperadaNoBanco == null
       ? guarded.is("status", null)
-      : guarded.eq("status", currentLead.status))
+      : guarded.eq("status", etapaEsperadaNoBanco))
       .select(LIVE_LEAD_SELECT)
       .maybeSingle();
     if (error) return NextResponse.json({ error: "Não foi possível salvar este lead agora." }, { status: 400 });
@@ -503,6 +628,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           reasonKey: null,
           source: typeof storedRow.source === "string" ? storedRow.source : null,
           campaignId: storedRow.campaign_id == null ? null : String(storedRow.campaign_id),
+          // Agora que a troca de etapa passa pelo ledger, o fato de aprendizado
+          // ganha a MESMA identidade de movimentação que o Kanban registra —
+          // é ela que permite casar `reverses`/`moveId` e abater o par quando o
+          // corretor desfaz. Sem ela, o desfazer nunca alcançaria esta linha.
+          moveId: movimentoNoLedger,
           writePath: "lead_360",
         }),
       ]);
@@ -738,7 +868,8 @@ export async function POST(request: Request, context: RouteContext) {
       });
 
       if (!aceite.error) {
-        await recordLiveLeadEvent(admin, { organizationId: identity.organizationId, leadId: id, actorId: identity.userId, type: "assignment_accepted", title: "Responsabilidade aceita", description: "Lead assumida pelo corretor no Atlas." });
+        const trilha = await recordLiveLeadEvent(admin, { organizationId: identity.organizationId, leadId: id, actorId: identity.userId, type: "assignment_accepted", title: "Responsabilidade aceita", description: "Lead assumida pelo corretor no Atlas." });
+        if (trilha.error) logger.error("lead.assignment_accept_event_failed", trilha.error, { leadId: id, organizationId: identity.organizationId });
         return NextResponse.json({ reservation: aceite.data });
       }
 
@@ -761,9 +892,20 @@ export async function POST(request: Request, context: RouteContext) {
         // As DUAS colunas de dono. Aceitar a lead gravando só uma deixava o
         // corretor dono numa tela e a lead órfã na outra — logo depois de ele
         // clicar em "assumir", que é o pior momento possível para duvidar.
-        await admin.from("leads").update({ assigned_to: identity.userId, assigned_user_id: identity.userId }).eq("id", id).eq("organization_id", identity.organizationId).is("assigned_user_id", null);
+        // `.is("assigned_user_id", null)` é a trava de corrida certa — mas no
+        // PostgREST um update que não casa com linha nenhuma devolve 200 SEM
+        // erro. Sem `.select()`, "outro corretor assumiu no meio do caminho" e
+        // "gravou" eram a MESMA resposta, e o corretor saía da tela achando
+        // que a lead era dele. `maybeSingle()` é o que separa os dois.
+        const { data: assumida, error: erroDoAceite } = await admin.from("leads").update({ assigned_to: identity.userId, assigned_user_id: identity.userId }).eq("id", id).eq("organization_id", identity.organizationId).is("assigned_user_id", null).select("id").maybeSingle();
+        if (erroDoAceite || !assumida) {
+          logger.warn("lead.assignment_accept_not_stored", { leadId: id, organizationId: identity.organizationId, code: erroDoAceite?.code ?? "sem_linha_afetada" });
+          return NextResponse.json({ error: "Esta lead ganhou responsável enquanto você aceitava. Recarregue a ficha.", code: "LEAD_ASSIGNMENT_CONFLICT" }, { status: 409 });
+        }
       }
-      await recordLiveLeadEvent(admin, { organizationId: identity.organizationId, leadId: id, actorId: identity.userId, type: "assignment_accepted", title: "Responsabilidade aceita", description: "Lead assumida pelo corretor no Atlas." });
+      // Trilha descartada é trilha que pode não existir sem ninguém saber.
+      const trilhaDoAceite = await recordLiveLeadEvent(admin, { organizationId: identity.organizationId, leadId: id, actorId: identity.userId, type: "assignment_accepted", title: "Responsabilidade aceita", description: "Lead assumida pelo corretor no Atlas." });
+      if (trilhaDoAceite.error) logger.error("lead.assignment_accept_event_failed", trilhaDoAceite.error, { leadId: id, organizationId: identity.organizationId });
       return NextResponse.json({ reservation: { lead_id: id, broker_id: identity.userId, status: "accepted", accepted_at: new Date().toISOString() } });
     }
 
@@ -778,7 +920,8 @@ export async function POST(request: Request, context: RouteContext) {
         .select("id,status,budget_max,created_at")
         .single();
       if (error || !stored) return NextResponse.json({ error: "Não foi possível abrir a oportunidade." }, { status: 400 });
-      await recordLiveLeadEvent(admin, { organizationId: identity.organizationId, leadId: id, actorId: identity.userId, type: "opportunity_opened", title: "Oportunidade aberta", description: "Lead promovida para acompanhamento no pipeline.", metadata: { previousStatus, status } });
+      const trilhaDaOportunidade = await recordLiveLeadEvent(admin, { organizationId: identity.organizationId, leadId: id, actorId: identity.userId, type: "opportunity_opened", title: "Oportunidade aberta", description: "Lead promovida para acompanhamento no pipeline.", metadata: { previousStatus, status } });
+      if (trilhaDaOportunidade.error) logger.error("lead.opportunity_event_failed", trilhaDaOportunidade.error, { leadId: id, organizationId: identity.organizationId });
       return NextResponse.json({ opportunity: { id: stored.id, lead_id: stored.id, stage: canonicalLeadStatus(stored.status), value: stored.budget_max ?? null, probability: 25, property_id: null, created_at: stored.created_at } }, { status: 201 });
     }
 
