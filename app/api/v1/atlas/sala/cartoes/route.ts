@@ -213,9 +213,14 @@ export async function GET(request: NextRequest) {
 
   /* Visita e proposta vêm de tabelas próprias — contagem DISTINTA por lead, para
      duas visitas da mesma pessoa não virarem dois degraus. */
-  const [visitasResp, propostasResp] = await Promise.all([
+  const inicioDaJanela = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const [visitasResp, propostasResp, gastoResp] = await Promise.all([
     admin.from("lead_visits").select("lead_id").eq("organization_id", org).limit(TETO),
     admin.from("commercial_simulations").select("lead_id").eq("organization_id", org).limit(TETO),
+    /* `spend_date` é DATE, não timestamptz — comparar com ISO completo perderia
+       o dia da borda. E a soma é feita AQUI: o PostgREST não soma, e pedir a
+       soma ao cliente é como o produto já respondeu R$ 0 tendo gasto real. */
+    admin.from("marketing_spend").select("amount,campaign_id").eq("organization_id", org).gte("spend_date", inicioDaJanela).limit(TETO),
   ]);
   const comVisita = new Set((visitasResp.data ?? []).map((v) => String(v.lead_id))).size;
   const comProposta = new Set((propostasResp.data ?? []).map((v) => String(v.lead_id))).size;
@@ -260,6 +265,16 @@ export async function GET(request: NextRequest) {
         /* O DESFECHO, que vinha do funil antigo e não podia se perder ao
            remover a duplicata: "em aberto · ganhas · perdidas" responde para onde
            as leads FORAM, e o funil sozinho só diz onde elas estão. */
+        /* O GASTO, que o bloco antigo respondia e a faixa não cobria. Sem ele,
+           remover aquele bloco trocaria ruído por buraco. `null` quando a
+           leitura falha — R$ 0 é afirmação sobre o mundo. */
+        midia: gastoResp.error
+          ? { total: null as number | null, campanhas: 0, dias: 30 }
+          : {
+              total: (gastoResp.data ?? []).reduce((soma, linha) => soma + Number(linha.amount ?? 0), 0),
+              campanhas: new Set((gastoResp.data ?? []).map((l) => String(l.campaign_id ?? "")).filter(Boolean)).size,
+              dias: 30,
+            },
         desfecho: {
           emAberto: base.filter((l) => vivo(l.status)).length,
           ganhas: base.filter((l) => ehStatus(l, "ganho")).length,

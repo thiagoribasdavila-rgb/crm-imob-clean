@@ -39,13 +39,22 @@ type Ponto = { dia: string; criadas: number; contatadas: number };
 type Corretor = { id: string; nome: string; leads: number; ativos: number; vendas: number; vgv: number };
 type Conversao = { taxa: number | null; ganhos: number; base: number };
 type Desfecho = { emAberto: number; ganhas: number; perdidas: number };
-type Painel = { amostraTruncada: boolean; kpis: Kpis; funil: Etapa[]; conversao: Conversao; desfecho: Desfecho; serie: Ponto[]; equipe: Corretor[] };
+type Midia = { total: number | null; campanhas: number; dias: number };
+type Painel = { amostraTruncada: boolean; kpis: Kpis; funil: Etapa[]; conversao: Conversao; desfecho: Desfecho; midia: Midia; serie: Ponto[]; equipe: Corretor[] };
 
 const N = new Intl.NumberFormat("pt-BR");
+/**
+ * Dinheiro abrevia só em MILHÕES.
+ *
+ * A versão anterior virava "R$ 4k" para R$ 3.791,69 — escondia R$ 208 num número
+ * que o diretor usa para decidir verba. Arredondar milhar em moeda é a mesma
+ * família de defeito que somar no cliente: barato de escrever, caro de acreditar.
+ * Acima de um milhão a abreviação ajuda a comparar; abaixo dela, atrapalha.
+ */
 const MOEDA = (v: number) =>
-  v >= 1_000_000 ? `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`
-  : v >= 1_000 ? `R$ ${Math.round(v / 1_000)}k`
-  : `R$ ${N.format(v)}`;
+  v >= 1_000_000
+    ? `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`
+    : `R$ ${N.format(Math.round(v))}`;
 
 /** Os seis indicadores do topo, com o ícone que a ação sugere. */
 const KPIS: Array<{ chave: keyof Kpis; rotulo: string; glifo: string; moeda?: boolean }> = [
@@ -56,6 +65,11 @@ const KPIS: Array<{ chave: keyof Kpis; rotulo: string; glifo: string; moeda?: bo
   { chave: "vendas", rotulo: "Vendas", glifo: "🏆" },
   { chave: "vgvFechado", rotulo: "VGV fechado", glifo: "💰", moeda: true },
 ];
+
+/* O gasto NÃO entra no laço acima porque não vem de `kpis`: ele tem janela
+   (30 dias) e pode ser `null`. Forçá-lo no mesmo tipo custaria um campo
+   opcional em todos os outros — e um `?? 0` no caminho, que é exatamente como
+   "R$ 0" apareceu por meses tendo gasto real. */
 
 /**
  * O funil, em SVG. Cada degrau é um trapézio cuja largura é PROPORCIONAL ao
@@ -176,6 +190,22 @@ export function PainelDaSala() {
           </article>
         ))}
       </div>
+
+      {painel.midia ? (
+        <article className="cc6-panel-quiet flex flex-wrap items-baseline justify-between gap-3 p-4">
+          <p className="cc6-eyebrow text-micro!"><span aria-hidden="true">📣 </span>Investimento em mídia · {painel.midia.dias} dias</p>
+          {painel.midia.total === null ? (
+            <span className="text-corpo text-[var(--atlas-texto-medio)]">não foi possível ler o gasto agora</span>
+          ) : (
+            <span className="cc6-num text-numero leading-none text-[var(--atlas-texto-forte)]">
+              {MOEDA(painel.midia.total)}
+              <span className="ml-2 text-micro text-[var(--atlas-texto-fraco)]">
+                {painel.midia.campanhas} campanha{painel.midia.campanhas === 1 ? "" : "s"}
+              </span>
+            </span>
+          )}
+        </article>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
         {/* ── FUNIL ────────────────────────────────────────────────────── */}
