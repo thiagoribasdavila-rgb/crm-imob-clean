@@ -60,7 +60,12 @@ function housingTargeting(over = {}) {
     age_min: 18,
     age_max: 65,
     genders: [],
-    geo_locations: { cities: [{ key: "296875" }] },
+    // CHAVE numérica + RAIO: as duas coisas que a política HOUSING exige da
+    // cidade. A fixture tinha só a chave, e passava — porque
+    // `validateHousingTargeting` não olhava dentro de `cities`. A Meta recusa o
+    // conjunto sem raio ("inclua um raio de pelo menos 17 quilômetros"), então
+    // um input "íntegro" sem raio nunca foi íntegro. Ver o caso 22.
+    geo_locations: { cities: [{ key: "296875", radius: 24, distance_unit: "kilometer" }] },
     targeting_automation: { advantage_audience: 1 },
     ...over,
   };
@@ -455,6 +460,49 @@ function input(over = {}) {
       summary.includes("[Atlas] Vertice Perdizes · Financiamento") &&
       summary.includes("PAUSADO"),
     summary,
+  );
+}
+
+// --------------------------------------------------------------------------
+// 22: a cidade precisa de CHAVE numérica e RAIO — o nome não é chave
+//
+// Medido contra a conta real (leitura, 02/08/2026):
+//   delivery_estimate      key "269969" → 19.700.000–23.200.000 MAU (ready)
+//   delivery_estimate      key "São Paulo" → 0–0, sem estimate_ready
+//   targetingsentencelines key "269969" → "Brasil: São Paulo (+24 km) …"
+//   targetingsentencelines key "São Paulo" → ": (+24 km)"  ← geo VAZIO
+//
+// A Meta não recusa o nome: aceita e resolve para lugar nenhum. Nenhuma trava
+// olhava dentro de `cities`, então o nome atravessava a régua com selo de
+// aprovado. Os dois lados são provados: o certo passa, o errado acusa.
+// --------------------------------------------------------------------------
+{
+  const comNome = skeleton();
+  comNome.adSets[0].targeting = housingTargeting({
+    geo_locations: { cities: [{ key: "São Paulo", radius: 24, distance_unit: "kilometer" }] },
+  });
+  const problemasNome = validatePublication(input({ skeleton: comNome }));
+
+  const semRaio = skeleton();
+  semRaio.adSets[0].targeting = housingTargeting({ geo_locations: { cities: [{ key: "296875" }] } });
+  const problemasRaio = validatePublication(input({ skeleton: semRaio }));
+
+  const raioCurto = skeleton();
+  raioCurto.adSets[0].targeting = housingTargeting({
+    geo_locations: { cities: [{ key: "296875", radius: 10, distance_unit: "kilometer" }] },
+  });
+  const problemasCurto = validatePublication(input({ skeleton: raioCurto }));
+
+  // o lado positivo: chave + raio corretos NÃO acusam nada de geo
+  const problemasBons = validatePublication(input());
+
+  check(
+    "caso 22: nome no lugar da chave, cidade sem raio e raio abaixo do mínimo são acusados; chave+raio corretos passam",
+    problemasNome.some((p) => p.includes("cities[0].key")) &&
+      problemasRaio.some((p) => p.includes("cities[0].radius")) &&
+      problemasCurto.some((p) => p.includes("cities[0].radius")) &&
+      !problemasBons.some((p) => p.includes("cities[0]")),
+    JSON.stringify({ nome: problemasNome, semRaio: problemasRaio, curto: problemasCurto, bons: problemasBons }),
   );
 }
 

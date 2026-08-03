@@ -16,10 +16,29 @@ export const HOUSING_MIN_RADIUS_KM = 24; // ~15 milhas — mínimo da política 
 export const HOUSING_AGE_MIN = 18;
 export const HOUSING_AGE_MAX = 65; // 65 = "65+" na Meta; não pode estreitar
 
+/**
+ * Uma CHAVE de geolocalização da Meta: numérica, 4 a 12 dígitos ("269969" =
+ * São Paulo). Vive aqui, no módulo puro, porque é a régua que precisa dela —
+ * `geo-resolver.ts` (que fala com a Graph) reexporta esta mesma função em vez
+ * de manter uma segunda cópia do padrão. Duas verdades sobre o que é uma chave
+ * divergiriam na próxima edição, e o lado que divergisse seria o que reprova.
+ */
+export function ehChaveDeGeo(valor: unknown): boolean {
+  return typeof valor === "string" && /^[0-9]{4,12}$/.test(valor.trim());
+}
+
 export type GeoPoint = { latitude: number; longitude: number; radiusKm?: number };
 export type GeoTarget = {
   countries?: string[];        // default ["BR"]
-  cities?: string[];           // keys de cidade da Meta (ex.: "São Paulo")
+  /**
+   * CHAVES de cidade da Meta — numéricas, ex.: "269969" (São Paulo). NUNCA o
+   * nome. Quem tem o nome resolve antes em `geo-resolver.chaveDaCidade`.
+   *
+   * O comentário anterior aqui dizia "keys de cidade da Meta (ex.: 'São
+   * Paulo')" — nomeava o campo certo e dava o exemplo errado, e foi esse
+   * exemplo que os chamadores copiaram.
+   */
+  cities?: string[];
   points?: GeoPoint[];         // pinos no empreendimento (raio é clampado ao mínimo)
 };
 
@@ -94,6 +113,54 @@ export function validateHousingTargeting(spec: Record<string, unknown>): Targeti
   const geo = spec.geo_locations as Record<string, unknown> | undefined;
   if (geo?.zips != null) {
     v.push({ field: "geo_locations.zips", rule: "sem_cep", detail: "HOUSING proíbe segmentação por CEP." });
+  }
+  /**
+   * A cidade que a Meta ACEITA e não usa.
+   *
+   * Medido contra a conta real em 02/08/2026 (leitura, sem escrita):
+   *
+   *   GET act_<conta>/delivery_estimate
+   *     geo_locations.cities[0].key = "269969"     → 19.700.000–23.200.000 MAU,
+   *                                                   estimate_ready: true
+   *     geo_locations.cities[0].key = "São Paulo"  → 0–0, sem estimate_ready
+   *
+   *   GET act_<conta>/targetingsentencelines
+   *     key "269969"    → "Brasil: São Paulo (+24 km) São Paulo (state)"
+   *     key "São Paulo" → ": (+24 km)"      ← a localização some, e nada acusa
+   *
+   * Não é erro: é SILÊNCIO. A Graph devolve 200, a campanha nasce e o conjunto
+   * fica apontando para lugar nenhum (o histórico deste repo registrou a recusa
+   * "A localização para direcionamento não pode ser usada" ao criar de verdade).
+   * Nenhuma trava desta função olhava DENTRO de `cities` — só idade, gênero,
+   * exclusões, lookalike, CEP e o raio de `custom_locations`. Por isso um nome
+   * no lugar da chave atravessava a régua inteira com selo de aprovado.
+   */
+  const cidades = geo?.cities;
+  if (Array.isArray(cidades)) {
+    for (const [i, cidade] of cidades.entries()) {
+      const c = cidade as { key?: unknown; radius?: unknown; distance_unit?: unknown };
+      if (!ehChaveDeGeo(c.key)) {
+        v.push({
+          field: `geo_locations.cities[${i}].key`,
+          rule: "chave_de_cidade",
+          detail: `"${String(c.key ?? "")}" não é uma chave de geolocalização da Meta (numérica, ex.: "269969"). A Meta aceita o campo em silêncio e resolve para localização VAZIA — o anúncio não alcança ninguém e nada acusa. Resolva o nome em geo-resolver.chaveDaCidade antes de montar o público.`,
+        });
+      }
+      // HOUSING exige raio também na cidade, não só em custom_locations: sem
+      // ele a Meta recusa o conjunto pedindo "um raio de pelo menos 17
+      // quilômetros". `housingTargetingSpec` já emite o raio; quem chega aqui
+      // sem ele é plano montado por fora.
+      const km = c.distance_unit === "mile" ? Number(c.radius) * 1.609 : Number(c.radius);
+      if (!Number.isFinite(km) || km < HOUSING_MIN_RADIUS_KM) {
+        v.push({
+          field: `geo_locations.cities[${i}].radius`,
+          rule: "raio_minimo",
+          detail: Number.isFinite(km)
+            ? `Raio ${km.toFixed(1)} km abaixo do mínimo de ${HOUSING_MIN_RADIUS_KM} km (~15 mi) exigido pela categoria HOUSING.`
+            : `Cidade sem raio — HOUSING exige raio de pelo menos ${HOUSING_MIN_RADIUS_KM} km (~15 mi) também na cidade, e sem ele a Meta recusa o conjunto.`,
+        });
+      }
+    }
   }
   const custom = geo?.custom_locations;
   if (Array.isArray(custom)) {

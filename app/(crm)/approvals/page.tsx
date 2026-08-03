@@ -6,7 +6,68 @@ import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { ProntidaoParaPublicarPanel } from "@/components/atlas/ProntidaoParaPublicarPanel";
 
-type Approval = { id: string; request_type: string; entity_type: string; status: string; decision_reason: string | null; expires_at: string | null; created_at: string; leadName: string; brokerName: string; channel: string; preview: string };
+/**
+ * O que ainda falta para a proposta ir ao ar — medido no plano que o aprovador
+ * vai assinar (lib/marketing/pendencias-de-ativacao.ts). Só existe em propostas
+ * de campanha Meta; nas demais chega `undefined` e nada é desenhado.
+ */
+type Ativacao = {
+  situacao: "sem_pendencia" | "com_pendencia" | "nao_medido" | "nao_se_aplica";
+  /** Artefatos que faltam: peça visual, Página, formulário. */
+  pendencias: number;
+  /** Problemas da própria peça (texto, política, público) — a Meta recusaria. */
+  problemasDaPeca: number;
+  podeAtivar: boolean;
+  motivos: string[];
+  frase: string;
+  /** Já vem só com os reprovados — a Caixa mostra o que falta, não a régua inteira. */
+  itens: Array<{ chave: string; rotulo: string; impede: string; detalhe: string; ondeResolver?: { rotulo: string; href: string } | null }>;
+};
+
+type Approval = { id: string; request_type: string; entity_type: string; status: string; decision_reason: string | null; expires_at: string | null; created_at: string; leadName: string; brokerName: string; channel: string; preview: string; ativacao?: Ativacao };
+
+/**
+ * A linha que impede a proposta sem peça visual de parecer pronta.
+ *
+ * As quatro situações são desenhadas com quatro vozes diferentes de propósito:
+ * "não medido" NÃO pode sair verde (zero pendências numa leitura que não
+ * aconteceu não é saúde), e "não se aplica" NÃO pode sair vermelho (cobrar peça
+ * visual de uma proposta de pausar campanha seria inventar uma falta).
+ */
+function PendenciaDeAtivacao({ ativacao }: { ativacao: Ativacao }) {
+  const cor =
+    ativacao.situacao === "com_pendencia"
+      ? "var(--atlas-estado-atencao)"
+      : ativacao.situacao === "nao_medido"
+        ? "var(--atlas-texto-fraco)"
+        : ativacao.situacao === "sem_pendencia"
+          ? "var(--atlas-estado-sucesso)"
+          : "var(--atlas-texto-medio)";
+  return (
+    <div className="cc6-panel-quiet p-3">
+      <p className="cc6-eyebrow text-micro!">Para ir ao ar</p>
+      <p className="mt-1 text-rotulo leading-5" style={{ color: cor }}>
+        {ativacao.frase}
+      </p>
+      {ativacao.itens.length ? (
+        <ul className="mt-2 space-y-1">
+          {ativacao.itens.map((item) => (
+            <li key={item.chave} className="text-rotulo leading-4 text-[var(--atlas-texto-medio)]">
+              — {item.rotulo}
+              {item.impede === "propor" ? " (a Meta recusaria a peça)" : ""}
+              {item.ondeResolver ? (
+                <>
+                  {" · "}
+                  <a className="underline" href={item.ondeResolver.href}>{item.ondeResolver.rotulo}</a>
+                </>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
 
 /*
  * CC-6 · Aprovações — consolidação do redesign: cada item tinha três vozes de
@@ -124,6 +185,7 @@ export default function ApprovalsPage() {
               </div>
 
               <div className="space-y-3">
+                {item.ativacao ? <PendenciaDeAtivacao ativacao={item.ativacao} /> : null}
                 {pending ? (
                   <>
                     <textarea

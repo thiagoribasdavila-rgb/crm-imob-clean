@@ -21,6 +21,7 @@ import { housingTargetingSpec } from "@/lib/meta/marketing/housing-audience";
 import { uploadImageFromUrl, uploadVideoFromUrl, waitVideoReady } from "@/lib/meta/marketing/media-upload";
 import { findPriorExecution, recordExecution, tryReserve, releaseReservation } from "@/lib/meta/marketing/idempotency";
 import { planFullPublication, validatePublication, publicationSummary } from "@/lib/meta/marketing/publication-plan";
+import { conferirPlanoNaMeta } from "@/lib/marketing/regua-no-plano";
 import { validateExecutionPlan, executeSteps } from "@/lib/meta/marketing/campaign-executor";
 import { fetchCampaignInsights, insightsToCostRows } from "@/lib/meta/marketing/campaign-read";
 import { cachedMetaRead, invalidateMetaReads } from "@/lib/meta/marketing/insights-cache";
@@ -280,6 +281,25 @@ export async function POST(request: NextRequest) {
   const steps = planFullPublication(pubInput);
   const execProblems = validateExecutionPlan(steps);
   if (execProblems.length) return fail("PLAN_INVALID", `Plano recusado: ${execProblems.join("; ")}`, 422);
+
+  // A RÉGUA, no último metro antes da Meta.
+  //
+  // Esta rota é o outro lugar do produto que chama `executeSteps` com
+  // `dryRun: false` — ela CRIA de verdade. O `validateCopy` lá em cima confere o
+  // texto, mas o plano que sai daqui é montado DEPOIS dele, e a aprovação que
+  // esta rota exige (`approvalId`) é uma linha de `approval_requests` que não
+  // está amarrada a estes `steps`: uma aprovação de campanha vale para o
+  // approvalId, não para o plano. Sem esta linha, o único caminho que escreve na
+  // Meta seria o único sem a régua.
+  const vereditoDaRegua = conferirPlanoNaMeta(steps);
+  if (!vereditoDaRegua.podePropor) {
+    return fail(
+      "META_POLICY_BLOCK",
+      `A Meta recusaria esta publicação — criação bloqueada: ${vereditoDaRegua.motivos.join(" · ")}`,
+      422,
+      vereditoDaRegua.itens.filter((i) => i.estado === "reprovado"),
+    );
+  }
 
   try {
     const results = await executeSteps(steps, { token, dryRun: false, idempotencyKey: idemKey });

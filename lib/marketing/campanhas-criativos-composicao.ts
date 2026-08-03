@@ -39,6 +39,12 @@
 
 import type { ExecutionStep } from "../meta/marketing/campaign-executor";
 import type { ProductBrief, CreativeAngle } from "../ai/creative-strategist";
+import {
+  conferirLimitesDeTexto,
+  LIMITE_TITULO,
+  LIMITE_TEXTO,
+  LIMITE_DESCRICAO,
+} from "./regua-da-meta.ts";
 
 // ---------------------------------------------------------------------------
 // Objetivos
@@ -190,10 +196,16 @@ export type ResumoDeProntidao = {
   motivos: string[];
 };
 
-/** Limites do asset_feed_spec (mesma régua de creative-strategist). */
-export const LIMITE_TITULO = 40;
-export const LIMITE_TEXTO = 200;
-export const LIMITE_DESCRICAO = 30;
+/**
+ * Limites do asset_feed_spec. Os números MORAM em `regua-da-meta.ts` e são
+ * re-exportados aqui para quem já os importava (a tela e o check).
+ *
+ * Re-exportar em vez de redeclarar é deliberado: um limite escrito em dois
+ * arquivos sobrevive à primeira edição e diverge na segunda — e "duas verdades
+ * sobre o mesmo número" é a classe de defeito que já custou caro neste
+ * repositório. Aqui só existe uma.
+ */
+export { LIMITE_TITULO, LIMITE_TEXTO, LIMITE_DESCRICAO } from "./regua-da-meta.ts";
 /** Verba mínima aceita — abaixo disso a Meta nem entrega o conjunto. */
 export const VERBA_DIARIA_MINIMA_BRL = 20;
 
@@ -325,18 +337,21 @@ export function prontidaoDaPublicacao(entrada: ComposicaoEntrada): ItemDeProntid
   });
 
   // Estouro de limite é falta bloqueante: a Meta trunca ou recusa.
-  const estouros = [
-    ...titulos.filter((t) => t.length > LIMITE_TITULO).map(() => "título"),
-    ...textos.filter((t) => t.length > LIMITE_TEXTO).map(() => "texto principal"),
-    ...descricoes.filter((t) => t.length > LIMITE_DESCRICAO).map(() => "descrição"),
-  ];
+  //
+  // Quem MEDE é a régua (`conferirLimitesDeTexto`), não este arquivo. Antes o
+  // cálculo existia aqui e de novo na régua — duas contagens do mesmo estouro,
+  // livres para divergir. Esta linha continua existindo porque o painel de
+  // prontidão é o lugar onde o usuário já olha; o que mudou é que ela agora
+  // REPETE um veredito, em vez de emitir um segundo.
+  const reprovasDeLimite = conferirLimitesDeTexto({ titulos, textos, descricoes })
+    .filter((i) => i.severidade === "bloqueio" && i.estado === "reprovado");
   itens.push({
     chave: "limites_de_texto",
     rotulo: "Texto dentro do limite da Meta",
-    estado: estouros.length === 0 ? "ok" : "falta",
-    detalhe: estouros.length === 0
+    estado: reprovasDeLimite.length === 0 ? "ok" : "falta",
+    detalhe: reprovasDeLimite.length === 0
       ? `título ≤ ${LIMITE_TITULO}, texto ≤ ${LIMITE_TEXTO}, descrição ≤ ${LIMITE_DESCRICAO}`
-      : `${estouros.length} campo(s) acima do limite (${[...new Set(estouros)].join(", ")})`,
+      : reprovasDeLimite.map((i) => i.detalhe).join(" · "),
     bloqueia: true,
   });
 

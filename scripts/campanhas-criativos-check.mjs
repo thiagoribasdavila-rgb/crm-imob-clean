@@ -12,16 +12,15 @@
  * honesto, e `podePublicar` tem de reprová-lo com o mesmo rigor de uma falta.
  *
  * 100% determinístico: sem rede, sem banco, sem relógio, sem aleatório. Importa
- * o núcleo PURO lib/marketing/campanhas-criativos-composicao.ts pelo strip de
- * tipos nativo do Node (o módulo só tem `import type`).
+ * o núcleo PURO lib/marketing/campanhas-criativos-composicao.ts direto do .ts —
+ * o Node apaga os tipos sozinho e resolve os imports relativos do módulo.
  *
  * Rodar da raiz do repo: node scripts/campanhas-criativos-check.mjs
  */
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { stripTypeScriptTypes } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const NUCLEO = path.join(raiz, "lib", "marketing", "campanhas-criativos-composicao.ts");
@@ -56,15 +55,24 @@ const semComentarios = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 // ── Carrega o núcleo puro ──────────────────────────────────────────────────
-const ts = fonte(NUCLEO);
-if (!ts) {
+if (!fs.existsSync(NUCLEO)) {
   console.error("núcleo não encontrado:", NUCLEO);
   process.exit(1);
 }
-// `mode: "strip"` é o único aceito nesta versão do Node — e é o que serve aqui:
-// o módulo só tem `import type`, então apagar tipos basta para carregá-lo.
-const js = stripTypeScriptTypes(ts, { mode: "strip" });
-const modulo = await import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`);
+/**
+ * O núcleo é importado DIRETO do .ts (o Node 26 apaga os tipos sozinho).
+ *
+ * Antes ele era stripado à mão e importado por uma URL `data:`. Aquilo dependia
+ * de o módulo ter só `import type` — porque um `data:` URL não tem diretório
+ * base, e o primeiro import relativo DE VALOR quebrava a carga inteira com
+ * ERR_INVALID_URL. Foi exatamente o que aconteceu quando a composição passou a
+ * importar a régua da Meta: o portão morreu por causa de uma premissa do
+ * carregador, não por um defeito do que ele mede.
+ *
+ * Importar o arquivo pelo caminho real resolve os relativos como o Next resolve
+ * — e o portão passa a medir o módulo que existe, não uma cópia sem vizinhos.
+ */
+const modulo = await import(pathToFileURL(NUCLEO).href);
 const {
   prontidaoDaPublicacao, resumoDeProntidao, briefDoEmpreendimento,
   resumoDoPlano, construtorDePlano, objetivoValido, previaDoAnuncio,

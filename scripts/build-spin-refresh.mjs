@@ -70,7 +70,11 @@ const EXISTING_CAMPAIGN = "<<SPIN_CAMPAIGN_ID (id real se a campanha já estiver
 const SPIN_ANGLES = ["sair_do_aluguel", "entrega_imediata", "localizacao", "estilo_de_vida"];
 const copy = buildAdCopy(brief, SPIN_ANGLES);
 const copyViolations = validateCopy(copy);
-const targeting = housingTargetingSpec({ countries: ["BR"], cities: ["São Paulo"] });
+// Geo pela CHAVE da Meta ("269969"), não pelo nome. Com o nome no campo `key` a
+// Meta aceita em silêncio e resolve para localização VAZIA — medido em
+// 02/08/2026: delivery_estimate 0–0 com "São Paulo", 19,7–23,2 milhões com
+// "269969". A chave vem do catálogo (brief.cityKey), fonte única do repo.
+const targeting = housingTargetingSpec({ countries: ["BR"], cities: [brief.cityKey ?? "269969"] });
 const skeleton = leadCampaignSkeleton(brief, weeklyBudgetBrl, targeting);
 const assetFeedSpec = toAssetFeedSpec(copy, { linkUrl: "http://fb.me/", pageId: PAGE });
 const fullSteps = planFullPublication({
