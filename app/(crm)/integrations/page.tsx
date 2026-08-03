@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
+import { CapacidadeNoEscuroPanel } from "@/components/atlas/CapacidadeNoEscuroPanel";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -154,6 +155,14 @@ export default function IntegrationsPage() {
           priority: "secondary",
         }}
       />
+
+      {/* Esta página responde "a credencial está boa?". O painel abaixo responde
+          a pergunta seguinte, que ninguém fazia: "o recurso está PRODUZINDO?".
+          Medido em 03/08/2026, 67 tabelas com código que as lê estavam vazias —
+          nenhuma quebrada, todas esperando um cadastro que ninguém sabia que
+          faltava. Fica logo abaixo do cabeçalho porque é a fila de ação da
+          página, não um rodapé. */}
+      <CapacidadeNoEscuroPanel />
 
       {error ? (
         <p
