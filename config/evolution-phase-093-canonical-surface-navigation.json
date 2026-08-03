@@ -24,7 +24,7 @@
     "baselineCommit": "8569ea3d",
     "measuredAt": "2026-07-29",
     "measuredBy": "git ls-tree -r --name-only 8569ea3d -- app | grep '/page.tsx$'  vs  HEAD",
-    "expectedPageFiles": 202,
+    "expectedPageFiles": 203,
     "causes": [
       "033cd9b3 (2026-07-26): 48 páginas-casca dos nove grupos de rota especulativos — (ai), (andromeda), (automation), (autonomous), (autonomous-business), (digital-life-form), (engine), (reality-engine), (unified-consciousness). Medido antes de remover: zero consumiam dado real, média de 15 linhas, nenhum fetch, nenhum supabase. Todas eram superfície 'experimental', o que explica experimental 101 -> 53. Reversível pela tag checkpoint/antes-remocao-cascas.",
       "0ad1a374 (2026-07-29): app/(crm)/leads/edit/[id]/page.tsx e app/(crm)/tasks/[id]/page.tsx eram rotas legadas que scripts/legacy-route-paths.mjs já declarava removidas desde 26/07 — a quarentena as movia a cada build e elas nunca foram commitadas como apagadas. Eram a causa do working tree permanentemente sujo. Ambas 'contextual'.",
@@ -91,7 +91,8 @@
       "app/terms/page.tsx",
       "app/(crm)/settings/distribuicao/page.tsx",
       "app/(auth)/redefinir-senha/page.tsx",
-      "app/(crm)/marketing/campanhas-criativos-proposta/page.tsx"
+      "app/(crm)/marketing/campanhas-criativos-proposta/page.tsx",
+      "app/(crm)/integrations/whatsapp/templates/page.tsx"
     ],
     "_porqueAcrescentada": {
       "app/(crm)/marketing/campanhas-criativos-proposta/page.tsx": "Compor proposta de anuncio — a tela entre compor e propor. Criada em d7c21fba (02/08/2026) e ja empurrada para origin/main SEM declaracao aqui, o que deixou o portao vermelho na PROPRIA main antes deste PR: 202 page.tsx no disco contra 201 declarados. Nao e tela orfa — recebe link de tres lugares (integrations/meta, marketing/campaign-intelligence e marketing/campaigns) e existe porque /marketing/nova-campanha termina em 'rascunho salvo' sem nunca chamar /api/v1/marketing/proposals, e o painel da Sala de Comando so sabe propor os dois produtos cravados em ready-campaigns enquanto o banco tem 4 empreendimentos. Superficie CONTEXTUAL pelo prefixo app/(crm)/ — a classify() a resolve sozinha; o que faltava era a declaracao, e era exatamente isso que o portao cobrava.",

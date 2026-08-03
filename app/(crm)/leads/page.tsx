@@ -229,7 +229,10 @@ function statusTone(value: string | null) {
 
 function scoreTone(score: number | null) {
   if (Number(score ?? 0) >= HOT_SCORE_THRESHOLD) return "danger";
-  if (Number(score ?? 0) >= 40) return "warning";
+  // Era `>= 40`. A fronteira canônica de morno é 35 (WARM_SCORE_THRESHOLD), e o
+  // 40 digitado aqui criava a segunda verdade que a consolidação existiu para
+  // acabar: a linha de cima já vinha da fronteira, a de baixo não.
+  if (Number(score ?? 0) >= WARM_SCORE_THRESHOLD) return "warning";
   return "info";
 }
 
@@ -564,6 +567,36 @@ export default function LeadsPage() {
    * inventada que esta tela não pode produzir. Por isso a confirmação lê o
    * campo que a própria rota devolve sobre o que ela conseguiu gravar.
    */
+  /**
+   * ── UM PATCH SÓ, PARA AS DUAS SUPERFÍCIES QUE MARCAM ───────────────────────
+   *
+   * A tabela desktop e o cartão mobile chamam ESTA função. Repetir o `setItems`
+   * em cada uma criaria duas verdades sobre a mesma escrita — e a cópia que
+   * existia no cartão já carregava o defeito que isto conserta:
+   *
+   *     next_action_at: quando ?? l.next_action_at
+   *
+   * `??` cai de volta no valor antigo quando `quando` é `null` — que é
+   * exatamente o retorno de LIMPAR. A lead saía da agenda no banco e continuava
+   * marcada na tela, até alguém recarregar. Aqui o `null` é gravado como `null`.
+   *
+   * `next_action` entra junto porque é o QUÊ: sem ele a linha continuaria
+   * exibindo "Ligar" numa lead que acabou de virar "Preparar proposta".
+   *
+   * Patch cirúrgico, não recarga: `setReloadKey` refaria a consulta inteira só
+   * para atualizar UMA linha, e com a ficha aberta em lâmina fecharia o painel
+   * no meio do trabalho. Os dois `useMemo` que dependem de `items`
+   * (`visiblePriorityQueue` e `pageMetrics`) recalculam sozinhos — é assim que
+   * a Fila de ação reordena sem ninguém apertar F5.
+   */
+  function aplicarProximaAcao(leadId: string, quando: string | null, descricao: string | null) {
+    setItems((atuais) =>
+      atuais.map((l) =>
+        l.id === leadId ? { ...l, next_action_at: quando, next_action: descricao } : l,
+      ),
+    );
+  }
+
   async function registrarContatoDaLinha(lead: Lead, registro: RegistroDeContato) {
     /* A guarda contra "caminhos divergentes": um par (canal, resultado) que a
        rota não conhece vira HTTP 400 genérico na mão de quem está trabalhando,
@@ -918,12 +951,28 @@ export default function LeadsPage() {
           else params.set("assigned_to", broker);
         }
         if (project) params.set("development_id", project);
-        if (score === "hot") params.set("min_score", "70");
+        /**
+         * ── O FILTRO "MORNO" MOSTRAVA 6% DA BASE MORNA ─────────────────────
+         *
+         * Estes três eram números digitados: quente >= 70, morno 40–69, frio
+         * <= 39. A fronteira canônica de morno é 35, não 40.
+         *
+         * MEDIDO no banco vivo em 03/08/2026: 182 leads são mornas pelo
+         * critério canônico (35–69) e este filtro devolvia 11. As outras 171 —
+         * 94% da faixa — ficavam de fora, rotuladas "Frio · 0–39". O corretor
+         * que abria "Morno" para trabalhar o segmento via 6% dele, e nada na
+         * tela dizia que faltava alguém.
+         *
+         * Agora os três recortes saem da mesma fronteira e são COMPLEMENTARES
+         * por construção: o teto de um é o piso do seguinte menos um, então
+         * nenhuma lead cai entre duas faixas nem aparece nas duas.
+         */
+        if (score === "hot") params.set("min_score", String(HOT_SCORE_THRESHOLD));
         if (score === "warm") {
-          params.set("min_score", "40");
-          params.set("max_score", "69");
+          params.set("min_score", String(WARM_SCORE_THRESHOLD));
+          params.set("max_score", String(HOT_SCORE_THRESHOLD - 1));
         }
-        if (score === "cold") params.set("max_score", "39");
+        if (score === "cold") params.set("max_score", String(WARM_SCORE_THRESHOLD - 1));
         if (attention) params.set("attention", attention);
         if (faixa) params.set("faixa", faixa);
         if (vinculo) params.set("vinculo", vinculo);
@@ -2067,9 +2116,13 @@ export default function LeadsPage() {
                 className={`atlas-filtro-controle ${focusRing}`}
               >
                 <option value="">Todos os scores</option>
-                <option value="hot">Quente · 70–100</option>
-                <option value="warm">Morno · 40–69</option>
-                <option value="cold">Frio · 0–39</option>
+                {/* Os rótulos saem da MESMA fronteira que o recorte. Escritos à
+                    mão, eles diziam "Morno · 40–69" enquanto a consulta usava
+                    outro número — e o rótulo é a única coisa que a pessoa tem
+                    para saber o que pediu. */}
+                <option value="hot">Quente · {HOT_SCORE_THRESHOLD}–100</option>
+                <option value="warm">Morno · {WARM_SCORE_THRESHOLD}–{HOT_SCORE_THRESHOLD - 1}</option>
+                <option value="cold">Frio · 0–{WARM_SCORE_THRESHOLD - 1}</option>
               </select>
               <select
                 value={nextAction}
@@ -2531,13 +2584,35 @@ export default function LeadsPage() {
                               }
                             />
                           </td>
-                          <td>
+                          {/* ── ONDE FALTAVA O BOTÃO ────────────────────────
+                              Esta coluna DIZIA a próxima ação desde sempre e
+                              não deixava marcá-la: o único escritor
+                              (`NextActionQuickSet`) só existia no cartão
+                              mobile, que o CSS esconde a partir de 1180px.
+                              Medido em produção: das 67 leads abertas, ZERO
+                              tinham próxima ação. Não era a operação — era a
+                              tela, que cobrava o compromisso e não oferecia
+                              onde assumi-lo.
+
+                              240px é a conta do estado ABERTO: "Mandar
+                              WhatsApp" e "Semana que vem" são os dois rótulos
+                              mais largos e precisam caber sem quebrar dentro
+                              do botão. A tabela já rola na horizontal. */}
+                          <td style={{ minWidth: 240 }}>
                             <span
                               className="atlas-next-action"
                               data-overdue={due.overdue ? "true" : "false"}
                             >
                               {due.label}
                             </span>
+                            <NextActionQuickSet
+                              leadId={lead.id}
+                              proximaAcaoEm={lead.next_action_at}
+                              descricaoAtual={lead.next_action}
+                              aoMarcar={(quando, descricao) =>
+                                aplicarProximaAcao(lead.id, quando, descricao)
+                              }
+                            />
                           </td>
                           <td>
                             <div
@@ -2760,22 +2835,15 @@ export default function LeadsPage() {
                       {/* Marcar a próxima ação sem sair da fila. Antes disto, a
                           única forma de gravar `next_action_at` era agendar uma
                           VISITA ou submeter a ficha inteira — e 208 de 217 leads
-                          estavam sem próxima ação porque não havia onde clicar. */}
+                          estavam sem próxima ação porque não havia onde clicar.
+                          O mesmo componente agora também vive na tabela desktop:
+                          o patch de estado é UM só (`aplicarProximaAcao`). */}
                       <NextActionQuickSet
                         leadId={lead.id}
                         proximaAcaoEm={lead.next_action_at}
                         descricaoAtual={lead.next_action}
-                        // Antes: `setReloadKey(k => k + 1)`, que refazia a
-                        // consulta inteira só para atualizar UMA linha — e com
-                        // a ficha em lâmina fecharia o painel no meio do
-                        // trabalho. O patch otimista mexe só na lead marcada;
-                        // se o servidor discordar, a próxima carga corrige.
-                        aoMarcar={(quando) =>
-                          setItems((atuais) =>
-                            atuais.map((l) =>
-                              l.id === lead.id ? { ...l, next_action_at: quando ?? l.next_action_at } : l,
-                            ),
-                          )
+                        aoMarcar={(quando, descricao) =>
+                          aplicarProximaAcao(lead.id, quando, descricao)
                         }
                       />
                     </div>

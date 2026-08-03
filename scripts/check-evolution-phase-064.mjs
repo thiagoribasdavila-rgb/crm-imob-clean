@@ -14,7 +14,30 @@ const checks = [
   ["Fila possui endpoint autenticado e limitado", route.includes("requireAccessContext(request)") && route.includes("enforceRateLimit") && route.includes("COPILOT_DAILY_QUEUE_UNAVAILABLE")],
   ["Tenant e hierarquia permanecem no contrato", route.includes('.eq("organization_id", organizationId)') && route.includes("hierarchicalRls: true") && route.includes("operationalBaseOnly: true")],
   ["Base fria não participa da fila operacional", engine.includes("coldBaseExcluded: true") && !route.includes("reactivation_contacts")],
-  ["Prioridade usa prazos e sinais observados", engine.includes('"task-overdue"') && engine.includes('"task-due-today"') && engine.includes('"observed-score-70-plus"') && engine.includes('"observed-hot-temperature"')],
+  // ── REAPONTADA EM 2026-08-03 — o "70" saiu do texto, a propriedade ficou ────
+  //
+  // A asserção exigia o literal `"observed-score-70-plus"` no fonte. O motor
+  // passou a montar o mesmo sinal a partir da fronteira compartilhada:
+  // `observed-score-${HOT_SCORE_THRESHOLD}-plus`. MEDIDO em execução hoje:
+  // HOT_SCORE_THRESHOLD = 70 e o sinal produzido é `observed-score-70-plus` —
+  // byte a byte o que a asserção procurava. O portão estava vermelho pela FORMA
+  // do fonte, não pelo comportamento.
+  //
+  // E a asserção velha era FRACA justamente onde importa: ela seguiria verde se
+  // alguém digitasse "observed-score-70-plus" aqui enquanto o resto do sistema
+  // passasse a tratar quente por outro número — que é a doença das duas
+  // verdades sobre o mesmo fato, a razão de a fronteira ter sido consolidada.
+  //
+  // O que se afirma agora: o sinal é DERIVADO da fronteira única, e não de um
+  // número digitado neste arquivo. O valor em si é coberto por comportamento em
+  // tests/contracts/uma-fronteira-de-quente.test.mjs.
+  ["Prioridade usa prazos e sinais observados",
+    engine.includes('"task-overdue"')
+    && engine.includes('"task-due-today"')
+    && engine.includes('"observed-hot-temperature"')
+    && /observed-score-\$\{HOT_SCORE_THRESHOLD\}-plus/.test(engine)
+    && /import\s*\{[^}]*HOT_SCORE_THRESHOLD[^}]*\}\s*from\s*"\.\/temperatura-do-lead"/.test(engine)
+    && !/observed-score-\d+-plus/.test(engine)],
   ["Ausência de prazo não é disfarçada como data de criação", route.includes("A data de criação nunca vira prazo") && route.includes("dueAt: nullableText(task.due_date)")],
   ["Lead não é repetida quando já possui tarefa acionável", engine.includes("representedLeadIds") && engine.includes("representedLeadIds.has(lead.id)")],
   ["Fila diária permanece curta", engine.includes("Math.min(8") && route.includes("buildCopilotDailyQueue(tasks, leadInputs, new Date(), 5)")],

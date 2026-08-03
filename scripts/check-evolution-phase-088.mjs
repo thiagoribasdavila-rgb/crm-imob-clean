@@ -89,8 +89,21 @@ const checks = [
   ["Responsável e horário continuam visíveis",
     elementoContem(linhaDoTempo, "article", 'interacao.authorName || "Equipe Atlas"', "dataLegivel(interacao.occurred_at)")
     && linhaDoTempo.includes('toLocaleString("pt-BR")')],
+  // ── REAPONTADA EM 2026-08-03 — o nome da variável saiu, a origem entrou ──────
+  //
+  // A asserção exigia o texto `mapLiveLeadEvent(row)`. A rota passou a chamar
+  // `mapLiveLeadEvent(event.data as JsonRow)`: a variável `row` deixou de
+  // existir e o comportamento não mudou. MEDIDO: o que é mapeado é o registro
+  // que `recordLiveLeadEvent` ACABOU de devolver — nenhuma segunda leitura,
+  // nenhum endpoint novo, que é exatamente o que esta linha afirma.
+  //
+  // E `(row)` era fraco justamente no ponto: um `row` vindo de um select novo
+  // passaria igual, enquanto o nome da asserção promete "sem novo endpoint".
+  // Agora a ORIGEM do dado faz parte da afirmação — o que é mapeado tem de ser
+  // o retorno da escrita, não algo relido depois.
   ["Leitura reutiliza metadata já carregado sem novo endpoint",
-    route.includes("mapLiveLeadEvent(row)")
+    /const\s+event\s*=\s*await\s+recordLiveLeadEvent\(/.test(route)
+    && /mapLiveLeadEvent\(\s*event\.data\b/.test(route)
     && linhaDoTempo.includes("interacao.metadata")
     && !component.includes("fetch(")],
   ["Contrato de escrita continua append-only e com história imutável", route.includes('type: "commercial_context_corrected"') && route.includes("buildGovernedLeadContextAuditMetadata")],
