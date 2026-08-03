@@ -38,7 +38,14 @@ import {
  *    de mostrar uma lista vazia que parece "a conta não tem template".
  */
 
-type Medida = { valor: number | null; comoFoiMedido: string; motivoSemMedida?: string };
+/**
+ * `Medida` foi declarada aqui e nunca usada — uma terceira cópia da mesma ideia.
+ * A canônica vive em `lib/ai/prontidao-para-ligar.ts` (com `valor: number | null`,
+ * onde `null` é afirmação sobre a LEITURA e `0` é afirmação sobre o mundo), e
+ * esta tela na prática usa `Elo`, que já carrega a mesma distinção em `numero`.
+ * Tipo duplicado que ninguém usa é o convite para o próximo leitor achar que há
+ * duas semânticas onde só existe uma.
+ */
 type Elo = { titulo: string; numero: number | null; detalhe: string };
 type Registrado = { id: string; name: string; language: string; category: string; body: string; variables: unknown; status: string; external_template_id: string | null; updated_at: string };
 type DaMeta =
@@ -69,7 +76,7 @@ const ROTULO_DA_SITUACAO: Record<string, string> = {
 function Numero({ valor }: { valor: number | null }) {
   if (valor === null) {
     return (
-      <span className="cc6-warn text-[13px] font-semibold" title="A leitura falhou. Isto não é zero.">
+      <span className="cc6-warn text-corpo font-semibold" title="A leitura falhou. Isto não é zero.">
         não deu para medir
       </span>
     );
@@ -172,11 +179,11 @@ export default function TemplatesDeWhatsApp() {
       {estado.fase === "erro" ? (
         <section className="cc6-panel p-4 sm:p-5" role="alert">
           <h2 className="text-sm font-semibold tracking-tight text-[var(--atlas-text-primary)]">Não foi possível ler os templates</h2>
-          <p className="mt-1.5 max-w-[68ch] text-[13px] leading-6 text-[var(--atlas-text-secondary)]">{estado.mensagem}</p>
+          <p className="mt-1.5 max-w-[68ch] text-corpo leading-6 text-[var(--atlas-text-secondary)]">{estado.mensagem}</p>
           <p className="mt-1.5 text-xs leading-5 text-[var(--atlas-text-tertiary)]">
             Isto <strong>não</strong> quer dizer que não há template cadastrado — quer dizer que não deu para olhar agora.
           </p>
-          <button type="button" onClick={() => void carregar()} className="mt-3 inline-flex min-h-[44px] items-center rounded-lg border border-[var(--atlas-border)] px-4 text-[13px] font-semibold text-[var(--atlas-text-primary)] transition-colors hover:border-[var(--atlas-border-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]">
+          <button type="button" onClick={() => void carregar()} className="mt-3 inline-flex min-h-[44px] items-center rounded-lg border border-[var(--atlas-border)] px-4 text-corpo font-semibold text-[var(--atlas-text-primary)] transition-colors hover:border-[var(--atlas-border-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]">
             Tentar ler de novo
           </button>
         </section>
@@ -184,7 +191,7 @@ export default function TemplatesDeWhatsApp() {
 
       {recado ? (
         <section className={`cc6-panel cc6-sev-band p-4 pl-5`} style={{ "--cc6-sev": recado.tom === "ok" ? "var(--atlas-success)" : "var(--atlas-danger)" } as CSSProperties} role="status">
-          <p className="max-w-[80ch] text-[13px] leading-6 text-[var(--atlas-text-primary)]">{recado.texto}</p>
+          <p className="max-w-[80ch] text-corpo leading-6 text-[var(--atlas-text-primary)]">{recado.texto}</p>
         </section>
       ) : null}
 
@@ -199,7 +206,7 @@ export default function TemplatesDeWhatsApp() {
             <h2 id="destrave-titulo" className="text-sm font-semibold tracking-tight text-[var(--atlas-text-primary)]">
               O que está esperando este template
             </h2>
-            <p className="mt-1.5 max-w-[80ch] text-[13px] leading-6 text-[var(--atlas-text-secondary)]">{painel.destrave.frase}</p>
+            <p className="mt-1.5 max-w-[80ch] text-corpo leading-6 text-[var(--atlas-text-secondary)]">{painel.destrave.frase}</p>
 
             <ul className="mt-3.5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               {painel.destrave.elos.map((elo) => (
@@ -244,10 +251,10 @@ export default function TemplatesDeWhatsApp() {
             </header>
 
             {daMeta === null ? (
-              <p className="mt-2 text-[13px] leading-6 text-[var(--atlas-text-secondary)]">A Meta não foi consultada nesta carga.</p>
+              <p className="mt-2 text-corpo leading-6 text-[var(--atlas-text-secondary)]">A Meta não foi consultada nesta carga.</p>
             ) : daMeta.alcance === "lido" ? (
               <>
-                <p className="mt-1.5 max-w-[80ch] text-[13px] leading-6 text-[var(--atlas-text-secondary)]">
+                <p className="mt-1.5 max-w-[80ch] text-corpo leading-6 text-[var(--atlas-text-secondary)]">
                   Leitura direta da Graph API — somente consulta. O Atlas não cria, não submete e não apaga template na Meta: isso é ato do dono no Business Manager.
                 </p>
                 {daMeta.templates.length === 0 ? (
@@ -261,7 +268,7 @@ export default function TemplatesDeWhatsApp() {
                       {daMeta.templates.map((t) => (
                         <li key={`${t.name}-${t.language}`} className="cc6-panel-quiet flex flex-wrap items-center justify-between gap-2 p-3">
                           <span className="min-w-0">
-                            <span className="text-[13px] font-medium text-[var(--atlas-text-primary)]">{t.name}</span>
+                            <span className="text-corpo font-medium text-[var(--atlas-text-primary)]">{t.name}</span>
                             <span className="ml-2 text-xs text-[var(--atlas-text-tertiary)]">{t.language} · {t.category}</span>
                             <span className="mt-0.5 block max-w-[70ch] truncate text-xs leading-5 text-[var(--atlas-text-secondary)]">{t.body}</span>
                           </span>
@@ -289,7 +296,7 @@ export default function TemplatesDeWhatsApp() {
               </>
             ) : (
               <div className="mt-2">
-                <p className="max-w-[80ch] text-[13px] leading-6 text-[var(--atlas-text-secondary)]">{daMeta.recado}</p>
+                <p className="max-w-[80ch] text-corpo leading-6 text-[var(--atlas-text-secondary)]">{daMeta.recado}</p>
                 <p className="mt-1.5 text-xs text-[var(--atlas-text-tertiary)]">
                   <span aria-hidden="true">{daMeta.quemResolve === "dono" ? "🔑 " : "🖥️ "}</span>
                   {daMeta.quemResolve === "dono" ? "Depende do dono da conta na Meta" : "Depende de quem opera o servidor"}
@@ -329,11 +336,11 @@ export default function TemplatesDeWhatsApp() {
             </header>
 
             {painel.registrados === null ? (
-              <p className="mt-2 max-w-[80ch] text-[13px] leading-6 text-[var(--atlas-text-secondary)]" role="alert">
+              <p className="mt-2 max-w-[80ch] text-corpo leading-6 text-[var(--atlas-text-secondary)]" role="alert">
                 {painel.motivoSemLista}
               </p>
             ) : painel.registrados.length === 0 ? (
-              <p className="mt-2 max-w-[80ch] text-[13px] leading-6 text-[var(--atlas-text-secondary)]">
+              <p className="mt-2 max-w-[80ch] text-corpo leading-6 text-[var(--atlas-text-secondary)]">
                 Nenhum template cadastrado. Enquanto ficar assim, seis lugares do produto — reativação, jornada noturna, sombra do atendimento, prontidão da IA, diagnóstico do canal e o ensaio de homologação — continuam procurando uma linha aprovada e não achando.
               </p>
             ) : (
@@ -341,7 +348,7 @@ export default function TemplatesDeWhatsApp() {
                 {painel.registrados.map((t) => (
                   <li key={t.id} className="cc6-panel-quiet flex flex-wrap items-center justify-between gap-2 p-3">
                     <span className="min-w-0">
-                      <span className="text-[13px] font-medium text-[var(--atlas-text-primary)]">{t.name}</span>
+                      <span className="text-corpo font-medium text-[var(--atlas-text-primary)]">{t.name}</span>
                       <span className="ml-2 text-xs text-[var(--atlas-text-tertiary)]">
                         {t.language} · {t.category}
                         {Array.isArray(t.variables) && t.variables.length ? ` · ${t.variables.length} parâmetro(s)` : " · sem parâmetro"}
@@ -362,7 +369,7 @@ export default function TemplatesDeWhatsApp() {
             <h2 id="cadastro-titulo" className="text-sm font-semibold tracking-tight text-[var(--atlas-text-primary)]">
               Registrar um template
             </h2>
-            <p className="mt-1.5 max-w-[80ch] text-[13px] leading-6 text-[var(--atlas-text-secondary)]">
+            <p className="mt-1.5 max-w-[80ch] text-corpo leading-6 text-[var(--atlas-text-secondary)]">
               Use exatamente o nome e o idioma que estão no Business Manager: é esse par que a Cloud API usa para achar o template no envio. Um caractere diferente e a mensagem não sai.
             </p>
 
@@ -373,7 +380,7 @@ export default function TemplatesDeWhatsApp() {
                   value={nome}
                   onChange={(e) => setNome(e.target.value.toLowerCase())}
                   placeholder="primeiro_contato_imovel"
-                  className="min-h-[44px] rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-soft)] px-3 text-[13px] text-[var(--atlas-text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                  className="min-h-[44px] rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-soft)] px-3 text-corpo text-[var(--atlas-text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
                 />
                 <span className="text-xs text-[var(--atlas-text-tertiary)]">Só minúsculas, números e sublinhado.</span>
               </label>
@@ -383,7 +390,7 @@ export default function TemplatesDeWhatsApp() {
                 <select
                   value={idioma}
                   onChange={(e) => setIdioma(e.target.value)}
-                  className="min-h-[44px] rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-soft)] px-3 text-[13px] text-[var(--atlas-text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                  className="min-h-[44px] rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-soft)] px-3 text-corpo text-[var(--atlas-text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
                 >
                   {IDIOMAS.map((codigo) => (
                     <option key={codigo} value={codigo}>{codigo}</option>
@@ -396,7 +403,7 @@ export default function TemplatesDeWhatsApp() {
                 <select
                   value={categoria}
                   onChange={(e) => setCategoria(e.target.value)}
-                  className="min-h-[44px] rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-soft)] px-3 text-[13px] text-[var(--atlas-text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                  className="min-h-[44px] rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-soft)] px-3 text-corpo text-[var(--atlas-text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
                 >
                   {CATEGORIAS.map((c) => (
                     <option key={c} value={c}>{c}</option>
@@ -409,7 +416,7 @@ export default function TemplatesDeWhatsApp() {
                 <select
                   value={situacao}
                   onChange={(e) => setSituacao(e.target.value)}
-                  className="min-h-[44px] rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-soft)] px-3 text-[13px] text-[var(--atlas-text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                  className="min-h-[44px] rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-soft)] px-3 text-corpo text-[var(--atlas-text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
                 >
                   {STATUS_QUE_A_OPERACAO_ESCREVE.map((s) => (
                     <option key={s} value={s}>{ROTULO_DA_SITUACAO[s]}</option>
@@ -431,7 +438,7 @@ export default function TemplatesDeWhatsApp() {
                 onChange={(e) => setCorpo(e.target.value)}
                 rows={4}
                 placeholder="Olá {{1}}, aqui é da {{2}}. Vi seu interesse no empreendimento e posso te mandar as opções disponíveis. Posso seguir por aqui?"
-                className="rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-soft)] p-3 text-[13px] leading-6 text-[var(--atlas-text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                className="rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-soft)] p-3 text-corpo leading-6 text-[var(--atlas-text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
               />
               <span className="text-xs leading-5 text-[var(--atlas-text-tertiary)]">
                 Cole o texto <strong>exatamente</strong> como a Meta aprovou. Os parâmetros saem do próprio corpo — não há lista separada para divergir dele.

@@ -37,7 +37,12 @@ const CSS = "app/globals.css";
    Medidas em 01/08/2026, depois de 757 conversões. Só podem CAIR.
    Quem baixar o número, baixe também a catraca — é o que transforma a
    limpeza em progresso irreversível. */
-const TETO_ARBITRARIOS_TSX = 52;
+// 52 → 27 em 03/08/2026. A queda veio de converter os 18 `text-[13px]` da tela
+// de templates do WhatsApp para `text-corpo` — conversão 1:1, porque
+// `--text-corpo` É 13px (app/globals.css:7356). A catraca desce no MESMO commit
+// que produz o ganho: folga guardada não é margem de segurança, é permissão
+// silenciosa para regredir até o teto velho sem nenhum portão reclamar.
+const TETO_ARBITRARIOS_TSX = 27;
 const TETO_FONT_SIZE_CSS = 355;
 
 /** Os degraus, nomeados pelo PAPEL. Nome de tamanho convidaria a inventar o 11.5 de novo. */

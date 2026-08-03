@@ -344,17 +344,6 @@ textarea:focus {
   background: var(--atlas-surface);
   box-shadow: none;
 }
-.atlas-panel-hover {
-  transition:
-    transform 0.25s ease,
-    border-color 0.25s ease,
-    box-shadow 0.25s ease;
-}
-.atlas-panel-hover:hover {
-  transform: none;
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: none;
-}
 .atlas-metric {
   position: relative;
   overflow: hidden;
@@ -4850,7 +4839,7 @@ a.atlas-activity-event:hover { background: rgba(56, 189, 248, 0.035); }
 .atlas-ambient-orb { animation: none; opacity: .05; filter: blur(120px); transform: translateZ(0); }
 .atlas-panel { content-visibility: auto; contain-intrinsic-block-size: auto 420px; backdrop-filter: none; }
 .atlas-app-topbar, .atlas-sidebar { backdrop-filter: blur(20px) saturate(140%); }
-@media (hover: none) { .atlas-panel-hover:hover, .atlas-metric:hover { transform: none; } }
+@media (hover: none) { .atlas-metric:hover { transform: none; } }
 @media (max-width: 639px) { .atlas-ambient-orb-two { display: none; } .atlas-ambient-orb-one { opacity: .06; filter: blur(62px); } .atlas-app-topbar, .atlas-sidebar { backdrop-filter: blur(12px); } }
 
 /* Lead 360 — prioridade visual para a ação que move a venda */
@@ -7932,7 +7921,6 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
 }
 
 .atlas-app-shell[data-visual-system="atlas-core-v2"] :is(
-  .atlas-panel-hover,
   .atlas-surface-card,
   .atlas-metric
 ):hover {
