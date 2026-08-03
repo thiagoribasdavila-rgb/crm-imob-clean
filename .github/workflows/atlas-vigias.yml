@@ -104,7 +104,7 @@ jobs:
           fi
 
           case "${QUANDO:-}" in
-            '*/5 * * * *')  ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process" ;;
+            '*/5 * * * *')  ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process crm/aviso-ao-corretor/process" ;;
             '*/10 * * * *') ROTAS="distribution/reservations/process" ;;
             '17 * * * *')   ROTAS="marketing/meta-sem-destino/process" ;;
             '47 * * * *')   ROTAS="integrations/carta-morta/vigia" ;;
@@ -121,7 +121,7 @@ jobs:
             '0 10 * * 0')   ROTAS="developers/weekly-reports/process" ;;
             *)
               case "${GRUPO:-curto}" in
-                curto)        ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process" ;;
+                curto)        ROTAS="crm/first-contact-sla/process outbox/process tasks/reminders/process crm/aviso-ao-corretor/process" ;;
                 dez)          ROTAS="distribution/reservations/process" ;;
                 hora)         ROTAS="marketing/meta-sem-destino/process" ;;
                 hora_backfill) ROTAS="marketing/meta-backfill/process" ;;

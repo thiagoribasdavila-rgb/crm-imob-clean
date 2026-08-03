@@ -322,6 +322,19 @@
         "condicional": true,
         "inferida": false
       }
+    },
+    {
+      "nome": "aviso-ao-corretor",
+      "rota": "/api/v2/crm/aviso-ao-corretor/process",
+      "cadencia": "*/5 * * * *",
+      "porque": "Entre a lead chegar e o prazo apertar existe uma janela em que ninguém chama o corretor — e o prazo mais curto desta operação é de 5 minutos. A pastilha e o aviso do navegador cobrem quem está com o Atlas aberto; este worker cobre quem não está. Lê lead_distribution_history, que é a única tabela escrita por TODOS os caminhos de atribuição, e usa marca d'água da passagem anterior para não duplicar nem perder. Cadência igual à do vigia de SLA porque o prazo que os dois protegem é o mesmo.",
+      "timeoutMs": 55000,
+      "evidencia": {
+        "tabela": "atlas_worker_runs",
+        "coluna": "concluido_em",
+        "condicional": false,
+        "inferida": false
+      }
     }
   ],
   "sobDemanda": [
