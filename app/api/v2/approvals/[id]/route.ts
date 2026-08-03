@@ -93,7 +93,21 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         if (execError || !task) return NextResponse.json({ error: `Execução falhou (tarefa): ${execError?.message || "sem id"}` }, { status: 502 });
         executed = { taskId: task.id, dueAt: action.dueAt };
       } else if (kind === "reassign_lead") {
-        const ownership = await resolveLeadOwner(admin, identity.organizationId, null);
+        // O escopo da lead decide de quem é a vez. Redistribuir sem ele mandaria
+        // a lead do Arvo para a fila geral — inclusive para quem foi deixado de
+        // fora do elenco daquele empreendimento de propósito. A lead já existe
+        // aqui (é ela que está sendo reatribuída), então os dois ids vêm dela e
+        // não de palpite.
+        const { data: escopoDaLead } = await admin
+          .from("leads")
+          .select("development_id,campaign_id")
+          .eq("id", approval.entity_id)
+          .eq("organization_id", identity.organizationId)
+          .maybeSingle();
+        const ownership = await resolveLeadOwner(admin, identity.organizationId, null, {
+          projetoId: (escopoDaLead?.development_id as string | null) ?? null,
+          campanhaId: (escopoDaLead?.campaign_id as string | null) ?? null,
+        });
         if (!ownership.ownerId) return NextResponse.json({ error: "Cascata sem elegíveis agora — nenhum corretor ou gerente disponível." }, { status: 409 });
         const { error: execError } = await admin.from("leads").update({ assigned_to: ownership.ownerId, assigned_user_id: ownership.ownerId }).eq("id", approval.entity_id).eq("organization_id", identity.organizationId);
         if (execError) return NextResponse.json({ error: `Execução falhou (redistribuição): ${execError.message}` }, { status: 502 });

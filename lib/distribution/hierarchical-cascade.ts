@@ -2,7 +2,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   resolverElenco, aplicarElenco,
   type EscopoDeDistribuicao, type MembroDoElenco,
-} from "./elenco-por-escopo";
+  // `.ts` explícito, como em `qualificacao-canonica`, `biblioteca-de-midia` e
+  // outros doze módulos deste repo: é o que permite ao contrato exercitar o
+  // MOTOR desta cascata sem loader customizado. Sem isso o único portão possível
+  // seria conferir a forma da chamada — e forma passa com `escopo: {}`, que é o
+  // mesmo defeito de novo.
+} from "./elenco-por-escopo.ts";
+import { montarFila } from "./fila-de-atendimento.ts";
+
+/**
+ * O elenco com o que a FILA precisa a mais: a ordem escolhida pela liderança e
+ * quando a pessoa entrou. `MembroDoElenco` continua intacto — quem só quer saber
+ * QUEM participa (a regra de restrição) não passa a depender da ordem.
+ */
+type MembroComOrdem = MembroDoElenco & { posicao: number | null; entrouEm: string | null };
 
 /**
  * Cascata hierárquica de distribuição para leads de entrada automática
@@ -205,19 +218,69 @@ export async function resolveLeadOwner(
   // "está indisponível".
   //
   // Sem elenco cadastrado nada muda: `permitidos: null` deixa a lista intacta.
-  const elenco = resolverElenco(escopo ?? {}, await carregarElenco(admin, organizationId, escopo));
+  const membrosDoElenco = await carregarElenco(admin, organizationId, escopo);
+  const elenco = resolverElenco(escopo ?? {}, membrosDoElenco);
   const filtrado = aplicarElenco(
     brokerCandidates.map((c) => ({ id: c.profile.id, candidato: c })),
     elenco,
   );
   const notaElenco = elenco.decididoPor === "sem-elenco" ? "" : `${filtrado.porque} `;
 
-  const broker = filtrado.elencoEsvaziou ? null : pickLeastLoaded(filtrado.elegiveis.map((x) => x.candidato));
+  // ── DE QUEM É A VEZ ───────────────────────────────────────────────────────
+  //
+  // Com fila montada para o escopo, a escolha passa a ser por RODÍZIO: a lead
+  // vai para quem vem depois de quem recebeu por último. Sem fila montada nada
+  // muda — segue a menor carga, que é o comportamento de sempre.
+  //
+  // A troca é deliberada e vale só dentro do escopo: menor carga é justa na
+  // média e imprevisível no dia (quem fecha rápido volta a receber; quem está
+  // com cinco atendimentos longos fica dias sem lead nova). Quem montou uma fila
+  // para o empreendimento pediu previsibilidade, não média.
+  let escolhido: Candidate | null = null;
+  let notaDaVez = "";
+  if (!filtrado.elencoEsvaziou && elenco.decididoPor !== "sem-elenco") {
+    const escopoDaVez = elenco.decididoPor === "campanha"
+      ? { coluna: "campaign_id" as const, id: String(escopo?.campanhaId) }
+      : { coluna: "development_id" as const, id: String(escopo?.projetoId) };
+    const doEscopo = membrosDoElenco.filter(
+      (m) => m.ativo && m.escopo === elenco.decididoPor && m.escopoId === escopoDaVez.id,
+    );
+    const ultimaPorCorretor = await ultimaLeadDoEscopo(
+      admin, organizationId, escopoDaVez, doEscopo.map((m) => m.profileId),
+    );
+    const elegiveis = new Set(filtrado.elegiveis.map((x) => x.id));
+    const fila = montarFila(
+      doEscopo.map((m) => ({
+        profileId: m.profileId,
+        ativo: true,
+        posicao: m.posicao ?? null,
+        entrouEm: m.entrouEm ?? null,
+      })),
+      doEscopo.map((m) => ({
+        profileId: m.profileId,
+        ultimaLeadEm: ultimaPorCorretor.get(m.profileId) ?? null,
+        elegivelAgora: elegiveis.has(m.profileId),
+        porQueNao: elegiveis.has(m.profileId) ? null : "indisponível, sem WhatsApp ou na capacidade",
+      })),
+    );
+    escolhido = fila.proximoId
+      ? brokerCandidates.find((c) => c.profile.id === fila.proximoId) ?? null
+      : null;
+    notaDaVez = `${fila.porque} `;
+  }
+  if (!escolhido) {
+    escolhido = filtrado.elencoEsvaziou ? null : pickLeastLoaded(filtrado.elegiveis.map((x) => x.candidato));
+  }
+
+  const broker = escolhido;
   if (broker) {
+    const criterio = notaDaVez
+      ? `cascata hierárquica: corretor da vez (${displayName(broker.profile)}, ${broker.load} leads abertos).`
+      : `cascata hierárquica: corretor com menor carga (${displayName(broker.profile)}, ${broker.load} leads abertos).`;
     return {
       ownerId: broker.profile.id,
       tier: "broker",
-      reason: `${defaultNote}${notaElenco}cascata hierárquica: corretor com menor carga (${displayName(broker.profile)}, ${broker.load} leads abertos).`.trim(),
+      reason: `${defaultNote}${notaElenco}${notaDaVez}${criterio}`.trim(),
     };
   }
 
@@ -307,12 +370,12 @@ async function carregarElenco(
   admin: SupabaseClient,
   organizationId: string,
   escopo: EscopoDeDistribuicao | undefined,
-): Promise<MembroDoElenco[]> {
+): Promise<MembroComOrdem[]> {
   const ids = [escopo?.projetoId, escopo?.campanhaId].filter(Boolean) as string[];
   if (ids.length === 0) return [];
   const { data, error } = await admin
     .from("distribution_roster")
-    .select("escopo,escopo_id,profile_id,ativo")
+    .select("escopo,escopo_id,profile_id,ativo,posicao,created_at")
     .eq("organization_id", organizationId)
     .eq("ativo", true)
     .in("escopo_id", ids);
@@ -322,5 +385,60 @@ async function carregarElenco(
     escopoId: String(r.escopo_id),
     profileId: String(r.profile_id),
     ativo: Boolean(r.ativo),
+    posicao: r.posicao === null || r.posicao === undefined ? null : Number(r.posicao),
+    entrouEm: r.created_at ? String(r.created_at) : null,
   }));
+}
+
+/**
+ * Quando cada membro da fila recebeu a última lead DESTE escopo.
+ *
+ * Fonte única: `lead_distribution_history`, o registro do ATO de distribuir —
+ * onde tanto esta cascata (`recordDistribution`) quanto a distribuição manual da
+ * liderança gravam. `leads.created_at` seria a chegada da lead e não a entrega
+ * dela: uma lead antiga transferida hoje não moveria o ponteiro, e o rodízio
+ * daria a vez a quem acabou de receber.
+ *
+ * Duas consultas pequenas em vez de um join: as leads do escopo (só os ids) e o
+ * histórico DOS MEMBROS DA FILA (um punhado de pessoas, não a organização
+ * inteira). Falha de leitura devolve mapa vazio — o rodízio começa do primeiro
+ * da ordem, que é o comportamento de uma fila que ainda não girou, e nenhuma
+ * lead deixa de ser distribuída por causa disso.
+ */
+async function ultimaLeadDoEscopo(
+  admin: SupabaseClient,
+  organizationId: string,
+  escopo: { coluna: "development_id" | "campaign_id"; id: string },
+  profileIds: string[],
+): Promise<Map<string, string>> {
+  const vazio = new Map<string, string>();
+  if (!profileIds.length || !escopo.id || escopo.id === "undefined") return vazio;
+
+  const { data: leadsDoEscopo, error: erroLeads } = await admin
+    .from("leads")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq(escopo.coluna, escopo.id)
+    .limit(5000);
+  if (erroLeads) return vazio;
+  const noEscopo = new Set((leadsDoEscopo ?? []).map((l) => String(l.id)));
+  if (noEscopo.size === 0) return vazio;
+
+  const { data: historico, error: erroHistorico } = await admin
+    .from("lead_distribution_history")
+    .select("lead_id,assigned_user_id,created_at")
+    .eq("organization_id", organizationId)
+    .in("assigned_user_id", profileIds)
+    .order("created_at", { ascending: false })
+    .limit(2000);
+  if (erroHistorico) return vazio;
+
+  const ultima = new Map<string, string>();
+  for (const linha of historico ?? []) {
+    const corretor = String(linha.assigned_user_id || "");
+    if (!corretor || ultima.has(corretor)) continue;
+    if (!noEscopo.has(String(linha.lead_id))) continue;
+    ultima.set(corretor, String(linha.created_at));
+  }
+  return ultima;
 }

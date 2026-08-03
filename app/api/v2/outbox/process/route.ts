@@ -726,14 +726,9 @@ export async function POST(request: Request) {
           // O evento do webhook (metaEvent) e a leitura da Graph (leadData) podem
           // divergir; a Graph é a fonte mais fresca, o webhook é o fallback.
           const campaignExternalId = String(leadData.campaign_id || metaEvent.campaign_external_id || "").trim() || null;
-          // Distribuição RBAC 10/10: dono padrão validado → cascata corretor→gerente→fila
-          // (determinística, capacity-aware, offline-safe). Auditoria em lead_distribution_history.
-          const [ownership, campaignLink] = existingLead
-            ? ([null, null] as const)
-            : await Promise.all([
-              resolveLeadOwner(admin, metaEvent.organization_id, sourceResult.data?.default_owner_id || null),
-              resolveMetaCampaign(admin, metaEvent.organization_id, campaignExternalId),
-            ]);
+          const campaignLink = existingLead
+            ? null
+            : await resolveMetaCampaign(admin, metaEvent.organization_id, campaignExternalId);
           const leadMeta = { externalLeadId: metaEvent.external_lead_id, pageId: metaEvent.page_id, formId: leadData.form_id || metaEvent.form_id, adId: leadData.ad_id || metaEvent.ad_id, adsetId: leadData.adset_id || metaEvent.adset_id, campaignId: leadData.campaign_id || metaEvent.campaign_external_id, campaignLinkage: campaignLink?.linkage ?? null, sourceName: sourceResult.data?.name || null, dataSharingConsent: sourceResult.data?.conversion_sharing_enabled === true, consentBasis: sourceResult.data?.consent_basis || null,
             // A base legal desta lead veio do FORMULÁRIO da Meta, onde a pessoa
             // aceitou os termos antes de virar lead — não de alguém afirmando
@@ -786,6 +781,36 @@ export async function POST(request: Request) {
               });
             }
           }
+
+          // ── O ESCOPO QUE A FILA DE ATENDIMENTO PRECISA ───────────────────
+          //
+          // Distribuição RBAC 10/10: dono padrão validado → cascata
+          // corretor→gerente→fila (determinística, capacity-aware,
+          // offline-safe). Auditoria em lead_distribution_history.
+          //
+          // O 4º argumento é o que faz o elenco e o rodízio EXISTIREM na
+          // prática. Sem ele — e era assim até aqui — a cascata resolvia com
+          // `escopo` indefinido, `carregarElenco` devolvia `[]` e toda fila
+          // montada na tela virava enfeite: a lead ia para o corretor com menor
+          // carga da equipe inteira, inclusive quem foi deliberadamente deixado
+          // de fora daquele empreendimento.
+          //
+          // Os ids são os que a LEAD vai carregar, não os da fonte: `projetoId`
+          // é o de `developments` (o mesmo que grava em `leads.development_id`,
+          // via ponte) e `campanhaId` é o de `marketing_campaigns`. Escopo com
+          // id de outra tabela não casaria com elenco nenhum e falharia em
+          // silêncio, que é o pior desfecho possível aqui.
+          //
+          // Resolvido DEPOIS da ponte e da campanha de propósito: os dois ids
+          // precisam existir antes de perguntar de quem é a vez.
+          const ownership = existingLead
+            ? null
+            : await resolveLeadOwner(
+              admin,
+              metaEvent.organization_id,
+              sourceResult.data?.default_owner_id || null,
+              { projetoId: developmentIdDaPonte, campanhaId: campaignLink?.campaignId ?? null },
+            );
 
           const leadPayload = {
             organization_id: metaEvent.organization_id,
@@ -1014,10 +1039,6 @@ export async function POST(request: Request) {
           const existingLeadQuery = await admin.from("leads").select("id").eq("organization_id", portalEvent.organization_id).contains("metadata", { portal: { provider: portalEvent.provider, externalLeadId: portalEvent.external_lead_id } }).maybeSingle();
           if (existingLeadQuery.error) throw existingLeadQuery.error;
           const existingLead = existingLeadQuery.data;
-          // Mesma cascata RBAC do caminho Meta — portais tinham o mesmo gap.
-          const ownership = existingLead
-            ? null
-            : await resolveLeadOwner(admin, portalEvent.organization_id, sourceRow?.default_owner_id || null);
           // ── ATRIBUIÇÃO DO GOOGLE ────────────────────────────────────────
           // Três dos quatro empreendimentos atendidos anunciam no Google, e o
           // CRM tinha 2 leads de google_ads contra 201 da Meta — não porque o
@@ -1056,6 +1077,26 @@ export async function POST(request: Request) {
               campanhaRegistrada: Boolean(campanhaDoGoogle),
             });
           }
+
+          // Mesma cascata RBAC do caminho Meta — portais tinham o mesmo gap.
+          //
+          // Resolvido DEPOIS da atribuição do Google porque é ela que descobre a
+          // campanha desta lead, e é a campanha que define de quem é a vez na
+          // fila de atendimento. Resolver antes (como estava) deixava o escopo
+          // sempre vazio e o rodízio da campanha sem efeito nenhum.
+          //
+          // `projetoId` vai nulo de propósito: o portal não traz empreendimento,
+          // e o insert abaixo tampouco grava um. Inventar o vínculo aqui para
+          // "aproveitar" uma fila de projeto seria distribuir a lead a um time
+          // escolhido por palpite.
+          const ownership = existingLead
+            ? null
+            : await resolveLeadOwner(
+              admin,
+              portalEvent.organization_id,
+              sourceRow?.default_owner_id || null,
+              { projetoId: null, campanhaId: campanhaDoGoogle },
+            );
 
           const leadInsert = existingLead ? { data: existingLead, error: null } : await admin.from("leads").insert({
             organization_id: portalEvent.organization_id,
