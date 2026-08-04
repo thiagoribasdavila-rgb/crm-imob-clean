@@ -964,12 +964,17 @@ function Sparkline({ points, label }: { points: number[]; label: string }) {
 // sensação de espessura (transform/tinta, nunca glow/blur). O arco anima até o
 // valor com rAF ~500ms; sob reduced-motion pinta direto. Redesenha só quando o
 // valor muda (dependência do useEffect).
-// 64px→36px: o único DepthRing que sobrou (o de módulos já virou par
+// 64px→48px: o único DepthRing que sobrou (o de módulos já virou par
 // textual, ver comentário perto de `moduleRing`) dominava visualmente a
 // faixa de Telemetria — a camada explicitamente mais silenciosa da tela,
-// com texto de 11px ao redor. O traço acompanha a proporção.
-const RING_SIZE = 36;
-const RING_STROKE = 3;
+// com texto de 11px ao redor. Uma primeira redução para 36px (revertida
+// aqui) colidia o próprio rótulo com o traço para valores plausíveis de
+// 2 dígitos/"100%" — medido depois de publicado. 48px é o menor tamanho
+// que ainda deixa "100%" e "12/20" (score do broker e underControl/total
+// do diretor) com folga, no mesmo font-semibold de 11px. O traço
+// acompanha a proporção.
+const RING_SIZE = 48;
+const RING_STROKE = 4;
 
 function DepthRing({
   fraction,
@@ -1050,7 +1055,7 @@ function DepthRing({
       title={detail}
       className="relative inline-grid place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
     >
-      <canvas ref={canvasRef} aria-hidden="true" className="h-9 w-9" />
+      <canvas ref={canvasRef} aria-hidden="true" className="h-12 w-12" />
       <span
         aria-hidden="true"
         className="pointer-events-none absolute font-mono text-rotulo font-semibold tabular-nums text-slate-200"
