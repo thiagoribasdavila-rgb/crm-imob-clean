@@ -237,6 +237,23 @@ type RelationshipContext = {
     campaignEvents: number;
     historicalMemories: number;
   };
+  /** O que a pessoa já respondeu no formulário do anúncio — computado pela
+   *  rota há tempos, nunca antes devolvido para a tela. */
+  qualificacaoDeclarada: {
+    resumo: string | null;
+    prontaParaPriorizar: boolean;
+    faixaInvestimento: string | null;
+    formaPagamentoDeclarada: string | null;
+    naoMapeadas: Array<{ chave: string; resposta: string }>;
+    formularioPerguntou: boolean;
+    divergencias: Array<{
+      campo: string;
+      canonico: string;
+      origemCanonica: string;
+      divergente: string;
+      origemDivergente: string;
+    }>;
+  };
 };
 type AssignmentReservation = {
   id: string;
@@ -1040,6 +1057,18 @@ export default function LeadDetailPage() {
                   {ownerName ? "transferir" : "atribuir"}
                 </Link>
               </p>
+              {/* O que a pessoa já respondeu no anúncio, na primeira dobra —
+                  não enterrado dentro de "Origem Meta" lá embaixo. `resumo`
+                  e `daParaPriorizar` já existiam prontos
+                  (lib/crm/lead-qualification-fields.ts) sem nenhum chamador
+                  no repositório inteiro. */}
+              {relationshipContext?.qualificacaoDeclarada.resumo ? (
+                <p className="mt-2">
+                  <span className="cc6-chip" title="Declarado pela pessoa no formulário do anúncio — ainda não confirmado pelo corretor">
+                    {relationshipContext.qualificacaoDeclarada.resumo}
+                  </span>
+                </p>
+              ) : null}
             </div>
             {/* Número-herói na primitiva do CC23 (já existe em globals.css,
                 usada no command-center) em vez de cc6-metric-value com
@@ -2250,6 +2279,34 @@ export default function LeadDetailPage() {
                 </div>
               ))}
             </dl>
+            {/* O que a pessoa respondeu no formulário e o mapeador não
+                reconheceu como intenção/faixa/pagamento — antes ficava só no
+                banco. "Descartar o que não se reconhece é como se perdeu a
+                informação da primeira vez" (lead-qualification-fields.ts). */}
+            {relationshipContext?.qualificacaoDeclarada.naoMapeadas.length ? (
+              <div className="cc6-hairline mt-4 pt-3">
+                <p className="cc6-eyebrow text-micro">Outras respostas do formulário</p>
+                <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {relationshipContext.qualificacaoDeclarada.naoMapeadas.map((item) => (
+                    <div key={item.chave}>
+                      <dt className="text-micro text-[var(--atlas-texto-fraco)]">{item.chave}</dt>
+                      <dd className="mt-0.5 text-sm text-[var(--atlas-texto-forte)]">{item.resposta}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ) : null}
+            {relationshipContext?.qualificacaoDeclarada.divergencias.length ? (
+              <div className="cc6-hairline mt-4 pt-3">
+                <p className="cc6-eyebrow cc6-warn text-micro">Divergência entre fontes</p>
+                {relationshipContext.qualificacaoDeclarada.divergencias.map((d) => (
+                  <p key={d.campo} className="mt-1.5 text-rotulo leading-5 text-[var(--atlas-texto-medio)]">
+                    <span className="text-[var(--atlas-texto-fraco)]">{d.campo}:</span>{" "}
+                    {d.canonico} ({d.origemCanonica}) × {d.divergente} ({d.origemDivergente})
+                  </p>
+                ))}
+              </div>
+            ) : null}
             <p className="cc6-hairline mt-4 pt-3 text-rotulo leading-5 text-[var(--atlas-texto-fraco)]">
               O corretor só mantém estágio e acompanhamento atualizados; o CRM
               transforma essas ações em sinais estruturados. Textos livres e

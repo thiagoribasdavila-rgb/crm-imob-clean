@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { assessLeadCompleteness } from "@/lib/ai/data-completeness";
 import { perfilConfirmadoNoCrm, respostasDoFormularioNoMetadata, respostasLegadoDoPerfil, respostasLegadoNoMetadata, unificarQualificacao } from "@/lib/crm/qualificacao-canonica";
+import { daParaPriorizar, mapearQualificacao, resumirQualificacao } from "@/lib/crm/lead-qualification-fields";
 import {
   buildGovernedLeadContextAuditMetadata,
   normalizeCommercialContextText,
@@ -420,6 +421,21 @@ export async function GET(request: Request, context: RouteContext) {
       respostasDoFormulario: respostasDoFormularioNoMetadata(lead.metadata),
     });
     const respostasParaAFicha = { ...respostasLegadoNoMetadata(lead.metadata), ...respostasLegadoDoPerfil(perfilConfirmadoNoCrm(qualificacaoUnificada)) };
+    // `qualificacaoUnificada` já existia, mas nunca saía na resposta — a Ficha
+    // do Comprador continuava em branco mesmo quando a pessoa já tinha
+    // respondido no anúncio da Meta. `resumirQualificacao`/`daParaPriorizar`
+    // (lib/crm/lead-qualification-fields.ts) já existiam também, sem nenhum
+    // chamador em todo o repositório.
+    const camposDoFormulario = mapearQualificacao(respostasDoFormularioNoMetadata(lead.metadata));
+    const qualificacaoDeclarada = {
+      resumo: resumirQualificacao(camposDoFormulario),
+      prontaParaPriorizar: daParaPriorizar(camposDoFormulario),
+      faixaInvestimento: qualificacaoUnificada.declarado.faixaInvestimento,
+      formaPagamentoDeclarada: qualificacaoUnificada.declarado.formaPagamentoDeclarada,
+      naoMapeadas: qualificacaoUnificada.declarado.naoMapeadas,
+      formularioPerguntou: qualificacaoUnificada.declarado.formularioPerguntou,
+      divergencias: qualificacaoUnificada.divergencias,
+    };
     const leadComQualificacao = { ...lead, metadata: { ...(lead.metadata && typeof lead.metadata === "object" ? lead.metadata as Record<string, unknown> : {}), qualificationAnswers: respostasParaAFicha } };
     // `historico.total`, não `activities.length`: o campo "interação registrada"
     // pergunta se existe história com este cliente, e a movimentação do funil é
@@ -490,6 +506,7 @@ export async function GET(request: Request, context: RouteContext) {
         // "[Cia360] Inside Smart", somando R$ 4.122 de verba.
         campaign: origemDaLead.campanha,
         origemCompleta: origemDaLead,
+        qualificacaoDeclarada,
         communications: {
           conversations: conversas.length,
           messages: mensagens.length,
