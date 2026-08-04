@@ -4,7 +4,7 @@ import Link from "next/link";
 // Ícone real no lugar do emoji (👁📞💬✦) nas ações rápidas da carteira: emoji
 // renderiza diferente por SO/navegador — decoração instável, não ícone. Mesma
 // correção já aplicada em Leads e Pipeline.
-import { Eye, MessageCircle, Phone, Sparkles } from "lucide-react";
+import { ChevronDown, MessageCircle, Phone, RefreshCw, Sparkles } from "lucide-react";
 import { camadasDoPapel } from "@/lib/atlas/camadas-da-sala-de-comando";
 import {
   useCallback,
@@ -429,6 +429,16 @@ const brl = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
   maximumFractionDigits: 0,
 });
+
+// `brl.format` devolve "R$ 12.345" como uma string só. Na linha de comando
+// (tile "dinheiro"), essa string inteira ia para dentro de `.cc23-display` —
+// o "R$" saía do mesmo tamanho-herói do número, contrariando a própria regra
+// que o CSS já declara para unidade (".cc23-unit-label", usada em
+// followUpComplianceRate). Separa o prefixo não-numérico do valor.
+function separarPrefixoMonetario(valor: string) {
+  const partes = /^(\D+)\s*([\d.,]+)$/.exec(valor);
+  return partes ? { prefixo: partes[1].trim(), numero: partes[2] } : null;
+}
 
 // Fusão com o Início: mesma régua de estágios que o /dashboard usava no funil,
 // agora derivada do snapshot que esta página JÁ busca via module-health.
@@ -1064,12 +1074,10 @@ function LayerToggle({
       aria-label={collapsed ? `Expandir camada ${layerLabel}` : `Recolher camada ${layerLabel}`}
       className={quickActionClass}
     >
-      <span
+      <ChevronDown
         aria-hidden="true"
-        className={`inline-block motion-safe:transition-transform motion-safe:duration-200 ${collapsed ? "-rotate-90" : ""}`}
-      >
-        ⌄
-      </span>
+        className={`size-4 motion-safe:transition-transform motion-safe:duration-200 ${collapsed ? "-rotate-90" : ""}`}
+      />
     </button>
   );
 }
@@ -2797,7 +2805,7 @@ export default function CommandCenterPage() {
               aria-label="Atualizar a sala de comando"
               className="atlas-button-secondary min-h-11 min-w-11 disabled:cursor-wait disabled:opacity-60"
             >
-              ↻
+              <RefreshCw aria-hidden="true" className={`size-4 ${loading ? "motion-safe:animate-spin" : ""}`} />
             </button>
           ) : null}
           <button
@@ -2842,7 +2850,10 @@ export default function CommandCenterPage() {
         className={`cc5-reveal grid gap-3 md:grid-cols-2 ${linhaDeComando.length >= 4 ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
         style={{ animationDelay: "25ms" }}
       >
-        {linhaDeComando.map((tile) => (
+        {linhaDeComando.map((tile) => {
+          const moeda =
+            tile.chave === "dinheiro" && tile.valor ? separarPrefixoMonetario(tile.valor) : null;
+          return (
           <Link
             key={tile.chave}
             href={tile.href}
@@ -2863,9 +2874,25 @@ export default function CommandCenterPage() {
                    navegador em 02/08/2026: "De  pé" com o branco de um dígito
                    entre as sílabas. `style` é o único lugar de onde dá para
                    devolver a face de texto. */
-                style={/\d/.test(tile.valor) ? undefined : { fontFamily: "inherit" }}
+                style={moeda || /\d/.test(tile.valor) ? undefined : { fontFamily: "inherit" }}
               >
-                {tile.valor}
+                {moeda ? (
+                  <>
+                    {/* `.cc23-unit-label` nasceu para unidade DEPOIS do número
+                        (ex.: "%"). Moeda vem ANTES ("R$ 12.345") — inverte a
+                        margem que a classe já assume, em vez de criar uma
+                        segunda classe para uma única exceção do produto. */}
+                    <span
+                      className="cc23-unit-label"
+                      style={{ marginInlineStart: 0, marginInlineEnd: "0.25em" }}
+                    >
+                      {moeda.prefixo}
+                    </span>
+                    {moeda.numero}
+                  </>
+                ) : (
+                  tile.valor
+                )}
               </p>
             )}
             <span className="text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
@@ -2875,7 +2902,8 @@ export default function CommandCenterPage() {
               {tile.acao} →
             </span>
           </Link>
-        ))}
+          );
+        })}
       </section>
 
       <section
@@ -3187,14 +3215,9 @@ export default function CommandCenterPage() {
                               role="group"
                               aria-label={`Ações rápidas para ${item.leadName}`}
                             >
-                              <Link
-                                href={`/leads/${item.leadId}`}
-                                aria-label={`Abrir lead ${item.leadName}`}
-                                title="Abrir lead"
-                                className={quickActionClass}
-                              >
-                                <Eye aria-hidden="true" className="size-4" />
-                              </Link>
+                              {/* O botão de olho saiu: abria o mesmo /leads/{id}
+                                  que o nome já abre, na mesma linha — dois
+                                  links para o mesmo destino, um deles mudo. */}
                               {contact ? (
                                 <a
                                   href={contact.call}
@@ -3379,35 +3402,40 @@ export default function CommandCenterPage() {
                 </ul>
               </div>
               {managerBottlenecks.length ? (
-                <ul className="grid content-start gap-2" aria-label="Corretores com gargalos">
-                  {managerBottlenecks.map((broker) => (
-                    <li key={broker.brokerId}>
-                      <Link
-                        href={`/leads?assigned_to=${broker.brokerId}`}
-                        title={`${broker.brokerName}: ${broker.firstContactOverdue} sem 1º contato, ${broker.followUpOverdue} follow-ups vencidos, ${broker.withoutNextAction} sem próxima ação`}
-                        className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-white/[.06] bg-white/[.02] px-4 py-2.5 transition-colors hover:border-white/[.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
-                      >
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          <span
-                            aria-hidden="true"
-                            className={`h-2 w-2 shrink-0 rounded-full ${
-                              broker.firstContactOverdue > 0
-                                ? "bg-[var(--atlas-danger)]"
-                                : "bg-[var(--atlas-warning)]"
-                            }`}
-                          />
-                          <span className="truncate text-sm font-medium text-white">
-                            {broker.brokerName}
+                /* Mesmo tratamento da coluna vizinha (cc23-quiet + cc23-rows):
+                   cada corretor tinha borda e fundo próprios, competindo com a
+                   borda do atlas-panel que já envolve o painel inteiro. */
+                <div className="cc23-quiet">
+                  <ul className="cc23-rows" aria-label="Corretores com gargalos">
+                    {managerBottlenecks.map((broker) => (
+                      <li key={broker.brokerId} className="cc23-row">
+                        <Link
+                          href={`/leads?assigned_to=${broker.brokerId}`}
+                          title={`${broker.brokerName}: ${broker.firstContactOverdue} sem 1º contato, ${broker.followUpOverdue} follow-ups vencidos, ${broker.withoutNextAction} sem próxima ação`}
+                          className="flex w-full items-center justify-between gap-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--atlas-accent)]"
+                        >
+                          <span className="flex min-w-0 items-center gap-2.5">
+                            <span
+                              aria-hidden="true"
+                              className={`h-2 w-2 shrink-0 rounded-full ${
+                                broker.firstContactOverdue > 0
+                                  ? "bg-[var(--atlas-danger)]"
+                                  : "bg-[var(--atlas-warning)]"
+                              }`}
+                            />
+                            <span className="truncate text-sm font-medium text-white">
+                              {broker.brokerName}
+                            </span>
                           </span>
-                        </span>
-                        <span className="shrink-0 font-mono text-rotulo tabular-nums text-slate-400">
-                          {broker.firstContactOverdue + broker.followUpOverdue} SLA ·{" "}
-                          {broker.withoutNextAction} sem ação
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                          <span className="shrink-0 font-mono text-rotulo tabular-nums text-slate-400">
+                            {broker.firstContactOverdue + broker.followUpOverdue} SLA ·{" "}
+                            {broker.withoutNextAction} sem ação
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ) : managerDaily ? (
                 <div className="rounded-xl border border-white/[.06] bg-white/[.02] p-4 text-sm leading-6 text-slate-400">
                   Nenhum corretor direto com SLA vencido ou leads parados neste momento.
@@ -3468,18 +3496,12 @@ export default function CommandCenterPage() {
                      bastante para forçar rolagem horizontal em 320px. */
                   <div data-phase="35-follow-up-sla" className="mb-4">
                     <p className="cc6-eyebrow mb-2">Cadência, atraso e recuperação</p>
+                    {/* SLA de follow-up e "sem primeiro contato" saíram daqui:
+                        os dois já aparecem em "Gargalos da equipe" (acima,
+                        neste mesmo painel), com tratamento melhor — cor por
+                        limiar e a meta escrita ao lado. Repetir em cinza,
+                        sem cor, é o mesmo fato duas vezes com menos leitura. */}
                     <div className="flex flex-wrap gap-2 text-xs text-slate-400">
-                      <span className="cc6-chip whitespace-normal!">
-                        SLA de follow-up:{" "}
-                        {/* A taxa vem como razão 0–1. Imprimi-la crua mostrava
-                            "1%" para 100% de cumprimento — e nunca cruzava
-                            nenhum limiar de cor. */}
-                        {teamSla.totals.followUpComplianceRate === null
-                          ? teamSla.totals.followUpMensuravel
-                            ? "sem amostra"
-                            : "não medido neste banco"
-                          : `${Math.round(teamSla.totals.followUpComplianceRate * 100)}%`}
-                      </span>
                       <span className="cc6-chip whitespace-normal!">
                         {teamSla.totals.followUpsMeasured} follow-up(s) medido(s)
                       </span>
@@ -3491,10 +3513,9 @@ export default function CommandCenterPage() {
                       <span className="cc6-chip whitespace-normal!">
                         {teamSla.totals.recoveredFollowUps} recuperado(s) após o prazo
                       </span>
-                      <span className="cc6-chip whitespace-normal!">
-                        {teamSla.totals.firstContactOverdue} sem primeiro contato
-                      </span>
-                      <span className="cc6-chip whitespace-normal!">
+                      <span
+                        className={`cc6-chip whitespace-normal! ${teamSla.totals.brokersWithAlerts > 0 ? "cc6-alerta" : ""}`}
+                      >
                         {teamSla.totals.brokersWithAlerts} corretor(es) com alerta
                       </span>
                     </div>
@@ -3906,8 +3927,11 @@ export default function CommandCenterPage() {
                 </ul>
               </div>
             )}
+            {/* cc23-quiet (fundo, sem borda própria): esta caixa já mora dentro
+                de um painel que desenha borda — border-em-border era o mesmo
+                limite duas vezes. */}
             {directorDaily?.aiUsage ? (
-              <div data-phase="24-director-command-center" className="mt-4 rounded-xl border border-white/[.07] px-4 py-3">
+              <div data-phase="24-director-command-center" className="cc23-quiet mt-4">
                 <p className="cc6-eyebrow">Custo de IA · {directorDaily.aiUsage.windowDays} dias</p>
                 <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-[#93a2b8]">
                   <span className="cc6-num text-sm text-[var(--atlas-texto-forte)]">
@@ -4538,7 +4562,7 @@ export default function CommandCenterPage() {
                 }
               />
               {collapsedLayers.sistema ? null : (
-              <div className="border-t border-white/[.06] p-5 sm:p-6">
+              <div className={`border-t border-white/[.06] ${layerBodyPad}`}>
                 {governanceNote ? (
                   <p className="cc23-quiet text-corpo text-slate-400">{governanceNote}</p>
                 ) : !governance ? (
