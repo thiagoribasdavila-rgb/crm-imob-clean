@@ -61,6 +61,9 @@ type LeadRow = {
   preferred_regions: string[] | null;
   bedrooms: number | null;
   purpose: string | null;
+  /** Lida pela Ficha do Comprador (components/crm/FichaDoComprador.tsx) via
+   *  `lead[coluna]`; declarada aqui só para o pré-preenchimento no load(). */
+  payment_method?: string | null;
   notes: string | null;
   created_at: string | null;
   next_action_at?: string | null;
@@ -253,6 +256,12 @@ type RelationshipContext = {
       divergente: string;
       origemDivergente: string;
     }>;
+    /** Vocabulário fechado da Ficha do Comprador — `null` quando não dá para
+     *  mapear sem ambiguidade (lib/crm/ficha-do-comprador.ts). */
+    sugestoesDeFicha: {
+      purpose: string | null;
+      payment_method: string | null;
+    };
   };
 };
 type AssignmentReservation = {
@@ -416,6 +425,10 @@ export default function LeadDetailPage() {
   const { id: leadId } = useParams<{ id: string }>();
   const router = useRouter();
   const [lead, setLead] = useState<LeadRow | null>(null);
+  /** `true` só quando finalidade e/ou forma de pagamento vieram vazias do
+   *  banco e foram pré-preenchidas com o que a pessoa declarou no anúncio —
+   *  para a legenda da ficha só aparecer quando o preenchimento é dela. */
+  const [fichaPreenchidaPelaMeta, setFichaPreenchidaPelaMeta] = useState(false);
   const [firstContactSla, setFirstContactSla] = useState<FirstContactSla | null>(null);
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
@@ -535,7 +548,23 @@ export default function LeadDetailPage() {
     setMessage(null);
     try {
       const data = (await api(`/api/v1/leads/${leadId}`)) as Payload;
-      setLead(data.lead);
+      // Pré-preenche SÓ campo vazio, e SÓ no carregamento inicial — nunca
+      // depois de salvar ou recalibrar, para não reescrever por cima de uma
+      // limpeza deliberada do corretor. O broker vê o campo já preenchido,
+      // como se tivesse digitado; nada é gravado até ele clicar Salvar.
+      const sugestoes = data.relationshipContext?.qualificacaoDeclarada?.sugestoesDeFicha;
+      const finalidadePreenchida = Boolean(!data.lead.purpose && sugestoes?.purpose);
+      const pagamentoPreenchido = Boolean(!data.lead.payment_method && sugestoes?.payment_method);
+      setFichaPreenchidaPelaMeta(finalidadePreenchida || pagamentoPreenchido);
+      setLead(
+        sugestoes
+          ? {
+              ...data.lead,
+              purpose: data.lead.purpose || sugestoes.purpose,
+              payment_method: data.lead.payment_method || sugestoes.payment_method,
+            }
+          : data.lead,
+      );
       setActivities(data.activities);
       setOpportunities(data.opportunities ?? []);
       setOpportunitiesMensuraveis(data.opportunitiesMensuraveis !== false);
@@ -614,6 +643,9 @@ export default function LeadDetailPage() {
         body: JSON.stringify(lead),
       });
       setLead(data.lead);
+      // Salvar é a confirmação — mantida ou trocada, a legenda de
+      // "pré-preenchido, confira" deixa de valer para este valor.
+      setFichaPreenchidaPelaMeta(false);
       /**
        * ── O LEMBRETE SAI DA TELA E VOLTA NA HORA CERTA ───────────────────
        *
@@ -1887,6 +1919,11 @@ export default function LeadDetailPage() {
           <h2 className="mt-2 text-base font-semibold text-[var(--atlas-texto-forte)]">
             Dados e qualificação
           </h2>
+          {fichaPreenchidaPelaMeta ? (
+            <p className="mt-1.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">
+              Finalidade e/ou forma de pagamento pré-preenchidas com o que a pessoa respondeu no anúncio — confira antes de salvar.
+            </p>
+          ) : null}
           <form onSubmit={saveLead} className="mt-4">
             {/* ── A GRADE PLANA DE NOVE CAMPOS SAIU DAQUI ────────────────────
                 Ela identificava cada campo só pelo `placeholder`, que some ao

@@ -1,7 +1,33 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { assessLeadCompleteness } from "@/lib/ai/data-completeness";
 import { perfilConfirmadoNoCrm, respostasDoFormularioNoMetadata, respostasLegadoDoPerfil, respostasLegadoNoMetadata, unificarQualificacao } from "@/lib/crm/qualificacao-canonica";
-import { daParaPriorizar, mapearQualificacao, resumirQualificacao } from "@/lib/crm/lead-qualification-fields";
+import { daParaPriorizar, mapearQualificacao, resumirQualificacao, type CamposDeQualificacao } from "@/lib/crm/lead-qualification-fields";
+
+// Sugestão de preenchimento para a Ficha do Comprador (components/crm/
+// FichaDoComprador.tsx) — só quando a resposta do formulário mapeia SEM
+// AMBIGUIDADE para uma das opções fechadas do campo. `budget_max`,
+// `preferred_bedrooms`, `purchase_timeline` e `monthly_income` ficam de fora
+// de propósito: nenhum é capturado por `mapearQualificacao`, e inventar um
+// valor a partir da faixa livre declarada ("R$ 400 a 600 mil") é exatamente a
+// inferência que qualificacao-canonica.ts já se recusa a fazer para
+// `budget_readiness`. A decisão de só aplicar em campo VAZIO fica no cliente,
+// que é quem já tem `lead.purpose`/`lead.payment_method` em mãos — a rota só
+// devolve o que a pessoa declarou, traduzido para o vocabulário do campo.
+function sugestaoDeFinalidade(intencao: CamposDeQualificacao["intencao"]): string | null {
+  if (intencao === "morar") return "moradia";
+  if (intencao === "investir") return "investimento";
+  return null;
+}
+function sugestaoDeFormaDePagamento(forma: CamposDeQualificacao["formaPagamento"]): string | null {
+  if (forma === "financiamento") return "financiamento";
+  if (forma === "a_vista") return "a_vista";
+  if (forma === "consorcio") return "consorcio";
+  // FORMAS_DE_PAGAMENTO (ficha-do-comprador.ts) não tem "fgts" isolado — só
+  // "fgts_mais_financiamento". O mapeador de qualificação já documenta por
+  // quê: "FGTS quase sempre acompanha financiamento".
+  if (forma === "fgts") return "fgts_mais_financiamento";
+  return null;
+}
 import {
   buildGovernedLeadContextAuditMetadata,
   normalizeCommercialContextText,
@@ -435,6 +461,10 @@ export async function GET(request: Request, context: RouteContext) {
       naoMapeadas: qualificacaoUnificada.declarado.naoMapeadas,
       formularioPerguntou: qualificacaoUnificada.declarado.formularioPerguntou,
       divergencias: qualificacaoUnificada.divergencias,
+      sugestoesDeFicha: {
+        purpose: sugestaoDeFinalidade(camposDoFormulario.intencao),
+        payment_method: sugestaoDeFormaDePagamento(camposDoFormulario.formaPagamento),
+      },
     };
     const leadComQualificacao = { ...lead, metadata: { ...(lead.metadata && typeof lead.metadata === "object" ? lead.metadata as Record<string, unknown> : {}), qualificationAnswers: respostasParaAFicha } };
     // `historico.total`, não `activities.length`: o campo "interação registrada"
