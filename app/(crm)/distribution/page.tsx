@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { alvoDaIntencao, lerIntencaoDaJanela } from "@/lib/atlas/intencao-da-url";
 import { AtlasEmpty, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { FilaDeAtendimentoPanel } from "@/components/atlas/FilaDeAtendimentoPanel";
+import { RodizioPorFontePanel } from "@/components/atlas/RodizioPorFontePanel";
 import { PageHeader } from "@/components/atlas/page-header";
 import { StatusBadge } from "@/components/atlas/status-badge";
 import { TiltShell } from "@/components/atlas/tilt-shell";
@@ -1024,6 +1025,19 @@ export default function DistributionPage() {
       <section aria-label="Fila de atendimento por empreendimento e por campanha">
         <div className="cc6-reveal" style={{ animationDelay: "300ms" }}>
           <FilaDeAtendimentoPanel podeEditar={data?.viewer.role !== "broker"} />
+        </div>
+      </section>
+
+      {/* O FORMULÁRIO DECIDE ANTES DO EMPREENDIMENTO.
+          `meta_lead_sources.default_owner_id` é o degrau 1 da cascata: com dono
+          único preenchido, a lead daquele formulário nem chega à fila acima.
+          Medido em 03/08/2026: oito formulários ativos apontando para o mesmo
+          perfil, que sozinho segura 485 das 613 leads. Por isso este painel vem
+          logo DEPOIS da fila — quem acabou de montar o time precisa saber o que
+          passa na frente dele. */}
+      <section aria-label="Rodízio por formulário da Meta">
+        <div className="cc6-reveal" style={{ animationDelay: "320ms" }}>
+          <RodizioPorFontePanel podeEditar={data?.viewer.role !== "broker"} />
         </div>
       </section>
 
