@@ -595,6 +595,21 @@ export default function ReportsPage() {
                   ))}
                 </tbody>
               </table>
+              {/* "Sem incorporadora atribuída" já é uma linha nesta tabela
+                  (weekly-acquisition-report.ts:30), mas ranqueada junto das
+                  incorporadoras reais, com o mesmo peso visual — some se não
+                  for a maior linha. Mesmo padrão do Top Projetos da Sala de
+                  Comando: o denominador declarado, não implícito na tabela. */}
+              {weekly.totals.leads > 0 ? (
+                <p className="mt-2 text-rotulo leading-5 text-[var(--atlas-texto-medio)]">
+                  {(() => {
+                    const semIncorporadora =
+                      weekly.developers.find((d) => d.developer === "Sem incorporadora atribuída")?.leads ?? 0;
+                    const comIncorporadora = weekly.totals.leads - semIncorporadora;
+                    return `${semIncorporadora} de ${weekly.totals.leads} leads desta janela estão sem incorporadora atribuída — este ranking cobre ${comIncorporadora}.`;
+                  })()}
+                </p>
+              ) : null}
             </div>
           </div>
         </section>
