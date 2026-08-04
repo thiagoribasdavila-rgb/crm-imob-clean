@@ -19,104 +19,111 @@
  *     cabeçalho vem de fora e ninguém o valida.
  *
  * O recurso escasso não é o IP: é a CAIXA POSTAL.
+ *
+ * ── Por que este contrato lê a FONTE da rota, e não uma função pura ───────
+ *
+ * A primeira versão testava `avaliarPedidoDeRecuperacao`, uma função pura que
+ * ninguém chamava — a rota foi ligada direto em `checkRateLimit` (a ÚNICA
+ * implementação de contagem do projeto), no MESMO commit que criou a função
+ * pura. Testar a função provava a matemática de um código morto, não o que a
+ * produção faz. Ver `lib/security/limite-de-recuperacao.ts` para o porquê da
+ * remoção. Este contrato agora ancora na fonte da rota, no mesmo estilo de
+ * `tests/contracts/troca-de-senha-nao-e-silenciosa.test.mjs`.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
-  avaliarPedidoDeRecuperacao, fraseDoEnvioAceito,
-  TENTATIVAS_POR_EMAIL, TENTATIVAS_POR_IP,
+  fraseDoEnvioAceito, TENTATIVAS_POR_EMAIL, TENTATIVAS_POR_IP,
 } from "../../lib/security/limite-de-recuperacao.ts";
 
-const AGORA = 1_785_800_000_000;
-const minAtras = (m) => AGORA - m * 60_000;
+const raiz = process.cwd();
+const fonteRota = readFileSync(resolve(raiz, "app/api/auth/password-recovery/route.ts"), "utf8");
+
+/**
+ * Remove comentários (que explicam a mensagem de propósito, e por isso contêm
+ * de forma legítima as palavras aqui checadas) antes de afirmar sobre o que o
+ * CÓDIGO de fato envia. Mesma abordagem de troca-de-senha-nao-e-silenciosa.test.mjs.
+ */
+function semComentarios(source) {
+  let out = "";
+  let quote = null;
+  for (let i = 0; i < source.length; i += 1) {
+    const c = source[i];
+    const next = source[i + 1];
+    if (quote) {
+      out += c;
+      if (c === "\\") { out += next ?? ""; i += 1; continue; }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") { quote = c; out += c; continue; }
+    if (c === "/" && next === "/") { while (i < source.length && source[i] !== "\n") i += 1; out += "\n"; continue; }
+    if (c === "/" && next === "*") { i += 2; while (i < source.length && !(source[i] === "*" && source[i + 1] === "/")) i += 1; i += 1; continue; }
+    out += c;
+  }
+  return out;
+}
+
+const fonteRotaSemComentarios = semComentarios(fonteRota);
 
 /* ── A CAIXA POSTAL É O QUE SE PROTEGE ───────────────────────────────────── */
 
-test("o mesmo e-mail pedindo demais é barrado, e a frase diz QUANDO voltar", () => {
-  const v = avaliarPedidoDeRecuperacao({
-    agora: AGORA,
-    tentativasDoEmail: [minAtras(1), minAtras(3), minAtras(5)],
-    tentativasDoIp: [],
-  });
-  assert.equal(v.permitido, false);
-  assert.equal(v.travaQueFechou, "email");
-  assert.match(v.mensagem, /\d+ minuto/, "sem o tempo, 'muitas solicitações' vira 'está quebrado'");
-  assert.match(v.mensagem, /SPAM/i, "o motivo mais comum de não receber precisa estar na frase");
-  assert.ok(v.esperarSegundos > 0);
+test("a rota usa os números por E-MAIL importados deste módulo, não valores soltos", () => {
+  assert.match(
+    fonteRota,
+    /import\s*\{[\s\S]{0,200}TENTATIVAS_POR_EMAIL[\s\S]{0,200}\}\s*from\s*"@\/lib\/security\/limite-de-recuperacao"/,
+    "a rota precisa importar os números daqui, não reinventar",
+  );
+  assert.match(
+    fonteRota,
+    /checkRateLimit\(\s*`password-recovery:email:\$\{email\}`,\s*\{\s*limit:\s*TENTATIVAS_POR_EMAIL,\s*windowMs:\s*JANELA_DO_EMAIL_MS,?\s*\}\s*\)/,
+    "a trava por e-mail precisa existir e usar os números importados",
+  );
 });
-
-test("a espera conta a partir da tentativa MAIS ANTIGA — é quando abre vaga", () => {
-  const v = avaliarPedidoDeRecuperacao({
-    agora: AGORA,
-    tentativasDoEmail: [minAtras(14), minAtras(2), minAtras(1)],
-    tentativasDoIp: [],
-  });
-  // A de 14 minutos sai da janela em ~1 minuto.
-  assert.ok(v.esperarSegundos <= 60 + 1, `esperou ${v.esperarSegundos}s, devia ser ~60`);
-});
-
-test("tentativa fora da janela não conta", () => {
-  const v = avaliarPedidoDeRecuperacao({
-    agora: AGORA,
-    tentativasDoEmail: [minAtras(20), minAtras(30), minAtras(40)],
-    tentativasDoIp: [],
-  });
-  assert.equal(v.permitido, true, "três tentativas velhas não bloqueiam a de hoje");
-});
-
-/* ── O ESCRITÓRIO INTEIRO NÃO PODE TRAVAR ────────────────────────────────── */
 
 test("o teto por IP é MUITO mais alto — rede compartilhada é normal", () => {
   assert.ok(TENTATIVAS_POR_IP > TENTATIVAS_POR_EMAIL * 5,
     "operadora de celular, VPN e escritório colocam dezenas de pessoas no mesmo IP");
-});
-
-test("cinco pessoas diferentes na mesma rede passam", () => {
-  // Era exatamente este o caso que o limite antigo barrava com 5/15min.
-  const v = avaliarPedidoDeRecuperacao({
-    agora: AGORA,
-    tentativasDoEmail: [],
-    tentativasDoIp: [minAtras(1), minAtras(2), minAtras(3), minAtras(4), minAtras(5)],
-  });
-  assert.equal(v.permitido, true);
-});
-
-test("varredura a partir de um ponto ainda é barrada", () => {
-  const v = avaliarPedidoDeRecuperacao({
-    agora: AGORA,
-    tentativasDoEmail: [],
-    tentativasDoIp: Array.from({ length: TENTATIVAS_POR_IP }, (_, i) => minAtras(i % 14)),
-  });
-  assert.equal(v.permitido, false);
-  assert.equal(v.travaQueFechou, "ip");
-});
-
-test("a frase do IP não acusa a pessoa de algo que ela não fez", () => {
-  const v = avaliarPedidoDeRecuperacao({
-    agora: AGORA, tentativasDoEmail: [],
-    tentativasDoIp: Array.from({ length: TENTATIVAS_POR_IP }, () => minAtras(1)),
-  });
-  assert.match(v.mensagem, /desta rede/i);
-  assert.doesNotMatch(v.mensagem, /seu IP|você fez/i, "a pessoa não tem como agir sobre o IP dela");
+  assert.match(
+    fonteRota,
+    /checkRateLimit\(\s*clientKey\(request,\s*"password-recovery"\),\s*\{\s*limit:\s*TENTATIVAS_POR_IP,\s*windowMs:\s*JANELA_DO_IP_MS,?\s*\}\s*\)/,
+    "a trava por IP precisa existir e usar os números importados",
+  );
 });
 
 /* ── A TRAVA DO E-MAIL VEM PRIMEIRO ──────────────────────────────────────── */
 
-test("com as duas estouradas, o motivo relatado é o do E-MAIL", () => {
-  // É o que a pessoa consegue entender e agir: olhar a caixa de spam.
-  const v = avaliarPedidoDeRecuperacao({
-    agora: AGORA,
-    tentativasDoEmail: Array.from({ length: TENTATIVAS_POR_EMAIL }, () => minAtras(1)),
-    tentativasDoIp: Array.from({ length: TENTATIVAS_POR_IP }, () => minAtras(1)),
-  });
-  assert.equal(v.travaQueFechou, "email");
+test("com as duas travas presentes, o motivo relatado prioriza o E-MAIL", () => {
+  // É o que a pessoa consegue entender e agir: olhar a caixa de spam. Dizer
+  // "seu IP" a quem não controla o IP é acusar sem saída.
+  assert.match(
+    fonteRota,
+    /!porEmail\.allowed\s*\?\s*porEmail\s*:\s*!porRede\.allowed\s*\?\s*porRede\s*:\s*null/,
+    "a checagem do e-mail precisa vencer a do IP quando as duas estouram",
+  );
 });
 
-/* ── PRIMEIRA TENTATIVA SEMPRE PASSA ─────────────────────────────────────── */
+test("a frase de bloqueio por e-mail diz QUANDO voltar e lembra do SPAM", () => {
+  assert.match(fonteRota, /Já enviamos.*minuto\(s\)/s);
+  assert.match(fonteRota, /SPAM/);
+});
 
-test("sem histórico, passa — e não devolve espera nem mensagem", () => {
-  const v = avaliarPedidoDeRecuperacao({ agora: AGORA, tentativasDoEmail: [], tentativasDoIp: [] });
-  assert.deepEqual(v, { permitido: true, esperarSegundos: 0, mensagem: null, travaQueFechou: null });
+test("a frase de bloqueio por IP não acusa a pessoa de algo que ela não fez", () => {
+  assert.match(fonteRota, /Muitos pedidos de recuperação vindos desta rede/);
+  const mensagemDoIp = fonteRotaSemComentarios.slice(fonteRotaSemComentarios.indexOf("Muitos pedidos"));
+  assert.doesNotMatch(
+    mensagemDoIp.slice(0, mensagemDoIp.indexOf("`")),
+    /seu IP|você fez/i,
+    "a pessoa não tem como agir sobre o IP dela",
+  );
+});
+
+test("o corpo é lido, e o e-mail normalizado, antes de qualquer checkRateLimit", () => {
+  const ateOPrimeiroLimite = fonteRota.slice(0, fonteRota.indexOf("checkRateLimit("));
+  assert.match(ateOPrimeiroLimite, /request\.json\(\)/, "a chave por e-mail depende do corpo já lido");
+  assert.match(ateOPrimeiroLimite, /normalizeEmail/);
 });
 
 /* ── O QUE A PESSOA LÊ AO DAR CERTO ──────────────────────────────────────── */
@@ -127,4 +134,8 @@ test("a frase de sucesso não revela quem tem conta, mas diz o que esperar", () 
   assert.match(f, /SPAM/i);
   assert.match(f, /1 hora/, "o prazo do link evita a segunda tentativa desnecessária");
   assert.match(f, /uma vez/i);
+});
+
+test("a rota usa a frase de sucesso importada, não uma string solta", () => {
+  assert.match(fonteRota, /fraseDoEnvioAceito\(\)/);
 });

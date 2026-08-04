@@ -31,8 +31,20 @@
  * e-mails a partir de um ponto. Ela é frágil por natureza (o cabeçalho é
  * forjável) e por isso NÃO é a principal.
  *
- * PURO: sem relógio próprio, sem armazenamento. Quem chama traz o histórico e o
- * agora — senão o mesmo pedido teria veredito diferente conforme a hora.
+ * ── Por que este arquivo só tem números e frase, não a decisão ────────────
+ *
+ * A primeira versão trazia também `avaliarPedidoDeRecuperacao`, uma função pura
+ * que decidia a partir de listas de instantes anteriores. Ficou sem chamador: a
+ * rota (`app/api/auth/password-recovery/route.ts`, mesmo commit) foi ligada
+ * direto em `checkRateLimit`/`clientKey` de `lib/security/rate-limit.ts` — a
+ * ÚNICA implementação de contagem do projeto (ver o cabeçalho daquele arquivo e
+ * `tests/contracts/rate-limit-unificado.test.mjs`, teste "existe UMA
+ * implementação de contagem no projeto"). Dar chamador à função pura exigiria
+ * guardar uma LISTA de instantes por e-mail/IP — um segundo armazenamento de
+ * teto, correndo ao lado do único que o projeto decidiu manter. Removida em
+ * 03/08/2026 depois de confirmar que a rota já fecha a mesma lacuna (e-mail
+ * antes de IP, mesmos números) por outro caminho; o que sobra aqui são os
+ * números e a frase que os dois lados — rota e teste de contrato — comparam.
  */
 
 /** Por caixa postal: o recurso que o abuso realmente consome. */
@@ -46,69 +58,6 @@ export const JANELA_DO_EMAIL_MS = 15 * 60_000;
  */
 export const TENTATIVAS_POR_IP = 20;
 export const JANELA_DO_IP_MS = 15 * 60_000;
-
-export type Veredito = {
-  permitido: boolean;
-  /** Segundos até poder tentar de novo. `0` quando permitido. */
-  esperarSegundos: number;
-  /** A frase que a pessoa lê. Diz QUANDO, não só "muitas". */
-  mensagem: string | null;
-  /** `email` | `ip` — para o log saber qual trava fechou. */
-  travaQueFechou: "email" | "ip" | null;
-};
-
-const PERMITIDO: Veredito = { permitido: true, esperarSegundos: 0, mensagem: null, travaQueFechou: null };
-
-/** Minutos arredondados para cima: "aguarde 0 minutos" não ajuda ninguém. */
-function emMinutos(ms: number): number {
-  return Math.max(1, Math.ceil(ms / 60_000));
-}
-
-/**
- * Decide se o pedido passa.
- *
- * `tentativasDoEmail` e `tentativasDoIp` são os INSTANTES das tentativas
- * anteriores, em epoch ms. Quem chama guarda; aqui só se decide.
- */
-export function avaliarPedidoDeRecuperacao(entrada: {
-  agora: number;
-  tentativasDoEmail: readonly number[];
-  tentativasDoIp: readonly number[];
-}): Veredito {
-  const { agora } = entrada;
-
-  const doEmail = entrada.tentativasDoEmail.filter((t) => agora - t < JANELA_DO_EMAIL_MS);
-  if (doEmail.length >= TENTATIVAS_POR_EMAIL) {
-    // Espera até a MAIS ANTIGA sair da janela — é quando abre a próxima vaga.
-    const maisAntiga = Math.min(...doEmail);
-    const restante = JANELA_DO_EMAIL_MS - (agora - maisAntiga);
-    return {
-      permitido: false,
-      esperarSegundos: Math.ceil(restante / 1000),
-      mensagem:
-        `Já enviamos ${TENTATIVAS_POR_EMAIL} links para este e-mail há pouco. ` +
-        `Confira a caixa de entrada e o SPAM — o remetente é o Atlas. ` +
-        `Se nada chegou, tente de novo em ${emMinutos(restante)} minuto(s).`,
-      travaQueFechou: "email",
-    };
-  }
-
-  const doIp = entrada.tentativasDoIp.filter((t) => agora - t < JANELA_DO_IP_MS);
-  if (doIp.length >= TENTATIVAS_POR_IP) {
-    const maisAntiga = Math.min(...doIp);
-    const restante = JANELA_DO_IP_MS - (agora - maisAntiga);
-    return {
-      permitido: false,
-      esperarSegundos: Math.ceil(restante / 1000),
-      // Não diz "o seu IP": a pessoa não tem como agir sobre isso, e a frase
-      // soa como acusação de algo que ela provavelmente não fez.
-      mensagem: `Muitos pedidos de recuperação vindos desta rede. Tente de novo em ${emMinutos(restante)} minuto(s).`,
-      travaQueFechou: "ip",
-    };
-  }
-
-  return PERMITIDO;
-}
 
 /**
  * A frase que a tela mostra DEPOIS de aceitar o pedido.
