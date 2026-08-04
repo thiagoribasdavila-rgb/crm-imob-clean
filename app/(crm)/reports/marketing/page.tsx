@@ -47,6 +47,8 @@ type Report = {
   payload: {
     summary: Summary;
     alerts: string[];
+    /** `undefined` em relatório salvo antes desta marca — tratado como falso. */
+    semFatos?: boolean;
     campaigns: Array<Record<string, unknown>>;
     projects: Array<Record<string, unknown>>;
     developers: Array<Record<string, unknown>>;
@@ -243,6 +245,20 @@ export default function Page() {
              alerta é emitido. */
           const alertaDeAmostra = relatorio.payload.alerts.includes("amostra_global_insuficiente");
           const amostraFragil = resumo.sampleSufficient === false && !alertaDeAmostra;
+          /* ── ZERO E "NUNCA ALIMENTADO" NÃO SÃO O MESMO FATO ────────────────
+             `multichannel_campaign_daily_facts` só é escrita por uma rota
+             (campaign-intelligence) que nenhum worker, script ou tela deste
+             repositório chama — medido em 04/08/2026, grep em todo o código.
+             Sem este recorte, um relatório gerado hoje mostraria "Investimento
+             R$ 0 · Leads 0" ao lado de zero alertas: a mesma leitura de um
+             período com atividade real e resultado nulo. `semFatos` (novo no
+             payload) distingue os dois; relatório salvo antes dele cai no
+             mesmo cálculo de fallback, direto das listas vazias. */
+          const semFatos =
+            relatorio.payload.semFatos ??
+            (relatorio.payload.campaigns.length === 0 &&
+              relatorio.payload.projects.length === 0 &&
+              relatorio.payload.developers.length === 0);
           const numeros: Array<[string, string | null, string]> = [
             ["Investimento", brl(resumo.spend), "não medido no período"],
             ["Leads", inteiro(resumo.leads), "não medido no período"],
@@ -286,32 +302,45 @@ export default function Page() {
                 ) : null}
               </header>
 
-              <div className="mt-4 flex flex-wrap gap-x-10 gap-y-4">
-                {numeros.map(([rotulo, valor, ausente]) => (
-                  <div key={rotulo} className="min-w-0">
-                    {valor === null ? (
-                      <p className="cc6-warn text-rotulo font-semibold leading-none">sem lastro</p>
-                    ) : (
-                      <p className="cc6-metric-value text-numero leading-none">{valor}</p>
-                    )}
-                    <p className="cc6-metric-label mt-1.5">{rotulo}</p>
-                    {valor === null ? (
-                      <p className="mt-0.5 max-w-52 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{ausente}</p>
-                    ) : null}
+              {semFatos ? (
+                <div className="mt-4">
+                  <AtlasEmpty
+                    reason="not-configured"
+                    eyebrow="Sem fatos multicanal no período"
+                    title="Nenhum dado foi registrado para este período"
+                    description="Investimento, leads, qualificadas e vendas abaixo seriam R$ 0 / 0 por FALTA de leitura, não por resultado medido — nenhuma campanha de Google, TikTok ou LinkedIn Ads está integrada com carga automática, e ninguém enviou números manualmente para este período. Não decida verba com este relatório."
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 flex flex-wrap gap-x-10 gap-y-4">
+                    {numeros.map(([rotulo, valor, ausente]) => (
+                      <div key={rotulo} className="min-w-0">
+                        {valor === null ? (
+                          <p className="cc6-warn text-rotulo font-semibold leading-none">sem lastro</p>
+                        ) : (
+                          <p className="cc6-metric-value text-numero leading-none">{valor}</p>
+                        )}
+                        <p className="cc6-metric-label mt-1.5">{rotulo}</p>
+                        {valor === null ? (
+                          <p className="mt-0.5 max-w-52 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{ausente}</p>
+                        ) : null}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              {/* O lastro da leitura INTEIRA, e não de um número só: com amostra
-                  pequena todas as taxas deste relatório ficam frágeis ao mesmo
-                  tempo, porque saem do mesmo denominador. */}
-              {amostraFragil ? (
-                <p className="cc6-hairline mt-4 pt-3 text-rotulo leading-5 text-[var(--atlas-estado-atencao)]">
-                  Amostra pequena neste período — as taxas derivadas destes números oscilam muito com uma venda a mais ou a menos.
-                </p>
-              ) : null}
+                  {/* O lastro da leitura INTEIRA, e não de um número só: com amostra
+                      pequena todas as taxas deste relatório ficam frágeis ao mesmo
+                      tempo, porque saem do mesmo denominador. */}
+                  {amostraFragil ? (
+                    <p className="cc6-hairline mt-4 pt-3 text-rotulo leading-5 text-[var(--atlas-estado-atencao)]">
+                      Amostra pequena neste período — as taxas derivadas destes números oscilam muito com uma venda a mais ou a menos.
+                    </p>
+                  ) : null}
+                </>
+              )}
 
-              {relatorio.payload.alerts.length ? (
+              {!semFatos && relatorio.payload.alerts.length ? (
                 /* Sem emoji nesta lista: são todos alertas do mesmo tipo de
                    coisa, e se todos têm um símbolo, nenhum informa. O que os
                    separa é CONSEQUÊNCIA — dinheiro queimando contra ressalva de
