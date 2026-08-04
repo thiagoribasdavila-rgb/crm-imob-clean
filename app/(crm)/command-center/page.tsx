@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+// Ícone real no lugar do emoji (👁📞💬✦) nas ações rápidas da carteira: emoji
+// renderiza diferente por SO/navegador — decoração instável, não ícone. Mesma
+// correção já aplicada em Leads e Pipeline.
+import { Eye, MessageCircle, Phone, Sparkles } from "lucide-react";
 import { camadasDoPapel } from "@/lib/atlas/camadas-da-sala-de-comando";
 import {
   useCallback,
@@ -3189,7 +3193,7 @@ export default function CommandCenterPage() {
                                 title="Abrir lead"
                                 className={quickActionClass}
                               >
-                                <span aria-hidden="true">👁</span>
+                                <Eye aria-hidden="true" className="size-4" />
                               </Link>
                               {contact ? (
                                 <a
@@ -3198,7 +3202,7 @@ export default function CommandCenterPage() {
                                   title="Ligar"
                                   className={quickActionClass}
                                 >
-                                  <span aria-hidden="true">📞</span>
+                                  <Phone aria-hidden="true" className="size-4" />
                                 </a>
                               ) : null}
                               {contact ? (
@@ -3210,7 +3214,7 @@ export default function CommandCenterPage() {
                                   title="WhatsApp"
                                   className={quickActionClass}
                                 >
-                                  <span aria-hidden="true">💬</span>
+                                  <MessageCircle aria-hidden="true" className="size-4" />
                                 </a>
                               ) : null}
                               <button
@@ -3232,7 +3236,7 @@ export default function CommandCenterPage() {
                                   )
                                 }
                               >
-                                <span aria-hidden="true">✦</span>
+                                <Sparkles aria-hidden="true" className="size-4" />
                               </button>
                             </div>
                           </div>
