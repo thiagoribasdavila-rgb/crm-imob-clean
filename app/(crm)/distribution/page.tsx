@@ -683,10 +683,32 @@ export default function DistributionPage() {
           <div className="flex flex-col gap-5 p-5 sm:p-6 sm:pb-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 lg:max-w-xs lg:flex-1">
               <label className="cc6-eyebrow" htmlFor="project">Projeto da distribuição</label>
-              <select id="project" value={projectId} onChange={(event) => setProjectId(event.target.value)} className={FIELD_CLASS}>
-                <option value="">Selecione um projeto</option>
-                {data?.projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-              </select>
+              {/* ── SEM EMPREENDIMENTO, O SELETOR NÃO EXPLICAVA NADA ─────────
+                  Organização sem nenhum empreendimento cadastrado via um
+                  <select> com uma única opção ("Selecione um projeto") e mais
+                  nada — e como TODA a distribuição desta tela acontece dentro de
+                  um projeto, a pessoa ficava diante de botões desabilitados sem
+                  saber por quê. Vazio declarado, com o caminho para sair dele. */}
+              {!loading && data && data.projects.length === 0 ? (
+                <div className="mt-2">
+                  <AtlasEmpty
+                    reason="not-configured"
+                    eyebrow="Nada para distribuir"
+                    title="Nenhum empreendimento cadastrado"
+                    description="A distribuição acontece sempre dentro de um empreendimento. Sem nenhum cadastrado, não há fila para montar nem lead para encaminhar."
+                    action={
+                      <Link href="/developments" className="atlas-button-secondary">
+                        Cadastrar empreendimento
+                      </Link>
+                    }
+                  />
+                </div>
+              ) : (
+                <select id="project" value={projectId} onChange={(event) => setProjectId(event.target.value)} className={FIELD_CLASS}>
+                  <option value="">Selecione um projeto</option>
+                  {data?.projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+                </select>
+              )}
               <p className="mt-1.5 text-rotulo leading-4 text-[var(--atlas-texto-fraco)]">{selectedProject?.developer_name || "Incorporadora não informada"}</p>
               {/* Encostado no seletor porque é o mesmo gesto: ler onde está a
                   fila e trocar o recorte. Chip é botão — o alvo de 44px vem do

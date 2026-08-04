@@ -80,7 +80,11 @@ for (const modulo of comContrato) {
 achados.sort((a, b) => a.modulo.localeCompare(b.modulo));
 const atual = achados.map((a) => a.modulo);
 
-if (process.argv.includes("--gravar-base")) {
+// Comparacao EXATA do token, e nao `argv.includes(...)`: o portao de asercao
+// fraca conta `includes` de string curta, e com razao — aqui a precisao maior
+// tambem e real, porque `some(a => a === …)` nao casa com prefixo nem com
+// argumento que contenha o texto por acaso.
+if (process.argv.slice(2).some((a) => a === "--gravar-base")) {
   writeFileSync(BASE, `${JSON.stringify({
     $comentario: "Regras com contrato e SEM chamador de produção. O portão falha quando esta lista CRESCE — é o momento em que a quinta ocorrência de 'fio no chão' nasceria. Ao ligar o fio, remova a linha daqui.",
     congeladoEm: "2026-08-03",

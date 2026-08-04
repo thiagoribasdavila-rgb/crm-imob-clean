@@ -210,8 +210,19 @@ export function RodizioPorFontePanel({ podeEditar = true }: { podeEditar?: boole
                             </button>
                           );
                         })}
+                        {/* Vazio pelo componente compartilhado, e não por um
+                            <p> solto: é ele que carrega o motivo taxonômico
+                            (`data-empty-reason`) que a tela de navegação usa
+                            para distinguir "não há" de "não configurado". Um
+                            parágrafo bonito diz a mesma frase e não diz nada
+                            para quem mede. */}
                         {(dados?.corretores ?? []).length === 0 ? (
-                          <p className="text-corpo text-[var(--atlas-texto-fraco)]">Nenhum corretor ativo na organização.</p>
+                          <AtlasEmpty
+                            reason="not-configured"
+                            eyebrow="Equipe sem corretor"
+                            title="Nenhum corretor ativo"
+                            description="Sem corretor ativo na organização não há quem colocar no rodízio deste formulário."
+                          />
                         ) : null}
                       </div>
                     ) : null}
