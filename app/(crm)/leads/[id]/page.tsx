@@ -7,6 +7,7 @@ import {
   FormEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { supabase } from "@/lib/supabase";
@@ -429,6 +430,13 @@ export default function LeadDetailPage() {
    *  banco e foram pré-preenchidas com o que a pessoa declarou no anúncio —
    *  para a legenda da ficha só aparecer quando o preenchimento é dela. */
   const [fichaPreenchidaPelaMeta, setFichaPreenchidaPelaMeta] = useState(false);
+  // `load()` é chamado de mais 7 lugares além do mount (registrar primeiro
+  // contato, informar valor de venda, corrigir contexto comercial, registrar
+  // atividade, criar oportunidade, aceitar atribuição, atualizar proposta) —
+  // NENHUM deles é "salvar a ficha". Sem esta trava, qualquer uma dessas
+  // ações no meio de uma edição não salva reaplicava a sugestão da Meta por
+  // cima do que o corretor tinha acabado de digitar ou de apagar.
+  const jaAplicouPrefillDaMeta = useRef(false);
   const [firstContactSla, setFirstContactSla] = useState<FirstContactSla | null>(null);
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
@@ -548,23 +556,30 @@ export default function LeadDetailPage() {
     setMessage(null);
     try {
       const data = (await api(`/api/v1/leads/${leadId}`)) as Payload;
-      // Pré-preenche SÓ campo vazio, e SÓ no carregamento inicial — nunca
-      // depois de salvar ou recalibrar, para não reescrever por cima de uma
-      // limpeza deliberada do corretor. O broker vê o campo já preenchido,
-      // como se tivesse digitado; nada é gravado até ele clicar Salvar.
-      const sugestoes = data.relationshipContext?.qualificacaoDeclarada?.sugestoesDeFicha;
-      const finalidadePreenchida = Boolean(!data.lead.purpose && sugestoes?.purpose);
-      const pagamentoPreenchido = Boolean(!data.lead.payment_method && sugestoes?.payment_method);
-      setFichaPreenchidaPelaMeta(finalidadePreenchida || pagamentoPreenchido);
-      setLead(
-        sugestoes
-          ? {
-              ...data.lead,
-              purpose: data.lead.purpose || sugestoes.purpose,
-              payment_method: data.lead.payment_method || sugestoes.payment_method,
-            }
-          : data.lead,
-      );
+      // Pré-preenche SÓ campo vazio, e SÓ na PRIMEIRA chamada de load() desta
+      // ficha (o carregamento inicial) — nunca nas recargas disparadas por
+      // outras ações da mesma tela, para não reescrever por cima de uma
+      // edição em andamento ou de uma limpeza deliberada do corretor. O
+      // broker vê o campo já preenchido, como se tivesse digitado; nada é
+      // gravado até ele clicar Salvar.
+      if (!jaAplicouPrefillDaMeta.current) {
+        jaAplicouPrefillDaMeta.current = true;
+        const sugestoes = data.relationshipContext?.qualificacaoDeclarada?.sugestoesDeFicha;
+        const finalidadePreenchida = Boolean(!data.lead.purpose && sugestoes?.purpose);
+        const pagamentoPreenchido = Boolean(!data.lead.payment_method && sugestoes?.payment_method);
+        setFichaPreenchidaPelaMeta(finalidadePreenchida || pagamentoPreenchido);
+        setLead(
+          sugestoes
+            ? {
+                ...data.lead,
+                purpose: data.lead.purpose || sugestoes.purpose,
+                payment_method: data.lead.payment_method || sugestoes.payment_method,
+              }
+            : data.lead,
+        );
+      } else {
+        setLead(data.lead);
+      }
       setActivities(data.activities);
       setOpportunities(data.opportunities ?? []);
       setOpportunitiesMensuraveis(data.opportunitiesMensuraveis !== false);
@@ -587,6 +602,10 @@ export default function LeadDetailPage() {
   }
 
   useEffect(() => {
+    // Navegação de uma lead para outra sem remontar o componente (o mesmo
+    // `useEffect` por `leadId`) não pode herdar a trava de prefill da lead
+    // anterior — cada lead tem seu próprio carregamento inicial.
+    jaAplicouPrefillDaMeta.current = false;
     void load();
   }, [leadId]);
 
