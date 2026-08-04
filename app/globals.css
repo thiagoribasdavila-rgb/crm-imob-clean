@@ -5738,6 +5738,25 @@ tbody tr:hover { background: rgba(255, 255, 255, .03); }
   gap: 6px;
   margin-top: 12px;
 }
+/* Ícone Lucide no lugar do emoji (👁️📞💬✦): emoji renderiza diferente por
+   SO/navegador — decoração instável, não ícone. O layout (grid, 38px,
+   equal-width) não muda; só o glifo. */
+.atlas-kanban-primary-actions a svg,
+.atlas-card-shortcuts a svg {
+  width: 15px;
+  height: 15px;
+}
+.atlas-card-shortcuts a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+.atlas-broker-shortcut svg {
+  width: 14px;
+  height: 14px;
+}
 .atlas-kanban-primary-actions a {
   display: grid;
   min-height: 38px;

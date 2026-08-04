@@ -3,6 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { DragEvent, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+// Ícone real em vez de emoji nos atalhos do cartão do kanban — mesmo motivo da
+// lista de leads: emoji renderiza diferente por SO/navegador (decoração
+// instável, não ícone). lucide-react já é dependência do projeto.
+import { Eye, MessageCircle, Phone, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AtlasBadge, AtlasEmpty, AtlasProgress, AtlasRecoverableError, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { AtlasCard, AtlasCardHeader, AtlasMetric } from "@/components/ui/AtlasCard";
@@ -1111,7 +1115,7 @@ export default function PipelinePage() {
               <select id={`priority-stage-${lead.id}`} value={lead.status ?? "novo"} disabled={savingId === lead.id} onChange={(event) => void moveLead(lead.id, event.target.value as StageKey)} className="atlas-broker-move-select">
                 {destinationOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
               </select>
-              <div className="mt-3 grid grid-cols-3 gap-2"><Link href={`/leads/${lead.id}`} className="atlas-broker-shortcut"><span aria-hidden="true">👁️</span> Lead 360</Link><Link href={`/leads/${lead.id}/messages`} className="atlas-broker-shortcut"><span aria-hidden="true">✦</span> IA</Link>{contact ? <a href={contact.call} className="atlas-broker-shortcut"><span aria-hidden="true">📞</span> Ligar</a> : <span className="atlas-broker-shortcut is-disabled">Sem telefone</span>}</div>
+              <div className="mt-3 grid grid-cols-3 gap-2"><Link href={`/leads/${lead.id}`} className="atlas-broker-shortcut"><Eye aria-hidden="true" /> Lead 360</Link><Link href={`/leads/${lead.id}/messages`} className="atlas-broker-shortcut"><Sparkles aria-hidden="true" /> IA</Link>{contact ? <a href={contact.call} className="atlas-broker-shortcut"><Phone aria-hidden="true" /> Ligar</a> : <span className="atlas-broker-shortcut is-disabled">Sem telefone</span>}</div>
             </article>;
           })}
           {!loading && dailyFocus.length === 0 ? <div className="lg:col-span-3"><AtlasEmpty reason="completed" eyebrow="Fila prioritária concluída" title="Tudo em dia" description="Nenhuma oportunidade aberta exige ação neste momento." action={<Link href="/tasks" className="atlas-button-secondary">Revisar tarefas</Link>} /></div> : null}
@@ -1154,7 +1158,7 @@ export default function PipelinePage() {
                 escrevê-lo para EXPLICAR que ele saiu faria o portão contar um
                 onde há zero — a mesma lição que o hex já ensinou na Agenda.) */}
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lead, região, origem ou campanha..." className="atlas-kanban-search min-w-72 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-corpo! text-white outline-none placeholder:text-slate-600 focus:border-sky-400/30" />
-            <button type="button" onClick={() => setFocusMode((value) => !value)} aria-pressed={focusMode} className={`atlas-button-secondary ${focusMode ? "border-sky-400/20 !text-sky-200" : ""}`}>{focusMode ? "Expandir inteligência" : "✦ Ativar modo foco"}</button>
+            <button type="button" onClick={() => setFocusMode((value) => !value)} aria-pressed={focusMode} className={`atlas-button-secondary ${focusMode ? "border-sky-400/20 !text-sky-200" : ""}`}>{focusMode ? "Expandir inteligência" : <><Sparkles aria-hidden="true" className="size-3.5" /> Ativar modo foco</>}</button>
             {canConfigureStages ? <Link href="/pipeline/settings" className="atlas-button-secondary">Configurar etapas</Link> : null}
             <Link href="/leads/new" className="atlas-button-primary">+ Novo lead</Link>
           </div>
@@ -1324,10 +1328,10 @@ export default function PipelinePage() {
                           aoMarcar={(quando, descricao) => aplicarProximaAcao(lead.id, quando, descricao)}
                         />
                         <div className="atlas-kanban-primary-actions" role="group" aria-label="Ações rápidas">
-                          <Link href={`/leads/${lead.id}`} title="Abrir Lead 360" aria-label="Abrir Lead 360">👁️</Link>
-                          {contact ? <a href={contact.call} title="Ligar" aria-label="Ligar para a lead">📞</a> : null}
-                          {contact ? <a href={contact.whatsapp} target="_blank" rel="noreferrer" title="WhatsApp" aria-label="Abrir WhatsApp">💬</a> : null}
-                          <Link href={`/leads/${lead.id}/messages`} title="Abordagem com IA" aria-label="Preparar abordagem com IA">✦</Link>
+                          <Link href={`/leads/${lead.id}`} title="Abrir Lead 360" aria-label="Abrir Lead 360"><Eye aria-hidden="true" /></Link>
+                          {contact ? <a href={contact.call} title="Ligar" aria-label="Ligar para a lead"><Phone aria-hidden="true" /></a> : null}
+                          {contact ? <a href={contact.whatsapp} target="_blank" rel="noreferrer" title="WhatsApp" aria-label="Abrir WhatsApp"><MessageCircle aria-hidden="true" /></a> : null}
+                          <Link href={`/leads/${lead.id}/messages`} title="Abordagem com IA" aria-label="Preparar abordagem com IA"><Sparkles aria-hidden="true" /></Link>
                         </div>
                         <details className="atlas-kanban-card-details">
                           <summary>Ver contexto</summary>
@@ -1339,7 +1343,7 @@ export default function PipelinePage() {
                             <p><span>Próxima ação</span><strong>{dateLabel(lead.next_action_at)}</strong></p>
                           </div>
                           <p className="atlas-kanban-guidance-reason">{guidance.reason}</p>
-                          <div className="atlas-card-shortcuts"><Link href={`/leads/${lead.id}/messages`} title="Criar abordagem com IA"><span aria-hidden="true">✦</span> Mensagem</Link>{contact ? <><a href={contact.call} title="Ligar para a lead">Ligar</a><a href={contact.whatsapp} target="_blank" rel="noreferrer" title="Abrir WhatsApp">WhatsApp</a></> : null}</div>
+                          <div className="atlas-card-shortcuts"><Link href={`/leads/${lead.id}/messages`} title="Criar abordagem com IA"><Sparkles aria-hidden="true" /> Mensagem</Link>{contact ? <><a href={contact.call} title="Ligar para a lead"><Phone aria-hidden="true" /> Ligar</a><a href={contact.whatsapp} target="_blank" rel="noreferrer" title="Abrir WhatsApp"><MessageCircle aria-hidden="true" /> WhatsApp</a></> : null}</div>
                         </details>
                         <div role="group" aria-label={`Abrir ou descartar ${lead.name || "lead sem nome"}`} className="pointer-events-none mt-2 flex gap-1.5 opacity-0 motion-safe:transition-opacity motion-safe:duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
                           <Link href={`/leads/${lead.id}`} title="Abrir a visão completa da lead" className="flex-1 rounded-xl border border-[rgba(148,163,184,.12)] px-2 py-1.5 text-center font-mono text-micro leading-4 text-[var(--atlas-texto-medio)] motion-safe:transition-colors hover:border-[rgba(148,163,184,.22)] hover:text-[var(--atlas-texto-forte)] focus-visible:border-[rgba(148,163,184,.22)] focus-visible:text-[var(--atlas-texto-forte)]">Abrir</Link>
