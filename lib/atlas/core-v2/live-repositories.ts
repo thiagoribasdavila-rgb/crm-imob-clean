@@ -13,7 +13,7 @@ import {
 } from "@/lib/compat/legacy-v2";
 import { ATLAS_LIVE_READ_COMPATIBILITY_VERSION } from "./live-capability-resolver";
 
-export const LIVE_TASK_SELECT = "id,title,description,status,user_id,lead_id,created_at,organization_id,priority,due_date";
+export const LIVE_TASK_SELECT = "id,title,description,status,user_id,lead_id,created_at,organization_id,priority,due_date,recurrence_id";
 /**
  * Colunas do empreendimento, lidas de `developments`.
  *
