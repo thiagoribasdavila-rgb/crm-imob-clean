@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState, type CSSProperties } from "react";
+import { FormEvent, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { AtlasEmpty, AtlasSkeleton } from "@/components/ui/AtlasUI";
 import { PageHeader } from "@/components/atlas/page-header";
@@ -374,9 +374,16 @@ export default function MetaIntegration() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
-  /** Id da fonte com o vínculo de empreendimento em gravação — só ela mostra
-   *  o `<select>` ocupado; as outras linhas continuam clicáveis. */
-  const [linkingSourceId, setLinkingSourceId] = useState<string | null>(null);
+  /** Ids das fontes com o vínculo de empreendimento em gravação — um Set, não
+   *  um escalar: trocar duas fontes quase ao mesmo tempo (o uso esperado
+   *  desta tela) com um único id perderia o lock da primeira assim que a
+   *  segunda começasse. */
+  const [linkingSourceIds, setLinkingSourceIds] = useState<Set<string>>(new Set());
+  // Sequência do load(): sem isto, disparar duas leituras (ex. dois vínculos
+  // em sequência rápida) e a resposta MAIS ANTIGA voltar DEPOIS da mais nova
+  // reverte a tela para um snapshot velho, silenciosamente — escondendo um
+  // vínculo que acabou de ser gravado com sucesso no banco.
+  const loadSeq = useRef(0);
   const [testErrors, setTestErrors] = useState<{
     webhook?: string;
     capi?: string;
@@ -442,8 +449,12 @@ export default function MetaIntegration() {
   }
 
   async function load() {
+    const minhaSequencia = (loadSeq.current += 1);
     try {
       const payload = (await request()) as Payload;
+      // Uma leitura mais nova já começou (e pode já ter respondido) enquanto
+      // esta estava em voo — aplicar esta agora seria voltar no tempo.
+      if (loadSeq.current !== minhaSequencia) return;
       setData(payload);
       if (payload.conversionConfig)
         setConversion({
@@ -451,6 +462,7 @@ export default function MetaIntegration() {
           testEventCode: payload.conversionConfig.test_event_code || "",
         });
     } catch (cause) {
+      if (loadSeq.current !== minhaSequencia) return;
       setError(
         cause instanceof Error ? cause.message : "Falha na integração Meta.",
       );
@@ -536,7 +548,7 @@ export default function MetaIntegration() {
   // adivinha por nome", e desfazer um vínculo errado precisa do mesmo
   // caminho que o criou, não de um caso especial escondido.
   async function linkDevelopment(sourceId: string, developmentId: string | null) {
-    setLinkingSourceId(sourceId);
+    setLinkingSourceIds((prev) => new Set(prev).add(sourceId));
     setError("");
     setNotice("");
     try {
@@ -555,7 +567,11 @@ export default function MetaIntegration() {
         cause instanceof Error ? cause.message : "Falha ao vincular empreendimento.",
       );
     } finally {
-      setLinkingSourceId(null);
+      setLinkingSourceIds((prev) => {
+        const proxima = new Set(prev);
+        proxima.delete(sourceId);
+        return proxima;
+      });
     }
   }
 
@@ -1316,7 +1332,7 @@ export default function MetaIntegration() {
                         id={`ficha-empreendimento-${source.id}`}
                         className="mt-0.5 min-h-9 w-full rounded-lg border border-[var(--atlas-border)] bg-[var(--atlas-surface-subtle)] px-2 text-rotulo text-[var(--atlas-texto-forte)] outline-none focus:border-[color:var(--atlas-accent)]"
                         value={source.development_id ?? ""}
-                        disabled={linkingSourceId === source.id}
+                        disabled={linkingSourceIds.has(source.id)}
                         onChange={(event) =>
                           void linkDevelopment(source.id, event.target.value || null)
                         }
