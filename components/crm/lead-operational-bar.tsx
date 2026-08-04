@@ -2,6 +2,17 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { caminhoDoGesto, type ProximaAcao } from "@/lib/crm/gesto-da-proxima-acao";
 
+// Mesma regra de leads/page.tsx, pipeline/page.tsx e command-center/page.tsx:
+// 10+ dígitos, DDI 55 implícito quando ausente. Sem link de WhatsApp aqui, a
+// ficha do cliente era a única tela do produto sem um clique para abrir o
+// WhatsApp — justo a que o corretor mais abre para atender.
+function linkDoWhatsapp(phone: string | null) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  const international = digits.startsWith("55") ? digits : `55${digits}`;
+  return `https://wa.me/${international}`;
+}
+
 type LeadOperationalBarProps = {
   leadId: string;
   leadName: string;
@@ -38,6 +49,12 @@ export function LeadOperationalBar({
   
 
   const destinoDoGesto = caminhoDoGesto(leadId, proximaAcao);
+  const whatsapp = linkDoWhatsapp(phone);
+  // O gesto já É "Ligar agora" (mesmo tel:) quando não há atividade nenhuma —
+  // o caso mais comum, por ser o primeiro que a regra de gesto.rotulo prevê
+  // (lib/crm/gesto-da-proxima-acao.ts). Repetir "Ligar" na faixa de baixo
+  // contradiz o "UM gesto só" que este arquivo já defende acima.
+  const gestoJaLiga = !destinoDoGesto && proximaAcao.gesto.tipo === "ligar" && Boolean(phone);
 
   return (
     <aside className="atlas-lead-operational-bar" aria-label="Resumo operacional do lead">
@@ -90,9 +107,14 @@ export function LeadOperationalBar({
             as duas em pé. A barra fica com o que só ela tem — o gesto do momento
             e as ações de contato imediato. */}
       <div className="atlas-lead-operational-actions">
-        {phone ? (
+        {phone && !gestoJaLiga ? (
           <a href={`tel:${phone}`} className="atlas-button-secondary">
             Ligar
+          </a>
+        ) : null}
+        {whatsapp ? (
+          <a href={whatsapp} target="_blank" rel="noreferrer" className="atlas-button-secondary">
+            WhatsApp
           </a>
         ) : null}
         <Link href={`/leads/${leadId}/messages`} className="atlas-button-primary">

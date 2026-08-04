@@ -1252,10 +1252,15 @@ export default function LeadDetailPage() {
         }
       />
 
+      {/* order-[-4]: sem `order`, as duas faixas abaixo caíam no balde 0 —
+          depois de TODO o resto da ficha (perfil, timeline, matching...).
+          Um "salvo com sucesso" que só aparece depois de rolar 2 telas não
+          é feedback, é arqueologia. Empatam com o cabeçalho (-4) e, por
+          ordem de DOM entre iguais, saem logo abaixo dele. */}
       {message ? (
         <div
           role="status"
-          className="cc6-panel-quiet cc6-destaque p-4 text-sm leading-6 text-[var(--atlas-texto-medio)]"
+          className="order-[-4] cc6-panel-quiet cc6-destaque p-4 text-sm leading-6 text-[var(--atlas-texto-medio)]"
         >
           {message}
         </div>
@@ -1264,7 +1269,7 @@ export default function LeadDetailPage() {
       {assignmentReservation?.status === "pending" ? (
         <section
           data-phase="58-lead-reservation"
-          className="cc6-panel cc6-sev-band flex flex-col gap-4 p-5 pl-6 sm:flex-row sm:items-center sm:justify-between"
+          className="order-[-4] cc6-panel cc6-sev-band flex flex-col gap-4 p-5 pl-6 sm:flex-row sm:items-center sm:justify-between"
           style={{ "--cc6-sev": "var(--atlas-estado-atencao)" } as CSSProperties}
         >
           <div>
